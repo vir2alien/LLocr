@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/Main.qml</file>
+        <file>qml/SettingsDialog.qml</file>
+        <file>profiles/unlimited-ocr.json</file>
+    </qresource>
+</RCC>
