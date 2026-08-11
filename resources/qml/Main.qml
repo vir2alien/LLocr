@@ -1,14 +1,25 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Dialogs
+
+import LLocr
 
 ApplicationWindow {
     id: window
     width: 1360
     height: 820
+    minimumWidth: 900
+    minimumHeight: 600
     visible: true
     title: qsTr("LLM OCR")
+
+    color: Theme.background
+
+    Material.theme: uiController.dark ? Material.Dark : Material.Light
+    Material.accent: Theme.accent
+    Material.foreground: Theme.textPrimary
 
     property int imageRevision: 0
     property int docRevision: 0
@@ -22,89 +33,147 @@ ApplicationWindow {
         }
     }
 
+    ButtonGroup {
+        id: themeGroup
+    }
+
     header: ToolBar {
+        leftPadding: Theme.spacing
+        rightPadding: Theme.spacing
+
+        background: Rectangle {
+            color: Theme.surface
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 1
+                color: Theme.divider
+            }
+        }
+
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
-            spacing: 8
+            spacing: Theme.spacingSmall
 
-            Button {
+            ToolButton {
                 text: qsTr("Open…")
                 onClicked: fileDialog.open()
             }
 
-            Button {
+            ToolSeparator {}
+
+            ToolButton {
                 text: qsTr("Recognize")
                 enabled: controller.hasImage && !controller.busy
                          && controller.canRecognize
                 onClicked: controller.recognizeCurrent()
             }
-            Button {
+            ToolButton {
                 text: qsTr("Recognize all")
                 enabled: controller.hasImage && !controller.busy
                          && controller.pageCount > 1
                          && controller.canRecognize
                 onClicked: controller.recognizeAll()
             }
-
-            RowLayout {
-                visible: controller.pageCount > 1
-                spacing: 4
-
-                Button {
-                    text: "‹"
-                    enabled: controller.currentPage > 0
-                    onClicked: controller.currentPage = controller.currentPage - 1
-                }
-                Label {
-                    text: (controller.currentPage + 1) + " / " + controller.pageCount
-                    color: "#dddddd"
-                }
-                Button {
-                    text: "›"
-                    enabled: controller.currentPage < controller.pageCount - 1
-                    onClicked: controller.currentPage = controller.currentPage + 1
-                }
-            }
-
-            Button {
+            ToolButton {
                 text: qsTr("Stop")
                 enabled: controller.busy
                 onClicked: controller.stop()
             }
 
-            Button {
+            BusyIndicator {
+                running: controller.busy
+                visible: controller.busy
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+            }
+
+            ToolSeparator { visible: controller.pageCount > 1 }
+
+            RowLayout {
+                visible: controller.pageCount > 1
+                spacing: 0
+
+                ToolButton {
+                    text: "\u2039"
+                    enabled: controller.currentPage > 0
+                    onClicked: controller.currentPage = controller.currentPage - 1
+                }
+                Label {
+                    text: (controller.currentPage + 1) + " / " + controller.pageCount
+                    color: Theme.textSecondary
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.minimumWidth: 56
+                }
+                ToolButton {
+                    text: "\u203a"
+                    enabled: controller.currentPage < controller.pageCount - 1
+                    onClicked: controller.currentPage = controller.currentPage + 1
+                }
+            }
+
+            ToolSeparator {}
+
+            ToolButton {
                 text: qsTr("Export…")
                 enabled: controller.hasResult
                 onClicked: {
                     if (controller.pageCount > 1) {
                         exportOptionsDialog.open()
                     } else {
-                        exportDialog.scope = 0 // ExportAll
+                        exportDialog.scope = 0 //export all
                         exportDialog.open()
                     }
                 }
             }
 
-            BusyIndicator {
-                running: controller.busy
-                visible: controller.busy
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
-            }
-
-            Item { Layout.fillWidth: true }  // spacer
-
-            Button {
-                text: qsTr("Settings")
-                onClicked: settingsDialog.open()
-            }
+            Item { Layout.fillWidth: true }
 
             Label {
                 text: controller.statusMessage
+                color: Theme.textMuted
+                font.pixelSize: Theme.fontCaption
                 elide: Text.ElideRight
                 Layout.maximumWidth: 380
+            }
+
+            ToolButton {
+                text: qsTr("Theme")
+                onClicked: mainMenu.open()
+                Menu {
+                    id: mainMenu
+                    y: parent.height
+                    title: qsTr("Theme")
+
+                    MenuItem {
+                        text: qsTr("System")
+                        checkable: true
+                        checked: uiController.mode === UiController.System
+                        ButtonGroup.group: themeGroup
+                        onTriggered: uiController.mode = UiController.System
+                    }
+                    MenuItem {
+                        text: qsTr("Light")
+                        checkable: true
+                        checked: uiController.mode === UiController.Light
+                        ButtonGroup.group: themeGroup
+                        onTriggered: uiController.mode = UiController.Light
+                    }
+                    MenuItem {
+                        text: qsTr("Dark")
+                        checkable: true
+                        checked: uiController.mode === UiController.Dark
+                        ButtonGroup.group: themeGroup
+                        onTriggered: uiController.mode = UiController.Dark
+                    }
+                }
+            }// ToolButton theme
+
+            ToolButton {
+                text: qsTr("Settings...")
+                onClicked: settingsDialog.open()
             }
         }
     } // ToolBar
@@ -113,34 +182,47 @@ ApplicationWindow {
         anchors.fill: parent
         orientation: Qt.Horizontal
 
+        handle: Rectangle {
+            implicitWidth: 5
+            color: SplitHandle.pressed || SplitHandle.hovered
+                   ? Theme.border : Theme.background
+
+            Rectangle {  // hairline, always visible
+                anchors.centerIn: parent
+                width: 1
+                height: parent.height
+                color: Theme.divider
+            }
+        }
+
         Rectangle {// thumbnails panel
             id: thumbPanel
             SplitView.preferredWidth: 170
             SplitView.minimumWidth: 120
             SplitView.maximumWidth: 300
-            color: "#232323"
+            color: Theme.surface
             visible: controller.hasImage
 
             ListView {
                 id: thumbList
                 anchors.fill: parent
-                anchors.margins: 6
-                spacing: 8
+                anchors.margins: Theme.spacing
+                spacing: Theme.spacing
                 clip: true
                 model: controller.pageModel
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar {}
 
                 delegate: Item {
-                    width: thumbList.width - 6
+                    width: thumbList.width - Theme.spacingSmall
                     height: width * 1.3 + 22
 
                     Rectangle {
                         anchors.fill: parent
-                        radius: 4
-                        color: model.current ? "#3a3f4b" : "transparent"
-                        border.color: model.current ? "#4fc3f7" : "#3a3a3a"
-                        border.width: model.current ? 2 : 1
+                        radius: Theme.radius
+                        color: model.current ? Theme.selected : "transparent"
+                        border.color: model.current ? Theme.accent : Theme.divider
+                        border.width: 1
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -159,19 +241,28 @@ ApplicationWindow {
 
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 4
+                                spacing: Theme.spacingSmall
 
-                                // Status marker:
-                                //   amber = edited, green = recognized, grey = pending.
                                 Rectangle {
-                                    width: 10; height: 10; radius: 5
-                                    color: model.edited ? "#ffb74d"
-                                           : (model.recognized ? "#66bb6a" : "#666666")
+                                    width: 9
+                                    height: 9
+                                    radius: model.edited ? 2 : 5
+                                    color: model.edited ? Theme.textPrimary
+                                           : (model.recognized ? Theme.textSecondary
+                                                               : "transparent")
+                                    border.width: model.recognized || model.edited ? 0 : 1
+                                    border.color: Theme.textMuted
+
+                                    Accessible.role: Accessible.StaticText
+                                    Accessible.name: model.edited ? qsTr("Edited")
+                                                     : (model.recognized ? qsTr("Recognized")
+                                                                         : qsTr("Not recognized"))
                                 }
                                 Label {
-                                    text: qsTr("Page ") + (model.pageIndex + 1)
-                                    font.pixelSize: 11
-                                    color: model.recognized ? "#cccccc" : "#888888"
+                                    text: qsTr("Page %1").arg(model.pageIndex + 1)
+                                    font.pixelSize: Theme.fontSmall
+                                    color: model.recognized ? Theme.textSecondary
+                                                            : Theme.textMuted
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -181,7 +272,6 @@ ApplicationWindow {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            // Navigation allowed even while recognizing.
                             onClicked: controller.currentPage = model.pageIndex
                         }
                     }
@@ -193,12 +283,12 @@ ApplicationWindow {
             id: leftPanel
             SplitView.preferredWidth: parent.width * 0.45
             SplitView.minimumWidth: 300
-            color: "#2b2b2b"
+            color: Theme.surfaceSunken
 
             Image {
                 id: previewImage
                 anchors.fill: parent
-                anchors.margins: 12
+                anchors.margins: Theme.spacingLarge
                 fillMode: Image.PreserveAspectFit
                 source: controller.hasImage
                         ? "image://ocr/current?" + window.imageRevision
@@ -215,16 +305,25 @@ ApplicationWindow {
                         model: controller.boxModel
                         delegate: Rectangle {
                             color: "transparent"
-                            border.color: "#4fc3f7"
-                            border.width: 2
+                            border.color: Theme.overlayOuter
+                            border.width: 1
                             x: boxX * imageArea.width
                             y: boxY * imageArea.height
                             width: boxWidth * imageArea.width
                             height: boxHeight * imageArea.height
 
                             Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: 1
+                                color: "transparent"
+                                border.color: Theme.overlayInner
+                                border.width: 1
+                            }
+
+                            Rectangle {
                                 visible: boxLabel.length > 0
-                                color: "#4fc3f7"
+                                color: Theme.overlayOuter
+                                radius: 2
                                 height: labelText.height + 2
                                 width: labelText.width + 6
                                 Text {
@@ -232,7 +331,7 @@ ApplicationWindow {
                                     anchors.centerIn: parent
                                     text: boxLabel
                                     font.pixelSize: 10
-                                    color: "#000000"
+                                    color: Theme.overlayInner
                                 }
                             }
                         }
@@ -244,32 +343,35 @@ ApplicationWindow {
                 anchors.centerIn: parent
                 visible: !controller.hasImage
                 text: qsTr("Open an image or PDF to begin")
-                color: "#888888"
+                color: Theme.textMuted
             }
         } // Rectangle img preview
 
         Rectangle {//recognized text
             SplitView.minimumWidth: 300
-            color: "#1e1e1e"
+            color: Theme.surfaceAlt
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 8
-                spacing: 6
+                anchors.margins: Theme.spacing
+                spacing: Theme.spacingSmall
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: Theme.spacing
                     visible: controller.currentPageEditable
 
                     Label {
                         text: controller.currentPageEdited ? qsTr("Edited")
                                                            : qsTr("Recognized")
-                        color: controller.currentPageEdited ? "#ffb74d" : "#66bb6a"
-                        font.pixelSize: 12
+                        color: controller.currentPageEdited ? Theme.textPrimary
+                                                           : Theme.textMuted
+                        font.pixelSize: Theme.fontCaption
+                        font.bold: controller.currentPageEdited
                     }
                     Item { Layout.fillWidth: true }
                     Button {
+                        flat: true
                         text: qsTr("Revert")
                         visible: controller.currentPageEdited
                         onClicked: controller.revertCurrentPageEdits()
@@ -286,13 +388,17 @@ ApplicationWindow {
                         wrapMode: TextArea.Wrap
                         selectByMouse: true
                         placeholderText: qsTr("Recognized text will appear here")
+                        color: Theme.textPrimary
+                        placeholderTextColor: Theme.textMuted
+
+                        background: null
 
                         property bool syncing: false
 
                         function reload() {
                             var t = controller.resultText
                             if (text === t)
-                                return   // unchanged -> keep the caret intact
+                                return
                             syncing = true
                             text = t
                             syncing = false
@@ -307,7 +413,6 @@ ApplicationWindow {
 
                         Connections {
                             target: controller
-                            // Fires on navigation, fresh recognition, revert.
                             function onResultChanged() { textArea.reload() }
                         }
                     }
@@ -332,7 +437,7 @@ ApplicationWindow {
         fileMode: FileDialog.SaveFile
         nameFilters: controller.exportNameFilters
 
-        property int scope: 0 //0 = All, 1 = Current, 2 = Range (1-based).
+        property int scope: 0 //0 = all, 1 = current, 2 = range
         property int fromPage: 1
         property int toPage: 1
 
@@ -411,8 +516,8 @@ ApplicationWindow {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                font.pixelSize: 11
-                color: "#999999"
+                font.pixelSize: Theme.fontSmall
+                color: Theme.textMuted
                 text: qsTr("Only recognized pages inside the selection are exported.")
             }
         }

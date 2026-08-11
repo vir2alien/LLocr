@@ -32,9 +32,9 @@ LLocr/
 │   ├── providers/    # ILlmProvider, OpenAiProvider
 │   ├── parsers/      # IOutputParser, RawParser, DetTokensParser, ParserFactory
 │   └── app/          # AppController, DocumentModel, PageListModel, BoxListModel,
-│                     #   OcrImageProvider, SettingsStore, Exporter
+│                     #   OcrImageProvider, SettingsStore, Exporter, UiController
 ├── resources/
-│   └── qml/          # Main.qml, SettingsDialog.qml
+│   └── qml/          # Main.qml, SettingsDialog.qml, Theme.qml
 ├── rag-service/      # Python service (later stage) — not created yet
 ├── tests/            # to be added (Stage 5)
 ├── docs/

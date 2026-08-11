@@ -103,8 +103,8 @@ Dialog {
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    font.pixelSize: 11
-                    color: "#999999"
+                    font.pixelSize: Theme.fontSmall
+                    color: Theme.textMuted
                     text: qsTr("Note: the API key is stored locally in plaintext. "
                                + "Avoid using production keys.")
                 }
@@ -178,8 +178,8 @@ Dialog {
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    font.pixelSize: 11
-                    color: "#999999"
+                    font.pixelSize: Theme.fontSmall
+                    color: Theme.textMuted
                     text: qsTr("‘raw’ keeps the model text as-is. ‘det_tokens’ extracts "
                                + "positioned fragments (bounding boxes) for the overlay.")
                 }
@@ -196,8 +196,8 @@ Dialog {
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    font.pixelSize: 11
-                    color: "#999999"
+                    font.pixelSize: Theme.fontSmall
+                    color: Theme.textMuted
                     text: qsTr("Scale of the raw coordinates a bbox model reports "
                                + "(coordinates are treated as 0..range). Only used by "
                                + "positional parsers.")

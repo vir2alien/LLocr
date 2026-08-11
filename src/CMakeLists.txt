@@ -36,6 +36,8 @@ qt_add_executable(llocr
     app/SettingsStore.cpp
     app/PageListModel.h
     app/PageListModel.cpp
+    app/UiController.h
+    app/UiController.cpp
 )
 
 qt_add_resources(llocr "app_resources"
@@ -44,6 +46,14 @@ qt_add_resources(llocr "app_resources"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/qml/Main.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Theme.qml"
+)
+
+qt_add_resources(llocr "app_conf"
+    PREFIX "/"
+    BASE "${CMAKE_SOURCE_DIR}/resources"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
 )
 
 target_include_directories(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src)

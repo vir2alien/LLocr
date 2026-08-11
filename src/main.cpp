@@ -5,6 +5,7 @@
 
 #include "app/AppController.h"
 #include "app/OcrImageProvider.h"
+#include "app/UiController.h"
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
@@ -14,20 +15,21 @@ int main(int argc, char* argv[]) {
 
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 
-    llocr::AppController controller;
+    llocr::AppController appController;
+    llocr::UiController uiController;
 
-    controller.loadSettings();
+    appController.loadSettings();
 
     QQmlApplicationEngine engine;
 
-    // The image provider is owned by the engine after addImageProvider().
-    engine.addImageProvider(QStringLiteral("ocr"),
-                            new llocr::OcrImageProvider(&controller));
+    qmlRegisterSingletonType(QUrl("qrc:/qml/Theme.qml"), "LLocr", 1, 0, "ThemeSingleton");
+    qmlRegisterUncreatableType<llocr::UiController>(
+        "LLocr", 1, 0, "UiController", "UiController is provided as a context property");
 
-    // Expose the single backend object to QML. The box overlay model is
-    // reached through `controller.boxModel`, so no extra context property is
-    // needed (and would only duplicate/desynchronize the overlay state).
-    engine.rootContext()->setContextProperty(QStringLiteral("controller"), &controller);
+    engine.addImageProvider(QStringLiteral("ocr"), new llocr::OcrImageProvider(&appController));
+
+    engine.rootContext()->setContextProperty(QStringLiteral("controller"), &appController);
+    engine.rootContext()->setContextProperty(QStringLiteral("uiController"), &uiController);
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed,
