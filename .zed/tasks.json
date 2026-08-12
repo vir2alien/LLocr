@@ -1,0 +1,12 @@
+[
+  {
+    "label": "CMake: Configure",
+    "command": "cmake -B build -DCMAKE_PREFIX_PATH=$HOME/Qt/6.10.3/macos -DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+    "use_new_terminal": false
+  },
+  {
+    "label": "CMake: Build",
+    "command": "cmake --build build",
+    "use_new_terminal": false
+  }
+]

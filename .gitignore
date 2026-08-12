@@ -21,6 +21,8 @@ object_script.*.Debug
 *.qbs.user
 *.qbs.user.*
 *.moc
+.qtcreator
+.qodeassist
 moc_*.cpp
 moc_*.h
 qrc_*.cpp
@@ -29,6 +31,8 @@ ui_*.h
 *.jsc
 Makefile*
 *build-*
+/build/
+/.cache/
 *.qm
 *.prl
 
@@ -52,6 +56,9 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+
+# Zed
+.zed/keymap.json
 
 # OS
 .DS_Store
