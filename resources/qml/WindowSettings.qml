@@ -3,7 +3,6 @@ import QtQuick.Window
 import QtQuick.Controls
 
 import LLocr
-//import Qt.labs.settings 1.0
 
 Item
 {

@@ -7,7 +7,7 @@ import QtQuick.Dialogs
 import LLocr
 
 ApplicationWindow {
-    id: window
+    id: mainWindow
     width: 1360
     height: 820
     minimumWidth: 900
@@ -26,15 +26,19 @@ ApplicationWindow {
 
     Connections {
         target: controller
-        function onPageChanged() { window.imageRevision++ }
+        function onPageChanged() { mainWindow.imageRevision++ }
         function onDocumentChanged() {
-            window.docRevision++
-            window.imageRevision++
+            mainWindow.docRevision++
+            mainWindow.imageRevision++
         }
     }
 
     ButtonGroup {
         id: themeGroup
+    }
+
+    WindowSettings {
+        window: mainWindow
     }
 
     header: ToolBar {
@@ -236,7 +240,7 @@ ApplicationWindow {
                                 asynchronous: true
                                 cache: true
                                 source: "image://ocr/page/" + model.pageIndex
-                                        + "?r=" + window.docRevision
+                                        + "?r=" + mainWindow.docRevision
                             }
 
                             RowLayout {
@@ -291,7 +295,7 @@ ApplicationWindow {
                 anchors.margins: Theme.spacingLarge
                 fillMode: Image.PreserveAspectFit
                 source: controller.hasImage
-                        ? "image://ocr/current?" + window.imageRevision
+                        ? "image://ocr/current?" + mainWindow.imageRevision
                         : ""
                 cache: false
 
