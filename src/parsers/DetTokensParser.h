@@ -16,11 +16,14 @@ namespace llocr {
 
 class DetTokensParser : public IOutputParser {
 public:
-    OcrResult parse(const QString& rawText, const ParserOptions& options) const override;
+    OcrResult parse(const QString &rawText) const override;
     QString id() const override;
 
 private:
     static OcrPage parsePage(const QString& pageText, int coordRange);
+
+private:
+    int m_bboxCoordinateRange = 1000;
 };
 
 } // namespace llocr

@@ -17,10 +17,8 @@ private slots:
             "footer [402, 904, 602, 941]ПЕЧАТИ\nИ ШТАМПЫ");
 
         DetTokensParser parser;
-        ParserOptions opts;
-        opts.bboxCoordinateRange = 1000;
 
-        const OcrResult r = parser.parse(raw, opts);
+        const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
         QCOMPARE(r.pages.size(), 1);
@@ -45,7 +43,7 @@ private slots:
             // Text with no structured tokens falls back to raw text, still succeeds.
     void fallsBackWhenNoTokens() {
         DetTokensParser parser;
-        const OcrResult r = parser.parse(QStringLiteral("just plain text"), {});
+        const OcrResult r = parser.parse(QStringLiteral("just plain text"));
 
         QVERIFY(r.success);
         QCOMPARE(r.pages.size(), 1);

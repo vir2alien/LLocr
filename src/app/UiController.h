@@ -4,6 +4,8 @@
 #include <QQmlEngine>
 #include <QString>
 
+#include "app/SettingsStore.h"
+
 namespace llocr {
 
 class UiController : public QObject
@@ -23,7 +25,7 @@ public:
     };
     Q_ENUM(Mode)
 
-    explicit UiController(QObject *parent = nullptr);
+    explicit UiController(SettingsStore &settings, QObject *parent = nullptr);
 
     Mode mode() const { return m_mode; }
     void setMode(Mode mode);
@@ -40,9 +42,8 @@ private:
     static Mode modeFromString(const QString& value);
     static QString modeToString(Mode mode);
 
-    static constexpr const char* kMode = "ui/theme";
-
     Mode m_mode = System;
+    SettingsStore &m_settings;
 };
 
 }  // namespace llocr

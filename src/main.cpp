@@ -5,6 +5,7 @@
 
 #include "app/AppController.h"
 #include "app/OcrImageProvider.h"
+#include "app/SettingsStore.h"
 #include "app/UiController.h"
 
 int main(int argc, char* argv[]) {
@@ -15,16 +16,16 @@ int main(int argc, char* argv[]) {
 
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 
-    llocr::AppController appController;
-    llocr::UiController uiController;
-
-    appController.loadSettings();
+    llocr::SettingsStore settingsStore;
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", &settingsStore);
+    llocr::AppController appController(settingsStore);
+    llocr::UiController uiController(settingsStore);
 
     QQmlApplicationEngine engine;
 
     qmlRegisterSingletonType(QUrl("qrc:/qml/Theme.qml"), "LLocr", 1, 0, "ThemeSingleton");
-    qmlRegisterUncreatableType<llocr::UiController>(
-        "LLocr", 1, 0, "UiController", "UiController is provided as a context property");
+
+    qmlRegisterUncreatableType<llocr::UiController>("LLocr", 1, 0, "UiController", "UiController is provided as a context property");
 
     engine.addImageProvider(QStringLiteral("ocr"), new llocr::OcrImageProvider(&appController));
 

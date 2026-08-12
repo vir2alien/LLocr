@@ -67,7 +67,7 @@ OcrPage DetTokensParser::parsePage(const QString& pageText, int coordRange)
     return page;
 }
 
-OcrResult DetTokensParser::parse(const QString& rawText, const ParserOptions& options) const
+OcrResult DetTokensParser::parse(const QString &rawText) const
 {
     OcrResult result;
     result.success = true;
@@ -108,9 +108,7 @@ OcrResult DetTokensParser::parse(const QString& rawText, const ParserOptions& op
         return result;
     }
 
-    const double range = options.bboxCoordinateRange > 0
-                             ? static_cast<double>(options.bboxCoordinateRange)
-                             : 1000.0;
+    const double range = m_bboxCoordinateRange;
 
     for (int i = 0; i < headers.size(); ++i) {
         const Header& h = headers.at(i);

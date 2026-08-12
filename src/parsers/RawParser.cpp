@@ -2,7 +2,7 @@
 
 namespace llocr {
 
-OcrResult RawParser::parse(const QString& rawText, const ParserOptions& /*options*/) const
+OcrResult RawParser::parse(const QString &rawText) const
 {
     OcrResult result;
     result.success = true;

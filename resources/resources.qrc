@@ -3,5 +3,6 @@
         <file>qml/Main.qml</file>
         <file>qml/SettingsDialog.qml</file>
         <file>qml/Theme.qml</file>
+        <file>qml/WindowSettings.qml</file>
     </qresource>
 </RCC>

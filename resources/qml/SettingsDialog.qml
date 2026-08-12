@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import LLocr
+
 Dialog {
     id: dialog
     title: qsTr("Settings")
@@ -9,41 +11,34 @@ Dialog {
     standardButtons: Dialog.Save | Dialog.Cancel
 
     anchors.centerIn: parent
-    width: 560
-    implicitHeight: 520
+    width: 460
+    implicitHeight: 320
 
     onAboutToShow: {
         // Connection
-        baseUrlField.text = controller.baseUrl
-        apiKeyField.text  = controller.apiKey
-        timeoutField.text = controller.timeoutMs.toString()
+        baseUrlField.text = Settings.baseUrl
+        apiKeyField.text  = Settings.apiKey
+        timeoutField.text = Settings.connectionTimeoutMs.toString()
 
         // Model
-        modelNameField.text  = controller.modelName
-        promptArea.text      = controller.prompt
-        temperatureField.text = controller.temperature.toString()
-        maxTokensField.text  = controller.maxTokens.toString()
+        modelNameField.text  = Settings.modelName
+        temperatureField.text = Settings.temperature.toString()
+        maxTokensField.text  = Settings.maxTokens.toString()
 
         // Output / parser
-        var idx = parserBox.model.indexOf(controller.parserId)
+        var idx = parserBox.model.indexOf(Settings.parserId)
         parserBox.currentIndex = idx >= 0 ? idx : 0
-        bboxRangeField.text = controller.bboxCoordinateRange.toString()
     }
 
     onAccepted: {
-        controller.applySettings({
-            "baseUrl":  baseUrlField.text,
-            "apiKey":   apiKeyField.text,
-            "timeoutMs": parseInt(timeoutField.text) || controller.timeoutMs,
-
-            "modelName": modelNameField.text,
-            "prompt":    promptArea.text,
-            "temperature": parseFloat(temperatureField.text) || 0.0,
-            "maxTokens":  parseInt(maxTokensField.text) || controller.maxTokens,
-
-            "parserId":  parserBox.currentText,
-            "bboxCoordinateRange": parseInt(bboxRangeField.text) || controller.bboxCoordinateRange
-        })
+        Settings.baseUrl = baseUrlField.text;
+        Settings.apiKey = apiKeyField.text;
+        Settings.timeoutMs = parseInt(timeoutField.text) || 3000;
+        Settings.modelName = modelNameField.text;
+        Settings.temperature = parseFloat(temperatureField.text) || 0.0;
+        Settings.maxTokens = parseInt(maxTokensField.text) || 8192;
+        Settings.parserId = parserBox.currentText;
+        Settings.forceSave();
     }
 
     ColumnLayout {
@@ -123,18 +118,6 @@ Dialog {
                     placeholderText: qsTr("e.g. gpt-4o-mini, or the id your server exposes")
                 }
 
-                Label { text: qsTr("Prompt / instruction") }
-                ScrollView {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 110
-                    TextArea {
-                        id: promptArea
-                        wrapMode: TextArea.Wrap
-                        selectByMouse: true
-                        placeholderText: qsTr("OCR this document. Return the text.")
-                    }
-                }
-
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 16
@@ -182,25 +165,6 @@ Dialog {
                     color: Theme.textMuted
                     text: qsTr("‘raw’ keeps the model text as-is. ‘det_tokens’ extracts "
                                + "positioned fragments (bounding boxes) for the overlay.")
-                }
-
-                Label { text: qsTr("Bbox coordinate range") }
-                TextField {
-                    id: bboxRangeField
-                    Layout.fillWidth: true
-                    selectByMouse: true
-                    inputMethodHints: Qt.ImhDigitsOnly
-                    validator: IntValidator { bottom: 1; top: 100000 }
-                    enabled: parserBox.currentText === "det_tokens"
-                }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
-                    color: Theme.textMuted
-                    text: qsTr("Scale of the raw coordinates a bbox model reports "
-                               + "(coordinates are treated as 0..range). Only used by "
-                               + "positional parsers.")
                 }
 
                 Item { Layout.fillHeight: true }

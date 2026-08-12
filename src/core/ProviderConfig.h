@@ -18,7 +18,7 @@ struct ProviderConfig {
 
     // Parser
     QString parserId = QStringLiteral("raw");                   ///< "raw", "det_tokens", …
-    int bboxCoordinateRange = 1000;                            ///< Raw coord scale (0..this).
+    // int bboxCoordinateRange = 1000;                            ///< Raw coord scale (0..this).
 };
 
 } // namespace llocr

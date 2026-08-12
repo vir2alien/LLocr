@@ -11,7 +11,7 @@ namespace llocr {
  */
 class RawParser : public IOutputParser {
 public:
-    OcrResult parse(const QString& rawText, const ParserOptions& options) const override;
+    OcrResult parse(const QString &rawText) const override;
     QString id() const override;
 };
 

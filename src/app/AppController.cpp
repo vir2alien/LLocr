@@ -9,70 +9,12 @@
 
 namespace llocr {
 
-AppController::AppController(QObject* parent) : QObject(parent)
+AppController::AppController(SettingsStore &settings, QObject *parent)
+    : m_settings(settings), QObject(parent)
 {
-    m_provider = std::make_unique<OpenAiProvider>(m_config);
+    m_provider = std::make_unique<OpenAiProvider>();
 
-    connect(&m_watcher,
-            &QFutureWatcher<OcrResult>::finished,
-            this,
-            &AppController::onRecognitionFinished);
-}
-
-
-void AppController::setProviderConfig(const ProviderConfig& config)
-{
-    m_config = config;
-    if (m_provider)
-        m_provider->setConfig(m_config);
-    emit configChanged();
-}
-
-void AppController::loadSettings()
-{
-    m_config = m_settings.load();
-    if (m_provider)
-        m_provider->setConfig(m_config);
-    emit configChanged();
-}
-
-void AppController::applySettings(const QVariantMap& settings)
-{
-    if (settings.contains(QStringLiteral("baseUrl")))
-        m_config.baseUrl = settings.value(QStringLiteral("baseUrl")).toString();
-    if (settings.contains(QStringLiteral("apiKey")))
-        m_config.apiKey = settings.value(QStringLiteral("apiKey")).toString();
-    if (settings.contains(QStringLiteral("timeoutMs"))) {
-        const int t = settings.value(QStringLiteral("timeoutMs")).toInt();
-        if (t > 0)
-            m_config.timeoutMs = t;
-    }
-
-    if (settings.contains(QStringLiteral("modelName")))
-        m_config.modelName = settings.value(QStringLiteral("modelName")).toString().trimmed();
-    if (settings.contains(QStringLiteral("prompt")))
-        m_config.prompt = settings.value(QStringLiteral("prompt")).toString();
-    if (settings.contains(QStringLiteral("temperature")))
-        m_config.temperature = settings.value(QStringLiteral("temperature")).toDouble();
-    if (settings.contains(QStringLiteral("maxTokens"))) {
-        const int m = settings.value(QStringLiteral("maxTokens")).toInt();
-        if (m > 0)
-            m_config.maxTokens = m;
-    }
-
-    if (settings.contains(QStringLiteral("parserId")))
-        m_config.parserId = settings.value(QStringLiteral("parserId")).toString();
-    if (settings.contains(QStringLiteral("bboxCoordinateRange"))) {
-        const int r = settings.value(QStringLiteral("bboxCoordinateRange")).toInt();
-        if (r > 0)
-            m_config.bboxCoordinateRange = r;
-    }
-
-    if (m_provider)
-        m_provider->setConfig(m_config);
-    m_settings.save(m_config);
-    emit configChanged();
-    setStatus(tr("Settings saved."));
+    connect(&m_watcher, &QFutureWatcher<OcrResult>::finished, this, &AppController::onRecognitionFinished);
 }
 
 QStringList AppController::parserNames() const
@@ -92,6 +34,11 @@ bool AppController::hasResult() const
             return true;
     }
     return false;
+}
+
+bool AppController::canRecognize() const
+{
+    return !m_settings.modelName().trimmed().isEmpty();
 }
 
 QString AppController::effectiveText(int index) const
@@ -139,6 +86,14 @@ OcrResult AppController::currentResult() const
     if (!m_document.isValidIndex(m_currentPage))
         return {};
     return m_document.page(m_currentPage).result;
+}
+
+void AppController::setPrompt(const QString &prompt)
+{
+    if (m_prompt != prompt)
+        return;
+    m_prompt = prompt;
+    emit promtChanged();
 }
 
 void AppController::setCurrentPage(int index)
@@ -276,18 +231,28 @@ void AppController::recognizePage(int index)
     m_recognizingIndex = index;
     setStatus(tr("Recognizing page %1 of %2…").arg(index + 1).arg(m_document.pageCount()));
 
-    const OcrRequest request = buildRequest(m_document.page(index).image);
-    m_watcher.setFuture(m_provider->recognize(request));
+    const OcrRequest request = buildRequest(m_document.page(index).image, m_prompt);
+
+    ProviderConfig config;
+    config.apiKey = m_settings.apiKey();
+    config.baseUrl = m_settings.baseUrl();
+    config.maxTokens = m_settings.maxTokens();
+    config.modelName = m_settings.modelName();
+    config.parserId = m_settings.parserId();
+    config.prompt = m_prompt;
+    config.temperature = m_settings.temperature();
+    config.timeoutMs = m_settings.connectionTimeoutMs();
+    m_watcher.setFuture(m_provider->recognize(request, config));
 }
 
-OcrRequest AppController::buildRequest(const QImage& image) const
+OcrRequest AppController::buildRequest(const QImage &image, const QString &prompt) const
 {
     OcrRequest request;
     request.image = image;
-    request.prompt = m_config.prompt;
-    request.modelId = m_config.modelName;
-    request.temperature = m_config.temperature;
-    request.maxTokens = m_config.maxTokens;
+    request.prompt = prompt;
+    request.modelId = m_settings.modelName();
+    request.temperature = m_settings.temperature();
+    request.maxTokens = m_settings.maxTokens();
     return request;
 }
 
@@ -304,8 +269,10 @@ void AppController::onRecognitionFinished()
     if (!raw.success) {
         if (m_stopRequested)
             setStatus(tr("Stopped at page %1.").arg(index + 1));
-        else
+        else {
             setStatus(tr("Error on page %1: %2").arg(index + 1).arg(raw.errorMessage));
+            qDebug() << tr("Error on page %1: %2").arg(index + 1).arg(raw.errorMessage);
+        }
         finishRun();
         return;
     }
@@ -336,10 +303,8 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
         return;
 
     OcrResult parsed = rawResult;
-    if (auto parser = ParserFactory::create(m_config.parserId)) {
-        ParserOptions options;
-        options.bboxCoordinateRange = m_config.bboxCoordinateRange;
-        parsed = parser->parse(rawResult.text, options);
+    if (auto parser = ParserFactory::create(m_settings.parserId())) {
+        parsed = parser->parse(rawResult.text);
     }
     parsed.success = true;
 

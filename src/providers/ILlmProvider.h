@@ -5,6 +5,7 @@
 #include <QString>
 
 #include "core/OcrResult.h"
+#include "core/ProviderConfig.h"
 
 namespace llocr {
 
@@ -26,9 +27,9 @@ class ILlmProvider {
 public:
     virtual ~ILlmProvider() = default;
 
-    virtual QFuture<OcrResult> recognize(const OcrRequest& request) = 0;
+    virtual QFuture<OcrResult> recognize(const OcrRequest &request, const ProviderConfig &config) = 0;
 
     virtual QString name() const = 0;
 };
 
-} // namespace llocr
+}  // namespace llocr

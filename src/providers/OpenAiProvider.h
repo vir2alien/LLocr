@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QPointer>
 
-#include "core/ProviderConfig.h"
 #include "providers/ILlmProvider.h"
 
 class QNetworkReply;
@@ -21,19 +20,16 @@ class OpenAiProvider : public QObject, public ILlmProvider
     Q_OBJECT
 
 public:
-    explicit OpenAiProvider(ProviderConfig config, QObject* parent = nullptr);
+    explicit OpenAiProvider(QObject *parent = nullptr);
 
     // ILlmProvider
-    QFuture<OcrResult> recognize(const OcrRequest& request) override;
+    QFuture<OcrResult> recognize(const OcrRequest &request, const ProviderConfig &config) override;
     QString name() const override;
-
-    void setConfig(ProviderConfig config);
-    const ProviderConfig& config() const;
 
     void abort();
 
 private:
-    QUrl endpointUrl() const;
+    QUrl endpointUrl(const QString &baseUrl) const;
 
     static QString encodeImageDataUrl(const QImage& image, const QString& format);
 
@@ -42,7 +38,6 @@ private:
 
     static OcrResult parseResponse(const QByteArray& responseData);
 
-    ProviderConfig m_config;
     QNetworkAccessManager m_network;
     QPointer<QNetworkReply> m_currentReply;
 };

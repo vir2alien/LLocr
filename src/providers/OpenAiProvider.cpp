@@ -13,30 +13,16 @@
 
 namespace llocr {
 
-OpenAiProvider::OpenAiProvider(ProviderConfig config, QObject* parent)
-    : QObject(parent)
-    , m_config(std::move(config))
-{
-}
+OpenAiProvider::OpenAiProvider(QObject *parent) : QObject(parent) {}
 
 QString OpenAiProvider::name() const
 {
     return QStringLiteral("OpenAI-compatible");
 }
 
-void OpenAiProvider::setConfig(ProviderConfig config)
+QUrl OpenAiProvider::endpointUrl(const QString &baseUrl) const
 {
-    m_config = std::move(config);
-}
-
-const ProviderConfig& OpenAiProvider::config() const
-{
-    return m_config;
-}
-
-QUrl OpenAiProvider::endpointUrl() const
-{
-    QString base = m_config.baseUrl;
+    QString base = baseUrl;
     while (base.endsWith('/'))
         base.chop(1);
     return QUrl(base + QStringLiteral("/v1/chat/completions"));
@@ -110,7 +96,7 @@ OcrResult OpenAiProvider::parseResponse(const QByteArray& responseData)
     return result;
 }
 
-QFuture<OcrResult> OpenAiProvider::recognize(const OcrRequest& request)
+QFuture<OcrResult> OpenAiProvider::recognize(const OcrRequest &request, const ProviderConfig &config)
 {
     auto promise = std::make_shared<QPromise<OcrResult>>();
     promise->start();
@@ -119,10 +105,10 @@ QFuture<OcrResult> OpenAiProvider::recognize(const OcrRequest& request)
     const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("png"));
     const QByteArray body = buildRequestBody(request, dataUrl);
 
-    QNetworkRequest req(endpointUrl());
+    QNetworkRequest req(endpointUrl(config.baseUrl));
     req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    if (!m_config.apiKey.isEmpty())
-        req.setRawHeader("Authorization", "Bearer " + m_config.apiKey.toUtf8());
+    if (!config.apiKey.isEmpty())
+        req.setRawHeader("Authorization", "Bearer " + config.apiKey.toUtf8());
 
     QNetworkReply* reply = m_network.post(req, body);
     m_currentReply = reply;
@@ -131,7 +117,7 @@ QFuture<OcrResult> OpenAiProvider::recognize(const OcrRequest& request)
     auto* timer = new QTimer(reply);
     timer->setSingleShot(true);
     QObject::connect(timer, &QTimer::timeout, reply, [reply]() { reply->abort(); });
-    timer->start(m_config.timeoutMs);
+    timer->start(config.timeoutMs);
 
     QObject::connect(reply, &QNetworkReply::finished, reply,
                      [reply, promise]() mutable {

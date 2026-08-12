@@ -15,14 +15,10 @@
 #include "app/PageListModel.h"
 #include "app/SettingsStore.h"
 #include "core/OcrResult.h"
-#include "core/ProviderConfig.h"
 #include "providers/OpenAiProvider.h"
 
 namespace llocr {
 
-/**
- * @brief orchestrator between the QML UI and the backend
- */
 class AppController : public QObject
 {
     Q_OBJECT
@@ -44,24 +40,14 @@ class AppController : public QObject
     Q_PROPERTY(QObject* pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject* boxModel READ boxModel CONSTANT)
 
+    Q_PROPERTY(QString prompt READ prompt WRITE setPrompt NOTIFY promtChanged)
+
     Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY configChanged)
 
     Q_PROPERTY(QStringList parserNames READ parserNames CONSTANT)
 
-    Q_PROPERTY(QString baseUrl READ baseUrl NOTIFY configChanged)
-    Q_PROPERTY(QString apiKey READ apiKey NOTIFY configChanged)
-    Q_PROPERTY(int timeoutMs READ timeoutMs NOTIFY configChanged)
-    Q_PROPERTY(QString modelName READ modelName NOTIFY configChanged)
-    Q_PROPERTY(QString prompt READ prompt NOTIFY configChanged)
-    Q_PROPERTY(double temperature READ temperature NOTIFY configChanged)
-    Q_PROPERTY(int maxTokens READ maxTokens NOTIFY configChanged)
-    Q_PROPERTY(QString parserId READ parserId NOTIFY configChanged)
-    Q_PROPERTY(int bboxCoordinateRange READ bboxCoordinateRange NOTIFY configChanged)
-
 public:
-    explicit AppController(QObject *parent = nullptr);
-
-    void setProviderConfig(const ProviderConfig& config);
+    explicit AppController(SettingsStore &settings, QObject *parent = nullptr);
 
     // --- QML getters ---
     bool busy() const { return m_busy; }
@@ -72,7 +58,7 @@ public:
     int pageCount() const { return m_document.pageCount(); }
     int currentPage() const { return m_currentPage; }
 
-    bool canRecognize() const { return !m_config.modelName.trimmed().isEmpty(); }
+    bool canRecognize() const;
     QStringList parserNames() const;
 
     bool pandocAvailable() const;
@@ -81,20 +67,14 @@ public:
     bool currentPageEditable() const;
     bool currentPageEdited() const;
 
-    QObject* pageModel() { return &m_pageModel; }
-    QObject* boxModel() { return &m_boxModel; }
+    QObject *pageModel() { return &m_pageModel; }
+    QObject *boxModel() { return &m_boxModel; }
 
-    QString baseUrl() const { return m_config.baseUrl; }
-    QString apiKey() const { return m_config.apiKey; }
-    int timeoutMs() const { return m_config.timeoutMs; }
-    QString modelName() const { return m_config.modelName; }
-    QString prompt() const { return m_config.prompt; }
-    double temperature() const { return m_config.temperature; }
-    int maxTokens() const { return m_config.maxTokens; }
-    QString parserId() const { return m_config.parserId; }
-    int bboxCoordinateRange() const { return m_config.bboxCoordinateRange; }
+    QString prompt() { return m_prompt; }
 
     // --- QML setters ---
+
+    void setPrompt(const QString &prompt);
     void setCurrentPage(int index);
 
     QImage currentImage() const;
@@ -104,6 +84,7 @@ public:
 signals:
     void busyChanged();
     void resultChanged();
+    void promtChanged();
     void statusChanged();
     void imageChanged();
     void documentChanged();
@@ -129,12 +110,8 @@ public slots:
 
     Q_INVOKABLE bool exportResult(const QUrl& fileUrl);
 
-    Q_INVOKABLE void applySettings(const QVariantMap& settings);
-
     Q_INVOKABLE void setCurrentPageText(const QString& text);
     Q_INVOKABLE void revertCurrentPageEdits();
-
-    void loadSettings();
 
 private slots:
     void onRecognitionFinished();
@@ -152,7 +129,7 @@ private:
 
     void recognizePage(int index);
     void recognizeSequential(int index);
-    OcrRequest buildRequest(const QImage& image) const;
+    OcrRequest buildRequest(const QImage &image, const QString &prompt) const;
     void applyRawResult(int index, const OcrResult& rawResult);
 
     void finishRun();
@@ -165,12 +142,14 @@ private:
 
     std::unique_ptr<OpenAiProvider> m_provider;
 
-    ProviderConfig m_config;
-    SettingsStore m_settings;
+    SettingsStore &m_settings;
 
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
+
+    QString m_prompt = "document parsing.'";  // TODO implementation in QML is needed
+
     Exporter m_exporter;
 
     QFutureWatcher<OcrResult> m_watcher;

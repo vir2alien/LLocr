@@ -6,10 +6,9 @@
 
 namespace llocr {
 
-UiController::UiController(QObject *parent) : QObject(parent)
+UiController::UiController(SettingsStore &settings, QObject *parent) : m_settings(settings), QObject(parent)
 {
-    QSettings settings;
-    m_mode = modeFromString(settings.value(kMode).toString());
+    m_mode = static_cast<Mode>(m_settings.themeMode());
 
     connect(QGuiApplication::styleHints(),
             &QStyleHints::colorSchemeChanged,
@@ -27,9 +26,7 @@ void UiController::setMode(Mode mode)
     m_mode = mode;
     apply();
 
-    QSettings settings;
-    settings.setValue(kMode, modeToString(m_mode));
-    settings.sync();
+    m_settings.setThemeMode(m_mode);
 
     emit modeChanged();
     emit darkChanged();
