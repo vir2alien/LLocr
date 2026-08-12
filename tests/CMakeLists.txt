@@ -14,11 +14,3 @@ target_sources(test_det_parser PRIVATE
     ${CMAKE_SOURCE_DIR}/src/parsers/ParserFactory.cpp
 )
 add_test(NAME test_det_parser COMMAND test_det_parser)
-
-qt_add_executable(test_profile test_profile.cpp)
-target_include_directories(test_profile PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(test_profile PRIVATE Qt6::Test Qt6::Core)
-target_sources(test_profile PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/core/ModelProfile.cpp
-)
-add_test(NAME test_profile COMMAND test_profile)

@@ -2,15 +2,16 @@
 
 ## Layers
 ```
-┌─────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────┐
 │                     QML UI (View)                        │
-│  Main.qml · SettingsDialog.qml (tabbed)                  │
-├─────────────────────────────────────────────────────────┤
+│  Main.qml · SettingsDialog.qml (tabbed) · WindowSettings │
+├──────────────────────────────────────────────────────────┤
 │                C++ Backend (ViewModel)                   │
 │  AppController — state, signals/slots, orchestration     │
 │  DocumentModel · PageListModel · BoxListModel            │
 │  OcrImageProvider (QQuickImageProvider) · SettingsStore  │
-├──────────────┬──────────────┬────────────┬──────────────┤
+│  UiController (theme)                                    │
+├──────────────┬──────────────┬────────────┬───────────────┤
 │ LLM Provider │  Image/PDF   │  Parsers   │  Exporter     │
 │ ILlmProvider │  Loader      │ IOutputParser │ (TXT/MD/HTML)│
 │ OpenAiProvider│ DocumentModel│ raw/det    │ DOCX/PDF      │
@@ -38,14 +39,9 @@ public:
 
 Implementations:
 - `OpenAiProvider`  — any OpenAI-compatible API (Ollama, LM Studio, llama.cpp
-  server, hosted APIs). **This is the only supported connection type.**
+  server, hosted APIs).
   Async via `QPromise`; supports **`abort()`** so the UI Stop button can cancel
   an in-flight request. Per-request timeout via `QTimer`.
-
-> **Concept change:** the `LlamaCppProvider` idea and the JSON **model-profile**
-> system were dropped. All model/connection/parser configuration now lives in
-> **`ProviderConfig`**, edited in the Settings dialog and persisted by
-> `SettingsStore`.
 
 ## Configuration model
 Everything the app needs to talk to a model is a single struct:
@@ -65,7 +61,7 @@ struct ProviderConfig {
 
     // Output / parser
     QString parserId;             // "raw" | "det_tokens"
-    int     bboxCoordinateRange;  // raw coord scale for positional parsers
+    // int  bboxCoordinateRange;  // (commented out; not used by the app yet)
 };
 ```
 
@@ -76,12 +72,12 @@ struct ProviderConfig {
 ## Backend building blocks (implemented)
 - **AppController** — the ViewModel. Exposes `busy`, `resultText`,
   `statusMessage`, `hasImage`, `pageCount`, `currentPage`, `hasResult`,
-  `canRecognize`, `parserNames`, the settings getters (`baseUrl`, `apiKey`,
-  `timeoutMs`, `modelName`, `prompt`, `temperature`, `maxTokens`, `parserId`,
-  `bboxCoordinateRange`), and the `pageModel` / `boxModel` list models to QML.
-  Owns the recognition run loop (single page / "recognize all"), the **stop**
-  flag, per-page edits, and **export**. Settings are applied in one call:
-  `applySettings(QVariantMap)`.
+  `currentPageEditable`, `currentPageEdited`, `pandocAvailable`,
+  `exportNameFilters`, `canRecognize`, `parserNames`, `prompt`, and the
+  `pageModel` / `boxModel` list models to QML. Owns the recognition run loop
+  (single page / "recognize all"), the **stop** flag, per-page edits, and
+  **export**. All connection/model/parser settings live in `SettingsStore`
+  (exposed to QML as the `Settings` singleton), not on the controller.
 - **DocumentModel** — holds the loaded pages (image + per-page `OcrResult` +
   `recognized` flag); loads images (`QImage`) and PDFs (`QPdfDocument`).
 - **PageListModel** — feeds the left thumbnail strip: page index, recognized
@@ -89,12 +85,17 @@ struct ProviderConfig {
 - **BoxListModel** — normalized bbox rectangles for the current page's overlay.
 - **OcrImageProvider** — a `QQuickImageProvider` serving both the full current
   page (`image://ocr/current`) and per-page thumbnails (`image://ocr/page/N`).
-- **SettingsStore** — persists the full `ProviderConfig`.
+- **SettingsStore** — persists the settings (connection/model/parser via
+  `QSettings`, grouped keys `provider/*`, `model/*`, `output/*`) plus UI state
+  (`ui/*`: theme mode, window geometry). Exposed to QML as the `Settings`
+  singleton; also read directly by `AppController` and `UiController`.
+- **UiController** — System / Light / Dark theme handling (`QML_ELEMENT`).
+- **WindowSettings** (QML) — persists window position/size/visibility.
 
 ## Data flow (OCR)
 ```
 UI (file selection)
-  → AppController (builds OcrRequest from ProviderConfig)
+  → AppController (builds OcrRequest from ProviderConfig + SettingsStore)
     → DocumentModel (decode image / render PDF page → QImage)
     → OpenAiProvider.recognize()  [async, cancellable]
     → OutputParser (from settings: raw / det_tokens)

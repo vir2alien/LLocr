@@ -6,9 +6,10 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
 - **OpenAiProvider** ✅: sends a request to `/v1/chat/completions` with an image
   (base64 in `image_url`) and parses the response. Async (`QPromise`/`QFuture`),
   per-request timeout, and **`abort()`** for Stop.
-- Configuration ✅: base URL, API key (optional), timeout, model name, prompt,
-  temperature, max tokens — all in `ProviderConfig`, persisted via
-  `SettingsStore`, edited in the tabbed **Settings** dialog.
+- Configuration ✅: base URL, API key (optional), timeout, model name,
+  temperature, max tokens, parser — all in `SettingsStore` (`QSettings`),
+  edited in the tabbed **Settings** dialog. (The prompt is currently hardcoded
+  in `AppController` — see below.)
 
 ## 4.2 Settings
 All configuration lives in the **Settings dialog**, grouped into tabs:
@@ -16,11 +17,17 @@ All configuration lives in the **Settings dialog**, grouped into tabs:
 | Tab        | Fields                                            |
 | ---------- | ------------------------------------------------- |
 | Connection | base URL, API key (optional), request timeout     |
-| Model      | model name, prompt/instruction, temperature, max tokens |
-| Output     | output parser, bbox coordinate range              |
+| Model      | model name, temperature, max tokens               |
+| Output     | output parser (`raw` / `det_tokens`)              |
 
 Persistence is handled by `SettingsStore` (`QSettings`, grouped keys
-`provider/*`, `model/*`, `output/*`).
+`provider/*`, `model/*`, `output/*`). UI state (theme, window geometry) is
+persisted under `ui/*`.
+
+> **Not in the dialog yet:** the model prompt/instruction is hardcoded in
+> `AppController::m_prompt` (a `prompt` property exists but has no UI); the
+> bbox coordinate range field is not implemented (`ProviderConfig` has it
+> commented out). Both remain future work.
 
 ## 4.3 Themes
 Three options handled by `UiController`:
@@ -88,8 +95,20 @@ i.e. the user's edit when present, else the raw recognition.
 - The Save dialog advertises **DOCX only when Pandoc is present**
   (`AppController::exportNameFilters` / `pandocAvailable`). PDF is always
   offered because of the built-in fallback writer.
+- Export scope is selectable for multi-page documents: **All recognized
+  pages**, **Current page**, or a **page range** (only recognized pages in the
+  selection are exported).
 
-## 4.11 RAG service (later stage) — ⬜ not started
+## 4.11 Window settings
+Window position / size / visibility are persisted via `WindowSettings.qml`
+(writing to `SettingsStore` `ui/windowX|Y|Width|Height|State`). ✅
+
+## 4.12 Tests
+Unit tests exist under `tests/` (Qt Test): `test_det_parser` (registered in
+`tests/CMakeLists.txt`), and `test_exporter` (source present, not yet added to
+the build). Built when `LLOCR_BUILD_TESTS=ON` (default).
+
+## 4.13 RAG service (later stage) — ⬜ not started
 - A separate Python process (FastAPI + Chroma/Qdrant).
 - LLocr sends recognized text for indexing over HTTP.
 - At an early stage — only an **interface stub** in the backend.

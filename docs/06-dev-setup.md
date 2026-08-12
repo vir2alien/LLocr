@@ -7,8 +7,8 @@
 | Version control  | Git + GitHub/GitLab                         | ✅ used |
 | CI/CD            | GitHub Actions (builds for Win/macOS/Linux) | ⬜ todo |
 | C++ dependencies | vcpkg (or Conan)                            | ✅ used |
-| Formatting       | clang-format                                | ⬜ todo |
-| Tests            | Qt Test / Catch2                            | ⬜ todo |
+| Formatting       | clang-format                                          | ✅ used |
+| Tests            | Qt Test (unit tests in `tests/`)                      | 🟡 partial |
 
 ## Distribution — ⬜ not started
 | OS      | Format             | Tool                            |
@@ -28,20 +28,18 @@ LLocr/
 ├── CMakeLists.txt
 ├── src/
 │   ├── main.cpp
-│   ├── core/         # OcrResult, OcrRequest, ProviderConfig
-│   ├── providers/    # ILlmProvider, OpenAiProvider
+│   ├── core/         # OcrResult, ProviderConfig
+│   ├── providers/    # ILlmProvider (OcrRequest), OpenAiProvider
 │   ├── parsers/      # IOutputParser, RawParser, DetTokensParser, ParserFactory
 │   └── app/          # AppController, DocumentModel, PageListModel, BoxListModel,
-│                     #   OcrImageProvider, SettingsStore, Exporter, UiController
+│                     #   OcrImageProvider, SettingsStore, UiController, Exporter
 ├── resources/
-│   └── qml/          # Main.qml, SettingsDialog.qml, Theme.qml
-├── rag-service/      # Python service (later stage) — not created yet
-├── tests/            # to be added (Stage 5)
+│   └── qml/          # Main.qml, SettingsDialog.qml, Theme.qml, WindowSettings.qml
+├── rag-service/      # Python service (later stage) — empty for now
+├── tests/            # test_det_parser (built); test_exporter (pending)
 ├── docs/
 └── AGENTS.md
 ```
 
-> **Concept change:** `core/` no longer contains `ModelProfile` or
-> `ProfileRepository`, and there is **no `resources/profiles/` directory**.
-> Model/connection/parser settings are held in `ProviderConfig` and stored via
-> `QSettings` (see `SettingsStore`). QML lives under `resources/qml/`.
+> **Note:** `OcrRequest` lives in `providers/ILlmProvider.h`. QML lives under
+> `resources/qml/`.

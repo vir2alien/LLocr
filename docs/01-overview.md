@@ -16,11 +16,9 @@ LLocr provides a convenient interface to:
 3. **Result export** — Markdown, DOCX (+ TXT, PDF, HTML).
 4. **RAG integration** — populate a vector database from scans.
 
-> **Concept change (current):** the app now targets **only OpenAI-compatible
-> connections**. The earlier JSON *model-profile* system was removed — every
-> setting that used to live in a profile (model id, prompt, parser, generation
-> parameters) is now edited in the **Settings dialog** and persisted with
-> `QSettings`.
+> **Note:** the app targets **only OpenAI-compatible connections**. Every
+> model/connection/parser setting is edited in the **Settings dialog** and
+> persisted with `QSettings`.
 
 ## User scenario (MVP) — status
 1. The user starts a local LLM runner (Ollama / LM Studio / llama.cpp server)
@@ -37,9 +35,7 @@ LLocr provides a convenient interface to:
 The window uses a **toolbar + three-pane** layout.
 
 - **Toolbar** — Open, Recognize, Recognize all, page navigation (‹ n / N ›),
-  Stop, Export, a spacer, **Settings**, and a status message.
-  (The old model-profile selector combo box was **removed**; the model is now
-  chosen in Settings.)
+  Stop, Export, a spacer, **Theme** menu, **Settings**, and a status message.
 - **Left strip** — page thumbnails for multi-page documents; each carries a
   **recognized / not-recognized** marker (green/grey) and an **edited** marker
   (amber); clicking a thumbnail jumps to that page (works even while
@@ -51,6 +47,9 @@ The window uses a **toolbar + three-pane** layout.
 
 ## Settings dialog (tabbed)
 - **Connection** — endpoint base URL, API key (optional), request timeout.
-- **Model** — model name, prompt/instruction, temperature, max tokens.
-- **Output** — output parser (`raw` / `det_tokens`) and the bbox coordinate
-  range used by positional parsers.
+- **Model** — model name, temperature, max tokens.
+- **Output** — output parser (`raw` / `det_tokens`).
+
+> The prompt/instruction shown to the model is currently **hardcoded** in
+> `AppController` (`m_prompt`) — it is not editable in the UI yet. The bbox
+> coordinate range field is also not part of the dialog yet.

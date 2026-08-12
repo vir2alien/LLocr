@@ -33,9 +33,10 @@ all running locally, without sending your data to the cloud.
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Qt 6.x
+- Qt 6.5+ (incl. the **Qt PDF** module)
 - CMake ≥ 3.21
-- A C++17-compatible compiler
+- A C++20-compatible compiler
 - vcpkg
 - Python 3.x (for the RAG service)
+- Pandoc (optional, for DOCX/PDF export)
 - A running local LLM provider (e.g. [llama.cpp](https://github.com/ggerganov/llama.cpp) or any OpenAI-compatible endpoint)

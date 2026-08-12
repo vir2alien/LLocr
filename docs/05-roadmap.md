@@ -2,11 +2,6 @@
 
 Status legend: ✅ done · 🟡 partial · ⬜ todo
 
-> **Concept change (current):** the app is now **OpenAI-compatible only** and the
-> JSON model-profile system was removed. All model/connection/parser settings
-> moved into the tabbed **Settings** dialog (persisted via `QSettings`). This
-> supersedes the "JSON model profiles" line of Stage 2 — see ADR #13.
-
 ## Stage 0 — Preparation
 - [x] Set up the project: CMake, Git repository, folder structure. ✅
 - [ ] Build on all 3 OSes locally. 🟡
@@ -18,15 +13,15 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [x] Flow: image → API → text → display.
 - [x] Export to Markdown / TXT.
 
-## Stage 2 — Model extensibility (~2–3 weeks) — ✅ COMPLETE (revised)
+## Stage 2 — Model extensibility — ✅ COMPLETE (revised)
 - [x] `ILlmProvider` abstraction.
 - [x] Output parsers (`raw` / `det_tokens` bbox) + `ParserFactory`.
 - [x] Box rendering on the preview (`BoxListModel` + QML `Repeater`).
 - [x] **Configuration moved to Settings** (URL, key, timeout, **model name,
       prompt, temperature, max tokens, parser, bbox range**) + persistence.
-- [x] ~~JSON model profiles~~ **removed** (ADR #13); replaced by Settings.
+- [x] ~~JSON model profiles~~ **removed** (ADR #15); replaced by Settings.
 
-## Stage 3 — Formats and documents (~2 weeks) — ✅ IN PROGRESS
+## Stage 3 — Formats and documents — ✅ IN PROGRESS
 - [x] PDF input (via **Qt PDF**).
 - [x] Batch processing ("Recognize all") + per-page navigation, thumbnail strip,
       cancellable Stop.
@@ -34,20 +29,24 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [x] Export to DOCX / PDF (Pandoc, with a built-in PDF fallback).
 - [x] Markdown adopted as the single internal export source.
 - [x] Editable recognized-text pane (per-page edits, exported, marked, revertable).
-- [x] Per-page / selective export (currently exports all recognized pages). 
+- [x] Selective export: **All / Current / page range** (only recognized pages in
+      the selection are exported).
 
 ## Stage 4 — RAG (when ready) — ⬜ NOT STARTED
 - [ ] Backend **interface stub** for RAG.
 - [ ] Python indexing service + search (FastAPI + Chroma/Qdrant).
 - [ ] LLocr ↔ RAG integration over HTTP.
 
-## Stage 5 — Polish and distribution — ⬜ NOT STARTED
-- [ ] Unit tests (Qt Test / Catch2) for parsers, provider, export.
+## Stage 5 — Polish and distribution — 🟡 PARTIAL
+- [x] Unit tests for parsers (Qt Test; `test_det_parser`, plus `test_exporter`
+      source not yet in the build).
+- [ ] Unit tests for provider, remaining export paths.
 - [ ] Installers: Windows, macOS (.dmg + signing), Linux (AppImage/Flatpak).
 - [ ] CI/CD (GitHub Actions).
 
 ## Immediate next steps (priority order)
 1. **Persist edits with the document** (optional session save / restore).
-2. **Lay the RAG interface stub** in the backend (no Python yet).
-3. Bug fixes.
-4. Start **Stage 4 (RAG)**.
+2. Add the `test_exporter` target to `tests/CMakeLists.txt`.
+3. **Lay the RAG interface stub** in the backend (no Python yet).
+4. Bug fixes.
+5. Start **Stage 4 (RAG)**.

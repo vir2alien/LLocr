@@ -11,19 +11,15 @@
   | Images        | QImage                          | ✅ used | Loading/displaying                                   |
   | PDF           | **Qt PDF (`QPdfDocument`)**     | ✅ used | Ships with Qt6; no extra native dep (see ADR #8)     |
   | Box rendering | QML `Repeater` over a list model| ✅ used | Overlay bboxes on the preview (normalized rects)     |
-  | Export        | **Direct writer (TXT/MD/HTML)** | 🟡 partial | Pandoc pipeline for DOCX/PDF still to be added   |
-  | Tests         | Qt Test / Catch2                | ⬜ todo | Unit tests                                           |
+  | Export        | **Direct writer (TXT/MD/HTML)** + Pandoc for DOCX/PDF, PDF fallback | ✅ done | Pandoc discovered via `QStandardPaths`; built-in `QPdfWriter` fallback |
+  | Tests         | Qt Test (unit tests in `tests/`)             | 🟡 partial | `test_det_parser` in build; `test_exporter` pending |
 
-  > **Change vs. original plan:** PDF rendering now uses the **Qt PDF module**
-  > (`QPdfDocument`) instead of MuPDF/Poppler. It removes an external native
-  > dependency and is sufficient at ~150 DPI page rendering. MuPDF remains a
-  > fallback option if higher-fidelity or faster rendering is later required.
-
-  > **Change vs. original plan:** export is currently a **direct per-page
-  > writer** (TXT / Markdown / HTML) rather than the "internal Markdown →
-  > Pandoc" pipeline. The Markdown-as-source-of-truth + Pandoc approach is
-  > still the target for DOCX/PDF (see roadmap Stage 3).
-
+  > Note:** export is done via a **direct per-page writer** (TXT / Markdown /
+  > HTML) plus **Pandoc for DOCX/PDF** (with a built-in `QPdfWriter` fallback
+  > for PDF). Markdown remains the single internal source of truth.
+  > PDF rendering uses the **Qt PDF module**
+  > (`QPdfDocument`). MuPDF remains a fallback option if higher-fidelity or faster rendering is later required.
+  
   ## RAG service (separate process) — not started
   | Area          | Choice           | Rationale                |
   | ------------- | ---------------- | ------------------------ |
@@ -31,7 +27,7 @@
   | API           | FastAPI          | Lightweight HTTP service |
   | Vector DB     | Chroma / Qdrant  | Local embedding storage  |
   | Link to LLocr | HTTP (localhost) | Component decoupling     |
-
+  
   > RAG alternative without Python: **sqlite-vec** (a vector extension for SQLite,
   > embeddable in Qt via QSqlDatabase). Consider it if you prefer not to pull in Python.
 

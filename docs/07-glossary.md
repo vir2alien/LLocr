@@ -4,8 +4,10 @@
 - **OCR** — recognizing text from images.
 - **LLM provider** — the connection to the model; here always an
   **OpenAI-compatible** endpoint (llama.cpp server, Ollama, LM Studio, hosted API).
-- **ProviderConfig** — the single settings struct (connection + model + output
-  parser) edited in the Settings dialog and persisted via `SettingsStore`.
+- **ProviderConfig** — the settings struct (connection + model + parser) that
+  `AppController` fills from `SettingsStore` when building a request. It is no
+  longer the persisted source of truth: settings are persisted by
+  `SettingsStore` via `QSettings` and edited in the Settings dialog.
 - **Output parser** — the strategy for parsing a model's response into a
   structured result (`raw`, `det_tokens`), selected in Settings → Output.
 - **bbox** — bounding box coordinates of a recognized fragment for overlay on
@@ -30,6 +32,9 @@
 | 9    | Navigation stays live during recognition                     | Users browse other pages while a batch run proceeds.         |
 | 10   | Export written directly (TXT/MD/HTML); Markdown-as-source + Pandoc for DOCX/PDF | Ship useful export now; converge on the single-source pipeline. |
 | 11   | Thumbnails carry no bounding boxes                           | The strip only signals recognized/edited/current; boxes belong on the center preview only. |
-| 12   | OpenAI-like(llama.cpp-like)-compatible only                  | One clear connection type; model/prompt/parser/generation params live in `ProviderConfig` (Settings dialog + `QSettings`). |
+| 12   | OpenAI-like(llama.cpp-like)-compatible only                  | One clear connection type; model/prompt/parser/generation params live in `SettingsStore` (Settings dialog + `QSettings`). |
+| 13   | Window geometry persisted (`WindowSettings` + `SettingsStore` `ui/*`) | Persist window pos/size/visibility across sessions. |
+| 14   | Unit tests live in `tests/` (Qt Test), gated by `LLOCR_BUILD_TESTS` | Early coverage for parsers; more to come. |
+| 15   | JSON model-profile classes (`ModelProfile` / `ProfileRepository`) removed | Stage 2 replaced them with the **Settings dialog**; the leftover classes were dead code and were deleted. |
 
 > When decisions change — add a row to the table and update the affected files.
