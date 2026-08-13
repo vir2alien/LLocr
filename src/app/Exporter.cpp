@@ -1,5 +1,6 @@
 #include "app/Exporter.h"
 
+#include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
@@ -99,9 +100,10 @@ QString Exporter::buildHtml(const QList<Page>& pages)
 Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString& filePath) const
 {
     if (pages.isEmpty())
-        return Result::fail(QStringLiteral("Nothing to export."));
+        return Result::fail(QCoreApplication::translate("Exporter", "Nothing to export."));
+
     if (filePath.isEmpty())
-        return Result::fail(QStringLiteral("No output path."));
+        return Result::fail(QCoreApplication::translate("Exporter", "No output path."));
 
     const Format format = formatForSuffix(QFileInfo(filePath).suffix());
 
@@ -115,7 +117,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
 
     case Format::Docx: {
         if (!isPandocAvailable())
-            return Result::fail(QStringLiteral(
+            return Result::fail(QCoreApplication::translate("Exporter",
                 "DOCX export requires Pandoc, which was not found on PATH. "
                 "Install it from pandoc.org, or export to Markdown/HTML instead."));
         return runPandoc(buildMarkdown(pages), filePath, {});
@@ -128,7 +130,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
                 return r;
             const Result fb = writePdfFallback(pages, filePath);
             if (fb.success)
-                return Result::ok(QStringLiteral(
+                return Result::ok(QCoreApplication::translate("Exporter",
                     "Exported PDF using the built-in writer "
                     "(Pandoc failed: %1).").arg(r.message));
             return fb;
@@ -146,13 +148,13 @@ Exporter::Result Exporter::writeTextFile(const QString& path, const QString& con
 {
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-        return Result::fail(QStringLiteral("Cannot write file: %1").arg(path));
+        return Result::fail(QCoreApplication::translate("Exporter", "Cannot write file: %1").arg(path));
 
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
     out << content;
     file.close();
-    return Result::ok(QStringLiteral("Exported to %1").arg(QFileInfo(path).fileName()));
+    return Result::ok(QCoreApplication::translate("Exporter", "Exported to %1").arg(QFileInfo(path).fileName()));
 }
 
 Exporter::Result Exporter::runPandoc(const QString& markdown,
@@ -161,7 +163,7 @@ Exporter::Result Exporter::runPandoc(const QString& markdown,
 {
     const QString exe = pandocExecutable();
     if (exe.isEmpty())
-        return Result::fail(QStringLiteral("Pandoc not found."));
+        return Result::fail(QCoreApplication::translate("Exporter", "Pandoc not found."));
 
     QStringList args;
     args << QStringLiteral("--from=markdown")
@@ -172,24 +174,24 @@ Exporter::Result Exporter::runPandoc(const QString& markdown,
     QProcess process;
     process.start(exe, args);
     if (!process.waitForStarted(5000))
-        return Result::fail(QStringLiteral("Failed to start Pandoc."));
+        return Result::fail(QCoreApplication::translate("Exporter", "Failed to start Pandoc."));
 
     process.write(markdown.toUtf8());
     process.closeWriteChannel();
 
     if (!process.waitForFinished(120000)) {
         process.kill();
-        return Result::fail(QStringLiteral("Pandoc timed out."));
+        return Result::fail(QCoreApplication::translate("Exporter", "Pandoc timed out."));
     }
 
     if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
         const QString err = QString::fromUtf8(process.readAllStandardError()).trimmed();
         return Result::fail(err.isEmpty()
-                                ? QStringLiteral("Pandoc failed (exit %1).").arg(process.exitCode())
+                                ? QCoreApplication::translate("Exporter", "Pandoc failed (exit %1).").arg(process.exitCode())
                                 : err);
     }
 
-    return Result::ok(QStringLiteral("Exported to %1").arg(QFileInfo(outputPath).fileName()));
+    return Result::ok(QCoreApplication::translate("Exporter", "Exported to %1").arg(QFileInfo(outputPath).fileName()));
 }
 
 Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QString& path)
@@ -206,9 +208,9 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
 
     QFileInfo info(path);
     if (!info.exists() || info.size() == 0)
-        return Result::fail(QStringLiteral("Failed to write PDF: %1").arg(path));
+        return Result::fail(QCoreApplication::translate("Exporter", "Failed to write PDF: %1").arg(path));
 
-    return Result::ok(QStringLiteral("Exported to %1").arg(info.fileName()));
+    return Result::ok(QCoreApplication::translate("Exporter", "Exported to %1").arg(info.fileName()));
 }
 
 } // namespace llocr

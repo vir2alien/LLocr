@@ -12,9 +12,16 @@ Dialog {
 
     anchors.centerIn: parent
     width: 460
-    implicitHeight: 320
+    implicitHeight: 360
 
     onAboutToShow: {
+        //UI
+        var langIdx = ["system", "en", "ru"].indexOf(Settings.language)
+        languageBox.currentIndex = langIdx >= 0 ? langIdx : 0
+
+        var thtemeIdx = [UiController.System, UiController.Light, UiController.Dark].indexOf(Settings.themeMode)
+        themeBox.currentIndex = thtemeIdx >= 0 ? thtemeIdx : 0
+
         // Connection
         baseUrlField.text = Settings.baseUrl
         apiKeyField.text  = Settings.apiKey
@@ -28,9 +35,12 @@ Dialog {
         // Output / parser
         var idx = parserBox.model.indexOf(Settings.parserId)
         parserBox.currentIndex = idx >= 0 ? idx : 0
+
     }
 
     onAccepted: {
+        Settings.language = ["system", "en", "ru"][languageBox.currentIndex];
+        uiController.mode = [UiController.System, UiController.Light, UiController.Dark][themeBox.currentIndex];
         Settings.baseUrl = baseUrlField.text;
         Settings.apiKey = apiKeyField.text;
         Settings.timeoutMs = parseInt(timeoutField.text) || 3000;
@@ -39,6 +49,7 @@ Dialog {
         Settings.maxTokens = parseInt(maxTokensField.text) || 8192;
         Settings.parserId = parserBox.currentText;
         Settings.forceSave();
+        I18n.setLanguage(Settings.language);
     }
 
     ColumnLayout {
@@ -48,6 +59,7 @@ Dialog {
         TabBar {
             id: tabBar
             Layout.fillWidth: true
+            TabButton { text: qsTr("UI") }
             TabButton { text: qsTr("Connection") }
             TabButton { text: qsTr("Model") }
             TabButton { text: qsTr("Output") }
@@ -57,6 +69,22 @@ Dialog {
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: tabBar.currentIndex
+
+            ColumnLayout {// Tab 0 - UI
+                Label { text: qsTr("Language") }
+                ComboBox {
+                    id: languageBox
+                    Layout.fillWidth: true
+                    model: [qsTr("System"), "English", "Русский"]
+                }
+
+                Label { text: qsTr("Theme") }
+                ComboBox {
+                    id: themeBox
+                    Layout.fillWidth: true
+                    model: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
+                }
+            }// ColumnLayout Tab 0 - UI
 
             ColumnLayout {// Tab 1 — Connection
                 spacing: 10
@@ -78,7 +106,6 @@ Dialog {
                         selectByMouse: true
                         echoMode: revealKey.checked ? TextInput.Normal
                                                     : TextInput.Password
-                        placeholderText: qsTr("leave empty for local servers")
                     }
                     CheckBox {
                         id: revealKey
@@ -115,7 +142,7 @@ Dialog {
                     id: modelNameField
                     Layout.fillWidth: true
                     selectByMouse: true
-                    placeholderText: qsTr("e.g. gpt-4o-mini, or the id your server exposes")
+                    placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
                 }
 
                 RowLayout {

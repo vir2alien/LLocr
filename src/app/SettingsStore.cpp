@@ -111,6 +111,19 @@ void SettingsStore::setThemeMode(int mode)
     emit themeModeChanged();
 }
 
+QString SettingsStore::language() const
+{
+    return m_settings.value(kLanguage, QStringLiteral("system")).toString();
+}
+
+void SettingsStore::setLanguage(const QString &language)
+{
+    if (this->language() == language)
+        return;
+    m_settings.setValue(kLanguage, language);
+    emit languageChanged();
+}
+
 int SettingsStore::windowX() const
 {
     return m_settings.value(kWindowX, 0).toInt();

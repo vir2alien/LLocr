@@ -28,6 +28,8 @@ qt_add_executable(llocr
     app/DocumentModel.cpp
     app/Exporter.h
     app/Exporter.cpp
+    app/I18n.h
+    app/I18n.cpp
     app/OcrImageProvider.h
     app/OcrImageProvider.cpp
     app/BoxListModel.h
@@ -72,4 +74,9 @@ target_link_libraries(llocr PRIVATE
 
 target_compile_definitions(llocr PRIVATE
     PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+
+qt_add_translations(llocr
+    TS_FILES
+        "${CMAKE_SOURCE_DIR}/resources/i18n/llocr_ru.ts"
 )

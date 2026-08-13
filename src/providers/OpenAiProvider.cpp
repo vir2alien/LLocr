@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <QBuffer>
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -80,12 +81,12 @@ OcrResult OpenAiProvider::parseResponse(const QByteArray& responseData)
     QJsonParseError parseError{};
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject())
-        return OcrResult::makeError(QStringLiteral("Invalid JSON response"));
+        return OcrResult::makeError(QCoreApplication::translate("OpenAiProvider", "Invalid JSON response"));
 
     const QJsonObject root = doc.object();
     const QJsonArray choices = root.value(QStringLiteral("choices")).toArray();
     if (choices.isEmpty())
-        return OcrResult::makeError(QStringLiteral("No choices in response"));
+        return OcrResult::makeError(QCoreApplication::translate("OpenAiProvider", "No choices in response"));
 
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
     const QString content = message.value(QStringLiteral("content")).toString();

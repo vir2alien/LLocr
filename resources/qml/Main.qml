@@ -144,38 +144,6 @@ ApplicationWindow {
             }
 
             ToolButton {
-                text: qsTr("Theme")
-                onClicked: mainMenu.open()
-                Menu {
-                    id: mainMenu
-                    y: parent.height
-                    title: qsTr("Theme")
-
-                    MenuItem {
-                        text: qsTr("System")
-                        checkable: true
-                        checked: uiController.mode === UiController.System
-                        ButtonGroup.group: themeGroup
-                        onTriggered: uiController.mode = UiController.System
-                    }
-                    MenuItem {
-                        text: qsTr("Light")
-                        checkable: true
-                        checked: uiController.mode === UiController.Light
-                        ButtonGroup.group: themeGroup
-                        onTriggered: uiController.mode = UiController.Light
-                    }
-                    MenuItem {
-                        text: qsTr("Dark")
-                        checkable: true
-                        checked: uiController.mode === UiController.Dark
-                        ButtonGroup.group: themeGroup
-                        onTriggered: uiController.mode = UiController.Dark
-                    }
-                }
-            }// ToolButton theme
-
-            ToolButton {
                 text: qsTr("Settings...")
                 onClicked: settingsDialog.open()
             }

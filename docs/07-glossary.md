@@ -36,5 +36,6 @@
 | 13   | Window geometry persisted (`WindowSettings` + `SettingsStore` `ui/*`) | Persist window pos/size/visibility across sessions. |
 | 14   | Unit tests live in `tests/` (Qt Test), gated by `LLOCR_BUILD_TESTS` | Early coverage for parsers; more to come. |
 | 15   | JSON model-profile classes (`ModelProfile` / `ProfileRepository`) removed | Stage 2 replaced them with the **Settings dialog**; the leftover classes were dead code and were deleted. |
+| 16   | i18n via Qt Linguist (`qsTr`/`tr` + `.ts`/`.qm`), language selectable in Settings (System/English/Русский), default **System**, runtime retranslate | Standard Qt i18n; persisted via `SettingsStore` (`ui/language`); embedded `.qm` loaded at startup and on change. |
 
 > When decisions change — add a row to the table and update the affected files.

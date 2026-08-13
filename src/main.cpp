@@ -4,6 +4,7 @@
 #include <QQuickStyle>
 
 #include "app/AppController.h"
+#include "app/I18n.h"
 #include "app/OcrImageProvider.h"
 #include "app/SettingsStore.h"
 #include "app/UiController.h"
@@ -18,10 +19,16 @@ int main(int argc, char* argv[]) {
 
     llocr::SettingsStore settingsStore;
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", &settingsStore);
-    llocr::AppController appController(settingsStore);
-    llocr::UiController uiController(settingsStore);
+    llocr::I18n i18n(settingsStore);
 
     QQmlApplicationEngine engine;
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);
+
+    QObject::connect(&i18n, &llocr::I18n::languageApplied, &engine,
+                     [&engine]() { engine.retranslate(); });
+
+    llocr::AppController appController(settingsStore);
+    llocr::UiController uiController(settingsStore);
 
     qmlRegisterSingletonType(QUrl("qrc:/qml/Theme.qml"), "LLocr", 1, 0, "ThemeSingleton");
 
@@ -31,6 +38,8 @@ int main(int argc, char* argv[]) {
 
     engine.rootContext()->setContextProperty(QStringLiteral("controller"), &appController);
     engine.rootContext()->setContextProperty(QStringLiteral("uiController"), &uiController);
+
+    i18n.applyInitial();
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed,

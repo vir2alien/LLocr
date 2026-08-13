@@ -41,6 +41,7 @@ find_package(Qt6 REQUIRED COMPONENTS
     QuickControls2
     Pdf
     Test
+    LinguistTools
 )
 
 # Enable Qt6 policies for modern CMake integration (qt_add_executable, etc.).
