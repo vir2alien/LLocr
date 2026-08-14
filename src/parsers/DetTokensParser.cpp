@@ -40,6 +40,22 @@ QString convertMath(const QString &text)
     return out;
 }
 
+// Display (block) math -> clean Markdown block.
+// Strips optional surrounding \[ / \] and wraps the body in $$ … $$ on its own
+// lines. Used for the dedicated “equation” token, which is always display math.
+QString formatEquation(const QString &text)
+{
+    static const QRegularExpression wrapperRe(
+        QStringLiteral(R"(^\s*\\\[\s*([\s\S]*?)\s*\\\]\s*$)"));
+
+    QString body = text.trimmed();
+    const QRegularExpressionMatch m = wrapperRe.match(body);
+    if (m.hasMatch())
+        body = m.captured(1).trimmed();
+
+    return QStringLiteral("$$\n%1\n$$").arg(body.trimmed());
+}
+
 // Title to heading level
 // "3. Methodology"      -> 1 group  -> level 2 (##)
 // "3.1. Long-horizon"   -> 2 groups -> level 3 (###) etc
@@ -66,6 +82,8 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info)
         return QStringLiteral("![Image]()");
     case BlockStyle::Italic:
         return QLatin1Char('*') + text + QLatin1Char('*');
+    case BlockStyle::Equation:
+        return formatEquation(text);
     case BlockStyle::Heading: {
         const int level = info.headingLevel > 0 ? info.headingLevel : headingLevelFor(text);
         return QString(level, QLatin1Char('#')) + QLatin1Char(' ') + text;

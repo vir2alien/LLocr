@@ -102,6 +102,30 @@ private slots:
         QVERIFY(md.contains(QStringLiteral("$(m + 1)$")));
     }
 
+            // The dedicated equation token is parsed as a box and rendered as a
+            // clean display-math block $$ … $$ (no stray blank lines).
+    void handlesEquationToken() {
+        const QString raw = QStringLiteral(
+            "text [1, 1, 2, 2]where P denotes the prefix segment of length  \\( L_{m} \\)\n"
+            "equation [295, 564, 884, 579]\\[\n"
+            "\\mathcal {N} (t) = \\mathcal {P} \\cup \\mathcal {D} _ {n} (t); \\quad \\mathcal {P} = \\{1, \\dots , L _ {m} \\}, \\tag {1}\n\\]\n"
+            "text [112, 610, 884, 658]then the following text.");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("equation"));
+
+        const QString md = page.text;
+        QVERIFY(md.contains(QStringLiteral("$$\n\\mathcal {N} (t) = \\mathcal {P} \\cup \\mathcal {D} _ {n} (t); \\quad \\mathcal {P} = \\{1, \\dots , L _ {m} \\}, \\tag {1}\n$$"), Qt::CaseSensitive));
+        // The equation must not leak the LaTeX display delimiters.
+        QVERIFY(!md.contains(QStringLiteral("\\[")));
+        QVERIFY(!md.contains(QStringLiteral("\\]")));
+    }
+
     // Preamble text before the first token is captured as a box (untagged → "text").
     void capturesPreambleAsText() {
         const QString raw = QStringLiteral(

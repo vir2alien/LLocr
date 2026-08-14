@@ -10,6 +10,7 @@ enum class BlockStyle {
     Heading,
     ImagePlaceholder,
     Italic,
+    Equation,
 };
 
 struct BlockStyleInfo {
@@ -24,6 +25,7 @@ inline BlockStyleInfo blockStyleForLabel(const QString &label)
         {QStringLiteral("image"),          {BlockStyle::ImagePlaceholder, 0}},
         {QStringLiteral("image_caption"),  {BlockStyle::Italic,           0}},
         {QStringLiteral("page_number"),    {BlockStyle::Italic,           0}},
+        {QStringLiteral("equation"),       {BlockStyle::Equation,          0}},
         // "text", "footer" and others → absent → fall through to PlainText.
     };
     return table.value(label, {BlockStyle::PlainText, 0});
