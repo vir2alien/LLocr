@@ -19,7 +19,7 @@ AppController::AppController(SettingsStore &settings, QObject *parent)
 
 QStringList AppController::parserNames() const
 {
-    return {QStringLiteral("raw"), QStringLiteral("det_tokens")};
+    return ParserFactory::registeredIds();
 }
 
 bool AppController::hasImage() const
@@ -306,7 +306,6 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
     if (auto parser = ParserFactory::create(m_settings.parserId())) {
         parsed = parser->parse(rawResult.text);
     }
-    parsed.success = true;
 
     DocumentPage& page = m_document.page(index);
     page.result = parsed;

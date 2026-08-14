@@ -1,141 +1,173 @@
 #include "parsers/DetTokensParser.h"
+#include "parsers/BlockStyle.h"
 
 #include <QRegularExpression>
 #include <QStringList>
+
+#include <algorithm>
 
 namespace llocr {
 
 namespace {
 
-const QString kPageMarker = QStringLiteral("<PAGE>");
+// Regex helpers
 
-QRegularExpression fragmentRegex()
+// Matches a single token:  label [x1, y1, x2, y2] ...
+// Label is an ASCII identifier (title, text, image, image_caption, …).
+const QRegularExpression &tokenStartRegex()
 {
     static const QRegularExpression re(
-        QStringLiteral(
-            R"(<\|det\|>\s*([^\[]*?)\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]\s*<\|/det\|>(.*?)(?=<\|det\|>|$))"),
-        QRegularExpression::DotMatchesEverythingOption);
+        QStringLiteral(R"(([A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\])"));
     return re;
+}
+
+// LaTeX math to Markdown
+// Convert LaTeX math delimiters to Markdown:
+//   \( ... \) → $ ... $        (inline math)
+//   \[ ... \] → $$ ... $$      (display math)
+QString convertMath(const QString &text)
+{
+    static const QRegularExpression inlineRe(
+        QStringLiteral(R"(\\\(\s*(.*?)\s*\\\))"),
+        QRegularExpression::DotMatchesEverythingOption);
+    static const QRegularExpression displayRe(
+        QStringLiteral(R"(\\\[\s*(.*?)\s*\\\])"),
+        QRegularExpression::DotMatchesEverythingOption);
+
+    QString out = text;
+    out.replace(displayRe, QStringLiteral("\n\n$$\n\\1\n$$\n\n"));
+    out.replace(inlineRe, QStringLiteral("$\\1$"));
+    return out;
+}
+
+// Title to heading level
+// "3. Methodology"      -> 1 group  -> level 2 (##)
+// "3.1. Long-horizon"   -> 2 groups -> level 3 (###) etc
+// No numbering prefix -> fall back to level 2 (##).
+int headingLevelFor(const QString &title)
+{
+    static const QRegularExpression re(QStringLiteral(R"(^\s*(\d+\s*\.\s*)+)"));
+    const QRegularExpressionMatch m = re.match(title);
+    if (!m.hasMatch())
+        return 2;
+
+    int groups = 0;
+    for (int i = 0; i < m.capturedLength(0); ++i) {
+        if (m.captured(0).at(i) == QLatin1Char('.'))
+            ++groups;
+    }
+    return std::clamp(groups + 1, 1, 5);
+}
+
+QString applyStyle(const QString &text, const BlockStyleInfo &info)
+{
+    switch (info.style) {
+    case BlockStyle::ImagePlaceholder:
+        return QStringLiteral("![Image]()");
+    case BlockStyle::Italic:
+        return QLatin1Char('*') + text + QLatin1Char('*');
+    case BlockStyle::Heading: {
+        const int level = info.headingLevel > 0 ? info.headingLevel : headingLevelFor(text);
+        return QString(level, QLatin1Char('#')) + QLatin1Char(' ') + text;
+    }
+    case BlockStyle::PlainText:
+    default:
+        return convertMath(text);
+    }
 }
 
 } // namespace
 
-OcrPage DetTokensParser::parsePage(const QString& pageText, int coordRange)
-{
-    OcrPage page;
-    QStringList textPieces;
-
-    const double range = coordRange > 0 ? static_cast<double>(coordRange) : 1000.0;
-
-    const QRegularExpression re = fragmentRegex();
-    QRegularExpressionMatchIterator it = re.globalMatch(pageText);
-
-    bool anyMatch = false;
-    while (it.hasNext()) {
-        anyMatch = true;
-        const QRegularExpressionMatch m = it.next();
-
-        const QString label = m.captured(1).trimmed();
-        const double x1 = m.captured(2).toDouble();
-        const double y1 = m.captured(3).toDouble();
-        const double x2 = m.captured(4).toDouble();
-        const double y2 = m.captured(5).toDouble();
-        const QString fragmentText = m.captured(6).trimmed();
-
-        BoundingBox box;
-        box.text = fragmentText;
-        box.label = label;  // TODO: used later for Markdown styling.
-
-        const double nx = x1 / range;
-        const double ny = y1 / range;
-        const double nw = (x2 - x1) / range;
-        const double nh = (y2 - y1) / range;
-        box.rect = QRectF(nx, ny, nw, nh);
-
-        page.boxes.append(box);
-        if (!fragmentText.isEmpty()) {
-            textPieces.append(fragmentText);
-        }
-    }
-
-    if (!anyMatch) {
-        page.text = pageText.trimmed();
-    } else {
-        page.text = textPieces.join(QStringLiteral("\n\n"));
-    }
-
-    return page;
-}
-
 OcrResult DetTokensParser::parse(const QString &rawText) const
 {
+    if (rawText.trimmed().isEmpty())
+        return OcrResult::makeError(QStringLiteral("Empty OCR text"));
+
     OcrResult result;
-    result.success = true;
-
     OcrPage page;
-    QStringList plainLines;
+    QStringList blocks;
 
-    static const QRegularExpression headerRe(
-        QStringLiteral(R"((\w+)\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\])"));
-
-    auto it = headerRe.globalMatch(rawText);
-
-    struct Header {
+    // 1) tokens positions
+    struct Token {
         QString label;
         int x1, y1, x2, y2;
-        int textStart;
-        int headerStart;
+        int textStart;   // offset right after the closing ']'
+        int tokenStart;  // offset of the label itself
     };
-    QList<Header> headers;
+    QList<Token> tokens;
+
+    const QRegularExpression &re = tokenStartRegex();
+    QRegularExpressionMatchIterator it = re.globalMatch(rawText);
 
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
-        Header h;
-        h.label = m.captured(1);
-        h.x1 = m.captured(2).toInt();
-        h.y1 = m.captured(3).toInt();
-        h.x2 = m.captured(4).toInt();
-        h.y2 = m.captured(5).toInt();
-        h.textStart = m.capturedEnd(0);
-        h.headerStart = m.capturedStart(0);
-        headers.append(h);
+        Token t;
+        t.label       = m.captured(1);
+        t.x1          = m.captured(2).toInt();
+        t.y1          = m.captured(3).toInt();
+        t.x2          = m.captured(4).toInt();
+        t.y2          = m.captured(5).toInt();
+        t.textStart   = m.capturedEnd(0);
+        t.tokenStart  = m.capturedStart(0);
+        tokens.append(t);
     }
 
-    if (headers.isEmpty()) {
+    // No tokens -> raw text.
+    if (tokens.isEmpty()) {
         page.text = rawText.trimmed();
         result.text = page.text;
         result.pages.append(page);
+        result.success = true;
         return result;
     }
 
-    const double range = m_bboxCoordinateRange;
+    result.success = true;
 
-    for (int i = 0; i < headers.size(); ++i) {
-        const Header& h = headers.at(i);
-
-        const int spanEnd = (i + 1 < headers.size())
-                                ? headers.at(i + 1).headerStart
-                                : rawText.length();
-        QString text = rawText.mid(h.textStart, spanEnd - h.textStart).trimmed();
-
-        BoundingBox box;
-        box.label = h.label;
-        box.text = text;
-
-        const double nx = h.x1 / range;
-        const double ny = h.y1 / range;
-        const double nw = (h.x2 - h.x1) / range;
-        const double nh = (h.y2 - h.y1) / range;
-        box.rect = QRectF(nx, ny, nw, nh);
-
-        page.boxes.append(box);
-
-        if (!text.isEmpty()) {
-            plainLines.append(text);
+    // 2) capture text before the first token (if any)
+    {
+        const QString preamble = rawText.left(tokens.first().tokenStart).trimmed();
+        if (!preamble.isEmpty()) {
+            BoundingBox untagged;
+            untagged.label = QStringLiteral("text");
+            untagged.text  = preamble;
+            page.boxes.append(untagged);
+            blocks << convertMath(preamble);
         }
     }
 
-    page.text = plainLines.join(QStringLiteral("\n"));
+    // 3) process each token
+    const double range = kBboxCoordinateRange;
+
+    for (int i = 0; i < tokens.size(); ++i) {
+        const Token &t = tokens.at(i);
+        const int spanEnd = (i + 1 < tokens.size())
+                                ? tokens.at(i + 1).tokenStart
+                                : rawText.size();
+        const QString boxText = rawText.mid(t.textStart, spanEnd - t.textStart).trimmed();
+
+        const double nx1 = (std::min)(t.x1, t.x2) / range;
+        const double ny1 = (std::min)(t.y1, t.y2) / range;
+        const double nx2 = (std::max)(t.x1, t.x2) / range;
+        const double ny2 = (std::max)(t.y1, t.y2) / range;
+
+        BoundingBox box;
+        box.label = t.label;
+        box.text  = boxText;
+        box.rect  = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
+
+        page.boxes.append(box);
+
+        BlockStyleInfo style = blockStyleForLabel(t.label);
+        if (style.style == BlockStyle::ImagePlaceholder) {
+            blocks << applyStyle({}, style);
+            continue;
+        }
+        if (boxText.isEmpty())
+            continue;
+        blocks << applyStyle(boxText, style);
+    }
+
+    page.text = blocks.join(QStringLiteral("\n\n"));
     result.text = page.text;
     result.pages.append(page);
     return result;

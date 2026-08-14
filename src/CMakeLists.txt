@@ -13,6 +13,7 @@ qt_add_executable(llocr
 
     # parsers
     parsers/IOutputParser.h
+    parsers/BlockStyle.h
     parsers/RawParser.h
     parsers/RawParser.cpp
     parsers/DetTokensParser.h

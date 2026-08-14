@@ -4,13 +4,12 @@
 
 namespace llocr {
 
-/**
- * @brief Pass-through parser: returns the model text unchanged as a single page
- *
- * For the plain text without positional markers
- */
 class RawParser : public IOutputParser {
+    Q_DISABLE_COPY_MOVE(RawParser)
+
 public:
+    RawParser() = default;
+
     OcrResult parse(const QString &rawText) const override;
     QString id() const override;
 };

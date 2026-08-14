@@ -50,6 +50,97 @@ private slots:
         QCOMPARE(r.pages.first().text, QStringLiteral("just plain text"));
         QVERIFY(r.pages.first().boxes.isEmpty());
     }
+
+            // Every tag is captured into an ordered box list, the image gets a
+            // text placeholder, and titles/captions/page numbers get styled.
+    void parsesAllTagsAndFormatsMarkdown() {
+        const QString raw = QStringLiteral(
+            "image [132, 118, 862, 269]\n"
+            "image_caption [113, 276, 885, 374]Figure 2 | A caption\n"
+            "title [114, 397, 283, 416]3. Methodology\n"
+            "title [114, 430, 340, 447]3.1. Long-horizon Parsing\n"
+            "text [113, 456, 885, 603]Body text here.\n"
+            "page_number [493, 923, 506, 935]5");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+        const OcrPage& page = r.pages.first();
+
+        // All six tokens are recognized as boxes, in order.
+        QCOMPARE(page.boxes.size(), 6);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("image"));
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("image_caption"));
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("title"));
+        QCOMPARE(page.boxes.at(3).label, QStringLiteral("title"));
+        QCOMPARE(page.boxes.at(4).label, QStringLiteral("text"));
+        QCOMPARE(page.boxes.at(5).label, QStringLiteral("page_number"));
+
+        const QString md = page.text;
+        QVERIFY(md.contains("![Image]()"));                    // image placeholder
+        QVERIFY(md.contains("*Figure 2 | A caption*"));        // figure caption
+        QVERIFY(md.contains("## 3. Methodology"));             // title -> ##
+        QVERIFY(md.contains("### 3.1. Long-horizon Parsing")); // subsection -> ###
+        QVERIFY(md.contains("Body text here."));               // plain paragraph
+        QVERIFY(md.contains("*5*"));                           // page number footer
+    }
+
+            // Inline LaTeX math is converted to Markdown $...$, preserving
+            // parentheses inside the formula and formulas without them.
+    void convertsInlineMathWithAndWithoutParentheses() {
+        const QString raw = QStringLiteral(
+            "text [1, 1, 2, 2]capacity of  \\( m + n \\) and  \\( (m + 1) \\)-th token");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("$m + n$")));
+        QVERIFY(md.contains(QStringLiteral("$(m + 1)$")));
+    }
+
+    // Preamble text before the first token is captured as a box (untagged → "text").
+    void capturesPreambleAsText() {
+        const QString raw = QStringLiteral(
+            "Some intro text.\n"
+            "title [100, 100, 200, 200]Heading");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 2);
+
+        const BoundingBox &first = r.pages.first().boxes.at(0);
+        QCOMPARE(first.label, QStringLiteral("text"));
+        QVERIFY(first.text.contains(QStringLiteral("intro")));
+
+        const BoundingBox &second = r.pages.first().boxes.at(1);
+        QCOMPARE(second.label, QStringLiteral("title"));
+    }
+
+    // Swapped coordinates (x2 < x1) are normalized correctly with
+    // positive width/height regardless of order.
+    void normalizesSwappedCoordinates() {
+        const QString raw = QStringLiteral(
+            "text [200, 300, 100, 100]some text");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 1);
+
+        const QRectF rect = r.pages.first().boxes.at(0).rect;
+        QVERIFY(rect.x() >= 0.0);
+        QVERIFY(rect.y() >= 0.0);
+        QVERIFY(rect.width() >= 0.0);
+        QVERIFY(rect.height() >= 0.0);
+        // x = min(200,100)/1000 = 0.1, width = (200-100)/1000 = 0.1
+        QVERIFY(qFuzzyCompare(rect.x(), 0.1));
+        QVERIFY(qFuzzyCompare(rect.width(), 0.1));
+    }
 };
 
 QTEST_MAIN(TestDetParser)
