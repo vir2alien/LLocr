@@ -90,7 +90,7 @@ OcrResult AppController::currentResult() const
 
 void AppController::setPrompt(const QString &prompt)
 {
-    if (m_prompt != prompt)
+    if (m_prompt == prompt)
         return;
     m_prompt = prompt;
     emit promtChanged();
