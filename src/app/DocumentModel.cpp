@@ -9,7 +9,9 @@
 
 namespace llocr {
 
-bool DocumentModel::loadImage(const QString& path)
+namespace {
+
+bool loadImageFile(const QString& path, DocumentPage &page)
 {
     QImageReader reader(path);
     reader.setAutoTransform(true);
@@ -22,11 +24,35 @@ bool DocumentModel::loadImage(const QString& path)
         image = image.convertToFormat(QImage::Format_ARGB32);
     }
 
-    clear();
-    DocumentPage page;
     page.image = image;
+    return true;
+}
+
+}  // namespace
+
+bool DocumentModel::loadImage(const QString& path)
+{
+    clear();
+
+    DocumentPage page;
+    if (!loadImageFile(path, page))
+        return false;
+
     m_pages.append(page);
     return true;
+}
+
+bool DocumentModel::loadImages(const QStringList& paths)
+{
+    clear();
+
+    for (const QString& path : paths) {
+        DocumentPage page;
+        if (loadImageFile(path, page))
+            m_pages.append(page);
+    }
+
+    return !m_pages.isEmpty();
 }
 
 bool DocumentModel::loadPdf(const QString& path)

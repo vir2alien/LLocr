@@ -19,8 +19,16 @@
         <translation>Не удалось открыть изображение: %1</translation>
     </message>
     <message>
+        <source>Failed to open images.</source>
+        <translation>Не удалось открыть изображения</translation>
+    </message>
+    <message>
         <source>Opened %1</source>
         <translation>Открыто: %1</translation>
+    </message>
+    <message>
+        <source>"Opened %1 image(s)"</source>
+        <translation>"открыто изображений: %1"</translation>
     </message>
     <message>
         <source>Failed to open: %1</source>
@@ -197,8 +205,12 @@
         <translation>Здесь появится распознанный текст</translation>
     </message>
     <message>
-        <source>Open image or PDF</source>
-        <translation>Открыть изображение или PDF</translation>
+        <source>Drop to open</source>
+        <translation>Перетащите чтобы открыть</translation>
+    </message>
+    <message>
+        <source>Open images or PDF</source>
+        <translation>Открыть изображения или PDF</translation>
     </message>
     <message>
         <source>Documents (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf)</source>

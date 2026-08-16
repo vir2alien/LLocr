@@ -393,14 +393,56 @@ ApplicationWindow {
         } //Rectangle recognized text
     } // SplitView
 
+    DropArea {
+        id: dropArea
+        anchors.fill: parent
+
+        onEntered: (drag) => {
+            if (drag.hasUrls)
+                drag.accept()
+        }
+        onDropped: (drop) => {
+            const urls = drop.urls.map(function(u) { return u })
+            drop.accept()
+            controller.openFiles(urls)
+        }
+    }
+
+    Rectangle {
+        id: dropFeedback
+        anchors.fill: parent
+        z: 100
+        visible: dropArea.containsDrag
+        color: "transparent"
+        border.color: Theme.accent
+        border.width: 2
+        radius: Theme.radius
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 2
+            radius: Theme.radius - 1
+            color: Theme.accent
+            opacity: 0.08
+        }
+
+        Label {
+            anchors.centerIn: parent
+            text: qsTr("Drop to open")
+            font.pixelSize: Theme.fontCaption * 2
+            color: Theme.accent
+        }
+    }
+
     FileDialog {
         id: fileDialog
-        title: qsTr("Open image or PDF")
+        title: qsTr("Open images or PDF")
+        fileMode: FileDialog.OpenFiles
         nameFilters: [
             qsTr("Documents (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf)"),
             qsTr("All files (*)")
         ]
-        onAccepted: controller.openDocument(selectedFile)
+        onAccepted: controller.openFiles(selectedFiles)
     }
 
     FileDialog {

@@ -3,6 +3,7 @@
 #include <QImage>
 #include <QList>
 #include <QString>
+#include <QStringList>
 #include "core/OcrResult.h"
 
 namespace llocr {
@@ -21,6 +22,7 @@ class DocumentModel
 {
 public:
     bool loadImage(const QString& path);
+    bool loadImages(const QStringList& paths);
     bool loadPdf(const QString& path);
     void clear();
 

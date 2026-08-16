@@ -146,6 +146,69 @@ bool AppController::openImage(const QString& filePath)
     return true;
 }
 
+bool AppController::openImages(const QStringList& filePaths)
+{
+    if (m_busy)
+        return false;
+
+    if (filePaths.isEmpty())
+        return false;
+
+    if (!m_document.loadImages(filePaths)) {
+        setStatus(tr("Failed to open images."));
+        return false;
+    }
+
+    m_edits.clear();
+    m_currentPage = 0;
+    m_pageModel.setPageCount(m_document.pageCount());
+    m_boxModel.setBoxes({});
+
+    setStatus(tr("Opened %1 image(s)").arg(m_document.pageCount()));
+
+    emit documentChanged();
+    emit pageChanged();
+    emit imageChanged();
+    emit resultChanged();
+    emit boxesChanged();
+    emit editStateChanged();
+    return true;
+}
+
+void AppController::openFiles(const QVariantList& fileUrls)
+{
+    if (m_busy)
+        return;
+
+    QStringList images;
+    QStringList documents;
+
+    for (const QVariant& variant : fileUrls) {
+        const QUrl url = variant.toUrl();
+        const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+        if (path.isEmpty())
+            continue;
+
+        const QString suffix = QFileInfo(path).suffix().toLower();
+        if (suffix == QStringLiteral("pdf"))
+            documents.append(path);
+        else
+            images.append(path);
+    }
+
+    if (!documents.isEmpty()) {
+        openDocument(QUrl::fromLocalFile(documents.first()));
+        return;
+    }
+
+    if (!images.isEmpty()) {
+        openImages(images);
+        return;
+    }
+
+    setStatus(tr("No supported files selected."));
+}
+
 void AppController::openDocument(const QUrl& fileUrl)
 {
     if (m_busy)

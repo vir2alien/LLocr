@@ -99,7 +99,9 @@ signals:
 
 public slots:
     Q_INVOKABLE bool openImage(const QString& filePath);
+    Q_INVOKABLE bool openImages(const QStringList& filePaths);
     Q_INVOKABLE void openDocument(const QUrl& fileUrl);
+    Q_INVOKABLE void openFiles(const QVariantList& fileUrls);
 
     Q_INVOKABLE void recognizeCurrent();
     Q_INVOKABLE void recognizeAll();
