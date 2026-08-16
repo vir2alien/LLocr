@@ -6,7 +6,7 @@
   | Language      | C++                             | ✅ used | Developer's core skill, performance                  |
   | GUI           | Qt6 + QML                       | ✅ used | Cross-platform, convenient declarative UI for panels |
   | Build         | CMake                           | ✅ used | Standard for cross-platform C++                      |
-  | C++ packages  | vcpkg                           | ✅ used | Simple dependency management                         |
+  | C++ packages  | vcpkg (configured, not currently used) | 🟡 | Declared in the `dev` preset, but the active build/ does **not** use it (Qt is external; see `06-dev-setup.md`) |
   | HTTP          | QNetworkAccessManager           | ✅ used | Requests to the LLM API (async via QFuture/QPromise) |
   | Images        | QImage                          | ✅ used | Loading/displaying                                   |
   | PDF           | **Qt PDF (`QPdfDocument`)**     | ✅ used | Ships with Qt6; no extra native dep (see ADR #8)     |

@@ -80,7 +80,7 @@ Three options handled by `UiController`:
 
 ## 4.10 Export
 Implemented by the **`Exporter`** component. **Markdown is the single internal
-source of truth** (ADR #5/#11). Export uses the **effective** text per page —
+source of truth** (ADR #5/#10). Export uses the **effective** text per page —
 i.e. the user's edit when present, else the raw recognition.
 
 | Format   | Implementation                                   | Status |

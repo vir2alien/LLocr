@@ -35,6 +35,30 @@
   5. Build system — **CMake** (not qmake).
   6. When decisions change — update `07-glossary.md`.
 
+  ## Build & test (fastest path)
+  Tell future agents to compile/run tests by reusing the ready-made `build/`
+  directory — do **not** try to re-configure from scratch. The `dev` preset in
+  `CMakePresets.json` uses Ninja, but Ninja is **not** installed here; the
+existing `build/` is already configured with **Unix Makefiles** and points to
+Qt at `/Users/gladskih/Qt/6.10.3/macos`. `VCPKG_ROOT` is **not** set as a shell
+variable, and vcpkg does **not** participate in the build.
+
+  ```sh
+  # from the repo root:
+  cmake --build build -j 8   # build llocr + tests
+  ctest --test-dir build      # run unit tests
+  ```
+
+  If a clean (from-scratch) configure is needed, do it manually (not via preset):
+
+  ```sh
+  cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_PREFIX_PATH=/Users/gladskih/Qt/6.10.3/macos
+  ```
+
+  Note: `tests/test_exporter.cpp` exists but is not yet wired into
+  `tests/CMakeLists.txt` (only `test_det_parser` runs via ctest).
+
   ## Current status
   - Phase: **Stage 3 complete** (formats & documents); Stage 4 (RAG) not started.
   - Done: Stage 1 (MVP OCR), Stage 2 (extensibility), and Stage 3 (PDF input,

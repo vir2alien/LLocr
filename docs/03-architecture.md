@@ -65,8 +65,9 @@ struct ProviderConfig {
 };
 ```
 
-- `SettingsStore` loads/saves this via `QSettings` (grouped keys:
-  `provider/*`, `model/*`, `output/*`).
+- `SettingsStore` loads/saves the connection/model/parser settings via
+  `QSettings` (grouped keys: `provider/*`, `model/*`, `output/*`). The prompt is
+  **not** persisted yet: it is hardcoded in `AppController::m_prompt`.
 - `parserId` selects the response-parsing strategy via `ParserFactory`.
 
 ## Backend building blocks (implemented)

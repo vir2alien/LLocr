@@ -6,9 +6,15 @@
 | Build system     | CMake                                       | ✅ used |
 | Version control  | Git + GitHub/GitLab                         | ✅ used |
 | CI/CD            | GitHub Actions (builds for Win/macOS/Linux) | ⬜ todo |
-| C++ dependencies | vcpkg (or Conan)                            | ✅ used |
+| C++ dependencies | vcpkg (configured in `dev` preset, not used in the current build)   | 🟡 |
 | Formatting       | clang-format                                          | ✅ used |
 | Tests            | Qt Test (unit tests in `tests/`)                      | 🟡 partial |
+
+> **Build note:** the `dev` preset targets vcpkg + Ninja, but that is not the
+> setup in use. The active `build/` is configured with **Unix Makefiles**
+> against an **external Qt 6.10.3** (`CMAKE_PREFIX_PATH=/Users/gladskih/Qt/6.10.3/macos`);
+> `VCPKG_ROOT` is unset and vcpkg does not participate in the build. Do not try
+> to re-configure from the preset — reuse the existing `build/`.
 
 ## Distribution — ⬜ not started
 | OS      | Format             | Tool                            |

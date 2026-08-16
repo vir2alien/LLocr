@@ -7,7 +7,9 @@
 - **ProviderConfig** — the settings struct (connection + model + parser) that
   `AppController` fills from `SettingsStore` when building a request. It is no
   longer the persisted source of truth: settings are persisted by
-  `SettingsStore` via `QSettings` and edited in the Settings dialog.
+  `SettingsStore` via `QSettings` and edited in the Settings dialog. **Note:**
+  `ProviderConfig::prompt` exists but the active prompt is taken from
+  `AppController::m_prompt`, which is not persisted (yet).
 - **Output parser** — the strategy for parsing a model's response into a
   structured result (`raw`, `det_tokens`), selected in Settings → Output.
 - **bbox** — bounding box coordinates of a recognized fragment for overlay on
@@ -26,13 +28,13 @@
 | 3    | RAG as a separate Python service                             | Python's ecosystem is stronger for ML/RAG                    |
 | 4    | Build the OpenAI-compatible provider first                   | Supported by almost all local runners                        |
 | 5    | Internal format — Markdown, export via Pandoc                | Cheap support for many formats                               |
-| 6    | RAG deferred, only interface laid out                        | Working OCR first                                            |
+| 6    | RAG deferred, only interface design sketched               | Working OCR first. Backend RAG interface stub not implemented yet — see Stage 4.
 | 7    | PDF via Qt PDF (`QPdfDocument`), not MuPDF/Poppler           | No extra native dependency; bundled with Qt6; adequate at ~150 DPI. |
 | 8    | Recognition is cancellable (`abort()`)                       | Users must be able to Stop long multi-page runs.             |
 | 9    | Navigation stays live during recognition                     | Users browse other pages while a batch run proceeds.         |
 | 10   | Export written directly (TXT/MD/HTML); Markdown-as-source + Pandoc for DOCX/PDF | Ship useful export now; converge on the single-source pipeline. |
 | 11   | Thumbnails carry no bounding boxes                           | The strip only signals recognized/edited/current; boxes belong on the center preview only. |
-| 12   | OpenAI-like(llama.cpp-like)-compatible only                  | One clear connection type; model/prompt/parser/generation params live in `SettingsStore` (Settings dialog + `QSettings`). |
+| 12   | OpenAI-like(llama.cpp-like)-compatible only                  | One clear connection type; connection/model/parser/generation params live in `SettingsStore` (Settings dialog + `QSettings`). The prompt/instruction is still hardcoded in `AppController::m_prompt` for now — see `04.2`. |
 | 13   | Window geometry persisted (`WindowSettings` + `SettingsStore` `ui/*`) | Persist window pos/size/visibility across sessions. |
 | 14   | Unit tests live in `tests/` (Qt Test), gated by `LLOCR_BUILD_TESTS` | Early coverage for parsers; more to come. |
 | 15   | JSON model-profile classes (`ModelProfile` / `ProfileRepository`) removed | Stage 2 replaced them with the **Settings dialog**; the leftover classes were dead code and were deleted. |

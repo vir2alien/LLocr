@@ -18,10 +18,11 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [x] Output parsers (`raw` / `det_tokens` bbox) + `ParserFactory`.
 - [x] Box rendering on the preview (`BoxListModel` + QML `Repeater`).
 - [x] **Configuration moved to Settings** (URL, key, timeout, **model name,
-      prompt, temperature, max tokens, parser, bbox range**) + persistence.
+      temperature, max tokens, parser, bbox range**) + persistence. The
+      **prompt** remains hardcoded in `AppController` (not in Settings yet).
 - [x] ~~JSON model profiles~~ **removed** (ADR #15); replaced by Settings.
 
-## Stage 3 — Formats and documents — ✅ IN PROGRESS
+## Stage 3 — Formats and documents — ✅ COMPLETE
 - [x] PDF input (via **Qt PDF**).
 - [x] Batch processing ("Recognize all") + per-page navigation, thumbnail strip,
       cancellable Stop.
