@@ -74,7 +74,7 @@ void SettingsStore::setTemperature(double temp)
 
 int SettingsStore::maxTokens() const
 {
-    return m_settings.value(kMaxTokens, 32768).toInt();
+    return m_settings.value(kMaxTokens, 16384).toInt();
 }
 
 void SettingsStore::setMaxTokens(int maxTkns)

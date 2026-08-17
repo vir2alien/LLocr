@@ -46,7 +46,7 @@ Dialog {
         Settings.timeoutMs = parseInt(timeoutField.text) || 3000;
         Settings.modelName = modelNameField.text;
         Settings.temperature = parseFloat(temperatureField.text) || 0.0;
-        Settings.maxTokens = parseInt(maxTokensField.text) || 8192;
+        Settings.maxTokens = parseInt(maxTokensField.text) || 16384;
         Settings.parserId = parserBox.currentText;
         Settings.forceSave();
         I18n.setLanguage(Settings.language);
@@ -161,7 +161,7 @@ Dialog {
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Label { text: qsTr("Max tokens") }
+                        Label { text: qsTr("Max tokens per page") }
                         TextField {
                             id: maxTokensField
                             Layout.fillWidth: true

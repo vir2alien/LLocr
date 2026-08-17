@@ -21,6 +21,12 @@ struct OcrRequest {
     // Optional
     double temperature = 0.0;
     int maxTokens = 4096;
+
+    // Sampling parameters (hardcoded for now; to be exposed in Settings later)
+    double repeatPenalty = 1.2;
+    int repeatLastN = 64;
+    double dryMultiplier = 0.8;
+    double dryBase = 2.0;
 };
 
 class ILlmProvider {

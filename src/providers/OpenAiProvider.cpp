@@ -66,11 +66,15 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
     };
 
     QJsonObject root{
-        { QStringLiteral("model"), request.modelId },
-        { QStringLiteral("messages"), QJsonArray{ message } },
-        { QStringLiteral("temperature"), request.temperature },
-        { QStringLiteral("max_tokens"), request.maxTokens },
-        { QStringLiteral("stream"), false },
+        {QStringLiteral("model"), request.modelId},
+        {QStringLiteral("messages"), QJsonArray{message}},
+        {QStringLiteral("temperature"), request.temperature},
+        {QStringLiteral("max_tokens"), request.maxTokens},
+        {QStringLiteral("repeat_penalty"), request.repeatPenalty},
+        {QStringLiteral("repeat_last_n"), request.repeatLastN},
+        {QStringLiteral("dry_multiplier"), request.dryMultiplier},
+        {QStringLiteral("dry_base"), request.dryBase},
+        {QStringLiteral("stream"), false},
     };
 
     return QJsonDocument(root).toJson(QJsonDocument::Compact);

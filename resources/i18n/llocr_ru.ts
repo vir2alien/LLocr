@@ -360,8 +360,8 @@
         <translation>Температура</translation>
     </message>
     <message>
-        <source>Max tokens</source>
-        <translation>Макс. токенов</translation>
+        <source>Max tokens per page</source>
+        <translation>Макс. токенов на страницу</translation>
     </message>
     <message>
         <source>Output parser</source>
