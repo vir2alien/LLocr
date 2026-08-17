@@ -185,9 +185,61 @@ ApplicationWindow {
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar {}
 
+                property bool reorderActive: false
+                property int dragFromIndex: -1
+                property int dropIndex: -1
+                property real pointerY: 0
+                property real itemHeight: (thumbList.width - Theme.spacingSmall) * 1.3 + 22
+
+                function beginReorder(from) {
+                    if (controller.busy)
+                        return false
+                    reorderActive = true
+                    dragFromIndex = from
+                    dropIndex = from
+                    pointerY = 0
+                    interactive = false
+                    return true
+                }
+
+                function updateDrop(autoScroll) {
+                    if (!reorderActive)
+                        return
+                    if (autoScroll) {
+                        if (pointerY < 30 && contentY > 0)
+                            contentY = Math.max(0, contentY - 10)
+                        else if (pointerY > height - 30 && contentY < contentHeight - height)
+                            contentY = Math.min(contentHeight - height, contentY + 10)
+                    }
+                    var index = Math.floor((pointerY + contentY) / (itemHeight + spacing))
+                    index = Math.max(0, Math.min(index, count - 1))
+                    dropIndex = index
+                }
+
+                function endReorder() {
+                    const from = dragFromIndex
+                    const to = dropIndex
+                    reorderActive = false
+                    interactive = true
+                    dragFromIndex = -1
+                    dropIndex = -1
+                    if (from >= 0 && to >= 0 && from !== to)
+                        controller.movePage(from, to)
+                }
+
+                Timer {
+                    interval: 16
+                    repeat: true
+                    running: thumbList.reorderActive
+                    onTriggered: thumbList.updateDrop(true)
+                }
+
                 delegate: Item {
                     width: thumbList.width - Theme.spacingSmall
                     height: width * 1.3 + 22
+                    z: thumbList.reorderActive && thumbList.dragFromIndex === model.pageIndex ? 10 : 1
+                    opacity: thumbList.reorderActive && thumbList.dragFromIndex === model.pageIndex ? 0.55 : 1.0
+                    Behavior on opacity { NumberAnimation { duration: 80 } }
 
                     HoverHandler {
                         id: thumbHover
@@ -197,8 +249,11 @@ ApplicationWindow {
                         anchors.fill: parent
                         radius: Theme.radius
                         color: model.current ? Theme.selected : "transparent"
-                        border.color: model.current ? Theme.accent : Theme.divider
-                        border.width: 1
+                        border.color: thumbList.reorderActive && thumbList.dropIndex === model.pageIndex
+                                      ? Theme.textPrimary
+                                      : (model.current ? Theme.accent : Theme.divider)
+                        border.width: thumbList.reorderActive && thumbList.dropIndex === model.pageIndex
+                                      ? 2 : 1
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -278,6 +333,55 @@ ApplicationWindow {
                         Accessible.name: qsTr("Delete page %1").arg(model.pageIndex + 1)
 
                         onClicked: controller.removePage(model.pageIndex)
+                    }
+
+                    // Drag handle: grabbing this re-orders the page instead of scrolling.
+                    Rectangle {
+                        id: dragGrip
+                        width: 24
+                        height: 24
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.margins: 2
+                        radius: 3
+                        z: 2
+                        visible: (thumbHover.hovered || gripMouse.pressed) && !controller.busy
+                        opacity: (thumbHover.hovered || gripMouse.pressed) ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                        color: gripMouse.pressed ? Theme.accent : Theme.surfaceAlt
+                        border.color: Theme.divider
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "\u22EE\u22EE"
+                            color: Theme.textSecondary
+                            font.pixelSize: 9
+                        }
+
+                        MouseArea {
+                            id: gripMouse
+                            anchors.fill: parent
+                            cursorShape: Qt.SizeVerCursor
+                            onPressed: (mouse) => {
+                                if (!dragGrip.visible || !thumbList.beginReorder(model.pageIndex)) {
+                                    mouse.accepted = false
+                                    return
+                                }
+                                var p = gripMouse.mapToItem(thumbList, mouse.x, mouse.y)
+                                thumbList.pointerY = p.y
+                                thumbList.updateDrop(false)
+                            }
+                            onPositionChanged: (mouse) => {
+                                if (!thumbList.reorderActive)
+                                    return
+                                var p = gripMouse.mapToItem(thumbList, mouse.x, mouse.y)
+                                thumbList.pointerY = p.y
+                                thumbList.updateDrop(true)
+                            }
+                            onReleased: thumbList.endReorder()
+                            onCanceled: thumbList.endReorder()
+                        }
                     }
                 }
             }

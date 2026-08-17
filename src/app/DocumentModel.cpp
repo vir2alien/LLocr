@@ -99,6 +99,14 @@ bool DocumentModel::removePage(int index)
     return true;
 }
 
+bool DocumentModel::movePage(int from, int to)
+{
+    if (!isValidIndex(from) || !isValidIndex(to) || from == to)
+        return false;
+    m_pages.move(from, to);
+    return true;
+}
+
 void DocumentModel::clear()
 {
     m_pages.clear();

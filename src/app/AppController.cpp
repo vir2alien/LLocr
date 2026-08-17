@@ -300,6 +300,55 @@ bool AppController::removePage(int index)
     return true;
 }
 
+bool AppController::movePage(int from, int to)
+{
+    if (m_busy)
+        return false;
+    if (!m_document.isValidIndex(from) || !m_document.isValidIndex(to))
+        return false;
+    if (from == to)
+        return true;
+
+    m_document.movePage(from, to);
+    m_pageModel.movePage(from, to);
+
+    // Remap per-page edits so they follow their page.
+    QHash<int, QString> shifted;
+    shifted.reserve(m_edits.size());
+    for (auto it = m_edits.constBegin(); it != m_edits.constEnd(); ++it) {
+        int key = it.key();
+        if (key == from)
+            key = to;
+        else if (from < to && key > from && key <= to)
+            --key;
+        else if (from > to && key >= to && key < from)
+            ++key;
+        shifted.insert(key, it.value());
+    }
+    m_edits = shifted;
+
+    // Remap the current page index the same way.
+    if (m_currentPage == from)
+        m_currentPage = to;
+    else if (from < to && m_currentPage > from && m_currentPage <= to)
+        --m_currentPage;
+    else if (from > to && m_currentPage >= to && m_currentPage < from)
+        ++m_currentPage;
+
+    m_pageModel.setCurrent(m_currentPage);
+    updateBoxesForCurrent();
+
+    setStatus(tr("Moved page %1 to position %2.").arg(from + 1).arg(to + 1));
+
+    emit documentChanged();
+    emit pageChanged();
+    emit imageChanged();
+    emit resultChanged();
+    emit boxesChanged();
+    emit editStateChanged();
+    return true;
+}
+
 void AppController::recognizeCurrent()
 {
     if (m_busy || m_document.isEmpty())

@@ -14,3 +14,17 @@ target_sources(test_det_parser PRIVATE
     ${CMAKE_SOURCE_DIR}/src/parsers/ParserFactory.cpp
 )
 add_test(NAME test_det_parser COMMAND test_det_parser)
+
+qt_add_executable(test_pagemodel test_pagemodel.cpp)
+
+target_include_directories(test_pagemodel PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_pagemodel PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+
+target_sources(test_pagemodel PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app/PageListModel.cpp
+)
+add_test(NAME test_pagemodel COMMAND test_pagemodel)

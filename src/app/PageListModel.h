@@ -39,6 +39,8 @@ public:
 
     void removePage(int index);
 
+    void movePage(int from, int to);
+
     void clear();
 
 private:

@@ -109,6 +109,41 @@ void PageListModel::removePage(int index)
         emit dataChanged(this->index(index), this->index(m_recognized.size() - 1));
 }
 
+void PageListModel::movePage(int from, int to)
+{
+    if (from < 0 || from >= m_recognized.size())
+        return;
+    if (to < 0 || to >= m_recognized.size())
+        return;
+    if (from == to)
+        return;
+
+    // Within the same parent, moving down requires destinationChild = to + 1
+    // so that the moved row actually ends up at index `to`.
+    const int destChild = (to > from) ? to + 1 : to;
+    if (!beginMoveRows(QModelIndex(), from, from, QModelIndex(), destChild))
+        return;
+
+    m_recognized.move(from, to);
+    m_edited.move(from, to);
+
+    if (m_current == from)
+        m_current = to;
+    else if (from < to && m_current > from && m_current <= to)
+        --m_current;
+    else if (from > to && m_current >= to && m_current < from)
+        ++m_current;
+
+    endMoveRows();
+
+    // Force every delegate to re-read its roles. After a row move the reused
+    // delegates (and their position-derived bindings, e.g. the "Page N" label
+    // built from pageIndex) are not guaranteed to refresh on their own, so
+    // re-notify all rows to keep the numbering in sync with the new order.
+    if (m_recognized.size() > 0)
+        emit dataChanged(index(0), index(m_recognized.size() - 1));
+}
+
 void PageListModel::clear()
 {
     beginResetModel();
