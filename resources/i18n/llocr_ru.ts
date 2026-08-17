@@ -15,6 +15,10 @@
 <context>
     <name>AppController</name>
     <message>
+        <source>Page %1 deleted.</source>
+        <translation>Страница %1 удалена</translation>
+    </message>
+    <message>
         <source>Failed to open image: %1</source>
         <translation>Не удалось открыть изображение: %1</translation>
     </message>
@@ -191,6 +195,14 @@
     <message>
         <source>Page %1</source>
         <translation>Страница %1</translation>
+    </message>
+    <message>
+        <source>Delete page</source>
+        <translation>Удалить страницу</translation>
+    </message>
+    <message>
+        <source>Delete page %1</source>
+        <translation>Удалить страницу %1</translation>
     </message>
     <message>
         <source>Open an image or PDF to begin</source>

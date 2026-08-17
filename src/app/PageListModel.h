@@ -37,6 +37,8 @@ public:
 
     void setCurrent(int index);
 
+    void removePage(int index);
+
     void clear();
 
 private:

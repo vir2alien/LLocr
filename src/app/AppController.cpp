@@ -244,6 +244,62 @@ void AppController::openDocument(const QUrl& fileUrl)
     emit editStateChanged();
 }
 
+bool AppController::removePage(int index)
+{
+    if (m_busy)
+        return false;
+    if (!m_document.isValidIndex(index))
+        return false;
+
+    m_document.removePage(index);
+
+    if (m_document.isEmpty()) {
+        m_edits.clear();
+        m_currentPage = 0;
+        m_pageModel.clear();
+        m_boxModel.setBoxes({});
+
+        setStatus(tr("Page %1 deleted.").arg(index + 1));
+
+        emit documentChanged();
+        emit pageChanged();
+        emit imageChanged();
+        emit resultChanged();
+        emit boxesChanged();
+        emit editStateChanged();
+        return true;
+    }
+
+    QHash<int, QString> shifted;
+    shifted.reserve(m_edits.size());
+    for (auto it = m_edits.constBegin(); it != m_edits.constEnd(); ++it) {
+        if (it.key() == index)
+            continue;
+        shifted.insert(it.key() > index ? it.key() - 1 : it.key(), it.value());
+    }
+    m_edits = shifted;
+
+    if (m_currentPage > index)
+        --m_currentPage;
+    else if (m_currentPage == index)
+        m_currentPage = qMin(m_currentPage, m_document.pageCount() - 1);
+
+    m_pageModel.removePage(index);
+    m_pageModel.setCurrent(m_currentPage);
+
+    updateBoxesForCurrent();
+
+    setStatus(tr("Page %1 deleted.").arg(index + 1));
+
+    emit documentChanged();
+    emit pageChanged();
+    emit imageChanged();
+    emit resultChanged();
+    emit boxesChanged();
+    emit editStateChanged();
+    return true;
+}
+
 void AppController::recognizeCurrent()
 {
     if (m_busy || m_document.isEmpty())

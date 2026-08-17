@@ -91,6 +91,14 @@ bool DocumentModel::loadPdf(const QString& path)
     return !m_pages.isEmpty();
 }
 
+bool DocumentModel::removePage(int index)
+{
+    if (!isValidIndex(index))
+        return false;
+    m_pages.removeAt(index);
+    return true;
+}
+
 void DocumentModel::clear()
 {
     m_pages.clear();

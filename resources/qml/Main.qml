@@ -189,6 +189,10 @@ ApplicationWindow {
                     width: thumbList.width - Theme.spacingSmall
                     height: width * 1.3 + 22
 
+                    HoverHandler {
+                        id: thumbHover
+                    }
+
                     Rectangle {
                         anchors.fill: parent
                         radius: Theme.radius
@@ -246,6 +250,34 @@ ApplicationWindow {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: controller.currentPage = model.pageIndex
                         }
+                    }
+
+                    ToolButton {
+                        id: deletePageButton
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 2
+                        implicitWidth: 20
+                        implicitHeight: 20
+                        padding: 0
+                        visible: thumbHover.hovered && !controller.busy
+                        enabled: !controller.busy
+                        opacity: thumbHover.hovered ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                        text: "\u2715"
+
+                        background: Rectangle {
+                            radius: width / 2
+                            color: deletePageButton.hovered ? Theme.border : Theme.surfaceAlt
+                            border.color: Theme.divider
+                            border.width: 1
+                        }
+
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Delete page")
+                        Accessible.name: qsTr("Delete page %1").arg(model.pageIndex + 1)
+
+                        onClicked: controller.removePage(model.pageIndex)
                     }
                 }
             }

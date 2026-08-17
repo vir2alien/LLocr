@@ -92,6 +92,23 @@ void PageListModel::setCurrent(int index)
     }
 }
 
+void PageListModel::removePage(int index)
+{
+    if (index < 0 || index >= m_recognized.size())
+        return;
+    beginRemoveRows({}, index, index);
+    m_recognized.removeAt(index);
+    m_edited.removeAt(index);
+    if (m_current == index)
+        m_current = -1;
+    else if (m_current > index)
+        --m_current;
+    endRemoveRows();
+
+    if (index < m_recognized.size())
+        emit dataChanged(this->index(index), this->index(m_recognized.size() - 1));
+}
+
 void PageListModel::clear()
 {
     beginResetModel();

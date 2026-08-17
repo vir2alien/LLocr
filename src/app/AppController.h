@@ -108,6 +108,8 @@ public slots:
 
     Q_INVOKABLE void stop();
 
+    Q_INVOKABLE bool removePage(int index);
+
     Q_INVOKABLE bool exportPages(const QUrl& fileUrl, int scope, int fromPage = 1, int toPage = 1);
 
     Q_INVOKABLE bool exportResult(const QUrl& fileUrl);

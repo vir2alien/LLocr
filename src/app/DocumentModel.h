@@ -24,6 +24,7 @@ public:
     bool loadImage(const QString& path);
     bool loadImages(const QStringList& paths);
     bool loadPdf(const QString& path);
+    bool removePage(int index);
     void clear();
 
     int pageCount() const { return m_pages.size(); }
