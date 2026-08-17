@@ -122,6 +122,41 @@ private slots:
         }
     }
 
+    void appendPreservesExistingRows()
+    {
+        PageListModel model;
+        model.setPageCount(2);
+        QAbstractItemModelTester tester(&model,
+                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        model.setRecognized(0, true);
+        model.setEdited(1, true);
+        model.setCurrent(1);
+
+        model.appendPages(3);
+
+        // Total rows grow by the appended count; existing state is untouched.
+        QCOMPARE(model.rowCount(), 5);
+        QVERIFY(isRecognizedAt(model, 0));
+        QVERIFY(isRecognizedAt(model, 1, false));
+        QVERIFY(isRecognizedAt(model, 2, false));
+        QVERIFY(isRecognizedAt(model, 3, false));
+        QVERIFY(isRecognizedAt(model, 4, false));
+
+        QVERIFY(model.data(model.index(1), PageListModel::EditedRole).toBool());
+        QVERIFY(!model.data(model.index(2), PageListModel::EditedRole).toBool());
+
+        QVERIFY(isCurrent(model, 1));
+    }
+
+    void appendZeroIsNoOp()
+    {
+        PageListModel model;
+        model.setPageCount(2);
+        model.appendPages(0);
+        QCOMPARE(model.rowCount(), 2);
+    }
+
     bool isCurrent(const PageListModel& model, int row) const
     {
         const QModelIndex mi = model.index(row);

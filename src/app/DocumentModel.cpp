@@ -33,11 +33,14 @@ bool loadImageFile(const QString& path, DocumentPage &page)
 bool DocumentModel::loadImage(const QString& path)
 {
     clear();
+    return appendImage(path);
+}
 
+bool DocumentModel::appendImage(const QString& path)
+{
     DocumentPage page;
     if (!loadImageFile(path, page))
         return false;
-
     m_pages.append(page);
     return true;
 }
@@ -46,26 +49,20 @@ bool DocumentModel::loadImages(const QStringList& paths)
 {
     clear();
 
-    for (const QString& path : paths) {
-        DocumentPage page;
-        if (loadImageFile(path, page))
-            m_pages.append(page);
-    }
+    bool anyLoaded = false;
+    for (const QString& path : paths)
+        anyLoaded = appendImage(path) || anyLoaded;
 
-    return !m_pages.isEmpty();
+    return anyLoaded;
 }
 
-bool DocumentModel::loadPdf(const QString& path)
-{
-    QPdfDocument pdf;
-    if (pdf.load(path) != QPdfDocument::Error::None)
-        return false;
+namespace {
 
+bool appendPdfPages(QPdfDocument& pdf, QList<DocumentPage>& pages)
+{
     const int count = pdf.pageCount();
     if (count <= 0)
         return false;
-
-    clear();
 
     // Render each page at ~150 DPI for a good OCR/quality trade-off.
     // TODO DPI value into settings
@@ -85,10 +82,31 @@ bool DocumentModel::loadPdf(const QString& path)
 
         DocumentPage page;
         page.image = image;
-        m_pages.append(page);
+        pages.append(page);
     }
 
-    return !m_pages.isEmpty();
+    return true;
+}
+
+}  // namespace
+
+bool DocumentModel::loadPdf(const QString& path)
+{
+    QPdfDocument pdf;
+    if (pdf.load(path) != QPdfDocument::Error::None)
+        return false;
+
+    clear();
+    return appendPdfPages(pdf, m_pages);
+}
+
+bool DocumentModel::appendPdf(const QString& path)
+{
+    QPdfDocument pdf;
+    if (pdf.load(path) != QPdfDocument::Error::None)
+        return false;
+
+    return appendPdfPages(pdf, m_pages);
 }
 
 bool DocumentModel::removePage(int index)

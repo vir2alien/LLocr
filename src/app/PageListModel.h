@@ -31,6 +31,8 @@ public:
 
     void setPageCount(int count);
 
+    void appendPages(int count);
+
     void setRecognized(int index, bool recognized);
 
     void setEdited(int index, bool edited);

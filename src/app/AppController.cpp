@@ -180,33 +180,66 @@ void AppController::openFiles(const QVariantList& fileUrls)
     if (m_busy)
         return;
 
-    QStringList images;
-    QStringList documents;
-
+    QStringList paths;
     for (const QVariant& variant : fileUrls) {
         const QUrl url = variant.toUrl();
         const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
-        if (path.isEmpty())
-            continue;
+        if (!path.isEmpty())
+            paths.append(path);
+    }
 
+    if (paths.isEmpty()) {
+        setStatus(tr("No files selected."));
+        return;
+    }
+
+    const bool wasEmpty = m_document.isEmpty();
+    int addedFiles = 0;
+    int addedPages = 0;
+    int skipped = 0;
+
+    for (const QString& path : paths) {
+        const int pagesBefore = m_document.pageCount();
         const QString suffix = QFileInfo(path).suffix().toLower();
-        if (suffix == QStringLiteral("pdf"))
-            documents.append(path);
+        const bool ok = (suffix == QStringLiteral("pdf"))
+                            ? m_document.appendPdf(path)
+                            : m_document.appendImage(path);
+        if (ok) {
+            ++addedFiles;
+            addedPages += m_document.pageCount() - pagesBefore;
+        } else {
+            ++skipped;
+        }
+    }
+
+    if (addedPages == 0) {
+        if (wasEmpty)
+            setStatus(tr("No supported files selected."));
         else
-            images.append(path);
-    }
-
-    if (!documents.isEmpty()) {
-        openDocument(QUrl::fromLocalFile(documents.first()));
+            setStatus(tr("None of the selected files could be added."));
         return;
     }
 
-    if (!images.isEmpty()) {
-        openImages(images);
-        return;
+    if (wasEmpty) {
+        m_currentPage = 0;
+    }
+    m_pageModel.appendPages(addedPages);
+    m_pageModel.setCurrent(m_currentPage);
+    updateBoxesForCurrent();
+
+    if (skipped > 0) {
+        setStatus(tr("Added %1 file(s), %2 page(s); %3 file(s) skipped.")
+                      .arg(addedFiles).arg(addedPages).arg(skipped));
+    } else {
+        setStatus(tr("Added %1 file(s), %2 page(s).").arg(addedFiles).arg(addedPages));
     }
 
-    setStatus(tr("No supported files selected."));
+    emit documentChanged();
+    emit pageChanged();
+    emit imageChanged();
+    emit resultChanged();
+    emit boxesChanged();
+    emit editStateChanged();
 }
 
 void AppController::openDocument(const QUrl& fileUrl)
@@ -312,7 +345,6 @@ bool AppController::movePage(int from, int to)
     m_document.movePage(from, to);
     m_pageModel.movePage(from, to);
 
-    // Remap per-page edits so they follow their page.
     QHash<int, QString> shifted;
     shifted.reserve(m_edits.size());
     for (auto it = m_edits.constBegin(); it != m_edits.constEnd(); ++it) {
@@ -327,7 +359,6 @@ bool AppController::movePage(int from, int to)
     }
     m_edits = shifted;
 
-    // Remap the current page index the same way.
     if (m_currentPage == from)
         m_currentPage = to;
     else if (from < to && m_currentPage > from && m_currentPage <= to)

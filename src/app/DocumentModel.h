@@ -24,6 +24,10 @@ public:
     bool loadImage(const QString& path);
     bool loadImages(const QStringList& paths);
     bool loadPdf(const QString& path);
+
+    bool appendImage(const QString& path);
+    bool appendPdf(const QString& path);
+
     bool removePage(int index);
     bool movePage(int from, int to);
     void clear();

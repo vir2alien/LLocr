@@ -106,6 +106,26 @@
         <source>PDF (*.pdf)</source>
         <translation>PDF (*.pdf)</translation>
     </message>
+    <message>
+        <source>No files selected.</source>
+        <translation>Не выбрано ни одного файла</translation>
+    </message>
+    <message>
+        <source>No supported files selected.</source>
+        <translation>Не выбрано ни одного поддерживаемого файла</translation>
+    </message>
+    <message>
+        <source>None of the selected files could be added.</source>
+        <translation>Ни один из выбранных файлов не удалось добавить</translation>
+    </message>
+    <message>
+        <source>Added %1 file(s), %2 page(s).</source>
+        <translation>Добавлено файлов: %1, страниц: %2</translation>
+    </message>
+    <message>
+        <source>Added %1 file(s), %2 page(s); %3 file(s) skipped.</source>
+        <translation>Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
+    </message>
 </context>
 <context>
     <name>Exporter</name>

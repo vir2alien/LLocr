@@ -53,6 +53,18 @@ void PageListModel::setPageCount(int count)
     endResetModel();
 }
 
+void PageListModel::appendPages(int count)
+{
+    if (count <= 0)
+        return;
+
+    const int first = m_recognized.size();
+    beginInsertRows({}, first, first + count - 1);
+    m_recognized += QList<bool>(count, false);
+    m_edited += QList<bool>(count, false);
+    endInsertRows();
+}
+
 void PageListModel::setRecognized(int index, bool recognized)
 {
     if (index < 0 || index >= m_recognized.size())
@@ -136,10 +148,6 @@ void PageListModel::movePage(int from, int to)
 
     endMoveRows();
 
-    // Force every delegate to re-read its roles. After a row move the reused
-    // delegates (and their position-derived bindings, e.g. the "Page N" label
-    // built from pageIndex) are not guaranteed to refresh on their own, so
-    // re-notify all rows to keep the numbering in sync with the new order.
     if (m_recognized.size() > 0)
         emit dataChanged(index(0), index(m_recognized.size() - 1));
 }
