@@ -181,79 +181,47 @@ ApplicationWindow {
                 anchors.margins: Theme.spacing
                 spacing: Theme.spacing
                 clip: true
-                model: controller.pageModel
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar {}
+                cacheBuffer: 10000
 
-                property bool reorderActive: false
-                property int dragFromIndex: -1
-                property int dropIndex: -1
-                property real pointerY: 0
-                property real itemHeight: (thumbList.width - Theme.spacingSmall) * 1.3 + 22
+                // Пока идёт перетаскивание — блокируем прокрутку колёсиком/жестами,
+                // чтобы индексы не «плыли».
+                interactive: draggedIndex === -1
 
-                function beginReorder(from) {
-                    if (controller.busy)
-                        return false
-                    reorderActive = true
-                    dragFromIndex = from
-                    dropIndex = from
-                    pointerY = 0
-                    interactive = false
-                    return true
-                }
+                model: controller.pageModel
 
-                function updateDrop(autoScroll) {
-                    if (!reorderActive)
-                        return
-                    if (autoScroll) {
-                        if (pointerY < 30 && contentY > 0)
-                            contentY = Math.max(0, contentY - 10)
-                        else if (pointerY > height - 30 && contentY < contentHeight - height)
-                            contentY = Math.min(contentHeight - height, contentY + 10)
-                    }
-                    var index = Math.floor((pointerY + contentY) / (itemHeight + spacing))
-                    index = Math.max(0, Math.min(index, count - 1))
-                    dropIndex = index
-                }
+                // Индекс перетаскиваемого делегата (-1 если нет)
+                property int draggedIndex: -1
 
-                function endReorder() {
-                    const from = dragFromIndex
-                    const to = dropIndex
-                    reorderActive = false
-                    interactive = true
-                    dragFromIndex = -1
-                    dropIndex = -1
-                    if (from >= 0 && to >= 0 && from !== to)
-                        controller.movePage(from, to)
-                }
-
-                Timer {
-                    interval: 16
-                    repeat: true
-                    running: thumbList.reorderActive
-                    onTriggered: thumbList.updateDrop(true)
+                displaced: Transition {
+                    NumberAnimation { property: "y"; duration: 150; easing.type: Easing.OutQuad }
                 }
 
                 delegate: Item {
+                    id: delegateRoot
                     width: thumbList.width - Theme.spacingSmall
                     height: width * 1.3 + 22
-                    z: thumbList.reorderActive && thumbList.dragFromIndex === model.pageIndex ? 10 : 1
-                    opacity: thumbList.reorderActive && thumbList.dragFromIndex === model.pageIndex ? 0.55 : 1.0
-                    Behavior on opacity { NumberAnimation { duration: 80 } }
 
-                    HoverHandler {
-                        id: thumbHover
-                    }
+                    property int pageIdx: model.pageIndex
+                    property bool dragActive: dragHandler.active
+
+                    // Во время перетаскивания приподнимаем над остальными
+                    z: dragActive ? 10 : 1
+
+                    HoverHandler { id: thumbHover }
 
                     Rectangle {
+                        id: card
                         anchors.fill: parent
                         radius: Theme.radius
                         color: model.current ? Theme.selected : "transparent"
-                        border.color: thumbList.reorderActive && thumbList.dropIndex === model.pageIndex
-                                      ? Theme.textPrimary
+                        border.color: dragActive ? Theme.accent
                                       : (model.current ? Theme.accent : Theme.divider)
-                        border.width: thumbList.reorderActive && thumbList.dropIndex === model.pageIndex
-                                      ? 2 : 1
+                        border.width: 1
+
+                        scale: delegateRoot.dragActive ? 1.03 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 100 } }
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -300,12 +268,10 @@ ApplicationWindow {
                             }
                         }
 
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: controller.currentPage = model.pageIndex
+                        TapHandler {
+                            onTapped: controller.currentPage = model.pageIndex
                         }
-                    }
+                    }// Rectangle card
 
                     ToolButton {
                         id: deletePageButton
@@ -315,9 +281,9 @@ ApplicationWindow {
                         implicitWidth: 20
                         implicitHeight: 20
                         padding: 0
-                        visible: thumbHover.hovered && !controller.busy
+                        visible: thumbHover.hovered && !controller.busy && thumbList.draggedIndex === -1
                         enabled: !controller.busy
-                        opacity: thumbHover.hovered ? 1.0 : 0.0
+                        opacity: visible ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                         text: "\u2715"
 
@@ -333,9 +299,8 @@ ApplicationWindow {
                         Accessible.name: qsTr("Delete page %1").arg(model.pageIndex + 1)
 
                         onClicked: controller.removePage(model.pageIndex)
-                    }
+                    }// ToolButton deletePageButton
 
-                    // Drag handle: grabbing this re-orders the page instead of scrolling.
                     Rectangle {
                         id: dragGrip
                         width: 24
@@ -345,10 +310,10 @@ ApplicationWindow {
                         anchors.margins: 2
                         radius: 3
                         z: 2
-                        visible: (thumbHover.hovered || gripMouse.pressed) && !controller.busy
-                        opacity: (thumbHover.hovered || gripMouse.pressed) ? 1.0 : 0.0
+                        visible: (thumbHover.hovered || dragActive) && !controller.busy
+                        opacity: visible ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 100 } }
-                        color: gripMouse.pressed ? Theme.accent : Theme.surfaceAlt
+                        color: dragActive ? Theme.accent : Theme.surfaceAlt
                         border.color: Theme.divider
                         border.width: 1
 
@@ -359,32 +324,40 @@ ApplicationWindow {
                             font.pixelSize: 9
                         }
 
-                        MouseArea {
-                            id: gripMouse
-                            anchors.fill: parent
+                        DragHandler {
+                            id: dragHandler
+                            target: delegateRoot
+                            enabled: !controller.busy
                             cursorShape: Qt.SizeVerCursor
-                            onPressed: (mouse) => {
-                                if (!dragGrip.visible || !thumbList.beginReorder(model.pageIndex)) {
-                                    mouse.accepted = false
-                                    return
+
+                            // Захватываем только вертикальное перемещение
+                            yAxis.enabled: true
+                            xAxis.enabled: false
+
+                            property int fromIndex: -1
+
+                            onActiveChanged: {
+                                if (active) {
+                                    fromIndex = index
+                                    thumbList.draggedIndex = index
+                                } else {
+                                    // Вычисляем целевой индекс по центру делегата
+                                    const centerY = delegateRoot.y + delegateRoot.height / 2
+                                    let toIndex = Math.floor(centerY / (delegateRoot.height + thumbList.spacing))
+                                    toIndex = Math.max(0, Math.min(thumbList.count - 1, toIndex))
+
+                                    thumbList.draggedIndex = -1
+
+                                    if (fromIndex !== -1 && fromIndex !== toIndex)
+                                        controller.movePage(fromIndex, toIndex)
+                                    else
+                                        delegateRoot.y = index * (delegateRoot.height + thumbList.spacing) // вернуть на место
                                 }
-                                var p = gripMouse.mapToItem(thumbList, mouse.x, mouse.y)
-                                thumbList.pointerY = p.y
-                                thumbList.updateDrop(false)
                             }
-                            onPositionChanged: (mouse) => {
-                                if (!thumbList.reorderActive)
-                                    return
-                                var p = gripMouse.mapToItem(thumbList, mouse.x, mouse.y)
-                                thumbList.pointerY = p.y
-                                thumbList.updateDrop(true)
-                            }
-                            onReleased: thumbList.endReorder()
-                            onCanceled: thumbList.endReorder()
                         }
-                    }
-                }
-            }
+                    }//Rectangle dragGrip
+                }//delegate
+            }//ListView
         } // Rectangle thumbPanel
 
         Rectangle { // image preview
