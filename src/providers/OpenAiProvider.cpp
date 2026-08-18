@@ -70,10 +70,15 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
         {QStringLiteral("messages"), QJsonArray{message}},
         {QStringLiteral("temperature"), request.temperature},
         {QStringLiteral("max_tokens"), request.maxTokens},
+
         {QStringLiteral("repeat_penalty"), request.repeatPenalty},
-        {QStringLiteral("repeat_last_n"), request.repeatLastN},
+        // {QStringLiteral("repeat_last_n"), request.repeatLastN},
+
         {QStringLiteral("dry_multiplier"), request.dryMultiplier},
         {QStringLiteral("dry_base"), request.dryBase},
+        {QStringLiteral("dry-allowed-length"), request.dryAllowedLength},
+        {QStringLiteral("dry_penalty_last_n"), request.dryPenaltyLastN},
+
         {QStringLiteral("stream"), false},
     };
 

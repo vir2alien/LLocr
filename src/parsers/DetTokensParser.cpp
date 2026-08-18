@@ -98,6 +98,7 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info)
 
 OcrResult DetTokensParser::parse(const QString &rawText) const
 {
+    qDebug() << rawText;
     if (rawText.trimmed().isEmpty())
         return OcrResult::makeError(QStringLiteral("Empty OCR text"));
 

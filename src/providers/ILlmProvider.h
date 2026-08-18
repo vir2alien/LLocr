@@ -23,10 +23,12 @@ struct OcrRequest {
     int maxTokens = 4096;
 
     // Sampling parameters (hardcoded for now; to be exposed in Settings later)
-    double repeatPenalty = 1.2;
-    int repeatLastN = 64;
-    double dryMultiplier = 0.8;
-    double dryBase = 2.0;
+    double repeatPenalty = 1.5;  // 1.5 for dense pages, 1.3 for normal
+    int repeatLastN = 512;
+    double dryMultiplier = 1.0;
+    double dryBase = 1.75;
+    int dryAllowedLength = 2;  // 2 for dense pages, 4 for normal
+    int dryPenaltyLastN = -1;
 };
 
 class ILlmProvider {
