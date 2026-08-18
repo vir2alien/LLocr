@@ -14,7 +14,7 @@ struct ProviderConfig {
     QString modelName = QStringLiteral("gpt-4o-mini");  ///< Sent as "model".
     QString prompt = QStringLiteral("OCR this document. Return the text.");
     double temperature = 0.0;  ///< Sampling temperature.
-    int maxTokens = 4096;      ///< Response token cap.
+    int maxTokens = 16384;     ///< Response token cap.
 
     // Parser
     QString parserId = QStringLiteral("raw");                   ///< "raw", "det_tokens", …
