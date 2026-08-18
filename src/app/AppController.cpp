@@ -464,7 +464,6 @@ void AppController::onRecognitionFinished()
                               ? m_watcher.result()
                               : OcrResult::makeError(tr("No response"));
     const int index = m_recognizingIndex;
-
     if (!raw.success) {
         if (m_stopRequested)
             setStatus(tr("Stopped at page %1.").arg(index + 1));

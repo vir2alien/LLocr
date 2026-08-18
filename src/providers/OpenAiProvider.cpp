@@ -47,18 +47,18 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
                                             const QString& imageDataUrl)
 {
     QJsonObject textPart{
-        { QStringLiteral("type"), QStringLiteral("text") },
-        { QStringLiteral("text"), request.prompt },
+        {QStringLiteral("type"), QStringLiteral("text")},
+        {QStringLiteral("text"), request.prompt},
     };
     QJsonObject imageUrl{
-        { QStringLiteral("url"), imageDataUrl },
+        {QStringLiteral("url"), imageDataUrl},
     };
     QJsonObject imagePart{
-        { QStringLiteral("type"), QStringLiteral("image_url") },
-        { QStringLiteral("image_url"), imageUrl },
+        {QStringLiteral("type"), QStringLiteral("image_url")},
+        {QStringLiteral("image_url"), imageUrl},
     };
 
-    QJsonArray content{ textPart, imagePart };
+    QJsonArray content{imagePart, textPart};
 
     QJsonObject message{
         { QStringLiteral("role"), QStringLiteral("user") },
@@ -68,16 +68,23 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
     QJsonObject root{
         {QStringLiteral("model"), request.modelId},
         {QStringLiteral("messages"), QJsonArray{message}},
-        {QStringLiteral("temperature"), request.temperature},
-        {QStringLiteral("max_tokens"), request.maxTokens},
+        {QStringLiteral("temperature"), 0},
 
-        // {QStringLiteral("repeat_penalty"), request.repeatPenalty},
-        // {QStringLiteral("repeat_last_n"), request.repeatLastN},
-        // {QStringLiteral("dry_multiplier"), request.dryMultiplier},
-        // {QStringLiteral("dry_base"), request.dryBase},
-        // {QStringLiteral("dry-allowed-length"), request.dryAllowedLength},
-        // {QStringLiteral("dry_penalty_last_n"), request.dryPenaltyLastN},
+        {QStringLiteral("top_k"), 1},
+        {QStringLiteral("top_p"), 1.0},
+        {QStringLiteral("min_p"), 0.0},
 
+        {QStringLiteral("dry_multiplier"), 0.8},
+        {QStringLiteral("dry_base"), 1.75},
+        {QStringLiteral("dry_allowed_length"), 35},
+        {QStringLiteral("dry_penalty_last_n"), 128},
+        {QStringLiteral("dry_sequence_breakers"), QJsonArray{QStringLiteral("none")}},
+
+        {QStringLiteral("max_tokens"), request.maxTokens},  // request.maxTokens
+        {QStringLiteral("skip_special_tokens"), false},
+        {QStringLiteral("stream"), false},
+
+        {QStringLiteral("crop_mode"), true},
         {QStringLiteral("skip_special_tokens"), false},
         {QStringLiteral("stream"), false},
     };

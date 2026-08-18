@@ -154,7 +154,19 @@ private:
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
 
-    QString m_prompt = "<|grounding|>Convert the document to markdown.";  // TODO implementation in QML is needed// "<|grounding|>OCR this image."
+    QString m_prompt = "document parsing.";
+
+    /* promts:
+     * "document parsing."
+     * "Multi page parsing."
+     * "Free OCR."
+     * "Parse the figure."
+     * "Describe this image in detail."
+     * "<|grounding|>Convert the document to markdown."
+     * "<|grounding|>OCR this image."
+     * "<|grounding|>Free OCR."
+     * "<|grounding|>Locate <|ref|>Invoice Number<|/ref|> in the image."
+     */
 
     Exporter m_exporter;
 
