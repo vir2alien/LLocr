@@ -12,13 +12,66 @@ namespace {
 
 // Regex helpers
 
-// Matches a single token:  label [x1, y1, x2, y2] ...
+// Matches a wrapped token as emitted by the current model:
+//   <|det|>label [x1, y1, x2, y2]<|/det|>
 // Label is an ASCII identifier (title, text, image, image_caption, …).
+const QRegularExpression &wrappedTokenRegex()
+{
+    static const QRegularExpression re(
+        QStringLiteral(R"(<\|det\|>([A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]<\|/det\|>)"));
+    return re;
+}
+
+// Legacy fallback: a bare  label [x1, y1, x2, y2]  token without wrappers.
 const QRegularExpression &tokenStartRegex()
 {
     static const QRegularExpression re(
         QStringLiteral(R"(([A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\])"));
     return re;
+}
+
+// The model streams JSON-escaped text: newlines appear as the two characters
+// \n and backslashes are doubled (LaTeX \( is streamed as \\( ). Decode the
+// common JSON escapes so the token content becomes the real text.
+QString unescapeModelText(const QString &text)
+{
+    QString out;
+    out.reserve(text.size());
+    const QChar backslash = QLatin1Char('\\');
+    for (int i = 0; i < text.size(); ++i) {
+        const QChar c = text.at(i);
+        if (c != backslash || i + 1 >= text.size()) {
+            out.append(c);
+            continue;
+        }
+        const QChar n = text.at(i + 1);
+        switch (n.unicode()) {
+        case 'n':  out.append(QLatin1Char('\n')); ++i; break;
+        case 't':  out.append(QLatin1Char('\t')); ++i; break;
+        case 'r':  out.append(QLatin1Char('\r')); ++i; break;
+        case 'b':  out.append(QLatin1Char('\b')); ++i; break;
+        case 'f':  out.append(QLatin1Char('\f')); ++i; break;
+        case '/':  out.append(QLatin1Char('/'));  ++i; break;
+        case '"':  out.append(QLatin1Char('"'));  ++i; break;
+        case '\\': out.append(QLatin1Char('\\')); ++i; break;
+        default:   out.append(c); break; // unknown escape -> keep as-is
+        }
+    }
+    return out;
+}
+
+// Model control tokens that must never appear in the final text: a trailing
+// <|end_of_sentence|> marker, and any <|det|>/<|/det|> wrappers not consumed
+// as tokens, <|grounding|>, <|ref|>, etc. The model emits the EOS marker with
+// full-width pipes (｜ U+FF5C) and ▁ (U+2581) space markers, so match both
+// pipe widths.
+QString stripServiceTokens(const QString &text)
+{
+    static const QRegularExpression re(
+        QStringLiteral(R"(<(?:\||\x{FF5C})[^>]*>)"));
+    QString out = text;
+    out.remove(re);
+    return out;
 }
 
 // LaTeX math to Markdown
@@ -115,7 +168,10 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
     };
     QList<Token> tokens;
 
-    const QRegularExpression &re = tokenStartRegex();
+    // The current model wraps tokens in <|det|>…<|/det|>; the legacy bare
+    // "label [coords]" form is still accepted as a fallback.
+    const bool wrapped = rawText.contains(QStringLiteral("<|det|>"));
+    const QRegularExpression &re = wrapped ? wrappedTokenRegex() : tokenStartRegex();
     QRegularExpressionMatchIterator it = re.globalMatch(rawText);
 
     while (it.hasNext()) {
@@ -133,7 +189,8 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
     // No tokens -> raw text.
     if (tokens.isEmpty()) {
-        page.text = rawText.trimmed();
+        page.text =
+            stripServiceTokens(wrapped ? unescapeModelText(rawText) : rawText).trimmed();
         result.text = page.text;
         result.pages.append(page);
         result.success = true;
@@ -144,7 +201,10 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
     // 2) capture text before the first token (if any)
     {
-        const QString preamble = rawText.left(tokens.first().tokenStart).trimmed();
+        QString preamble = rawText.left(tokens.first().tokenStart);
+        if (wrapped)   // decode JSON escapes only for the model's wrapped stream
+            preamble = unescapeModelText(preamble);
+        preamble = stripServiceTokens(preamble).trimmed();
         if (!preamble.isEmpty()) {
             BoundingBox untagged;
             untagged.label = QStringLiteral("text");
@@ -162,7 +222,10 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         const int spanEnd = (i + 1 < tokens.size())
                                 ? tokens.at(i + 1).tokenStart
                                 : rawText.size();
-        const QString boxText = rawText.mid(t.textStart, spanEnd - t.textStart).trimmed();
+        QString boxText = rawText.mid(t.textStart, spanEnd - t.textStart);
+        if (wrapped)   // decode JSON escapes only for the model's wrapped stream
+            boxText = unescapeModelText(boxText);
+        boxText = stripServiceTokens(boxText).trimmed();
 
         const double nx1 = (std::min)(t.x1, t.x2) / range;
         const double ny1 = (std::min)(t.y1, t.y2) / range;

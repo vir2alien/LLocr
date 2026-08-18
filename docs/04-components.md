@@ -37,8 +37,12 @@ Three options handled by `UiController`:
 
 ## 4.4 Output parsers
 - `raw` ✅ — text as-is (`RawParser`). Default.
-- `det_tokens` ✅ — `DetTokensParser` extracts text + coordinates
-  (`<|det|> label [x1,y1,x2,y2] <|/det|> text`, `<PAGE>` splits) for overlay.
+- `det_tokens` ✅ — `DetTokensParser` extracts text + coordinates from the
+  model's `<|det|> label [x1,y1,x2,y2] <|/det|> text` stream (content is
+  JSON-escaped and unescaped by the parser; model control tokens such as
+  `<|end_of_sentence|>` — incl. full-width-pipe variants — are stripped).
+  Legacy bare `label [x1,y1,x2,y2] text` lines are still accepted. Input is
+  one page per request, so no page splitting happens here.
 - Created via `ParserFactory`; the active parser is chosen in **Settings →
   Output** (`AppController::parserNames` lists the options). Easy to add new
   ones — extend `ParserFactory` and the `parserNames` list.

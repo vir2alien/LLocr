@@ -9,6 +9,123 @@ class TestDetParser : public QObject {
     Q_OBJECT
 
 private slots:
+    // The current model wraps every token in <|det|>…<|/det|> and streams
+    // newlines as the two characters `\n`.
+    void parsesWrappedDetStream() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\n)"
+            R"(<|det|>text [112, 132, 884, 309]<|/det|>Humans are remarkably adept at long-horizon tasks\n)"
+            R"(<|det|>text [141, 484, 884, 581]<|/det|>- We introduce Reference Sliding Window Attention (R-SWA)\n)"
+            R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 4);
+
+        const BoundingBox& title = page.boxes.at(0);
+        QCOMPARE(title.label, QStringLiteral("title"));
+        QCOMPARE(title.text, QStringLiteral("1. Introduction"));
+        // x = 115/1000, width = (273-115)/1000
+        QVERIFY(qFuzzyCompare(title.rect.x(), 0.115));
+        QVERIFY(qFuzzyCompare(title.rect.width(), 0.158));
+
+        const BoundingBox& text = page.boxes.at(1);
+        QCOMPARE(text.label, QStringLiteral("text"));
+        // the trailing \n escape is trimmed away
+        QCOMPARE(text.text, QStringLiteral("Humans are remarkably adept at long-horizon tasks"));
+
+        const BoundingBox& pageNumber = page.boxes.at(3);
+        QCOMPARE(pageNumber.label, QStringLiteral("page_number"));
+        QCOMPARE(pageNumber.text, QStringLiteral("3"));
+
+        const QString md = page.text;
+        QVERIFY(md.contains(QStringLiteral("## 1. Introduction")));   // title -> heading
+        QVERIFY(md.contains(QStringLiteral("- We introduce Reference Sliding Window Attention (R-SWA)")));
+        QVERIFY(md.contains(QStringLiteral("*3*")));                  // page number in italics
+    }
+
+    // Escaped newlines and doubled backslashes are decoded inside token content:
+    // `\n` becomes a real newline and `\\(` becomes `\(`, which then converts
+    // to inline math `$...$`.
+    void unescapesWrappedContent() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>text [112, 132, 884, 309]<|/det|>line one\nline two  \\( m + n \\)\n)"
+            R"(<|det|>text [113, 780, 884, 860]<|/det|>see  \\( [10, 30, 33, 34] \\)\n)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+        // \n -> real newline; \\( -> \( inside the box text.
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("line one\nline two  \\( m + n \\)"));
+
+        const QString md = page.text;
+        QVERIFY(md.contains(QStringLiteral("$m + n$")));
+        QVERIFY(md.contains(QStringLiteral("$[10, 30, 33, 34]$")));
+    }
+
+    // The model appends a trailing <|end_of_sentence|> marker after the last
+    // token. It must not leak into the recognized text.
+    void stripsTrailingEndOfSentenceToken() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3<|end_of_sentence|>\n)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("page_number"));
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("3"));
+
+        const QString md = page.text;
+        QVERIFY(md.contains(QStringLiteral("*3*")));
+        QVERIFY(!md.contains(QStringLiteral("<|end_of_sentence|>")));
+        QVERIFY(!md.contains(QStringLiteral("<|")));
+    }
+
+    // The live stream emits the EOS marker with full-width pipes (｜ U+FF5C)
+    // and ▁ (U+2581) instead of spaces; those must be stripped too.
+    void stripsFullWidthServiceToken() {
+        const QString raw = QStringLiteral(
+            "<|det|>page_number [493, 924, 506, 935]<|/det|>3"
+            "<\uFF5C" "end\u2581of\u2581sentence\uFF5C" ">\n");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("3"));
+        QVERIFY(!page.text.contains(QStringLiteral("\uFF5C")));
+        QVERIFY(!page.text.contains(QStringLiteral("end")));
+        QVERIFY(page.text.contains(QStringLiteral("*3*")));
+    }
+
+    // A stray control token inside token content (e.g. an unparsed
+    // <|grounding|> tag) is removed as well.
+    void stripsStrayServiceTokensInContent() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>text [112, 132, 884, 309]<|/det|>Body text <|grounding|> with more.\n)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("Body text  with more."));
+        QVERIFY(!page.text.contains(QStringLiteral("<|grounding|>")));
+    }
+
     // Real-world sample captured from the live model in step D.
     void parsesRealResponse() {
         const QString raw = QStringLiteral(

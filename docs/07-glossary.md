@@ -39,5 +39,7 @@
 | 14   | Unit tests live in `tests/` (Qt Test), gated by `LLOCR_BUILD_TESTS` | Early coverage for parsers; more to come. |
 | 15   | JSON model-profile classes (`ModelProfile` / `ProfileRepository`) removed | Stage 2 replaced them with the **Settings dialog**; the leftover classes were dead code and were deleted. |
 | 16   | i18n via Qt Linguist (`qsTr`/`tr` + `.ts`/`.qm`), language selectable in Settings (System/English/Русский), default **System**, runtime retranslate | Standard Qt i18n; persisted via `SettingsStore` (`ui/language`); embedded `.qm` loaded at startup and on change. |
+| 17   | `det_tokens` parser consumes the `<|det|>…<|/det|>` block stream and JSON-unescapes the content (`\n` → newline, `\\` → `\`, …); legacy bare `label [x1,y1,x2,y2] text` stays as a fallback | The model streams one block per token with JSON-escaped text; the legacy form is kept for older responses. No `<PAGE>` splitting — one page is sent per request. |
+| 18   | `det_tokens` also strips model control tokens from content — `<|end_of_sentence|>` (ASCII and full-width-pipe `｜ U+FF5C` + `▁ U+2581` variants) and any stray `<|…|>` wrappers | The model appends an EOS marker after the last block; it must not leak into the recognized text. |
 
 > When decisions change — add a row to the table and update the affected files.
