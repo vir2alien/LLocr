@@ -393,7 +393,7 @@ ApplicationWindow {
                             required property string boxText
                             required property string boxLabel
 
-                            property bool isImage: boxLabel === "image"
+                            property bool isImage: boxLabel === "image" || boxLabel === "chart"
 
                             color: isImage ? Theme.overlayImageFill : "transparent"
                             border.color: isImage ? Theme.overlayImageOuter : Theme.overlayTextOuter

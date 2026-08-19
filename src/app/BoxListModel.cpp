@@ -87,7 +87,8 @@ void BoxListModel::removeBox(int index)
 bool BoxListModel::isImageBox(int index) const
 {
     return index >= 0 && index < m_boxes.size()
-        && m_boxes.at(index).label == QLatin1String("image");
+        && (m_boxes.at(index).label == QLatin1String("image")
+            || m_boxes.at(index).label == QLatin1String("chart"));
 }
 
 } // namespace llocr

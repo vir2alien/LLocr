@@ -25,6 +25,7 @@ inline BlockStyleInfo blockStyleForLabel(const QString &label)
     static const QHash<QString, BlockStyleInfo> table = {
         {QStringLiteral("title"),          {BlockStyle::Heading,          0}},
         {QStringLiteral("image"),          {BlockStyle::ImagePlaceholder, 0}},
+        {QStringLiteral("chart"),          {BlockStyle::ImagePlaceholder, 0}},
         {QStringLiteral("image_caption"),  {BlockStyle::Italic,           0}},
         {QStringLiteral("table_caption"),  {BlockStyle::Italic,           0}},
         {QStringLiteral("table_footnote"), {BlockStyle::Italic,           0}},

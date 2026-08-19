@@ -381,6 +381,40 @@ private slots:
         QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
     }
 
+    // A chart block behaves exactly like an image block: it keeps any alt text
+    // and expands to the same image://ocr/crop/<box> placeholder in Markdown.
+    void chartBlockBehavesLikeImage() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>chart [499, 601, 875, 803]<|/det|>Figure 3 | Latency plot
+)"
+            R"(<|det|>text [112, 853, 884, 903]<|/det|>Same pattern holds.
+)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage& page = r.pages.first();
+        // The chart token is exposed as a box with label "chart".
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("chart"));
+        QVERIFY(page.boxes.size() >= 1);
+
+        const QString md = page.text;
+        QVERIFY(md.contains(QStringLiteral("![Figure 3 | Latency plot](image://ocr/crop/0)")));
+    }
+
+    // A chart block with no text falls back to the default "Image" alt.
+    void chartBlockWithoutTextGetsDefaultAlt() {
+        const QString raw = QStringLiteral("<|det|>chart [499, 601, 875, 803]<|/det|>");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
+    }
+
     // After a box is removed, rebuildPageText must re-index the image URLs so
     // they keep pointing at the right boxes.
     void rebuildTextShiftsImageIndices() {
