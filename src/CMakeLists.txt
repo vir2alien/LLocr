@@ -50,6 +50,7 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/Main.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/WindowSettings.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/ExportDialog.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Theme.qml"
 )
 

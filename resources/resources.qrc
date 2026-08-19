@@ -4,5 +4,6 @@
         <file>qml/SettingsDialog.qml</file>
         <file>qml/Theme.qml</file>
         <file>qml/WindowSettings.qml</file>
+        <file>qml/ExportDialog.qml</file>
     </qresource>
 </RCC>

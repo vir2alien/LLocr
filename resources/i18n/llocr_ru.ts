@@ -260,6 +260,9 @@
         <source>Export — pages</source>
         <translation>Экспорт — страницы</translation>
     </message>
+</context>
+<context>
+    <name>ExportDialog</name>
     <message>
         <source>All recognized pages</source>
         <translation>Все распознанные страницы</translation>
