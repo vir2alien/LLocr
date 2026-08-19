@@ -8,13 +8,13 @@ Dialog {
     id: dialog
     title: qsTr("Settings")
     modal: true
-    standardButtons: Dialog.Save | Dialog.Cancel
+    standardButtons: Dialog.Save | Dialog.RestoreDefaults | Dialog.Cancel
 
     anchors.centerIn: parent
     width: 460
     implicitHeight: 360
 
-    onAboutToShow: {
+    function loadValues() {
         //UI
         var langIdx = ["system", "en", "ru"].indexOf(Settings.language)
         languageBox.currentIndex = langIdx >= 0 ? langIdx : 0
@@ -40,7 +40,15 @@ Dialog {
         // Output / parser
         var idx = parserBox.model.indexOf(Settings.parserId)
         parserBox.currentIndex = idx >= 0 ? idx : 0
+    }
 
+    onAboutToShow: {
+        loadValues()
+    }
+
+    onReset: {
+        Settings.resetToDefaults();
+        loadValues();
     }
 
     onAccepted: {
@@ -48,7 +56,7 @@ Dialog {
         uiController.mode = [UiController.System, UiController.Light, UiController.Dark][themeBox.currentIndex];
         Settings.baseUrl = baseUrlField.text;
         Settings.apiKey = apiKeyField.text;
-        Settings.timeoutMs = parseInt(timeoutField.text) || 3000;
+        Settings.connectionTimeoutMs = parseInt(timeoutField.text) || 120000;
         Settings.modelName = modelNameField.text;
         Settings.temperature = parseFloat(temperatureField.text) || 0.0;
         Settings.maxTokens = parseInt(maxTokensField.text) || 16384;

@@ -28,3 +28,17 @@ target_sources(test_pagemodel PRIVATE
     ${CMAKE_SOURCE_DIR}/src/app/PageListModel.cpp
 )
 add_test(NAME test_pagemodel COMMAND test_pagemodel)
+
+qt_add_executable(test_settings_store test_settings_store.cpp)
+
+target_include_directories(test_settings_store PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_settings_store PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+
+target_sources(test_settings_store PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+)
+add_test(NAME test_settings_store COMMAND test_settings_store)

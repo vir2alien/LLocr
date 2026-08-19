@@ -31,7 +31,24 @@ class SettingsStore : public QObject
 
 public:
     explicit SettingsStore(QObject *parent = nullptr);
+    // Defaults
+    static constexpr const char *kDefaultBaseUrl = "http://localhost:8080";
+    static constexpr const char *kDefaultApiKey = "";
+    static constexpr int kDefaultTimeoutMs = 120000;
+    static constexpr const char *kDefaultModelName = "Unlimited-OCR";
+    static constexpr double kDefaultTemperature = 0.0;
+    static constexpr int kDefaultMaxTokens = 16384;
+    static constexpr double kDefaultDryMultiplier = 0.8;
+    static constexpr double kDefaultDryBase = 1.75;
+    static constexpr int kDefaultDryAllowedLength = 35;
+    static constexpr int kDefaultDryPenaltyLastN = 128;
+    static constexpr const char *kDefaultDrySequenceBreakers = "none";
+    static constexpr const char *kDefaultParserId = "det_tokens";
+    static constexpr int kDefaultThemeMode = 0; // System
+    static constexpr const char *kDefaultLanguage = "system";
+
     Q_INVOKABLE void forceSave();
+    Q_INVOKABLE void resetToDefaults();
 
     // Connection
     QString baseUrl() const;

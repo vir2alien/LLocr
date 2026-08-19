@@ -9,9 +9,27 @@ void SettingsStore::forceSave()
     m_settings.sync();
 }
 
+void SettingsStore::resetToDefaults()
+{
+    setLanguage(QString::fromUtf8(kDefaultLanguage));
+    setThemeMode(kDefaultThemeMode);
+    setBaseUrl(QString::fromUtf8(kDefaultBaseUrl));
+    setApiKey(QString::fromUtf8(kDefaultApiKey));
+    setConnectionTimeoutMs(kDefaultTimeoutMs);
+    setModelName(QString::fromUtf8(kDefaultModelName));
+    setTemperature(kDefaultTemperature);
+    setMaxTokens(kDefaultMaxTokens);
+    setDryMultiplier(kDefaultDryMultiplier);
+    setDryBase(kDefaultDryBase);
+    setDryAllowedLength(kDefaultDryAllowedLength);
+    setDryPenaltyLastN(kDefaultDryPenaltyLastN);
+    setDrySequenceBreakers(QString::fromUtf8(kDefaultDrySequenceBreakers));
+    setParserId(QString::fromUtf8(kDefaultParserId));
+}
+
 QString SettingsStore::baseUrl() const
 {
-    return m_settings.value(kBaseUrl, QStringLiteral("http://localhost:8080")).toString();
+    return m_settings.value(kBaseUrl, QString::fromUtf8(kDefaultBaseUrl)).toString();
 }
 
 void SettingsStore::setBaseUrl(const QString &url)
@@ -24,7 +42,7 @@ void SettingsStore::setBaseUrl(const QString &url)
 
 QString SettingsStore::apiKey() const
 {
-    return m_settings.value(kApiKey, QString{}).toString();
+    return m_settings.value(kApiKey, QString::fromUtf8(kDefaultApiKey)).toString();
 }
 
 void SettingsStore::setApiKey(const QString &key)
@@ -37,7 +55,7 @@ void SettingsStore::setApiKey(const QString &key)
 
 int SettingsStore::connectionTimeoutMs() const
 {
-    return m_settings.value(kTimeoutMs, 120000).toInt();
+    return m_settings.value(kTimeoutMs, kDefaultTimeoutMs).toInt();
 }
 
 void SettingsStore::setConnectionTimeoutMs(int timeOut)
@@ -50,18 +68,20 @@ void SettingsStore::setConnectionTimeoutMs(int timeOut)
 
 QString SettingsStore::modelName() const
 {
-    return m_settings.value(kModelName, "Unlimited-OCR").toString();
+    return m_settings.value(kModelName, QString::fromUtf8(kDefaultModelName)).toString();
 }
 
 void SettingsStore::setModelName(const QString &modelName)
 {
+    if (this->modelName() == modelName)
+        return;
     m_settings.setValue(kModelName, modelName);
     emit modelNameChanged();
 }
 
 double SettingsStore::temperature() const
 {
-    return m_settings.value(kTemperature, 0.0).toDouble();
+    return m_settings.value(kTemperature, kDefaultTemperature).toDouble();
 }
 
 void SettingsStore::setTemperature(double temp)
@@ -74,7 +94,7 @@ void SettingsStore::setTemperature(double temp)
 
 int SettingsStore::maxTokens() const
 {
-    return m_settings.value(kMaxTokens, 16384).toInt();
+    return m_settings.value(kMaxTokens, kDefaultMaxTokens).toInt();
 }
 
 void SettingsStore::setMaxTokens(int maxTkns)
@@ -87,7 +107,7 @@ void SettingsStore::setMaxTokens(int maxTkns)
 
 double SettingsStore::dryMultiplier() const
 {
-    return m_settings.value(kDryMultiplier, 0.8).toDouble();
+    return m_settings.value(kDryMultiplier, kDefaultDryMultiplier).toDouble();
 }
 
 void SettingsStore::setDryMultiplier(double val)
@@ -100,7 +120,7 @@ void SettingsStore::setDryMultiplier(double val)
 
 double SettingsStore::dryBase() const
 {
-    return m_settings.value(kDryBase, 1.75).toDouble();
+    return m_settings.value(kDryBase, kDefaultDryBase).toDouble();
 }
 
 void SettingsStore::setDryBase(double val)
@@ -113,7 +133,7 @@ void SettingsStore::setDryBase(double val)
 
 int SettingsStore::dryAllowedLength() const
 {
-    return m_settings.value(kDryAllowedLength, 35).toInt();
+    return m_settings.value(kDryAllowedLength, kDefaultDryAllowedLength).toInt();
 }
 
 void SettingsStore::setDryAllowedLength(int val)
@@ -126,7 +146,7 @@ void SettingsStore::setDryAllowedLength(int val)
 
 int SettingsStore::dryPenaltyLastN() const
 {
-    return m_settings.value(kDryPenaltyLastN, 128).toInt();
+    return m_settings.value(kDryPenaltyLastN, kDefaultDryPenaltyLastN).toInt();
 }
 
 void SettingsStore::setDryPenaltyLastN(int val)
@@ -139,7 +159,7 @@ void SettingsStore::setDryPenaltyLastN(int val)
 
 QString SettingsStore::drySequenceBreakers() const
 {
-    return m_settings.value(kDrySequenceBreakers, QStringLiteral("none")).toString();
+    return m_settings.value(kDrySequenceBreakers, QString::fromUtf8(kDefaultDrySequenceBreakers)).toString();
 }
 
 void SettingsStore::setDrySequenceBreakers(const QString &val)
@@ -152,7 +172,7 @@ void SettingsStore::setDrySequenceBreakers(const QString &val)
 
 QString SettingsStore::parserId() const
 {
-    return m_settings.value(kParserId, "raw").toString();
+    return m_settings.value(kParserId, QString::fromUtf8(kDefaultParserId)).toString();
 }
 
 void SettingsStore::setParserId(const QString &parserName)
@@ -165,7 +185,7 @@ void SettingsStore::setParserId(const QString &parserName)
 
 int SettingsStore::themeMode() const
 {
-    return m_settings.value(kThemeMode, 0).toInt();
+    return m_settings.value(kThemeMode, kDefaultThemeMode).toInt();
 }
 
 void SettingsStore::setThemeMode(int mode)
@@ -178,7 +198,7 @@ void SettingsStore::setThemeMode(int mode)
 
 QString SettingsStore::language() const
 {
-    return m_settings.value(kLanguage, QStringLiteral("system")).toString();
+    return m_settings.value(kLanguage, QString::fromUtf8(kDefaultLanguage)).toString();
 }
 
 void SettingsStore::setLanguage(const QString &language)
