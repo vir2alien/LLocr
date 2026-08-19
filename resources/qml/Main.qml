@@ -82,13 +82,6 @@ ApplicationWindow {
                 onClicked: controller.stop()
             }
 
-            BusyIndicator {
-                running: controller.busy
-                visible: controller.busy
-                Layout.preferredWidth: 20
-                Layout.preferredHeight: 20
-            }
-
             ToolSeparator { visible: controller.pageCount > 1 }
 
             RowLayout {
@@ -129,14 +122,6 @@ ApplicationWindow {
             }
 
             Item { Layout.fillWidth: true }
-
-            Label {
-                text: controller.statusMessage
-                color: Theme.textMuted
-                font.pixelSize: Theme.fontCaption
-                elide: Text.ElideRight
-                Layout.maximumWidth: 380
-            }
 
             ToolButton {
                 text: qsTr("Settings...")
@@ -571,5 +556,43 @@ ApplicationWindow {
 
     ExportDialog {
         id: exportOptionsDialog
+    }
+
+    footer: ToolBar {
+        leftPadding: Theme.spacing * 2
+        rightPadding: Theme.spacing * 2
+        height: Theme.controlHeight
+
+        background: Rectangle {
+            color: Theme.surface
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 1
+                color: Theme.divider
+            }
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            spacing: Theme.spacingSmall
+
+            Label {
+                text: controller.statusMessage
+                color: Theme.textMuted
+                font.pixelSize: Theme.fontCaption
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+            }
+
+            BusyIndicator {
+                running: controller.busy
+                visible: controller.busy
+                Layout.preferredWidth: 18
+                Layout.preferredHeight: 18
+            }
+        }
     }
 }
