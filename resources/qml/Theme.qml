@@ -32,7 +32,12 @@ QtObject {
     readonly property int spacing: 8
     readonly property int spacingLarge: 16
     readonly property int radius: 4
+    readonly property int dialogRadius: 6
+    readonly property int controlHeight: 28
+    readonly property int controlRadius: 3
 
     readonly property int fontSmall: 11
     readonly property int fontCaption: 12
+    readonly property int fontNormal: 13
+    readonly property int fontTitle: 15
 }

@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Dialogs
 
@@ -16,10 +15,6 @@ ApplicationWindow {
     title: qsTr("LLM OCR")
 
     color: Theme.background
-
-    Material.theme: uiController.dark ? Material.Dark : Material.Light
-    Material.accent: Theme.accent
-    Material.foreground: Theme.textPrimary
 
     property int imageRevision: 0
     property int docRevision: 0
