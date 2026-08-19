@@ -27,7 +27,7 @@ QString rebuildPageText(const OcrPage& page);
  * and strips model control tokens (e.g. a trailing `<|end_of_sentence|>`,
  * including its full-width-pipe variant).
  * Labels are model-reported block types: title, text, image, image_caption,
- * page_number, footer, etc.  Coordinates are integer pixel values (typically
+ * page_number, footer, ref_text (bibliography entries), etc.  Coordinates are integer pixel values (typically
  * 0–1000 range) and are normalized to [0,1].
  *
  * The legacy bare form `label [x1, y1, x2, y2] text` (no wrappers) is still

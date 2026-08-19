@@ -442,6 +442,47 @@ private slots:
         QVERIFY(!rebuilt.contains(QStringLiteral("image://ocr/crop/2")));
     }
 
+    // The model labels bibliography entries "ref_text". They are ordinary
+    // paragraphs (not headings/italics) that carry trailing `\n` escapes like
+    // any other wrapped block. Mirrors the real reference-list stream
+    // (reftext_example.txt): several ref_text blocks then a page_number tail.
+    void parsesReferenceTextBlocks() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>ref_text [115, 101, 885, 135]<|/det|>[31] W. Wang, Z. Gao, L. Gu, et al. Internvl3.5: Advancing open-source multimodal models in versatility, reasoning, and efficiency. arXiv preprint arXiv:2508.18265, 2025.\n)"
+            R"(<|det|>ref_text [115, 144, 885, 194]<|/det|>[32] H. Wei, L. Kong, J. Chen, L. Zhao, Z. Ge, J. Yang, J. Sun, C. Han, and X. Zhang. Vary: Scaling up the vision vocabulary for large vision-language model. In European Conference on Computer Vision, pages 408–424. Springer, 2024.\n)"
+            R"(<|det|>page_number [489, 923, 511, 935]<|/det|>14)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+
+        // The reference entry keeps its "ref_text" label.
+        const BoundingBox& ref = page.boxes.at(0);
+        QCOMPARE(ref.label, QStringLiteral("ref_text"));
+        // The trailing \n escape is decoded, then trimmed away.
+        QCOMPARE(ref.text, QStringLiteral(
+            "[31] W. Wang, Z. Gao, L. Gu, et al. Internvl3.5: Advancing open-source multimodal models in versatility, reasoning, and efficiency. arXiv preprint arXiv:2508.18265, 2025."));
+        // Coordinates are normalized from the raw 0-1000 pixel range.
+        QVERIFY(qFuzzyCompare(ref.rect.y(), 0.101));
+        QVERIFY(qFuzzyCompare(ref.rect.height(), 0.034));
+
+        // The page-number tail is picked up after the reference entries.
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("page_number"));
+        QCOMPARE(page.boxes.at(2).text, QStringLiteral("14"));
+
+        // References render as plain paragraphs — no heading/italic markers.
+        const QString md = page.text;
+        QVERIFY(md.contains(QStringLiteral("Vary: Scaling up the vision vocabulary")));
+        QVERIFY(!md.contains(QStringLiteral("## [31]")));
+        QVERIFY(!md.contains(QStringLiteral("*[31]")));
+        QVERIFY(md.contains(QStringLiteral("*14*")));
+        QVERIFY(!md.contains(QStringLiteral("<|ref")));
+    }
+
 };
 
 QTEST_MAIN(TestDetParser)

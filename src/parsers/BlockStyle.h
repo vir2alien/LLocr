@@ -32,6 +32,7 @@ inline BlockStyleInfo blockStyleForLabel(const QString &label)
         {QStringLiteral("page_number"),    {BlockStyle::Italic,           0}},
         {QStringLiteral("equation"),       {BlockStyle::Equation,          0}},
         {QStringLiteral("table"),          {BlockStyle::Table,            0}},
+        {QStringLiteral("ref_text"),       {BlockStyle::PlainText,         0}},
         // "text", "footer" and others → absent → fall through to PlainText.
     };
     return table.value(label, {BlockStyle::PlainText, 0});
