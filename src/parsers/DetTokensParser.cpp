@@ -128,6 +128,133 @@ int headingLevelFor(const QString &title)
     return std::clamp(groups + 1, 1, 5);
 }
 
+// Escape a single cell value for a GFM pipe table: escape unescaped pipe
+// characters (so a literal | does not break column layout) and collapse newlines
+// to spaces. Math formatting is performed first.
+QString escapeTableCell(QString cell)
+{
+    cell = convertMath(cell);
+    static const QRegularExpression unescapedPipeRe(QStringLiteral(R"((?<!\\)\|)"));
+    cell.replace(unescapedPipeRe, QStringLiteral(R"(\|)"));
+    cell.replace(QLatin1Char('\n'), QLatin1Char(' '));
+    cell = cell.trimmed();
+    return cell;
+}
+
+// Build a GFM pipe table from an HTML <table>...</table> fragment.
+// Handles <tr> rows and <td>/<th> cells, honoring rowspan/colspan by laying
+// the cells out into a dense 2D grid so every row has the same column count.
+// Falls back to the raw (math-converted) text when the content is not a
+// well-formed HTML table.
+QString formatTable(const QString &text)
+{
+    const QString trimmed = text.trimmed();
+    if (!trimmed.contains(QStringLiteral("<table")))
+        return convertMath(trimmed);
+
+    static const QRegularExpression rowRe(
+        QStringLiteral(R"(<tr\b[^>]*>([\s\S]*?)</\s*tr\s*>)"),
+        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression cellRe(
+        QStringLiteral(R"(<(td|th)\b([^>]*)>([\s\S]*?)</\s*\1\s*>)"),
+        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression attrRe(
+        QStringLiteral(R"(\b(rowspan|colspan)\s*=\s*["']?(\d+)["']?)"),
+        QRegularExpression::CaseInsensitiveOption);
+
+    // Lay cells into a grid. A cell with rowspan/colspan occupies a block of
+    // <rowspan> x <colspan> cells; already-occupied grid slots are skipped when
+    // placing the next cell so the columns line up.
+    QVector<QVector<QString>> grid;
+    grid.reserve(16);
+
+    QRegularExpressionMatchIterator rows = rowRe.globalMatch(trimmed);
+    int gridRow = 0;
+    bool anyRows = false;
+
+    while (rows.hasNext()) {
+        const QRegularExpressionMatch row = rows.next();
+        const QString rowBody = row.captured(1);
+        anyRows = true;
+
+        QRegularExpressionMatchIterator cells = cellRe.globalMatch(rowBody);
+        int gridCol = 0;
+        bool rowHasCells = false;
+
+        while (cells.hasNext()) {
+            const QRegularExpressionMatch cell = cells.next();
+            const QString attrs = cell.captured(2);
+            QString content = cell.captured(3);
+            content = stripServiceTokens(content).trimmed();
+
+            int rowspan = 1, colspan = 1;
+            QRegularExpressionMatchIterator attrsIt = attrRe.globalMatch(attrs);
+            while (attrsIt.hasNext()) {
+                const QRegularExpressionMatch am = attrsIt.next();
+                const int v = am.captured(2).toInt();
+                if (am.captured(1) == QLatin1String("rowspan"))
+                    rowspan = v;
+                else
+                    colspan = v;
+            }
+            rowspan = std::max(1, rowspan);
+            colspan = std::max(1, colspan);
+
+            // Skip slots already claimed by a previous rowspan cell.
+            while (gridRow < grid.size() && gridCol < grid.at(gridRow).size()
+                   && !grid.at(gridRow).at(gridCol).isEmpty())
+                ++gridCol;
+
+            const QString escaped = escapeTableCell(content);
+            for (int r = 0; r < rowspan; ++r) {
+                if (gridRow + r >= grid.size())
+                    grid.resize(gridRow + r + 1);
+                if (grid.at(gridRow + r).size() <= gridCol + colspan - 1)
+                    grid[gridRow + r].resize(gridCol + colspan);
+                for (int c = 0; c < colspan; ++c)
+                    grid[gridRow + r][gridCol + c] = escaped;
+            }
+
+            rowHasCells = true;
+            ++gridCol;
+        }
+
+        if (rowHasCells)
+            ++gridRow;
+    }
+
+    if (!anyRows || grid.isEmpty())
+        return convertMath(trimmed);
+
+    // Normalize: every row to the width of the widest row.
+    int cols = 0;
+    for (const auto &row : grid)
+        cols = std::max(cols, static_cast<int>(row.size()));
+
+    QString out;
+    auto writeRow = [&](const QVector<QString> &row) {
+        QString line = QStringLiteral("|");
+        for (int c = 0; c < cols; ++c) {
+            const QString val = (c < row.size()) ? row.at(c) : QString();
+            line += QLatin1Char(' ') + val + QStringLiteral(" |");
+        }
+        out += line + QLatin1Char('\n');
+    };
+
+    writeRow(grid.first());
+
+    // GFM separator row.
+    out += QLatin1Char('|');
+    for (int c = 0; c < cols; ++c)
+        out += QStringLiteral(" --- |");
+    out += QLatin1Char('\n');
+
+    for (int r = 1; r < grid.size(); ++r)
+        writeRow(grid.at(r));
+
+    return out.trimmed();
+}
+
 QString applyStyle(const QString &text, const BlockStyleInfo &info)
 {
     switch (info.style) {
@@ -137,6 +264,8 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info)
         return QLatin1Char('*') + text + QLatin1Char('*');
     case BlockStyle::Equation:
         return formatEquation(text);
+    case BlockStyle::Table:
+        return formatTable(text);
     case BlockStyle::Heading: {
         const int level = info.headingLevel > 0 ? info.headingLevel : headingLevelFor(text);
         return QString(level, QLatin1Char('#')) + QLatin1Char(' ') + text;

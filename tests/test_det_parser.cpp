@@ -282,6 +282,79 @@ private slots:
         QVERIFY(qFuzzyCompare(rect.x(), 0.1));
         QVERIFY(qFuzzyCompare(rect.width(), 0.1));
     }
+    // The model can emit an HTML <table> inside a table token; it must be
+    // rendered as a GFM pipe table. This sample mirrors the real stream in
+    // Table_example.txt (rowspan cells, arrows, math in surrounding text).
+    void parsesTableBlockIntoMarkdown() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>title [115, 190, 317, 208]<|/det|>5.3. Subcategory Study
+)"
+            R"(<|det|>text [113, 389, 885, 456]<|/det|>As shown in Table 2. All metrics are edit distances.
+)"
+            R"(<|det|>table [137, 467, 865, 611]<|/det|><table><tr><td>Model</td><td>Edit ↓</td><td>PPT</td></tr><tr><td rowspan="2">DS-OCR</td><td>Text</td><td>0.052</td></tr><tr><td>R-order</td><td>0.052</td></tr></table>
+)"
+            R"(<|det|>page_number [489, 923, 511, 936]<|/det|>10
+)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 4);
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("table"));
+
+        const QString md = page.text;
+        // Header + separator row + data rows as a pipe table.
+        QVERIFY(md.contains(QStringLiteral("| Model | Edit ↓ | PPT |")));
+        QVERIFY(md.contains(QStringLiteral("| --- | --- | --- |")));
+        // rowspan cell is reproduced on both data rows so columns line up.
+        QVERIFY(md.contains(QStringLiteral("| DS-OCR | Text | 0.052 |")));
+        QVERIFY(md.contains(QStringLiteral("| DS-OCR | R-order | 0.052 |")));
+        // The raw HTML must not leak into the result.
+        QVERIFY(!md.contains(QStringLiteral("<table")));
+        QVERIFY(!md.contains(QStringLiteral("<tr")));
+        QVERIFY(!md.contains(QStringLiteral("<td")));
+        QVERIFY(md.contains(QStringLiteral("## 5.3. Subcategory Study")));
+        QVERIFY(md.contains(QStringLiteral("*10*")));
+    }
+
+    // A table token with colspan keeps the columns aligned in the grid.
+    void parsesTableWithColspan() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td colspan="2">A</td><td>B</td></tr><tr><td>1</td><td>2</td><td>3</td></tr></table>
+)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        // colspan=2 repeats the value across two columns (GFM has no colspan
+        // natively), keeping the grid aligned with the 3-column data row.
+        QVERIFY(md.contains(QStringLiteral("| A | A | B |")));
+        QVERIFY(md.contains(QStringLiteral("| 1 | 2 | 3 |")));
+        QVERIFY(!md.contains(QStringLiteral("<td")));
+    }
+
+    // Table with inline math and escaped pipe characters inside cells.
+    void parsesTableWithMathAndPipes() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td>Formula</td><td>Notes</td></tr><tr><td>\\( a | b \\)</td><td>A | B</td></tr></table>
+)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        // The cell with inline math converts \( a | b \) to $a \| b$ (with pipe escaped for table row)
+        QVERIFY(md.contains(QStringLiteral(R"($a \| b$)")));
+        // The text cell escapes literal pipe
+        QVERIFY(md.contains(QStringLiteral(R"(A \| B)")));
+    }
+
 };
 
 QTEST_MAIN(TestDetParser)
