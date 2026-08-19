@@ -361,7 +361,7 @@
     </message>
     <message>
         <source>Max tokens per page</source>
-        <translation>Макс. токенов на страницу</translation>
+        <translation>Макс. токенов на стр.</translation>
     </message>
     <message>
         <source>Output parser</source>
@@ -370,6 +370,30 @@
     <message>
         <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
         <translation>«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
+    </message>
+    <message>
+        <source>DRY multiplier</source>
+        <translation>множитель DRY</translation>
+    </message>
+    <message>
+        <source>DRY base</source>
+        <translation>DRY база штрафа</translation>
+    </message>
+    <message>
+        <source>DRY allowed length</source>
+        <translation>DRY разрешенная длина</translation>
+    </message>
+    <message>
+        <source>DRY range</source>
+        <translation>DRY диапазон</translation>
+    </message>
+    <message>
+        <source>DRY sequence breakers</source>
+        <translation>DRY разделители</translation>
+    </message>
+    <message>
+        <source>DRY (Don't Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp</source>
+        <translation>DRY (Don't Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
     </message>
 </context>
 </TS>

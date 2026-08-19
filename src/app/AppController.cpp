@@ -452,6 +452,11 @@ OcrRequest AppController::buildRequest(const QImage &image, const QString &promp
     request.modelId = m_settings.modelName();
     request.temperature = m_settings.temperature();
     request.maxTokens = m_settings.maxTokens();
+    request.dryMultiplier = m_settings.dryMultiplier();
+    request.dryBase = m_settings.dryBase();
+    request.dryAllowedLength = m_settings.dryAllowedLength();
+    request.dryPenaltyLastN = m_settings.dryPenaltyLastN();
+    request.drySequenceBreakers = m_settings.drySequenceBreakers();
     return request;
 }
 

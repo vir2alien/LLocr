@@ -85,6 +85,71 @@ void SettingsStore::setMaxTokens(int maxTkns)
     emit maxTokensChanged();
 }
 
+double SettingsStore::dryMultiplier() const
+{
+    return m_settings.value(kDryMultiplier, 0.8).toDouble();
+}
+
+void SettingsStore::setDryMultiplier(double val)
+{
+    if (dryMultiplier() == val)
+        return;
+    m_settings.setValue(kDryMultiplier, val);
+    emit dryMultiplierChanged();
+}
+
+double SettingsStore::dryBase() const
+{
+    return m_settings.value(kDryBase, 1.75).toDouble();
+}
+
+void SettingsStore::setDryBase(double val)
+{
+    if (dryBase() == val)
+        return;
+    m_settings.setValue(kDryBase, val);
+    emit dryBaseChanged();
+}
+
+int SettingsStore::dryAllowedLength() const
+{
+    return m_settings.value(kDryAllowedLength, 35).toInt();
+}
+
+void SettingsStore::setDryAllowedLength(int val)
+{
+    if (dryAllowedLength() == val)
+        return;
+    m_settings.setValue(kDryAllowedLength, val);
+    emit dryAllowedLengthChanged();
+}
+
+int SettingsStore::dryPenaltyLastN() const
+{
+    return m_settings.value(kDryPenaltyLastN, 128).toInt();
+}
+
+void SettingsStore::setDryPenaltyLastN(int val)
+{
+    if (dryPenaltyLastN() == val)
+        return;
+    m_settings.setValue(kDryPenaltyLastN, val);
+    emit dryPenaltyLastNChanged();
+}
+
+QString SettingsStore::drySequenceBreakers() const
+{
+    return m_settings.value(kDrySequenceBreakers, QStringLiteral("none")).toString();
+}
+
+void SettingsStore::setDrySequenceBreakers(const QString &val)
+{
+    if (drySequenceBreakers() == val)
+        return;
+    m_settings.setValue(kDrySequenceBreakers, val);
+    emit drySequenceBreakersChanged();
+}
+
 QString SettingsStore::parserId() const
 {
     return m_settings.value(kParserId, "raw").toString();

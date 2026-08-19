@@ -21,6 +21,11 @@ struct OcrRequest {
     // Optional
     double temperature = 0.0;
     int maxTokens = 16384;
+    double dryMultiplier = 0.8;
+    double dryBase = 1.75;
+    int dryAllowedLength = 35;
+    int dryPenaltyLastN = 128;
+    QString drySequenceBreakers = QStringLiteral("none");
 };
 
 class ILlmProvider {

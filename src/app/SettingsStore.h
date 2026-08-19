@@ -15,6 +15,11 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
     Q_PROPERTY(double temperature READ temperature WRITE setTemperature NOTIFY temperatureChanged)
     Q_PROPERTY(int maxTokens READ maxTokens WRITE setMaxTokens NOTIFY maxTokensChanged)
+    Q_PROPERTY(double dryMultiplier READ dryMultiplier WRITE setDryMultiplier NOTIFY dryMultiplierChanged)
+    Q_PROPERTY(double dryBase READ dryBase WRITE setDryBase NOTIFY dryBaseChanged)
+    Q_PROPERTY(int dryAllowedLength READ dryAllowedLength WRITE setDryAllowedLength NOTIFY dryAllowedLengthChanged)
+    Q_PROPERTY(int dryPenaltyLastN READ dryPenaltyLastN WRITE setDryPenaltyLastN NOTIFY dryPenaltyLastNChanged)
+    Q_PROPERTY(QString drySequenceBreakers READ drySequenceBreakers WRITE setDrySequenceBreakers NOTIFY drySequenceBreakersChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(int themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
@@ -43,6 +48,16 @@ public:
     void setTemperature(double temp);
     int maxTokens() const;
     void setMaxTokens(int maxTkns);
+    double dryMultiplier() const;
+    void setDryMultiplier(double val);
+    double dryBase() const;
+    void setDryBase(double val);
+    int dryAllowedLength() const;
+    void setDryAllowedLength(int val);
+    int dryPenaltyLastN() const;
+    void setDryPenaltyLastN(int val);
+    QString drySequenceBreakers() const;
+    void setDrySequenceBreakers(const QString &val);
 
     // Parser
     QString parserId() const;
@@ -71,6 +86,11 @@ signals:
     void modelNameChanged();
     void temperatureChanged();
     void maxTokensChanged();
+    void dryMultiplierChanged();
+    void dryBaseChanged();
+    void dryAllowedLengthChanged();
+    void dryPenaltyLastNChanged();
+    void drySequenceBreakersChanged();
     void parserIdChanged();
     void themeModeChanged();
     void languageChanged();
@@ -92,6 +112,11 @@ private:
     static constexpr const char *kModelName = "model/name";
     static constexpr const char *kTemperature = "model/temperature";
     static constexpr const char *kMaxTokens = "model/maxTokens";
+    static constexpr const char *kDryMultiplier = "model/dryMultiplier";
+    static constexpr const char *kDryBase = "model/dryBase";
+    static constexpr const char *kDryAllowedLength = "model/dryAllowedLength";
+    static constexpr const char *kDryPenaltyLastN = "model/dryPenaltyLastN";
+    static constexpr const char *kDrySequenceBreakers = "model/drySequenceBreakers";
 
     // Output / parser
     static constexpr const char *kParserId = "output/parser";

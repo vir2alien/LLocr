@@ -31,6 +31,11 @@ Dialog {
         modelNameField.text  = Settings.modelName
         temperatureField.text = Settings.temperature.toString()
         maxTokensField.text  = Settings.maxTokens.toString()
+        dryMultiplierField.text = Settings.dryMultiplier.toString()
+        dryBaseField.text = Settings.dryBase.toString()
+        dryAllowedLenghField.text = Settings.dryAllowedLength.toString()
+        dryRange.text = Settings.dryPenaltyLastN.toString()
+        drySequenceBreakersField.text = Settings.drySequenceBreakers
 
         // Output / parser
         var idx = parserBox.model.indexOf(Settings.parserId)
@@ -47,6 +52,11 @@ Dialog {
         Settings.modelName = modelNameField.text;
         Settings.temperature = parseFloat(temperatureField.text) || 0.0;
         Settings.maxTokens = parseInt(maxTokensField.text) || 16384;
+        Settings.dryMultiplier = parseFloat(dryMultiplierField.text) || 0.8;
+        Settings.dryBase = parseFloat(dryBaseField.text) || 1.75;
+        Settings.dryAllowedLength = parseInt(dryAllowedLenghField.text) || 35;
+        Settings.dryPenaltyLastN = parseInt(dryRange.text) || 128;
+        Settings.drySequenceBreakers = drySequenceBreakersField.text;
         Settings.parserId = parserBox.currentText;
         Settings.forceSave();
         I18n.setLanguage(Settings.language);
@@ -54,8 +64,6 @@ Dialog {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
-
         TabBar {
             id: tabBar
             Layout.fillWidth: true
@@ -71,14 +79,21 @@ Dialog {
             currentIndex: tabBar.currentIndex
 
             ColumnLayout {// Tab 0 - UI
-                Label { text: qsTr("Language") }
+                spacing: 0
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("Language")
+                }
                 ComboBox {
                     id: languageBox
                     Layout.fillWidth: true
                     model: [qsTr("System"), "English", "Русский"]
                 }
 
-                Label { text: qsTr("Theme") }
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("Theme")
+                }
                 ComboBox {
                     id: themeBox
                     Layout.fillWidth: true
@@ -87,9 +102,11 @@ Dialog {
             }// ColumnLayout Tab 0 - UI
 
             ColumnLayout {// Tab 1 — Connection
-                spacing: 10
-
-                Label { text: qsTr("Endpoint base URL") }
+                spacing: 0
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("Endpoint base URL")
+                }
                 TextField {
                     id: baseUrlField
                     Layout.fillWidth: true
@@ -97,7 +114,10 @@ Dialog {
                     selectByMouse: true
                 }
 
-                Label { text: qsTr("API key (optional)") }
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("API key (optional)")
+                }
                 RowLayout {
                     Layout.fillWidth: true
                     TextField {
@@ -113,7 +133,10 @@ Dialog {
                     }
                 }
 
-                Label { text: qsTr("Request timeout (ms)") }
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("Request timeout (ms)")
+                }
                 TextField {
                     id: timeoutField
                     Layout.fillWidth: true
@@ -134,51 +157,122 @@ Dialog {
                 Item { Layout.fillHeight: true }  // push content to the top
             }//ColumnLayout Tab 1 — Connection
 
-            ColumnLayout {// Tab 2 — Model
-                spacing: 10
+            GridLayout {// Tab 2 — Model
+                columns: 2
+                rowSpacing: 0
+                columnSpacing: 8
 
-                Label { text: qsTr("Model name") }
+                Label {
+                    Layout.columnSpan: 2
+                    text: qsTr("Model name")
+                }
                 TextField {
                     id: modelNameField
+                    Layout.columnSpan: 2
                     Layout.fillWidth: true
                     selectByMouse: true
                     placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
                 }
 
-                RowLayout {
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("Temperature")
+                }
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("Max tokens per page")
+                }
+                TextField {
+                    id: temperatureField
                     Layout.fillWidth: true
-                    spacing: 16
+                    selectByMouse: true
+                    validator: DoubleValidator { bottom: 0.0; top: 2.0; decimals: 2 }
+                }
+                TextField {
+                    id: maxTokensField
+                    Layout.fillWidth: true
+                    selectByMouse: true
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    validator: IntValidator { bottom: 1; top: 1000000 }
+                }
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Label { text: qsTr("Temperature") }
-                        TextField {
-                            id: temperatureField
-                            Layout.fillWidth: true
-                            selectByMouse: true
-                            validator: DoubleValidator { bottom: 0.0; top: 2.0; decimals: 2 }
-                        }
-                    }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Label { text: qsTr("Max tokens per page") }
-                        TextField {
-                            id: maxTokensField
-                            Layout.fillWidth: true
-                            selectByMouse: true
-                            inputMethodHints: Qt.ImhDigitsOnly
-                            validator: IntValidator { bottom: 1; top: 1000000 }
-                        }
-                    }
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("DRY multiplier")
+                }
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("DRY base")
+                }
+                TextField {
+                    id: dryMultiplierField
+                    Layout.fillWidth: true
+                    selectByMouse: true
+                    validator: DoubleValidator { bottom: 0.0; top: 2.0; decimals: 2 }
+                }
+                TextField {
+                    id: dryBaseField
+                    Layout.fillWidth: true
+                    selectByMouse: true
+                    validator: DoubleValidator { bottom: 0.0; top: 3.0; decimals: 2 }
+                }
+
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("DRY allowed length")
+                }
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("DRY range")
+                }
+                TextField {
+                    id: dryAllowedLenghField
+                    Layout.fillWidth: true
+                    selectByMouse: true
+                    validator: IntValidator { bottom: 0;}
+                }
+                TextField {
+                    id: dryRange
+                    Layout.fillWidth: true
+                    selectByMouse: true
+                    validator: IntValidator { bottom: 0;}
+                }
+
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("DRY sequence breakers")
+                }
+                Item {
+                    Layout.topMargin: 8
+                    Layout.fillWidth: true
+                }
+                TextField {
+                    id: drySequenceBreakersField
+                    Layout.fillWidth: true
+                    selectByMouse: true
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    Layout.columnSpan: parent.columns
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Theme.fontSmall
+                    color: Theme.textMuted
+                    text: qsTr("DRY (Don't Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp")
                 }
 
                 Item { Layout.fillHeight: true }
             }//ColumnLayout Tab 2 — Model
 
             ColumnLayout {// Tab 3 — Output / parser
-                spacing: 10
-
-                Label { text: qsTr("Output parser") }
+                spacing: 0
+                Label {
+                    Layout.topMargin: 8
+                    text: qsTr("Output parser")
+                }
                 ComboBox {
                     id: parserBox
                     Layout.fillWidth: true

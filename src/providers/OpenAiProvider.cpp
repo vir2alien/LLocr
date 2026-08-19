@@ -46,48 +46,35 @@ QString OpenAiProvider::encodeImageDataUrl(const QImage& image, const QString& f
 QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
                                             const QString& imageDataUrl)
 {
-    QJsonObject textPart{
-        {QStringLiteral("type"), QStringLiteral("text")},
-        {QStringLiteral("text"), request.prompt},
-    };
-    QJsonObject imageUrl{
-        {QStringLiteral("url"), imageDataUrl},
-    };
-    QJsonObject imagePart{
-        {QStringLiteral("type"), QStringLiteral("image_url")},
-        {QStringLiteral("image_url"), imageUrl},
-    };
+    QJsonObject textPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.prompt}};
+    QJsonObject imageUrl{{QStringLiteral("url"), imageDataUrl}};
+    QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
 
     QJsonArray content{imagePart, textPart};
 
-    QJsonObject message{
-        { QStringLiteral("role"), QStringLiteral("user") },
-        { QStringLiteral("content"), content },
-    };
+    QJsonObject message{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
 
-    QJsonObject root{
-        {QStringLiteral("model"), request.modelId},
-        {QStringLiteral("messages"), QJsonArray{message}},
-        {QStringLiteral("temperature"), 0},
+    QJsonObject root{{QStringLiteral("model"), request.modelId},
+                     {QStringLiteral("messages"), QJsonArray{message}},
 
-        {QStringLiteral("top_k"), 1},
-        {QStringLiteral("top_p"), 1.0},
-        {QStringLiteral("min_p"), 0.0},
+                     {QStringLiteral("dry_multiplier"), request.dryMultiplier},
+                     {QStringLiteral("dry_base"), request.dryBase},
+                     {QStringLiteral("dry_allowed_length"), request.dryAllowedLength},
+                     {QStringLiteral("dry_penalty_last_n"), request.dryPenaltyLastN},
+                     {QStringLiteral("dry_sequence_breakers"), QJsonArray{request.drySequenceBreakers}},
 
-        {QStringLiteral("dry_multiplier"), 0.8},
-        {QStringLiteral("dry_base"), 1.75},
-        {QStringLiteral("dry_allowed_length"), 35},
-        {QStringLiteral("dry_penalty_last_n"), 128},
-        {QStringLiteral("dry_sequence_breakers"), QJsonArray{QStringLiteral("none")}},
+                     {QStringLiteral("top_k"), 1},
+                     {QStringLiteral("top_p"), 1.0},
+                     {QStringLiteral("min_p"), 0.0},
 
-        {QStringLiteral("max_tokens"), request.maxTokens},  // request.maxTokens
-        {QStringLiteral("skip_special_tokens"), false},
-        {QStringLiteral("stream"), false},
+                     {QStringLiteral("temperature"), 0},
 
-        {QStringLiteral("crop_mode"), true},
-        {QStringLiteral("skip_special_tokens"), false},
-        {QStringLiteral("stream"), false},
-    };
+                     {QStringLiteral("max_tokens"), request.maxTokens},
+                     {QStringLiteral("skip_special_tokens"), false},
+                     {QStringLiteral("stream"), false},
+
+                     {QStringLiteral("crop_mode"), true},
+                     {QStringLiteral("stream"), false}};
 
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
