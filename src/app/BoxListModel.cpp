@@ -61,4 +61,33 @@ void BoxListModel::setFromResult(const OcrResult& result)
     }
 }
 
+void BoxListModel::updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height)
+{
+    if (index < 0 || index >= m_boxes.size())
+        return;
+    BoundingBox& box = m_boxes[index];
+    const QRectF newRect(x, y, width, height);
+    if (box.rect == newRect)
+        return;
+    box.rect = newRect;
+    const QModelIndex mi = createIndex(index, 0);
+    emit dataChanged(mi, mi, {XRole, YRole, WidthRole, HeightRole});
+}
+
+void BoxListModel::removeBox(int index)
+{
+    if (index < 0 || index >= m_boxes.size())
+        return;
+    beginRemoveRows({}, index, index);
+    m_boxes.removeAt(index);
+    endRemoveRows();
+    emit boxRemoved(index);
+}
+
+bool BoxListModel::isImageBox(int index) const
+{
+    return index >= 0 && index < m_boxes.size()
+        && m_boxes.at(index).label == QLatin1String("image");
+}
+
 } // namespace llocr

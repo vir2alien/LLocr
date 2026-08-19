@@ -81,6 +81,9 @@ public:
     QImage pageImage(int index) const;
     OcrResult currentResult() const;
 
+    /// Crops the image-block of a page (used by OcrImageProvider and export).
+    QImage croppedImage(int pageIndex, int boxIndex) const;
+
 signals:
     void busyChanged();
     void resultChanged();
@@ -118,6 +121,11 @@ public slots:
 
     Q_INVOKABLE void setCurrentPageText(const QString& text);
     Q_INVOKABLE void revertCurrentPageEdits();
+
+    // --- Image-block editing (called from the preview overlay) ---
+    Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y,
+                                      qreal width, qreal height);
+    Q_INVOKABLE void onBoxRemoved(int boxIndex);
 
 private slots:
     void onRecognitionFinished();

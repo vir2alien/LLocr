@@ -1,5 +1,8 @@
 #include <QtTest>
 
+#include <QDir>
+#include <QImage>
+
 #include "app/Exporter.h"
 
 using namespace llocr;
@@ -27,6 +30,12 @@ private slots:
     void exportMarkdownFileRoundTrips();
     void unknownSuffixFallsBackToMarkdown();
     void emptyPagesFail();
+
+    void resolveImageReferencesReplacesUrlsAndSavesFiles();
+    void resolveImageReferencesKeepsStaleRefs();
+    void exportMarkdownEmbedsCroppedImages();
+    void exportHtmlRendersImages();
+    void plainTextStripsImageReferences();
 };
 
 void ExporterTest::suffixMapping_data()
@@ -135,5 +144,101 @@ void ExporterTest::emptyPagesFail()
     QVERIFY(!r.success);
 }
 
+void ExporterTest::resolveImageReferencesReplacesUrlsAndSavesFiles()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const auto crop = [](int boxIndex) {
+        Q_UNUSED(boxIndex);
+        QImage img(40, 20, QImage::Format_RGB32);
+        img.fill(Qt::blue);
+        return img;
+    };
+    const QString md = QStringLiteral(
+        "Intro\n\n![Figure 1](image://ocr/crop/3)\n\nOutro");
+
+    const Exporter::ResolvedImages r =
+        Exporter::resolveImageReferences(md, 0, crop, dir.path());
+
+    QVERIFY(r.processedMarkdown.contains("![Figure 1](page_0_img_3.png)"));
+    QVERIFY(!r.processedMarkdown.contains("image://ocr"));
+    QVERIFY(r.processedMarkdown.contains("Intro"));
+    QVERIFY(r.processedMarkdown.contains("Outro"));
+    QCOMPARE(r.savedFiles.size(), 1);
+    QVERIFY(QFile::exists(dir.filePath("page_0_img_3.png")));
+}
+
+void ExporterTest::resolveImageReferencesKeepsStaleRefs()
+{
+    QTemporaryDir dir;
+    // The crop provider always returns a null image (e.g. box was removed).
+    const auto crop = [](int) { return QImage(); };
+    const Exporter::ResolvedImages r =
+        Exporter::resolveImageReferences("![X](image://ocr/crop/5)", 0, crop, dir.path());
+
+    QVERIFY(r.processedMarkdown.contains("![X](image://ocr/crop/5)"));
+    QVERIFY(r.savedFiles.isEmpty());
+}
+
+void ExporterTest::exportMarkdownEmbedsCroppedImages()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath("result.md");
+
+    QImage img(40, 20, QImage::Format_RGB32);
+    img.fill(Qt::red);
+    const auto crop = [&img](int, int) { return img; };
+
+    Exporter exporter;
+    const Exporter::Result r =
+        exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
+    QVERIFY2(r.success, qPrintable(r.message));
+
+    // Crops are saved into <output>_media/ next to the markdown file.
+    const QString mediaFile = dir.filePath("result_media/page_0_img_0.png");
+    QVERIFY(QFile::exists(mediaFile));
+
+    QFile f(path);
+    QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString content = QString::fromUtf8(f.readAll());
+    QVERIFY(content.contains("![Image](result_media/page_0_img_0.png)"));
+    QVERIFY(!content.contains("image://ocr"));
+}
+
+void ExporterTest::exportHtmlRendersImages()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath("result.html");
+
+    QImage img(40, 20, QImage::Format_RGB32);
+    img.fill(Qt::green);
+    const auto crop = [&img](int, int) { return img; };
+
+    Exporter exporter;
+    const Exporter::Result r =
+        exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
+    QVERIFY2(r.success, qPrintable(r.message));
+
+    QFile f(path);
+    QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString content = QString::fromUtf8(f.readAll());
+    // The markdown image becomes a real <img> pointing at the saved crop.
+    QVERIFY(content.contains("<img"));
+    QVERIFY(content.contains("result_media/page_0_img_0.png"));
+    QVERIFY(!content.contains("image://ocr"));
+}
+
+void ExporterTest::plainTextStripsImageReferences()
+{
+    const QString txt = Exporter::buildPlainText(
+        { { 1, "![Figure](image://ocr/crop/0)\nBody text" } });
+    QVERIFY(!txt.contains("image://ocr"));
+    QVERIFY(!txt.contains("![Figure]"));
+    QVERIFY(txt.contains("Body text"));
+}
+
 QTEST_MAIN(ExporterTest)
-#include "ExporterTest.moc"
+#include "test_exporter.moc"

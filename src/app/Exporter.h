@@ -1,9 +1,14 @@
 #pragma once
 
+#include <functional>
+
+#include <QImage>
 #include <QString>
 #include <QStringList>
 
 #include "core/OcrResult.h"
+
+class QRegularExpression;
 
 namespace llocr {
 
@@ -17,10 +22,24 @@ namespace llocr {
  *   - docx : via Pandoc (Markdown on stdin -> .docx);
  *   - pdf  : via Pandoc, falling back to a built-in Qt writer when Pandoc
  *            (or a LaTeX engine) is unavailable.
+ *
+ * Markdown image blocks print as `![alt](image://ocr/crop/<boxIndex>)`. Those
+ * references have no meaning outside the app, so every export path resolves
+ * them to real image files (or embedded document resources) before writing.
  */
 class Exporter {
 public:
     enum class Format { Markdown, PlainText, Html, Docx, Pdf, Unknown };
+
+    /// Crops the image-block at `boxIndex` of the given page. `pageNumber` is
+    /// the 1-based page number carried by Exporter::Page.
+    using CropProvider = std::function<QImage(int pageNumber, int boxIndex)>;
+
+    /// A page's markdown with `image://ocr/crop` refs replaced by local files.
+    struct ResolvedImages {
+        QString processedMarkdown;   ///< markdown referencing local files.
+        QStringList savedFiles;      ///< file names written under mediaDir.
+    };
 
     struct Result {
         bool success = false;
@@ -48,9 +67,29 @@ public:
     static QString buildPlainText(const QList<Page>& pages);
     static QString buildHtml(const QList<Page>& pages);
 
-    Result exportToFile(const QList<Page>& pages, const QString& filePath) const;
+    Result exportToFile(const QList<Page>& pages, const QString& filePath,
+                        const CropProvider& crop = {}) const;
+
+    /// Replaces every `![alt](image://ocr/crop/<box>)` in one page's markdown
+    /// with a local file saved under mediaDir (page_<pageIndex>_img_<box>.png).
+    /// The replacement reference is `referencePrefix + fileName` (empty prefix
+    /// means the bare file name). `crop` extracts the source pixels for a box.
+    /// Failed crops leave the original reference untouched.
+    static ResolvedImages resolveImageReferences(
+        const QString& markdown, int pageIndex,
+        const std::function<QImage(int boxIndex)>& crop,
+        const QString& mediaDir,
+        const QString& referencePrefix = {});
 
 private:
+    static QRegularExpression imageRefRegex();
+
+    QString buildMarkdownResolved(const QList<Page>& pages, const CropProvider& crop,
+                                  const QString& mediaDir, const QString& referencePrefix,
+                                  QStringList* savedFiles) const;
+    Result exportViaPandoc(const QList<Page>& pages, const QString& filePath,
+                           const CropProvider& crop, const QStringList& extraArgs) const;
+
     static Result writeTextFile(const QString& path, const QString& content);
 
     static Result runPandoc(const QString& markdown,
@@ -58,7 +97,8 @@ private:
                             const QStringList& extraArgs);
 
     // pdf when Pandoc is not available
-    static Result writePdfFallback(const QList<Page>& pages, const QString& path);
+    static Result writePdfFallback(const QList<Page>& pages, const QString& path,
+                                   const CropProvider& crop);
 };
 
 } // namespace llocr

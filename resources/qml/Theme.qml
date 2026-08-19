@@ -24,8 +24,14 @@ QtObject {
     readonly property color accent: dark ? "#b0b0b0" : "#4a4a4a"
     readonly property color selected: dark ? "#333333" : "#e2e2e2"
 
-    readonly property color overlayOuter: "#1a1a1a"
-    readonly property color overlayInner: "#f5f5f5"
+    // --- Overlay (bounding boxes on the image preview) ---
+    readonly property color overlayOuter: overlayTextOuter
+    readonly property color overlayInner: overlayTextInner
+    readonly property color overlayTextOuter: "#1a1a1a"
+    readonly property color overlayTextInner: "#f5f5f5"
+    readonly property color overlayImageOuter: "#2196F3"
+    readonly property color overlayImageInner: "#FFFFFF"
+    readonly property color overlayImageFill: "#102194F3"
 
     // --- Metrics ---
     readonly property int spacingSmall: 4

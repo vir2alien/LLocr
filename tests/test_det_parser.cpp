@@ -196,7 +196,7 @@ private slots:
         QCOMPARE(page.boxes.at(5).label, QStringLiteral("page_number"));
 
         const QString md = page.text;
-        QVERIFY(md.contains("![Image]()"));                    // image placeholder
+        QVERIFY(md.contains("![Image](image://ocr/crop/0)"));  // image placeholder
         QVERIFY(md.contains("*Figure 2 | A caption*"));        // figure caption
         QVERIFY(md.contains("## 3. Methodology"));             // title -> ##
         QVERIFY(md.contains("### 3.1. Long-horizon Parsing")); // subsection -> ###
@@ -353,6 +353,59 @@ private slots:
         QVERIFY(md.contains(QStringLiteral(R"($a \| b$)")));
         // The text cell escapes literal pipe
         QVERIFY(md.contains(QStringLiteral(R"(A \| B)")));
+    }
+
+    // A wrapped image token with alt text keeps that text as the Markdown alt.
+    void imageBlockKeepsAltText() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>image [100, 200, 300, 400]<|/det|>Figure 1 - Overview\n)"
+            R"(<|det|>text [100, 500, 800, 600]<|/det|>Body text\n)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("![Figure 1 - Overview](image://ocr/crop/0)")));
+    }
+
+    // An image block with no alt text falls back to the default "Image" label.
+    void imageBlockWithoutTextGetsDefaultAlt() {
+        const QString raw = QStringLiteral("<|det|>image [100, 200, 300, 400]<|/det|>");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
+    }
+
+    // After a box is removed, rebuildPageText must re-index the image URLs so
+    // they keep pointing at the right boxes.
+    void rebuildTextShiftsImageIndices() {
+        const QString raw = QStringLiteral(
+            "image [0, 0, 100, 100]\n"
+            "text [0, 200, 100, 300]Body\n"
+            "image [0, 400, 100, 500]\n");
+
+        DetTokensParser parser;
+        OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+        OcrPage page = r.pages.first();
+
+        QVERIFY(page.text.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
+        QVERIFY(page.text.contains(QStringLiteral("![Image](image://ocr/crop/2)")));
+
+        // Drop the first image and regenerate the text from the remaining boxes.
+        page.boxes.removeAt(0);
+        const QString rebuilt = rebuildPageText(page);
+
+        QVERIFY(rebuilt.contains(QStringLiteral("Body")));
+        // The remaining image now sits at index 1.
+        QVERIFY(rebuilt.contains(QStringLiteral("![Image](image://ocr/crop/1)")));
+        QVERIFY(!rebuilt.contains(QStringLiteral("image://ocr/crop/0")));
+        QVERIFY(!rebuilt.contains(QStringLiteral("image://ocr/crop/2")));
     }
 
 };

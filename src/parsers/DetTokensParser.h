@@ -5,6 +5,15 @@
 namespace llocr {
 
 /**
+ * @brief Rebuilds the Markdown text of a page from its current boxes
+ *
+ * Used after a box is removed: the image URLs embed the box index, so the
+ * whole text must be regenerated to keep `image://ocr/crop/<N>` addresses
+ * pointing at the right boxes.
+ */
+QString rebuildPageText(const OcrPage& page);
+
+/**
  * @brief Parser for the model's `<|det|>` block stream
  *
  * The current model emits one token per block, wrapped in det tags:

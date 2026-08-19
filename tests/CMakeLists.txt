@@ -42,3 +42,18 @@ target_sources(test_settings_store PRIVATE
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
 add_test(NAME test_settings_store COMMAND test_settings_store)
+
+qt_add_executable(test_exporter test_exporter.cpp)
+
+target_include_directories(test_exporter PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_exporter PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+)
+
+target_sources(test_exporter PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app/Exporter.cpp
+)
+add_test(NAME test_exporter COMMAND test_exporter)

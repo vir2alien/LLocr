@@ -17,6 +17,7 @@ enum class BlockStyle {
 struct BlockStyleInfo {
     BlockStyle style = BlockStyle::PlainText;
     int headingLevel = 0;
+    int imageIndex = -1;  ///< Index of the block in OcrPage::boxes (for ImagePlaceholder).
 };
 
 inline BlockStyleInfo blockStyleForLabel(const QString &label)

@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QVariantMap>
 
+#include "parsers/DetTokensParser.h"
 #include "parsers/ParserFactory.h"
 
 namespace llocr {
@@ -15,6 +16,7 @@ AppController::AppController(SettingsStore &settings, QObject *parent)
     m_provider = std::make_unique<OpenAiProvider>();
 
     connect(&m_watcher, &QFutureWatcher<OcrResult>::finished, this, &AppController::onRecognitionFinished);
+    connect(&m_boxModel, &BoxListModel::boxRemoved, this, &AppController::onBoxRemoved);
 }
 
 QStringList AppController::parserNames() const
@@ -79,6 +81,31 @@ QImage AppController::pageImage(int index) const
     if (!m_document.isValidIndex(index))
         return {};
     return m_document.page(index).image;
+}
+
+QImage AppController::croppedImage(int pageIndex, int boxIndex) const
+{
+    if (!m_document.isValidIndex(pageIndex))
+        return {};
+    const DocumentPage& page = m_document.page(pageIndex);
+    if (!page.recognized || page.result.pages.isEmpty())
+        return {};
+    const QList<BoundingBox>& boxes = page.result.pages[0].boxes;
+    if (boxIndex < 0 || boxIndex >= boxes.size())
+        return {};
+
+    const QRectF norm = boxes.at(boxIndex).rect;
+    if (norm.width() <= 0.0 || norm.height() <= 0.0)
+        return {};
+
+    QRect px(qRound(norm.x() * page.image.width()),
+             qRound(norm.y() * page.image.height()),
+             qRound(norm.width() * page.image.width()),
+             qRound(norm.height() * page.image.height()));
+    px = px.intersected(page.image.rect());
+    if (px.width() < 1 || px.height() < 1)
+        return {};
+    return page.image.copy(px);
 }
 
 OcrResult AppController::currentResult() const
@@ -584,6 +611,57 @@ void AppController::revertCurrentPageEdits()
     }
 }
 
+void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y,
+                                     qreal width, qreal height)
+{
+    if (!m_document.isValidIndex(m_currentPage))
+        return;
+    DocumentPage& page = m_document.page(m_currentPage);
+    if (!page.recognized || page.result.pages.isEmpty())
+        return;
+    QList<BoundingBox>& boxes = page.result.pages[0].boxes;
+    if (boxIndex < 0 || boxIndex >= boxes.size())
+        return;
+
+    // Update the source-of-truth coordinates. page.text is NOT touched: the
+    // image URL still points at the same box index and OcrImageProvider reads
+    // the rect lazily, so the crop already reflects the new bounds.
+    boxes[boxIndex].rect = QRectF(x, y, width, height);
+
+    // Keep the UI-facing overlay model in sync so the box follows the cursor
+    // live during the drag.
+    m_boxModel.updateBoxRect(boxIndex, x, y, width, height);
+
+    emit boxesChanged();
+    emit imageChanged();
+}
+
+void AppController::onBoxRemoved(int boxIndex)
+{
+    if (!m_document.isValidIndex(m_currentPage))
+        return;
+    DocumentPage& page = m_document.page(m_currentPage);
+    if (!page.recognized || page.result.pages.isEmpty())
+        return;
+    QList<BoundingBox>& boxes = page.result.pages[0].boxes;
+    if (boxIndex < 0 || boxIndex >= boxes.size())
+        return;
+
+    boxes.removeAt(boxIndex);
+
+    // Regenerate the page text so the box indices embedded in the image URLs
+    // shift correctly. The result replaces any manual edit, while the original
+    // recognition output (page.result.text) is left untouched so Revert
+    // restores the text as it was before the removal.
+    m_edits.insert(m_currentPage, rebuildPageText(page.result.pages[0]));
+    m_pageModel.setEdited(m_currentPage, true);
+
+    emit boxesChanged();
+    emit resultChanged();
+    emit editStateChanged();
+}
+
+
 QList<Exporter::Page> AppController::collectPages(int scope, int fromPage, int toPage) const
 {
     int lo = 0;
@@ -638,7 +716,12 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
         return false;
     }
 
-    const Exporter::Result result = m_exporter.exportToFile(pages, path);
+    // Crops an image-block on demand during export. pageNumber is the 1-based
+    // page number carried by Exporter::Page (== document index + 1).
+    const auto crop = [this](int pageNumber, int boxIndex) {
+        return croppedImage(pageNumber - 1, boxIndex);
+    };
+    const Exporter::Result result = m_exporter.exportToFile(pages, path, crop);
     setStatus(result.success ? tr("%1 (%2 page(s)).").arg(result.message).arg(pages.size())
                              : result.message);
     return result.success;

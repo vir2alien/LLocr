@@ -258,8 +258,10 @@ QString formatTable(const QString &text)
 QString applyStyle(const QString &text, const BlockStyleInfo &info)
 {
     switch (info.style) {
-    case BlockStyle::ImagePlaceholder:
-        return QStringLiteral("![Image]()");
+    case BlockStyle::ImagePlaceholder: {
+        const QString alt = text.trimmed().isEmpty() ? QStringLiteral("Image") : text.trimmed();
+        return QStringLiteral("![%1](image://ocr/crop/%2)").arg(alt).arg(info.imageIndex);
+    }
     case BlockStyle::Italic:
         return QLatin1Char('*') + text + QLatin1Char('*');
     case BlockStyle::Equation:
@@ -277,6 +279,21 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info)
 }
 
 } // namespace
+
+QString rebuildPageText(const OcrPage& page)
+{
+    QStringList blocks;
+    for (int i = 0; i < page.boxes.size(); ++i) {
+        const BoundingBox& box = page.boxes.at(i);
+        BlockStyleInfo style = blockStyleForLabel(box.label);
+        if (style.style == BlockStyle::ImagePlaceholder)
+            style.imageIndex = i;
+        if (box.text.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
+            continue;
+        blocks << applyStyle(box.text, style);
+    }
+    return blocks.join(QStringLiteral("\n\n"));
+}
 
 OcrResult DetTokensParser::parse(const QString &rawText) const
 {
@@ -366,11 +383,16 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         box.text  = boxText;
         box.rect  = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
 
+        // Actual index of this box inside page.boxes (a preamble box, if
+        // present, shifts the indices by one). The image URL must embed this
+        // index so it stays valid after rebuildPageText() regenerates the text.
+        const int boxIndex = page.boxes.size();
         page.boxes.append(box);
 
         BlockStyleInfo style = blockStyleForLabel(t.label);
         if (style.style == BlockStyle::ImagePlaceholder) {
-            blocks << applyStyle({}, style);
+            style.imageIndex = boxIndex;
+            blocks << applyStyle(boxText, style);
             continue;
         }
         if (boxText.isEmpty())

@@ -30,6 +30,15 @@ public:
 
     void setFromResult(const OcrResult& result);
 
+    // --- Mutating helpers (used from QML for image-block editing) ---
+    Q_INVOKABLE void updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height);
+    Q_INVOKABLE void removeBox(int index);
+    Q_INVOKABLE bool isImageBox(int index) const;
+
+signals:
+    /// Emitted after a box has been removed (index refers to the old position).
+    void boxRemoved(int index);
+
 private:
     QList<BoundingBox> m_boxes;
 };
