@@ -67,15 +67,12 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
                      {QStringLiteral("top_p"), 1.0},
                      {QStringLiteral("min_p"), 0.0},
 
-                     {QStringLiteral("temperature"), 0},
+                     {QStringLiteral("temperature"), request.temperature},
 
                      {QStringLiteral("max_tokens"), request.maxTokens},
                      {QStringLiteral("skip_special_tokens"), false},
-                     {QStringLiteral("stream"), false},
-
                      {QStringLiteral("crop_mode"), true},
                      {QStringLiteral("stream"), false}};
-
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
