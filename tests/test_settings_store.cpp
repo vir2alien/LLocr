@@ -36,7 +36,6 @@ private slots:
         QCOMPARE(store.dryBase(), 1.75);
         QCOMPARE(store.dryAllowedLength(), 35);
         QCOMPARE(store.dryPenaltyLastN(), 128);
-        QCOMPARE(store.drySequenceBreakers(), QStringLiteral("none"));
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
@@ -56,7 +55,6 @@ private slots:
         store.setDryBase(1.5);
         store.setDryAllowedLength(20);
         store.setDryPenaltyLastN(64);
-        store.setDrySequenceBreakers(QStringLiteral("custom_breaker"));
         store.setParserId(QStringLiteral("raw"));
         store.setThemeMode(1);
         store.setLanguage(QStringLiteral("ru"));
@@ -71,7 +69,6 @@ private slots:
         QCOMPARE(store.dryBase(), 1.5);
         QCOMPARE(store.dryAllowedLength(), 20);
         QCOMPARE(store.dryPenaltyLastN(), 64);
-        QCOMPARE(store.drySequenceBreakers(), QStringLiteral("custom_breaker"));
         QCOMPARE(store.parserId(), QStringLiteral("raw"));
         QCOMPARE(store.themeMode(), 1);
         QCOMPARE(store.language(), QStringLiteral("ru"));
@@ -89,7 +86,6 @@ private slots:
         QCOMPARE(store.dryBase(), 1.75);
         QCOMPARE(store.dryAllowedLength(), 35);
         QCOMPARE(store.dryPenaltyLastN(), 128);
-        QCOMPARE(store.drySequenceBreakers(), QStringLiteral("none"));
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));

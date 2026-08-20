@@ -23,7 +23,6 @@ void SettingsStore::resetToDefaults()
     setDryBase(kDefaultDryBase);
     setDryAllowedLength(kDefaultDryAllowedLength);
     setDryPenaltyLastN(kDefaultDryPenaltyLastN);
-    setDrySequenceBreakers(QString::fromUtf8(kDefaultDrySequenceBreakers));
     setParserId(QString::fromUtf8(kDefaultParserId));
 }
 
@@ -155,19 +154,6 @@ void SettingsStore::setDryPenaltyLastN(int val)
         return;
     m_settings.setValue(kDryPenaltyLastN, val);
     emit dryPenaltyLastNChanged();
-}
-
-QString SettingsStore::drySequenceBreakers() const
-{
-    return m_settings.value(kDrySequenceBreakers, QString::fromUtf8(kDefaultDrySequenceBreakers)).toString();
-}
-
-void SettingsStore::setDrySequenceBreakers(const QString &val)
-{
-    if (drySequenceBreakers() == val)
-        return;
-    m_settings.setValue(kDrySequenceBreakers, val);
-    emit drySequenceBreakersChanged();
 }
 
 QString SettingsStore::parserId() const

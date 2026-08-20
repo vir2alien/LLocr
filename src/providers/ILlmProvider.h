@@ -25,7 +25,6 @@ struct OcrRequest {
     double dryBase = 1.75;
     int dryAllowedLength = 35;
     int dryPenaltyLastN = 128;
-    QString drySequenceBreakers = QStringLiteral("none");
 };
 
 class ILlmProvider {

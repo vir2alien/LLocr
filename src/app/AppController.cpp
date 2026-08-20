@@ -485,7 +485,6 @@ OcrRequest AppController::buildRequest(const QImage &image, const QString &promp
     request.dryBase = m_settings.dryBase();
     request.dryAllowedLength = m_settings.dryAllowedLength();
     request.dryPenaltyLastN = m_settings.dryPenaltyLastN();
-    request.drySequenceBreakers = m_settings.drySequenceBreakers();
     return request;
 }
 

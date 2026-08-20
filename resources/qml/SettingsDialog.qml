@@ -65,7 +65,6 @@ Dialog {
         dryBaseField.text = Settings.dryBase.toString()
         dryAllowedLenghField.text = Settings.dryAllowedLength.toString()
         dryRange.text = Settings.dryPenaltyLastN.toString()
-        drySequenceBreakersField.text = Settings.drySequenceBreakers
 
         // Output / parser
         var idx = parserBox.model.indexOf(Settings.parserId)
@@ -94,7 +93,6 @@ Dialog {
         Settings.dryBase = parseFloat(dryBaseField.text) || 1.75;
         Settings.dryAllowedLength = parseInt(dryAllowedLenghField.text) || 35;
         Settings.dryPenaltyLastN = parseInt(dryRange.text) || 128;
-        Settings.drySequenceBreakers = drySequenceBreakersField.text;
         Settings.parserId = parserBox.currentText;
         Settings.forceSave();
         I18n.setLanguage(Settings.language);
@@ -359,26 +357,6 @@ Dialog {
                     implicitHeight: Theme.controlHeight
                     selectByMouse: true
                     validator: IntValidator { bottom: 0;}
-                }
-
-                Label {
-                    Layout.topMargin: 4
-                    text: qsTr("DRY sequence breakers")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                Item {
-                    Layout.topMargin: 4
-                    Layout.fillWidth: true
-                }
-                TextField {
-                    id: drySequenceBreakersField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                }
-                Item {
-                    Layout.fillWidth: true
                 }
 
                 Item {

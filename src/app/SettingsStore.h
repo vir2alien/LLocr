@@ -19,7 +19,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(double dryBase READ dryBase WRITE setDryBase NOTIFY dryBaseChanged)
     Q_PROPERTY(int dryAllowedLength READ dryAllowedLength WRITE setDryAllowedLength NOTIFY dryAllowedLengthChanged)
     Q_PROPERTY(int dryPenaltyLastN READ dryPenaltyLastN WRITE setDryPenaltyLastN NOTIFY dryPenaltyLastNChanged)
-    Q_PROPERTY(QString drySequenceBreakers READ drySequenceBreakers WRITE setDrySequenceBreakers NOTIFY drySequenceBreakersChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(int themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
@@ -37,12 +36,11 @@ public:
     static constexpr int kDefaultTimeoutMs = 120000;
     static constexpr const char *kDefaultModelName = "Unlimited-OCR";
     static constexpr double kDefaultTemperature = 0.0;
-    static constexpr int kDefaultMaxTokens = 16384;
+    static constexpr int kDefaultMaxTokens = 8192;
     static constexpr double kDefaultDryMultiplier = 0.8;
     static constexpr double kDefaultDryBase = 1.75;
     static constexpr int kDefaultDryAllowedLength = 35;
-    static constexpr int kDefaultDryPenaltyLastN = 128;
-    static constexpr const char *kDefaultDrySequenceBreakers = "none";
+    static constexpr int kDefaultDryPenaltyLastN = 2048;
     static constexpr const char *kDefaultParserId = "det_tokens";
     static constexpr int kDefaultThemeMode = 0; // System
     static constexpr const char *kDefaultLanguage = "system";
@@ -73,8 +71,6 @@ public:
     void setDryAllowedLength(int val);
     int dryPenaltyLastN() const;
     void setDryPenaltyLastN(int val);
-    QString drySequenceBreakers() const;
-    void setDrySequenceBreakers(const QString &val);
 
     // Parser
     QString parserId() const;
@@ -107,7 +103,6 @@ signals:
     void dryBaseChanged();
     void dryAllowedLengthChanged();
     void dryPenaltyLastNChanged();
-    void drySequenceBreakersChanged();
     void parserIdChanged();
     void themeModeChanged();
     void languageChanged();
@@ -133,7 +128,6 @@ private:
     static constexpr const char *kDryBase = "model/dryBase";
     static constexpr const char *kDryAllowedLength = "model/dryAllowedLength";
     static constexpr const char *kDryPenaltyLastN = "model/dryPenaltyLastN";
-    static constexpr const char *kDrySequenceBreakers = "model/drySequenceBreakers";
 
     // Output / parser
     static constexpr const char *kParserId = "output/parser";
