@@ -13,7 +13,7 @@
     </message>
 </context>
 <context>
-    <name>AppController</name>
+    <name>llocr::AppController</name>
     <message>
         <source>Page %1 deleted.</source>
         <translation>Страница %1 удалена</translation>
@@ -31,8 +31,8 @@
         <translation>Открыто: %1</translation>
     </message>
     <message>
-        <source>"Opened %1 image(s)"</source>
-        <translation>"открыто изображений: %1"</translation>
+        <source>Opened %1 image(s)</source>
+        <translation>Открыто изображений: %1</translation>
     </message>
     <message>
         <source>Failed to open: %1</source>
@@ -126,6 +126,10 @@
         <source>Added %1 file(s), %2 page(s); %3 file(s) skipped.</source>
         <translation>Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
     </message>
+    <message>
+        <source>Moved page %1 to position %2.</source>
+        <translation>Страница %1 перемещена на позицию %2.</translation>
+    </message>
 </context>
 <context>
     <name>Exporter</name>
@@ -172,6 +176,10 @@
     <message>
         <source>Failed to write PDF: %1</source>
         <translation>Не удалось записать PDF: %1</translation>
+    </message>
+    <message>
+        <source>Cannot create a temporary directory for images.</source>
+        <translation>Не удалось создать временную папку для изображений.</translation>
     </message>
 </context>
 <context>
@@ -257,12 +265,20 @@
         <translation>Экспорт распознанного текста</translation>
     </message>
     <message>
-        <source>Export — pages</source>
-        <translation>Экспорт — страницы</translation>
+        <source>Has duplicates</source>
+        <translation>Дубликаты</translation>
+    </message>
+    <message>
+        <source>Preview</source>
+        <translation>Предпросмотр</translation>
     </message>
 </context>
 <context>
     <name>ExportDialog</name>
+    <message>
+        <source>Export — pages</source>
+        <translation>Экспорт — страницы</translation>
+    </message>
     <message>
         <source>All recognized pages</source>
         <translation>Все распознанные страницы</translation>
@@ -389,10 +405,6 @@
     <message>
         <source>DRY range</source>
         <translation>DRY диапазон</translation>
-    </message>
-    <message>
-        <source>DRY sequence breakers</source>
-        <translation>DRY разделители</translation>
     </message>
     <message>
         <source>DRY (Don't Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp</source>
