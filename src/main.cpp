@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
     llocr::AppController appController(settingsStore);
     llocr::UiController uiController(settingsStore);
 
-    qmlRegisterSingletonType(QUrl("qrc:/qml/Theme.qml"), "LLocr", 1, 0, "ThemeSingleton");
+    qmlRegisterSingletonType(QUrl("qrc:/qml/Theme.qml"), "LLocr", 1, 0, "Theme");
 
     qmlRegisterUncreatableType<llocr::UiController>("LLocr", 1, 0, "UiController", "UiController is provided as a context property");
 

@@ -53,6 +53,9 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/ExportDialog.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Theme.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MarkdownPreview.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ThumbDelegate.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/Header.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ImagePreview.qml"
 )
 
 qt_add_resources(llocr "app_conf"
