@@ -29,6 +29,8 @@ QVariant PageListModel::data(const QModelIndex& index, int role) const
         return row == m_current;
     case EditedRole:
         return (row < m_edited.size()) ? m_edited.at(row) : false;
+    case HasDuplicatesRole:
+        return (row < m_hasDuplicates.size()) ? m_hasDuplicates.at(row) : false;
     default:
         return {};
     }
@@ -37,10 +39,11 @@ QVariant PageListModel::data(const QModelIndex& index, int role) const
 QHash<int, QByteArray> PageListModel::roleNames() const
 {
     return {
-        { PageIndexRole,  "pageIndex" },
-        { RecognizedRole, "recognized" },
-        { CurrentRole,    "current" },
-        { EditedRole,     "edited" },
+        { PageIndexRole,     "pageIndex" },
+        { RecognizedRole,    "recognized" },
+        { CurrentRole,       "current" },
+        { EditedRole,        "edited" },
+        { HasDuplicatesRole, "hasDuplicates" },
     };
 }
 
@@ -49,6 +52,7 @@ void PageListModel::setPageCount(int count)
     beginResetModel();
     m_recognized = QList<bool>(count, false);
     m_edited = QList<bool>(count, false);
+    m_hasDuplicates = QList<bool>(count, false);
     m_current = count > 0 ? 0 : -1;
     endResetModel();
 }
@@ -62,6 +66,7 @@ void PageListModel::appendPages(int count)
     beginInsertRows({}, first, first + count - 1);
     m_recognized += QList<bool>(count, false);
     m_edited += QList<bool>(count, false);
+    m_hasDuplicates += QList<bool>(count, false);
     endInsertRows();
 }
 
@@ -85,6 +90,17 @@ void PageListModel::setEdited(int index, bool edited)
     m_edited[index] = edited;
     const QModelIndex mi = this->index(index);
     emit dataChanged(mi, mi, { EditedRole });
+}
+
+void PageListModel::setHasDuplicates(int index, bool hasDup)
+{
+    if (index < 0 || index >= m_hasDuplicates.size())
+        return;
+    if (m_hasDuplicates.at(index) == hasDup)
+        return;
+    m_hasDuplicates[index] = hasDup;
+    const QModelIndex mi = this->index(index);
+    emit dataChanged(mi, mi, { HasDuplicatesRole });
 }
 
 void PageListModel::setCurrent(int index)
@@ -111,6 +127,7 @@ void PageListModel::removePage(int index)
     beginRemoveRows({}, index, index);
     m_recognized.removeAt(index);
     m_edited.removeAt(index);
+    m_hasDuplicates.removeAt(index);
     if (m_current == index)
         m_current = -1;
     else if (m_current > index)
@@ -138,6 +155,7 @@ void PageListModel::movePage(int from, int to)
 
     m_recognized.move(from, to);
     m_edited.move(from, to);
+    m_hasDuplicates.move(from, to);
 
     if (m_current == from)
         m_current = to;
@@ -157,6 +175,7 @@ void PageListModel::clear()
     beginResetModel();
     m_recognized.clear();
     m_edited.clear();
+    m_hasDuplicates.clear();
     m_current = -1;
     endResetModel();
 }

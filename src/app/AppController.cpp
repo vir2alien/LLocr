@@ -544,6 +544,10 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
 
     m_pageModel.setRecognized(index, true);
 
+    const bool hadDups = !parsed.pages.isEmpty() && parsed.pages.first().hasDuplicates;
+    if (hadDups)
+        m_pageModel.setHasDuplicates(index, true);
+
     const bool droppedEdit = m_edits.remove(index) > 0;
     if (droppedEdit)
         m_pageModel.setEdited(index, false);

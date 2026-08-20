@@ -54,24 +54,28 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
 
     QJsonObject message{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
 
-    QJsonObject root{{QStringLiteral("model"), request.modelId},
-                     {QStringLiteral("messages"), QJsonArray{message}},
+    // QJsonArray eosBias; //early eos catch method for tests
+    // eosBias.append(1);
+    // eosBias.append(-3.0);
+    // QJsonArray logitBias;
+    // logitBias.append(eosBias);
+    QJsonObject root{
+        {QStringLiteral("model"), request.modelId},
+        {QStringLiteral("messages"), QJsonArray{message}},
 
-                     {QStringLiteral("dry_multiplier"), request.dryMultiplier},
-                     {QStringLiteral("dry_base"), request.dryBase},
-                     {QStringLiteral("dry_allowed_length"), request.dryAllowedLength},
-                     {QStringLiteral("dry_penalty_last_n"), request.dryPenaltyLastN},
+        {QStringLiteral("dry_multiplier"), request.dryMultiplier},
+        {QStringLiteral("dry_base"), request.dryBase},
+        {QStringLiteral("dry_allowed_length"), request.dryAllowedLength},
+        {QStringLiteral("dry_penalty_last_n"), request.dryPenaltyLastN},
+        {QStringLiteral("dry_sequence_breakers"), QJsonArray{QStringLiteral("\uE000")}},
 
-                     // {QStringLiteral("top_k"), 1},
-                     // {QStringLiteral("top_p"), 1.0},
-                     // {QStringLiteral("min_p"), 0.0},
+        {QStringLiteral("temperature"), request.temperature},
 
-                     {QStringLiteral("temperature"), request.temperature},
+        {QStringLiteral("max_tokens"), request.maxTokens},
+        {QStringLiteral("stream"), false}
+        //{QStringLiteral("logit_bias"), logitBias}
+    };
 
-                     {QStringLiteral("max_tokens"), request.maxTokens},
-                     {QStringLiteral("skip_special_tokens"), false},
-                     // {QStringLiteral("crop_mode"), true},
-                     {QStringLiteral("stream"), false}};
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 

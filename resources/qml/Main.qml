@@ -222,22 +222,25 @@ ApplicationWindow {
                                     width: 9
                                     height: 9
                                     radius: model.edited ? 2 : 5
-                                    color: model.edited ? Theme.textPrimary
+                                    color: model.hasDuplicates ? "#d32f2f"
+                                           : (model.edited ? Theme.textPrimary
                                            : (model.recognized ? Theme.textSecondary
-                                                               : "transparent")
-                                    border.width: model.recognized || model.edited ? 0 : 1
+                                                               : "transparent"))
+                                    border.width: model.recognized || model.edited || model.hasDuplicates ? 0 : 1
                                     border.color: Theme.textMuted
 
                                     Accessible.role: Accessible.StaticText
-                                    Accessible.name: model.edited ? qsTr("Edited")
+                                    Accessible.name: model.hasDuplicates ? qsTr("Has duplicates")
+                                                     : (model.edited ? qsTr("Edited")
                                                      : (model.recognized ? qsTr("Recognized")
-                                                                         : qsTr("Not recognized"))
+                                                                         : qsTr("Not recognized")))
                                 }
                                 Label {
                                     text: qsTr("Page %1").arg(model.pageIndex + 1)
                                     font.pixelSize: Theme.fontSmall
-                                    color: model.recognized ? Theme.textSecondary
-                                                            : Theme.textMuted
+                                    color: model.hasDuplicates ? "#d32f2f"
+                                            : (model.recognized ? Theme.textSecondary
+                                            : Theme.textMuted)
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }

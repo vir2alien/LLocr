@@ -21,6 +21,7 @@ public:
         RecognizedRole,
         CurrentRole,
         EditedRole,
+        HasDuplicatesRole,
     };
 
     explicit PageListModel(QObject* parent = nullptr);
@@ -37,6 +38,8 @@ public:
 
     void setEdited(int index, bool edited);
 
+    void setHasDuplicates(int index, bool hasDup);
+
     void setCurrent(int index);
 
     void removePage(int index);
@@ -48,6 +51,7 @@ public:
 private:
     QList<bool> m_recognized;
     QList<bool> m_edited;
+    QList<bool> m_hasDuplicates;
     int m_current = -1;
 };
 

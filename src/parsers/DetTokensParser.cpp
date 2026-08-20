@@ -363,6 +363,13 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
     // 3) process each token
     const double range = kBboxCoordinateRange;
 
+    // Dedup tolerance: ±10 px in the raw 0–1000 coordinate space.
+    constexpr double kDedupTolerance = 10.0 / kBboxCoordinateRange;
+
+    // Raw pixel coords stored alongside each box for dedup comparison.
+    struct RawCoords { int x1, y1, x2, y2; };
+    QList<RawCoords> rawCoords;
+
     for (int i = 0; i < tokens.size(); ++i) {
         const Token &t = tokens.at(i);
         const int spanEnd = (i + 1 < tokens.size())
@@ -383,11 +390,42 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         box.text  = boxText;
         box.rect  = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
 
+        // Check if this box is a near-duplicate of an earlier one (within
+        // ±10 px on all four coordinates). When a duplicate is detected,
+        // replace the *earlier* box with the current (later) one — the model
+        // sometimes glitches and emits a garbled block first, then corrects
+        // itself with a near-identical bbox.
+        int dupIndex = -1;
+        for (int j = 0; j < rawCoords.size(); ++j) {
+            const RawCoords &rc = rawCoords.at(j);
+            if (qAbs(rc.x1 - t.x1) <= 10 && qAbs(rc.y1 - t.y1) <= 10
+                && qAbs(rc.x2 - t.x2) <= 10 && qAbs(rc.y2 - t.y2) <= 10) {
+                dupIndex = j;
+                break;
+            }
+        }
+
+        if (dupIndex >= 0) {
+            // Replace the earlier box — keep the last variant.
+            page.hasDuplicates = true;
+
+            page.boxes[dupIndex] = box;
+            rawCoords[dupIndex] = { t.x1, t.y1, t.x2, t.y2 };
+
+            BlockStyleInfo style = blockStyleForLabel(t.label);
+            if (style.style == BlockStyle::ImagePlaceholder)
+                style.imageIndex = dupIndex;
+            if (!boxText.isEmpty() || style.style == BlockStyle::ImagePlaceholder)
+                blocks[dupIndex] = applyStyle(boxText, style);
+            continue;
+        }
+
         // Actual index of this box inside page.boxes (a preamble box, if
         // present, shifts the indices by one). The image URL must embed this
         // index so it stays valid after rebuildPageText() regenerates the text.
         const int boxIndex = page.boxes.size();
         page.boxes.append(box);
+        rawCoords.append({ t.x1, t.y1, t.x2, t.y2 });
 
         BlockStyleInfo style = blockStyleForLabel(t.label);
         if (style.style == BlockStyle::ImagePlaceholder) {

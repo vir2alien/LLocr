@@ -483,6 +483,51 @@ private slots:
         QVERIFY(!md.contains(QStringLiteral("<|ref")));
     }
 
+    // The model sometimes glitches and emits a near-duplicate block with an
+    // almost-identical bbox (within ±10 px). The parser must detect this,
+    // replace the earlier block with the later one, and flag the page.
+    void detectsAndReplacesNearDuplicateBboxes() {
+        // Simulates the garbled-duplicate-then-correct pattern:
+        // - First "text" at [112,838,884,903] is a garbled repeat of earlier text.
+        // - "equation" at [437,795,885,827] then a near-duplicate at [437,794,885,829].
+        // - Second "text" at [112,838,884,903] is the correct continuation.
+        const QString raw = QStringLiteral(
+            R"(<|det|>text [112, 738, 883, 786]<|/det|>Original text block.\n)"
+            R"(<|det|>text [112, 838, 884, 903]<|/det|>Garbled duplicate of original.\n)"
+            R"(<|det|>equation [437, 795, 885, 827]<|/det|>\\[\\mathbf{o}_t = \\sum \\alpha_{tj} \\mathbf{v}_j\\]\n)"
+            R"(<|det|>text [112, 838, 884, 903]<|/det|>Correct continuation text.\n)"
+            R"(<|det|>equation [437, 794, 885, 829]<|/det|>\\[\\mathbf{o}_t = \\sum \\alpha_{tj} \\mathbf{v}_j. \\tag{4}\\]\n)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+
+        const OcrPage& page = r.pages.first();
+
+        // The two near-duplicate pairs reduce the 5 raw tokens to 3 boxes:
+        //   [0] text [112,738,883,786] — no duplicate, stays as-is
+        //   [1] text [112,838,884,903] — first occurrence replaced by second
+        //   [2] equation [437,795,885,827] — first occurrence replaced by second [437,794,885,829]
+        QCOMPARE(page.boxes.size(), 3);
+
+        // The duplicated "text" box was replaced — should now contain the
+        // *second* text ("Correct continuation text.").
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("Correct continuation text."));
+
+        // The duplicated "equation" box was replaced — should now be the
+        // *second* equation variant.
+        QVERIFY(page.boxes.at(2).text.contains(QStringLiteral("tag{4}")));
+
+        // hasDuplicates must be true.
+        QVERIFY(page.hasDuplicates);
+
+        // Markdown output must not contain the garbled text.
+        const QString md = page.text;
+        QVERIFY(!md.contains(QStringLiteral("Garbled duplicate")));
+        QVERIFY(md.contains(QStringLiteral("Correct continuation")));
+    }
+
 };
 
 QTEST_MAIN(TestDetParser)

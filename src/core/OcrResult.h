@@ -24,6 +24,7 @@ struct BoundingBox {
 struct OcrPage {
     QString text;              ///< Full text of this page (Markdown-friendly).
     QList<BoundingBox> boxes;  ///< Optional positioned fragments for this page.
+    bool hasDuplicates = false; ///< True when at least one duplicate bbox was detected & replaced.
 };
 
 /**
