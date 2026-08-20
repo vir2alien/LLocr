@@ -52,6 +52,7 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/ExportDialog.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Theme.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/MarkdownPreview.qml"
 )
 
 qt_add_resources(llocr "app_conf"
@@ -59,6 +60,16 @@ qt_add_resources(llocr "app_conf"
     BASE "${CMAKE_SOURCE_DIR}/resources"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
+)
+
+file(GLOB_RECURSE PREVIEW_FILES
+    "${CMAKE_SOURCE_DIR}/resources/preview/*")
+list(FILTER PREVIEW_FILES EXCLUDE REGEX "\\.DS_Store$")
+
+qt_add_resources(llocr "preview"
+    PREFIX "/preview"
+    BASE "${CMAKE_SOURCE_DIR}/resources/preview"
+    FILES ${PREVIEW_FILES}
 )
 
 target_include_directories(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -72,6 +83,7 @@ target_link_libraries(llocr PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Pdf
+    Qt6::WebEngineQuick
 )
 
 target_compile_definitions(llocr PRIVATE
@@ -82,3 +94,4 @@ qt_add_translations(llocr
     TS_FILES
         "${CMAKE_SOURCE_DIR}/resources/i18n/llocr_ru.ts"
 )
+

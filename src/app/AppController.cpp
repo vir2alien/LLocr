@@ -2,7 +2,9 @@
 
 #include <utility>
 
+#include <QBuffer>
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QVariantMap>
 
 #include "parsers/DetTokensParser.h"
@@ -761,6 +763,37 @@ void AppController::setStatus(const QString& message)
         return;
     m_statusMessage = message;
     emit statusChanged();
+}
+
+QString AppController::resolveImagesForPreview(const QString& markdown) const
+{
+    static const QRegularExpression re(
+        QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)\))"));
+
+    QString result;
+    int last = 0;
+    auto it = re.globalMatch(markdown);
+
+    while (it.hasNext()) {
+        const auto m = it.next();
+        result += markdown.mid(last, m.capturedStart() - last);
+
+        const int boxIndex = m.captured(2).toInt();
+        const QImage img = croppedImage(m_currentPage, boxIndex);
+        if (!img.isNull()) {
+            QByteArray bytes;
+            QBuffer buffer(&bytes);
+            buffer.open(QIODevice::WriteOnly);
+            img.save(&buffer, "PNG");
+            result += QStringLiteral("![%1](data:image/png;base64,%2)")
+                          .arg(m.captured(1), QString::fromLatin1(bytes.toBase64()));
+        } else {
+            result += m.captured();
+        }
+        last = m.capturedEnd();
+    }
+    result += markdown.mid(last);
+    return result;
 }
 
 }  // namespace llocr

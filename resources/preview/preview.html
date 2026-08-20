@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="katex.min.css">
+  <script src="katex.min.js"></script>
+  <script src="contrib/auto-render.min.js"></script>
+  <script src="marked.min.js"></script>
+  <style>
+    :root { color-scheme: light dark; }
+    html, body {
+      margin: 0;
+      padding: 16px 20px;
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+    table {
+      border-collapse: collapse;
+      margin: 12px 0;
+      width: auto;
+    }
+    th, td {
+      border: 1px solid var(--border, #ccc);
+      padding: 6px 10px;
+      text-align: left;
+    }
+    th { background: var(--th-bg, rgba(128,128,128,0.12)); }
+    img { max-width: 100%; height: auto; }
+    pre {
+      background: var(--code-bg, rgba(128,128,128,0.12));
+      padding: 10px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    code { font-family: "SF Mono", Consolas, monospace; font-size: 0.9em; }
+    blockquote {
+      margin: 12px 0;
+      padding-left: 12px;
+      border-left: 3px solid var(--border, #ccc);
+      color: var(--muted, #888);
+    }
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+  </style>
+</head>
+<body>
+  <div id="content"></div>
+  <script>
+    marked.setOptions({ gfm: true, breaks: false });
+
+    // --- math protection: stash formulas before marked, restore after ---
+    function protectMath(md) {
+      var store = [];
+      var stash = function(s) { return "\u0000MATH" + (store.push(s) - 1) + "\u0000"; };
+      md = md.replace(/\$\$([\s\S]+?)\$\$/g, function(_, m) { return stash("$$" + m + "$$"); });
+      md = md.replace(/\$([^$\n]+?)\$/g,   function(_, m) { return stash("$" + m + "$"); });
+      return { md: md, store: store };
+    }
+
+    function restoreMath(html, store) {
+      return html.replace(/\u0000MATH(\d+)\u0000/g, function(_, i) { return store[+i]; });
+    }
+
+    window.render = function (md, opts) {
+      opts = opts || {};
+      var r = document.documentElement.style;
+      if (opts.dark) {
+        document.body.style.background = opts.bg || "#1e1e1e";
+        document.body.style.color = opts.fg || "#e0e0e0";
+        r.setProperty("--border", "#444");
+        r.setProperty("--th-bg", "rgba(255,255,255,0.08)");
+        r.setProperty("--code-bg", "rgba(255,255,255,0.08)");
+        r.setProperty("--muted", "#999");
+      } else {
+        document.body.style.background = opts.bg || "#ffffff";
+        document.body.style.color = opts.fg || "#1a1a1a";
+        r.setProperty("--border", "#ccc");
+        r.setProperty("--th-bg", "rgba(0,0,0,0.05)");
+        r.setProperty("--code-bg", "rgba(0,0,0,0.05)");
+        r.setProperty("--muted", "#888");
+      }
+
+      var el = document.getElementById("content");
+
+      // protect → render MD → restore → render KaTeX
+      var p = protectMath(md || "");
+      var html = marked.parse(p.md);
+      html = restoreMath(html, p.store);
+      el.innerHTML = html;
+
+      renderMathInElement(el, {
+        delimiters: [
+          { left: "$$", right: "$$", display: true },
+          { left: "\\[", right: "\\]", display: true },
+          { left: "$",  right: "$",  display: false },
+          { left: "\\(", right: "\\)", display: false }
+        ],
+        throwOnError: false
+      });
+    };
+  </script>
+</body>
+</html>

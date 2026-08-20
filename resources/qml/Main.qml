@@ -139,7 +139,7 @@ ApplicationWindow {
             color: SplitHandle.pressed || SplitHandle.hovered
                    ? Theme.border : Theme.background
 
-            Rectangle {  // hairline, always visible
+            Rectangle {
                 anchors.centerIn: parent
                 width: 1
                 height: parent.height
@@ -580,21 +580,23 @@ ApplicationWindow {
             }
         } // Rectangle img preview
 
-        Rectangle {//recognized text
+        Rectangle { // recognized text + preview
             SplitView.minimumWidth: 300
             color: Theme.surfaceAlt
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: Theme.spacing
-                spacing: Theme.spacingSmall
+                spacing: 0
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.preferredHeight: previewSwitch.implicitHeight + 2*Theme.spacingSmall
                     spacing: Theme.spacing
-                    visible: controller.currentPageEditable
+                    visible: controller.hasResult
+                    Layout.margins: Theme.spacingSmall
 
                     Label {
+                        visible: controller.currentPageEditable
                         text: controller.currentPageEdited ? qsTr("Edited")
                                                            : qsTr("Recognized")
                         color: controller.currentPageEdited ? Theme.textPrimary
@@ -602,56 +604,88 @@ ApplicationWindow {
                         font.pixelSize: Theme.fontCaption
                         font.bold: controller.currentPageEdited
                     }
-                    Item { Layout.fillWidth: true }
+
                     Button {
                         flat: true
                         text: qsTr("Revert")
-                        visible: controller.currentPageEdited
+                        visible: controller.currentPageEditable && controller.currentPageEdited
                         onClicked: controller.revertCurrentPageEdits()
                     }
+
+                    Item { Layout.fillWidth: true }
+                    Switch {
+                        id: previewSwitch
+                        Layout.alignment: Qt.AlignVCenter
+                        topPadding: 0
+                        bottomPadding: 0
+                        text: qsTr("Preview")
+                    }
+                }
+                Rectangle {
+                    Layout.fillWidth: true;
+                    Layout.preferredHeight: 1
+                    color: Theme.divider
                 }
 
-                ScrollView {
+                Label {
+                    anchors.centerIn: parent
+                    visible: !controller.hasResult && !previewSwitch.checked
+                    text: qsTr("Recognized text will appear here")
+                    color: Theme.textMuted
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                    width: Math.min(implicitWidth, parent.width - 2 * Theme.spacing)
+                }
+
+                StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    currentIndex: previewSwitch.checked ? 1 : 0
 
-                    TextArea {
-                        id: textArea
-                        readOnly: !controller.currentPageEditable
-                        wrapMode: TextArea.Wrap
-                        selectByMouse: true
-                        placeholderText: qsTr("Recognized text will appear here")
-                        color: Theme.textPrimary
-                        placeholderTextColor: Theme.textMuted
+                    // --- 0: Edit ---
+                    ScrollView {
+                        TextArea {
+                            id: textArea
+                            readOnly: !controller.currentPageEditable
+                            wrapMode: TextArea.Wrap
+                            selectByMouse: true
+                            color: Theme.textPrimary
+                            placeholderTextColor: Theme.textMuted
+                            background: null
 
-                        background: null
+                            property bool syncing: false
 
-                        property bool syncing: false
+                            function reload() {
+                                var t = controller.resultText
+                                if (text === t)
+                                    return
+                                syncing = true
+                                text = t
+                                syncing = false
+                            }
 
-                        function reload() {
-                            var t = controller.resultText
-                            if (text === t)
-                                return
-                            syncing = true
-                            text = t
-                            syncing = false
+                            onTextChanged: {
+                                if (!syncing)
+                                    controller.setCurrentPageText(text)
+                            }
+
+                            Component.onCompleted: reload()
+
+                            Connections {
+                                target: controller
+                                function onResultChanged() { textArea.reload() }
+                            }
                         }
+                    }
 
-                        onTextChanged: {
-                            if (!syncing)
-                                controller.setCurrentPageText(text)
-                        }
-
-                        Component.onCompleted: reload()
-
-                        Connections {
-                            target: controller
-                            function onResultChanged() { textArea.reload() }
-                        }
+                    // --- 1: Preview ---
+                    Loader {
+                        active: previewSwitch.checked
+                        sourceComponent: previewComponent
                     }
                 }
             }
-        } //Rectangle recognized text
+        } // Rectangle recognized text + preview
     } // SplitView
 
     DropArea {
@@ -728,6 +762,16 @@ ApplicationWindow {
 
     ExportDialog {
         id: exportOptionsDialog
+    }
+
+    Component {
+        id: previewComponent
+        MarkdownPreview {
+            markdown: controller.resolveImagesForPreview(textArea.text)
+            dark: Theme.dark
+            bgColor: Theme.surfaceAlt
+            fgColor: Theme.textPrimary
+        }
     }
 
     footer: ToolBar {

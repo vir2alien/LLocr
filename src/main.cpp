@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QtWebEngineQuick/qtwebenginequickglobal.h>
 
 #include "app/AppController.h"
 #include "app/I18n.h"
@@ -10,6 +11,7 @@
 #include "app/UiController.h"
 
 int main(int argc, char* argv[]) {
+    QtWebEngineQuick::initialize();
     QGuiApplication app(argc, argv);
 
     QCoreApplication::setOrganizationName(QStringLiteral("llocr"));

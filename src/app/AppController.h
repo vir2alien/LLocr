@@ -127,6 +127,9 @@ public slots:
                                       qreal width, qreal height);
     Q_INVOKABLE void onBoxRemoved(int boxIndex);
 
+    /// Replaces image://ocr/crop/<N> with data: URIs for WebEngine preview.
+    Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown) const;
+
 private slots:
     void onRecognitionFinished();
 

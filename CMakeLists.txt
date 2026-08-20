@@ -42,7 +42,9 @@ find_package(Qt6 REQUIRED COMPONENTS
     Pdf
     Test
     LinguistTools
+    WebEngineQuick
 )
+
 
 # Enable Qt6 policies for modern CMake integration (qt_add_executable, etc.).
 qt_standard_project_setup(REQUIRES 6.5)
