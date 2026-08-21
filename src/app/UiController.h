@@ -39,9 +39,6 @@ signals:
 private:
     void apply() const;
 
-    static Mode modeFromString(const QString& value);
-    static QString modeToString(Mode mode);
-
     Mode m_mode = System;
     SettingsStore &m_settings;
 };

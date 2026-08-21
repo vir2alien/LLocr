@@ -38,7 +38,6 @@ public:
     /// A page's markdown with `image://ocr/crop` refs replaced by local files.
     struct ResolvedImages {
         QString processedMarkdown;   ///< markdown referencing local files.
-        QStringList savedFiles;      ///< file names written under mediaDir.
     };
 
     struct Result {
@@ -54,10 +53,6 @@ public:
     };
 
     static Format formatForSuffix(const QString& suffix);
-
-    static QStringList nativeSuffixes();
-
-    static QStringList pandocSuffixes();
 
     static bool isPandocAvailable();
 
@@ -85,8 +80,7 @@ private:
     static QRegularExpression imageRefRegex();
 
     QString buildMarkdownResolved(const QList<Page>& pages, const CropProvider& crop,
-                                  const QString& mediaDir, const QString& referencePrefix,
-                                  QStringList* savedFiles) const;
+                                  const QString& mediaDir, const QString& referencePrefix) const;
     Result exportViaPandoc(const QList<Page>& pages, const QString& filePath,
                            const CropProvider& crop, const QStringList& extraArgs) const;
 

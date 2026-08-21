@@ -48,6 +48,12 @@ AppController::AppController(SettingsStore &settings, QObject *parent)
         ++m_imageRevision;
         emit imageRevisionChanged();
     });
+
+    // canRecognize() depends on the configured model name; propagate changes
+    // so the QML-side enabled-state follows the Settings dialog.
+    connect(&m_settings, &SettingsStore::modelNameChanged, this, [this]() {
+        emit configChanged();
+    });
 }
 
 QStringList AppController::parserNames() const
@@ -159,51 +165,6 @@ void AppController::updateBoxesForCurrent()
         m_boxModel.setBoxes({});
 }
 
-bool AppController::openImage(const QString& filePath)
-{
-    if (m_recognition.busy())
-        return false;
-
-    if (!m_document.loadImage(filePath)) {
-        setStatus(tr("Failed to open image: %1").arg(filePath));
-        return false;
-    }
-
-    m_editStore.clear();
-    m_currentPage = 0;
-    m_pageModel.setPageCount(m_document.pageCount());
-    m_boxModel.setBoxes({});
-
-    setStatus(tr("Opened %1").arg(QFileInfo(filePath).fileName()));
-
-    notifyDocumentChanged();
-    return true;
-}
-
-bool AppController::openImages(const QStringList& filePaths)
-{
-    if (m_recognition.busy())
-        return false;
-
-    if (filePaths.isEmpty())
-        return false;
-
-    if (!m_document.loadImages(filePaths)) {
-        setStatus(tr("Failed to open images."));
-        return false;
-    }
-
-    m_editStore.clear();
-    m_currentPage = 0;
-    m_pageModel.setPageCount(m_document.pageCount());
-    m_boxModel.setBoxes({});
-
-    setStatus(tr("Opened %1 image(s)").arg(m_document.pageCount()));
-
-    notifyDocumentChanged();
-    return true;
-}
-
 void AppController::openFiles(const QVariantList& fileUrls)
 {
     if (m_recognition.busy())
@@ -260,32 +221,6 @@ void AppController::openFiles(const QVariantList& fileUrls)
     } else {
         setStatus(tr("Added %1 file(s), %2 page(s).").arg(addedFiles).arg(addedPages));
     }
-
-    notifyDocumentChanged();
-}
-
-void AppController::openDocument(const QUrl& fileUrl)
-{
-    if (m_recognition.busy())
-        return;
-
-    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
-
-    const bool ok = isPdfPath(path) ? m_document.loadPdf(path)
-                                    : m_document.loadImage(path);
-
-    if (!ok) {
-        setStatus(tr("Failed to open: %1").arg(path));
-        return;
-    }
-
-    m_editStore.clear();
-    m_currentPage = 0;
-    m_pageModel.setPageCount(m_document.pageCount());
-    m_boxModel.setBoxes({});
-
-    setStatus(
-        tr("Opened %1 (%2 page(s))").arg(QFileInfo(path).fileName()).arg(m_document.pageCount()));
 
     notifyDocumentChanged();
 }
@@ -401,8 +336,6 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
     const bool droppedEdit = m_editStore.revert(index);
     if (droppedEdit)
         m_pageModel.setEdited(index, false);
-
-    emit recognitionFinished(parsed);
 
     if (index == m_currentPage) {
         updateBoxesForCurrent();
@@ -565,11 +498,6 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
 bool AppController::exportResult(const QUrl& fileUrl)
 {
     return exportPages(fileUrl, ExportAll, 1, m_document.pageCount());
-}
-
-bool AppController::pandocAvailable() const
-{
-    return Exporter::isPandocAvailable();
 }
 
 QStringList AppController::exportNameFilters() const

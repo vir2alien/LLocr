@@ -55,7 +55,7 @@ void RecognitionController::recognizePage(int index)
     emit statusRequested(tr("Recognizing page %1 of %2…").arg(index + 1).arg(m_totalPages));
 
     const QImage image = m_imageProvider(index);
-    const OcrRequest request = buildRequest(image, m_prompt);
+    const OcrRequest request = buildRequest(image);
     m_watcher.setFuture(m_provider->recognize(request, buildConfig()));
 }
 
@@ -64,20 +64,15 @@ ProviderConfig RecognitionController::buildConfig() const
     ProviderConfig config;
     config.apiKey = m_settings.apiKey();
     config.baseUrl = m_settings.baseUrl();
-    config.maxTokens = m_settings.maxTokens();
-    config.modelName = m_settings.modelName();
-    config.parserId = m_settings.parserId();
-    config.prompt = m_prompt;
-    config.temperature = m_settings.temperature();
     config.timeoutMs = m_settings.connectionTimeoutMs();
     return config;
 }
 
-OcrRequest RecognitionController::buildRequest(const QImage &image, const QString &prompt) const
+OcrRequest RecognitionController::buildRequest(const QImage &image) const
 {
     OcrRequest request;
     request.image = image;
-    request.prompt = prompt;
+    request.prompt = m_prompt;
     request.modelId = m_settings.modelName();
     request.temperature = m_settings.temperature();
     request.maxTokens = m_settings.maxTokens();
@@ -144,7 +139,6 @@ void RecognitionController::finishRun()
     m_recognizingIndex = -1;
     m_recognizeAll = false;
     setBusy(false);
-    emit runFinished();
 }
 
 void RecognitionController::setBusy(bool busy)

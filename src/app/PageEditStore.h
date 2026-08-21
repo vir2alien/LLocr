@@ -21,7 +21,6 @@ public:
     void replace(int index, const QString& text);
     bool revert(int index);
     void clear();
-    int count() const;
     bool isEdited(int index) const;
     void remapAfterRemove(int removedIndex);
     void remapAfterMove(int from, int to);

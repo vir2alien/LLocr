@@ -54,11 +54,6 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
 
     QJsonObject message{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
 
-    // QJsonArray eosBias; //early eos catch method for tests
-    // eosBias.append(1);
-    // eosBias.append(-3.0);
-    // QJsonArray logitBias;
-    // logitBias.append(eosBias);
     QJsonObject root{
         {QStringLiteral("model"), request.modelId},
         {QStringLiteral("messages"), QJsonArray{message}},
@@ -73,7 +68,6 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
 
         {QStringLiteral("max_tokens"), request.maxTokens},
         {QStringLiteral("stream"), false}
-        //{QStringLiteral("logit_bias"), logitBias}
     };
 
     return QJsonDocument(root).toJson(QJsonDocument::Compact);

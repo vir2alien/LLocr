@@ -53,26 +53,4 @@ void UiController::apply() const
     QGuiApplication::styleHints()->setColorScheme(scheme);
 }
 
-UiController::Mode UiController::modeFromString(const QString &value)
-{
-    if (value == QLatin1String("light"))
-        return Light;
-    if (value == QLatin1String("dark"))
-        return Dark;
-    return System;
-}
-
-QString UiController::modeToString(Mode mode)
-{
-    switch (mode) {
-    case Light:
-        return QStringLiteral("light");
-    case Dark:
-        return QStringLiteral("dark");
-    case System:
-        break;
-    }
-    return QStringLiteral("system");
-}
-
 }  // namespace llocr

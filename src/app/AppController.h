@@ -33,7 +33,6 @@ class AppController : public QObject
     Q_PROPERTY(bool currentPageEditable READ currentPageEditable NOTIFY resultChanged)
     Q_PROPERTY(bool currentPageEdited READ currentPageEdited NOTIFY editStateChanged)
 
-    Q_PROPERTY(bool pandocAvailable READ pandocAvailable CONSTANT)
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters CONSTANT)
 
     Q_PROPERTY(QObject* pageModel READ pageModel CONSTANT)
@@ -62,7 +61,6 @@ public:
     bool canRecognize() const;
     QStringList parserNames() const;
 
-    bool pandocAvailable() const;
     QStringList exportNameFilters() const;
 
     bool currentPageEditable() const;
@@ -102,13 +100,7 @@ signals:
 
     void editStateChanged();
 
-    // signal for the C++ pipeline / tests.
-    void recognitionFinished(const llocr::OcrResult& result);
-
 public slots:
-    Q_INVOKABLE bool openImage(const QString& filePath);
-    Q_INVOKABLE bool openImages(const QStringList& filePaths);
-    Q_INVOKABLE void openDocument(const QUrl& fileUrl);
     Q_INVOKABLE void openFiles(const QVariantList& fileUrls);
 
     Q_INVOKABLE void recognizeCurrent();
@@ -136,12 +128,12 @@ public slots:
     Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown) const;
 
 private:
+    // Values are mirrored by raw ints in Main.qml (0 = all, 1 = current, 2 = range).
     enum ExportScope : int {
         ExportAll = 0,
         ExportCurrent = 1,
         ExportRange = 2,
     };
-    Q_ENUM(ExportScope)
 
     void setStatus(const QString& message);
 

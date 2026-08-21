@@ -33,7 +33,6 @@ public:
 
 signals:
     void rawResultReady(int pageIndex, const llocr::OcrResult& raw);
-    void runFinished();
     void statusRequested(const QString& message);
 
     void busyChanged();
@@ -45,7 +44,7 @@ private:
     void recognizePage(int index);
     void finishRun();
     void setBusy(bool busy);
-    OcrRequest buildRequest(const QImage &image, const QString &prompt) const;
+    OcrRequest buildRequest(const QImage &image) const;
     ProviderConfig buildConfig() const;
 
     SettingsStore &m_settings;

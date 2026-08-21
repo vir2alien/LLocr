@@ -34,17 +34,6 @@ Exporter::Format Exporter::formatForSuffix(const QString& suffix)
     return Format::Unknown;
 }
 
-QStringList Exporter::nativeSuffixes()
-{
-    return { QStringLiteral("txt"), QStringLiteral("md"),
-             QStringLiteral("html"), QStringLiteral("pdf") };
-}
-
-QStringList Exporter::pandocSuffixes()
-{
-    return { QStringLiteral("docx") };
-}
-
 QString Exporter::pandocExecutable()
 {
     static const QString exe = QStandardPaths::findExecutable(QStringLiteral("pandoc"));
@@ -153,7 +142,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
     switch (format) {
     case Format::Markdown: {
         const QString md = crop
-            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, nullptr)
+            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix)
             : buildMarkdown(pages);
         return writeTextFile(filePath, md);
     }
@@ -200,7 +189,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
     case Format::Unknown:
     default: {
         const QString md = crop
-            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, nullptr)
+            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix)
             : buildMarkdown(pages);
         return writeTextFile(filePath, md);
     }
@@ -210,8 +199,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
 QString Exporter::buildMarkdownResolved(const QList<Page>& pages,
                                         const CropProvider& crop,
                                         const QString& mediaDir,
-                                        const QString& referencePrefix,
-                                        QStringList* savedFiles) const
+                                        const QString& referencePrefix) const
 {
     QString out;
     bool first = true;
@@ -228,8 +216,6 @@ QString Exporter::buildMarkdownResolved(const QList<Page>& pages,
             [&page, &crop](int boxIndex) { return crop(page.number, boxIndex); },
             mediaDir, referencePrefix);
         text = r.processedMarkdown.trimmed();
-        if (savedFiles)
-            *savedFiles += r.savedFiles;
         out += text;
         out += QChar('\n');
     }
@@ -249,7 +235,7 @@ Exporter::Result Exporter::exportViaPandoc(const QList<Page>& pages,
         if (!tmp.isValid())
             return Result::fail(QCoreApplication::translate("Exporter",
                 "Cannot create a temporary directory for images."));
-        markdown = buildMarkdownResolved(pages, crop, tmp.path(), QString(), nullptr);
+        markdown = buildMarkdownResolved(pages, crop, tmp.path(), QString());
         extra << QStringLiteral("--resource-path=%1").arg(tmp.path());
     } else {
         markdown = buildMarkdown(pages);
@@ -286,8 +272,6 @@ Exporter::ResolvedImages Exporter::resolveImageReferences(
             if (!QDir().mkpath(mediaDir)
                 || !image.save(fullPath, "PNG")) {
                 fileName.clear();
-            } else {
-                result.savedFiles << fileName;
             }
         }
 

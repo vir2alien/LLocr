@@ -165,7 +165,6 @@ void ExporterTest::resolveImageReferencesReplacesUrlsAndSavesFiles()
     QVERIFY(!r.processedMarkdown.contains("image://ocr"));
     QVERIFY(r.processedMarkdown.contains("Intro"));
     QVERIFY(r.processedMarkdown.contains("Outro"));
-    QCOMPARE(r.savedFiles.size(), 1);
     QVERIFY(QFile::exists(dir.filePath("page_0_img_3.png")));
 }
 
@@ -178,7 +177,6 @@ void ExporterTest::resolveImageReferencesKeepsStaleRefs()
         Exporter::resolveImageReferences("![X](image://ocr/crop/5)", 0, crop, dir.path());
 
     QVERIFY(r.processedMarkdown.contains("![X](image://ocr/crop/5)"));
-    QVERIFY(r.savedFiles.isEmpty());
 }
 
 void ExporterTest::exportMarkdownEmbedsCroppedImages()

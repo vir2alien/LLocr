@@ -44,11 +44,6 @@ void PageEditStore::clear()
     m_edits.clear();
 }
 
-int PageEditStore::count() const
-{
-    return m_edits.size();
-}
-
 bool PageEditStore::isEdited(int index) const
 {
     return m_edits.contains(index);
