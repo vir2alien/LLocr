@@ -8,8 +8,9 @@
   (llama.cpp or an OpenAI-compatible API) and recognize text from images/PDFs.
 
   ## Stack (short)
-  - **Application:** Qt6 + C++ + QML, built with CMake, dependencies via vcpkg.
-  - **PDF input:** Qt PDF module (`QPdfDocument`) — see ADR #8.
+  - **Application:** Qt6 + C++ + QML, built with CMake (vcpkg declared in the
+    `dev` preset, not used in the active build).
+  - **PDF input:** Qt PDF module (`QPdfDocument`) — see ADR #7.
   - **RAG service:** a separate local Python service (FastAPI + vector DB),
     communicating over HTTP. To be implemented at a later stage.
 
@@ -56,18 +57,25 @@ variable, and vcpkg does **not** participate in the build.
     -DCMAKE_PREFIX_PATH=/Users/gladskih/Qt/6.10.3/macos
   ```
 
-  Note: `tests/test_exporter.cpp` exists but is not yet wired into
-  `tests/CMakeLists.txt` (only `test_det_parser` runs via ctest).
+  Unit tests are all wired into `tests/CMakeLists.txt` and run via ctest:
+  `test_det_parser`, `test_pagemodel`, `test_settings_store`, and `test_exporter`.
 
   ## Current status
   - Phase: **Stage 3 complete** (formats & documents); Stage 4 (RAG) not started.
   - Done: Stage 1 (MVP OCR), Stage 2 (extensibility), and Stage 3 (PDF input,
-    batch/multi-page processing, HTML/DOCX/PDF export, editable text panel).
-    Initial unit tests for parsers exist under `tests/`.
-  - Working end-to-end today: open image **or PDF** → set the model in Settings →
+    batch/multi-page processing, HTML/DOCX/PDF export, editable text panel,
+    page reordering, image-block editing, Markdown preview, i18n).
+    Four unit-test targets exist under `tests/`.
+  - Working end-to-end today: open image(s) **or PDF** → configure connection /
+    model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
-    recognition) via a thumbnail strip with a recognized/not-recognized marker →
-    **stop** a running job → edit the recognized text per page → **export** the
-    result to TXT / MD / HTML / DOCX (Pandoc) / PDF (Pandoc or built-in writer),
-    with **All / Current / page-range** scope.
-  - Immediate goal: persist edits with the document and lay the **Stage 4 RAG stub**.
+    recognition) via a thumbnail strip with recognized / edited / duplicate
+    markers, **delete** and **drag-reorder** pages → **stop** a running job →
+    edit the recognized text per page (per-page edits via `PageEditStore`) and
+    toggle a **Markdown preview** (Qt WebEngine + marked + KaTeX) → **edit
+    image/chart blocks** (move / resize / delete) directly on the preview →
+    **export** to TXT / MD / HTML / DOCX (Pandoc) / PDF (Pandoc or built-in
+    writer), with **All / Current / page-range** scope. The UI is localizable
+    (System / English / Русский) and themed (System / Light / Dark).
+  - Immediate goal: persist edits with the document across sessions and lay the
+    **Stage 4 RAG stub**.

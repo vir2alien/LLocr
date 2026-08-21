@@ -18,7 +18,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [x] Output parsers (`raw` / `det_tokens` bbox) + `ParserFactory`.
 - [x] Box rendering on the preview (`BoxListModel` + QML `Repeater`).
 - [x] **Configuration moved to Settings** (URL, key, timeout, **model name,
-      temperature, max tokens, parser, bbox range**) + persistence. The
+      temperature, max tokens, DRY sampling params, parser**) + persistence. The
       **prompt** remains hardcoded in `AppController` (not in Settings yet).
 - [x] ~~JSON model profiles~~ **removed** (ADR #15); replaced by Settings.
 
@@ -32,6 +32,11 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [x] Editable recognized-text pane (per-page edits, exported, marked, revertable).
 - [x] Selective export: **All / Current / page range** (only recognized pages in
       the selection are exported).
+- [x] Page **deletion** and **drag-reorder** (thumbnail strip).
+- [x] **Image/chart block editing** (move / resize / delete on the preview).
+- [x] **Markdown preview** (Qt WebEngine + marked + KaTeX) toggle in the text pane.
+- [x] **i18n** (System / English / Русский via Qt Linguist) and DRY sampling
+      params in Settings.
 
 ## Stage 4 — RAG (when ready) — ⬜ NOT STARTED
 - [ ] Backend **interface stub** for RAG.
@@ -39,15 +44,15 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [ ] LLocr ↔ RAG integration over HTTP.
 
 ## Stage 5 — Polish and distribution — 🟡 PARTIAL
-- [x] Unit tests for parsers (Qt Test; `test_det_parser`, plus `test_exporter`
-      source not yet in the build).
-- [ ] Unit tests for provider, remaining export paths.
+- [x] Unit tests (Qt Test): `test_det_parser`, `test_pagemodel`,
+      `test_settings_store`, `test_exporter` — all wired into the build.
+- [ ] Unit tests for provider (network) and remaining export paths.
 - [ ] Installers: Windows, macOS (.dmg + signing), Linux (AppImage/Flatpak).
 - [ ] CI/CD (GitHub Actions).
 
 ## Immediate next steps (priority order)
-1. **Persist edits with the document** (optional session save / restore).
-2. Add the `test_exporter` target to `tests/CMakeLists.txt`.
-3. **Lay the RAG interface stub** in the backend (no Python yet).
+1. **Persist edits with the document** across sessions (save / restore).
+2. **Lay the RAG interface stub** in the backend (no Python yet).
+3. Unit tests for the provider / network path.
 4. Bug fixes.
 5. Start **Stage 4 (RAG)**.

@@ -9,16 +9,22 @@
   | C++ packages  | vcpkg (configured, not currently used) | 🟡 | Declared in the `dev` preset, but the active build/ does **not** use it (Qt is external; see `06-dev-setup.md`) |
   | HTTP          | QNetworkAccessManager           | ✅ used | Requests to the LLM API (async via QFuture/QPromise) |
   | Images        | QImage                          | ✅ used | Loading/displaying                                   |
-  | PDF           | **Qt PDF (`QPdfDocument`)**     | ✅ used | Ships with Qt6; no extra native dep (see ADR #8)     |
-  | Box rendering | QML `Repeater` over a list model| ✅ used | Overlay bboxes on the preview (normalized rects)     |
+  | PDF           | **Qt PDF (`QPdfDocument`)**     | ✅ used | Ships with Qt6; no extra native dep (see ADR #7)     |
+  | Box rendering | QML `Repeater` over a list model| ✅ used | Overlay bboxes on the preview (normalized rects); image blocks are movable / resizable / deletable |
   | Export        | **Direct writer (TXT/MD/HTML)** + Pandoc for DOCX/PDF, PDF fallback | ✅ done | Pandoc discovered via `QStandardPaths`; built-in `QPdfWriter` fallback |
-  | Tests         | Qt Test (unit tests in `tests/`)             | 🟡 partial | `test_det_parser` in build; `test_exporter` pending |
+  | i18n          | Qt Linguist (`qsTr`/`tr` + `.ts`) | ✅ done | Runtime retranslate; language persisted in `SettingsStore` (`ui/language`) |
+  | Markdown preview | Qt WebEngine + marked + KaTeX | ✅ done | Toggle in the right text pane; image refs resolved via data: URIs |
+  | Tests         | Qt Test (unit tests in `tests/`) | ✅ done | 4 targets: `test_det_parser`, `test_pagemodel`, `test_settings_store`, `test_exporter` |
 
-  > Note:** export is done via a **direct per-page writer** (TXT / Markdown /
+  > **Note:** export is done via a **direct per-page writer** (TXT / Markdown /
   > HTML) plus **Pandoc for DOCX/PDF** (with a built-in `QPdfWriter` fallback
   > for PDF). Markdown remains the single internal source of truth.
   > PDF rendering uses the **Qt PDF module**
   > (`QPdfDocument`). MuPDF remains a fallback option if higher-fidelity or faster rendering is later required.
+  >
+  > The model prompt is **not** persisted in `SettingsStore` — it lives in
+  > `AppController::m_prompt` ("document parsing.") and has a QML property
+  > (`prompt`) but no UI setter yet.
   
   ## RAG service (separate process) — not started
   | Area          | Choice           | Rationale                |

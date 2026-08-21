@@ -10,18 +10,20 @@
 
 text, title, image (figure), table, formula (equation/isolate_formula), caption (figure_caption / table_caption), figure_footnote / table_footnote, header, footer, page_number, list, reference, code, abstract, seal
 
-Cli-request (for tests):
+Current llama.cpp run
 
 ```bash
-build/bin/llama-mtmd-cli \
-  -m ~/models/ocr/Unlimited-OCR-GGUF/Unlimited-OCR-BF16.gguf \
+cd software/llama.cpp && ./build/bin/llama-server \
+  --model ~/models/ocr/Unlimited-OCR-GGUF/Unlimited-OCR-Q8_0.gguf \
   --mmproj ~/models/ocr/Unlimited-OCR-GGUF/mmproj-Unlimited-OCR-F16.gguf \
-  --image '~/Desktop/OCR DEBUG/Unlimited-OCR/Unlimited-OCR-03.png' -p "document parsing." \
-  --chat-template deepseek-ocr --no-jinja \
-  --temp 0 --flash-attn off --no-warmup \
-  --n-predict 4096 --ctx-size 16384 \
-  --dry-multiplier 0.8 --dry-base 1.75 --dry-allowed-length 35 \
-  --dry-penalty-last-n 128 --dry-sequence-breaker none
+  --special \
+  --temp 0 \
+  --n-predict 8192 --ctx-size 16384 \
+  --parallel 1 --cache-reuse 0 --no-context-shift \
+  --cache-type-k f32 --cache-type-v f32 \
+  --image-min-tokens 456 --image-max-tokens 1156 \
+  --no-warmup --flash-attn off \
+  --dry-sequence-breaker none
 ```
 
 Server request (with optimal dry-parameters):

@@ -21,7 +21,10 @@ all running locally, without sending your data to the cloud.
 - **Live Markdown preview** with rendered LaTeX formulas, tables and images
 - Side-by-side source view and editable recognition results
 - Export to **Markdown, TXT, DOCX, PDF, HTML**
-- Multi-page documents: page reordering, per-page recognition, batch processing
+- Multi-page documents: page reordering/deletion, per-page recognition, batch processing
+- **Editable image/chart blocks** — move, resize, and delete detected regions
+- Per-model generation settings incl. **DRY sampling parameters** (llama.cpp)
+- Localizable UI (System / English / Русский) and theming (System / Light / Dark)
 - Fully local processing — your data never leaves your machine
 - **RAG integration** to grow a knowledge base from scans *(WIP)*
 
@@ -40,6 +43,7 @@ all running locally, without sending your data to the cloud.
 - Qt 6.5+ with the following modules:
   - **Qt PDF** — PDF page rasterization
   - **Qt WebEngine** — Markdown/LaTeX preview
+  - **Qt LinguistTools** — runtime translation of the UI
 - CMake ≥ 3.21
 - A C++20-compatible compiler
 - vcpkg

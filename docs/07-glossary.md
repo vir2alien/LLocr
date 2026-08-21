@@ -4,21 +4,37 @@
 - **OCR** — recognizing text from images.
 - **LLM provider** — the connection to the model; here always an
   **OpenAI-compatible** endpoint (llama.cpp server, Ollama, LM Studio, hosted API).
-- **ProviderConfig** — the settings struct (connection + model + parser) that
-  `AppController` fills from `SettingsStore` when building a request. It is no
-  longer the persisted source of truth: settings are persisted by
-  `SettingsStore` via `QSettings` and edited in the Settings dialog. **Note:**
-  `ProviderConfig::prompt` exists but the active prompt is taken from
-  `AppController::m_prompt`, which is not persisted (yet).
+- **ProviderConfig** — the **transport** settings struct (base URL, API key,
+  timeout). It is separate from the model settings: when a recognition starts,
+  `RecognitionController` assembles an `OcrRequest` (model + prompt + generation
+  params) from `SettingsStore` and a `ProviderConfig` (connection) for the
+  provider.
+- **OcrRequest** — the per-request payload for the provider: `image`, `prompt`,
+  `modelId`, plus generation params (`temperature`, `maxTokens`, and the DRY
+  sampling parameters). Defined in `providers/ILlmProvider.h`.
+- **DRY sampling parameters** — llama.cpp's "Don't Repeat Yourself" sampler
+  settings (`dry_multiplier`, `dry_base`, `dry_allowed_length`,
+  `dry_penalty_last_n`), exposed in **Settings → Model** and sent in the request
+  body. Tuned for the Unlimited-OCR model.
 - **Output parser** — the strategy for parsing a model's response into a
-  structured result (`raw`, `det_tokens`), selected in Settings → Output.
+  structured result (`raw`, `det_tokens`; default `det_tokens`), selected in
+  Settings → Output.
+- **BlockStyle** — mapping from model block labels (`title`, `image`, `chart`,
+  `equation`, `table`, `ref_text`, captions, …) to Markdown rendering styles
+  (`BlockStyle.h`).
 - **bbox** — bounding box coordinates of a recognized fragment for overlay on
   the preview (produced by the `det_tokens` parser).
+- **Image/chart block** — a `det_tokens` box labeled `image` or `chart`;
+  editable on the preview (move / resize / delete) and exported as a cropped
+  image.
+- **Markdown preview** — client-side render of the current page's Markdown via
+  Qt WebEngine + marked + KaTeX, toggled in the right text pane.
 - **RAG** — Retrieval-Augmented Generation; here — indexing scans into a vector DB.
 - **Document / page model** — `DocumentModel` holds pages; `PageListModel` feeds
-  the thumbnail strip (recognized/edited/current flags, no boxes).
-- **Recognized marker** — per-page indicator (green/grey) showing whether a page
-  has been OCR'd yet.
+  the thumbnail strip (recognized/edited/duplicate/current flags, no boxes).
+- **Recognized marker** — per-page indicator showing whether a page has been
+  OCR'd yet; edited pages and pages with duplicate boxes carry additional
+  markers.
 
 ## Adopted decisions (ADR-lite)
 | #    | Decision                                                     | Reason                                                       |
@@ -43,5 +59,10 @@
 | 18   | `det_tokens` also strips model control tokens from content — `<|end_of_sentence|>` (ASCII and full-width-pipe `｜ U+FF5C` + `▁ U+2581` variants) and any stray `<|…|>` wrappers | The model appends an EOS marker after the last block; it must not leak into the recognized text. |
 | 19   | The `table` block style is recognized and rendered as a **GFM pipe table** (`\| a \| b \|`) built from the model's `<table>` HTML. `colspan`/`rowspan` are honored by laying cells into a dense grid (a spanned value is repeated across the occupied columns/rows, since GFM has no native spanning); cell math is converted via `convertMath`, and `|` / newlines inside cells are escaped. `table_caption`/`table_footnote` render italic like figure captions | The model emits table content as inline HTML (`<table><tr><td …`) inside the `table` det token; raw HTML must not leak into the markdown, so it is parsed into a pipe table. |
 | 20   | The `ref_text` det-token (bibliography/reference list) parses like `text` and renders as a plain paragraph | The model labels reference entries (`[1] …`, `[2] …`) as `ref_text`; they are ordinary text runs (no heading/italic markers), keep their `ref_text` label, and get no extra Markdown styling. |
+| 21   | **DRY sampling parameters** (`dry_multiplier`, `dry_base`, `dry_allowed_length`, `dry_penalty_last_n`) exposed in **Settings → Model** and sent in the request body | They materially affect recognition quality with llama.cpp for the Unlimited-OCR model; users can tune them without recompiling. |
+| 22   | **Markdown preview** rendered client-side via **Qt WebEngine + bundled marked + KaTeX** (`resources/preview/`) | LaTeX/tables/images render locally with no network access; `image://ocr/crop/*` refs are converted to `data:` URIs before rendering. |
+| 23   | Pages can be **deleted** and **drag-reordered** in the thumbnail strip; `PageEditStore` and `PageListModel` remap indices afterwards | Multi-page documents need page management; edits must follow their page across reorder/removal. |
+| 24   | **Image/chart block editing** (move / resize / delete) directly on the preview; `rebuildPageText()` regenerates the page Markdown from the boxes | Editing regions is more convenient than re-running OCR; markdown image refs embed the box index, so removal forces a rebuild to keep `image://ocr/crop/<N>` indices consistent. |
+| 25   | Detected **duplicate** bounding boxes are collapsed and flagged (`OcrPage::hasDuplicates`, `PageListModel` duplicate role → red marker) | The model can emit the same region twice; the parser dedups it and the UI surfaces it. |
 
 > When decisions change — add a row to the table and update the affected files.
