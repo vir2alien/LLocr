@@ -56,6 +56,8 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ThumbDelegate.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/Header.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ImagePreview.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ThumbPanel.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ImagePanel.qml"
 )
 
 qt_add_resources(llocr "app_conf"

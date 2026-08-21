@@ -19,6 +19,17 @@ AppController::AppController(SettingsStore &settings, QObject *parent)
 
     connect(&m_watcher, &QFutureWatcher<OcrResult>::finished, this, &AppController::onRecognitionFinished);
     connect(&m_boxModel, &BoxListModel::boxRemoved, this, &AppController::onBoxRemoved);
+
+    connect(this, &AppController::pageChanged, this, [this]() {
+        ++m_imageRevision;
+        emit imageRevisionChanged();
+    });
+    connect(this, &AppController::documentChanged, this, [this]() {
+        ++m_docRevision;
+        emit docRevisionChanged();
+        ++m_imageRevision;
+        emit imageRevisionChanged();
+    });
 }
 
 QStringList AppController::parserNames() const

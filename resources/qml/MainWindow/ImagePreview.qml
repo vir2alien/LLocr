@@ -2,11 +2,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import LLocr
+
 Image {
     id: previewImage
     fillMode: Image.PreserveAspectFit
     source: controller.hasImage
-            ? "image://ocr/current?" + mainWindow.imageRevision
+            ? "image://ocr/current?" + controller.imageRevision
             : ""
     cache: false
 

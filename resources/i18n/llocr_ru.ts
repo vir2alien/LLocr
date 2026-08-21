@@ -183,7 +183,7 @@
     </message>
 </context>
 <context>
-    <name>Main</name>
+    <name>Header</name>
     <message>
         <source>Open…</source>
         <translation>Открыть…</translation>
@@ -208,6 +208,13 @@
         <source>Settings...</source>
         <translation>Настройки…</translation>
     </message>
+</context>
+<context>
+    <name>ThumbDelegate</name>
+    <message>
+        <source>Has duplicates</source>
+        <translation>Дубликаты</translation>
+    </message>
     <message>
         <source>Edited</source>
         <translation>Изменено</translation>
@@ -231,6 +238,17 @@
     <message>
         <source>Delete page %1</source>
         <translation>Удалить страницу %1</translation>
+    </message>
+</context>
+<context>
+    <name>Main</name>
+    <message>
+        <source>Edited</source>
+        <translation>Изменено</translation>
+    </message>
+    <message>
+        <source>Recognized</source>
+        <translation>Распознано</translation>
     </message>
     <message>
         <source>Open an image or PDF to begin</source>
@@ -263,10 +281,6 @@
     <message>
         <source>Export recognized text</source>
         <translation>Экспорт распознанного текста</translation>
-    </message>
-    <message>
-        <source>Has duplicates</source>
-        <translation>Дубликаты</translation>
     </message>
     <message>
         <source>Preview</source>

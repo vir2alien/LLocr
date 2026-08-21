@@ -29,6 +29,8 @@ class AppController : public QObject
     Q_PROPERTY(bool hasImage READ hasImage NOTIFY imageChanged)
     Q_PROPERTY(int pageCount READ pageCount NOTIFY documentChanged)
     Q_PROPERTY(int currentPage READ currentPage WRITE setCurrentPage NOTIFY pageChanged)
+    Q_PROPERTY(int imageRevision READ imageRevision NOTIFY imageRevisionChanged)
+    Q_PROPERTY(int docRevision READ docRevision NOTIFY docRevisionChanged)
     Q_PROPERTY(bool hasResult READ hasResult NOTIFY resultChanged)
 
     Q_PROPERTY(bool currentPageEditable READ currentPageEditable NOTIFY resultChanged)
@@ -57,6 +59,8 @@ public:
     bool hasResult() const;
     int pageCount() const { return m_document.pageCount(); }
     int currentPage() const { return m_currentPage; }
+    int imageRevision() const { return m_imageRevision; }
+    int docRevision() const { return m_docRevision; }
 
     bool canRecognize() const;
     QStringList parserNames() const;
@@ -92,6 +96,8 @@ signals:
     void imageChanged();
     void documentChanged();
     void pageChanged();
+    void imageRevisionChanged();
+    void docRevisionChanged();
     void configChanged();
     void boxesChanged();
 
@@ -186,6 +192,9 @@ private:
     int m_currentPage = 0;
     bool m_busy = false;
     QString m_statusMessage;
+
+    int m_imageRevision = 0;
+    int m_docRevision = 0;
 
     QHash<int, QString> m_edits;
 

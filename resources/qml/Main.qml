@@ -17,19 +17,6 @@ ApplicationWindow {
     title: qsTr("LLM OCR")
 
     color: Theme.background
-
-    property int imageRevision: 0
-    property int docRevision: 0
-
-    Connections {
-        target: controller
-        function onPageChanged() { mainWindow.imageRevision++ }
-        function onDocumentChanged() {
-            mainWindow.docRevision++
-            mainWindow.imageRevision++
-        }
-    }
-
     ButtonGroup {
         id: themeGroup
     }
@@ -57,73 +44,41 @@ ApplicationWindow {
             }
         }
 
-        Rectangle {// thumbnails panel
-            id: thumbPanel
+        ThumbPanel {
             SplitView.preferredWidth: 170
             SplitView.minimumWidth: 120
             SplitView.maximumWidth: 300
             color: Theme.surface
             visible: controller.hasImage
+        }
 
-            ListView {
-                id: thumbList
-                anchors.fill: parent
-                anchors.margins: Theme.spacing
-                spacing: Theme.spacing
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar {}
-                cacheBuffer: 10000
-
-                interactive: draggedIndex === -1
-
-                model: controller.pageModel
-
-                property int draggedIndex: -1
-
-                displaced: Transition {
-                    NumberAnimation { property: "y"; duration: 150; easing.type: Easing.OutQuad }
-                }
-
-                delegate: ThumbDelegate {
-                    width: thumbList.width - Theme.spacingSmall
-                    height: width * 1.3 + 22
-                }
-            }//ListView
-        } // Rectangle thumbnails panel
-
-        Rectangle { // image preview
-            id: leftPanel
+        ImagePanel {
             SplitView.preferredWidth: parent.width * 0.45
             SplitView.minimumWidth: 300
-            color: Theme.surfaceSunken
-
-            ImagePreview {
-                anchors.fill: parent
-                anchors.margins: Theme.spacingLarge
-            }
-
-            Label {
-                anchors.centerIn: parent
-                visible: !controller.hasImage
-                text: qsTr("Open an image or PDF to begin")
-                color: Theme.textMuted
-            }
-        } // Rectangle img preview
+        }
 
         Rectangle { // recognized text + preview
             SplitView.minimumWidth: 300
             color: Theme.surfaceAlt
+            Label {
+                anchors.centerIn: parent
+                verticalAlignment: Text.AlignVCenter
+                visible: !controller.hasResult && !previewSwitch.checked
+                text: qsTr("Recognized text will appear here")
+                color: Theme.textMuted
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                width: Math.min(implicitWidth, parent.width - 2 * Theme.spacing)
+            }
 
             ColumnLayout {
                 anchors.fill: parent
+                visible: controller.hasResult
                 spacing: 0
-
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.preferredHeight: previewSwitch.implicitHeight + 2*Theme.spacingSmall
                     spacing: Theme.spacing
-                    visible: controller.hasResult
                     Layout.margins: Theme.spacingSmall
 
                     Label {
@@ -156,15 +111,6 @@ ApplicationWindow {
                     Layout.fillWidth: true;
                     Layout.preferredHeight: 1
                     color: Theme.divider
-                }
-
-                Label {
-                    visible: !controller.hasResult && !previewSwitch.checked
-                    text: qsTr("Recognized text will appear here")
-                    color: Theme.textMuted
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    width: Math.min(implicitWidth, parent.width - 2 * Theme.spacing)
                 }
 
                 StackLayout {

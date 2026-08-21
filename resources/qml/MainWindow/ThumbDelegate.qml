@@ -38,7 +38,7 @@ Item {
                 asynchronous: true
                 cache: true
                 source: "image://ocr/page/" + model.pageIndex
-                        + "?r=" + mainWindow.docRevision
+                        + "?r=" + controller.docRevision
             }
 
             RowLayout {
