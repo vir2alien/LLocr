@@ -88,11 +88,11 @@ Dialog {
         Settings.connectionTimeoutMs = parseInt(timeoutField.text) || 120000;
         Settings.modelName = modelNameField.text;
         Settings.temperature = parseFloat(temperatureField.text) || 0.0;
-        Settings.maxTokens = parseInt(maxTokensField.text) || 16384;
+        Settings.maxTokens = parseInt(maxTokensField.text) || 8192;
         Settings.dryMultiplier = parseFloat(dryMultiplierField.text) || 0.8;
         Settings.dryBase = parseFloat(dryBaseField.text) || 1.75;
         Settings.dryAllowedLength = parseInt(dryAllowedLenghField.text) || 35;
-        Settings.dryPenaltyLastN = parseInt(dryRange.text) || 128;
+        Settings.dryPenaltyLastN = parseInt(dryRange.text) || 2048;
         Settings.parserId = parserBox.currentText;
         Settings.forceSave();
         I18n.setLanguage(Settings.language);

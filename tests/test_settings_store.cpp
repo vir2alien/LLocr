@@ -31,11 +31,11 @@ private slots:
         QCOMPARE(store.connectionTimeoutMs(), 120000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.temperature(), 0.0);
-        QCOMPARE(store.maxTokens(), 16384);
+        QCOMPARE(store.maxTokens(), SettingsStore::kDefaultMaxTokens);
         QCOMPARE(store.dryMultiplier(), 0.8);
         QCOMPARE(store.dryBase(), 1.75);
         QCOMPARE(store.dryAllowedLength(), 35);
-        QCOMPARE(store.dryPenaltyLastN(), 128);
+        QCOMPARE(store.dryPenaltyLastN(), SettingsStore::kDefaultDryPenaltyLastN);
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
@@ -81,11 +81,11 @@ private slots:
         QCOMPARE(store.connectionTimeoutMs(), 120000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.temperature(), 0.0);
-        QCOMPARE(store.maxTokens(), 16384);
+        QCOMPARE(store.maxTokens(), SettingsStore::kDefaultMaxTokens);
         QCOMPARE(store.dryMultiplier(), 0.8);
         QCOMPARE(store.dryBase(), 1.75);
         QCOMPARE(store.dryAllowedLength(), 35);
-        QCOMPARE(store.dryPenaltyLastN(), 128);
+        QCOMPARE(store.dryPenaltyLastN(), SettingsStore::kDefaultDryPenaltyLastN);
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
