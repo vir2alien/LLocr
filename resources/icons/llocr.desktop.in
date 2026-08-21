@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=LLM OCR
+Name[en]=LLM OCR
+Name[ru]=LLM OCR
+GenericName=OCR application
+Comment=Cross-platform OCR application powered by local LLMs
+# Path to the installed icon (freedesktop hicolor theme) is resolved by name:
+Icon=llocr
+Exec=@LLOCR_EXECUTABLE@
+Terminal=false
+Categories=Office;Graphics;Viewer;
+StartupNotify=true

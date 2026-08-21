@@ -49,7 +49,9 @@ LLocr/
 │   │   └── MainWindow/  # Header, ThumbPanel, ThumbDelegate, ImagePanel,
 │   │                    #   ImagePreview, WorkPanel, MarkdownPreview, Footer
 │   ├── preview/      # marked + KaTeX + preview.html (Markdown preview)
-│   └── i18n/         # llocr_ru.ts (compiled/embedded by qt_add_translations)
+│   ├── icons/         # app-icon.svg + llocr-*.png + llocr.ico / llocr.icns +
+│   │                  #   hicolor/** (Linux) + llocr.rc (Win) + llocr.desktop.in
+│   └── i18n/          # llocr_ru.ts (compiled/embedded by qt_add_translations)
 ├── rag-service/      # Python service (later stage) — empty for now
 ├── tests/            # test_det_parser, test_pagemodel,
 │                     #   test_settings_store, test_exporter (all built)

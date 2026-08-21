@@ -1,0 +1,4 @@
+// Windows application icon resource. Referenced from src/CMakeLists.txt when
+// building for WIN32. The icon file (llocr.ico) is resolved relative to this
+// .rc file by the Windows resource compiler (windres / rc.exe).
+IDI_ICON1 ICON "llocr.ico"

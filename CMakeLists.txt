@@ -57,3 +57,28 @@ if(LLOCR_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# --- Linux icon packing (hicolor theme + desktop entry) ------------------------
+# Installs the application icon into the freedesktop hicolor icon theme so it is
+# used by KDE/GNOME/other .desktop launchers, plus a .desktop entry. Only wired
+# on non-Apple Unix (Linux). Uses @LLOCR_EXECUTABLE@ substituted in the .desktop
+# template so it points at the installed binary.
+if(UNIX AND NOT APPLE)
+    include(GNUInstallDirs)
+
+    file(GLOB_RECURSE HICOLOR_PNGS RELATIVE "${CMAKE_SOURCE_DIR}/resources/icons/hicolor"
+        "${CMAKE_SOURCE_DIR}/resources/icons/hicolor/*/apps/llocr.png")
+
+    foreach(icon_rel ${HICOLOR_PNGS})
+        install(FILES "${CMAKE_SOURCE_DIR}/resources/icons/hicolor/${icon_rel}"
+                DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/${icon_rel}")
+    endforeach()
+
+    # Substitute the installed executable path into the desktop entry template.
+    set(LLOCR_EXECUTABLE "${CMAKE_INSTALL_FULL_BINDIR}/llocr")
+    configure_file("${CMAKE_SOURCE_DIR}/resources/icons/llocr.desktop.in"
+                   "${CMAKE_CURRENT_BINARY_DIR}/generated/llocr.desktop"
+                   @ONLY)
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/generated/llocr.desktop"
+            DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+endif()

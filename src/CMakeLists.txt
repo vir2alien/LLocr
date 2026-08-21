@@ -84,6 +84,38 @@ qt_add_resources(llocr "preview"
     FILES ${PREVIEW_FILES}
 )
 
+# --- App icon ------------------------------------------------------------------
+# Multi-resolution raster icons embedded for the window / taskbar icon on every
+# platform, plus the vector source for reference and future use.
+file(GLOB_RECURSE ICON_PNG_FILES
+    "${CMAKE_SOURCE_DIR}/resources/icons/llocr-[0-9]*.png")
+
+qt_add_resources(llocr "app_icons"
+    PREFIX "/icons"
+    BASE "${CMAKE_SOURCE_DIR}/resources/icons"
+    FILES ${ICON_PNG_FILES}
+        "${CMAKE_SOURCE_DIR}/resources/icons/app-icon.svg"
+)
+
+# --- Windows: embed the .ico as the executable resource icon -------------------
+if(WIN32)
+    target_sources(llocr PRIVATE
+        "${CMAKE_SOURCE_DIR}/resources/icons/llocr.rc")
+endif()
+
+# --- macOS: .icns for the application bundle -----------------------------------
+option(LLOCR_MACOS_APP_BUNDLE "Build llocr as a macOS .app bundle" OFF)
+if(APPLE)
+    set(MACOSX_BUNDLE_ICON_FILE llocr.icns)
+    set(app_icon_macos "${CMAKE_SOURCE_DIR}/resources/icons/llocr.icns")
+    set_source_files_properties(${app_icon_macos} PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources")
+    if(LLOCR_MACOS_APP_BUNDLE)
+        set_target_properties(llocr PROPERTIES MACOSX_BUNDLE TRUE)
+        target_sources(llocr PRIVATE ${app_icon_macos})
+    endif()
+endif()
+
 target_include_directories(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(llocr PRIVATE

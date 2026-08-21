@@ -1,4 +1,5 @@
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -16,6 +17,19 @@ int main(int argc, char* argv[]) {
 
     QCoreApplication::setOrganizationName(QStringLiteral("llocr"));
     QCoreApplication::setApplicationName(QStringLiteral("LLM OCR"));
+
+    // Application / window icon, used by every top-level window (Windows
+    // taskbar, Linux WM/taskbar, and macOS window). Emits each size so the
+    // platform can pick the crispest available variant for the current scale
+    // factor. (The macOS Dock icon is additionally supplied by the .icns in the
+    // .app bundle; see the LLOCR_MACOS_APP_BUNDLE build option.)
+    {
+        QIcon windowIcon;
+        for (const auto size : {16, 24, 32, 48, 64, 128, 256, 512, 1024})
+            windowIcon.addFile(QStringLiteral(":/icons/llocr-%1.png").arg(size),
+                               QSize(size, size));
+        app.setWindowIcon(windowIcon);
+    }
 
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 

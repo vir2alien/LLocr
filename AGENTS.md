@@ -24,6 +24,7 @@
   | `docs/05-roadmap.md`      | Development plan by stages                  |
   | `docs/06-dev-setup.md`    | Tooling, build, CI/CD, distribution         |
   | `docs/07-glossary.md`     | Terms and adopted decisions                 |
+  | `docs/08-app-icon.md`     | Cross-platform application icon             |
   | `docs/UnlimitedOCR.md`    | Reference: the Unlimited-OCR model (baidu)   |
 
   ## Rules for the agent
