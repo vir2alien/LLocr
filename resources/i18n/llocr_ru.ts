@@ -243,24 +243,8 @@
 <context>
     <name>Main</name>
     <message>
-        <source>Edited</source>
-        <translation>Изменено</translation>
-    </message>
-    <message>
-        <source>Recognized</source>
-        <translation>Распознано</translation>
-    </message>
-    <message>
         <source>Open an image or PDF to begin</source>
         <translation>Откройте изображение или PDF, чтобы начать</translation>
-    </message>
-    <message>
-        <source>Revert</source>
-        <translation>Отменить изменения</translation>
-    </message>
-    <message>
-        <source>Recognized text will appear here</source>
-        <translation>Здесь появится распознанный текст</translation>
     </message>
     <message>
         <source>Drop to open</source>
@@ -281,6 +265,25 @@
     <message>
         <source>Export recognized text</source>
         <translation>Экспорт распознанного текста</translation>
+    </message>
+</context>
+<context>
+    <name>WorkPanel</name>
+    <message>
+        <source>Recognized text will appear here</source>
+        <translation>Здесь появится распознанный текст</translation>
+    </message>
+    <message>
+        <source>Edited</source>
+        <translation>Изменено</translation>
+    </message>
+    <message>
+        <source>Recognized</source>
+        <translation>Распознано</translation>
+    </message>
+    <message>
+        <source>Revert</source>
+        <translation>Отменить изменения</translation>
     </message>
     <message>
         <source>Preview</source>
