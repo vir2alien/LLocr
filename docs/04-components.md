@@ -66,15 +66,17 @@ Three options handled by `UiController`:
   recognition run is in progress**. ✅
 
 ## 4.8 Stop / cancellation
-- The Stop button calls `AppController::stop()`, which sets a stop flag and
-  calls `OpenAiProvider::abort()`; the sequential "recognize all" loop halts
+- The Stop button calls `AppController::stop()`, which forwards to
+  `RecognitionController::stop()` (it sets a stop flag and calls
+  `OpenAiProvider::abort()`); the sequential "recognize all" loop halts
   cleanly and already-recognized pages are preserved. ✅
 
 ## 4.9 Text editing
 - The right pane is an **editable** `TextArea` (read-only until the current
   page is recognized). ✅
-- Edits are stored **per page** in `AppController` (`m_edits`, keyed by page
-  index) and override the recognized text for both display and export. ✅
+- Edits are stored **per page** in a dedicated `PageEditStore` (`m_editStore`
+  in `AppController`, keyed by page index) and override the recognized text
+  for both display and export. ✅
 - An edited page is flagged (`PageListModel` `edited` role → amber dot) and
   can be **reverted** to the original recognition (`revertCurrentPageEdits`). ✅
 - A fresh recognition of a page **supersedes** any manual edit on it. ✅

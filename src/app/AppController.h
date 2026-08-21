@@ -1,9 +1,5 @@
 #pragma once
 
-#include <memory>
-
-#include <QFutureWatcher>
-#include <QHash>
 #include <QImage>
 #include <QObject>
 #include <QUrl>
@@ -13,9 +9,10 @@
 #include "app/DocumentModel.h"
 #include "app/Exporter.h"
 #include "app/PageListModel.h"
+#include "app/PageEditStore.h"
+#include "app/RecognitionController.h"
 #include "app/SettingsStore.h"
 #include "core/OcrResult.h"
-#include "providers/OpenAiProvider.h"
 
 namespace llocr {
 
@@ -42,7 +39,7 @@ class AppController : public QObject
     Q_PROPERTY(QObject* pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject* boxModel READ boxModel CONSTANT)
 
-    Q_PROPERTY(QString prompt READ prompt WRITE setPrompt NOTIFY promtChanged)
+    Q_PROPERTY(QString prompt READ prompt WRITE setPrompt NOTIFY promptChanged)
 
     Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY configChanged)
 
@@ -52,7 +49,7 @@ public:
     explicit AppController(SettingsStore &settings, QObject *parent = nullptr);
 
     // --- QML getters ---
-    bool busy() const { return m_busy; }
+    bool busy() const { return m_recognition.busy(); }
     QString resultText() const;
     QString statusMessage() const { return m_statusMessage; }
     bool hasImage() const;
@@ -71,10 +68,13 @@ public:
     bool currentPageEditable() const;
     bool currentPageEdited() const;
 
+    /// UI-facing page/box models. Deliberately non-const: a const accessor would
+    /// have to return const QObject*, forcing a const_cast, and QML delegates
+    /// need the mutable model instance.
     QObject *pageModel() { return &m_pageModel; }
     QObject *boxModel() { return &m_boxModel; }
 
-    QString prompt() { return m_prompt; }
+    QString prompt() const { return m_prompt; }
 
     // --- QML setters ---
 
@@ -83,7 +83,6 @@ public:
 
     QImage currentImage() const;
     QImage pageImage(int index) const;
-    OcrResult currentResult() const;
 
     /// Crops the image-block of a page (used by OcrImageProvider and export).
     QImage croppedImage(int pageIndex, int boxIndex) const;
@@ -91,7 +90,7 @@ public:
 signals:
     void busyChanged();
     void resultChanged();
-    void promtChanged();
+    void promptChanged();
     void statusChanged();
     void imageChanged();
     void documentChanged();
@@ -136,34 +135,26 @@ public slots:
     /// Replaces image://ocr/crop/<N> with data: URIs for WebEngine preview.
     Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown) const;
 
-private slots:
-    void onRecognitionFinished();
-
 private:
-    enum ExportScope {
+    enum ExportScope : int {
         ExportAll = 0,
         ExportCurrent = 1,
         ExportRange = 2,
     };
     Q_ENUM(ExportScope)
 
-    void setBusy(bool busy);
     void setStatus(const QString& message);
 
-    void recognizePage(int index);
-    void recognizeSequential(int index);
-    OcrRequest buildRequest(const QImage &image, const QString &prompt) const;
+    void notifyDocumentChanged();
+    void notifyPageChanged();
+
     void applyRawResult(int index, const OcrResult& rawResult);
 
-    void finishRun();
     void updateBoxesForCurrent();
 
     QList<Exporter::Page> collectPages(int scope, int fromPage, int toPage) const;
-    QList<Exporter::Page> collectRecognizedPages() const;
 
     QString effectiveText(int index) const;
-
-    std::unique_ptr<OpenAiProvider> m_provider;
 
     SettingsStore &m_settings;
 
@@ -171,36 +162,19 @@ private:
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
 
-    QString m_prompt = "document parsing.";
+    RecognitionController m_recognition;
 
-    /* promts:
-     * "document parsing."
-     * "Multi page parsing."
-     * "Free OCR."
-     * "Parse the figure."
-     * "Describe this image in detail."
-     * "<|grounding|>Convert the document to markdown."
-     * "<|grounding|>OCR this image."
-     * "<|grounding|>Free OCR."
-     * "<|grounding|>Locate <|ref|>Invoice Number<|/ref|> in the image."
-     */
+    QString m_prompt = "document parsing.";
 
     Exporter m_exporter;
 
-    QFutureWatcher<OcrResult> m_watcher;
-
     int m_currentPage = 0;
-    bool m_busy = false;
     QString m_statusMessage;
 
     int m_imageRevision = 0;
     int m_docRevision = 0;
 
-    QHash<int, QString> m_edits;
-
-    bool m_stopRequested = false;
-    bool m_recognizeAll = false;
-    int m_recognizingIndex = -1;
+    PageEditStore m_editStore;
 };
 
 }  // namespace llocr

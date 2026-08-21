@@ -39,6 +39,11 @@ qt_add_executable(llocr
     app/SettingsStore.cpp
     app/PageListModel.h
     app/PageListModel.cpp
+    app/PageEditStore.h
+    app/PageEditStore.cpp
+    app/PageIndex.h
+    app/RecognitionController.h
+    app/RecognitionController.cpp
     app/UiController.h
     app/UiController.cpp
 )

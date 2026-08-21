@@ -1,3 +1,4 @@
+#include "app/PageIndex.h"
 #include "app/PageListModel.h"
 
 namespace llocr {
@@ -157,12 +158,7 @@ void PageListModel::movePage(int from, int to)
     m_edited.move(from, to);
     m_hasDuplicates.move(from, to);
 
-    if (m_current == from)
-        m_current = to;
-    else if (from < to && m_current > from && m_current <= to)
-        --m_current;
-    else if (from > to && m_current >= to && m_current < from)
-        ++m_current;
+    m_current = remapIndexAfterMove(m_current, from, to);
 
     endMoveRows();
 
