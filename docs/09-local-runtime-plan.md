@@ -1,6 +1,6 @@
 # 09. Local Runtime: автозапуск llama.cpp и управление моделями (v2)
 
-План работ для агентов. Статус: **A выполнена** — каркас, режимы, resolver, SettingsStore-группы/миграция, RuntimePaths, ServerLaunchConfig, сакелет RuntimeController (External), RecognitionController через `ensureConnectionReady()`, SingleInstanceGuard. Далее по порядку — **B**.
+План работ для агентов. Статус: **C выполнена** — A (каркас/режимы/resolver), B (бинарник и процесс) и C (загрузчик: `DownloadTask` + `DownloadManager` + `test_download_manager`). Далее по порядку — **D ∥ E** (установка llama.cpp и модели с HF, независимы).
 
 ---
 
@@ -534,7 +534,15 @@ QCoreApplication::aboutToQuit
 
 ---
 
-### Stage C — Загрузчик
+### Stage C — Загрузчик ✅ (выполнен)
+
+> **Выполнено.** `DownloadTask` (resumable-загрузка: `.part`+`.part.meta`, строгий
+> `Range`/`If-Range`/`Content-Range`, потоковая sha256 с перечитыванием `.part`,
+> санитизация имён, редирект-политика https-only + снятие `Authorization` при
+> смене host, fsync перед atom-rename, free-space через `QStorageInfo`) и
+> `DownloadManager` (`QAbstractListModel`, очередь ≤2, агрегированный прогресс),
+> `QNetworkProxyFactory::useSystemConfiguration()`. Тест `test_download_manager`
+> (13 кейсов) — **зелёный**.
 
 **Задачи**
 
@@ -986,7 +994,7 @@ A ──► B ──► C ──┬──► D ──┐
 
 D и E независимы после C и могут выполняться параллельно разными агентами.
 
-**Текущий статус:** ✅ **B выполнена** — `RuntimeLocator` (probe `--version`/`--help`, tolerant parsing, `autoDiscover`, chmod-политика), полные `ServerCapabilities` (allowlist по build + `--help` + JSON-кэш), `LlamaServerProcess` (QProcess, ring-буфер 2000, ротация лога 5 МБ×3, health 500 мс, terminate→kill, автоперезапуск ≤3/5мин), порт (автоподбор ×3, фикс. занят → ошибка, без attach), `ProcessGuard` (_win/_linux/_mac), `shutdownSync()` через `aboutToQuit`; UI `Settings → Runtime` (путь/Обзор/Автоопределение, probe-статус, Start/Stop/Restart, «Показать лог»); тесты `test_capabilities`, `test_runtime_locator`, `test_server_process` + `mock_llama_server` — **все зеленые (9/9)**. Далее по порядку — **C** (загрузчик). Ранее: **A** выполнена.
+**Текущий статус:** ✅ **C выполнена** — `DownloadTask` (resume: `.part`/`.part.meta` с ETag/Last-Modified, `Range`/`If-Range`/`Content-Range` строгой проверкой, потоковая sha256 с перечитыванием `.part` при возобновлении, санитизация имён файлов, редиректы https-only ≤5 + снятие `Authorization` при смене host, `flush`+`fsync` перед rename, free-space через `QStorageInfo`) и `DownloadManager` (`QAbstractListModel`, ≤2 параллельно, агрегированный прогресс, `QNetworkProxyFactory::useSystemConfiguration()`); тест `test_download_manager` (13 кейсов: If-Range/Content-Range, смена ETag → полная перезакачка, некорректный Content-Range → restart fresh, отмена с/без удаления, hash mismatch, нехватка места, лимит параллельности, отказ от не-https) — **все зелёные (10/10 таргетов)**. Далее по порядку — **D ∥ E** (установка llama.cpp и модели с HF, независимы). Ранее: **A**, **B** выполнены.
 
 **После каждого этапа обязательно:**
 1. сборка на текущей платформе;

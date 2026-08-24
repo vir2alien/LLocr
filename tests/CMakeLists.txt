@@ -189,3 +189,20 @@ else()
     target_sources(test_server_process PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
 endif()
 add_test(NAME test_server_process COMMAND test_server_process)
+
+# ---- Stage C: download manager ------------------------------------------
+qt_add_executable(test_download_manager test_download_manager.cpp)
+
+target_include_directories(test_download_manager PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_download_manager PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+)
+
+target_sources(test_download_manager PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadTask.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadManager.cpp
+)
+add_test(NAME test_download_manager COMMAND test_download_manager)

@@ -62,6 +62,10 @@ qt_add_executable(llocr
     runtime/LlamaServerProcess.h
     runtime/LlamaServerProcess.cpp
     runtime/ProcessGuard.h
+    runtime/DownloadTask.h
+    runtime/DownloadTask.cpp
+    runtime/DownloadManager.h
+    runtime/DownloadManager.cpp
     runtime/RuntimeController.h
     runtime/RuntimeController.cpp
     runtime/SingleInstanceGuard.h
