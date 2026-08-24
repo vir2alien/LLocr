@@ -46,6 +46,20 @@ qt_add_executable(llocr
     app/RecognitionController.cpp
     app/UiController.h
     app/UiController.cpp
+
+    # runtime
+    runtime/ConnectionMode.h
+    runtime/ResolvedConnection.h
+    runtime/RuntimeState.h
+    runtime/RuntimePaths.h
+    runtime/RuntimePaths.cpp
+    runtime/ServerCapabilities.h
+    runtime/ServerLaunchConfig.h
+    runtime/ServerLaunchConfig.cpp
+    runtime/RuntimeController.h
+    runtime/RuntimeController.cpp
+    runtime/SingleInstanceGuard.h
+    runtime/SingleInstanceGuard.cpp
 )
 
 qt_add_resources(llocr "app_resources"

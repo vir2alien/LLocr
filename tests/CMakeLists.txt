@@ -43,6 +43,39 @@ target_sources(test_settings_store PRIVATE
 )
 add_test(NAME test_settings_store COMMAND test_settings_store)
 
+qt_add_executable(test_launch_config test_launch_config.cpp)
+
+target_include_directories(test_launch_config PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_launch_config PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+
+target_sources(test_launch_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+)
+add_test(NAME test_launch_config COMMAND test_launch_config)
+
+qt_add_executable(test_runtime_lifetime test_runtime_lifetime.cpp)
+
+target_include_directories(test_runtime_lifetime PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_runtime_lifetime PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Concurrent
+    Qt6::Qml
+)
+
+target_sources(test_runtime_lifetime PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeController.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+)
+add_test(NAME test_runtime_lifetime COMMAND test_runtime_lifetime)
+
 qt_add_executable(test_exporter test_exporter.cpp)
 
 target_include_directories(test_exporter PRIVATE ${CMAKE_SOURCE_DIR}/src)

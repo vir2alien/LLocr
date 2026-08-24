@@ -28,6 +28,49 @@ class SettingsStore : public QObject
     Q_PROPERTY(int windowHeight READ windowHeight WRITE setWindowHeight NOTIFY windowHeightChanged)
     Q_PROPERTY(int windowState READ windowState WRITE setWindowState NOTIFY windowStateChanged)
 
+    // --- Connection mode / Managed runtime ---
+    Q_PROPERTY(QString connectionMode READ connectionMode WRITE setConnectionMode NOTIFY connectionModeChanged)
+    Q_PROPERTY(QString lastExternalBaseUrl READ lastExternalBaseUrl WRITE setLastExternalBaseUrl NOTIFY lastExternalBaseUrlChanged)
+
+    // --- Runtime (setup) ---
+    Q_PROPERTY(int setupVersion READ setupVersion WRITE setSetupVersion NOTIFY setupVersionChanged)
+    Q_PROPERTY(bool setupDismissed READ setupDismissed WRITE setSetupDismissed NOTIFY setupDismissedChanged)
+    Q_PROPERTY(QString serverPath READ serverPath WRITE setServerPath NOTIFY serverPathChanged)
+    Q_PROPERTY(bool serverPathIsManaged READ serverPathIsManaged WRITE setServerPathIsManaged NOTIFY serverPathIsManagedChanged)
+    Q_PROPERTY(QString runtimeRootDir READ runtimeRootDir WRITE setRuntimeRootDir NOTIFY runtimeRootDirChanged)
+    Q_PROPERTY(QString runtimeModelsDir READ runtimeModelsDir WRITE setRuntimeModelsDir NOTIFY runtimeModelsDirChanged)
+    Q_PROPERTY(QString runtimeBackend READ runtimeBackend WRITE setRuntimeBackend NOTIFY runtimeBackendChanged)
+    Q_PROPERTY(QString installedBuild READ installedBuild WRITE setInstalledBuild NOTIFY installedBuildChanged)
+    Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart NOTIFY autoStartChanged)
+    Q_PROPERTY(bool startOnDemand READ startOnDemand WRITE setStartOnDemand NOTIFY startOnDemandChanged)
+    Q_PROPERTY(bool stopOnExit READ stopOnExit WRITE setStopOnExit NOTIFY stopOnExitChanged)
+    Q_PROPERTY(bool autoRestart READ autoRestart WRITE setAutoRestart NOTIFY autoRestartChanged)
+    Q_PROPERTY(int startupTimeoutMs READ startupTimeoutMs WRITE setStartupTimeoutMs NOTIFY startupTimeoutMsChanged)
+    Q_PROPERTY(bool checkUpdates READ checkUpdates WRITE setCheckUpdates NOTIFY checkUpdatesChanged)
+    Q_PROPERTY(bool allowNonLoopback READ allowNonLoopback WRITE setAllowNonLoopback NOTIFY allowNonLoopbackChanged)
+
+    // --- Launch (managed server argv) ---
+    Q_PROPERTY(QString launchPresetId READ launchPresetId WRITE setLaunchPresetId NOTIFY launchPresetIdChanged)
+    Q_PROPERTY(QString launchModelPath READ launchModelPath WRITE setLaunchModelPath NOTIFY launchModelPathChanged)
+    Q_PROPERTY(QString launchMmprojPath READ launchMmprojPath WRITE setLaunchMmprojPath NOTIFY launchMmprojPathChanged)
+    Q_PROPERTY(QString launchModelAlias READ launchModelAlias WRITE setLaunchModelAlias NOTIFY launchModelAliasChanged)
+    Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
+    Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
+    Q_PROPERTY(int launchCtxSize READ launchCtxSize WRITE setLaunchCtxSize NOTIFY launchCtxSizeChanged)
+    Q_PROPERTY(int launchGpuLayers READ launchGpuLayers WRITE setLaunchGpuLayers NOTIFY launchGpuLayersChanged)
+    Q_PROPERTY(int launchThreads READ launchThreads WRITE setLaunchThreads NOTIFY launchThreadsChanged)
+    Q_PROPERTY(int launchBatchSize READ launchBatchSize WRITE setLaunchBatchSize NOTIFY launchBatchSizeChanged)
+    Q_PROPERTY(int launchParallel READ launchParallel WRITE setLaunchParallel NOTIFY launchParallelChanged)
+    Q_PROPERTY(QString launchFlashAttn READ launchFlashAttn WRITE setLaunchFlashAttn NOTIFY launchFlashAttnChanged)
+    Q_PROPERTY(QString launchCacheTypeK READ launchCacheTypeK WRITE setLaunchCacheTypeK NOTIFY launchCacheTypeKChanged)
+    Q_PROPERTY(QString launchCacheTypeV READ launchCacheTypeV WRITE setLaunchCacheTypeV NOTIFY launchCacheTypeVChanged)
+    Q_PROPERTY(bool launchNoMmap READ launchNoMmap WRITE setLaunchNoMmap NOTIFY launchNoMmapChanged)
+    Q_PROPERTY(bool launchJinja READ launchJinja WRITE setLaunchJinja NOTIFY launchJinjaChanged)
+    Q_PROPERTY(QString launchExtraArgs READ launchExtraArgs WRITE setLaunchExtraArgs NOTIFY launchExtraArgsChanged)
+
+    // --- Hugging Face ---
+    Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
+
 public:
     explicit SettingsStore(QObject *parent = nullptr);
     // Defaults
@@ -45,8 +88,27 @@ public:
     static constexpr int kDefaultThemeMode = 0; // System
     static constexpr const char *kDefaultLanguage = "system";
 
+    // Runtime / launch defaults (Stage A, §4.1).
+    static constexpr const char *kDefaultModelAlias = "llocr-local";
+    static constexpr const char *kDefaultHost = "127.0.0.1";
+    static constexpr int kDefaultPort = 0;        // 0 = auto-pick
+    static constexpr int kDefaultCtxSize = 8192;
+    static constexpr int kDefaultGpuLayers = -1;   // -1 = default (do not set)
+    static constexpr int kDefaultThreads = 0;      // 0 = do not pass
+    static constexpr int kDefaultBatchSize = 0;    // 0 = do not pass
+    static constexpr int kDefaultParallel = 1;
+    static constexpr const char *kDefaultFlashAttn = "off";
+    static constexpr int kDefaultStartupTimeoutMs = 180000;
+
     Q_INVOKABLE void forceSave();
     Q_INVOKABLE void resetToDefaults();
+    Q_INVOKABLE bool contains(const QString &key) const;
+
+    /// Applies §4.4 migration: existing profiles must not see the first-run
+    /// wizard, and `provider/mode` must never be flipped automatically.
+    /// Runs once per construction (guarded by the presence of
+    /// `runtime/setupVersion`).
+    void applyStartupMigration();
 
     // Connection
     QString baseUrl() const;
@@ -92,6 +154,90 @@ public:
     int windowState() const;
     void setWindowState(int winState);
 
+    // --- Connection mode ---
+    QString connectionMode() const;
+    void setConnectionMode(const QString &mode);
+    QString lastExternalBaseUrl() const;
+    void setLastExternalBaseUrl(const QString &url);
+
+    // --- Runtime (setup) ---
+    int setupVersion() const;
+    void setSetupVersion(int version);
+    bool setupDismissed() const;
+    void setSetupDismissed(bool dismissed);
+    QString serverPath() const;
+    void setServerPath(const QString &path);
+    bool serverPathIsManaged() const;
+    void setServerPathIsManaged(bool managed);
+    QString runtimeRootDir() const;
+    void setRuntimeRootDir(const QString &dir);
+    QString runtimeModelsDir() const;
+    void setRuntimeModelsDir(const QString &dir);
+    QString runtimeBackend() const;
+    void setRuntimeBackend(const QString &backend);
+    QString installedBuild() const;
+    void setInstalledBuild(const QString &build);
+    bool autoStart() const;
+    void setAutoStart(bool on);
+    bool startOnDemand() const;
+    void setStartOnDemand(bool on);
+    bool stopOnExit() const;
+    void setStopOnExit(bool on);
+    bool autoRestart() const;
+    void setAutoRestart(bool on);
+    int startupTimeoutMs() const;
+    void setStartupTimeoutMs(int ms);
+    bool checkUpdates() const;
+    void setCheckUpdates(bool on);
+    bool allowNonLoopback() const;
+    void setAllowNonLoopback(bool on);
+
+    // --- Launch ---
+    QString launchPresetId() const;
+    void setLaunchPresetId(const QString &id);
+    QString launchModelPath() const;
+    void setLaunchModelPath(const QString &path);
+    QString launchMmprojPath() const;
+    void setLaunchMmprojPath(const QString &path);
+    QString launchModelAlias() const;
+    void setLaunchModelAlias(const QString &alias);
+    QString launchHost() const;
+    void setLaunchHost(const QString &host);
+    int launchPort() const;
+    void setLaunchPort(int port);
+    int launchCtxSize() const;
+    void setLaunchCtxSize(int size);
+    int launchGpuLayers() const;
+    void setLaunchGpuLayers(int layers);
+    int launchThreads() const;
+    void setLaunchThreads(int threads);
+    int launchBatchSize() const;
+    void setLaunchBatchSize(int size);
+    int launchParallel() const;
+    void setLaunchParallel(int parallel);
+    QString launchFlashAttn() const;
+    void setLaunchFlashAttn(const QString &value);
+    QString launchCacheTypeK() const;
+    void setLaunchCacheTypeK(const QString &type);
+    QString launchCacheTypeV() const;
+    void setLaunchCacheTypeV(const QString &type);
+    bool launchNoMmap() const;
+    void setLaunchNoMmap(bool on);
+    bool launchJinja() const;
+    void setLaunchJinja(bool on);
+    QString launchExtraArgs() const;
+    void setLaunchExtraArgs(const QString &args);
+
+    // --- Hugging Face ---
+    QString hfToken() const;
+    void setHfToken(const QString &token);
+
+public:
+    // Connection mode constants (values stored in QSettings).
+    static constexpr const char *kModeExternal = "external";
+    static constexpr const char *kModeManaged = "managed";
+    static constexpr int kCurrentSetupVersion = 1;
+
 signals:
     void baseUrlChanged();
     void apiKeyChanged();
@@ -111,6 +257,41 @@ signals:
     void windowWidthChanged();
     void windowHeightChanged();
     void windowStateChanged();
+    void connectionModeChanged();
+    void lastExternalBaseUrlChanged();
+    void setupVersionChanged();
+    void setupDismissedChanged();
+    void serverPathChanged();
+    void serverPathIsManagedChanged();
+    void runtimeRootDirChanged();
+    void runtimeModelsDirChanged();
+    void runtimeBackendChanged();
+    void installedBuildChanged();
+    void autoStartChanged();
+    void startOnDemandChanged();
+    void stopOnExitChanged();
+    void autoRestartChanged();
+    void startupTimeoutMsChanged();
+    void checkUpdatesChanged();
+    void allowNonLoopbackChanged();
+    void launchPresetIdChanged();
+    void launchModelPathChanged();
+    void launchMmprojPathChanged();
+    void launchModelAliasChanged();
+    void launchHostChanged();
+    void launchPortChanged();
+    void launchCtxSizeChanged();
+    void launchGpuLayersChanged();
+    void launchThreadsChanged();
+    void launchBatchSizeChanged();
+    void launchParallelChanged();
+    void launchFlashAttnChanged();
+    void launchCacheTypeKChanged();
+    void launchCacheTypeVChanged();
+    void launchNoMmapChanged();
+    void launchJinjaChanged();
+    void launchExtraArgsChanged();
+    void hfTokenChanged();
 
 private:
     QSettings m_settings;
@@ -140,6 +321,49 @@ private:
     static constexpr const char *kWindowWidth = "ui/windowWidth";
     static constexpr const char *kWindowHeight = "ui/windowHeight";
     static constexpr const char *kWindowState = "ui/windowState";
+
+    // Connection mode
+    static constexpr const char *kConnectionMode = "provider/mode";
+    static constexpr const char *kLastExternalBaseUrl = "provider/lastExternalBaseUrl";
+
+    // Runtime (setup)
+    static constexpr const char *kSetupVersion = "runtime/setupVersion";
+    static constexpr const char *kSetupDismissed = "runtime/setupDismissed";
+    static constexpr const char *kServerPath = "runtime/serverPath";
+    static constexpr const char *kServerPathIsManaged = "runtime/serverPathIsManaged";
+    static constexpr const char *kRuntimeRootDir = "runtime/rootDir";
+    static constexpr const char *kRuntimeModelsDir = "runtime/modelsDir";
+    static constexpr const char *kRuntimeBackend = "runtime/backend";
+    static constexpr const char *kInstalledBuild = "runtime/installedBuild";
+    static constexpr const char *kAutoStart = "runtime/autoStart";
+    static constexpr const char *kStartOnDemand = "runtime/startOnDemand";
+    static constexpr const char *kStopOnExit = "runtime/stopOnExit";
+    static constexpr const char *kAutoRestart = "runtime/autoRestart";
+    static constexpr const char *kStartupTimeoutMs = "runtime/startupTimeoutMs";
+    static constexpr const char *kCheckUpdates = "runtime/checkUpdates";
+    static constexpr const char *kAllowNonLoopback = "runtime/allowNonLoopback";
+
+    // Launch
+    static constexpr const char *kLaunchPresetId = "launch/presetId";
+    static constexpr const char *kLaunchModelPath = "launch/modelPath";
+    static constexpr const char *kLaunchMmprojPath = "launch/mmprojPath";
+    static constexpr const char *kLaunchModelAlias = "launch/modelAlias";
+    static constexpr const char *kLaunchHost = "launch/host";
+    static constexpr const char *kLaunchPort = "launch/port";
+    static constexpr const char *kLaunchCtxSize = "launch/ctxSize";
+    static constexpr const char *kLaunchGpuLayers = "launch/gpuLayers";
+    static constexpr const char *kLaunchThreads = "launch/threads";
+    static constexpr const char *kLaunchBatchSize = "launch/batchSize";
+    static constexpr const char *kLaunchParallel = "launch/parallel";
+    static constexpr const char *kLaunchFlashAttn = "launch/flashAttn";
+    static constexpr const char *kLaunchCacheTypeK = "launch/cacheTypeK";
+    static constexpr const char *kLaunchCacheTypeV = "launch/cacheTypeV";
+    static constexpr const char *kLaunchNoMmap = "launch/noMmap";
+    static constexpr const char *kLaunchJinja = "launch/jinja";
+    static constexpr const char *kLaunchExtraArgs = "launch/extraArgs";
+
+    // Hugging Face
+    static constexpr const char *kHfToken = "hf/token";
 };
 
 }  // namespace llocr

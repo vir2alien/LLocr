@@ -10,6 +10,9 @@
 #include "app/OcrImageProvider.h"
 #include "app/SettingsStore.h"
 #include "app/UiController.h"
+#include "runtime/RuntimeController.h"
+#include "runtime/RuntimePaths.h"
+#include "runtime/SingleInstanceGuard.h"
 
 int main(int argc, char* argv[]) {
     QtWebEngineQuick::initialize();
@@ -37,13 +40,39 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", &settingsStore);
     llocr::I18n i18n(settingsStore);
 
+    // Managed-runtime controller: single instance, owned here (ADR 36).
+    // Created before the engine loads; QML only consumes the singleton.
+    llocr::RuntimeController runtimeController(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
+
+    // Single-instance guard (§ Stage A task 7): when another instance holds the
+    // lock, Managed operations are disabled via runtimeController.setSingleInstanceHeld().
+    llocr::RuntimePaths paths(settingsStore.runtimeRootDir(),
+                              settingsStore.runtimeModelsDir());
+    // Make sure <AppData>/LLocr exists before QLockFile tries to create the
+    // instance lock in it. Failures here are non-fatal: the lock file just
+    // cannot be created and External keeps working.
+    const QString dirError = paths.ensureDirectories();
+    if (!dirError.isEmpty())
+        qWarning().noquote() << dirError;
+
+    llocr::SingleInstanceGuard instanceGuard(paths.instanceLockPath());
+    QString guardError;
+    const bool soleInstance = instanceGuard.tryAcquire(guardError);
+    runtimeController.setSingleInstanceHeld(!soleInstance);
+    if (!soleInstance) {
+        qWarning().noquote() << guardError;
+    }
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &instanceGuard,
+                     &llocr::SingleInstanceGuard::release);
+
     QQmlApplicationEngine engine;
     qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);
 
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &engine,
                      [&engine]() { engine.retranslate(); });
 
-    llocr::AppController appController(settingsStore);
+    llocr::AppController appController(settingsStore, runtimeController);
     llocr::UiController uiController(settingsStore);
 
     qmlRegisterSingletonType(QUrl("qrc:/qml/Theme.qml"), "LLocr", 1, 0, "Theme");

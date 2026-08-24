@@ -64,5 +64,9 @@
 | 23   | Pages can be **deleted** and **drag-reordered** in the thumbnail strip; `PageEditStore` and `PageListModel` remap indices afterwards | Multi-page documents need page management; edits must follow their page across reorder/removal. |
 | 24   | **Image/chart block editing** (move / resize / delete) directly on the preview; `rebuildPageText()` regenerates the page Markdown from the boxes | Editing regions is more convenient than re-running OCR; markdown image refs embed the box index, so removal forces a rebuild to keep `image://ocr/crop/<N>` indices consistent. |
 | 25   | Detected **duplicate** bounding boxes are collapsed and flagged (`OcrPage::hasDuplicates`, `PageListModel` duplicate role → red marker) | The model can emit the same region twice; the parser dedups it and the UI surfaces it. |
+| 26   | Two connection modes `External` / `Managed`; `OpenAiProvider` stays transport-only and knows nothing about `QProcess` | Don't break the existing external-server scenario; process management is a separate responsibility. |
+| 31   | First-run wizard driven purely by `runtime/setupVersion`, **no network health probes**; pre-existing profiles are treated as configured (`setupVersion=1`), a clean profile gives `setupVersion=0` | A network probe is unreliable (VPN, powered-off server) and must not decide setup state; the version allows the wizard to evolve. |
+| 36   | `RuntimeController` is a singleton instance created in `main.cpp` before the QML engine loads; QML cannot instantiate it | Deterministic lifetime; no duplicate instances. |
+| 37   | `RecognitionController` obtains the connection only through `ensureConnectionReady()` (External resolves immediately; Managed starts/waits later) | It must not know about modes, processes, or health checks. |
 
 > When decisions change — add a row to the table and update the affected files.

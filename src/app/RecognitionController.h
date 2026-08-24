@@ -10,6 +10,8 @@
 
 #include "core/ProviderConfig.h"
 #include "providers/OpenAiProvider.h"
+#include "runtime/ResolvedConnection.h"
+#include "runtime/RuntimeController.h"
 
 namespace llocr {
 
@@ -23,6 +25,7 @@ public:
     using ImageProvider = std::function<QImage(int pageIndex)>;
 
     explicit RecognitionController(SettingsStore &settings,
+                                   RuntimeController &runtime,
                                    ImageProvider imageProvider,
                                    QObject *parent = nullptr);
 
@@ -41,14 +44,19 @@ private slots:
     void onRecognitionFinished();
 
 private:
+    void ensureConnectionReady();
     void recognizePage(int index);
     void finishRun();
     void setBusy(bool busy);
-    OcrRequest buildRequest(const QImage &image) const;
-    ProviderConfig buildConfig() const;
+    OcrRequest buildRequest(const QImage &image, const ResolvedConnection &conn) const;
+    ProviderConfig buildConfig(const ResolvedConnection &conn) const;
 
     SettingsStore &m_settings;
+    RuntimeController &m_runtime;
     ImageProvider m_imageProvider;
+
+    ResolvedConnection m_connection;
+    bool m_connectionReady = false;
 
     std::unique_ptr<OpenAiProvider> m_provider;
     QFutureWatcher<OcrResult> m_watcher;
@@ -56,6 +64,7 @@ private:
     QString m_prompt;
 
     int m_totalPages = 0;
+    int m_startIndex = 0;
     bool m_busy = false;
     bool m_stopRequested = false;
     bool m_recognizeAll = false;

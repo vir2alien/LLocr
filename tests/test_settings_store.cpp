@@ -90,6 +90,78 @@ private slots:
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
     }
+
+    void newRuntimeDefaults()
+    {
+        SettingsStore store;
+        QCOMPARE(store.connectionMode(), QStringLiteral("external"));
+        QCOMPARE(store.setupVersion(), 0);
+        QCOMPARE(store.setupDismissed(), false);
+        QCOMPARE(store.serverPath(), QStringLiteral(""));
+        QCOMPARE(store.serverPathIsManaged(), false);
+        QCOMPARE(store.autoStart(), false);       // §4.3: off by default
+        QCOMPARE(store.startOnDemand(), true);
+        QCOMPARE(store.stopOnExit(), true);
+        QCOMPARE(store.autoRestart(), true);
+        QCOMPARE(store.startupTimeoutMs(), 180000);
+        QCOMPARE(store.checkUpdates(), false);
+        QCOMPARE(store.allowNonLoopback(), false);
+
+        QCOMPARE(store.launchModelAlias(), QStringLiteral("llocr-local"));
+        QCOMPARE(store.launchHost(), QStringLiteral("127.0.0.1"));
+        QCOMPARE(store.launchPort(), 0);
+        QCOMPARE(store.launchCtxSize(), 8192);
+        QCOMPARE(store.launchGpuLayers(), -1);
+        QCOMPARE(store.launchThreads(), 0);
+        QCOMPARE(store.launchBatchSize(), 0);
+        QCOMPARE(store.launchParallel(), 1);
+        QCOMPARE(store.launchFlashAttn(), QStringLiteral("off"));
+        QCOMPARE(store.launchNoMmap(), false);
+        QCOMPARE(store.launchJinja(), false);
+        QCOMPARE(store.hfToken(), QStringLiteral(""));
+    }
+
+    void migrationConfiguredProfileKeepsExternal()
+    {
+        // A pre-existing profile with a configured baseUrl must be treated as
+        // already set up: no first-run wizard, and the mode stays External.
+        QSettings pre;
+        pre.setValue(QStringLiteral("provider/baseUrl"),
+                     QStringLiteral("http://localhost:8080"));
+        pre.setValue(QStringLiteral("provider/apiKey"), QStringLiteral("k"));
+        pre.sync();
+
+        SettingsStore store;
+        QCOMPARE(store.setupVersion(), SettingsStore::kCurrentSetupVersion);
+        QCOMPARE(store.connectionMode(), QStringLiteral("external"));
+        QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
+    }
+
+    void migrationCleanProfileGivesZero()
+    {
+        // A fresh profile (no provider/baseUrl) must yield setupVersion == 0
+        // so the first-run wizard shows up.
+        SettingsStore store;
+        QCOMPARE(store.setupVersion(), 0);
+        QCOMPARE(store.connectionMode(), QStringLiteral("external"));
+    }
+
+    void migrationRunsOnlyOnce()
+    {
+        // After the first construction setupVersion exists, so re-construction
+        // must not touch anything (e.g. must not flip an explicit Managed mode
+        // back to External).
+        {
+            SettingsStore store;
+            store.setSetupVersion(1);
+            store.setConnectionMode(QStringLiteral("managed"));
+        }
+        {
+            SettingsStore store;
+            QCOMPARE(store.setupVersion(), 1);
+            QCOMPARE(store.connectionMode(), QStringLiteral("managed"));
+        }
+    }
 };
 
 QTEST_MAIN(TestSettingsStore)

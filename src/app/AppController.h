@@ -13,6 +13,7 @@
 #include "app/RecognitionController.h"
 #include "app/SettingsStore.h"
 #include "core/OcrResult.h"
+#include "runtime/RuntimeController.h"
 
 namespace llocr {
 
@@ -45,7 +46,8 @@ class AppController : public QObject
     Q_PROPERTY(QStringList parserNames READ parserNames CONSTANT)
 
 public:
-    explicit AppController(SettingsStore &settings, QObject *parent = nullptr);
+    explicit AppController(SettingsStore &settings, RuntimeController &runtime,
+                           QObject *parent = nullptr);
 
     // --- QML getters ---
     bool busy() const { return m_recognition.busy(); }
@@ -149,6 +151,7 @@ private:
     QString effectiveText(int index) const;
 
     SettingsStore &m_settings;
+    RuntimeController &m_runtime;
 
     DocumentModel m_document;
     PageListModel m_pageModel;
