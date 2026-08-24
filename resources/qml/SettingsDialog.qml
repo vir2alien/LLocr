@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import LLocr
@@ -9,6 +10,10 @@ Dialog {
     title: qsTr("Settings")
     modal: true
     standardButtons: Dialog.Save | Dialog.RestoreDefaults | Dialog.Cancel
+
+    // Managed-runtime controls need a valid binary and exclusivity.
+    property bool canManage: !Runtime.lockedOut
+                             && Settings.serverPath.trim().length > 0
 
     anchors.centerIn: parent
     width: 480
@@ -149,6 +154,7 @@ Dialog {
             CustomTabButton { text: qsTr("Connection") }
             CustomTabButton { text: qsTr("Model") }
             CustomTabButton { text: qsTr("Output") }
+            CustomTabButton { text: qsTr("Runtime") }
         }
 
         StackLayout {
@@ -403,6 +409,132 @@ Dialog {
 
                 Item { Layout.fillHeight: true }
             }
+
+            ColumnLayout { // Tab 4 — Runtime (managed llama-server)
+                spacing: 4
+
+                Label {
+                    text: qsTr("llama-server binary")
+                    font.pixelSize: Theme.fontCaption
+                    color: Theme.textSecondary
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    TextField {
+                        id: serverPathField
+                        Layout.fillWidth: true
+                        implicitHeight: Theme.controlHeight
+                        selectByMouse: true
+                        placeholderText: qsTr("path to llama-server")
+                        text: Settings.serverPath
+                        onEditingFinished: Settings.serverPath = text.trim()
+                    }
+                    Button {
+                        text: qsTr("Browse…")
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.fontCaption
+                        onClicked: serverPicker.open()
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Button {
+                        text: qsTr("Auto-detect")
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.fontCaption
+                        onClicked: {
+                            Settings.serverPath = Runtime.autoDiscoverPath()
+                            serverPathField.text = Settings.serverPath
+                        }
+                    }
+                    Label {
+                        id: probeStatusLabel
+                        Layout.fillWidth: true
+                        text: Runtime.statusMessage.length
+                              ? Runtime.statusMessage
+                              : (Settings.serverPath.length
+                                 ? qsTr("Not probed yet")
+                                 : qsTr("No server binary selected"))
+                        elide: Text.ElideMiddle
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Theme.fontSmall
+                        color: Settings.serverPath.length && !Runtime.lockedOut
+                               ? Theme.textSecondary : Theme.textMuted
+                    }
+                }
+
+                Item { implicitHeight: 4 }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Button {
+                        text: qsTr("Check")
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.fontCaption
+                        onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
+                    }
+                    Button {
+                        text: qsTr("Start")
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.fontCaption
+                        enabled: canManage && Runtime.state !== 2 && Runtime.state !== 3
+                        onClicked: Runtime.startServer()
+                    }
+                    Button {
+                        text: qsTr("Stop")
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.fontCaption
+                        enabled: canManage && (Runtime.state === 2 || Runtime.state === 3)
+                        onClicked: Runtime.stopServer()
+                    }
+                    Button {
+                        text: qsTr("Restart")
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.fontCaption
+                        enabled: canManage && Runtime.state === 3
+                        onClicked: Runtime.restartServer()
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+
+                Button {
+                    text: qsTr("Show log")
+                    implicitHeight: Theme.controlHeight
+                    font.pixelSize: Theme.fontCaption
+                    onClicked: logWindow.visible = true
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Theme.fontSmall
+                    color: Theme.textMuted
+                    text: qsTr("Managed mode uses this binary to run a local llama-server. "
+                               + "Recognition in External mode is unaffected.")
+                }
+
+                Item { Layout.fillHeight: true }
+            }
         }
+    }
+
+    FileDialog {
+        id: serverPicker
+        title: qsTr("Select llama-server binary")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Executables (*)")]
+        onAccepted: {
+            Settings.serverPath = selectedFile
+            serverPathField.text = selectedFile
+            Runtime.probeRuntimePath(selectedFile)
+        }
+    }
+
+    ServerLogWindow {
+        id: logWindow
     }
 }

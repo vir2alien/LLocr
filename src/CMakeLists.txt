@@ -54,13 +54,27 @@ qt_add_executable(llocr
     runtime/RuntimePaths.h
     runtime/RuntimePaths.cpp
     runtime/ServerCapabilities.h
+    runtime/ServerCapabilities.cpp
     runtime/ServerLaunchConfig.h
     runtime/ServerLaunchConfig.cpp
+    runtime/RuntimeLocator.h
+    runtime/RuntimeLocator.cpp
+    runtime/LlamaServerProcess.h
+    runtime/LlamaServerProcess.cpp
+    runtime/ProcessGuard.h
     runtime/RuntimeController.h
     runtime/RuntimeController.cpp
     runtime/SingleInstanceGuard.h
     runtime/SingleInstanceGuard.cpp
 )
+
+if(WIN32)
+    target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
+elseif(APPLE)
+    target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
+else()
+    target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
+endif()
 
 qt_add_resources(llocr "app_resources"
     PREFIX "/"
@@ -69,6 +83,7 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/Main.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/WindowSettings.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/ServerLogWindow.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/ExportDialog.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Theme.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ThumbDelegate.qml"

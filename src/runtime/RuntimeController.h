@@ -35,6 +35,7 @@ class RuntimeController : public QObject
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(bool configValid READ configValid NOTIFY configValidChanged)
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
+    Q_PROPERTY(QString serverLog READ serverLog NOTIFY serverLogChanged)
 
 public:
     explicit RuntimeController(SettingsStore &settings, QObject *parent = nullptr);
@@ -45,6 +46,8 @@ public:
     QString statusMessage() const { return m_statusMessage; }
     bool configValid() const { return m_configValid; }
     bool lockedOut() const { return m_lockedOut; }
+    /// Ring-buffer tail of the managed server log, for the log window.
+    QString serverLog() const;
 
     // --- ARM-coordinated resolution --------------------------------------
     // External:  resolves immediately from SettingsStore.
@@ -63,6 +66,21 @@ public:
     // --- Wiring helpers --------------------------------------------------
     void setSingleInstanceHeld(bool held);
 
+    // --- Stage B: managed server lifecycle (Runtime settings tab) --------
+    /// Starts the managed llama-server with the current launch/* settings.
+    /// Empty on success; an error message otherwise. Requires a valid binary.
+    Q_INVOKABLE QString startServer();
+    Q_INVOKABLE void stopServer();
+    Q_INVOKABLE void restartServer();
+    /// Runs the locator probe synchronously and stores the summary in
+    /// `probeResult` (Stage B UI). Returns the same summary.
+    Q_INVOKABLE QString probeRuntimePath(const QString &path);
+    /// Auto-discovers a llama-server binary via RuntimeLocator::autoDiscover()
+    /// and returns the found path (or an empty string).
+    Q_INVOKABLE QString autoDiscoverPath();
+    /// Blocking shutdown (main.cpp ~aboutToQuit path). §5.5.
+    void shutdownSync();
+
     static ConnectionMode modeFromSettings(const SettingsStore &settings);
 
 private:
@@ -75,6 +93,9 @@ private:
 
     // External path: build ResolvedConnection directly from settings.
     ResolvedConnection resolveExternal() const;
+
+    // Constructs the LlamaServerProcess options from the current settings.
+    class LlamaServerProcess *m_server = nullptr;
 
     SettingsStore &m_settings;
 
@@ -90,6 +111,7 @@ signals:
     void statusMessageChanged();
     void configValidChanged();
     void lockedOutChanged();
+    void serverLogChanged();
 };
 
 }  // namespace llocr

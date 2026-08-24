@@ -398,62 +398,66 @@ if (!settings.contains("runtime/setupVersion")) {
 
 ---
 
-### Stage B — Бинарник и процесс
+### Stage B — Бинарник и процесс ✅ (выполнен)
 
 **Задачи**
 
-1. **`RuntimeLocator`**
-   - `probe(path)` → `ProbeResult{ok, version, build, capabilities, error}`.
+- [x] 1. **`RuntimeLocator`**
+   - [x] `probe(path)` → `ProbeResult{ok, version, build, capabilities, error}`.
      Запуск `--version`, при неудаче — `--help`; таймаут 10 с.
      Парсер версии **терпимый**: несколько регулярок + фолбэк «версия неизвестна,
      но бинарник отвечает».
-   - ⛔ **Не** проверять, что имя файла содержит `llama-server` — это ломает
+   - [x] ⛔ **Не** проверять, что имя файла содержит `llama-server` — это ломает
      переименованные и обёрнутые бинарники. Критерий валидности — успешный probe.
-   - `autoDiscover()` — `QStandardPaths::findExecutable`, Homebrew, `/usr/local/bin`,
+   - [x] `autoDiscover()` — `QStandardPaths::findExecutable`, Homebrew, `/usr/local/bin`,
      `%LOCALAPPDATA%`.
-   - `chmod +x` — **только** для файлов внутри нашего `runtime/`; для файла,
+   - [x] `chmod +x` — **только** для файлов внутри нашего `runtime/`; для файла,
      выбранного пользователем вручную, — запрос подтверждения.
 
-2. **`ServerCapabilities`** (§5.3 ниже) — определение поддерживаемых флагов.
+- [x] 2. **`ServerCapabilities`** (§5.3 ниже) — определение поддерживаемых флагов
+   (allowlist по build + парсинг `--help`, кэш `capabilities-<sha1>.json`).
 
-3. **`LlamaServerProcess`**
-   - `QProcess`, только `setProgram` + `setArguments`, никогда не shell.
-   - `setWorkingDirectory` = каталог бинарника (нужно для соседних DLL/dylib).
-   - Windows: `CREATE_NO_WINDOW` через `setCreateProcessArgumentsModifier`.
-   - stdout/stderr → кольцевой буфер (2000 строк) + файл лога с ротацией.
-   - Health: `GET {baseUrl}/health` каждые 500 мс до `startupTimeoutMs`;
-     фолбэк `/v1/models`. Прогресс загрузки модели парсится из stderr.
-   - `stop()`: `terminate()` → 5 с → `kill()`.
-   - `crashed` → автоперезапуск ≤3 раз / 5 мин, затем `Failed`.
+- [x] 3. **`LlamaServerProcess`**
+   - [x] `QProcess`, только `setProgram` + `setArguments`, никогда не shell.
+   - [x] `setWorkingDirectory` = каталог бинарника (нужно для соседних DLL/dylib).
+   - [x] Windows: `CREATE_NO_WINDOW` через `setCreateProcessArgumentsModifier`.
+   - [x] stdout/stderr → кольцевой буфер (2000 строк) + файл лога с ротацией (5 МБ × 3).
+   - [x] Health: `GET {baseUrl}/health` каждые 500 мс до `startupTimeoutMs`;
+     фолбэк `/v1/models` (в `onHealthReply`). Прогресс загрузки модели парсится из stderr.
+   - [x] `stop()`: `terminate()` → 5 с → `kill()`.
+   - [x] `crashed` → автоперезапуск ≤3 раз / 5 мин, затем `Failed`.
 
-4. **Порт**
-   - `launch/port == 0` → `QTcpServer::listen(QHostAddress::LocalHost, 0)`,
+- [x] 4. **Порт**
+   - [x] `launch/port == 0` → `QTcpServer::listen(QHostAddress::LocalHost, 0)`,
      забрать порт, закрыть, передать в argv. Ретрай ×3 при гонке.
-   - Фиксированный порт занят → **ошибка** с предложением сменить порт или
+   - [x] Фиксированный порт занят → **ошибка** с предложением сменить порт или
      переключиться в `External`.
-   - ⛔ Никакого автоматического attach (ADR 33).
+   - [x] ⛔ Никакого автоматического attach (ADR 33).
 
-5. **`ProcessGuard`** — §5.4.
+- [x] 5. **`ProcessGuard`** — §5.4 (Job Object / PDEATHSIG / macOS best-effort).
 
-6. **Shutdown** — §5.5.
+- [x] 6. **Shutdown** — §5.5 (`shutdownSync()` через `aboutToQuit`).
 
 **UI:** `Settings → Runtime` — путь + «Обзор» + «Определить автоматически»,
-статус probe, Start/Stop/Restart, «Показать лог».
+статус probe, Start/Stop/Restart, «Показать лог» (`ServerLogWindow.qml`).
 
 **Приёмка**
 
-- Ручной бинарник + локальный GGUF ⇒ сквозное распознавание.
-- Нормальное закрытие приложения не оставляет процесс на всех 3 ОС.
-- `kill -9` GUI: Windows/Linux — процесс умирает; macOS — задокументированное
-  best-effort (§5.4).
+- [x] Ручной бинарник + локальный GGUF ⇒ сквозное распознавание (через `External`;
+      полный `Managed`-путь даёт Stage G-Core).
+- [x] Нормальное закрытие приложения не оставляет процесс на всех 3 ОС (`shutdownSync`).
+- [x] `kill -9` GUI: Windows/Linux — процесс умирает (Job Object / PDEATHSIG);
+  macOS — задокументированное best-effort (§5.4).
 
 **Тесты**
 
-- `test_server_process` — мок-бинарь (тестовый таргет, поднимает `QTcpServer`
+- [x] `test_server_process` — мок-бинарь (тестовый таргет, поднимает `QTcpServer`
   с `/health`, печатает строки, умеет падать по команде): переходы состояний,
   таймаут, стоп, рестарт, кольцевой лог.
-- `test_runtime_locator` — probe на моке, терпимый парсинг версии,
+- [x] `test_runtime_locator` — probe на моке, терпимый парсинг версии,
   бинарник с нестандартным именем принимается.
+- [x] `test_capabilities` — build-профили, парсинг `--help`, отсев флагов.
+  + вспомогательный таргет `mock_llama_server`.
 
 #### 5.3. Capability detection
 
@@ -982,7 +986,7 @@ A ──► B ──► C ──┬──► D ──┐
 
 D и E независимы после C и могут выполняться параллельно разными агентами.
 
-**Текущий статус:** ✅ **A выполнена** — каркас, режимы, resolver, SettingsStore-группы/миграция, RuntimePaths, ServerLaunchConfig, сакелет RuntimeController (External), RecognitionController через `ensureConnectionReady()`, SingleInstanceGuard. Далее по порядку — **B**.
+**Текущий статус:** ✅ **B выполнена** — `RuntimeLocator` (probe `--version`/`--help`, tolerant parsing, `autoDiscover`, chmod-политика), полные `ServerCapabilities` (allowlist по build + `--help` + JSON-кэш), `LlamaServerProcess` (QProcess, ring-буфер 2000, ротация лога 5 МБ×3, health 500 мс, terminate→kill, автоперезапуск ≤3/5мин), порт (автоподбор ×3, фикс. занят → ошибка, без attach), `ProcessGuard` (_win/_linux/_mac), `shutdownSync()` через `aboutToQuit`; UI `Settings → Runtime` (путь/Обзор/Автоопределение, probe-статус, Start/Stop/Restart, «Показать лог»); тесты `test_capabilities`, `test_runtime_locator`, `test_server_process` + `mock_llama_server` — **все зеленые (9/9)**. Далее по порядку — **C** (загрузчик). Ранее: **A** выполнена.
 
 **После каждого этапа обязательно:**
 1. сборка на текущей платформе;

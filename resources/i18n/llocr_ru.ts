@@ -261,6 +261,77 @@
         <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
         <translation>«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
     </message>
+    <message>
+        <source>Runtime</source>
+        <translation>Среда выполнения</translation>
+    </message>
+    <message>
+        <source>llama-server binary</source>
+        <translation>Бинарник llama-server</translation>
+    </message>
+    <message>
+        <source>path to llama-server</source>
+        <translation>путь к llama-server</translation>
+    </message>
+    <message>
+        <source>Browse…</source>
+        <translation>Обзор…</translation>
+    </message>
+    <message>
+        <source>Auto-detect</source>
+        <translation>Определить автоматически</translation>
+    </message>
+    <message>
+        <source>Not probed yet</source>
+        <translation>Ещё не проверено</translation>
+    </message>
+    <message>
+        <source>No server binary selected</source>
+        <translation>Бинарник сервера не выбран</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>Запустить</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Остановить</translation>
+    </message>
+    <message>
+        <source>Restart</source>
+        <translation>Перезапустить</translation>
+    </message>
+    <message>
+        <source>Show log</source>
+        <translation>Показать журнал</translation>
+    </message>
+    <message>
+        <source>Managed mode uses this binary to run a local llama-server. Recognition in External mode is unaffected.</source>
+        <translation>Режим Managed использует этот бинарник для запуска локального llama-server. Распознавание в режиме External не затрагивается.</translation>
+    </message>
+    <message>
+        <source>Select llama-server binary</source>
+        <translation>Выберите бинарник llama-server</translation>
+    </message>
+    <message>
+        <source>Executables (*)</source>
+        <translation>Исполняемые файлы (*)</translation>
+    </message>
+</context>
+<context>
+    <name>ServerLogWindow</name>
+    <message>
+        <source>llama-server log</source>
+        <translation>Журнал llama-server</translation>
+    </message>
+    <message>
+        <source>No log output yet.</source>
+        <translation>Вывода журнала пока нет.</translation>
+    </message>
 </context>
 <context>
     <name>ThumbDelegate</name>

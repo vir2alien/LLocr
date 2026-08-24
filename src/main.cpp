@@ -65,6 +65,11 @@ int main(int argc, char* argv[]) {
     }
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &instanceGuard,
                      &llocr::SingleInstanceGuard::release);
+    // §5.5: blocking shutdown of the managed server (terminate → 5 s → kill).
+    // Must run while the process is still alive; ~aboutToQuit is the last
+    // synchronous point before the event loop stops.
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &runtimeController,
+                     &llocr::RuntimeController::shutdownSync);
 
     QQmlApplicationEngine engine;
     qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);
