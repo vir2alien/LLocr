@@ -54,11 +54,7 @@ Item {
                     implicitHeight: Theme.controlHeight
                     font.pixelSize: Theme.fontCaption
                     enabled: !Runtime.lockedOut
-                    onClicked: {
-                        Runtime.restartServer()
-                        root.launchDirty = false
-                        root.bannerDismissed = false
-                    }
+                    onClicked: root.requestRestart()
                 }
                 // §H.1: the banner must remind, not block — allow hiding it for
                 // the current session.
@@ -172,6 +168,22 @@ Item {
         }
     }
 
+    // The user asked to restart. Interrupting an in-flight recognition is
+    // destructive, so confirm before restarting (§H.1.4).
+    function requestRestart() {
+        if (controller.busy) {
+            restartConfirmDialog.open()
+            return
+        }
+        doRestart()
+    }
+
+    function doRestart() {
+        Runtime.restartServer()
+        root.launchDirty = false
+        root.bannerDismissed = false
+    }
+
     // True while any launch/* setting changed since the server last reached
     // Ready (or was restarted).
     property bool launchDirty: false
@@ -240,5 +252,27 @@ Item {
             if (Runtime.state === 3)
                 root.launchDirty = false
         }
+    }
+
+    // Confirmation before a server restart that would interrupt a running
+    // recognition job. Restart only needs confirming when a job is in flight;
+    // otherwise it applies immediately.
+    Dialog {
+        id: restartConfirmDialog
+        parent: Overlay.overlay
+        modal: true
+        title: qsTr("Restart server?")
+        standardButtons: Dialog.Cancel | Dialog.Ok
+
+        Label {
+            width: 340
+            wrapMode: Text.WordWrap
+            font.pixelSize: Theme.fontNormal
+            color: Theme.textPrimary
+            text: qsTr("Recognition is in progress. Restarting the server will "
+                       + "interrupt the current job. Continue?")
+        }
+
+        onAccepted: root.doRestart()
     }
 }

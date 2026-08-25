@@ -56,7 +56,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 | G-core | `ensureConnectionReady()` for Managed (start→health→alias, dedup, self-test) | ✅ done |
 | F | first-run wizard (`SetupWizard` + 5 steps) | ✅ done |
 | G-UI | footer indicator, restart banner, loading progress, error surfacing | ✅ done |
-| H | polish + documentation: H.2 memory estimate ✅, H.7 process/perf polish ✅, H.8 docs (this page) 🔄; H.1/H.3 partial; H.4–H.6 optional | 🔄 in progress |
+| H | polish + documentation: H.2 memory estimate ✅, H.7 process/perf ✅, H.8 docs ✅, H.6 separate locks ✅, H.1 UI polish ✅; H.3 partial; H.4–H.5 optional | 🔄 in progress |
 
 ## Stage 5 — Polish and distribution — 🟡 PARTIAL
 - [x] Unit tests (Qt Test): base suite (`test_det_parser`, `test_pagemodel`,
