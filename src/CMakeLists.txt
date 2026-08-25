@@ -70,6 +70,14 @@ qt_add_executable(llocr
     runtime/RuntimeController.cpp
     runtime/SingleInstanceGuard.h
     runtime/SingleInstanceGuard.cpp
+    runtime/ReleaseAsset.h
+    runtime/ReleaseAsset.cpp
+    runtime/ReleaseCatalog.h
+    runtime/ReleaseCatalog.cpp
+    runtime/ArchiveExtractor.h
+    runtime/ArchiveExtractor.cpp
+    runtime/InstallTransaction.h
+    runtime/InstallTransaction.cpp
 )
 
 if(WIN32)

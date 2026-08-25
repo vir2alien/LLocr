@@ -206,3 +206,58 @@ target_sources(test_download_manager PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/DownloadManager.cpp
 )
 add_test(NAME test_download_manager COMMAND test_download_manager)
+
+# ---- Stage D: release catalog -------------------------------------------
+qt_add_executable(test_release_catalog test_release_catalog.cpp)
+
+target_include_directories(test_release_catalog PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_release_catalog PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+)
+
+target_sources(test_release_catalog PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseAsset.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
+)
+add_test(NAME test_release_catalog COMMAND test_release_catalog)
+
+# ---- Stage D: archive extractor -----------------------------------------
+qt_add_executable(test_archive_extractor test_archive_extractor.cpp)
+
+target_include_directories(test_archive_extractor PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_archive_extractor PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+
+target_sources(test_archive_extractor PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ArchiveExtractor.cpp
+)
+add_test(NAME test_archive_extractor COMMAND test_archive_extractor)
+
+# ---- Stage D: install transaction ---------------------------------------
+qt_add_executable(test_install_transaction test_install_transaction.cpp)
+
+target_include_directories(test_install_transaction PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_compile_definitions(test_install_transaction PRIVATE
+    LLOCR_MOCK_SERVER="${CMAKE_BINARY_DIR}/bin/mock_llama_server"
+)
+
+target_link_libraries(test_install_transaction PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+
+target_sources(test_install_transaction PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ArchiveExtractor.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/InstallTransaction.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLocator.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ServerCapabilities.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+)
+add_test(NAME test_install_transaction COMMAND test_install_transaction)
