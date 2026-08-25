@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QLockFile>
 #include <QNetworkAccessManager>
 #include <QTime>
 #include <QUrl>
@@ -60,6 +61,7 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, QObject *parent)
     : QObject(parent)
     , m_settings(settings)
     , m_paths(settings.runtimeRootDir(), settings.runtimeModelsDir())
+    , m_installLock(m_paths.installLockPath())
     , m_downloads(new DownloadManager(this))
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
@@ -84,6 +86,9 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, QObject *parent)
         }
     });
 
+    // §H.6: dedicated install lock, independent of the app instance lock, so
+    // a second GUI instance can use External while installs stay exclusive.
+
     m_paths.ensureDirectories();
 }
 
@@ -97,6 +102,7 @@ void RuntimeInstaller::shutdown()
 {
     if (m_downloads)
         m_downloads->cancelAll(true);
+    releaseInstallLock();
 }
 
 // ---------------------------------------------------------------------------
@@ -319,6 +325,13 @@ void RuntimeInstaller::startDownloadAndInstall()
         setState(State::Error);
         return;
     }
+    // §H.6: refuse when another instance is mid-install.
+    QString lockError;
+    if (!acquireInstallLock(lockError)) {
+        setStatusMessage(lockError);
+        setState(State::Error);
+        return;
+    }
     m_pendingBackend = m_backend;
     beginInstall(m_pendingBackend);
 }
@@ -331,6 +344,7 @@ void RuntimeInstaller::beginInstall(const QString &backend)
         setStatusMessage(tr("No %1 build available for this platform in release %2")
                              .arg(backendDisplayName(backend), release.tagName));
         setState(State::Error);
+        releaseInstallLock();
         return;
     }
 
@@ -413,11 +427,33 @@ void RuntimeInstaller::maybeFinishDownloads()
         setBusy(false);
         setStatusMessage(tr("Download failed — check your connection and try again"));
         setState(State::Error);
+        releaseInstallLock();
         return;
     }
     // All archives landed; verify then install on a worker thread.
     setState(State::Installing);
     runInstallAsync();
+}
+
+bool RuntimeInstaller::acquireInstallLock(QString &error)
+{
+    if (m_installLockHeld)
+        return true;
+    if (!m_installLock.tryLock(0)) {
+        error = tr("Another LLocr instance is installing a runtime right now; "
+                   "try again in a moment.");
+        return false;
+    }
+    m_installLockHeld = true;
+    return true;
+}
+
+void RuntimeInstaller::releaseInstallLock()
+{
+    if (!m_installLockHeld)
+        return;
+    m_installLock.unlock();
+    m_installLockHeld = false;
 }
 
 void RuntimeInstaller::runInstallAsync()
@@ -470,6 +506,7 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
     if (!out.ok) {
         setStatusMessage(out.error);
         setState(State::Error);
+        releaseInstallLock();
         return;
     }
 
@@ -489,6 +526,7 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
     emit installedChanged();
 
     setState(State::Installed);
+    releaseInstallLock();
 }
 
 void RuntimeInstaller::cancelInstall()
@@ -499,10 +537,18 @@ void RuntimeInstaller::cancelInstall()
     setBusy(false);
     setStatusMessage(tr("Installation cancelled"));
     setState(State::Error);
+    releaseInstallLock();
 }
 
 QString RuntimeInstaller::cleanupUnusedBuilds()
 {
+    // §H.6: sweeping the runtime dir must be exclusive vs a concurrent install.
+    QString lockError;
+    if (!acquireInstallLock(lockError)) {
+        setStatusMessage(lockError);
+        return lockError;
+    }
+
     // Keep the build that matches the currently installed tag; sweep the rest.
     QString keepTag;
     if (!installedBuild().isEmpty()) {
@@ -520,6 +566,7 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
 
     const QString summary = InstallTransaction::cleanupUnusedBuilds(m_paths, keepTag);
     setStatusMessage(summary);
+    releaseInstallLock();
     return summary;
 }
 

@@ -63,9 +63,10 @@ variable, and vcpkg does **not** participate in the build.
   `test_settings_store`, `test_exporter`) plus the local-runtime suite
   (`test_launch_config`, `test_runtime_lifetime`, `test_runtime_locator`,
   `test_capabilities`, `test_server_process`, `test_ensure_connection`,
-  `test_download_manager`, `test_release_catalog`, `test_archive_extractor`,
+  (`test_download_manager`, `test_release_catalog`, `test_archive_extractor`,
   `test_install_transaction`, `test_model_catalog`, `test_model_registry`,
-  `test_model_memory_estimator`) and the helper `mock_llama_server`.
+  `test_model_memory_estimator`, `test_install_lock`) and the helper
+  `mock_llama_server`.
 
   ## Current status
   - Phase: the app itself — **Stages 1/2/3 complete** (OCR MVP, extensibility,
@@ -76,7 +77,7 @@ variable, and vcpkg does **not** participate in the build.
     (process/performance polish) are done and **H.8** (docs) is in progress.
   - Also done: PDF input, batch/multi-page processing, HTML/DOCX/PDF export,
     editable text panel, page reordering, image-block editing, Markdown
-    preview, i18n. Unit tests: four base targets + thirteen local-runtime
+    preview, i18n. Unit tests: four base targets + fourteen local-runtime
     targets under `tests/`.
   - Local-runtime plan progress:
     - **A** (skeleton, `ConnectionMode`, resolver, settings groups,
@@ -118,8 +119,12 @@ variable, and vcpkg does **not** participate in the build.
       `ModelMemoryEstimator`), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
       probe bounds 2.5s/5s, `probeCached()` LRU, `loadProgressPercent()`
       stderr classification + deterministic footer ProgressBar, `llocr_ru.ts`
-      cleaned), **H.8 🔄 (documentation — pages 01–07 + this file)**;
-      H.1/H.3 partial, H.4–H.6 optional.
+      cleaned), **H.8 ✅ (documentation — pages 01–07 + AGENTS.md, ADR 26–45
+      recorded)**, **H.6 ✅ (separate locks**: `.install.lock` in the
+      `RuntimeInstaller` install/cleanup pipeline, per-write `.registry.lock`,
+      `.instance.lock` as runtime-owner; second GUI instance keeps using
+      External while runtime/model ops stay exclusive; tested by
+      `test_install_lock`)**. Remaining: H.1/H.3 (partial) and optional H.4–H.5.
   - Working end-to-end today: open image(s) **or PDF** → configure connection /
     model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
@@ -135,6 +140,6 @@ variable, and vcpkg does **not** participate in the build.
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
-  - Immediate goal: **Stage H.8 (documentation)** — docs/01–07 + AGENTS.md
-    brought in line with the implemented runtime/model/wizard functionality.
-    After that, remaining polish H.1/H.3 and the optional H.4–H.6.
+  - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
+    install/registry/owner locks) done. Next: remaining polish **H.1/H.3** and
+    the optional **H.4–H.5** (see `docs/09-local-runtime-plan.md`).

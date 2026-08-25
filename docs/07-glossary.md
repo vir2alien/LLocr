@@ -121,5 +121,6 @@
 | 43   | A preset pins the exact pair `model + mmproj + parser + prompt + ctx-size` | `det_tokens` and the prompt are model-specific; an arbitrary vision GGUF yields unparseable output. |
 | 44   | `autoStart` defaults to **off** | Otherwise the GUI would reserve several GB of RAM/VRAM on every launch, even when idle. |
 | 45   | `Authorization` header is **dropped on any redirect to a different host** | Otherwise the HF token would leak to the CDN/host the redirect points at (§7.3). |
+| 46   | Split locks instead of one global app lock: **`.install.lock`** (runtime installs/cleanup, in `RuntimeInstaller`), per-write **`.registry.lock`** (`ModelRegistry`), and **`.instance.lock`** as the **runtime-owner** gate (`SingleInstanceGuard`) | A second app instance can keep using External / browsing while runtime installs and server ownership stay exclusive; no single lock blocks everything (H.6). |
 
 > When decisions change — add a row to the table and update the affected files.

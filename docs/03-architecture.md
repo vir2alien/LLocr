@@ -159,8 +159,11 @@ A dedicated `src/runtime/` layer sits between the backend and the OS:
   `Range`/`If-Range`, streaming `sha256`), ≤2 parallel, `.part` lives next to
   the target (ADR 40); redirects https-only with `Authorization` dropped on
   host change (ADR 45).
-- **SingleInstanceGuard** — `.instance.lock`; when another instance holds it,
-  Managed operations are blocked, External keeps working (ADR 26).
+- **SingleInstanceGuard** — `.instance.lock` (runtime-owner); when another
+  instance holds it, Managed server ops are blocked, External keeps working
+  (ADR 26). Install exclusivity is guarded separately by `.install.lock` inside
+  the `RuntimeInstaller` pipeline, and model-index writes by `.registry.lock`
+  (ADR 46) — so the 2nd instance can install while the 1st uses External.
 - **ModelMemoryEstimator** — GGUF size + KV-cache estimate (H.2), used by the
   wizard's Launch step to warn about RAM.
 

@@ -176,6 +176,7 @@ Local-runtime suite (stages A–H):
 | `test_model_catalog`       | pagination, revision pinning, mmproj, multi-part, path encoding |
 | `test_model_registry`      | recovery, managed vs external, active-model removal guard     |
 | `test_model_memory_estimator` | GGUF + KV-cache RAM estimate (H.2)                        |
+| `test_install_lock`        | dedicated `.install.lock`: path, refusal while another instance installs, release (H.6) |
 
 Plus the helper `mock_llama_server` binary (not a ctest target): a local
 `QTcpServer` stand-in with `--version`/`--help`, `/health`, `/v1/models`,

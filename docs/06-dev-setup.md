@@ -41,8 +41,8 @@ ctest --test-dir build              # all unit tests (base + runtime suite)
 # run the app:
 ./build/bin/llocr                   # (exact binary name per platform)
 ```
-Unit tests are registered in `tests/CMakeLists.txt` (4 base + 13 runtime =
-17 ctest targets, plus the `mock_llama_server` helper binary; no test touches
+Unit tests are registered in `tests/CMakeLists.txt` (4 base + 14 runtime =
+18 ctest targets, plus the `mock_llama_server` helper binary; no test touches
 the real network).
 
 ## Data directories (managed runtime & models)
@@ -74,8 +74,11 @@ Notes:
   path changes — the UI warns and offers a rescan of the model registry.
 - Partial downloads (`.part` + `.part.meta`) always live **next to** the target
   file so the final rename stays atomic (ADR 40) — not in a shared downloads/.
-- The single-instance lock is `<rootDir>/.instance.lock`; when another instance
-  holds it, Managed operations are blocked (External still works).
+- The single-instance (runtime-owner) lock is `<rootDir>/.instance.lock`; when
+  another instance holds it, Managed **server** operations are blocked (External
+  still works). Installs are guarded separately by `runtime/.install.lock` and
+  model-index writes by `models/.registry.lock` (ADR 46), so a 2nd instance can
+  install runtime/models while the 1st uses External.
 - `owner.json` (written by `ProcessGuard` on macOS) records the managed server
   PID/port so an orphaned server can be detected at next start (ADR 30).
 - Environment variables: none are required. The app follows the platform proxy
@@ -117,7 +120,7 @@ LLocr/
 │   │                  #   hicolor/** (Linux) + llocr.rc (Win) + llocr.desktop.in
 │   └── i18n/          # llocr_ru.ts (compiled/embedded by qt_add_translations)
 ├── rag-service/      # Python service (later stage) — empty for now
-├── tests/            # base + runtime suites (17 ctest targets; mock_llama_server helper)
+├── tests/            # base + runtime suites (18 ctest targets; mock_llama_server helper)
 ├── docs/
 └── AGENTS.md
 ```

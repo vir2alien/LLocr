@@ -2,6 +2,7 @@
 
 #include <QList>
 #include <QDateTime>
+#include <QLockFile>
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
@@ -28,6 +29,12 @@ class SettingsStore;
 // thread via DownloadManager. QML only ever sees main-thread state via the
 // properties below. Settings are written only by the commit step, after the
 // install is already live (§7.2 / Stage D task 5).
+//
+// §H.6: install operations (download + install + cleanup) are guarded by a
+// dedicated `.install.lock` (QLockFile) so that a second app instance can keep
+// using External / browsing settings while runtime installs remain exclusive.
+// A concurrent install attempt that fails to take the lock is refused with a
+// clear status message instead of corrupting the runtime directory.
 class RuntimeInstaller : public QObject
 {
     Q_OBJECT
@@ -160,6 +167,13 @@ private:
     void emitDownloadProgress();
     void maybeFinishDownloads();
 
+    // §H.6 install exclusive-lock helpers (`.install.lock`).
+    /// Tries to take the install lock; on success returns true. On failure
+    /// sets `error` to a user-readable reason. Safe to call repeatedly.
+    bool acquireInstallLock(QString &error);
+    /// Releases the install lock if this instance currently holds it.
+    void releaseInstallLock();
+
     SettingsStore &m_settings;
     RuntimePaths m_paths;
 
@@ -190,6 +204,11 @@ private:
     QString m_downloadedCudartZip;
 
     DownloadManager *m_downloads = nullptr;
+
+    // §H.6: exclusive lock held for the whole install/cleanup duration.
+    // Value member (QLockFile is not a QObject), path set in the ctor init-list.
+    ::QLockFile m_installLock{ QStringLiteral("/") };
+    bool m_installLockHeld = false;
 
 signals:
     void stateChanged();

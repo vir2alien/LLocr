@@ -63,6 +63,11 @@ QString RuntimePaths::instanceLockPath() const
     return QDir(m_rootDir).filePath(QStringLiteral(".instance.lock"));
 }
 
+QString RuntimePaths::installLockPath() const
+{
+    return QDir(runtimeDir()).filePath(QStringLiteral(".install.lock"));
+}
+
 QString RuntimePaths::serverLogPath() const
 {
     return QDir(logsDir()).filePath(QStringLiteral("llama-server.log"));

@@ -350,3 +350,39 @@ target_sources(test_model_registry PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelRegistry.cpp
 )
 add_test(NAME test_model_registry COMMAND test_model_registry)
+
+# ---- H.6: separate install lock ------------------------------------------
+qt_add_executable(test_install_lock test_install_lock.cpp)
+
+target_include_directories(test_install_lock PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_install_lock PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Network
+    Qt6::Concurrent
+    Qt6::Qml
+)
+
+target_sources(test_install_lock PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeInstaller.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadTask.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseAsset.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/InstallTransaction.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ArchiveExtractor.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLocator.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ServerCapabilities.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+)
+if(WIN32)
+    target_sources(test_install_lock PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
+elseif(APPLE)
+    target_sources(test_install_lock PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
+else()
+    target_sources(test_install_lock PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
+endif()
+add_test(NAME test_install_lock COMMAND test_install_lock)

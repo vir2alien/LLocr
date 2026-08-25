@@ -905,11 +905,23 @@ Managed-старт, дедупликация параллельных вызов
 
 ---
 
-#### H.6. Расширенный мульти-инстанс (опционально)
+#### H.6. Расширенный мульти-инстанс ✅ (выполнено)
 
 - Раздельные локи `install.lock` / `registry.lock` / `runtime-owner.lock` вместо
   одного глобального, чтобы вторая копия GUI могла пользоваться External,
   а операции над runtime/models оставались эксклюзивными.
+
+**Сделано:** добавлен `RuntimePaths::installLockPath()` → `<runtimeDir>/.install.lock`
+(`QLockFile`, не QObject) и эксклюзивный лок на весь конвейер установки/очистки
+в `RuntimeInstaller` (захват в `startDownloadAndInstall`, освобождение во всех
+выходах: `onInstallFinished`, сбой загрузки `maybeFinishDownloads`, `cancelInstall`,
+`shutdown`, ранний выход `beginInstall`; `cleanupUnusedBuilds` также под локом;
+отказ — сообщение «другой инстанс устанавливает рантайм»). `.registry.lock` уже
+существовал в `ModelRegistry::save` (per-write); `.instance.lock` as
+(`SingleInstanceGuard`) остаётся рантайм-овнером (Managed-сервер эксклюзив,
+External работает). Таким образом вторая копия GUI может пользоваться External и
+просматривать настройки, а операции над runtime/models остаются эксклюзивными.
+Тест `test_install_lock` (путь лока, отказ при занятом локе, успех после снятия).
 
 ---
 
@@ -931,7 +943,7 @@ Managed-старт, дедупликация параллельных вызов
 
 ---
 
-#### H.8. Документация
+#### H.8. Документация ✅ (выполнено)
 
 Обновить документы до фактического состояния после стадий A–G. Ниже список
 файлов и что добавить.
@@ -1060,6 +1072,7 @@ clang-format, существующий стиль проекта, `qsTr` на в
 | `test_install_transaction` | сбой на каждом шаге, отсутствие мусора и правок настроек |
 | `test_model_catalog` | pagination, revision pinning, mmproj, multi-part, кодирование |
 | `test_model_registry` | восстановление, managed vs external, защита активной модели |
+| `test_install_lock` (§H.6) | раздельный `.install.lock`: путь, отказ при занятом локе, освобождение |
 
 Вспомогательный таргет `mock_llama_server` — тестовый бинарь: `--version`,
 `--help`, `/health`, `/v1/models`, управляемое падение и задержка старта.
@@ -1143,7 +1156,11 @@ Settings → Runtime. Навигация Назад/Далее/Пропусти�
 Баннер «Параметры запуска изменены — требуется перезапуск сервера» с кнопкой
 «Перезапустить» при правке `launch/*` во время `Ready` (детект через сигналы
 `Settings.launch*Changed`). ru-переводы добавлены в `llocr_ru.ts`. Далее —
-**Stage H** (полировка).
+**Stage H** (полировка): **H.7** ✅ (process/perf polish), **H.2** ✅ (memory
+estimate в шаге Launch), **H.8** ✅ (**документация** — 01–07 и `AGENTS.md`
+приведены к факту; ADR 26–45 в `07-glossary.md`), **H.6** ✅ (раздельные
+`install.lock`/`registry.lock`/`runtime-owner`). Остались **H.1/H.3** и
+опциональные **H.4–H.5**.
 
 **После каждого этапа обязательно:**
 1. сборка на текущей платформе;

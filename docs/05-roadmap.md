@@ -65,8 +65,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
       `test_capabilities`, `test_server_process`, `test_ensure_connection`,
       `test_download_manager`, `test_release_catalog`, `test_archive_extractor`,
       `test_install_transaction`, `test_model_catalog`, `test_model_registry`,
-      `test_model_memory_estimator`) — all wired into the build and run via
-      ctest; helper `mock_llama_server` (no real network in any test).
+      `test_model_memory_estimator`, `test_install_lock`) — all wired into the
+      build and run via ctest; helper `mock_llama_server` (no real network in
+      any test).
 - [ ] Unit tests for provider (network) and remaining export paths.
 - [ ] Installers: Windows, macOS (.dmg + signing), Linux (AppImage/Flatpak).
 - [ ] CI/CD (GitHub Actions).

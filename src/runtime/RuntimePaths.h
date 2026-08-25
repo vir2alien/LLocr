@@ -29,8 +29,10 @@ public:
     QString cacheDir() const;
     // <modelsDir>/<org>__<repo>
     QString modelDir(const QString &repo) const;
-    // <rootDir>/.instance.lock  (SingleInstanceGuard)
+    // <rootDir>/.instance.lock  (SingleInstanceGuard — runtime-owner lock)
     QString instanceLockPath() const;
+    // <runtimeDir>/.install.lock  (guards runtime installs across instances, H.6)
+    QString installLockPath() const;
     // <rootDir>/logs/llama-server.log
     QString serverLogPath() const;
 
