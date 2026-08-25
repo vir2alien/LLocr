@@ -18,6 +18,9 @@ Dialog {
     // Set by Main.qml so the „Запустить мастер“ button can open the wizard.
     property var setupWizardRef: null
 
+    // The shared log window (owned by Main.qml), opened by the “Show log” button.
+    property var logWindowRef: null
+
     // Stage D install drop-downs; rebuilt when the catalog/backends change.
     property var backendOptions: []
     property var releaseOptions: []
@@ -615,7 +618,10 @@ Dialog {
                         text: qsTr("Show log")
                         implicitHeight: Theme.controlHeight
                         font.pixelSize: Theme.fontCaption
-                        onClicked: logWindow.visible = true
+                        onClicked: {
+                            if (dialog.logWindowRef)
+                                dialog.logWindowRef.show()
+                        }
                     }
 
                     Label {
@@ -791,9 +797,5 @@ Dialog {
             serverPathField.text = selectedFile
             Runtime.probeRuntimePath(selectedFile)
         }
-    }
-
-    ServerLogWindow {
-        id: logWindow
     }
 }

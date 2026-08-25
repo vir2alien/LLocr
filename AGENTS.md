@@ -113,5 +113,8 @@ variable, and vcpkg does **not** participate in the build.
     Model,Launch,Done}.qml`, trigger per §4.4 (Timer in Main.qml, no network
     probes), per-step gating, External path sets `setupVersion = 1`, Launch step
     uses the QML self-test bridge `runSelfTestQml()`; ru translations updated.
-    Next: **G-UI** integration (footer indicator, restart banner, StartingRuntime
-    progress).
+    **G-UI** is also **done** — `Footer.qml` managed-runtime indicator (dot
+yellow/green/red + text, click opens the shared `ServerLogWindow`),
+    indeterminate progress + stderr text while StartingRuntime, §7.5 error
+    surfacing for Failed, and the «Launch settings changed — restart» banner
+    with a Restart button; ru translations updated. Next: **Stage H** (polish).

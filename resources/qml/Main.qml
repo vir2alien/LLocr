@@ -132,7 +132,11 @@ ApplicationWindow {
                                            exportDialog.toPage)
     }
 
-    footer: Footer {}
+    footer: Footer { logWindow: serverLogWindow }
+
+    ServerLogWindow {
+        id: serverLogWindow
+    }
 
     SettingsDialog {
         id: settingsDialog
@@ -164,6 +168,7 @@ ApplicationWindow {
     }
     Component.onCompleted: {
         settingsDialog.setupWizardRef = setupWizard
+        settingsDialog.logWindowRef = serverLogWindow
         setupTrigger.start()
     }
 }

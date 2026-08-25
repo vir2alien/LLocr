@@ -105,6 +105,59 @@
     </message>
 </context>
 <context>
+    <name>Footer</name>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="46"/>
+        <source>Launch settings changed — restart the server to apply them.</source>
+        <translation>Параметры запуска изменены — перезапустите сервер, чтобы они применились.</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="49"/>
+        <source>Restart</source>
+        <translation>Перезапустить</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="160"/>
+        <source>External</source>
+        <translation>External</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="162"/>
+        <source>Runtime: not configured</source>
+        <translation>Рантайм: не настроен</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="163"/>
+        <source>Runtime: stopped</source>
+        <translation>Рантайм: остановлен</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="166"/>
+        <source>Runtime: starting…</source>
+        <translation>Рантайм: запускается…</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="167"/>
+        <source>Runtime: ready</source>
+        <translation>Рантайм: готов</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="168"/>
+        <source>Runtime: stopping…</source>
+        <translation>Рантайм: останавливается…</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="171"/>
+        <source>Runtime: failed</source>
+        <translation>Рантайм: ошибка</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="172"/>
+        <source>Runtime: unknown</source>
+        <translation>Рантайм: неизвестно</translation>
+    </message>
+</context>
+<context>
     <name>Header</name>
     <message>
         <location filename="../qml/MainWindow/Header.qml" line="28"/>
@@ -850,283 +903,283 @@
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="204"/>
+        <location filename="../qml/SettingsDialog.qml" line="207"/>
         <source>UI</source>
         <translation>Интерфейс</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="205"/>
+        <location filename="../qml/SettingsDialog.qml" line="208"/>
         <source>Connection</source>
         <translation>Подключение</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="206"/>
+        <location filename="../qml/SettingsDialog.qml" line="209"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="207"/>
+        <location filename="../qml/SettingsDialog.qml" line="210"/>
         <source>Output</source>
         <translation>Вывод</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="234"/>
+        <location filename="../qml/SettingsDialog.qml" line="237"/>
         <source>Language</source>
         <translation>Язык</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="242"/>
-        <location filename="../qml/SettingsDialog.qml" line="256"/>
+        <location filename="../qml/SettingsDialog.qml" line="245"/>
+        <location filename="../qml/SettingsDialog.qml" line="259"/>
         <source>System</source>
         <translation>Как в ОС</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="248"/>
+        <location filename="../qml/SettingsDialog.qml" line="251"/>
         <source>Theme</source>
         <translation>Тема</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="256"/>
+        <location filename="../qml/SettingsDialog.qml" line="259"/>
         <source>Light</source>
         <translation>Светлая</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="256"/>
+        <location filename="../qml/SettingsDialog.qml" line="259"/>
         <source>Dark</source>
         <translation>Тёмная</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="265"/>
+        <location filename="../qml/SettingsDialog.qml" line="268"/>
         <source>Endpoint base URL</source>
         <translation>Базовый URL конечной точки</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="280"/>
+        <location filename="../qml/SettingsDialog.qml" line="283"/>
         <source>API key (optional)</source>
         <translation>API-ключ (необязательно)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="297"/>
+        <location filename="../qml/SettingsDialog.qml" line="300"/>
         <source>Show</source>
         <translation>Показать</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="305"/>
+        <location filename="../qml/SettingsDialog.qml" line="308"/>
         <source>Request timeout (ms)</source>
         <translation>Время ожидания запроса (мс)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="325"/>
+        <location filename="../qml/SettingsDialog.qml" line="328"/>
         <source>Note: the API key is stored locally in plaintext. Avoid using production keys.</source>
         <translation>Примечание: API-ключ хранится локально в открытом виде. Не используйте рабочие ключи.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="339"/>
+        <location filename="../qml/SettingsDialog.qml" line="342"/>
         <source>Model name</source>
         <translation>Название модели</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="349"/>
+        <location filename="../qml/SettingsDialog.qml" line="352"/>
         <source>e.g. Unlimited-OCR, or the id your server exposes</source>
         <translation>например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="354"/>
+        <location filename="../qml/SettingsDialog.qml" line="357"/>
         <source>Temperature</source>
         <translation>Температура</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="360"/>
+        <location filename="../qml/SettingsDialog.qml" line="363"/>
         <source>Max tokens per page</source>
         <translation>Макс. токенов на стр.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="382"/>
+        <location filename="../qml/SettingsDialog.qml" line="385"/>
         <source>DRY multiplier</source>
         <translation>множитель DRY</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="388"/>
+        <location filename="../qml/SettingsDialog.qml" line="391"/>
         <source>DRY base</source>
         <translation>DRY база штрафа</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="409"/>
+        <location filename="../qml/SettingsDialog.qml" line="412"/>
         <source>DRY allowed length</source>
         <translation>DRY разрешенная длина</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="415"/>
+        <location filename="../qml/SettingsDialog.qml" line="418"/>
         <source>DRY range</source>
         <translation>DRY диапазон</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="445"/>
+        <location filename="../qml/SettingsDialog.qml" line="448"/>
         <source>DRY (Don&apos;t Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp</source>
         <translation>DRY (Don&apos;t Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="454"/>
+        <location filename="../qml/SettingsDialog.qml" line="457"/>
         <source>Output parser</source>
         <translation>Парсер вывода</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="472"/>
+        <location filename="../qml/SettingsDialog.qml" line="475"/>
         <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
         <translation>«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="209"/>
+        <location filename="../qml/SettingsDialog.qml" line="212"/>
         <source>Runtime</source>
         <translation>Среда выполнения</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="216"/>
+        <location filename="../qml/SettingsDialog.qml" line="219"/>
         <source>Models</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="495"/>
+        <location filename="../qml/SettingsDialog.qml" line="498"/>
         <source>Launch setup wizard…</source>
         <translation>Запустить мастер настройки…</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="508"/>
+        <location filename="../qml/SettingsDialog.qml" line="511"/>
         <source>Walks you through installing a runtime and a model, then configures the launch.</source>
         <translation>Проведёт вас по установке рантайма и модели, затем настроит запуск.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="527"/>
+        <location filename="../qml/SettingsDialog.qml" line="530"/>
         <source>llama-server binary</source>
         <translation>Бинарник llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="539"/>
+        <location filename="../qml/SettingsDialog.qml" line="542"/>
         <source>path to llama-server</source>
         <translation>путь к llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="544"/>
+        <location filename="../qml/SettingsDialog.qml" line="547"/>
         <source>Browse…</source>
         <translation>Обзор…</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="555"/>
+        <location filename="../qml/SettingsDialog.qml" line="558"/>
         <source>Auto-detect</source>
         <translation>Определить автоматически</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="569"/>
+        <location filename="../qml/SettingsDialog.qml" line="572"/>
         <source>Not probed yet</source>
         <translation>Ещё не проверено</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="570"/>
+        <location filename="../qml/SettingsDialog.qml" line="573"/>
         <source>No server binary selected</source>
         <translation>Бинарник сервера не выбран</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="585"/>
+        <location filename="../qml/SettingsDialog.qml" line="588"/>
         <source>Check</source>
         <translation>Проверить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="591"/>
+        <location filename="../qml/SettingsDialog.qml" line="594"/>
         <source>Start</source>
         <translation>Запустить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="598"/>
+        <location filename="../qml/SettingsDialog.qml" line="601"/>
         <source>Stop</source>
         <translation>Остановить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="605"/>
+        <location filename="../qml/SettingsDialog.qml" line="608"/>
         <source>Restart</source>
         <translation>Перезапустить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="615"/>
+        <location filename="../qml/SettingsDialog.qml" line="618"/>
         <source>Show log</source>
         <translation>Показать журнал</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="626"/>
+        <location filename="../qml/SettingsDialog.qml" line="632"/>
         <source>Managed mode uses this binary to run a local llama-server. Recognition in External mode is unaffected.</source>
         <translation>Режим Managed использует этот бинарник для запуска локального llama-server. Распознавание в режиме External не затрагивается.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="639"/>
+        <location filename="../qml/SettingsDialog.qml" line="645"/>
         <source>Install llama.cpp</source>
         <translation>Установить llama.cpp</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="651"/>
+        <location filename="../qml/SettingsDialog.qml" line="657"/>
         <source>Installed: %1 (%2)</source>
         <translation>Установлено: %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="654"/>
+        <location filename="../qml/SettingsDialog.qml" line="660"/>
         <source>No runtime installed yet</source>
         <translation>Среда выполнения ещё не установлена</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="662"/>
+        <location filename="../qml/SettingsDialog.qml" line="668"/>
         <source>Platform: %1 · recommended backend: %2</source>
         <translation>Платформа: %1 · рекомендуемый backend: %2</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="674"/>
+        <location filename="../qml/SettingsDialog.qml" line="680"/>
         <source>Backend</source>
         <translation>Backend</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="689"/>
+        <location filename="../qml/SettingsDialog.qml" line="695"/>
         <source>Release</source>
         <translation>Релиз</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="711"/>
+        <location filename="../qml/SettingsDialog.qml" line="717"/>
         <source>Open this tab or press “Check for updates” to load releases.</source>
         <translation>Откройте эту вкладку или нажмите «Проверить обновления», чтобы загрузить релизы.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="729"/>
+        <location filename="../qml/SettingsDialog.qml" line="735"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="730"/>
+        <location filename="../qml/SettingsDialog.qml" line="736"/>
         <source>Download and install</source>
         <translation>Скачать и установить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="742"/>
+        <location filename="../qml/SettingsDialog.qml" line="748"/>
         <source>Check for updates</source>
         <translation>Проверить обновления</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="755"/>
+        <location filename="../qml/SettingsDialog.qml" line="761"/>
         <source>Clean up unused builds</source>
         <translation>Очистить неиспользуемые сборки</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="767"/>
+        <location filename="../qml/SettingsDialog.qml" line="773"/>
         <source>A newer release is available.</source>
         <translation>Доступен более новый релиз.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="768"/>
+        <location filename="../qml/SettingsDialog.qml" line="774"/>
         <source>Your runtime build is up to date.</source>
         <translation>Ваша сборка среды выполнения актуальна.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="786"/>
+        <location filename="../qml/SettingsDialog.qml" line="792"/>
         <source>Select llama-server binary</source>
         <translation>Выберите бинарник llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="788"/>
+        <location filename="../qml/SettingsDialog.qml" line="794"/>
         <source>Executables (*)</source>
         <translation>Исполняемые файлы (*)</translation>
     </message>
