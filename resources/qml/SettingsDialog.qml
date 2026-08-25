@@ -203,6 +203,15 @@ Dialog {
                         RuntimeInstaller.checkForUpdates()
                 }
             }
+            CustomTabButton {
+                text: qsTr("Models")
+                onToggled: {
+                    if (checked) {
+                        ModelInstaller.reloadPresets()
+                        ModelInstaller.rescanRegistry()
+                    }
+                }
+            }
         }
 
         StackLayout {
@@ -725,6 +734,11 @@ Dialog {
                     Item { implicitHeight: 4 }
                     Item { Layout.fillHeight: true }
                 }
+            }
+
+            ModelsTab {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
         }
     }

@@ -65,7 +65,7 @@ variable, and vcpkg does **not** participate in the build.
   - Phase: the app itself — **Stages 1/2/3 complete** (OCR MVP, extensibility,
     PDF/formats); ongoing work is on the **local-runtime plan**
     (`docs/09-local-runtime-plan.md`): managed llama.cpp autostart + model
-    management. **Stages A–D of that plan are complete**, Stage E not started.
+    management. **Stages A–E of that plan are complete**, Stage G-core next.
   - Also done: PDF input, batch/multi-page processing, HTML/DOCX/PDF export,
     editable text panel, page reordering, image-block editing, Markdown
     preview, i18n. Four base unit-test targets exist under `tests/`.
@@ -82,7 +82,16 @@ variable, and vcpkg does **not** participate in the build.
       with progress, «Installed: bXXXX (CUDA)», «Check for updates»,
       «Clean up unused builds» — driven by the QML singleton `RuntimeInstaller`;
       ru translations updated.
-    - **E** (models from Hugging Face) — not started.
+    - **E** ✅ — models from Hugging Face: `ModelCatalog` (tree w/ pagination,
+      revision pinning, mmproj / multi-part detection, path encoding),
+      `ModelPreset` + `ModelPresetCatalog` (built-in `:/models/default-presets.json`
+      + user `models/catalog.json`, merge by id, import/export/reset),
+      `ModelRegistry` (index.json, rescan recovery, managed vs external,
+      removal guards); backend covered by `test_model_catalog` /
+      `test_model_registry`. UI in **Settings → Models** via the QML singleton
+      `ModelInstaller`: installed-model table (activate/remove), preset catalog,
+      HF search + download, HF token, catalog import/export, GGUF verification;
+      ru translations updated.
   - Working end-to-end today: open image(s) **or PDF** → configure connection /
     model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
@@ -93,8 +102,10 @@ variable, and vcpkg does **not** participate in the build.
     image/chart blocks** (move / resize / delete) directly on the preview →
     **export** to TXT / MD / HTML / DOCX (Pandoc) / PDF (Pandoc or built-in
     writer), with **All / Current / page-range** scope, and — in
-    **Settings → Runtime** — install a local llama.cpp runtime. The UI is
+    **Settings → Runtime** — install a local llama.cpp runtime, and in
+    **Settings → Models** — install GGUF models from Hugging Face. The UI is
     localizable (System / English / Русский) and themed (System / Light / Dark).
-  - Immediate goal: **Stage E** of `09-local-runtime-plan.md` — model catalog
-    from Hugging Face (repo pinch, mmproj, sha256 from `lfs.oid`), parallel to
-    which Stage G-core readiness and G-UI integration follow.
+  - Immediate goal: **Stage G-core** of `09-local-runtime-plan.md` —
+    `ensureConnectionReady()` for Managed (start → health → /v1/models),
+    dedup, `cancelPendingStart()`, `runSelfTest()`, error matrix §7.5; then
+    Stage F (first-run wizard) and G-UI integration.

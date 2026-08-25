@@ -261,3 +261,36 @@ target_sources(test_install_transaction PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
 )
 add_test(NAME test_install_transaction COMMAND test_install_transaction)
+
+# ---- Stage E: model catalog -------------------------------------------
+qt_add_executable(test_model_catalog test_model_catalog.cpp)
+
+target_include_directories(test_model_catalog PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_model_catalog PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+)
+
+target_sources(test_model_catalog PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelCatalog.cpp
+)
+add_test(NAME test_model_catalog COMMAND test_model_catalog)
+
+# ---- Stage E: model registry -----------------------------------------
+qt_add_executable(test_model_registry test_model_registry.cpp)
+
+target_include_directories(test_model_registry PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_model_registry PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+)
+
+target_sources(test_model_registry PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelRegistry.cpp
+)
+add_test(NAME test_model_registry COMMAND test_model_registry)

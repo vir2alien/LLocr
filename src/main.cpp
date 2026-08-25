@@ -12,6 +12,7 @@
 #include "app/UiController.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeInstaller.h"
+#include "runtime/ModelInstaller.h"
 #include "runtime/RuntimePaths.h"
 #include "runtime/SingleInstanceGuard.h"
 
@@ -51,6 +52,10 @@ int main(int argc, char* argv[]) {
     llocr::RuntimeInstaller runtimeInstaller(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
 
+    // Stage E model management: preset catalog, HF search/download, registry.
+    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
+
     // Single-instance guard (§ Stage A task 7): when another instance holds the
     // lock, Managed operations are disabled via runtimeController.setSingleInstanceHeld().
     llocr::RuntimePaths paths(settingsStore.runtimeRootDir(),
@@ -78,6 +83,8 @@ int main(int argc, char* argv[]) {
                      &llocr::RuntimeController::shutdownSync);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &runtimeInstaller,
                      &llocr::RuntimeInstaller::shutdown);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &modelInstaller,
+                     &llocr::ModelInstaller::shutdown);
 
     QQmlApplicationEngine engine;
     qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);

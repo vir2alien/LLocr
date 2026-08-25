@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "id": "unlimited-ocr-q4km",
+      "title": "Unlimited-OCR (Q4_K_M)",
+      "repo": "wshobson/unlimited-ocr",
+      "revision": "",
+      "model": "model-Q4_K_M.gguf",
+      "mmproj": "mmproj-F16.gguf",
+      "parser": "det_tokens",
+      "prompt": "document parsing.",
+      "ctxSize": 8192,
+      "minBuild": "b4000",
+      "approxVramGb": 6.5,
+      "license": "https://huggingface.co/wshobson/unlimited-ocr",
+      "sha256": {}
+    },
+    {
+      "id": "qwen2vl-3b-qwen2.5-q4",
+      "title": "Qwen2-VL 3B (Q4_K_M)",
+      "repo": "unsloth/Qwen2-VL-3B-Instruct-GGUF",
+      "revision": "",
+      "model": "Qwen2-VL-3B-Instruct-Q4_K_M.gguf",
+      "mmproj": "Qwen2-VL-3B-Instruct-mmproj-Q8_0.gguf",
+      "parser": "det_tokens",
+      "prompt": "document parsing.",
+      "ctxSize": 8192,
+      "minBuild": "b4000",
+      "approxVramGb": 4.0,
+      "license": "https://huggingface.co/unsloth/Qwen2-VL-3B-Instruct-GGUF",
+      "sha256": {}
+    }
+  ]
+}

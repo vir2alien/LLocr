@@ -80,6 +80,16 @@ qt_add_executable(llocr
     runtime/ArchiveExtractor.cpp
     runtime/InstallTransaction.h
     runtime/InstallTransaction.cpp
+    runtime/ModelPreset.h
+    runtime/ModelPreset.cpp
+    runtime/ModelCatalog.h
+    runtime/ModelCatalog.cpp
+    runtime/ModelPresetCatalog.h
+    runtime/ModelPresetCatalog.cpp
+    runtime/ModelRegistry.h
+    runtime/ModelRegistry.cpp
+    runtime/ModelInstaller.h
+    runtime/ModelInstaller.cpp
 )
 
 if(WIN32)
@@ -98,6 +108,7 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/WindowSettings.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/ServerLogWindow.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/ModelsTab.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/ExportDialog.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Theme.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ThumbDelegate.qml"
@@ -115,6 +126,13 @@ qt_add_resources(llocr "app_conf"
     BASE "${CMAKE_SOURCE_DIR}/resources"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
+)
+
+qt_add_resources(llocr "app_models"
+    PREFIX "/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/models"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/models/default-presets.json"
 )
 
 file(GLOB_RECURSE PREVIEW_FILES
