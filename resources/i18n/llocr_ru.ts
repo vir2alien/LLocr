@@ -117,7 +117,16 @@
         <translation>Перезапустить</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="160"/>
+        <source>Server log — click to open. %1</source>
+        <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
+    </message>
+    <message>
+        <source>Hide</source>
+        <translation>Скрыть</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="162"/>
+        <source>Runtime: not configured</source>
         <source>External</source>
         <translation>External</translation>
     </message>
@@ -882,6 +891,13 @@
     </message>
 </context>
 <context>
+    <name>RecognitionController</name>
+    <message>
+        <source>Stopped before recognition started.</source>
+        <translation>Остановлено до начала распознавания.</translation>
+    </message>
+</context>
+<context>
     <name>ServerLogWindow</name>
     <message>
         <location filename="../qml/ServerLogWindow.qml" line="13"/>
@@ -894,11 +910,37 @@
         <source>No log output yet.</source>
         <translation>Вывода журнала пока нет.</translation>
     </message>
+    <message>
+        <source>Copy log</source>
+        <translation>Скопировать журнал</translation>
+    </message>
+    <message>
+        <source>Open directory</source>
+        <translation>Открыть папку</translation>
+    </message>
+    <message>
+        <source>Clear view</source>
+        <translation>Очистить вид</translation>
+    </message>
+    <message>
+        <source>%1 line(s)</source>
+        <translation>%1 строка(и)</translation>
+    </message>
+    <message>
+        <source>live</source>
+        <translation>вживую</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbPanel</name>
+    <message>
+        <source>No pages</source>
+        <translation>Нет страниц</translation>
+    </message>
 </context>
 <context>
     <name>SettingsDialog</name>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="10"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
@@ -1174,6 +1216,34 @@
         <translation>Ваша сборка среды выполнения актуальна.</translation>
     </message>
     <message>
+        <source>A newer build %1 is available%2</source>
+        <translation>Доступна новая сборка %1%2</translation>
+    </message>
+    <message>
+        <source> (checked %1)</source>
+        <translation> (проверено %1)</translation>
+    </message>
+    <message>
+        <source>Updating will install it after the running server is stopped.</source>
+        <translation>Обновление установится после остановки работающего сервера.</translation>
+    </message>
+    <message>
+        <source>You can keep working — updating installs in the background.</source>
+        <translation>Можно продолжать работу — обновление установится в фоне.</translation>
+    </message>
+    <message>
+        <source>Stop server and update</source>
+        <translation>Остановить сервер и обновить</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Обновить</translation>
+    </message>
+    <message>
+        <source>View changes</source>
+        <translation>Посмотреть изменения</translation>
+    </message>
+    <message>
         <location filename="../qml/SettingsDialog.qml" line="792"/>
         <source>Select llama-server binary</source>
         <translation>Выберите бинарник llama-server</translation>
@@ -1283,6 +1353,18 @@
         <translation>Запуск</translation>
     </message>
     <message>
+        <source>Estimated memory needs ~%1 GiB (model + context) — this looks high for %2 GiB of RAM.</source>
+        <translation>Примерная потребность в памяти ~%1 ГБ (модель + контекст) — это много для %2 ГБ ОЗУ.</translation>
+    </message>
+    <message>
+        <source>Reduce --ctx-size or --n-gpu-layers, or use a smaller model.</source>
+        <translation>Уменьшите --ctx-size или --n-gpu-layers либо используйте модель меньше.</translation>
+    </message>
+    <message>
+        <source>Memory estimate: ~%1 GiB total (%2 GiB model + %3 GiB KV cache) on %4 GiB RAM</source>
+        <translation>Оценка памяти: всего ~%1 ГБ (%2 ГБ модель + %3 ГБ KV-кэш) при %4 ГБ ОЗУ</translation>
+    </message>
+    <message>
         <location filename="../qml/Setup/StepLaunch.qml" line="52"/>
         <source>Tune how the local server starts, then run a quick end-to-end check. It starts the server, loads your model and performs one OCR request.</source>
         <translation>Настройте, как запускается локальный сервер, затем выполните быструю сквозную проверку. Она запустит сервер, загрузит модель и выполнит один OCR-запрос.</translation>
@@ -1349,6 +1431,10 @@
         <location filename="../qml/Setup/StepModel.qml" line="36"/>
         <source>Vision-capable GGUF models work with the managed server. Pick a preset, find one on Hugging Face, or point at a local file.</source>
         <translation>Ви-модели в формате GGUF работают с управляемым сервером. Выберите пресет, найдите модель на Hugging Face или укажите локальный файл.</translation>
+    </message>
+    <message>
+        <source>Estimated footprint: ~%1 GiB (model + context) on %2 GiB RAM</source>
+        <translation>Примерный размер: ~%1 ГБ (модель + контекст) на %2 ГБ ОЗУ</translation>
     </message>
     <message>
         <location filename="../qml/Setup/StepModel.qml" line="49"/>

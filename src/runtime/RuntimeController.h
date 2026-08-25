@@ -58,6 +58,25 @@ public:
     /// Ring-buffer tail of the managed server log, for the log window.
     QString serverLog() const;
 
+    /// Absolute path to the managed server's rolling log file (logs/…).
+    Q_INVOKABLE QString serverLogPath() const;
+    /// Absolute path of the logs directory (parent of serverLogPath()).
+    Q_INVOKABLE QString serverLogDir() const;
+
+    /// Copies the whole ring-buffer tail to the system clipboard (H.1).
+    Q_INVOKABLE void copyServerLog();
+    /// Clears the in-memory live log view (ring buffer). §H.1 log window.
+    Q_INVOKABLE void clearServerLog();
+    /// Opens the logs/ directory in the platform file manager (H.1).
+    Q_INVOKABLE void openServerLogFolder();
+
+    // ------- §H.2 memory estimation --------------------------------------
+    /// Best-effort RAM estimate for launching a managed model at ctxSize/…
+    /// Returns a QVariantMap (modelBytes, kvCacheBytes, totalBytes,
+    /// systemRamBytes, valid, error). Never throws.
+    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath,
+                                                int ctxSize);
+
     /// §1.4 `canRecognize` (the mode/runtime part; `documentLoaded` is supplied
     /// by the caller). External is always eligible; Managed needs a Ready
     /// server, or a Stopped-but-startable one (configValid + auto/manual start).

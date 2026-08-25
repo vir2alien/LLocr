@@ -660,6 +660,68 @@ Dialog {
                               : qsTr("No runtime installed yet")
                     }
 
+                    // ----- §H.3 update plaque (only after a real check) -----
+                    Rectangle {
+                        Layout.fillWidth: true
+                        visible: RuntimeInstaller.hasUpdate
+                        implicitHeight: updatePlaque.implicitHeight + Theme.spacing
+                        color: Theme.warningBg
+                        border.color: Theme.warning
+                        border.width: 1
+                        radius: Theme.controlRadius
+
+                        ColumnLayout {
+                            id: updatePlaque
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 4
+
+                            Label {
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                font.pixelSize: Theme.fontSmall
+                                font.bold: true
+                                color: Theme.textPrimary
+                                text: qsTr("A newer build %1 is available%2")
+                                    .arg(RuntimeInstaller.updateBuild())
+                                    .arg(RuntimeInstaller.updateTimestampLabel().length
+                                         ? qsTr(" (checked %1)").arg(RuntimeInstaller.updateTimestampLabel())
+                                         : "")
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                font.pixelSize: Theme.fontCaption
+                                color: Theme.textSecondary
+                                text: Runtime.state === 3
+                                      ? qsTr("Updating will install it after the running server is stopped.")
+                                      : qsTr("You can keep working — updating installs in the background.")
+                            }
+                            RowLayout {
+                                spacing: 6
+                                Button {
+                                    text: Runtime.state === 3 ? qsTr("Stop server and update")
+                                                            : qsTr("Update")
+                                    implicitHeight: Theme.controlHeight
+                                    font.pixelSize: Theme.fontCaption
+                                    enabled: !RuntimeInstaller.busy
+                                    onClicked: {
+                                        if (Runtime.state === 3)
+                                            Runtime.stopServer()
+                                        RuntimeInstaller.installUpdate()
+                                    }
+                                }
+                                Button {
+                                    text: qsTr("View changes")
+                                    implicitHeight: Theme.controlHeight
+                                    font.pixelSize: Theme.fontCaption
+                                    onClicked: RuntimeInstaller.openReleasePage()
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
+                        }
+                    }
+
                     Label {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap

@@ -13,7 +13,25 @@ Item {
 
     property bool complete: Settings.launchModelPath.trim().length > 0
 
-    Component.onCompleted: ModelInstaller.reloadPresets()
+    // §H.2 estimate for the selected model (see label below the status).
+    property var estTotal: 0
+    property var estRam: 0
+    function gib(bytes) { return bytes / (1024 * 1024 * 1024) }
+    function refreshEstimate() {
+        if (!Settings.launchModelPath.trim().length) { estTotal = 0; estRam = 0; return }
+        var m = Runtime.estimateModelMemory(Settings.launchModelPath, Settings.launchCtxSize)
+        root.estTotal = m.totalBytes
+        root.estRam = m.systemRamBytes
+    }
+    Connections {
+        target: Settings
+        function onLaunchModelPathChanged() { refreshEstimate() }
+        function onLaunchCtxSizeChanged() { refreshEstimate() }
+    }
+    Component.onCompleted: {
+        refreshEstimate()
+        ModelInstaller.reloadPresets()
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -48,6 +66,18 @@ Item {
                   : (root.complete
                      ? qsTr("Model selected: %1").arg(Settings.launchModelPath)
                      : qsTr("No model selected yet."))
+        }
+
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textMuted
+            // §H.2 estimate shown next to the selected model.
+            visible: root.complete && root.estTotal > 0
+            text: qsTr("Estimated footprint: ~%1 GiB (model + context) on %2 GiB RAM")
+                .arg(root.gi(root.estTotal).toFixed(1))
+                .arg(root.gi(root.estRam).toFixed(1))
         }
 
         ProgressBar {

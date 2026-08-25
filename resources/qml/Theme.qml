@@ -27,6 +27,8 @@ QtObject {
     // --- Status ---
     readonly property color error: "#c0392b"
     readonly property color success: "#27ae60"
+    readonly property color warning: "#b8860b"       // §H.2/H.3 warning plaque
+    readonly property color warningBg: dark ? "#3a2f12" : "#fdf3d7"
 
     // --- Overlay (bounding boxes on the image preview) ---
     readonly property color overlayOuter: overlayTextOuter

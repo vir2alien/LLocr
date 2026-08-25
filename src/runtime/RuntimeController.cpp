@@ -1,8 +1,11 @@
 #include <QDir>
+#include <QDesktopServices>
 #include <QFileInfo>
 #include <QFuture>
 #include <QFutureInterface>
 #include <QFutureWatcher>
+#include <QGuiApplication>
+#include <QClipboard>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -11,6 +14,7 @@
 #include <QNetworkRequest>
 #include <QPainter>
 #include <QUrl>
+#include <QVariantMap>
 
 #include <memory>
 
@@ -18,6 +22,7 @@
 #include "core/ProviderConfig.h"
 #include "providers/OpenAiProvider.h"
 #include "runtime/LlamaServerProcess.h"
+#include "runtime/ModelMemoryEstimator.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeLocator.h"
 #include "runtime/RuntimePaths.h"
@@ -610,6 +615,60 @@ QString RuntimeController::serverLog() const
     if (!m_server)
         return QString();
     return m_server->ringBuffer(2000).join(QStringLiteral("\n"));
+}
+
+QString RuntimeController::serverLogPath() const
+{
+    return m_server ? m_server->logFilePath() : QString();
+}
+
+QString RuntimeController::serverLogDir() const
+{
+    if (m_server) {
+        const QString fp = m_server->logFilePath();
+        if (!fp.isEmpty())
+            return QFileInfo(fp).absolutePath();
+    }
+    const RuntimePaths p(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    return p.logsDir();
+}
+
+void RuntimeController::copyServerLog()
+{
+    QGuiApplication::clipboard()->setText(serverLog());
+}
+
+void RuntimeController::clearServerLog()
+{
+    if (m_server)
+        m_server->clearLog();
+    emit serverLogChanged();
+}
+
+void RuntimeController::openServerLogFolder()
+{
+    const QString dir = serverLogDir();
+    if (!dir.isEmpty())
+        QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+}
+
+QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath,
+                                                   int ctxSize)
+{
+    QVariantMap out;
+    const ModelMemoryEstimate e =
+        ::llocr::estimateModelMemory(modelPath, ctxSize, m_settings.launchCacheTypeK(),
+                                     m_settings.launchCacheTypeV());
+    out.insert(QStringLiteral("modelBytes"), e.modelBytes);
+    out.insert(QStringLiteral("kvCacheBytes"), e.kvCacheBytes);
+    out.insert(QStringLiteral("totalBytes"), e.totalBytes);
+    out.insert(QStringLiteral("systemRamBytes"), e.systemRamBytes);
+    out.insert(QStringLiteral("valid"), e.valid);
+    out.insert(QStringLiteral("error"), e.error);
+    out.insert(QStringLiteral("nLayer"), e.nLayer);
+    out.insert(QStringLiteral("nKvHead"), e.nKvHead);
+    out.insert(QStringLiteral("headDim"), e.headDim);
+    return out;
 }
 
 void RuntimeController::cancelPendingStart()

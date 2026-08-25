@@ -17,6 +17,10 @@ Item {
     // The shared log window, owned by Main.qml and passed in.
     property var logWindow: null
 
+    // Asks the parent (Main.qml) to open Settings on the given tab index
+    // (§H.1 empty-state navigation).
+    signal openSettingsRequested(int tab)
+
     ColumnLayout {
         id: column
         width: parent.width
@@ -26,7 +30,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: banner.implicitHeight + 12
-            visible: Runtime.state === 3 && root.launchDirty
+            visible: Runtime.state === 3 && root.launchDirty && !root.bannerDismissed
             color: Theme.surfaceAlt
             border.color: Theme.border
             border.width: 1
@@ -53,7 +57,17 @@ Item {
                     onClicked: {
                         Runtime.restartServer()
                         root.launchDirty = false
+                        root.bannerDismissed = false
                     }
+                }
+                // §H.1: the banner must remind, not block — allow hiding it for
+                // the current session.
+                Button {
+                    text: qsTr("Hide")
+                    implicitHeight: Theme.controlHeight
+                    font.pixelSize: Theme.fontCaption
+                    flat: true
+                    onClicked: root.bannerDismissed = true
                 }
             }
         }
@@ -101,8 +115,20 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (root.logWindow)
+                        // §H.1 empty state: not-configured → Settings → Runtime.
+                        if (Settings.connectionMode === "managed"
+                                && Runtime.state === 0) {
+                            root.openSettingsRequested(4)
+                        } else if (root.logWindow) {
                             root.logWindow.show()
+                        }
+                    }
+
+                    ToolTip {
+                        visible: runtimeBadge.hovered
+                        text: qsTr("Server log — click to open. %1").arg(root.stateText())
+                        delay: 600
+                        font.pixelSize: Theme.fontCaption
                     }
 
                     RowLayout {
@@ -145,6 +171,9 @@ Item {
     // True while any launch/* setting changed since the server last reached
     // Ready (or was restarted).
     property bool launchDirty: false
+
+    // §H.1: user dismissed the restart banner for this session.
+    property bool bannerDismissed: false
 
     function dotColor(state) {
         switch (state) {

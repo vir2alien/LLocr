@@ -63,9 +63,14 @@ void RecognitionController::ensureConnectionReady()
                 if (!m_busy)
                     return;  // stopped while resolving
                 if (conn.baseUrl.isEmpty()) {
-                    emit statusRequested(conn.error.isEmpty()
-                                             ? tr("Connection is not configured.")
-                                             : conn.error);
+                    // §H.1: stopping while the managed server was still starting
+                    // must read as “stopped”, not as a start error.
+                    if (m_stopRequested)
+                        emit statusRequested(tr("Stopped before recognition started."));
+                    else
+                        emit statusRequested(conn.error.isEmpty()
+                                                 ? tr("Connection is not configured.")
+                                                 : conn.error);
                     finishRun();
                     return;
                 }

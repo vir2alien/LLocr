@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QList>
+#include <QDateTime>
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
@@ -102,6 +103,18 @@ public:
     /// Resolves a backend's display name for results (e.g. "cuda" → "CUDA").
     Q_INVOKABLE static QString backendDisplayName(const QString &backend);
 
+    // --- §H.3 update notification -----------------------------------------
+    /// Build tag of the newest available release ("b10594"), empty when no
+    /// release has been fetched or none is newer than the installed build.
+    Q_INVOKABLE QString updateBuild() const;
+    /// Human refresh label, e.g. "(updated 14:32)". Empty when unknown.
+    Q_INVOKABLE QString updateTimestampLabel() const;
+    /// Opens the latest release's page on GitHub in the default browser.
+    Q_INVOKABLE void openReleasePage();
+    /// Selects the newest fetched release and starts download + install (the
+    /// “Update” action of the §H.3 plaque).
+    Q_INVOKABLE void installUpdate();
+
     // --- accessors for properties -----------------------------------------
     int stateInt() const { return static_cast<int>(m_state); }
     bool busy() const { return m_busy; }
@@ -164,6 +177,7 @@ private:
     QList<ReleaseInfo> m_releases;
     int m_selectedRelease = 0;
     bool m_hasUpdate = false;
+    QDateTime m_lastCatalogAt;   // when the catalog last loaded (§H.3 timestamp)
 
     QString m_pendingBackend;
     ReleaseAsset m_pendingMain;

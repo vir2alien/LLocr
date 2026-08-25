@@ -66,6 +66,9 @@ public:
 
     QStringList ringBuffer(int maxLines = -1) const;
     QString logFilePath() const;
+    /// Clears the in-memory ring buffer (live log view) without touching the
+    /// rolling file. Emits logLineAppended so the UI view refreshes.
+    void clearLog();
 
     int startCount() const;
     int restartCount() const;

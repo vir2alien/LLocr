@@ -358,6 +358,12 @@ QString LlamaServerProcess::logFilePath() const
     return m_opts.logFile;
 }
 
+void LlamaServerProcess::clearLog()
+{
+    m_ring.clear();
+    emit logLineAppended(QString());
+}
+
 int LlamaServerProcess::startCount() const
 {
     return m_attemptsTotal;

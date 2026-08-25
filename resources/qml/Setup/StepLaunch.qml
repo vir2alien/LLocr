@@ -15,6 +15,41 @@ Item {
                             && Runtime.selftestOk
                             && !Runtime.selftestRunning
 
+    // §H.2 memory estimate (recomputed when the model or context size changes).
+    property var modelBytes: 0
+    property var kvBytes: 0
+    property var totalBytes: 0
+    property var systemRamBytes: 0
+    property bool hasEstimate: false
+    property bool hasMemoryWarning: false
+
+    function gib(bytes) { return bytes / (1024 * 1024 * 1024) }
+    function giText(bytes) { return (bytes / (1024 * 1024 * 1024)).toFixed(1) }
+    function refreshEstimate() {
+        if (!Settings.launchModelPath.trim().length) {
+            hasEstimate = false
+            hasMemoryWarning = false
+            return
+        }
+        var m = Runtime.estimateModelMemory(Settings.launchModelPath,
+                                            Settings.launchCtxSize)
+        root.modelBytes = m.modelBytes
+        root.kvBytes = m.kvCacheBytes
+        root.totalBytes = m.totalBytes
+        root.systemRamBytes = m.systemRamBytes
+        root.hasEstimate = true
+        root.hasMemoryWarning = m.totalBytes > m.systemRamBytes * 0.9
+    }
+
+    Connections {
+        target: Settings
+        function onLaunchModelPathChanged() { refreshEstimate() }
+        function onLaunchCtxSizeChanged() { refreshEstimate() }
+        function onLaunchCacheTypeKChanged() { refreshEstimate() }
+        function onLaunchCacheTypeVChanged() { refreshEstimate() }
+    }
+    Component.onCompleted: refreshEstimate()
+
     function fmtCommand() {
         var parts = []
         parts.push(Settings.serverPath.trim())
@@ -111,6 +146,54 @@ Item {
                 text: qsTr("Loading the model at startup uses several GB of RAM/VRAM "
                            + "even when idle — off by default.")
             }
+        }
+
+        // ----- §H.2 memory estimate + warning -----------------------------
+        Rectangle {
+            Layout.fillWidth: true
+            visible: root.hasMemoryWarning
+            implicitHeight: memoryCol.implicitHeight + Theme.spacing
+            color: Theme.warningBg
+            border.color: Theme.warning
+            border.width: 1
+            radius: Theme.controlRadius
+
+            ColumnLayout {
+                id: memoryCol
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 4
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Theme.fontSmall
+                    color: Theme.textPrimary
+                    text: qsTr("Estimated memory needs ~%1 GiB (model + context) — "
+                               + "this looks high for %2 GiB of RAM.")
+                        .arg(root.gib(root.totalBytes).toFixed(1))
+                        .arg(root.gib(root.systemRamBytes).toFixed(1))
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Theme.fontCaption
+                    color: Theme.textSecondary
+                    text: qsTr("Reduce --ctx-size or --n-gpu-layers, or use a smaller model.")
+                }
+            }
+        }
+
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textMuted
+            text: qsTr("Memory estimate: ~%1 GiB total (%2 GiB model + %3 GiB KV cache) on %4 GiB RAM")
+                .arg(root.giText(root.totalBytes))
+                .arg(root.giText(root.modelBytes))
+                .arg(root.giText(root.kvBytes))
+                .arg(root.giText(root.systemRamBytes))
+            visible: root.hasEstimate
         }
 
         Rectangle {

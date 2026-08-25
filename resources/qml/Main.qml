@@ -132,7 +132,13 @@ ApplicationWindow {
                                            exportDialog.toPage)
     }
 
-    footer: Footer { logWindow: serverLogWindow }
+    footer: Footer {
+        logWindow: serverLogWindow
+        onOpenSettingsRequested: (tab) => {
+            settingsDialog.open()
+            settingsDialog.selectTab(tab)
+        }
+    }
 
     ServerLogWindow {
         id: serverLogWindow

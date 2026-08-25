@@ -1,8 +1,10 @@
 #include <QDate>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QNetworkAccessManager>
+#include <QTime>
 #include <QUrl>
 
 #include <QtConcurrent>
@@ -248,6 +250,7 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases,
     }
 
     m_releases = releases;
+    m_lastCatalogAt = QDateTime::currentDateTime();
     if (m_selectedRelease >= m_releases.size())
         m_selectedRelease = 0;
 
@@ -268,6 +271,39 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases,
                                                : QStringLiteral("—")));
     setState(State::Ready);
     emit catalogChanged();
+}
+
+QString RuntimeInstaller::updateBuild() const
+{
+    if (m_releases.isEmpty())
+        return QString();
+    return m_releases.first().tagName;
+}
+
+QString RuntimeInstaller::updateTimestampLabel() const
+{
+    if (!m_lastCatalogAt.isValid())
+        return QString();
+    return m_lastCatalogAt.time().toString(QStringLiteral("HH:mm"));
+}
+
+void RuntimeInstaller::openReleasePage()
+{
+    if (m_releases.isEmpty())
+        return;
+    const QString tag = m_releases.first().tagName;
+    const QUrl url(QStringLiteral("https://github.com/ggml-org/llama.cpp/releases/tag/%1")
+                       .arg(tag));
+    QDesktopServices::openUrl(url);
+}
+
+void RuntimeInstaller::installUpdate()
+{
+    if (m_releases.isEmpty())
+        return;
+    m_selectedRelease = 0;
+    emit selectedReleaseChanged();
+    startDownloadAndInstall();
 }
 
 // ---------------------------------------------------------------------------

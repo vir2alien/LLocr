@@ -90,6 +90,8 @@ qt_add_executable(llocr
     runtime/ModelRegistry.cpp
     runtime/ModelInstaller.h
     runtime/ModelInstaller.cpp
+    runtime/ModelMemoryEstimator.h
+    runtime/ModelMemoryEstimator.cpp
 )
 
 if(WIN32)

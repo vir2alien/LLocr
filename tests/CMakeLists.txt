@@ -90,6 +90,7 @@ target_sources(test_runtime_lifetime PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerCapabilities.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/LlamaServerProcess.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelMemoryEstimator.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
@@ -217,6 +218,7 @@ target_sources(test_ensure_connection PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerCapabilities.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/LlamaServerProcess.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelMemoryEstimator.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
@@ -228,6 +230,21 @@ else()
     target_sources(test_ensure_connection PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
 endif()
 add_test(NAME test_ensure_connection COMMAND test_ensure_connection)
+
+# ---- §H.2: model memory estimator ---------------------------------------
+qt_add_executable(test_model_memory_estimator test_model_memory_estimator.cpp)
+
+target_include_directories(test_model_memory_estimator PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_model_memory_estimator PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+
+target_sources(test_model_memory_estimator PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelMemoryEstimator.cpp
+)
+add_test(NAME test_model_memory_estimator COMMAND test_model_memory_estimator)
 
 # ---- Stage C: download manager ------------------------------------------
 qt_add_executable(test_download_manager test_download_manager.cpp)
