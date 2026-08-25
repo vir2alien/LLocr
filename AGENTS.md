@@ -62,11 +62,27 @@ variable, and vcpkg does **not** participate in the build.
   `test_det_parser`, `test_pagemodel`, `test_settings_store`, and `test_exporter`.
 
   ## Current status
-  - Phase: **Stage 3 complete** (formats & documents); Stage 4 (RAG) not started.
-  - Done: Stage 1 (MVP OCR), Stage 2 (extensibility), and Stage 3 (PDF input,
-    batch/multi-page processing, HTML/DOCX/PDF export, editable text panel,
-    page reordering, image-block editing, Markdown preview, i18n).
-    Four unit-test targets exist under `tests/`.
+  - Phase: the app itself — **Stages 1/2/3 complete** (OCR MVP, extensibility,
+    PDF/formats); ongoing work is on the **local-runtime plan**
+    (`docs/09-local-runtime-plan.md`): managed llama.cpp autostart + model
+    management. **Stages A–D of that plan are complete**, Stage E not started.
+  - Also done: PDF input, batch/multi-page processing, HTML/DOCX/PDF export,
+    editable text panel, page reordering, image-block editing, Markdown
+    preview, i18n. Four base unit-test targets exist under `tests/`.
+  - Local-runtime plan progress:
+    - **A** (skeleton, connection mode, resolver) ✅
+    - **B** (binary + process lifecycle, capability detection, no-orphan) ✅
+    - **C** (DownloadTask resume + DownloadManager, tests) ✅
+    - **D** ✅ — llama.cpp install: `ReleaseCatalog` (GitHub releases + sha256),
+      `detectPlatform()`/backend recommendation, CUDA cudart join,
+      hardened `ArchiveExtractor` (ZIP), transactional `InstallTransaction`,
+      cleanup of unused builds; backend covered by `test_release_catalog` /
+      `test_archive_extractor` / `test_install_transaction`. UI in
+      **Settings → Runtime**: release/backend pickers, «Download and install»
+      with progress, «Installed: bXXXX (CUDA)», «Check for updates»,
+      «Clean up unused builds» — driven by the QML singleton `RuntimeInstaller`;
+      ru translations updated.
+    - **E** (models from Hugging Face) — not started.
   - Working end-to-end today: open image(s) **or PDF** → configure connection /
     model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
@@ -76,7 +92,9 @@ variable, and vcpkg does **not** participate in the build.
     toggle a **Markdown preview** (Qt WebEngine + marked + KaTeX) → **edit
     image/chart blocks** (move / resize / delete) directly on the preview →
     **export** to TXT / MD / HTML / DOCX (Pandoc) / PDF (Pandoc or built-in
-    writer), with **All / Current / page-range** scope. The UI is localizable
-    (System / English / Русский) and themed (System / Light / Dark).
-  - Immediate goal: persist edits with the document across sessions and lay the
-    **Stage 4 RAG stub**.
+    writer), with **All / Current / page-range** scope, and — in
+    **Settings → Runtime** — install a local llama.cpp runtime. The UI is
+    localizable (System / English / Русский) and themed (System / Light / Dark).
+  - Immediate goal: **Stage E** of `09-local-runtime-plan.md` — model catalog
+    from Hugging Face (repo pinch, mmproj, sha256 from `lfs.oid`), parallel to
+    which Stage G-core readiness and G-UI integration follow.

@@ -596,7 +596,7 @@ QCoreApplication::aboutToQuit
 
 ---
 
-### Stage D — Установка llama.cpp
+### Stage D — Установка llama.cpp ✅ (выполнен)
 
 **Задачи**
 
@@ -994,7 +994,11 @@ A ──► B ──► C ──┬──► D ──┐
 
 D и E независимы после C и могут выполняться параллельно разными агентами.
 
-**Текущий статус:** ✅ **C выполнена** — `DownloadTask` (resume: `.part`/`.part.meta` с ETag/Last-Modified, `Range`/`If-Range`/`Content-Range` строгой проверкой, потоковая sha256 с перечитыванием `.part` при возобновлении, санитизация имён файлов, редиректы https-only ≤5 + снятие `Authorization` при смене host, `flush`+`fsync` перед rename, free-space через `QStorageInfo`) и `DownloadManager` (`QAbstractListModel`, ≤2 параллельно, агрегированный прогресс, `QNetworkProxyFactory::useSystemConfiguration()`); тест `test_download_manager` (13 кейсов: If-Range/Content-Range, смена ETag → полная перезакачка, некорректный Content-Range → restart fresh, отмена с/без удаления, hash mismatch, нехватка места, лимит параллельности, отказ от не-https) — **все зелёные (10/10 таргетов)**. Далее по порядку — **D ∥ E** (установка llama.cpp и модели с HF, независимы). Ранее: **A**, **B** выполнены.
+**Текущий статус:** ✅ **C выполнена** — `DownloadTask` (resume: `.part`/`.part.meta` с ETag/Last-Modified, `Range`/`If-Range`/`Content-Range` строгой проверкой, потоковая sha256 с перечитыванием `.part` при возобновлении, санитизация имён файлов, редиректы https-only ≤5 + снятие `Authorization` при смене host, `flush`+`fsync` перед rename, free-space через `QStorageInfo`) и `DownloadManager` (`QAbstractListModel`, ≤2 параллельно, агрегированный прогресс, `QNetworkProxyFactory::useSystemConfiguration()`); тест `test_download_manager` (13 кейсов) — **зелёный**.
+
+✅ **D выполнена (бэкенд + UI).** Бэкенд: `ReleaseCatalog` (GitHub releases, sha256 из тела релиза, кэш 6 ч + 403/rate-limit), `detectPlatform()` + рекомендация backend, CUDA cudart-джоин, hardened `ArchiveExtractor` (ZIP, anti-bomb, zip-slip), транзакционный `InstallTransaction` (verify → extract → validate → locate → probe → atomic rename → commit), `cleanupUnusedBuilds`/`cleanupStaging`. Тесты: `test_release_catalog`, `test_archive_extractor`, `test_install_transaction` — **зелёные**. UI (секция 5, задача 6): панель **Settings → Runtime** через QML-синглтон `RuntimeInstaller` — выбор релиза/backend, «Скачать и установить» с прогрессом, «Установлено: bXXXX (CUDA)», «Проверить обновления», «Очистить неиспользуемые сборки», CUDA cudart, асинхр. сеть (`QtConcurrent` + `DownloadManager`), коммит настроек последним шагом; ru-переводы обновлены.
+
+Ранее: **A**, **B** выполнены. Далее по порядку — **E ∥ G-core** (модели с Hugging Face и готовность подключения; E и G-core независимы после D).
 
 **После каждого этапа обязательно:**
 1. сборка на текущей платформе;

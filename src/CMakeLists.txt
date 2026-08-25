@@ -74,6 +74,8 @@ qt_add_executable(llocr
     runtime/ReleaseAsset.cpp
     runtime/ReleaseCatalog.h
     runtime/ReleaseCatalog.cpp
+    runtime/RuntimeInstaller.h
+    runtime/RuntimeInstaller.cpp
     runtime/ArchiveExtractor.h
     runtime/ArchiveExtractor.cpp
     runtime/InstallTransaction.h

@@ -24,6 +24,10 @@ QtObject {
     readonly property color accent: dark ? "#b0b0b0" : "#4a4a4a"
     readonly property color selected: dark ? "#333333" : "#e2e2e2"
 
+    // --- Status ---
+    readonly property color error: "#c0392b"
+    readonly property color success: "#27ae60"
+
     // --- Overlay (bounding boxes on the image preview) ---
     readonly property color overlayOuter: overlayTextOuter
     readonly property color overlayInner: overlayTextInner

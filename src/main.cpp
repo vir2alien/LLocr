@@ -11,6 +11,7 @@
 #include "app/SettingsStore.h"
 #include "app/UiController.h"
 #include "runtime/RuntimeController.h"
+#include "runtime/RuntimeInstaller.h"
 #include "runtime/RuntimePaths.h"
 #include "runtime/SingleInstanceGuard.h"
 
@@ -45,6 +46,11 @@ int main(int argc, char* argv[]) {
     llocr::RuntimeController runtimeController(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
 
+    // Stage D install controller: release catalog, download & install. Also a
+    // singleton; owns its own DownloadManager and worker threads.
+    llocr::RuntimeInstaller runtimeInstaller(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
+
     // Single-instance guard (§ Stage A task 7): when another instance holds the
     // lock, Managed operations are disabled via runtimeController.setSingleInstanceHeld().
     llocr::RuntimePaths paths(settingsStore.runtimeRootDir(),
@@ -70,6 +76,8 @@ int main(int argc, char* argv[]) {
     // synchronous point before the event loop stops.
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &runtimeController,
                      &llocr::RuntimeController::shutdownSync);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &runtimeInstaller,
+                     &llocr::RuntimeInstaller::shutdown);
 
     QQmlApplicationEngine engine;
     qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);

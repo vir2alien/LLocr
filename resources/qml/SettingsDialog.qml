@@ -15,9 +15,13 @@ Dialog {
     property bool canManage: !Runtime.lockedOut
                              && Settings.serverPath.trim().length > 0
 
+    // Stage D install drop-downs; rebuilt when the catalog/backends change.
+    property var backendOptions: []
+    property var releaseOptions: []
+
     anchors.centerIn: parent
-    width: 480
-    implicitHeight: 380
+    width: 520
+    implicitHeight: 600
 
     background: Rectangle {
         color: Theme.surface
@@ -103,6 +107,44 @@ Dialog {
         I18n.setLanguage(Settings.language);
     }
 
+    function buildInstallOptions() {
+        // Backend list is stable once the singleton exists.
+        var b = []
+        for (var bi = 0; bi < RuntimeInstaller.availableBackends.length; bi++)
+            b.push(RuntimeInstaller.backendDisplayName(RuntimeInstaller.availableBackends[bi]))
+        backendOptions = b
+        if (backendBox && backendBox.currentIndex >= 0)
+            RuntimeInstaller.backend =
+                RuntimeInstaller.availableBackends[backendBox.currentIndex]
+
+        // Releases populate asynchronously after a catalog fetch.
+        var r = []
+        for (var ri = 0; ri < RuntimeInstaller.releaseCount; ri++)
+            r.push(RuntimeInstaller.releaseLabel(ri))
+        releaseOptions = r
+    }
+
+    Component.onCompleted: buildInstallOptions()
+
+    Connections {
+        target: RuntimeInstaller
+        function onCatalogChanged() {
+            var r = []
+            for (var ri = 0; ri < RuntimeInstaller.releaseCount; ri++)
+                r.push(RuntimeInstaller.releaseLabel(ri))
+            releaseOptions = r
+            if (releaseBox)
+                releaseBox.currentIndex = RuntimeInstaller.selectedRelease
+        }
+        function onBackendChanged() {
+            if (backendBox) {
+                var idx = RuntimeInstaller.availableBackends.indexOf(RuntimeInstaller.backend)
+                backendBox.currentIndex = idx >= 0 ? idx : 0
+            }
+        }
+        function onInstalledChanged() { }  // labels are bound, nothing else to do
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 10
@@ -154,7 +196,13 @@ Dialog {
             CustomTabButton { text: qsTr("Connection") }
             CustomTabButton { text: qsTr("Model") }
             CustomTabButton { text: qsTr("Output") }
-            CustomTabButton { text: qsTr("Runtime") }
+            CustomTabButton {
+                text: qsTr("Runtime")
+                onToggled: {
+                    if (checked && RuntimeInstaller.releaseCount === 0)
+                        RuntimeInstaller.checkForUpdates()
+                }
+            }
         }
 
         StackLayout {
@@ -410,114 +458,273 @@ Dialog {
                 Item { Layout.fillHeight: true }
             }
 
-            ColumnLayout { // Tab 4 — Runtime (managed llama-server)
-                spacing: 4
+            ScrollView { // Tab 4 — Runtime (managed llama-server + install)
+                id: runtimeScroll
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                Label {
-                    text: qsTr("llama-server binary")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    TextField {
-                        id: serverPathField
+                ColumnLayout {
+                    width: runtimeScroll.availableWidth
+                    spacing: 4
+
+                    // ----- Existing managed-server binary controls -----
+                    Rectangle {
                         Layout.fillWidth: true
-                        implicitHeight: Theme.controlHeight
-                        selectByMouse: true
-                        placeholderText: qsTr("path to llama-server")
-                        text: Settings.serverPath
-                        onEditingFinished: Settings.serverPath = text.trim()
+                        Layout.preferredHeight: 1
+                        color: Theme.divider
                     }
-                    Button {
-                        text: qsTr("Browse…")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontCaption
-                        onClicked: serverPicker.open()
-                    }
-                }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    Button {
-                        text: qsTr("Auto-detect")
-                        implicitHeight: Theme.controlHeight
+                    Label {
+                        text: qsTr("llama-server binary")
                         font.pixelSize: Theme.fontCaption
-                        onClicked: {
-                            Settings.serverPath = Runtime.autoDiscoverPath()
-                            serverPathField.text = Settings.serverPath
+                        color: Theme.textSecondary
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        TextField {
+                            id: serverPathField
+                            Layout.fillWidth: true
+                            implicitHeight: Theme.controlHeight
+                            selectByMouse: true
+                            placeholderText: qsTr("path to llama-server")
+                            text: Settings.serverPath
+                            onEditingFinished: Settings.serverPath = text.trim()
+                        }
+                        Button {
+                            text: qsTr("Browse…")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            onClicked: serverPicker.open()
                         }
                     }
-                    Label {
-                        id: probeStatusLabel
+
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: Runtime.statusMessage.length
-                              ? Runtime.statusMessage
-                              : (Settings.serverPath.length
-                                 ? qsTr("Not probed yet")
-                                 : qsTr("No server binary selected"))
-                        elide: Text.ElideMiddle
+                        spacing: 6
+                        Button {
+                            text: qsTr("Auto-detect")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            onClicked: {
+                                Settings.serverPath = Runtime.autoDiscoverPath()
+                                serverPathField.text = Settings.serverPath
+                            }
+                        }
+                        Label {
+                            id: probeStatusLabel
+                            Layout.fillWidth: true
+                            text: Runtime.statusMessage.length
+                                  ? Runtime.statusMessage
+                                  : (Settings.serverPath.length
+                                     ? qsTr("Not probed yet")
+                                     : qsTr("No server binary selected"))
+                            elide: Text.ElideMiddle
+                            wrapMode: Text.Wrap
+                            font.pixelSize: Theme.fontSmall
+                            color: Settings.serverPath.length && !Runtime.lockedOut
+                                   ? Theme.textSecondary : Theme.textMuted
+                        }
+                    }
+
+                    Item { implicitHeight: 4 }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Button {
+                            text: qsTr("Check")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
+                        }
+                        Button {
+                            text: qsTr("Start")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            enabled: canManage && Runtime.state !== 2 && Runtime.state !== 3
+                            onClicked: Runtime.startServer()
+                        }
+                        Button {
+                            text: qsTr("Stop")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            enabled: canManage && (Runtime.state === 2 || Runtime.state === 3)
+                            onClicked: Runtime.stopServer()
+                        }
+                        Button {
+                            text: qsTr("Restart")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            enabled: canManage && Runtime.state === 3
+                            onClicked: Runtime.restartServer()
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    Button {
+                        text: qsTr("Show log")
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.fontCaption
+                        onClicked: logWindow.visible = true
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
                         wrapMode: Text.Wrap
                         font.pixelSize: Theme.fontSmall
-                        color: Settings.serverPath.length && !Runtime.lockedOut
-                               ? Theme.textSecondary : Theme.textMuted
+                        color: Theme.textMuted
+                        text: qsTr("Managed mode uses this binary to run a local llama-server. "
+                                   + "Recognition in External mode is unaffected.")
                     }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 6
+                        Layout.preferredHeight: 1
+                        color: Theme.divider
+                    }
+
+                    // ----- Stage D: install llama.cpp --------------------------
+                    Label {
+                        text: qsTr("Install llama.cpp")
+                        font.pixelSize: Theme.fontNormal
+                        color: Theme.textPrimary
+                        font.bold: true
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Theme.fontSmall
+                        color: Theme.textMuted
+                        text: RuntimeInstaller.installedBuild.length
+                              ? qsTr("Installed: %1 (%2)")
+                                    .arg(RuntimeInstaller.installedBuild)
+                                    .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.installedBackend))
+                              : qsTr("No runtime installed yet")
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Theme.fontSmall
+                        color: Theme.textMuted
+                        text: qsTr("Platform: %1 · recommended backend: %2")
+                            .arg(RuntimeInstaller.platformLabel)
+                            .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.recommendedBackend))
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        rowSpacing: 4
+                        columnSpacing: 8
+
+                        Label {
+                            text: qsTr("Backend")
+                            font.pixelSize: Theme.fontCaption
+                            color: Theme.textSecondary
+                        }
+                        ComboBox {
+                            id: backendBox
+                            Layout.fillWidth: true
+                            implicitHeight: Theme.controlHeight
+                            model: backendOptions
+                            enabled: !RuntimeInstaller.busy
+                            onActivated: RuntimeInstaller.backend =
+                                RuntimeInstaller.availableBackends[currentIndex]
+                        }
+
+                        Label {
+                            text: qsTr("Release")
+                            font.pixelSize: Theme.fontCaption
+                            color: Theme.textSecondary
+                        }
+                        ComboBox {
+                            id: releaseBox
+                            Layout.fillWidth: true
+                            implicitHeight: Theme.controlHeight
+                            model: releaseOptions
+                            enabled: !RuntimeInstaller.busy
+                            onActivated: RuntimeInstaller.selectedRelease = currentIndex
+                        }
+                    }
+
+                    Label {
+                        id: installStatusLabel
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Theme.fontSmall
+                        color: RuntimeInstaller.state === 6 ? Theme.error
+                             : (RuntimeInstaller.busy ? Theme.textSecondary : Theme.textMuted)
+                        text: RuntimeInstaller.state === 0
+                              ? qsTr("Open this tab or press \u201cCheck for updates\u201d to load releases.")
+                              : RuntimeInstaller.statusMessage
+                    }
+
+                    ProgressBar {
+                        id: installProgress
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 12
+                        visible: RuntimeInstaller.busy
+                        from: 0
+                        to: 1
+                        value: RuntimeInstaller.progress
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Button {
+                            text: RuntimeInstaller.state === 3 ? qsTr("Cancel")
+                                                               : qsTr("Download and install")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            enabled: !(RuntimeInstaller.state === 1 || RuntimeInstaller.state === 4)
+                            onClicked: {
+                                if (RuntimeInstaller.state === 3)
+                                    RuntimeInstaller.cancelInstall()
+                                else
+                                    RuntimeInstaller.startDownloadAndInstall()
+                            }
+                        }
+                        Button {
+                            text: qsTr("Check for updates")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            enabled: !RuntimeInstaller.busy
+                            onClicked: RuntimeInstaller.checkForUpdates()
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Button {
+                            text: qsTr("Clean up unused builds")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            enabled: !RuntimeInstaller.busy
+                            onClicked: RuntimeInstaller.cleanupUnusedBuilds()
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            font.pixelSize: Theme.fontSmall
+                            color: Theme.textMuted
+                            text: RuntimeInstaller.hasUpdate
+                                  ? qsTr("A newer release is available.")
+                                  : qsTr("Your runtime build is up to date.")
+                        }
+                    }
+
+                    Item { implicitHeight: 4 }
+                    Item { Layout.fillHeight: true }
                 }
-
-                Item { implicitHeight: 4 }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    Button {
-                        text: qsTr("Check")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontCaption
-                        onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
-                    }
-                    Button {
-                        text: qsTr("Start")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontCaption
-                        enabled: canManage && Runtime.state !== 2 && Runtime.state !== 3
-                        onClicked: Runtime.startServer()
-                    }
-                    Button {
-                        text: qsTr("Stop")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontCaption
-                        enabled: canManage && (Runtime.state === 2 || Runtime.state === 3)
-                        onClicked: Runtime.stopServer()
-                    }
-                    Button {
-                        text: qsTr("Restart")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontCaption
-                        enabled: canManage && Runtime.state === 3
-                        onClicked: Runtime.restartServer()
-                    }
-                    Item { Layout.fillWidth: true }
-                }
-
-                Button {
-                    text: qsTr("Show log")
-                    implicitHeight: Theme.controlHeight
-                    font.pixelSize: Theme.fontCaption
-                    onClicked: logWindow.visible = true
-                }
-
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
-                    color: Theme.textMuted
-                    text: qsTr("Managed mode uses this binary to run a local llama-server. "
-                               + "Recognition in External mode is unaffected.")
-                }
-
-                Item { Layout.fillHeight: true }
             }
         }
     }
