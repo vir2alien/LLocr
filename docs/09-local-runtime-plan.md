@@ -760,30 +760,30 @@ QCoreApplication::aboutToQuit
 
 ---
 
-### Stage G-core — Готовность подключения
+### Stage G-core — Готовность подключения ✅ (выполнен)
 
 Выполняется **до** мастера, потому что мастеру нужен рабочий self-test.
 
 **Задачи**
 
-1. Полная реализация `RuntimeController::ensureConnectionReady()` для `Managed`:
+1. [x] Полная реализация `RuntimeController::ensureConnectionReady()` для `Managed`:
    `Stopped` + (`startOnDemand`|`autoStart`) → старт → health → `/v1/models` →
    проверка alias → `ResolvedConnection`.
-2. Дедупликация: параллельные вызовы получают один общий future.
-3. `cancelPendingStart()` — кнопка Stop прерывает ожидание старта, а не только
+2. [x] Дедупликация: параллельные вызовы получают один общий future.
+3. [x] `cancelPendingStart()` — кнопка Stop прерывает ожидание старта, а не только
    сетевой запрос.
-4. `AppBusyState` проброшен в QML; `canRecognize` по формуле §1.4.
-5. `runSelfTest()` — независимый от recognition-flow метод:
+4. [x] `AppBusyState` проброшен в QML; `canRecognize` по формуле §1.4.
+5. [x] `runSelfTest()` — независимый от recognition-flow метод:
    старт → health → `/v1/models` → один запрос с встроенной тестовой картинкой
    → вернуть текст/ошибку. Используется мастером и кнопкой «Проверить».
-6. Матрица ошибок §7.5.
+6. [x] Матрица ошибок §7.5.
 
 **Приёмка:** в `Managed` нажатие «Распознать» при остановленном сервере
 корректно проходит через `StartingRuntime` и завершается результатом;
 Stop во время старта прерывает его.
 
-**Тест:** `test_ensure_connection` — на мок-сервере: External-путь,
-Managed-старт, дедупликация параллельных вызовов, отмена, таймаут.
+**Тест:** [x] `test_ensure_connection` — на мок-сервере: External-путь,
+Managed-старт, дедупликация параллельных вызовов, отмена, таймаут, self-test.
 
 ---
 
@@ -1000,7 +1000,19 @@ D и E независимы после C и могут выполняться п
 
 ✅ **E выполнена (бэкенд + UI).** Бэкенд: `ModelCatalog` (HF tree с pagination `Link: rel=next`, пиннинг commit SHA, resolve-URL с кодированием путей, mmproj/multi-part определение, извлечение квантизации, `search` для `/api/models`; редиректы https-only ≤5 + снятие `Authorization` при смене host, ADR 45), `ModelPreset` + `ModelPresetCatalog` (встроенный `:/models/default-presets.json` read-only + пользовательский `models/catalog.json` read/write, слияние по `id`, импорт/экспорт/восстановление, `QSaveFile`), `ModelRegistry` (index.json, schemaVersion, восстановление по пересканированию при повреждении/отсутствии, managed vs external, защита удаления для external/вне `modelsDir`/активной при `Ready`, canonical-path проверка). Тесты: `test_model_catalog`, `test_model_registry` — **зелёные**. UI (секция 5): вкладка **Settings → Models** через QML-синглтон `ModelInstaller` — таблица установленных (активная помечена, активировать/удалить с защитой), каталог пресетов (установить), поиск на HF (поиск/установка), HF-токен, импорт/экспорт каталога, прогресс/статус, настройка `launch/*` последним шагом; ru-переводы обновлены.
 
-Ранее: **A**, **B**, **C**, **D**, **E** выполнены. Далее по порядку — **G-core** (готовность подключения: реализация `ensureConnectionReady()` для Managed, дедупликация, `cancelPendingStart()`, `runSelfTest()`, матрица ошибок §7.5).
+Ранее: **A**, **B**, **C**, **D**, **E** выполнены.
+
+✅ **G-core выполнена (бэкенд + тесты).** `RuntimeController::ensureConnectionReady()`
+для Managed: старт из `Stopped`/`NotConfigured` (при `configValid`) или `Failed` →
+health → `GET /v1/models` → сверка alias → `ResolvedConnection`; дедупликация
+параллельных вызовов (общий future); `cancelPendingStart()` прерывает ожидание
+старта и гасит ещё не поднявшийся процесс; `canRecognize()` по §1.4;
+`runSelfTest()` (старт → health → `/v1/models` → один запрос со встроенной
+тестовой картинкой → текст/ошибка); матрица ошибок §7.5
+(`translateServerLine` + последние 20 строк лога) проброшена в `ResolvedConnection.error`
+и показывается recognition-путём. Тест `test_ensure_connection` (External,
+Managed-старт, дедупликация, отмена, таймаут, self-test) — **зелёный**. Далее —
+**Stage F** (мастер первого запуска) и **G-UI** (интеграция в основной интерфейс).
 
 **После каждого этапа обязательно:**
 1. сборка на текущей платформе;

@@ -105,7 +105,8 @@ variable, and vcpkg does **not** participate in the build.
     **Settings → Runtime** — install a local llama.cpp runtime, and in
     **Settings → Models** — install GGUF models from Hugging Face. The UI is
     localizable (System / English / Русский) and themed (System / Light / Dark).
-  - Immediate goal: **Stage G-core** of `09-local-runtime-plan.md` —
-    `ensureConnectionReady()` for Managed (start → health → /v1/models),
-    dedup, `cancelPendingStart()`, `runSelfTest()`, error matrix §7.5; then
-    Stage F (first-run wizard) and G-UI integration.
+  - Immediate goal: **Stage G-core** of `09-local-runtime-plan.md` is **done** —
+    `ensureConnectionReady()` for Managed (start → health → /v1/models → alias,
+    dedup of concurrent callers, `cancelPendingStart()`, `runSelfTest()`, error
+    matrix §7.5; covered by `test_ensure_connection`). Next: **Stage F** (first-run
+    wizard) and **G-UI** integration.

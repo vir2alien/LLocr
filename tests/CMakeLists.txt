@@ -76,6 +76,7 @@ target_include_directories(test_runtime_lifetime PRIVATE ${CMAKE_SOURCE_DIR}/src
 target_link_libraries(test_runtime_lifetime PRIVATE
     Qt6::Test
     Qt6::Core
+    Qt6::Gui
     Qt6::Concurrent
     Qt6::Qml
 )
@@ -89,6 +90,7 @@ target_sources(test_runtime_lifetime PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerCapabilities.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/LlamaServerProcess.cpp
+    ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
 if(WIN32)
@@ -189,6 +191,43 @@ else()
     target_sources(test_server_process PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
 endif()
 add_test(NAME test_server_process COMMAND test_server_process)
+
+# ---- Stage G-core: connection readiness ----------------------------------
+qt_add_executable(test_ensure_connection test_ensure_connection.cpp)
+
+target_include_directories(test_ensure_connection PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_compile_definitions(test_ensure_connection PRIVATE
+    LLOCR_MOCK_SERVER="${CMAKE_BINARY_DIR}/bin/mock_llama_server"
+)
+
+target_link_libraries(test_ensure_connection PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Network
+    Qt6::Concurrent
+    Qt6::Qml
+)
+
+target_sources(test_ensure_connection PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeController.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLocator.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ServerCapabilities.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/LlamaServerProcess.cpp
+    ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+)
+if(WIN32)
+    target_sources(test_ensure_connection PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
+elseif(APPLE)
+    target_sources(test_ensure_connection PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
+else()
+    target_sources(test_ensure_connection PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
+endif()
+add_test(NAME test_ensure_connection COMMAND test_ensure_connection)
 
 # ---- Stage C: download manager ------------------------------------------
 qt_add_executable(test_download_manager test_download_manager.cpp)

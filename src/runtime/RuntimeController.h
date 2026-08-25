@@ -2,17 +2,24 @@
 
 #include <QFuture>
 #include <QFutureInterface>
+#include <QImage>
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
+
+#include <memory>
 
 #include "runtime/ConnectionMode.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeState.h"
 
+class QNetworkAccessManager;
+class QNetworkReply;
+
 namespace llocr {
 
 class SettingsStore;
+class OpenAiProvider;
 
 // Facade over every managed-runtime concern (process, downloads, installs,
 // model selection). A single instance is created in main.cpp — before the QML
@@ -21,9 +28,8 @@ class SettingsStore;
 //
 // Recognition goes through exactly one async entry point:
 // ensureConnectionReady(). In External it resolves immediately from settings;
-// in Managed (Stage G-core) it starts the server, waits for /health, and
-// returns the computed ResolvedConnection. Stage A ships the External path and
-// the skeleton state/properties.
+// in Managed (Stage G-core) it starts the server, waits for /health, queries
+// /v1/models, verifies the alias, and returns the computed ResolvedConnection.
 class RuntimeController : public QObject
 {
     Q_OBJECT
@@ -49,19 +55,28 @@ public:
     /// Ring-buffer tail of the managed server log, for the log window.
     QString serverLog() const;
 
+    /// §1.4 `canRecognize` (the mode/runtime part; `documentLoaded` is supplied
+    /// by the caller). External is always eligible; Managed needs a Ready
+    /// server, or a Stopped-but-startable one (configValid + auto/manual start).
+    Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
+
     // --- ARM-coordinated resolution --------------------------------------
     // External:  resolves immediately from SettingsStore.
-    // Managed:   (Stage G-core) starts the process, waits for /health.
-    //            Concurrent callers share one future.
+    // Managed:   starts the process, waits for /health + /v1/models, computes
+    //            the ResolvedConnection. Concurrent callers share one future.
     QFuture<ResolvedConnection> ensureConnectionReady();
 
     /// Cancels a pending startup (called by RecognitionController::stop() while
-    /// the app is in StartingRuntime). No-op in External.
+    /// the app is in StartingRuntime). Interrupts the start wait, completes any
+    /// pending resolve with an error, and stops a still-starting server. No-op
+    /// in External or when nothing is pending.
     void cancelPendingStart();
 
-    /// Runs an independent self-test (Stage G-core; master wizard and the
-    /// "Check" button use it). Placeholder returns NotConfigured in External.
-    QFuture<ResolvedConnection> runSelfTest();
+    /// Runs an independent self-test (used by the master wizard "Check" button).
+    /// Starts the managed server if needed, waits for readiness, then issues one
+    /// real OCR request against a built-in test image and returns the text. In
+    /// External this reports NotConfigured (there is nothing to self-test here).
+    QFuture<SelfTestResult> runSelfTest();
 
     // --- Wiring helpers --------------------------------------------------
     void setSingleInstanceHeld(bool held);
@@ -91,13 +106,48 @@ private:
     void setBusyState(AppBusyState next);
     void setStatusMessage(const QString &msg);
 
+    void recomputeConfigValid();
+
     // External path: build ResolvedConnection directly from settings.
     ResolvedConnection resolveExternal() const;
+    QFuture<ResolvedConnection> resolveExternalFuture() const;
+    ResolvedConnection buildManagedConnection() const;
 
-    // Constructs the LlamaServerProcess options from the current settings.
+    // --- Managed resolve machinery (Stage G-core) ------------------------
+    // Starts (or attaches to) a managed-server resolve and returns the future
+    // all concurrent callers share. Only meaningful in Managed mode.
+    QFuture<ResolvedConnection> beginManagedResolve();
+    void completeResolve(ResolvedConnection conn);
+    void failResolve(const QString &message);
+    QFuture<ResolvedConnection> makeFuture(ResolvedConnection conn) const;
+    void onServerStateForResolve();
+
+    void fetchManagedModels();
+    void onModelsReply(QNetworkReply *reply);
+
+    void runSelfTestRequest(const ResolvedConnection &conn,
+                            std::shared_ptr<QFutureInterface<SelfTestResult>> promise);
+
+    // §7.5 error matrix: map a raw server line / failure to a human message.
+    QString describeServerFailure() const;
+    static QString translateServerLine(const QString &line);
+    QString lastLogLines(int count) const;
+
+    static QImage makeTestImage();
+
+    // Constructs a server from the current settings (owned here).
     class LlamaServerProcess *m_server = nullptr;
 
     SettingsStore &m_settings;
+
+    // In-flight managed resolve (dedup: all concurrent callers share it).
+    QFutureInterface<ResolvedConnection> m_activeResolve;
+    bool m_resolveInProgress = false;
+
+    QNetworkAccessManager *m_modelsNet = nullptr;
+    QString m_modelsBaseUrl;   // base url captured at resolve time
+
+    OpenAiProvider *m_selftestProvider = nullptr;
 
     RuntimeState m_state = RuntimeState::NotConfigured;
     AppBusyState m_busyState = AppBusyState::Idle;

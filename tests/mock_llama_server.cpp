@@ -123,6 +123,23 @@ int main(int argc, char* argv[]) {
                              "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
                              "Connection: close\r\n\r\n" + body);
                     s->flush();
+                } else if (req.contains("POST /v1/chat/completions")) {
+                    // Self-test endpoint: echo a fixed OCR-looking response.
+                    const QByteArray body =
+                        QJsonDocument(QJsonObject{
+                            {"id", "cmpl-self"},
+                            {"object", "chat.completion"},
+                            {"choices", QJsonArray{{QJsonObject{
+                                                         {"index", 0},
+                                                         {"message", QJsonObject{
+                                                                         {"role", "assistant"},
+                                                                         {"content", "SELFTEST_OK"}}}}}}}})
+                            .toJson(QJsonDocument::Compact);
+                    s->write("HTTP/1.1 200 OK\r\n"
+                             "Content-Type: application/json\r\n"
+                             "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
+                             "Connection: close\r\n\r\n" + body);
+                    s->flush();
                 } else {
                     s->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
                     s->flush();

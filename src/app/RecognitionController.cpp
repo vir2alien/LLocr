@@ -63,7 +63,9 @@ void RecognitionController::ensureConnectionReady()
                 if (!m_busy)
                     return;  // stopped while resolving
                 if (conn.baseUrl.isEmpty()) {
-                    emit statusRequested(tr("Connection is not configured."));
+                    emit statusRequested(conn.error.isEmpty()
+                                             ? tr("Connection is not configured.")
+                                             : conn.error);
                     finishRun();
                     return;
                 }
