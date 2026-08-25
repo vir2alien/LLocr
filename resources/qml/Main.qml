@@ -141,4 +141,29 @@ ApplicationWindow {
     ExportDialog {
         id: exportOptionsDialog
     }
+
+    SetupWizard {
+        id: setupWizard
+
+        // External was chosen on Welcome: land the user in Connection settings.
+        onOpenConnectionSettings: {
+            settingsDialog.open()
+            settingsDialog.selectTab(1)
+        }
+    }
+
+    // §4.4: show the wizard automatically on a fresh profile, no network checks.
+    Timer {
+        id: setupTrigger
+        interval: 400
+        repeat: false
+        onTriggered: {
+            if (Settings.setupVersion === 0 && !Settings.setupDismissed)
+                setupWizard.startWizard()
+        }
+    }
+    Component.onCompleted: {
+        settingsDialog.setupWizardRef = setupWizard
+        setupTrigger.start()
+    }
 }

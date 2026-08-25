@@ -108,5 +108,10 @@ variable, and vcpkg does **not** participate in the build.
   - Immediate goal: **Stage G-core** of `09-local-runtime-plan.md` is **done** —
     `ensureConnectionReady()` for Managed (start → health → /v1/models → alias,
     dedup of concurrent callers, `cancelPendingStart()`, `runSelfTest()`, error
-    matrix §7.5; covered by `test_ensure_connection`). Next: **Stage F** (first-run
-    wizard) and **G-UI** integration.
+    matrix §7.5; covered by `test_ensure_connection`). **Stage F** (first-run
+    wizard) is also **done** — `SetupWizard.qml` + `Setup/Step{Welcome,Runtime,
+    Model,Launch,Done}.qml`, trigger per §4.4 (Timer in Main.qml, no network
+    probes), per-step gating, External path sets `setupVersion = 1`, Launch step
+    uses the QML self-test bridge `runSelfTestQml()`; ru translations updated.
+    Next: **G-UI** integration (footer indicator, restart banner, StartingRuntime
+    progress).

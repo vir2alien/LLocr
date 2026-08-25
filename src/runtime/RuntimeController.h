@@ -42,6 +42,9 @@ class RuntimeController : public QObject
     Q_PROPERTY(bool configValid READ configValid NOTIFY configValidChanged)
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
     Q_PROPERTY(QString serverLog READ serverLog NOTIFY serverLogChanged)
+    Q_PROPERTY(bool selftestRunning READ selftestRunning NOTIFY selftestFinished)
+    Q_PROPERTY(bool selftestOk READ selftestOk NOTIFY selftestFinished)
+    Q_PROPERTY(QString selftestMessage READ selftestMessage NOTIFY selftestFinished)
 
 public:
     explicit RuntimeController(SettingsStore &settings, QObject *parent = nullptr);
@@ -77,6 +80,15 @@ public:
     /// real OCR request against a built-in test image and returns the text. In
     /// External this reports NotConfigured (there is nothing to self-test here).
     QFuture<SelfTestResult> runSelfTest();
+
+    /// QML-friendly variant: starts the self-test and reports progress via the
+    /// `selftest*` properties / `selftestFinished` signal (QFuture is unusable
+    /// from QML). No-op while already running.
+    Q_INVOKABLE void runSelfTestQml();
+
+    bool selftestRunning() const { return m_selftestRunning; }
+    bool selftestOk() const { return m_selftestOk; }
+    QString selftestMessage() const { return m_selftestMessage; }
 
     // --- Wiring helpers --------------------------------------------------
     void setSingleInstanceHeld(bool held);
@@ -149,6 +161,11 @@ private:
 
     OpenAiProvider *m_selftestProvider = nullptr;
 
+    // QML-friendly self-test state.
+    bool m_selftestRunning = false;
+    bool m_selftestOk = false;
+    QString m_selftestMessage;
+
     RuntimeState m_state = RuntimeState::NotConfigured;
     AppBusyState m_busyState = AppBusyState::Idle;
     QString m_statusMessage;
@@ -162,6 +179,7 @@ signals:
     void configValidChanged();
     void lockedOutChanged();
     void serverLogChanged();
+    void selftestFinished();
 };
 
 }  // namespace llocr

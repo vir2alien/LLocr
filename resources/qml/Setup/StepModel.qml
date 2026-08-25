@@ -1,0 +1,323 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Dialogs
+import QtQuick.Layouts
+
+import LLocr
+
+// SetupWizard → Step 3 "Model": pick a vision GGUF model. Options mirror the
+// Settings → Models tab: install from a preset, search Hugging Face, or select
+// a local .gguf. The step is complete once `Settings.launchModelPath` is set.
+Item {
+    id: root
+
+    property bool complete: Settings.launchModelPath.trim().length > 0
+
+    Component.onCompleted: ModelInstaller.reloadPresets()
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 20
+        spacing: 10
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Model")
+            font.pixelSize: Theme.fontTitle
+            color: Theme.textPrimary
+            font.bold: true
+        }
+
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: Theme.fontNormal
+            color: Theme.textSecondary
+            text: qsTr("Vision-capable GGUF models work with the managed server. Pick a "
+                       + "preset, find one on Hugging Face, or point at a local file.")
+        }
+
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: Theme.fontSmall
+            color: ModelInstaller.state === 4 ? Theme.error
+                 : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
+            text: ModelInstaller.statusMessage.length
+                  ? ModelInstaller.statusMessage
+                  : (root.complete
+                     ? qsTr("Model selected: %1").arg(Settings.launchModelPath)
+                     : qsTr("No model selected yet."))
+        }
+
+        ProgressBar {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 12
+            visible: ModelInstaller.busy
+            from: 0
+            to: 1
+            value: ModelInstaller.progress
+        }
+
+        Frame {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            padding: 6
+            clip: true
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 6
+
+                TabBar {
+                    id: modelTabBar
+                    Layout.fillWidth: true
+                    TabButton { text: qsTr("Presets") }
+                    TabButton { text: qsTr("Hugging Face") }
+                    TabButton { text: qsTr("Local file") }
+                }
+
+                StackLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    currentIndex: modelTabBar.currentIndex
+
+                    // ----- Presets -------------------------------------------
+                    ColumnLayout {
+                        spacing: 6
+                        Label {
+                            text: qsTr("Start from a preset")
+                            font.pixelSize: Theme.fontCaption
+                            color: Theme.textSecondary
+                        }
+                        ListView {
+                            id: presetList
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            model: ModelInstaller.presetCount
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            delegate: Rectangle {
+                                required property int index
+                                property var pInfo: ModelInstaller.presetInfo(index)
+                                width: presetList.width
+                                height: 34
+                                color: "transparent"
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 4
+                                    anchors.rightMargin: 4
+                                    spacing: 6
+                                    Label {
+                                        Layout.preferredWidth: 150
+                                        elide: Text.ElideMiddle
+                                        font.pixelSize: Theme.fontSmall
+                                        color: Theme.textPrimary
+                                        text: pInfo.title
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideMiddle
+                                        font.pixelSize: Theme.fontSmall
+                                        color: Theme.textMuted
+                                        text: pInfo.repo
+                                    }
+                                    Label {
+                                        font.pixelSize: Theme.fontSmall
+                                        color: Theme.textMuted
+                                        text: pInfo.approxVramGb > 0
+                                              ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb) : ""
+                                    }
+                                    Button {
+                                        text: qsTr("Install")
+                                        implicitHeight: Theme.controlHeight
+                                        font.pixelSize: Theme.fontSmall
+                                        enabled: !ModelInstaller.busy
+                                        onClicked: {
+                                            prepareDialog.pendingIndex = index
+                                            ModelInstaller.preparePreset(index)
+                                            prepareDialog.open()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ----- Hugging Face search --------------------------------
+                    ColumnLayout {
+                        spacing: 6
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            TextField {
+                                id: searchField
+                                Layout.fillWidth: true
+                                implicitHeight: Theme.controlHeight
+                                placeholderText: qsTr("e.g. vision gguf")
+                                text: ModelInstaller.searchQuery
+                                onEditingFinished: ModelInstaller.searchQuery = text.trim()
+                            }
+                            Button {
+                                text: qsTr("Search")
+                                implicitHeight: Theme.controlHeight
+                                onClicked: {
+                                    ModelInstaller.searchQuery = searchField.text.trim()
+                                    ModelInstaller.startSearch()
+                                }
+                            }
+                        }
+                        ListView {
+                            id: searchList
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            visible: ModelInstaller.searchCount > 0
+                            model: ModelInstaller.searchCount
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            delegate: Rectangle {
+                                required property int index
+                                property var sInfo: ModelInstaller.searchResult(index)
+                                width: searchList.width
+                                height: 30
+                                color: "transparent"
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 4
+                                    anchors.rightMargin: 4
+                                    spacing: 6
+                                    Label {
+                                        Layout.preferredWidth: 150
+                                        elide: Text.ElideMiddle
+                                        font.pixelSize: Theme.fontSmall
+                                        color: Theme.textPrimary
+                                        text: sInfo.title
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideMiddle
+                                        font.pixelSize: Theme.fontSmall
+                                        color: Theme.textMuted
+                                        text: sInfo.id
+                                    }
+                                    Button {
+                                        text: qsTr("Install")
+                                        implicitHeight: Theme.controlHeight
+                                        font.pixelSize: Theme.fontSmall
+                                        enabled: !ModelInstaller.busy
+                                        onClicked: {
+                                            prepareDialog.pendingIndex = -1
+                                            ModelInstaller.installRemote(index)
+                                            prepareDialog.open()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            font.pixelSize: Theme.fontSmall
+                            color: Theme.textMuted
+                            visible: !ModelInstaller.searchActive
+                                     && ModelInstaller.searchCount === 0
+                            text: qsTr("Results appear here. Models install into the managed "
+                                       + "models directory.")
+                        }
+                    }
+
+                    // ----- Local file -------------------------------------------
+                    ColumnLayout {
+                        spacing: 8
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            TextField {
+                                id: localPathField
+                                Layout.fillWidth: true
+                                implicitHeight: Theme.controlHeight
+                                placeholderText: qsTr("path to a .gguf model")
+                                text: Settings.launchModelPath
+                            }
+                            Button {
+                                text: qsTr("Browse…")
+                                implicitHeight: Theme.controlHeight
+                                onClicked: modelPicker.open()
+                            }
+                        }
+                        Button {
+                            text: qsTr("Use this file")
+                            implicitHeight: Theme.controlHeight
+                            enabled: localPathField.text.trim().length > 0
+                            onClicked: Settings.launchModelPath = localPathField.text.trim()
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            font.pixelSize: Theme.fontSmall
+                            color: Theme.textMuted
+                            text: qsTr("The local model is not managed: its license is your "
+                                       + "responsibility, and it is not verified by the catalog.")
+                        }
+                    }
+                }
+            }
+        }
+
+        Item { Layout.fillHeight: true }
+    }
+
+    // Confirm dialog for preset / remote installs (shows the license).
+    Dialog {
+        id: prepareDialog
+        modal: true
+        anchors.centerIn: parent
+        width: 420
+        title: qsTr("Install model")
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        property string license: ""
+        property int pendingIndex: -1
+
+        ColumnLayout {
+            spacing: 6
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                font.pixelSize: Theme.fontSmall
+                color: Theme.textSecondary
+                text: qsTr("Review the license before installing. Downloading starts "
+                           + "after confirmation.")
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                font.pixelSize: Theme.fontSmall
+                color: Theme.accent
+                visible: prepareDialog.license.length > 0
+                text: qsTr("License: %1").arg(prepareDialog.license)
+                linkColor: Theme.accent
+            }
+        }
+        onOpened: {
+            if (prepareDialog.pendingIndex >= 0
+                && prepareDialog.pendingIndex < ModelInstaller.presetCount) {
+                prepareDialog.license =
+                    ModelInstaller.presetInfo(prepareDialog.pendingIndex).license || ""
+            } else {
+                prepareDialog.license = ""
+            }
+        }
+        onAccepted: ModelInstaller.installPrepared()
+    }
+
+    FileDialog {
+        id: modelPicker
+        title: qsTr("Select a GGUF model")
+        nameFilters: ["GGUF models (*.gguf)", "All files (*)"]
+        onAccepted: {
+            localPathField.text = selectedFile
+            Settings.launchModelPath = selectedFile
+        }
+    }
+}

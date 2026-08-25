@@ -15,6 +15,9 @@ Dialog {
     property bool canManage: !Runtime.lockedOut
                              && Settings.serverPath.trim().length > 0
 
+    // Set by Main.qml so the „Запустить мастер“ button can open the wizard.
+    property var setupWizardRef: null
+
     // Stage D install drop-downs; rebuilt when the catalog/backends change.
     property var backendOptions: []
     property var releaseOptions: []
@@ -51,6 +54,12 @@ Dialog {
         standardButtons: dialog.standardButtons
         spacing: 6
         padding: 10
+    }
+
+    // Programmatically switch the Settings tab (Connection = index 1).
+    function selectTab(index) {
+        tabBar.currentIndex = index
+        loadValues()
     }
 
     function loadValues() {
@@ -477,6 +486,35 @@ Dialog {
                 ColumnLayout {
                     width: runtimeScroll.availableWidth
                     spacing: 4
+
+                    // ----- Re-run the first-run wizard -----
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Button {
+                            text: qsTr("Launch setup wizard…")
+                            implicitHeight: Theme.controlHeight
+                            font.pixelSize: Theme.fontCaption
+                            onClicked: {
+                                if (dialog.setupWizardRef)
+                                    dialog.setupWizardRef.startWizard()
+                            }
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            font.pixelSize: Theme.fontSmall
+                            color: Theme.textMuted
+                            text: qsTr("Walks you through installing a runtime and a "
+                                       + "model, then configures the launch.")
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 1
+                        color: Theme.divider
+                    }
 
                     // ----- Existing managed-server binary controls -----
                     Rectangle {

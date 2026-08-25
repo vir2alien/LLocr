@@ -431,6 +431,68 @@ void RuntimeController::runSelfTestRequest(
     watch->setFuture(m_selftestProvider->recognize(request, config));
 }
 
+void RuntimeController::runSelfTestQml()
+{
+    if (m_selftestRunning)
+        return;
+    m_selftestRunning = true;
+    m_selftestOk = false;
+    m_selftestMessage = tr("Running self-test…");
+    emit selftestFinished();
+
+    // Reuse the same chain; mirror the outcome into the QML-visible state.
+    auto promise = std::make_shared<QFutureInterface<SelfTestResult>>();
+    promise->reportStarted();
+    auto *watch = new QFutureWatcher<ResolvedConnection>(this);
+    connect(watch, &QFutureWatcher<ResolvedConnection>::finished, this,
+            [this, watch, promise]() {
+                const ResolvedConnection conn = watch->result();
+                watch->deleteLater();
+                if (conn.baseUrl.isEmpty()) {
+                    m_selftestRunning = false;
+                    m_selftestOk = false;
+                    m_selftestMessage =
+                        conn.error.isEmpty() ? tr("Server not available") : conn.error;
+                    emit selftestFinished();
+                    return;
+                }
+
+                if (!m_selftestProvider)
+                    m_selftestProvider = new OpenAiProvider(this);
+
+                QFutureWatcher<OcrResult> *rw =
+                    new QFutureWatcher<OcrResult>(this);
+                connect(rw, &QFutureWatcher<OcrResult>::finished, this, [this, rw]() {
+                    const OcrResult res =
+                        rw->future().resultCount() > 0 ? rw->result()
+                                                        : OcrResult::makeError(tr("No response"));
+                    rw->deleteLater();
+                    m_selftestRunning = false;
+                    if (res.success) {
+                        m_selftestOk = true;
+                        m_selftestMessage = res.text;
+                    } else {
+                        m_selftestOk = false;
+                        m_selftestMessage = res.errorMessage.isEmpty()
+                                                ? tr("Recognition failed")
+                                                : res.errorMessage;
+                    }
+                    emit selftestFinished();
+                });
+
+                OcrRequest request;
+                request.image = makeTestImage();
+                request.prompt = tr("Describe the text in this image in one short line.");
+                request.modelId = conn.modelId;
+                ProviderConfig config;
+                config.baseUrl = conn.baseUrl;
+                config.apiKey = conn.apiKey;
+                config.timeoutMs = conn.timeoutMs;
+                rw->setFuture(m_selftestProvider->recognize(request, config));
+            });
+    watch->setFuture(ensureConnectionReady());
+}
+
 // ---------------------------------------------------------------------------
 // Stage B: managed server lifecycle (Runtime settings tab)
 // ---------------------------------------------------------------------------
