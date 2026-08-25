@@ -125,10 +125,9 @@
         <translation>Скрыть</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="162"/>
-        <source>Runtime: not configured</source>
+        <location filename="../qml/MainWindow/Footer.qml" line="163"/>
         <source>External</source>
-        <translation>External</translation>
+        <translation>Внешний</translation>
     </message>
     <message>
         <location filename="../qml/MainWindow/Footer.qml" line="162"/>
@@ -536,6 +535,16 @@
         <translation>Остановка…</translation>
     </message>
     <message>
+        <location filename="../../src/runtime/LlamaServerProcess.cpp"/>
+        <source>Loading model… %1%</source>
+        <translation>Загрузка модели… %1%</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/LlamaServerProcess.cpp"/>
+        <source>Preparing context…</source>
+        <translation>Подготовка контекста…</translation>
+    </message>
+    <message>
         <location filename="../../src/runtime/ReleaseCatalog.cpp" line="153"/>
         <source>The GitHub releases response contained no releases</source>
         <translation>Ответ GitHub не содержал релизов</translation>
@@ -877,17 +886,17 @@
     <message>
         <location filename="../../src/runtime/ModelRegistry.cpp" line="259"/>
         <source>This model is external and can only be hidden from the list, not deleted</source>
-        <translation type="unfinished">Эта модель внешняя — её можно только скрыть из списка, но не удалить</translation>
+        <translation>Эта модель внешняя — её можно только скрыть из списка, но не удалить</translation>
     </message>
     <message>
         <location filename="../../src/runtime/ModelRegistry.cpp" line="273"/>
         <source>This model file lies outside the models directory and cannot be removed.</source>
-        <translation type="unfinished">Файл этой модели лежит вне каталога моделей и не может быть удалён.</translation>
+        <translation>Файл этой модели лежит вне каталога моделей и не может быть удалён.</translation>
     </message>
     <message>
         <location filename="../../src/runtime/ModelRegistry.cpp" line="276"/>
         <source>This model is in use. Stop the server before removing it.</source>
-        <translation type="unfinished">Эта модель используется. Остановите сервер перед удалением.</translation>
+        <translation>Эта модель используется. Остановите сервер перед удалением.</translation>
     </message>
 </context>
 <context>
@@ -1917,21 +1926,6 @@
         <location filename="../../src/runtime/ModelInstaller.cpp" line="663"/>
         <source>No valid presets in file</source>
         <translation>В файле нет корректных пресетов</translation>
-    </message>
-</context>
-<context>
-    <name>llocr::ModelRegistry</name>
-    <message>
-        <source>This model is external and can only be hidden from the list, not deleted</source>
-        <translation type="vanished">Эта модель внешняя — её можно только скрыть из списка, но не удалить</translation>
-    </message>
-    <message>
-        <source>This model file lies outside the models directory and cannot be removed.</source>
-        <translation type="vanished">Файл этой модели лежит вне каталога моделей и не может быть удалён.</translation>
-    </message>
-    <message>
-        <source>This model is in use. Stop the server before removing it.</source>
-        <translation type="vanished">Эта модель используется. Остановите сервер перед удалением.</translation>
     </message>
 </context>
 <context>

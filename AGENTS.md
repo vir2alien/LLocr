@@ -117,4 +117,11 @@ variable, and vcpkg does **not** participate in the build.
 yellow/green/red + text, click opens the shared `ServerLogWindow`),
     indeterminate progress + stderr text while StartingRuntime, §7.5 error
     surfacing for Failed, and the «Launch settings changed — restart» banner
-    with a Restart button; ru translations updated. Next: **Stage H** (polish).
+    with a Restart button; ru translations updated. **H.7** (polish of
+    processes/performance) is also **done** — reduced `waitForStarted` (10s→5s)
+    and health interval (500→250ms), bounded probe spawn (2.5s) + default
+    timeout 5s, `RuntimeLocator::probeCached()` LRU cache on the `startServer`
+    path, stderr model-load progress classified into `loadProgressPercent()`
+    (0..100, „Loading model… N%“ status + deterministic `ProgressBar` in the
+    footer), `llocr_ru.ts` cleaned (broken Footer `<message>` fixed, vanished
+    `llocr::ModelRegistry` context removed). Next: **Stage H.8** (docs).

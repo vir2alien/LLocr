@@ -111,6 +111,13 @@ ApplicationWindow {
         anchors.margins: 10
         clip: true
 
+        // An explicit vertical scroll bar instead of the lazily-created one so
+        // auto-scroll logic can always address a live, non-null object.
+        ScrollBar.vertical: ScrollBar {
+            id: vScroller
+            policy: ScrollBar.AsNeeded
+        }
+
         TextArea {
             id: logArea
             text: Runtime.serverLog || qsTr("No log output yet.")
@@ -131,13 +138,16 @@ ApplicationWindow {
             onTextChanged: {
                 // Auto-scroll to the newest line, unless the user is inspecting
                 // earlier output.
-                if (!root.userScrolledUp && scroll.verticalScrollBar.visible)
-                    scroll.verticalScrollBar.position =
-                        1.0 - scroll.verticalScrollBar.size
-                // Flash the live indicator.
-                root.liveDot.color = Theme.success
-                root.liveDot.opacity = 1.0
-                root.liveFlash.restart()
+                if (!root.userScrolledUp && vScroller.visible)
+                    vScroller.position = 1.0 - vScroller.size
+                // Flash the live indicator. Guarded because this handler also
+                // fires while logArea is being constructed, before liveDot /
+                // liveFlash (declared later, in the header/footer) exist yet.
+                if (root.liveDot && root.liveFlash) {
+                    root.liveDot.color = Theme.success
+                    root.liveDot.opacity = 1.0
+                    root.liveFlash.restart()
+                }
             }
         }
     }
@@ -145,13 +155,15 @@ ApplicationWindow {
     // True once the user scrolls away from the bottom (stops auto-following).
     property bool userScrolledUp: false
 
+    // Track the scroll position via the explicit scroll bar (non-null, unlike
+    // ScrollView.verticalScrollBar which is built lazily); user drags away from
+    // the bottom disable auto-follow.
     Connections {
-        target: scroll.verticalScrollBar
+        target: vScroller
         function onPositionChanged() {
             root.userScrolledUp =
-                scroll.verticalScrollBar.visible
-                && scroll.verticalScrollBar.position
-                     + scroll.verticalScrollBar.size < 0.99
+                vScroller.visible
+                && vScroller.position + vScroller.size < 0.99
         }
     }
 

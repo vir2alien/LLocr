@@ -90,6 +90,7 @@ QString LlamaServerProcess::start()
 void LlamaServerProcess::spawn()
 {
     m_attemptsTotal++;
+    m_loadPercent = -1;
     setState(RuntimeState::Starting);
     setStatus(QObject::tr("Starting server (attempt %1)").arg(m_attemptsTotal));
 
@@ -106,9 +107,13 @@ void LlamaServerProcess::spawn()
 
     // Capture output for the ring buffer / rotating log.
     m_lineBuffer.clear();
-
+    // §H.7 task 1: a fresh llama.cpp spawn is fast (fork/exec), so a 5 s upper
+    // bound on the synchronous wait keeps worst-case main-thread blocking low
+    // without failing legitimately slow first starts (cold disk, AV scanning
+    // on Windows). The real startup cost (model load) is covered by the health
+    // watchdog below.
     m_process.start(QIODevice::ReadOnly);
-    if (!m_process.waitForStarted(10000)) {
+    if (!m_process.waitForStarted(5000)) {
         m_lastError = m_process.errorString();
         onProcessFinished(0, QProcess::CrashExit);
         return;
@@ -133,7 +138,10 @@ void LlamaServerProcess::armHealthPolling()
         m_net = new QNetworkAccessManager(this);
     if (!m_healthTimer) {
         m_healthTimer = new QTimer(this);
-        m_healthTimer->setInterval(500);
+        // §H.7 task 1: health-interval tuned to fast starts — loopback probes
+        // are cheap, and halves the time-to-Ready detection for a quick model
+        // load. The startup timeout, not the interval, bounds the failure case.
+        m_healthTimer->setInterval(250);
         connect(m_healthTimer, &QTimer::timeout, this, [this]() {
     if (m_state != RuntimeState::Starting)
         return;
@@ -200,10 +208,7 @@ void LlamaServerProcess::appendLine(const QString &line)
         m_ring.remove(0, m_ring.size() - m_ringMaxLines);
     appendLogFile(line);
     emit logLineAppended(line);
-    // Progress heuristics: model-load lines are surfaced as status.
-    if (line.contains(QStringLiteral("load")) || line.contains(QStringLiteral("model"))
-        || line.contains(QStringLiteral("print_info")))
-        setStatus(line);
+    classifyLine(line);
 }
 
 void LlamaServerProcess::appendLogFile(const QString &line)
@@ -216,6 +221,51 @@ void LlamaServerProcess::appendLogFile(const QString &line)
         QTextStream out(&f);
         out << line << u'\n';
     }
+}
+
+// §H.7 task 2: classify a raw llama.cpp stderr line into a stable, readable
+// status. The important case is model-load progress, surfaced as an explicit
+// percentage (llama.cpp prints "loading tensors, NN%" and "load_tensors:
+// NN%"); significant milestones get a short placeholder; everything else is
+// skipped so the status never becomes a noisy dump of arbitrary "load"/"model"
+// lines.
+void LlamaServerProcess::classifyLine(const QString &line)
+{
+    const int pct = parseLoadPercent(line);
+    if (pct >= 0) {
+        m_loadPercent = pct;
+        setStatus(QObject::tr("Loading model… %1%").arg(pct));
+        emit loadProgressChanged();
+        return;
+    }
+    if (line.contains(QStringLiteral("llama_new_context_with_model"))) {
+        setStatus(QObject::tr("Preparing context…"));
+        return;
+    }
+    if (line.contains(QStringLiteral("print_info"))
+        || line.startsWith(QStringLiteral("llama_model_loader: -")))
+        setStatus(line);
+}
+
+int LlamaServerProcess::parseLoadPercent(const QString &line)
+{
+    // Progress is only recognized on tensor-loading lines; the "%"-less
+    // `load_tensors:` buffer-size lines (also containing "tensors") are
+    // naturally excluded because they carry no percent sign.
+    if (!line.contains(QStringLiteral("tensors")))
+        return -1;
+    const int pctPos = line.lastIndexOf(u'%');
+    if (pctPos < 0)
+        return -1;
+    int start = pctPos;
+    while (start > 0 && (line.at(start - 1).isDigit() || line.at(start - 1) == u'.'
+                         || line.at(start - 1) == u','))
+        --start;
+    bool ok = false;
+    const double value = line.mid(start, pctPos - start).toDouble(&ok);
+    if (!ok)
+        return -1;
+    return qBound(0, int(qRound(value)), 100);
 }
 
 void LlamaServerProcess::rotateLogIfNeeded()

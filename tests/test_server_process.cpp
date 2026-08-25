@@ -20,6 +20,7 @@ private slots:
     void healthyTimeout();
     void crashAndAutoRestartRecovery();
     void stopDuringStartupIsSafe();
+    void reportsTensorLoadPercent();
 };
 
 // Helper that builds a server pointed at the mock binary. Timers/network need
@@ -112,6 +113,22 @@ void TestServerProcess::stopDuringStartupIsSafe()
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Starting, 3000);
     m->stop();
     QCOMPARE(m->state(), RuntimeState::Stopped);
+}
+
+void TestServerProcess::reportsTensorLoadPercent()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    // --progress emits "llama_model_loader: - loading tensors, NN%" lines; the
+    // classifier must surface them as a status percentage (§H.7 task 2).
+    LlamaServerProcess *m =
+        makeServer({QStringLiteral("--progress"), QStringLiteral("4")},
+                   60000, true, dir, logFile);
+    QVERIFY(m->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(m->loadProgressPercent() == 100, 12000);
+    QVERIFY(m->statusMessage().contains(QStringLiteral("Loading model")));
+    QVERIFY(m->loadProgressPercent() >= 0 && m->loadProgressPercent() <= 100);
+    m->stop();
 }
 
 QTEST_MAIN(TestServerProcess)

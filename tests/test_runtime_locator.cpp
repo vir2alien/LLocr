@@ -22,6 +22,7 @@ private slots:
     void missingFileReports();
     void emptyPathReports();
     void belowMinimumDetect();
+    void cacheInvalidatesOnFileChange();
 };
 
 static QString mockPath()
@@ -76,6 +77,39 @@ void TestRuntimeLocator::belowMinimumDetect()
     const ServerCapabilities caps = ServerCapabilities::detect(QStringLiteral("b3999"));
     QVERIFY(caps.ok);
     QVERIFY(caps.belowMinimum);
+}
+
+void TestRuntimeLocator::cacheInvalidatesOnFileChange()
+{
+    // §H.7 probe cache (probeCached): probing an unchanged file reuses the
+    // cached result; once the file's mtime/size change the cache must miss and
+    // the fresh probe reflects the new content.
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString target = QStringLiteral("%1/replaced-server").arg(dir.path());
+    // 1) First probe: a real mock binary → ok.
+    QVERIFY(QFile::copy(mockPath(), target));
+    QVERIFY(RuntimeLocator::probeCached(target).ok);
+
+#ifdef Q_OS_UNIX
+    // 2) Cache-hit proof: remove the owner-execute bit without touching mtime/size
+    //    (chmod changes ctime, not mtime; size is unchanged). A fresh probe would
+    //    now fail to exec, so probeCached returning ok proves it was served from
+    //    the cache and did not re-spawn the binary.
+    QFile::setPermissions(target, QFile::permissions(target) & ~QFileDevice::ExeUser);
+    QVERIFY(RuntimeLocator::probeCached(target).ok);
+#endif
+
+    // 3) Overwrite with different content (size differs → cache miss) → the
+    //    next probeCached must go through the binary, not the cache, and
+    //    reflect the new (invalid) content.
+    QFile f(target);
+    QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    QVERIFY(f.write("build: 99999 (b99999)\n") > 0);
+    f.close();
+    const ProbeResult r2 = RuntimeLocator::probeCached(target);
+    QVERIFY(!r2.ok);  // not a valid llama-server
+    QVERIFY(!r2.error.isEmpty());
 }
 
 QTEST_MAIN(TestRuntimeLocator)

@@ -76,8 +76,8 @@ Item {
             // §H.2 estimate shown next to the selected model.
             visible: root.complete && root.estTotal > 0
             text: qsTr("Estimated footprint: ~%1 GiB (model + context) on %2 GiB RAM")
-                .arg(root.gi(root.estTotal).toFixed(1))
-                .arg(root.gi(root.estRam).toFixed(1))
+                .arg(root.gib(root.estTotal).toFixed(1))
+                .arg(root.gib(root.estRam).toFixed(1))
         }
 
         ProgressBar {

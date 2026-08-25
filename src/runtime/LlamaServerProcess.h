@@ -64,6 +64,11 @@ public:
     QString statusMessage() const;
     QString lastError() const;
 
+    /// Model-load progress parsed from stderr (llama.cpp prints
+    /// "loading tensors, NN%" / "load_tensors: NN%"). -1 while unknown/not
+    /// loading, 0..100 during a load. §H.7 task 2.
+    int loadProgressPercent() const { return m_loadPercent; }
+
     QStringList ringBuffer(int maxLines = -1) const;
     QString logFilePath() const;
     /// Clears the in-memory ring buffer (live log view) without touching the
@@ -83,9 +88,12 @@ signals:
     void statusMessageChanged();
     void logLineAppended(QString line);
     void healthReached();
+    void loadProgressChanged();
 
 private:
     void spawn();
+    void classifyLine(const QString &line);
+    static int parseLoadPercent(const QString &line);
     void armHealthPolling();
     void onHealthReply(QNetworkReply *reply);
     void onReadyRead();
@@ -113,6 +121,7 @@ private:
     bool m_autoRestartScheduled = false;
     bool m_stopRequested = false;
     int m_attemptsTotal = 0;
+    int m_loadPercent = -1;
 
     QString m_healthUrl;
     QString m_lineBuffer;

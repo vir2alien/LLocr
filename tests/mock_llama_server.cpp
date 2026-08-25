@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
     bool crashOnHealth = false;
     qint64 crashAfterMs = 0;
     int helloLines = 0;
+    int progressLines = 0;
 
     QStringList args = app.arguments().mid(1);
     for (int i = 0; i < args.size(); ++i) {
@@ -53,6 +54,8 @@ int main(int argc, char* argv[]) {
             crashAfterMs = value().toLongLong();
         else if (a == QStringLiteral("--hello"))
             helloLines = value().toInt();
+        else if (a == QStringLiteral("--progress"))
+            progressLines = value().toInt();
     }
 
     // The probe runs `--version` / `--help`; keep them quick and truthful.
@@ -77,6 +80,15 @@ int main(int argc, char* argv[]) {
     if (helloLines > 0) {
         for (int i = 0; i < helloLines; ++i)
             printf("llama_model_loader: loading model chunk %d\n", i);
+        fflush(stdout);
+    }
+    // Simulate llama.cpp model-load progress (llama_model_loader: - loading
+    // tensors, NN%%) for the §H.7 progress-classification tests.
+    if (progressLines > 0) {
+        for (int i = 0; i < progressLines; ++i) {
+            const double pct = (i + 1) * 100.0 / progressLines;
+            printf("llama_model_loader: - loading tensors, %5.2f%%\n", pct);
+        }
         fflush(stdout);
     }
     if (delayStartMs > 0)

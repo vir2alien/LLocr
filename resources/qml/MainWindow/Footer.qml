@@ -125,7 +125,7 @@ Item {
                     }
 
                     ToolTip {
-                        visible: runtimeBadge.hovered
+                        visible: runtimeBadge.containsMouse
                         text: qsTr("Server log — click to open. %1").arg(root.stateText())
                         delay: 600
                         font.pixelSize: Theme.fontCaption
@@ -156,13 +156,17 @@ Item {
                     }
                 }
 
-                // Indeterminate progress while the server starts, mirroring the
-                // stderr progress shown in the label (§ G-UI task 3).
+                // Real model-load progress from stderr when the server reports
+                // it; otherwise an indeterminate spinner while it starts
+                // (§H.7 task 2).
                 ProgressBar {
                     Layout.preferredWidth: 90
                     Layout.preferredHeight: 6
                     visible: Runtime.busyState === 1
-                    indeterminate: true
+                    from: 0
+                    to: 100
+                    value: Runtime.loadProgressPercent >= 0 ? Runtime.loadProgressPercent : 0
+                    indeterminate: Runtime.loadProgressPercent < 0
                 }
             }
         }

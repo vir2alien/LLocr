@@ -39,6 +39,7 @@ class RuntimeController : public QObject
     Q_PROPERTY(int state READ stateInt NOTIFY stateChanged)
     Q_PROPERTY(int busyState READ busyStateInt NOTIFY busyStateChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
+    Q_PROPERTY(int loadProgressPercent READ loadProgressPercent NOTIFY loadProgressChanged)
     Q_PROPERTY(bool configValid READ configValid NOTIFY configValidChanged)
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
     Q_PROPERTY(QString serverLog READ serverLog NOTIFY serverLogChanged)
@@ -53,6 +54,9 @@ public:
     RuntimeState state() const { return m_state; }
     AppBusyState busyState() const { return m_busyState; }
     QString statusMessage() const { return m_statusMessage; }
+    /// Model-load progress of the managed server (0..100), or -1 when not
+    /// loading / unknown. Diffuses §H.7 stderr classification to QML.
+    int loadProgressPercent() const { return m_loadProgressPercent; }
     bool configValid() const { return m_configValid; }
     bool lockedOut() const { return m_lockedOut; }
     /// Ring-buffer tail of the managed server log, for the log window.
@@ -136,6 +140,7 @@ private:
     void setState(RuntimeState next);
     void setBusyState(AppBusyState next);
     void setStatusMessage(const QString &msg);
+    void setLoadProgressPercent(int pct);
 
     void recomputeConfigValid();
 
@@ -188,6 +193,7 @@ private:
     RuntimeState m_state = RuntimeState::NotConfigured;
     AppBusyState m_busyState = AppBusyState::Idle;
     QString m_statusMessage;
+    int m_loadProgressPercent = -1;
     bool m_configValid = false;
     bool m_lockedOut = false;
 
@@ -195,6 +201,7 @@ signals:
     void stateChanged();
     void busyStateChanged();
     void statusMessageChanged();
+    void loadProgressChanged();
     void configValidChanged();
     void lockedOutChanged();
     void serverLogChanged();

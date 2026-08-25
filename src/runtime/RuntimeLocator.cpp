@@ -1,8 +1,11 @@
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QStringList>
+#include <QVector>
+#include <utility>
 
 #include "runtime/RuntimeLocator.h"
 #include "runtime/ServerCapabilities.h"
@@ -17,7 +20,13 @@ QString RuntimeLocator::runProbe(const QString &binaryPath, QStringList args,
     proc.setArguments(args);
     proc.setProcessChannelMode(QProcess::MergedChannels);
     proc.start(QIODevice::ReadOnly);
-    if (!proc.waitForStarted(timeoutMs)) {
+    // Spawning a freshly-launched binary is fast in practice (fork/exec, page-in
+    // of the loader); a 2.5 s bound on the startup wait catches a hung exec
+    // without holding the calling (UI) thread for the full timeout (§H.7 task
+    // 1 — avoids stalls on slow/large disks). The remaining budget goes to the
+    // actual run.
+    const int spawnBudget = qMin(2500, timeoutMs);
+    if (!proc.waitForStarted(spawnBudget)) {
         error = QObject::tr("Failed to start the binary: %1").arg(proc.errorString());
         return QString();
     }
@@ -33,6 +42,26 @@ QString RuntimeLocator::runProbe(const QString &binaryPath, QStringList args,
 }
 
 ProbeResult RuntimeLocator::probe(const QString &binaryPath, int timeoutMs)
+{
+    // Always a fresh probe: the user-facing "Check" button must reflect the
+    // current on-disk state even when only permissions changed (mtime-stable).
+    return probeImpl(binaryPath, timeoutMs);
+}
+
+ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, int timeoutMs)
+{
+    // For the manage startServer() path, an unchanged binary (same path, mtime,
+    // size) is not re-probed — no subprocess spawn and no main-thread stall on
+    // repeated recognition starts. A changed file misses and re-probes.
+    ProbeResult cached;
+    if (probeFromCache(binaryPath, cached))
+        return cached;
+    const ProbeResult r = probeImpl(binaryPath, timeoutMs);
+    cacheProbe(binaryPath, r);
+    return r;
+}
+
+ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
 {
     ProbeResult r;
     if (binaryPath.trimmed().isEmpty()) {
@@ -141,6 +170,55 @@ QString RuntimeLocator::ensureExecutable(const QString &binaryPath, bool pathMan
         return QObject::tr("Unable to make the binary executable");
 #endif
     return QString();
+}
+
+// --- §H.7 probe cache ------------------------------------------------
+
+namespace {
+// A single managed server binary is used at a time, so a tiny cache of recent
+// probes (with an exact `path + mtime + size` match) is enough to skip the
+// redundant --version/--help spawn on consecutive starts. Invalidation: an
+// on-disk change (mtime/size) or a different path naturally misses.
+constexpr int kMaxCachedProbes = 4;
+QVector<QPair<RuntimeLocator::ProbeKey, ProbeResult>> s_probeCache;
+
+}  // namespace
+
+bool RuntimeLocator::probeFromCache(const QString &binaryPath, ProbeResult &out)
+{
+    const QFileInfo fi(binaryPath);
+    if (!fi.exists() || !fi.isFile())
+        return false;
+    const ProbeKey key{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(),
+                       fi.size()};
+    for (int i = 0; i < s_probeCache.size(); ++i) {
+        if (s_probeCache.at(i).first == key) {
+            out = s_probeCache.at(i).second;
+            s_probeCache.move(i, 0);  // most-recently-used first (LRU)
+            return true;
+        }
+    }
+    return false;
+}
+
+void RuntimeLocator::cacheProbe(const QString &binaryPath, const ProbeResult &result)
+{
+    const QFileInfo fi(binaryPath);
+    if (!fi.exists() || !fi.isFile())
+        return;
+    const ProbeKey key{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(),
+                       fi.size()};
+    for (int i = 0; i < s_probeCache.size(); ++i) {
+        if (s_probeCache.at(i).first == key) {
+            s_probeCache[i] = qMakePair(key, result);
+            if (i > 0)
+                s_probeCache.move(i, 0);
+            return;
+        }
+    }
+    if (s_probeCache.size() >= kMaxCachedProbes)
+        s_probeCache.removeLast();
+    s_probeCache.prepend(qMakePair(key, result));
 }
 
 }  // namespace llocr

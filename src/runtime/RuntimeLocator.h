@@ -25,8 +25,15 @@ class RuntimeLocator
 public:
     // Runs `--version`, and `--help` (for capability refinement / as a fallback
     // when --version fails), with a bounded wall-clock probe timeout. Never
-    // touches a shell (§7.1): only setProgram() + setArguments().
-    static ProbeResult probe(const QString &binaryPath, int timeoutMs = 10000);
+    // touches a shell (§7.1): only setProgram() + setArguments(). Always probes
+    // freshly — user-facing "Check" must reflect the current on-disk state.
+    static ProbeResult probe(const QString &binaryPath, int timeoutMs = 5000);
+
+    // probe() but served from a tiny LRU cache keyed on (path, mtime, size)
+    // when the binary is unchanged since the last probe. Used by the manage
+    // startServer() path so a repeated recognition round-trip does not re-spawn
+    // the binary (and stall the main thread) for an identical file (§H.7).
+    static ProbeResult probeCached(const QString &binaryPath, int timeoutMs = 5000);
 
     // --version may legitimately be unknown on exotic builds; --help is the
     // secondary probe. Returns the joined diagnostics for the probe UI line.
@@ -35,7 +42,7 @@ public:
     // Searches PATH (QStandardPaths::findExecutable), then the common install
     // roots (macOS/Linux /usr/local/bin, Homebrew; Windows %LOCALAPPDATA%).
     // Returns the first candidate that probes ok, or an empty string.
-    static QString autoDiscover(int timeoutMs = 10000);
+    static QString autoDiscover(int timeoutMs = 5000);
 
     // Makes the binary executable. Files inside the managed runtime root are
     // restored directly; a manually-selected path merely reports that a
@@ -44,11 +51,29 @@ public:
     static QString ensureExecutable(const QString &binaryPath, bool pathManaged,
                                     bool &needsConfirmation);
 
+    // Cache key for probe(); public merely so the implementation can store an
+    // LRU container of results keyed on it.
+    struct ProbeKey {
+        QString path;
+        qint64 mtimeMs;
+        qint64 size;
+        bool operator==(const ProbeKey &o) const
+        {
+            return path == o.path && mtimeMs == o.mtimeMs && size == o.size;
+        }
+    };
+
 private:
     // Runs one argv with a timeout; returns captured stdout+stderr, or sets
     // `error`. Never re-enters a shell.
     static QString runProbe(const QString &binaryPath, QStringList args,
                             int timeoutMs, QString &error);
+
+    static bool probeFromCache(const QString &binaryPath, ProbeResult &out);
+    static void cacheProbe(const QString &binaryPath, const ProbeResult &result);
+    // Shared body of probe()/probeCached(): the path validation + --version /
+    // --help runs that produce a ProbeResult.
+    static ProbeResult probeImpl(const QString &binaryPath, int timeoutMs);
 };
 
 }  // namespace llocr

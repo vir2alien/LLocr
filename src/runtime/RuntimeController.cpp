@@ -77,6 +77,14 @@ void RuntimeController::setStatusMessage(const QString &msg)
     emit statusMessageChanged();
 }
 
+void RuntimeController::setLoadProgressPercent(int pct)
+{
+    if (m_loadProgressPercent == pct)
+        return;
+    m_loadProgressPercent = pct;
+    emit loadProgressChanged();
+}
+
 void RuntimeController::recomputeConfigValid()
 {
     // A server binary must be selected and exist on disk. In Managed the model
@@ -518,7 +526,7 @@ QString RuntimeController::startServer()
                      || m_server->state() == RuntimeState::Stopping))
         return QObject::tr("Server is already running");
 
-    const ProbeResult probe = RuntimeLocator::probe(program, 5000);
+    const ProbeResult probe = RuntimeLocator::probeCached(program, 5000);
     if (!probe.ok) {
         setStatusMessage(probe.error);
         return probe.error;
@@ -555,11 +563,14 @@ QString RuntimeController::startServer()
                 [this]() { setStatusMessage(m_server->statusMessage()); });
         connect(m_server, &LlamaServerProcess::logLineAppended, this,
                 [this](const QString &) { emit serverLogChanged(); });
+        connect(m_server, &LlamaServerProcess::loadProgressChanged, this,
+                [this]() { setLoadProgressPercent(m_server->loadProgressPercent()); });
     } else {
         m_server->setOptions(opts);
     }
 
     setBusyState(AppBusyState::StartingRuntime);
+    setLoadProgressPercent(-1);   // §H.7: no stale percent across starts
     const QString err = m_server->start();
     if (!err.isEmpty()) {
         setBusyState(AppBusyState::Idle);
@@ -578,6 +589,7 @@ void RuntimeController::stopServer()
         return;
     setBusyState(AppBusyState::StoppingRuntime);
     m_server->stop();
+    setLoadProgressPercent(-1);
     setBusyState(AppBusyState::Idle);
     setState(RuntimeState::Stopped);
     setStatusMessage(QObject::tr("Stopped"));
@@ -682,6 +694,7 @@ void RuntimeController::cancelPendingStart()
     // reuse). The recognition flow drops out via the resolve error below.
     if (m_server && m_server->state() == RuntimeState::Starting) {
         m_server->stop();
+        setLoadProgressPercent(-1);
         setState(RuntimeState::Stopped);
         setBusyState(AppBusyState::Idle);
     }
