@@ -18,8 +18,10 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [x] Output parsers (`raw` / `det_tokens` bbox) + `ParserFactory`.
 - [x] Box rendering on the preview (`BoxListModel` + QML `Repeater`).
 - [x] **Configuration moved to Settings** (URL, key, timeout, **model name,
-      temperature, max tokens, DRY sampling params, parser**) + persistence. The
-      **prompt** remains hardcoded in `AppController` (not in Settings yet).
+      temperature, max tokens, DRY sampling params, parser**) + persistence.
+      The recognition **prompt** is supplied by the chosen **model preset**
+      (pre-verified pairs, see the Local-runtime plan below); a built-in default
+      ("document parsing.") applies when no preset is in use.
 - [x] ~~JSON model profiles~~ **removed** (ADR #15); replaced by Settings.
 
 ## Stage 3 — Formats and documents — ✅ COMPLETE
@@ -43,16 +45,37 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [ ] Python indexing service + search (FastAPI + Chroma/Qdrant).
 - [ ] LLocr ↔ RAG integration over HTTP.
 
+## Local-runtime plan (`docs/09-local-runtime-plan.md`) — stages A–G ✅, H in progress
+| Stage | Content | Status |
+| ----- | ------- | ------ |
+| A | skeleton, `ConnectionMode`, resolver, settings groups, `SingleInstanceGuard` | ✅ done |
+| B | binary + process lifecycle, capabilities, no-orphan (`ProcessGuard`) | ✅ done |
+| C | `DownloadTask` resume + `DownloadManager` | ✅ done |
+| D | llama.cpp install (`ReleaseCatalog`, backend, `ArchiveExtractor`, `InstallTransaction`) | ✅ done |
+| E | models from Hugging Face (`ModelCatalog`, presets, `ModelRegistry`) | ✅ done |
+| G-core | `ensureConnectionReady()` for Managed (start→health→alias, dedup, self-test) | ✅ done |
+| F | first-run wizard (`SetupWizard` + 5 steps) | ✅ done |
+| G-UI | footer indicator, restart banner, loading progress, error surfacing | ✅ done |
+| H | polish + documentation: H.2 memory estimate ✅, H.7 process/perf polish ✅, H.8 docs (this page) 🔄; H.1/H.3 partial; H.4–H.6 optional | 🔄 in progress |
+
 ## Stage 5 — Polish and distribution — 🟡 PARTIAL
-- [x] Unit tests (Qt Test): `test_det_parser`, `test_pagemodel`,
-      `test_settings_store`, `test_exporter` — all wired into the build.
+- [x] Unit tests (Qt Test): base suite (`test_det_parser`, `test_pagemodel`,
+      `test_settings_store`, `test_exporter`) + local-runtime suite
+      (`test_launch_config`, `test_runtime_lifetime`, `test_runtime_locator`,
+      `test_capabilities`, `test_server_process`, `test_ensure_connection`,
+      `test_download_manager`, `test_release_catalog`, `test_archive_extractor`,
+      `test_install_transaction`, `test_model_catalog`, `test_model_registry`,
+      `test_model_memory_estimator`) — all wired into the build and run via
+      ctest; helper `mock_llama_server` (no real network in any test).
 - [ ] Unit tests for provider (network) and remaining export paths.
 - [ ] Installers: Windows, macOS (.dmg + signing), Linux (AppImage/Flatpak).
 - [ ] CI/CD (GitHub Actions).
 
 ## Immediate next steps (priority order)
-1. **Persist edits with the document** across sessions (save / restore).
-2. **Lay the RAG interface stub** in the backend (no Python yet).
-3. Unit tests for the provider / network path.
-4. Bug fixes.
-5. Start **Stage 4 (RAG)**.
+1. **Finish Stage H** of the local-runtime plan: H.8 docs (this page),
+   remaining H.1/H.3 UI polish; then decide on optional H.4–H.6.
+2. **Persist edits with the document** across sessions (save / restore).
+3. **Lay the RAG interface stub** in the backend (no Python yet).
+4. Unit tests for the provider / network path.
+5. Bug fixes.
+6. Start **Stage 4 (RAG)**.

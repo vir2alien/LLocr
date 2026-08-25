@@ -14,7 +14,12 @@
   | Export        | **Direct writer (TXT/MD/HTML)** + Pandoc for DOCX/PDF, PDF fallback | ✅ done | Pandoc discovered via `QStandardPaths`; built-in `QPdfWriter` fallback |
   | i18n          | Qt Linguist (`qsTr`/`tr` + `.ts`) | ✅ done | Runtime retranslate; language persisted in `SettingsStore` (`ui/language`) |
   | Markdown preview | Qt WebEngine + marked + KaTeX | ✅ done | Toggle in the right text pane; image refs resolved via data: URIs |
-  | Tests         | Qt Test (unit tests in `tests/`) | ✅ done | 4 targets: `test_det_parser`, `test_pagemodel`, `test_settings_store`, `test_exporter` |
+  | Tests         | Qt Test (unit tests in `tests/`) | ✅ done | 4 base + 13 runtime targets (see 4.12); helper `mock_llama_server` |
+  | Local runtime (managed llama.cpp) | `RuntimeController` + `LlamaServerProcess` + `ReleaseCatalog` | ✅ done | Installs & launches a local `llama-server` (see Architecture §runtime layer); the *HTTP client* remains `QNetworkAccessManager` |
+  | Runtime install | `DownloadTask`/`DownloadManager` + `ArchiveExtractor` (miniz) + `InstallTransaction` | ✅ done | Resumable downloads, ZIP-only extract, transactional install (staging → verify → rename) |
+  | Models (Hugging Face) | `ModelCatalog` + `ModelRegistry` + `ModelInstaller` | ✅ done | GGUF install from HF with commit-SHA pinning + `sha256` (`lfs.oid`) |
+  | Model presets | `default-presets.json` + user `catalog.json` | ✅ done | Pre-verified `model+mmproj+parser+prompt+ctx` pairs; merge-by-id |
+  | No-orphan processes | `ProcessGuard` (Job Object / `PDEATHSIG` / best-effort macOS) | ✅ done | Strong on Win/Linux, best-effort on macOS (owner.json + next-start detection) |
 
   > **Note:** export is done via a **direct per-page writer** (TXT / Markdown /
   > HTML) plus **Pandoc for DOCX/PDF** (with a built-in `QPdfWriter` fallback
@@ -22,9 +27,28 @@
   > PDF rendering uses the **Qt PDF module**
   > (`QPdfDocument`). MuPDF remains a fallback option if higher-fidelity or faster rendering is later required.
   >
-  > The model prompt is **not** persisted in `SettingsStore` — it lives in
-  > `AppController::m_prompt` ("document parsing.") and has a QML property
-  > (`prompt`) but no UI setter yet.
+  > The model prompt is **not** free-typed in `SettingsStore` — it is supplied
+  > by the chosen **model preset** (see `04.16`/`04.17`), with a built-in default
+  > (`AppController::m_prompt`, "document parsing.") when no preset is in use.
+  > The bbox coordinate range is hardcoded (`DetTokensParser`, 1000).
+
+  ## Managed local runtime (llama.cpp) — stages A–G ✅
+  Starting with a llama.cpp binary or downloading it from GitHub Releases
+  (`ggml-org/llama.cpp`), the app can run a **local `llama-server`** the user
+  never has to manage:
+
+  | Concern               | Choice                                                                 |
+  | --------------------- | ---------------------------------------------------------------------- |
+  | Managed server        | **llama.cpp `llama-server`** (min build `b4000`), launched on loopback  |
+  | Runtime install       | GitHub Releases (asset `sha256` from the release body), ZIP via `miniz`|
+  | Models                | **Hugging Face** GGUF, commit-`sha` pinned, `sha256` from `lfs.oid`     |
+  | Health               | GET `/health` (fallback `/v1/models`) during startup                    |
+  | Downloads            | `DownloadTask` (resume: `.part`+`.part.meta`, `Range`/`If-Range`, streaming sha256) in a ≤2-queue `DownloadManager` |
+  | Process safety        | `QProcess` argv-only, `ProcessGuard` (Job Object / `PDEATHSIG`/best-effort) |
+  | Reproducibility      | pinned build tags + pinned commit SHAs, `sha256` verified before use    |
+
+  > Local runtime and models require **no external Python** and no extra native
+  > tooling — everything is embedded (network via Qt, ZIP via vendored `miniz`).
   
   ## RAG service (separate process) — not started
   | Area          | Choice           | Rationale                |
@@ -41,3 +65,6 @@
   - Avoid re-learning for its own sake — Qt covers all GUI requirements.
   - Python is used only where its ecosystem is genuinely stronger (RAG).
   - Markdown as the internal format + Pandoc = cheap support for many export formats.
+  - For the **local runtime**, self-managed llama.cpp (instead of Ollama/LM Studio)
+    keeps one predictable CLI and full control over launch args — and no external
+    dependency to install (ADR 27).

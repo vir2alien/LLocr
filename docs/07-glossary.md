@@ -35,6 +35,43 @@
 - **Recognized marker** — per-page indicator showing whether a page has been
   OCR'd yet; edited pages and pages with duplicate boxes carry additional
   markers.
+- **Connection mode** — `External` (connect to an existing OpenAI-compatible
+  server; the app launches nothing) or `Managed` (the app starts and owns a
+  local `llama-server`). Chosen by the first-run wizard; existing profiles
+  default to `External`.
+- **ResolvedConnection** — the ready-to-use connection returned by
+  `RuntimeController::ensureConnectionReady()`: `baseUrl` + `apiKey` +
+  `modelId` + `timeoutMs`. In `External` it mirrors settings; in `Managed` it
+  is computed from the started server (loopback URL + `--alias`).
+- **RuntimeController** — the managed-runtime facade (QML singleton `Runtime`,
+  created once in `main.cpp`, ADR 36): owns connection resolution, server
+  lifecycle, self-test, memory estimation; QML must not instantiate it.
+- **AppBusyState** — the app-wide exclusive busy state: `Idle`,
+  `StartingRuntime`, `Recognizing`, `StoppingRuntime`, `Downloading`,
+  `Installing`.
+- **RuntimeState** — the managed-server state machine: `NotConfigured → Stopped
+  → Starting → Ready → Stopping → Stopped`, with `Failed`;
+  drives `canRecognize` with `configValid`.
+- **ensureConnectionReady()** — the single async entry point that recognition
+  uses; External resolves immediately, Managed starts the server, waits for
+  `/health`, queries `/v1/models` and verifies the alias. Concurrent callers
+  share one future (ADR 37).
+- **runSelfTest() / runSelfTestQml()** — an independent end-to-end check
+  (start → health → `/v1/models` → one OCR request with a built-in test image),
+  used by the wizard's Launch step.
+- **alias** — the `--alias <name>` given to the managed `llama-server`; it
+  becomes the `modelId` clients use (`/v1/models` must report it).
+- **Managed / External (runtime)** — see **Connection mode**. “Managed
+  runtime/model” also marks files inside the app's `models/` dir (removable),
+  vs **external** user-provided GGUF files (never deleted, only listed).
+- **Model preset** — a pre-verified pair `model + mmproj + parser + prompt +
+  ctx-size` (e.g. Unlimited-OCR Q4_K_M); built-in `default-presets.json` plus
+  user `catalog.json`, merged by `id` (ADR 42/43).
+- **ModelRegistry** — persists installed models in `<modelsDir>/index.json`;
+  distinguishes managed vs external, recovers by rescan, guards removal.
+- **GGUF** — llama.cpp's model format; vision models consist of a main
+  `.gguf` (+ optional `mmproj` projector; multi-part `model-00001-of-N` files
+  are supported).
 
 ## Adopted decisions (ADR-lite)
 | #    | Decision                                                     | Reason                                                       |
@@ -50,7 +87,7 @@
 | 9    | Navigation stays live during recognition                     | Users browse other pages while a batch run proceeds.         |
 | 10   | Export written directly (TXT/MD/HTML); Markdown-as-source + Pandoc for DOCX/PDF | Ship useful export now; converge on the single-source pipeline. |
 | 11   | Thumbnails carry no bounding boxes                           | The strip only signals recognized/edited/current; boxes belong on the center preview only. |
-| 12   | OpenAI-like(llama.cpp-like)-compatible only                  | One clear connection type; connection/model/parser/generation params live in `SettingsStore` (Settings dialog + `QSettings`). The prompt/instruction is still hardcoded in `AppController::m_prompt` for now — see `04.2`. |
+| 12   | OpenAI-like(llama.cpp-like)-compatible only                  | One clear connection type; connection/model/parser/generation params live in `SettingsStore` (Settings dialog + `QSettings`). The recognition prompt is supplied by the chosen **model preset** (see ADR 43); a built-in default (`AppController::m_prompt`) applies when no preset is in use. |
 | 13   | Window geometry persisted (`WindowSettings` + `SettingsStore` `ui/*`) | Persist window pos/size/visibility across sessions. |
 | 14   | Unit tests live in `tests/` (Qt Test), gated by `LLOCR_BUILD_TESTS` | Early coverage for parsers; more to come. |
 | 15   | JSON model-profile classes (`ModelProfile` / `ProfileRepository`) removed | Stage 2 replaced them with the **Settings dialog**; the leftover classes were dead code and were deleted. |
@@ -66,11 +103,23 @@
 | 25   | Detected **duplicate** bounding boxes are collapsed and flagged (`OcrPage::hasDuplicates`, `PageListModel` duplicate role → red marker) | The model can emit the same region twice; the parser dedups it and the UI surfaces it. |
 | 26   | Two connection modes `External` / `Managed`; `OpenAiProvider` stays transport-only and knows nothing about `QProcess` | Don't break the existing external-server scenario; process management is a separate responsibility. |
 | 27   | The managed server is **only llama.cpp** (`llama-server`), minimum build **b4000** | A single predictable CLI; Ollama/LM Studio have their own managers; below b4000 the CLI drifts too much. |
+| 28   | Runtime installs come from **GitHub Releases** (`ggml-org/llama.cpp`) and are unpacked by our own code (vendored `miniz`), verifying `sha256` taken from the release body | Reproducibility, no external package manager; file size is *not* an integrity proof. |
+| 29   | Models download **directly from Hugging Face**, with the **commit SHA pinned** and `sha256` verified against `lfs.oid` | No Python dependency; `main` is mutable between browsing and downloading. |
 | 30   | No-orphan: **strong** on Windows (Job Object + `JOB_OBJECT_LIMIT_KILL_ON_CLOSE`) and Linux (`prctl(PR_SET_PDEATHSIG, SIGTERM)` via `ProcessGuard`), **best-effort** on macOS (`owner.json` + next-start detection) | macOS has no PDEATHSIG analog; honest formulation over a false promise (§5.4). |
 | 31   | First-run wizard driven purely by `runtime/setupVersion`, **no network health probes**; pre-existing profiles are treated as configured (`setupVersion=1`), a clean profile gives `setupVersion=0` | A network probe is unreliable (VPN, powered-off server) and must not decide setup state; the version allows the wizard to evolve. |
+| 32   | In `Managed`, `baseUrl` and `modelId` are **computed** from the running server (loopback + `--alias`); the `model/name` setting is never overwritten | The running process is the single source of truth; `External` settings must be preserved for switching back. |
 | 33   | ⛔ No automatic attach to a process listening on the configured port | `/health==200` proves neither process identity nor the model; a foreign process cannot be owned — a fixed busy port is a hard error (§5 task 4). |
+| 34   | Only **ZIP** archives are supported; `.tar.gz` is not implemented | llama.cpp publishes `.zip` on every platform; a TAR parser is extra code and extra attack surface. |
+| 35   | ⛔ No automatic removal of `com.apple.quarantine` | Never bypass OS protection for downloaded executables; `QNetworkAccessManager` downloads are usually not quarantined anyway (§7.8). |
 | 36   | `RuntimeController` is a singleton instance created in `main.cpp` before the QML engine loads; QML cannot instantiate it | Deterministic lifetime; no duplicate instances. |
 | 37   | `RecognitionController` obtains the connection only through `ensureConnectionReady()` (External resolves immediately; Managed starts/waits later) | It must not know about modes, processes, or health checks. |
+| 38   | The managed server binds **loopback only** (`127.0.0.1`/`::1`); other hosts require `runtime/allowNonLoopback=true` (advanced) with a clear warning | An unauthenticated server must not be reachable from the network; client `baseUrl` stays `127.0.0.1` even when bound elsewhere. |
+| 39   | Runtime installation is **transactional**: staging → verify → probe → atomic rename → settings commit (ADR 28/34) | Eliminates partially-installed runtimes; any failure removes `staging/<uuid>` and leaves settings untouched. |
+| 40   | `.part` downloads always live in the **target directory**, never in a shared `downloads/` | A rename across filesystems is not atomic — models are often kept on an external drive (§3.1). |
 | 41   | Capability detection: build-allowlist + parsed `--help` refinement + one auto-retry without an offending flag on `unknown argument`; cached as `capabilities-<sha1(path+mtime)>.json` | llama.cpp's CLI drifts between builds (e.g. `--flash-attn` boolean → `on|off|auto`); blind argv building breaks compatibility. |
+| 42   | Preset catalogs are split: built-in `:/models/default-presets.json` (read-only) + user `<AppData>/…/catalog.json` (read/write), merged by `id` (user wins) | Files inside Qt resources cannot be edited; the user must be able to add/customize presets. |
+| 43   | A preset pins the exact pair `model + mmproj + parser + prompt + ctx-size` | `det_tokens` and the prompt are model-specific; an arbitrary vision GGUF yields unparseable output. |
+| 44   | `autoStart` defaults to **off** | Otherwise the GUI would reserve several GB of RAM/VRAM on every launch, even when idle. |
+| 45   | `Authorization` header is **dropped on any redirect to a different host** | Otherwise the HF token would leak to the CDN/host the redirect points at (§7.3). |
 
 > When decisions change — add a row to the table and update the affected files.

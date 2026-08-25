@@ -59,24 +59,35 @@ variable, and vcpkg does **not** participate in the build.
   ```
 
   Unit tests are all wired into `tests/CMakeLists.txt` and run via ctest:
-  `test_det_parser`, `test_pagemodel`, `test_settings_store`, and `test_exporter`.
+  the four base targets (`test_det_parser`, `test_pagemodel`,
+  `test_settings_store`, `test_exporter`) plus the local-runtime suite
+  (`test_launch_config`, `test_runtime_lifetime`, `test_runtime_locator`,
+  `test_capabilities`, `test_server_process`, `test_ensure_connection`,
+  `test_download_manager`, `test_release_catalog`, `test_archive_extractor`,
+  `test_install_transaction`, `test_model_catalog`, `test_model_registry`,
+  `test_model_memory_estimator`) and the helper `mock_llama_server`.
 
   ## Current status
   - Phase: the app itself — **Stages 1/2/3 complete** (OCR MVP, extensibility,
-    PDF/formats); ongoing work is on the **local-runtime plan**
-    (`docs/09-local-runtime-plan.md`): managed llama.cpp autostart + model
-    management. **Stages A–E of that plan are complete**, Stage G-core next.
+    PDF/formats); the **local-runtime plan** (`docs/09-local-runtime-plan.md`)
+    — managed llama.cpp autostart + model management — has **stages A–E,
+    G-core, F, G-UI complete**; currently finishing **Stage H** (polish &
+    documentation), of which **H.2** (memory estimate + warning) and **H.7**
+    (process/performance polish) are done and **H.8** (docs) is in progress.
   - Also done: PDF input, batch/multi-page processing, HTML/DOCX/PDF export,
     editable text panel, page reordering, image-block editing, Markdown
-    preview, i18n. Four base unit-test targets exist under `tests/`.
+    preview, i18n. Unit tests: four base targets + thirteen local-runtime
+    targets under `tests/`.
   - Local-runtime plan progress:
-    - **A** (skeleton, connection mode, resolver) ✅
-    - **B** (binary + process lifecycle, capability detection, no-orphan) ✅
-    - **C** (DownloadTask resume + DownloadManager, tests) ✅
+    - **A** (skeleton, `ConnectionMode`, resolver, settings groups,
+      `SingleInstanceGuard`) ✅
+    - **B** (binary + process lifecycle, capability detection, no-orphan
+      `ProcessGuard`) ✅
+    - **C** (`DownloadTask` resume + `DownloadManager`, tests) ✅
     - **D** ✅ — llama.cpp install: `ReleaseCatalog` (GitHub releases + sha256),
-      `detectPlatform()`/backend recommendation, CUDA cudart join,
-      hardened `ArchiveExtractor` (ZIP), transactional `InstallTransaction`,
-      cleanup of unused builds; backend covered by `test_release_catalog` /
+      `detectPlatform()`/backend recommendation, CUDA cudart join, hardened
+      `ArchiveExtractor` (ZIP), transactional `InstallTransaction`, cleanup of
+      unused builds; backend covered by `test_release_catalog` /
       `test_archive_extractor` / `test_install_transaction`. UI in
       **Settings → Runtime**: release/backend pickers, «Download and install»
       with progress, «Installed: bXXXX (CUDA)», «Check for updates»,
@@ -92,6 +103,23 @@ variable, and vcpkg does **not** participate in the build.
       `ModelInstaller`: installed-model table (activate/remove), preset catalog,
       HF search + download, HF token, catalog import/export, GGUF verification;
       ru translations updated.
+    - **G-core** ✅ — `ensureConnectionReady()` for Managed (start → health →
+      /v1/models → alias, dedup of concurrent callers, `cancelPendingStart()`,
+      `runSelfTest()`; error matrix §7.5); covered by `test_ensure_connection`.
+    - **F** ✅ — first-run wizard: `SetupWizard.qml` + `Setup/Step{Welcome,
+      Runtime,Model,Launch,Done}.qml`, trigger per §4.4 (Timer in Main.qml, no
+      network probes), per-step gating; External path sets `setupVersion = 1`;
+      Launch step uses the QML self-test bridge `runSelfTestQml()`.
+    - **G-UI** ✅ — `Footer.qml` managed-runtime indicator (dot yellow/green/red
+      + text, click opens the shared `ServerLogWindow`), indeterminate progress
+      + stderr text while StartingRuntime, §7.5 error surfacing for Failed, and
+      the «Launch settings changed — restart» banner with a Restart button.
+    - **H** 🔄 — H.2 ✅ (memory estimate + warning in the wizard Launch step,
+      `ModelMemoryEstimator`), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
+      probe bounds 2.5s/5s, `probeCached()` LRU, `loadProgressPercent()`
+      stderr classification + deterministic footer ProgressBar, `llocr_ru.ts`
+      cleaned), **H.8 🔄 (documentation — pages 01–07 + this file)**;
+      H.1/H.3 partial, H.4–H.6 optional.
   - Working end-to-end today: open image(s) **or PDF** → configure connection /
     model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
@@ -103,25 +131,10 @@ variable, and vcpkg does **not** participate in the build.
     **export** to TXT / MD / HTML / DOCX (Pandoc) / PDF (Pandoc or built-in
     writer), with **All / Current / page-range** scope, and — in
     **Settings → Runtime** — install a local llama.cpp runtime, and in
-    **Settings → Models** — install GGUF models from Hugging Face. The UI is
-    localizable (System / English / Русский) and themed (System / Light / Dark).
-  - Immediate goal: **Stage G-core** of `09-local-runtime-plan.md` is **done** —
-    `ensureConnectionReady()` for Managed (start → health → /v1/models → alias,
-    dedup of concurrent callers, `cancelPendingStart()`, `runSelfTest()`, error
-    matrix §7.5; covered by `test_ensure_connection`). **Stage F** (first-run
-    wizard) is also **done** — `SetupWizard.qml` + `Setup/Step{Welcome,Runtime,
-    Model,Launch,Done}.qml`, trigger per §4.4 (Timer in Main.qml, no network
-    probes), per-step gating, External path sets `setupVersion = 1`, Launch step
-    uses the QML self-test bridge `runSelfTestQml()`; ru translations updated.
-    **G-UI** is also **done** — `Footer.qml` managed-runtime indicator (dot
-yellow/green/red + text, click opens the shared `ServerLogWindow`),
-    indeterminate progress + stderr text while StartingRuntime, §7.5 error
-    surfacing for Failed, and the «Launch settings changed — restart» banner
-    with a Restart button; ru translations updated. **H.7** (polish of
-    processes/performance) is also **done** — reduced `waitForStarted` (10s→5s)
-    and health interval (500→250ms), bounded probe spawn (2.5s) + default
-    timeout 5s, `RuntimeLocator::probeCached()` LRU cache on the `startServer`
-    path, stderr model-load progress classified into `loadProgressPercent()`
-    (0..100, „Loading model… N%“ status + deterministic `ProgressBar` in the
-    footer), `llocr_ru.ts` cleaned (broken Footer `<message>` fixed, vanished
-    `llocr::ModelRegistry` context removed). Next: **Stage H.8** (docs).
+    **Settings → Models** — install GGUF models from Hugging Face. A clean
+    profile goes through the **first-run wizard** (SetupWizard) from scratch.
+    The UI is localizable (System / English / Русский) and themed
+    (System / Light / Dark).
+  - Immediate goal: **Stage H.8 (documentation)** — docs/01–07 + AGENTS.md
+    brought in line with the implemented runtime/model/wizard functionality.
+    After that, remaining polish H.1/H.3 and the optional H.4–H.6.

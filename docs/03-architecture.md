@@ -19,7 +19,17 @@
 │ LLM Provider │  Image/PDF   │  Parsers   │  Exporter     │
 │ ILlmProvider │  Loader      │ IOutputParser │ (TXT/MD/HTML)│
 │ OpenAiProvider│ DocumentModel│ raw/det    │ DOCX/PDF      │
-├──────────────┴──────────────┴────────────┴──────────────┤
+├──────────────┴──────┬───────┴────┬───────┴───────────────┤
+│   Managed Runtime (local llama.cpp)   │   internal infra  │
+│   RuntimeController — facade + resolve│   DownloadTask    │
+│   RuntimeLocator · RuntimePaths       │   DownloadManager │
+│   ServerCapabilities· ServerLaunchConfig│  ArchiveExtractor│
+│   LlamaServerProcess · ProcessGuard   │   InstallTransaction│
+│   SingleInstanceGuard                 │   ReleaseCatalog  │
+│   RuntimeInstaller (stage D install)  │   ModelCatalog    │
+│   ModelInstaller · ModelRegistry      │   ModelPresetCatalog│
+│   ModelMemoryEstimator (H.2)          │   ResolvedConnection│
+├────────────────────────────────────────┴──────────────────┤
 │        RAG Service (external HTTP service) — later        │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -70,6 +80,35 @@ Implementations:
   **`abort()`** so the UI Stop button can cancel an in-flight request.
   Per-request timeout via `QTimer`.
 
+## Key abstraction: resolved connection
+`RecognitionController` **never** deals with modes, processes, or health
+checks. It asks one async facade and receives a ready-to-use connection:
+
+```cpp
+struct ResolvedConnection {   // src/runtime/ResolvedConnection.h
+    QString baseUrl;    // http://127.0.0.1:<port> (Managed) or external URL
+    QString apiKey;     // from settings (External) or empty (Managed)
+    QString modelId;    // alias (Managed) or model/name (External)
+    int     timeoutMs;
+};
+
+class RuntimeController : public QObject {   // src/runtime/RuntimeController.h
+    QFuture<ResolvedConnection> ensureConnectionReady(); // External: immediate;
+    //   Managed: start → /health → /v1/models → alias → resolve. Concurrent
+    //   callers share one future (dedup).
+    void cancelPendingStart();   // Stop during StartingRuntime
+    QFuture<SelfTestResult> runSelfTest(); // wizard “Check” button
+};
+```
+
+ARM-coordination principle: *all* async work that decides “is a connection
+ready, and what is it” is owned by `RuntimeController` (ADR 26/32/37). The
+recognition flow is then a pure pipeline:
+
+```
+ensureConnectionReady() → ResolvedConnection → ProviderConfig → OcrRequest → OpenAiProvider
+```
+
 ## Configuration model
 The model + parser settings live in `SettingsStore` (persisted via `QSettings`,
 edited in the Settings dialog). When recognition starts, `RecognitionController`
@@ -77,13 +116,58 @@ assembles them into an `OcrRequest` (model + prompt + generation params) and a
 `ProviderConfig` (connection transport) from the store.
 
 - `SettingsStore` loads/saves connection/model/parser/UI settings via
-  `QSettings` (grouped keys: `provider/*`, `model/*`, `output/*`, `ui/*`).
-  Model settings now include the **DRY sampling parameters**
-  (`model/dryMultiplier`, `model/dryBase`, `model/dryAllowedLength`,
-  `model/dryPenaltyLastN`). The prompt is **not** persisted yet: it is
-  hardcoded in `AppController::m_prompt`.
+  `QSettings` (grouped keys: `provider/*`, `model/*`, `output/*`, `ui/*`,
+  `runtime/*`, `launch/*`, `hf/*`). Model settings include the **DRY sampling
+  parameters** (`model/dryMultiplier`, `model/dryBase`, `model/dryAllowedLength`,
+  `model/dryPenaltyLastN`). The recognition **prompt** is supplied by the chosen
+  **model preset** (a `ModelPreset.prompt`); a built-in default
+  (`AppController::m_prompt`, "document parsing.") applies when no preset is used.
 - `parserId` selects the response-parsing strategy via `ParserFactory`
   (`raw` | `det_tokens`; default `det_tokens`).
+- In `Managed` mode the *connection* is **computed**, not configured: the
+  managed server's `baseUrl` (loopback + chosen port), `modelId` (the `--alias`)
+  come from `ensureConnectionReady()` (ADR 32). `model/name` is not overwritten.
+
+## Managed runtime layer (stages A–G)
+A dedicated `src/runtime/` layer sits between the backend and the OS:
+
+- **RuntimeController** (facade, singleton instance created in `main.cpp`,
+  ADR 36) — owns `ensureConnectionReady()` (External immediate resolve;
+  Managed: start → `/health` → `/v1/models` → alias), `cancelPendingStart()`,
+  `runSelfTest()`/`runSelfTestQml()`, server lifecycle (start/stop/restart),
+  `estimateModelMemory()` (H.2), and exposes `state`/`busyState`/`statusMessage`/
+  `loadProgressPercent`/`configValid`/`lockedOut`/`serverLog` to QML.
+- **RuntimeLocator** — probe (`--version`/`--help`, tolerant version parse),
+  `autoDiscover()`, `probeCached()` (LRU, H.7). **ServerCapabilities** — build
+  allowlist + `--help` parse (ADR 41). **ServerLaunchConfig** — argv builder +
+  `toDisplayCommand()` (secrets never shown).
+- **LlamaServerProcess** — `QProcess` argv-only, ring-buffer log (2000 lines) +
+  rotating file log (5 MB × 3), health polling, crash → auto-restart ≤3×/5 min,
+  stop via terminate→kill. **ProcessGuard** — platform no-orphan binding
+  (Job Object / `PDEATHSIG` / macOS best-effort + `owner.json`, ADR 30).
+- **RuntimeInstaller** (stage D) — `ReleaseCatalog` (GitHub Releases + `sha256`
+  from body, TTL 6 h), `detectPlatform()`/backend recommendation,
+  hardened `ArchiveExtractor` (ZIP, miniz; anti-bomb/zip-slip, ADR 34),
+  transactional `InstallTransaction` (staging → verify → probe → atomic rename
+  → commit, ADR 39). QML singleton `RuntimeInstaller`.
+- **ModelInstaller** (stage E) — `ModelCatalog` (HF tree w/ pagination,
+  commit-`sha` pinning, mmproj/multi-part, ADR 29), `ModelPresetCatalog`
+  (built-in `:/models/default-presets.json` + user `models/catalog.json`, ADR 42),
+  `ModelRegistry` (index.json, managed vs external, removal guards).
+  QML singleton `ModelInstaller`.
+- **DownloadTask/DownloadManager** — resumable downloads (`.part`+`.part.meta`,
+  `Range`/`If-Range`, streaming `sha256`), ≤2 parallel, `.part` lives next to
+  the target (ADR 40); redirects https-only with `Authorization` dropped on
+  host change (ADR 45).
+- **SingleInstanceGuard** — `.instance.lock`; when another instance holds it,
+  Managed operations are blocked, External keeps working (ADR 26).
+- **ModelMemoryEstimator** — GGUF size + KV-cache estimate (H.2), used by the
+  wizard's Launch step to warn about RAM.
+
+State: `AppBusyState` (`Idle`/`StartingRuntime`/`Recognizing`/`StoppingRuntime`/
+`Downloading`/`Installing`) and `RuntimeState` (`NotConfigured → Stopped →
+Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
+`canRecognize` per §1.4 of the local-runtime plan (`docs/09-local-runtime-plan.md`).
 
 ## Backend building blocks (implemented)
 - **AppController** — the ViewModel. Exposes `busy`, `resultText`,
@@ -97,7 +181,8 @@ assembles them into an `OcrRequest` (model + prompt + generation params) and a
   as the `Settings` singleton), not on the controller.
 - **RecognitionController** — owns the recognition run loop (single page /
   "recognize all"), the **stop** flag, and the `OpenAiProvider` instance.
-  Builds `OcrRequest` + `ProviderConfig` from `SettingsStore` and the prompt,
+  Obtains the connection **only** via `RuntimeController::ensureConnectionReady()`
+  (ADR 37), builds `OcrRequest` + `ProviderConfig` from the resolved connection,
   runs sequentially through pages, and emits `rawResultReady` per page.
 - **DocumentModel** — holds the loaded pages (`DocumentPage`: image +
   per-page `OcrResult` + `recognized` flag); loads single/multiple images
@@ -114,10 +199,11 @@ assembles them into an `OcrRequest` (model + prompt + generation params) and a
   (`image://ocr/current`), per-page thumbnails (`image://ocr/page/N`), and
   cropped image blocks (`image://ocr/crop/N`).
 - **SettingsStore** — persists settings (connection/model incl. DRY params/parser
-  via `QSettings`, grouped keys `provider/*`, `model/*`, `output/*`) plus UI
-  state (`ui/*`: theme mode, language, window geometry). Exposed to QML as the
-  `Settings` singleton; also read directly by `AppController`,
-  `RecognitionController`, and `UiController`.
+  via `QSettings`, grouped keys `provider/*`, `model/*`, `output/*`, `runtime/*`,
+  `launch/*`, `hf/*`) plus UI state (`ui/*`: theme mode, language, window
+  geometry). Exposed to QML as the `Settings` singleton; also read directly by
+  `AppController`, `RecognitionController`, `RuntimeController`, and
+  `UiController`.
 - **UiController** — System / Light / Dark theme handling (`QML_ELEMENT`).
 - **I18n** — runtime language switching via Qt Linguist (`qsTr`/`tr` +
   `.ts`); installs translators, emits `languageApplied` for `engine.retranslate()`.
@@ -130,7 +216,10 @@ assembles them into an `OcrRequest` (model + prompt + generation params) and a
 ```
 UI (file selection)
   → AppController (stores pages in DocumentModel)
-    → RecognitionController (builds OcrRequest from SettingsStore + prompt)
+    → RecognitionController
+        → RuntimeController::ensureConnectionReady()   [External: immediate;
+            Managed: start → /health → /v1/models → alias]
+        → ResolvedConnection → ProviderConfig + OcrRequest
       → DocumentModel (decode image / render PDF page → QImage)
       → OpenAiProvider.recognize()  [async, cancellable]
       → OutputParser (from settings: raw / det_tokens)

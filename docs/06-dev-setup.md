@@ -28,6 +28,58 @@
   a C++ compiler (MSVC / Clang / GCC).
 - Pandoc — for DOCX/PDF export (external dependency, optionally bundled).
 - Python 3.x — only for the RAG service (later stage).
+- **Local runtime & models need none of the above**: llama.cpp downloads
+  (GitHub Releases), Hugging Face GGUF downloads, ZIP extraction (vendored
+  `miniz`) and the HTTP client are all embedded in the app — no external
+  Python and no extra native tools required.
+
+## Install, tests, run
+```sh
+# from the repo root (see AGENTS.md for the exact Qt location):
+cmake --build build -j 8            # app + tests
+ctest --test-dir build              # all unit tests (base + runtime suite)
+# run the app:
+./build/bin/llocr                   # (exact binary name per platform)
+```
+Unit tests are registered in `tests/CMakeLists.txt` (4 base + 13 runtime =
+17 ctest targets, plus the `mock_llama_server` helper binary; no test touches
+the real network).
+
+## Data directories (managed runtime & models)
+The managed runtime, models, cache and logs live under the platform app-data
+root (default `<AppData>/LLocr/`, overridable via `runtime/rootDir` and
+`runtime/modelsDir`):
+
+```
+<AppData>/LLocr/
+├── runtime/
+│   ├── .install.lock                       # QLockFile (installs)
+│   ├── staging/<uuid>/                     # temporary extraction
+│   └── llama.cpp-<build>-<backend>-<os>-<arch>/  # installed build
+│       └── llama-server[.exe]
+├── models/
+│   ├── .registry.lock
+│   ├── index.json                          # ModelRegistry
+│   ├── catalog.json                        # user preset catalog
+│   └── <org>__<repo>/                      # downloaded GGUF(s) + .part
+├── cache/
+│   └── releases.json                       # GitHub releases cache (TTL 6 h)
+└── logs/
+    └── llama-server.log                    # rotating, 5 MB × 3
+```
+
+Notes:
+- `runtime/` and `models/` may be relocated via Settings (`SettingsStore`
+  `runtime/rootDir`, `runtime/modelsDir`); files are **not** moved when the
+  path changes — the UI warns and offers a rescan of the model registry.
+- Partial downloads (`.part` + `.part.meta`) always live **next to** the target
+  file so the final rename stays atomic (ADR 40) — not in a shared downloads/.
+- The single-instance lock is `<rootDir>/.instance.lock`; when another instance
+  holds it, Managed operations are blocked (External still works).
+- `owner.json` (written by `ProcessGuard` on macOS) records the managed server
+  PID/port so an orphaned server can be detected at next start (ADR 30).
+- Environment variables: none are required. The app follows the platform proxy
+  settings (`QNetworkProxyFactory::useSystemConfiguration()`) for downloads.
 
 ## Repository structure (current)
 ```
@@ -39,26 +91,38 @@ LLocr/
 │   ├── providers/    # ILlmProvider (OcrRequest), OpenAiProvider
 │   ├── parsers/      # IOutputParser, RawParser, DetTokensParser,
 │   │                 #   ParserFactory, BlockStyle
+│   ├── runtime/      # ConnectionMode, ResolvedConnection, RuntimeState,
+│   │                 #   RuntimeController, RuntimePaths, RuntimeLocator,
+│   │                 #   ServerCapabilities, ServerLaunchConfig,
+│   │                 #   LlamaServerProcess, ProcessGuard_*, DownloadTask,
+│   │                 #   DownloadManager, ReleaseCatalog, ArchiveExtractor,
+│   │                 #   InstallTransaction, ModelCatalog, ModelPreset,
+│   │                 #   ModelPresetCatalog, ModelRegistry, ModelInstaller,
+│   │                 #   RuntimeInstaller, ModelMemoryEstimator, SingleInstanceGuard
 │   └── app/          # AppController, RecognitionController, DocumentModel,
 │                     #   PageListModel, BoxListModel, PageEditStore,
 │                     #   OcrImageProvider, SettingsStore, UiController,
 │                     #   I18n, Exporter, PageIndex.h
+├── third_party/miniz/    # vendored ZIP extractor, MIT
 ├── resources/
 │   ├── qml/          # Main.qml, SettingsDialog.qml, ExportDialog.qml,
-│   │   │             #   Theme.qml, WindowSettings.qml
-│   │   └── MainWindow/  # Header, ThumbPanel, ThumbDelegate, ImagePanel,
-│   │                    #   ImagePreview, WorkPanel, MarkdownPreview, Footer
+│   │   │             #   Theme.qml, WindowSettings.qml, SetupWizard.qml,
+│   │   │             #   ServerLogWindow.qml, ModelsTab.qml
+│   │   ├── MainWindow/  # Header, ThumbPanel, ThumbDelegate, ImagePanel,
+│   │   │                #   ImagePreview, WorkPanel, MarkdownPreview, Footer
+│   │   └── Setup/       # StepWelcome, StepRuntime, StepModel, StepLaunch, StepDone
 │   ├── preview/      # marked + KaTeX + preview.html (Markdown preview)
+│   ├── models/       # default-presets.json (built-in preset catalog)
 │   ├── icons/         # app-icon.svg + llocr-*.png + llocr.ico / llocr.icns +
 │   │                  #   hicolor/** (Linux) + llocr.rc (Win) + llocr.desktop.in
 │   └── i18n/          # llocr_ru.ts (compiled/embedded by qt_add_translations)
 ├── rag-service/      # Python service (later stage) — empty for now
-├── tests/            # test_det_parser, test_pagemodel,
-│                     #   test_settings_store, test_exporter (all built)
+├── tests/            # base + runtime suites (17 ctest targets; mock_llama_server helper)
 ├── docs/
 └── AGENTS.md
 ```
 
 > **Note:** `OcrRequest` lives in `providers/ILlmProvider.h`;
-> `ProviderConfig` lives in `core/ProviderConfig.h`. QML lives under
+> `ProviderConfig` lives in `core/ProviderConfig.h`; `ResolvedConnection` and
+> the runtime layer live in `src/runtime/`. QML lives under
 > `resources/qml/`.
