@@ -161,7 +161,10 @@ canRecognize =
     )
 ```
 
-`runtime.configValid` = бинарник валиден (probe прошёл) **и** файл модели существует.
+`runtime.configValid` = выбран бинарник, существующий на диске, **и** (в `Managed`)
+файл модели существует. ⚠ **Только существование файлов** — не «probe прошёл»:
+probe запускается позже, на старте (`probeCached` в `startServer`). Это принятое
+отклонение от строгой формулировки (см. §2.1/3.8 ревью и комментарий в коде).
 
 ---
 
@@ -1090,7 +1093,15 @@ clang-format, существующий стиль проекта, `qsTr` на в
 | `test_install_transaction` | сбой на каждом шаге, отсутствие мусора и правок настроек |
 | `test_model_catalog` | pagination, revision pinning, mmproj, multi-part, кодирование |
 | `test_model_registry` | восстановление, managed vs external, защита активной модели |
+| `test_model_preset_catalog` (§4.1/4.6) | shipped `default-presets.json` (схема: `revision`, `sha256`), слияние по `id`, импорт/экспорт/reset |
 | `test_install_lock` (§H.6) | раздельный `.install.lock`: путь, отказ при занятом локе, освобождение |
+
+Помимо таблицы, тестовая база укреплена: `test_ensure_connection` — дедупликация
+совпадения concurrent-вызовов и health-таймаут без авторестарта; `test_download_manager`
+— resume с предзаполненным `.part` (коллизии имён не рвут resume), смена ETag,
+некорректный `Content-Range` → полная перезакачка; `test_server_process`
+(QScopedPointer, без утечки процессов); фикстура loopback-порта в
+`test_model_catalog` (4.2).
 
 Вспомогательный таргет `mock_llama_server` — тестовый бинарь: `--version`,
 `--help`, `/health`, `/v1/models`, управляемое падение и задержка старта.
@@ -1100,7 +1111,7 @@ clang-format, существующий стиль проекта, `qsTr` на в
 
 ---
 
-## 9. Новые ADR (в `07-glossary-decisions.md`)
+## 9. Новые ADR (в `07-glossary.md`)
 
 | # | Решение | Причина |
 | --- | --- | --- |
@@ -1108,7 +1119,7 @@ clang-format, существующий стиль проекта, `qsTr` на в
 | 27 | Управляемый сервер — только `llama.cpp` (`llama-server`), минимум `b4000` | Единый предсказуемый CLI; Ollama/LM Studio имеют свои менеджеры |
 | 28 | Установка из GitHub Releases `ggml-org/llama.cpp`, распаковка своим кодом (vendored miniz), sha256 из тела релиза | Воспроизводимость, без внешних зависимостей; размер ≠ целостность |
 | 29 | Модели с Hugging Face напрямую, **с пиннингом commit SHA**, sha256 из `lfs.oid` | Нет зависимости от Python; `main` изменчив |
-| 30 | No-orphan: **сильная** гарантия на Windows (Job Object) и Linux (`PDEATHSIG`), **best-effort** на macOS + обнаружение осиротевшего процесса при старте | На macOS нет аналога `PDEATHSIG`; честная формулировка вместо ложного обещания |
+| 30 | No-orphan: **сильная** гарантия на Windows (Job Object) и Linux (`PDEATHSIG`), **best-effort** на macOS + обнаружение осиротевшего процесса при старте. `~LlamaServerProcess` стопит ещё живой child (terminate → kill+wait) — сервер не остаётся сиротой | На macOS нет аналога `PDEATHSIG`; честная формулировка вместо ложного обещания |
 | 31 | Мастер показывается по `runtime/setupVersion`, **без сетевых проб**; существующие профили считаются настроенными | Версия допускает эволюцию мастера; сетевая проба ненадёжна (VPN, выключенный сервер) |
 | 32 | В `Managed` `baseUrl` и `modelId` вычисляются, `model/name` не перезаписывается | Единственный источник истины — запущенный процесс; настройки `External` сохраняются |
 | 33 | ⛔ Автоматический attach к процессу на занятом порту запрещён | `/health == 200` не доказывает ни идентичность процесса, ни модель; чужим процессом нельзя владеть |
@@ -1120,10 +1131,13 @@ clang-format, существующий стиль проекта, `qsTr` на в
 | 39 | Установка runtime транзакционна: staging → verify → probe → atomic rename → commit настроек | Исключает частично установленный runtime |
 | 40 | `.part` создаётся в целевом каталоге, а не в общем `downloads/` | Cross-device `rename` не атомарен; модели часто на внешнем диске |
 | 41 | Capability detection: allowlist по build + `--help` + ретрай при `unknown argument` | CLI llama.cpp меняется между сборками (например, `--flash-attn`) |
-| 42 | Каталог пресетов разделён: встроенный `:/models/*` (RO) + пользовательский `<AppData>/.../catalog.json` (RW) | Файлы в Qt-ресурсах нельзя редактировать |
+| 42 | Каталог пресетов разделён: встроенный `:/models/*` (RO) + пользовательский `<AppData>/.../catalog.json` (RW) | Файлы в Qt-ресурсах не редактируются |
 | 43 | Пресет задаёт точную связку model+mmproj+parser+prompt+ctx | `det_tokens` и prompt специфичны для модели; произвольная vision-GGUF даёт непарсируемый вывод |
 | 44 | `autoStart` по умолчанию **выключен** | Иначе GUI при каждом запуске занимает несколько ГБ RAM/VRAM |
 | 45 | `Authorization` снимается при редиректе на другой host | Иначе HF-токен утекает на CDN |
+| 46 | Раздельные локи: `.install.lock`, `.registry.lock`, `.instance.lock` | Вторая копия GUI может пользоваться External, а операции над runtime/models — эксклюзивные (H.6) |
+| 47 | macOS: watchdog-helper (kqueue/NOTE_EXIT) не выпускается в MVP | Соотношение сложность/польза неоправдано; best-effort + обнаружение при старте достаточно (H.4, §5.4) |
+| 48 | Секреты (`provider/apiKey`, `hf/token`) в кейчейн — отложено | Существующее поведение функционально; кросс-платформенный кейчейн нетривиален (H.5, §7.6) |
 
 ---
 
@@ -1176,7 +1190,7 @@ Settings → Runtime. Навигация Назад/Далее/Пропусти�
 `Settings.launch*Changed`). ru-переводы добавлены в `llocr_ru.ts`. Далее —
 **Stage H** (полировка): **H.7** ✅ (process/perf polish), **H.2** ✅ (memory
 estimate в шаге Launch), **H.8** ✅ (**документация** — 01–07 и `AGENTS.md`
-приведены к факту; ADR 26–45 в `07-glossary.md`), **H.6** ✅ (раздельные
+приведены к факту; ADR 26–48 в `07-glossary.md`), **H.6** ✅ (раздельные
 `install.lock`/`registry.lock`/`runtime-owner`), **H.1** ✅ (полировка UI:
 кнопки лога, пустые состояния, текст Stop, «Скрыть» баннера + подтверждение
 перезапуска при распознавании, тултипы), **H.3** ✅ (проверка обновлений

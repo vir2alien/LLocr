@@ -794,12 +794,24 @@ mock processes left behind (see §4.1–§4.9 and the fixes above). Specific
 loopback tests were confirmed pre-existing (not caused by the §4 changes) by
 A/B testing against the original code.
 
+The documentation inconsistencies listed in §6 were also reconciled:
+- `docs/09-local-runtime-plan.md` §1.4 now documents `configValid` as “file
+  exists” (not “probe passed”), §8 gains `test_model_preset_catalog` + the
+  hardened coverage (§4.2–§4.6), and §9’s ADR list was extended to 48 and now
+  references `07-glossary.md` (the earlier `07-glossary-decisions.md` name was
+  wrong).
+- `docs/07-glossary.md` ADR table (26–48) already reflects the implemented
+  behaviors: split locks (46), watchdog-helper not shipped (47), keychain
+  deferred (48), no-orphan incl. the `~LlamaServerProcess` stop (30/47).
+So every item in §6 is resolved in code **and** the supporting docs now match.
+
 ---
 
 ## 6. Documentation inconsistencies (summary)
 
 The plan/ADR documents several behaviors that the code does not fully implement
-or that have drifted. Highest-signal items, already detailed above:
+or that had drifted. Highest-signal items, already detailed above — **all now
+resolved in code and the supporting docs updated** (see §5):
 
 - §4.4 wizard trigger — broken (§1.1).
 - §4.2 read-only alias + `/v1/models` fallback — partial; Ready path skips it
