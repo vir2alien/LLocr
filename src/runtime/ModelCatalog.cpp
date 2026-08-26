@@ -275,10 +275,12 @@ QUrl ModelCatalog::resolveUrl(const QString &repo, const QString &commitSha,
 
 QString ModelCatalog::fetchHeadSha(QNetworkAccessManager *nam, const QString &repo,
                                    QString &error, const QByteArray &authorization,
-                                   int timeoutMs)
+                                   int timeoutMs, const QUrl &baseUrl)
 {
-    const QUrl url(QStringLiteral("https://huggingface.co/api/models/%1")
-                       .arg(encodePath(repo)));
+    const QString origin = baseUrl.isValid()
+        ? baseUrl.toString(QUrl::FullyEncoded)
+        : QStringLiteral("https://huggingface.co");
+    const QUrl url(origin + QStringLiteral("/api/models/%1").arg(encodePath(repo)));
     const GetResult res = pullGet(nam, url, authorization, timeoutMs);
     if (res.status != 200) {
         error = QObject::tr("Hugging Face API returned HTTP %1 for %2")
@@ -303,11 +305,15 @@ QString ModelCatalog::fetchHeadSha(QNetworkAccessManager *nam, const QString &re
 
 QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString &repo,
                                       const QString &commitSha, QString &error,
-                                      const QByteArray &authorization, int timeoutMs)
+                                      const QByteArray &authorization, int timeoutMs,
+                                      const QUrl &baseUrl)
 {
     QList<HfFile> all;
-    QString pageUrl =
-        QStringLiteral("https://huggingface.co/api/models/%1/tree/%2?recursive=true")
+    const QString origin = baseUrl.isValid()
+        ? baseUrl.toString(QUrl::FullyEncoded)
+        : QStringLiteral("https://huggingface.co");
+    QString pageUrl = origin +
+        QStringLiteral("/api/models/%1/tree/%2?recursive=true")
             .arg(encodePath(repo), encodePath(commitSha));
 
     int guard = 50;

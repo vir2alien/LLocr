@@ -173,8 +173,8 @@ private slots:
     {
         QTemporaryDir dir;
         // ~100 KB made of a repeated 256-byte pseudo-random block: it compresses
-        // (so the entry really exercises the DEFLATE decoder) but only to ≈136:1,
-        // safely below the 200:1 anti-bomb compression-ratio limit.
+        // so the entry really exercises the DEFLATE decoder. The realized ratio is
+        // well below the 200:1 anti-bomb compression-ratio limit.
         QByteArray block;
         block.reserve(256);
         quint32 state = 0x12345678u;

@@ -181,6 +181,8 @@ private slots:
     void sizeMismatchFails();
     void shaMismatchFails();
     void badArchiveFails();
+    void duplicateEntryFails();
+    void probeFailureFails();
     void cleanupUnused();
     void cleanupStaging();
 };
@@ -322,6 +324,87 @@ void TestInstallTransaction::badArchiveFails()
     QTemporaryDir dir;
     const QByteArray junk("this is not a zip archive at all");
     const QString zipPath = writeArchive(dir.path(), QStringLiteral("junk.zip"), junk);
+
+    QTemporaryDir root;
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
+                             QDir(root.path()).filePath(QStringLiteral("models")));
+
+    ReleaseAsset asset;
+    asset.fileName = QStringLiteral("llama-release.zip");
+    asset.os = QStringLiteral("macos");
+    asset.backend = QStringLiteral("cpu");
+    asset.arch = QStringLiteral("arm64");
+    asset.size = QFileInfo(zipPath).size();
+    asset.sha256 = QString();
+
+    bool committed = false;
+    const auto commit = [&](const InstallOutput &) { committed = true; };
+
+    const InstallOutput out = InstallTransaction::start(zipPath, asset, paths, commit);
+
+    QVERIFY(!out.ok);
+    QVERIFY(!committed);
+    QVERIFY(noInstalledBuild(paths));
+    QVERIFY(stagingEmpty(paths));
+}
+
+void TestInstallTransaction::duplicateEntryFails()
+{
+    // Extraction-stage failure inside the transaction: a zip whose entries
+    // collide (the hardened ArchiveExtractor rejects duplicate paths). The
+    // transaction must fail before rename/commit and leave nothing behind.
+    QTemporaryDir dir;
+    QList<ZipEntry> entries;
+    ZipEntry a;
+    a.name = QStringLiteral("llama-server");
+    a.content = QByteArray("first");
+    a.modeAttr = 0o755u << 16;
+    entries << a;
+    ZipEntry b;
+    b.name = QStringLiteral("llama-server");
+    b.content = QByteArray("second");
+    b.modeAttr = 0o755u << 16;
+    entries << b;
+    const QString zipPath = archiveFor(dir.path(), QStringLiteral("dup.zip"), entries);
+    QVERIFY(!zipPath.isEmpty());
+
+    QTemporaryDir root;
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
+                             QDir(root.path()).filePath(QStringLiteral("models")));
+
+    ReleaseAsset asset;
+    asset.fileName = QStringLiteral("llama-release.zip");
+    asset.os = QStringLiteral("macos");
+    asset.backend = QStringLiteral("cpu");
+    asset.arch = QStringLiteral("arm64");
+    asset.size = QFileInfo(zipPath).size();
+    asset.sha256 = QString();
+
+    bool committed = false;
+    const auto commit = [&](const InstallOutput &) { committed = true; };
+
+    const InstallOutput out = InstallTransaction::start(zipPath, asset, paths, commit);
+
+    QVERIFY(!out.ok);
+    QVERIFY(!committed);
+    QVERIFY(noInstalledBuild(paths));
+    QVERIFY(stagingEmpty(paths));
+}
+
+void TestInstallTransaction::probeFailureFails()
+{
+    // Extraction succeeds, but the located binary is not a runnable
+    // llama-server (it does not answer --version), so the probe fails and the
+    // transaction must roll back with no leftovers.
+    QTemporaryDir dir;
+    QList<ZipEntry> entries;
+    ZipEntry server;
+    server.name = QStringLiteral("llama-server");
+    server.content = QByteArray("this is not an executable llama-server\n");
+    server.modeAttr = 0o755u << 16;
+    entries << server;
+    const QString zipPath = archiveFor(dir.path(), QStringLiteral("probe.zip"), entries);
+    QVERIFY(!zipPath.isEmpty());
 
     QTemporaryDir root;
     const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),

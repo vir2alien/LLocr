@@ -1,7 +1,11 @@
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QNetworkAccessManager>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <QTest>
 
 #include "runtime/ModelCatalog.h"
@@ -45,6 +49,118 @@ QJsonArray buildTree()
     return arr;
 }
 
+// Minimal loopback HTTP server that answers the Hugging Face model-API routes
+// the fetchers hit, so fetchHeadSha / the two-page fetchTree loop can be driven
+// without network. Buffers each request until the \r\n\r\n header terminator
+// (mirrors TestServer in test_download_manager.cpp).
+class FakeHfApi {
+public:
+    bool start()
+    {
+        bool ok = m_server.listen(QHostAddress::LocalHost, 0);
+        if (ok) {
+            QObject::connect(&m_server, &QTcpServer::newConnection, [this]() {
+                while (QTcpSocket *s = m_server.nextPendingConnection()) {
+                    // Frees itself once the socket's buffer is gone.
+                    QByteArray *buf = new QByteArray;
+                    QObject::connect(s, &QTcpSocket::readyRead, [this, s, buf]() {
+                        buf->append(s->readAll());
+                        if (!buf->contains("\r\n\r\n"))
+                            return;
+                        handle(*buf, s);
+                    });
+                    QObject::connect(s, &QTcpSocket::disconnected, s,
+                                     [s, buf]() {
+                        buf->clear();
+                        s->deleteLater();
+                    });
+                }
+            });
+        }
+        return ok;
+    }
+
+    int port() const { return m_server.serverPort(); }
+
+    QUrl baseUrl() const
+    {
+        return QUrl(QStringLiteral("http://127.0.0.1:%1").arg(port()));
+    }
+
+    int headRequests() const { return m_headHits; }
+    int treeRequests() const { return m_treeHits; }
+
+private:
+    void respond(QTcpSocket *s, int status, const QByteArray &body,
+                 const QByteArray &linkHeader = QByteArray())
+    {
+        QByteArray head = QStringLiteral("HTTP/1.1 %1 %2\r\n")
+                              .arg(status)
+                              .arg(status == 200 ? "OK" : "Not Found")
+                              .toLatin1();
+        head += "Content-Type: application/json\r\n";
+        head += "Content-Length: " + QByteArray::number(body.size()) + "\r\n";
+        if (!linkHeader.isEmpty())
+            head += "Link: " + linkHeader + "\r\n";
+        head += "Connection: close\r\n\r\n";
+        s->write(head + body);
+        s->flush();
+        s->disconnectFromHost();
+    }
+
+    void handle(const QByteArray &req, QTcpSocket *s)
+    {
+        if (!req.startsWith("GET ")) {
+            respond(s, 404, QByteArray());
+            return;
+        }
+        const int eol = req.indexOf("\r\n");
+        const QByteArray line = eol >= 0 ? req.left(eol) : QByteArray();
+        if (line.contains("/tree/")) {
+            ++m_treeHits;
+            if (req.contains("page=2")) {
+                // Second page — no Link header terminates the loop.
+                const QByteArray body = QJsonDocument(QJsonArray{
+                    QJsonObject{{"type", "lfs"},
+                                {"path", "model-Q4_K_M.gguf"},
+                                {"size", 1000},
+                                {"lfs", QJsonObject{
+                                    {"oid", QString(64, QLatin1Char('e'))},
+                                    {"size", 1000}}}}})
+                    .toJson(QJsonDocument::Compact);
+                respond(s, 200, body);
+            } else {
+                const QByteArray body = QJsonDocument(QJsonArray{
+                    QJsonObject{{"type", "file"},
+                                {"path", "readme.md"},
+                                {"size", 100}},
+                    QJsonObject{{"type", "lfs"},
+                                {"path", "model-Q4_K_M-00001-of-00002.gguf"},
+                                {"size", 1000},
+                                {"lfs", QJsonObject{
+                                    {"oid", QString(64, QLatin1Char('f'))},
+                                    {"size", 1000}}}}})
+                    .toJson(QJsonDocument::Compact);
+                const QByteArray link =
+                    QStringLiteral("<%1/api/models/org/repo/tree/abc123?recursive=true&page=2>; rel=\"next\"")
+                        .arg(baseUrl().toString())
+                        .toLatin1();
+                respond(s, 200, body, link);
+            }
+            return;
+        }
+        ++m_headHits;
+        const QByteArray body = QJsonDocument(
+            QJsonObject{{"sha", "abc123"}, {"id", "org/repo"}})
+            .toJson(QJsonDocument::Compact);
+        respond(s, 200, body);
+    }
+
+    QTcpServer m_server;
+    int m_headHits = 0;
+    int m_treeHits = 0;
+};
+
 }  // namespace
 
 class TestModelCatalog : public QObject
@@ -61,6 +177,8 @@ private slots:
     void parsesPaginationLink();
     void parsesSearch();
     void filtersGguf();
+    void fetchesHeadSha();
+    void fetchesPagedTree();
 };
 
 void TestModelCatalog::parsesTree()
@@ -191,6 +309,43 @@ void TestModelCatalog::filtersGguf()
         QStringLiteral("c.GGUF"), QStringLiteral("d.txt")};
     const QStringList out = ModelCatalog::allGguf(in);
     QCOMPARE(out.size(), 2);
+}
+
+void TestModelCatalog::fetchesHeadSha()
+{
+    FakeHfApi api;
+    QVERIFY(api.start());
+    QNetworkAccessManager nam;
+    QString err;
+    const QString sha =
+        ModelCatalog::fetchHeadSha(&nam, QStringLiteral("org/repo"), err, {},
+                                   ModelCatalog::kRequestTimeoutMs, api.baseUrl());
+    QCOMPARE(sha, QStringLiteral("abc123"));
+    QVERIFY(err.isEmpty());
+    QVERIFY(api.headRequests() >= 1);
+}
+
+void TestModelCatalog::fetchesPagedTree()
+{
+    FakeHfApi api;
+    QVERIFY(api.start());
+    QNetworkAccessManager nam;
+    QString err;
+    const QList<HfFile> files = ModelCatalog::fetchTree(
+        &nam, QStringLiteral("org/repo"), QStringLiteral("abc123"), err,
+        {}, ModelCatalog::kRequestTimeoutMs, api.baseUrl());
+    QVERIFY(err.isEmpty());
+    QCOMPARE(api.treeRequests(), 2);  // two pages followed via Link: rel=next
+    QCOMPARE(files.size(), 3);        // page1: readme.md + split part; page2: main
+    bool sawModel = false;
+    for (const HfFile &f : files) {
+        if (f.name == QStringLiteral("model-Q4_K_M-00001-of-00002.gguf")) {
+            sawModel = true;
+            QVERIFY(f.isLfs);
+            QCOMPARE(f.lfsOid, QString(64, QLatin1Char('f')));
+        }
+    }
+    QVERIFY(sawModel);
 }
 
 QTEST_MAIN(TestModelCatalog)

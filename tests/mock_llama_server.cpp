@@ -108,63 +108,76 @@ int main(int argc, char* argv[]) {
     fflush(stderr);
 
     int healthHits = 0;
+    // Per-socket request buffer: a request may be split across TCP segments,
+    // so only route once a full request head (headers terminated by \r\n\r\n)
+    // has arrived. TestServer in test_download_manager.cpp buffers the same way.
+    QHash<QTcpSocket *, QByteArray> requestBuf;
+
+    // Routes a complete request once its header block is available.
+    const auto handleRequest = [&](QTcpSocket *s, const QByteArray &req) {
+        if (req.contains("GET /health")) {
+            healthHits++;
+            if (crashOnHealth && healthHits == 1) {
+                s->disconnectFromHost();
+                QTimer::singleShot(0, &app, []() { std::exit(1); });
+                return;
+            }
+            const QByteArray body = neverHealthy ? "unavailable" : "{\"status\":\"ok\"}";
+            const QByteArray status = neverHealthy ? "503 Service Unavailable" : "200 OK";
+            s->write("HTTP/1.1 " + status + "\r\n"
+                     "Content-Type: application/json\r\n"
+                     "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
+                     "Connection: close\r\n\r\n" + body);
+            s->flush();
+        } else if (req.contains("GET /v1/models")) {
+            if (noModels) {
+                s->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                s->flush();
+                return;
+            }
+            const QByteArray body =
+                QJsonDocument(QJsonObject{{"object", "list"},
+                                          {"data", QJsonArray{{QJsonObject{
+                                                                       {"id", "llocr-local"},
+                                                                       {"object", "model"}}}}}})
+                    .toJson(QJsonDocument::Compact);
+            s->write("HTTP/1.1 200 OK\r\n"
+                     "Content-Type: application/json\r\n"
+                     "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
+                     "Connection: close\r\n\r\n" + body);
+            s->flush();
+        } else if (req.contains("POST /v1/chat/completions")) {
+            // Self-test endpoint: echo a fixed OCR-looking response.
+            const QByteArray body =
+                QJsonDocument(QJsonObject{
+                    {"id", "cmpl-self"},
+                    {"object", "chat.completion"},
+                    {"choices", QJsonArray{{QJsonObject{
+                                                     {"index", 0},
+                                                     {"message", QJsonObject{
+                                                                     {"role", "assistant"},
+                                                                     {"content", "SELFTEST_OK"}}}}}}}})
+                    .toJson(QJsonDocument::Compact);
+            s->write("HTTP/1.1 200 OK\r\n"
+                     "Content-Type: application/json\r\n"
+                     "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
+                     "Connection: close\r\n\r\n" + body);
+            s->flush();
+        } else {
+            s->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+            s->flush();
+        }
+    };
 
     QObject::connect(&server, &QTcpServer::newConnection, [&]() {
         while (QTcpSocket *s = server.nextPendingConnection()) {
             QObject::connect(s, &QTcpSocket::readyRead, [&, s]() {
-                const QByteArray req = s->readAll();
-                if (req.contains("GET /health")) {
-                    healthHits++;
-                    if (crashOnHealth && healthHits == 1) {
-                        s->disconnectFromHost();
-                        QTimer::singleShot(0, &app, []() { std::exit(1); });
-                        return;
-                    }
-                    const QByteArray body = neverHealthy ? "unavailable" : "{\"status\":\"ok\"}";
-                    const QByteArray status = neverHealthy ? "503 Service Unavailable" : "200 OK";
-                    s->write("HTTP/1.1 " + status + "\r\n"
-                             "Content-Type: application/json\r\n"
-                             "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
-                             "Connection: close\r\n\r\n" + body);
-                    s->flush();
-                } else if (req.contains("GET /v1/models")) {
-                    if (noModels) {
-                        s->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-                        s->flush();
-                        return;
-                    }
-                    const QByteArray body =
-                        QJsonDocument(QJsonObject{{"object", "list"},
-                                                  {"data", QJsonArray{{QJsonObject{
-                                                                           {"id", "llocr-local"},
-                                                                           {"object", "model"}}}}}})
-                            .toJson(QJsonDocument::Compact);
-                    s->write("HTTP/1.1 200 OK\r\n"
-                             "Content-Type: application/json\r\n"
-                             "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
-                             "Connection: close\r\n\r\n" + body);
-                    s->flush();
-                } else if (req.contains("POST /v1/chat/completions")) {
-                    // Self-test endpoint: echo a fixed OCR-looking response.
-                    const QByteArray body =
-                        QJsonDocument(QJsonObject{
-                            {"id", "cmpl-self"},
-                            {"object", "chat.completion"},
-                            {"choices", QJsonArray{{QJsonObject{
-                                                         {"index", 0},
-                                                         {"message", QJsonObject{
-                                                                         {"role", "assistant"},
-                                                                         {"content", "SELFTEST_OK"}}}}}}}})
-                            .toJson(QJsonDocument::Compact);
-                    s->write("HTTP/1.1 200 OK\r\n"
-                             "Content-Type: application/json\r\n"
-                             "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
-                             "Connection: close\r\n\r\n" + body);
-                    s->flush();
-                } else {
-                    s->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-                    s->flush();
-                }
+                QByteArray &buf = requestBuf[s];
+                buf += s->readAll();
+                if (!buf.contains("\r\n\r\n"))
+                    return;  // request head not complete yet
+                handleRequest(s, buf);
+                requestBuf.remove(s);
             });
             QObject::connect(s, &QTcpSocket::disconnected, s, &QTcpSocket::deleteLater);
         }

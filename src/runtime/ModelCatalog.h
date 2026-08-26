@@ -102,17 +102,22 @@ public:
     // --- Network fetchers (worker-thread friendly) -------------------------
     /// Pins the repo's current commit SHA: GET /api/models/{repo} -> `sha`.
     /// Empty on failure; `error` explains. `authorization` (e.g.
-    /// "Bearer hf_...") is optional and only sent to huggingface.co.
+    /// "Bearer hf_...") is optional and only sent to huggingface.co. When
+    /// `baseUrl` is non-empty it replaces the Hugging Face origin (test hook so
+    /// the fetcher can be driven against a loopback fixture).
     static QString fetchHeadSha(QNetworkAccessManager *nam, const QString &repo,
                                 QString &error, const QByteArray &authorization = {},
-                                int timeoutMs = kRequestTimeoutMs);
+                                int timeoutMs = kRequestTimeoutMs,
+                                const QUrl &baseUrl = QUrl());
 
     /// Fetches the recursive tree for a pinned revision, following pagination
     /// via the `Link: rel="next"` header. Empty on failure; `error` explains.
+    /// `baseUrl` overrides the origin (test hook), as in `fetchHeadSha`.
     static QList<HfFile> fetchTree(QNetworkAccessManager *nam, const QString &repo,
                                    const QString &commitSha, QString &error,
                                    const QByteArray &authorization = {},
-                                   int timeoutMs = kRequestTimeoutMs);
+                                   int timeoutMs = kRequestTimeoutMs,
+                                   const QUrl &baseUrl = QUrl());
 
     /// Search repositories: GET /api/models?search=...&filter=gguf&limit=30.
     static QList<HfModelSummary> search(QNetworkAccessManager *nam,

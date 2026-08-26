@@ -661,7 +661,7 @@ during review. It does **not** modify any code.
 
 ## 4. Tests & configuration
 
-### 4.1 [Medium] Presets ship without a pinned revision and without digests
+### 4.1 [Medium] Presets ship without a pinned revision and without digests — **FIXED**
 - **File**: `resources/models/default-presets.json:8,17,23,32`
 - **Category**: Configuration
 - **Description**: Both presets set `"revision": ""` and `"sha256": {}`. This
@@ -670,7 +670,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Pin a real commit SHA and fill per-file digests, or document
   the always-pin-via-head-sha + lfs.oid + GGUF-magic fallback and add a schema test.
 
-### 4.2 [Medium] Revision pinning and tree pagination are untested
+### 4.2 [Medium] Revision pinning and tree pagination are untested — **FIXED**
 - **File**: `tests/test_model_catalog.cpp:66-194`
 - **Category**: Coverage gap
 - **Description**: Only offline helpers (`resolveUrl`, `nextPageUrl`) are tested.
@@ -679,7 +679,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Add a loopback `QTcpServer` fixture serving a repo `sha` and a
   two-page tree with `Link: rel="next"`, and assert `fetchHeadSha`/`fetchTree`.
 
-### 4.3 [Medium] ModelRegistry atomic-write recovery is untested
+### 4.3 [Medium] ModelRegistry atomic-write recovery is untested — **FIXED**
 - **File**: `tests/test_model_registry.cpp:86-109`
 - **Category**: Coverage gap
 - **Description**: `atomicWriteRoundtrip` only does a clean save/load. No test
@@ -687,7 +687,7 @@ during review. It does **not** modify any code.
   `.registry.lock` is actually acquired.
 - **Recommendation**: Add recovery and lock-assertion tests.
 
-### 4.4 [Medium] `InstallTransaction` "failure at each step" is incomplete
+### 4.4 [Medium] `InstallTransaction` "failure at each step" is incomplete — **FIXED**
 - **File**: `tests/test_install_transaction.cpp:180-186`
 - **Category**: Coverage gap
 - **Description**: Covers size/sha/non-ZIP but not (a) an extraction failure
@@ -695,7 +695,7 @@ during review. It does **not** modify any code.
   the extracted binary doesn't answer `--version`.
 - **Recommendation**: Add cases asserting `!out.ok`, `!committed`, and no leftovers.
 
-### 4.5 [Medium] `canonicalPath` symlink-escape protection is untested (and the test is vacuous)
+### 4.5 [Medium] `canonicalPath` symlink-escape protection is untested (and the test is vacuous) — **FIXED**
 - **File**: `tests/test_model_registry.cpp:141-150`
 - **Category**: Coverage gap
 - **Description**: The test only asserts `canonicalPath()` returns a non-empty
@@ -704,21 +704,21 @@ during review. It does **not** modify any code.
 - **Recommendation**: Create a real symlink target outside `modelsDir` and assert a
   non-empty removal reason.
 
-### 4.6 [Low] Built-in `default-presets.json` and `ModelPresetCatalog` are untested
+### 4.6 [Low] Built-in `default-presets.json` and `ModelPresetCatalog` are untested — **FIXED**
 - **File**: `tests/CMakeLists.txt` (no `test_model_preset_catalog` target)
 - **Category**: Coverage gap
 - **Description**: No test exercises merge-by-`id` precedence, import/export/reset,
   or a parse+`fromJson` roundtrip of the shipped resource.
 - **Recommendation**: Add a `test_model_preset_catalog` target.
 
-### 4.7 [Low] `LlamaServerProcess` instances leaked in `test_server_process.cpp`
+### 4.7 [Low] `LlamaServerProcess` instances leaked in `test_server_process.cpp` — **FIXED**
 - **File**: `tests/test_server_process.cpp:49,65,79,93,110,124`
 - **Category**: Test quality
 - **Description**: `new LlamaServerProcess(opts)` with no parent and no `delete`;
   the destructor (which would tear down the child) never runs.
 - **Recommendation**: Use `QScopedPointer` or a parent + `destroyed` teardown.
 
-### 4.8 [Low] Mock server `readyRead` doesn't buffer across TCP segments
+### 4.8 [Low] Mock server `readyRead` doesn't buffer across TCP segments — **FIXED**
 - **File**: `tests/mock_llama_server.cpp:110-159`
 - **Category**: Test quality
 - **Description**: Routes on a single `readAll()` with no per-socket buffering; a
@@ -726,7 +726,7 @@ during review. It does **not** modify any code.
   `test_download_manager.cpp` does this correctly.)
 - **Recommendation**: Buffer per socket until `\r\n\r\n`.
 
-### 4.9 [Low] Misleading compression-ratio comment
+### 4.9 [Low] Misleading compression-ratio comment — **FIXED**
 - **File**: `tests/test_archive_extractor.cpp:175-177`
 - **Category**: Test quality
 - **Description**: The "≈136:1" comment is inaccurate (a repeating 256-byte block
@@ -738,9 +738,10 @@ during review. It does **not** modify any code.
 
 ## 5. Recommended remediation order
 
-Progress: §1.1–§1.10, §2.1–§2.20, and §3.1–§3.28 are **fixed**
-(marked in the sections above). The only remaining work is the
-**test/coverage hardening** in §4 (below).
+Progress: §1.1–§1.10, §2.1–§2.20, §3.1–§3.28, and **§4.1–§4.9 (test/coverage
+hardening)** are **fixed** (marked in the sections above). The remediation is
+complete; only the informational section §6 and the pre-existing loopback-test
+issues noted below remain.
 
 1. ~~Onboarding regression (§1.1)~~ — done.
 2. ~~Data-loss / security bugs (§1.2, §1.8)~~ — done.
@@ -751,13 +752,26 @@ Progress: §1.1–§1.10, §2.1–§2.20, and §3.1–§3.28 are **fixed**
 7. ~~QML path/state bugs (§2.15–§2.20, §3.24–§3.26)~~ — done.
 8. ~~Settings/architecture (§2.5, §2.11, §2.12, §3.4–§3.23, §3.27–§3.28)~~ — done;
    remaining **§2.18** note: read-only alias + mode selector implemented.
-9. **Test/coverage hardening** (§4.1–§4.9), then re-run
+9. ~~Test/coverage hardening~~ (§4.1–§4.9) — done: base-URL test hook for
+   `fetchHeadSha`/`fetchTree` + loopback fixture (4.2); recovery/lock/symlink
+   tests in `test_model_registry` (4.3, 4.5); extraction + probe-failure cases
+   in `test_install_transaction` (4.4); new `test_model_preset_catalog` target
+   incl. a shipped-resource schema test (4.1, 4.6); `QScopedPointer` ownership
+   in `test_server_process` (4.7); per-socket buffering in the mock server
+   (4.8); corrected the compression-ratio comment (4.9). Validate with
    `cmake --build build -j 8 && ctest --test-dir build`.
 
 Note: `test_server_process`, `test_ensure_connection`, `test_download_manager`
-require binding a loopback TCP port (the mock server / `QTcpServer`). They pass
-outside the sandbox; inside the sandboxed terminal they fail at `listen()` with
-"mock: listen failed" and cannot be exercised here.
+and two cases in `test_model_catalog` require binding a loopback TCP port (the
+mock server / `QTcpServer`). Inside the sandboxed terminal they fail at
+`listen()` with "mock: listen failed" and cannot be exercised here; they pass
+outside the sandbox. `test_server_process` and `test_model_catalog` were
+verified green outside the sandbox. `test_download_manager` and
+`test_ensure_connection` carry **pre-existing** failures unmasked once the
+loopback port is available (3 resume/range failures in `test_download_manager`;
+`concurrentCallersShareFuture` in `test_ensure_connection` hangs). These were
+confirmed pre-existing (not caused by the §4 changes) by A/B testing against the
+original code, and are outside the §4 scope.
 
 ---
 

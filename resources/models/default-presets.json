@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "_comment": "revision may be empty: at install time the app always pins the repo's current commit SHA via fetchHeadSha unless a preset already carries one. sha256 is a per-file digest map used for offline verification when the HF lfs.oid is unavailable; most files get their digest from lfs.oid, and GGUF files are additionally sanity-checked by magic bytes. See docs/review-llm-management.md §4.1.",
   "models": [
     {
       "id": "unlimited-ocr-q4km",

@@ -351,6 +351,31 @@ target_sources(test_model_registry PRIVATE
 )
 add_test(NAME test_model_registry COMMAND test_model_registry)
 
+# ---- Stage E: model preset catalog -------------------------------------
+qt_add_executable(test_model_preset_catalog test_model_preset_catalog.cpp)
+
+# The shipped built-in preset catalog is a Qt resource; register it under the
+# same :/models/ prefix so ModelPresetCatalog::kBuiltInPath resolves in-test.
+qt_add_resources(test_model_preset_catalog "preset_res"
+    PREFIX "/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/models"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/models/default-presets.json"
+)
+
+target_include_directories(test_model_preset_catalog PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_model_preset_catalog PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+
+target_sources(test_model_preset_catalog PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelPreset.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelPresetCatalog.cpp
+)
+add_test(NAME test_model_preset_catalog COMMAND test_model_preset_catalog)
+
 # ---- H.6: separate install lock ------------------------------------------
 qt_add_executable(test_install_lock test_install_lock.cpp)
 
