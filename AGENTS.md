@@ -127,7 +127,12 @@ variable, and vcpkg does **not** participate in the build.
       `test_install_lock`), **H.1 ✅ (UI polish**: log-window buttons + autoscroll
       + live indicator, empty-state hints, consistent Stop text, banner
       "Hide" + **restart confirmation when recognition is in progress**,
-      indicator tooltip)**. Remaining: H.3 (partial) and optional H.4–H.5.
+      indicator tooltip), **H.3 ✅ (update check opt-in**: "Check for updates"
+      does a check only, 6 h cache; plaque "A newer build bNNNN is available"
+      with Update / View changes buttons; deferred install when the server is
+      Ready — "Stop server and update"; auto-check on tab-open only when
+      `runtime/checkUpdates` is enabled via a checkbox in Settings → Runtime)**.
+      Remaining: optional H.4–H.5.
   - Working end-to-end today: open image(s) **or PDF** → configure connection /
     model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
@@ -144,5 +149,7 @@ variable, and vcpkg does **not** participate in the build.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
-    install/registry/owner locks) done; **H.1** (UI polish) done. Next: H.3 and
-    the optional **H.4–H.5** (see `docs/09-local-runtime-plan.md`).
+    install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
+    (update-check opt-in) done. Next: the optional **H.4–H.5** (watchdog-helper
+    no-orphan guarantee, secrets to system keychain) and then the remaining
+    roadmap items (see `docs/09-local-runtime-plan.md`).

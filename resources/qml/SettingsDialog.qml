@@ -210,8 +210,10 @@ Dialog {
             CustomTabButton { text: qsTr("Output") }
             CustomTabButton {
                 text: qsTr("Runtime")
+                // §H.3: automatic check on tab-open only runs when the user has
+                // opted in (runtime/checkUpdates). The manual button always works.
                 onToggled: {
-                    if (checked && RuntimeInstaller.releaseCount === 0)
+                    if (checked && RuntimeInstaller.releaseCount === 0 && Settings.checkUpdates)
                         RuntimeInstaller.checkForUpdates()
                 }
             }
@@ -793,6 +795,20 @@ Dialog {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 6
+                        CheckBox {
+                            id: autoUpdateCheck
+                            Layout.fillWidth: true
+                            text: qsTr("Check for updates automatically when opening this tab")
+                            font.pixelSize: Theme.fontCaption
+                            checked: Settings.checkUpdates
+                            onToggled: Settings.checkUpdates = checked
+                        }
+                        Item { implicitWidth: 4 }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
                         Button {
                             text: RuntimeInstaller.state === 3 ? qsTr("Cancel")
                                                                : qsTr("Download and install")
@@ -831,9 +847,11 @@ Dialog {
                             wrapMode: Text.Wrap
                             font.pixelSize: Theme.fontSmall
                             color: Theme.textMuted
-                            text: RuntimeInstaller.hasUpdate
-                                  ? qsTr("A newer release is available.")
-                                  : qsTr("Your runtime build is up to date.")
+                            text: RuntimeInstaller.state === 0
+                                  ? qsTr("Press “Check for updates” to see if a newer release is available.")
+                                  : (RuntimeInstaller.hasUpdate
+                                     ? qsTr("A newer release is available.")
+                                     : qsTr("Your runtime build is up to date."))
                         }
                     }
 
