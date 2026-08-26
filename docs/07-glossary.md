@@ -122,5 +122,7 @@
 | 44   | `autoStart` defaults to **off** | Otherwise the GUI would reserve several GB of RAM/VRAM on every launch, even when idle. |
 | 45   | `Authorization` header is **dropped on any redirect to a different host** | Otherwise the HF token would leak to the CDN/host the redirect points at (§7.3). |
 | 46   | Split locks instead of one global app lock: **`.install.lock`** (runtime installs/cleanup, in `RuntimeInstaller`), per-write **`.registry.lock`** (`ModelRegistry`), and **`.instance.lock`** as the **runtime-owner** gate (`SingleInstanceGuard`) | A second app instance can keep using External / browsing while runtime installs and server ownership stay exclusive; no single lock blocks everything (H.6). |
+| 47   | Strong-quality no-orphan on macOS: the **watchdog-helper (kqueue/NOTE_EXIT) is closed — not shipped** in the MVP; the best-effort contract stays (`owner.json` + next-start detection, ADR 30) | Low value (only a hard-kill of the GUI on macOS, one residual server process, already detected at next start) vs high complexity (separate bundled binary, signing, poor testability) — unjustified for the MVP (H.4, §5.4). |
+| 48   | Moving `provider/apiKey` and `hf/token` to the OS keychain is **deferred**; they stay in plaintext `QSettings` with an explicit UI warning | Existing behavior is functional and secret-free in logs/commands (§7.6); cross-platform keychain is non-trivial (3 OSes, Qt has no built-in API, async) — not worth the effort now (H.5). |
 
 > When decisions change — add a row to the table and update the affected files.

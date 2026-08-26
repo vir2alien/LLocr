@@ -108,4 +108,4 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
 > **Secrets:** the API key and HF token are stored **in plaintext** in
 > `QSettings` (existing behavior) with an explicit UI warning; they are never
 > written to logs, error messages, or the command preview. Moving them into the
-> OS keychain is a planned optional improvement (H.5).
+> OS keychain is **deferred** (planned, not yet done — H.5 / ADR 48).

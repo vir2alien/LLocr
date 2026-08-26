@@ -72,9 +72,9 @@ variable, and vcpkg does **not** participate in the build.
   - Phase: the app itself — **Stages 1/2/3 complete** (OCR MVP, extensibility,
     PDF/formats); the **local-runtime plan** (`docs/09-local-runtime-plan.md`)
     — managed llama.cpp autostart + model management — has **stages A–E,
-    G-core, F, G-UI complete**; currently finishing **Stage H** (polish &
-    documentation), of which **H.2** (memory estimate + warning) and **H.7**
-    (process/performance polish) are done and **H.8** (docs) is in progress.
+    G-core, F, G-UI complete**; **Stage H (polish & documentation) complete**:
+    H.1–H.3, H.6–H.8 done, **H.4 closed** (no watchdog), **H.5 deferred**
+    (keychain).
   - Also done: PDF input, batch/multi-page processing, HTML/DOCX/PDF export,
     editable text panel, page reordering, image-block editing, Markdown
     preview, i18n. Unit tests: four base targets + fourteen local-runtime
@@ -132,7 +132,8 @@ variable, and vcpkg does **not** participate in the build.
       with Update / View changes buttons; deferred install when the server is
       Ready — "Stop server and update"; auto-check on tab-open only when
       `runtime/checkUpdates` is enabled via a checkbox in Settings → Runtime)**.
-      Remaining: optional H.4–H.5.
+      **H.4 closed** (watchdog-helper not shipped in MVP — see ADR 47);
+      **H.5 deferred** (keychain — see ADR 48).
   - Working end-to-end today: open image(s) **or PDF** → configure connection /
     model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
@@ -150,6 +151,6 @@ variable, and vcpkg does **not** participate in the build.
     (System / Light / Dark).
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
-    (update-check opt-in) done. Next: the optional **H.4–H.5** (watchdog-helper
-    no-orphan guarantee, secrets to system keychain) and then the remaining
-    roadmap items (see `docs/09-local-runtime-plan.md`).
+    (update-check opt-in) done; **H.4 closed** (watchdog-helper not shipped),
+    **H.5 deferred** (secrets keychain). Next: the remaining roadmap items
+    (see `docs/09-local-runtime-plan.md`).

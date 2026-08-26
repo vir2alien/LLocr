@@ -56,7 +56,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 | G-core | `ensureConnectionReady()` for Managed (start→health→alias, dedup, self-test) | ✅ done |
 | F | first-run wizard (`SetupWizard` + 5 steps) | ✅ done |
 | G-UI | footer indicator, restart banner, loading progress, error surfacing | ✅ done |
-| H | polish + documentation: H.2 memory estimate ✅, H.7 process/perf ✅, H.8 docs ✅, H.6 separate locks ✅, H.3 update-check opt-in ✅, H.1 UI polish ✅; H.4–H.5 optional | 🔄 in progress |
+| H | polish + documentation: H.2 memory estimate ✅, H.7 process/perf ✅, H.8 docs ✅, H.6 separate locks ✅, H.3 update-check opt-in ✅, H.1 UI polish ✅; **H.4 closed** (no watchdog in MVP), **H.5 deferred** (keychain) | 🔄 in progress |
 
 ## Stage 5 — Polish and distribution — 🟡 PARTIAL
 - [x] Unit tests (Qt Test): base suite (`test_det_parser`, `test_pagemodel`,
@@ -73,9 +73,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 - [ ] CI/CD (GitHub Actions).
 
 ## Immediate next steps (priority order)
-1. **Finish Stage H** of the local-runtime plan (H.1–H.3, H.6–H.8 all done; see
-   status in `docs/09-local-runtime-plan.md`); then decide on the optional
-   H.4–H.5.
+1. **Finish Stage H** of the local-runtime plan: H.1–H.3, H.6–H.8 done; **H.4 closed**, **H.5 deferred**
+   (see `docs/09-local-runtime-plan.md` / ADR 47–48).
 2. **Persist edits with the document** across sessions (save / restore).
 3. **Lay the RAG interface stub** in the backend (no Python yet).
 4. Unit tests for the provider / network path.
