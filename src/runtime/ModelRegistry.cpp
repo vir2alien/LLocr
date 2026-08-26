@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLockFile>
 #include <QSaveFile>
 
 #include "runtime/ModelCatalog.h"
@@ -38,6 +39,23 @@ bool isSubpathOf(const QString &path, const QString &dir)
     return path == dir || path.startsWith(dir + QDir::separator());
 }
 
+// Split names sort so the "…-00001-of-NNN" part is first.
+void sortSplitParts(QStringList *names)
+{
+    std::sort(names->begin(), names->end(),
+              [](const QString &a, const QString &b) {
+                  QString bA, bB;
+                  int iA = 0, cA = 0, iB = 0, cB = 0;
+                  const bool mA =
+                      ModelCatalog::splitMultiPart(a, &bA, &iA, &cA);
+                  const bool mB =
+                      ModelCatalog::splitMultiPart(b, &bB, &iB, &cB);
+                  if (mA && mB && bA == bB && iA != iB)
+                      return iA < iB;
+                  return a < b;
+              });
+}
+
 ModelEntry entryFromJson(const QJsonObject &o)
 {
     ModelEntry e;
@@ -58,6 +76,7 @@ ModelEntry entryFromJson(const QJsonObject &o)
     e.prompt = o.value(QStringLiteral("prompt")).toString();
     e.ctxSize = o.value(QStringLiteral("ctxSize")).toInt(8192);
     e.addedAt = o.value(QStringLiteral("addedAt")).toString();
+    e.repoId = o.value(QStringLiteral("repoId")).toString();
     const QJsonArray parts = o.value(QStringLiteral("parts")).toArray();
     for (const QJsonValue &v : parts)
         e.parts << v.toString();
@@ -97,6 +116,8 @@ QJsonObject entryToJson(const ModelEntry &e)
     if (e.ctxSize != 8192)
         o.insert(QStringLiteral("ctxSize"), e.ctxSize);
     o.insert(QStringLiteral("addedAt"), e.addedAt);
+    if (!e.repoId.isEmpty())
+        o.insert(QStringLiteral("repoId"), e.repoId);
     if (!e.parts.isEmpty()) {
         QJsonArray arr;
         for (const QString &p : e.parts)
@@ -126,25 +147,38 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
     QFile f(path);
     if (!f.exists()) {
         rebuilt = true;
-        return scanModelsDir(modelsDir);
+        const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
+        // Persist the rebuilt index so every launch does not re-scan (§3.13).
+        QString saveErr;
+        save(modelsDir, scanned, saveErr);
+        return scanned;
     }
     if (!f.open(QIODevice::ReadOnly)) {
         error = QObject::tr("Unable to read model registry: %1").arg(f.errorString());
         rebuilt = true;
-        return scanModelsDir(modelsDir);
+        const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
+        QString saveErr;
+        save(modelsDir, scanned, saveErr);
+        return scanned;
     }
     QJsonParseError perr;
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
     if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
         error = QObject::tr("Model index is corrupt; rescanning models directory");
         rebuilt = true;
-        return scanModelsDir(modelsDir);
+        const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
+        QString saveErr;
+        save(modelsDir, scanned, saveErr);
+        return scanned;
     }
     if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1)
         != kSchemaVersion) {
         error = QObject::tr("Model index version mismatch; rescanning");
         rebuilt = true;
-        return scanModelsDir(modelsDir);
+        const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
+        QString saveErr;
+        save(modelsDir, scanned, saveErr);
+        return scanned;
     }
     const QJsonArray arr =
         doc.object().value(QLatin1String(kModelsKey)).toArray();
@@ -163,6 +197,17 @@ bool ModelRegistry::save(const QString &modelsDir, const QList<ModelEntry> &entr
                          QString &error)
 {
     QDir().mkpath(modelsDir);
+
+    // H.6 / ADR 46: guard the read-modify-write cycle on index.json with the
+    // per-write registry lock so a second GUI instance cannot interleave and
+    // lose updates. The atomic rename protects against corruption, not against
+    // lost writes.
+    QLockFile lock(lockPathFor(modelsDir));
+    lock.setStaleLockTime(30 * 1000);
+    if (!lock.tryLock(5000)) {
+        error = QObject::tr("Model registry is locked by another LLocr instance");
+        return false;
+    }
 
     QJsonObject root;
     root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
@@ -202,9 +247,17 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
             continue;
 
         ModelEntry e;
-        e.id = subdirInfo.fileName();
-        e.title = subdirInfo.fileName();
-        e.repo = subdirInfo.fileName();
+        const QString dirName = subdirInfo.fileName();
+        e.id = dirName;
+        e.title = dirName;
+        // The dir name "org__repo" is not a valid HF repo id; reconstruct
+        // org/repo from it (§3.12). A persisted repoId (set at install time)
+        // wins when the entry is later loaded from a real index.json.
+        const int sep = dirName.indexOf(QLatin1String("__"));
+        e.repoId = sep > 0
+            ? dirName.left(sep) + QLatin1Char('/') + dirName.mid(sep + 2)
+            : dirName;
+        e.repo = e.repoId;
         e.dir = subdirInfo.canonicalFilePath();
         e.origin = ModelOrigin::Managed;  // inside modelsDir ⇒ managed
         e.license = QStringLiteral("https://huggingface.co/%1").arg(e.repo);
@@ -226,18 +279,7 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
             continue;
 
         // Split names sort so the "…-00001-of-NNN" part is first.
-        std::sort(modelParts.begin(), modelParts.end(),
-                  [](const QString &a, const QString &b) {
-                      QString bA, bB;
-                      int iA = 0, cA = 0, iB = 0, cB = 0;
-                      const bool mA =
-                          ModelCatalog::splitMultiPart(a, &bA, &iA, &cA);
-                      const bool mB =
-                          ModelCatalog::splitMultiPart(b, &bB, &iB, &cB);
-                      if (mA && mB && bA == bB && iA != iB)
-                          return iA < iB;
-                      return a < b;
-                  });
+        sortSplitParts(&modelParts);
 
         e.modelPath = d.filePath(modelParts.first());
         if (modelParts.size() > 1)

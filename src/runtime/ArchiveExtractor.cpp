@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 #include "runtime/ArchiveExtractor.h"
@@ -41,6 +42,7 @@ uint32_t update(uint32_t crc, const char *data, qint64 len)
 }
 }  // namespace crc32
 
+// (kept for potential small-buffer callers; the extractor streams via sink)
 QByteArray packBytes(const std::vector<unsigned char> &v)
 {
     QByteArray out;
@@ -187,16 +189,21 @@ bool setErr(QString &err, const QString &msg)
 
 // ---------------------------------------------------------------------------
 // DEFLATE (RFC 1951) stream decoder.
+// Output is streamed to a caller sink in bounded chunks (§3.17); the decoder
+// keeps only the trailing 32 KiB window needed for back-references.
 // ---------------------------------------------------------------------------
 class DeflateDecoder
 {
 public:
+    using Sink = std::function<void(const char *, qint64)>;
+
     DeflateDecoder(qint64 capBytes)
         : m_cap(capBytes) {}
 
-    // Returns empty error string on success. `out` receives decompressed data.
-    QString inflate(const QByteArray &in, std::vector<unsigned char> &out)
+    // Returns empty error string on success; decompressed bytes go to `sink`.
+    QString inflate(const QByteArray &in, const Sink &sink)
     {
+        m_sink = &sink;
         BitReader br(in);
         bool final = false;
         while (!final) {
@@ -206,23 +213,64 @@ public:
             const int btype = br.bits(2);
             QString err;
             if (btype == 0)
-                err = storedBlock(br, out);
+                err = storedBlock(br);
             else if (btype == 1) {
                 HuffmanTrie lit, dst;
                 buildFixedTables(lit, dst);
-                err = inflateLoop(br, out, lit, dst);
+                err = inflateLoop(br, lit, dst);
             } else if (btype == 2)
-                err = dynamicBlock(br, out);
+                err = dynamicBlock(br);
             else
                 return QStringLiteral("reserved deflate block type");
             if (!err.isEmpty())
                 return err;
         }
+        flushWindow();
         return QString();
     }
 
 private:
     qint64 m_cap;
+    const Sink *m_sink = nullptr;
+
+    // Trailing output retained for LZ77 back-references (max distance 32 KiB).
+    static constexpr qint64 kWindowSize = 32768;
+    std::vector<unsigned char> m_window;
+    qint64 m_totalOut = 0;
+
+    void emitByte(unsigned char b)
+    {
+        m_window.push_back(b);
+        ++m_totalOut;
+        if (qint64(m_window.size()) >= 2 * kWindowSize)
+            drainWindow();
+        if (m_cap > 0 && m_totalOut > m_cap)
+            throwCapExceeded();
+    }
+
+    void drainWindow()
+    {
+        const qint64 keep = qMin<qint64>(m_window.size(), kWindowSize);
+        const qint64 flushN = qint64(m_window.size()) - keep;
+        if (flushN > 0) {
+            (*m_sink)(reinterpret_cast<const char *>(m_window.data()), flushN);
+            m_window.erase(m_window.begin(), m_window.begin() + int(flushN));
+        }
+    }
+
+    void flushWindow()
+    {
+        if (!m_window.empty()) {
+            (*m_sink)(reinterpret_cast<const char *>(m_window.data()),
+                      qint64(m_window.size()));
+            m_window.clear();
+        }
+    }
+
+    [[noreturn]] void throwCapExceeded()
+    {
+        throw QStringLiteral("deflate output exceeds declared size");
+    }
 
     void buildFixedTables(HuffmanTrie &lit, HuffmanTrie &dst)
     {
@@ -236,7 +284,7 @@ private:
         dst.build(dstLens);
     }
 
-    QString storedBlock(BitReader &br, std::vector<unsigned char> &out)
+    QString storedBlock(BitReader &br)
     {
         br.alignByte();
         if (!br.need(32))
@@ -248,7 +296,7 @@ private:
         if (!br.need(len * 8))
             return QStringLiteral("stored block data truncated");
         for (int i = 0; i < len; ++i)
-            out.push_back(static_cast<unsigned char>(br.bits(8)));
+            emitByte(static_cast<unsigned char>(br.bits(8)));
         return QString();
     }
 
@@ -311,17 +359,16 @@ private:
         return true;
     }
 
-    QString dynamicBlock(BitReader &br, std::vector<unsigned char> &out)
+    QString dynamicBlock(BitReader &br)
     {
         QString err;
         HuffmanTrie lit, dst;
         if (!buildDynamicTables(br, lit, dst, err))
             return err;
-        return inflateLoop(br, out, lit, dst);
+        return inflateLoop(br, lit, dst);
     }
 
-    QString inflateLoop(BitReader &br, std::vector<unsigned char> &out,
-                        const HuffmanTrie &lit, const HuffmanTrie &dst)
+    QString inflateLoop(BitReader &br, const HuffmanTrie &lit, const HuffmanTrie &dst)
     {
         for (;;) {
             const int sym = lit.decode(br);
@@ -330,9 +377,7 @@ private:
             if (sym == 256)
                 return QString();
             if (sym < 256) {
-                out.push_back(static_cast<unsigned char>(sym));
-                if (m_cap > 0 && qint64(out.size()) > m_cap)
-                    return QStringLiteral("deflate output exceeds declared size");
+                emitByte(static_cast<unsigned char>(sym));
                 continue;
             }
             if (sym > 285)
@@ -353,12 +398,10 @@ private:
                     return QStringLiteral("truncated distance extra bits");
                 distance += br.bits(kDistanceExtra[d]);
             }
-            if (qint64(out.size()) < distance)
+            if (qint64(m_window.size()) < distance)
                 return QStringLiteral("distance before start of output");
             for (int i = 0; i < length; ++i)
-                out.push_back(out[qint64(out.size()) - distance]);
-            if (m_cap > 0 && qint64(out.size()) > m_cap)
-                return QStringLiteral("deflate output exceeds declared size");
+                emitByte(m_window[qint64(m_window.size()) - distance]);
         }
     }
 };
@@ -584,12 +627,14 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
             res.ok = false;
             return res;
         }
-        if (written.contains(e.name)) {
+        if (written.contains(e.name.toLower())) {
             res.error = QStringLiteral("duplicate path in archive: %1").arg(e.name);
             res.ok = false;
             return res;
         }
-        written.insert(e.name);
+        // Lowercased key: duplicate detection must be case-insensitive so
+        // Foo/foo cannot overwrite each other on case-insensitive filesystems.
+        written.insert(e.name.toLower());
 
         // Locate the data via the local file header.
         Reader lr(data);
@@ -616,52 +661,8 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
             return res;
         }
 
-        QByteArray payload;
-        if (e.method == 0) {
-            if (e.compSize != e.uncompSize) {
-                res.error = QStringLiteral("stored entry size mismatch");
-                res.ok = false;
-                return res;
-            }
-            payload = data.mid(dataOff, int(e.compSize));
-        } else if (e.method == 8) {
-            // Compression ratio anti-bomb check per entry.
-            if (e.compSize > 0 && e.uncompSize > e.compSize * kMaxCompressionRatio) {
-                res.error = QStringLiteral("zip entry exceeds compression ratio limit");
-                res.ok = false;
-                return res;
-            }
-            std::vector<unsigned char> out;
-            out.reserve(size_t(qMin<qint64>(e.uncompSize, ArchiveExtractor::kMaxTotalBytes)));
-            DeflateDecoder dec(e.uncompSize);
-            const QString err = dec.inflate(data.mid(dataOff, int(e.compSize)), out);
-            if (!err.isEmpty()) {
-                res.error = err;
-                res.ok = false;
-                return res;
-            }
-            payload = packBytes(out);
-        } else {
-            res.error = QStringLiteral("unsupported zip compression method");
-            res.ok = false;
-            return res;
-        }
-
-        // Verify declared size and CRC.
-        if (qint64(payload.size()) != e.uncompSize) {
-            res.error = QStringLiteral("zip entry size verification failed");
-            res.ok = false;
-            return res;
-        }
-        const uint32_t crcComputed =
-            crc32::update(0xFFFFFFFFu, payload.constData(), payload.size());
-        if (crcComputed != e.crc) {
-            res.error = QStringLiteral("zip entry CRC mismatch");
-            res.ok = false;
-            return res;
-        }
-
-        // Write, creating parent directories.
+        // Write, creating parent directories. Decompressed bytes are streamed
+        // to the file in bounded chunks (§3.17); CRC-32 is fed incrementally.
         const QString destPath = QDir(destDir).filePath(e.name);
         QDir().mkpath(QFileInfo(destPath).absolutePath());
         QFile out(destPath);
@@ -670,9 +671,75 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
             res.ok = false;
             return res;
         }
-        out.write(payload);
-        out.flush();
+
+        uint32_t crcRunning = 0xFFFFFFFFu;
+        qint64 writtenBytes = 0;
+        bool writeFailed = false;
+        const auto sink = [&](const char *bytes, qint64 n) {
+            crcRunning = crc32::update(crcRunning, bytes, n);
+            writtenBytes += n;
+            if (out.write(bytes, n) != n)
+                writeFailed = true;
+        };
+
+        if (e.method == 0) {
+            if (e.compSize != e.uncompSize) {
+                res.error = QStringLiteral("stored entry size mismatch");
+                res.ok = false;
+                return res;
+            }
+            // Stream stored payload straight from the archive buffer.
+            constexpr qint64 kChunkSize = 256 * 1024;
+            for (qint64 off = 0; off < e.compSize && !writeFailed; off += kChunkSize) {
+                const int n2 = int(qMin<qint64>(kChunkSize, e.compSize - off));
+                sink(data.constData() + dataOff + off, n2);
+            }
+        } else if (e.method == 8) {
+            // Compression ratio anti-bomb check per entry.
+            if (e.compSize > 0 && e.uncompSize > e.compSize * kMaxCompressionRatio) {
+                res.error = QStringLiteral("zip entry exceeds compression ratio limit");
+                res.ok = false;
+                return res;
+            }
+            DeflateDecoder dec(e.uncompSize);
+            QString err;
+            try {
+                err = dec.inflate(data.mid(dataOff, int(e.compSize)), sink);
+            } catch (const QString &capErr) {
+                err = capErr;
+            }
+            if (!err.isEmpty()) {
+                res.error = err;
+                res.ok = false;
+                return res;
+            }
+        } else {
+            res.error = QStringLiteral("unsupported zip compression method");
+            res.ok = false;
+            return res;
+        }
+
+        if (!out.flush())
+            writeFailed = true;
         out.close();
+        if (writeFailed) {
+            res.error = QObject::tr("unable to write %1").arg(destPath);
+            res.ok = false;
+            return res;
+        }
+
+        // Verify declared size and CRC.
+        if (writtenBytes != e.uncompSize) {
+            res.error = QStringLiteral("zip entry size verification failed");
+            res.ok = false;
+            return res;
+        }
+        const uint32_t crcComputed = crcRunning;
+        if (crcComputed != e.crc) {
+            res.error = QStringLiteral("zip entry CRC mismatch");
+            res.ok = false;
+            return res;
+        }
 
 #ifdef Q_OS_UNIX
         // Set executable bits only for entries whose mode advertises them.

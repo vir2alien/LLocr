@@ -58,10 +58,22 @@ LlamaServerProcess::LlamaServerProcess(const Options &opts, QObject *parent)
     connect(&m_process, &QProcess::finished, this, &LlamaServerProcess::onProcessFinished);
 }
 
+// §3.3: flush and close the persistent log handle (stop/shutdown/destructor).
+void LlamaServerProcess::closeLogFile()
+{
+    if (m_logFile.isOpen()) {
+        m_logStream.flush();
+        m_logFile.close();
+    }
+}
+
+LlamaServerProcess::~LlamaServerProcess()
+{
+    closeLogFile();
+}
+
 void LlamaServerProcess::setOptions(const Options &opts)
 {
-    if (m_process.state() != QProcess::NotRunning)
-        return;  // applied at the next start()
     m_opts = opts;
     m_process.setProgram(m_opts.program);
 }
@@ -80,9 +92,17 @@ QString LlamaServerProcess::start()
 
     m_healthReached = false;
     m_stopRequested = false;
-    m_healthUrl = m_opts.baseUrl.isEmpty()
-                      ? QStringLiteral("http://%1:%2").arg(m_opts.host, QString::number(m_opts.port))
-                      : m_opts.baseUrl;
+    m_modelsProbed = false;
+    // §3.5: assemble via QUrl so an IPv6 host (::1) is bracketed correctly.
+    if (m_opts.baseUrl.isEmpty()) {
+        QUrl url;
+        url.setScheme(QStringLiteral("http"));
+        url.setHost(m_opts.host);
+        url.setPort(m_opts.port);
+        m_healthUrl = url.toString();
+    } else {
+        m_healthUrl = m_opts.baseUrl;
+    }
     spawn();
     return QString();
 }
@@ -172,8 +192,39 @@ void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
         setState(RuntimeState::Ready);
         setStatus(QStringLiteral("Ready"));
         emit healthReached();
+        return;
+    }
+    // §2.9: /health unavailable — try /v1/models once per startup attempt
+    // before declaring failure (some builds/servers do not expose /health).
+    if (!m_modelsProbed) {
+        m_modelsProbed = true;
+        tryModelsFallback();
     }
     // otherwise keep polling until the timeout fires
+}
+
+// §2.9 fallback probe: HTTP 200 with a JSON body containing "data" counts as
+// healthy. Runs at most once per startup attempt (m_modelsProbed guard).
+void LlamaServerProcess::tryModelsFallback()
+{
+    QNetworkReply *reply =
+        m_net->get(QNetworkRequest(QUrl(m_healthUrl + QStringLiteral("/v1/models"))));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        if (m_state != RuntimeState::Starting)
+            return;
+        const int code =
+            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+        if (code >= 200 && code < 300 && doc.object().contains(QStringLiteral("data"))) {
+            m_healthTimer->stop();
+            m_healthReached = true;
+            setState(RuntimeState::Ready);
+            setStatus(QStringLiteral("Ready"));
+            emit healthReached();
+        }
+        // Not healthy via the fallback → the regular polling continues.
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -215,12 +266,23 @@ void LlamaServerProcess::appendLogFile(const QString &line)
 {
     if (m_opts.logFile.isEmpty())
         return;
-    rotateLogIfNeeded();
-    QFile f(m_opts.logFile);
-    if (f.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        QTextStream out(&f);
-        out << line << u'\n';
+    // §3.3: keep one handle open in append mode; check rotation only every
+    // 256 lines (the 5 MB threshold is far above a per-line write).
+    if (!m_logFile.isOpen()) {
+        m_logFile.setFileName(m_opts.logFile);
+        if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append
+                            | QIODevice::Text))
+            return;
+        m_logStream.setDevice(&m_logFile);
     }
+    if (++m_linesSinceRotateCheck >= 256) {
+        m_linesSinceRotateCheck = 0;
+        rotateLogIfNeeded();
+        if (!m_logFile.isOpen())  // rotated away underneath us — reopen lazily
+            return;
+    }
+    m_logStream << line << u'\n';
+    m_logStream.flush();
 }
 
 // §H.7 task 2: classify a raw llama.cpp stderr line into a stable, readable
@@ -242,9 +304,9 @@ void LlamaServerProcess::classifyLine(const QString &line)
         setStatus(QObject::tr("Preparing context…"));
         return;
     }
-    if (line.contains(QStringLiteral("print_info"))
-        || line.startsWith(QStringLiteral("llama_model_loader: -")))
-        setStatus(line);
+    // §3.2: non-milestone lines are intentionally not surfaced as status —
+    // emitting raw print_info/tensor lines caused a status-signal storm while
+    // the model loads.
 }
 
 int LlamaServerProcess::parseLoadPercent(const QString &line)
@@ -273,6 +335,8 @@ void LlamaServerProcess::rotateLogIfNeeded()
     const QFileInfo fi(m_opts.logFile);
     if (!fi.exists() || fi.size() < 5 * 1024 * 1024)
         return;
+    // Close the persistent handle so the rename works, then reopen lazily.
+    closeLogFile();
     // Rotate *.log -> *.1 -> *.2 -> *.3 (drop the oldest).
     const QString base = m_opts.logFile;
     QFile::remove(base + QStringLiteral(".3"));
@@ -293,7 +357,8 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
     if (m_stopRequested) {
         setState(RuntimeState::Stopped);
         setStatus(QObject::tr("Stopped"));
-        clearOwnerJson();
+        if (m_opts.stopOnExit)
+            clearOwnerJson();
         return;
     }
 
@@ -301,22 +366,35 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
     if (m_lastError.isEmpty())
         m_lastError = QObject::tr("Server process exited unexpectedly");
     setStatus(m_lastError);
-    markFailed(m_lastError);
 
-    if (m_opts.autoRestart && !m_stopRequested) {
+    // §3.1: when auto-restart is still eligible, do not pass through Failed —
+    // enter it only once the restart budget is exhausted or restart is off.
+    const bool restartEligible = m_opts.autoRestart && !m_stopRequested;
+    int remaining = 0;
+    if (restartEligible) {
         if (!m_restartWindow.isValid() || m_restartWindow.elapsed() > 5 * 60 * 1000) {
             m_restartWindowCount = 0;
             m_restartWindow.restart();
         }
-        if (m_restartWindowCount < 3) {
-            m_restartWindowCount++;
-            m_autoRestartScheduled = true;
-            QTimer::singleShot(500, this, [this]() {
-                m_autoRestartScheduled = false;
-                spawn();
-            });
-            return;
-        }
+        remaining = 3 - m_restartWindowCount;
+    }
+    if (!restartEligible || remaining <= 0)
+        markFailed(m_lastError);
+
+    if (restartEligible && remaining > 0) {
+        m_restartWindowCount++;
+        m_autoRestartScheduled = true;
+        QTimer::singleShot(500, this, [this]() {
+            m_autoRestartScheduled = false;
+            // stop()/shutdownSync() may have requested a stop during the
+            // 500 ms restart window — do not resurrect the server.
+            if (m_stopRequested)
+                return;
+            spawn();
+        });
+        return;
+    }
+    if (restartEligible) {
         setStatus(QObject::tr("Auto-restart limit reached; giving up"));
         emit statusMessageChanged();
     }
@@ -334,28 +412,40 @@ void LlamaServerProcess::stop(unsigned graceMs)
 
     if (m_process.state() == QProcess::NotRunning) {
         setState(RuntimeState::Stopped);
-        clearOwnerJson();
+        setStatus(QObject::tr("Stopped"));
+        if (m_opts.stopOnExit)
+            clearOwnerJson();
         return;
     }
 
+    // §2.7: asynchronous stop — terminate now, kill after the grace period if
+    // the child is still alive. The final Stopped state is entered from
+    // onProcessFinished() when the child actually exits, so the GUI thread
+    // never blocks for up to ~7 s.
     setState(RuntimeState::Stopping);
     setStatus(QObject::tr("Stopping…"));
     m_process.terminate();
-    if (!m_process.waitForFinished(int(graceMs))
-        && m_process.state() != QProcess::NotRunning) {
-        m_process.kill();
-        m_process.waitForFinished(2000);
+    if (!m_killTimer) {
+        m_killTimer = new QTimer(this);
+        m_killTimer->setSingleShot(true);
+        connect(m_killTimer, &QTimer::timeout, this, [this]() {
+            if (m_process.state() != QProcess::NotRunning)
+                m_process.kill();
+        });
     }
-    setState(RuntimeState::Stopped);
-    setStatus(QObject::tr("Stopped"));
-    if (m_opts.stopOnExit)
-        clearOwnerJson();
+    m_killTimer->start(int(graceMs));
 }
 
 void LlamaServerProcess::shutdownSync(unsigned baseTimeoutMs)
 {
+    // Mark as user-requested so onProcessFinished() cannot take the
+    // failure/auto-restart branch during shutdown.
+    m_stopRequested = true;
     if (m_healthTimer)
         m_healthTimer->stop();
+    if (m_killTimer)
+        m_killTimer->stop();
+    closeLogFile();
     if (!m_opts.stopOnExit) {
         // Intentionally leave the server running; owner file stays so the next
         // launch offers reuse or kill.

@@ -70,8 +70,8 @@ Dialog {
         var langIdx = ["system", "en", "ru"].indexOf(Settings.language)
         languageBox.currentIndex = langIdx >= 0 ? langIdx : 0
 
-        var thtemeIdx = [UiController.System, UiController.Light, UiController.Dark].indexOf(Settings.themeMode)
-        themeBox.currentIndex = thtemeIdx >= 0 ? thtemeIdx : 0
+        var themeIdx = [UiController.System, UiController.Light, UiController.Dark].indexOf(Settings.themeMode)
+        themeBox.currentIndex = themeIdx >= 0 ? themeIdx : 0
 
         // Connection
         baseUrlField.text = Settings.baseUrl
@@ -84,7 +84,7 @@ Dialog {
         maxTokensField.text  = Settings.maxTokens.toString()
         dryMultiplierField.text = Settings.dryMultiplier.toString()
         dryBaseField.text = Settings.dryBase.toString()
-        dryAllowedLenghField.text = Settings.dryAllowedLength.toString()
+        dryAllowedLengthField.text = Settings.dryAllowedLength.toString()
         dryRange.text = Settings.dryPenaltyLastN.toString()
 
         // Output / parser
@@ -112,7 +112,7 @@ Dialog {
         Settings.maxTokens = parseInt(maxTokensField.text) || 8192;
         Settings.dryMultiplier = parseFloat(dryMultiplierField.text) || 0.8;
         Settings.dryBase = parseFloat(dryBaseField.text) || 1.75;
-        Settings.dryAllowedLength = parseInt(dryAllowedLenghField.text) || 35;
+        Settings.dryAllowedLength = parseInt(dryAllowedLengthField.text) || 35;
         Settings.dryPenaltyLastN = parseInt(dryRange.text) || 2048;
         Settings.parserId = parserBox.currentText;
         Settings.forceSave();
@@ -340,6 +340,33 @@ Dialog {
                 columnSpacing: 8
 
                 Label {
+                    text: qsTr("Connection mode")
+                    font.pixelSize: Theme.fontCaption
+                    color: Theme.textSecondary
+                }
+                ComboBox {
+                    id: connectionModeBox
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    textRole: "text"
+                    model: [
+                        { value: "external", text: qsTr("External server") },
+                        { value: "managed", text: qsTr("Managed local server") }
+                    ]
+                    onActivated: (idx) => Settings.connectionMode = model[idx].value
+                    Component.onCompleted:
+                        currentIndex = Settings.connectionMode === "managed" ? 1 : 0
+                    Connections {
+                        function onConnectionModeChanged() {
+                            connectionModeBox.currentIndex =
+                                Settings.connectionMode === "managed" ? 1 : 0
+                        }
+                    }
+                }
+
+                Item { Layout.columnSpan: 2; implicitHeight: 4 }
+
+                Label {
                     Layout.columnSpan: 2
                     text: qsTr("Model name")
                     font.pixelSize: Theme.fontCaption
@@ -351,7 +378,20 @@ Dialog {
                     Layout.fillWidth: true
                     implicitHeight: Theme.controlHeight
                     selectByMouse: true
+                    // §4.2: in Managed mode the OpenAI model field is defined by
+                    // the running server (--alias); the stored name is kept for
+                    // a return to External and must not be edited.
+                    readOnly: Settings.connectionMode === "managed"
                     placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
+                }
+                Label {
+                    Layout.columnSpan: 2
+                    visible: Settings.connectionMode === "managed"
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Theme.fontSmall
+                    color: Theme.textMuted
+                    text: qsTr("Managed mode: model is \"%1\" — defined by the running server")
+                              .arg(Settings.launchModelAlias)
                 }
 
                 Label {
@@ -422,7 +462,7 @@ Dialog {
                     color: Theme.textSecondary
                 }
                 TextField {
-                    id: dryAllowedLenghField
+                    id: dryAllowedLengthField
                     Layout.fillWidth: true
                     implicitHeight: Theme.controlHeight
                     selectByMouse: true
@@ -873,9 +913,10 @@ Dialog {
         fileMode: FileDialog.OpenFile
         nameFilters: [qsTr("Executables (*)")]
         onAccepted: {
-            Settings.serverPath = selectedFile
-            serverPathField.text = selectedFile
-            Runtime.probeRuntimePath(selectedFile)
+            const path = Runtime.localPath(selectedFile)
+            Settings.serverPath = path
+            serverPathField.text = path
+            Runtime.probeRuntimePath(path)
         }
     }
 }

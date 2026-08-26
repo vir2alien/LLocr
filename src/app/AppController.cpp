@@ -52,9 +52,19 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
         emit imageRevisionChanged();
     });
 
-    // canRecognize() depends on the configured model name; propagate changes
-    // so the QML-side enabled-state follows the Settings dialog.
+    // canRecognize() depends on the runtime state (mode, RuntimeState,
+    // busyState, config); propagate changes so the QML-side enabled-state
+    // follows Settings and the managed-runtime lifecycle.
     connect(&m_settings, &SettingsStore::modelNameChanged, this, [this]() {
+        emit configChanged();
+    });
+    connect(&m_runtime, &RuntimeController::stateChanged, this, [this]() {
+        emit configChanged();
+    });
+    connect(&m_runtime, &RuntimeController::busyStateChanged, this, [this]() {
+        emit configChanged();
+    });
+    connect(&m_runtime, &RuntimeController::configValidChanged, this, [this]() {
         emit configChanged();
     });
 }
@@ -80,7 +90,11 @@ bool AppController::hasResult() const
 
 bool AppController::canRecognize() const
 {
-    return !m_settings.modelName().trimmed().isEmpty();
+    // §1.4: a document must be loaded, recognition idle, and the runtime part
+    // eligible (External always; Managed needs Ready or startable config).
+    if (m_document.isEmpty() || m_recognition.busy())
+        return false;
+    return m_runtime.canRecognize(true);
 }
 
 QString AppController::effectiveText(int index) const

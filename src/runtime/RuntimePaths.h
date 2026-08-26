@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QCoreApplication>
 #include <QString>
 
 namespace llocr {
@@ -10,6 +11,8 @@ namespace llocr {
 // changes, existing files are NOT moved — the UI warns and offers a rescan.
 class RuntimePaths
 {
+    Q_DECLARE_TR_FUNCTIONS(RuntimePaths)
+
 public:
     explicit RuntimePaths(QString rootDir = QString(), QString modelsDir = QString());
 

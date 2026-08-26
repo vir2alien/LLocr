@@ -7,7 +7,7 @@ import LLocr
 Rectangle {
     Label {
         anchors.centerIn: parent
-        visible: controller.hasImage && controller.pageModel.count === 0
+        visible: controller.hasImage && controller.pageCount === 0
         text: qsTr("No pages")
         color: Theme.textMuted
         font.pixelSize: Theme.fontCaption

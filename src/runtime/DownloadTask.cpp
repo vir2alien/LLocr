@@ -13,6 +13,7 @@
 #include <utility>
 
 #ifdef Q_OS_WIN
+#include <io.h>
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -29,9 +30,12 @@ namespace {
 void flushToDisk(QFile &file)
 {
 #ifdef Q_OS_WIN
-    const HANDLE h = reinterpret_cast<HANDLE>(file.handle());
-    if (h != INVALID_HANDLE_VALUE)
-        FlushFileBuffers(h);
+    // _get_osfhandle converts the CRT fd to a native HANDLE; the CRT fd itself
+    // must not be reinterpreted as one.
+    const HANDLE h = reinterpret_cast<HANDLE>(_get_osfhandle(file.handle()));
+    if (h != INVALID_HANDLE_VALUE && !FlushFileBuffers(h))
+        qWarning("FlushFileBuffers failed for download file (error %lu)",
+                 static_cast<unsigned long>(GetLastError()));
 #else
     const int fd = static_cast<int>(file.handle());
     if (fd >= 0)
@@ -78,6 +82,28 @@ bool parseContentRange(const QString &value, qint64 &start, qint64 &end, qint64 
 // ---------------------------------------------------------------------------
 // File-name sanitization
 // ---------------------------------------------------------------------------
+
+// Stage C: "collisions resolved by a suffix". If <dir>/<name> (or its .part)
+// already exists, append -1, -2, … before the extension. Resume is unaffected:
+// the returned name is fixed once in the constructor, so an existing .part for
+// this task's URL keeps its path across start()/pause()/resume().
+QString resolveFileNameCollision(const QString &dir, const QString &name)
+{
+    if (!QFileInfo::exists(QDir(dir).filePath(name))
+        && !QFileInfo::exists(QDir(dir).filePath(name + QStringLiteral(".part"))))
+        return name;
+
+    const int dot = name.lastIndexOf(QLatin1Char('.'));
+    const QString base = (dot > 0) ? name.left(dot) : name;
+    const QString ext = (dot > 0) ? name.mid(dot) : QString();
+    for (int i = 1; i < 10000; ++i) {
+        const QString candidate = base + QLatin1Char('-') + QString::number(i) + ext;
+        if (!QFileInfo::exists(QDir(dir).filePath(candidate))
+            && !QFileInfo::exists(QDir(dir).filePath(candidate + QStringLiteral(".part"))))
+            return candidate;
+    }
+    return name;  // give up and let the write fail naturally
+}
 
 QString sanitizeFileName(const QString &name)
 {
@@ -128,7 +154,7 @@ DownloadTask::DownloadTask(const Request &request, QNetworkAccessManager *nam, Q
     , m_request(request)
     , m_nam(nam)
     , m_targetDir(request.targetDir)
-    , m_fileName(sanitizeFileName(request.fileName))
+    , m_fileName(resolveFileNameCollision(request.targetDir, sanitizeFileName(request.fileName)))
     , m_finalPath(QDir(m_targetDir).filePath(m_fileName))
     , m_partPath(partPathFor(m_finalPath))
     , m_metaPath(metaPathFor(m_partPath))
@@ -438,8 +464,10 @@ void DownloadTask::updateProgress()
         return;
     }
     const qint64 elapsedMs = qMax<qint64>(1, m_speedClock.elapsed());
-    emit progressChanged();
+    // Throttle UI notifications to the same 200 ms cadence as speed/ETA;
+    // m_receivedBytes stays exact.
     if (elapsedMs >= 200) {
+        emit progressChanged();
         const qint64 delta = m_receivedBytes - m_speedSampleBytes;
         m_speedBps = static_cast<int>(delta * 1000 / elapsedMs);
         m_speedSampleBytes = m_receivedBytes;
@@ -555,12 +583,23 @@ void DownloadTask::verifySha256()
     }
 
     // Atomic promotion: the .part already lives on the target volume (§3.1).
-    QFile::remove(m_finalPath);
+    // POSIX rename replaces the destination atomically, so the previous valid
+    // file survives a failure; only fall back to remove-then-rename when the
+    // target exists and rename refuses (e.g. Windows).
     if (!QFile::rename(m_partPath, m_finalPath)) {
-        m_error = QObject::tr("Unable to finalize %1").arg(m_fileName);
-        setState(State::Failed);
-        emit downloadFinished(false);
-        return;
+        if (!QFileInfo::exists(m_finalPath)) {
+            m_error = QObject::tr("Unable to finalize %1").arg(m_fileName);
+            setState(State::Failed);
+            emit downloadFinished(false);
+            return;
+        }
+        QFile::remove(m_finalPath);
+        if (!QFile::rename(m_partPath, m_finalPath)) {
+            m_error = QObject::tr("Unable to finalize %1").arg(m_fileName);
+            setState(State::Failed);
+            emit downloadFinished(false);
+            return;
+        }
     }
     QFile::remove(m_metaPath);
 

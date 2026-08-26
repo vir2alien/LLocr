@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QCoreApplication>
 #include <QProcess>
 #include <QString>
 
@@ -22,6 +23,8 @@ struct ProbeResult {
 // file name — renamed/wrapped binaries are allowed (ADR 41 note).
 class RuntimeLocator
 {
+    Q_DECLARE_TR_FUNCTIONS(RuntimeLocator)
+
 public:
     // Runs `--version`, and `--help` (for capability refinement / as a fallback
     // when --version fails), with a bounded wall-clock probe timeout. Never

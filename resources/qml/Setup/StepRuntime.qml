@@ -193,8 +193,9 @@ Item {
         id: binaryPicker
         title: qsTr("Select llama-server binary")
         onAccepted: {
-            Settings.serverPath = selectedFile
-            pathField.text = selectedFile
+            const path = Runtime.localPath(selectedFile)
+            Settings.serverPath = path
+            pathField.text = path
         }
     }
 }

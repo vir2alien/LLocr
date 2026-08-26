@@ -53,7 +53,7 @@ void TestServerProcess::reachesReadyAndStops()
     QVERIFY(s->resolvedPort() > 0);
     QVERIFY(s->startCount() == 1);
     s->stop();
-    QCOMPARE(s->state(), RuntimeState::Stopped);
+    QTRY_COMPARE_WITH_TIMEOUT(s->state(), RuntimeState::Stopped, 8000);
     QVERIFY(s->isRunning() == false);
     QVERIFY(QFile::exists(logFile));
 }
@@ -76,8 +76,11 @@ void TestServerProcess::healthyTimeout()
     QTemporaryDir dir;
     QString logFile;
     // --never-healthy: /health always 503 → the watchdog times out and fails.
+    // --no-models: the /v1/models §2.9 fallback also fails, so readiness cannot
+    // be reached through either path and the timeout must surface as Failed.
     LlamaServerProcess *m =
-        makeServer({QStringLiteral("--never-healthy")}, 1500, false, dir, logFile);
+        makeServer({QStringLiteral("--never-healthy"), QStringLiteral("--no-models")},
+                   1500, false, dir, logFile);
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Failed, 10000);
     m->stop();
@@ -106,13 +109,14 @@ void TestServerProcess::stopDuringStartupIsSafe()
     QTemporaryDir dir;
     QString logFile;
     // Stopping while /health is still being polled must land on Stopped, not
-    // Failed.
+    // Failed. --no-models keeps the §2.9 fallback from flipping to Ready mid-test.
     LlamaServerProcess *m =
-        makeServer({QStringLiteral("--never-healthy")}, 600000, false, dir, logFile);
+        makeServer({QStringLiteral("--never-healthy"), QStringLiteral("--no-models")},
+                   600000, false, dir, logFile);
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Starting, 3000);
     m->stop();
-    QCOMPARE(m->state(), RuntimeState::Stopped);
+    QTRY_COMPARE_WITH_TIMEOUT(m->state(), RuntimeState::Stopped, 5000);
 }
 
 void TestServerProcess::reportsTensorLoadPercent()

@@ -89,6 +89,10 @@ void RuntimeController::recomputeConfigValid()
 {
     // A server binary must be selected and exist on disk. In Managed the model
     // file must also exist; External mode depends on neither.
+    // §3.8: configValid deliberately means only "files exist" — it does NOT
+    // imply the locator probe passed. The probe (capabilities, version) runs
+    // later, at start time (probeCached in startServer()). This is a known,
+    // accepted deviation from the stricter §1.4 wording of `canRecognize`.
     bool valid = !m_settings.serverPath().trimmed().isEmpty();
     if (valid && !QFileInfo(m_settings.serverPath()).isFile())
         valid = false;
@@ -193,7 +197,9 @@ QFuture<ResolvedConnection> RuntimeController::beginManagedResolve()
 
     switch (m_state) {
     case RuntimeState::Ready:
-        completeResolve(buildManagedConnection());
+        // Still verify the alias via /v1/models (§4.2) instead of trusting
+        // settings blindly.
+        fetchManagedModels();
         break;
     case RuntimeState::Starting:
     case RuntimeState::Stopping:
@@ -252,12 +258,17 @@ ResolvedConnection RuntimeController::buildManagedConnection() const
 {
     ResolvedConnection conn;
     const int port = m_server ? m_server->resolvedPort() : m_settings.launchPort();
-    conn.baseUrl = QStringLiteral("http://%1:%2").arg(m_settings.launchHost()).arg(port);
+    // §3.5: assemble via QUrl so an IPv6 host (::1) is bracketed correctly.
+    QUrl url;
+    url.setScheme(QStringLiteral("http"));
+    url.setHost(m_settings.launchHost());
+    url.setPort(port);
+    conn.baseUrl = url.toString();
     conn.apiKey.clear();  // Managed server is loopback-only, no auth
     conn.modelId = m_settings.launchModelAlias().isEmpty()
                        ? QStringLiteral("llocr-local")
                        : m_settings.launchModelAlias();
-    conn.timeoutMs = m_settings.startupTimeoutMs();
+    conn.timeoutMs = m_settings.connectionTimeoutMs();
     return conn;
 }
 
@@ -448,6 +459,14 @@ void RuntimeController::runSelfTestQml()
 {
     if (m_selftestRunning)
         return;
+    // Same guard as runSelfTest(): the self-test exercises the managed
+    // lifecycle; in External mode it must not hit the external server.
+    if (modeFromSettings(m_settings) == ConnectionMode::External) {
+        m_selftestOk = false;
+        m_selftestMessage = tr("Self-test is available only in Managed mode");
+        emit selftestFinished();
+        return;
+    }
     m_selftestRunning = true;
     m_selftestOk = false;
     m_selftestMessage = tr("Running self-test…");
@@ -537,8 +556,12 @@ QString RuntimeController::startServer()
 
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings);
     cfg.program = program;
+    // LlamaServerProcess appends --port itself from opts (opts.port is set
+    // below); zero the port here so toArguments() does not emit a second
+    // --host/--port pair. (Previously only the "--port" flag was stripped,
+    // leaving the numeric value as a stray positional argument.)
+    cfg.port = 0;
     QStringList args = cfg.toArguments(probe.capabilities);
-    args.removeAll(QStringLiteral("--port"));
 
     LlamaServerProcess::Options opts;
     opts.program = program;
@@ -588,17 +611,36 @@ void RuntimeController::stopServer()
     if (!m_server)
         return;
     setBusyState(AppBusyState::StoppingRuntime);
+    // §2.7: stop() is asynchronous now; the Stopped state arrives via the
+    // server's stateChanged signal when the child actually exits.
     m_server->stop();
     setLoadProgressPercent(-1);
     setBusyState(AppBusyState::Idle);
-    setState(RuntimeState::Stopped);
-    setStatusMessage(QObject::tr("Stopped"));
 }
 
 void RuntimeController::restartServer()
 {
-    if (m_server)
+    // §2.7: stop() is asynchronous, so a fresh start cannot run in the same
+    // tick. Terminate now; start once the server reports Stopped.
+    if (m_server && m_server->state() != RuntimeState::Stopped) {
+        setBusyState(AppBusyState::StoppingRuntime);
+        setStatusMessage(QObject::tr("Stopping…"));
+        QMetaObject::Connection restartConn;
+        restartConn = connect(
+            m_server, &LlamaServerProcess::stateChanged, this,
+            [this, restartConn]() {
+                if (m_server->state() != RuntimeState::Stopped)
+                    return;
+                disconnect(restartConn);
+                setBusyState(AppBusyState::Idle);
+                const QString err = startServer();
+                if (!err.isEmpty())
+                    setStatusMessage(err);
+            },
+            Qt::SingleShotConnection);
         m_server->stop();
+        return;
+    }
     const QString err = startServer();
     if (!err.isEmpty())
         setStatusMessage(err);
@@ -692,12 +734,15 @@ void RuntimeController::cancelPendingStart()
 
     // Interrupt a still-starting server (a Ready server is left running for
     // reuse). The recognition flow drops out via the resolve error below.
+    // §2.7: stop() is asynchronous; the Stopped state arrives via the server's
+    // stateChanged signal, so only reset the resolve machinery here.
     if (m_server && m_server->state() == RuntimeState::Starting) {
         m_server->stop();
         setLoadProgressPercent(-1);
-        setState(RuntimeState::Stopped);
-        setBusyState(AppBusyState::Idle);
     }
+    // Reset unconditionally: in the /v1/models window (server Ready) or while
+    // Stopping, busyState is still StartingRuntime and must not stick.
+    setBusyState(AppBusyState::Idle);
     failResolve(tr("Server start cancelled"));
     setStatusMessage(tr("Stopped"));
 }

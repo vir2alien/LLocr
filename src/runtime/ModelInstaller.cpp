@@ -7,6 +7,9 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QNetworkAccessManager>
+#include <QRegularExpression>
+#include <QSet>
+#include <algorithm>
 #include <QtConcurrent>
 
 #include "app/SettingsStore.h"
@@ -21,27 +24,57 @@ namespace {
 
 QString repoDirName(const QString &repo)
 {
-    QString s = repo;
-    s.replace(QLatin1Char('/'), QStringLiteral("__"));
-    return s;
+    // `repo` may come from an imported catalog.json, so treat it as untrusted:
+    // split on '/', drop '.', '..' and empty segments, strip path-hostile
+    // characters from each segment. Guarantees a single safe path component
+    // that cannot escape modelsDir.
+    QStringList parts;
+    for (const QString &seg : repo.split(QLatin1Char('/'))) {
+        QString s = seg.trimmed();
+        if (s.isEmpty() || s == QLatin1String(".") || s == QLatin1String(".."))
+            continue;
+        s.replace(QLatin1Char('\\'), QStringLiteral("_"));
+        static const QRegularExpression hostile(
+            QStringLiteral("[^A-Za-z0-9._-]"));
+        s.replace(hostile, QStringLiteral("_"));
+        if (!s.isEmpty())
+            parts.append(s);
+    }
+    if (parts.isEmpty())
+        return QStringLiteral("model");
+    return parts.join(QStringLiteral("__"));
 }
 
 // Picks the repo's main model bundle (single or multi-part) plus the optional
-// mmproj file. `prefer` names an exact model file when non-empty (preset);
-// `preferMmproj` names the exact projector when non-empty. Otherwise the
-// largest single .gguf (or the largest multi-part group) and the first vision
-// projector win.
+// mmproj file. `prefer` names an exact model file by leaf name when non-empty
+// (preset); `preferMmproj` names the exact projector by leaf name when
+// non-empty. Otherwise the largest single .gguf (or the largest multi-part
+// group) and the first vision projector win. All selections are repo-relative
+// paths (HfFile::path), so files inside repo subdirectories download correctly.
 void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
-                      const QString &preferMmproj, QStringList *modelNames,
+                      const QString &preferMmproj, QStringList *modelPaths,
                       QString *mmprojRel)
 {
-    modelNames->clear();
+    modelPaths->clear();
     if (mmprojRel)
         mmprojRel->clear();
 
-    QStringList singles;
-    QHash<QString, QPair<QStringList, qint64>> groups;  // key -> (parts,size)
+    // Split-index order so the "…-00001-of-NNN" part sorts first (mirrors
+    // ModelRegistry::scanModelsDir).
+    auto partLess = [](const QString &a, const QString &b) {
+        QString bA, bB;
+        int iA = 0, cA = 0, iB = 0, cB = 0;
+        const bool mA = ModelCatalog::splitMultiPart(a, &bA, &iA, &cA);
+        const bool mB = ModelCatalog::splitMultiPart(b, &bB, &iB, &cB);
+        if (mA && mB && bA == bB && iA != iB)
+            return iA < iB;
+        return a < b;
+    };
+
+    QStringList singles;                                // repo-relative paths
+    QHash<QString, QPair<QStringList, qint64>> groups;  // key -> (paths,size)
     QStringList projectors;
+    QHash<QString, qint64> sizeByPath;  // path -> size (single lookup, §3.14)
 
     for (const HfFile &f : tree) {
         if (f.isDir)
@@ -50,50 +83,62 @@ void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
         if (kind == ModelFileKind::NotModel)
             continue;
         if (kind == ModelFileKind::Vision) {
-            projectors.append(f.name);
+            projectors.append(f.path);
             continue;
         }
+        sizeByPath.insert(f.path, f.size);
         QString base;
         int idx = 0, cnt = 0;
         if (ModelCatalog::splitMultiPart(f.name, &base, &idx, &cnt)) {
             const QString key = base + QStringLiteral("::") + QString::number(cnt);
-            groups[key].first.append(f.name);
+            groups[key].first.append(f.path);
             groups[key].second += f.size;
         } else {
-            singles.append(f.name);
+            singles.append(f.path);
         }
     }
+    for (auto it = groups.begin(); it != groups.end(); ++it)
+        std::sort(it.value().first.begin(), it.value().first.end(), partLess);
 
     if (mmprojRel) {
-        if (!preferMmproj.isEmpty() && projectors.contains(preferMmproj))
-            *mmprojRel = preferMmproj;
-        else if (!projectors.isEmpty())
+        for (const QString &p : projectors) {
+            if (!preferMmproj.isEmpty()
+                && ModelCatalog::leafName(p) == preferMmproj) {
+                *mmprojRel = p;
+                break;
+            }
+        }
+        if (mmprojRel->isEmpty() && !projectors.isEmpty())
             *mmprojRel = projectors.first();
     }
 
-    if (!prefer.isEmpty() && (singles.contains(prefer) || !groups.isEmpty())) {
+    if (!prefer.isEmpty()) {
         QString base;
         int idx = 0, cnt = 0;
         if (ModelCatalog::splitMultiPart(prefer, &base, &idx, &cnt)) {
             const QString key = base + QStringLiteral("::") + QString::number(cnt);
             if (groups.contains(key))
-                *modelNames = groups.value(key).first;
-        } else if (singles.contains(prefer)) {
-            *modelNames = {prefer};
+                *modelPaths = groups.value(key).first;
+        } else {
+            for (const QString &p : singles) {
+                if (ModelCatalog::leafName(p) == prefer) {
+                    *modelPaths = {p};
+                    break;
+                }
+            }
         }
-        if (!modelNames->isEmpty())
+        if (!modelPaths->isEmpty())
             return;
     }
 
     // Largest single file.
     QString largestSingle;
     qint64 largestSize = -1;
-    for (const QString &n : singles) {
-        for (const HfFile &f : tree) {
-            if (f.name == n && f.size > largestSize) {
-                largestSize = f.size;
-                largestSingle = n;
-            }
+    for (const QString &p : singles) {
+        const qint64 sz = sizeByPath.value(p);
+        if (sz > largestSize) {
+            largestSize = sz;
+            largestSingle = p;
         }
     }
     // Largest group (sum of parts).
@@ -110,9 +155,9 @@ void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
         return;
 
     if (groupBest > largestSize)
-        *modelNames = groups.value(largestGroup).first;
+        *modelPaths = groups.value(largestGroup).first;
     else
-        *modelNames = {largestSingle};
+        *modelPaths = {largestSingle};
 }
 
 }  // namespace
@@ -294,7 +339,18 @@ QString ModelInstaller::removeModel(int index)
         if (!d.removeRecursively())
             return tr("Unable to remove model directory: %1").arg(e.dir);
     }
-    refreshInstalled();
+    // Persist the removal before refreshing, otherwise the entry survives in
+    // index.json and can be re-activated pointing at deleted files.
+    QList<ModelEntry> updated = m_installed;
+    updated.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
+    QString saveErr;
+    if (!ModelRegistry::save(m_paths.modelsDir(), updated, saveErr)) {
+        refreshInstalled();
+        return tr("Model files removed, but the registry could not be saved: %1")
+                   .arg(saveErr);
+    }
+    m_installed = updated;
+    emit installedChanged();
     return QString();
 }
 
@@ -342,14 +398,24 @@ void ModelInstaller::beginPrepare(const ModelPreset &preset)
                               -> QPair<Pending, QString> {
             QNetworkAccessManager nam;
             QString err;
-            QString rev = ModelCatalog::fetchHeadSha(&nam, repo, err);
-            if (!pin.isEmpty())
+            // Gated/private repos need the token already at tree/head-sha time,
+            // not only for file downloads.
+            QByteArray auth;
+            const QString token = m_settings.hfToken();
+            if (!token.isEmpty())
+                auth = QStringLiteral("Bearer %1").arg(token).toUtf8();
+            QString rev;
+            // Pinned presets skip the head-sha round-trip entirely (§3.16).
+            if (!pin.isEmpty()) {
                 rev = pin;
-            if (rev.isEmpty())
-                return {Pending{}, err.isEmpty()
-                                      ? QObject::tr("Could not resolve repository %1").arg(repo)
-                                      : err};
-            const QList<HfFile> tree = ModelCatalog::fetchTree(&nam, repo, rev, err);
+            } else {
+                rev = ModelCatalog::fetchHeadSha(&nam, repo, err, auth);
+                if (rev.isEmpty())
+                    return {Pending{}, err.isEmpty()
+                                          ? QObject::tr("Could not resolve repository %1").arg(repo)
+                                          : err};
+            }
+            const QList<HfFile> tree = ModelCatalog::fetchTree(&nam, repo, rev, err, auth);
             if (tree.isEmpty())
                 return {Pending{}, err.isEmpty()
                                       ? QObject::tr("No files found in %1").arg(repo)
@@ -420,18 +486,37 @@ void ModelInstaller::beginDownload()
     m_downloadDone = 0;
     m_downloadFailed = false;
 
+    // Same-named leaves from different repo subdirectories would overwrite
+    // each other when flattened into modelsDir/<org>__<repo>/ — fail early.
+    QSet<QString> leaves;
+    for (const QString &path : m_pending.modelNames)
+        leaves.insert(ModelCatalog::leafName(path));
+    if (!m_pending.mmprojRel.isEmpty())
+        leaves.insert(ModelCatalog::leafName(m_pending.mmprojRel));
+    if (leaves.size() < m_pending.modelNames.size()
+                          + (m_pending.mmprojRel.isEmpty() ? 0 : 1)) {
+        setBusy(false);
+        setStatusMessage(tr("Repository contains identically named files in "
+                            "different subdirectories; cannot install"));
+        setState(State::Error);
+        return;
+    }
+
     const QString repo = m_pending.repo;
     const QString rev = m_pending.revision;
-    for (const QString &name : m_pending.modelNames)
-        enqueueFile(name, repo, rev);
+    for (const QString &path : m_pending.modelNames)
+        enqueueFile(path, repo, rev);
     if (!m_pending.mmprojRel.isEmpty())
         enqueueFile(m_pending.mmprojRel, repo, rev);
 }
 
-void ModelInstaller::enqueueFile(const QString &name, const QString &repo,
+void ModelInstaller::enqueueFile(const QString &repoPath, const QString &repo,
                                  const QString &commitSha)
 {
-    const QUrl url = ModelCatalog::resolveUrl(repo, commitSha, name);
+    // `repoPath` is the full repo-relative path; the local file name is the
+    // leaf inside modelsDir/<org>__<repo>/ (flattened).
+    const QString leaf = ModelCatalog::leafName(repoPath);
+    const QUrl url = ModelCatalog::resolveUrl(repo, commitSha, repoPath);
     QString auth;
     const QString token = m_settings.hfToken();
     if (!token.isEmpty())
@@ -440,7 +525,7 @@ void ModelInstaller::enqueueFile(const QString &name, const QString &repo,
     DownloadTask::Request req;
     req.url = url;
     req.targetDir = m_pending.dir;
-    req.fileName = name;
+    req.fileName = leaf;
     req.sha256 = QString();   // verified via GGUF magic after download
     req.authorization = auth;
 
@@ -483,8 +568,11 @@ void ModelInstaller::maybeFinishDownloads()
 
 void ModelInstaller::completeInstall()
 {
-    const QString primary =
-        QDir(m_pending.dir).filePath(m_pending.modelNames.first());
+    auto localPath = [this](const QString &repoPath) {
+        return QDir(m_pending.dir).filePath(ModelCatalog::leafName(repoPath));
+    };
+
+    const QString primary = localPath(m_pending.modelNames.first());
 
     // GGUF magic validation (§ Stage E task 5).
     QFile f(primary);
@@ -506,18 +594,19 @@ void ModelInstaller::completeInstall()
     e.id = repoDirName(m_pending.repo);
     e.title = m_pending.title;
     e.repo = m_pending.repo;
+    e.repoId = m_pending.repo;
     e.revision = m_pending.revision;
     e.dir = m_pending.dir;
     e.origin = ModelOrigin::Managed;
     e.modelPath = primary;
-    for (const QString &name : m_pending.modelNames) {
-        if (name != m_pending.modelNames.first())
-            e.parts.append(QDir(m_pending.dir).filePath(name));
+    for (const QString &path : m_pending.modelNames) {
+        if (path != m_pending.modelNames.first())
+            e.parts.append(localPath(path));
     }
     if (!m_pending.mmprojRel.isEmpty())
-        e.mmprojPath = QDir(m_pending.dir).filePath(m_pending.mmprojRel);
-    e.quantization =
-        ModelCatalog::quantizationFromName(m_pending.modelNames.first());
+        e.mmprojPath = localPath(m_pending.mmprojRel);
+    e.quantization = ModelCatalog::quantizationFromName(
+        ModelCatalog::leafName(m_pending.modelNames.first()));
     e.license = m_pending.license;
     e.parser = m_pending.parser;
     e.prompt = m_pending.prompt;
@@ -526,17 +615,23 @@ void ModelInstaller::completeInstall()
 
     // Size is the sum of the downloaded GGUF files.
     qint64 total = 0;
-    for (const QString &name : m_pending.modelNames)
-        total += QFileInfo(QDir(m_pending.dir).filePath(name)).size();
+    for (const QString &path : m_pending.modelNames)
+        total += QFileInfo(localPath(path)).size();
     if (!m_pending.mmprojRel.isEmpty())
-        total += QFileInfo(QDir(m_pending.dir).filePath(m_pending.mmprojRel)).size();
+        total += QFileInfo(localPath(m_pending.mmprojRel)).size();
     e.byteSize = total;
 
     QList<ModelEntry> updated = m_installed;
     updated.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
     updated.append(e);
     QString saveErr;
-    ModelRegistry::save(m_paths.modelsDir(), updated, saveErr);
+    if (!ModelRegistry::save(m_paths.modelsDir(), updated, saveErr)) {
+        setBusy(false);
+        setStatusMessage(tr("Model downloaded, but the registry could not be "
+                            "saved: %1").arg(saveErr));
+        setState(State::Error);
+        return;
+    }
     m_installed = updated;
 
     // Settings are the very last step (§7.2).
@@ -574,10 +669,15 @@ void ModelInstaller::startSearch()
     emit searchChanged();
 
     QFuture<QPair<QList<HfModelSummary>, QString>> future = QtConcurrent::run(
-        [q]() -> QPair<QList<HfModelSummary>, QString> {
+        [this, q]() -> QPair<QList<HfModelSummary>, QString> {
             QNetworkAccessManager nam;
             QString error;
-            const QList<HfModelSummary> res = ModelCatalog::search(&nam, q, error);
+            QByteArray auth;
+            const QString token = m_settings.hfToken();
+            if (!token.isEmpty())
+                auth = QStringLiteral("Bearer %1").arg(token).toUtf8();
+            const QList<HfModelSummary> res = ModelCatalog::search(&nam, q, error,
+                                                                   30, auth);
             return {res, error};
         });
 
@@ -662,14 +762,28 @@ QString ModelInstaller::importCatalog(const QString &path)
     if (incoming.isEmpty())
         return err.isEmpty() ? tr("No valid presets in file") : err;
 
-    QList<ModelPreset> merged = m_presets;
-    for (const ModelPreset &p : incoming) {
-        merged.removeIf([&](const ModelPreset &x) { return x.id == p.id; });
-        merged.append(p);
-    }
+    // Persist only user overrides: merge `incoming` into the existing USER
+    // catalog, not the merged view, and drop entries identical to built-in
+    // presets — otherwise the saved file would shadow every built-in preset
+    // forever (§2.11).
+    QString loadErr;
     const QString userPath =
         QDir(m_paths.modelsDir()).filePath(QStringLiteral("catalog.json"));
-    if (!ModelPresetCatalog::save(userPath, merged, err))
+    QList<ModelPreset> userCatalog = ModelPresetCatalog::load(userPath, loadErr);
+    for (const ModelPreset &p : incoming) {
+        userCatalog.removeIf([&](const ModelPreset &x) { return x.id == p.id; });
+        userCatalog.append(p);
+    }
+    // Drop entries that merely restate a built-in preset (same id and content).
+    const QList<ModelPreset> builtIn = ModelPresetCatalog::load(
+        ModelPresetCatalog::kBuiltInPath, loadErr);
+    userCatalog.removeIf([&](const ModelPreset &u) {
+        return std::any_of(builtIn.cbegin(), builtIn.cend(),
+                           [&](const ModelPreset &b) {
+                               return b.id == u.id && b.toJson() == u.toJson();
+                           });
+    });
+    if (!ModelPresetCatalog::save(userPath, userCatalog, err))
         return err;
     reloadPresetsInternal();
     return QString();

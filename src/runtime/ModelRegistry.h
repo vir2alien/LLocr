@@ -34,6 +34,9 @@ struct ModelEntry {
     QString prompt;
     int ctxSize = 8192;
     QString addedAt;     // ISO timestamp
+    // True HF repo id ("org/repo") persisted at install time. Older index.json
+    // files lack it; scanModelsDir then falls back to the directory name.
+    QString repoId;
 };
 
 class ModelRegistry

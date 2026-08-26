@@ -4,8 +4,10 @@ import QtQuick.Layouts
 
 import LLocr
 
-// SetupWizard → Step 5 "Done": summary. Entering this step (or pressing Finish)
-// marks the wizard as complete (setupVersion = 1).
+// SetupWizard → Step 5 "Done": summary. Marked complete when the wizard
+// actually reaches this step / Finish is pressed (SetupWizard calls markDone()).
+// Do NOT use Component.onCompleted here: StackLayout instantiates all children
+// eagerly, so it would fire at application startup and suppress the wizard trigger.
 Item {
     id: root
 
@@ -16,8 +18,6 @@ Item {
         Settings.setupVersion = 1
         Settings.setupDismissed = false
     }
-
-    Component.onCompleted: root.markDone()
 
     ColumnLayout {
         anchors.fill: parent

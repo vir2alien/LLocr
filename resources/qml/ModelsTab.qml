@@ -58,7 +58,18 @@ Item {
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             delegate: Rectangle {
                 required property int index
+                // installedInfo() is a plain Q_INVOKABLE; re-evaluate it when
+                // the installer emits installedChanged (e.g. after Activate).
                 property var info: ModelInstaller.installedInfo(index)
+                Connections {
+                    target: ModelInstaller
+                    function onInstalledChanged() {
+                        delegateRoot.info = Qt.binding(function () {
+                            return ModelInstaller.installedInfo(delegateRoot.index)
+                        })
+                    }
+                }
+                id: delegateRoot
                 width: installedList.width
                 height: 40
                 color: info.active ? Theme.surfaceSunken : "transparent"
@@ -335,9 +346,16 @@ Item {
                 font.pixelSize: Theme.fontSmall
                 color: Theme.accent
                 visible: pickDialog.license.length > 0
-                text: qsTr("License: %1").arg(pickDialog.license)
-                linkColor: Theme.accent
-                onLinkActivated: Qt.openUrlExternally(link)
+                // The license field may be a URL or a short name; render a real
+                // link only when it is one.
+                text: {
+                    var lic = pickDialog.license
+                    if (/^https?:\/\//.test(lic))
+                        return qsTr("License: %1")
+                            .arg("<a href=\"" + lic + "\">License</a>")
+                    return qsTr("License: %1").arg(lic)
+                }
+                onLinkActivated: (link) => Qt.openUrlExternally(link)
             }
         }
 
@@ -349,9 +367,9 @@ Item {
     FileDialog {
         id: importDialog
         title: qsTr("Import preset catalog")
-        nameFilters: ["JSON files (*.json)", "All files (*)"]
+        nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*)")]
         onAccepted: {
-            const err = ModelInstaller.importCatalog(selectedFile)
+            const err = ModelInstaller.importCatalog(Runtime.localPath(selectedFile))
             if (err.length) statusMsg.text = err
         }
     }
@@ -359,10 +377,10 @@ Item {
     FileDialog {
         id: exportDialog
         title: qsTr("Export preset catalog")
-        nameFilters: ["JSON files (*.json)"]
+        nameFilters: [qsTr("JSON files (*.json)")]
         fileMode: FileDialog.SaveFile
         onAccepted: {
-            const err = ModelInstaller.exportCatalog(selectedFile)
+            const err = ModelInstaller.exportCatalog(Runtime.localPath(selectedFile))
             if (err.length) statusMsg.text = err
         }
     }
@@ -370,7 +388,11 @@ Item {
     // Shared inline status label (errors from row actions land here).
     Label {
         id: statusMsg
-        visible: false
+        visible: text.length > 0
+        color: Theme.textSecondary
+        font.pixelSize: Theme.fontSmall
+        wrapMode: Text.Wrap
+        Layout.fillWidth: true
     }
 
     // License of the prepared preset is surfaced in the confirm dialog.

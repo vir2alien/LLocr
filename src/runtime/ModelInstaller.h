@@ -138,8 +138,8 @@ private:
         QString presetId;
         QString dir;              // <modelsDir>/<org>__<repo>
         QString modelPath;        // absolute first part after install
-        QString mmprojRel;        // file name of projector, or empty
-        QStringList modelNames;   // model file names (all parts)
+        QString mmprojRel;        // repo-relative projector path, or empty
+        QStringList modelNames;   // repo-relative model file paths (all parts)
         QList<HfFile> files;      // full candidate file list for the repo
     };
 
@@ -156,7 +156,7 @@ private:
     void onPrepareDone(const Pending &p, const QString &err);
 
     void beginDownload();
-    void enqueueFile(const QString &name, const QString &repo,
+    void enqueueFile(const QString &repoPath, const QString &repo,
                      const QString &commitSha);
     void onOneDownloadFinished(bool ok);
     void emitDownloadProgress();

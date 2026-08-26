@@ -86,6 +86,9 @@ void SettingsStore::resetToDefaults()
 
     // Hugging Face
     setHfToken(QString());
+
+    // Saved external endpoint (§4.1)
+    setLastExternalBaseUrl(QString());
 }
 
 QString SettingsStore::baseUrl() const
@@ -329,6 +332,19 @@ void SettingsStore::setConnectionMode(const QString &mode)
 {
     if (connectionMode() == mode)
         return;
+    // §4.1/§7.9: entering Managed preserves the external endpoint for the way
+    // back; returning to External restores it. provider/baseUrl itself is never
+    // clobbered while in Managed (the controller builds the managed URL in
+    // memory), so restoring only re-applies what we saved.
+    if (mode == QString::fromUtf8(kModeManaged)) {
+        const QString current = baseUrl();
+        if (!current.isEmpty())
+            setLastExternalBaseUrl(current);
+    } else if (mode == QString::fromUtf8(kModeExternal)) {
+        const QString saved = lastExternalBaseUrl();
+        if (!saved.isEmpty())
+            setBaseUrl(saved);
+    }
     m_settings.setValue(kConnectionMode, mode);
     emit connectionModeChanged();
 }

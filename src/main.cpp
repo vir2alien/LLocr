@@ -10,6 +10,7 @@
 #include "app/OcrImageProvider.h"
 #include "app/SettingsStore.h"
 #include "app/UiController.h"
+#include "runtime/InstallTransaction.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeInstaller.h"
 #include "runtime/ModelInstaller.h"
@@ -66,6 +67,10 @@ int main(int argc, char* argv[]) {
     const QString dirError = paths.ensureDirectories();
     if (!dirError.isEmpty())
         qWarning().noquote() << dirError;
+
+    // ADR 39 / Stage D task 5: remove leftover staging/<uuid> trees from
+    // interrupted installs. Safe now that cleanupStaging skips "."/"..".
+    llocr::InstallTransaction::cleanupStaging(paths);
 
     llocr::SingleInstanceGuard instanceGuard(paths.instanceLockPath());
     QString guardError;

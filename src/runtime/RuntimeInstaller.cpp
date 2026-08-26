@@ -375,6 +375,12 @@ void RuntimeInstaller::beginDownloads()
         QUrl(m_pendingMain.downloadUrl), targetDir, m_pendingMain.fileName,
         m_pendingMain.sha256, QString()});
 
+    // A synchronous main-download failure already ran maybeFinishDownloads()
+    // (state → Error, lock released); do not enqueue the companion cudart
+    // download with an inconsistent pending count.
+    if (m_state != State::Downloading)
+        return;
+
     if (m_pendingHasCudart) {
         enqueueDownload(DownloadTask::Request{
             QUrl(m_pendingCudart.downloadUrl), targetDir, m_pendingCudart.fileName,
@@ -475,14 +481,17 @@ void RuntimeInstaller::runInstallAsync()
             return {out, out.warning};
         });
 
-    future.then(this, [this, cudartZip, hasCudart, installDir](
+    future.then(this, [this, cudartZip, hasCudart](
                            const QPair<InstallOutput, QString> &res) {
         InstallOutput out = res.first;
         QString warning = res.second;
-        // CUDA: unpack the cudart runtime into the same install dir (additive;
-        // archive names differ, so no files from the main build are overwritten).
+        // CUDA: unpack the cudart runtime into the same directory as the server
+        // binary (additive; archive names differ, so no files from the main build
+        // are overwritten). Extracting into runtimeDir() would leave
+        // cudart64_*.dll away from llama-server and break CUDA loading.
         if (out.ok && hasCudart) {
-            const ExtractResult ex = ArchiveExtractor::extractZip(cudartZip, installDir);
+            const QString serverDir = QFileInfo(out.serverPath).absolutePath();
+            const ExtractResult ex = ArchiveExtractor::extractZip(cudartZip, serverDir);
             if (!ex.error.isEmpty())
                 warning = tr("CUDA runtime extraction warning: %1").arg(ex.error);
         }

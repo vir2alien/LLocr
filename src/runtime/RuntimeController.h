@@ -69,6 +69,12 @@ public:
 
     /// Copies the whole ring-buffer tail to the system clipboard (H.1).
     Q_INVOKABLE void copyServerLog();
+    /// Converts a file URL (e.g. FileDialog.selectedFile) to a local path.
+    /// Non-file URLs pass through unchanged.
+    Q_INVOKABLE static QString localPath(const QUrl &url)
+    {
+        return url.isLocalFile() ? url.toLocalFile() : url.toString();
+    }
     /// Clears the in-memory live log view (ring buffer). §H.1 log window.
     Q_INVOKABLE void clearServerLog();
     /// Opens the logs/ directory in the platform file manager (H.1).
@@ -122,8 +128,9 @@ public:
     Q_INVOKABLE QString startServer();
     Q_INVOKABLE void stopServer();
     Q_INVOKABLE void restartServer();
-    /// Runs the locator probe synchronously and stores the summary in
-    /// `probeResult` (Stage B UI). Returns the same summary.
+    /// Runs the locator probe synchronously; the summary is surfaced via
+    /// statusMessage (there is no dedicated probeResult property). Returns
+    /// the same summary.
     Q_INVOKABLE QString probeRuntimePath(const QString &path);
     /// Auto-discovers a llama-server binary via RuntimeLocator::autoDiscover()
     /// and returns the found path (or an empty string).

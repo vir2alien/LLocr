@@ -274,11 +274,12 @@ QUrl ModelCatalog::resolveUrl(const QString &repo, const QString &commitSha,
 }
 
 QString ModelCatalog::fetchHeadSha(QNetworkAccessManager *nam, const QString &repo,
-                                   QString &error, int timeoutMs)
+                                   QString &error, const QByteArray &authorization,
+                                   int timeoutMs)
 {
     const QUrl url(QStringLiteral("https://huggingface.co/api/models/%1")
                        .arg(encodePath(repo)));
-    const GetResult res = pullGet(nam, url, QByteArray(), timeoutMs);
+    const GetResult res = pullGet(nam, url, authorization, timeoutMs);
     if (res.status != 200) {
         error = QObject::tr("Hugging Face API returned HTTP %1 for %2")
                     .arg(res.status)
@@ -302,7 +303,7 @@ QString ModelCatalog::fetchHeadSha(QNetworkAccessManager *nam, const QString &re
 
 QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString &repo,
                                       const QString &commitSha, QString &error,
-                                      int timeoutMs)
+                                      const QByteArray &authorization, int timeoutMs)
 {
     QList<HfFile> all;
     QString pageUrl =
@@ -311,7 +312,7 @@ QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString 
 
     int guard = 50;
     while (guard-- > 0) {
-        const GetResult res = pullGet(nam, QUrl(pageUrl), QByteArray(), timeoutMs);
+        const GetResult res = pullGet(nam, QUrl(pageUrl), authorization, timeoutMs);
         if (res.status != 200) {
             error = QObject::tr("Hugging Face API returned HTTP %1 for tree of %2")
                         .arg(res.status)
@@ -337,7 +338,8 @@ QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString 
 
 QList<HfModelSummary> ModelCatalog::search(QNetworkAccessManager *nam,
                                            const QString &query, QString &error,
-                                           int limit, int timeoutMs)
+                                           int limit, const QByteArray &authorization,
+                                           int timeoutMs)
 {
     QUrlQuery q;
     q.addQueryItem(QStringLiteral("search"), query);
@@ -348,7 +350,7 @@ QList<HfModelSummary> ModelCatalog::search(QNetworkAccessManager *nam,
     QUrl url(QStringLiteral("https://huggingface.co/api/models"));
     url.setQuery(q);
 
-    const GetResult res = pullGet(nam, url, QByteArray(), timeoutMs);
+    const GetResult res = pullGet(nam, url, authorization, timeoutMs);
     if (res.status != 200) {
         error = QObject::tr("Hugging Face search returned HTTP %1").arg(res.status);
         return QList<HfModelSummary>();

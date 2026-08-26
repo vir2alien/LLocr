@@ -308,9 +308,13 @@ PlatformInfo ReleaseCatalog::detectPlatform()
     const QString kernel = QSysInfo::kernelType().toLower();
     const QString arch = QSysInfo::currentCpuArchitecture().toLower();
 
-    info.arch = arch.contains(QLatin1String("64")) ? QStringLiteral("x64")
-                                                    : QStringLiteral("arm64");
-    if (arch.contains(QLatin1String("arm")) || arch.contains(QLatin1String("aarch64")))
+    info.arch = QStringLiteral("x64");  // safe default for unknown arches
+    if (arch == QLatin1String("x86_64") || arch == QLatin1String("amd64"))
+        info.arch = QStringLiteral("x64");
+    else if (arch == QLatin1String("i386") || arch == QLatin1String("i586")
+             || arch == QLatin1String("i686") || arch == QLatin1String("x86"))
+        info.arch = QStringLiteral("x86");
+    else if (arch == QLatin1String("arm64") || arch == QLatin1String("aarch64"))
         info.arch = QStringLiteral("arm64");
     if (kernel.contains(QLatin1String("win"))) {
         info.os = PlatformOs::Windows;

@@ -56,6 +56,11 @@ enum GGUFType : quint32 {
 
 class GgufReader {
 public:
+    // GGUF metadata lives at the start of the file; a bounded prefix is enough
+    // for the few-KB header. Reading the whole multi-GB model would freeze the
+    // GUI thread (estimateModelMemory is Q_INVOKABLE) and can OOM.
+    static constexpr qint64 kMaxHeaderBytes = 8 * 1024 * 1024;  // 8 MiB
+
     GgufReader(const QString &path)
     {
         m_file.setFileName(path);
@@ -63,7 +68,7 @@ public:
             m_error = m_file.errorString();
             return;
         }
-        m_data = m_file.readAll();
+        m_data = m_file.read(kMaxHeaderBytes);
     }
 
     bool run(QHash<QString, QVariant> &out, QString &error)

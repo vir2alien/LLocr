@@ -325,8 +325,16 @@ Item {
                 font.pixelSize: Theme.fontSmall
                 color: Theme.accent
                 visible: prepareDialog.license.length > 0
-                text: qsTr("License: %1").arg(prepareDialog.license)
-                linkColor: Theme.accent
+                // The license field may be a URL or a short name; render a real
+                // link only when it is one.
+                text: {
+                    var lic = prepareDialog.license
+                    if (/^https?:\/\//.test(lic))
+                        return qsTr("License: %1")
+                            .arg("<a href=\"" + lic + "\">License</a>")
+                    return qsTr("License: %1").arg(lic)
+                }
+                onLinkActivated: (link) => Qt.openUrlExternally(link)
             }
         }
         onOpened: {
@@ -344,10 +352,11 @@ Item {
     FileDialog {
         id: modelPicker
         title: qsTr("Select a GGUF model")
-        nameFilters: ["GGUF models (*.gguf)", "All files (*)"]
+        nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
         onAccepted: {
-            localPathField.text = selectedFile
-            Settings.launchModelPath = selectedFile
+            const path = Runtime.localPath(selectedFile)
+            localPathField.text = path
+            Settings.launchModelPath = path
         }
     }
 }

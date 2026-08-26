@@ -295,7 +295,7 @@ target_sources(test_archive_extractor PRIVATE
 )
 add_test(NAME test_archive_extractor COMMAND test_archive_extractor)
 
-# ---- Stage D: install transaction ---------------------------------------
+# ---- Stage D: install transaction --------------------------------------------------------------------------
 qt_add_executable(test_install_transaction test_install_transaction.cpp)
 
 target_include_directories(test_install_transaction PRIVATE ${CMAKE_SOURCE_DIR}/src)

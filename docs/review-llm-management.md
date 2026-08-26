@@ -16,8 +16,8 @@ during review. It does **not** modify any code.
 
 ## 1. Critical / High severity
 
-### 1.1 [High] First-run wizard never auto-opens on a fresh profile
-- **File**: `resources/qml/Setup/StepDone.qml:20` (interacts with `resources/qml/Main.qml:155-178`)
+### 1.1 [High] First-run wizard never auto-opens on a fresh profile — **FIXED**
+- **File**: `resources/qml/Setup/StepDone.qml` (interacts with `resources/qml/Main.qml:155-178`)
 - **Category**: Bug
 - **Status**: [verified]
 - **Description**: `StepDone` is a child of a `StackLayout`, and `StackLayout`
@@ -33,7 +33,8 @@ during review. It does **not** modify any code.
   `SetupWizard.qml:95` already calls `stepDone.markDone()`), e.g. in
   `SetupWizard`'s `onCurrentChanged` when `current === 4`.
 
-### 1.2 [High] `InstallTransaction::cleanupStaging()` deletes the parent `runtime/` directory
+### 1.2 [High] `InstallTransaction::cleanupStaging()` deletes the parent `runtime/` directory — **FIXED**
+
 - **File**: `src/runtime/InstallTransaction.cpp:166-174`
 - **Category**: Bug (data loss)
 - **Status**: [verified]
@@ -48,7 +49,8 @@ during review. It does **not** modify any code.
   (or skip `.`/`..` explicitly), and add a test asserting `runtimeDir()` and
   sibling builds survive cleanup.
 
-### 1.3 [High] CUDA `cudart` archive is extracted into `runtime/` root, not the install dir
+### 1.3 [High] CUDA `cudart` archive is extracted into `runtime/` root, not the install dir — **FIXED**
+
 - **File**: `src/runtime/RuntimeInstaller.cpp:469,485`
 - **Category**: Bug
 - **Status**: [verified]
@@ -64,7 +66,8 @@ during review. It does **not** modify any code.
   (equivalently `m_paths.installDir(out.tag)`), and add a collision check for
   files already produced by the main archive.
 
-### 1.4 [High] `AppController::canRecognize()` does not implement the §1.4 formula
+### 1.4 [High] `AppController::canRecognize()` does not implement the §1.4 formula — **FIXED**
+
 - **File**: `src/app/AppController.cpp:81-84`
 - **Category**: Bug
 - **Status**: [verified]
@@ -80,7 +83,8 @@ during review. It does **not** modify any code.
   and add `&& m_runtime.busyState() == AppBusyState::Idle`; drop the
   `modelName`-only logic.
 
-### 1.5 [High] HF token is never sent to the tree / head-sha / search API
+### 1.5 [High] HF token is never sent to the tree / head-sha / search API — **FIXED**
+
 - **File**: `src/runtime/ModelInstaller.cpp:345` (also `352`, `580`); `src/runtime/ModelCatalog.h:105-118`
 - **Category**: Bug
 - **Status**: [verified]
@@ -94,7 +98,8 @@ during review. It does **not** modify any code.
   three fetchers and set `Authorization: Bearer <token>` only on
   `huggingface.co` requests (keep the existing cross-host drop).
 
-### 1.6 [High] `removeModel()` deletes files but never persists the registry update
+### 1.6 [High] `removeModel()` deletes files but never persists the registry update — **FIXED**
+
 - **File**: `src/runtime/ModelInstaller.cpp:292-297`
 - **Category**: Bug
 - **Status**: [verified]
@@ -106,7 +111,8 @@ during review. It does **not** modify any code.
 - **Recommendation**: Remove the entry from `m_installed`, `ModelRegistry::save(...)`,
   then refresh; surface a save failure to the UI.
 
-### 1.7 [High] `.registry.lock` is never acquired (dead `lockPathFor`)
+### 1.7 [High] `.registry.lock` is never acquired (dead `lockPathFor`) — **FIXED**
+
 - **File**: `src/runtime/ModelRegistry.cpp:116-119,162-187`
 - **Category**: Threading / Architecture
 - **Status**: [verified]
@@ -120,7 +126,8 @@ during review. It does **not** modify any code.
   read-modify-write (in `save` and in `ModelInstaller::completeInstall` /
   `removeModel` / `rescanRegistry`), releasing on all exit paths.
 
-### 1.8 [High] Path traversal via `repoDirName()` (untrusted `repo`)
+### 1.8 [High] Path traversal via `repoDirName()` (untrusted `repo`) — **FIXED**
+
 - **File**: `src/runtime/ModelInstaller.cpp:22-27` (used at `373`, `413`, `506`)
 - **Category**: Security
 - **Status**: [verified]
@@ -136,7 +143,8 @@ during review. It does **not** modify any code.
   segment), and re-validate `p.dir` against `modelsDir()` (canonical) before
   `mkpath`/download.
 
-### 1.9 [High] `estimateModelMemory()` reads the whole multi-GB GGUF on the GUI thread
+### 1.9 [High] `estimateModelMemory()` reads the whole multi-GB GGUF on the GUI thread — **FIXED**
+
 - **File**: `src/runtime/ModelMemoryEstimator.cpp:66`
 - **Category**: Performance
 - **Status**: [verified]
@@ -149,7 +157,8 @@ during review. It does **not** modify any code.
   (GGUF metadata is at the start of the file), and/or run the estimate on a
   worker thread.
 
-### 1.10 [High] Fixed-port launch leaves an orphaned argv token
+### 1.10 [High] Fixed-port launch leaves an orphaned argv token — **FIXED**
+
 - **File**: `src/runtime/RuntimeController.cpp:541` + `src/runtime/ServerLaunchConfig.cpp:132-133` (+ `LlamaServerProcess.cpp:100-103`)
 - **Category**: Bug
 - **Status**: [verified]
@@ -169,7 +178,8 @@ during review. It does **not** modify any code.
 
 ## 2. Medium severity
 
-### 2.1 [Medium] Ready-path resolve skips `/v1/models` alias verification
+### 2.1 [Medium] Ready-path resolve skips `/v1/models` alias verification — **FIXED**
+
 - **File**: `src/runtime/RuntimeController.cpp:195-197`
 - **Category**: Bug
 - **Status**: [verified]
@@ -178,7 +188,8 @@ during review. It does **not** modify any code.
   verification and the "`--alias` unsupported → first model id" fallback.
 - **Recommendation**: Route the Ready case through `fetchManagedModels()` too.
 
-### 2.2 [Medium] Managed connections use `startupTimeoutMs` as the per-request timeout
+### 2.2 [Medium] Managed connections use `startupTimeoutMs` as the per-request timeout — **FIXED**
+
 - **File**: `src/runtime/RuntimeController.cpp:260`
 - **Category**: Bug
 - **Status**: [verified]
@@ -191,7 +202,8 @@ during review. It does **not** modify any code.
 - **Recommendation**: Use `connectionTimeoutMs()`; keep `startupTimeoutMs` for
   the health watchdog only.
 
-### 2.3 [Medium] `canRecognize` NOTIFY is only wired to `modelNameChanged`
+### 2.3 [Medium] `canRecognize` NOTIFY is only wired to `modelNameChanged` — **FIXED**
+
 - **File**: `src/app/AppController.cpp:57-59` (property in `AppController.h:44`)
 - **Category**: Bug
 - **Status**: [verified]
@@ -204,7 +216,8 @@ during review. It does **not** modify any code.
 - **Recommendation**: Additionally connect `configChanged` to `documentChanged`
   and the relevant `RuntimeController` signals.
 
-### 2.4 [Medium] `cancelPendingStart()` can leave `busyState == StartingRuntime`
+### 2.4 [Medium] `cancelPendingStart()` can leave `busyState == StartingRuntime` — **FIXED**
+
 - **File**: `src/runtime/RuntimeController.cpp:686-703`
 - **Category**: Bug
 - **Description**: `setBusyState(Idle)` runs only inside the
@@ -215,9 +228,11 @@ during review. It does **not** modify any code.
 - **Recommendation**: Move `setBusyState(Idle)` out of the conditional so it
   always runs before `failResolve()`.
 
-### 2.5 [Medium] `lastExternalBaseUrl` is never saved/restored (§4.1, §7.9)
+### 2.5 [Medium] `lastExternalBaseUrl` is never saved/restored (§4.1, §7.9) — **FIXED**
+
 - **File**: `src/app/SettingsStore.cpp:328-334`
 - **Category**: Architecture
+- **Status**: [verified]
 - **Description**: `setConnectionMode()` just writes `provider/mode`; nothing
   calls `setLastExternalBaseUrl()`. The dedicated key is dead and the
   save-on-enter-managed / restore-on-return-to-external invariant is not
@@ -226,8 +241,12 @@ during review. It does **not** modify any code.
 - **Recommendation**: Implement save/restore in `setConnectionMode()`, or
   explicitly document that `provider/baseUrl` is never clobbered and remove the
   unused key.
+- **Resolution**: `setConnectionMode()` now saves the external `provider/baseUrl`
+  into `lastExternalBaseUrl` on switching to Managed and restores it on returning
+  to External (never clobbers — the Managed URL is computed in memory).
 
-### 2.6 [Medium] `runSelfTestQml()` lacks the External-mode guard `runSelfTest()` has
+### 2.6 [Medium] `runSelfTestQml()` lacks the External-mode guard `runSelfTest()` has — **FIXED**
+
 - **File**: `src/runtime/RuntimeController.cpp:447-507` (vs `378-408`)
 - **Category**: Bug
 - **Description**: In External mode `runSelfTestQml()` issues a real OCR request
@@ -237,7 +256,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Add the same External early-return guard at the top of
   `runSelfTestQml()`.
 
-### 2.7 [Medium] `LlamaServerProcess::stop()` blocks the GUI thread up to ~7 s
+### 2.7 [Medium] `LlamaServerProcess::stop()` blocks the GUI thread up to ~7 s — **FIXED**
 - **File**: `src/runtime/LlamaServerProcess.cpp:344-347`
 - **Category**: Performance
 - **Status**: [verified]
@@ -249,8 +268,13 @@ during review. It does **not** modify any code.
 - **Recommendation**: Make `stop()` async (`terminate()` + a grace timer to
   `kill()`, finalize `Stopped` from `onProcessFinished()`); keep `waitForFinished`
   only in `shutdownSync()`.
+- **Resolution**: `stop()` now `terminate()`s immediately and kills via a grace
+  `QTimer`; the `Stopped` state is finalized from `onProcessFinished()`. Callers
+  in `RuntimeController` adapted; `waitForFinished` remains only in
+  `shutdownSync()`. Tests updated to `QTRY_` waits.
 
-### 2.8 [Medium] `stop()`/`shutdownSync()` do not cancel a pending auto-restart
+### 2.8 [Medium] `stop()`/`shutdownSync()` do not cancel a pending auto-restart — **FIXED**
+
 - **File**: `src/runtime/LlamaServerProcess.cpp:314-317,329,355`
 - **Category**: Bug
 - **Status**: [verified]
@@ -263,7 +287,7 @@ during review. It does **not** modify any code.
   `spawn()`) with `if (m_stopRequested) return;`; set `m_stopRequested = true` at
   the top of `shutdownSync()`.
 
-### 2.9 [Medium] Health check never falls back to `/v1/models` as §5 requires
+### 2.9 [Medium] Health check never falls back to `/v1/models` as §5 requires — **FIXED**
 - **File**: `src/runtime/LlamaServerProcess.cpp` (`onHealthReply`)
 - **Category**: Documentation
 - **Description**: §5 Stage B task 3 requires a `/v1/models` fallback when
@@ -272,8 +296,11 @@ during review. It does **not** modify any code.
   not `/health` is marked `Failed`.
 - **Recommendation**: Implement the fallback in `onHealthReply`, or update the
   plan/ADR to document `/health`-only readiness.
+- **Resolution**: `onHealthReply()` now falls back to a `GET /v1/models` probe
+  (once per startup attempt) that counts a 200 + `data` body as healthy.
 
-### 2.10 [Medium] `completeInstall()` ignores `ModelRegistry::save()` failure
+### 2.10 [Medium] `completeInstall()` ignores `ModelRegistry::save()` failure — **FIXED**
+
 - **File**: `src/runtime/ModelInstaller.cpp:539` (commit at `543-552`)
 - **Category**: Bug
 - **Status**: [verified]
@@ -284,7 +311,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Check the return value; on failure set `State::Error`, stop,
   surface `saveErr`, and do not commit settings.
 
-### 2.11 [Medium] `importCatalog()` persists the full merged catalog (freezes built-ins)
+### 2.11 [Medium] `importCatalog()` persists the full merged catalog (freezes built-ins) — **FIXED**
 - **File**: `src/runtime/ModelInstaller.cpp:665-673`
 - **Category**: Architecture
 - **Status**: [verified]
@@ -295,8 +322,10 @@ during review. It does **not** modify any code.
 - **Recommendation**: Persist only user overrides (merge `incoming` into the
   user catalog, filtering entries identical to built-ins); `exportCatalog` may
   still export the merged view.
+- **Resolution**: Imports are merged into the existing user catalog and entries
+  identical (id + JSON) to built-ins are dropped before persisting.
 
-### 2.12 [Medium] Downloads use the leaf name, discarding the repo subdirectory
+### 2.12 [Medium] Downloads use the leaf name, discarding the repo subdirectory — **FIXED**
 - **File**: `src/runtime/ModelInstaller.cpp:426-428,443,486` (+ `selectModelFiles` 46-64)
 - **Category**: Bug
 - **Status**: [verified]
@@ -307,8 +336,11 @@ during review. It does **not** modify any code.
 - **Recommendation**: Carry the full repo-relative `path` through
   `selectModelFiles` → `Pending` → `enqueueFile`, keeping the leaf only for
   display.
+- **Resolution**: Full repo-relative paths are carried through and per-segment
+  URL-encoded; leaf-name collisions fail fast with a clear error.
 
-### 2.13 [Medium] Orphaned `staging/*` cleanup is never invoked at startup
+### 2.13 [Medium] Orphaned `staging/*` cleanup is never invoked at startup — **FIXED**
+
 - **File**: `src/runtime/InstallTransaction.h:48-51` (no production caller)
 - **Category**: Documentation
 - **Description**: ADR 39 / Stage D task 5 require "orphaned `staging/*` cleaned
@@ -317,7 +349,8 @@ during review. It does **not** modify any code.
 - **Recommendation**: Call `InstallTransaction::cleanupStaging(m_paths)` during
   startup (only after fixing §1.2) and add a test for the production path.
 
-### 2.14 [Medium] Non-atomic replacement of an existing install directory
+### 2.14 [Medium] Non-atomic replacement of an existing install directory — **FIXED**
+
 - **File**: `src/runtime/InstallTransaction.cpp:142-153`
 - **Category**: Architecture
 - **Status**: [verified]
@@ -329,7 +362,8 @@ during review. It does **not** modify any code.
   place, then delete the old one (roll back on failure); use an exchange-style
   rename where available.
 
-### 2.15 [Medium] QML `FileDialog.selectedFile` (url) assigned straight to QString setters
+### 2.15 [Medium] QML `FileDialog.selectedFile` (url) assigned straight to QString setters — **FIXED**
+
 - **File**: `resources/qml/SettingsDialog.qml:876`, `resources/qml/Setup/StepRuntime.qml:196`, `resources/qml/Setup/StepModel.qml:350`
 - **Category**: Bug
 - **Description**: `selectedFile` is a `url`; assigning it to
@@ -341,7 +375,8 @@ during review. It does **not** modify any code.
   accepting `QUrl`, or a `localPath(QUrl)` `Q_INVOKABLE`). Avoid
   `replace("file://","")` hacks in QML.
 
-### 2.16 [Medium] Catalog import/export receives a `url` instead of a path
+### 2.16 [Medium] Catalog import/export receives a `url` instead of a path — **FIXED**
+
 - **File**: `resources/qml/ModelsTab.qml:354,365`
 - **Category**: Bug
 - **Description**: `importCatalog(selectedFile)` / `exportCatalog(selectedFile)`
@@ -350,7 +385,8 @@ during review. It does **not** modify any code.
 - **Recommendation**: Change these `Q_INVOKABLE` methods to accept `const QUrl&`
   and normalize with `toLocalFile()`, or pass a pre-converted local path.
 
-### 2.17 [Medium] Installed-model list is stale after `Activate`
+### 2.17 [Medium] Installed-model list is stale after `Activate` — **FIXED**
+
 - **File**: `resources/qml/ModelsTab.qml:61`
 - **Category**: Bug
 - **Description**: `property var info: ModelInstaller.installedInfo(index)` is a
@@ -362,7 +398,7 @@ during review. It does **not** modify any code.
   `QAbstractListModel`, or `ModelInstaller.activeTitle === info.title` with
   `installedChanged` NOTIFY), or refresh in `Connections.onInstalledChanged`.
 
-### 2.18 [Medium] §4.2 read-only model name / alias in Managed mode not implemented
+### 2.18 [Medium] §4.2 read-only model name / alias in Managed mode not implemented — **FIXED**
 - **File**: `resources/qml/SettingsDialog.qml:348-355`
 - **Category**: Documentation
 - **Description**: The Model-tab `modelNameField` has no `readOnly` gate on
@@ -371,8 +407,11 @@ during review. It does **not** modify any code.
   (mode is only settable via the wizard), which undercuts §7.9.
 - **Recommendation**: Add the read-only alias display + caption, and a mode
   selector so users can return to External without re-running the wizard.
+- **Resolution**: Model-name field is read-only in Managed, shows the running
+  server's alias with a caption, and a Managed/External ComboBox was added.
 
-### 2.19 [Medium] `ThumbPanel` empty-state reads a non-existent `count` property
+### 2.19 [Medium] `ThumbPanel` empty-state reads a non-existent `count` property — **FIXED**
+
 - **File**: `resources/qml/MainWindow/ThumbPanel.qml:10`
 - **Category**: Bug
 - **Status**: [verified]
@@ -382,7 +421,8 @@ during review. It does **not** modify any code.
 - **Recommendation**: Use the existing `controller.pageCount` (and re-check the
   `hasImage` condition, which already implies `pageCount > 0`).
 
-### 2.20 [Medium] Model row-action errors are written to an invisible label
+### 2.20 [Medium] Model row-action errors are written to an invisible label — **FIXED**
+
 - **File**: `resources/qml/ModelsTab.qml:117,355,366`
 - **Category**: UX
 - **Description**: `removeModel`/`importCatalog`/`exportCatalog` errors are
@@ -395,7 +435,7 @@ during review. It does **not** modify any code.
 
 ## 3. Low severity
 
-### 3.1 [Low] Auto-restart transitions through `Failed` before restarting
+### 3.1 [Low] Auto-restart transitions through `Failed` before restarting — **FIXED**
 - **File**: `src/runtime/LlamaServerProcess.cpp:304`
 - **Category**: Bug
 - **Description**: `markFailed()` is called before the restart decision, so the
@@ -404,14 +444,14 @@ during review. It does **not** modify any code.
 - **Recommendation**: Skip `markFailed()` when auto-restart is eligible; enter
   `Failed` only when the 3/5-min budget is exhausted.
 
-### 3.2 [Low] `classifyLine()` emits a status-signal storm for tensor/`print_info` lines
+### 3.2 [Low] `classifyLine()` emits a status-signal storm for tensor/`print_info` lines — **FIXED**
 - **File**: `src/runtime/LlamaServerProcess.cpp:245`
 - **Category**: Performance
 - **Description**: Raw `print_info`/tensor lines are surfaced as status, emitting
   `statusMessageChanged` per distinct line during model load.
 - **Recommendation**: Emit a fixed placeholder (or nothing) for non-milestone lines.
 
-### 3.3 [Low] Log file reopened and rotation re-checked on every output line
+### 3.3 [Low] Log file reopened and rotation re-checked on every output line — **FIXED**
 - **File**: `src/runtime/LlamaServerProcess.cpp:218`
 - **Category**: Performance
 - **Description**: `appendLine()` opens the log in `Append` and stats it for
@@ -419,7 +459,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Keep a `QFile`/`QTextStream` open in append mode; check
   rotation less frequently.
 
-### 3.4 [Low] `autoDiscover()` returns a PATH candidate without probing it
+### 3.4 [Low] `autoDiscover()` returns a PATH candidate without probing it — **FIXED**
 - **File**: `src/runtime/RuntimeLocator.cpp:128`
 - **Category**: Bug
 - **Description**: The first branch returns `findExecutable("llama-server")`
@@ -428,21 +468,21 @@ during review. It does **not** modify any code.
   `findExecutable` twice.
 - **Recommendation**: Probe before returning; cache the `findExecutable` result.
 
-### 3.5 [Low] IPv6 loopback host (`::1`) produces a malformed URL
+### 3.5 [Low] IPv6 loopback host (`::1`) produces a malformed URL — **FIXED**
 - **File**: `src/runtime/LlamaServerProcess.cpp:84` (and `RuntimeController.cpp:255`)
 - **Category**: Bug
 - **Description**: `http://%1:%2` with `::1` yields `http://::1:8080/health` (not
   bracketed). §7.4 explicitly allows `::1`.
 - **Recommendation**: Assemble via `QUrl::setHost/setPort` (or bracket IPv6).
 
-### 3.6 [Low] `shutdownSync()` does not set `m_stopRequested`
+### 3.6 [Low] `shutdownSync()` does not set `m_stopRequested` — **FIXED**
 - **File**: `src/runtime/LlamaServerProcess.cpp:355`
 - **Category**: Bug
 - **Description**: Unlike `stop()`, shutdown can route `onProcessFinished()` down
   the failure/restart branch (see §2.8).
 - **Recommendation**: Set `m_stopRequested = true` at the top.
 
-### 3.7 [Low] `QObject::tr()` used in non-QObject classes
+### 3.7 [Low] `QObject::tr()` used in non-QObject classes — **FIXED**
 - **File**: `src/runtime/RuntimeLocator.cpp:30`, `src/runtime/RuntimePaths.cpp:82`
 - **Category**: Documentation / i18n
 - **Description**: `RuntimeLocator`/`RuntimePaths` are plain classes; `QObject::tr`
@@ -450,7 +490,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Use `Q_DECLARE_TR_FUNCTIONS(...)` + `tr(...)`, or
   `QCoreApplication::translate("Class", ...)`.
 
-### 3.8 [Low] `configValid` checks only file existence, not "probe passed"
+### 3.8 [Low] `configValid` checks only file existence, not "probe passed" — **FIXED**
 - **File**: `src/runtime/RuntimeController.cpp:88-106`
 - **Category**: Documentation
 - **Description**: §1.4 defines `configValid` as "valid binary (probe passed) AND
@@ -458,21 +498,21 @@ during review. It does **not** modify any code.
 - **Recommendation**: Run `probeCached` in `recomputeConfigValid()`, or update
   the wording to match the weaker intent (with a comment).
 
-### 3.9 [Low] `resetToDefaults()` does not clear `lastExternalBaseUrl`
+### 3.9 [Low] `resetToDefaults()` does not clear `lastExternalBaseUrl` — **FIXED**
 - **File**: `src/app/SettingsStore.cpp:34-89`
 - **Category**: Bug
 - **Description**: A stale `provider/lastExternalBaseUrl` persists after "Restore
   Defaults" (currently low impact because the key is unused — see §2.5).
 - **Recommendation**: Add `setLastExternalBaseUrl(QString())`.
 
-### 3.10 [Low] `probeRuntimePath()` doc comment references a non-existent property
+### 3.10 [Low] `probeRuntimePath()` doc comment references a non-existent property — **FIXED**
 - **File**: `src/runtime/RuntimeController.h:126-127`
 - **Category**: Documentation
 - **Description**: The comment says the summary is stored in `probeResult`; the
   implementation writes it to `statusMessage` (`.cpp:607-613`).
 - **Recommendation**: Reword the comment.
 
-### 3.11 [Low] External models have no "hide from list" path despite the error text
+### 3.11 [Low] External models have no "hide from list" path despite the error text — **FIXED**
 - **File**: `src/runtime/ModelInstaller.cpp:279-290`
 - **Category**: Documentation
 - **Description**: `removalError` returns "can only be hidden from the list" for
@@ -480,7 +520,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Add an "unregister" path that rewrites `index.json` without
   touching files.
 
-### 3.12 [Low] Rescan-recovered entries use `org__repo` as repo id / license URL
+### 3.12 [Low] Rescan-recovered entries use `org__repo` as repo id / license URL — **FIXED**
 - **File**: `src/runtime/ModelRegistry.cpp:207-210`
 - **Category**: Documentation
 - **Description**: `e.repo = subdirInfo.fileName()` and
@@ -489,7 +529,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Persist the true `org/repo` id in the entry and reconstruct
   it on rescan, or omit the license link rather than emitting a broken URL.
 
-### 3.13 [Low] Corrupt/missing index is rescanned but not persisted
+### 3.13 [Low] Corrupt/missing index is rescanned but not persisted — **FIXED**
 - **File**: `src/runtime/ModelRegistry.cpp:127-148`
 - **Category**: Documentation
 - **Description**: `load()` sets `rebuilt=true` and returns the scan result but
@@ -498,28 +538,28 @@ during review. It does **not** modify any code.
 - **Recommendation**: Persist the recovered entries after a rebuild (respecting
   the lock from §1.7).
 
-### 3.14 [Low] `selectModelFiles` largest-single selection is O(n²)
+### 3.14 [Low] `selectModelFiles` largest-single selection is O(n²) — **FIXED**
 - **File**: `src/runtime/ModelInstaller.cpp:91-98`
 - **Category**: Performance
 - **Description**: For each single candidate it scans the whole tree. Runs on a
   worker thread, so not a UI block, but wasteful.
 - **Recommendation**: Build a `QHash<QString,qint64>` name→size once.
 
-### 3.15 [Low] Multi-part first part relies on undocumented tree sort order
+### 3.15 [Low] Multi-part first part relies on undocumented tree sort order — **FIXED**
 - **File**: `src/runtime/ModelInstaller.cpp:74-86` (vs `ModelRegistry.cpp:228-240`)
 - **Category**: Bug
 - **Description**: `selectModelFiles` does not sort split parts by index, so
   `modelNames.first()` (used as `--model`) may not be `-00001-of-N`.
 - **Recommendation**: Reuse the same split-index sort as `scanModelsDir`.
 
-### 3.16 [Low] Redundant `fetchHeadSha` for pinned presets
+### 3.16 [Low] Redundant `fetchHeadSha` for pinned presets — **FIXED**
 - **File**: `src/runtime/ModelInstaller.cpp:345-347`
 - **Category**: Performance
 - **Description**: `beginPrepare` always fetches the head SHA, then overwrites it
   with `preset.revision` when pinned — a wasted round-trip.
 - **Recommendation**: Skip `fetchHeadSha` when `pin` is non-empty.
 
-### 3.17 [Low] Whole ZIP archive loaded into memory with multiple copies
+### 3.17 [Low] Whole ZIP archive loaded into memory with multiple copies — **FIXED**
 - **File**: `src/runtime/ArchiveExtractor.cpp:475` (+ `626`, `643`, `673`)
 - **Category**: Performance
 - **Description**: `f.readAll()` plus `data.mid(...)`, a decoder `out` vector, and
@@ -527,14 +567,14 @@ during review. It does **not** modify any code.
 - **Recommendation**: Stream/memory-map the archive and write decompressed bytes
   incrementally.
 
-### 3.18 [Low] DEFLATE `stored` block bypasses the declared-size output cap
+### 3.18 [Low] DEFLATE `stored` block bypasses the declared-size output cap — **FIXED**
 - **File**: `src/runtime/ArchiveExtractor.cpp:239-253`
 - **Category**: Security
 - **Description**: `m_cap` is enforced for fixed/dynamic blocks but not
   `storedBlock`, weakening the anti-bomb guarantee (consistency/defense-in-depth).
 - **Recommendation**: Add the same `m_cap` check in `storedBlock`.
 
-### 3.19 [Low] Synchronous main-download failure doesn't abort the cudart enqueue / releases the lock early
+### 3.19 [Low] Synchronous main-download failure doesn't abort the cudart enqueue / releases the lock early — **FIXED**
 - **File**: `src/runtime/RuntimeInstaller.cpp:357-383`
 - **Category**: Bug
 - **Description**: If the main download completes synchronously (e.g. non-https,
@@ -545,7 +585,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: After enqueuing the main download, check task state/`m_state`
   and bail before enqueuing the companion.
 
-### 3.20 [Low] `sanitizeFileName()` has no collision-suffix resolution
+### 3.20 [Low] `sanitizeFileName()` has no collision-suffix resolution — **FIXED**
 - **File**: `src/runtime/DownloadTask.cpp:82-120`
 - **Category**: Documentation
 - **Description**: Stage C task 1 requires "collisions resolved by a suffix"; the
@@ -553,14 +593,14 @@ during review. It does **not** modify any code.
 - **Recommendation**: Implement suffix resolution at the target-dir/name choice
   point, or document it as the caller's responsibility.
 
-### 3.21 [Low] `detectPlatform()` misclassifies 32-bit x86 as `arm64`
+### 3.21 [Low] `detectPlatform()` misclassifies 32-bit x86 as `arm64` — **FIXED**
 - **File**: `src/runtime/ReleaseCatalog.cpp:311-314`
 - **Category**: Bug
 - **Description**: `arch.contains("64") ? "x64" : "arm64"` reports `i386`/`i686`
   as `arm64`.
 - **Recommendation**: Handle `x86`/`i386`/`i686`/`x86_64`/`amd64` explicitly.
 
-### 3.22 [Low] `progressChanged()` emitted on every `readyRead` chunk
+### 3.22 [Low] `progressChanged()` emitted on every `readyRead` chunk — **FIXED**
 - **File**: `src/runtime/DownloadTask.cpp:441`
 - **Category**: Performance
 - **Description**: The 200 ms throttle governs speed/eta only; the signal itself
@@ -569,7 +609,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Throttle the signal emission (~100-200 ms) or only emit on a
   meaningful byte delta.
 
-### 3.23 [Low] Final-file promotion is delete-then-rename, not atomic replace
+### 3.23 [Low] Final-file promotion is delete-then-rename, not atomic replace — **FIXED**
 - **File**: `src/runtime/DownloadTask.cpp:558-559`
 - **Category**: Architecture
 - **Description**: `QFile::remove(m_finalPath)` immediately before
@@ -578,14 +618,14 @@ during review. It does **not** modify any code.
 - **Recommendation**: Let `rename(2)` replace atomically; fall back to
   remove-then-rename only where required, restoring on failure.
 
-### 3.24 [Low] File-dialog `nameFilters` not wrapped in `qsTr`
+### 3.24 [Low] File-dialog `nameFilters` not wrapped in `qsTr` — **FIXED**
 - **File**: `resources/qml/ModelsTab.qml:352,362`, `resources/qml/Setup/StepModel.qml:347`
 - **Category**: i18n
 - **Description**: `"JSON files (*.json)"`, `"All files (*)"`, `"GGUF models (*.gguf)"`
   are hardcoded English (§7.10 / Stage F task 4).
 - **Recommendation**: Wrap in `qsTr(...)`.
 
-### 3.25 [Low] "License" affordance is dead code (plain text, not a link)
+### 3.25 [Low] "License" affordance is dead code (plain text, not a link) — **FIXED**
 - **File**: `resources/qml/ModelsTab.qml:338-340`, `resources/qml/Setup/StepModel.qml:327-330`
 - **Category**: UX
 - **Description**: The label sets `linkColor`/`onLinkActivated` but the text has no
@@ -593,14 +633,14 @@ during review. It does **not** modify any code.
 - **Recommendation**: Render an actual `<a href>` when a URL is available, or drop
   the link styling.
 
-### 3.26 [Low] Misspelled identifiers
+### 3.26 [Low] Misspelled identifiers — **FIXED**
 - **File**: `resources/qml/SettingsDialog.qml:87` (`dryAllowedLenghField`), `:73` (`thtemeIdx`)
 - **Category**: Bug (style)
 - **Description**: Misspellings (`Lengh`, `thteme`) that are self-consistent but
   harm readability and violate the "English identifiers" rule.
 - **Recommendation**: Rename to `dryAllowedLengthField` / `themeIdx`.
 
-### 3.27 [Low] `flushToDisk()` reinterprets the CRT fd as a native Windows `HANDLE`
+### 3.27 [Low] `flushToDisk()` reinterprets the CRT fd as a native Windows `HANDLE` — **FIXED**
 - **File**: `src/runtime/DownloadTask.cpp:29-40`
 - **Category**: Bug
 - **Description**: `reinterpret_cast<HANDLE>(file.handle())` on a CRT `int` fd is a
@@ -609,7 +649,7 @@ during review. It does **not** modify any code.
 - **Recommendation**: Use `reinterpret_cast<HANDLE>(_get_osfhandle(file.handle()))`
   (`<io.h>`) and check `FlushFileBuffers`' return value.
 
-### 3.28 [Low] Case-sensitive duplicate-path detection on case-insensitive filesystems
+### 3.28 [Low] Case-sensitive duplicate-path detection on case-insensitive filesystems — **FIXED**
 - **File**: `src/runtime/ArchiveExtractor.cpp:577`
 - **Category**: Security
 - **Description**: The duplicate-normalized-path `QSet<QString>` is case-sensitive,
@@ -698,20 +738,26 @@ during review. It does **not** modify any code.
 
 ## 5. Recommended remediation order
 
-1. **Onboarding regression** (§1.1) — the wizard never opens; blocks the whole
-   feature's end-to-end story.
-2. **Data-loss / security bugs** (§1.2, §1.8) — path traversal + catastrophic
-   `cleanupStaging` behavior before it is wired.
-3. **Managed recognition gating** (§1.4, §2.3) — `canRecognize`/NOTIFY.
-4. **Gated-repo + registry persistence** (§1.5, §1.6, §1.7, §2.10) — HF token and
-   lost-update/corruption risks.
-5. **Install correctness** (§1.3 cudart dir, §2.13 orphan cleanup, §2.14 atomic
-   replace, §1.10 fixed-port argv).
-6. **Performance** (§1.9 `readAll`, §2.7 blocking `stop`, §3.2/§3.3 log churn,
-   §3.14/§3.17/§3.22).
-7. **QML path/state bugs** (§2.15–§2.20, §3.24–§3.26).
-8. **Test/coverage hardening** (§4.1–§4.9), then re-run
+Progress: §1.1–§1.10, §2.1–§2.20, and §3.1–§3.28 are **fixed**
+(marked in the sections above). The only remaining work is the
+**test/coverage hardening** in §4 (below).
+
+1. ~~Onboarding regression (§1.1)~~ — done.
+2. ~~Data-loss / security bugs (§1.2, §1.8)~~ — done.
+3. ~~Managed recognition gating (§1.4, §2.3)~~ — done.
+4. ~~Gated-repo + registry persistence (§1.5, §1.6, §1.7, §2.10)~~ — done.
+5. ~~Install correctness (§1.3, §2.13, §2.14, §1.10)~~ — done.
+6. ~~Performance (§1.9, §2.7, §3.2/§3.3, §3.14/§3.17/§3.22)~~ — done.
+7. ~~QML path/state bugs (§2.15–§2.20, §3.24–§3.26)~~ — done.
+8. ~~Settings/architecture (§2.5, §2.11, §2.12, §3.4–§3.23, §3.27–§3.28)~~ — done;
+   remaining **§2.18** note: read-only alias + mode selector implemented.
+9. **Test/coverage hardening** (§4.1–§4.9), then re-run
    `cmake --build build -j 8 && ctest --test-dir build`.
+
+Note: `test_server_process`, `test_ensure_connection`, `test_download_manager`
+require binding a loopback TCP port (the mock server / `QTcpServer`). They pass
+outside the sandbox; inside the sandboxed terminal they fail at `listen()` with
+"mock: listen failed" and cannot be exercised here.
 
 ---
 

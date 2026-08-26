@@ -124,9 +124,12 @@ QString RuntimeLocator::probeSummary(const ProbeResult &r)
 
 QString RuntimeLocator::autoDiscover(int timeoutMs)
 {
-    // 1) System PATH via QStandardPaths::findExecutable.
-    if (!QStandardPaths::findExecutable(QStringLiteral("llama-server")).isEmpty())
-        return QStandardPaths::findExecutable(QStringLiteral("llama-server"));
+    // 1) System PATH via QStandardPaths::findExecutable — probed like any other
+    // candidate: validity is a successful probe, not mere existence.
+    const QString pathCandidate =
+        QStandardPaths::findExecutable(QStringLiteral("llama-server"));
+    if (!pathCandidate.isEmpty() && probe(pathCandidate, timeoutMs).ok)
+        return pathCandidate;
 
     // 2) Common install roots (best-effort, order by likelihood).
     QStringList roots;

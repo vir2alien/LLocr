@@ -1,9 +1,11 @@
 #pragma once
 
 #include <QElapsedTimer>
+#include <QFile>
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
+#include <QTextStream>
 #include <QTimer>
 
 #include "runtime/RuntimeState.h"
@@ -41,6 +43,7 @@ public:
     };
 
     explicit LlamaServerProcess(const Options &opts, QObject *parent = nullptr);
+    ~LlamaServerProcess() override;
 
     // Re-applies the launch options for the next start (settings may have
     // changed since the process object was created). No-op while running.
@@ -50,8 +53,10 @@ public:
     // ProcessGuard. Returns empty on success else a human-readable error.
     QString start();
 
-    // Stops the child if running and cancels any pending restart. Uses
-    // terminate → wait(graceMs) → kill. Removes the owner record. Idempotent.
+    // Asynchronously stops the child if running and cancels any pending
+    // restart. Uses terminate → (grace timer) → kill; the final Stopped state
+    // is entered from onProcessFinished() when the child actually exits.
+    // Removes the owner record. Idempotent. Safe to call from the GUI thread.
     void stop(unsigned graceMs = 5000);
 
     /// Blocking shutdown for ~aboutToQuit (event loop is already stopped):
@@ -96,11 +101,13 @@ private:
     static int parseLoadPercent(const QString &line);
     void armHealthPolling();
     void onHealthReply(QNetworkReply *reply);
+    void tryModelsFallback();
     void onReadyRead();
     void onProcessFinished(int exitCode, QProcess::ExitStatus status);
     void markFailed(const QString &reason);
     void rotateLogIfNeeded();
     void appendLine(const QString &line);
+    void closeLogFile();
     void writeOwnerJson();
     void clearOwnerJson();
     void setState(RuntimeState next);
@@ -112,6 +119,13 @@ private:
     QProcess m_process;
     QNetworkAccessManager *m_net = nullptr;
     QTimer *m_healthTimer = nullptr;
+    QTimer *m_killTimer = nullptr;   // §2.7: grace timer terminate → kill
+    bool m_modelsProbed = false;     // §2.9: /v1/models fallback used this start
+
+    // §3.3: the rotating log stays open in append mode across lines.
+    QFile m_logFile;
+    QTextStream m_logStream;
+    int m_linesSinceRotateCheck = 0;
 
     QElapsedTimer m_elapsed;
     QElapsedTimer m_restartWindow;

@@ -135,22 +135,31 @@ InstallOutput InstallTransaction::start(const QString &zipPath,
     if (build.isEmpty())
         build = QStringLiteral("unknown");
 
-    // 7. Atomic rename staging/<uuid> -> runtime/<finalTag>.
+    // 7. Atomic rename staging/<uuid> -> runtime/<finalTag>. When a previous
+    // install exists, move it aside first so a failed rename cannot destroy
+    // the last good build (ADR 39 transactionality).
     const QString finalTag = QStringLiteral("llama.cpp-%1-%2-%3-%4")
                                  .arg(build, asset.backend, asset.os, asset.arch);
     const QString finalDir = paths.installDir(finalTag);
+    QString backupDir;
     if (QFileInfo::exists(finalDir)) {
-        if (!QDir(finalDir).removeRecursively()) {
-            out.error = QObject::tr("Unable to replace an existing install directory");
+        backupDir = finalDir + QStringLiteral(".old-") + uuid;
+        if (!QDir().rename(finalDir, backupDir)) {
+            out.error = QObject::tr("Unable to move the existing install aside");
             QDir(stagingPath).removeRecursively();
             return out;
         }
     }
     if (!QDir().rename(stagingPath, finalDir)) {
         out.error = QObject::tr("Atomic rename of the install into place failed");
+        // Roll back: restore the previous install if it was moved aside.
+        if (!backupDir.isEmpty())
+            QDir().rename(backupDir, finalDir);
         QDir(stagingPath).removeRecursively();
         return out;
     }
+    if (!backupDir.isEmpty())
+        QDir(backupDir).removeRecursively();
 
     out.ok = true;
     out.build = build;
@@ -165,12 +174,10 @@ InstallOutput InstallTransaction::start(const QString &zipPath,
 
 void InstallTransaction::cleanupStaging(RuntimePaths paths)
 {
-    QDirIterator it{QDir(paths.stagingDir())};
-    while (it.hasNext()) {
-        it.next();
-        if (it.fileInfo().isDir())
-            QDir(it.fileInfo().absoluteFilePath()).removeRecursively();
-    }
+    const QStringList names =
+        QDir(paths.stagingDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString &name : names)
+        QDir(QDir(paths.stagingDir()).filePath(name)).removeRecursively();
 }
 
 QString InstallTransaction::cleanupUnusedBuilds(RuntimePaths paths,

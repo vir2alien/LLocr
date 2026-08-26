@@ -7,6 +7,7 @@
 //   --port N            listen on N (default: 0 → ephemeral)
 //   --version-out X     override --version stdout (for probe tests)
 //   --never-healthy     /health always returns 503
+//   --no-models         /v1/models always returns 404 (checks the fallback off)
 //   --delay-start MS    sleep before binding the socket
 //   --crash-on-health   exit(1) the first time /health is served
 //   --crash-after MS    exit(1) after MS of uptime
@@ -30,6 +31,7 @@ int main(int argc, char* argv[]) {
     int port = 0;
     QString versionOut = QStringLiteral("build: 10594 (b10594)");
     bool neverHealthy = false;
+    bool noModels = false;
     int delayStartMs = 0;
     bool crashOnHealth = false;
     qint64 crashAfterMs = 0;
@@ -46,6 +48,8 @@ int main(int argc, char* argv[]) {
             versionOut = value();
         else if (a == QStringLiteral("--never-healthy"))
             neverHealthy = true;
+        else if (a == QStringLiteral("--no-models"))
+            noModels = true;
         else if (a == QStringLiteral("--delay-start"))
             delayStartMs = value().toInt();
         else if (a == QStringLiteral("--crash-on-health"))
@@ -124,6 +128,11 @@ int main(int argc, char* argv[]) {
                              "Connection: close\r\n\r\n" + body);
                     s->flush();
                 } else if (req.contains("GET /v1/models")) {
+                    if (noModels) {
+                        s->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        s->flush();
+                        return;
+                    }
                     const QByteArray body =
                         QJsonDocument(QJsonObject{{"object", "list"},
                                                   {"data", QJsonArray{{QJsonObject{
