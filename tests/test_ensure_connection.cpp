@@ -189,8 +189,12 @@ private slots:
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
+        store.setAutoRestart(false);
         store.setStartupTimeoutMs(1200);
-        store.setLaunchExtraArgs(QStringLiteral("--never-healthy"));
+        // --never-healthy alone is rescued by the /v1/models fallback (the mock
+        // answers it with 200); --no-models disables that fallback so the
+        // health watchdog truly hits the startup timeout.
+        store.setLaunchExtraArgs(QStringLiteral("--never-healthy --no-models"));
 
         RuntimeController runtime(store);
         ResolvedConnection resolved;

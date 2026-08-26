@@ -70,6 +70,18 @@ void LlamaServerProcess::closeLogFile()
 LlamaServerProcess::~LlamaServerProcess()
 {
     closeLogFile();
+    // Safety net: never leave the child server orphaned when this object is
+    // destroyed while the process is still alive. In the app this is a no-op
+    // for the normal shutdown path (shutdownSync() stops the process first);
+    // in tests the synchronous stop keeps successive test cases from
+    // accumulating live children / bound ports, which previously made the
+    // suite flaky (and leaked “QProcess: Destroyed while process is still
+    // running” warnings).
+    if (m_process.state() != QProcess::NotRunning) {
+        m_process.terminate();
+        if (!m_process.waitForFinished(2000))
+            m_process.kill();
+    }
 }
 
 void LlamaServerProcess::setOptions(const Options &opts)

@@ -83,14 +83,14 @@ bool parseContentRange(const QString &value, qint64 &start, qint64 &end, qint64 
 // File-name sanitization
 // ---------------------------------------------------------------------------
 
-// Stage C: "collisions resolved by a suffix". If <dir>/<name> (or its .part)
-// already exists, append -1, -2, … before the extension. Resume is unaffected:
-// the returned name is fixed once in the constructor, so an existing .part for
-// this task's URL keeps its path across start()/pause()/resume().
+// Stage C: “collisions resolved by a suffix”. If <dir>/<name> (the final
+// target) already exists, append -1, -2, … before the extension. An existing
+// `.part` is deliberately NOT treated as a collision: resume must reuse the
+// exact same part path, so a seeded/partial `.part` must not push the task to a
+// different `-N` name and strand the resumable data.
 QString resolveFileNameCollision(const QString &dir, const QString &name)
 {
-    if (!QFileInfo::exists(QDir(dir).filePath(name))
-        && !QFileInfo::exists(QDir(dir).filePath(name + QStringLiteral(".part"))))
+    if (!QFileInfo::exists(QDir(dir).filePath(name)))
         return name;
 
     const int dot = name.lastIndexOf(QLatin1Char('.'));
@@ -98,8 +98,7 @@ QString resolveFileNameCollision(const QString &dir, const QString &name)
     const QString ext = (dot > 0) ? name.mid(dot) : QString();
     for (int i = 1; i < 10000; ++i) {
         const QString candidate = base + QLatin1Char('-') + QString::number(i) + ext;
-        if (!QFileInfo::exists(QDir(dir).filePath(candidate))
-            && !QFileInfo::exists(QDir(dir).filePath(candidate + QStringLiteral(".part"))))
+        if (!QFileInfo::exists(QDir(dir).filePath(candidate)))
             return candidate;
     }
     return name;  // give up and let the write fail naturally

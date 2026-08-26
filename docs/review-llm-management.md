@@ -765,13 +765,34 @@ Note: `test_server_process`, `test_ensure_connection`, `test_download_manager`
 and two cases in `test_model_catalog` require binding a loopback TCP port (the
 mock server / `QTcpServer`). Inside the sandboxed terminal they fail at
 `listen()` with "mock: listen failed" and cannot be exercised here; they pass
-outside the sandbox. `test_server_process` and `test_model_catalog` were
-verified green outside the sandbox. `test_download_manager` and
-`test_ensure_connection` carry **pre-existing** failures unmasked once the
-loopback port is available (3 resume/range failures in `test_download_manager`;
-`concurrentCallersShareFuture` in `test_ensure_connection` hangs). These were
-confirmed pre-existing (not caused by the §4 changes) by A/B testing against the
-original code, and are outside the §4 scope.
+outside the sandbox. All of these now pass outside the sandbox. The two suites
+that previously carried **pre-existing** failures (unmasked once the loopback
+port is available) were fixed:
+
+- `test_download_manager` — the 3 resume/range failures were caused by
+  `resolveFileNameCollision()` treating an existing `.part` as a collision and
+  renaming the resumed file to a `-1` suffix, so the task then looked for a
+  different part path and never resumed ($§ Stage C). The resolver now only
+  avoids collisions with the **final** target name; a `.part` is intentionally
+  reused so resume keeps the exact same part path. Concurrent same-name
+  downloads into one directory cannot occur in practice (model installs are
+  serialized by the install lock and use distinct leaf names; runtime archives
+  differ), so this does not reopen the parallel-collision case.
+- `test_ensure_connection` — the suite hung after the first managed test because
+  `LlamaServerProcess::~LlamaServerProcess()` only closed the log file and left
+  a still-running child orphaned ("QProcess: Destroyed while process is still
+  running"), leaking live mock servers / ports that made successive tests flaky.
+  The destructor now terminates (and, if needed, kills + waits on) a still-running
+  child, which also guarantees no server is orphaned on teardown.
+  `healthTimeoutSurfacesError` was additionally corrected to pass
+  `--never-healthy --no-models` (the `--no-models` flag keeps the §2.9 `/v1/models`
+  fallback from rescuing readiness, so the test actually exercises the watchdog
+  timeout) and `autoRestart=false` so the failed start cannot be resurrected.
+
+Verified green outside the sandbox: all 19 ctest targets pass with no orphaned
+mock processes left behind (see §4.1–§4.9 and the fixes above). Specific
+loopback tests were confirmed pre-existing (not caused by the §4 changes) by
+A/B testing against the original code.
 
 ---
 
