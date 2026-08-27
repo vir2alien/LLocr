@@ -3,6 +3,8 @@
 #include <QDebug>
 #include <QFutureWatcher>
 
+#include <functional>
+
 #include "app/SettingsStore.h"
 #include "core/ProviderConfig.h"
 
@@ -54,31 +56,25 @@ void RecognitionController::startAll(int totalPages, const QString& prompt)
 void RecognitionController::ensureConnectionReady()
 {
     m_connectionReady = false;
-    const QFuture<ResolvedConnection> future = m_runtime.ensureConnectionReady();
-    auto *watcher = new QFutureWatcher<ResolvedConnection>(this);
-    connect(watcher, &QFutureWatcher<ResolvedConnection>::finished, this,
-            [this, watcher]() {
-                const ResolvedConnection conn = watcher->result();
-                watcher->deleteLater();
-                if (!m_busy)
-                    return;  // stopped while resolving
-                if (conn.baseUrl.isEmpty()) {
-                    // §H.1: stopping while the managed server was still starting
-                    // must read as “stopped”, not as a start error.
-                    if (m_stopRequested)
-                        emit statusRequested(tr("Stopped before recognition started."));
-                    else
-                        emit statusRequested(conn.error.isEmpty()
-                                                 ? tr("Connection is not configured.")
-                                                 : conn.error);
-                    finishRun();
-                    return;
-                }
-                m_connection = conn;
-                m_connectionReady = true;
-                recognizePage(m_startIndex);
-            });
-    watcher->setFuture(future);
+    m_runtime.ensureConnectionReady([this](const ResolvedConnection &conn) {
+        if (!m_busy)
+            return;  // stopped while resolving
+        if (conn.baseUrl.isEmpty()) {
+            // §H.1: stopping while the managed server was still starting
+            // must read as “stopped”, not as a start error.
+            if (m_stopRequested)
+                emit statusRequested(tr("Stopped before recognition started."));
+            else
+                emit statusRequested(conn.error.isEmpty()
+                                         ? tr("Connection is not configured.")
+                                         : conn.error);
+            finishRun();
+            return;
+        }
+        m_connection = conn;
+        m_connectionReady = true;
+        recognizePage(m_startIndex);
+    });
 }
 
 void RecognitionController::recognizePage(int index)

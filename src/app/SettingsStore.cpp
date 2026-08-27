@@ -48,7 +48,7 @@ void SettingsStore::resetToDefaults()
     setParserId(QString::fromUtf8(kDefaultParserId));
 
     // Runtime / connection mode
-    setConnectionMode(QString::fromUtf8(kModeExternal));
+    setMode(ConnectionMode::External);
     setSetupVersion(0);
     setSetupDismissed(false);
     setServerPath(QString());
@@ -328,8 +328,32 @@ QString SettingsStore::connectionMode() const
     return m_settings.value(kConnectionMode, QString::fromUtf8(kModeExternal)).toString();
 }
 
+ConnectionMode SettingsStore::mode() const
+{
+    // Single barrier: an unknown/typo stored value falls back to External
+    // (ADR 26 — never flip the mode silently). Comparing against the enum
+    // everywhere keeps the string↔enum mapping here (review 2.6).
+    return connectionMode() == QString::fromUtf8(kModeManaged)
+               ? ConnectionMode::Managed
+               : ConnectionMode::External;
+}
+
+void SettingsStore::setMode(ConnectionMode mode)
+{
+    setConnectionMode(mode == ConnectionMode::Managed ? QString::fromUtf8(kModeManaged)
+                                                      : QString::fromUtf8(kModeExternal));
+}
+
 void SettingsStore::setConnectionMode(const QString &mode)
 {
+    // Only the two known modes are valid; anything else (e.g. a typo) is
+    // rejected so an unrecognized value never persists and later silently
+    // reads back as External.
+    if (mode != QString::fromUtf8(kModeExternal)
+        && mode != QString::fromUtf8(kModeManaged)) {
+        qWarning("Ignoring invalid connection mode %s", qPrintable(mode));
+        return;
+    }
     if (connectionMode() == mode)
         return;
     // §4.1/§7.9: entering Managed preserves the external endpoint for the way

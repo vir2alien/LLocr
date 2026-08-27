@@ -93,9 +93,10 @@ struct ResolvedConnection {   // src/runtime/ResolvedConnection.h
 };
 
 class RuntimeController : public QObject {   // src/runtime/RuntimeController.h
-    QFuture<ResolvedConnection> ensureConnectionReady(); // External: immediate;
-    //   Managed: start → /health → /v1/models → alias → resolve. Concurrent
-    //   callers share one future (dedup).
+    // Callback-based resolve (review 3.3): External invokes synchronously;
+    // Managed start → /health → /v1/models → alias, then onResolved() runs.
+    // Concurrent callers register their callback and share one in-flight resolve.
+    void ensureConnectionReady(std::function<void(const ResolvedConnection &)> onResolved);
     void cancelPendingStart();   // Stop during StartingRuntime
     QFuture<SelfTestResult> runSelfTest(); // wizard “Check” button
 };

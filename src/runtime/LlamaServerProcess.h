@@ -30,7 +30,10 @@ class LlamaServerProcess : public QObject
 public:
     struct Options {
         QString program;          // absolute path to llama-server
-        QStringList arguments;    // full argv EXCLUDING --port (allocated here)
+        // Full argv from ServerLaunchConfig::toArguments(), which already
+        // carries --host/--port for a fixed port. This process only appends
+        // --port when the argv has none (auto-pick, port 0). Single source (2.5).
+        QStringList arguments;
         QString workingDirectory;
         QString host = QStringLiteral("127.0.0.1");
         QString baseUrl;          // override health target; empty → host:port

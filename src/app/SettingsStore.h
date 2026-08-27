@@ -4,6 +4,8 @@
 #include <QSettings>
 #include <QString>
 
+#include "runtime/ConnectionMode.h"
+
 namespace llocr {
 
 class SettingsStore : public QObject
@@ -155,8 +157,13 @@ public:
     void setWindowState(int winState);
 
     // --- Connection mode ---
+    // String form is QML-facing (persisted in QSettings; ADR 26). The typed
+    // mode()/setMode() are the canonical C++ barrier — all string↔enum mapping
+    // lives here (review 2.6).
     QString connectionMode() const;
     void setConnectionMode(const QString &mode);
+    ConnectionMode mode() const;
+    void setMode(ConnectionMode mode);
     QString lastExternalBaseUrl() const;
     void setLastExternalBaseUrl(const QString &url);
 

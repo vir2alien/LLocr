@@ -41,10 +41,13 @@ private slots:
         settings.setConnectionTimeoutMs(5000);
 
         RuntimeController runtime(settings);
-        QFuture<ResolvedConnection> future = runtime.ensureConnectionReady();
-        future.waitForFinished();
-        QVERIFY(!future.isCanceled());
-        const ResolvedConnection conn = future.result();
+        ResolvedConnection conn;
+        bool called = false;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            conn = c;
+            called = true;
+        });
+        QVERIFY(called);  // External resolves synchronously (ADR 26)
         QCOMPARE(conn.baseUrl, QStringLiteral("http://custom.example:9000"));
         QCOMPARE(conn.apiKey, QStringLiteral("k"));
         QCOMPARE(conn.modelId, QStringLiteral("my-model"));
@@ -77,10 +80,10 @@ private slots:
 
         int finished = 0;
         ResolvedConnection resolved;
-        QFutureWatcher<ResolvedConnection> watch;
-        connect(&watch, &QFutureWatcher<ResolvedConnection>::finished, this,
-                [&]() { resolved = watch.result(); ++finished; });
-        watch.setFuture(runtime.ensureConnectionReady());
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+            ++finished;
+        });
 
         QTRY_VERIFY_WITH_TIMEOUT(finished == 1, 15000);
         QVERIFY(resolved.baseUrl.startsWith(QStringLiteral("http://127.0.0.1:")));
@@ -112,19 +115,16 @@ private slots:
 
         // Two "concurrent" callers issued before the first one completes. Only a
         // single start may happen; both must end up with the same connection.
-        const QFuture<ResolvedConnection> a = runtime.ensureConnectionReady();
-        const QFuture<ResolvedConnection> b = runtime.ensureConnectionReady();
-
         int done = 0;
         ResolvedConnection ra, rb;
-        auto *wa = new QFutureWatcher<ResolvedConnection>(this);
-        connect(wa, &QFutureWatcher<ResolvedConnection>::finished, this,
-                [&]() { ra = wa->result(); wa->deleteLater(); ++done; });
-        wa->setFuture(a);
-        auto *wb = new QFutureWatcher<ResolvedConnection>(this);
-        connect(wb, &QFutureWatcher<ResolvedConnection>::finished, this,
-                [&]() { rb = wb->result(); wb->deleteLater(); ++done; });
-        wb->setFuture(b);
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            ra = c;
+            ++done;
+        });
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            rb = c;
+            ++done;
+        });
 
         QTRY_VERIFY_WITH_TIMEOUT(done == 2, 15000);
         QVERIFY(!ra.baseUrl.isEmpty());
@@ -158,10 +158,10 @@ private slots:
 
         int done = 0;
         ResolvedConnection resolved;
-        QFutureWatcher<ResolvedConnection> watch;
-        connect(&watch, &QFutureWatcher<ResolvedConnection>::finished, this,
-                [&]() { resolved = watch.result(); ++done; });
-        watch.setFuture(runtime.ensureConnectionReady());
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
 
         // Wait until the process is starting, then interrupt.
         QTRY_VERIFY_WITH_TIMEOUT(runtime.state() == RuntimeState::Starting, 5000);
@@ -199,10 +199,10 @@ private slots:
         RuntimeController runtime(store);
         ResolvedConnection resolved;
         int done = 0;
-        QFutureWatcher<ResolvedConnection> watch;
-        connect(&watch, &QFutureWatcher<ResolvedConnection>::finished, this,
-                [&]() { resolved = watch.result(); ++done; });
-        watch.setFuture(runtime.ensureConnectionReady());
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
 
         QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
         QVERIFY(resolved.baseUrl.isEmpty());

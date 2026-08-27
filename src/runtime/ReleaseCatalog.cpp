@@ -14,7 +14,6 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QSysInfo>
-#include <QTimer>
 #include <QUrl>
 
 #include "runtime/ReleaseCatalog.h"
@@ -234,22 +233,22 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       QStringLiteral("LLocr/0.2.0").toUtf8());
 
+    // The transfer timeout is applied by the network stack itself (aborts the
+    // reply and emits finished on expiry), so there is no hand-rolled
+    // QTimer/timedOut flag (review 2.2).
+    request.setTransferTimeout(timeoutMs);
+
     QNetworkReply *reply = nam->get(request);
-    bool timedOut = false;
-    QTimer timer;
-    timer.setSingleShot(true);
     QEventLoop loop;
-    QObject::connect(&timer, &QTimer::timeout, reply,
-                     [&]() { timedOut = true; reply->abort(); });
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    timer.start(timeoutMs);
     loop.exec();
-    if (timedOut) {
+
+    if (reply->error() == QNetworkReply::OperationCanceledError) {
+        reply->deleteLater();
         error = QObject::tr("Timed out fetching release list");
         resetCache(cacheDir);
         return QList<ReleaseInfo>();
     }
-    timer.stop();
 
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const QByteArray payload = reply->readAll();

@@ -7,7 +7,9 @@
 #include <QQmlEngine>
 #include <QString>
 
+#include <functional>
 #include <memory>
+#include <vector>
 
 #include "runtime/ConnectionMode.h"
 #include "runtime/ResolvedConnection.h"
@@ -93,10 +95,13 @@ public:
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
 
     // --- ARM-coordinated resolution --------------------------------------
-    // External:  resolves immediately from SettingsStore.
+    // External:  resolves immediately from SettingsStore (called synchronously
+    //            on the caller's thread, ADR 26).
     // Managed:   starts the process, waits for /health + /v1/models, computes
-    //            the ResolvedConnection. Concurrent callers share one future.
-    QFuture<ResolvedConnection> ensureConnectionReady();
+    //            the ResolvedConnection, then invokes onResolved. Concurrent
+    //            callers share the in-flight resolve: each callback is queued
+    //            and all are invoked once the single resolve completes (3.3).
+    void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
 
     /// Cancels a pending startup (called by RecognitionController::stop() while
     /// the app is in StartingRuntime). Interrupts the start wait, completes any
@@ -135,6 +140,10 @@ public:
     /// Auto-discovers a llama-server binary via RuntimeLocator::autoDiscover()
     /// and returns the found path (or an empty string).
     Q_INVOKABLE QString autoDiscoverPath();
+    /// Shell-escaped command line for the managed launch (wizard preview). Empty
+    /// in External mode or when the binary cannot be probed. Delegates to
+    /// ServerLaunchConfig::toDisplayCommand() — single source of truth (3.2).
+    Q_INVOKABLE QString launchCommandPreview();
     /// Blocking shutdown (main.cpp ~aboutToQuit path). §5.5.
     void shutdownSync();
 
@@ -153,16 +162,15 @@ private:
 
     // External path: build ResolvedConnection directly from settings.
     ResolvedConnection resolveExternal() const;
-    QFuture<ResolvedConnection> resolveExternalFuture() const;
     ResolvedConnection buildManagedConnection() const;
 
     // --- Managed resolve machinery (Stage G-core) ------------------------
-    // Starts (or attaches to) a managed-server resolve and returns the future
-    // all concurrent callers share. Only meaningful in Managed mode.
-    QFuture<ResolvedConnection> beginManagedResolve();
+    // Starts (or attaches to) a managed-server resolve; on completion the queued
+    // callbacks (registered via ensureConnectionReady) are all invoked. Only
+    // meaningful in Managed mode.
+    void beginManagedResolve();
     void completeResolve(ResolvedConnection conn);
     void failResolve(const QString &message);
-    QFuture<ResolvedConnection> makeFuture(ResolvedConnection conn) const;
     void onServerStateForResolve();
 
     void fetchManagedModels();
@@ -183,8 +191,9 @@ private:
 
     SettingsStore &m_settings;
 
-    // In-flight managed resolve (dedup: all concurrent callers share it).
-    QFutureInterface<ResolvedConnection> m_activeResolve;
+    // In-flight managed resolve (dedup: all concurrent callers share it). Each
+    // pending caller's callback is queued here and drained by completeResolve().
+    std::vector<std::function<void(const ResolvedConnection &)>> m_resolveCallbacks;
     bool m_resolveInProgress = false;
 
     QNetworkAccessManager *m_modelsNet = nullptr;

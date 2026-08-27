@@ -25,6 +25,11 @@ Item {
 
     function gib(bytes) { return bytes / (1024 * 1024 * 1024) }
     function giText(bytes) { return (bytes / (1024 * 1024 * 1024)).toFixed(1) }
+    // Command preview is built in C++ (ServerLaunchConfig::toDisplayCommand —
+    // shell-escaped, capability-aware, single source of truth); we only refresh
+    // it when a launch setting it depends on changes.
+    property string commandPreview: ""
+
     function refreshEstimate() {
         if (!Settings.launchModelPath.trim().length) {
             hasEstimate = false
@@ -41,30 +46,23 @@ Item {
         root.hasMemoryWarning = m.totalBytes > m.systemRamBytes * 0.9
     }
 
+    function refreshAll() {
+        refreshEstimate()
+        commandPreview = Runtime.launchCommandPreview()
+    }
+
     Connections {
         target: Settings
-        function onLaunchModelPathChanged() { refreshEstimate() }
-        function onLaunchCtxSizeChanged() { refreshEstimate() }
-        function onLaunchCacheTypeKChanged() { refreshEstimate() }
-        function onLaunchCacheTypeVChanged() { refreshEstimate() }
+        function onLaunchModelPathChanged() { refreshAll() }
+        function onLaunchCtxSizeChanged() { refreshAll() }
+        function onLaunchCacheTypeKChanged() { refreshAll() }
+        function onLaunchCacheTypeVChanged() { refreshAll() }
+        function onLaunchPortChanged() { root.commandPreview = Runtime.launchCommandPreview() }
+        function onLaunchHostChanged() { root.commandPreview = Runtime.launchCommandPreview() }
+        function onLaunchGpuLayersChanged() { root.commandPreview = Runtime.launchCommandPreview() }
+        function onLaunchModelAliasChanged() { root.commandPreview = Runtime.launchCommandPreview() }
     }
-    Component.onCompleted: refreshEstimate()
-
-    function fmtCommand() {
-        var parts = []
-        parts.push(Settings.serverPath.trim())
-        if (Settings.launchModelPath.trim().length)
-            parts.push("--model " + Settings.launchModelPath.trim())
-        parts.push("--host " + Settings.launchHost)
-        if (Settings.launchPort > 0)
-            parts.push("--port " + Settings.launchPort)
-        if (Settings.launchCtxSize > 0)
-            parts.push("--ctx-size " + Settings.launchCtxSize)
-        if (Settings.launchGpuLayers >= 0)
-            parts.push("--n-gpu-layers " + Settings.launchGpuLayers)
-        parts.push("--alias " + Settings.launchModelAlias)
-        return parts.join("  ")
-    }
+    Component.onCompleted: refreshAll()
 
     ColumnLayout {
         anchors.fill: parent
@@ -219,7 +217,7 @@ Item {
                 anchors.fill: parent
                 anchors.margins: 6
                 readOnly: true
-                text: root.fmtCommand()
+                text: root.commandPreview
                 font.family: "monospace"
                 font.pixelSize: Theme.fontSmall
                 color: Theme.textPrimary

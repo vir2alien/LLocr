@@ -54,8 +54,9 @@
   drives `canRecognize` with `configValid`.
 - **ensureConnectionReady()** — the single async entry point that recognition
   uses; External resolves immediately, Managed starts the server, waits for
-  `/health`, queries `/v1/models` and verifies the alias. Concurrent callers
-  share one future (ADR 37).
+  `/health`, queries `/v1/models` and verifies the alias. Callback-based
+  (review 3.3): concurrent callers register a callback and share one in-flight
+  resolve (dedup, ADR 37).
 - **runSelfTest() / runSelfTestQml()** — an independent end-to-end check
   (start → health → `/v1/models` → one OCR request with a built-in test image),
   used by the wizard's Launch step.

@@ -30,6 +30,14 @@
 
 namespace llocr {
 
+namespace {
+// Named timeouts/limits for the managed-runtime network/probe/shutdown paths
+// (review 2.7).
+constexpr int kModelsRequestTimeoutMs = 10000;  // /v1/models query
+constexpr int kProbeTimeoutMs = 5000;            // RuntimeLocator::probeCached
+constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
+}  // namespace
+
 RuntimeController::RuntimeController(SettingsStore &settings, QObject *parent)
     : QObject(parent)
     , m_settings(settings)
@@ -111,9 +119,8 @@ void RuntimeController::recomputeConfigValid()
 
 ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings)
 {
-    return settings.connectionMode() == QString::fromUtf8(SettingsStore::kModeManaged)
-               ? ConnectionMode::Managed
-               : ConnectionMode::External;
+    // Typed facade: the string↔enum mapping lives in SettingsStore (review 2.6).
+    return settings.mode();
 }
 
 bool RuntimeController::canRecognize(bool documentLoaded) const
@@ -142,59 +149,58 @@ ResolvedConnection RuntimeController::resolveExternal() const
     return conn;
 }
 
-QFuture<ResolvedConnection> RuntimeController::makeFuture(ResolvedConnection conn) const
-{
-    QFutureInterface<ResolvedConnection> promise;
-    promise.reportStarted();
-    promise.reportResult(std::move(conn));
-    promise.reportFinished();
-    return promise.future();
-}
-
-QFuture<ResolvedConnection> RuntimeController::resolveExternalFuture() const
-{
-    return makeFuture(resolveExternal());
-}
-
-QFuture<ResolvedConnection> RuntimeController::ensureConnectionReady()
+void RuntimeController::ensureConnectionReady(
+    const std::function<void(const ResolvedConnection &)> &onResolved)
 {
     // External resolves synchronously (ADR 26); never transitions through a
     // Starting state.
-    if (modeFromSettings(m_settings) == ConnectionMode::External)
-        return resolveExternalFuture();
+    if (modeFromSettings(m_settings) == ConnectionMode::External) {
+        onResolved(resolveExternal());
+        return;
+    }
 
-    // Managed: deduplicate — concurrent callers share the in-flight resolve.
-    if (m_resolveInProgress)
-        return m_activeResolve.future();
+    // Managed: deduplicate — concurrent callers share the in-flight resolve by
+    // queuing their callback; completeResolve() invokes every queued callback.
+    if (m_resolveInProgress) {
+        m_resolveCallbacks.push_back(onResolved);
+        return;
+    }
 
-    if (m_lockedOut)
-        return makeFuture(ResolvedConnection{{}, {}, {}, 0,
-                                             tr("Another LLocr instance is already running")});
+    auto failNow = [onResolved](const QString &message) {
+        ResolvedConnection fail;
+        fail.error = message;
+        onResolved(fail);
+    };
 
-    if (!m_configValid)
-        return makeFuture(ResolvedConnection{{}, {}, {}, 0,
-                                              tr("Managed server is not configured")});
+    if (m_lockedOut) {
+        failNow(tr("Another LLocr instance is already running"));
+        return;
+    }
+
+    if (!m_configValid) {
+        failNow(tr("Managed server is not configured"));
+        return;
+    }
 
     // Not currently Ready/Starting: only auto-start when the user allowed it.
     if (m_state != RuntimeState::Ready && m_state != RuntimeState::Starting
         && m_state != RuntimeState::Stopping) {
-        if (!m_settings.autoStart() && !m_settings.startOnDemand())
-            return makeFuture(ResolvedConnection{
-                {}, {}, {}, 0,
-                tr("Server is not set to start automatically. Start it from Settings → Runtime.")});
+        if (!m_settings.autoStart() && !m_settings.startOnDemand()) {
+            failNow(tr("Server is not set to start automatically. "
+                       "Start it from Settings → Runtime."));
+            return;
+        }
     }
 
-    return beginManagedResolve();
+    m_resolveInProgress = true;
+    m_resolveCallbacks.push_back(onResolved);
+    beginManagedResolve();
 }
 
 // --- Managed resolve machinery ---------------------------------------------
 
-QFuture<ResolvedConnection> RuntimeController::beginManagedResolve()
+void RuntimeController::beginManagedResolve()
 {
-    m_resolveInProgress = true;
-    m_activeResolve = QFutureInterface<ResolvedConnection>();
-    m_activeResolve.reportStarted();
-
     switch (m_state) {
     case RuntimeState::Ready:
         // Still verify the alias via /v1/models (§4.2) instead of trusting
@@ -222,8 +228,7 @@ QFuture<ResolvedConnection> RuntimeController::beginManagedResolve()
         }
         break;
     }
-    }
-    return m_activeResolve.future();
+    }  // switch (m_state)
 }
 
 void RuntimeController::completeResolve(ResolvedConnection conn)
@@ -231,8 +236,10 @@ void RuntimeController::completeResolve(ResolvedConnection conn)
     if (!m_resolveInProgress)
         return;
     m_resolveInProgress = false;
-    m_activeResolve.reportResult(std::move(conn));
-    m_activeResolve.reportFinished();
+    const auto callbacks = std::move(m_resolveCallbacks);
+    m_resolveCallbacks.clear();
+    for (const auto &cb : callbacks)
+        cb(conn);
 }
 
 void RuntimeController::failResolve(const QString &message)
@@ -279,7 +286,7 @@ void RuntimeController::fetchManagedModels()
         m_modelsNet = new QNetworkAccessManager(this);
 
     QNetworkRequest req(QUrl(m_modelsBaseUrl + QStringLiteral("/v1/models")));
-    req.setTransferTimeout(10000);
+    req.setTransferTimeout(kModelsRequestTimeoutMs);
     QNetworkReply *reply = m_modelsNet->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onModelsReply(reply); });
 }
@@ -400,21 +407,16 @@ QFuture<SelfTestResult> RuntimeController::runSelfTest()
     }
 
     // Start (or reuse) the server first, then issue one real request.
-    auto *watch = new QFutureWatcher<ResolvedConnection>(this);
-    connect(watch, &QFutureWatcher<ResolvedConnection>::finished, this,
-            [this, watch, promise]() {
-                const ResolvedConnection conn = watch->result();
-                watch->deleteLater();
-                if (conn.baseUrl.isEmpty()) {
-                    SelfTestResult r;
-                    r.error = conn.error.isEmpty() ? tr("Server not available") : conn.error;
-                    promise->reportResult(std::move(r));
-                    promise->reportFinished();
-                    return;
-                }
-                runSelfTestRequest(conn, promise);
-            });
-    watch->setFuture(ensureConnectionReady());
+    ensureConnectionReady([this, promise](const ResolvedConnection &conn) {
+        if (conn.baseUrl.isEmpty()) {
+            SelfTestResult r;
+            r.error = conn.error.isEmpty() ? tr("Server not available") : conn.error;
+            promise->reportResult(std::move(r));
+            promise->reportFinished();
+            return;
+        }
+        runSelfTestRequest(conn, promise);
+    });
     return promise->future();
 }
 
@@ -459,8 +461,9 @@ void RuntimeController::runSelfTestQml()
 {
     if (m_selftestRunning)
         return;
-    // Same guard as runSelfTest(): the self-test exercises the managed
-    // lifecycle; in External mode it must not hit the external server.
+    // The External-mode guard and the resolve→request chain live in
+    // runSelfTest() (single source of truth); this only mirrors its
+    // SelfTestResult into the QML-visible selftest* state.
     if (modeFromSettings(m_settings) == ConnectionMode::External) {
         m_selftestOk = false;
         m_selftestMessage = tr("Self-test is available only in Managed mode");
@@ -472,57 +475,19 @@ void RuntimeController::runSelfTestQml()
     m_selftestMessage = tr("Running self-test…");
     emit selftestFinished();
 
-    // Reuse the same chain; mirror the outcome into the QML-visible state.
-    auto promise = std::make_shared<QFutureInterface<SelfTestResult>>();
-    promise->reportStarted();
-    auto *watch = new QFutureWatcher<ResolvedConnection>(this);
-    connect(watch, &QFutureWatcher<ResolvedConnection>::finished, this,
-            [this, watch, promise]() {
-                const ResolvedConnection conn = watch->result();
+    auto *watch = new QFutureWatcher<SelfTestResult>(this);
+    connect(watch, &QFutureWatcher<SelfTestResult>::finished, this,
+            [this, watch]() {
+                const SelfTestResult r = watch->result();
                 watch->deleteLater();
-                if (conn.baseUrl.isEmpty()) {
-                    m_selftestRunning = false;
-                    m_selftestOk = false;
-                    m_selftestMessage =
-                        conn.error.isEmpty() ? tr("Server not available") : conn.error;
-                    emit selftestFinished();
-                    return;
-                }
-
-                if (!m_selftestProvider)
-                    m_selftestProvider = new OpenAiProvider(this);
-
-                QFutureWatcher<OcrResult> *rw =
-                    new QFutureWatcher<OcrResult>(this);
-                connect(rw, &QFutureWatcher<OcrResult>::finished, this, [this, rw]() {
-                    const OcrResult res =
-                        rw->future().resultCount() > 0 ? rw->result()
-                                                        : OcrResult::makeError(tr("No response"));
-                    rw->deleteLater();
-                    m_selftestRunning = false;
-                    if (res.success) {
-                        m_selftestOk = true;
-                        m_selftestMessage = res.text;
-                    } else {
-                        m_selftestOk = false;
-                        m_selftestMessage = res.errorMessage.isEmpty()
-                                                ? tr("Recognition failed")
-                                                : res.errorMessage;
-                    }
-                    emit selftestFinished();
-                });
-
-                OcrRequest request;
-                request.image = makeTestImage();
-                request.prompt = tr("Describe the text in this image in one short line.");
-                request.modelId = conn.modelId;
-                ProviderConfig config;
-                config.baseUrl = conn.baseUrl;
-                config.apiKey = conn.apiKey;
-                config.timeoutMs = conn.timeoutMs;
-                rw->setFuture(m_selftestProvider->recognize(request, config));
+                m_selftestRunning = false;
+                m_selftestOk = r.ok;
+                m_selftestMessage = r.ok ? r.text
+                                         : (r.error.isEmpty() ? tr("Recognition failed")
+                                                               : r.error);
+                emit selftestFinished();
             });
-    watch->setFuture(ensureConnectionReady());
+    watch->setFuture(runSelfTest());
 }
 
 // ---------------------------------------------------------------------------
@@ -545,7 +510,7 @@ QString RuntimeController::startServer()
                      || m_server->state() == RuntimeState::Stopping))
         return QObject::tr("Server is already running");
 
-    const ProbeResult probe = RuntimeLocator::probeCached(program, 5000);
+    const ProbeResult probe = RuntimeLocator::probeCached(program, kProbeTimeoutMs);
     if (!probe.ok) {
         setStatusMessage(probe.error);
         return probe.error;
@@ -556,11 +521,9 @@ QString RuntimeController::startServer()
 
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings);
     cfg.program = program;
-    // LlamaServerProcess appends --port itself from opts (opts.port is set
-    // below); zero the port here so toArguments() does not emit a second
-    // --host/--port pair. (Previously only the "--port" flag was stripped,
-    // leaving the numeric value as a stray positional argument.)
-    cfg.port = 0;
+    // toArguments() emits --host/--port for the configured port; LlamaServerProcess
+    // only fills a --port when the argv has none (auto-pick, port 0) — so the
+    // port has a single source and no duplicate flag is produced (review 2.5).
     QStringList args = cfg.toArguments(probe.capabilities);
 
     LlamaServerProcess::Options opts;
@@ -664,6 +627,25 @@ QString RuntimeController::autoDiscoverPath()
     return found;
 }
 
+QString RuntimeController::launchCommandPreview()
+{
+    // Single source of truth for the wizard's command preview (review 3.2):
+    // delegate to ServerLaunchConfig::toDisplayCommand() instead of re-assembling
+    // the line by hand in QML — that version is shell-escaped and capability-
+    // aware, and has unit tests. Empty in External mode (nothing to preview).
+    if (modeFromSettings(m_settings) == ConnectionMode::External)
+        return QString();
+    const QString program = m_settings.serverPath().trimmed();
+    if (program.isEmpty())
+        return QString();
+    const ProbeResult probe = RuntimeLocator::probeCached(program, kProbeTimeoutMs);
+    if (!probe.ok)
+        return QString();
+    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings);
+    cfg.program = program;
+    return cfg.toDisplayCommand(probe.capabilities);
+}
+
 QString RuntimeController::serverLog() const
 {
     if (!m_server)
@@ -750,7 +732,7 @@ void RuntimeController::cancelPendingStart()
 void RuntimeController::shutdownSync()
 {
     if (m_server)
-        m_server->shutdownSync(5000);
+        m_server->shutdownSync(kShutdownTimeoutMs);
 }
 
 }  // namespace llocr

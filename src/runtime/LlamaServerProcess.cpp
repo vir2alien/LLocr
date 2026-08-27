@@ -16,6 +16,15 @@
 
 namespace llocr {
 
+namespace {
+// Tuning knobs for log rotation and bounded auto-restart (review 2.7).
+constexpr qint64 kLogRotateSizeBytes = 5 * 1024 * 1024;   // rotate at 5 MB
+constexpr int kLogRotateCheckEveryLines = 256;            // check each N lines
+constexpr qint64 kRestartWindowMs = 5 * 60 * 1000;        // bounded auto-restart
+constexpr int kMaxRestartsInWindow = 3;                   //   ≤3 per window
+constexpr int kRestartDelayMs = 500;                      // grace before respawn
+}  // namespace
+
 // ---------------------------------------------------------------------------
 // Port selection (§5 task 4 / ADR 33)
 // ---------------------------------------------------------------------------
@@ -129,7 +138,10 @@ void LlamaServerProcess::spawn()
     ProcessGuard::install(m_process);
 
     QStringList args = m_opts.arguments;
-    if (m_opts.port > 0) {
+    // Single source for --port (review 2.5): for a fixed port the flag already
+    // comes from ServerLaunchConfig::toArguments(); only auto-pick (port 0 →
+    // resolved here) needs us to add it, and never twice.
+    if (!args.contains(QStringLiteral("--port")) && m_opts.port > 0) {
         args.append(QStringLiteral("--port"));
         args.append(QString::number(m_opts.port));
     }
@@ -287,7 +299,7 @@ void LlamaServerProcess::appendLogFile(const QString &line)
             return;
         m_logStream.setDevice(&m_logFile);
     }
-    if (++m_linesSinceRotateCheck >= 256) {
+    if (++m_linesSinceRotateCheck >= kLogRotateCheckEveryLines) {
         m_linesSinceRotateCheck = 0;
         rotateLogIfNeeded();
         if (!m_logFile.isOpen())  // rotated away underneath us — reopen lazily
@@ -345,7 +357,7 @@ int LlamaServerProcess::parseLoadPercent(const QString &line)
 void LlamaServerProcess::rotateLogIfNeeded()
 {
     const QFileInfo fi(m_opts.logFile);
-    if (!fi.exists() || fi.size() < 5 * 1024 * 1024)
+    if (!fi.exists() || fi.size() < kLogRotateSizeBytes)
         return;
     // Close the persistent handle so the rename works, then reopen lazily.
     closeLogFile();
@@ -384,11 +396,11 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
     const bool restartEligible = m_opts.autoRestart && !m_stopRequested;
     int remaining = 0;
     if (restartEligible) {
-        if (!m_restartWindow.isValid() || m_restartWindow.elapsed() > 5 * 60 * 1000) {
+        if (!m_restartWindow.isValid() || m_restartWindow.elapsed() > kRestartWindowMs) {
             m_restartWindowCount = 0;
             m_restartWindow.restart();
         }
-        remaining = 3 - m_restartWindowCount;
+        remaining = kMaxRestartsInWindow - m_restartWindowCount;
     }
     if (!restartEligible || remaining <= 0)
         markFailed(m_lastError);
@@ -396,7 +408,7 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
     if (restartEligible && remaining > 0) {
         m_restartWindowCount++;
         m_autoRestartScheduled = true;
-        QTimer::singleShot(500, this, [this]() {
+        QTimer::singleShot(kRestartDelayMs, this, [this]() {
             m_autoRestartScheduled = false;
             // stop()/shutdownSync() may have requested a stop during the
             // 500 ms restart window — do not resurrect the server.
