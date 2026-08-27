@@ -7,6 +7,8 @@
 #include <QtEndian>
 #include <QVariant>
 
+#include <cstring>
+
 #if defined(Q_OS_WIN)
 #include <windows.h>
 #elif defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
@@ -162,12 +164,12 @@ private:
         case Int16: { if (!remaining(2)) return false; value = qFromLittleEndian<qint16>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=2; return true; }
         case Uint32: { quint32 v; if (!takeUint32(v)) return false; value = v; return true; }
         case Int32: { quint32 raw; if (!takeUint32(raw)) return false; value = static_cast<qint32>(raw); return true; }
-        case Float32: { if (!remaining(4)) return false; quint32 raw=qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=4; value = static_cast<double>(*reinterpret_cast<float*>(&raw)); return true; }
+        case Float32: { if (!remaining(4)) return false; quint32 raw=qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=4; float f{}; std::memcpy(&f, &raw, sizeof f); value = static_cast<double>(f); return true; }
         case Bool: { quint8 v; if (!takeUint8(v)) return false; value = (v != 0); return true; }
         case String: { QString s; if (!takeString(s)) return false; value = s; return true; }
         case Uint64: { quint64 v; if (!takeU64(v)) return false; value = v; return true; }
         case Int64: { quint64 v; if (!takeU64(v)) return false; value = static_cast<qint64>(v); return true; }
-        case Float64: { if (!remaining(8)) return false; quint64 raw=qFromLittleEndian<quint64>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=8; value = *reinterpret_cast<double*>(&raw); return true; }
+        case Float64: { if (!remaining(8)) return false; quint64 raw=qFromLittleEndian<quint64>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=8; double d{}; std::memcpy(&d, &raw, sizeof d); value = d; return true; }
         case Array: {
             quint32 elemType = 0; quint64 count = 0;
             if (!takeUint32(elemType) || !takeU64(count)) return false;

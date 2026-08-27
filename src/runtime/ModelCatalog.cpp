@@ -253,6 +253,17 @@ bool ModelCatalog::splitMultiPart(const QString &name, QString *baseOut,
     return true;
 }
 
+bool ModelCatalog::splitAscending(const QString &a, const QString &b)
+{
+    QString bA, bB;
+    int iA = 0, cA = 0, iB = 0, cB = 0;
+    const bool mA = splitMultiPart(a, &bA, &iA, &cA);
+    const bool mB = splitMultiPart(b, &bB, &iB, &cB);
+    if (mA && mB && bA == bB && iA != iB)
+        return iA < iB;
+    return a < b;
+}
+
 QString ModelCatalog::quantizationFromName(const QString &name)
 {
     return quantInName(name);

@@ -95,6 +95,11 @@ LlamaServerProcess::~LlamaServerProcess()
 
 void LlamaServerProcess::setOptions(const Options &opts)
 {
+    // 4.4: contract says “no-op while running” — guard it so a pending/active
+    // restart respawns with the previously-committed options, not silently
+    // one with these new ones.
+    if (m_process.state() != QProcess::NotRunning)
+        return;
     m_opts = opts;
     m_process.setProgram(m_opts.program);
 }
@@ -111,9 +116,7 @@ QString LlamaServerProcess::start()
             return portErr;
     }
 
-    m_healthReached = false;
     m_stopRequested = false;
-    m_modelsProbed = false;
     // §3.5: assemble via QUrl so an IPv6 host (::1) is bracketed correctly.
     if (m_opts.baseUrl.isEmpty()) {
         QUrl url;
@@ -130,6 +133,10 @@ QString LlamaServerProcess::start()
 
 void LlamaServerProcess::spawn()
 {
+    // 4.3: reset per-start probe flags here (not in start()) so auto-restart —
+    // which calls spawn() directly — re-enables the /v1/models fallback.
+    m_healthReached = false;
+    m_modelsProbed = false;
     m_attemptsTotal++;
     m_loadPercent = -1;
     setState(RuntimeState::Starting);
@@ -301,9 +308,15 @@ void LlamaServerProcess::appendLogFile(const QString &line)
     }
     if (++m_linesSinceRotateCheck >= kLogRotateCheckEveryLines) {
         m_linesSinceRotateCheck = 0;
-        rotateLogIfNeeded();
-        if (!m_logFile.isOpen())  // rotated away underneath us — reopen lazily
-            return;
+        if (rotateLogIfNeeded()) {
+            // 4.5: rotation closed the persistent handle — reopen immediately
+            // so this current (trigger) line is written rather than lost.
+            m_logFile.setFileName(m_opts.logFile);
+            if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append
+                                | QIODevice::Text))
+                return;
+            m_logStream.setDevice(&m_logFile);
+        }
     }
     m_logStream << line << u'\n';
     m_logStream.flush();
@@ -354,12 +367,12 @@ int LlamaServerProcess::parseLoadPercent(const QString &line)
     return qBound(0, int(qRound(value)), 100);
 }
 
-void LlamaServerProcess::rotateLogIfNeeded()
+bool LlamaServerProcess::rotateLogIfNeeded()
 {
     const QFileInfo fi(m_opts.logFile);
     if (!fi.exists() || fi.size() < kLogRotateSizeBytes)
-        return;
-    // Close the persistent handle so the rename works, then reopen lazily.
+        return false;
+    // Close the persistent handle so the rename works.
     closeLogFile();
     // Rotate *.log -> *.1 -> *.2 -> *.3 (drop the oldest).
     const QString base = m_opts.logFile;
@@ -367,6 +380,7 @@ void LlamaServerProcess::rotateLogIfNeeded()
     QFile::rename(base + QStringLiteral(".2"), base + QStringLiteral(".3"));
     QFile::rename(base + QStringLiteral(".1"), base + QStringLiteral(".2"));
     QFile::rename(base, base + QStringLiteral(".1"));
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -377,6 +391,11 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
 {
     if (m_healthTimer)
         m_healthTimer->stop();
+
+    // 4.2: the child terminated for whatever reason — its owner record is now
+    // stale and must not linger (macOS would reuse the dead pid/port). A later
+    // respawn (auto-restart) re-writes owner.json in spawn().
+    clearOwnerJson();
 
     if (m_stopRequested) {
         setState(RuntimeState::Stopped);
@@ -393,7 +412,8 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
 
     // §3.1: when auto-restart is still eligible, do not pass through Failed —
     // enter it only once the restart budget is exhausted or restart is off.
-    const bool restartEligible = m_opts.autoRestart && !m_stopRequested;
+    const bool restartEligible = m_opts.autoRestart && !m_stopRequested
+                                 && m_state != RuntimeState::Failed;
     int remaining = 0;
     if (restartEligible) {
         if (!m_restartWindow.isValid() || m_restartWindow.elapsed() > kRestartWindowMs) {
@@ -402,7 +422,7 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
         }
         remaining = kMaxRestartsInWindow - m_restartWindowCount;
     }
-    if (!restartEligible || remaining <= 0)
+    if ((!restartEligible || remaining <= 0) && m_state != RuntimeState::Failed)
         markFailed(m_lastError);
 
     if (restartEligible && remaining > 0) {
@@ -595,6 +615,14 @@ void LlamaServerProcess::markFailed(const QString &reason)
         m_healthTimer->stop();
     setState(RuntimeState::Failed);
     setStatus(reason);
+    // 4.1: entering Failed must never leave a live child behind — otherwise a
+    // subsequent start() would report “Server is already running” against an
+    // unresponsive server (deadlock), and its eventual natural death would
+    // trigger a bogus auto-restart. Kill it before emitting.
+    if (m_process.state() != QProcess::NotRunning) {
+        m_process.kill();
+        m_process.waitForFinished(2000);
+    }
     appendLine(reason);  // ring + log + emit
 }
 

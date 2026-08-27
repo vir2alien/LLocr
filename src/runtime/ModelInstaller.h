@@ -140,6 +140,7 @@ private:
         QString modelPath;        // absolute first part after install
         QString mmprojRel;        // repo-relative projector path, or empty
         QStringList modelNames;   // repo-relative model file paths (all parts)
+        QHash<QString, QString> fileSha256;  // preset-pinned digest per file name (lowercased)
         QList<HfFile> files;      // full candidate file list for the repo
     };
 
@@ -149,7 +150,6 @@ private:
     void setStatusMessage(const QString &msg);
 
     void reloadPresetsInternal();
-    void onPresetsLoadedInternal();
 
     void refreshInstalled();
     void beginPrepare(const ModelPreset &preset);

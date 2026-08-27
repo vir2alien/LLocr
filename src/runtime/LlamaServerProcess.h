@@ -108,7 +108,7 @@ private:
     void onReadyRead();
     void onProcessFinished(int exitCode, QProcess::ExitStatus status);
     void markFailed(const QString &reason);
-    void rotateLogIfNeeded();
+    bool rotateLogIfNeeded();  // true if the log file was rotated this call
     void appendLine(const QString &line);
     void closeLogFile();
     void writeOwnerJson();

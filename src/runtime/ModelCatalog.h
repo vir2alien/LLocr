@@ -86,6 +86,11 @@ public:
     /// True when `name` is one part of a multi-part GGUF split.
     static bool isMultiPart(const QString &name);
 
+    /// Sorting comparator that orders the parts of the same GGUF split by their
+    /// ascending index (so “-00001-of-NNN” sorts first), falling back to plain
+    /// lexicographic comparison. A strict weak ordering on file names.
+    static bool splitAscending(const QString &a, const QString &b);
+
     /// Extracts the quant token from a file name, e.g. "Q4_K_M", "F16", or an
     /// empty string when none is recognized.
     static QString quantizationFromName(const QString &name);

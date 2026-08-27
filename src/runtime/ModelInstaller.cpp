@@ -53,23 +53,10 @@ QString repoDirName(const QString &repo)
 // paths (HfFile::path), so files inside repo subdirectories download correctly.
 void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
                       const QString &preferMmproj, QStringList *modelPaths,
-                      QString *mmprojRel)
+                      QString &mmprojRel)
 {
     modelPaths->clear();
-    if (mmprojRel)
-        mmprojRel->clear();
-
-    // Split-index order so the "…-00001-of-NNN" part sorts first (mirrors
-    // ModelRegistry::scanModelsDir).
-    auto partLess = [](const QString &a, const QString &b) {
-        QString bA, bB;
-        int iA = 0, cA = 0, iB = 0, cB = 0;
-        const bool mA = ModelCatalog::splitMultiPart(a, &bA, &iA, &cA);
-        const bool mB = ModelCatalog::splitMultiPart(b, &bB, &iB, &cB);
-        if (mA && mB && bA == bB && iA != iB)
-            return iA < iB;
-        return a < b;
-    };
+    mmprojRel.clear();
 
     QStringList singles;                                // repo-relative paths
     QHash<QString, QPair<QStringList, qint64>> groups;  // key -> (paths,size)
@@ -98,18 +85,19 @@ void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
         }
     }
     for (auto it = groups.begin(); it != groups.end(); ++it)
-        std::sort(it.value().first.begin(), it.value().first.end(), partLess);
+        std::sort(it.value().first.begin(), it.value().first.end(),
+                  &ModelCatalog::splitAscending);
 
-    if (mmprojRel) {
+    if (mmprojRel.isEmpty()) {
         for (const QString &p : projectors) {
             if (!preferMmproj.isEmpty()
                 && ModelCatalog::leafName(p) == preferMmproj) {
-                *mmprojRel = p;
+                mmprojRel = p;
                 break;
             }
         }
-        if (mmprojRel->isEmpty() && !projectors.isEmpty())
-            *mmprojRel = projectors.first();
+        if (mmprojRel.isEmpty() && !projectors.isEmpty())
+            mmprojRel = projectors.first();
     }
 
     if (!prefer.isEmpty()) {
@@ -256,11 +244,6 @@ void ModelInstaller::reloadPresetsInternal()
     emit presetsChanged();
 }
 
-void ModelInstaller::onPresetsLoadedInternal()
-{
-    // Reserved for an async preset load; load() is currently synchronous.
-}
-
 void ModelInstaller::refreshInstalled()
 {
     QString err;
@@ -393,15 +376,19 @@ void ModelInstaller::beginPrepare(const ModelPreset &preset)
     const QString prefer = preset.model;
     const QString preferMmproj = preset.mmproj;
 
+    // 4.7: snapshot main-thread state into locals so the worker never reads
+    // m_settings/m_paths (QObject members) concurrently with the GUI thread.
+    const QString token = m_settings.hfToken();
+    const QString modelsDir = m_paths.modelsDir();
+
     QFuture<QPair<Pending, QString>> future =
-        QtConcurrent::run([this, repo, pin, prefer, preferMmproj, preset]()
-                              -> QPair<Pending, QString> {
+        QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, token,
+                          modelsDir]() -> QPair<Pending, QString> {
             QNetworkAccessManager nam;
             QString err;
             // Gated/private repos need the token already at tree/head-sha time,
             // not only for file downloads.
             QByteArray auth;
-            const QString token = m_settings.hfToken();
             if (!token.isEmpty())
                 auth = QStringLiteral("Bearer %1").arg(token).toUtf8();
             QString rev;
@@ -423,7 +410,7 @@ void ModelInstaller::beginPrepare(const ModelPreset &preset)
 
             QStringList modelNames;
             QString mmprojRel;
-            selectModelFiles(tree, prefer, preferMmproj, &modelNames, &mmprojRel);
+            selectModelFiles(tree, prefer, preferMmproj, &modelNames, mmprojRel);
             if (modelNames.isEmpty())
                 return {Pending{}, QObject::tr("No usable model file found in %1").arg(repo)};
 
@@ -436,9 +423,10 @@ void ModelInstaller::beginPrepare(const ModelPreset &preset)
             p.prompt = preset.prompt;
             p.ctxSize = preset.ctxSize;
             p.presetId = preset.id;
-            p.dir = QDir(m_paths.modelsDir()).filePath(repoDirName(repo));
+            p.dir = QDir(modelsDir).filePath(repoDirName(repo));
             p.mmprojRel = mmprojRel;
             p.modelNames = modelNames;
+            p.fileSha256 = preset.sha256;  // 4.8: pin per-file digests
             p.files = tree;
             return {std::move(p), QString()};
         });
@@ -526,7 +514,24 @@ void ModelInstaller::enqueueFile(const QString &repoPath, const QString &repo,
     req.url = url;
     req.targetDir = m_pending.dir;
     req.fileName = leaf;
-    req.sha256 = QString();   // verified via GGUF magic after download
+    // 4.8: verify each downloaded file by sha256 (ADR 29), not only GGUF-magic
+    // on the primary part later. A preset-pinned digest (per lowercased file
+    // name) wins; otherwise fall back to the HF lfs.oid for this path. When
+    // neither is available the digest stays empty and DownloadTask skips the
+    // check (non-LFS files), as before.
+    QString expectedSha;
+    const QString pinned = m_pending.fileSha256.value(leaf.toLower());
+    if (!pinned.isEmpty()) {
+        expectedSha = pinned;
+    } else {
+        for (const HfFile &hf : std::as_const(m_pending.files)) {
+            if (hf.path == repoPath) {
+                expectedSha = hf.lfsOid;
+                break;
+            }
+        }
+    }
+    req.sha256 = expectedSha;
     req.authorization = auth;
 
     const int row = m_downloads->enqueue(req);
@@ -662,18 +667,20 @@ void ModelInstaller::startSearch()
         return;
     }
     const QString q = m_searchQuery.trimmed();
+    // 4.7: snapshot the token up front; the worker reads only the local copy,
+    // never m_settings from the GUI thread.
+    const QString token = m_settings.hfToken();
     m_searchActive = true;
     setBusy(true);
     setState(State::Fetching);
     setStatusMessage(tr("Searching Hugging Face …"));
     emit searchChanged();
 
-    QFuture<QPair<QList<HfModelSummary>, QString>> future = QtConcurrent::run(
-        [this, q]() -> QPair<QList<HfModelSummary>, QString> {
+    QFuture<QPair<QList<HfModelSummary>, QString>> future =
+        QtConcurrent::run([q, token]() -> QPair<QList<HfModelSummary>, QString> {
             QNetworkAccessManager nam;
             QString error;
             QByteArray auth;
-            const QString token = m_settings.hfToken();
             if (!token.isEmpty())
                 auth = QStringLiteral("Bearer %1").arg(token).toUtf8();
             const QList<HfModelSummary> res = ModelCatalog::search(&nam, q, error,

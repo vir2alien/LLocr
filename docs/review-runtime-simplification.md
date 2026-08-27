@@ -1,6 +1,8 @@
 # Review — «костыли и велосипеды» в runtime (упрощение и устранение оверхеда)
 
-> Статус: **весь список открыт** (ни один пункт ещё не исправлен).
+> Статус: **часть списка исправлена.** Выполнены группы 3.1–3.3, 1.2(НЕ ФИКСИЛИ),
+> 2.2, 2.5–2.7, все баги 4.1–4.9 и компаратор 1.3. Остаются (см. раздел 5):
+> упрощения 1.1 (отдельно), 1.4, 1.5, 2.1, 2.3, 2.4, 2.8, 3.4–3.8.
 > Назначение: рабочий список для дальнейшей доработки. Агенты берут пункт,
 > фиксируют в коде, ставят ему `**FIXED**` и дописывают, что именно изменилось.
 > Номера сроков/строк могут «уплыть» после правок — проверять по функциям/файлам.
@@ -18,7 +20,7 @@
 |---|-----|---------|------|--------|
 | 1.1 | Велосипед | `src/runtime/ArchiveExtractor.cpp` | Рукописный ZIP + DEFLATE + Huffman + CRC-32 (~650 строк) вместо zlib/miniz | OPEN |
 | 1.2 | Велосипед | `src/runtime/ServerLaunchConfig.cpp:32-72` | `parseExtraArgs` == `QProcess::splitCommand()` | **НЕ ФИКСИЛИ** — см. §1.2 (нет совпадения поведения) |
-| 1.3 | Велосипед | `ModelRegistry.cpp:43-57` + `ModelInstaller.cpp:354-372` | Дублированный компаратор сортировки частей | OPEN |
+| 1.3 | Велосипед | `ModelRegistry.cpp` + `ModelInstaller.cpp` | Дублированный компаратор сортировки частей | **FIXED** (см. §1.3) |
 | 1.4 | Велосипед | `ModelMemoryEstimator.cpp:57-203` | Рукописный парсер GGUF-заголовка (+ UB, см. 4.x) | OPEN |
 | 1.5 | Велосипед | `ModelInstaller.h` | QML-модель списка через `int index → QVariantMap` | OPEN |
 | 2.1 | Костыль | `LlamaServerProcess.cpp:306-343` | Хрупкий парсинг прогресса llama.cpp по stdout/stderr | OPEN |
@@ -37,15 +39,15 @@
 | 3.6 | Оверхед | `RuntimeLocator.cpp:180-225` | LRU-кэш из 4 слотов для одного бинарника | OPEN |
 | 3.7 | Оверхед | `UiController.h` + `main.cpp:105,110` | Тройная регистрация QML-синглтона | OPEN |
 | 3.8 | Оверхед | `RecognitionController`/`AppController` | Парные методы, отличающиеся одним флагом | OPEN |
-| 4.1 | Баг | `LlamaServerProcess.cpp:579-587` | `markFailed()` не убивает живого сына → deadlock restart | OPEN |
-| 4.2 | Баг | `LlamaServerProcess.cpp:369-375` | `owner.json` не чистится при неожиданном выходе | OPEN |
-| 4.3 | Баг | `LlamaServerProcess.cpp:107 vs 399-406` | `/v1/models` фолбэк отключён на auto-restart | OPEN |
-| 4.4 | Баг | `LlamaServerProcess.cpp:87-91` | `setOptions()` нарушает контракт «no-op while running» | OPEN |
-| 4.5 | Баг | `LlamaServerProcess.cpp:290-298` | Ротация лога теряет строку-триггер | OPEN |
-| 4.6 | Баг | `ModelMemoryEstimator.cpp:163-170` | Strict-aliasing UB в `GgufReader::takeValue` | OPEN |
-| 4.7 | Баг | `ModelInstaller.cpp:401,676` | Data race: чтение `m_settings`/`m_paths` из QtConcurrent | OPEN |
-| 4.8 | Баг | `ModelInstaller.cpp:525-530` | `sha256`/`lfsOid` собираются, но не исполняются | OPEN |
-| 4.9 | Баг | `ModelInstaller.cpp:259-262`, `selectModelFiles` | Мёртвый метод + всегда-не-null указатель `mmprojRel` | OPEN |
+| 4.1 | Баг | `LlamaServerProcess.cpp:591-601` | `markFailed()` не убивает живого сына → deadlock restart | **FIXED** (см. §4.1) |
+| 4.2 | Баг | `LlamaServerProcess.cpp:395-398` | `owner.json` не чистится при неожиданном выходе | **FIXED** (см. §4.2) |
+| 4.3 | Баг | `LlamaServerProcess.cpp` | `/v1/models` фолбэк отключён на auto-restart | **FIXED** (см. §4.3) |
+| 4.4 | Баг | `LlamaServerProcess.cpp:96-105` | `setOptions()` нарушает контракт «no-op while running» | **FIXED** (см. §4.4) |
+| 4.5 | Баг | `LlamaServerProcess.cpp:289-310` | Ротация лога теряет строку-триггер | **FIXED** (см. §4.5) |
+| 4.6 | Баг | `ModelMemoryEstimator.cpp:163-170` | Strict-aliasing UB в `GgufReader::takeValue` | **FIXED** (см. §4.6) |
+| 4.7 | Баг | `ModelInstaller.cpp:390-443,655-684` | Data race: чтение `m_settings`/`m_paths` из QtConcurrent | **FIXED** (см. §4.7) |
+| 4.8 | Баг | `ModelInstaller.cpp:513-537` | `sha256`/`lfsOid` собираются, но не исполняются | **FIXED** (см. §4.8) |
+| 4.9 | Баг | `ModelInstaller.cpp` | Мёртвый метод + всегда-не-null указатель `mmprojRel` | **FIXED** (см. §4.9) |
 
 ---
 
@@ -92,13 +94,21 @@ Unix-путь). Раз одиночные кавычки — заявленно�
 заменить `splitCommand` и упростить тест/комментарий — отдельная задача.
 
 ### 1.3 — дублированный компаратор сортировки частей
-**Файлы:** `src/runtime/ModelRegistry.cpp:43-57` (`sortSplitParts`),
-`src/runtime/ModelInstaller.cpp:354-372` (`partLess`)
-**Статус:** OPEN
+**Файлы:** `src/runtime/ModelRegistry.cpp` (`sortSplitParts`),
+`src/runtime/ModelInstaller.cpp` (`partLess`)
+**Статус: FIXED**
 
 Побайтово один и тот же компаратор части GGUF вокруг `ModelCatalog::splitMultiPart`.
 Вынести в одну свободную функцию (например, `ModelCatalog::splitAscending`) и
 использовать её в обоих местах.
+
+**FIXED (1.3):** общий компаратор вынесен в `ModelCatalog::splitAscending(a, b)`
+(объявление в `ModelCatalog.h`, реализация в `ModelCatalog.cpp` рядом с
+`splitMultiPart`). `ModelRegistry::sortSplitParts` теперь
+`std::sort(..., &ModelCatalog::splitAscending)`, а `partLess`-лямбда удалена из
+`selectModelFiles`, где `std::sort(..., &ModelCatalog::splitAscending)`. Требует
+`ModelCatalog.h` (уже инклюдится обоими файлами). Поведение побайтово
+совпадает с прежним.
 
 ### 1.4 — рукописный парсер GGUF
 **Файл/строки:** `src/runtime/ModelMemoryEstimator.cpp:57-203` (`GgufReader`)
@@ -357,64 +367,112 @@ at a time»). Достаточно одной пары ключ+результа
 > `BUG` означает, что код принимает неверное состояние/не выполняет заявленное.
 
 ### 4.1 [BUG] `markFailed()` не убивает живого процесса → `start()` в deadlock
-`src/runtime/LlamaServerProcess.cpp:579-587`
+`src/runtime/LlamaServerProcess.cpp:591-601`
 При таймауте старта (`waitForStarted`/health не достучались) код вызывает
 `markFailed()`, который не останавливает живого сына. `start()` далее
 возвращает «Server is already running», UI может показывать `Failed` при живом
 дочернем процессе, а при его смерти — авто-рестарт с `Failed`. Лечение: на пути
 таймаута старта детерминированно убить процесс до `markFailed()`.
 
+**FIXED (4.1):** `markFailed()` теперь детерминированно убивает живого сына
+(`kill()` + `waitForFinished(2000)`) перед переходом в `Failed` — Enter в `Failed`
+никогда не оставляет живой дочерний процесс, поэтому `start()` больше не
+«мёртво петляет» на «already running». Чтобы убийство не провоцировало
+авто-рестарт «с Failed», `onProcessFinished()` учитывает `m_state != Failed` в
+`restartEligible` и не зовёт `markFailed` повторно, когда статус уже `Failed`
+(исключает дублирующую запись в лог). Покрыто полным прогоном тестов (в т.ч.
+`test_ensure_connection::healthTimeoutSurfacesError`).
+
 ### 4.2 `owner.json` не чистится при неожиданном выходе
-`src/runtime/LlamaServerProcess.cpp:369-375`
+`src/runtime/LlamaServerProcess.cpp:395-398`
 `clearOwnerJson()` выполняется только когда остановка пользовательская
 (`m_stopRequested` + `stopOnExit`). При native/крах/неудачном bind запись
-(pid+порт+program) остаётся; macOS reuse находит стейл-запись. Чистить owner
+(pid+порт+program) остаётся; macOS reuse находит стейл-запись. Собирать owner
 на любом терминальном состоянии процесса, а не только на stop-патэ.
 
+**FIXED (4.2):** `clearOwnerJson()` теперь вызывается в начале
+`onProcessFinished()` — как только дочерний процесс завершился по любой причине,
+стейл-запись owner удаляется. Авто-рестарт потом пишет свежий owner в `spawn()`
+(`writeOwnerJson()`). Путь «оставить сервер запущенным» (`stopOnExit=false`) не
+доходит до `onProcessFinished` — owner сохраняется как задумано.
+
 ### 4.3 `/v1/models` фолб отключён на auto-restart
-`src/runtime/LlamaServerProcess.cpp:107 vs 399-406`
-`start()` сбрасывает `m_modelsProbed=false`, а auto-restart зовёт `spawn()`
+`src/runtime/LlamaServerProcess.cpp:134-140`
+`start()` сбрасывал `m_modelsProbed=false`, а auto-restart зовёт `spawn()`
 напрямую без сброса. Фолбак «просить /v1/models, если нет /health» выполнится
 только в первый раз. Сброс — в начало `spawn()`.
 
+**FIXED (4.3):** сброс `m_modelsProbed` (и `m_healthReached`) перенесён в начало
+`spawn()` — общего пути и для первого старта, и для авто-рестарта. Фолбак
+`/v1/models` снова доступен на каждой попытке старта.
+
 ### 4.4 `setOptions()` нарушает контракт «no-op while running»
-`src/runtime/LlamaServerProcess.cpp:87-91`
+`src/runtime/LlamaServerProcess.cpp:96-105`
 В заголовке заявлено «No-op while running», но гвардия отсутствует. Если вызвать
 среди запущенного сервера (или pendin-рестарта), `m_opts` молча перезапишется и
 запланированный `singleShot(500ms)`-рестарт поднимет сервер с новыми опциями.
 Добавить `if (m_process.state() != QProcess::NotRunning) return;`.
 
+**FIXED (4.4):** гвардия добавлена — при ненулевом состоянии процесса
+`setOptions()` возвращается, не трогая `m_opts`, что защищает от
+полу-рестарта с новыми опциями.
+
 ### 4.5 ротация лога теряет строку-триггер
-`src/runtime/LlamaServerProcess.cpp:290-298`
+`src/runtime/LlamaServerProcess.cpp:289-310`
 При превышении лимита `rotateLogIfNeeded()` закрывает/переименовывает файл, и
 поток делает `return` без записи этой строки — она теряется. `m_logStream`
-остаётся на закрытом девайс до следующей записи. После ротации переоткрыть
+остаётся на закрытом девайсе до следующей записи. После ротации переоткрыть
 файл и продолжить запись текущей строки.
 
+**FIXED (4.5):** `rotateLogIfNeeded()` возвращает `bool` (была ли ротация); в
+`appendLogFile()` после ротации файл немедленно переоткрывается (WriteOnly|
+Append|Text), и текущая (триггерная) строка пишется без потерь.
+
 ### 4.6 [BUG] Strict-aliasing UB в GGUF-ридере
-`src/runtime/ModelMemoryEstimator.cpp:163-170` (`GgufReader::takeValue`)
+`src/runtime/ModelMemoryEstimator.cpp:165,170` (`GgufReader::takeValue`)
 `*reinterpret_cast<float*>(&raw)`/`*reinterpret_cast<double*>(&raw)` — нарушение
 строго-алиасинга (UB), на `-O2/-O3` может грузиться мусор. Заменить на
-`std::memcpy(&f, &raw, sizeof f)` (или весь ридер на `QDataStream`
+`std::memcpy(&f, &raw, sizeof f)` (или весь ридер на `QDataStream
 `setFloatingPointPrecision`+`LittleEndian`). (`Int8` через `const qint8*` корректен —
-`char`-алливающий тип).
+`char`-алиасующий тип).
+
+**FIXED (4.6):** `Float32`/`Float64` теперь читаются через `std::memcpy`
+(добавлен `#include <cstring>`), строго-алиасинг-UB устранён; `Int8`-путь через
+`const qint8*` оставлен (корректен).
 
 ### 4.7 [BUG] Data race чтения `m_settings`/`m_paths` из QtConcurrent
-`src/runtime/ModelInstaller.cpp:401,676` (`beginPrepare`), `:439`
-Лямбды `QtConcurrent::run` захватывают `this` и читают `&m_settings`/`&m_paths`
+`src/runtime/ModelInstaller.cpp:390-443,655-684` (`beginPrepare`, `startSearch`)
+Лямбды `QtConcurrent::run` захватывали `this` и читают `&m_settings`/`&m_paths`
 (main-thread QObject) на воркер-потоке параллельно с `setHfToken` из QML →
 data race. Снапшот `token`/`modelsDir` в локальные переменные до запуска воркера.
 
+**FIXED (4.7):** и в `beginPrepare`, и в `startSearch` значения `hfToken()`
+(и `modelsDir()` в начале `beginPrepare`) снапшотятся в локальные переменные до
+`QtConcurrent::run`, воркер получает только копии и не захватывает `this` —
+чтение мейн-тредовых QObject-членов из пула устранено.
+
 ### 4.8 `sha256`/`lfsOid` собираются, но не исполняются
-`src/runtime/ModelInstaller.cpp:525-530` (`enqueueFile`)
-В `req.sha256` отдаётся пустая строка (единственная «сильная проверка» ADR 29
+`src/runtime/ModelInstaller.cpp:513-537` (`enqueueFile`)
+В `req.sha256` отдавалась пустая строка (единственная «сильная проверка» ADR 29
 `lfsOid` и `preset.sha256` никуда не вяжутся); GGUF-magic проверяется только
 у primary-части, не у `mmproj`/доп. Проверить дигест через `DownloadTask::verifySha256`.
 
+**FIXED (4.8):** `req.sha256` теперь заполняется дигестом для каждого файла.
+Приоритет: пинованный `preset.sha256` по имени файла (нижний регистр), иначе
+`HfFile::lfsOid` для этого repoPath (ADR 29). `Pending.fileSha256` добавлен.
+`DownloadTask::verifySha256` сверяет каждый скачанный файл (primary, `mmproj` и
+части), а не только GGUF-magic primary-части. Для не-LFS файлов (нет дигеста)
+проверка по-прежнему пропускается.
+
 ### 4.9 мёртвый код и `-не-null` указатель
-`src/runtime/ModelInstaller.cpp:259-262` (`onPresetsLoadedInternal` — невызываемый
-резерв), `selectModelFiles` принимает `QString *mmprojRel` и всегда не-null
+`src/runtime/ModelInstaller.cpp` (`onPresetsLoadedInternal` — невызываемый
+резерв), `selectModelFiles` принимал `QString *mmprojRel` и всегда не-null
 (единственный вызов с `&mmprojRel`) — убрать null-guard, сделать ссылку/структуру.
+
+**FIXED (4.9):** удалён невызываемый `ModelInstaller::onPresetsLoadedInternal()
+` (пустой резерв) из `.cpp` и заголовка. `selectModelFiles` теперь принимает
+`QString &mmprojRel` (ссылка встроена в файл-статик функцию), null-guard убран,
+единственный вызов в `beginPrepare` упрощён (−`&`).
 
 ---
 

@@ -39,21 +39,10 @@ bool isSubpathOf(const QString &path, const QString &dir)
     return path == dir || path.startsWith(dir + QDir::separator());
 }
 
-// Split names sort so the "…-00001-of-NNN" part is first.
+// Split names sort so the “…-00001-of-NNN” part is first.
 void sortSplitParts(QStringList *names)
 {
-    std::sort(names->begin(), names->end(),
-              [](const QString &a, const QString &b) {
-                  QString bA, bB;
-                  int iA = 0, cA = 0, iB = 0, cB = 0;
-                  const bool mA =
-                      ModelCatalog::splitMultiPart(a, &bA, &iA, &cA);
-                  const bool mB =
-                      ModelCatalog::splitMultiPart(b, &bB, &iB, &cB);
-                  if (mA && mB && bA == bB && iA != iB)
-                      return iA < iB;
-                  return a < b;
-              });
+    std::sort(names->begin(), names->end(), &ModelCatalog::splitAscending);
 }
 
 ModelEntry entryFromJson(const QJsonObject &o)
