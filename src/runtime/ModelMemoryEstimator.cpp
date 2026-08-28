@@ -4,7 +4,6 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QString>
-#include <QtEndian>
 #include <QVariant>
 
 #include <cstring>
@@ -73,40 +72,51 @@ public:
         m_data = m_file.read(kMaxHeaderBytes);
     }
 
+    // § review 1.4: the whole header is read through QDataStream over the
+    // bounded prefix. LittleEndian matches the GGUF format; status() after each
+    // read replaces the manual position/bounds tracking. Float32/Float64 are
+    // read as raw little-endian bit patterns and memcpy'd into float/double:
+    // QDataStream's single setFloatingPointPrecision cannot serve a header that
+    // interleaves Float32 and Float64 values, and memcpy avoids strict-aliasing
+    // UB (review 4.6).
     bool run(QHash<QString, QVariant> &out, QString &error)
     {
         if (!m_error.isEmpty()) {
             error = m_error;
             return false;
         }
-        if (m_data.size() < 4 || m_data.left(4) != "GGUF") {
+        QDataStream in(m_data);
+        in.setByteOrder(QDataStream::LittleEndian);
+
+        char magic[4] = {};
+        if (in.readRawData(magic, 4) != 4
+            || std::memcmp(magic, "GGUF", 4) != 0) {
             error = QStringLiteral("not a GGUF file");
             return false;
         }
-        m_pos = 4;
-        if (!takeUint32(m_version))
+        if (!takeUint32(in, m_version))
             return setError(error, QStringLiteral("truncated header"));
         if (m_version < 2) {
             error = QStringLiteral("unsupported GGUF version %1").arg(m_version);
             return false;
         }
         quint64 tensorCount = 0, kvCount = 0;
-        if (!takeU64(tensorCount) || !takeU64(kvCount))
+        if (!takeU64(in, tensorCount) || !takeU64(in, kvCount))
             return setError(error, QStringLiteral("truncated header counts"));
+        Q_UNUSED(tensorCount);
 
         for (quint64 i = 0; i < kvCount; ++i) {
             QString key;
-            if (!takeString(key))
+            if (!takeString(in, key))
                 return setError(error, QStringLiteral("truncated metadata key"));
             quint32 type = 0;
-            if (!takeUint32(type))
+            if (!takeUint32(in, type))
                 return setError(error, QStringLiteral("truncated metadata type"));
             QVariant value;
-            if (!takeValue(type, value))
+            if (!takeValue(in, type, value))
                 return setError(error, QStringLiteral("truncated metadata value"));
             out.insert(key, value);
         }
-        Q_UNUSED(tensorCount);
         return true;
     }
 
@@ -117,65 +127,64 @@ private:
         return false;
     }
 
-private:
-    bool takeUint8(quint8 &v) const
+    bool takeUint8(QDataStream &in, quint8 &v) const
     {
-        if (!remaining(1))
-            return false;
-        v = static_cast<quint8>(m_data.at(m_pos));
-        m_pos += 1;
-        return true;
+        in >> v;
+        return in.status() == QDataStream::Ok;
     }
-    bool takeUint32(quint32 &v) const
+    bool takeUint32(QDataStream &in, quint32 &v) const
     {
-        if (!remaining(4))
-            return false;
-        v = qFromLittleEndian<quint32>(
-            reinterpret_cast<const uchar *>(m_data.constData() + m_pos));
-        m_pos += 4;
-        return true;
+        in >> v;
+        return in.status() == QDataStream::Ok;
     }
-    bool takeU64(quint64 &v) const
+    bool takeU64(QDataStream &in, quint64 &v) const
     {
-        if (!remaining(8))
-            return false;
-        v = qFromLittleEndian<quint64>(
-            reinterpret_cast<const uchar *>(m_data.constData() + m_pos));
-        m_pos += 8;
-        return true;
+        in >> v;
+        return in.status() == QDataStream::Ok;
     }
-    bool takeString(QString &s) const
+    bool takeString(QDataStream &in, QString &s) const
     {
         quint64 len = 0;
-        if (!takeU64(len) || !remaining(len))
+        if (!takeU64(in, len))
             return false;
-        s = QString::fromUtf8(m_data.constData() + m_pos, static_cast<int>(len));
-        m_pos += len;
+        // len is attacker-controlled: never allocate past the bounded prefix.
+        if (len > static_cast<quint64>(in.device()->bytesAvailable()))
+            return false;
+        QByteArray raw(static_cast<int>(len), Qt::Uninitialized);
+        if (in.readRawData(raw.data(), static_cast<qint64>(len)) != static_cast<qint64>(len))
+            return false;
+        s = QString::fromUtf8(raw);
         return true;
     }
 
     // Reads a single metadata value of `type`, advancing past its payload.
-    bool takeValue(quint32 type, QVariant &value) const
+    bool takeValue(QDataStream &in, quint32 type, QVariant &value) const
     {
         switch (type) {
-        case Uint8: { quint8 v; if (!takeUint8(v)) return false; value = v; return true; }
-        case Int8: { if (!signedByte()) return false; value = *reinterpret_cast<const qint8*>(m_data.constData() + m_pos - 1); return true; }
-        case Uint16: { if (!remaining(2)) return false; value = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=2; return true; }
-        case Int16: { if (!remaining(2)) return false; value = qFromLittleEndian<qint16>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=2; return true; }
-        case Uint32: { quint32 v; if (!takeUint32(v)) return false; value = v; return true; }
-        case Int32: { quint32 raw; if (!takeUint32(raw)) return false; value = static_cast<qint32>(raw); return true; }
-        case Float32: { if (!remaining(4)) return false; quint32 raw=qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=4; float f{}; std::memcpy(&f, &raw, sizeof f); value = static_cast<double>(f); return true; }
-        case Bool: { quint8 v; if (!takeUint8(v)) return false; value = (v != 0); return true; }
-        case String: { QString s; if (!takeString(s)) return false; value = s; return true; }
-        case Uint64: { quint64 v; if (!takeU64(v)) return false; value = v; return true; }
-        case Int64: { quint64 v; if (!takeU64(v)) return false; value = static_cast<qint64>(v); return true; }
-        case Float64: { if (!remaining(8)) return false; quint64 raw=qFromLittleEndian<quint64>(reinterpret_cast<const uchar*>(m_data.constData()+m_pos)); m_pos+=8; double d{}; std::memcpy(&d, &raw, sizeof d); value = d; return true; }
+        case Uint8: { quint8 v; if (!takeUint8(in, v)) return false; value = v; return true; }
+        case Int8: { qint8 v; in >> v; if (in.status() != QDataStream::Ok) return false; value = v; return true; }
+        case Uint16: { quint16 v; in >> v; if (in.status() != QDataStream::Ok) return false; value = v; return true; }
+        case Int16: { qint16 v; in >> v; if (in.status() != QDataStream::Ok) return false; value = v; return true; }
+        case Uint32: { quint32 v; if (!takeUint32(in, v)) return false; value = v; return true; }
+        case Int32: { quint32 v; if (!takeUint32(in, v)) return false; value = static_cast<qint32>(v); return true; }
+        case Float32: {
+            quint32 raw; if (!takeUint32(in, raw)) return false;
+            float f{}; std::memcpy(&f, &raw, sizeof f); value = static_cast<double>(f); return true;
+        }
+        case Bool: { quint8 v; if (!takeUint8(in, v)) return false; value = (v != 0); return true; }
+        case String: { QString s; if (!takeString(in, s)) return false; value = s; return true; }
+        case Uint64: { quint64 v; if (!takeU64(in, v)) return false; value = v; return true; }
+        case Int64: { quint64 v; if (!takeU64(in, v)) return false; value = static_cast<qint64>(v); return true; }
+        case Float64: {
+            quint64 raw; if (!takeU64(in, raw)) return false;
+            double d{}; std::memcpy(&d, &raw, sizeof d); value = d; return true;
+        }
         case Array: {
             quint32 elemType = 0; quint64 count = 0;
-            if (!takeUint32(elemType) || !takeU64(count)) return false;
+            if (!takeUint32(in, elemType) || !takeU64(in, count)) return false;
             for (quint64 i = 0; i < count; ++i) {
                 QVariant ignored;
-                if (!takeValue(elemType, ignored)) return false;
+                if (!takeValue(in, elemType, ignored)) return false;
             }
             value = QVariant(); // arrays skipped
             return true;
@@ -185,20 +194,7 @@ private:
         }
     }
 
-    bool signedByte() const
-    {
-        if (!remaining(1)) return false;
-        m_pos += 1;
-        return true;
-    }
-    bool remaining(qint64 n) const
-    {
-        return m_pos + n <= m_data.size();
-    }
-    qint64 remaining() const { return m_data.size() - m_pos; }
-
     mutable QByteArray m_data;
-    mutable qint64 m_pos = 0;
     mutable QString m_error;
     mutable quint32 m_version = 0;
     QFile m_file;

@@ -33,6 +33,10 @@ struct ModelEntry {
     QString parser;
     QString prompt;
     int ctxSize = 8192;
+    // True when ctxSize was chosen explicitly at install time. Distinguishes a
+    // real 8192 from "not specified" so 8192 is not overloaded as a sentinel
+    // (review 2.8): only explicit ctx sizes are persisted in index.json.
+    bool ctxSizeSet = false;
     QString addedAt;     // ISO timestamp
     // True HF repo id ("org/repo") persisted at install time. Older index.json
     // files lack it; scanModelsDir then falls back to the directory name.

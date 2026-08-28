@@ -6,6 +6,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QTextStream>
 #include <QTcpServer>
@@ -109,24 +110,7 @@ QString LlamaServerProcess::start()
     if (m_process.state() != QProcess::NotRunning)
         return QObject::tr("Server is already running");
 
-    if (m_opts.port == 0) {
-        QString portErr;
-        m_opts.port = pickFreePort(&portErr);
-        if (m_opts.port == 0)
-            return portErr;
-    }
-
     m_stopRequested = false;
-    // §3.5: assemble via QUrl so an IPv6 host (::1) is bracketed correctly.
-    if (m_opts.baseUrl.isEmpty()) {
-        QUrl url;
-        url.setScheme(QStringLiteral("http"));
-        url.setHost(m_opts.host);
-        url.setPort(m_opts.port);
-        m_healthUrl = url.toString();
-    } else {
-        m_healthUrl = m_opts.baseUrl;
-    }
     spawn();
     return QString();
 }
@@ -137,6 +121,32 @@ void LlamaServerProcess::spawn()
     // which calls spawn() directly — re-enables the /v1/models fallback.
     m_healthReached = false;
     m_modelsProbed = false;
+    // § review 2.3: a stale in-flight probe from a previous attempt must not
+    // block polling of the freshly spawned process.
+    m_healthInFlight = false;
+    // 2.4: resolve the port for THIS attempt. A fixed port (opts.port != 0)
+    // is reused; auto-pick (port 0) picks a fresh free port on every spawn so
+    // a TOCTOU collision (port taken between our probe and the child's bind) is
+    // not retried on the same busy port — the next attempt simply gets another.
+    if (m_opts.port == 0)
+        m_port = pickFreePort(nullptr);
+    else
+        m_port = m_opts.port;
+    if (m_port <= 0) {
+        markFailed(QObject::tr("Unable to allocate a free loopback port"));
+        return;
+    }
+    // §3.5: assemble via QUrl so an IPv6 host (::1) is bracketed correctly.
+    if (m_opts.baseUrl.isEmpty()) {
+        QUrl url;
+        url.setScheme(QStringLiteral("http"));
+        url.setHost(m_opts.host);
+        url.setPort(m_port);
+        m_healthUrl = url.toString();
+    } else {
+        m_healthUrl = m_opts.baseUrl;
+    }
+
     m_attemptsTotal++;
     m_loadPercent = -1;
     setState(RuntimeState::Starting);
@@ -148,9 +158,9 @@ void LlamaServerProcess::spawn()
     // Single source for --port (review 2.5): for a fixed port the flag already
     // comes from ServerLaunchConfig::toArguments(); only auto-pick (port 0 →
     // resolved here) needs us to add it, and never twice.
-    if (!args.contains(QStringLiteral("--port")) && m_opts.port > 0) {
+    if (!args.contains(QStringLiteral("--port")) && m_port > 0) {
         args.append(QStringLiteral("--port"));
-        args.append(QString::number(m_opts.port));
+        args.append(QString::number(m_port));
     }
     m_process.setArguments(args);
     if (!m_opts.workingDirectory.isEmpty())
@@ -201,6 +211,12 @@ void LlamaServerProcess::armHealthPolling()
                                .arg(m_opts.startupTimeoutMs));
                 return;
             }
+            // § review 2.3: single-flight — skip a new probe while the previous
+            // one is still unanswered so requests cannot pile up behind a slow
+            // endpoint (harmless on loopback, noisy under a stalled pipe).
+            if (m_healthInFlight)
+                return;
+            m_healthInFlight = true;
             QNetworkReply *reply =
                 m_net->get(QNetworkRequest(QUrl(m_healthUrl + QStringLiteral("/health"))));
             connect(reply, &QNetworkReply::finished, this,
@@ -213,6 +229,8 @@ void LlamaServerProcess::armHealthPolling()
 void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
 {
     reply->deleteLater();
+    // The reply has finished, so a new probe may be sent on the next tick.
+    m_healthInFlight = false;
     if (m_state != RuntimeState::Starting)
         return;
     const int code =
@@ -348,20 +366,32 @@ void LlamaServerProcess::classifyLine(const QString &line)
 
 int LlamaServerProcess::parseLoadPercent(const QString &line)
 {
-    // Progress is only recognized on tensor-loading lines; the "%"-less
-    // `load_tensors:` buffer-size lines (also containing "tensors") are
-    // naturally excluded because they carry no percent sign.
+    // § review 2.1: only the model-load context carries the progress we surface.
+    // Both the modern "llama_model_loader: - loading tensors, N%" and the
+    // legacy "load_tensors: N%" forms literally contain "tensors", so the gate
+    // is stable across llama.cpp log-format changes.
     if (!line.contains(QStringLiteral("tensors")))
         return -1;
-    const int pctPos = line.lastIndexOf(u'%');
-    if (pctPos < 0)
+
+    // The LAST "<number> %" token in the line wins. Anchoring on a digit-run
+    // immediately followed by '%' means a stray "%" elsewhere (or a digit in a
+    // foreign word) can never shift the parse, and integer/fractional percents
+    // ("25%", "25.00%") are both read. Positions within 0..100 are honoured.
+    static const QRegularExpression percentRe(
+        QStringLiteral("(\\d{1,5}(?:[.,]\\d{1,3})?)\\s*%"));
+
+    QRegularExpressionMatchIterator it = percentRe.globalMatch(line);
+    if (!it.hasNext())
         return -1;
-    int start = pctPos;
-    while (start > 0 && (line.at(start - 1).isDigit() || line.at(start - 1) == u'.'
-                         || line.at(start - 1) == u','))
-        --start;
+    QRegularExpressionMatch last;
+    while (it.hasNext())
+        last = it.next();
+
     bool ok = false;
-    const double value = line.mid(start, pctPos - start).toDouble(&ok);
+    // Normalize a comma decimal separator (some locales print "12,5%");
+    // llama.cpp progress is 0..100 so a comma can only be a decimal point.
+    const QString token = QString(last.captured(1)).replace(u',', u'.');
+    const double value = token.toDouble(&ok);
     if (!ok)
         return -1;
     return qBound(0, int(qRound(value)), 100);
@@ -560,7 +590,7 @@ int LlamaServerProcess::restartCount() const
 
 int LlamaServerProcess::resolvedPort() const
 {
-    return m_opts.port;
+    return m_port;
 }
 
 // ---------------------------------------------------------------------------
@@ -574,7 +604,7 @@ void LlamaServerProcess::writeOwnerJson()
     QJsonObject o;
     o.insert(QStringLiteral("pid"), m_process.processId());
     o.insert(QStringLiteral("parentPid"), double(ProcessGuard::currentPid()));
-    o.insert(QStringLiteral("port"), m_opts.port);
+    o.insert(QStringLiteral("port"), m_port);
     o.insert(QStringLiteral("program"), m_process.program());
     // Atomic write (§7.2).
     QSaveFile f(m_opts.ownerJsonPath);

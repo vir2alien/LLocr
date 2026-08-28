@@ -46,6 +46,7 @@ private slots:
     void rescansWhenIndexMissing();
     void rebuildsOnCorruptIndex();
     void atomicWriteRoundtrip();
+    void persistsExplicitDefaultCtxSize();
     void recoversFromTruncatedIndex();
     void assertsRegistryLock();
     void refusesExternalDelete();
@@ -110,6 +111,45 @@ void TestModelRegistry::atomicWriteRoundtrip()
     QCOMPARE(loaded.size(), 1);
     QCOMPARE(loaded.at(0).id, QStringLiteral("org__repo"));
     QCOMPARE(loaded.at(0).byteSize, qint64(1024));
+}
+
+void TestModelRegistry::persistsExplicitDefaultCtxSize()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    // A ctx size of 8192 must not be conflated with "unspecified" (review
+    // 2.8): when chosen explicitly it is persisted, so a reload does not lose it
+    // to a fallback default.
+    ModelEntry e;
+    e.id = QStringLiteral("org__repo");
+    e.title = QStringLiteral("Repo");
+    e.dir = makeRepoDir(dir.path(), QStringLiteral("org__repo"));
+    e.modelPath = QDir(e.dir).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+    e.origin = ModelOrigin::Managed;
+    e.byteSize = 1024;
+    e.ctxSize = 8192;
+    e.ctxSizeSet = true;
+
+    QString err;
+    QVERIFY(ModelRegistry::save(dir.path(), {e}, err));
+    QVERIFY(err.isEmpty());
+
+    // The explicit value (which equals the default) is written, not skipped.
+    QFile idx(ModelRegistry::indexPathFor(dir.path()));
+    QVERIFY(idx.open(QIODevice::ReadOnly));
+    const QJsonDocument doc = QJsonDocument::fromJson(idx.readAll());
+    const QJsonArray arr = doc.object().value(QStringLiteral("models")).toArray();
+    QVERIFY(arr.size() == 1);
+    QCOMPARE(arr.at(0).toObject().value(QStringLiteral("ctxSize")).toInt(0), 8192);
+
+    bool rebuilt = false;
+    const QList<ModelEntry> loaded = ModelRegistry::load(dir.path(), rebuilt, err);
+    QVERIFY(!rebuilt);
+    QVERIFY(err.isEmpty());
+    QCOMPARE(loaded.size(), 1);
+    QVERIFY(loaded.at(0).ctxSizeSet);
+    QCOMPARE(loaded.at(0).ctxSize, 8192);
 }
 
 void TestModelRegistry::recoversFromTruncatedIndex()

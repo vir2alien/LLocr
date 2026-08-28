@@ -135,12 +135,18 @@ private:
     int m_restartWindowCount = 0;
 
     bool m_healthReached = false;
+    // § review 2.3: single-flight health poll — do not fire a new /health
+    // request while the previous one is still in flight. Set when a probe is
+    // sent, cleared when its reply lands. Reset on every spawn() so an
+    // auto-restart never inherits a stale in-flight state.
+    bool m_healthInFlight = false;
     bool m_autoRestartScheduled = false;
     bool m_stopRequested = false;
     int m_attemptsTotal = 0;
     int m_loadPercent = -1;
 
     QString m_healthUrl;
+    int m_port = 0;  // 2.4: concrete port for the current spawn (auto-pick re-picks each attempt)
     QString m_lineBuffer;
     QStringList m_ring;
     int m_ringMaxLines = 2000;

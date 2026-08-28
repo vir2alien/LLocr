@@ -616,6 +616,7 @@ void ModelInstaller::completeInstall()
     e.parser = m_pending.parser;
     e.prompt = m_pending.prompt;
     e.ctxSize = m_pending.ctxSize;
+    e.ctxSizeSet = m_pending.ctxSize > 0;
     e.addedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
     // Size is the sum of the downloaded GGUF files.
