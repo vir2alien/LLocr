@@ -34,8 +34,8 @@
 | 3.1 | Оверхед | `RuntimeController.cpp:389-526` | Две полные реализации self-test (дубль ~110 строк) | **FIXED** (см. §3.1) |
 | 3.2 | Оверхед | `Setup/StepLaunch.qml:53-67` | `fmtCommand()` в QML дублирует `toDisplayCommand()` C++ | **FIXED** (см. §3.2) |
 | 3.3 | Оверхед | `RuntimeController.cpp` | Ручной `QFutureInterface` + параллельный сигнальный канал для QML | **FIXED** (см. §3.3) |
-| 3.4 | Оверхед | `RuntimeController.h` | Фасад «кухонный комбайн» (~20 свойств/инвокабл) | OPEN |
-| 3.5 | Оверхед | `SettingsStore.h/.cpp` | ~90 однотипных геттер/сеттер/сигнал + дрейф `resetToDefaults` | OPEN |
+| 3.4 | Оверхед | `RuntimeController.h` | Фасад «кухонный комбайн» (~20 свойств/инвокабл) | **FIXED** (см. §3.4) |
+| 3.5 | Оверхед | `SettingsStore.h/.cpp` | ~90 однотипных геттер/сеттер/сигнал + дрейф `resetToDefaults` | **FIXED** (см. §3.5) |
 | 3.6 | Оверхед | `RuntimeLocator.cpp:180-225` | LRU-кэш из 4 слотов для одного бинарника | OPEN |
 | 3.7 | Оверхед | `UiController.h` + `main.cpp:105,110` | Тройная регистрация QML-синглтона | OPEN |
 | 3.8 | Оверхед | `RecognitionController`/`AppController` | Парные методы, отличающиеся одним флагом | OPEN |
@@ -362,7 +362,7 @@ launch-поля (путь модели, ctx, кэш, порт, host, gpu, alias)
 
 ### 3.4 — `RuntimeController` — «кухонный комбайн»
 **:` `src/runtime/RuntimeController.h`
-**Статус:** OPEN
+**Статус:** **FIXED**
 
 ~20 `Q_PROPERTY`/`Q_INVOKABLE` на одном QML-синглтоне: lifecycle сервера,
 резолв, self-test (п. 3.1), оценка памяти, ring-buffer логов, discovery путей,
@@ -370,15 +370,50 @@ launch-поля (путь модели, ctx, кэш, порт, host, gpu, alias)
 `selftest*`), `RuntimeLog` (ring-buffer + лог-окно). Это сведёт к нулю соблазн
 плодить дубли вроде 3.1.
 
+Решение: обе кандидатные роли вынесены в отдельные QML-синглтоны.
+`RuntimeLog` (`RuntimeLog.h/.cpp`) — ring-buffer + лог-окно (`serverLog`,
+`copy/clear/openServerLog*`); `RuntimeController::startServer()` пушит в него
+живой сервер через `setServer()`, `setLogTarget()` из main.cpp.
+`SelfTestController` (`SelfTestController.h/.cpp`) — `selftest*` состояние +
+`runSelfTest()`/`runSelfTestQml()`; это отдельный потребитель facade-API
+`RuntimeController::ensureConnectionReady()`. QML: `ServerLogWindow.qml` →
+`RuntimeLog.*`, `Setup/StepLaunch.qml` → `SelfTest.*`; регистрация — в main.cpp.
+Тест `test_ensure_connection::runSelfTestSucceeds` переведён на
+`SelfTestController`.
+
+Фасад похудел: из `RuntimeController` убраны 3 Q_PROPERTY, 6 Q_INVOKABLE,
+сигналы `serverLogChanged`/`selftestFinished`, вся self-test-механика
+(`m_selftestProvider`, `makeTestImage`, `runSelfTestRequest`) и лог-хелперы
+(`serverLog*`, `lastLogLines`).
+
 ### 3.5 — `SettingsStore`: ~90 однотипных квадруплетов + дрейф `resetToDefaults`
 **:` `src/app/SettingsStore.h/.cpp`
-**Статус:** OPEN
+**Статус:** **FIXED**
 
 Каждое поле — механический гет/сет/`Q_PROPERTY`/сигнал (`setBaseUrl`:
 `if (v == m) return; m_settings.setValue(k, v); emit kChanged();`). `resetToDefaults()`
 вручную перечисляет ~50 сеттнеров, и каждый новый ключ надо вручную дописывать
-в обоих местах → дрейф. Решение: таблица дефолтов `{key, type, default}` +
-итеративный reset. Не приоритет на переписывание, но это самая повторяемая часть.
+в обоих местах → дрейф.
+
+Решение: введена **таблица дефолтов** `SettingsStore::SettingDefault[]`
+(`SettingsStore::kDefaults`): одна строка на каждый сбрасываемый ключ —
+`{QSettings key, имя Q_PROPERTY, defaultValue}`; тип несёт сам `QVariant`, а
+тип/валидацию/сигнал контролирует декларация `Q_PROPERTY` (единый источник).
+`resetToDefaults()` теперь итерирует таблицу и пишет каждую строку через
+`QMetaProperty::write()` — т.е. через тот же сеттер, поэтому guard-ы, валидация
+`setConnectionMode()` и эмиссия NOTIFY сохраняются побайтово. Из таблицы
+сознательно исключены `ui/window*` — это UI-состояние, а не настройка; порядок
+строк сохранён: `baseUrl` до `connectionMode`, `lastExternalBaseUrl` последним
+(см. путь восстановления в `setConnectionMode()`). Добавление нового ключа =
+одна строка в таблице; ручной список сеттнеров удалён — дрейф невозможен.
+
+Регрессия: `tests/test_settings_store.cpp` получил три новых кейса —
+`resetTableEntriesAreValid` (каждая строка таблицы ссылается на существующее
+writable-свойство, чей getter на свежем магазине возвращает дефолт из таблицы),
+`resetCoversEveryDeclaredProperty` (sentinels: каждое writable-свойство
+загрязняется, после reset ни одно не должно сохранить sentinel — ловит забытую
+строку таблицы) и `resetEmitsChangedSignals` (QSignalSpy: сеттер + reset дают два
+NOTIFY-эмита — контракт для QML-биндингов сохранён).
 
 ### 3.6 — LRU-кэш на 4 слота для одного бинарника
 **Файл/строки:** `src/runtime/RuntimeLocator.cpp:180-225`

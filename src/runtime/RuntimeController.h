@@ -1,14 +1,10 @@
 #pragma once
 
-#include <QFuture>
-#include <QFutureInterface>
-#include <QImage>
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
 
 #include <functional>
-#include <memory>
 #include <vector>
 
 #include "runtime/ConnectionMode.h"
@@ -21,7 +17,7 @@ class QNetworkReply;
 namespace llocr {
 
 class SettingsStore;
-class OpenAiProvider;
+class RuntimeLog;
 
 // Facade over every managed-runtime concern (process, downloads, installs,
 // model selection). A single instance is created in main.cpp — before the QML
@@ -44,10 +40,6 @@ class RuntimeController : public QObject
     Q_PROPERTY(int loadProgressPercent READ loadProgressPercent NOTIFY loadProgressChanged)
     Q_PROPERTY(bool configValid READ configValid NOTIFY configValidChanged)
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
-    Q_PROPERTY(QString serverLog READ serverLog NOTIFY serverLogChanged)
-    Q_PROPERTY(bool selftestRunning READ selftestRunning NOTIFY selftestFinished)
-    Q_PROPERTY(bool selftestOk READ selftestOk NOTIFY selftestFinished)
-    Q_PROPERTY(QString selftestMessage READ selftestMessage NOTIFY selftestFinished)
 
 public:
     explicit RuntimeController(SettingsStore &settings, QObject *parent = nullptr);
@@ -61,26 +53,13 @@ public:
     int loadProgressPercent() const { return m_loadProgressPercent; }
     bool configValid() const { return m_configValid; }
     bool lockedOut() const { return m_lockedOut; }
-    /// Ring-buffer tail of the managed server log, for the log window.
-    QString serverLog() const;
 
-    /// Absolute path to the managed server's rolling log file (logs/…).
-    Q_INVOKABLE QString serverLogPath() const;
-    /// Absolute path of the logs directory (parent of serverLogPath()).
-    Q_INVOKABLE QString serverLogDir() const;
-
-    /// Copies the whole ring-buffer tail to the system clipboard (H.1).
-    Q_INVOKABLE void copyServerLog();
     /// Converts a file URL (e.g. FileDialog.selectedFile) to a local path.
     /// Non-file URLs pass through unchanged.
     Q_INVOKABLE static QString localPath(const QUrl &url)
     {
         return url.isLocalFile() ? url.toLocalFile() : url.toString();
     }
-    /// Clears the in-memory live log view (ring buffer). §H.1 log window.
-    Q_INVOKABLE void clearServerLog();
-    /// Opens the logs/ directory in the platform file manager (H.1).
-    Q_INVOKABLE void openServerLogFolder();
 
     // ------- §H.2 memory estimation --------------------------------------
     /// Best-effort RAM estimate for launching a managed model at ctxSize/…
@@ -109,23 +88,11 @@ public:
     /// in External or when nothing is pending.
     void cancelPendingStart();
 
-    /// Runs an independent self-test (used by the master wizard "Check" button).
-    /// Starts the managed server if needed, waits for readiness, then issues one
-    /// real OCR request against a built-in test image and returns the text. In
-    /// External this reports NotConfigured (there is nothing to self-test here).
-    QFuture<SelfTestResult> runSelfTest();
-
-    /// QML-friendly variant: starts the self-test and reports progress via the
-    /// `selftest*` properties / `selftestFinished` signal (QFuture is unusable
-    /// from QML). No-op while already running.
-    Q_INVOKABLE void runSelfTestQml();
-
-    bool selftestRunning() const { return m_selftestRunning; }
-    bool selftestOk() const { return m_selftestOk; }
-    QString selftestMessage() const { return m_selftestMessage; }
-
     // --- Wiring helpers --------------------------------------------------
     void setSingleInstanceHeld(bool held);
+    /// Gives the façade a log view to push live servers into (§ review 3.4).
+    /// The view is owned by the caller (main.cpp); nullptr detaches.
+    void setLogTarget(RuntimeLog *log);
 
     // --- Stage B: managed server lifecycle (Runtime settings tab) --------
     /// Starts the managed llama-server with the current launch/* settings.
@@ -176,18 +143,15 @@ private:
     void fetchManagedModels();
     void onModelsReply(QNetworkReply *reply);
 
-    void runSelfTestRequest(const ResolvedConnection &conn,
-                            std::shared_ptr<QFutureInterface<SelfTestResult>> promise);
-
     // §7.5 error matrix: map a raw server line / failure to a human message.
     QString describeServerFailure() const;
     static QString translateServerLine(const QString &line);
-    QString lastLogLines(int count) const;
-
-    static QImage makeTestImage();
 
     // Constructs a server from the current settings (owned here).
     class LlamaServerProcess *m_server = nullptr;
+
+    // Live-log view to push servers into (§ review 3.4); owned by main.cpp.
+    RuntimeLog *m_logTarget = nullptr;
 
     SettingsStore &m_settings;
 
@@ -198,13 +162,6 @@ private:
 
     QNetworkAccessManager *m_modelsNet = nullptr;
     QString m_modelsBaseUrl;   // base url captured at resolve time
-
-    OpenAiProvider *m_selftestProvider = nullptr;
-
-    // QML-friendly self-test state.
-    bool m_selftestRunning = false;
-    bool m_selftestOk = false;
-    QString m_selftestMessage;
 
     RuntimeState m_state = RuntimeState::NotConfigured;
     AppBusyState m_busyState = AppBusyState::Idle;
@@ -220,8 +177,6 @@ signals:
     void loadProgressChanged();
     void configValidChanged();
     void lockedOutChanged();
-    void serverLogChanged();
-    void selftestFinished();
 };
 
 }  // namespace llocr

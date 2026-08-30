@@ -68,6 +68,10 @@ qt_add_executable(llocr
     runtime/DownloadManager.cpp
     runtime/RuntimeController.h
     runtime/RuntimeController.cpp
+    runtime/RuntimeLog.h
+    runtime/RuntimeLog.cpp
+    runtime/SelfTestController.h
+    runtime/SelfTestController.cpp
     runtime/SingleInstanceGuard.h
     runtime/SingleInstanceGuard.cpp
     runtime/ReleaseAsset.h

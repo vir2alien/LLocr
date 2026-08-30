@@ -19,8 +19,8 @@ struct ResolvedConnection {
     QString error;
 };
 
-// Outcome of RuntimeController::runSelfTest(): one real OCR request against the
-// running (or just started) server, using a built-in synthetic test image.
+// Outcome of SelfTestController::runSelfTest(): one real OCR request against
+// the running (or just started) server, using a built-in synthetic test image.
 struct SelfTestResult {
     bool ok = false;
     QString text;    // OCR text returned by the server on success

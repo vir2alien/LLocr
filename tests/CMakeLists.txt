@@ -91,6 +91,7 @@ target_sources(test_runtime_lifetime PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/LlamaServerProcess.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelMemoryEstimator.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLog.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
@@ -219,6 +220,8 @@ target_sources(test_ensure_connection PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/LlamaServerProcess.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelMemoryEstimator.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLog.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/SelfTestController.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )

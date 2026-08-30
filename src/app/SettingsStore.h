@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QSettings>
 #include <QString>
+#include <QVariant>
 
 #include "runtime/ConnectionMode.h"
 
@@ -105,6 +106,21 @@ public:
     Q_INVOKABLE void forceSave();
     Q_INVOKABLE void resetToDefaults();
     Q_INVOKABLE bool contains(const QString &key) const;
+
+    /// Defaults table (review 3.5) — the single registry of every setting that
+    /// `resetToDefaults()` touches. `key` is the persisted QSettings key,
+    /// `property` is the Q_PROPERTY name (reset writes through the setter so
+    /// NOTIFY fires and per-key validation still applies), `defaultValue`
+    /// carries the type. Adding a new resettable setting is one row here;
+    /// `resetToDefaults()` iterates it, so the manual setter list cannot drift.
+    struct SettingDefault
+    {
+        const char *key;
+        const char *property;
+        QVariant defaultValue;
+    };
+    static const SettingDefault *defaults();
+    static int defaultsCount();
 
     /// Applies §4.4 migration: existing profiles must not see the first-run
     /// wizard, and `provider/mode` must never be flipped automatically.
@@ -302,6 +318,7 @@ signals:
 
 private:
     QSettings m_settings;
+    static const SettingDefault kDefaults[];
 
     // Connection
     static constexpr const char *kBaseUrl = "provider/baseUrl";

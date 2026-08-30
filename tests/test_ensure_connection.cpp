@@ -5,6 +5,7 @@
 #include "app/SettingsStore.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeState.h"
+#include "runtime/SelfTestController.h"
 
 using namespace llocr;
 
@@ -229,12 +230,13 @@ private slots:
         store.setStartupTimeoutMs(10000);
 
         RuntimeController runtime(store);
+        SelfTestController selfTest(store, runtime);
         SelfTestResult result;
         int done = 0;
         QFutureWatcher<SelfTestResult> watch;
         connect(&watch, &QFutureWatcher<SelfTestResult>::finished, this,
                 [&]() { result = watch.result(); ++done; });
-        watch.setFuture(runtime.runSelfTest());
+        watch.setFuture(selfTest.runSelfTest());
 
         QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
         QVERIFY2(result.ok, qPrintable(result.error));

@@ -1,6 +1,74 @@
 #include "app/SettingsStore.h"
 
+#include <QMetaProperty>
+
 namespace llocr {
+
+// Every setting reset by resetToDefaults(), in the exact order the old manual
+// list used. Order matters at the two ends:
+//  - baseUrl is reset BEFORE connectionMode, because setConnectionMode(External)
+//    restores lastExternalBaseUrl over baseUrl (ADR 26 / §7.9);
+//  - lastExternalBaseUrl must be LAST so that restore happens first.
+// Window geometry (ui/windowX…State) is intentionally NOT here: it is UI
+// state, not a user setting, and the previous reset also left it alone.
+const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
+    // UI
+    { kLanguage, "language", QVariant(QString::fromUtf8(kDefaultLanguage)) },
+    { kThemeMode, "themeMode", QVariant(kDefaultThemeMode) },
+    // Connection
+    { kBaseUrl, "baseUrl", QVariant(QString::fromUtf8(kDefaultBaseUrl)) },
+    { kApiKey, "apiKey", QVariant(QString::fromUtf8(kDefaultApiKey)) },
+    { kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs) },
+    // Model
+    { kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName)) },
+    { kTemperature, "temperature", QVariant(kDefaultTemperature) },
+    { kMaxTokens, "maxTokens", QVariant(kDefaultMaxTokens) },
+    { kDryMultiplier, "dryMultiplier", QVariant(kDefaultDryMultiplier) },
+    { kDryBase, "dryBase", QVariant(kDefaultDryBase) },
+    { kDryAllowedLength, "dryAllowedLength", QVariant(kDefaultDryAllowedLength) },
+    { kDryPenaltyLastN, "dryPenaltyLastN", QVariant(kDefaultDryPenaltyLastN) },
+    // Parser
+    { kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId)) },
+    // Connection mode / runtime
+    { kConnectionMode, "connectionMode", QVariant(QString::fromUtf8(kModeExternal)) },
+    { kSetupVersion, "setupVersion", QVariant(0) },  // 0 = re-run first-run wizard
+    { kSetupDismissed, "setupDismissed", QVariant(false) },
+    { kServerPath, "serverPath", QVariant(QString()) },
+    { kServerPathIsManaged, "serverPathIsManaged", QVariant(false) },
+    { kRuntimeRootDir, "runtimeRootDir", QVariant(QString()) },
+    { kRuntimeModelsDir, "runtimeModelsDir", QVariant(QString()) },
+    { kRuntimeBackend, "runtimeBackend", QVariant(QString()) },
+    { kInstalledBuild, "installedBuild", QVariant(QString()) },
+    { kAutoStart, "autoStart", QVariant(false) },
+    { kStartOnDemand, "startOnDemand", QVariant(true) },
+    { kStopOnExit, "stopOnExit", QVariant(true) },
+    { kAutoRestart, "autoRestart", QVariant(true) },
+    { kStartupTimeoutMs, "startupTimeoutMs", QVariant(kDefaultStartupTimeoutMs) },
+    { kCheckUpdates, "checkUpdates", QVariant(false) },
+    { kAllowNonLoopback, "allowNonLoopback", QVariant(false) },
+    // Launch
+    { kLaunchPresetId, "launchPresetId", QVariant(QString()) },
+    { kLaunchModelPath, "launchModelPath", QVariant(QString()) },
+    { kLaunchMmprojPath, "launchMmprojPath", QVariant(QString()) },
+    { kLaunchModelAlias, "launchModelAlias", QVariant(QString::fromUtf8(kDefaultModelAlias)) },
+    { kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost)) },
+    { kLaunchPort, "launchPort", QVariant(kDefaultPort) },
+    { kLaunchCtxSize, "launchCtxSize", QVariant(kDefaultCtxSize) },
+    { kLaunchGpuLayers, "launchGpuLayers", QVariant(kDefaultGpuLayers) },
+    { kLaunchThreads, "launchThreads", QVariant(kDefaultThreads) },
+    { kLaunchBatchSize, "launchBatchSize", QVariant(kDefaultBatchSize) },
+    { kLaunchParallel, "launchParallel", QVariant(kDefaultParallel) },
+    { kLaunchFlashAttn, "launchFlashAttn", QVariant(QString::fromUtf8(kDefaultFlashAttn)) },
+    { kLaunchCacheTypeK, "launchCacheTypeK", QVariant(QString()) },
+    { kLaunchCacheTypeV, "launchCacheTypeV", QVariant(QString()) },
+    { kLaunchNoMmap, "launchNoMmap", QVariant(false) },
+    { kLaunchJinja, "launchJinja", QVariant(false) },
+    { kLaunchExtraArgs, "launchExtraArgs", QVariant(QString()) },
+    // Hugging Face
+    { kHfToken, "hfToken", QVariant(QString()) },
+    // Saved external endpoint — must stay LAST (see the order comment above).
+    { kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString()) },
+};
 
 SettingsStore::SettingsStore(QObject *parent) : QObject(parent)
 {
@@ -33,62 +101,28 @@ void SettingsStore::forceSave()
 
 void SettingsStore::resetToDefaults()
 {
-    setLanguage(QString::fromUtf8(kDefaultLanguage));
-    setThemeMode(kDefaultThemeMode);
-    setBaseUrl(QString::fromUtf8(kDefaultBaseUrl));
-    setApiKey(QString::fromUtf8(kDefaultApiKey));
-    setConnectionTimeoutMs(kDefaultTimeoutMs);
-    setModelName(QString::fromUtf8(kDefaultModelName));
-    setTemperature(kDefaultTemperature);
-    setMaxTokens(kDefaultMaxTokens);
-    setDryMultiplier(kDefaultDryMultiplier);
-    setDryBase(kDefaultDryBase);
-    setDryAllowedLength(kDefaultDryAllowedLength);
-    setDryPenaltyLastN(kDefaultDryPenaltyLastN);
-    setParserId(QString::fromUtf8(kDefaultParserId));
+    // Table-driven (review 3.5): every resettable key is one row in
+    // kDefaults; writing through the Q_PROPERTY keeps the setters' guards,
+    // validation and NOTIFY emission, so this behaves exactly like the manual
+    // setter list it replaces.
+    const QMetaObject *mo = metaObject();
+    for (const SettingDefault &entry : kDefaults) {
+        const QMetaProperty prop = mo->property(mo->indexOfProperty(entry.property));
+        if (!prop.isValid() || !prop.write(this, entry.defaultValue)) {
+            qWarning("SettingsStore: resetToDefaults() cannot write property %s",
+                     entry.property);
+        }
+    }
+}
 
-    // Runtime / connection mode
-    setMode(ConnectionMode::External);
-    setSetupVersion(0);
-    setSetupDismissed(false);
-    setServerPath(QString());
-    setServerPathIsManaged(false);
-    setRuntimeRootDir(QString());
-    setRuntimeModelsDir(QString());
-    setRuntimeBackend(QString());
-    setInstalledBuild(QString());
-    setAutoStart(false);
-    setStartOnDemand(true);
-    setStopOnExit(true);
-    setAutoRestart(true);
-    setStartupTimeoutMs(kDefaultStartupTimeoutMs);
-    setCheckUpdates(false);
-    setAllowNonLoopback(false);
+const SettingsStore::SettingDefault *SettingsStore::defaults()
+{
+    return kDefaults;
+}
 
-    // Launch
-    setLaunchPresetId(QString());
-    setLaunchModelPath(QString());
-    setLaunchMmprojPath(QString());
-    setLaunchModelAlias(QString::fromUtf8(kDefaultModelAlias));
-    setLaunchHost(QString::fromUtf8(kDefaultHost));
-    setLaunchPort(kDefaultPort);
-    setLaunchCtxSize(kDefaultCtxSize);
-    setLaunchGpuLayers(kDefaultGpuLayers);
-    setLaunchThreads(kDefaultThreads);
-    setLaunchBatchSize(kDefaultBatchSize);
-    setLaunchParallel(kDefaultParallel);
-    setLaunchFlashAttn(QString::fromUtf8(kDefaultFlashAttn));
-    setLaunchCacheTypeK(QString());
-    setLaunchCacheTypeV(QString());
-    setLaunchNoMmap(false);
-    setLaunchJinja(false);
-    setLaunchExtraArgs(QString());
-
-    // Hugging Face
-    setHfToken(QString());
-
-    // Saved external endpoint (§4.1)
-    setLastExternalBaseUrl(QString());
+int SettingsStore::defaultsCount()
+{
+    return int(sizeof(kDefaults) / sizeof(kDefaults[0]));
 }
 
 QString SettingsStore::baseUrl() const

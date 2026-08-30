@@ -98,9 +98,13 @@ class RuntimeController : public QObject {   // src/runtime/RuntimeController.h
     // Concurrent callers register their callback and share one in-flight resolve.
     void ensureConnectionReady(std::function<void(const ResolvedConnection &)> onResolved);
     void cancelPendingStart();   // Stop during StartingRuntime
-    QFuture<SelfTestResult> runSelfTest(); // wizard “Check” button
 };
 ```
+
+The wizard “Check” button (self-test: start → health → `/v1/models` → one OCR
+request) is exposed via the dedicated `SelfTestController` singleton
+(`SelfTest`), which consumes `ensureConnectionReady()`; the live server log
+window binds to the `RuntimeLog` singleton.
 
 ARM-coordination principle: *all* async work that decides “is a connection
 ready, and what is it” is owned by `RuntimeController` (ADR 26/32/37). The
@@ -135,9 +139,11 @@ A dedicated `src/runtime/` layer sits between the backend and the OS:
 - **RuntimeController** (facade, singleton instance created in `main.cpp`,
   ADR 36) — owns `ensureConnectionReady()` (External immediate resolve;
   Managed: start → `/health` → `/v1/models` → alias), `cancelPendingStart()`,
-  `runSelfTest()`/`runSelfTestQml()`, server lifecycle (start/stop/restart),
-  `estimateModelMemory()` (H.2), and exposes `state`/`busyState`/`statusMessage`/
-  `loadProgressPercent`/`configValid`/`lockedOut`/`serverLog` to QML.
+  server lifecycle (start/stop/restart), `estimateModelMemory()` (H.2), and
+  exposes `state`/`busyState`/`statusMessage`/`loadProgressPercent`/`configValid`/
+  `lockedOut` to QML. Self-test (`SelfTest` singleton) and the server-log live
+  view (`RuntimeLog` singleton) were extracted into their own QML singletons
+  (review 3.4).
 - **RuntimeLocator** — probe (`--version`/`--help`, tolerant version parse),
   `autoDiscover()`, `probeCached()` (LRU, H.7). **ServerCapabilities** — build
   allowlist + `--help` parse (ADR 41). **ServerLaunchConfig** — argv builder +

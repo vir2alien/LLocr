@@ -13,6 +13,8 @@
 #include "runtime/InstallTransaction.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeInstaller.h"
+#include "runtime/RuntimeLog.h"
+#include "runtime/SelfTestController.h"
 #include "runtime/ModelInstaller.h"
 #include "runtime/RuntimePaths.h"
 #include "runtime/SingleInstanceGuard.h"
@@ -47,6 +49,17 @@ int main(int argc, char* argv[]) {
     // Created before the engine loads; QML only consumes the singleton.
     llocr::RuntimeController runtimeController(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
+
+    // § review 3.4: the managed server's live log moved out of the facade into
+    // a dedicated singleton; RuntimeController pushes servers into it.
+    llocr::RuntimeLog runtimeLog(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeLog", &runtimeLog);
+    runtimeController.setLogTarget(&runtimeLog);
+
+    // § review 3.4: self-test state + wizard "Check" bridge moved out of the
+    // facade into a dedicated singleton that consumes Runtime's resolve API.
+    llocr::SelfTestController selfTestController(settingsStore, runtimeController);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);
 
     // Stage D install controller: release catalog, download & install. Also a
     // singleton; owns its own DownloadManager and worker threads.

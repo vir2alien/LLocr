@@ -6,7 +6,7 @@ import LLocr
 
 // Read-only live view of the managed server log (ring-buffer tail). Non-modal:
 // it can stay open while Start/Stop/Recognition run. Content refreshes
-// automatically because it binds to Runtime.serverLog, whose change signal
+// automatically because it binds to RuntimeLog.serverLog, whose change signal
 // fires on every appended line.
 //
 // §H.1: toolbar with "Copy log" (whole ring buffer → clipboard), "Open
@@ -82,19 +82,19 @@ ApplicationWindow {
                 text: qsTr("Copy log")
                 implicitHeight: Theme.controlHeight
                 font.pixelSize: Theme.fontCaption
-                onClicked: Runtime.copyServerLog()
+                onClicked: RuntimeLog.copyServerLog()
             }
             Button {
                 text: qsTr("Open directory")
                 implicitHeight: Theme.controlHeight
                 font.pixelSize: Theme.fontCaption
-                onClicked: Runtime.openServerLogFolder()
+                onClicked: RuntimeLog.openServerLogFolder()
             }
             Button {
                 text: qsTr("Clear view")
                 implicitHeight: Theme.controlHeight
                 font.pixelSize: Theme.fontCaption
-                onClicked: Runtime.clearServerLog()
+                onClicked: RuntimeLog.clearServerLog()
             }
             Item { Layout.fillWidth: true }
             Label {
@@ -120,7 +120,7 @@ ApplicationWindow {
 
         TextArea {
             id: logArea
-            text: Runtime.serverLog || qsTr("No log output yet.")
+            text: RuntimeLog.serverLog || qsTr("No log output yet.")
             readOnly: true
             wrapMode: TextEdit.NoWrap
             font.family: "monospace"

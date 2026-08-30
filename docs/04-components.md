@@ -218,9 +218,14 @@ local **`llama-server`** process (stages A/B, D of `docs/09-local-runtime-plan.m
   OpenAI-compatible endpoint. In `Managed` LLocr starts the server itself. ✅
 - **`RuntimeController`** (QML singleton `Runtime`, created in `main.cpp`, ADR 36)
   is the facade: `ensureConnectionReady()`, `cancelPendingStart()`,
-  `runSelfTest()`/`runSelfTestQml()`, Start/Stop/Restart, probe/auto-detect,
-  `estimateModelMemory()`, and QML state (`state`, `busyState`, `statusMessage`,
-  `loadProgressPercent`, `configValid`, `lockedOut`, `serverLog`). ✅
+  Start/Stop/Restart, probe/auto-detect, `estimateModelMemory()`, and QML state
+  (`state`, `busyState`, `statusMessage`, `loadProgressPercent`, `configValid`,
+  `lockedOut`). ✅
+- **`SelfTestController`** (QML singleton `SelfTest`) — wizard “Check”:
+  `runSelfTest()`/`runSelfTestQml()`, `selftest*` state; a separate consumer of
+  `ensureConnectionReady()` (review 3.4 extraction). ✅
+- **`RuntimeLog`** (QML singleton `RuntimeLog`) — live server-log view
+  (`serverLog` + copy/clear/open), fed by the facade on each (re)spawn. ✅
 - **Process**: `LlamaServerProcess` (QProcess, argv-only, ring buffer + rotating
   file log, health polling, crash-restart ≤3×/5 min, terminate→kill) with a
   `ProcessGuard` (Job Object on Windows, `PDEATHSIG` on Linux, best-effort

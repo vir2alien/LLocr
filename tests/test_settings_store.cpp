@@ -1,5 +1,7 @@
 #include <QtTest>
 #include <QCoreApplication>
+#include <QHash>
+#include <QMetaProperty>
 #include <QSettings>
 
 #include "app/SettingsStore.h"
@@ -161,6 +163,109 @@ private slots:
             QCOMPARE(store.setupVersion(), 1);
             QCOMPARE(store.connectionMode(), QStringLiteral("managed"));
         }
+    }
+
+    void resetTableEntriesAreValid()
+    {
+        // Every row in the defaults table (review 3.5) must reference a real,
+        // writable Q_PROPERTY, and its default must match what the getter
+        // returns on a fresh store — otherwise resetToDefaults() drifts from
+        // the property declarations.
+        SettingsStore store;
+        const QMetaObject *mo = store.metaObject();
+        QVERIFY(SettingsStore::defaultsCount() > 0);
+        for (int i = 0; i < SettingsStore::defaultsCount(); ++i) {
+            const SettingsStore::SettingDefault &entry = SettingsStore::defaults()[i];
+            const QMetaProperty prop = mo->property(mo->indexOfProperty(entry.property));
+            QVERIFY2(prop.isValid(), entry.property);
+            QVERIFY2(prop.isWritable(), entry.property);
+            QCOMPARE(store.property(entry.property), entry.defaultValue);
+        }
+    }
+
+    void resetCoversEveryDeclaredProperty()
+    {
+        // Drift guard: set every writable property to a sentinel value, reset,
+        // and verify none of the sentinels survive. A property that is added
+        // but forgotten in kDefaults would stay at its sentinel and fail here.
+        SettingsStore store;
+        const QMetaObject *mo = store.metaObject();
+
+        // Properties excluded from reset by design:
+        //  - windowX/Y/Width/Height/State: UI state, intentionally not reset;
+        //  - connectionMode / lastExternalBaseUrl: covered implicitly through
+        //    setConnectionMode()'s restore path (baseUrl is reset, but its
+        //    final value when coming from Managed is the restored endpoint).
+        auto excluded = [](const QByteArray &name) {
+            return name.startsWith("window")
+                || name == QByteArrayLiteral("connectionMode")
+                || name == QByteArrayLiteral("lastExternalBaseUrl");
+        };
+
+        QHash<QByteArray, QVariant> sentinels;
+        for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
+            const QMetaProperty prop = mo->property(i);
+            if (!prop.isWritable() || excluded(prop.name()))
+                continue;
+
+            // A sentinel guaranteed to differ from the property's current
+            // (default) value.
+            QVariant sentinel;
+            switch (prop.metaType().id()) {
+            case QMetaType::QString:
+                sentinel = QVariant(QStringLiteral("\u00A7sentinel\u00A7"));
+                break;
+            case QMetaType::Int:
+                sentinel = QVariant(1000000);
+                break;
+            case QMetaType::Double:
+                sentinel = QVariant(12345.678);
+                break;
+            case QMetaType::Bool:
+                sentinel = QVariant(!store.property(prop.name()).toBool());
+                break;
+            default:
+                QFAIL("unexpected property type in SettingsStore");
+            }
+            QVERIFY2(prop.write(&store, sentinel), prop.name());
+            sentinels.insert(prop.name(), sentinel);
+        }
+        QVERIFY(sentinels.size() > 0);
+
+        store.resetToDefaults();
+
+        for (auto it = sentinels.cbegin(); it != sentinels.cend(); ++it) {
+            QVERIFY2(store.property(it.key()) != it.value(), it.key());
+        }
+    }
+
+    void resetEmitsChangedSignals()
+    {
+        // QML binds to the per-property NOTIFY signals; after a reset every
+        // changed setting must announce itself (review 3.5 keeps this via the
+        // setters, which emit on change).
+        SettingsStore store;
+        QSignalSpy languageSpy(&store, &SettingsStore::languageChanged);
+        QSignalSpy baseUrlSpy(&store, &SettingsStore::baseUrlChanged);
+        QSignalSpy autoStartSpy(&store, &SettingsStore::autoStartChanged);
+        QSignalSpy launchHostSpy(&store, &SettingsStore::launchHostChanged);
+
+        store.setLanguage(QStringLiteral("ru"));
+        store.setBaseUrl(QStringLiteral("http://custom:1"));
+        store.setAutoStart(true);
+        store.setLaunchHost(QStringLiteral("10.0.0.1"));
+
+        QCOMPARE(languageSpy.count(), 1);
+        QCOMPARE(baseUrlSpy.count(), 1);
+        QCOMPARE(autoStartSpy.count(), 1);
+        QCOMPARE(launchHostSpy.count(), 1);
+
+        store.resetToDefaults();
+
+        QCOMPARE(languageSpy.count(), 2);   // set + reset
+        QCOMPARE(baseUrlSpy.count(), 2);
+        QCOMPARE(autoStartSpy.count(), 2);
+        QCOMPARE(launchHostSpy.count(), 2);
     }
 };
 

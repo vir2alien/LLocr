@@ -4,10 +4,19 @@
 //   rasterize_icon <in.svg> <outDir> <size> [<size>...]
 //
 // Requires Qt 6 with the QtSvg (and QtGui/QtCore) frameworks, e.g. compiled as:
-//   clang++ -std=c++20 -fPIC \
-//     -I<Qt>/include -F<Qt>/lib \
+//   clang++ -std=c++20 -fPIC -Wno-implicit-function-declaration \
+//     -I<Qt>/lib/QtCore.framework/Headers \
+//     -I<Qt>/lib/QtGui.framework/Headers \
+//     -I<Qt>/lib/QtSvg.framework/Headers \
+//     -F<Qt>/lib \
+//     -Wl,-rpath,<Qt>/lib \
 //     -framework QtSvg -framework QtGui -framework QtCore \
 //     main.cpp -o rasterize_icon
+//
+// (On macOS the public module headers live inside each framework's Headers
+// directory, not under <Qt>/include; the -Wno-implicit-function-declaration is
+// needed because QtCore's qyieldcpu.h calls the __yield() builtin, and the
+// rpath makes the framework dylibs findable at runtime.)
 //
 // This is a standalone regeneration helper; it is NOT part of the application
 // build. The generated PNGs/ICO/ICNS live under resources/icons.

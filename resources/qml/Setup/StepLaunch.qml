@@ -5,15 +5,15 @@ import QtQuick.Layouts
 import LLocr
 
 // SetupWizard → Step 4 "Launch": tune the managed-server launch parameters and
-// verify the whole chain with the "Check" button (Runtime.runSelfTestQml).
+// verify the whole chain with the "Check" button (SelfTest.runSelfTestQml).
 // The step is complete once the self-test succeeded.
 Item {
     id: root
 
     property bool complete: Settings.serverPath.trim().length > 0
                             && Settings.launchModelPath.trim().length > 0
-                            && Runtime.selftestOk
-                            && !Runtime.selftestRunning
+                            && SelfTest.selftestOk
+                            && !SelfTest.selftestRunning
 
     // §H.2 memory estimate (recomputed when the model or context size changes).
     property var modelBytes: 0
@@ -233,20 +233,20 @@ Item {
                 text: qsTr("Check")
                 implicitHeight: Theme.controlHeight
                 font.pixelSize: Theme.fontCaption
-                enabled: !Runtime.selftestRunning
-                onClicked: Runtime.runSelfTestQml()
+                enabled: !SelfTest.selftestRunning
+                onClicked: SelfTest.runSelfTestQml()
             }
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSmall
-                color: Runtime.selftestOk ? Theme.success : Theme.textMuted
-                text: Runtime.selftestRunning
+                color: SelfTest.selftestOk ? Theme.success : Theme.textMuted
+                text: SelfTest.selftestRunning
                       ? qsTr("Running self-test…")
-                      : (Runtime.selftestMessage.length
-                         ? (Runtime.selftestOk
-                            ? qsTr("Self-test passed: “%1”").arg(Runtime.selftestMessage)
-                            : Runtime.selftestMessage)
+                      : (SelfTest.selftestMessage.length
+                         ? (SelfTest.selftestOk
+                            ? qsTr("Self-test passed: “%1”").arg(SelfTest.selftestMessage)
+                            : SelfTest.selftestMessage)
                          : qsTr("Press Check to verify the full chain."))
             }
             Item { Layout.fillWidth: true }

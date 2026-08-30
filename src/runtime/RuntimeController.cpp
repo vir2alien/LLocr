@@ -1,30 +1,20 @@
 #include <QDir>
-#include <QDesktopServices>
 #include <QFileInfo>
-#include <QFuture>
-#include <QFutureInterface>
-#include <QFutureWatcher>
-#include <QGuiApplication>
-#include <QClipboard>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QPainter>
 #include <QUrl>
 #include <QVariantMap>
 
-#include <memory>
-
 #include "app/SettingsStore.h"
-#include "core/ProviderConfig.h"
-#include "providers/OpenAiProvider.h"
 #include "runtime/LlamaServerProcess.h"
 #include "runtime/ModelMemoryEstimator.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeLocator.h"
+#include "runtime/RuntimeLog.h"
 #include "runtime/RuntimePaths.h"
 #include "runtime/ServerLaunchConfig.h"
 
@@ -59,6 +49,11 @@ void RuntimeController::setSingleInstanceHeld(bool held)
         return;
     m_lockedOut = held;
     emit lockedOutChanged();
+}
+
+void RuntimeController::setLogTarget(RuntimeLog *log)
+{
+    m_logTarget = log;
 }
 
 void RuntimeController::setState(RuntimeState next)
@@ -332,7 +327,9 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
 QString RuntimeController::describeServerFailure() const
 {
     QString msg = m_server ? translateServerLine(m_server->lastError()) : QString();
-    const QString tail = lastLogLines(20);
+    const QString tail = m_server
+        ? m_server->ringBuffer(20).join(QStringLiteral("\n"))
+        : QString();
     if (!tail.isEmpty()) {
         if (msg.isEmpty())
             msg = tr("Server failed");
@@ -369,125 +366,6 @@ QString RuntimeController::translateServerLine(const QString &line)
     if (line.contains(QStringLiteral("did not answer /health")))
         return QObject::tr("Server did not respond in time; see the log below");
     return line;
-}
-
-QString RuntimeController::lastLogLines(int count) const
-{
-    return m_server ? m_server->ringBuffer(count).join(QStringLiteral("\n")) : QString();
-}
-
-QImage RuntimeController::makeTestImage()
-{
-    // Built-in synthetic test image: small white surface with a black bar so a
-    // real model has something cheap to describe and the full HTTP round-trip
-    // is exercised end-to-end.
-    QImage img(32, 32, QImage::Format_RGB32);
-    img.fill(Qt::white);
-    QPainter p(&img);
-    p.fillRect(4, 24, 24, 4, Qt::black);
-    p.end();
-    return img;
-}
-
-// ---------------------------------------------------------------------------
-// Self-test (§ Stage G-core task 5)
-// ---------------------------------------------------------------------------
-
-QFuture<SelfTestResult> RuntimeController::runSelfTest()
-{
-    auto promise = std::make_shared<QFutureInterface<SelfTestResult>>();
-    promise->reportStarted();
-
-    if (modeFromSettings(m_settings) == ConnectionMode::External) {
-        SelfTestResult r;
-        r.error = tr("Self-test is available only in Managed mode");
-        promise->reportResult(std::move(r));
-        promise->reportFinished();
-        return promise->future();
-    }
-
-    // Start (or reuse) the server first, then issue one real request.
-    ensureConnectionReady([this, promise](const ResolvedConnection &conn) {
-        if (conn.baseUrl.isEmpty()) {
-            SelfTestResult r;
-            r.error = conn.error.isEmpty() ? tr("Server not available") : conn.error;
-            promise->reportResult(std::move(r));
-            promise->reportFinished();
-            return;
-        }
-        runSelfTestRequest(conn, promise);
-    });
-    return promise->future();
-}
-
-void RuntimeController::runSelfTestRequest(
-    const ResolvedConnection &conn, std::shared_ptr<QFutureInterface<SelfTestResult>> promise)
-{
-    if (!m_selftestProvider)
-        m_selftestProvider = new OpenAiProvider(this);
-
-    OcrRequest request;
-    request.image = makeTestImage();
-    request.prompt = tr("Describe the text in this image in one short line.");
-    request.modelId = conn.modelId;
-
-    ProviderConfig config;
-    config.baseUrl = conn.baseUrl;
-    config.apiKey = conn.apiKey;
-    config.timeoutMs = conn.timeoutMs;
-
-    QFutureWatcher<OcrResult> *watch = new QFutureWatcher<OcrResult>(this);
-    connect(watch, &QFutureWatcher<OcrResult>::finished, this,
-            [promise, watch]() {
-                const OcrResult res =
-                    watch->future().resultCount() > 0 ? watch->result()
-                                                      : OcrResult::makeError(QObject::tr("No response"));
-                watch->deleteLater();
-                SelfTestResult r;
-                if (res.success) {
-                    r.ok = true;
-                    r.text = res.text;
-                } else {
-                    r.error =
-                        res.errorMessage.isEmpty() ? QObject::tr("Recognition failed") : res.errorMessage;
-                }
-                promise->reportResult(std::move(r));
-                promise->reportFinished();
-            });
-    watch->setFuture(m_selftestProvider->recognize(request, config));
-}
-
-void RuntimeController::runSelfTestQml()
-{
-    if (m_selftestRunning)
-        return;
-    // The External-mode guard and the resolve→request chain live in
-    // runSelfTest() (single source of truth); this only mirrors its
-    // SelfTestResult into the QML-visible selftest* state.
-    if (modeFromSettings(m_settings) == ConnectionMode::External) {
-        m_selftestOk = false;
-        m_selftestMessage = tr("Self-test is available only in Managed mode");
-        emit selftestFinished();
-        return;
-    }
-    m_selftestRunning = true;
-    m_selftestOk = false;
-    m_selftestMessage = tr("Running self-test…");
-    emit selftestFinished();
-
-    auto *watch = new QFutureWatcher<SelfTestResult>(this);
-    connect(watch, &QFutureWatcher<SelfTestResult>::finished, this,
-            [this, watch]() {
-                const SelfTestResult r = watch->result();
-                watch->deleteLater();
-                m_selftestRunning = false;
-                m_selftestOk = r.ok;
-                m_selftestMessage = r.ok ? r.text
-                                         : (r.error.isEmpty() ? tr("Recognition failed")
-                                                               : r.error);
-                emit selftestFinished();
-            });
-    watch->setFuture(runSelfTest());
 }
 
 // ---------------------------------------------------------------------------
@@ -547,13 +425,15 @@ QString RuntimeController::startServer()
                 });
         connect(m_server, &LlamaServerProcess::statusMessageChanged, this,
                 [this]() { setStatusMessage(m_server->statusMessage()); });
-        connect(m_server, &LlamaServerProcess::logLineAppended, this,
-                [this](const QString &) { emit serverLogChanged(); });
         connect(m_server, &LlamaServerProcess::loadProgressChanged, this,
                 [this]() { setLoadProgressPercent(m_server->loadProgressPercent()); });
     } else {
         m_server->setOptions(opts);
     }
+    // The dedicated log view follows the live server (§ review 3.4); it is set
+    // once per (re)spawn so restarts keep the window attached.
+    if (m_logTarget)
+        m_logTarget->setServer(m_server);
 
     setBusyState(AppBusyState::StartingRuntime);
     setLoadProgressPercent(-1);   // §H.7: no stale percent across starts
@@ -644,48 +524,6 @@ QString RuntimeController::launchCommandPreview()
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings);
     cfg.program = program;
     return cfg.toDisplayCommand(probe.capabilities);
-}
-
-QString RuntimeController::serverLog() const
-{
-    if (!m_server)
-        return QString();
-    return m_server->ringBuffer(2000).join(QStringLiteral("\n"));
-}
-
-QString RuntimeController::serverLogPath() const
-{
-    return m_server ? m_server->logFilePath() : QString();
-}
-
-QString RuntimeController::serverLogDir() const
-{
-    if (m_server) {
-        const QString fp = m_server->logFilePath();
-        if (!fp.isEmpty())
-            return QFileInfo(fp).absolutePath();
-    }
-    const RuntimePaths p(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
-    return p.logsDir();
-}
-
-void RuntimeController::copyServerLog()
-{
-    QGuiApplication::clipboard()->setText(serverLog());
-}
-
-void RuntimeController::clearServerLog()
-{
-    if (m_server)
-        m_server->clearLog();
-    emit serverLogChanged();
-}
-
-void RuntimeController::openServerLogFolder()
-{
-    const QString dir = serverLogDir();
-    if (!dir.isEmpty())
-        QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
 QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath,
