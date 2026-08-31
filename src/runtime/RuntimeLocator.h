@@ -32,7 +32,7 @@ public:
     // freshly — user-facing "Check" must reflect the current on-disk state.
     static ProbeResult probe(const QString &binaryPath, int timeoutMs = 5000);
 
-    // probe() but served from a tiny LRU cache keyed on (path, mtime, size)
+    // probe() but served from a one-entry cache keyed on (path, mtime, size)
     // when the binary is unchanged since the last probe. Used by the manage
     // startServer() path so a repeated recognition round-trip does not re-spawn
     // the binary (and stall the main thread) for an identical file (§H.7).
@@ -54,8 +54,8 @@ public:
     static QString ensureExecutable(const QString &binaryPath, bool pathManaged,
                                     bool &needsConfirmation);
 
-    // Cache key for probe(); public merely so the implementation can store an
-    // LRU container of results keyed on it.
+    // Cache key for probe(); public merely so the implementation can store a
+    // cached result keyed on it.
     struct ProbeKey {
         QString path;
         qint64 mtimeMs;

@@ -4,8 +4,6 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QStringList>
-#include <QVector>
-#include <utility>
 
 #include "runtime/RuntimeLocator.h"
 #include "runtime/ServerCapabilities.h"
@@ -178,12 +176,20 @@ QString RuntimeLocator::ensureExecutable(const QString &binaryPath, bool pathMan
 // --- §H.7 probe cache ------------------------------------------------
 
 namespace {
-// A single managed server binary is used at a time, so a tiny cache of recent
-// probes (with an exact `path + mtime + size` match) is enough to skip the
-// redundant --version/--help spawn on consecutive starts. Invalidation: an
-// on-disk change (mtime/size) or a different path naturally misses.
-constexpr int kMaxCachedProbes = 4;
-QVector<QPair<RuntimeLocator::ProbeKey, ProbeResult>> s_probeCache;
+// A single managed server binary is used at a time, so one cached probe (with
+// an exact `path + mtime + size` match) is enough to skip the redundant
+// --version/--help spawn on consecutive starts. Invalidation: an on-disk change
+// (mtime/size) or a different path naturally misses and re-probes (review 3.6:
+// the old 4-slot LRU re-ordered a QVector for what is a single binary).
+// Main-thread only: probeCached() is called from the QML startServer()/
+// launchCommandPreview() paths; the install flow uses probe() (always fresh)
+// and does not touch this.
+struct ProbeCacheSlot {
+    RuntimeLocator::ProbeKey key;
+    ProbeResult result;
+    bool valid = false;
+};
+ProbeCacheSlot s_probeCache;
 
 }  // namespace
 
@@ -194,12 +200,9 @@ bool RuntimeLocator::probeFromCache(const QString &binaryPath, ProbeResult &out)
         return false;
     const ProbeKey key{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(),
                        fi.size()};
-    for (int i = 0; i < s_probeCache.size(); ++i) {
-        if (s_probeCache.at(i).first == key) {
-            out = s_probeCache.at(i).second;
-            s_probeCache.move(i, 0);  // most-recently-used first (LRU)
-            return true;
-        }
+    if (s_probeCache.valid && s_probeCache.key == key) {
+        out = s_probeCache.result;
+        return true;
     }
     return false;
 }
@@ -209,19 +212,10 @@ void RuntimeLocator::cacheProbe(const QString &binaryPath, const ProbeResult &re
     const QFileInfo fi(binaryPath);
     if (!fi.exists() || !fi.isFile())
         return;
-    const ProbeKey key{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(),
-                       fi.size()};
-    for (int i = 0; i < s_probeCache.size(); ++i) {
-        if (s_probeCache.at(i).first == key) {
-            s_probeCache[i] = qMakePair(key, result);
-            if (i > 0)
-                s_probeCache.move(i, 0);
-            return;
-        }
-    }
-    if (s_probeCache.size() >= kMaxCachedProbes)
-        s_probeCache.removeLast();
-    s_probeCache.prepend(qMakePair(key, result));
+    s_probeCache.key = ProbeKey{fi.absoluteFilePath(),
+                                fi.lastModified().toMSecsSinceEpoch(), fi.size()};
+    s_probeCache.result = result;
+    s_probeCache.valid = true;
 }
 
 }  // namespace llocr

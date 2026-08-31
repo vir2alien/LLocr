@@ -1,4 +1,5 @@
 #include <QFile>
+#include <QFileInfo>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -23,6 +24,7 @@ private slots:
     void emptyPathReports();
     void belowMinimumDetect();
     void cacheInvalidatesOnFileChange();
+    void cacheHoldsSingleEntry();
 };
 
 static QString mockPath()
@@ -110,6 +112,58 @@ void TestRuntimeLocator::cacheInvalidatesOnFileChange()
     const ProbeResult r2 = RuntimeLocator::probeCached(target);
     QVERIFY(!r2.ok);  // not a valid llama-server
     QVERIFY(!r2.error.isEmpty());
+}
+
+void TestRuntimeLocator::cacheHoldsSingleEntry()
+{
+    // Review 3.6: the probe cache is a single entry. Probing a *different*
+    // binary evicts the previous key, so coming back to the first path
+    // re-probes instead of serving the stale entry. We can't observe the
+    // difference through the ProbeResult (identical binaries), so each path is
+    // a wrapper script that appends a marker line per invocation and delegates
+    // to the real mock: a re-probe grows the counter, a cache hit does not.
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString mock = QFileInfo(mockPath()).absoluteFilePath();
+
+    auto writeWrapper = [&dir, &mock](const QString &path, const QString &log) {
+        QFile script(path);
+        QVERIFY(script.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        const QByteArray body = QStringLiteral("#!/bin/sh\necho x >> '%1'\nexec '%2' \"$@\"\n")
+                                    .arg(log, mock)
+                                    .toUtf8();
+        QVERIFY(script.write(body) > 0);
+        script.close();
+        QVERIFY(QFile::setPermissions(
+            path, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner
+                      | QFileDevice::ReadGroup | QFileDevice::ExeGroup
+                      | QFileDevice::ReadOther | QFileDevice::ExeOther));
+    };
+    auto probeCount = [](const QString &log) -> int {
+        QFile f(log);
+        if (!f.open(QIODevice::ReadOnly))
+            return 0;
+        const QByteArray data = f.readAll();
+        f.close();
+        return int(data.count('\n'));
+    };
+
+    const QString logA = QStringLiteral("%1/a.log").arg(dir.path());
+    const QString logB = QStringLiteral("%1/b.log").arg(dir.path());
+    const QString pathA = QStringLiteral("%1/server-a").arg(dir.path());
+    const QString pathB = QStringLiteral("%1/server-b").arg(dir.path());
+    writeWrapper(pathA, logA);
+    writeWrapper(pathB, logB);
+
+    QVERIFY(RuntimeLocator::probeCached(pathA).ok);
+    QCOMPARE(probeCount(logA), 2);  // --version + --help for the fresh probe
+    QVERIFY(RuntimeLocator::probeCached(pathB).ok);
+    QCOMPARE(probeCount(logB), 2);
+
+    // A was evicted by B: probing A again must re-probe (2 more marker lines).
+    // A 4-slot cache would still hold A and return it without a re-probe.
+    QVERIFY(RuntimeLocator::probeCached(pathA).ok);
+    QCOMPARE(probeCount(logA), 4);
 }
 
 QTEST_MAIN(TestRuntimeLocator)
