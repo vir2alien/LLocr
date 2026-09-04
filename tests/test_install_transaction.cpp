@@ -8,6 +8,8 @@
 
 #include <functional>
 
+#include <zlib.h>
+
 #include "runtime/InstallTransaction.h"
 #include "runtime/ReleaseAsset.h"
 #include "runtime/RuntimePaths.h"
@@ -49,21 +51,8 @@ static void pushU32(QByteArray &out, quint32 v)
 
 static quint32 crc32(const QByteArray &data)
 {
-    static quint32 table[256];
-    static bool built = false;
-    if (!built) {
-        for (quint32 i = 0; i < 256; ++i) {
-            quint32 c = i;
-            for (int k = 0; k < 8; ++k)
-                c = (c & 1u) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
-            table[i] = c;
-        }
-        built = true;
-    }
-    quint32 crc = 0xFFFFFFFFu;
-    for (char ch : data)
-        crc = table[(crc ^ static_cast<quint8>(ch)) & 0xFFu] ^ (crc >> 8);
-    return crc;
+    return ::crc32(0L, reinterpret_cast<const Bytef *>(data.constData()),
+                   static_cast<uInt>(data.size()));
 }
 
 static QByteArray buildZip(const QList<ZipEntry> &entries)

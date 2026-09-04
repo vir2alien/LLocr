@@ -5,8 +5,9 @@
 #include <QTemporaryDir>
 #include <QTest>
 
-#include <array>
 #include <cstdint>
+
+#include <zlib.h>
 
 #include "runtime/ArchiveExtractor.h"
 
@@ -37,18 +38,8 @@ private:
 
 uint32_t crc32Of(const QByteArray &data)
 {
-    std::array<uint32_t, 256> table;
-    const uint32_t poly = 0xEDB88320U;
-    for (uint32_t i = 0; i < 256; ++i) {
-        uint32_t c = i;
-        for (int k = 0; k < 8; ++k)
-            c = (c & 1U) ? (poly ^ (c >> 1)) : (c >> 1);
-        table[i] = c;
-    }
-    uint32_t crc = 0xFFFFFFFFu;
-    for (int i = 0; i < data.size(); ++i)
-        crc = table[(crc ^ (unsigned char)data[i]) & 0xFFU] ^ (crc >> 8);
-    return crc;
+    return ::crc32(0L, reinterpret_cast<const Bytef *>(data.constData()),
+                   static_cast<uInt>(data.size()));
 }
 
 // Raw DEFLATE from qCompress output. qCompress prepends a 4-byte big-endian

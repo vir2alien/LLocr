@@ -291,6 +291,7 @@ target_include_directories(test_archive_extractor PRIVATE ${CMAKE_SOURCE_DIR}/sr
 target_link_libraries(test_archive_extractor PRIVATE
     Qt6::Test
     Qt6::Core
+    ZLIB::ZLIB
 )
 
 target_sources(test_archive_extractor PRIVATE
@@ -310,6 +311,7 @@ target_compile_definitions(test_install_transaction PRIVATE
 target_link_libraries(test_install_transaction PRIVATE
     Qt6::Test
     Qt6::Core
+    ZLIB::ZLIB
 )
 
 target_sources(test_install_transaction PRIVATE
@@ -391,6 +393,7 @@ target_link_libraries(test_install_lock PRIVATE
     Qt6::Network
     Qt6::Concurrent
     Qt6::Qml
+    ZLIB::ZLIB
 )
 
 target_sources(test_install_lock PRIVATE

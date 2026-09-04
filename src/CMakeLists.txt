@@ -201,6 +201,7 @@ target_link_libraries(llocr PRIVATE
     Qt6::QuickControls2
     Qt6::Pdf
     Qt6::WebEngineQuick
+    ZLIB::ZLIB
 )
 
 target_compile_definitions(llocr PRIVATE
@@ -211,4 +212,3 @@ qt_add_translations(llocr
     TS_FILES
         "${CMAKE_SOURCE_DIR}/resources/i18n/llocr_ru.ts"
 )
-
