@@ -46,7 +46,6 @@ TabBar {
     }
 
     CustomTabButton { text: qsTr("UI") }
-    CustomTabButton { text: qsTr("Connection") }
     CustomTabButton { text: qsTr("Model") }
     CustomTabButton { text: qsTr("Output") }
     CustomTabButton {

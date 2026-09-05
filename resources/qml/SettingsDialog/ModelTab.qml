@@ -45,9 +45,6 @@ GridLayout {
         Layout.fillWidth: true
         implicitHeight: Theme.controlHeight
         selectByMouse: true
-        // §4.2: in Managed mode the OpenAI model field is defined by
-        // the running server (--alias); the stored name is kept for
-        // a return to External and must not be edited.
         readOnly: Settings.connectionMode === "managed"
         placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
     }

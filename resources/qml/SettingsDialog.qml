@@ -20,6 +20,8 @@ Dialog {
 
     property var logWindowRef: null
 
+    enum TabsEnum {UiTabNum = 0, ModelTabNum = 1, OutputTabNum = 2, RuntimeTabNum = 3, ModelsTabNum = 4}
+
     anchors.centerIn: parent
     width: 520
     implicitHeight: 600
@@ -56,26 +58,34 @@ Dialog {
 
     function selectTab(index) {
         tabBar.currentIndex = index;
-        loadValues();//todo через индекс
+        loadTab(index);
     }
 
-    function loadValues() {
-        uiTab.loadValues();
-        modelTab.loadValues();
-        runtimeTab.loadValues();
-
-        // Output / parser
-        var idx = parserBox.model.indexOf(Settings.parserId)
-        parserBox.currentIndex = idx >= 0 ? idx : 0
+    function loadTab(index) {
+        switch (index) {
+        case SettingsDialog.TabsEnum.UiTabNum:
+            uiTab.loadValues(); break;
+        case SettingsDialog.TabsEnum.ModelTabNum:
+            modelTab.loadValues(); break;
+        case SettingsDialog.TabsEnum.OutputTabNum: {
+            var idx = parserBox.model.indexOf(Settings.parserId)
+            parserBox.currentIndex = idx >= 0 ? idx : 0
+            break;
+        }
+        case SettingsDialog.TabsEnum.RuntimeTabNum:
+            runtimeTab.loadValues(); break;
+        case SettingsDialog.TabsEnum.ModelsTabNum:
+            break;
+        }
     }
 
     onAboutToShow: {
-        loadValues()
+        loadTab(tabBar.currentIndex)
     }
 
     onReset: {
         Settings.resetToDefaults();
-        loadValues();
+        loadTab(tabBar.currentIndex);
     }
 
     onAccepted: {
@@ -88,24 +98,7 @@ Dialog {
         I18n.setLanguage(Settings.language);
     }
 
-    Connections {
-        target: RuntimeInstaller
-        function onCatalogChanged() {
-            var r = []
-            for (var ri = 0; ri < RuntimeInstaller.releaseCount; ri++)
-                r.push(RuntimeInstaller.releaseLabel(ri))
-            releaseOptions = r
-            if (releaseBox)
-                releaseBox.currentIndex = RuntimeInstaller.selectedRelease
-        }
-        function onBackendChanged() {
-            if (backendBox) {
-                var idx = RuntimeInstaller.availableBackends.indexOf(RuntimeInstaller.backend)
-                backendBox.currentIndex = idx >= 0 ? idx : 0
-            }
-        }
-        function onInstalledChanged() { }
-    }
+
 
     ColumnLayout {
         clip: true
@@ -115,6 +108,7 @@ Dialog {
         SDTabBar {
             id: tabBar
             Layout.fillWidth: true
+            onCurrentIndexChanged: loadTab(currentIndex)
         }
 
         StackLayout {
@@ -124,13 +118,6 @@ Dialog {
 
             UITab {
                 id: uiTab
-            }
-
-            ColumnLayout { // Tab 1 — Connection
-                spacing: 4
-
-
-                Item { Layout.fillHeight: true }
             }
 
             ModelTab {
@@ -167,13 +154,10 @@ Dialog {
 
             RuntimeTab {
                 id: runtimeTab
-                Layout.fillWidth: true
-                Layout.fillHeight: true
             }
 
             ModelsTab {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+                id: modelSelectTab
             }
         }
     }

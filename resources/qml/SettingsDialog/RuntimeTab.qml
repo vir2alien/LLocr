@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import LLocr
 
 ColumnLayout {
-    id: runtimeScroll
+    id: runtimeLayout
     clip: true
     spacing: 4
 
@@ -14,10 +14,9 @@ ColumnLayout {
     function loadValues() {
         rtExternal.loadValues();
         rtInternal.buildInstallOptions();
-
     }
 
-    function savaValues() {
+    function saveValues() {
         rtExternal.savaValues();
     }
 
@@ -80,6 +79,7 @@ ColumnLayout {
         id: rtExternal
         visible: connectionMode === 0
         Layout.fillWidth: true
+        Layout.fillHeight: true
     }
 
     Rectangle {
@@ -92,8 +92,11 @@ ColumnLayout {
         id: rtInternal
         visible: connectionMode === 1
         Layout.fillWidth: true
+        Layout.fillHeight: true
     }
 
-    Item { implicitHeight: 4 }
-    Item { Layout.fillHeight: true }
+    Item {
+        visible: rtExternal.visible
+        Layout.fillHeight: true
+    }
 }

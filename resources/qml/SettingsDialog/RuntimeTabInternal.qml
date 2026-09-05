@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import LLocr
 
 ScrollView {
-
+    contentWidth: availableWidth
     property var backendOptions: []
     property var releaseOptions: []
 
@@ -24,10 +24,30 @@ ScrollView {
         releaseOptions = r
     }
 
+    Connections {
+        target: RuntimeInstaller
+        function onCatalogChanged() {
+            var r = []
+            for (var ri = 0; ri < RuntimeInstaller.releaseCount; ri++)
+                r.push(RuntimeInstaller.releaseLabel(ri))
+            releaseOptions = r
+            if (releaseBox)
+                releaseBox.currentIndex = RuntimeInstaller.selectedRelease
+        }
+        function onBackendChanged() {
+            if (backendBox) {
+                var idx = RuntimeInstaller.availableBackends.indexOf(RuntimeInstaller.backend)
+                backendBox.currentIndex = idx >= 0 ? idx : 0
+            }
+        }
+        function onInstalledChanged() { }
+    }
 
     ScrollBar.vertical.policy: ScrollBar.AsNeeded
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
     ColumnLayout {
-        width: ScrollView.availableWidth
+        anchors.fill: parent
         spacing: 4
         Label {
             text: qsTr("llama-server binary")
