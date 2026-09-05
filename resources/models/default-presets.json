@@ -3,33 +3,18 @@
   "_comment": "revision may be empty: at install time the app always pins the repo's current commit SHA via fetchHeadSha unless a preset already carries one. sha256 is a per-file digest map used for offline verification when the HF lfs.oid is unavailable; most files get their digest from lfs.oid, and GGUF files are additionally sanity-checked by magic bytes. See docs/review-llm-management.md §4.1.",
   "models": [
     {
-      "id": "unlimited-ocr-q4km",
-      "title": "Unlimited-OCR (Q4_K_M)",
-      "repo": "wshobson/unlimited-ocr",
+      "id": "unlimited-ocr-q8_0",
+      "title": "Unlimited-OCR (Q8_0)",
+      "repo": "sahilchachra/Unlimited-OCR-GGUF",
       "revision": "",
-      "model": "model-Q4_K_M.gguf",
-      "mmproj": "mmproj-F16.gguf",
+      "model": "Unlimited-OCR-Q8_0.gguf",
+      "mmproj": "mmproj-Unlimited-OCR-F16.gguf",
       "parser": "det_tokens",
       "prompt": "document parsing.",
       "ctxSize": 8192,
       "minBuild": "b4000",
       "approxVramGb": 6.5,
-      "license": "https://huggingface.co/wshobson/unlimited-ocr",
-      "sha256": {}
-    },
-    {
-      "id": "qwen2vl-3b-qwen2.5-q4",
-      "title": "Qwen2-VL 3B (Q4_K_M)",
-      "repo": "unsloth/Qwen2-VL-3B-Instruct-GGUF",
-      "revision": "",
-      "model": "Qwen2-VL-3B-Instruct-Q4_K_M.gguf",
-      "mmproj": "Qwen2-VL-3B-Instruct-mmproj-Q8_0.gguf",
-      "parser": "det_tokens",
-      "prompt": "document parsing.",
-      "ctxSize": 8192,
-      "minBuild": "b4000",
-      "approxVramGb": 4.0,
-      "license": "https://huggingface.co/unsloth/Qwen2-VL-3B-Instruct-GGUF",
+      "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
       "sha256": {}
     }
   ]

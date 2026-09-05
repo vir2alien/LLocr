@@ -5,8 +5,6 @@ import QtQuick.Layouts
 
 import LLocr
 
-// Settings → Models (Stage E): local registry, preset catalog and Hugging Face
-// search/download. Backed by the `ModelInstaller` singleton.
 Item {
     id: root
 
@@ -21,7 +19,6 @@ Item {
         anchors.fill: parent
         spacing: 6
 
-        // ----- Status line ------------------------------------------------
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
@@ -42,15 +39,15 @@ Item {
             value: ModelInstaller.progress
         }
 
-        // ----- Installed models -------------------------------------------
         Label {
-            text: qsTr("Installed models")
+            text: qsTr("Installed models: ")
             font.pixelSize: Theme.fontCaption
             color: Theme.textSecondary
         }
 
         ListView {
             id: installedList
+            visible: count > 0
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(root.height * 0.32, 220)
             clip: true
@@ -58,8 +55,6 @@ Item {
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             delegate: Rectangle {
                 required property int index
-                // installedInfo() is a plain Q_INVOKABLE; re-evaluate it when
-                // the installer emits installedChanged (e.g. after Activate).
                 property var info: ModelInstaller.installedInfo(index)
                 Connections {
                     target: ModelInstaller
@@ -130,9 +125,23 @@ Item {
                     }
                 }
             }
+        }//ListView
+
+        Label {
+            visible: installedList.count === 0
+            Layout.fillWidth: true
+            elide: Text.ElideMiddle
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textPrimary
+            text: qsTr("No models installed")
         }
 
-        // ----- Preset catalog ---------------------------------------------
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.divider
+        }
+
         Label {
             text: qsTr("Preset catalog")
             font.pixelSize: Theme.fontCaption
@@ -191,9 +200,14 @@ Item {
                     }
                 }
             }
+        }//ListView
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.divider
         }
 
-        // ----- HF search ---------------------------------------------------
         Label {
             text: qsTr("Search Hugging Face")
             font.pixelSize: Theme.fontCaption
@@ -319,7 +333,6 @@ Item {
         Item { Layout.fillHeight: true }
     }
 
-    // Confirmation for a prepared/remote install with the license link.
     Dialog {
         id: pickDialog
         modal: true
@@ -331,10 +344,11 @@ Item {
         property string license: ""
 
         ColumnLayout {
+            width: parent.width
             spacing: 6
             Label {
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
+                wrapMode: Label.WordWrap
                 font.pixelSize: Theme.fontSmall
                 color: Theme.textSecondary
                 text: qsTr("Downloading starts after confirmation. The model license "
@@ -342,12 +356,10 @@ Item {
             }
             Label {
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
+                wrapMode: Label.WordWrap
                 font.pixelSize: Theme.fontSmall
                 color: Theme.accent
                 visible: pickDialog.license.length > 0
-                // The license field may be a URL or a short name; render a real
-                // link only when it is one.
                 text: {
                     var lic = pickDialog.license
                     if (/^https?:\/\//.test(lic))

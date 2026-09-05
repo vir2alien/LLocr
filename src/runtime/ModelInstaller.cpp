@@ -24,10 +24,6 @@ namespace {
 
 QString repoDirName(const QString &repo)
 {
-    // `repo` may come from an imported catalog.json, so treat it as untrusted:
-    // split on '/', drop '.', '..' and empty segments, strip path-hostile
-    // characters from each segment. Guarantees a single safe path component
-    // that cannot escape modelsDir.
     QStringList parts;
     for (const QString &seg : repo.split(QLatin1Char('/'))) {
         QString s = seg.trimmed();
@@ -45,12 +41,6 @@ QString repoDirName(const QString &repo)
     return parts.join(QStringLiteral("__"));
 }
 
-// Picks the repo's main model bundle (single or multi-part) plus the optional
-// mmproj file. `prefer` names an exact model file by leaf name when non-empty
-// (preset); `preferMmproj` names the exact projector by leaf name when
-// non-empty. Otherwise the largest single .gguf (or the largest multi-part
-// group) and the first vision projector win. All selections are repo-relative
-// paths (HfFile::path), so files inside repo subdirectories download correctly.
 void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
                       const QString &preferMmproj, QStringList *modelPaths,
                       QString &mmprojRel)
@@ -61,7 +51,7 @@ void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
     QStringList singles;                                // repo-relative paths
     QHash<QString, QPair<QStringList, qint64>> groups;  // key -> (paths,size)
     QStringList projectors;
-    QHash<QString, qint64> sizeByPath;  // path -> size (single lookup, §3.14)
+    QHash<QString, qint64> sizeByPath;                  // path -> size
 
     for (const HfFile &f : tree) {
         if (f.isDir)
@@ -119,7 +109,6 @@ void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
             return;
     }
 
-    // Largest single file.
     QString largestSingle;
     qint64 largestSize = -1;
     for (const QString &p : singles) {
@@ -129,7 +118,7 @@ void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
             largestSingle = p;
         }
     }
-    // Largest group (sum of parts).
+
     QString largestGroup;
     qint64 groupBest = -1;
     for (auto it = groups.constBegin(); it != groups.constEnd(); ++it) {
@@ -223,10 +212,6 @@ QString ModelInstaller::activeTitle() const
     }
     return QString();
 }
-
-// ---------------------------------------------------------------------------
-// Presets / registry
-// ---------------------------------------------------------------------------
 
 void ModelInstaller::reloadPresets()
 {
@@ -322,8 +307,7 @@ QString ModelInstaller::removeModel(int index)
         if (!d.removeRecursively())
             return tr("Unable to remove model directory: %1").arg(e.dir);
     }
-    // Persist the removal before refreshing, otherwise the entry survives in
-    // index.json and can be re-activated pointing at deleted files.
+
     QList<ModelEntry> updated = m_installed;
     updated.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
     QString saveErr;
@@ -376,8 +360,6 @@ void ModelInstaller::beginPrepare(const ModelPreset &preset)
     const QString prefer = preset.model;
     const QString preferMmproj = preset.mmproj;
 
-    // 4.7: snapshot main-thread state into locals so the worker never reads
-    // m_settings/m_paths (QObject members) concurrently with the GUI thread.
     const QString token = m_settings.hfToken();
     const QString modelsDir = m_paths.modelsDir();
 
@@ -386,13 +368,10 @@ void ModelInstaller::beginPrepare(const ModelPreset &preset)
                           modelsDir]() -> QPair<Pending, QString> {
             QNetworkAccessManager nam;
             QString err;
-            // Gated/private repos need the token already at tree/head-sha time,
-            // not only for file downloads.
             QByteArray auth;
             if (!token.isEmpty())
                 auth = QStringLiteral("Bearer %1").arg(token).toUtf8();
             QString rev;
-            // Pinned presets skip the head-sha round-trip entirely (§3.16).
             if (!pin.isEmpty()) {
                 rev = pin;
             } else {
@@ -474,8 +453,6 @@ void ModelInstaller::beginDownload()
     m_downloadDone = 0;
     m_downloadFailed = false;
 
-    // Same-named leaves from different repo subdirectories would overwrite
-    // each other when flattened into modelsDir/<org>__<repo>/ — fail early.
     QSet<QString> leaves;
     for (const QString &path : m_pending.modelNames)
         leaves.insert(ModelCatalog::leafName(path));
@@ -501,8 +478,6 @@ void ModelInstaller::beginDownload()
 void ModelInstaller::enqueueFile(const QString &repoPath, const QString &repo,
                                  const QString &commitSha)
 {
-    // `repoPath` is the full repo-relative path; the local file name is the
-    // leaf inside modelsDir/<org>__<repo>/ (flattened).
     const QString leaf = ModelCatalog::leafName(repoPath);
     const QUrl url = ModelCatalog::resolveUrl(repo, commitSha, repoPath);
     QString auth;
@@ -514,11 +489,6 @@ void ModelInstaller::enqueueFile(const QString &repoPath, const QString &repo,
     req.url = url;
     req.targetDir = m_pending.dir;
     req.fileName = leaf;
-    // 4.8: verify each downloaded file by sha256 (ADR 29), not only GGUF-magic
-    // on the primary part later. A preset-pinned digest (per lowercased file
-    // name) wins; otherwise fall back to the HF lfs.oid for this path. When
-    // neither is available the digest stays empty and DownloadTask skips the
-    // check (non-LFS files), as before.
     QString expectedSha;
     const QString pinned = m_pending.fileSha256.value(leaf.toLower());
     if (!pinned.isEmpty()) {
@@ -619,7 +589,6 @@ void ModelInstaller::completeInstall()
     e.ctxSizeSet = m_pending.ctxSize > 0;
     e.addedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
-    // Size is the sum of the downloaded GGUF files.
     qint64 total = 0;
     for (const QString &path : m_pending.modelNames)
         total += QFileInfo(localPath(path)).size();
@@ -668,8 +637,6 @@ void ModelInstaller::startSearch()
         return;
     }
     const QString q = m_searchQuery.trimmed();
-    // 4.7: snapshot the token up front; the worker reads only the local copy,
-    // never m_settings from the GUI thread.
     const QString token = m_settings.hfToken();
     m_searchActive = true;
     setBusy(true);
@@ -770,10 +737,6 @@ QString ModelInstaller::importCatalog(const QString &path)
     if (incoming.isEmpty())
         return err.isEmpty() ? tr("No valid presets in file") : err;
 
-    // Persist only user overrides: merge `incoming` into the existing USER
-    // catalog, not the merged view, and drop entries identical to built-in
-    // presets — otherwise the saved file would shadow every built-in preset
-    // forever (§2.11).
     QString loadErr;
     const QString userPath =
         QDir(m_paths.modelsDir()).filePath(QStringLiteral("catalog.json"));
