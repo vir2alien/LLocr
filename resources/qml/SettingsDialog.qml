@@ -357,6 +357,7 @@ Dialog {
                     Component.onCompleted:
                         currentIndex = Settings.connectionMode === "managed" ? 1 : 0
                     Connections {
+                        target: Settings
                         function onConnectionModeChanged() {
                             connectionModeBox.currentIndex =
                                 Settings.connectionMode === "managed" ? 1 : 0

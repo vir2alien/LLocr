@@ -117,7 +117,10 @@ variable, and vcpkg does **not** participate in the build.
       the «Launch settings changed — restart» banner with a Restart button.
     - **H** 🔄 — H.2 ✅ (memory estimate + warning in the wizard Launch step,
       `ModelMemoryEstimator`), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
-      probe bounds 2.5s/5s, `probeCached()` LRU, `loadProgressPercent()`
+      probe bounds 2.5s/5s, `probeCached()` LRU — plus a **shared probe budget**
+      (`--version` + `--help`, worst case = `timeoutMs`, ADR 51) and a
+      **persistent capabilities cache** `capabilities-<sha1(path+mtime+size)>.json`
+      served across app runs (ADR 52), `loadProgressPercent()`
       stderr classification + deterministic footer ProgressBar, `llocr_ru.ts`
       cleaned), **H.8 ✅ (documentation — pages 01–07 + AGENTS.md, ADR 26–45
       recorded)**, **H.6 ✅ (separate locks**: `.install.lock` in the

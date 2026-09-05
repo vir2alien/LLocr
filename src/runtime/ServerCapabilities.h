@@ -51,8 +51,9 @@ struct ServerCapabilities {
     QJsonObject toJson() const;
     static ServerCapabilities fromJson(const QJsonObject &o);
 
-    // <cacheDir>/capabilities-<sha1(path+mtime)>.json — the cache key for a
-    // given binary path (re-probed when the file or its mtime changes).
+    // <cacheDir>/capabilities-<sha1(path+mtime+size)>.json — the cache key for
+    // a given binary path (re-probed when the file, its mtime or its size
+    // changes).
     static QString cacheFileName(const QString &cacheDir, const QString &binaryPath);
 };
 

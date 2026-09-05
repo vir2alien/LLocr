@@ -52,7 +52,6 @@ ServerCapabilities ServerCapabilities::detect(const QString &versionOutput,
     ServerCapabilities caps;
     caps.versionText = versionOutput.trimmed();
 
-    // "the binary answers" is the validity criterion (not the file name).
     caps.ok = !caps.versionText.isEmpty() || !helpOutput.trimmed().isEmpty();
 
     const int build = extractBuildNumber(versionOutput);
@@ -139,8 +138,13 @@ QString ServerCapabilities::cacheFileName(const QString &cacheDir,
                                           const QString &binaryPath)
 {
     const QFileInfo fi(binaryPath);
-    const QString key = QStringLiteral("%1@%2")
-                            .arg(fi.absoluteFilePath(), QString::number(fi.lastModified().toSecsSinceEpoch()));
+    // Key = absolute path + mtime (ms) + size: identical in strength to the
+    // in-memory ProbeKey, so replacing a binary that keeps the same mtime
+    // second still invalidates the entry (sized entry vs. rebuild).
+    const QString key = QStringLiteral("%1@%2@%3")
+                            .arg(fi.absoluteFilePath(),
+                                 QString::number(fi.lastModified().toMSecsSinceEpoch()),
+                                 QString::number(fi.size()));
     const QByteArray hash =
         QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex();
     return QDir(cacheDir).filePath(QStringLiteral("capabilities-%1.json").arg(

@@ -1,7 +1,11 @@
 #include <QDateTime>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QStringList>
 
@@ -59,6 +63,26 @@ ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, int timeoutMs
     return r;
 }
 
+ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, const QString &cacheDir,
+                                        int timeoutMs)
+{
+    // Same as above, plus a persistent JSON cache (ServerCapabilities::
+    // cacheFileName) so an unchanged binary is not re-spawned across app runs:
+    // a fresh process misses the in-memory slot but serves from disk. Only
+    // successful probes are written, so a transient failure re-probes next time.
+    ProbeResult cached;
+    if (probeFromCache(binaryPath, cached))
+        return cached;
+    if (probeFromDiskCache(binaryPath, cacheDir, cached)) {
+        cacheProbe(binaryPath, cached);  // refresh the in-memory slot too
+        return cached;
+    }
+    const ProbeResult r = probeImpl(binaryPath, timeoutMs);
+    cacheProbe(binaryPath, r);
+    writeDiskCache(binaryPath, cacheDir, r);
+    return r;
+}
+
 ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
 {
     ProbeResult r;
@@ -72,14 +96,24 @@ ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
         return r;
     }
 
-    // --version first (build number for the allowlist), then --help as a
-    // refinement source and a fallback when --version is unknown (5.3 steps
-    // 2-3). Each gets its own bounded probe so a hung binary can't stall UI.
+    // One wall-clock budget shared by both spawns: --version gets the full
+    // amount, --help the remainder — the whole probe can never take longer than
+    // timeoutMs (plus the bounded kill grace on a genuinely hung spawn), instead
+    // of 2 × timeoutMs when each ran with a fresh budget. If --version consumed
+    // everything, --help is skipped and the flags fall back to the build
+    // allowlist (same as a build that prints no help). §H.7 follow-up.
+    QElapsedTimer budget;
+    budget.start();
     QString errVersion, errHelp;
-    const QString versionText = runProbe(binaryPath, {QStringLiteral("--version")},
-                                         timeoutMs, errVersion);
-    const QString helpText =
-        runProbe(binaryPath, {QStringLiteral("--help")}, timeoutMs, errHelp);
+    const QString versionText =
+        runProbe(binaryPath, {QStringLiteral("--version")}, timeoutMs, errVersion);
+    const int remaining = qMax(0, timeoutMs - int(budget.elapsed()));
+    QString helpText;
+    if (remaining > 0) {
+        helpText = runProbe(binaryPath, {QStringLiteral("--help")}, remaining, errHelp);
+    } else {
+        errHelp = QObject::tr("skipped (probe budget exhausted)");
+    }
 
     r.version = versionText;
     r.capabilities = ServerCapabilities::detect(versionText, helpText);
@@ -93,7 +127,6 @@ ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
             r.error.clear();
         }
     } else {
-        // Neither --version nor --help produced usable output.
         const QString versionDetail =
             versionText.isEmpty() ? (errVersion.isEmpty() ? QObject::tr("no output") : errVersion)
                                   : QObject::tr("version ok");
@@ -122,14 +155,11 @@ QString RuntimeLocator::probeSummary(const ProbeResult &r)
 
 QString RuntimeLocator::autoDiscover(int timeoutMs)
 {
-    // 1) System PATH via QStandardPaths::findExecutable — probed like any other
-    // candidate: validity is a successful probe, not mere existence.
     const QString pathCandidate =
         QStandardPaths::findExecutable(QStringLiteral("llama-server"));
     if (!pathCandidate.isEmpty() && probe(pathCandidate, timeoutMs).ok)
         return pathCandidate;
 
-    // 2) Common install roots (best-effort, order by likelihood).
     QStringList roots;
 #ifdef Q_OS_WIN
     const QString localApp = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
@@ -216,6 +246,55 @@ void RuntimeLocator::cacheProbe(const QString &binaryPath, const ProbeResult &re
                                 fi.lastModified().toMSecsSinceEpoch(), fi.size()};
     s_probeCache.result = result;
     s_probeCache.valid = true;
+}
+
+// ---------------------------------------------------------------------------
+// §5.3 step 4 / ADR 41: persistent capabilities cache (capabilities-<sha1>.json)
+// ---------------------------------------------------------------------------
+
+bool RuntimeLocator::probeFromDiskCache(const QString &binaryPath, const QString &cacheDir,
+                                        ProbeResult &out)
+{
+    if (cacheDir.isEmpty())
+        return false;
+    QFile f(ServerCapabilities::cacheFileName(cacheDir, binaryPath));
+    if (!f.open(QIODevice::ReadOnly))
+        return false;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    f.close();
+    if (!doc.isObject())
+        return false;
+    const QJsonObject o = doc.object();
+    if (o.value(QStringLiteral("schemaVersion")).toInt() != 1)
+        return false;  // future schema versions are re-probed, not misread
+    const ServerCapabilities caps = ServerCapabilities::fromJson(o);
+    out.capabilities = caps;
+    out.version = caps.versionText;
+    out.ok = caps.ok;
+    // Mirror probeImpl()'s diagnostics for a below-minimum cached build.
+    if (caps.ok && caps.belowMinimum) {
+        out.error = QObject::tr("Requires llama.cpp %1 or newer").arg(
+            QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
+    } else {
+        out.error.clear();
+    }
+    return true;
+}
+
+void RuntimeLocator::writeDiskCache(const QString &binaryPath, const QString &cacheDir,
+                                    const ProbeResult &result)
+{
+    // Never cache failed/aborted probes: a transient error (busy system,
+    // timeout) must not mask a later-fixed binary until its mtime/size changes.
+    if (cacheDir.isEmpty() || !result.ok)
+        return;
+    if (!QDir().mkpath(cacheDir))
+        return;
+    QSaveFile f(ServerCapabilities::cacheFileName(cacheDir, binaryPath));
+    if (!f.open(QIODevice::WriteOnly))
+        return;
+    f.write(QJsonDocument(result.capabilities.toJson()).toJson(QJsonDocument::Compact));
+    f.commit();
 }
 
 }  // namespace llocr

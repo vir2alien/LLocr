@@ -38,6 +38,15 @@ public:
     // the binary (and stall the main thread) for an identical file (§H.7).
     static ProbeResult probeCached(const QString &binaryPath, int timeoutMs = 5000);
 
+    // probeCached() with an additional persistent JSON cache under `cacheDir`
+    // (ServerCapabilities::cacheFileName, §5.3 step 4 / ADR 41): an unchanged
+    // binary (same path/mtime/size) is not re-spawned even across app runs —
+    // the first start of a session serves from disk instead of spawning
+    // --version/--help again. Only successful probes are cached; a changed file
+    // misses and re-probes. Used by the managed startServer() path.
+    static ProbeResult probeCached(const QString &binaryPath, const QString &cacheDir,
+                                   int timeoutMs = 5000);
+
     // --version may legitimately be unknown on exotic builds; --help is the
     // secondary probe. Returns the joined diagnostics for the probe UI line.
     static QString probeSummary(const ProbeResult &r);
@@ -74,6 +83,11 @@ private:
 
     static bool probeFromCache(const QString &binaryPath, ProbeResult &out);
     static void cacheProbe(const QString &binaryPath, const ProbeResult &result);
+    // Persistent (per-binary) cache accessors; see probeCached(cacheDir).
+    static bool probeFromDiskCache(const QString &binaryPath, const QString &cacheDir,
+                                   ProbeResult &out);
+    static void writeDiskCache(const QString &binaryPath, const QString &cacheDir,
+                               const ProbeResult &result);
     // Shared body of probe()/probeCached(): the path validation + --version /
     // --help runs that produce a ProbeResult.
     static ProbeResult probeImpl(const QString &binaryPath, int timeoutMs);

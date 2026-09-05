@@ -1116,7 +1116,7 @@
     <message>
         <location filename="../qml/SettingsDialog.qml" line="212"/>
         <source>Runtime</source>
-        <translation>Среда выполнения</translation>
+        <translation>Рантайм</translation>
     </message>
     <message>
         <location filename="../qml/SettingsDialog.qml" line="221"/>
@@ -1226,7 +1226,7 @@
     <message>
         <location filename="../qml/SettingsDialog.qml" line="702"/>
         <source>No runtime installed yet</source>
-        <translation>Среда выполнения ещё не установлена</translation>
+        <translation>Рантайм ещё не установлен</translation>
     </message>
     <message>
         <location filename="../qml/SettingsDialog.qml" line="772"/>
@@ -2189,7 +2189,7 @@
     <message>
         <location filename="../../src/runtime/RuntimeInstaller.cpp" line="84"/>
         <source>runtime</source>
-        <translation>среда выполнения</translation>
+        <translation>среда</translation>
     </message>
     <message>
         <location filename="../../src/runtime/RuntimeInstaller.cpp" line="231"/>

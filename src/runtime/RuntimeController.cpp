@@ -388,13 +388,14 @@ QString RuntimeController::startServer()
                      || m_server->state() == RuntimeState::Stopping))
         return QObject::tr("Server is already running");
 
-    const ProbeResult probe = RuntimeLocator::probeCached(program, kProbeTimeoutMs);
+    RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    const ProbeResult probe =
+        RuntimeLocator::probeCached(program, paths.cacheDir(), kProbeTimeoutMs);
     if (!probe.ok) {
         setStatusMessage(probe.error);
         return probe.error;
     }
 
-    RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
     paths.ensureDirectories();
 
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings);
@@ -509,16 +510,14 @@ QString RuntimeController::autoDiscoverPath()
 
 QString RuntimeController::launchCommandPreview()
 {
-    // Single source of truth for the wizard's command preview (review 3.2):
-    // delegate to ServerLaunchConfig::toDisplayCommand() instead of re-assembling
-    // the line by hand in QML — that version is shell-escaped and capability-
-    // aware, and has unit tests. Empty in External mode (nothing to preview).
     if (modeFromSettings(m_settings) == ConnectionMode::External)
         return QString();
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty())
         return QString();
-    const ProbeResult probe = RuntimeLocator::probeCached(program, kProbeTimeoutMs);
+    RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    const ProbeResult probe =
+        RuntimeLocator::probeCached(program, paths.cacheDir(), kProbeTimeoutMs);
     if (!probe.ok)
         return QString();
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings);
