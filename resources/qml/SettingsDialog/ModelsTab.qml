@@ -49,7 +49,7 @@ Item {
             id: installedList
             visible: count > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(root.height * 0.32, 220)
+            Layout.preferredHeight: Math.min(installedList.count, 3) * 40
             clip: true
             model: ModelInstaller.installedCount
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -150,8 +150,9 @@ Item {
 
         ListView {
             id: presetList
+            visible: count > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(root.height * 0.28, 160)
+            Layout.preferredHeight: Math.min(presetList.count, 3) * 36
             clip: true
             model: ModelInstaller.presetCount
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -202,6 +203,15 @@ Item {
             }
         }//ListView
 
+        Label {
+            visible: presetList.count === 0
+            Layout.fillWidth: true
+            elide: Text.ElideMiddle
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textPrimary
+            text: qsTr("No presets available")
+        }
+
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
@@ -239,7 +249,7 @@ Item {
         ListView {
             id: searchList
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(root.height * 0.24, 140)
+            Layout.preferredHeight: Math.min(searchList.count, 3) * 32
             clip: true
             visible: ModelInstaller.searchCount > 0
             model: ModelInstaller.searchCount
@@ -285,7 +295,17 @@ Item {
             }
         }
 
-        // ----- HF token ----------------------------------------------------
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textMuted
+            visible: !ModelInstaller.searchActive
+                     && ModelInstaller.searchCount === 0
+            text: qsTr("Results appear here. Models install into the managed "
+                       + "models directory.")
+        }
+
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
@@ -305,7 +325,6 @@ Item {
             }
         }
 
-        // ----- Catalog import/export --------------------------------------
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
@@ -407,7 +426,6 @@ Item {
         Layout.fillWidth: true
     }
 
-    // License of the prepared preset is surfaced in the confirm dialog.
     property int preparedIndex: -1
     Connections {
         target: ModelInstaller
