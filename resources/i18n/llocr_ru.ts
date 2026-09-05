@@ -264,6 +264,16 @@
         <translation>Установленные модели</translation>
     </message>
     <message>
+        <location filename="../qml/ModelsTab.qml" line="136"/>
+        <source>No models installed</source>
+        <translation>Установленных моделей нет</translation>
+    </message>
+    <message>
+        <location filename="../qml/ModelsTab.qml" line="212"/>
+        <source>No presets available</source>
+        <translation>Нет доступных пресетов</translation>
+    </message>
+    <message>
         <location filename="../qml/ModelsTab.qml" line="111"/>
         <source>managed</source>
         <translation>управляемая</translation>
@@ -318,6 +328,11 @@
         <location filename="../qml/ModelsTab.qml" line="215"/>
         <source>Search</source>
         <translation>Поиск</translation>
+    </message>
+    <message>
+        <location filename="../qml/ModelsTab.qml" line="305"/>
+        <source>Results appear here. Models install into the managed models directory.</source>
+        <translation>Результаты появятся здесь. Модели устанавливаются в управляемый каталог models.</translation>
     </message>
     <message>
         <location filename="../qml/ModelsTab.qml" line="279"/>
