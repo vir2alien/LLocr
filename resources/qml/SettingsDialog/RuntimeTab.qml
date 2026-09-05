@@ -85,12 +85,6 @@ ColumnLayout {
         Layout.fillHeight: true
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 1
-        color: Theme.divider
-    }
-
     RuntimeTabInternal {
         id: rtInternal
         visible: connectionMode === 1

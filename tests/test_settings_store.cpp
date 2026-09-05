@@ -106,7 +106,6 @@ private slots:
         QCOMPARE(store.stopOnExit(), true);
         QCOMPARE(store.autoRestart(), true);
         QCOMPARE(store.startupTimeoutMs(), 180000);
-        QCOMPARE(store.checkUpdates(), false);
         QCOMPARE(store.allowNonLoopback(), false);
 
         QCOMPARE(store.launchModelAlias(), QStringLiteral("llocr-local"));

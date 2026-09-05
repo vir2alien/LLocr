@@ -49,7 +49,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(bool stopOnExit READ stopOnExit WRITE setStopOnExit NOTIFY stopOnExitChanged)
     Q_PROPERTY(bool autoRestart READ autoRestart WRITE setAutoRestart NOTIFY autoRestartChanged)
     Q_PROPERTY(int startupTimeoutMs READ startupTimeoutMs WRITE setStartupTimeoutMs NOTIFY startupTimeoutMsChanged)
-    Q_PROPERTY(bool checkUpdates READ checkUpdates WRITE setCheckUpdates NOTIFY checkUpdatesChanged)
     Q_PROPERTY(bool allowNonLoopback READ allowNonLoopback WRITE setAllowNonLoopback NOTIFY allowNonLoopbackChanged)
 
     // --- Launch (managed server argv) ---
@@ -210,8 +209,6 @@ public:
     void setAutoRestart(bool on);
     int startupTimeoutMs() const;
     void setStartupTimeoutMs(int ms);
-    bool checkUpdates() const;
-    void setCheckUpdates(bool on);
     bool allowNonLoopback() const;
     void setAllowNonLoopback(bool on);
 
@@ -295,7 +292,6 @@ signals:
     void stopOnExitChanged();
     void autoRestartChanged();
     void startupTimeoutMsChanged();
-    void checkUpdatesChanged();
     void allowNonLoopbackChanged();
     void launchPresetIdChanged();
     void launchModelPathChanged();
@@ -364,7 +360,6 @@ private:
     static constexpr const char *kStopOnExit = "runtime/stopOnExit";
     static constexpr const char *kAutoRestart = "runtime/autoRestart";
     static constexpr const char *kStartupTimeoutMs = "runtime/startupTimeoutMs";
-    static constexpr const char *kCheckUpdates = "runtime/checkUpdates";
     static constexpr const char *kAllowNonLoopback = "runtime/allowNonLoopback";
 
     // Launch

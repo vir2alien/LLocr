@@ -48,13 +48,8 @@ TabBar {
     CustomTabButton { text: qsTr("UI") }
     CustomTabButton { text: qsTr("Model") }
     CustomTabButton { text: qsTr("Output") }
-    CustomTabButton {
-        text: qsTr("Runtime")
-        onToggled: {
-            if (checked && RuntimeInstaller.releaseCount === 0 && Settings.checkUpdates)
-                RuntimeInstaller.checkForUpdates()
-        }
-    }
+    CustomTabButton { text: qsTr("Runtime") }
+
     CustomTabButton {
         text: qsTr("Models")
         onToggled: {

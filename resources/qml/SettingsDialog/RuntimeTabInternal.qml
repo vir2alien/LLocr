@@ -282,14 +282,25 @@ ScrollView {
                 font.pixelSize: Theme.fontCaption
                 color: Theme.textSecondary
             }
-            ComboBox {
-                id: releaseBox
-                Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                model: releaseOptions
-                enabled: !RuntimeInstaller.busy
-                onActivated: RuntimeInstaller.selectedRelease = currentIndex
+            RowLayout {
+                ComboBox {
+                    id: releaseBox
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    model: releaseOptions
+                    enabled: !RuntimeInstaller.busy
+                    onActivated: RuntimeInstaller.selectedRelease = currentIndex
+                }
+
+                Button {
+                    text: qsTr("Check for updates")
+                    implicitHeight: Theme.controlHeight
+                    font.pixelSize: Theme.fontCaption
+                    enabled: !RuntimeInstaller.busy
+                    onClicked: RuntimeInstaller.checkForUpdates()
+                }
             }
+
         }
 
         Label {
@@ -317,20 +328,6 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            CheckBox {
-                id: autoUpdateCheck
-                Layout.fillWidth: true
-                text: qsTr("Check for updates automatically when opening this tab")
-                font.pixelSize: Theme.fontCaption
-                checked: Settings.checkUpdates
-                onToggled: Settings.checkUpdates = checked
-            }
-            Item { implicitWidth: 4 }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
             Button {
                 text: RuntimeInstaller.state === 3 ? qsTr("Cancel")
                                                    : qsTr("Download and install")
@@ -344,19 +341,6 @@ ScrollView {
                         RuntimeInstaller.startDownloadAndInstall()
                 }
             }
-            Button {
-                text: qsTr("Check for updates")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
-                enabled: !RuntimeInstaller.busy
-                onClicked: RuntimeInstaller.checkForUpdates()
-            }
-            Item { Layout.fillWidth: true }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
             Button {
                 text: qsTr("Clean up unused builds")
                 implicitHeight: Theme.controlHeight

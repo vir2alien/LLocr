@@ -44,7 +44,6 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kStopOnExit, "stopOnExit", QVariant(true) },
     { kAutoRestart, "autoRestart", QVariant(true) },
     { kStartupTimeoutMs, "startupTimeoutMs", QVariant(kDefaultStartupTimeoutMs) },
-    { kCheckUpdates, "checkUpdates", QVariant(false) },
     { kAllowNonLoopback, "allowNonLoopback", QVariant(false) },
     // Launch
     { kLaunchPresetId, "launchPresetId", QVariant(QString()) },
@@ -589,18 +588,6 @@ void SettingsStore::setStartupTimeoutMs(int ms)
     emit startupTimeoutMsChanged();
 }
 
-bool SettingsStore::checkUpdates() const
-{
-    return m_settings.value(kCheckUpdates, false).toBool();
-}
-
-void SettingsStore::setCheckUpdates(bool on)
-{
-    if (checkUpdates() == on)
-        return;
-    m_settings.setValue(kCheckUpdates, on);
-    emit checkUpdatesChanged();
-}
 
 bool SettingsStore::allowNonLoopback() const
 {
