@@ -131,6 +131,12 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/WorkPanel.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/MarkdownPreview.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/Footer.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/SDTabBar.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/UITab.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/ModelTab.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/RuntimeTab.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/RuntimeTabExternal.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/RuntimeTabInternal.qml"
 )
 
 qt_add_resources(llocr "app_conf"

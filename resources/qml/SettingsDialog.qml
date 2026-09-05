@@ -5,25 +5,20 @@ import QtQuick.Layouts
 
 import LLocr
 
+import "SettingsDialog"
+
 Dialog {
     id: dialog
     title: qsTr("Settings")
     modal: true
     standardButtons: Dialog.Save | Dialog.RestoreDefaults | Dialog.Cancel
 
-    // Managed-runtime controls need a valid binary and exclusivity.
     property bool canManage: !Runtime.lockedOut
                              && Settings.serverPath.trim().length > 0
 
-    // Set by Main.qml so the „Запустить мастер“ button can open the wizard.
     property var setupWizardRef: null
 
-    // The shared log window (owned by Main.qml), opened by the “Show log” button.
     property var logWindowRef: null
-
-    // Stage D install drop-downs; rebuilt when the catalog/backends change.
-    property var backendOptions: []
-    property var releaseOptions: []
 
     anchors.centerIn: parent
     width: 520
@@ -59,33 +54,15 @@ Dialog {
         padding: 10
     }
 
-    // Programmatically switch the Settings tab (Connection = index 1).
     function selectTab(index) {
-        tabBar.currentIndex = index
-        loadValues()
+        tabBar.currentIndex = index;
+        loadValues();//todo через индекс
     }
 
     function loadValues() {
-        // UI
-        var langIdx = ["system", "en", "ru"].indexOf(Settings.language)
-        languageBox.currentIndex = langIdx >= 0 ? langIdx : 0
-
-        var themeIdx = [UiController.System, UiController.Light, UiController.Dark].indexOf(Settings.themeMode)
-        themeBox.currentIndex = themeIdx >= 0 ? themeIdx : 0
-
-        // Connection
-        baseUrlField.text = Settings.baseUrl
-        apiKeyField.text  = Settings.apiKey
-        timeoutField.text = Settings.connectionTimeoutMs.toString()
-
-        // Model
-        modelNameField.text  = Settings.modelName
-        temperatureField.text = Settings.temperature.toString()
-        maxTokensField.text  = Settings.maxTokens.toString()
-        dryMultiplierField.text = Settings.dryMultiplier.toString()
-        dryBaseField.text = Settings.dryBase.toString()
-        dryAllowedLengthField.text = Settings.dryAllowedLength.toString()
-        dryRange.text = Settings.dryPenaltyLastN.toString()
+        uiTab.loadValues();
+        modelTab.loadValues();
+        runtimeTab.loadValues();
 
         // Output / parser
         var idx = parserBox.model.indexOf(Settings.parserId)
@@ -102,41 +79,14 @@ Dialog {
     }
 
     onAccepted: {
-        Settings.language = ["system", "en", "ru"][languageBox.currentIndex];
-        uiController.mode = [UiController.System, UiController.Light, UiController.Dark][themeBox.currentIndex];
-        Settings.baseUrl = baseUrlField.text;
-        Settings.apiKey = apiKeyField.text;
-        Settings.connectionTimeoutMs = parseInt(timeoutField.text) || 120000;
-        Settings.modelName = modelNameField.text;
-        Settings.temperature = parseFloat(temperatureField.text) || 0.0;
-        Settings.maxTokens = parseInt(maxTokensField.text) || 8192;
-        Settings.dryMultiplier = parseFloat(dryMultiplierField.text) || 0.8;
-        Settings.dryBase = parseFloat(dryBaseField.text) || 1.75;
-        Settings.dryAllowedLength = parseInt(dryAllowedLengthField.text) || 35;
-        Settings.dryPenaltyLastN = parseInt(dryRange.text) || 2048;
+        uiTab.savaValues();
+        modelTab.saveValues();
+        runtimeTab.saveValues();
+
         Settings.parserId = parserBox.currentText;
         Settings.forceSave();
         I18n.setLanguage(Settings.language);
     }
-
-    function buildInstallOptions() {
-        // Backend list is stable once the singleton exists.
-        var b = []
-        for (var bi = 0; bi < RuntimeInstaller.availableBackends.length; bi++)
-            b.push(RuntimeInstaller.backendDisplayName(RuntimeInstaller.availableBackends[bi]))
-        backendOptions = b
-        if (backendBox && backendBox.currentIndex >= 0)
-            RuntimeInstaller.backend =
-                RuntimeInstaller.availableBackends[backendBox.currentIndex]
-
-        // Releases populate asynchronously after a catalog fetch.
-        var r = []
-        for (var ri = 0; ri < RuntimeInstaller.releaseCount; ri++)
-            r.push(RuntimeInstaller.releaseLabel(ri))
-        releaseOptions = r
-    }
-
-    Component.onCompleted: buildInstallOptions()
 
     Connections {
         target: RuntimeInstaller
@@ -154,78 +104,17 @@ Dialog {
                 backendBox.currentIndex = idx >= 0 ? idx : 0
             }
         }
-        function onInstalledChanged() { }  // labels are bound, nothing else to do
+        function onInstalledChanged() { }
     }
 
     ColumnLayout {
+        clip: true
         anchors.fill: parent
         spacing: 10
 
-        TabBar {
+        SDTabBar {
             id: tabBar
             Layout.fillWidth: true
-            implicitHeight: 28
-
-            background: Rectangle {
-                color: "transparent"
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: 1
-                    color: Theme.divider
-                }
-            }
-
-            component CustomTabButton: TabButton {
-                id: tabBtn
-                implicitHeight: 28
-                padding: 4
-                contentItem: Text {
-                    text: tabBtn.text
-                    font.pixelSize: Theme.fontCaption
-                    color: tabBtn.checked ? Theme.textPrimary : Theme.textSecondary
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideNone
-                }
-                background: Rectangle {
-                    color: tabBtn.checked ? Theme.surface : Theme.surfaceSunken
-                    border.color: Theme.divider
-                    border.width: 1
-                    Rectangle {
-                        visible: tabBtn.checked
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        height: 1
-                        color: Theme.surface
-                    }
-                }
-            }
-
-            CustomTabButton { text: qsTr("UI") }
-            CustomTabButton { text: qsTr("Connection") }
-            CustomTabButton { text: qsTr("Model") }
-            CustomTabButton { text: qsTr("Output") }
-            CustomTabButton {
-                text: qsTr("Runtime")
-                // §H.3: automatic check on tab-open only runs when the user has
-                // opted in (runtime/checkUpdates). The manual button always works.
-                onToggled: {
-                    if (checked && RuntimeInstaller.releaseCount === 0 && Settings.checkUpdates)
-                        RuntimeInstaller.checkForUpdates()
-                }
-            }
-            CustomTabButton {
-                text: qsTr("Models")
-                onToggled: {
-                    if (checked) {
-                        ModelInstaller.reloadPresets()
-                        ModelInstaller.rescanRegistry()
-                    }
-                }
-            }
         }
 
         StackLayout {
@@ -233,268 +122,22 @@ Dialog {
             Layout.fillHeight: true
             currentIndex: tabBar.currentIndex
 
-            ColumnLayout { // Tab 0 - UI
-                spacing: 4
-                Label {
-                    text: qsTr("Language")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                ComboBox {
-                    id: languageBox
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    model: [qsTr("System"), "English", "Русский"]
-                }
-
-                Item { implicitHeight: 6 }
-
-                Label {
-                    text: qsTr("Theme")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                ComboBox {
-                    id: themeBox
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    model: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
-                }
-
-                Item { Layout.fillHeight: true }
+            UITab {
+                id: uiTab
             }
 
             ColumnLayout { // Tab 1 — Connection
                 spacing: 4
-                Label {
-                    text: qsTr("Endpoint base URL")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                TextField {
-                    id: baseUrlField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    placeholderText: "http://localhost:8080"
-                    selectByMouse: true
-                }
 
-                Item { implicitHeight: 4 }
-
-                Label {
-                    text: qsTr("API key (optional)")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    TextField {
-                        id: apiKeyField
-                        Layout.fillWidth: true
-                        implicitHeight: Theme.controlHeight
-                        selectByMouse: true
-                        echoMode: revealKey.checked ? TextInput.Normal
-                                                    : TextInput.Password
-                    }
-                    CheckBox {
-                        id: revealKey
-                        text: qsTr("Show")
-                        font.pixelSize: Theme.fontCaption
-                    }
-                }
-
-                Item { implicitHeight: 4 }
-
-                Label {
-                    text: qsTr("Request timeout (ms)")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                TextField {
-                    id: timeoutField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    inputMethodHints: Qt.ImhDigitsOnly
-                    validator: IntValidator { bottom: 1000; top: 3600000 }
-                }
-
-                Item { implicitHeight: 6 }
-
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
-                    color: Theme.textMuted
-                    text: qsTr("Note: the API key is stored locally in plaintext. "
-                               + "Avoid using production keys.")
-                }
 
                 Item { Layout.fillHeight: true }
             }
 
-            GridLayout { // Tab 2 — Model
-                columns: 2
-                rowSpacing: 4
-                columnSpacing: 8
-
-                Label {
-                    text: qsTr("Connection mode")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                ComboBox {
-                    id: connectionModeBox
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    textRole: "text"
-                    model: [
-                        { value: "external", text: qsTr("External server") },
-                        { value: "managed", text: qsTr("Managed local server") }
-                    ]
-                    onActivated: (idx) => Settings.connectionMode = model[idx].value
-                    Component.onCompleted:
-                        currentIndex = Settings.connectionMode === "managed" ? 1 : 0
-                    Connections {
-                        target: Settings
-                        function onConnectionModeChanged() {
-                            connectionModeBox.currentIndex =
-                                Settings.connectionMode === "managed" ? 1 : 0
-                        }
-                    }
-                }
-
-                Item { Layout.columnSpan: 2; implicitHeight: 4 }
-
-                Label {
-                    Layout.columnSpan: 2
-                    text: qsTr("Model name")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                TextField {
-                    id: modelNameField
-                    Layout.columnSpan: 2
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    // §4.2: in Managed mode the OpenAI model field is defined by
-                    // the running server (--alias); the stored name is kept for
-                    // a return to External and must not be edited.
-                    readOnly: Settings.connectionMode === "managed"
-                    placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
-                }
-                Label {
-                    Layout.columnSpan: 2
-                    visible: Settings.connectionMode === "managed"
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
-                    color: Theme.textMuted
-                    text: qsTr("Managed mode: model is \"%1\" — defined by the running server")
-                              .arg(Settings.launchModelAlias)
-                }
-
-                Label {
-                    Layout.topMargin: 4
-                    text: qsTr("Temperature")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                Label {
-                    Layout.topMargin: 4
-                    text: qsTr("Max tokens per page")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                TextField {
-                    id: temperatureField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    validator: DoubleValidator { bottom: 0.0; top: 2.0; decimals: 2 }
-                }
-                TextField {
-                    id: maxTokensField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    inputMethodHints: Qt.ImhDigitsOnly
-                    validator: IntValidator { bottom: 1; top: 1000000 }
-                }
-
-                Label {
-                    Layout.topMargin: 4
-                    text: qsTr("DRY multiplier")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                Label {
-                    Layout.topMargin: 4
-                    text: qsTr("DRY base")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                TextField {
-                    id: dryMultiplierField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    validator: DoubleValidator { bottom: 0.0; top: 2.0; decimals: 2 }
-                }
-                TextField {
-                    id: dryBaseField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    validator: DoubleValidator { bottom: 0.0; top: 3.0; decimals: 2 }
-                }
-
-                Label {
-                    Layout.topMargin: 4
-                    text: qsTr("DRY allowed length")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                Label {
-                    Layout.topMargin: 4
-                    text: qsTr("DRY range")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
-                }
-                TextField {
-                    id: dryAllowedLengthField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    validator: IntValidator { bottom: 0;}
-                }
-                TextField {
-                    id: dryRange
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    validator: IntValidator { bottom: 0;}
-                }
-
-                Item {
-                    Layout.columnSpan: 2
-                    implicitHeight: 4
-                }
-
-                Label {
-                    Layout.columnSpan: 2
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
-                    color: Theme.textMuted
-                    text: qsTr("DRY (Don't Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp")
-                }
-
-                Item { Layout.fillHeight: true }
+            ModelTab {
+                id: modelTab
             }
 
-            ColumnLayout { // Tab 3 — Output / parser
+            ColumnLayout {
                 spacing: 4
                 Label {
                     text: qsTr("Output parser")
@@ -522,383 +165,10 @@ Dialog {
                 Item { Layout.fillHeight: true }
             }
 
-            ScrollView { // Tab 4 — Runtime (managed llama-server + install)
-                id: runtimeScroll
+            RuntimeTab {
+                id: runtimeTab
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                clip: true
-                ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-                ColumnLayout {
-                    width: runtimeScroll.availableWidth
-                    spacing: 4
-
-                    // ----- Re-run the first-run wizard -----
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        Button {
-                            text: qsTr("Launch setup wizard…")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            onClicked: {
-                                if (dialog.setupWizardRef)
-                                    dialog.setupWizardRef.startWizard()
-                            }
-                        }
-                        Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            font.pixelSize: Theme.fontSmall
-                            color: Theme.textMuted
-                            text: qsTr("Walks you through installing a runtime and a "
-                                       + "model, then configures the launch.")
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 1
-                        color: Theme.divider
-                    }
-
-                    // ----- Existing managed-server binary controls -----
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 1
-                        color: Theme.divider
-                    }
-
-                    Label {
-                        text: qsTr("llama-server binary")
-                        font.pixelSize: Theme.fontCaption
-                        color: Theme.textSecondary
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        TextField {
-                            id: serverPathField
-                            Layout.fillWidth: true
-                            implicitHeight: Theme.controlHeight
-                            selectByMouse: true
-                            placeholderText: qsTr("path to llama-server")
-                            text: Settings.serverPath
-                            onEditingFinished: Settings.serverPath = text.trim()
-                        }
-                        Button {
-                            text: qsTr("Browse…")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            onClicked: serverPicker.open()
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        Button {
-                            text: qsTr("Auto-detect")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            onClicked: {
-                                Settings.serverPath = Runtime.autoDiscoverPath()
-                                serverPathField.text = Settings.serverPath
-                            }
-                        }
-                        Label {
-                            id: probeStatusLabel
-                            Layout.fillWidth: true
-                            text: Runtime.statusMessage.length
-                                  ? Runtime.statusMessage
-                                  : (Settings.serverPath.length
-                                     ? qsTr("Not probed yet")
-                                     : qsTr("No server binary selected"))
-                            elide: Text.ElideMiddle
-                            wrapMode: Text.Wrap
-                            font.pixelSize: Theme.fontSmall
-                            color: Settings.serverPath.length && !Runtime.lockedOut
-                                   ? Theme.textSecondary : Theme.textMuted
-                        }
-                    }
-
-                    Item { implicitHeight: 4 }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        Button {
-                            text: qsTr("Check")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
-                        }
-                        Button {
-                            text: qsTr("Start")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            enabled: canManage && Runtime.state !== 2 && Runtime.state !== 3
-                            onClicked: Runtime.startServer()
-                        }
-                        Button {
-                            text: qsTr("Stop")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            enabled: canManage && (Runtime.state === 2 || Runtime.state === 3)
-                            onClicked: Runtime.stopServer()
-                        }
-                        Button {
-                            text: qsTr("Restart")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            enabled: canManage && Runtime.state === 3
-                            onClicked: Runtime.restartServer()
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-
-                    Button {
-                        text: qsTr("Show log")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontCaption
-                        onClicked: {
-                            if (dialog.logWindowRef)
-                                dialog.logWindowRef.show()
-                        }
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Theme.fontSmall
-                        color: Theme.textMuted
-                        text: qsTr("Managed mode uses this binary to run a local llama-server. "
-                                   + "Recognition in External mode is unaffected.")
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.topMargin: 6
-                        Layout.preferredHeight: 1
-                        color: Theme.divider
-                    }
-
-                    // ----- Stage D: install llama.cpp --------------------------
-                    Label {
-                        text: qsTr("Install llama.cpp")
-                        font.pixelSize: Theme.fontNormal
-                        color: Theme.textPrimary
-                        font.bold: true
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Theme.fontSmall
-                        color: Theme.textMuted
-                        text: RuntimeInstaller.installedBuild.length
-                              ? qsTr("Installed: %1 (%2)")
-                                    .arg(RuntimeInstaller.installedBuild)
-                                    .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.installedBackend))
-                              : qsTr("No runtime installed yet")
-                    }
-
-                    // ----- §H.3 update plaque (only after a real check) -----
-                    Rectangle {
-                        Layout.fillWidth: true
-                        visible: RuntimeInstaller.hasUpdate
-                        implicitHeight: updatePlaque.implicitHeight + Theme.spacing
-                        color: Theme.warningBg
-                        border.color: Theme.warning
-                        border.width: 1
-                        radius: Theme.controlRadius
-
-                        ColumnLayout {
-                            id: updatePlaque
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 4
-
-                            Label {
-                                Layout.fillWidth: true
-                                wrapMode: Text.Wrap
-                                font.pixelSize: Theme.fontSmall
-                                font.bold: true
-                                color: Theme.textPrimary
-                                text: qsTr("A newer build %1 is available%2")
-                                    .arg(RuntimeInstaller.updateBuild())
-                                    .arg(RuntimeInstaller.updateTimestampLabel().length
-                                         ? qsTr(" (checked %1)").arg(RuntimeInstaller.updateTimestampLabel())
-                                         : "")
-                            }
-                            Label {
-                                Layout.fillWidth: true
-                                wrapMode: Text.Wrap
-                                font.pixelSize: Theme.fontCaption
-                                color: Theme.textSecondary
-                                text: Runtime.state === 3
-                                      ? qsTr("Updating will install it after the running server is stopped.")
-                                      : qsTr("You can keep working — updating installs in the background.")
-                            }
-                            RowLayout {
-                                spacing: 6
-                                Button {
-                                    text: Runtime.state === 3 ? qsTr("Stop server and update")
-                                                            : qsTr("Update")
-                                    implicitHeight: Theme.controlHeight
-                                    font.pixelSize: Theme.fontCaption
-                                    enabled: !RuntimeInstaller.busy
-                                    onClicked: {
-                                        if (Runtime.state === 3)
-                                            Runtime.stopServer()
-                                        RuntimeInstaller.installUpdate()
-                                    }
-                                }
-                                Button {
-                                    text: qsTr("View changes")
-                                    implicitHeight: Theme.controlHeight
-                                    font.pixelSize: Theme.fontCaption
-                                    onClicked: RuntimeInstaller.openReleasePage()
-                                }
-                                Item { Layout.fillWidth: true }
-                            }
-                        }
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Theme.fontSmall
-                        color: Theme.textMuted
-                        text: qsTr("Platform: %1 · recommended backend: %2")
-                            .arg(RuntimeInstaller.platformLabel)
-                            .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.recommendedBackend))
-                    }
-
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: 2
-                        rowSpacing: 4
-                        columnSpacing: 8
-
-                        Label {
-                            text: qsTr("Backend")
-                            font.pixelSize: Theme.fontCaption
-                            color: Theme.textSecondary
-                        }
-                        ComboBox {
-                            id: backendBox
-                            Layout.fillWidth: true
-                            implicitHeight: Theme.controlHeight
-                            model: backendOptions
-                            enabled: !RuntimeInstaller.busy
-                            onActivated: RuntimeInstaller.backend =
-                                RuntimeInstaller.availableBackends[currentIndex]
-                        }
-
-                        Label {
-                            text: qsTr("Release")
-                            font.pixelSize: Theme.fontCaption
-                            color: Theme.textSecondary
-                        }
-                        ComboBox {
-                            id: releaseBox
-                            Layout.fillWidth: true
-                            implicitHeight: Theme.controlHeight
-                            model: releaseOptions
-                            enabled: !RuntimeInstaller.busy
-                            onActivated: RuntimeInstaller.selectedRelease = currentIndex
-                        }
-                    }
-
-                    Label {
-                        id: installStatusLabel
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Theme.fontSmall
-                        color: RuntimeInstaller.state === 6 ? Theme.error
-                             : (RuntimeInstaller.busy ? Theme.textSecondary : Theme.textMuted)
-                        text: RuntimeInstaller.state === 0
-                              ? qsTr("Open this tab or press \u201cCheck for updates\u201d to load releases.")
-                              : RuntimeInstaller.statusMessage
-                    }
-
-                    ProgressBar {
-                        id: installProgress
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 12
-                        visible: RuntimeInstaller.busy
-                        from: 0
-                        to: 1
-                        value: RuntimeInstaller.progress
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        CheckBox {
-                            id: autoUpdateCheck
-                            Layout.fillWidth: true
-                            text: qsTr("Check for updates automatically when opening this tab")
-                            font.pixelSize: Theme.fontCaption
-                            checked: Settings.checkUpdates
-                            onToggled: Settings.checkUpdates = checked
-                        }
-                        Item { implicitWidth: 4 }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        Button {
-                            text: RuntimeInstaller.state === 3 ? qsTr("Cancel")
-                                                               : qsTr("Download and install")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            enabled: !(RuntimeInstaller.state === 1 || RuntimeInstaller.state === 4)
-                            onClicked: {
-                                if (RuntimeInstaller.state === 3)
-                                    RuntimeInstaller.cancelInstall()
-                                else
-                                    RuntimeInstaller.startDownloadAndInstall()
-                            }
-                        }
-                        Button {
-                            text: qsTr("Check for updates")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            enabled: !RuntimeInstaller.busy
-                            onClicked: RuntimeInstaller.checkForUpdates()
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        Button {
-                            text: qsTr("Clean up unused builds")
-                            implicitHeight: Theme.controlHeight
-                            font.pixelSize: Theme.fontCaption
-                            enabled: !RuntimeInstaller.busy
-                            onClicked: RuntimeInstaller.cleanupUnusedBuilds()
-                        }
-                        Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            font.pixelSize: Theme.fontSmall
-                            color: Theme.textMuted
-                            text: RuntimeInstaller.state === 0
-                                  ? qsTr("Press “Check for updates” to see if a newer release is available.")
-                                  : (RuntimeInstaller.hasUpdate
-                                     ? qsTr("A newer release is available.")
-                                     : qsTr("Your runtime build is up to date."))
-                        }
-                    }
-
-                    Item { implicitHeight: 4 }
-                    Item { Layout.fillHeight: true }
-                }
             }
 
             ModelsTab {
