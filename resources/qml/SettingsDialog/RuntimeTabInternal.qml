@@ -6,6 +6,8 @@ import LLocr
 
 ScrollView {
     contentWidth: availableWidth
+    contentHeight: formLayout.implicitHeight
+
     property var backendOptions: []
     property var releaseOptions: []
 
@@ -47,7 +49,8 @@ ScrollView {
     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
     ColumnLayout {
-        anchors.fill: parent
+        id: formLayout
+        width: parent.width
         spacing: 4
         Label {
             text: qsTr("llama-server binary")

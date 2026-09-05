@@ -9,6 +9,9 @@ ColumnLayout {
     clip: true
     spacing: 4
 
+    // This is neeedet so the page always fills the StackLayout.
+    Layout.maximumHeight: Number.POSITIVE_INFINITY
+
     readonly property int connectionMode: connectionModeBox.currentIndex
 
     function loadValues() {
