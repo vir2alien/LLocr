@@ -80,13 +80,27 @@ Item {
                 .arg(root.gib(root.estRam).toFixed(1))
         }
 
-        ProgressBar {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 12
-            visible: ModelInstaller.busy
-            from: 0
-            to: 1
-            value: ModelInstaller.progress
+            Layout.fillHeight: false
+            spacing: 6
+
+            ProgressBar {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 12
+                visible: ModelInstaller.busy
+                from: 0
+                to: 1
+                value: ModelInstaller.progress
+            }
+
+            Button {
+                text: qsTr("Cancel")
+                implicitHeight: Theme.controlHeight
+                font.pixelSize: Theme.fontSmall
+                visible: ModelInstaller.state === 3
+                onClicked: ModelInstaller.cancelInstall()
+            }
         }
 
         Frame {

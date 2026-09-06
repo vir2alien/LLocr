@@ -30,13 +30,27 @@ Item {
                   : qsTr("Models are stored locally and launched by the managed runtime.")
         }
 
-        ProgressBar {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 12
-            visible: ModelInstaller.busy
-            from: 0
-            to: 1
-            value: ModelInstaller.progress
+            Layout.fillHeight: false
+            spacing: 6
+
+            ProgressBar {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 12
+                visible: ModelInstaller.busy
+                from: 0
+                to: 1
+                value: ModelInstaller.progress
+            }
+
+            Button {
+                text: qsTr("Cancel")
+                implicitHeight: Theme.controlHeight
+                font.pixelSize: Theme.fontSmall
+                visible: ModelInstaller.state === 3
+                onClicked: ModelInstaller.cancelInstall()
+            }
         }
 
         Label {
@@ -79,18 +93,11 @@ Item {
                     spacing: 6
 
                     Label {
-                        Layout.preferredWidth: 150
+                        Layout.fillWidth: true
                         elide: Text.ElideMiddle
                         font.pixelSize: Theme.fontSmall
                         color: Theme.textPrimary
                         text: info.title
-                    }
-                    Label {
-                        Layout.preferredWidth: 70
-                        elide: Text.ElideMiddle
-                        font.pixelSize: Theme.fontSmall
-                        color: Theme.textSecondary
-                        text: info.quantization
                     }
                     Label {
                         Layout.preferredWidth: 70
@@ -100,7 +107,8 @@ Item {
                         text: fmtBytes(info.size)
                     }
                     Label {
-                        Layout.preferredWidth: 60
+                        Layout.preferredWidth: 80
+                        elide: Text.ElideMiddle
                         font.pixelSize: Theme.fontSmall
                         color: info.origin === "managed" ? Theme.textSecondary : Theme.textMuted
                         text: info.origin === "managed" ? qsTr("managed") : qsTr("external")
@@ -350,7 +358,7 @@ Item {
         }
 
         Item { Layout.fillHeight: true }
-    }
+    }//ColumnLayout
 
     Dialog {
         id: pickDialog

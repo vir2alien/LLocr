@@ -335,6 +335,11 @@
         <translation>Результаты появятся здесь. Модели устанавливаются в управляемый каталог models.</translation>
     </message>
     <message>
+        <location filename="../qml/ModelsTab.qml" line="307"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
         <location filename="../qml/ModelsTab.qml" line="279"/>
         <source>HF token (optional)</source>
         <translation>HF-токен (необязательно)</translation>
@@ -1641,6 +1646,11 @@
         <location filename="../qml/Setup/StepModel.qml" line="355"/>
         <source>All files (*)</source>
         <translation type="unfinished">Все файлы (*)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Setup/StepModel.qml" line="94"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>

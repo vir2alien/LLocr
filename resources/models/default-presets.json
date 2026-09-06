@@ -16,6 +16,21 @@
       "approxVramGb": 6.5,
       "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
       "sha256": {}
+    },
+    {
+      "id": "unlimited-ocr-q4_k_m.gguf",
+      "title": "Unlimited-OCR (Q4_K_M)",
+      "repo": "sahilchachra/Unlimited-OCR-GGUF",
+      "revision": "",
+      "model": "Unlimited-OCR-Q4_K_M.gguf",
+      "mmproj": "mmproj-Unlimited-OCR-F16.gguf",
+      "parser": "det_tokens",
+      "prompt": "document parsing.",
+      "ctxSize": 8192,
+      "minBuild": "b4000",
+      "approxVramGb": 6.5,
+      "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
+      "sha256": {}
     }
   ]
 }

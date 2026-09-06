@@ -147,6 +147,11 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     , m_paths(settings.runtimeRootDir(), settings.runtimeModelsDir())
     , m_downloads(new DownloadManager(this))
 {
+    // Live progress: repaint the bar as data arrives, not only when a
+    // file finishes (§ Stage E task 2).
+    connect(m_downloads, &DownloadManager::progressChanged, this,
+            [this]() { emitDownloadProgress(); });
+
     reloadPresetsInternal();
     refreshInstalled();
 }
@@ -253,7 +258,20 @@ QVariantMap ModelInstaller::installedInfo(int index) const
     if (index < 0 || index >= m_installed.size())
         return out;
     const ModelEntry &e = m_installed.at(index);
-    out.insert(QStringLiteral("title"), e.title);
+
+    // Display name derived from the model file, e.g. "Unlimited-OCR-Q8_0.gguf"
+    // → "Unlimited-OCR Q8_0". The stored title is the repo id for search
+    // installs and is not user friendly.
+    QString display = QFileInfo(e.modelPath).completeBaseName();
+    const QString q = e.quantization.trimmed();
+    if (!q.isEmpty() && display.endsWith(QLatin1Char('-') + q))
+        display.chop(q.size() + 1);
+    if (display.isEmpty())
+        display = e.title.isEmpty() ? e.repo : e.title;
+    if (!q.isEmpty())
+        display += QLatin1Char(' ') + q;
+
+    out.insert(QStringLiteral("title"), display);
     out.insert(QStringLiteral("path"), e.modelPath);
     out.insert(QStringLiteral("mmprojPath"), e.mmprojPath);
     out.insert(QStringLiteral("size"), QVariant::fromValue(e.byteSize));
