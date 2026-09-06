@@ -122,6 +122,8 @@ private:
     void beginDownload();
     void enqueueFile(const QString &repoPath, const QString &repo,
                      const QString &commitSha);
+    QString expectedShaFor(const QString &repoPath) const;
+    bool mmprojAlreadyOnDisk() const;
     void onOneDownloadFinished(bool ok);
     void emitDownloadProgress();
     void maybeFinishDownloads();

@@ -2,6 +2,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QCryptographicHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -529,7 +530,9 @@ void ModelInstaller::beginDownload()
     const QString rev = m_pending.revision;
     for (const QString &path : m_pending.modelNames)
         enqueueFile(path, repo, rev);
-    if (!m_pending.mmprojRel.isEmpty())
+    // Multi-quant installs share the repo folder: skip the projector when the
+    // same file is already on disk instead of re-downloading it per quant.
+    if (!m_pending.mmprojRel.isEmpty() && !mmprojAlreadyOnDisk())
         enqueueFile(m_pending.mmprojRel, repo, rev);
 }
 
@@ -547,19 +550,7 @@ void ModelInstaller::enqueueFile(const QString &repoPath, const QString &repo,
     req.url = url;
     req.targetDir = m_pending.dir;
     req.fileName = leaf;
-    QString expectedSha;
-    const QString pinned = m_pending.fileSha256.value(leaf.toLower());
-    if (!pinned.isEmpty()) {
-        expectedSha = pinned;
-    } else {
-        for (const HfFile &hf : std::as_const(m_pending.files)) {
-            if (hf.path == repoPath) {
-                expectedSha = hf.lfsOid;
-                break;
-            }
-        }
-    }
-    req.sha256 = expectedSha;
+    req.sha256 = expectedShaFor(repoPath);
     req.authorization = auth;
 
     const int row = m_downloads->enqueue(req);
@@ -567,6 +558,58 @@ void ModelInstaller::enqueueFile(const QString &repoPath, const QString &repo,
     ++m_downloadCount;
     connect(task, &DownloadTask::downloadFinished, this,
             [this](bool ok) { onOneDownloadFinished(ok); });
+}
+
+QString ModelInstaller::expectedShaFor(const QString &repoPath) const
+{
+    const QString leaf = ModelCatalog::leafName(repoPath);
+    const QString pinned = m_pending.fileSha256.value(leaf.toLower());
+    if (!pinned.isEmpty())
+        return pinned;
+    for (const HfFile &hf : std::as_const(m_pending.files)) {
+        if (hf.path == repoPath)
+            return hf.lfsOid;
+    }
+    return QString();
+}
+
+// True when the projector for the pending install is already in the target
+// folder and matches what we would download, so the download can be skipped.
+bool ModelInstaller::mmprojAlreadyOnDisk() const
+{
+    const QString target = QDir(m_pending.dir)
+                               .filePath(ModelCatalog::leafName(m_pending.mmprojRel));
+    const QFileInfo fi(target);
+    if (!fi.exists() || fi.size() <= 0)
+        return false;
+
+    // The same pinned revision recorded for this folder and this projector
+    // means the on-disk file is exactly the one we would fetch.
+    if (!m_pending.revision.isEmpty()) {
+        for (const ModelEntry &x : std::as_const(m_installed)) {
+            if (x.revision == m_pending.revision && x.mmprojPath == target)
+                return true;
+        }
+    }
+
+    // Otherwise trust the pinned digest (lfs.oid / preset sha256) so a stale
+    // or corrupt copy is re-downloaded instead of silently reused.
+    const QString expected = expectedShaFor(m_pending.mmprojRel);
+    if (expected.isEmpty())
+        return false;
+
+    QFile f(target);
+    if (!f.open(QIODevice::ReadOnly))
+        return false;
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    QByteArray buf(1 << 20, Qt::Uninitialized);
+    qint64 n = 0;
+    while ((n = f.read(buf.data(), buf.size())) > 0)
+        hash.addData(QByteArrayView(buf.constData(), static_cast<int>(n)));
+    f.close();
+    if (n < 0)
+        return false;
+    return QString::fromLatin1(hash.result().toHex()) == expected.toLower();
 }
 
 void ModelInstaller::onOneDownloadFinished(bool ok)
