@@ -8,6 +8,8 @@
 #include <QLockFile>
 #include <QSaveFile>
 
+#include <algorithm>
+
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelRegistry.h"
 
@@ -39,10 +41,24 @@ bool isSubpathOf(const QString &path, const QString &dir)
     return path == dir || path.startsWith(dir + QDir::separator());
 }
 
-// Split names sort so the “…-00001-of-NNN” part is first.
+// Split names sort so the "…-00001-of-NNN" part is first.
 void sortSplitParts(QStringList *names)
 {
     std::sort(names->begin(), names->end(), &ModelCatalog::splitAscending);
+}
+
+// Grouping key shared by all files of one quant: "Unlimited-OCR-Q8_0.gguf" and
+// "Unlimited-OCR-Q8_0-00001-of-00002.gguf" both map to "Unlimited-OCR-Q8_0".
+QString modelStem(const QString &name)
+{
+    QString base;
+    int idx = 0, count = 0;
+    if (ModelCatalog::splitMultiPart(name, &base, &idx, &count))
+        return base;
+    QString n = name;
+    if (n.endsWith(QLatin1String(".gguf"), Qt::CaseInsensitive))
+        n.chop(5);
+    return n;
 }
 
 ModelEntry entryFromJson(const QJsonObject &o)
@@ -182,6 +198,21 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
         if (!e.modelPath.isEmpty() || !e.dir.isEmpty())
             out.append(std::move(e));
     }
+
+    // Multi-quant reconciliation: older indexes kept a single entry per repo
+    // directory (first quant only) and separately-downloaded quants have no
+    // row at all. Re-scan and append any on-disk model the index does not
+    // already reference; existing rows keep their install-time metadata.
+    for (const ModelEntry &s : scanModelsDir(modelsDir)) {
+        if (s.modelPath.isEmpty())
+            continue;
+        const bool present = std::any_of(
+            out.cbegin(), out.cend(), [&](const ModelEntry &x) {
+                return !x.modelPath.isEmpty() && x.modelPath == s.modelPath;
+            });
+        if (!present)
+            out.append(s);
+    }
     return out;
 }
 
@@ -238,50 +269,65 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
         if (gguFs.isEmpty())
             continue;
 
-        ModelEntry e;
-        const QString dirName = subdirInfo.fileName();
-        e.id = dirName;
-        e.title = dirName;
-        // The dir name "org__repo" is not a valid HF repo id; reconstruct
-        // org/repo from it (§3.12). A persisted repoId (set at install time)
-        // wins when the entry is later loaded from a real index.json.
-        const int sep = dirName.indexOf(QLatin1String("__"));
-        e.repoId = sep > 0
-            ? dirName.left(sep) + QLatin1Char('/') + dirName.mid(sep + 2)
-            : dirName;
-        e.repo = e.repoId;
-        e.dir = subdirInfo.canonicalFilePath();
-        e.origin = ModelOrigin::Managed;  // inside modelsDir ⇒ managed
-        e.license = QStringLiteral("https://huggingface.co/%1").arg(e.repo);
-        e.addedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
-
+        // A repo directory may hold several quants of the same model (e.g.
+        // Unlimited-OCR-Q4_K_M.gguf + Unlimited-OCR-Q8_0.gguf) sharing one
+        // mmproj. Emit one entry per quant; split parts of one quant are
+        // grouped into a single entry.
         QString mmprojRel;
-        QStringList modelParts;
-        qint64 total = 0;
+        QHash<QString, QStringList> byStem;
         for (const QString &name : gguFs) {
-            const ModelFileKind kind = ModelCatalog::fileKind(name);
-            if (kind == ModelFileKind::Vision) {
-                mmprojRel = name;
+            if (ModelCatalog::fileKind(name) == ModelFileKind::Vision) {
+                if (mmprojRel.isEmpty())
+                    mmprojRel = name;
             } else {
-                modelParts.append(name);
+                byStem[modelStem(name)].append(name);
             }
-            total += QFileInfo(d.filePath(name)).size();
         }
-        if (modelParts.isEmpty())
+        if (byStem.isEmpty())
             continue;
 
-        // Split names sort so the "…-00001-of-NNN" part is first.
-        sortSplitParts(&modelParts);
+        const QString dirName = subdirInfo.fileName();
+        const QString dirPath = subdirInfo.canonicalFilePath();
+        const QString mmprojPath =
+            mmprojRel.isEmpty() ? QString() : d.filePath(mmprojRel);
 
-        e.modelPath = d.filePath(modelParts.first());
-        if (modelParts.size() > 1)
-            e.parts = {modelParts.cbegin() + 1, modelParts.cend()};
-        if (!mmprojRel.isEmpty())
-            e.mmprojPath = d.filePath(mmprojRel);
-        e.quantization =
-            ModelCatalog::quantizationFromName(modelParts.first());
-        e.byteSize = total;
-        out.append(std::move(e));
+        QStringList stems = byStem.keys();
+        stems.sort();
+        for (const QString &stem : stems) {
+            QStringList modelParts = byStem.value(stem);
+            // Split names sort so the "…-00001-of-NNN" part is first.
+            sortSplitParts(&modelParts);
+
+            ModelEntry e;
+            const QString quant =
+                ModelCatalog::quantizationFromName(modelParts.first());
+            e.id = quant.isEmpty() ? dirName
+                                   : dirName + QLatin1Char('_') + quant;
+            e.title = dirName;
+            // The dir name "org__repo" is not a valid HF repo id; reconstruct
+            // org/repo from it (§3.12). A persisted repoId (set at install time)
+            // wins when the entry is later loaded from a real index.json.
+            const int sep = dirName.indexOf(QLatin1String("__"));
+            e.repoId = sep > 0
+                ? dirName.left(sep) + QLatin1Char('/') + dirName.mid(sep + 2)
+                : dirName;
+            e.repo = e.repoId;
+            e.dir = dirPath;
+            e.origin = ModelOrigin::Managed;  // inside modelsDir ⇒ managed
+            e.license = QStringLiteral("https://huggingface.co/%1").arg(e.repo);
+            e.addedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+
+            e.modelPath = d.filePath(modelParts.first());
+            if (modelParts.size() > 1)
+                e.parts = {modelParts.cbegin() + 1, modelParts.cend()};
+            e.mmprojPath = mmprojPath;
+            e.quantization = quant;
+            qint64 total = 0;
+            for (const QString &name : modelParts)
+                total += QFileInfo(d.filePath(name)).size();
+            e.byteSize = total;
+            out.append(std::move(e));
+        }
     }
     return out;
 }

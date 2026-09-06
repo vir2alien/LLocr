@@ -321,7 +321,47 @@ QString ModelInstaller::removeModel(int index)
         return guard;
 
     QDir d(e.dir);
-    if (!d.isEmpty()) {
+
+    // A repo directory may be shared by several quants (multi-quant installs
+    // with a common mmproj). Only delete the files this entry owns; the shared
+    // mmproj is removed only when no other entry in the same directory uses it.
+    bool sharedDir = false;
+    for (const ModelEntry &x : m_installed) {
+        if (&x == &e)
+            continue;
+        if (QFileInfo(x.dir).canonicalFilePath()
+            == QFileInfo(e.dir).canonicalFilePath()) {
+            sharedDir = true;
+            break;
+        }
+    }
+
+    if (sharedDir) {
+        QStringList owned = e.parts;
+        owned.prepend(e.modelPath);
+        bool mmprojShared = false;
+        if (!e.mmprojPath.isEmpty()) {
+            for (const ModelEntry &x : m_installed) {
+                if (&x == &e)
+                    continue;
+                if (QFileInfo(x.dir).canonicalFilePath()
+                        == QFileInfo(e.dir).canonicalFilePath()
+                    && x.mmprojPath == e.mmprojPath) {
+                    mmprojShared = true;
+                    break;
+                }
+            }
+            if (!mmprojShared)
+                owned << e.mmprojPath;
+        }
+        for (const QString &path : std::as_const(owned)) {
+            QFile f(path);
+            if (f.exists() && !f.remove())
+                return tr("Unable to remove model file: %1").arg(path);
+        }
+        if (d.isEmpty())
+            QDir().rmdir(e.dir);
+    } else if (!d.isEmpty()) {
         if (!d.removeRecursively())
             return tr("Unable to remove model directory: %1").arg(e.dir);
     }
@@ -584,7 +624,14 @@ void ModelInstaller::completeInstall()
     f.close();
 
     ModelEntry e;
-    e.id = repoDirName(m_pending.repo);
+    {
+        const QString baseId = repoDirName(m_pending.repo);
+        const QString quant = ModelCatalog::quantizationFromName(
+            ModelCatalog::leafName(m_pending.modelNames.first()));
+        // Per-quant id: several quants of one repo may coexist in the same
+        // directory (shared mmproj) and must not overwrite each other.
+        e.id = quant.isEmpty() ? baseId : baseId + QLatin1Char('_') + quant;
+    }
     e.title = m_pending.title;
     e.repo = m_pending.repo;
     e.repoId = m_pending.repo;

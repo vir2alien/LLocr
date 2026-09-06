@@ -62,7 +62,8 @@ public:
     static bool save(const QString &modelsDir, const QList<ModelEntry> &entries,
                      QString &error);
 
-    /// Scans `modelsDir` for *.gguf files (one entry per repo subdirectory) and
+    /// Scans `modelsDir` for *.gguf files (one entry per quant/model file
+    /// within a repo subdirectory; split parts of one quant are merged) and
     /// reconstructs entries from what is on disk. Never removes an entry that a
     /// file confirms; used to rebuild after corruption.
     static QList<ModelEntry> scanModelsDir(const QString &modelsDir);

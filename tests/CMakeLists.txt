@@ -356,6 +356,57 @@ target_sources(test_model_registry PRIVATE
 )
 add_test(NAME test_model_registry COMMAND test_model_registry)
 
+# ---- Stage E: model installer (removeModel / multi-quant) ----------------
+qt_add_executable(test_model_installer test_model_installer.cpp)
+
+# The built-in preset catalog is a Qt resource; register it under the same
+# :/models/ prefix so ModelInstaller::reloadPresetsInternal resolves it.
+qt_add_resources(test_model_installer "model_installer_preset_res"
+    PREFIX "/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/models"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/models/default-presets.json"
+)
+
+target_include_directories(test_model_installer PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_model_installer PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Network
+    Qt6::Concurrent
+    Qt6::Qml
+)
+
+target_sources(test_model_installer PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelInstaller.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelPreset.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelPresetCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadTask.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeController.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLocator.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ServerCapabilities.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/LlamaServerProcess.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelMemoryEstimator.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLog.cpp
+    ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+)
+if(WIN32)
+    target_sources(test_model_installer PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
+elseif(APPLE)
+    target_sources(test_model_installer PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
+else()
+    target_sources(test_model_installer PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
+endif()
+add_test(NAME test_model_installer COMMAND test_model_installer)
+
 # ---- Stage E: model preset catalog -------------------------------------
 qt_add_executable(test_model_preset_catalog test_model_preset_catalog.cpp)
 

@@ -44,6 +44,7 @@ class TestModelRegistry : public QObject
 
 private slots:
     void rescansWhenIndexMissing();
+    void scansMultiQuantAsSeparateEntries();
     void rebuildsOnCorruptIndex();
     void atomicWriteRoundtrip();
     void persistsExplicitDefaultCtxSize();
@@ -71,6 +72,52 @@ void TestModelRegistry::rescansWhenIndexMissing()
     QCOMPARE(entries.at(0).origin, ModelOrigin::Managed);
     QVERIFY(entries.at(0).modelPath.endsWith(QStringLiteral("model-Q4_K_M.gguf")));
     QCOMPARE(entries.at(0).quantization, QStringLiteral("Q4_K_M"));
+}
+
+void TestModelRegistry::scansMultiQuantAsSeparateEntries()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString sub = makeRepoDir(dir.path(), QStringLiteral("org__repo"));
+
+    auto writeFile = [&](const QString &name) {
+        const QString p = QDir(sub).filePath(name);
+        QFile f(p);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("GGUF placeholder");
+        f.close();
+    };
+    // A second quant plus its split part, and the shared vision projector.
+    writeFile(QStringLiteral("model-Q8_0-00001-of-00002.gguf"));
+    writeFile(QStringLiteral("model-Q8_0-00002-of-00002.gguf"));
+    writeFile(QStringLiteral("mmproj-model-F16.gguf"));
+
+    const QList<ModelEntry> entries = ModelRegistry::scanModelsDir(dir.path());
+    QCOMPARE(entries.size(), 2);
+
+    bool sawQ4 = false;
+    bool sawQ8 = false;
+    for (const ModelEntry &e : entries) {
+        QVERIFY(e.mmprojPath.endsWith(QStringLiteral("mmproj-model-F16.gguf")));
+        if (e.quantization == QLatin1String("Q4_K_M")) {
+            sawQ4 = true;
+            QVERIFY(e.parts.isEmpty());
+            QVERIFY(e.modelPath.endsWith(QStringLiteral("model-Q4_K_M.gguf")));
+            QVERIFY(e.id == QStringLiteral("org__repo_Q4_K_M"));
+        } else if (e.quantization == QLatin1String("Q8_0")) {
+            sawQ8 = true;
+            QCOMPARE(e.parts.size(), 1);
+            QVERIFY(e.modelPath.endsWith(
+                QStringLiteral("model-Q8_0-00001-of-00002.gguf")));
+            QVERIFY(e.parts.at(0).endsWith(
+                QStringLiteral("model-Q8_0-00002-of-00002.gguf")));
+            QVERIFY(e.id == QStringLiteral("org__repo_Q8_0"));
+        } else {
+            QFAIL(qPrintable("unexpected quantization " + e.quantization));
+        }
+    }
+    QVERIFY(sawQ4);
+    QVERIFY(sawQ8);
 }
 
 void TestModelRegistry::rebuildsOnCorruptIndex()
