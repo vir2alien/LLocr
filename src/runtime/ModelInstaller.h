@@ -116,6 +116,7 @@ private:
     void reloadPresetsInternal();
 
     void refreshInstalled();
+    bool isPresetInstalled(const ModelPreset &p) const;
     void beginPrepare(const ModelPreset &preset);
     void onPrepareDone(const Pending &p, const QString &err);
 

@@ -19,7 +19,7 @@ GridLayout {
         dryRange.text = Settings.dryPenaltyLastN.toString()
     }
 
-    function savaValues() {
+    function saveValues() {
         Settings.modelName = modelNameField.text;
         Settings.temperature = parseFloat(temperatureField.text) || 0.0;
         Settings.maxTokens = parseInt(maxTokensField.text) || 8192;

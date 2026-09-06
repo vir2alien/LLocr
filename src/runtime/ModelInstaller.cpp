@@ -380,6 +380,21 @@ QString ModelInstaller::removeModel(int index)
     return QString();
 }
 
+// True when the file the preset installs (same repo + same model file name) is
+// already present in the registry, so the Install button can be disabled.
+bool ModelInstaller::isPresetInstalled(const ModelPreset &p) const
+{
+    const QString modelLeaf = ModelCatalog::leafName(p.model);
+    for (const ModelEntry &e : std::as_const(m_installed)) {
+        if (e.repo != p.repo)
+            continue;
+        if (!e.modelPath.isEmpty()
+            && ModelCatalog::leafName(e.modelPath) == modelLeaf)
+            return true;
+    }
+    return false;
+}
+
 QVariantMap ModelInstaller::presetInfo(int index) const
 {
     QVariantMap out;
@@ -393,6 +408,7 @@ QVariantMap ModelInstaller::presetInfo(int index) const
     out.insert(QStringLiteral("ctxSize"), p.ctxSize);
     out.insert(QStringLiteral("minBuild"), p.minBuild);
     out.insert(QStringLiteral("approxVramGb"), p.approxVramGb);
+    out.insert(QStringLiteral("installed"), isPresetInstalled(p));
     return out;
 }
 

@@ -98,8 +98,6 @@ Dialog {
         I18n.setLanguage(Settings.language);
     }
 
-
-
     ColumnLayout {
         clip: true
         anchors.fill: parent

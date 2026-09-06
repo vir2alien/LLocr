@@ -217,6 +217,69 @@ private slots:
         QVERIFY(QFile::exists(q8Path));
         QVERIFY(QFile::exists(mmprojB));   // other quant's projector survives
     }
+
+    // Preset Install buttons must be disabled for already-installed models.
+    // Uses the built-in preset catalog: two presets of the same repo,
+    // different quant files. Seeding one installed quant flips only its own
+    // preset's flag, never the sibling's.
+    void presetInstallFlagTracksInstalledModels()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        const QString modelsDir =
+            QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString sub =
+            QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        QVERIFY(QDir().mkpath(sub));
+
+        const QString q8Path =
+            writeGguf(sub, QStringLiteral("Unlimited-OCR-Q8_0.gguf"));
+        const QString mmproj =
+            writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
+        QVERIFY(!q8Path.isEmpty() && !mmproj.isEmpty());
+
+        ModelEntry q8;
+        q8.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q8_0");
+        q8.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
+        q8.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        q8.dir = sub;
+        q8.modelPath = q8Path;
+        q8.mmprojPath = mmproj;
+        q8.origin = ModelOrigin::Managed;
+        q8.quantization = QStringLiteral("Q8_0");
+        q8.byteSize = 1024;
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {q8}, err), qPrintable(err));
+
+        RuntimeController runtime(s->settings);
+        s->installer.reset(new ModelInstaller(s->settings, runtime));
+        ModelInstaller &mi = *s->installer;
+
+        auto findPreset = [&](const QString &presetId) {
+            for (int i = 0; i < mi.presetCount(); ++i) {
+                if (mi.presetInfo(i).value(QStringLiteral("id")).toString()
+                    == presetId)
+                    return i;
+            }
+            return -1;
+        };
+        const int q8Preset = findPreset(QStringLiteral("unlimited-ocr-q8_0"));
+        const int q4Preset =
+            findPreset(QStringLiteral("unlimited-ocr-q4_k_m.gguf"));
+        QVERIFY(q8Preset >= 0);
+        QVERIFY(q4Preset >= 0);
+
+        // Q8_0 installed ⇒ its preset flag true; the sibling preset is not.
+        QVERIFY(mi.presetInfo(q8Preset).value(QStringLiteral("installed")).toBool());
+        QVERIFY(!mi.presetInfo(q4Preset).value(QStringLiteral("installed")).toBool());
+
+        // Removing the installed quant clears its preset's flag.
+        const int q8Idx = indexOfQuant(mi, QStringLiteral("Q8_0"));
+        QVERIFY(q8Idx >= 0);
+        QVERIFY(mi.removeModel(q8Idx).isEmpty());
+        QVERIFY(!mi.presetInfo(q8Preset).value(QStringLiteral("installed")).toBool());
+    }
 };
 
 QTEST_MAIN(TestModelInstaller)

@@ -144,6 +144,15 @@ Item {
                             delegate: Rectangle {
                                 required property int index
                                 property var pInfo: ModelInstaller.presetInfo(index)
+                                Connections {
+                                    target: ModelInstaller
+                                    function onInstalledChanged() {
+                                        presetRoot.pInfo = Qt.binding(function () {
+                                            return ModelInstaller.presetInfo(presetRoot.index)
+                                        })
+                                    }
+                                }
+                                id: presetRoot
                                 width: presetList.width
                                 height: 34
                                 color: "transparent"
@@ -176,7 +185,7 @@ Item {
                                         text: qsTr("Install")
                                         implicitHeight: Theme.controlHeight
                                         font.pixelSize: Theme.fontSmall
-                                        enabled: !ModelInstaller.busy
+                                        enabled: !ModelInstaller.busy && !pInfo.installed
                                         onClicked: {
                                             prepareDialog.pendingIndex = index
                                             ModelInstaller.preparePreset(index)
