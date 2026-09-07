@@ -18,6 +18,7 @@ namespace llocr {
 
 class SettingsStore;
 class RuntimeLog;
+class SingleInstanceGuard;
 
 // Facade over every managed-runtime concern (process, downloads, installs,
 // model selection). A single instance is created in main.cpp — before the QML
@@ -90,6 +91,16 @@ public:
 
     // --- Wiring helpers --------------------------------------------------
     void setSingleInstanceHeld(bool held);
+    /// Binds the single-instance guard so `refreshSingleInstanceLock()` can
+    /// re-acquire the runtime-owner lock when the previous instance exits (a
+    /// second window that opened while another ran must be able to take over
+    /// runtime control after that instance closes — ADR 46 note).
+    void bindSingleInstanceGuard(SingleInstanceGuard *guard);
+    /// Re-checks the instance lock: if the owning instance has exited, take
+    /// ownership and clear `lockedOut` so Managed actions become available
+    /// again. Safe to call repeatedly (tryAcquire is idempotent while already
+    /// holding). Called from QML when the Runtime settings tab opens.
+    Q_INVOKABLE void refreshSingleInstanceLock();
     /// Gives the façade a log view to push live servers into (§ review 3.4).
     /// The view is owned by the caller (main.cpp); nullptr detaches.
     void setLogTarget(RuntimeLog *log);
@@ -152,6 +163,10 @@ private:
 
     // Live-log view to push servers into (§ review 3.4); owned by main.cpp.
     RuntimeLog *m_logTarget = nullptr;
+
+    // Runtime-owner instance lock (ADR 46); owned by main.cpp, bound via
+    // bindSingleInstanceGuard(). Null when not bound (tests).
+    SingleInstanceGuard *m_instanceGuard = nullptr;
 
     SettingsStore &m_settings;
 

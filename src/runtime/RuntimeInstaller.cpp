@@ -47,9 +47,13 @@ QString osLabel(const PlatformInfo &info)
 }
 
 // True when the asset's backend token belongs to the requested backend
-// (exact or prefixed: "cuda" also matches "cuda-cu12" release assets).
+// (exact or prefixed: "cuda" also matches "cuda-cu12" release assets). An
+// empty token is a universal build (e.g. `...-bin-macos-arm64`) that fits any
+// backend request.
 bool backendMatches(const QString &assetBackend, const QString &requested)
 {
+    if (assetBackend.isEmpty())
+        return true;
     if (assetBackend == requested)
         return true;
     return assetBackend.startsWith(requested + QLatin1Char('-'));

@@ -167,6 +167,19 @@ bool inflateRaw(const QByteArray &input, qint64 expectedSize,
 
 } // namespace
 
+ExtractResult ArchiveExtractor::extractArchive(const QString &archivePath,
+                                                const QString &destDir)
+{
+    if (archivePath.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive))
+        return extractZip(archivePath, destDir);
+    if (archivePath.endsWith(QStringLiteral(".tar.gz"), Qt::CaseInsensitive)
+        || archivePath.endsWith(QStringLiteral(".tgz"), Qt::CaseInsensitive))
+        return extractTarGz(archivePath, destDir);
+    ExtractResult r;
+    r.error = QObject::tr("Unsupported archive type: %1").arg(archivePath);
+    return r;
+}
+
 ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString &destDir)
 {
     ExtractResult result;
@@ -371,4 +384,323 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
     return result;
 }
 
-} // namespace llocr
+// ---------------------------------------------------------------------------
+// tar.gz support (llama.cpp macOS/Linux release archives, ADR 34 amended)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Parses an octal ASCII field. Tar numeric fields are zero-padded with NULs
+// or spaces (some writers leave them entirely blank for 0); strip both before
+// parsing. Returns -1 only for non-octal garbage.
+qint64 parseOctalField(const QByteArray &field)
+{
+    QString s = QString::fromLatin1(field.constData(), field.size());
+    s.remove(QChar(0));   // NUL padding
+    s = s.trimmed();      // space padding
+    if (s.isEmpty())
+        return 0;
+    bool ok = false;
+    const qint64 v = s.toLongLong(&ok, 8);
+    return ok ? v : -1;
+}
+
+// Reads a NUL- or space-terminated ASCII string from a fixed-size field.
+QString fieldString(const QByteArray &field)
+{
+    int len = 0;
+    while (len < field.size() && field.at(len) != 0 && field.at(len) != ' ')
+        ++len;
+    return QString::fromLatin1(field.constData(), len);
+}
+
+// Parses a PAX extended-header record stream: lines of "<len> key=value\n".
+// Returns the `path=` / `linkpath=` values if present.
+struct PaxValues {
+    QString path;
+    QString linkpath;
+};
+
+PaxValues parsePaxRecords(const QByteArray &data)
+{
+    PaxValues v;
+    qint64 pos = 0;
+    while (pos < data.size()) {
+        const int nl = data.indexOf('\n', pos);
+        if (nl < 0)
+            break;
+        const QString line = QString::fromLatin1(data.constData() + pos, nl - pos);
+        pos = nl + 1;
+        // "<len> key=value"
+        const int sp = line.indexOf(QLatin1Char(' '));
+        if (sp <= 0)
+            continue;
+        const QString kv = line.mid(sp + 1);
+        const int eq = kv.indexOf(QLatin1Char('='));
+        if (eq <= 0)
+            continue;
+        const QString key = kv.left(eq);
+        const QString value = kv.mid(eq + 1);
+        if (key == QStringLiteral("path"))
+            v.path = value;
+        else if (key == QStringLiteral("linkpath"))
+            v.linkpath = value;
+    }
+    return v;
+}
+
+}  // namespace
+
+ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
+                                             const QString &destDir)
+{
+    ExtractResult result;
+    QFile archive(tarGzPath);
+    if (!archive.open(QIODevice::ReadOnly)) {
+        result.error = QObject::tr("Unable to open archive: %1").arg(tarGzPath);
+        return result;
+    }
+    const QByteArray compressed = archive.readAll();
+    if (compressed.size() < 18) {
+        result.error = QStringLiteral("not a gzip archive");
+        return result;
+    }
+
+    // Decompress the whole stream into memory (the ZIP path reads the whole
+    // archive into memory too; llama.cpp tarballs are a few hundred MB at most).
+    // inflateInit2(15 + 32) auto-detects the zlib/gzip wrapper.
+    z_stream stream{};
+    stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(compressed.constData()));
+    stream.avail_in = static_cast<uInt>(compressed.size());
+    if (inflateInit2(&stream, 15 + 32) != Z_OK) {
+        result.error = QStringLiteral("unable to initialize gzip decoder");
+        return result;
+    }
+
+    QByteArray tar;
+    std::array<char, kChunkSize> chunk{};
+    int zres = Z_OK;
+    bool bomb = false;
+    while (zres == Z_OK) {
+        stream.next_out = reinterpret_cast<Bytef *>(chunk.data());
+        stream.avail_out = static_cast<uInt>(chunk.size());
+        zres = inflate(&stream, Z_NO_FLUSH);
+        const qint64 count = qint64(chunk.size() - stream.avail_out);
+        if (count > 0) {
+            if (tar.size() > kMaxTotalBytes - count) {
+                bomb = true;
+                break;
+            }
+            tar.append(chunk.data(), count);
+        }
+        if (zres == Z_STREAM_END)
+            break;
+        if (zres != Z_OK && zres != Z_BUF_ERROR) {
+            inflateEnd(&stream);
+            result.error = QStringLiteral("invalid gzip stream");
+            return result;
+        }
+        if (stream.avail_in == 0 && zres == Z_BUF_ERROR) {
+            // not enough input to make progress
+            inflateEnd(&stream);
+            result.error = QStringLiteral("truncated gzip stream");
+            return result;
+        }
+    }
+    inflateEnd(&stream);
+    if (bomb) {
+        result.error = QObject::tr("archive total uncompressed size exceeds limit");
+        return result;
+    }
+    if (zres != Z_STREAM_END) {
+        result.error = QStringLiteral("invalid or truncated gzip stream");
+        return result;
+    }
+
+    // --- ustar walk --------------------------------------------------------
+    QSet<QString> written;
+    qint64 pos = 0;
+    QString pendingLongName;      // from a GNU 'L' entry
+    PaxValues pendingPax;         // from a PAX 'x' entry
+    const qint64 size = tar.size();
+
+    while (pos + 512 <= size) {
+        bool allZero = true;
+        for (qint64 i = pos; i < pos + 512; ++i) {
+            if (tar.at(i) != 0) {
+                allZero = false;
+                break;
+            }
+        }
+        if (allZero)
+            break;  // end-of-archive marker
+
+        const QByteArray h = tar.sliced(pos, 512);
+        pos += 512;
+
+        QString name = fieldString(h.sliced(0, 100));
+        const QString prefix = fieldString(h.sliced(345, 155));
+        const QString linkName = fieldString(h.sliced(157, 100));
+        const quint8 typeflag = quint8(h.at(156));
+        const qint64 fileSize = parseOctalField(h.sliced(124, 12));
+        const qint64 mode = parseOctalField(h.sliced(100, 8));
+        if (fileSize < 0) {
+            result.error = QStringLiteral("corrupt tar header (bad size)");
+            return result;
+        }
+
+        // Payload belongs to this header; the next header starts aligned to 512.
+        const qint64 payloadStart = pos;
+        const qint64 payloadEnd = payloadStart + fileSize;
+        if (payloadEnd > size) {
+            result.error = QStringLiteral("truncated tar payload");
+            return result;
+        }
+        pos = (payloadEnd + 511) & ~qint64(511);
+        if (pos > size) {
+            result.error = QStringLiteral("truncated tar archive");
+            return result;
+        }
+        const QByteArray payload = tar.sliced(payloadStart, qint64(fileSize));
+
+        // GNU long name / PAX extended header: consume and remember; the next
+        // regular entry uses the recorded name.
+        if (typeflag == 'L') {
+            pendingLongName = QString::fromUtf8(payload.constData(), payload.size());
+            pendingLongName = pendingLongName.trimmed();
+            if (pendingLongName.endsWith(QLatin1Char('\0')))
+                pendingLongName.chop(1);
+            continue;
+        }
+        if (typeflag == 'x' || typeflag == 'g') {
+            if (typeflag == 'x')
+                pendingPax = parsePaxRecords(payload);
+            continue;
+        }
+
+        if (!pendingPax.path.isEmpty())
+            name = pendingPax.path;
+        else if (!pendingLongName.isEmpty())
+            name = pendingLongName;
+
+        QString fullName = name;
+        if (!prefix.isEmpty())
+            fullName = prefix + QLatin1Char('/') + name;
+        if (fullName.startsWith(QLatin1String("./")))
+            fullName = fullName.mid(2);
+
+        bool valid = false;
+        bool isDir = false;
+        QString nameError;
+        const QString normalized = normalizeName(fullName, valid, nameError, isDir);
+        if (!valid && !isDir) {
+            result.error = nameError;
+            return result;
+        }
+
+        // Reset the remembered long name / pax values after use.
+        pendingLongName.clear();
+        pendingPax = PaxValues{};
+
+        if (typeflag == '5') {  // directory: created on demand below
+            continue;
+        }
+        if (typeflag == '2') {  // symbolic link
+            QString target = linkName;
+            if (target.isEmpty())
+                target = pendingPax.linkpath;
+            // Only simple, relative, in-tree links are created. The llama.cpp
+            // macOS tarballs link e.g. `libggml.dylib -> libggml.0.dylib`.
+            if (target.startsWith(QLatin1Char('/')) || target.contains(QLatin1String(".."))) {
+                result.warning = QObject::tr("Skipped unsafe symlink %1").arg(normalized);
+                continue;
+            }
+            if (normalized.isEmpty())
+                continue;
+            const QString duplicateKey = normalized.toLower();
+            if (written.contains(duplicateKey)) {
+                result.error = QStringLiteral("duplicate path in archive: %1").arg(normalized);
+                return result;
+            }
+            written.insert(duplicateKey);
+            const QString dest = QDir(destDir).filePath(normalized);
+            if (!QDir().mkpath(QFileInfo(dest).absolutePath())) {
+                result.error = QObject::tr("unable to create directory for %1").arg(dest);
+                return result;
+            }
+            if (QFile::exists(dest))
+                QFile::remove(dest);
+            if (QFile::link(target, dest))
+                continue;
+            // Some platforms need a cleanup of the half-created link.
+            result.warning = QObject::tr("Unable to create symlink %1 (skipped)").arg(normalized);
+            continue;
+        }
+        if (typeflag == '1') {  // hardlink
+            result.warning = QObject::tr("Skipped hardlink %1").arg(normalized);
+            continue;
+        }
+        if (typeflag != '0' && typeflag != 0 && typeflag != '7') {
+            // char/block devices, fifos: not needed for llama.cpp; skip.
+            continue;
+        }
+
+        // Regular file.
+        if (normalized.isEmpty()) {
+            result.error = QStringLiteral("empty tar entry name");
+            return result;
+        }
+        if (result.fileCount >= kMaxFiles) {
+            result.error = QObject::tr("archive contains too many files");
+            return result;
+        }
+        if (result.totalBytes > kMaxTotalBytes - fileSize) {
+            result.error = QObject::tr("archive total uncompressed size exceeds limit");
+            return result;
+        }
+        const QString duplicateKey = normalized.toLower();
+        if (written.contains(duplicateKey)) {
+            result.error = QStringLiteral("duplicate path in archive: %1").arg(normalized);
+            return result;
+        }
+        written.insert(duplicateKey);
+
+        const QString dest = QDir(destDir).filePath(normalized);
+        if (!QDir().mkpath(QFileInfo(dest).absolutePath())) {
+            result.error = QObject::tr("unable to create directory for %1").arg(dest);
+            return result;
+        }
+        QFile output(dest);
+        if (!output.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            result.error = QObject::tr("unable to write %1").arg(dest);
+            return result;
+        }
+        if (fileSize > 0 && output.write(payload) != fileSize) {
+            output.close();
+            result.error = QObject::tr("unable to write %1").arg(dest);
+            return result;
+        }
+        if (!output.flush()) {
+            output.close();
+            result.error = QObject::tr("unable to write %1").arg(dest);
+            return result;
+        }
+        output.close();
+
+#ifdef Q_OS_UNIX
+        if ((mode & 0100u)) {
+            QFile permissions(dest);
+            permissions.setPermissions(permissions.permissions()
+                                       | QFileDevice::ExeUser | QFileDevice::ExeGroup
+                                       | QFileDevice::ExeOther);
+        }
+#endif
+        ++result.fileCount;
+        result.totalBytes += fileSize;
+    }
+
+    result.ok = true;
+    return result;
+}
+
+}  // namespace llocr

@@ -73,6 +73,12 @@ Dialog {
             break;
         }
         case SettingsDialog.TabsEnum.RuntimeTabNum:
+            // The runtime-owner lock (ADR 46) is re-checked every time the tab
+            // opens: a second window that started while another instance owned
+            // the runtime may take over once that owner exits — without needing
+            // to restart the app. This is what makes the Start/Stop/Restart
+            // buttons become active again after closing the other instance.
+            Runtime.refreshSingleInstanceLock()
             runtimeTab.loadValues(); break;
         case SettingsDialog.TabsEnum.ModelsTabNum:
             break;

@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QStringList>
+#include <QThread>
 #include <QUuid>
 
 #include "runtime/ArchiveExtractor.h"
@@ -62,18 +63,34 @@ QString locateServer(const QString &root)
     return QString();
 }
 
+// Probes a freshly-extracted server binary with a LONG timeout. On macOS the
+// FIRST run of a brand-new llama.cpp build compiles the Metal shader cache
+// (GGML metal library init writes ~20-30 MB under com.apple.metal) and can
+// block for many seconds (observed 17 s cold on this machine) before --version
+// prints. The regular 5 s probe is far too short, and retrying with a short
+// timeout would kill the compiler mid-flight every time, so the cache would
+// never finish building (ADR 53). One patient run lets the cache complete; all
+// subsequent probes (UI Check, managed start) then answer in milliseconds.
+ProbeResult probeInstalledBinary(const QString &serverAbs)
+{
+    // A generous budget: covers cold Metal shader compilation on slow machines
+    // and busy systems; a truly frozen binary still aborts the install.
+    constexpr int kInstallProbeTimeoutMs = 120000;
+    return RuntimeLocator::probe(serverAbs, kInstallProbeTimeoutMs);
+}
+
 }  // namespace
 
-InstallOutput InstallTransaction::start(const QString &zipPath,
+InstallOutput InstallTransaction::start(const QString &archivePath,
                                         const ReleaseAsset &asset,
                                         RuntimePaths paths, CommitFn commit)
 {
     InstallOutput out;
 
     // 2. Verify size, then sha256 (when the release published one).
-    const QFileInfo zfi(zipPath);
+    const QFileInfo zfi(archivePath);
     if (!zfi.exists()) {
-        out.error = QObject::tr("Downloaded archive missing: %1").arg(zipPath);
+        out.error = QObject::tr("Downloaded archive missing: %1").arg(archivePath);
         return out;
     }
     if (asset.size > 0 && zfi.size() != asset.size) {
@@ -83,7 +100,7 @@ InstallOutput InstallTransaction::start(const QString &zipPath,
         return out;
     }
     if (!asset.sha256.isEmpty()) {
-        const QString actual = fileSha256(zipPath);
+        const QString actual = fileSha256(archivePath);
         if (actual != asset.sha256) {
             out.error = QStringLiteral("sha256 mismatch for the downloaded archive");
             return out;
@@ -101,7 +118,7 @@ InstallOutput InstallTransaction::start(const QString &zipPath,
         return out;
     }
 
-    const ExtractResult ex = ArchiveExtractor::extractZip(zipPath, stagingPath);
+    const ExtractResult ex = ArchiveExtractor::extractArchive(archivePath, stagingPath);
     if (!ex.error.isEmpty()) {
         out.error = ex.error;
         QDir(stagingPath).removeRecursively();
@@ -110,14 +127,17 @@ InstallOutput InstallTransaction::start(const QString &zipPath,
     if (out.warning.isEmpty())
         out.warning = ex.warning;
 
-    // 5-6. Locate the binary and probe it.
+    // 5-6. Locate the binary and probe it. The first exec of a fresh macOS
+    // binary may have to compile the Metal shader cache (tens of seconds) —
+    // probeInstalledBinary() uses a long timeout so the cache can complete
+    // instead of timing out (ADR 53).
     const QString serverAbs = locateServer(stagingPath);
     if (serverAbs.isEmpty()) {
         out.error = QObject::tr("No llama-server binary found in the release archive");
         QDir(stagingPath).removeRecursively();
         return out;
     }
-    const ProbeResult probe = RuntimeLocator::probe(serverAbs);
+    const ProbeResult probe = probeInstalledBinary(serverAbs);
     if (!probe.ok) {
         out.error = QObject::tr("Installed server failed the probe: %1").arg(probe.error);
         QDir(stagingPath).removeRecursively();
@@ -137,9 +157,15 @@ InstallOutput InstallTransaction::start(const QString &zipPath,
 
     // 7. Atomic rename staging/<uuid> -> runtime/<finalTag>. When a previous
     // install exists, move it aside first so a failed rename cannot destroy
-    // the last good build (ADR 39 transactionality).
+    // the last good build (ADR 39 transactionality). Universal assets (empty
+    // backend token, e.g. `...-bin-macos-arm64`) get a stable "cpu" label so
+    // the tag never carries a double separator.
     const QString finalTag = QStringLiteral("llama.cpp-%1-%2-%3-%4")
-                                 .arg(build, asset.backend, asset.os, asset.arch);
+                                 .arg(build,
+                                      asset.backend.isEmpty()
+                                          ? QStringLiteral("cpu")
+                                          : asset.backend,
+                                      asset.os, asset.arch);
     const QString finalDir = paths.installDir(finalTag);
     QString backupDir;
     if (QFileInfo::exists(finalDir)) {
@@ -164,7 +190,11 @@ InstallOutput InstallTransaction::start(const QString &zipPath,
     out.ok = true;
     out.build = build;
     out.tag = finalTag;
-    out.serverPath = QDir(finalDir).filePath(kServerName);
+    // The binary may live under a top-level build folder (e.g.
+    // `llama-b10825/llama-server` in the macOS tarballs); record the path
+    // relative to the staging root so it resolves inside the renamed install.
+    const QString relServer = QDir(stagingPath).relativeFilePath(serverAbs);
+    out.serverPath = QDir(finalDir).filePath(relServer);
 
     // 8. Commit settings last, after the install is live.
     if (commit)

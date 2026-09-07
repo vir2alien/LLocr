@@ -16,7 +16,7 @@
   | Markdown preview | Qt WebEngine + marked + KaTeX | ✅ done | Toggle in the right text pane; image refs resolved via data: URIs |
   | Tests         | Qt Test (unit tests in `tests/`) | ✅ done | 4 base + 13 runtime targets (see 4.12); helper `mock_llama_server` |
   | Local runtime (managed llama.cpp) | `RuntimeController` + `LlamaServerProcess` + `ReleaseCatalog` | ✅ done | Installs & launches a local `llama-server` (see Architecture §runtime layer); the *HTTP client* remains `QNetworkAccessManager` |
-  | Runtime install | `DownloadTask`/`DownloadManager` + `ArchiveExtractor` (miniz) + `InstallTransaction` | ✅ done | Resumable downloads, ZIP-only extract, transactional install (staging → verify → rename) |
+  | Runtime install | `DownloadTask`/`DownloadManager` + `ArchiveExtractor` (zlib; zip + tar.gz) + `InstallTransaction` | ✅ done | Resumable downloads, ZIP + `.tar.gz` extract (Windows ships zip, macOS/Linux tar.gz), transactional install (staging → verify → rename) |
   | Models (Hugging Face) | `ModelCatalog` + `ModelRegistry` + `ModelInstaller` | ✅ done | GGUF install from HF with commit-SHA pinning + `sha256` (`lfs.oid`) |
   | Model presets | `default-presets.json` + user `catalog.json` | ✅ done | Pre-verified `model+mmproj+parser+prompt+ctx` pairs; merge-by-id |
   | No-orphan processes | `ProcessGuard` (Job Object / `PDEATHSIG` / best-effort macOS) | ✅ done | Strong on Win/Linux, best-effort on macOS (owner.json + next-start detection) |
@@ -40,7 +40,7 @@
   | Concern               | Choice                                                                 |
   | --------------------- | ---------------------------------------------------------------------- |
   | Managed server        | **llama.cpp `llama-server`** (min build `b4000`), launched on loopback  |
-  | Runtime install       | GitHub Releases (asset `sha256` from the release body), ZIP via `miniz`|
+  | Runtime install       | GitHub Releases (asset `sha256` from the release body), ZIP/**`.tar.gz`** via zlib |
   | Models                | **Hugging Face** GGUF, commit-`sha` pinned, `sha256` from `lfs.oid`     |
   | Health               | GET `/health` (fallback `/v1/models`) during startup                    |
   | Downloads            | `DownloadTask` (resume: `.part`+`.part.meta`, `Range`/`If-Range`, streaming sha256) in a ≤2-queue `DownloadManager` |
@@ -48,7 +48,7 @@
   | Reproducibility      | pinned build tags + pinned commit SHAs, `sha256` verified before use    |
 
   > Local runtime and models require **no external Python** and no extra native
-  > tooling — everything is embedded (network via Qt, ZIP via vendored `miniz`).
+  > tooling — everything is embedded (network via Qt, ZIP + `.tar.gz` via zlib).
   
   ## RAG service (separate process) — not started
   | Area          | Choice           | Rationale                |

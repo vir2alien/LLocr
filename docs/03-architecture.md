@@ -154,9 +154,9 @@ A dedicated `src/runtime/` layer sits between the backend and the OS:
   (Job Object / `PDEATHSIG` / macOS best-effort + `owner.json`, ADR 30).
 - **RuntimeInstaller** (stage D) — `ReleaseCatalog` (GitHub Releases + `sha256`
   from body, TTL 6 h), `detectPlatform()`/backend recommendation,
-  hardened `ArchiveExtractor` (ZIP, miniz; anti-bomb/zip-slip, ADR 34),
-  transactional `InstallTransaction` (staging → verify → probe → atomic rename
-  → commit, ADR 39). QML singleton `RuntimeInstaller`.
+  hardened `ArchiveExtractor` (ZIP + `.tar.gz` via zlib; anti-bomb/zip-slip,
+  ADR 34), transactional `InstallTransaction` (staging → verify → probe →
+  atomic rename → commit, ADR 39). QML singleton `RuntimeInstaller`.
 - **ModelInstaller** (stage E) — `ModelCatalog` (HF tree w/ pagination,
   commit-`sha` pinning, mmproj/multi-part, ADR 29), `ModelPresetCatalog`
   (built-in `:/models/default-presets.json` + user `models/catalog.json`, ADR 42),

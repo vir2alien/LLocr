@@ -6,6 +6,7 @@
 #include <QTest>
 
 #include <cstdint>
+#include <cstdlib>
 
 #include <zlib.h>
 
@@ -152,6 +153,83 @@ ESpec makeEntry(const QString &name, const QByteArray &payload,
     e.comp = deflate ? rawDeflate(payload) : payload;
     e.externalAttr = attr;
     e.badCrc = badCrc;
+    return e;
+}
+
+// --- tiny ustar writer for tar.gz tests ------------------------------------
+// Enough of the POSIX ustar format for the extractor tests: name, mode, size,
+// typeflag, magic, ustar prefix, plus symlink entries. The produced archive is
+// close to what llama.cpp publishes (BSD tar on the macOS runners).
+
+struct TEntry {
+    QString name;
+    QByteArray content;    // payload for regular files, link target for symlinks
+    QString linkTarget;    // non-empty => symlink (typeflag '2')
+    bool isDir = false;
+    quint32 mode = 0o644;
+};
+
+QByteArray buildTar(const QList<TEntry> &entries)
+{
+    QByteArray out;
+    for (const TEntry &e : entries) {
+        QByteArray h(512, char(0));
+        char *raw = h.data();
+        const QByteArray name = e.name.toUtf8();
+        ::memcpy(raw, name.constData(), ::size_t(name.size() < 100 ? name.size() : 100));
+        const QString mode = QStringLiteral("%1").arg(e.mode, 7, 8, QLatin1Char('0'));
+        ::memcpy(raw + 100, mode.toLatin1().constData(), 7);
+        const QByteArray spaces(6, ' ');     // checksum placeholder
+        ::memcpy(raw + 148, spaces.constData(), 6);
+        if (e.isDir) {
+            h[156] = char('5');
+        } else if (!e.linkTarget.isEmpty()) {
+            h[156] = char('2');
+            const QByteArray target = e.linkTarget.toUtf8().left(100);
+            ::memcpy(raw + 157, target.constData(), ::size_t(target.size()));
+        } else {
+            h[156] = char('0');
+            const QString size = QStringLiteral("%1").arg(e.content.size(), 11, 8,
+                                                          QLatin1Char('0'));
+            ::memcpy(raw + 124, size.toLatin1().constData(), 11);
+        }
+        // magic "ustar\0" (raw bytes; no template overload ambiguity)
+        ::memcpy(raw + 257, "ustar\0", 6);
+        out += h;
+        if (!e.isDir && e.linkTarget.isEmpty()) {
+            out += e.content;
+            const qint64 pad = (512 - (e.content.size() % 512)) % 512;
+            out += QByteArray(int(pad), char(0));
+        }
+    }
+    out += QByteArray(1024, char(0));  // end-of-archive marker
+    return out;
+}
+
+QByteArray gzipBytes(const QByteArray &data)
+{
+    QByteArray out;
+    z_stream stream{};
+    stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(data.constData()));
+    stream.avail_in = static_cast<uInt>(data.size());
+    deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8,
+                 Z_DEFAULT_STRATEGY);
+    out.resize(data.size() + (data.size() >> 4) + 128);
+    stream.next_out = reinterpret_cast<Bytef *>(out.data());
+    stream.avail_out = static_cast<uInt>(out.size());
+    deflate(&stream, Z_FINISH);
+    out.truncate(int(stream.total_out));
+    deflateEnd(&stream);
+    return out;
+}
+
+TEntry tarEntry(const QString &name, const QByteArray &content,
+                quint32 mode = 0o644)
+{
+    TEntry e;
+    e.name = name;
+    e.content = content;
+    e.mode = mode;
     return e;
 }
 
@@ -307,6 +385,123 @@ private slots:
                                false, 0, 0x12345678u));
         const QString zip = writeZip(dir, "j.zip", buildZip(specs));
         QVERIFY(!ArchiveExtractor::extractZip(zip, QDir(dir.path()).filePath("out")).ok);
+    }
+
+    // --- tar.gz ------------------------------------------------------------
+
+    void extractsTarGzWithSymlinks()
+    {
+        // Mirrors the real llama.cpp macOS archive: a top-level directory, an
+        // executable llama-server, a plain file, and versioned .dylib symlinks.
+        QTemporaryDir dir;
+        QList<TEntry> entries;
+        TEntry d; d.name = QStringLiteral("llama-b10825"); d.isDir = true;
+        entries << d;
+        entries << tarEntry(QStringLiteral("llama-b10825/llama-server"),
+                            QByteArray("#!/bin/sh\necho llama-server\n"), 0o755);
+        entries << tarEntry(QStringLiteral("llama-b10825/readme.txt"),
+                            QByteArray("llama.cpp\n"));
+        TEntry link; link.name = QStringLiteral("llama-b10825/libggml.dylib");
+        link.linkTarget = QStringLiteral("libggml.0.23.0.dylib");
+        entries << link;
+
+        const QString archive = writeZip(dir, QStringLiteral("a.tar.gz"),
+                                         gzipBytes(buildTar(entries)));
+        const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
+        const ExtractResult r = ArchiveExtractor::extractTarGz(archive, dest);
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QCOMPARE(r.fileCount, 2);
+
+        QFileInfo server(QDir(dest).filePath("llama-b10825/llama-server"));
+        QVERIFY(server.exists());
+#ifdef Q_OS_UNIX
+        QVERIFY(server.permissions() & QFileDevice::ExeUser);
+#endif
+        QFile readme(QDir(dest).filePath("llama-b10825/readme.txt"));
+        QVERIFY(readme.open(QIODevice::ReadOnly));
+        QCOMPARE(readme.readAll(), QByteArrayLiteral("llama.cpp\n"));
+#ifdef Q_OS_UNIX
+        // The link is relative to its own directory; the target file is not in
+        // this synthetic archive, so check the link itself, not its target.
+        QFileInfo linkInfo(QDir(dest).filePath("llama-b10825/libggml.dylib"));
+        QVERIFY(linkInfo.isSymLink());
+        QCOMPARE(QFileInfo(linkInfo.symLinkTarget()).fileName(),
+                 QStringLiteral("libggml.0.23.0.dylib"));
+#endif
+    }
+
+    void dispatchRoutesTarGzByName()
+    {
+        QTemporaryDir dir;
+        QList<TEntry> entries;
+        entries << tarEntry(QStringLiteral("f.txt"), QByteArrayLiteral("x"));
+        const QString archive = writeZip(dir, QStringLiteral("rel.tar.gz"),
+                                         gzipBytes(buildTar(entries)));
+        const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
+        const ExtractResult r = ArchiveExtractor::extractArchive(archive, dest);
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY(QFile::exists(QDir(dest).filePath("f.txt")));
+    }
+
+    void dispatchRejectsUnknownExtension()
+    {
+        QTemporaryDir dir;
+        const QString archive = writeZip(dir, QStringLiteral("rel.7z"), QByteArrayLiteral("x"));
+        const ExtractResult r = ArchiveExtractor::extractArchive(archive, dir.path());
+        QVERIFY(!r.ok);
+        QVERIFY(r.error.contains(QStringLiteral("Unsupported")));
+    }
+
+    void tarRejectsTraversal()
+    {
+        QTemporaryDir dir;
+        QList<TEntry> entries;
+        entries << tarEntry(QStringLiteral("../evil"), QByteArrayLiteral("x"));
+        const QString archive = writeZip(dir, QStringLiteral("t.tar.gz"),
+                                         gzipBytes(buildTar(entries)));
+        QVERIFY(!ArchiveExtractor::extractTarGz(archive, QDir(dir.path()).filePath("out")).ok);
+    }
+
+    void tarSkipsUnsafeSymlink()
+    {
+        QTemporaryDir dir;
+        QList<TEntry> entries;
+        TEntry link; link.name = QStringLiteral("a/b");
+        link.linkTarget = QStringLiteral("../../etc/passwd");
+        entries << link;
+        const QString archive = writeZip(dir, QStringLiteral("s.tar.gz"),
+                                         gzipBytes(buildTar(entries)));
+        const ExtractResult r = ArchiveExtractor::extractTarGz(archive, QDir(dir.path()).filePath("out"));
+        QVERIFY(r.ok);
+        QVERIFY(!r.warning.isEmpty());
+    }
+
+    void tarRejectsNonGzip()
+    {
+        QTemporaryDir dir;
+        const QString archive = writeZip(dir, QStringLiteral("x.tar.gz"),
+                                         QByteArrayLiteral("this is not gzip"));
+        const ExtractResult r = ArchiveExtractor::extractTarGz(archive, dir.path());
+        QVERIFY(!r.ok);
+    }
+
+    // Optional integration check against a real llama.cpp release archive:
+    // point LLOCR_REAL_TAR_GZ at a downloaded `.tar.gz` to verify extraction
+    // produces a usable llama-server. Skipped when the variable is unset.
+    void extractsRealLlamaArchive()
+    {
+#ifdef Q_OS_UNIX
+        const char *env = ::getenv("LLOCR_REAL_TAR_GZ");
+        if (!env || !*env)
+            QSKIP("LLOCR_REAL_TAR_GZ not set");
+        const QString archive = QString::fromUtf8(env);
+        QTemporaryDir dir;
+        const ExtractResult r = ArchiveExtractor::extractTarGz(archive, dir.path());
+        QVERIFY2(r.ok, qPrintable(r.error));
+        QVERIFY(QFile::exists(QDir(dir.path()).filePath("llama-b10825/llama-server")));
+#else
+        QSKIP("real-archive check runs on Unix only");
+#endif
     }
 };
 

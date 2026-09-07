@@ -141,6 +141,60 @@ static QString archiveFor(const QString &dir, const QString &file,
     return writeArchive(dir, file, buildZip(entries));
 }
 
+// --- tiny ustar + gzip writer (mirrors the real llama.cpp macOS archives) ---
+
+namespace {
+
+QByteArray tarGzPayload(const QList<ZipEntry> &entries)
+{
+    QByteArray tar;
+    QByteArray h(512, char(0));
+    for (const ZipEntry &e : entries) {
+        h.fill(char(0));
+        char *raw = h.data();
+        const QByteArray name = e.name.toUtf8();
+        ::memcpy(raw, name.constData(), ::size_t(name.size() < 100 ? name.size() : 100));
+        const QString mode = QStringLiteral("%1").arg(e.modeAttr >> 16, 7, 8, QLatin1Char('0'));
+        ::memcpy(raw + 100, mode.toLatin1().constData(), 7);
+        if (!e.content.isEmpty()) {
+            const QString size = QStringLiteral("%1").arg(e.content.size(), 11, 8,
+                                                          QLatin1Char('0'));
+            ::memcpy(raw + 124, size.toLatin1().constData(), 11);
+        }
+        h[156] = char(e.content.isEmpty() ? '5' : '0');
+        ::memcpy(raw + 257, "ustar\0", 6);
+        tar += h;
+        if (!e.content.isEmpty()) {
+            tar += e.content;
+            const qint64 pad = (512 - (e.content.size() % 512)) % 512;
+            tar += QByteArray(int(pad), char(0));
+        }
+    }
+    tar += QByteArray(1024, char(0));
+
+    QByteArray out;
+    z_stream stream{};
+    stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(tar.constData()));
+    stream.avail_in = static_cast<uInt>(tar.size());
+    deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8,
+                 Z_DEFAULT_STRATEGY);
+    out.resize(tar.size() + (tar.size() >> 4) + 128);
+    stream.next_out = reinterpret_cast<Bytef *>(out.data());
+    stream.avail_out = static_cast<uInt>(out.size());
+    deflate(&stream, Z_FINISH);
+    out.truncate(int(stream.total_out));
+    deflateEnd(&stream);
+    return out;
+}
+
+}  // namespace
+
+static QString archiveTarGzFor(const QString &dir, const QString &file,
+                               const QList<ZipEntry> &entries)
+{
+    return writeArchive(dir, file, tarGzPayload(entries));
+}
+
 // True when the staging dir has no sub-directories left (a failed or completed
 // install must leave nothing behind there).
 static bool stagingEmpty(const RuntimePaths &paths)
@@ -167,6 +221,7 @@ class TestInstallTransaction : public QObject {
 
 private slots:
     void installsSuccessfully();
+    void installsFromTarGz();
     void sizeMismatchFails();
     void shaMismatchFails();
     void badArchiveFails();
@@ -237,6 +292,68 @@ void TestInstallTransaction::installsSuccessfully()
     QVERIFY(committed);
     QCOMPARE(committedTag, expectedTag);
     // The staging/<uuid> tree was atomically renamed into place and is gone.
+    QVERIFY(stagingEmpty(paths));
+}
+
+void TestInstallTransaction::installsFromTarGz()
+{
+    // macOS ships a `.tar.gz` with the binary under a top-level build folder;
+    // the transaction must locate llama-server inside it and commit.
+    const QString mock = QString::fromUtf8(LLOCR_MOCK_SERVER);
+    QVERIFY2(QFile::exists(mock), qPrintable(mock));
+    QFile mf(mock);
+    QVERIFY2(mf.open(QIODevice::ReadOnly), "mock binary unreadable");
+    const QByteArray serverBin = mf.readAll();
+    mf.close();
+
+    QList<ZipEntry> entries;
+    ZipEntry server;
+    server.name = QStringLiteral("llama-b10825/llama-server");
+    server.content = serverBin;
+    server.modeAttr = 0o755u << 16;
+    server.crc = crc32(serverBin);
+    entries << server;
+
+    ZipEntry readme;
+    readme.name = QStringLiteral("llama-b10825/readme.txt");
+    readme.content = QByteArray("llama.cpp b10825\n");
+    entries << readme;
+
+    QTemporaryDir dir;
+    const QString archivePath =
+        archiveTarGzFor(dir.path(), QStringLiteral("llama-b10825-bin-macos-arm64.tar.gz"), entries);
+    QVERIFY2(!archivePath.isEmpty(), "failed to write archive");
+
+    QTemporaryDir root;
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
+                             QDir(root.path()).filePath(QStringLiteral("models")));
+
+    ReleaseAsset asset;
+    asset.fileName = QStringLiteral("llama-b10825-bin-macos-arm64.tar.gz");
+    asset.os = QStringLiteral("macos");
+    asset.arch = QStringLiteral("arm64");
+    asset.build = QStringLiteral("b10825");
+    asset.size = QFileInfo(archivePath).size();
+    asset.sha256 = QString();
+
+    bool committed = false;
+    QString committedTag;
+    std::function<void(const InstallOutput &)> commit =
+        [&](const InstallOutput &o) {
+            committed = true;
+            committedTag = o.tag;
+        };
+
+    const InstallOutput out = InstallTransaction::start(archivePath, asset, paths, commit);
+
+    QVERIFY2(out.ok, qPrintable(out.error));
+    // The probe reports the mock's own build (b10594), which wins over the
+    // asset-derived build number.
+    QCOMPARE(out.build, QStringLiteral("b10594"));
+    QVERIFY(QFile::exists(out.serverPath));
+    QVERIFY(QDir(paths.installDir(out.tag)).exists());
+    QCOMPARE(out.tag, QStringLiteral("llama.cpp-b10594-cpu-macos-arm64"));
+    QVERIFY(committed);
     QVERIFY(stagingEmpty(paths));
 }
 

@@ -42,7 +42,10 @@ ReleaseAsset ReleaseInfo::pickAsset(QString os, QString arch, QString backend,
             continue;
         if (wantCudart)
             return a;  // only one cudart asset is expected
-        if (a.os == os && a.arch == arch && a.backend == backend)
+        // An asset with an empty backend token (e.g. `...-bin-macos-arm64` or
+        // `...-bin-ubuntu-x64`) is a universal build that serves any backend.
+        if (a.os == os && a.arch == arch
+            && (a.backend.isEmpty() || a.backend == backend))
             return a;
     }
     return ReleaseAsset();

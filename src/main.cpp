@@ -89,6 +89,10 @@ int main(int argc, char* argv[]) {
     QString guardError;
     const bool soleInstance = instanceGuard.tryAcquire(guardError);
     runtimeController.setSingleInstanceHeld(!soleInstance);
+    // The Runtime settings tab re-checks ownership when opened: a second window
+    // that started while another instance owned the runtime may take over once
+    // that owner exits, without an app restart.
+    runtimeController.bindSingleInstanceGuard(&instanceGuard);
     if (!soleInstance) {
         qWarning().noquote() << guardError;
     }

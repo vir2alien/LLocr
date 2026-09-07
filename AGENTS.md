@@ -87,7 +87,8 @@ variable, and vcpkg does **not** participate in the build.
     - **C** (`DownloadTask` resume + `DownloadManager`, tests) ✅
     - **D** ✅ — llama.cpp install: `ReleaseCatalog` (GitHub releases + sha256),
       `detectPlatform()`/backend recommendation, CUDA cudart join, hardened
-      `ArchiveExtractor` (ZIP), transactional `InstallTransaction`, cleanup of
+      `ArchiveExtractor` (ZIP + `.tar.gz` via zlib, ADR 34 amended),
+      transactional `InstallTransaction`, cleanup of
       unused builds; backend covered by `test_release_catalog` /
       `test_archive_extractor` / `test_install_transaction`. UI in
       **Settings → Runtime**: release/backend pickers, «Download and install»

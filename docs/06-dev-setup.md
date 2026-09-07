@@ -29,8 +29,8 @@
 - Pandoc — for DOCX/PDF export (external dependency, optionally bundled).
 - Python 3.x — only for the RAG service (later stage).
 - **Local runtime & models need none of the above**: llama.cpp downloads
-  (GitHub Releases), Hugging Face GGUF downloads, ZIP extraction (vendored
-  `miniz`) and the HTTP client are all embedded in the app — no external
+  (GitHub Releases), Hugging Face GGUF downloads, ZIP + `.tar.gz` extraction
+  (zlib) and the HTTP client are all embedded in the app — no external
   Python and no extra native tools required.
 
 ## Install, tests, run
@@ -106,7 +106,6 @@ LLocr/
 │                     #   PageListModel, BoxListModel, PageEditStore,
 │                     #   OcrImageProvider, SettingsStore, UiController,
 │                     #   I18n, Exporter, PageIndex.h
-├── third_party/miniz/    # vendored ZIP extractor, MIT
 ├── resources/
 │   ├── qml/          # Main.qml, SettingsDialog.qml, ExportDialog.qml,
 │   │   │             #   Theme.qml, WindowSettings.qml, SetupWizard.qml,

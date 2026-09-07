@@ -17,14 +17,19 @@
 #include "runtime/RuntimeLog.h"
 #include "runtime/RuntimePaths.h"
 #include "runtime/ServerLaunchConfig.h"
+#include "runtime/SingleInstanceGuard.h"
 
 namespace llocr {
 
 namespace {
 // Named timeouts/limits for the managed-runtime network/probe/shutdown paths
-// (review 2.7).
+// (review 2.7). The probe budget is generous: on macOS the very first exec of
+// a llama.cpp build past a cold `com.apple.metal` shader cache takes tens of
+// seconds (compiling ~20-30 MB of kernel libraries, ADR 53); once built the
+// probe answers in ~50 ms, so the budget only matters on a cold cache or a
+// genuinely frozen binary.
 constexpr int kModelsRequestTimeoutMs = 10000;  // /v1/models query
-constexpr int kProbeTimeoutMs = 5000;            // RuntimeLocator::probeCached
+constexpr int kProbeTimeoutMs = 120000;         // RuntimeLocator::probeCached (cold Metal cache)
 constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
 }  // namespace
 
@@ -49,6 +54,20 @@ void RuntimeController::setSingleInstanceHeld(bool held)
         return;
     m_lockedOut = held;
     emit lockedOutChanged();
+}
+
+void RuntimeController::bindSingleInstanceGuard(SingleInstanceGuard *guard)
+{
+    m_instanceGuard = guard;
+}
+
+void RuntimeController::refreshSingleInstanceLock()
+{
+    if (!m_instanceGuard)
+        return;
+    QString error;
+    const bool soleInstance = m_instanceGuard->tryAcquire(error);
+    setSingleInstanceHeld(!soleInstance);
 }
 
 void RuntimeController::setLogTarget(RuntimeLog *log)
@@ -492,7 +511,9 @@ void RuntimeController::restartServer()
 
 QString RuntimeController::probeRuntimePath(const QString &path)
 {
-    const ProbeResult r = RuntimeLocator::probe(path);
+    // Long budget: the first exec after a cold Metal-cache can block for tens
+    // of seconds (ADR 53); once warmed the probe is ~50 ms.
+    const ProbeResult r = RuntimeLocator::probe(path, kProbeTimeoutMs);
     const QString summary = RuntimeLocator::probeSummary(r);
     setStatusMessage(summary);
     return summary;
@@ -500,9 +521,10 @@ QString RuntimeController::probeRuntimePath(const QString &path)
 
 QString RuntimeController::autoDiscoverPath()
 {
-    const QString found = RuntimeLocator::autoDiscover();
+    // Long probe budget: cold Metal shader cache can delay the first exec (ADR 53).
+    const QString found = RuntimeLocator::autoDiscover(kProbeTimeoutMs);
     if (!found.isEmpty())
-        setStatusMessage(RuntimeLocator::probeSummary(RuntimeLocator::probe(found)));
+        setStatusMessage(RuntimeLocator::probeSummary(RuntimeLocator::probe(found, kProbeTimeoutMs)));
     else
         setStatusMessage(QObject::tr("No llama-server binary found automatically"));
     return found;

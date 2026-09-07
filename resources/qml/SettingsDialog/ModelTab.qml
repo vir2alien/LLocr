@@ -29,8 +29,6 @@ GridLayout {
         Settings.dryPenaltyLastN = parseInt(dryRange.text) || 2048;
     }
 
-
-
     Item { Layout.columnSpan: 2; implicitHeight: 4 }
 
     Label {

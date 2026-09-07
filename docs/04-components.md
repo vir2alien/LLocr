@@ -235,8 +235,8 @@ local **`llama-server`** process (stages A/B, D of `docs/09-local-runtime-plan.m
   share one future; Stop cancels a pending start (§G-core). ✅
 - Install (stage D) in **Settings → Runtime** via the `RuntimeInstaller`
   singleton: `ReleaseCatalog` (GitHub Releases + `sha256`), backend picker,
-  `DownloadTask`/`DownloadManager`, hardened ZIP `ArchiveExtractor` (vendored
-  `miniz`), transactional `InstallTransaction`, «Check for updates»,
+  `DownloadTask`/`DownloadManager`, hardened `ArchiveExtractor` (ZIP +
+  `.tar.gz` via zlib), transactional `InstallTransaction`, «Check for updates»,
   «Clean up unused builds». ✅
 - **No-orphan guarantees** and the error→message **matrix §7.5** are described in
   `docs/09-local-runtime-plan.md`. ✅

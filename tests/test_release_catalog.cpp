@@ -33,20 +33,27 @@ QJsonObject makeAsset(const QString &name, const QString &url, qint64 size)
 // Builds the GitHub Releases "items" array used across the parsing tests. The
 // fixture is assembled with QJsonObject/QJsonArray rather than a raw literal so
 // it is valid JSON by construction (and stays friendly to moc).
+//
+// The names mirror the real llama.cpp releases (verified against the GitHub
+// Releases API): Windows ships `.zip` with a backend token, macOS ships a
+// generic (no backend token) `.tar.gz`, and Ubuntu ships `.tar.gz` either
+// generic or with a backend token.
 QJsonArray buildReleases()
 {
     const QString winCuda = QStringLiteral("llama-b10594-bin-win-cuda-cu12-x64.zip");
     const QString winCpu = QStringLiteral("llama-b10594-bin-win-cpu-x64.zip");
-    const QString macMetal = QStringLiteral("llama-b10594-bin-macos-metal-arm64.zip");
-    const QString linuxVulkan = QStringLiteral("llama-b10594-bin-linux-vulkan-x64.zip");
+    const QString macTar = QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz");
+    const QString linuxVulkan = QStringLiteral("llama-b10594-bin-ubuntu-vulkan-x64.tar.gz");
+    const QString linuxGeneric = QStringLiteral("llama-b10594-bin-ubuntu-x64.tar.gz");
     const QString mystery = QStringLiteral("llama-b10594-mystery-file.txt");
 
     QStringList bodyLines;
     bodyLines << QStringLiteral("## sha256")
               << QStringLiteral("sha256: %1  %2").arg(digestOf('a'), winCuda)
               << QStringLiteral("sha256: %1  %2").arg(digestOf('b'), winCpu)
-              << QStringLiteral("sha256: %1  %2").arg(digestOf('c'), macMetal)
-              << QStringLiteral("sha256: %1  %2").arg(digestOf('d'), linuxVulkan);
+              << QStringLiteral("sha256: %1  %2").arg(digestOf('c'), macTar)
+              << QStringLiteral("sha256: %1  %2").arg(digestOf('d'), linuxVulkan)
+              << QStringLiteral("sha256: %1  %2").arg(digestOf('e'), linuxGeneric);
 
     QJsonObject r1;
     r1.insert(QStringLiteral("tag_name"), QStringLiteral("b10594"));
@@ -56,8 +63,9 @@ QJsonArray buildReleases()
     QJsonArray a1;
     a1.append(makeAsset(winCuda, QStringLiteral("https://example.com/win-cuda.zip"), 1000));
     a1.append(makeAsset(winCpu, QStringLiteral("https://example.com/win-cpu.zip"), 900));
-    a1.append(makeAsset(macMetal, QStringLiteral("https://example.com/macos.zip"), 800));
-    a1.append(makeAsset(linuxVulkan, QStringLiteral("https://example.com/linux-vulkan.zip"), 850));
+    a1.append(makeAsset(macTar, QStringLiteral("https://example.com/macos.tar.gz"), 800));
+    a1.append(makeAsset(linuxVulkan, QStringLiteral("https://example.com/linux-vulkan.tar.gz"), 850));
+    a1.append(makeAsset(linuxGeneric, QStringLiteral("https://example.com/linux-generic.tar.gz"), 700));
     a1.append(makeAsset(mystery, QStringLiteral("https://example.com/mystery.txt"), 42));
     r1.insert(QStringLiteral("assets"), a1);
 
@@ -67,8 +75,8 @@ QJsonArray buildReleases()
     r2.insert(QStringLiteral("published_at"), QStringLiteral("2025-05-20T00:00:00Z"));
     r2.insert(QStringLiteral("body"), QStringLiteral("No sha256 table in this release."));
     QJsonArray a2;
-    a2.append(makeAsset(QStringLiteral("llama-b10589-bin-macos-metal-arm64.zip"),
-                        QStringLiteral("https://example.com/macos-old.zip"), 777));
+    a2.append(makeAsset(QStringLiteral("llama-b10589-bin-macos-x64.tar.gz"),
+                        QStringLiteral("https://example.com/macos-old.tar.gz"), 777));
     r2.insert(QStringLiteral("assets"), a2);
 
     QJsonArray releases;
@@ -97,6 +105,7 @@ private slots:
     void cacheMissingIsNotFresh();
     void cacheIsFreshWithinTtl();
     void buildFromTag();
+    void detectPlatformMatchesHost();
 };
 
 void TestReleaseCatalog::parsesKnownLayout()
@@ -107,7 +116,7 @@ void TestReleaseCatalog::parsesKnownLayout()
     QCOMPARE(releases.size(), 2);
     QCOMPARE(releases.at(0).tagName, QStringLiteral("b10594"));
     QCOMPARE(releases.at(0).build, qint64(10594));
-    QCOMPARE(releases.at(0).assets.size(), 5);
+    QCOMPARE(releases.at(0).assets.size(), 6);
 }
 
 void TestReleaseCatalog::extractsShaFromBody()
@@ -132,12 +141,21 @@ void TestReleaseCatalog::picksPlatformAsset()
     QCOMPARE(r.pickAsset(QStringLiteral("win"), QStringLiteral("x64"),
                          QStringLiteral("cuda-cu12")).fileName,
              QStringLiteral("llama-b10594-bin-win-cuda-cu12-x64.zip"));
+    // macOS ships a single universal build (no backend token): both the
+    // recommended "metal" and the fallback "cpu" must select it.
     QCOMPARE(r.pickAsset(QStringLiteral("macos"), QStringLiteral("arm64"),
                          QStringLiteral("metal")).fileName,
-             QStringLiteral("llama-b10594-bin-macos-metal-arm64.zip"));
+             QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz"));
+    QCOMPARE(r.pickAsset(QStringLiteral("macos"), QStringLiteral("arm64"),
+                         QStringLiteral("cpu")).fileName,
+             QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz"));
     QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"),
                          QStringLiteral("vulkan")).fileName,
-             QStringLiteral("llama-b10594-bin-linux-vulkan-x64.zip"));
+             QStringLiteral("llama-b10594-bin-ubuntu-vulkan-x64.tar.gz"));
+    // Generic Ubuntu build serves the plain "cpu" request.
+    QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"),
+                         QStringLiteral("cpu")).fileName,
+             QStringLiteral("llama-b10594-bin-ubuntu-x64.tar.gz"));
 }
 
 void TestReleaseCatalog::pickUnknownReturnsEmpty()
@@ -155,19 +173,46 @@ void TestReleaseCatalog::pickUnknownReturnsEmpty()
 
 void TestReleaseCatalog::cudartAssetIsFlagged()
 {
-    QJsonObject release;
-    release.insert(QStringLiteral("tag_name"), QStringLiteral("b10594"));
+    // Two real-world shapes: legacy `...-cu124.zip` and the current
+    // `...-12.4-x64.zip` / `...-13.3-arm64.zip` naming.
     QJsonArray assets;
     assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-cu124.zip"),
                             QStringLiteral("https://example.com/cu.zip"), 1100));
+    assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-12.4-x64.zip"),
+                            QStringLiteral("https://example.com/cu124.zip"), 1200));
+    assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-13.3-arm64.zip"),
+                            QStringLiteral("https://example.com/cu133.zip"), 1300));
+    QJsonObject release;
+    release.insert(QStringLiteral("tag_name"), QStringLiteral("b10594"));
     release.insert(QStringLiteral("assets"), assets);
     QJsonArray items;
     items.append(release);
 
     QString err;
     const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(items, err);
-    QCOMPARE(releases.at(0).assets.size(), 1);
-    QVERIFY(releases.at(0).assets.at(0).cudart);
+    QCOMPARE(releases.at(0).assets.size(), 3);
+    for (const ReleaseAsset &a : releases.at(0).assets)
+        QVERIFY(a.cudart);
+}
+
+void TestReleaseCatalog::detectPlatformMatchesHost()
+{
+    // Regression: QSysInfo::kernelType() is "darwin" on macOS, which contains
+    // the substring "win" — a plain contains("win") check fell through to the
+    // Windows branch and made the runtime installer download a Windows zip on
+    // a Mac (then "no llama-server binary found in the release archive").
+    const PlatformInfo info = ReleaseCatalog::detectPlatform();
+#ifdef Q_OS_MACOS
+    QCOMPARE(info.os, PlatformOs::macOS);
+    QCOMPARE(info.osTag, QStringLiteral("macos"));
+    QVERIFY(!info.arch.isEmpty());
+#elif defined(Q_OS_WIN)
+    QCOMPARE(info.os, PlatformOs::Windows);
+    QCOMPARE(info.osTag, QStringLiteral("win"));
+#else
+    QCOMPARE(info.os, PlatformOs::Linux);
+    QCOMPARE(info.osTag, QStringLiteral("linux"));
+#endif
 }
 
 void TestReleaseCatalog::cacheMissingIsNotFresh()

@@ -24,16 +24,24 @@ namespace {
 
 // Tolerant asset-name parser (§ Stage D task 1). Matches the llama.cpp layout:
 //
-//   llama-b<build>-bin-<os>-<backend>-<arch>.zip
+//   llama-b<build>-bin-<os>-<arch>.<zip|tar.gz>            (generic build)
+//   llama-b<build>-bin-<os>-<backend...>-<arch>.<ext>      (backend build)
 //   cudart-llama-bin-win-cuda-<ver>.zip
 //
-// The backend token may itself contain dashes (e.g. "cuda-cu12"), so the regex
-// anchors os and arch at the boundaries and lets backend span the middle.
-const QRegularExpression kMainRe(
-    QStringLiteral(R"(^llama-b(\d+)-bin-(win|linux|macos)-(.+)-(\w+)\.zip$)"));
+// llama.cpp previously published `llama-b<build>-bin-<os>-<backend>-<arch>.zip`
+// for every platform, but since b1082x macOS and Linux switched to
+// `.tar.gz` and the backend token disappeared for macOS (`...-bin-macos-arm64`)
+// and generic Ubuntu (`...-bin-ubuntu-x64`). The backend token may itself
+// contain dashes (e.g. "cuda-cu12"), so the generic shape anchors os and arch
+// and lets backend span the middle. `ubuntu` is normalized to `linux`.
+const QRegularExpression kGenericRe(
+    QStringLiteral(R"(^llama-b(\d+)-bin-([a-z0-9]+)-([a-z0-9]+)\.(zip|tar\.gz)$)"));
+
+const QRegularExpression kBackendRe(
+    QStringLiteral(R"(^llama-b(\d+)-bin-([a-z0-9]+)-(.+)-([a-z0-9]+)\.(zip|tar\.gz)$)"));
 
 const QRegularExpression kCudartRe(
-    QStringLiteral(R"(^cudart-llama-bin-win-cuda-([0-9a-z]+)\.zip$)"));
+    QStringLiteral(R"(^cudart-llama-bin-win-cuda-([0-9a-z.]+?)(?:-(x64|arm64))?\.zip$)"));
 
 // Body entries: 64 hex chars followed by a file name, with an optional
 // "sha256:" prefix. Matches across the common llama.cpp "### sha256" blocks.
@@ -72,13 +80,24 @@ ReleaseAsset ReleaseCatalog::parseAssetName(const QString &fileName,
         a.arch = QStringLiteral("x64");
         return a;
     }
-    const QRegularExpressionMatch nm = kMainRe.match(fileName);
-    if (nm.hasMatch()) {
-        a.os = nm.captured(2);
-        a.backend = nm.captured(3);
-        a.arch = nm.captured(4);
-        a.build = QStringLiteral("b%1").arg(nm.captured(1));
+    const QRegularExpressionMatch gm = kGenericRe.match(fileName);
+    if (gm.hasMatch()) {
+        // No backend token: a universal build (macOS arm64/x64, generic Ubuntu)
+        // that serves any requested backend.
+        a.os = gm.captured(2);
+        a.arch = gm.captured(3);
+        a.build = QStringLiteral("b%1").arg(gm.captured(1));
+    } else {
+        const QRegularExpressionMatch bm = kBackendRe.match(fileName);
+        if (bm.hasMatch()) {
+            a.os = bm.captured(2);
+            a.backend = bm.captured(3);
+            a.arch = bm.captured(4);
+            a.build = QStringLiteral("b%1").arg(bm.captured(1));
+        }
     }
+    if (a.os == QStringLiteral("ubuntu"))
+        a.os = QStringLiteral("linux");
     // The trailing build may be a stable hash (e.g. "b10594-4f2a") or a bare build.
     return a;
 }
@@ -315,12 +334,14 @@ PlatformInfo ReleaseCatalog::detectPlatform()
         info.arch = QStringLiteral("x86");
     else if (arch == QLatin1String("arm64") || arch == QLatin1String("aarch64"))
         info.arch = QStringLiteral("arm64");
-    if (kernel.contains(QLatin1String("win"))) {
+    if (kernel.startsWith(QLatin1String("win"))) {
+        // QSysInfo::kernelType() is "winnt" on Windows and "darwin" on macOS:
+        // a plain contains("win") would match "darwin", so anchor on the prefix.
         info.os = PlatformOs::Windows;
         info.osTag = QStringLiteral("win");
         info.backend = QStringLiteral("cpu");
         info.backendReason = QObject::tr("CPU backend by default; enable CUDA if an NVIDIA GPU is present");
-    } else if (kernel.contains(QLatin1String("mac"))) {
+    } else if (kernel.contains(QLatin1String("mac")) || kernel.contains(QLatin1String("darwin"))) {
         info.os = PlatformOs::macOS;
         info.osTag = QStringLiteral("macos");
         info.backend = QStringLiteral("metal");

@@ -42,7 +42,7 @@ public:
     /// uses it to persist the new paths (the commit step). No-op for tests.
     using CommitFn = std::function<void(const InstallOutput &out)>;
 
-    static InstallOutput start(const QString &zipPath, const ReleaseAsset &asset,
+    static InstallOutput start(const QString &archivePath, const ReleaseAsset &asset,
                                RuntimePaths paths, CommitFn commit = CommitFn());
 
     /// Removes leftover staging/<uuid> trees from previous interrupted runs.
