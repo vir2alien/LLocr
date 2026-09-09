@@ -22,6 +22,18 @@ using namespace llocr;
 #define LLOCR_MOCK_SERVER "mock_llama_server"
 #endif
 
+// InstallTransaction dispatches on Q_OS_WIN and expects the platform's binary
+// name inside the release archive (llama-server.exe on Windows, llama-server
+// elsewhere), mirroring what llama.cpp actually publishes.
+static QString serverEntryName()
+{
+#ifdef Q_OS_WIN
+    return QStringLiteral("llama-server.exe");
+#else
+    return QStringLiteral("llama-server");
+#endif
+}
+
 // --- tiny raw-ZIP writer (same layout as the ArchiveExtractor test) ------
 // mirrors the extractor's local-header parse exactly (name length read 4 bytes
 // later than a textbook header) so data offsets land on the real payload.
@@ -244,9 +256,9 @@ void TestInstallTransaction::installsSuccessfully()
 
     QList<ZipEntry> entries;
     ZipEntry server;
-    server.name = QStringLiteral("llama-server");
+    server.name = serverEntryName();
     server.content = serverBin;
-    server.modeAttr = 0o755u << 16;   // executable per the extractor
+    server.modeAttr = 0755u << 16;   // executable per the extractor
     server.crc = crc32(serverBin);
     entries << server;
 
@@ -308,9 +320,9 @@ void TestInstallTransaction::installsFromTarGz()
 
     QList<ZipEntry> entries;
     ZipEntry server;
-    server.name = QStringLiteral("llama-b10825/llama-server");
+    server.name = QStringLiteral("llama-b10825/%1").arg(serverEntryName());
     server.content = serverBin;
-    server.modeAttr = 0o755u << 16;
+    server.modeAttr = 0755u << 16;
     server.crc = crc32(serverBin);
     entries << server;
 
@@ -364,7 +376,7 @@ void TestInstallTransaction::sizeMismatchFails()
     ZipEntry e;
     e.name = QStringLiteral("llama-server");
     e.content = QByteArray("tiny");
-    e.modeAttr = 0o755u << 16;
+    e.modeAttr = 0755u << 16;
     entries << e;
     const QString zipPath = archiveFor(dir.path(), QStringLiteral("rel.zip"), entries);
 
@@ -398,7 +410,7 @@ void TestInstallTransaction::shaMismatchFails()
     ZipEntry e;
     e.name = QStringLiteral("llama-server");
     e.content = QByteArray("tiny");
-    e.modeAttr = 0o755u << 16;
+    e.modeAttr = 0755u << 16;
     entries << e;
     const QString zipPath = archiveFor(dir.path(), QStringLiteral("rel.zip"), entries);
 
@@ -464,12 +476,12 @@ void TestInstallTransaction::duplicateEntryFails()
     ZipEntry a;
     a.name = QStringLiteral("llama-server");
     a.content = QByteArray("first");
-    a.modeAttr = 0o755u << 16;
+    a.modeAttr = 0755u << 16;
     entries << a;
     ZipEntry b;
     b.name = QStringLiteral("llama-server");
     b.content = QByteArray("second");
-    b.modeAttr = 0o755u << 16;
+    b.modeAttr = 0755u << 16;
     entries << b;
     const QString zipPath = archiveFor(dir.path(), QStringLiteral("dup.zip"), entries);
     QVERIFY(!zipPath.isEmpty());
@@ -505,9 +517,9 @@ void TestInstallTransaction::probeFailureFails()
     QTemporaryDir dir;
     QList<ZipEntry> entries;
     ZipEntry server;
-    server.name = QStringLiteral("llama-server");
+    server.name = serverEntryName();
     server.content = QByteArray("this is not an executable llama-server\n");
-    server.modeAttr = 0o755u << 16;
+    server.modeAttr = 0755u << 16;
     entries << server;
     const QString zipPath = archiveFor(dir.path(), QStringLiteral("probe.zip"), entries);
     QVERIFY(!zipPath.isEmpty());

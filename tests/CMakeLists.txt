@@ -142,7 +142,7 @@ qt_add_executable(test_runtime_locator test_runtime_locator.cpp)
 target_include_directories(test_runtime_locator PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_compile_definitions(test_runtime_locator PRIVATE
-    LLOCR_MOCK_SERVER="${CMAKE_BINARY_DIR}/bin/mock_llama_server"
+    LLOCR_MOCK_SERVER="$<TARGET_FILE:mock_llama_server>"
 )
 
 target_link_libraries(test_runtime_locator PRIVATE
@@ -170,7 +170,7 @@ qt_add_executable(test_server_process test_server_process.cpp)
 target_include_directories(test_server_process PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_compile_definitions(test_server_process PRIVATE
-    LLOCR_MOCK_SERVER="${CMAKE_BINARY_DIR}/bin/mock_llama_server"
+    LLOCR_MOCK_SERVER="$<TARGET_FILE:mock_llama_server>"
 )
 
 target_link_libraries(test_server_process PRIVATE
@@ -201,7 +201,7 @@ qt_add_executable(test_ensure_connection test_ensure_connection.cpp)
 target_include_directories(test_ensure_connection PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_compile_definitions(test_ensure_connection PRIVATE
-    LLOCR_MOCK_SERVER="${CMAKE_BINARY_DIR}/bin/mock_llama_server"
+    LLOCR_MOCK_SERVER="$<TARGET_FILE:mock_llama_server>"
 )
 
 target_link_libraries(test_ensure_connection PRIVATE
@@ -307,7 +307,7 @@ qt_add_executable(test_install_transaction test_install_transaction.cpp)
 target_include_directories(test_install_transaction PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_compile_definitions(test_install_transaction PRIVATE
-    LLOCR_MOCK_SERVER="${CMAKE_BINARY_DIR}/bin/mock_llama_server"
+    LLOCR_MOCK_SERVER="$<TARGET_FILE:mock_llama_server>"
 )
 
 target_link_libraries(test_install_transaction PRIVATE

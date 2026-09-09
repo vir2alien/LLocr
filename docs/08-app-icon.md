@@ -79,8 +79,10 @@ IDI_ICON1 ICON "llocr.ico"
 ```
 
 When `src/CMakeLists.txt` is configured on `WIN32`, `llocr.rc` is added to the
-target sources and the Resource compiler (`rc` / *windres*) embeds it. Explorer
-then shows the icon for the `.exe`. If the Windows resource compiler cannot
+target sources and the Resource compiler (`rc.exe` from MSVC on the
+MSVC2022 64-bit kit) embeds it. Explorer then shows the icon for the `.exe`.
+(The MinGW alternative `windres` is not used: LLocr builds Windows with
+MSVC 2022 64-bit — ADR 54.) If the Windows resource compiler cannot
 resolve `llocr.ico` (some MSVC `rc` builds resolve relative to the working
 directory), replace `"llocr.ico"` in `llocr.rc` with the full path to
 `resources/icons/llocr.ico`.

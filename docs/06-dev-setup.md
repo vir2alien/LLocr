@@ -25,13 +25,36 @@
 
 ## Environment dependencies
 - Qt6 (incl. **Qt PDF**, **Qt WebEngine**, and **Qt LinguistTools** modules),
-  a C++ compiler (MSVC / Clang / GCC).
+  a C++ compiler. **On Windows the compiler must be MSVC 2022 64-bit
+  (kit “Desktop Qt 6.10.3 MSVC2022 64bit”); the MinGW Qt build does not ship
+  the Qt WebEngine module** (see ADR 54). On macOS/Linux Clang/GCC work too.
 - Pandoc — for DOCX/PDF export (external dependency, optionally bundled).
 - Python 3.x — only for the RAG service (later stage).
 - **Local runtime & models need none of the above**: llama.cpp downloads
   (GitHub Releases), Hugging Face GGUF downloads, ZIP + `.tar.gz` extraction
   (zlib) and the HTTP client are all embedded in the app — no external
   Python and no extra native tools required.
+
+## Windows build (MSVC 2022 64-bit)
+Qt ships separate Windows binaries for each toolchain. LLocr uses **Qt
+WebEngine** (Markdown preview), and the module is only provided for the
+**MSVC 2022 64-bit** package — there is no MinGW build of it. The Qt packages
+live under the same version folder: `C:/Qt/6.10.3/msvc2022_64` (has
+WebEngine) and `C:/Qt/6.10.3/mingw_64` (does **not** — Qt WebEngine is absent).
+
+```sh
+# Inside the MSVC 2022 environment (Start menu → “MSVC … Developer Command
+# Prompt”, or run vcvars64.bat), with the plain CMake from cmake.org:
+cmake -S . -B build/win-msvc2022 -G "NMake Makefiles" ^
+  -DCMAKE_BUILD_TYPE=Debug ^
+  -DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64
+cmake --build build/win-msvc2022 -j 8
+ctest --test-dir build/win-msvc2022
+```
+
+In Qt Creator the kit “Desktop Qt 6.10.3 MSVC2022 64bit” uses the bundled CMake
+with the **NMake Makefiles JOM** generator (JOM is Qt's parallel make); both
+paths resolve the same Qt package.
 
 ## Install, tests, run
 ```sh

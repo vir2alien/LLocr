@@ -38,7 +38,15 @@ bool isSubpathOf(const QString &path, const QString &dir)
 {
     if (dir.isEmpty())
         return false;
-    return path == dir || path.startsWith(dir + QDir::separator());
+    // Normalize to '/' before comparing: Qt path APIs may return a mix of
+    // '/' and '\' on Windows while QDir::separator() is '\', which broke the
+    // simple startsWith(dir + separator) check after the toolchain moved to
+    // MSVC 2022 (it worked on MinGW/macOS where '/' is the native separator).
+    const QString p = QDir::cleanPath(QDir::fromNativeSeparators(path));
+    const QString d = QDir::cleanPath(QDir::fromNativeSeparators(dir));
+    if (d.isEmpty())
+        return false;
+    return p == d || p.startsWith(d + QLatin1Char('/'));
 }
 
 // Split names sort so the "…-00001-of-NNN" part is first.

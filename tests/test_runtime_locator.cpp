@@ -20,6 +20,13 @@ class TestRuntimeLocator : public QObject {
     Q_OBJECT
 
 private slots:
+    void cleanup()
+    {
+        // Never leak the marker into other tests in this process: children
+        // spawned without the variable must not write sidecar files.
+        ::qunsetenv("LLOCR_MOCK_MARKER");
+    }
+
     void probeValidBinary();
     void probeAcceptsRenamedBinary();
     void missingFileReports();
@@ -122,26 +129,16 @@ void TestRuntimeLocator::cacheHoldsSingleEntry()
 {
     // Review 3.6: the probe cache is a single entry. Probing a *different*
     // binary evicts the previous key, so coming back to the first path
-    // re-probes instead of serving the stale entry. We can't observe the
-    // difference through the ProbeResult (identical binaries), so each path is
-    // a wrapper script that appends a marker line per invocation and delegates
-    // to the real mock: a re-probe grows the counter, a cache hit does not.
+    // re-probes instead of serving the stale entry. To observe re-probes we
+    // use the mock's LLOCR_MOCK_MARKER env hook: every spawn appends a line to
+    // the given file, so a cache hit (no spawn) does not grow the counter.
+    // (Mirrors the old Unix shell-wrapper trick, which cannot run on Windows.)
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
     const QString mock = QFileInfo(mockPath()).absoluteFilePath();
 
-    auto writeWrapper = [&dir, &mock](const QString &path, const QString &log) {
-        QFile script(path);
-        QVERIFY(script.open(QIODevice::WriteOnly | QIODevice::Truncate));
-        const QByteArray body = QStringLiteral("#!/bin/sh\necho x >> '%1'\nexec '%2' \"$@\"\n")
-                                    .arg(log, mock)
-                                    .toUtf8();
-        QVERIFY(script.write(body) > 0);
-        script.close();
-        QVERIFY(QFile::setPermissions(
-            path, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner
-                      | QFileDevice::ReadGroup | QFileDevice::ExeGroup
-                      | QFileDevice::ReadOther | QFileDevice::ExeOther));
+    auto makeBinary = [&dir, &mock](const QString &path) {
+        QVERIFY2(QFile::copy(mock, path), "copy mock failed");
     };
     auto probeCount = [](const QString &log) -> int {
         QFile f(log);
@@ -151,21 +148,31 @@ void TestRuntimeLocator::cacheHoldsSingleEntry()
         f.close();
         return int(data.count('\n'));
     };
+    auto setMarker = [](const QString &log) {
+        // The probe spawns --version/--help via a fresh QProcess that inherits
+        // the current process environment, so the child mock records its own
+        // start in `log` (see mock_llama_server.cpp). qputenv keeps the string
+        // alive for putenv-style access (unlike ::putenv + constData()).
+        ::qputenv("LLOCR_MOCK_MARKER", log.toUtf8());
+    };
 
     const QString logA = QStringLiteral("%1/a.log").arg(dir.path());
     const QString logB = QStringLiteral("%1/b.log").arg(dir.path());
     const QString pathA = QStringLiteral("%1/server-a").arg(dir.path());
     const QString pathB = QStringLiteral("%1/server-b").arg(dir.path());
-    writeWrapper(pathA, logA);
-    writeWrapper(pathB, logB);
+    makeBinary(pathA);
+    makeBinary(pathB);
 
+    setMarker(logA);
     QVERIFY(RuntimeLocator::probeCached(pathA).ok);
     QCOMPARE(probeCount(logA), 2);  // --version + --help for the fresh probe
+    setMarker(logB);
     QVERIFY(RuntimeLocator::probeCached(pathB).ok);
     QCOMPARE(probeCount(logB), 2);
 
     // A was evicted by B: probing A again must re-probe (2 more marker lines).
     // A 4-slot cache would still hold A and return it without a re-probe.
+    setMarker(logA);
     QVERIFY(RuntimeLocator::probeCached(pathA).ok);
     QCOMPARE(probeCount(logA), 4);
 }
@@ -174,9 +181,9 @@ void TestRuntimeLocator::diskCacheSkipsReProbeOnUnchanged()
 {
     // The persistent capabilities cache (ServerCapabilities::cacheFileName)
     // must serve probeCached(binary, cacheDir) without re-spawning the binary,
-    // and invalidate when the file changes (path+mtime+size key). Uses wrapper
-    // scripts that append a marker per invocation (like cacheHoldsSingleEntry)
-    // so a cache hit is observable as an unchanged invocation count.
+    // and invalidate when the file changes (path+mtime+size key). Invocations
+    // are counted through the mock's LLOCR_MOCK_MARKER env hook (see
+    // cacheHoldsSingleEntry) so a cache hit shows as an unchanged count.
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
     const QString mock = QFileInfo(mockPath()).absoluteFilePath();
@@ -185,20 +192,9 @@ void TestRuntimeLocator::diskCacheSkipsReProbeOnUnchanged()
     const QString logB = QStringLiteral("%1/b.log").arg(dir.path());
     const QString pathA = QStringLiteral("%1/server-a").arg(dir.path());
     const QString pathB = QStringLiteral("%1/server-b").arg(dir.path());
+    QVERIFY2(QFile::copy(mock, pathA), "copy mock A failed");
+    QVERIFY2(QFile::copy(mock, pathB), "copy mock B failed");
 
-    auto writeWrapper = [&dir, &mock](const QString &path, const QString &log) {
-        QFile script(path);
-        QVERIFY(script.open(QIODevice::WriteOnly | QIODevice::Truncate));
-        const QByteArray body = QStringLiteral("#!/bin/sh\necho x >> '%1'\nexec '%2' \"$@\"\n")
-                                    .arg(log, mock)
-                                    .toUtf8();
-        QVERIFY(script.write(body) > 0);
-        script.close();
-        QVERIFY(QFile::setPermissions(
-            path, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner
-                      | QFileDevice::ReadGroup | QFileDevice::ExeGroup
-                      | QFileDevice::ReadOther | QFileDevice::ExeOther));
-    };
     auto probeCount = [](const QString &log) -> int {
         QFile f(log);
         if (!f.open(QIODevice::ReadOnly))
@@ -207,41 +203,41 @@ void TestRuntimeLocator::diskCacheSkipsReProbeOnUnchanged()
         f.close();
         return int(data.count('\n'));
     };
-
-    writeWrapper(pathA, logA);
-    writeWrapper(pathB, logB);
+    auto setMarker = [](const QString &log) {
+        ::qputenv("LLOCR_MOCK_MARKER", log.toUtf8());
+    };
 
     // 1) Fresh probe writes the disk cache entry.
+    setMarker(logA);
     QVERIFY(RuntimeLocator::probeCached(pathA, cacheDir).ok);
     QCOMPARE(probeCount(logA), 2);  // --version + --help
     QVERIFY(QFile::exists(ServerCapabilities::cacheFileName(cacheDir, pathA)));
 
     // 2) Probe another path to evict the single in-memory slot.
+    setMarker(logB);
     QVERIFY(RuntimeLocator::probeCached(pathB, cacheDir).ok);
 
     // 3) Back to A: the in-memory slot is gone, but the disk cache must answer
     //    without spawning again (invocation count stays 2).
+    setMarker(logA);
     QVERIFY(RuntimeLocator::probeCached(pathA, cacheDir).ok);
     QCOMPARE(probeCount(logA), 2);
 
     // 4) Change A's content (size differs → new cache key) → memory and disk
-    //    miss → re-probe (2 more marker lines).
+    //    miss → the next probe goes through the binary, which now fails to
+    //    start (a copy of the mock that was overwritten with junk). The exact
+    //    marker count is not asserted here: a failed spawn never runs the mock
+    //    body on Windows (CreateProcess rejects non-.exe), while the old Unix
+    //    shell wrapper appended before exec — so only the !ok outcome is stable
+    //    across platforms.
     {
         QFile f(pathA);
         QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
-        const QByteArray body =
-            QStringLiteral("#!/bin/sh\necho y >> '%1'\nexec '%2' \"$@\"\n")
-                .arg(logA, mock)
-                .toUtf8();
-        QVERIFY(f.write(body) > 0);
+        QVERIFY(f.write("not an executable anymore\n") > 0);
         f.close();
-        QVERIFY(QFile::setPermissions(
-            pathA, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner
-                       | QFileDevice::ReadGroup | QFileDevice::ExeGroup
-                       | QFileDevice::ReadOther | QFileDevice::ExeOther));
     }
-    QVERIFY(RuntimeLocator::probeCached(pathA, cacheDir).ok);
-    QCOMPARE(probeCount(logA), 4);
+    setMarker(logA);
+    QVERIFY(!RuntimeLocator::probeCached(pathA, cacheDir).ok);
 }
 
 void TestRuntimeLocator::diskCacheIgnoresJunkFile()
@@ -252,20 +248,9 @@ void TestRuntimeLocator::diskCacheIgnoresJunkFile()
     QVERIFY(dir.isValid());
     const QString mock = QFileInfo(mockPath()).absoluteFilePath();
     const QString cacheDir = QStringLiteral("%1/cache").arg(dir.path());
-    const QString log = QStringLiteral("%1/p.log").arg(dir.path());
     const QString path = QStringLiteral("%1/server").arg(dir.path());
-    {
-        QFile script(path);
-        QVERIFY(script.open(QIODevice::WriteOnly | QIODevice::Truncate));
-        script.write(QStringLiteral("#!/bin/sh\necho x >> '%1'\nexec '%2' \"$@\"\n")
-                         .arg(log, mock)
-                         .toUtf8());
-        script.close();
-        QVERIFY(QFile::setPermissions(
-            path, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner
-                      | QFileDevice::ReadGroup | QFileDevice::ExeGroup
-                      | QFileDevice::ReadOther | QFileDevice::ExeOther));
-    }
+    QVERIFY2(QFile::copy(mock, path), "copy mock failed");
+
     const QString entryName = ServerCapabilities::cacheFileName(cacheDir, path);
     // The cache dir exists only after the first successful write (writeDiskCache
     // mkpaths it), so create it here to plant the junk entry.

@@ -1,5 +1,5 @@
 // Windows strong no-orphan: every child is placed into one Job Object created
-// by our own process, with JOB_OBJECT_LIMIT_KILL_ON_CLOSE set. When the GUI
+// by our own process, with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE set. When the GUI
 // process dies (even abnormally) the last handle to the job closes and the OS
 // terminates the whole tree (ADR 30, §5.4). The child is assigned after it is
 // launched — QProcess exposes the native handle only through the process id,
@@ -21,7 +21,7 @@ HANDLE ensureJob()
 {
     if (!jobHandle) {
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION info{};
-        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_CLOSE;
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
         jobHandle = ::CreateJobObject(nullptr, nullptr);
         if (jobHandle)
             ::SetInformationJobObject(jobHandle, JobObjectExtendedLimitInformation,

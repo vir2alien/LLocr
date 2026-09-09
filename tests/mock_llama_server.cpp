@@ -15,6 +15,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -27,6 +28,19 @@
 
 int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
+
+    // Probe-cache tests need to observe how many times this binary is spawned
+    // (a cache hit must NOT re-spawn). On Unix they used shell wrappers with a
+    // marker file, but a shebang script is not runnable on Windows, so the mock
+    // itself records an invocation when the LLOCR_MOCK_MARKER environment
+    // variable names a file (only the probe-cache tests set it).
+    if (const char *marker = ::getenv("LLOCR_MOCK_MARKER")) {
+        QFile f(QString::fromUtf8(marker));
+        if (f.open(QIODevice::WriteOnly | QIODevice::Append)) {
+            f.write("invoke\n");
+            f.close();
+        }
+    }
 
     int port = 0;
     QString versionOut = QStringLiteral("build: 10594 (b10594)");

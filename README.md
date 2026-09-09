@@ -45,7 +45,9 @@ all running locally, without sending your data to the cloud.
   - **Qt WebEngine** — Markdown/LaTeX preview
   - **Qt LinguistTools** — runtime translation of the UI
 - CMake ≥ 3.21
-- A C++20-compatible compiler
+- A C++20-compatible compiler. **On Windows: MSVC 2022 64-bit**
+  (Visual Studio 2022) — Qt WebEngine is only shipped for the MSVC 2022 64-bit
+  Qt build, so MinGW cannot be used
 - vcpkg
 - Python 3.x (for the RAG service)
 - Pandoc (optional, for DOCX/PDF export)
@@ -63,8 +65,13 @@ git clone https://github.com/<user>/llocr.git
 cd llocr
 cmake -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x.x/<platform>
 cmake --build build --config Release
-
 ```
+
+> **Windows:** pass the `msvc2022_64` Qt package path
+> (`-DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64`) and build with **MSVC 2022
+> 64-bit** (Qt Creator kit “Desktop Qt 6.10.3 MSVC2022 64bit”). The MinGW Qt
+> build does not include Qt WebEngine, which LLocr requires for the Markdown
+> preview — see `docs/06-dev-setup.md`.
 
 ## License
 

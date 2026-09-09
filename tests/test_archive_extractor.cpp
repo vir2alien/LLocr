@@ -58,7 +58,7 @@ struct ESpec {
     int method;
     QByteArray payload;   // uncompressed
     QByteArray comp;      // on-disk bytes
-    quint32 externalAttr; // (mode << 16), e.g. 0o755u<<16
+    quint32 externalAttr; // (mode << 16), e.g. 0755u<<16
     quint32 badCrc;       // nonzero => force an incorrect CRC for the entry
     bool isDir = false;
     // declared-uncomp size override for bomb/ratio tests (0 = none)
@@ -166,7 +166,7 @@ struct TEntry {
     QByteArray content;    // payload for regular files, link target for symlinks
     QString linkTarget;    // non-empty => symlink (typeflag '2')
     bool isDir = false;
-    quint32 mode = 0o644;
+    quint32 mode = 0644;
 };
 
 QByteArray buildTar(const QList<TEntry> &entries)
@@ -224,7 +224,7 @@ QByteArray gzipBytes(const QByteArray &data)
 }
 
 TEntry tarEntry(const QString &name, const QByteArray &content,
-                quint32 mode = 0o644)
+                quint32 mode = 0644)
 {
     TEntry e;
     e.name = name;
@@ -367,7 +367,7 @@ private slots:
         QTemporaryDir dir;
         QList<ESpec> specs;
         specs.append(makeEntry(QStringLiteral("run.sh"), QByteArrayLiteral("#!/bin/sh\n"),
-                               false, 0o755u << 16));
+                               false, 0755u << 16));
         const QString zip = writeZip(dir, "i.zip", buildZip(specs));
         const ExtractResult r = ArchiveExtractor::extractZip(zip, QDir(dir.path()).filePath("out"));
         QVERIFY(r.ok);
@@ -398,7 +398,7 @@ private slots:
         TEntry d; d.name = QStringLiteral("llama-b10825"); d.isDir = true;
         entries << d;
         entries << tarEntry(QStringLiteral("llama-b10825/llama-server"),
-                            QByteArray("#!/bin/sh\necho llama-server\n"), 0o755);
+                            QByteArray("#!/bin/sh\necho llama-server\n"), 0755);
         entries << tarEntry(QStringLiteral("llama-b10825/readme.txt"),
                             QByteArray("llama.cpp\n"));
         TEntry link; link.name = QStringLiteral("llama-b10825/libggml.dylib");

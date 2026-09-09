@@ -58,6 +58,13 @@ variable, and vcpkg does **not** participate in the build.
     -DCMAKE_PREFIX_PATH=/Users/gladskih/Qt/6.10.3/macos
   ```
 
+  **On Windows** use the MSVC 2022 64-bit Qt package
+  (`C:/Qt/6.10.3/msvc2022_64`) and the MSVC 2022 64-bit compiler — the MinGW
+  Qt build does **not** ship Qt WebEngine (required for the Markdown preview),
+  see ADR 54. In Qt Creator pick the “Desktop Qt 6.10.3 MSVC2022 64bit” kit
+  (generator `NMake Makefiles JOM`); the `.qtcreator` user config references
+  this kit.
+
   Unit tests are all wired into `tests/CMakeLists.txt` and run via ctest:
   the four base targets (`test_det_parser`, `test_pagemodel`,
   `test_settings_store`, `test_exporter`) plus the local-runtime suite

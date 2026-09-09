@@ -1,5 +1,6 @@
 #include "app/SettingsStore.h"
 
+#include <QCoreApplication>
 #include <QMetaProperty>
 
 namespace llocr {
@@ -72,6 +73,19 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
 SettingsStore::SettingsStore(QObject *parent) : QObject(parent)
 {
     applyStartupMigration();
+}
+
+QSettings SettingsStore::makeSettings()
+{
+    // The unit tests have no main.cpp, so the app identity would be unset and
+    // a bare QSettings() would be unwritable (status()==AccessError): every
+    // setValue() becomes a silent no-op. Match the names main.cpp sets so the
+    // member is functional everywhere.
+    if (QCoreApplication::organizationName().isEmpty()) {
+        QCoreApplication::setOrganizationName(QStringLiteral("llocr"));
+        QCoreApplication::setApplicationName(QStringLiteral("LLM OCR"));
+    }
+    return QSettings();
 }
 
 bool SettingsStore::contains(const QString &key) const

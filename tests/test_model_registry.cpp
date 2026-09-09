@@ -282,6 +282,12 @@ void TestModelRegistry::canonicalPathCheck()
 
 void TestModelRegistry::refusesSymlinkEscapeFromModelsDir()
 {
+    // Symbolic links are the test vehicle: Canonical path resolution walks the
+    // link out of modelsDir. On Windows without Developer Mode / admin rights
+    // symlink creation fails with WinError 1314 (QFile::link can't create one),
+    // so the scenario cannot be reproduced there — guard it like the other
+    // symlink-dependent tests.
+#ifdef Q_OS_UNIX
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
     // modelsDir is a dedicated subdir; the symlink target lives OUTSIDE it but
@@ -311,6 +317,7 @@ void TestModelRegistry::refusesSymlinkEscapeFromModelsDir()
     // be refused, not silently allowed to escape.
     QVERIFY(!reason.isEmpty());
     QVERIFY(reason.contains(QStringLiteral("outside")));
+#endif
 }
 
 QTEST_MAIN(TestModelRegistry)

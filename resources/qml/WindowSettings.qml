@@ -12,8 +12,10 @@ Item
     {
         if (Settings.windowWidth && Settings.windowHeight)
         {
-            window.x = Settings.windowX;
-            window.y = Settings.windowY;
+            var pos = visiblePosition(Settings.windowX, Settings.windowY,
+                                      Settings.windowWidth, Settings.windowHeight);
+            window.x = pos.x;
+            window.y = pos.y;
             window.width = Settings.windowWidth;
             window.height = Settings.windowHeight;
             window.visibility = Settings.windowState;
@@ -36,6 +38,66 @@ Item
         interval: 1000
         repeat: false
         onTriggered: saveSettings()
+    }
+
+    // Returns the position to place the window at. The saved x/y may point
+    // off-screen (monitor unplugged, resolution/arrangement changed, window
+    // closed while dragged beyond an edge): the title bar would then be
+    // unreachable and the window unmovable. Keep the saved position when its
+    // top "title bar" band still overlaps a connected screen, otherwise snap
+    // to the nearest screen and center the window on it.
+    function visiblePosition(x, y, w, h) {
+        const screens = Application.screens;
+        if (screens.length === 0)
+            return { x: x, y: y }; // nothing to validate against
+
+        // Top band of the window where the OS title bar lives; must stay
+        // reachable so the user can grab and move the window.
+        const band = Math.min(48, h);
+
+        for (var i = 0; i < screens.length; i++) {
+            const s = screens[i];
+            if (overlaps(x, y, w, band, s.virtualX, s.virtualY, s.width, s.height))
+                return { x: x, y: y };
+        }
+
+        // Saved position is off-screen: pick the geometrically closest screen
+        // and center the window on it, clamped so the title bar stays visible.
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        let pick = screens[0];
+        let pickD = distToRect(cx, cy, pick.virtualX, pick.virtualY,
+                               pick.width, pick.height);
+        for (var j = 1; j < screens.length; j++) {
+            const s = screens[j];
+            const d = distToRect(cx, cy, s.virtualX, s.virtualY, s.width, s.height);
+            if (d < pickD) {
+                pickD = d;
+                pick = s;
+            }
+        }
+        const grab = 60; // keep at least this much of the window on-screen
+        const nx = clamp(cx - w / 2, pick.virtualX - w + grab,
+                         pick.virtualX + pick.width - grab);
+        const ny = clamp(cy - h / 2, pick.virtualY - band + grab,
+                         pick.virtualY + pick.height - grab);
+        console.log("WindowSettings: saved position (" + x + "," + y + ") is off-screen; "
+                    + "repositioning to (" + nx + "," + ny + ")");
+        return { x: nx, y: ny };
+    }
+
+    function overlaps(x, y, w, h, rx, ry, rw, rh) {
+        return x < rx + rw && x + w > rx && y < ry + rh && y + h > ry;
+    }
+
+    function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    function distToRect(px, py, rx, ry, rw, rh) {
+        const dx = Math.max(0, Math.max(rx - px, px - (rx + rw)));
+        const dy = Math.max(0, Math.max(ry - py, py - (ry + rh)));
+        return dx * dx + dy * dy;
     }
 
     function saveSettings() {

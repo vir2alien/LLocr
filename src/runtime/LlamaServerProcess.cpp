@@ -12,6 +12,14 @@
 #include <QTcpServer>
 #include <QUrl>
 
+#ifdef Q_OS_WIN
+// For CREATE_NO_WINDOW in the process-create modifier below. It lives in the
+// Windows SDK (WinBase.h) and is not pulled in transitively by the Qt headers
+// under MSVC; MinGW headers happened to expose it, which is why this compile
+// error only surfaced after the switch to the MSVC 2022 64-bit kit.
+#include <windows.h>
+#endif
+
 #include "runtime/LlamaServerProcess.h"
 #include "runtime/ProcessGuard.h"
 

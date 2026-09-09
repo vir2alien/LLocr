@@ -313,7 +313,15 @@ signals:
     void hfTokenChanged();
 
 private:
-    QSettings m_settings;
+    // QSettings stores each value only once the application/organization
+    // identity is set (registry on Windows, plist on macOS, INI on Linux/Unix).
+    // main.cpp configures it, but unit tests construct SettingsStore directly
+    // without main(); a bare QSettings() would then report status()==AccessError
+    // and silently drop every setValue(). Mirror the app identity here so the
+    // member is usable everywhere (first construction wins; harmless no-op
+    // when main() already set the names).
+    static QSettings makeSettings();
+    QSettings m_settings = makeSettings();
     static const SettingDefault kDefaults[];
 
     // Connection
