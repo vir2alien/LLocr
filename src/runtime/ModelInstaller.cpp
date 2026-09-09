@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QCryptographicHash>
+#include <QDesktopServices>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -377,6 +378,22 @@ QString ModelInstaller::removeModel(int index)
     }
     m_installed = updated;
     emit installedChanged();
+    return QString();
+}
+
+QString ModelInstaller::openModelFolder(int index)
+{
+    if (index < 0 || index >= m_installed.size())
+        return tr("Invalid model selection");
+    const ModelEntry &e = m_installed.at(index);
+    QString dir = e.dir;
+    if (dir.isEmpty() && !e.modelPath.isEmpty())
+        dir = QFileInfo(e.modelPath).absolutePath();
+    if (dir.isEmpty())
+        return tr("Model folder not found");
+    if (!QDir(dir).exists())
+        return tr("Model folder not found: %1").arg(dir);
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
     return QString();
 }
 

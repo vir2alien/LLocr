@@ -70,6 +70,7 @@ public:
     Q_INVOKABLE QVariantMap installedInfo(int index) const;
     Q_INVOKABLE QString setActiveModel(int index);
     Q_INVOKABLE QString removeModel(int index);
+    Q_INVOKABLE QString openModelFolder(int index);
 
     Q_INVOKABLE void rescanRegistry();
 

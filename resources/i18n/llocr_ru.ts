@@ -387,6 +387,11 @@
         <translation>Удалить</translation>
     </message>
     <message>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="134"/>
+        <source>Open folder</source>
+        <translation>Открыть папку</translation>
+    </message>
+    <message>
         <location filename="../qml/SettingsDialog/ModelsTab.qml" line="154"/>
         <source>Preset catalog</source>
         <translation>Каталог пресетов</translation>
@@ -2041,6 +2046,16 @@
         <location filename="../../src/runtime/ModelInstaller.cpp" line="367"/>
         <source>Unable to remove model directory: %1</source>
         <translation>Не удалось удалить каталог модели: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="392"/>
+        <source>Model folder not found</source>
+        <translation>Папка модели не найдена</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="394"/>
+        <source>Model folder not found: %1</source>
+        <translation>Папка модели не найдена: %1</translation>
     </message>
     <message>
         <location filename="../../src/runtime/ModelInstaller.cpp" line="375"/>

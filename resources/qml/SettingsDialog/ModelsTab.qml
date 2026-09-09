@@ -131,6 +131,16 @@ Item {
                                 statusMsg.text = err
                         }
                     }
+                    Button {
+                        text: qsTr("Open folder")
+                        implicitHeight: Theme.controlHeight
+                        font.pixelSize: Theme.fontSmall
+                        onClicked: {
+                            const err = ModelInstaller.openModelFolder(index)
+                            if (err.length)
+                                statusMsg.text = err
+                        }
+                    }
                 }
             }
         }//ListView
