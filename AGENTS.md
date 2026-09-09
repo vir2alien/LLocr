@@ -65,6 +65,62 @@ variable, and vcpkg does **not** participate in the build.
   (generator `NMake Makefiles JOM`); the `.qtcreator` user config references
   this kit.
 
+  ### Windows (MSVC 2022 64-bit) — concrete steps
+  The Windows machine has Visual Studio 2022 (Community) and Qt
+  `C:/Qt/6.10.3` with both `mingw_64` and `msvc2022_64` packages. **Use only
+  `msvc2022_64`** — the MinGW package has no Qt WebEngine, so `find_package`
+  fails and the app cannot build. ZLIB comes from vcpkg at `C:/vcpkg`
+  (toolchain `x64-windows`, set in the Qt Creator kit environment — vcpkg
+  participates only on Windows, not on the macOS build; see
+  `THIRD_PARTY_NOTICES.md`).
+
+  The ready-made directories `build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug`
+  and `build/Desktop_Qt_6_10_3_MSVC2022_64bit_Release` are configured with
+  MSVC; a fresh agent should reuse them (run `cmake .` inside to re-generate,
+  then build) instead of configuring from scratch:
+
+  ```bat
+  :: Start a “MSVC … x64 Developer Command Prompt” (or call vcvars64.bat),
+  :: then for the Debug tree:
+  cd build\Desktop_Qt_6_10_3_MSVC2022_64bit_Debug
+  set PATH=C:\Qt\Tools\QtCreator\bin\jom;C:\Qt\Tools\CMake_64\bin;C:\Qt\6.10.3\msvc2022_64\bin;%PATH%
+  cmake.exe .
+  jom.exe -j 8          :: build llocr + tests
+  :: Before running tests, put the Qt DLLs on PATH (the exes need them):
+  set PATH=C:\Qt\6.10.3\msvc2022_64\bin;%PATH%
+  ctest.exe --test-dir . -j 4
+  ```
+
+  From scratch (no existing tree):
+
+  ```bat
+  cmake -S . -B build/win-msvc2022 -G "NMake Makefiles" ^
+    -DCMAKE_BUILD_TYPE=Debug ^
+    -DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64 ^
+    -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+  cmake --build build/win-msvc2022 -j 8
+  ctest --test-dir build/win-msvc2022
+  ```
+
+  Windows-specific gotchas future agents should remember:
+  - **Qt DLLs must be on `PATH` to run any built exe** (ctest fails with exit
+    code `0xc0000135` = DLL not found otherwise).
+  - The MSVC compiler is strict about things MinGW/Clang accepted: octal
+    literals are `0755u`, not `0o755u` (GCC/Clang extension); Windows API
+    constants must come from an explicit `#include <windows.h>` (never rely on
+    transitive MinGW headers); the Job-Object flag is
+    `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` (there is no `…_KILL_ON_CLOSE` in the
+    SDK).
+  - `LLOCR_MOCK_SERVER` is injected as `$<TARGET_FILE:mock_llama_server>` so
+    the `.exe` suffix resolves; never hardcode `…/bin/mock_llama_server`.
+  - Path comparisons must normalize `/` vs `\` (`QDir::fromNativeSeparators` +
+    `QDir::cleanPath`) — `QDir::separator()` is `\` on Windows.
+  - Unit tests must set the Qt app/org identity for `QSettings` to work
+    (`SettingsStore::makeSettings()` does this automatically); a bare
+    `QSettings()` is read-only on Windows (`status()==AccessError`).
+  - Tests needing symlinks are `#ifdef Q_OS_UNIX`-guarded: creating symlinks
+    on Windows needs Developer Mode/admin (WinError 1314).
+
   Unit tests are all wired into `tests/CMakeLists.txt` and run via ctest:
   the four base targets (`test_det_parser`, `test_pagemodel`,
   `test_settings_store`, `test_exporter`) plus the local-runtime suite

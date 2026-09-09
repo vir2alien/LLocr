@@ -6,7 +6,7 @@
 | Build system     | CMake                                       | ✅ used |
 | Version control  | Git + GitHub/GitLab                         | ✅ used |
 | CI/CD            | GitHub Actions (builds for Win/macOS/Linux) | ⬜ todo |
-| C++ dependencies | vcpkg (configured in `dev` preset, not used in the current build)   | 🟡 |
+| C++ dependencies | vcpkg — **Windows only**, provides ZLIB (`x64-windows`); not used on the macOS build | 🟡 |
 | Formatting       | clang-format                                          | ✅ used |
 | Tests            | Qt Test (unit tests in `tests/`)                      | ✅ done |
 
@@ -15,6 +15,11 @@
 > against an **external Qt 6.10.3** (`CMAKE_PREFIX_PATH=/Users/gladskih/Qt/6.10.3/macos`);
 > `VCPKG_ROOT` is unset and vcpkg does not participate in the build. Do not try
 > to re-configure from the preset — reuse the existing `build/`.
+>
+> **On Windows** vcpkg **does** participate: the Qt Creator MSVC2022 kit sets
+> the vcpkg toolchain (`C:/vcpkg`, triplet `x64-windows`), which provides
+> **ZLIB** for `find_package(ZLIB REQUIRED)` — see the Windows build section
+> below and `THIRD_PARTY_NOTICES.md`.
 
 ## Distribution — ⬜ not started
 | OS      | Format             | Tool                            |
@@ -42,19 +47,40 @@ WebEngine** (Markdown preview), and the module is only provided for the
 live under the same version folder: `C:/Qt/6.10.3/msvc2022_64` (has
 WebEngine) and `C:/Qt/6.10.3/mingw_64` (does **not** — Qt WebEngine is absent).
 
+ZLIB (ZIP/gzip decompression in `ArchiveExtractor`) is resolved by
+`find_package(ZLIB REQUIRED)`; on Windows the vcpkg toolchain provides it
+(`C:/vcpkg/installed/x64-windows`, version 1.3.x) — see `THIRD_PARTY_NOTICES.md`.
+
+Ready-made MSVC trees exist at `build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug`
+and `..._Release`; reuse them (run `cmake .` to re-generate), don't reconfigure
+from scratch:
+
+```bat
+:: In an “MSVC … x64 Developer Command Prompt” (vcvars64.bat), Debug tree:
+cd build\Desktop_Qt_6_10_3_MSVC2022_64bit_Debug
+set PATH=C:\Qt\Tools\QtCreator\bin\jom;C:\Qt\Tools\CMake_64\bin;C:\Qt\6.10.3\msvc2022_64\bin;%PATH%
+cmake.exe .
+jom.exe -j 8          :: build llocr + tests
+set PATH=C:\Qt\6.10.3\msvc2022_64\bin;%PATH%   :: Qt DLLs for running tests
+ctest.exe --test-dir . -j 4
+```
+
+From scratch (no existing tree), inside the MSVC 2022 environment with the
+plain CMake from cmake.org:
+
 ```sh
-# Inside the MSVC 2022 environment (Start menu → “MSVC … Developer Command
-# Prompt”, or run vcvars64.bat), with the plain CMake from cmake.org:
 cmake -S . -B build/win-msvc2022 -G "NMake Makefiles" ^
   -DCMAKE_BUILD_TYPE=Debug ^
-  -DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64
+  -DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64 ^
+  -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build build/win-msvc2022 -j 8
 ctest --test-dir build/win-msvc2022
 ```
 
 In Qt Creator the kit “Desktop Qt 6.10.3 MSVC2022 64bit” uses the bundled CMake
-with the **NMake Makefiles JOM** generator (JOM is Qt's parallel make); both
-paths resolve the same Qt package.
+with the **NMake Makefiles JOM** generator (JOM is Qt's parallel make) and the
+vcpkg toolchain from the kit environment; both paths resolve the same Qt
+package and the same vcpkg ZLIB.
 
 ## Install, tests, run
 ```sh

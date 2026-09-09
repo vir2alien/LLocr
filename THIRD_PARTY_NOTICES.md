@@ -12,6 +12,7 @@ the licenses that govern it. Each component's full license text is kept in the
 | Chromium       | Bundled inside Qt WebEngine             | BSD-3-Clause| [`licenses/Chromium-LICENSE.txt`](licenses/Chromium-LICENSE.txt) |
 | marked         | Markdown → HTML in the preview          | MIT         | [`licenses/marked-LICENSE.txt`](licenses/marked-LICENSE.txt) |
 | KaTeX          | LaTeX rendering in the preview          | MIT         | [`licenses/KaTeX-LICENSE.txt`](licenses/KaTeX-LICENSE.txt) |
+| zlib           | ZIP/gzip decompression + CRC-32 in the runtime installer (`ArchiveExtractor`) | zlib License | [`licenses/zlib-LICENSE.txt`](licenses/zlib-LICENSE.txt) |
 
 ---
 
@@ -75,3 +76,19 @@ the licenses that govern it. Each component's full license text is kept in the
   `resources/preview/KaTeX-LICENSE.txt`.
 - **Copyright:** Copyright (c) 2013-2020 Khan Academy and other contributors.
 - **License text:** [`licenses/KaTeX-LICENSE.txt`](licenses/KaTeX-LICENSE.txt)
+
+---
+
+## zlib
+
+- **Project:** zlib (https://zlib.net/)
+- **License:** zlib License
+- **Usage:** The runtime installer's `ArchiveExtractor` uses zlib for ZIP
+  deflate/inflate (`method 8`) with CRC-32 verification and for `.tar.gz` /
+  gzip decompression of downloaded llama.cpp release archives (ADR 34).
+- **Source of the library:** resolved by `find_package(ZLIB REQUIRED)`. On
+  **Windows** it comes from **vcpkg** (triplet `x64-windows`, currently
+  v1.3.x at `C:/vcpkg/installed/x64-windows`); on macOS/Linux the system zlib
+  is used. It is **not** bundled into the LLocr source tree.
+- **Copyright:** Copyright (C) 1995-2026 Jean-loup Gailly and Mark Adler.
+- **License text:** [`licenses/zlib-LICENSE.txt`](licenses/zlib-LICENSE.txt)
