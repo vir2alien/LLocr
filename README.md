@@ -43,12 +43,15 @@ all running locally, without sending your data to the cloud.
 - Qt 6.5+ with the following modules:
   - **Qt PDF** — PDF page rasterization
   - **Qt WebEngine** — Markdown/LaTeX preview
+  - **Qt Positioning** — required by Qt WebEngine
+  - **Qt WebChannel** — required by Qt WebEngine
   - **Qt LinguistTools** — runtime translation of the UI
 - CMake ≥ 3.21
 - A C++20-compatible compiler. **On Windows: MSVC 2022 64-bit**
   (Visual Studio 2022) — Qt WebEngine is only shipped for the MSVC 2022 64-bit
   Qt build, so MinGW cannot be used
-- vcpkg
+- vcpkg (provides ZLIB for the Windows build — see
+  `docs/06-dev-setup.md` for the concrete setup steps)
 - Python 3.x (for the RAG service)
 - Pandoc (optional, for DOCX/PDF export)
 - A running local LLM provider (e.g. [llama.cpp](https://github.com/ggml-org/llama.cpp) or any OpenAI-compatible endpoint)

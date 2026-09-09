@@ -29,8 +29,8 @@
 | Linux   | AppImage / Flatpak | linuxdeployqt / flatpak-builder |
 
 ## Environment dependencies
-- Qt6 (incl. **Qt PDF**, **Qt WebEngine**, and **Qt LinguistTools** modules),
-  a C++ compiler. **On Windows the compiler must be MSVC 2022 64-bit
+- Qt6 (incl. **Qt PDF**, **Qt WebEngine**, **Qt Positioning**, **Qt WebChannel**,
+  and **Qt LinguistTools** modules), a C++ compiler. **On Windows the compiler must be MSVC 2022 64-bit
   (kit “Desktop Qt 6.10.3 MSVC2022 64bit”); the MinGW Qt build does not ship
   the Qt WebEngine module** (see ADR 54). On macOS/Linux Clang/GCC work too.
 - Pandoc — for DOCX/PDF export (external dependency, optionally bundled).
@@ -50,6 +50,29 @@ WebEngine) and `C:/Qt/6.10.3/mingw_64` (does **not** — Qt WebEngine is absent)
 ZLIB (ZIP/gzip decompression in `ArchiveExtractor`) is resolved by
 `find_package(ZLIB REQUIRED)`; on Windows the vcpkg toolchain provides it
 (`C:/vcpkg/installed/x64-windows`, version 1.3.x) — see `THIRD_PARTY_NOTICES.md`.
+
+### Windows: setting up vcpkg + zlib (first-time, in Qt Creator)
+On Windows LLocr needs ZLIB at configure time (`find_package(ZLIB REQUIRED)`),
+and it is **not** bundled with the source. On a fresh machine, set it up once
+as follows:
+
+1. **Install vcpkg** (if not present). Open PowerShell as Administrator (a
+   normal prompt works too if you don't want to write under `Program Files`):
+   ```cmd
+   git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+   C:\vcpkg\bootstrap-vcpkg.bat
+   ```
+2. **Install zlib for MSVC 64-bit**:
+   ```cmd
+   C:\vcpkg\vcpkg.exe install zlib:x64-windows
+   ```
+3. **Point the project at vcpkg.** In Qt Creator: *Projects → Build & Run →
+   your kit → Build Settings*, and in the **CMake arguments** field add:
+   ```
+   -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+   ```
+   The command-line equivalent for a from-scratch configure is shown in the
+   “From scratch” example below.
 
 Ready-made MSVC trees exist at `build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug`
 and `..._Release`; reuse them (run `cmake .` to re-generate), don't reconfigure
