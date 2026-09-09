@@ -107,74 +107,114 @@
 <context>
     <name>Footer</name>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="50"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="52"/>
         <source>Launch settings changed — restart the server to apply them.</source>
         <translation>Параметры запуска изменены — перезапустите сервер, чтобы они применились.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="53"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="55"/>
         <source>Restart</source>
         <translation>Перезапустить</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="125"/>
-        <source>Server log — click to open. %1</source>
-        <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
-    </message>
-    <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="62"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="64"/>
         <source>Hide</source>
         <translation>Скрыть</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="205"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="125"/>
+        <source>Stop server</source>
+        <translation>Остановить сервер</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="126"/>
+        <source>Start server</source>
+        <translation>Запустить сервер</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="171"/>
+        <source>Server log — click to open. %1</source>
+        <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="242"/>
+        <source>The local runtime is owned by another LLocr instance.</source>
+        <translation>Локальный рантайм занят другим экземпляром LLocr.</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="244"/>
+        <source>Stop the managed llama-server and unload the model.</source>
+        <translation>Остановить локальный llama-server и выгрузить модель.</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="246"/>
+        <source>Managed server is not fully configured — open Settings → Runtime.</source>
+        <translation>Локальный сервер настроен не полностью — откройте Настройки → Рантайм.</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="248"/>
+        <source>Start the managed llama-server with the selected model.</source>
+        <translation>Запустить локальный llama-server с выбранной моделью.</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="268"/>
         <source>External</source>
         <translation>Внешний</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="207"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="270"/>
         <source>Runtime: not configured</source>
         <translation>Рантайм: не настроен</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="208"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="271"/>
         <source>Runtime: stopped</source>
         <translation>Рантайм: остановлен</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="211"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="274"/>
         <source>Runtime: starting…</source>
         <translation>Рантайм: запускается…</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="212"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="275"/>
         <source>Runtime: ready</source>
         <translation>Рантайм: готов</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="213"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="276"/>
         <source>Runtime: stopping…</source>
         <translation>Рантайм: останавливается…</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="216"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="279"/>
         <source>Runtime: failed</source>
         <translation>Рантайм: ошибка</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="217"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="280"/>
         <source>Runtime: unknown</source>
         <translation>Рантайм: неизвестно</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="264"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="328"/>
         <source>Restart server?</source>
         <translation>Перезапустить сервер?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="272"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="336"/>
         <source>Recognition is in progress. Restarting the server will interrupt the current job. Continue?</source>
         <translation>Идёт распознавание. Перезапуск сервера прервёт текущий процесс. Продолжить?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="349"/>
+        <source>Stop server?</source>
+        <translation>Остановить сервер?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="357"/>
+        <source>Recognition is in progress. Stopping the server will interrupt the current job. Continue?</source>
+        <translation>Идёт распознавание. Остановка сервера прервёт текущий процесс. Продолжить?</translation>
     </message>
 </context>
 <context>
@@ -2125,9 +2165,9 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="184"/>
-        <source>Server is not set to start automatically. Start it from Settings → Runtime.</source>
-        <translation type="unfinished"></translation>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="203"/>
+        <source>Server is not set to start automatically. Start it from the main window or Settings → Runtime.</source>
+        <translation>Сервер не настроен на автозапуск. Запустите его из главного окна или через Настройки → Рантайм.</translation>
     </message>
     <message>
         <location filename="../../src/runtime/RuntimeController.cpp" line="296"/>

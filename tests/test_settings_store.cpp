@@ -5,11 +5,16 @@
 #include <QSettings>
 
 #include "app/SettingsStore.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
 class TestSettingsStore : public QObject {
     Q_OBJECT
+
+private:
+    // Must precede any SettingsStore created by the tests (see the header).
+    TestSettingsIsolation m_settingsIsolation;
 
 private slots:
     void initTestCase()

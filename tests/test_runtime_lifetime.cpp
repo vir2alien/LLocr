@@ -4,6 +4,7 @@
 
 #include "app/SettingsStore.h"
 #include "runtime/RuntimeController.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
@@ -12,6 +13,10 @@ using namespace llocr;
 // be able to create its own RuntimeController.
 class TestRuntimeLifetime : public QObject {
     Q_OBJECT
+
+private:
+    // Must precede any SettingsStore created by the tests (see the header).
+    TestSettingsIsolation m_settingsIsolation;
 
 private slots:
     void initTestCase()

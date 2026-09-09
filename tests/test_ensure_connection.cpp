@@ -6,6 +6,7 @@
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeState.h"
 #include "runtime/SelfTestController.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
@@ -19,6 +20,10 @@ using namespace llocr;
 // llama-server (tests/mock_llama_server.cpp).
 class TestEnsureConnection : public QObject {
     Q_OBJECT
+
+private:
+    // Must precede any SettingsStore created by the tests (see the header).
+    TestSettingsIsolation m_settingsIsolation;
 
 private slots:
     void initTestCase()

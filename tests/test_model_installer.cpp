@@ -9,6 +9,7 @@
 #include "runtime/ModelInstaller.h"
 #include "runtime/ModelRegistry.h"
 #include "runtime/RuntimeController.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
@@ -37,6 +38,9 @@ class TestModelInstaller : public QObject
     Q_OBJECT
 
 private:
+    // Must precede any SettingsStore created by the tests (see the header).
+    TestSettingsIsolation m_settingsIsolation;
+
     struct Setup {
         QTemporaryDir root;
         SettingsStore settings;

@@ -201,7 +201,7 @@ void RuntimeController::ensureConnectionReady(
         && m_state != RuntimeState::Stopping) {
         if (!m_settings.autoStart() && !m_settings.startOnDemand()) {
             failNow(tr("Server is not set to start automatically. "
-                       "Start it from Settings → Runtime."));
+                       "Start it from the main window or Settings → Runtime."));
             return;
         }
     }
@@ -265,8 +265,16 @@ void RuntimeController::failResolve(const QString &message)
 
 void RuntimeController::onServerStateForResolve()
 {
-    if (!m_resolveInProgress)
+    // Manual start (Settings → Runtime / footer toggle): no resolve is in
+    // flight, so nothing else clears StartingRuntime. Without this reset the
+    // footer load-progress bar (visible while busyState == StartingRuntime)
+    // sticks around next to "Runtime: ready" after the model finishes loading.
+    if (!m_resolveInProgress) {
+        if (m_state == RuntimeState::Ready || m_state == RuntimeState::Stopped
+            || m_state == RuntimeState::Failed)
+            setBusyState(AppBusyState::Idle);
         return;
+    }
     if (m_state == RuntimeState::Ready) {
         fetchManagedModels();
     } else if (m_state == RuntimeState::Failed) {

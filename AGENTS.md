@@ -118,6 +118,15 @@ variable, and vcpkg does **not** participate in the build.
   - Unit tests must set the Qt app/org identity for `QSettings` to work
     (`SettingsStore::makeSettings()` does this automatically); a bare
     `QSettings()` is read-only on Windows (`status()==AccessError`).
+  - A test class that constructs `SettingsStore` must declare
+    `TestSettingsIsolation m_settingsIsolation;` (from `tests/testsettings.h`)
+    as its **first** member. Without it `makeSettings()` falls back to the
+    real `llocr` / `LLM OCR` identity, and the test overwrites the user's
+    actual profile (`runtime/rootDir`, `runtime/modelsDir`, …) with paths
+    inside a self-deleting `QTemporaryDir` — the app then "forgets" the
+    installed runtime and models on every start (the Sep-2026
+    "Models tab resets after restart" bug). The guard redirects the default
+    `QSettings()` constructor to a temp INI file instead of the registry.
   - Tests needing symlinks are `#ifdef Q_OS_UNIX`-guarded: creating symlinks
     on Windows needs Developer Mode/admin (WinError 1314).
 
@@ -176,8 +185,11 @@ variable, and vcpkg does **not** participate in the build.
       network probes), per-step gating; External path sets `setupVersion = 1`;
       Launch step uses the QML self-test bridge `runSelfTestQml()`.
     - **G-UI** ✅ — `Footer.qml` managed-runtime indicator (dot yellow/green/red
-      + text, click opens the shared `ServerLogWindow`), indeterminate progress
-      + stderr text while StartingRuntime, §7.5 error surfacing for Failed, and
+      + text, click opens the shared `ServerLogWindow`), Start/Stop toggle for
+      the managed server (Managed mode only, `startServer()`/`stopServer()`),
+      busy spinner (28 px, recognition + server startup)
+      + stderr status text while StartingRuntime, §7.5 error surfacing for
+      Failed, and
       the «Launch settings changed — restart» banner with a Restart button.
     - **H** 🔄 — H.2 ✅ (memory estimate + warning in the wizard Launch step,
       `ModelMemoryEstimator`), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
@@ -185,7 +197,8 @@ variable, and vcpkg does **not** participate in the build.
       (`--version` + `--help`, worst case = `timeoutMs`, ADR 51) and a
       **persistent capabilities cache** `capabilities-<sha1(path+mtime+size)>.json`
       served across app runs (ADR 52), `loadProgressPercent()`
-      stderr classification + deterministic footer ProgressBar, `llocr_ru.ts`
+      stderr classification (status text; the footer ProgressBar was later
+      removed as uninformative — only the busy spinner remains), `llocr_ru.ts`
       cleaned), **H.8 ✅ (documentation — pages 01–07 + AGENTS.md, ADR 26–45
       recorded)**, **H.6 ✅ (separate locks**: `.install.lock` in the
       `RuntimeInstaller` install/cleanup pipeline, per-write `.registry.lock`,

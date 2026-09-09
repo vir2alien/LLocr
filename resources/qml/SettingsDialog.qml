@@ -86,6 +86,13 @@ Dialog {
     }
 
     onAboutToShow: {
+        // Every tab's fields must be initialized before Save can run: the
+        // accepted handler calls saveValues() on all tabs even if only one was
+        // visited. Saving unloaded fields used to write defaults over real
+        // settings (e.g. an empty modelName).
+        uiTab.loadValues()
+        modelTab.loadValues()
+        runtimeTab.loadValues()
         loadTab(tabBar.currentIndex)
     }
 

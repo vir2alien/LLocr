@@ -301,10 +301,22 @@ Once the runtime is wired, the main window surfaces its state:
 
   Clicking the badge opens the shared **`ServerLogWindow`**; if runtime isn't
   configured it opens Settings → Runtime instead (H.1 empty state). ✅
-- **Loading progress** — while `StartingRuntime`, the footer shows an
-  indeterminate progress bar plus the stderr text; once the model-load
-  percentage is classified (`loadProgressPercent()`, H.7) it becomes
-  deterministic (“Loading model… N%”). ✅
+- **`Footer.qml` Start/Stop toggle** — next to the indicator, visible only in
+  Managed mode. When the config is valid (`configValid`: binary + model exist)
+  it starts the managed llama-server with the selected model — the same
+  `Runtime.startServer()` as the Start button in Settings → Runtime — so the
+  server can be warmed up right after app launch without opening Settings.
+  While the server is `Starting`/`Ready` the button turns into **Stop**
+  (`stopServer()`); stopping is confirmed when a recognition job is in flight
+  (§H.1.4 courtesy, same as Restart). Disabled when the runtime is owned by
+  another instance (`lockedOut`) or the config is incomplete (tooltip hints
+  at Settings → Runtime). ✅
+- **Loading status** — while `StartingRuntime`, the footer shows the busy
+  spinner (the same one used for recognition, enlarged to 28 px) plus the
+  stderr-derived status text (“Loading model… N%” from
+  `loadProgressPercent()`, H.7). The dedicated footer progress bar was
+  removed as uninformative — llama.cpp's stderr percent updates too coarsely
+  to be useful, spinner + status text read better. ✅
 - **Restart banner** — editing `launch/*` while the server is `Ready` shows
   «Launch settings changed — restart required» with a **Restart** button. ✅
 - **Error surfacing** — `Failed` messages follow the §7.5 matrix. ✅

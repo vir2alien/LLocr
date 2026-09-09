@@ -6,6 +6,7 @@
 #include "app/SettingsStore.h"
 #include "runtime/RuntimeInstaller.h"
 #include "runtime/RuntimePaths.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
@@ -20,6 +21,9 @@ class TestInstallLock : public QObject {
     Q_OBJECT
 
 private:
+    // Must precede any SettingsStore created by the tests (see the header).
+    TestSettingsIsolation m_settingsIsolation;
+
     static RuntimePaths makePaths(const QString &root)
     {
         return RuntimePaths(QDir(root).filePath(QStringLiteral("app")),

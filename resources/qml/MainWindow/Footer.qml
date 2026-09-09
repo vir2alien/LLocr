@@ -5,10 +5,12 @@ import QtQuick.Layouts
 import LLocr
 
 // Application footer: recognition status on the left, the managed-runtime
-// indicator on the right (§ G-UI). The indicator shows the runtime state as a
-// colored dot + text, surfaces model-loading progress from stderr while the
-// server starts, opens the log window on click, and displays a "restart
-// required" banner when launch/* settings change while the server is Ready.
+// controls on the right (§ G-UI). A Start/Stop toggle (Managed mode only)
+// launches the llama-server with the selected model without opening Settings;
+// next to it the indicator shows the runtime state as a colored dot + text,
+// the busy spinner covers recognition and server startup, and the footer
+// displays a "restart required" banner when launch/* settings change while
+// the server is Ready.
 Item {
     id: root
     implicitHeight: column.implicitHeight
@@ -71,7 +73,9 @@ Item {
         // ----- Toolbar row --------------------------------------------------
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: Theme.controlHeight
+            // Slightly taller than the controls so the 28 px busy spinner is
+            // clearly visible instead of filling the row edge to edge.
+            Layout.preferredHeight: Theme.controlHeight + 8
             color: Theme.surface
 
             Rectangle {
@@ -96,11 +100,53 @@ Item {
                     Layout.fillWidth: true
                 }
 
+                // Spinner for in-flight work: recognition (controller.busy)
+                // or the managed server starting / loading the model. The
+                // status label on the left carries the stderr-derived detail
+                // ("Loading model… N%", §H.7). The dedicated footer progress
+                // bar was dropped — llama.cpp's stderr percent updates too
+                // coarsely to be informative, spinner + status text read
+                // better.
                 BusyIndicator {
-                    running: controller.busy
-                    visible: controller.busy
-                    Layout.preferredWidth: 18
-                    Layout.preferredHeight: 18
+                    running: controller.busy || Runtime.busyState === 1
+                    visible: running
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                }
+
+                // ----- Managed start/stop toggle ----------------------------
+                // Lets the user launch the managed llama-server (with the
+                // selected model) straight from the main window, without
+                // opening Settings → Runtime. Hidden in External mode.
+                Button {
+                    id: runtimeToggleButton
+                    visible: Settings.connectionMode === "managed"
+                    hoverEnabled: true
+                    implicitHeight: Theme.controlHeight
+                    font.pixelSize: Theme.fontCaption
+                    text: root.serverActive ? qsTr("Stop server")
+                                            : qsTr("Start server")
+                    // Starting/Ready → Stop is always available (unless the
+                    // runtime is owned by another instance); Start needs a
+                    // valid binary + model on disk (§3.8 configValid) and a
+                    // server that is not already shutting down.
+                    enabled: !Runtime.lockedOut
+                             && (root.serverActive
+                                 || (Runtime.configValid
+                                     && Runtime.state !== 4))
+                    onClicked: {
+                        if (root.serverActive)
+                            root.requestStop()
+                        else
+                            Runtime.startServer()
+                    }
+
+                    ToolTip {
+                        visible: runtimeToggleButton.hovered
+                        delay: 600
+                        font.pixelSize: Theme.fontCaption
+                        text: root.toggleToolTipText()
+                    }
                 }
 
                 // ----- Managed-runtime indicator (§ G-UI task 1) -----------
@@ -151,19 +197,6 @@ Item {
                         }
                     }
                 }
-
-                // Real model-load progress from stderr when the server reports
-                // it; otherwise an indeterminate spinner while it starts
-                // (§H.7 task 2).
-                ProgressBar {
-                    Layout.preferredWidth: 90
-                    Layout.preferredHeight: 6
-                    visible: Runtime.busyState === 1
-                    from: 0
-                    to: 100
-                    value: Runtime.loadProgressPercent >= 0 ? Runtime.loadProgressPercent : 0
-                    indeterminate: Runtime.loadProgressPercent < 0
-                }
             }
         }
     }
@@ -182,6 +215,37 @@ Item {
         Runtime.restartServer()
         root.launchDirty = false
         root.bannerDismissed = false
+    }
+
+    // Managed server is starting or ready → the footer toggle acts as Stop.
+    readonly property bool serverActive: Runtime.state === 2
+                                         || Runtime.state === 3
+
+    // The user asked to stop. Same §H.1.4 courtesy as restart: confirm when a
+    // recognition job is in flight, otherwise stop immediately.
+    function requestStop() {
+        if (controller.busy) {
+            stopConfirmDialog.open()
+            return
+        }
+        doStop()
+    }
+
+    function doStop() {
+        Runtime.stopServer()
+    }
+
+    // Tooltip for the footer Start/Stop toggle: what it does, or why it is
+    // disabled (not configured / runtime owned by another instance).
+    function toggleToolTipText() {
+        if (Runtime.lockedOut)
+            return qsTr("The local runtime is owned by another LLocr instance.")
+        if (root.serverActive)
+            return qsTr("Stop the managed llama-server and unload the model.")
+        if (!Runtime.configValid)
+            return qsTr("Managed server is not fully configured — open "
+                        + "Settings → Runtime.")
+        return qsTr("Start the managed llama-server with the selected model.")
     }
 
     // True while any launch/* setting changed since the server last reached
@@ -274,5 +338,26 @@ Item {
         }
 
         onAccepted: root.doRestart()
+    }
+
+    // Stopping the server while a recognition job is running is destructive
+    // (the job loses its connection); confirm, mirroring restartConfirmDialog.
+    Dialog {
+        id: stopConfirmDialog
+        parent: Overlay.overlay
+        modal: true
+        title: qsTr("Stop server?")
+        standardButtons: Dialog.Cancel | Dialog.Ok
+
+        Label {
+            width: 340
+            wrapMode: Text.WordWrap
+            font.pixelSize: Theme.fontNormal
+            color: Theme.textPrimary
+            text: qsTr("Recognition is in progress. Stopping the server will "
+                       + "interrupt the current job. Continue?")
+        }
+
+        onAccepted: root.doStop()
     }
 }
