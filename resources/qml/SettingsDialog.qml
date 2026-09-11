@@ -21,7 +21,7 @@ Dialog {
 
     property var logWindowRef: null
 
-    enum TabsEnum {UiTabNum = 0, ModelTabNum = 1, OutputTabNum = 2, RuntimeTabNum = 3, ModelsTabNum = 4}
+    enum TabsEnum {UiTabNum = 0, RequesetTabNum = 1, OutputTabNum = 2, RuntimeTabNum = 3, ModelsTabNum = 4}
 
     anchors.centerIn: parent
     width: 520
@@ -65,19 +65,14 @@ Dialog {
         switch (index) {
         case SettingsDialog.TabsEnum.UiTabNum:
             uiTab.loadValues(); break;
-        case SettingsDialog.TabsEnum.ModelTabNum:
-            modelTab.loadValues(); break;
+        case SettingsDialog.TabsEnum.RequesetTabNum:
+            requestTab.loadValues(); break;
         case SettingsDialog.TabsEnum.OutputTabNum: {
             var idx = parserBox.model.indexOf(Settings.parserId)
             parserBox.currentIndex = idx >= 0 ? idx : 0
             break;
         }
         case SettingsDialog.TabsEnum.RuntimeTabNum:
-            // The runtime-owner lock (ADR 46) is re-checked every time the tab
-            // opens: a second window that started while another instance owned
-            // the runtime may take over once that owner exits — without needing
-            // to restart the app. This is what makes the Start/Stop/Restart
-            // buttons become active again after closing the other instance.
             Runtime.refreshSingleInstanceLock()
             runtimeTab.loadValues(); break;
         case SettingsDialog.TabsEnum.ModelsTabNum:
@@ -86,12 +81,8 @@ Dialog {
     }
 
     onAboutToShow: {
-        // Every tab's fields must be initialized before Save can run: the
-        // accepted handler calls saveValues() on all tabs even if only one was
-        // visited. Saving unloaded fields used to write defaults over real
-        // settings (e.g. an empty modelName).
         uiTab.loadValues()
-        modelTab.loadValues()
+        requestTab.loadValues()
         runtimeTab.loadValues()
         loadTab(tabBar.currentIndex)
     }
@@ -103,7 +94,7 @@ Dialog {
 
     onAccepted: {
         uiTab.savaValues();
-        modelTab.saveValues();
+        requestTab.saveValues();
         runtimeTab.saveValues();
 
         Settings.parserId = parserBox.currentText;
@@ -131,8 +122,8 @@ Dialog {
                 id: uiTab
             }
 
-            ModelTab {
-                id: modelTab
+            RequestTab {
+                id: requestTab
             }
 
             ColumnLayout {

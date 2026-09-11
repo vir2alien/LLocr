@@ -11,7 +11,6 @@ GridLayout {
     columnSpacing: 8
 
     function loadValues() {
-        modelNameField.text  = Settings.modelName
         temperatureField.text = Settings.temperature.toString()
         maxTokensField.text  = Settings.maxTokens.toString()
         dryMultiplierField.text = Settings.dryMultiplier.toString()
@@ -21,7 +20,6 @@ GridLayout {
     }
 
     function saveValues() {
-        Settings.modelName = modelNameField.text;
         Settings.temperature = parseFloat(temperatureField.text) || 0.0;
         Settings.maxTokens = parseInt(maxTokensField.text) || 8192;
         Settings.dryMultiplier = parseFloat(dryMultiplierField.text) || 0.8;
@@ -31,28 +29,6 @@ GridLayout {
     }
 
     Item { Layout.columnSpan: 2; implicitHeight: 4 }
-
-    LLOLabel {
-        Layout.columnSpan: 2
-        text: qsTr("Model name")
-    }
-    TextField {
-        id: modelNameField
-        Layout.columnSpan: 2
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        readOnly: Settings.connectionMode === "managed"
-        placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
-    }
-    LLOLabel {
-        Layout.columnSpan: 2
-        visible: Settings.connectionMode === "managed"
-        font.pointSize: Theme.captionSize
-        color: Theme.textMuted
-        text: qsTr("Managed mode: model is \"%1\" — defined by the running server")
-                  .arg(Settings.launchModelAlias)
-    }
 
     LLOLabel {
         Layout.topMargin: 4

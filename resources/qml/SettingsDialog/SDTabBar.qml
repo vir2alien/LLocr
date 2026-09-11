@@ -46,7 +46,7 @@ TabBar {
     }
 
     CustomTabButton { text: qsTr("UI") }
-    CustomTabButton { text: qsTr("Model") }
+    CustomTabButton { text: qsTr("Request") }
     CustomTabButton { text: qsTr("Output") }
     CustomTabButton { text: qsTr("Runtime") }
 

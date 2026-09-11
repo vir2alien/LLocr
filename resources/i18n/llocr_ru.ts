@@ -292,54 +292,44 @@
     </message>
 </context>
 <context>
-    <name>ModelTab</name>
+    <name>RequestTab</name>
     <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="36"/>
-        <source>Model name</source>
-        <translation>Название модели</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="47"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="47"/>
         <source>e.g. Unlimited-OCR, or the id your server exposes</source>
         <translation>например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="55"/>
-        <source>Managed mode: model is &quot;%1&quot; — defined by the running server</source>
-        <translation>Управляемый режим: модель — «%1» (задаётся запущенным сервером)</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="61"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="61"/>
         <source>Temperature</source>
         <translation>Температура</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="67"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="67"/>
         <source>Max tokens per page</source>
         <translation>Макс. токенов на стр.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="89"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="89"/>
         <source>DRY multiplier</source>
         <translation>множитель DRY</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="95"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="95"/>
         <source>DRY base</source>
         <translation>DRY база штрафа</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="116"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="116"/>
         <source>DRY allowed length</source>
         <translation>DRY разрешенная длина</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="122"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="122"/>
         <source>DRY range</source>
         <translation>DRY диапазон</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelTab.qml" line="152"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="152"/>
         <source>DRY (Don&apos;t Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp</source>
         <translation>DRY (Don&apos;t Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
     </message>
@@ -1133,6 +1123,16 @@
         <translation>Базовый URL конечной точки</translation>
     </message>
     <message>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="36"/>
+        <source>Model name</source>
+        <translation>Название модели</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="55"/>
+        <source>Optional model alias</source>
+        <translation>Опциональное имя модели</translation>
+    </message>
+    <message>
         <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="38"/>
         <source>API key (optional)</source>
         <translation>API-ключ (необязательно)</translation>
@@ -1330,8 +1330,8 @@
     </message>
     <message>
         <location filename="../qml/SettingsDialog/SDTabBar.qml" line="49"/>
-        <source>Model</source>
-        <translation>Модель</translation>
+        <source>Request</source>
+        <translation>Запрос</translation>
     </message>
     <message>
         <location filename="../qml/SettingsDialog/SDTabBar.qml" line="50"/>

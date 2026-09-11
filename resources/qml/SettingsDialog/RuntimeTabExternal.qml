@@ -9,12 +9,14 @@ ColumnLayout {
     spacing: 4
 
     function loadValues() {
+        modelNameField.text  = Settings.modelName
         baseUrlField.text = Settings.baseUrl
         apiKeyField.text  = Settings.apiKey
         timeoutField.text = Settings.connectionTimeoutMs.toString()
     }
 
     function savaValues() {
+        Settings.modelName = modelNameField.text;
         Settings.baseUrl = baseUrlField.text;
         Settings.apiKey = apiKeyField.text;
         Settings.connectionTimeoutMs = parseInt(timeoutField.text) || 120000;
@@ -29,6 +31,23 @@ ColumnLayout {
         implicitHeight: Theme.controlHeight
         placeholderText: "http://localhost:8080"
         selectByMouse: true
+    }
+
+    LLOLabel {
+        text: qsTr("Model name")
+    }
+    TextField {
+        id: modelNameField
+        Layout.fillWidth: true
+        implicitHeight: Theme.controlHeight
+        selectByMouse: true
+        readOnly: Settings.connectionMode === "managed"
+        placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
+    }
+    LLOLabel {
+        font.pointSize: Theme.captionSize
+        color: Theme.textMuted
+        text: qsTr("Optional model alias")
     }
 
     Item { implicitHeight: 4 }
