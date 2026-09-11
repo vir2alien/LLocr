@@ -50,11 +50,9 @@ QtObject {
     readonly property int controlRadius: 3
 
     // --- Text pt sizes ---
-    readonly property int fontSmall: 11
-    readonly property int fontCaption: 12
-    readonly property int fontNormal: 13
-    readonly property int fontTitle: 15
+
     readonly property real textScale: 1//uiController.textScale
+    readonly property int iconSize: 9 * textScale
     readonly property real captionSize: 8 * textScale //бейджи, счётчики, технические подписи
     readonly property real footnoteSize: 9 * textScale //сноски, подсказки, вторичные подписи
     readonly property real bodySmallSize: 10 * textScale //компактный основной текст, таблицы, плотные формы

@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 GridLayout {
     columns: 2
@@ -31,11 +32,9 @@ GridLayout {
 
     Item { Layout.columnSpan: 2; implicitHeight: 4 }
 
-    Label {
+    LLOLabel {
         Layout.columnSpan: 2
         text: qsTr("Model name")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     TextField {
         id: modelNameField
@@ -46,27 +45,22 @@ GridLayout {
         readOnly: Settings.connectionMode === "managed"
         placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
     }
-    Label {
+    LLOLabel {
         Layout.columnSpan: 2
         visible: Settings.connectionMode === "managed"
-        wrapMode: Text.Wrap
-        font.pixelSize: Theme.fontSmall
+        font.pointSize: Theme.captionSize
         color: Theme.textMuted
         text: qsTr("Managed mode: model is \"%1\" — defined by the running server")
                   .arg(Settings.launchModelAlias)
     }
 
-    Label {
+    LLOLabel {
         Layout.topMargin: 4
         text: qsTr("Temperature")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
-    Label {
+    LLOLabel {
         Layout.topMargin: 4
         text: qsTr("Max tokens per page")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     TextField {
         id: temperatureField
@@ -84,17 +78,13 @@ GridLayout {
         validator: IntValidator { bottom: 1; top: 1000000 }
     }
 
-    Label {
+    LLOLabel {
         Layout.topMargin: 4
         text: qsTr("DRY multiplier")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
-    Label {
+    LLOLabel {
         Layout.topMargin: 4
         text: qsTr("DRY base")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     TextField {
         id: dryMultiplierField
@@ -111,17 +101,13 @@ GridLayout {
         validator: DoubleValidator { bottom: 0.0; top: 3.0; decimals: 2 }
     }
 
-    Label {
+    LLOLabel {
         Layout.topMargin: 4
         text: qsTr("DRY allowed length")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
-    Label {
+    LLOLabel {
         Layout.topMargin: 4
         text: qsTr("DRY range")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     TextField {
         id: dryAllowedLengthField
@@ -143,11 +129,10 @@ GridLayout {
         implicitHeight: 4
     }
 
-    Label {
+    LLOLabel {
         Layout.columnSpan: 2
         Layout.fillWidth: true
-        wrapMode: Text.Wrap
-        font.pixelSize: Theme.fontSmall
+        font.pointSize: Theme.captionSize
         color: Theme.textMuted
         text: qsTr("DRY (Don't Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp")
     }

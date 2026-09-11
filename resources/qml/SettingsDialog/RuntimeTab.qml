@@ -33,20 +33,17 @@ ColumnLayout {
                     dialog.setupWizardRef.startWizard()
             }
         }
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textMuted
             text: qsTr("Walks you through installing a runtime and a "
                        + "model, then configures the launch.")
         }
     }
 
-    Label {
+    LLOLabel {
         text: qsTr("Connection mode")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
 
     ComboBox {

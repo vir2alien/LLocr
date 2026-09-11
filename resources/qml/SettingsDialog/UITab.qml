@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 ColumnLayout {
     spacing: 4
@@ -20,10 +21,8 @@ ColumnLayout {
         uiController.mode = [UiController.System, UiController.Light, UiController.Dark][themeBox.currentIndex];
     }
 
-    Label {
+    LLOLabel {
         text: qsTr("Language")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     ComboBox {
         id: languageBox
@@ -34,10 +33,8 @@ ColumnLayout {
 
     Item { implicitHeight: 6 }
 
-    Label {
+    LLOLabel {
         text: qsTr("Theme")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     ComboBox {
         id: themeBox

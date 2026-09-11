@@ -31,10 +31,9 @@ ApplicationWindow {
             anchors.rightMargin: 10
             spacing: Theme.spacingSmall
 
-            Label {
+            LLOLabel {
                 text: qsTr("llama-server log")
                 font.bold: true
-                font.pixelSize: Theme.fontNormal
                 color: Theme.textPrimary
             }
             Item { Layout.fillWidth: true }
@@ -48,10 +47,9 @@ ApplicationWindow {
                 color: Theme.textMuted
                 opacity: 0.5
             }
-            Label {
+            LLOLabel {
                 text: qsTr("live")
                 color: Theme.textMuted
-                font.pixelSize: Theme.fontCaption
             }
         }
     }
@@ -81,10 +79,9 @@ ApplicationWindow {
                 onClicked: RuntimeLog.clearServerLog()
             }
             Item { Layout.fillWidth: true }
-            Label {
+            LLOLabel {
                 text: qsTr("%1 line(s)").arg(logArea.lineCount)
                 color: Theme.textMuted
-                font.pixelSize: Theme.fontCaption
             }
         }
     }
@@ -106,7 +103,7 @@ ApplicationWindow {
             readOnly: true
             wrapMode: TextEdit.NoWrap
             font.family: "monospace"
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textPrimary
             selectByMouse: true
 

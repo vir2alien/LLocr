@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 // SetupWizard → Step 1 "Welcome": choose between a managed local server
 // (recommended) and an existing external server/API. Choosing External finishes
@@ -34,19 +35,16 @@ Item {
         anchors.margins: 20
         spacing: 12
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Welcome to LLM OCR")
-            font.pixelSize: Theme.fontTitle
+            font.pointSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontNormal
-            color: Theme.textSecondary
             text: qsTr("This assistant recognizes text from images and PDFs using a "
                        + "local LLM. Choose how to connect to a model.")
         }
@@ -74,18 +72,16 @@ Item {
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 4
-                    Label {
+                    LLOLabel {
                         text: index === 0
                               ? qsTr("Local server (recommended)")
                               : qsTr("I already have a server or API")
-                        font.pixelSize: Theme.fontCaption
                         font.bold: true
                         color: Theme.textPrimary
                     }
-                    Label {
+                    LLOLabel {
                         Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Theme.fontSmall
+                        font.pointSize: Theme.captionSize
                         color: Theme.textMuted
                         text: index === 0
                               ? qsTr("LLM OCR downloads and runs llama.cpp locally. "

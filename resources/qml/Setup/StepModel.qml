@@ -36,27 +36,23 @@ Item {
         anchors.margins: 20
         spacing: 10
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Model")
-            font.pixelSize: Theme.fontTitle
+            font.pointSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontNormal
-            color: Theme.textSecondary
             text: qsTr("Vision-capable GGUF models work with the managed server. Pick a "
                        + "preset, find one on Hugging Face, or point at a local file.")
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: ModelInstaller.state === 4 ? Theme.error
                  : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
             text: ModelInstaller.statusMessage.length
@@ -66,10 +62,9 @@ Item {
                      : qsTr("No model selected yet."))
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textMuted
             // §H.2 estimate shown next to the selected model.
             visible: root.complete && root.estTotal > 0
@@ -125,10 +120,8 @@ Item {
                     // ----- Presets -------------------------------------------
                     ColumnLayout {
                         spacing: 6
-                        Label {
+                        LLOLabel {
                             text: qsTr("Start from a preset")
-                            font.pixelSize: Theme.fontCaption
-                            color: Theme.textSecondary
                         }
                         ListView {
                             id: presetList
@@ -157,22 +150,24 @@ Item {
                                     anchors.leftMargin: 4
                                     anchors.rightMargin: 4
                                     spacing: 6
-                                    Label {
+                                    LLOLabel {
                                         Layout.preferredWidth: 150
                                         elide: Text.ElideMiddle
-                                        font.pixelSize: Theme.fontSmall
+                                        wrapMode: Text.NoWrap
+                                        font.pointSize: Theme.captionSize
                                         color: Theme.textPrimary
                                         text: pInfo.title
                                     }
-                                    Label {
+                                    LLOLabel {
                                         Layout.fillWidth: true
                                         elide: Text.ElideMiddle
-                                        font.pixelSize: Theme.fontSmall
+                                        wrapMode: Text.NoWrap
+                                        font.pointSize: Theme.captionSize
                                         color: Theme.textMuted
                                         text: pInfo.repo
                                     }
-                                    Label {
-                                        font.pixelSize: Theme.fontSmall
+                                    LLOLabel {
+                                        font.pointSize: Theme.captionSize
                                         color: Theme.textMuted
                                         text: pInfo.approxVramGb > 0
                                               ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb) : ""
@@ -232,17 +227,19 @@ Item {
                                     anchors.leftMargin: 4
                                     anchors.rightMargin: 4
                                     spacing: 6
-                                    Label {
+                                    LLOLabel {
                                         Layout.preferredWidth: 150
                                         elide: Text.ElideMiddle
-                                        font.pixelSize: Theme.fontSmall
+                                        wrapMode: Text.NoWrap
+                                        font.pointSize: Theme.captionSize
                                         color: Theme.textPrimary
                                         text: sInfo.title
                                     }
-                                    Label {
+                                    LLOLabel {
                                         Layout.fillWidth: true
                                         elide: Text.ElideMiddle
-                                        font.pixelSize: Theme.fontSmall
+                                        wrapMode: Text.NoWrap
+                                        font.pointSize: Theme.captionSize
                                         color: Theme.textMuted
                                         text: sInfo.id
                                     }
@@ -258,10 +255,9 @@ Item {
                                 }
                             }
                         }
-                        Label {
+                        LLOLabel {
                             Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            font.pixelSize: Theme.fontSmall
+                            font.pointSize: Theme.captionSize
                             color: Theme.textMuted
                             visible: !ModelInstaller.searchActive
                                      && ModelInstaller.searchCount === 0
@@ -293,10 +289,9 @@ Item {
                             enabled: localPathField.text.trim().length > 0
                             onClicked: Settings.launchModelPath = localPathField.text.trim()
                         }
-                        Label {
+                        LLOLabel {
                             Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            font.pixelSize: Theme.fontSmall
+                            font.pointSize: Theme.captionSize
                             color: Theme.textMuted
                             text: qsTr("The local model is not managed: its license is your "
                                        + "responsibility, and it is not verified by the catalog.")
@@ -323,18 +318,15 @@ Item {
 
         ColumnLayout {
             spacing: 6
-            Label {
+            LLOLabel {
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSmall
-                color: Theme.textSecondary
+                font.pointSize: Theme.captionSize
                 text: qsTr("Review the license before installing. Downloading starts "
                            + "after confirmation.")
             }
-            Label {
+            LLOLabel {
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSmall
+                font.pointSize: Theme.captionSize
                 color: Theme.accent
                 visible: prepareDialog.license.length > 0
                 // The license field may be a URL or a short name; render a real

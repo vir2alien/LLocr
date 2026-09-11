@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "Common"
 
 Dialog {
     id: exportOptionsDialog
@@ -22,13 +23,12 @@ Dialog {
 
     header: Item {
         implicitHeight: 38
-        Label {
+        LLOLabel {
             anchors.left: parent.left
             anchors.leftMargin: 14
             anchors.verticalCenter: parent.verticalCenter
             text: exportOptionsDialog.title
             font.bold: true
-            font.pixelSize: Theme.fontNormal
             color: Theme.textPrimary
         }
     }
@@ -62,7 +62,7 @@ Dialog {
         implicitHeight: Theme.controlHeight
         implicitWidth: 100
         editable: true
-        font.pixelSize: Theme.fontCaption
+        font.pointSize: Theme.captionSize
 
         contentItem: TextInput {
             z: 2
@@ -90,7 +90,7 @@ Dialog {
 
             Text {
                 text: "▲"
-                font.pixelSize: 7
+                font.pointSize: Theme.iconSize
                 color: sb.up.enabled ? Theme.textSecondary : Theme.textMuted
                 anchors.centerIn: parent
             }
@@ -107,7 +107,7 @@ Dialog {
 
             Text {
                 text: "▼"
-                font.pixelSize: 7
+                font.pointSize: Theme.iconSize
                 color: sb.down.enabled ? Theme.textSecondary : Theme.textMuted
                 anchors.centerIn: parent
             }
@@ -131,20 +131,20 @@ Dialog {
         RadioButton {
             id: scopeAll
             text: qsTr("All recognized pages")
-            font.pixelSize: Theme.fontCaption
+            font.pointSize: Theme.captionSize
             checked: true
             ButtonGroup.group: scopeGroup
         }
         RadioButton {
             id: scopeCurrent
             text: qsTr("Current page (%1)").arg(controller.currentPage + 1)
-            font.pixelSize: Theme.fontCaption
+            font.pointSize: Theme.captionSize
             ButtonGroup.group: scopeGroup
         }
         RadioButton {
             id: scopeRange
             text: qsTr("Page range")
-            font.pixelSize: Theme.fontCaption
+            font.pointSize: Theme.captionSize
             ButtonGroup.group: scopeGroup
         }
 
@@ -154,9 +154,8 @@ Dialog {
             spacing: 8
             enabled: scopeRange.checked
 
-            Label {
+            LLOLabel {
                 text: qsTr("from")
-                font.pixelSize: Theme.fontCaption
                 color: scopeRange.checked ? Theme.textSecondary : Theme.textMuted
             }
             CompactSpinBox {
@@ -164,9 +163,8 @@ Dialog {
                 from: 1
                 to: controller.pageCount
             }
-            Label {
+            LLOLabel {
                 text: qsTr("to")
-                font.pixelSize: Theme.fontCaption
                 color: scopeRange.checked ? Theme.textSecondary : Theme.textMuted
             }
             CompactSpinBox {
@@ -178,10 +176,9 @@ Dialog {
 
         Item { implicitHeight: 6 }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textMuted
             text: qsTr("Only recognized pages inside the selection are exported.")
         }

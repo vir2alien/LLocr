@@ -4,6 +4,8 @@ import QtQuick.Layouts
 
 import LLocr
 
+import "../Common"
+
 Rectangle {
     color: Theme.surfaceSunken
 
@@ -12,7 +14,7 @@ Rectangle {
         anchors.margins: Theme.spacingLarge
     }
 
-    Label {
+    LLOLabel {
         anchors.centerIn: parent
         visible: !controller.hasImage
         text: qsTr("Open an image or PDF to begin")

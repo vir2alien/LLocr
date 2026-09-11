@@ -136,10 +136,8 @@ Item {
                 anchors.rightMargin: Theme.spacing
                 spacing: Theme.spacing
 
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontCaption
                     color: Theme.textPrimary
                     text: qsTr("Launch settings changed — restart the server to apply them.")
                 }
@@ -175,11 +173,11 @@ Item {
                 anchors.rightMargin: Theme.spacing * 2
                 spacing: Theme.spacingSmall
 
-                Label {
+                LLOLabel {
                     text: controller.statusMessage
                     color: Theme.textMuted
-                    font.pixelSize: Theme.fontCaption
                     elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
                     Layout.fillWidth: true
                 }
                 BusyIndicator {
@@ -207,7 +205,7 @@ Item {
                     ToolTip {
                         visible: runtimeToggleButton.hovered
                         delay: 600
-                        font.pixelSize: Theme.fontCaption
+                        font.pointSize: Theme.captionSize
                         text: root.toggleToolTipText()
                     }
                 }
@@ -231,7 +229,7 @@ Item {
                         visible: runtimeBadge.containsMouse
                         text: qsTr("Server log — click to open. %1").arg(root.stateText())
                         delay: 600
-                        font.pixelSize: Theme.fontCaption
+                        font.pointSize: Theme.captionSize
                     }
 
                     RowLayout {
@@ -249,12 +247,12 @@ Item {
                             border.width: 1
                         }
 
-                        Label {
+                        LLOLabel {
                             id: stateLabel
-                            font.pixelSize: Theme.fontCaption
                             color: Runtime.state === 5 ? Theme.error : Theme.textSecondary
                             text: root.stateText()
                             elide: Text.ElideRight
+                            wrapMode: Text.NoWrap
                         }
                     }
                 }//MouseArea
@@ -269,10 +267,8 @@ Item {
         title: qsTr("Restart server?")
         standardButtons: Dialog.Cancel | Dialog.Ok
 
-        Label {
+        LLOLabel {
             width: 340
-            wrapMode: Text.WordWrap
-            font.pixelSize: Theme.fontNormal
             color: Theme.textPrimary
             text: qsTr("Recognition is in progress. Restarting the server will "
                        + "interrupt the current job. Continue?")
@@ -288,10 +284,8 @@ Item {
         title: qsTr("Stop server?")
         standardButtons: Dialog.Cancel | Dialog.Ok
 
-        Label {
+        LLOLabel {
             width: 340
-            wrapMode: Text.WordWrap
-            font.pixelSize: Theme.fontNormal
             color: Theme.textPrimary
             text: qsTr("Recognition is in progress. Stopping the server will "
                        + "interrupt the current job. Continue?")

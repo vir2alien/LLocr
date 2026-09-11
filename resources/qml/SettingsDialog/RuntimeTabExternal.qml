@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 ColumnLayout {
     spacing: 4
@@ -19,10 +20,8 @@ ColumnLayout {
         Settings.connectionTimeoutMs = parseInt(timeoutField.text) || 120000;
     }
 
-    Label {
+    LLOLabel {
         text: qsTr("Endpoint base URL")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     TextField {
         id: baseUrlField
@@ -34,10 +33,8 @@ ColumnLayout {
 
     Item { implicitHeight: 4 }
 
-    Label {
+    LLOLabel {
         text: qsTr("API key (optional)")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     RowLayout {
         Layout.fillWidth: true
@@ -53,16 +50,14 @@ ColumnLayout {
         CheckBox {
             id: revealKey
             text: qsTr("Show")
-            font.pixelSize: Theme.fontCaption
+            font.pointSize: Theme.captionSize
         }
     }
 
     Item { implicitHeight: 4 }
 
-    Label {
+    LLOLabel {
         text: qsTr("Request timeout (ms)")
-        font.pixelSize: Theme.fontCaption
-        color: Theme.textSecondary
     }
     TextField {
         id: timeoutField
@@ -75,10 +70,9 @@ ColumnLayout {
 
     Item { implicitHeight: 6 }
 
-    Label {
+    LLOLabel {
         Layout.fillWidth: true
-        wrapMode: Text.Wrap
-        font.pixelSize: Theme.fontSmall
+        font.pointSize: Theme.captionSize
         color: Theme.textMuted
         text: qsTr("Note: the API key is stored locally in plaintext. "
                    + "Avoid using production keys.")

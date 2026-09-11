@@ -53,10 +53,8 @@ ScrollView {
         id: formLayout
         width: parent.width
         spacing: 4
-        Label {
+        LLOLabel {
             text: qsTr("llama-server binary")
-            font.pixelSize: Theme.fontCaption
-            color: Theme.textSecondary
         }
         RowLayout {
             Layout.fillWidth: true
@@ -86,7 +84,7 @@ ScrollView {
                     serverPathField.text = Settings.serverPath
                 }
             }
-            Label {
+            LLOLabel {
                 id: probeStatusLabel
                 Layout.fillWidth: true
                 text: Runtime.statusMessage.length
@@ -95,8 +93,8 @@ ScrollView {
                          ? qsTr("Not probed yet")
                          : qsTr("No server binary selected"))
                 elide: Text.ElideMiddle
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.NoWrap
+                font.pointSize: Theme.captionSize
                 color: Settings.serverPath.length && !Runtime.lockedOut
                        ? Theme.textSecondary : Theme.textMuted
             }
@@ -137,10 +135,9 @@ ScrollView {
             }
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textMuted
             text: qsTr("Managed mode uses this binary to run a local llama-server. "
                        + "Recognition in External mode is unaffected.")
@@ -153,17 +150,15 @@ ScrollView {
             color: Theme.divider
         }
 
-        Label {
+        LLOLabel {
             text: qsTr("Install llama.cpp")
-            font.pixelSize: Theme.fontNormal
             color: Theme.textPrimary
             font.bold: true
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textMuted
             text: RuntimeInstaller.installedBuild.length
                   ? qsTr("Installed: %1 (%2)")
@@ -187,10 +182,9 @@ ScrollView {
                 anchors.margins: 8
                 spacing: 4
 
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
+                    font.pointSize: Theme.captionSize
                     font.bold: true
                     color: Theme.textPrimary
                     text: qsTr("A newer build %1 is available%2")
@@ -199,11 +193,8 @@ ScrollView {
                              ? qsTr(" (checked %1)").arg(RuntimeInstaller.updateTimestampLabel())
                              : "")
                 }
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
                     text: Runtime.state === 3
                           ? qsTr("Updating will install it after the running server is stopped.")
                           : qsTr("You can keep working — updating installs in the background.")
@@ -229,10 +220,9 @@ ScrollView {
             }
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textMuted
             text: qsTr("Platform: %1 · recommended backend: %2")
                 .arg(RuntimeInstaller.platformLabel)
@@ -245,10 +235,8 @@ ScrollView {
             rowSpacing: 4
             columnSpacing: 8
 
-            Label {
+            LLOLabel {
                 text: qsTr("Backend")
-                font.pixelSize: Theme.fontCaption
-                color: Theme.textSecondary
             }
             ComboBox {
                 id: backendBox
@@ -260,10 +248,8 @@ ScrollView {
                     RuntimeInstaller.availableBackends[currentIndex]
             }
 
-            Label {
+            LLOLabel {
                 text: qsTr("Release")
-                font.pixelSize: Theme.fontCaption
-                color: Theme.textSecondary
             }
             RowLayout {
                 ComboBox {
@@ -284,11 +270,10 @@ ScrollView {
 
         }
 
-        Label {
+        LLOLabel {
             id: installStatusLabel
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: RuntimeInstaller.state === 6 ? Theme.error
                  : (RuntimeInstaller.busy ? Theme.textSecondary : Theme.textMuted)
             text: RuntimeInstaller.state === 0
@@ -325,10 +310,9 @@ ScrollView {
                 enabled: !RuntimeInstaller.busy
                 onClicked: RuntimeInstaller.cleanupUnusedBuilds()
             }
-            Label {
+            LLOLabel {
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSmall
+                font.pointSize: Theme.captionSize
                 color: Theme.textMuted
                 text: RuntimeInstaller.state === 0
                       ? qsTr("Press “Check for updates” to see if a newer release is available.")

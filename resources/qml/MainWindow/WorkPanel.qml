@@ -7,7 +7,7 @@ import "../Common"
 
 Rectangle {
     color: Theme.surfaceAlt
-    Label {
+    LLOLabel {
         anchors.centerIn: parent
         verticalAlignment: Text.AlignVCenter
         visible: !controller.hasResult && !previewSwitch.checked
@@ -28,13 +28,12 @@ Rectangle {
             spacing: Theme.spacing
             Layout.margins: Theme.spacingSmall
 
-            Label {
+            LLOLabel {
                 visible: controller.currentPageEditable
                 text: controller.currentPageEdited ? qsTr("Edited")
                                                    : qsTr("Recognized")
                 color: controller.currentPageEdited ? Theme.textPrimary
                                                    : Theme.textMuted
-                font.pixelSize: Theme.fontCaption
                 font.bold: controller.currentPageEdited
             }
 

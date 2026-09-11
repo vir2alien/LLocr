@@ -4,6 +4,8 @@ import QtQuick.Layouts
 
 import LLocr
 
+import "../Common"
+
 Item {
     id: delegateRoot
 
@@ -62,13 +64,14 @@ Item {
                                      : (model.recognized ? qsTr("Recognized")
                                                          : qsTr("Not recognized")))
                 }
-                Label {
+                LLOLabel {
                     text: qsTr("Page %1").arg(model.pageIndex + 1)
-                    font.pixelSize: Theme.fontSmall
+                    font.pointSize: Theme.captionSize
                     color: model.hasDuplicates ? "#d32f2f"
                             : (model.recognized ? Theme.textSecondary
                             : Theme.textMuted)
                     elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
                     Layout.fillWidth: true
                 }
             }
@@ -127,7 +130,7 @@ Item {
             anchors.centerIn: parent
             text: "\u22EE\u22EE"
             color: Theme.textSecondary
-            font.pixelSize: 9
+            font.pointSize: Theme.bodySize
         }
 
         DragHandler {

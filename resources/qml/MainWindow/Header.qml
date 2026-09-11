@@ -4,6 +4,8 @@ import QtQuick.Layouts
 
 import LLocr
 
+import "../Common"
+
 ToolBar {
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
@@ -61,9 +63,8 @@ ToolBar {
                 enabled: controller.currentPage > 0
                 onClicked: controller.currentPage = controller.currentPage - 1
             }
-            Label {
+            LLOLabel {
                 text: (controller.currentPage + 1) + " / " + controller.pageCount
-                color: Theme.textSecondary
                 horizontalAlignment: Text.AlignHCenter
                 Layout.minimumWidth: 56
             }

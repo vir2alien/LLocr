@@ -5,6 +5,7 @@ import QtQuick.Layouts
 
 import LLocr
 
+import "Common"
 import "SettingsDialog"
 
 Dialog {
@@ -35,13 +36,12 @@ Dialog {
 
     header: Item {
         implicitHeight: 38
-        Label {
+        LLOLabel {
             anchors.left: parent.left
             anchors.leftMargin: 14
             anchors.verticalCenter: parent.verticalCenter
             text: dialog.title
             font.bold: true
-            font.pixelSize: Theme.fontNormal
             color: Theme.textPrimary
         }
     }
@@ -137,10 +137,8 @@ Dialog {
 
             ColumnLayout {
                 spacing: 4
-                Label {
+                LLOLabel {
                     text: qsTr("Output parser")
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
                 }
                 ComboBox {
                     id: parserBox
@@ -151,10 +149,9 @@ Dialog {
 
                 Item { implicitHeight: 6 }
 
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
+                    font.pointSize: Theme.captionSize
                     color: Theme.textMuted
                     text: qsTr("‘raw’ keeps the model text as-is. ‘det_tokens’ extracts "
                                + "positioned fragments (bounding boxes) for the overlay.")

@@ -4,13 +4,14 @@ import QtQuick.Layouts
 
 import LLocr
 
+import "../Common"
+
 Rectangle {
-    Label {
+    LLOLabel {
         anchors.centerIn: parent
         visible: controller.hasImage && controller.pageCount === 0
         text: qsTr("No pages")
         color: Theme.textMuted
-        font.pixelSize: Theme.fontCaption
     }
 
     ListView {

@@ -63,19 +63,16 @@ Item {
         anchors.margins: 20
         spacing: 10
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Launch")
-            font.pixelSize: Theme.fontTitle
+            font.pointSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontNormal
-            color: Theme.textSecondary
             text: qsTr("Tune how the local server starts, then run a quick end-to-end "
                        + "check. It starts the server, loads your model and performs "
                        + "one OCR request.")
@@ -87,7 +84,7 @@ Item {
             rowSpacing: 8
             columnSpacing: 10
 
-            Label { text: qsTr("Port"); font.pixelSize: Theme.fontCaption; color: Theme.textSecondary }
+            LLOLabel { text: qsTr("Port") }
             TextField {
                 id: portField
                 Layout.fillWidth: true
@@ -97,7 +94,7 @@ Item {
                 onEditingFinished: Settings.launchPort = parseInt(text, 10) || 0
             }
 
-            Label { text: qsTr("Context size"); font.pixelSize: Theme.fontCaption; color: Theme.textSecondary }
+            LLOLabel { text: qsTr("Context size") }
             TextField {
                 id: ctxField
                 Layout.fillWidth: true
@@ -107,7 +104,7 @@ Item {
                 onEditingFinished: Settings.launchCtxSize = parseInt(text, 10) || 0
             }
 
-            Label { text: qsTr("GPU layers"); font.pixelSize: Theme.fontCaption; color: Theme.textSecondary }
+            LLOLabel { text: qsTr("GPU layers") }
             TextField {
                 id: gpuField
                 Layout.fillWidth: true
@@ -124,17 +121,14 @@ Item {
             CheckBox {
                 id: autoStartBox
                 text: qsTr("Start the server when the app launches")
-                font.pixelSize: Theme.fontCaption
+                font.pointSize: Theme.captionSize
                 checked: Settings.autoStart
                 onToggled: Settings.autoStart = checked
             }
-            Label {
+            LLOLabel {
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSmall
+                font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                // §4.3: autoStart is OFF by default; the wizard is the only place
-                // that proposes it, with the model-size warning below.
                 text: qsTr("Loading the model at startup uses several GB of RAM/VRAM "
                            + "even when idle — off by default.")
             }
@@ -154,30 +148,25 @@ Item {
                 anchors.fill: parent
                 anchors.margins: 8
                 spacing: 4
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
+                    font.pointSize: Theme.captionSize
                     color: Theme.textPrimary
                     text: qsTr("Estimated memory needs ~%1 GiB (model + context) — "
                                + "this looks high for %2 GiB of RAM.")
                         .arg(root.gib(root.totalBytes).toFixed(1))
                         .arg(root.gib(root.systemRamBytes).toFixed(1))
                 }
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textSecondary
                     text: qsTr("Reduce --ctx-size or --n-gpu-layers, or use a smaller model.")
                 }
             }
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textMuted
             text: qsTr("Memory estimate: ~%1 GiB total (%2 GiB model + %3 GiB KV cache) on %4 GiB RAM")
                 .arg(root.giText(root.totalBytes))
@@ -193,10 +182,8 @@ Item {
             color: Theme.divider
         }
 
-        Label {
+        LLOLabel {
             text: qsTr("Command preview")
-            font.pixelSize: Theme.fontCaption
-            color: Theme.textSecondary
         }
 
         Rectangle {
@@ -212,7 +199,7 @@ Item {
                 readOnly: true
                 text: root.commandPreview
                 font.family: "monospace"
-                font.pixelSize: Theme.fontSmall
+                font.pointSize: Theme.captionSize
                 color: Theme.textPrimary
                 wrapMode: TextEdit.WrapAnywhere
                 background: null
@@ -227,10 +214,9 @@ Item {
                 enabled: !SelfTest.selftestRunning
                 onClicked: SelfTest.runSelfTestQml()
             }
-            Label {
+            LLOLabel {
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSmall
+                font.pointSize: Theme.captionSize
                 color: SelfTest.selftestOk ? Theme.success : Theme.textMuted
                 text: SelfTest.selftestRunning
                       ? qsTr("Running self-test…")

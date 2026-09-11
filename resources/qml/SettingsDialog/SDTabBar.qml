@@ -24,7 +24,7 @@ TabBar {
         padding: 4
         contentItem: Text {
             text: tabBtn.text
-            font.pixelSize: Theme.fontCaption
+            font.pointSize: Theme.captionSize
             color: tabBtn.checked ? Theme.textPrimary : Theme.textSecondary
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

@@ -16,19 +16,16 @@ Item {
         anchors.margins: 20
         spacing: 10
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Runtime (llama.cpp)")
-            font.pixelSize: Theme.fontTitle
+            font.pointSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontNormal
-            color: Theme.textSecondary
             text: qsTr("LLM OCR manages a local llama-server process. First obtain its "
                        + "binary — by downloading a prebuilt build or pointing to one "
                        + "you already have.")
@@ -38,7 +35,7 @@ Item {
         GroupBox {
             Layout.fillWidth: true
             title: qsTr("Download llama.cpp")
-            font.pixelSize: Theme.fontCaption
+            font.pointSize: Theme.captionSize
 
             ColumnLayout {
                 anchors.fill: parent
@@ -47,10 +44,8 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 6
-                    Label {
+                    LLOLabel {
                         text: qsTr("Backend")
-                        font.pixelSize: Theme.fontCaption
-                        color: Theme.textSecondary
                     }
                     ComboBox {
                         id: backendBox
@@ -63,20 +58,18 @@ Item {
                     }
                 }
 
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
+                    font.pointSize: Theme.captionSize
                     color: Theme.textMuted
                     text: qsTr("Platform: %1 · recommended: %2")
                         .arg(RuntimeInstaller.platformLabel)
                         .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.recommendedBackend))
                 }
 
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
+                    font.pointSize: Theme.captionSize
                     color: RuntimeInstaller.state === 6 ? Theme.error
                          : (RuntimeInstaller.busy ? Theme.textSecondary : Theme.textMuted)
                     text: RuntimeInstaller.installedBuild.length
@@ -117,10 +110,9 @@ Item {
                     Item { Layout.fillWidth: true }
                 }
 
-                Label {
+                LLOLabel {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSmall
+                    font.pointSize: Theme.captionSize
                     color: Theme.textMuted
                     text: qsTr("On Windows, a freshly downloaded binary can be flagged by "
                                + "SmartScreen or antivirus; if launch fails, pick the file "
@@ -136,10 +128,8 @@ Item {
         }
 
         // ----- Option B: existing binary --------------------------------------
-        Label {
+        LLOLabel {
             text: qsTr("Use an existing llama-server binary")
-            font.pixelSize: Theme.fontCaption
-            color: Theme.textSecondary
         }
 
         RowLayout {
@@ -166,15 +156,15 @@ Item {
                 text: qsTr("Probe")
                 onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
             }
-            Label {
+            LLOLabel {
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSmall
+                font.pointSize: Theme.captionSize
                 color: Settings.serverPath.length ? Theme.textSecondary : Theme.textMuted
                 text: Settings.serverPath.trim().length
                       ? Runtime.statusMessage
                       : qsTr("No binary selected yet.")
                 elide: Text.ElideMiddle
+                wrapMode: Text.NoWrap
             }
         }
 

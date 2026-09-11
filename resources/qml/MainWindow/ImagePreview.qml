@@ -83,7 +83,7 @@ Image {
                         id: labelText
                         anchors.centerIn: parent
                         text: boxLabel
-                        font.pixelSize: 10
+                        font.pointSize: Theme.captionSize
                         color: isImage ? Theme.overlayImageInner : Theme.overlayTextInner
                     }
                 }
@@ -128,7 +128,7 @@ Image {
                     anchors.top: parent.top
                     anchors.right: parent.right
                     anchors.margins: 1
-                    font.pixelSize: 10
+                    font.pointSize: Theme.captionSize
                     onClicked: {
                         controller.boxModel.removeBox(boxDelegate.index)
                         imageArea.selectedBoxIndex = -1

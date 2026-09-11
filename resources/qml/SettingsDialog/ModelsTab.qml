@@ -34,10 +34,9 @@ Item {
         anchors.fill: parent
         spacing: 6
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: ModelInstaller.state === 4 ? Theme.error
                  : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
             text: ModelInstaller.statusMessage.length
@@ -66,10 +65,8 @@ Item {
             }
         }
 
-        Label {
+        LLOLabel {
             text: qsTr("Installed models: ")
-            font.pixelSize: Theme.fontCaption
-            color: Theme.textSecondary
         }
 
         ListView {
@@ -105,24 +102,27 @@ Item {
                     anchors.rightMargin: 6
                     spacing: 6
 
-                    Label {
+                    LLOLabel {
                         Layout.fillWidth: true
                         elide: Text.ElideMiddle
-                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
                         color: Theme.textPrimary
                         text: info.title
                     }
-                    Label {
+                    LLOLabel {
                         Layout.preferredWidth: 70
                         horizontalAlignment: Text.AlignRight
-                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
                         color: Theme.textMuted
                         text: fmtBytes(info.size)
                     }
-                    Label {
+                    LLOLabel {
                         Layout.preferredWidth: 80
                         elide: Text.ElideMiddle
-                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
                         color: info.origin === "managed" ? Theme.textSecondary : Theme.textMuted
                         text: info.origin === "managed" ? qsTr("managed") : qsTr("external")
                     }
@@ -152,11 +152,12 @@ Item {
             }
         }//ListView
 
-        Label {
+        LLOLabel {
             visible: installedList.count === 0
             Layout.fillWidth: true
             elide: Text.ElideMiddle
-            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.NoWrap
+            font.pointSize: Theme.captionSize
             color: Theme.textPrimary
             text: qsTr("No models installed")
         }
@@ -167,10 +168,8 @@ Item {
             color: Theme.divider
         }
 
-        Label {
+        LLOLabel {
             text: qsTr("Preset catalog")
-            font.pixelSize: Theme.fontCaption
-            color: Theme.textSecondary
         }
 
         ListView {
@@ -201,22 +200,24 @@ Item {
                     anchors.leftMargin: 6
                     anchors.rightMargin: 6
                     spacing: 6
-                    Label {
+                    LLOLabel {
                         Layout.preferredWidth: 160
                         elide: Text.ElideMiddle
-                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
                         color: Theme.textPrimary
                         text: pInfo.title
                     }
-                    Label {
+                    LLOLabel {
                         Layout.fillWidth: true
                         elide: Text.ElideMiddle
-                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
                         color: Theme.textMuted
                         text: pInfo.repo
                     }
-                    Label {
-                        font.pixelSize: Theme.fontSmall
+                    LLOLabel {
+                        font.pointSize: Theme.captionSize
                         color: Theme.textMuted
                         text: pInfo.approxVramGb > 0
                               ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb)
@@ -235,11 +236,12 @@ Item {
             }
         }//ListView
 
-        Label {
+        LLOLabel {
             visible: presetList.count === 0
             Layout.fillWidth: true
             elide: Text.ElideMiddle
-            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.NoWrap
+            font.pointSize: Theme.captionSize
             color: Theme.textPrimary
             text: qsTr("No presets available")
         }
@@ -250,10 +252,8 @@ Item {
             color: Theme.divider
         }
 
-        Label {
+        LLOLabel {
             text: qsTr("Search Hugging Face")
-            font.pixelSize: Theme.fontCaption
-            color: Theme.textSecondary
         }
 
         RowLayout {
@@ -296,24 +296,24 @@ Item {
                     anchors.leftMargin: 6
                     anchors.rightMargin: 6
                     spacing: 6
-                    Label {
+                    LLOLabel {
                         Layout.preferredWidth: 180
                         elide: Text.ElideMiddle
-                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
                         color: Theme.textPrimary
                         text: sInfo.title
                     }
-                    Label {
+                    LLOLabel {
                         Layout.fillWidth: true
                         elide: Text.ElideMiddle
-                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
                         color: Theme.textMuted
                         text: sInfo.id
                     }
                     LLOButton {
                         text: qsTr("Install")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontSmall
                         enabled: !ModelInstaller.busy
                         onClicked: {
                             ModelInstaller.installRemote(index)
@@ -325,10 +325,9 @@ Item {
             }
         }
 
-        Label {
+        LLOLabel {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Theme.fontSmall
+            font.pointSize: Theme.captionSize
             color: Theme.textMuted
             visible: !ModelInstaller.searchActive
                      && ModelInstaller.searchCount === 0
@@ -339,10 +338,8 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            Label {
+            LLOLabel {
                 text: qsTr("HF token (optional)")
-                font.pixelSize: Theme.fontCaption
-                color: Theme.textSecondary
             }
             TextField {
                 id: tokenField
@@ -389,18 +386,16 @@ Item {
         ColumnLayout {
             width: parent.width
             spacing: 6
-            Label {
+            LLOLabel {
                 Layout.fillWidth: true
-                wrapMode: Label.WordWrap
-                font.pixelSize: Theme.fontSmall
+                font.pointSize: Theme.captionSize
                 color: Theme.textSecondary
                 text: qsTr("Downloading starts after confirmation. The model license "
                            + "applies — review it before installing.")
             }
-            Label {
+            LLOLabel {
                 Layout.fillWidth: true
-                wrapMode: Label.WordWrap
-                font.pixelSize: Theme.fontSmall
+                font.pointSize: Theme.captionSize
                 color: Theme.accent
                 visible: pickDialog.license.length > 0
                 text: {
@@ -440,12 +435,11 @@ Item {
         }
     }
 
-    Label {
+    LLOLabel {
         id: statusMsg
         visible: text.length > 0
         color: Theme.textSecondary
-        font.pixelSize: Theme.fontSmall
-        wrapMode: Text.Wrap
+        font.pointSize: Theme.captionSize
         Layout.fillWidth: true
     }
 }

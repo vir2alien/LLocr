@@ -5,6 +5,7 @@ import QtQuick.Dialogs
 
 import LLocr
 
+import "Common"
 import "MainWindow"
 
 ApplicationWindow {
@@ -97,10 +98,10 @@ ApplicationWindow {
             opacity: 0.08
         }
 
-        Label {
+        LLOLabel {
             anchors.centerIn: parent
             text: qsTr("Drop to open")
-            font.pixelSize: Theme.fontCaption * 2
+            font.pointSize: Theme.titleSize
             color: Theme.accent
         }
     }//Rectangle
