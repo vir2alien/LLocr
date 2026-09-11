@@ -28,6 +28,8 @@ public:
     QString installDir(const QString &tag) const;
     // <rootDir>/logs
     QString logsDir() const;
+    // <rootDir>/profiles  (request/server-launch profiles)
+    QString profilesDir() const;
     // <rootDir>/cache
     QString cacheDir() const;
     // <modelsDir>/<org>__<repo>

@@ -48,6 +48,11 @@ QString RuntimePaths::logsDir() const
     return QDir(m_rootDir).filePath(QStringLiteral("logs"));
 }
 
+QString RuntimePaths::profilesDir() const
+{
+    return QDir(m_rootDir).filePath(QStringLiteral("profiles"));
+}
+
 QString RuntimePaths::cacheDir() const
 {
     return QDir(m_rootDir).filePath(QStringLiteral("cache"));

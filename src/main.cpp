@@ -8,6 +8,7 @@
 #include "app/AppController.h"
 #include "app/I18n.h"
 #include "app/OcrImageProvider.h"
+#include "app/RequestProfileStore.h"
 #include "app/SettingsStore.h"
 #include "app/UiController.h"
 #include "runtime/InstallTransaction.h"
@@ -45,6 +46,12 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", &settingsStore);
     llocr::I18n i18n(settingsStore);
 
+    // Request-body profile (built-in defaults + user profile). Created before
+    // the engine loads; QML consumes the singleton, C++ consumers get the
+    // reference passed through.
+    llocr::RequestProfileStore requestProfiles(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfiles", &requestProfiles);
+
     // Managed-runtime controller: single instance, owned here (ADR 36).
     // Created before the engine loads; QML only consumes the singleton.
     llocr::RuntimeController runtimeController(settingsStore);
@@ -58,7 +65,8 @@ int main(int argc, char* argv[]) {
 
     // § review 3.4: self-test state + wizard "Check" bridge moved out of the
     // facade into a dedicated singleton that consumes Runtime's resolve API.
-    llocr::SelfTestController selfTestController(settingsStore, runtimeController);
+    llocr::SelfTestController selfTestController(settingsStore, runtimeController,
+                                                 requestProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);
 
     // Stage D install controller: release catalog, download & install. Also a
@@ -114,7 +122,8 @@ int main(int argc, char* argv[]) {
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &engine,
                      [&engine]() { engine.retranslate(); });
 
-    llocr::AppController appController(settingsStore, runtimeController);
+    llocr::AppController appController(settingsStore, runtimeController,
+                                       requestProfiles);
     llocr::UiController uiController(settingsStore);
 
     qmlRegisterSingletonType(QUrl("qrc:/qml/Theme.qml"), "LLocr", 1, 0, "Theme");

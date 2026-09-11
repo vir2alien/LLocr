@@ -16,12 +16,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
     Q_PROPERTY(int connectionTimeoutMs READ connectionTimeoutMs WRITE setConnectionTimeoutMs NOTIFY connectionTimeoutMsChanged)
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
-    Q_PROPERTY(double temperature READ temperature WRITE setTemperature NOTIFY temperatureChanged)
-    Q_PROPERTY(int maxTokens READ maxTokens WRITE setMaxTokens NOTIFY maxTokensChanged)
-    Q_PROPERTY(double dryMultiplier READ dryMultiplier WRITE setDryMultiplier NOTIFY dryMultiplierChanged)
-    Q_PROPERTY(double dryBase READ dryBase WRITE setDryBase NOTIFY dryBaseChanged)
-    Q_PROPERTY(int dryAllowedLength READ dryAllowedLength WRITE setDryAllowedLength NOTIFY dryAllowedLengthChanged)
-    Q_PROPERTY(int dryPenaltyLastN READ dryPenaltyLastN WRITE setDryPenaltyLastN NOTIFY dryPenaltyLastNChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(int themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
@@ -80,12 +74,6 @@ public:
     static constexpr const char *kDefaultApiKey = "";
     static constexpr int kDefaultTimeoutMs = 120000;
     static constexpr const char *kDefaultModelName = "Unlimited-OCR";
-    static constexpr double kDefaultTemperature = 0.0;
-    static constexpr int kDefaultMaxTokens = 8192;
-    static constexpr double kDefaultDryMultiplier = 0.8;
-    static constexpr double kDefaultDryBase = 1.75;
-    static constexpr int kDefaultDryAllowedLength = 35;
-    static constexpr int kDefaultDryPenaltyLastN = 2048;
     static constexpr const char *kDefaultParserId = "det_tokens";
     static constexpr int kDefaultThemeMode = 0; // System
     static constexpr const char *kDefaultLanguage = "system";
@@ -138,18 +126,6 @@ public:
     // Model
     QString modelName() const;
     void setModelName(const QString &modelName);
-    double temperature() const;
-    void setTemperature(double temp);
-    int maxTokens() const;
-    void setMaxTokens(int maxTkns);
-    double dryMultiplier() const;
-    void setDryMultiplier(double val);
-    double dryBase() const;
-    void setDryBase(double val);
-    int dryAllowedLength() const;
-    void setDryAllowedLength(int val);
-    int dryPenaltyLastN() const;
-    void setDryPenaltyLastN(int val);
 
     // Parser
     QString parserId() const;
@@ -263,12 +239,6 @@ signals:
     void apiKeyChanged();
     void connectionTimeoutMsChanged();
     void modelNameChanged();
-    void temperatureChanged();
-    void maxTokensChanged();
-    void dryMultiplierChanged();
-    void dryBaseChanged();
-    void dryAllowedLengthChanged();
-    void dryPenaltyLastNChanged();
     void parserIdChanged();
     void themeModeChanged();
     void languageChanged();
@@ -331,15 +301,7 @@ private:
 
     // Model
     static constexpr const char *kModelName = "model/name";
-    static constexpr const char *kTemperature = "model/temperature";
-    static constexpr const char *kMaxTokens = "model/maxTokens";
-    static constexpr const char *kDryMultiplier = "model/dryMultiplier";
-    static constexpr const char *kDryBase = "model/dryBase";
-    static constexpr const char *kDryAllowedLength = "model/dryAllowedLength";
-    static constexpr const char *kDryPenaltyLastN = "model/dryPenaltyLastN";
-
-    // Output / parser
-    static constexpr const char *kParserId = "output/parser";
+    static constexpr const char *kParserId = "parser/id";
 
     // UI
     static constexpr const char *kThemeMode = "ui/theme";

@@ -12,6 +12,8 @@
 #include "parsers/DetTokensParser.h"
 #include "parsers/ParserFactory.h"
 
+#include "app/RequestProfileStore.h"
+
 namespace {
 
 bool isPdfPath(const QString& path)
@@ -24,11 +26,12 @@ bool isPdfPath(const QString& path)
 namespace llocr {
 
 AppController::AppController(SettingsStore &settings, RuntimeController &runtime,
-                             QObject *parent)
+                             RequestProfileStore &requestProfiles, QObject *parent)
     : m_settings(settings)
     , m_runtime(runtime)
     , m_recognition(
-          settings, runtime, [this](int index) { return m_document.page(index).image; })
+          settings, runtime, requestProfiles,
+          [this](int index) { return m_document.page(index).image; })
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {

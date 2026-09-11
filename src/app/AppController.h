@@ -17,6 +17,8 @@
 
 namespace llocr {
 
+class RequestProfileStore;
+
 class AppController : public QObject
 {
     Q_OBJECT
@@ -47,6 +49,7 @@ class AppController : public QObject
 
 public:
     explicit AppController(SettingsStore &settings, RuntimeController &runtime,
+                           RequestProfileStore &requestProfiles,
                            QObject *parent = nullptr);
 
     // --- QML getters ---

@@ -12,6 +12,8 @@
 #include <QPromise>
 #include <QTimer>
 
+#include <algorithm>
+
 namespace llocr {
 
 OpenAiProvider::OpenAiProvider(QObject *parent) : QObject(parent) {}
@@ -56,19 +58,20 @@ QByteArray OpenAiProvider::buildRequestBody(const OcrRequest& request,
 
     QJsonObject root{
         {QStringLiteral("model"), request.modelId},
-        {QStringLiteral("messages"), QJsonArray{message}},
-
-        {QStringLiteral("dry_multiplier"), request.dryMultiplier},
-        {QStringLiteral("dry_base"), request.dryBase},
-        {QStringLiteral("dry_allowed_length"), request.dryAllowedLength},
-        {QStringLiteral("dry_penalty_last_n"), request.dryPenaltyLastN},
-        {QStringLiteral("dry_sequence_breakers"), QJsonArray{QStringLiteral("\uE000")}},
-
-        {QStringLiteral("temperature"), request.temperature},
-
-        {QStringLiteral("max_tokens"), request.maxTokens},
-        {QStringLiteral("stream"), false}
+        {QStringLiteral("messages"), QJsonArray{message}}
     };
+
+    // The request profile drives the body parameters. The parameters carry
+    // their position (order) from the profile; QJsonObject itself re-sorts
+    // keys alphabetically during serialization, which llama.cpp treats as
+    // irrelevant — the order governs the profile file and the settings table.
+    QList<RequestParameter> parameters = request.parameters;
+    std::stable_sort(parameters.begin(), parameters.end(),
+                     [](const RequestParameter &a, const RequestParameter &b) {
+                         return a.order < b.order;
+                     });
+    for (const RequestParameter &parameter : parameters)
+        root.insert(parameter.name, RequestProfile::valueToJson(parameter.value));
 
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }

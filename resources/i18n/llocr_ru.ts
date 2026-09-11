@@ -294,44 +294,51 @@
 <context>
     <name>RequestTab</name>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="47"/>
         <source>e.g. Unlimited-OCR, or the id your server exposes</source>
-        <translation>например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
+        <translation type="vanished">например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="61"/>
         <source>Temperature</source>
-        <translation>Температура</translation>
+        <translation type="vanished">Температура</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="67"/>
         <source>Max tokens per page</source>
-        <translation>Макс. токенов на стр.</translation>
+        <translation type="vanished">Макс. токенов на стр.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="89"/>
         <source>DRY multiplier</source>
-        <translation>множитель DRY</translation>
+        <translation type="vanished">множитель DRY</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="95"/>
         <source>DRY base</source>
-        <translation>DRY база штрафа</translation>
+        <translation type="vanished">DRY база штрафа</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="116"/>
         <source>DRY allowed length</source>
-        <translation>DRY разрешенная длина</translation>
+        <translation type="vanished">DRY разрешенная длина</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="122"/>
         <source>DRY range</source>
-        <translation>DRY диапазон</translation>
+        <translation type="vanished">DRY диапазон</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="152"/>
         <source>DRY (Don&apos;t Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp</source>
-        <translation>DRY (Don&apos;t Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
+        <translation type="vanished">DRY (Don&apos;t Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="31"/>
+        <source>Parameter</source>
+        <translation>Параметр</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="35"/>
+        <source>Value</source>
+        <translation>Значение</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="83"/>
+        <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
+        <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
     </message>
 </context>
 <context>

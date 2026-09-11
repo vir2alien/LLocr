@@ -1,7 +1,9 @@
+#include <QFile>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "app/RequestProfileStore.h"
 #include "app/SettingsStore.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeState.h"
@@ -235,7 +237,22 @@ private slots:
         store.setStartupTimeoutMs(10000);
 
         RuntimeController runtime(store);
-        SelfTestController selfTest(store, runtime);
+
+        // Request-profile store for the self-test request; written to the temp
+        // dir because test binaries embed no resources.
+        const QString defaultsPath =
+            dir.filePath(QStringLiteral("request-defaults.json"));
+        {
+            QFile defaultsFile(defaultsPath);
+            QVERIFY(defaultsFile.open(QIODevice::WriteOnly));
+            defaultsFile.write(QByteArrayLiteral(
+                "{\"schemaVersion\":1,\"parameters\":["
+                "{\"order\":1,\"name\":\"temperature\",\"value\":0.0},"
+                "{\"order\":2,\"name\":\"max_tokens\",\"value\":1024},"
+                "{\"order\":3,\"name\":\"stream\",\"value\":false}]}").constData());
+        }
+        RequestProfileStore profiles(store, defaultsPath);
+        SelfTestController selfTest(store, runtime, profiles);
         SelfTestResult result;
         int done = 0;
         QFutureWatcher<SelfTestResult> watch;

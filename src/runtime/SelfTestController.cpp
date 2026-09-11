@@ -3,6 +3,7 @@
 #include <QPainter>
 
 #include "app/SettingsStore.h"
+#include "app/RequestProfileStore.h"
 #include "core/OcrResult.h"
 #include "core/ProviderConfig.h"
 #include "providers/OpenAiProvider.h"
@@ -14,10 +15,12 @@ namespace llocr {
 
 SelfTestController::SelfTestController(SettingsStore &settings,
                                        RuntimeController &runtime,
+                                       RequestProfileStore &requestProfiles,
                                        QObject *parent)
     : QObject(parent)
     , m_settings(settings)
     , m_runtime(runtime)
+    , m_requestProfiles(requestProfiles)
 {
 }
 
@@ -59,6 +62,8 @@ void SelfTestController::runSelfTestRequest(
     request.image = makeTestImage();
     request.prompt = tr("Describe the text in this image in one short line.");
     request.modelId = conn.modelId;
+    // The self-test exercises the same body shape as a real recognition run.
+    request.parameters = m_requestProfiles.activeProfile().parameters;
 
     ProviderConfig config;
     config.baseUrl = conn.baseUrl;

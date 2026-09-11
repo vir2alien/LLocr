@@ -16,6 +16,7 @@ namespace llocr {
 class OpenAiProvider;
 class RuntimeController;
 class SettingsStore;
+class RequestProfileStore;
 
 // QML-facing self-test state + entry point, extracted from the RuntimeController
 // facade (§ review 3.4). The actual resolve→request chain is driven through
@@ -35,6 +36,7 @@ class SelfTestController : public QObject
 
 public:
     explicit SelfTestController(SettingsStore &settings, RuntimeController &runtime,
+                                RequestProfileStore &requestProfiles,
                                 QObject *parent = nullptr);
 
     /// Runs an independent self-test (used by the master wizard "Check" button).
@@ -62,6 +64,7 @@ private:
 
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
+    RequestProfileStore &m_requestProfiles;
     OpenAiProvider *m_selftestProvider = nullptr;
 
     bool m_selftestRunning = false;

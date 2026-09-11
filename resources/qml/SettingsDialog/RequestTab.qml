@@ -5,113 +5,87 @@ import QtQuick.Layouts
 import LLocr
 import "../Common"
 
-GridLayout {
-    columns: 2
-    rowSpacing: 4
-    columnSpacing: 8
+Item {
+    id: root
 
     function loadValues() {
-        temperatureField.text = Settings.temperature.toString()
-        maxTokensField.text  = Settings.maxTokens.toString()
-        dryMultiplierField.text = Settings.dryMultiplier.toString()
-        dryBaseField.text = Settings.dryBase.toString()
-        dryAllowedLengthField.text = Settings.dryAllowedLength.toString()
-        dryRange.text = Settings.dryPenaltyLastN.toString()
+        RequestProfiles.reloadDraft()
     }
 
     function saveValues() {
-        Settings.temperature = parseFloat(temperatureField.text) || 0.0;
-        Settings.maxTokens = parseInt(maxTokensField.text) || 8192;
-        Settings.dryMultiplier = parseFloat(dryMultiplierField.text) || 0.8;
-        Settings.dryBase = parseFloat(dryBaseField.text) || 1.75;
-        Settings.dryAllowedLength = parseInt(dryAllowedLengthField.text) || 35;
-        Settings.dryPenaltyLastN = parseInt(dryRange.text) || 2048;
+        RequestProfiles.saveDraft()
     }
 
-    Item { Layout.columnSpan: 2; implicitHeight: 4 }
-
-    LLOLabel {
-        Layout.topMargin: 4
-        text: qsTr("Temperature")
-    }
-    LLOLabel {
-        Layout.topMargin: 4
-        text: qsTr("Max tokens per page")
-    }
-    TextField {
-        id: temperatureField
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        validator: DoubleValidator { bottom: 0.0; top: 2.0; decimals: 2 }
-    }
-    TextField {
-        id: maxTokensField
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        inputMethodHints: Qt.ImhDigitsOnly
-        validator: IntValidator { bottom: 1; top: 1000000 }
+    function resetValues() {
+        RequestProfiles.loadDefaultDraft()
     }
 
-    LLOLabel {
-        Layout.topMargin: 4
-        text: qsTr("DRY multiplier")
-    }
-    LLOLabel {
-        Layout.topMargin: 4
-        text: qsTr("DRY base")
-    }
-    TextField {
-        id: dryMultiplierField
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        validator: DoubleValidator { bottom: 0.0; top: 2.0; decimals: 2 }
-    }
-    TextField {
-        id: dryBaseField
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        validator: DoubleValidator { bottom: 0.0; top: 3.0; decimals: 2 }
-    }
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: Theme.spacingSmall
 
-    LLOLabel {
-        Layout.topMargin: 4
-        text: qsTr("DRY allowed length")
-    }
-    LLOLabel {
-        Layout.topMargin: 4
-        text: qsTr("DRY range")
-    }
-    TextField {
-        id: dryAllowedLengthField
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        validator: IntValidator { bottom: 0;}
-    }
-    TextField {
-        id: dryRange
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        validator: IntValidator { bottom: 0;}
-    }
+        Item { Layout.columnSpan: 2; implicitHeight: 4 }
 
-    Item {
-        Layout.columnSpan: 2
-        implicitHeight: 4
-    }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacing
 
-    LLOLabel {
-        Layout.columnSpan: 2
-        Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
-        color: Theme.textMuted
-        text: qsTr("DRY (Don't Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp")
-    }
+            LLOLabel {
+                Layout.preferredWidth: root.width * 0.45
+                font.bold: true
+                text: qsTr("Parameter")
+            }
+            LLOLabel {
+                Layout.fillWidth: true
+                font.bold: true
+                text: qsTr("Value")
+            }
+        }
 
-    Item { Layout.fillHeight: true }
+        ListView {
+            id: paramsList
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            spacing: Theme.spacingSmall
+            model: RequestProfiles.draftModel
+
+            delegate: Item {
+                width: paramsList.width
+                implicitHeight: Theme.controlHeight
+
+                LLOLabel {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width * 0.3
+                    elide: Text.ElideRight
+                    text: model.name
+                }
+
+                TextField {
+                    id: valueField
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width * 0.7
+                    implicitHeight: Theme.controlHeight
+                    selectByMouse: true
+                    text: model.valueText
+
+                    onEditingFinished: {
+                        if (text === model.valueText)
+                            return
+                        if (!RequestProfiles.setDraftValue(index, text))
+                            text = model.valueText
+                    }
+                }
+            }
+        }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            font.pointSize: Theme.captionSize
+            color: Theme.textMuted
+            text: qsTr("Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation")
+        }
+    }
 }

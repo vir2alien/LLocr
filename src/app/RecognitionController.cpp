@@ -6,17 +6,20 @@
 #include <functional>
 
 #include "app/SettingsStore.h"
+#include "app/RequestProfileStore.h"
 #include "core/ProviderConfig.h"
 
 namespace llocr {
 
 RecognitionController::RecognitionController(SettingsStore &settings,
                                              RuntimeController &runtime,
+                                             RequestProfileStore &requestProfiles,
                                              ImageProvider imageProvider,
                                              QObject *parent)
     : QObject(parent)
     , m_settings(settings)
     , m_runtime(runtime)
+    , m_requestProfiles(requestProfiles)
     , m_imageProvider(imageProvider)
 {
     m_provider = std::make_unique<OpenAiProvider>();
@@ -108,12 +111,7 @@ OcrRequest RecognitionController::buildRequest(const QImage &image,
     request.image = image;
     request.prompt = m_prompt;
     request.modelId = conn.modelId;
-    request.temperature = m_settings.temperature();
-    request.maxTokens = m_settings.maxTokens();
-    request.dryMultiplier = m_settings.dryMultiplier();
-    request.dryBase = m_settings.dryBase();
-    request.dryAllowedLength = m_settings.dryAllowedLength();
-    request.dryPenaltyLastN = m_settings.dryPenaltyLastN();
+    request.parameters = m_requestProfiles.activeProfile().parameters;
     return request;
 }
 

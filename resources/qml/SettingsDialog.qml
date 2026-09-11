@@ -90,6 +90,7 @@ Dialog {
     onReset: {
         Settings.resetToDefaults();
         loadTab(tabBar.currentIndex);
+        requestTab.resetValues();
     }
 
     onAccepted: {

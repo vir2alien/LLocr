@@ -54,6 +54,24 @@ target_sources(test_settings_store PRIVATE
 )
 add_test(NAME test_settings_store COMMAND test_settings_store)
 
+qt_add_executable(test_request_profile test_request_profile.cpp)
+
+target_include_directories(test_request_profile PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_request_profile PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+
+target_sources(test_request_profile PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/RequestParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/RequestProfileStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+)
+add_test(NAME test_request_profile COMMAND test_request_profile)
+
 qt_add_executable(test_launch_config test_launch_config.cpp)
 
 target_include_directories(test_launch_config PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -94,6 +112,7 @@ target_sources(test_runtime_lifetime PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLog.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/SingleInstanceGuard.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
 if(WIN32)
@@ -225,6 +244,9 @@ target_sources(test_ensure_connection PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/SelfTestController.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/SingleInstanceGuard.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/RequestParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/RequestProfileStore.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
 if(WIN32)
@@ -399,6 +421,7 @@ target_sources(test_model_installer PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLog.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/SingleInstanceGuard.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
 if(WIN32)

@@ -1,0 +1,13 @@
+{
+    "schemaVersion": 1,
+    "parameters": [
+        { "order": 1, "name": "dry_multiplier",        "value": 0.8 },
+        { "order": 2, "name": "dry_base",              "value": 1.75 },
+        { "order": 3, "name": "dry_allowed_length",    "value": 35 },
+        { "order": 4, "name": "dry_penalty_last_n",    "value": 2048 },
+        { "order": 5, "name": "dry_sequence_breakers", "value": [] },
+        { "order": 6, "name": "temperature",           "value": 0.0 },
+        { "order": 7, "name": "max_tokens",            "value": 8192 },
+        { "order": 8, "name": "stream",                "value": false }
+    ]
+}

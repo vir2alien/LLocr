@@ -5,6 +5,7 @@
 #include <QString>
 
 #include "core/OcrResult.h"
+#include "core/RequestProfile.h"
 #include "core/ProviderConfig.h"
 
 namespace llocr {
@@ -18,13 +19,9 @@ struct OcrRequest {
     QString prompt;
     QString modelId;
 
-    // Optional
-    double temperature = 0.0;
-    int maxTokens = 8192;
-    double dryMultiplier = 0.8;
-    double dryBase = 1.75;
-    int dryAllowedLength = 35;
-    int dryPenaltyLastN = 2048;
+    // Request-body parameters from the request profile (ordered; see
+    // RequestProfile). The provider appends them after model/messages.
+    QList<RequestParameter> parameters;
 };
 
 class ILlmProvider {

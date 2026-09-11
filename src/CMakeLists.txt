@@ -5,6 +5,8 @@ qt_add_executable(llocr
 
     core/OcrResult.h
     core/ProviderConfig.h
+    core/RequestProfile.h
+    core/RequestProfile.cpp
 
     # providers
     providers/ILlmProvider.h
@@ -44,6 +46,10 @@ qt_add_executable(llocr
     app/PageIndex.h
     app/RecognitionController.h
     app/RecognitionController.cpp
+    app/RequestParametersModel.h
+    app/RequestParametersModel.cpp
+    app/RequestProfileStore.h
+    app/RequestProfileStore.cpp
     app/UiController.h
     app/UiController.cpp
 
@@ -154,6 +160,13 @@ qt_add_resources(llocr "app_models"
     BASE "${CMAKE_SOURCE_DIR}/resources/models"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/models/default-presets.json"
+)
+
+qt_add_resources(llocr "app_profiles"
+    PREFIX "/profiles"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/profiles/request.json"
 )
 
 file(GLOB_RECURSE PREVIEW_FILES

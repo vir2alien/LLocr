@@ -22,12 +22,6 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs) },
     // Model
     { kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName)) },
-    { kTemperature, "temperature", QVariant(kDefaultTemperature) },
-    { kMaxTokens, "maxTokens", QVariant(kDefaultMaxTokens) },
-    { kDryMultiplier, "dryMultiplier", QVariant(kDefaultDryMultiplier) },
-    { kDryBase, "dryBase", QVariant(kDefaultDryBase) },
-    { kDryAllowedLength, "dryAllowedLength", QVariant(kDefaultDryAllowedLength) },
-    { kDryPenaltyLastN, "dryPenaltyLastN", QVariant(kDefaultDryPenaltyLastN) },
     // Parser
     { kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId)) },
     // Connection mode / runtime
@@ -188,84 +182,6 @@ void SettingsStore::setModelName(const QString &modelName)
         return;
     m_settings.setValue(kModelName, modelName);
     emit modelNameChanged();
-}
-
-double SettingsStore::temperature() const
-{
-    return m_settings.value(kTemperature, kDefaultTemperature).toDouble();
-}
-
-void SettingsStore::setTemperature(double temp)
-{
-    if (temperature() == temp)
-        return;
-    m_settings.setValue(kTemperature, temp);
-    emit temperatureChanged();
-}
-
-int SettingsStore::maxTokens() const
-{
-    return m_settings.value(kMaxTokens, kDefaultMaxTokens).toInt();
-}
-
-void SettingsStore::setMaxTokens(int maxTkns)
-{
-    if (maxTokens() == maxTkns)
-        return;
-    m_settings.setValue(kMaxTokens, maxTkns);
-    emit maxTokensChanged();
-}
-
-double SettingsStore::dryMultiplier() const
-{
-    return m_settings.value(kDryMultiplier, kDefaultDryMultiplier).toDouble();
-}
-
-void SettingsStore::setDryMultiplier(double val)
-{
-    if (dryMultiplier() == val)
-        return;
-    m_settings.setValue(kDryMultiplier, val);
-    emit dryMultiplierChanged();
-}
-
-double SettingsStore::dryBase() const
-{
-    return m_settings.value(kDryBase, kDefaultDryBase).toDouble();
-}
-
-void SettingsStore::setDryBase(double val)
-{
-    if (dryBase() == val)
-        return;
-    m_settings.setValue(kDryBase, val);
-    emit dryBaseChanged();
-}
-
-int SettingsStore::dryAllowedLength() const
-{
-    return m_settings.value(kDryAllowedLength, kDefaultDryAllowedLength).toInt();
-}
-
-void SettingsStore::setDryAllowedLength(int val)
-{
-    if (dryAllowedLength() == val)
-        return;
-    m_settings.setValue(kDryAllowedLength, val);
-    emit dryAllowedLengthChanged();
-}
-
-int SettingsStore::dryPenaltyLastN() const
-{
-    return m_settings.value(kDryPenaltyLastN, kDefaultDryPenaltyLastN).toInt();
-}
-
-void SettingsStore::setDryPenaltyLastN(int val)
-{
-    if (dryPenaltyLastN() == val)
-        return;
-    m_settings.setValue(kDryPenaltyLastN, val);
-    emit dryPenaltyLastNChanged();
 }
 
 QString SettingsStore::parserId() const

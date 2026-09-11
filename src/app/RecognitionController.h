@@ -16,6 +16,7 @@
 namespace llocr {
 
 class SettingsStore;
+class RequestProfileStore;
 
 class RecognitionController : public QObject
 {
@@ -26,6 +27,7 @@ public:
 
     explicit RecognitionController(SettingsStore &settings,
                                    RuntimeController &runtime,
+                                   RequestProfileStore &requestProfiles,
                                    ImageProvider imageProvider,
                                    QObject *parent = nullptr);
 
@@ -53,6 +55,7 @@ private:
 
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
+    RequestProfileStore &m_requestProfiles;
     ImageProvider m_imageProvider;
 
     ResolvedConnection m_connection;
