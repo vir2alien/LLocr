@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 ScrollView {
     contentWidth: availableWidth
@@ -69,10 +70,8 @@ ScrollView {
                 text: Settings.serverPath
                 onEditingFinished: Settings.serverPath = text.trim()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Browse…")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: serverPicker.open()
             }
         }
@@ -80,10 +79,8 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            Button {
+            LLOButton {
                 text: qsTr("Auto-detect")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: {
                     Settings.serverPath = Runtime.autoDiscoverPath()
                     serverPathField.text = Settings.serverPath
@@ -110,40 +107,30 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            Button {
+            LLOButton {
                 text: qsTr("Check")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
             }
-            Button {
+            LLOButton {
                 text: qsTr("Start")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 enabled: canManage && Runtime.state !== 2 && Runtime.state !== 3
                 onClicked: Runtime.startServer()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Stop")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 enabled: canManage && (Runtime.state === 2 || Runtime.state === 3)
                 onClicked: Runtime.stopServer()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Restart")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 enabled: canManage && Runtime.state === 3
                 onClicked: Runtime.restartServer()
             }
             Item { Layout.fillWidth: true }
         }
 
-        Button {
+        LLOButton {
             text: qsTr("Show log")
-            implicitHeight: Theme.controlHeight
-            font.pixelSize: Theme.fontCaption
             onClicked: {
                 if (dialog.logWindowRef)
                     dialog.logWindowRef.show()
@@ -223,11 +210,9 @@ ScrollView {
                 }
                 RowLayout {
                     spacing: 6
-                    Button {
+                    LLOButton {
                         text: Runtime.state === 3 ? qsTr("Stop server and update")
                                                 : qsTr("Update")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontCaption
                         enabled: !RuntimeInstaller.busy
                         onClicked: {
                             if (Runtime.state === 3)
@@ -235,10 +220,8 @@ ScrollView {
                             RuntimeInstaller.installUpdate()
                         }
                     }
-                    Button {
+                    LLOButton {
                         text: qsTr("View changes")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontCaption
                         onClicked: RuntimeInstaller.openReleasePage()
                     }
                     Item { Layout.fillWidth: true }
@@ -292,10 +275,8 @@ ScrollView {
                     onActivated: RuntimeInstaller.selectedRelease = currentIndex
                 }
 
-                Button {
+                LLOButton {
                     text: qsTr("Check for updates")
-                    implicitHeight: Theme.controlHeight
-                    font.pixelSize: Theme.fontCaption
                     enabled: !RuntimeInstaller.busy
                     onClicked: RuntimeInstaller.checkForUpdates()
                 }
@@ -328,11 +309,9 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            Button {
+            LLOButton {
                 text: RuntimeInstaller.state === 3 ? qsTr("Cancel")
                                                    : qsTr("Download and install")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 enabled: !(RuntimeInstaller.state === 1 || RuntimeInstaller.state === 4)
                 onClicked: {
                     if (RuntimeInstaller.state === 3)
@@ -341,10 +320,8 @@ ScrollView {
                         RuntimeInstaller.startDownloadAndInstall()
                 }
             }
-            Button {
+            LLOButton {
                 text: qsTr("Clean up unused builds")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 enabled: !RuntimeInstaller.busy
                 onClicked: RuntimeInstaller.cleanupUnusedBuilds()
             }

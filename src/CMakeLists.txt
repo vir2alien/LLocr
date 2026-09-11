@@ -137,6 +137,8 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/RuntimeTabExternal.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/RuntimeTabInternal.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/ModelsTab.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOButton.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOLabel.qml"
 )
 
 qt_add_resources(llocr "app_conf"

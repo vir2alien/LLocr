@@ -4,10 +4,8 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
-// SetupWizard → Step 3 "Model": pick a vision GGUF model. Options mirror the
-// Settings → Models tab: install from a preset, search Hugging Face, or select
-// a local .gguf. The step is complete once `Settings.launchModelPath` is set.
 Item {
     id: root
 
@@ -94,10 +92,8 @@ Item {
                 value: ModelInstaller.progress
             }
 
-            Button {
+            LLOButton {
                 text: qsTr("Cancel")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontSmall
                 visible: ModelInstaller.state === 3
                 onClicked: ModelInstaller.cancelInstall()
             }
@@ -181,10 +177,8 @@ Item {
                                         text: pInfo.approxVramGb > 0
                                               ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb) : ""
                                     }
-                                    Button {
+                                    LLOButton {
                                         text: qsTr("Install")
-                                        implicitHeight: Theme.controlHeight
-                                        font.pixelSize: Theme.fontSmall
                                         enabled: !ModelInstaller.busy && !pInfo.installed
                                         onClicked: {
                                             prepareDialog.pendingIndex = index
@@ -211,9 +205,8 @@ Item {
                                 text: ModelInstaller.searchQuery
                                 onEditingFinished: ModelInstaller.searchQuery = text.trim()
                             }
-                            Button {
+                            LLOButton {
                                 text: qsTr("Search")
-                                implicitHeight: Theme.controlHeight
                                 onClicked: {
                                     ModelInstaller.searchQuery = searchField.text.trim()
                                     ModelInstaller.startSearch()
@@ -253,10 +246,8 @@ Item {
                                         color: Theme.textMuted
                                         text: sInfo.id
                                     }
-                                    Button {
+                                    LLOButton {
                                         text: qsTr("Install")
-                                        implicitHeight: Theme.controlHeight
-                                        font.pixelSize: Theme.fontSmall
                                         enabled: !ModelInstaller.busy
                                         onClicked: {
                                             prepareDialog.pendingIndex = -1
@@ -292,15 +283,13 @@ Item {
                                 placeholderText: qsTr("path to a .gguf model")
                                 text: Settings.launchModelPath
                             }
-                            Button {
+                            LLOButton {
                                 text: qsTr("Browse…")
-                                implicitHeight: Theme.controlHeight
                                 onClicked: modelPicker.open()
                             }
                         }
-                        Button {
+                        LLOButton {
                             text: qsTr("Use this file")
-                            implicitHeight: Theme.controlHeight
                             enabled: localPathField.text.trim().length > 0
                             onClicked: Settings.launchModelPath = localPathField.text.trim()
                         }

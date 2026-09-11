@@ -105,7 +105,7 @@ Item {
         Accessible.name: qsTr("Delete page %1").arg(model.pageIndex + 1)
 
         onClicked: controller.removePage(model.pageIndex)
-    }// ToolButton deletePageButton
+    }// ToolButton
 
     Rectangle {
         id: dragGrip
@@ -136,7 +136,6 @@ Item {
             enabled: !controller.busy
             cursorShape: Qt.SizeVerCursor
 
-            // Захватываем только вертикальное перемещение
             yAxis.enabled: true
             xAxis.enabled: false
 
@@ -147,7 +146,6 @@ Item {
                     fromIndex = index
                     thumbList.draggedIndex = index
                 } else {
-                    // Вычисляем целевой индекс по центру делегата
                     const centerY = delegateRoot.y + delegateRoot.height / 2
                     let toIndex = Math.floor(centerY / (delegateRoot.height + thumbList.spacing))
                     toIndex = Math.max(0, Math.min(thumbList.count - 1, toIndex))
@@ -160,6 +158,7 @@ Item {
                         delegateRoot.y = index * (delegateRoot.height + thumbList.spacing) // вернуть на место
                 }
             }
-        }
-    }//Rectangle dragGrip
-}//delegate
+        }//DragHandler
+    }//Rectangle
+}
+

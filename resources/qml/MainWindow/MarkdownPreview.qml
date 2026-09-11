@@ -1,4 +1,3 @@
-// MarkdownPreview.qml
 import QtQuick
 import QtWebEngine
 

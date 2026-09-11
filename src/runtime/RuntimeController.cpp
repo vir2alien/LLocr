@@ -125,10 +125,14 @@ void RuntimeController::recomputeConfigValid()
             valid = false;
     }
 
-    if (valid == m_configValid)
-        return;
-    m_configValid = valid;
-    emit configValidChanged();
+    if (valid != m_configValid) {
+        m_configValid = valid;
+        emit configValidChanged();
+    }
+    if (valid && m_state == RuntimeState::NotConfigured)
+        setState(RuntimeState::Stopped);
+    else if (!valid && m_state == RuntimeState::Stopped)
+        setState(RuntimeState::NotConfigured);
 }
 
 ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings)

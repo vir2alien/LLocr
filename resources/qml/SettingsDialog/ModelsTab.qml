@@ -4,15 +4,30 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 Item {
     id: root
+    property int preparedIndex: -1
 
     function fmtBytes(bytes) {
         if (bytes <= 0) return ""
         if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + " GiB"
         if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MiB"
         return (bytes / 1024).toFixed(1) + " KiB"
+    }
+
+    Connections {
+        target: ModelInstaller
+        function onStateChanged() {
+            if (ModelInstaller.state === 2 && pickDialog.visible) {
+                const idx = preparedIndex
+                if (idx >= 0 && idx < ModelInstaller.presetCount)
+                    pickDialog.license = ModelInstaller.presetInfo(idx).license
+                else
+                    pickDialog.license = ""
+            }
+        }
     }
 
     ColumnLayout {
@@ -44,10 +59,8 @@ Item {
                 value: ModelInstaller.progress
             }
 
-            Button {
+            LLOButton {
                 text: qsTr("Cancel")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontSmall
                 visible: ModelInstaller.state === 3
                 onClicked: ModelInstaller.cancelInstall()
             }
@@ -113,17 +126,13 @@ Item {
                         color: info.origin === "managed" ? Theme.textSecondary : Theme.textMuted
                         text: info.origin === "managed" ? qsTr("managed") : qsTr("external")
                     }
-                    Button {
+                    LLOButton {
                         text: info.active ? qsTr("Active") : qsTr("Activate")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontSmall
                         enabled: !info.active
                         onClicked: ModelInstaller.setActiveModel(index)
                     }
-                    Button {
+                    LLOButton {
                         text: qsTr("Remove")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontSmall
                         enabled: info.origin === "managed"
                         onClicked: {
                             const err = ModelInstaller.removeModel(index)
@@ -131,10 +140,8 @@ Item {
                                 statusMsg.text = err
                         }
                     }
-                    Button {
+                    LLOButton {
                         text: qsTr("Open folder")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontSmall
                         onClicked: {
                             const err = ModelInstaller.openModelFolder(index)
                             if (err.length)
@@ -215,10 +222,8 @@ Item {
                               ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb)
                               : ""
                     }
-                    Button {
+                    LLOButton {
                         text: qsTr("Install")
-                        implicitHeight: Theme.controlHeight
-                        font.pixelSize: Theme.fontSmall
                         enabled: !ModelInstaller.busy && !pInfo.installed
                         onClicked: {
                             ModelInstaller.preparePreset(index)
@@ -262,10 +267,8 @@ Item {
                 text: ModelInstaller.searchQuery
                 onEditingFinished: ModelInstaller.searchQuery = text.trim()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Search")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: {
                     ModelInstaller.searchQuery = searchField.text.trim()
                     ModelInstaller.startSearch()
@@ -307,7 +310,7 @@ Item {
                         color: Theme.textMuted
                         text: sInfo.id
                     }
-                    Button {
+                    LLOButton {
                         text: qsTr("Install")
                         implicitHeight: Theme.controlHeight
                         font.pixelSize: Theme.fontSmall
@@ -355,22 +358,16 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            Button {
+            LLOButton {
                 text: qsTr("Import catalog…")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: importDialog.open()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Export catalog…")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: exportDialog.open()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Restore defaults")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: ModelInstaller.resetUserCatalog()
             }
             Item { Layout.fillWidth: true }
@@ -443,7 +440,6 @@ Item {
         }
     }
 
-    // Shared inline status label (errors from row actions land here).
     Label {
         id: statusMsg
         visible: text.length > 0
@@ -451,20 +447,5 @@ Item {
         font.pixelSize: Theme.fontSmall
         wrapMode: Text.Wrap
         Layout.fillWidth: true
-    }
-
-    property int preparedIndex: -1
-    Connections {
-        target: ModelInstaller
-        function onStateChanged() {
-            if (ModelInstaller.state === 2 && pickDialog.visible) {
-                // ReadyToDownload: show the license for the prepared preset.
-                const idx = preparedIndex
-                if (idx >= 0 && idx < ModelInstaller.presetCount)
-                    pickDialog.license = ModelInstaller.presetInfo(idx).license
-                else
-                    pickDialog.license = ""
-            }
-        }
     }
 }

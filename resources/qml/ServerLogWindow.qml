@@ -3,16 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "Common"
 
-// Read-only live view of the managed server log (ring-buffer tail). Non-modal:
-// it can stay open while Start/Stop/Recognition run. Content refreshes
-// automatically because it binds to RuntimeLog.serverLog, whose change signal
-// fires on every appended line.
-//
-// §H.1: toolbar with "Copy log" (whole ring buffer → clipboard), "Open
-// directory" (logs/ via the platform file manager) and "Clear view". New lines
-// auto-scroll to the bottom unless the user has scrolled up to inspect
-// earlier output.
 ApplicationWindow {
     id: root
     title: qsTr("llama-server log")
@@ -47,8 +39,6 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
 
-            // Live-update indicator: bright green right after an append, then
-            // fades back to a dim neutral colour.
             Rectangle {
                 id: liveDot
                 Layout.preferredWidth: 8
@@ -78,22 +68,16 @@ ApplicationWindow {
             anchors.rightMargin: 8
             spacing: Theme.spacingSmall
 
-            Button {
+            LLOButton {
                 text: qsTr("Copy log")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: RuntimeLog.copyServerLog()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Open directory")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: RuntimeLog.openServerLogFolder()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Clear view")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 onClicked: RuntimeLog.clearServerLog()
             }
             Item { Layout.fillWidth: true }
@@ -111,8 +95,6 @@ ApplicationWindow {
         anchors.margins: 10
         clip: true
 
-        // An explicit vertical scroll bar instead of the lazily-created one so
-        // auto-scroll logic can always address a live, non-null object.
         ScrollBar.vertical: ScrollBar {
             id: vScroller
             policy: ScrollBar.AsNeeded
@@ -136,13 +118,8 @@ ApplicationWindow {
             }
 
             onTextChanged: {
-                // Auto-scroll to the newest line, unless the user is inspecting
-                // earlier output.
                 if (!root.userScrolledUp && vScroller.visible)
                     vScroller.position = 1.0 - vScroller.size
-                // Flash the live indicator. Guarded because this handler also
-                // fires while logArea is being constructed, before liveDot /
-                // liveFlash (declared later, in the header/footer) exist yet.
                 if (root.liveDot && root.liveFlash) {
                     root.liveDot.color = Theme.success
                     root.liveDot.opacity = 1.0
@@ -152,12 +129,8 @@ ApplicationWindow {
         }
     }
 
-    // True once the user scrolls away from the bottom (stops auto-following).
     property bool userScrolledUp: false
 
-    // Track the scroll position via the explicit scroll bar (non-null, unlike
-    // ScrollView.verticalScrollBar which is built lazily); user drags away from
-    // the bottom disable auto-follow.
     Connections {
         target: vScroller
         function onPositionChanged() {

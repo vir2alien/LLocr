@@ -3,10 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
-// SetupWizard → Step 4 "Launch": tune the managed-server launch parameters and
-// verify the whole chain with the "Check" button (SelfTest.runSelfTestQml).
-// The step is complete once the self-test succeeded.
 Item {
     id: root
 
@@ -15,19 +13,15 @@ Item {
                             && SelfTest.selftestOk
                             && !SelfTest.selftestRunning
 
-    // §H.2 memory estimate (recomputed when the model or context size changes).
-    property var modelBytes: 0
-    property var kvBytes: 0
-    property var totalBytes: 0
-    property var systemRamBytes: 0
+    property real modelBytes: 0
+    property real kvBytes: 0
+    property real totalBytes: 0
+    property real systemRamBytes: 0
     property bool hasEstimate: false
     property bool hasMemoryWarning: false
 
     function gib(bytes) { return bytes / (1024 * 1024 * 1024) }
     function giText(bytes) { return (bytes / (1024 * 1024 * 1024)).toFixed(1) }
-    // Command preview is built in C++ (ServerLaunchConfig::toDisplayCommand —
-    // shell-escaped, capability-aware, single source of truth); we only refresh
-    // it when a launch setting it depends on changes.
     property string commandPreview: ""
 
     function refreshEstimate() {
@@ -146,7 +140,6 @@ Item {
             }
         }
 
-        // ----- §H.2 memory estimate + warning -----------------------------
         Rectangle {
             Layout.fillWidth: true
             visible: root.hasMemoryWarning
@@ -229,10 +222,8 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            Button {
+            LLOButton {
                 text: qsTr("Check")
-                implicitHeight: Theme.controlHeight
-                font.pixelSize: Theme.fontCaption
                 enabled: !SelfTest.selftestRunning
                 onClicked: SelfTest.runSelfTestQml()
             }

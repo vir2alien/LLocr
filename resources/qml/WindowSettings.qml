@@ -40,19 +40,11 @@ Item
         onTriggered: saveSettings()
     }
 
-    // Returns the position to place the window at. The saved x/y may point
-    // off-screen (monitor unplugged, resolution/arrangement changed, window
-    // closed while dragged beyond an edge): the title bar would then be
-    // unreachable and the window unmovable. Keep the saved position when its
-    // top "title bar" band still overlaps a connected screen, otherwise snap
-    // to the nearest screen and center the window on it.
     function visiblePosition(x, y, w, h) {
         const screens = Application.screens;
         if (screens.length === 0)
             return { x: x, y: y }; // nothing to validate against
 
-        // Top band of the window where the OS title bar lives; must stay
-        // reachable so the user can grab and move the window.
         const band = Math.min(48, h);
 
         for (var i = 0; i < screens.length; i++) {
@@ -61,8 +53,6 @@ Item
                 return { x: x, y: y };
         }
 
-        // Saved position is off-screen: pick the geometrically closest screen
-        // and center the window on it, clamped so the title bar stays visible.
         const cx = x + w / 2;
         const cy = y + h / 2;
         let pick = screens[0];
@@ -76,7 +66,7 @@ Item
                 pick = s;
             }
         }
-        const grab = 60; // keep at least this much of the window on-screen
+        const grab = 60;
         const nx = clamp(cx - w / 2, pick.virtualX - w + grab,
                          pick.virtualX + pick.width - grab);
         const ny = clamp(cy - h / 2, pick.virtualY - band + grab,

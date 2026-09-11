@@ -117,7 +117,7 @@ Image {
                         controller.onBoxRectChanged(boxDelegate.index, nx, ny,
                                                     boxWidth, boxHeight)
                     }
-                }
+                }//MouseArea
 
                 ToolButton {//delete button
                     visible: boxHover.hovered && boxDelegate.isImage
@@ -224,10 +224,10 @@ Image {
                                 controller.onBoxRectChanged(boxDelegate.index,
                                                             r.x, r.y, r.w, r.h)
                             }
-                        }
-                    }
-                }
-            }
-        }
-    }
+                        }//MouseArea
+                    }//delegate: Rectangle
+                }//Repeater
+            }//delegate: Rectangle
+        }//Repeater
+    }//Item
 }

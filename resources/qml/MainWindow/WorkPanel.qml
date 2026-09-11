@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 Rectangle {
     color: Theme.surfaceAlt
@@ -37,8 +38,7 @@ Rectangle {
                 font.bold: controller.currentPageEdited
             }
 
-            Button {
-                flat: true
+            LLOButton {
                 text: qsTr("Revert")
                 visible: controller.currentPageEditable && controller.currentPageEdited
                 onClicked: controller.revertCurrentPageEdits()

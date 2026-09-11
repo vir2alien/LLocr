@@ -3,13 +3,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 ColumnLayout {
     id: runtimeLayout
     clip: true
     spacing: 4
 
-    // This is neeedet so the page always fills the StackLayout.
     Layout.maximumHeight: Number.POSITIVE_INFINITY
 
     readonly property int connectionMode: connectionModeBox.currentIndex
@@ -26,10 +26,8 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         spacing: 6
-        Button {
+        LLOButton {
             text: qsTr("Launch setup wizard…")
-            implicitHeight: Theme.controlHeight
-            font.pixelSize: Theme.fontCaption
             onClicked: {
                 if (dialog.setupWizardRef)
                     dialog.setupWizardRef.startWizard()

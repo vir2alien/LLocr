@@ -4,14 +4,11 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
-// SetupWizard → Step 2 "Runtime": obtain a llama-server binary. Either download
-// and install one (via RuntimeInstaller) or point at an existing binary.
-// The step is complete once `Settings.serverPath` points at a file.
 Item {
     id: root
 
-    // Can the user move forward?
     property bool complete: Settings.serverPath.trim().length > 0
 
     ColumnLayout {
@@ -104,18 +101,16 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 6
-                    Button {
+                    LLOButton {
                         text: RuntimeInstaller.state === 3 ? qsTr("Cancel")
                                                            : qsTr("Download and install")
-                        implicitHeight: Theme.controlHeight
                         enabled: !(RuntimeInstaller.state === 1 || RuntimeInstaller.state === 4)
                         onClicked: RuntimeInstaller.state === 3
                                        ? RuntimeInstaller.cancelInstall()
                                        : RuntimeInstaller.startDownloadAndInstall()
                     }
-                    Button {
+                    LLOButton {
                         text: qsTr("Check for updates")
-                        implicitHeight: Theme.controlHeight
                         enabled: !RuntimeInstaller.busy
                         onClicked: RuntimeInstaller.checkForUpdates()
                     }
@@ -127,7 +122,6 @@ Item {
                     wrapMode: Text.Wrap
                     font.pixelSize: Theme.fontSmall
                     color: Theme.textMuted
-                    // §7.8: fresh unsigned binaries may be blocked.
                     text: qsTr("On Windows, a freshly downloaded binary can be flagged by "
                                + "SmartScreen or antivirus; if launch fails, pick the file "
                                + "manually below.")
@@ -159,9 +153,8 @@ Item {
                 text: Settings.serverPath
                 onEditingFinished: Settings.serverPath = text.trim()
             }
-            Button {
+            LLOButton {
                 text: qsTr("Browse…")
-                implicitHeight: Theme.controlHeight
                 onClicked: binaryPicker.open()
             }
         }
@@ -169,9 +162,8 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            Button {
+            LLOButton {
                 text: qsTr("Probe")
-                implicitHeight: Theme.controlHeight
                 onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
             }
             Label {

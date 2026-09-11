@@ -62,7 +62,7 @@ ApplicationWindow {
         }
 
 
-    } // SplitView
+    } //SplitView
 
     DropArea {
         id: dropArea
@@ -103,7 +103,7 @@ ApplicationWindow {
             font.pixelSize: Theme.fontCaption * 2
             color: Theme.accent
         }
-    }
+    }//Rectangle
 
     FileDialog {
         id: fileDialog
@@ -155,14 +155,12 @@ ApplicationWindow {
     SetupWizard {
         id: setupWizard
 
-        // External was chosen on Welcome: land the user in Connection settings.
         onOpenConnectionSettings: {
             settingsDialog.open()
             settingsDialog.selectTab(1)
         }
     }
 
-    // §4.4: show the wizard automatically on a fresh profile, no network checks.
     Timer {
         id: setupTrigger
         interval: 400
