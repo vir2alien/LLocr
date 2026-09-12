@@ -28,8 +28,8 @@
         {
             "order": 5,
             "name": "dry_sequence_breakers",
-            "value": [],
-            "description": "Comma-separated sequences that reset repetition tracking; empty = none."
+            "value": ["\uE000"],
+            "description": "Sequences that end DRY repetition tracking. The server requires a non-empty array: \uE000 (a private-use character that never matches) keeps the breakers effectively disabled."
         },
         {
             "order": 6,

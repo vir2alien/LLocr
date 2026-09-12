@@ -97,6 +97,23 @@ OcrResult OpenAiProvider::parseResponse(const QByteArray& responseData)
     return result;
 }
 
+// llama.cpp / OpenAI-compatible servers report the exact reason in the HTTP
+// error body: {"error": {"message": "..."}}. Surfacing it turns a bare
+// "Bad Request" into an actionable message (e.g. which sampling parameter the
+// server rejected).
+QString OpenAiProvider::extractServerError(const QByteArray& responseData)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    if (!doc.isObject())
+        return QString();
+    const QJsonValue error = doc.object().value(QStringLiteral("error"));
+    if (error.isObject())
+        return error.toObject().value(QStringLiteral("message")).toString();
+    if (error.isString())
+        return error.toString();
+    return QString();
+}
+
 QFuture<OcrResult> OpenAiProvider::recognize(const OcrRequest &request, const ProviderConfig &config)
 {
     auto promise = std::make_shared<QPromise<OcrResult>>();
@@ -122,10 +139,20 @@ QFuture<OcrResult> OpenAiProvider::recognize(const OcrRequest &request, const Pr
 
     QObject::connect(reply, &QNetworkReply::finished, reply,
                      [reply, promise]() mutable {
-                         if (reply->error() != QNetworkReply::NoError)
-                             promise->addResult(OcrResult::makeError(reply->errorString()));
-                         else
+                         if (reply->error() != QNetworkReply::NoError) {
+                             // Prefer the server's own error message (llama.cpp
+                             // sends {"error":{"message": ...}} with the exact
+                             // reason, e.g. which sampling parameter was rejected);
+                             // fall back to the Qt-level description.
+                             QString error = reply->errorString();
+                             const QString serverError =
+                                 extractServerError(reply->readAll());
+                             if (!serverError.isEmpty())
+                                 error += QStringLiteral("\nServer: ") + serverError;
+                             promise->addResult(OcrResult::makeError(error));
+                         } else {
                              promise->addResult(parseResponse(reply->readAll()));
+                         }
                          promise->finish();
                          reply->deleteLater();
                      });

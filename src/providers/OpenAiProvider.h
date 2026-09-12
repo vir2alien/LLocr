@@ -38,6 +38,10 @@ private:
 
     static OcrResult parseResponse(const QByteArray& responseData);
 
+    /// Extracts the human-readable message from an OpenAI-style HTTP error
+    /// body ("error"."message"); empty when the body is not in that shape.
+    static QString extractServerError(const QByteArray& responseData);
+
     QNetworkAccessManager m_network;
     QPointer<QNetworkReply> m_currentReply;
 };
