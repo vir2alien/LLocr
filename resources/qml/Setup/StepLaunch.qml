@@ -30,8 +30,8 @@ Item {
             hasMemoryWarning = false
             return
         }
-        var m = Runtime.estimateModelMemory(Settings.launchModelPath,
-                                            Settings.launchCtxSize)
+        // The context size comes from the active launch profile.
+        var m = Runtime.estimateModelMemory(Settings.launchModelPath)
         root.modelBytes = m.modelBytes
         root.kvBytes = m.kvCacheBytes
         root.totalBytes = m.totalBytes
@@ -48,15 +48,29 @@ Item {
     Connections {
         target: Settings
         function onLaunchModelPathChanged() { refreshAll() }
-        function onLaunchCtxSizeChanged() { refreshAll() }
-        function onLaunchCacheTypeKChanged() { refreshAll() }
-        function onLaunchCacheTypeVChanged() { refreshAll() }
         function onLaunchPortChanged() { root.commandPreview = Runtime.launchCommandPreview() }
         function onLaunchHostChanged() { root.commandPreview = Runtime.launchCommandPreview() }
-        function onLaunchGpuLayersChanged() { root.commandPreview = Runtime.launchCommandPreview() }
         function onLaunchModelAliasChanged() { root.commandPreview = Runtime.launchCommandPreview() }
     }
-    Component.onCompleted: refreshAll()
+    Connections {
+        target: LaunchProfiles
+        function onProfileChanged() { refreshAll() }
+        function onActiveProfileChanged() { syncPresetModel() }
+    }
+    Component.onCompleted: {
+        refreshAll()
+        syncPresetModel()
+    }
+
+    // currentIndex is assigned imperatively: a declarative binding would be
+    // broken by the user's own combobox interaction.
+    function syncPresetModel() {
+        presetListModel.clear()
+        for (let i = 0; i < LaunchProfiles.presetIds.length; ++i)
+            presetListModel.append({ name: LaunchProfiles.presetNames[i] })
+        const idx = LaunchProfiles.presetIds.indexOf(LaunchProfiles.activeProfileId)
+        profileBox.currentIndex = idx >= 0 ? idx : 0
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -94,24 +108,17 @@ Item {
                 onEditingFinished: Settings.launchPort = parseInt(text, 10) || 0
             }
 
-            LLOLabel { text: qsTr("Context size") }
-            TextField {
-                id: ctxField
-                Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                validator: IntValidator { bottom: 256; top: 131072 }
-                text: Settings.launchCtxSize
-                onEditingFinished: Settings.launchCtxSize = parseInt(text, 10) || 0
+            LLOLabel {
+                text: qsTr("Launch profile")
             }
-
-            LLOLabel { text: qsTr("GPU layers") }
-            TextField {
-                id: gpuField
+            ComboBox {
+                id: profileBox
                 Layout.fillWidth: true
                 implicitHeight: Theme.controlHeight
-                validator: IntValidator { bottom: -1; top: 200 }
-                text: Settings.launchGpuLayers
-                onEditingFinished: Settings.launchGpuLayers = parseInt(text, 10) || 0
+                textRole: "name"
+                model: ListModel { id: presetListModel }
+                onActivated: LaunchProfiles.selectDraftProfile(
+                                 LaunchProfiles.presetIds[currentIndex])
             }
         }
 
@@ -129,8 +136,9 @@ Item {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: qsTr("Loading the model at startup uses several GB of RAM/VRAM "
-                           + "even when idle — off by default.")
+                text: qsTr("Full parameter table: Settings → Launch. "
+                           + "Loading the model at startup uses several GB "
+                           + "of RAM/VRAM even when idle — off by default.")
             }
         }
 

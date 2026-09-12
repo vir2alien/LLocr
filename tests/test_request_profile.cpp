@@ -20,7 +20,8 @@ namespace {
 constexpr const char *kDefaultsJson = R"({
     "schemaVersion": 1,
     "parameters": [
-        { "order": 1, "name": "alpha", "value": 0.8 },
+        { "order": 1, "name": "alpha", "value": 0.8,
+          "description": "alpha description" },
         { "order": 2, "name": "beta",  "value": 35 }
     ]
 })";
@@ -91,12 +92,22 @@ private slots:
         QCOMPARE(profile.parameters.at(0).value.toDouble(), 0.8);
         QCOMPARE(profile.parameters.at(1).name, QStringLiteral("beta"));
         QCOMPARE(profile.parameters.at(1).kind, RequestValueKind::Number);
+        QCOMPARE(profile.parameters.at(0).description,
+                 QStringLiteral("alpha description"));
+        QVERIFY(profile.parameters.at(1).description.isEmpty());
 
         const QJsonObject back = profile.toJson();
+        QVERIFY(back.value("parameters").toArray().at(0).toObject()
+                    .value("description")
+                    .toString() == QStringLiteral("alpha description"));
+        QVERIFY(!back.value("parameters").toArray().at(1).toObject()
+                     .contains("description"));  // empty -> omitted
         QString error2;
         const RequestProfile reparsed = RequestProfile::fromJson(back, error2);
         QVERIFY(error2.isEmpty());
         QVERIFY(profile == reparsed);
+        QCOMPARE(reparsed.parameters.at(0).description,
+                 QStringLiteral("alpha description"));
     }
 
     void parseErrors()
@@ -183,13 +194,15 @@ private slots:
             RequestProfile::fromJson(objectFromJson(kDefaultsJson), error);
         QVERIFY(error.isEmpty());
 
-        // User overrides alpha, and still carries a stale parameter "old"
-        // (absent from the current defaults).
+        // User overrides alpha (with a stale description), and still carries a
+        // stale parameter "old" (absent from the current defaults).
         const QByteArray userJson = R"({
             "parameters": [
-                { "order": 1, "name": "alpha", "value": 0.5 },
+                { "order": 1, "name": "alpha", "value": 0.5,
+                  "description": "stale text" },
                 { "order": 2, "name": "beta",  "value": 35 },
-                { "order": 9, "name": "old",   "value": "x" }
+                { "order": 9, "name": "old",   "value": "x",
+                  "description": "old description" }
             ]
         })";
         const RequestProfile user =
@@ -198,14 +211,19 @@ private slots:
 
         const RequestProfile merged = RequestProfile::merge(defaults, user);
         QCOMPARE(merged.parameters.size(), 3);
-        // Built-in position wins; user value wins.
+        // Built-in position and description win; user value wins.
         QCOMPARE(merged.parameters.at(0).name, QStringLiteral("alpha"));
         QCOMPARE(merged.parameters.at(0).order, 1);
         QCOMPARE(merged.parameters.at(0).value.toDouble(), 0.5);
+        QCOMPARE(merged.parameters.at(0).description,
+                 QStringLiteral("alpha description"));
         QCOMPARE(merged.parameters.at(1).name, QStringLiteral("beta"));
         QCOMPARE(merged.parameters.at(1).value.toDouble(), 35.0);
-        // User-only parameters are appended after the built-in ones.
+        // User-only parameters are appended after the built-in ones and keep
+        // their own description.
         QCOMPARE(merged.parameters.at(2).name, QStringLiteral("old"));
+        QCOMPARE(merged.parameters.at(2).description,
+                 QStringLiteral("old description"));
 
         // A default parameter missing from the user file stays (new built-in
         // parameters appear automatically).

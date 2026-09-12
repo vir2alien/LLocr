@@ -27,6 +27,8 @@ QVariant RequestParametersModel::data(const QModelIndex &index, int role) const
         return int(p.kind);
     case OrderRole:
         return p.order;
+    case DescriptionRole:
+        return p.description;
     default:
         return QVariant();
     }
@@ -39,6 +41,7 @@ QHash<int, QByteArray> RequestParametersModel::roleNames() const
         { ValueTextRole, "valueText" },
         { KindRole, "kind" },
         { OrderRole, "order" },
+        { DescriptionRole, "description" },
     };
 }
 

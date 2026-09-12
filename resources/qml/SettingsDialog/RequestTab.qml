@@ -8,6 +8,8 @@ import "../Common"
 Item {
     id: root
 
+    // The table edits the draft copy only. Save commits the draft to the user
+    // profile, Cancel/reopen discards it (reloadDraft()).
     function loadValues() {
         RequestProfiles.reloadDraft()
     }
@@ -16,29 +18,48 @@ Item {
         RequestProfiles.saveDraft()
     }
 
+    // Restore defaults: loads the default profile into the draft (uncommitted
+    // until Save).
     function resetValues() {
         RequestProfiles.loadDefaultDraft()
     }
+
+    // Column proportions shared by the header and the delegates.
+    readonly property real nameWidth: 0.28
+    readonly property real valueWidth: 0.26
 
     ColumnLayout {
         anchors.fill: parent
         spacing: Theme.spacingSmall
 
-        Item { Layout.columnSpan: 2; implicitHeight: 4 }
+        Item { implicitHeight: 4 }
 
-        RowLayout {
+        // Header, anchored like the delegate rows so the columns line up.
+        Item {
             Layout.fillWidth: true
-            spacing: Theme.spacing
+            implicitHeight: headerValue.implicitHeight
 
             LLOLabel {
-                Layout.preferredWidth: root.width * 0.45
+                id: headerName
+                anchors.left: parent.left
+                width: parent.width * root.nameWidth
                 font.bold: true
                 text: qsTr("Parameter")
             }
             LLOLabel {
-                Layout.fillWidth: true
+                id: headerValue
+                anchors.left: parent.left
+                anchors.leftMargin: parent.width * root.nameWidth + Theme.spacing
+                width: parent.width * root.valueWidth
                 font.bold: true
                 text: qsTr("Value")
+            }
+            LLOLabel {
+                anchors.left: headerValue.right
+                anchors.leftMargin: Theme.spacing
+                anchors.right: parent.right
+                font.bold: true
+                text: qsTr("Description")
             }
         }
 
@@ -52,21 +73,25 @@ Item {
 
             delegate: Item {
                 width: paramsList.width
-                implicitHeight: Theme.controlHeight
+                implicitHeight: Math.max(Theme.controlHeight,
+                                         descriptionLabel.implicitHeight)
 
                 LLOLabel {
+                    id: nameLabel
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width * 0.3
+                    width: parent.width * root.nameWidth
                     elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
                     text: model.name
                 }
 
                 TextField {
                     id: valueField
-                    anchors.right: parent.right
+                    anchors.left: nameLabel.right
+                    anchors.leftMargin: Theme.spacing
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width * 0.7
+                    width: parent.width * root.valueWidth
                     implicitHeight: Theme.controlHeight
                     selectByMouse: true
                     text: model.valueText
@@ -77,6 +102,17 @@ Item {
                         if (!RequestProfiles.setDraftValue(index, text))
                             text = model.valueText
                     }
+                }
+
+                LLOLabel {
+                    id: descriptionLabel
+                    anchors.left: valueField.right
+                    anchors.leftMargin: Theme.spacing
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.pointSize: Theme.captionSize
+                    color: Theme.textMuted
+                    text: model.description
                 }
             }
         }

@@ -90,22 +90,17 @@ Item {
     Connections {
         target: Settings
         function onLaunchPortChanged() { root.markLaunchDirty() }
-        function onLaunchCtxSizeChanged() { root.markLaunchDirty() }
-        function onLaunchGpuLayersChanged() { root.markLaunchDirty() }
-        function onLaunchThreadsChanged() { root.markLaunchDirty() }
-        function onLaunchBatchSizeChanged() { root.markLaunchDirty() }
-        function onLaunchParallelChanged() { root.markLaunchDirty() }
-        function onLaunchFlashAttnChanged() { root.markLaunchDirty() }
-        function onLaunchCacheTypeKChanged() { root.markLaunchDirty() }
-        function onLaunchCacheTypeVChanged() { root.markLaunchDirty() }
-        function onLaunchNoMmapChanged() { root.markLaunchDirty() }
-        function onLaunchJinjaChanged() { root.markLaunchDirty() }
-        function onLaunchExtraArgsChanged() { root.markLaunchDirty() }
         function onLaunchModelAliasChanged() { root.markLaunchDirty() }
         function onLaunchHostChanged() { root.markLaunchDirty() }
         function onLaunchModelPathChanged() { root.markLaunchDirty() }
         function onLaunchMmprojPathChanged() { root.markLaunchDirty() }
         function onLaunchPresetIdChanged() { root.markLaunchDirty() }
+        function onLaunchProfileIdChanged() { root.markLaunchDirty() }
+    }
+
+    Connections {
+        target: LaunchProfiles
+        function onProfileChanged() { root.markLaunchDirty() }
     }
 
     Connections {

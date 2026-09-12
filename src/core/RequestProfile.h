@@ -22,13 +22,15 @@ enum class RequestValueKind
 
 /// One named parameter of the OCR request body. `order` is the parameter's
 /// position inside the request profile (1-based); the profile is the single
-/// source of the body layout.
+/// source of the body layout. `description` is optional UI documentation
+/// shown in the settings table (not part of the request body).
 struct RequestParameter
 {
     QString name;
     int order = 0;
     RequestValueKind kind = RequestValueKind::Number;
     QVariant value;
+    QString description;
 
     bool operator==(const RequestParameter &other) const;
     bool operator!=(const RequestParameter &other) const { return !(*this == other); }
@@ -47,8 +49,9 @@ struct RequestProfile
 
     static constexpr const char *kBuiltInPath = ":/profiles/request.json";
 
-    /// Parses a `{ schemaVersion, parameters: [ { order, name, value } ] }`
-    /// object. Returns an empty profile and a non-empty `error` on failure.
+    /// Parses a `{ schemaVersion, parameters: [ { order, name, value,
+    /// description? } ] }` object. Returns an empty profile and a non-empty
+    /// `error` on failure.
     static RequestProfile fromJson(const QJsonObject &root, QString &error);
 
     /// Serializes to the built-in-style JSON object.
@@ -60,7 +63,8 @@ struct RequestProfile
     static RequestProfile merge(const RequestProfile &defaults,
                                 const RequestProfile &user);
 
-    /// Compares parameter (name, kind, value) triples in order-sorted order.
+    /// Compares parameter (name, kind, value) triples in order-sorted order;
+    /// `description` is documentation, not a setting, so it is not compared.
     bool operator==(const RequestProfile &other) const;
     bool operator!=(const RequestProfile &other) const { return !(*this == other); }
 

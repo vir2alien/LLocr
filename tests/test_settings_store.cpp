@@ -92,14 +92,7 @@ private slots:
         QCOMPARE(store.launchModelAlias(), QStringLiteral("llocr-local"));
         QCOMPARE(store.launchHost(), QStringLiteral("127.0.0.1"));
         QCOMPARE(store.launchPort(), 0);
-        QCOMPARE(store.launchCtxSize(), 8192);
-        QCOMPARE(store.launchGpuLayers(), -1);
-        QCOMPARE(store.launchThreads(), 0);
-        QCOMPARE(store.launchBatchSize(), 0);
-        QCOMPARE(store.launchParallel(), 1);
-        QCOMPARE(store.launchFlashAttn(), QStringLiteral("off"));
-        QCOMPARE(store.launchNoMmap(), false);
-        QCOMPARE(store.launchJinja(), false);
+        QCOMPARE(store.launchProfileId(), QStringLiteral(""));
         QCOMPARE(store.hfToken(), QStringLiteral(""));
     }
 

@@ -50,6 +50,8 @@ TabBar {
     CustomTabButton { text: qsTr("Output") }
     CustomTabButton { text: qsTr("Runtime") }
 
+    CustomTabButton { text: qsTr("Launch") }
+
     CustomTabButton {
         text: qsTr("Models")
         onToggled: {

@@ -1,12 +1,31 @@
 #include <QtTest>
+#include <QDir>
+#include <QFile>
 #include <QQmlComponent>
 #include <QQmlEngine>
+#include <QTemporaryDir>
 
+#include "app/LaunchProfileStore.h"
 #include "app/SettingsStore.h"
 #include "runtime/RuntimeController.h"
 #include "testsettings.h"
 
 using namespace llocr;
+
+namespace {
+
+// Launch-profile catalog for tests (test binaries embed no resources): an
+// empty catalog is enough — argv comes from the core fields.
+QString writeEmptyLaunchCatalog(const QTemporaryDir &dir)
+{
+    const QString path = QDir(dir.path()).filePath(QStringLiteral("launch-presets.json"));
+    QFile f(path);
+    if (f.open(QIODevice::WriteOnly))
+        f.write(QByteArrayLiteral("{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
+    return path;
+}
+
+}  // namespace
 
 // Verifies the §1.2 contract: QML's `Runtime` singleton must return exactly the
 // instance passed to AppController (the one created in main.cpp). QML must not
@@ -27,8 +46,13 @@ private slots:
 
     void qmlSingletonReturnsSameInstance()
     {
+        QTemporaryDir dir;
         SettingsStore settings;
-        RuntimeController runtime(settings);
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        LaunchProfileStore launchProfiles(
+            settings, writeEmptyLaunchCatalog(dir));
+        RuntimeController runtime(settings, launchProfiles);
 
         QQmlEngine engine;
         qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtime);

@@ -1,8 +1,11 @@
+#include <QDir>
 #include <QFile>
+#include <QSaveFile>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "app/LaunchProfileStore.h"
 #include "app/RequestProfileStore.h"
 #include "app/SettingsStore.h"
 #include "runtime/RuntimeController.h"
@@ -15,6 +18,26 @@ using namespace llocr;
 #ifndef LLOCR_MOCK_SERVER
 #define LLOCR_MOCK_SERVER "mock_llama_server"
 #endif
+
+namespace {
+
+// Launch-profile catalog for tests (test binaries embed no resources): one
+// preset with an empty backend tag (matches any installed backend) so the
+// store can persist user copies for it. The mock server only needs the core
+// argv; individual tests append flags to the preset's user copy.
+QString writeTestLaunchCatalog(const QTemporaryDir &dir)
+{
+    const QString path = QDir(dir.path()).filePath(QStringLiteral("launch-presets.json"));
+    QSaveFile f(path);
+    if (f.open(QIODevice::WriteOnly)) {
+        f.write(QByteArrayLiteral("{ \"schemaVersion\": 1, \"profiles\": ["
+                                  "{ \"id\": \"test\", \"parameters\": [] }] }"));
+        f.commit();
+    }
+    return path;
+}
+
+}  // namespace
 
 // Stage G-core acceptance: ensureConnectionReady() for External and Managed
 // (start → /health → /v1/models → alias), deduplication of concurrent calls,
@@ -41,14 +64,16 @@ private slots:
 
     void externalResolvesImmediately()
     {
+        QTemporaryDir dir;
         SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
         settings.setConnectionMode(QStringLiteral("external"));
         settings.setBaseUrl(QStringLiteral("http://custom.example:9000"));
         settings.setApiKey(QStringLiteral("k"));
         settings.setModelName(QStringLiteral("my-model"));
         settings.setConnectionTimeoutMs(5000);
 
-        RuntimeController runtime(settings);
+        RuntimeController runtime(settings, launchProfiles);
         ResolvedConnection conn;
         bool called = false;
         runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
@@ -83,7 +108,8 @@ private slots:
         store.setAutoStart(false);
         store.setStartupTimeoutMs(10000);
 
-        RuntimeController runtime(store);
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
         QVERIFY(runtime.configValid());
 
         int finished = 0;
@@ -119,7 +145,8 @@ private slots:
         store.setStartOnDemand(true);
         store.setStartupTimeoutMs(10000);
 
-        RuntimeController runtime(store);
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
 
         // Two "concurrent" callers issued before the first one completes. Only a
         // single start may happen; both must end up with the same connection.
@@ -158,11 +185,16 @@ private slots:
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
-        // Delay the socket bind so the resolve stays in Starting.
-        store.setLaunchExtraArgs(QStringLiteral("--delay-start 4000"));
+        // Delay the socket bind so the resolve stays in Starting. With launch
+        // settings gone from QSettings the delay goes through the launch
+        // profile's user copy (a valueless flag row).
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("delay-start"),
+                                                    QStringLiteral("4000")));
+        launchProfiles.saveDraft();
         store.setStartupTimeoutMs(30000);
 
-        RuntimeController runtime(store);
+        RuntimeController runtime(store, launchProfiles);
 
         int done = 0;
         ResolvedConnection resolved;
@@ -201,10 +233,16 @@ private slots:
         store.setStartupTimeoutMs(1200);
         // --never-healthy alone is rescued by the /v1/models fallback (the mock
         // answers it with 200); --no-models disables that fallback so the
-        // health watchdog truly hits the startup timeout.
-        store.setLaunchExtraArgs(QStringLiteral("--never-healthy --no-models"));
+        // health watchdog truly hits the startup timeout. Both flags go
+        // through the launch profile's user copy.
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("never-healthy"),
+                                                    QString()));
+        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("no-models"),
+                                                    QString()));
+        launchProfiles.saveDraft();
 
-        RuntimeController runtime(store);
+        RuntimeController runtime(store, launchProfiles);
         ResolvedConnection resolved;
         int done = 0;
         runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
@@ -236,7 +274,8 @@ private slots:
         store.setStartOnDemand(true);
         store.setStartupTimeoutMs(10000);
 
-        RuntimeController runtime(store);
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
 
         // Request-profile store for the self-test request; written to the temp
         // dir because test binaries embed no resources.

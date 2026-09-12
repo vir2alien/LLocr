@@ -21,6 +21,7 @@ public:
         ValueTextRole,
         KindRole,
         OrderRole,
+        DescriptionRole,
     };
 
     explicit RequestParametersModel(QObject *parent = nullptr);

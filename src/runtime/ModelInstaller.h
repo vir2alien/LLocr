@@ -13,6 +13,7 @@
 namespace llocr {
 
 class DownloadManager;
+class LaunchProfileStore;
 class RuntimeController;
 class SettingsStore;
 
@@ -48,6 +49,7 @@ public:
     Q_ENUM(State)
 
     explicit ModelInstaller(SettingsStore &settings, RuntimeController &runtime,
+                            LaunchProfileStore &launchProfiles,
                             QObject *parent = nullptr);
     ~ModelInstaller() override;
 
@@ -133,6 +135,7 @@ private:
 
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
+    LaunchProfileStore &m_launchProfiles;
     RuntimePaths m_paths;
     DownloadManager *m_downloads = nullptr;
 

@@ -7,6 +7,8 @@ qt_add_executable(llocr
     core/ProviderConfig.h
     core/RequestProfile.h
     core/RequestProfile.cpp
+    core/LaunchProfile.h
+    core/LaunchProfile.cpp
 
     # providers
     providers/ILlmProvider.h
@@ -50,6 +52,10 @@ qt_add_executable(llocr
     app/RequestParametersModel.cpp
     app/RequestProfileStore.h
     app/RequestProfileStore.cpp
+    app/LaunchParametersModel.h
+    app/LaunchParametersModel.cpp
+    app/LaunchProfileStore.h
+    app/LaunchProfileStore.cpp
     app/UiController.h
     app/UiController.cpp
 
@@ -167,6 +173,7 @@ qt_add_resources(llocr "app_profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/profiles/request.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
 )
 
 file(GLOB_RECURSE PREVIEW_FILES

@@ -10,6 +10,8 @@
 #include <QVariantMap>
 
 #include "app/SettingsStore.h"
+#include "app/LaunchProfileStore.h"
+#include "core/LaunchProfile.h"
 #include "runtime/LlamaServerProcess.h"
 #include "runtime/ModelMemoryEstimator.h"
 #include "runtime/RuntimeController.h"
@@ -33,9 +35,12 @@ constexpr int kProbeTimeoutMs = 120000;         // RuntimeLocator::probeCached (
 constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
 }  // namespace
 
-RuntimeController::RuntimeController(SettingsStore &settings, QObject *parent)
+RuntimeController::RuntimeController(SettingsStore &settings,
+                                     LaunchProfileStore &launchProfiles,
+                                     QObject *parent)
     : QObject(parent)
     , m_settings(settings)
+    , m_launchProfiles(launchProfiles)
 {
     // §1.4 configValid = a valid server binary is selected AND (in Managed) the
     // model file exists. Recompute it whenever any input changes.
@@ -429,7 +434,8 @@ QString RuntimeController::startServer()
 
     paths.ensureDirectories();
 
-    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings);
+    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings,
+                                                              m_launchProfiles);
     cfg.program = program;
     // toArguments() emits --host/--port for the configured port; LlamaServerProcess
     // only fills a --port when the argv has none (auto-pick, port 0) — so the
@@ -554,18 +560,34 @@ QString RuntimeController::launchCommandPreview()
         RuntimeLocator::probeCached(program, paths.cacheDir(), kProbeTimeoutMs);
     if (!probe.ok)
         return QString();
-    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings);
+    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings,
+                                                              m_launchProfiles);
     cfg.program = program;
     return cfg.toDisplayCommand(probe.capabilities);
 }
 
-QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath,
-                                                   int ctxSize)
+QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath)
 {
     QVariantMap out;
+    // Context size and KV cache types live in the active launch profile;
+    // documented fallbacks keep the estimate working for profiles without
+    // those rows.
+    const LaunchProfile &profile = m_launchProfiles.activeProfile();
+    int ctxSize = 8192;
+    QString cacheTypeK;
+    QString cacheTypeV;
+    if (const LaunchParameter *row = profile.find(QStringLiteral("ctx-size"));
+        row && row->kind == LaunchValueKind::Number)
+        ctxSize = int(row->value.toDouble());
+    if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-k"));
+        row && row->kind == LaunchValueKind::Text)
+        cacheTypeK = row->value.toString();
+    if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-v"));
+        row && row->kind == LaunchValueKind::Text)
+        cacheTypeV = row->value.toString();
+
     const ModelMemoryEstimate e =
-        ::llocr::estimateModelMemory(modelPath, ctxSize, m_settings.launchCacheTypeK(),
-                                     m_settings.launchCacheTypeV());
+        ::llocr::estimateModelMemory(modelPath, ctxSize, cacheTypeK, cacheTypeV);
     out.insert(QStringLiteral("modelBytes"), e.modelBytes);
     out.insert(QStringLiteral("kvCacheBytes"), e.kvCacheBytes);
     out.insert(QStringLiteral("totalBytes"), e.totalBytes);

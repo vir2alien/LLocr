@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <QtConcurrent>
 
+#include "app/LaunchProfileStore.h"
 #include "app/SettingsStore.h"
 #include "runtime/DownloadManager.h"
 #include "runtime/ModelInstaller.h"
@@ -142,10 +143,11 @@ void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
 }  // namespace
 
 ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime,
-                               QObject *parent)
+                               LaunchProfileStore &launchProfiles, QObject *parent)
     : QObject(parent)
     , m_settings(settings)
     , m_runtime(runtime)
+    , m_launchProfiles(launchProfiles)
     , m_paths(settings.runtimeRootDir(), settings.runtimeModelsDir())
     , m_downloads(new DownloadManager(this))
 {
@@ -302,8 +304,10 @@ QString ModelInstaller::setActiveModel(int index)
         m_settings.setLaunchMmprojPath(e.mmprojPath);
     if (!e.parser.isEmpty())
         m_settings.setParserId(e.parser);
+    // The context size lives in the active launch profile now.
     if (e.ctxSize > 0)
-        m_settings.setLaunchCtxSize(e.ctxSize);
+        m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
+                                                e.ctxSize);
     m_settings.forceSave();
     emit installedChanged();
     return QString();
@@ -758,8 +762,10 @@ void ModelInstaller::completeInstall()
         m_settings.setLaunchPresetId(m_pending.presetId);
     if (!e.parser.isEmpty())
         m_settings.setParserId(e.parser);
+    // The context size lives in the active launch profile now.
     if (e.ctxSize > 0)
-        m_settings.setLaunchCtxSize(e.ctxSize);
+        m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
+                                                e.ctxSize);
     m_settings.forceSave();
 
     setBusy(false);

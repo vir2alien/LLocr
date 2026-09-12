@@ -21,6 +21,7 @@ constexpr const char *kParametersKey = "parameters";
 constexpr const char *kOrderKey = "order";
 constexpr const char *kNameKey = "name";
 constexpr const char *kValueKey = "value";
+constexpr const char *kDescriptionKey = "description";
 
 }  // namespace
 
@@ -200,6 +201,7 @@ RequestProfile RequestProfile::fromJson(const QJsonObject &root, QString &error)
         }
         parameter.kind = kind;
         parameter.value = value;
+        parameter.description = obj.value(QLatin1String(kDescriptionKey)).toString();
 
         seen.insert(name);
         profile.parameters.append(parameter);
@@ -216,6 +218,8 @@ QJsonObject RequestProfile::toJson() const
         obj.insert(QLatin1String(kOrderKey), p.order);
         obj.insert(QLatin1String(kNameKey), p.name);
         obj.insert(QLatin1String(kValueKey), valueToJson(p.value));
+        if (!p.description.isEmpty())
+            obj.insert(QLatin1String(kDescriptionKey), p.description);
         params.append(obj);
     }
     QJsonObject root;
@@ -236,7 +240,9 @@ RequestProfile RequestProfile::merge(const RequestProfile &defaults,
         const auto it = userByName.constFind(d.name);
         if (it != userByName.constEnd()) {
             RequestParameter p = it.value();
-            p.order = d.order;  // the built-in profile owns the position
+            // The built-in profile owns the position and the documentation.
+            p.order = d.order;
+            p.description = d.description;
             out.parameters.append(p);
             userByName.remove(d.name);
         } else {

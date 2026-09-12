@@ -72,6 +72,26 @@ target_sources(test_request_profile PRIVATE
 )
 add_test(NAME test_request_profile COMMAND test_request_profile)
 
+qt_add_executable(test_launch_profile test_launch_profile.cpp)
+
+target_include_directories(test_launch_profile PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_launch_profile PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+)
+
+target_sources(test_launch_profile PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchProfileStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
+)
+add_test(NAME test_launch_profile COMMAND test_launch_profile)
+
 qt_add_executable(test_launch_config test_launch_config.cpp)
 
 target_include_directories(test_launch_config PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -83,8 +103,17 @@ target_link_libraries(test_launch_config PRIVATE
 
 target_sources(test_launch_config PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchProfileStore.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
+
+# LaunchProfileStore::activeProfileId() uses ReleaseCatalog::detectPlatform,
+# which links against Qt6::Network.
+target_link_libraries(test_launch_config PRIVATE Qt6::Network)
 add_test(NAME test_launch_config COMMAND test_launch_config)
 
 qt_add_executable(test_runtime_lifetime test_runtime_lifetime.cpp)
@@ -113,7 +142,11 @@ target_sources(test_runtime_lifetime PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/SingleInstanceGuard.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchProfileStore.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
 )
 if(WIN32)
     target_sources(test_runtime_lifetime PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
@@ -203,6 +236,11 @@ target_sources(test_server_process PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerCapabilities.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLocator.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ServerLaunchConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchProfileStore.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
 )
 if(WIN32)
@@ -247,7 +285,11 @@ target_sources(test_ensure_connection PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/app/RequestParametersModel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/RequestProfileStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchProfileStore.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
 )
 if(WIN32)
     target_sources(test_ensure_connection PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
@@ -422,7 +464,11 @@ target_sources(test_model_installer PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/SingleInstanceGuard.cpp
     ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchProfileStore.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
 )
 if(WIN32)
     target_sources(test_model_installer PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)

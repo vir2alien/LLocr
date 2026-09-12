@@ -42,22 +42,12 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kAllowNonLoopback, "allowNonLoopback", QVariant(false) },
     // Launch
     { kLaunchPresetId, "launchPresetId", QVariant(QString()) },
+    { kLaunchProfileId, "launchProfileId", QVariant(QString()) },
     { kLaunchModelPath, "launchModelPath", QVariant(QString()) },
     { kLaunchMmprojPath, "launchMmprojPath", QVariant(QString()) },
     { kLaunchModelAlias, "launchModelAlias", QVariant(QString::fromUtf8(kDefaultModelAlias)) },
     { kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost)) },
     { kLaunchPort, "launchPort", QVariant(kDefaultPort) },
-    { kLaunchCtxSize, "launchCtxSize", QVariant(kDefaultCtxSize) },
-    { kLaunchGpuLayers, "launchGpuLayers", QVariant(kDefaultGpuLayers) },
-    { kLaunchThreads, "launchThreads", QVariant(kDefaultThreads) },
-    { kLaunchBatchSize, "launchBatchSize", QVariant(kDefaultBatchSize) },
-    { kLaunchParallel, "launchParallel", QVariant(kDefaultParallel) },
-    { kLaunchFlashAttn, "launchFlashAttn", QVariant(QString::fromUtf8(kDefaultFlashAttn)) },
-    { kLaunchCacheTypeK, "launchCacheTypeK", QVariant(QString()) },
-    { kLaunchCacheTypeV, "launchCacheTypeV", QVariant(QString()) },
-    { kLaunchNoMmap, "launchNoMmap", QVariant(false) },
-    { kLaunchJinja, "launchJinja", QVariant(false) },
-    { kLaunchExtraArgs, "launchExtraArgs", QVariant(QString()) },
     // Hugging Face
     { kHfToken, "hfToken", QVariant(QString()) },
     // Saved external endpoint — must stay LAST (see the order comment above).
@@ -610,147 +600,17 @@ void SettingsStore::setLaunchPort(int port)
     emit launchPortChanged();
 }
 
-int SettingsStore::launchCtxSize() const
+QString SettingsStore::launchProfileId() const
 {
-    return m_settings.value(kLaunchCtxSize, kDefaultCtxSize).toInt();
+    return m_settings.value(kLaunchProfileId).toString();
 }
 
-void SettingsStore::setLaunchCtxSize(int size)
+void SettingsStore::setLaunchProfileId(const QString &id)
 {
-    if (launchCtxSize() == size)
+    if (launchProfileId() == id)
         return;
-    m_settings.setValue(kLaunchCtxSize, size);
-    emit launchCtxSizeChanged();
-}
-
-int SettingsStore::launchGpuLayers() const
-{
-    return m_settings.value(kLaunchGpuLayers, kDefaultGpuLayers).toInt();
-}
-
-void SettingsStore::setLaunchGpuLayers(int layers)
-{
-    if (launchGpuLayers() == layers)
-        return;
-    m_settings.setValue(kLaunchGpuLayers, layers);
-    emit launchGpuLayersChanged();
-}
-
-int SettingsStore::launchThreads() const
-{
-    return m_settings.value(kLaunchThreads, kDefaultThreads).toInt();
-}
-
-void SettingsStore::setLaunchThreads(int threads)
-{
-    if (launchThreads() == threads)
-        return;
-    m_settings.setValue(kLaunchThreads, threads);
-    emit launchThreadsChanged();
-}
-
-int SettingsStore::launchBatchSize() const
-{
-    return m_settings.value(kLaunchBatchSize, kDefaultBatchSize).toInt();
-}
-
-void SettingsStore::setLaunchBatchSize(int size)
-{
-    if (launchBatchSize() == size)
-        return;
-    m_settings.setValue(kLaunchBatchSize, size);
-    emit launchBatchSizeChanged();
-}
-
-int SettingsStore::launchParallel() const
-{
-    return m_settings.value(kLaunchParallel, kDefaultParallel).toInt();
-}
-
-void SettingsStore::setLaunchParallel(int parallel)
-{
-    if (launchParallel() == parallel)
-        return;
-    m_settings.setValue(kLaunchParallel, parallel);
-    emit launchParallelChanged();
-}
-
-QString SettingsStore::launchFlashAttn() const
-{
-    return m_settings.value(kLaunchFlashAttn, QString::fromUtf8(kDefaultFlashAttn)).toString();
-}
-
-void SettingsStore::setLaunchFlashAttn(const QString &value)
-{
-    if (launchFlashAttn() == value)
-        return;
-    m_settings.setValue(kLaunchFlashAttn, value);
-    emit launchFlashAttnChanged();
-}
-
-QString SettingsStore::launchCacheTypeK() const
-{
-    return m_settings.value(kLaunchCacheTypeK).toString();
-}
-
-void SettingsStore::setLaunchCacheTypeK(const QString &type)
-{
-    if (launchCacheTypeK() == type)
-        return;
-    m_settings.setValue(kLaunchCacheTypeK, type);
-    emit launchCacheTypeKChanged();
-}
-
-QString SettingsStore::launchCacheTypeV() const
-{
-    return m_settings.value(kLaunchCacheTypeV).toString();
-}
-
-void SettingsStore::setLaunchCacheTypeV(const QString &type)
-{
-    if (launchCacheTypeV() == type)
-        return;
-    m_settings.setValue(kLaunchCacheTypeV, type);
-    emit launchCacheTypeVChanged();
-}
-
-bool SettingsStore::launchNoMmap() const
-{
-    return m_settings.value(kLaunchNoMmap, false).toBool();
-}
-
-void SettingsStore::setLaunchNoMmap(bool on)
-{
-    if (launchNoMmap() == on)
-        return;
-    m_settings.setValue(kLaunchNoMmap, on);
-    emit launchNoMmapChanged();
-}
-
-bool SettingsStore::launchJinja() const
-{
-    return m_settings.value(kLaunchJinja, false).toBool();
-}
-
-void SettingsStore::setLaunchJinja(bool on)
-{
-    if (launchJinja() == on)
-        return;
-    m_settings.setValue(kLaunchJinja, on);
-    emit launchJinjaChanged();
-}
-
-QString SettingsStore::launchExtraArgs() const
-{
-    return m_settings.value(kLaunchExtraArgs).toString();
-}
-
-void SettingsStore::setLaunchExtraArgs(const QString &args)
-{
-    if (launchExtraArgs() == args)
-        return;
-    m_settings.setValue(kLaunchExtraArgs, args);
-    emit launchExtraArgsChanged();
+    m_settings.setValue(kLaunchProfileId, id);
+    emit launchProfileIdChanged();
 }
 
 QString SettingsStore::hfToken() const

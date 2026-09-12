@@ -1,13 +1,53 @@
 {
     "schemaVersion": 1,
     "parameters": [
-        { "order": 1, "name": "dry_multiplier",        "value": 0.8 },
-        { "order": 2, "name": "dry_base",              "value": 1.75 },
-        { "order": 3, "name": "dry_allowed_length",    "value": 35 },
-        { "order": 4, "name": "dry_penalty_last_n",    "value": 2048 },
-        { "order": 5, "name": "dry_sequence_breakers", "value": [] },
-        { "order": 6, "name": "temperature",           "value": 0.0 },
-        { "order": 7, "name": "max_tokens",            "value": 8192 },
-        { "order": 8, "name": "stream",                "value": false }
+        {
+            "order": 1,
+            "name": "dry_multiplier",
+            "value": 0.8,
+            "description": "DRY repetition penalty multiplier; 0 disables DRY sampling."
+        },
+        {
+            "order": 2,
+            "name": "dry_base",
+            "value": 1.75,
+            "description": "Base of the exponential penalty growth for repeated sequences."
+        },
+        {
+            "order": 3,
+            "name": "dry_allowed_length",
+            "value": 35,
+            "description": "Number of tokens that may repeat before the penalty applies."
+        },
+        {
+            "order": 4,
+            "name": "dry_penalty_last_n",
+            "value": 2048,
+            "description": "Window of recent tokens considered by the DRY penalty."
+        },
+        {
+            "order": 5,
+            "name": "dry_sequence_breakers",
+            "value": [],
+            "description": "Comma-separated sequences that reset repetition tracking; empty = none."
+        },
+        {
+            "order": 6,
+            "name": "temperature",
+            "value": 0.0,
+            "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+            "order": 7,
+            "name": "max_tokens",
+            "value": 8192,
+            "description": "Maximum tokens the model may generate for one page."
+        },
+        {
+            "order": 8,
+            "name": "stream",
+            "value": false,
+            "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        }
     ]
 }

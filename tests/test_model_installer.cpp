@@ -5,6 +5,7 @@
 
 #include <memory>
 
+#include "app/LaunchProfileStore.h"
 #include "app/SettingsStore.h"
 #include "runtime/ModelInstaller.h"
 #include "runtime/ModelRegistry.h"
@@ -44,9 +45,28 @@ private:
     struct Setup {
         QTemporaryDir root;
         SettingsStore settings;
-        RuntimeController runtime{settings};
+        // The launch-profile store and the runtime controller are created by
+        // makeSetup()/the tests AFTER pointAtTempDir() — they read the runtime
+        // dirs in their constructors.
+        QScopedPointer<LaunchProfileStore> launchProfiles;
+        QScopedPointer<RuntimeController> runtime;
         QScopedPointer<ModelInstaller> installer;
     };
+
+    static void makeRuntime(Setup &s)
+    {
+        // An empty built-in catalog (test binaries embed no resources).
+        const QString presetsPath =
+            QDir(s.root.path()).filePath(QStringLiteral("launch-presets.json"));
+        {
+            QFile f(presetsPath);
+            if (f.open(QIODevice::WriteOnly))
+                f.write(QByteArrayLiteral(
+                    "{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
+        }
+        s.launchProfiles.reset(new LaunchProfileStore(s.settings, presetsPath));
+        s.runtime.reset(new RuntimeController(s.settings, *s.launchProfiles));
+    }
 
     static void pointAtTempDir(SettingsStore &settings, const QString &root)
     {
@@ -95,7 +115,9 @@ private:
         if (!ModelRegistry::save(modelsDir, {q4, q8}, err))
             return nullptr;
 
-        s->installer.reset(new ModelInstaller(s->settings, s->runtime));
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
+                                              *s->launchProfiles));
         return s;
     }
 
@@ -210,8 +232,18 @@ private slots:
         QString err;
         QVERIFY2(ModelRegistry::save(modelsDir, {q4, q8}, err), qPrintable(err));
 
-        RuntimeController runtime(settings);
-        ModelInstaller installer(settings, runtime);
+        // An empty built-in catalog (test binaries embed no resources).
+        const QString presetsPath =
+            QDir(root.path()).filePath(QStringLiteral("launch-presets.json"));
+        {
+            QFile f(presetsPath);
+            if (f.open(QIODevice::WriteOnly))
+                f.write(QByteArrayLiteral(
+                    "{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
+        }
+        LaunchProfileStore launchProfiles(settings, presetsPath);
+        RuntimeController runtime(settings, launchProfiles);
+        ModelInstaller installer(settings, runtime, launchProfiles);
         const int idx = indexOfQuant(installer, q4.quantization);
         QVERIFY(idx >= 0);
         QVERIFY(installer.removeModel(idx).isEmpty());
@@ -256,8 +288,9 @@ private slots:
         QString err;
         QVERIFY2(ModelRegistry::save(modelsDir, {q8}, err), qPrintable(err));
 
-        RuntimeController runtime(s->settings);
-        s->installer.reset(new ModelInstaller(s->settings, runtime));
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
+                                              *s->launchProfiles));
         ModelInstaller &mi = *s->installer;
 
         auto findPreset = [&](const QString &presetId) {

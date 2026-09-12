@@ -21,7 +21,7 @@ Dialog {
 
     property var logWindowRef: null
 
-    enum TabsEnum {UiTabNum = 0, RequesetTabNum = 1, OutputTabNum = 2, RuntimeTabNum = 3, ModelsTabNum = 4}
+    enum TabsEnum {UiTabNum = 0, RequesetTabNum = 1, OutputTabNum = 2, RuntimeTabNum = 3, LaunchTabNum = 4, ModelsTabNum = 5}
 
     anchors.centerIn: parent
     width: 520
@@ -75,6 +75,8 @@ Dialog {
         case SettingsDialog.TabsEnum.RuntimeTabNum:
             Runtime.refreshSingleInstanceLock()
             runtimeTab.loadValues(); break;
+        case SettingsDialog.TabsEnum.LaunchTabNum:
+            launchTab.loadValues(); break;
         case SettingsDialog.TabsEnum.ModelsTabNum:
             break;
         }
@@ -84,19 +86,24 @@ Dialog {
         uiTab.loadValues()
         requestTab.loadValues()
         runtimeTab.loadValues()
+        launchTab.loadValues()
         loadTab(tabBar.currentIndex)
     }
 
     onReset: {
         Settings.resetToDefaults();
         loadTab(tabBar.currentIndex);
+        // After loadTab: the Request/Launch drafts must end up as the default
+        // profiles, not re-loaded from the persisted user profiles.
         requestTab.resetValues();
+        launchTab.resetValues();
     }
 
     onAccepted: {
         uiTab.savaValues();
         requestTab.saveValues();
         runtimeTab.saveValues();
+        launchTab.saveValues();
 
         Settings.parserId = parserBox.currentText;
         Settings.forceSave();
@@ -154,6 +161,10 @@ Dialog {
 
             RuntimeTab {
                 id: runtimeTab
+            }
+
+            LaunchTab {
+                id: launchTab
             }
 
             ModelsTab {

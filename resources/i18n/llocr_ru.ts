@@ -336,6 +336,11 @@
         <translation>Значение</translation>
     </message>
     <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="44"/>
+        <source>Description</source>
+        <translation>Описание</translation>
+    </message>
+    <message>
         <location filename="../qml/SettingsDialog/RequestTab.qml" line="83"/>
         <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
         <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
@@ -1351,9 +1356,57 @@
         <translation>Рантайм</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/SDTabBar.qml" line="54"/>
+        <location filename="../qml/SettingsDialog/SDTabBar.qml" line="53"/>
+        <source>Launch</source>
+        <translation>Запуск</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/SDTabBar.qml" line="56"/>
         <source>Models</source>
         <translation>Модели</translation>
+    </message>
+</context>
+<context>
+    <name>LaunchTab</name>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="37"/>
+        <source>Profile</source>
+        <translation>Профиль</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="50"/>
+        <source>Parameter</source>
+        <translation>Параметр</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="57"/>
+        <source>Value</source>
+        <translation>Значение</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="62"/>
+        <source>Description</source>
+        <translation>Описание</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="95"/>
+        <source>(flag)</source>
+        <translation>(флаг)</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="132"/>
+        <source>New parameter name</source>
+        <translation>Имя нового параметра</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="143"/>
+        <source>Add</source>
+        <translation>Добавить</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="155"/>
+        <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings</source>
+        <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска</translation>
     </message>
 </context>
 <context>
@@ -1547,24 +1600,31 @@
         <translation>Порт</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="106"/>
         <source>Context size</source>
-        <translation>Размер контекста</translation>
+        <translation type="vanished">Размер контекста</translation>
+    </message>
+    <message>
+        <source>GPU layers</source>
+        <translation type="vanished">Слои на GPU</translation>
+    </message>
+    <message>
+        <source>Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default.</source>
+        <translation type="vanished">Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Setup/StepLaunch.qml" line="90"/>
+        <source>Launch profile</source>
+        <translation>Профиль запуска</translation>
     </message>
     <message>
         <location filename="../qml/Setup/StepLaunch.qml" line="116"/>
-        <source>GPU layers</source>
-        <translation>Слои на GPU</translation>
-    </message>
-    <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="132"/>
         <source>Start the server when the app launches</source>
         <translation>Запускать сервер при старте приложения</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="144"/>
-        <source>Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default.</source>
-        <translation>Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено.</translation>
+        <location filename="../qml/Setup/StepLaunch.qml" line="126"/>
+        <source>Full parameter table: Settings → Launch. Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default.</source>
+        <translation>Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено.</translation>
     </message>
     <message>
         <location filename="../qml/Setup/StepLaunch.qml" line="204"/>

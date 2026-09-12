@@ -1,0 +1,135 @@
+{
+    "schemaVersion": 1,
+    "profiles": [
+        {
+            "id": "macos-metal",
+            "name": "macOS · Metal",
+            "os": "macos",
+            "backend": "metal",
+            "parameters": [
+                { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+                { "order": 2,  "name": "special",                            "description": "Emit special tokens in the server output." },
+                { "order": 3,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+                { "order": 4,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+                { "order": 5,  "name": "parallel",            "value": 1,    "description": "Number of concurrent server slots." },
+                { "order": 6,  "name": "cache-reuse",         "value": 0,    "description": "Context reuse window between requests; 0 disables." },
+                { "order": 7,  "name": "no-context-shift",                   "description": "Keep the context stable: do not shift the KV cache when the window overflows." },
+                { "order": 8,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+                { "order": 9,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+                { "order": 10, "name": "image-min-tokens",    "value": 456,  "description": "Minimum number of vision tokens per image." },
+                { "order": 11, "name": "image-max-tokens",    "value": 1156, "description": "Maximum number of vision tokens per image." },
+                { "order": 12, "name": "no-warmup",                          "description": "Skip the warmup run at model load (faster start, slower first request)." },
+                { "order": 13, "name": "flash-attn",          "value": "off", "description": "Flash attention: on, off or auto." },
+                { "order": 14, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+            ]
+        },
+        {
+            "id": "win-cuda",
+            "name": "Windows · CUDA",
+            "os": "win",
+            "backend": "cuda",
+            "parameters": [
+                { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+                { "order": 2,  "name": "special",                            "description": "Emit special tokens in the server output." },
+                { "order": 3,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+                { "order": 4,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+                { "order": 5,  "name": "parallel",            "value": 1,    "description": "Number of concurrent server slots." },
+                { "order": 6,  "name": "cache-reuse",         "value": 0,    "description": "Context reuse window between requests; 0 disables." },
+                { "order": 7,  "name": "no-context-shift",                   "description": "Keep the context stable: do not shift the KV cache when the window overflows." },
+                { "order": 8,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+                { "order": 9,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+                { "order": 10, "name": "image-min-tokens",    "value": 456,  "description": "Minimum number of vision tokens per image." },
+                { "order": 11, "name": "image-max-tokens",    "value": 1156, "description": "Maximum number of vision tokens per image." },
+                { "order": 12, "name": "no-warmup",                          "description": "Skip the warmup run at model load (faster start, slower first request)." },
+                { "order": 13, "name": "flash-attn",          "value": "on",  "description": "Flash attention: on, off or auto." },
+                { "order": 14, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+            ]
+        },
+        {
+            "id": "win-vulkan",
+            "name": "Windows · Vulkan",
+            "os": "win",
+            "backend": "vulkan",
+            "parameters": [
+                { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+                { "order": 2,  "name": "special",                            "description": "Emit special tokens in the server output." },
+                { "order": 3,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+                { "order": 4,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+                { "order": 5,  "name": "parallel",            "value": 1,    "description": "Number of concurrent server slots." },
+                { "order": 6,  "name": "cache-reuse",         "value": 0,    "description": "Context reuse window between requests; 0 disables." },
+                { "order": 7,  "name": "no-context-shift",                   "description": "Keep the context stable: do not shift the KV cache when the window overflows." },
+                { "order": 8,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+                { "order": 9,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+                { "order": 10, "name": "image-min-tokens",    "value": 456,  "description": "Minimum number of vision tokens per image." },
+                { "order": 11, "name": "image-max-tokens",    "value": 1156, "description": "Maximum number of vision tokens per image." },
+                { "order": 12, "name": "no-warmup",                          "description": "Skip the warmup run at model load (faster start, slower first request)." },
+                { "order": 13, "name": "flash-attn",          "value": "off", "description": "Flash attention: on, off or auto (Vulkan flash attention is experimental)." },
+                { "order": 14, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+            ]
+        },
+        {
+            "id": "linux-cuda",
+            "name": "Linux · CUDA",
+            "os": "linux",
+            "backend": "cuda",
+            "parameters": [
+                { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+                { "order": 2,  "name": "special",                            "description": "Emit special tokens in the server output." },
+                { "order": 3,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+                { "order": 4,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+                { "order": 5,  "name": "parallel",            "value": 1,    "description": "Number of concurrent server slots." },
+                { "order": 6,  "name": "cache-reuse",         "value": 0,    "description": "Context reuse window between requests; 0 disables." },
+                { "order": 7,  "name": "no-context-shift",                   "description": "Keep the context stable: do not shift the KV cache when the window overflows." },
+                { "order": 8,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+                { "order": 9,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+                { "order": 10, "name": "image-min-tokens",    "value": 456,  "description": "Minimum number of vision tokens per image." },
+                { "order": 11, "name": "image-max-tokens",    "value": 1156, "description": "Maximum number of vision tokens per image." },
+                { "order": 12, "name": "no-warmup",                          "description": "Skip the warmup run at model load (faster start, slower first request)." },
+                { "order": 13, "name": "flash-attn",          "value": "on",  "description": "Flash attention: on, off or auto." },
+                { "order": 14, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+            ]
+        },
+        {
+            "id": "linux-vulkan",
+            "name": "Linux · Vulkan",
+            "os": "linux",
+            "backend": "vulkan",
+            "parameters": [
+                { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+                { "order": 2,  "name": "special",                            "description": "Emit special tokens in the server output." },
+                { "order": 3,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+                { "order": 4,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+                { "order": 5,  "name": "parallel",            "value": 1,    "description": "Number of concurrent server slots." },
+                { "order": 6,  "name": "cache-reuse",         "value": 0,    "description": "Context reuse window between requests; 0 disables." },
+                { "order": 7,  "name": "no-context-shift",                   "description": "Keep the context stable: do not shift the KV cache when the window overflows." },
+                { "order": 8,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+                { "order": 9,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+                { "order": 10, "name": "image-min-tokens",    "value": 456,  "description": "Minimum number of vision tokens per image." },
+                { "order": 11, "name": "image-max-tokens",    "value": 1156, "description": "Maximum number of vision tokens per image." },
+                { "order": 12, "name": "no-warmup",                          "description": "Skip the warmup run at model load (faster start, slower first request)." },
+                { "order": 13, "name": "flash-attn",          "value": "off", "description": "Flash attention: on, off or auto (Vulkan flash attention is experimental)." },
+                { "order": 14, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+            ]
+        },
+        {
+            "id": "cpu",
+            "name": "CPU (universal)",
+            "os": "",
+            "backend": "cpu",
+            "parameters": [
+                { "order": 1,  "name": "special",                            "description": "Emit special tokens in the server output." },
+                { "order": 2,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+                { "order": 3,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+                { "order": 4,  "name": "parallel",            "value": 1,    "description": "Number of concurrent server slots." },
+                { "order": 5,  "name": "cache-reuse",         "value": 0,    "description": "Context reuse window between requests; 0 disables." },
+                { "order": 6,  "name": "no-context-shift",                   "description": "Keep the context stable: do not shift the KV cache when the window overflows." },
+                { "order": 7,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+                { "order": 8,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+                { "order": 9,  "name": "image-min-tokens",    "value": 456,  "description": "Minimum number of vision tokens per image." },
+                { "order": 10, "name": "image-max-tokens",    "value": 1156, "description": "Maximum number of vision tokens per image." },
+                { "order": 11, "name": "no-warmup",                          "description": "Skip the warmup run at model load (faster start, slower first request)." },
+                { "order": 12, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+            ]
+        }
+    ]
+}

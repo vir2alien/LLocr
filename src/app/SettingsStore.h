@@ -47,22 +47,14 @@ class SettingsStore : public QObject
 
     // --- Launch (managed server argv) ---
     Q_PROPERTY(QString launchPresetId READ launchPresetId WRITE setLaunchPresetId NOTIFY launchPresetIdChanged)
+    // Selected launch-profile preset (auto-switched to the runtime backend by
+    // LaunchProfileStore; empty = resolve).
+    Q_PROPERTY(QString launchProfileId READ launchProfileId WRITE setLaunchProfileId NOTIFY launchProfileIdChanged)
     Q_PROPERTY(QString launchModelPath READ launchModelPath WRITE setLaunchModelPath NOTIFY launchModelPathChanged)
     Q_PROPERTY(QString launchMmprojPath READ launchMmprojPath WRITE setLaunchMmprojPath NOTIFY launchMmprojPathChanged)
     Q_PROPERTY(QString launchModelAlias READ launchModelAlias WRITE setLaunchModelAlias NOTIFY launchModelAliasChanged)
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
-    Q_PROPERTY(int launchCtxSize READ launchCtxSize WRITE setLaunchCtxSize NOTIFY launchCtxSizeChanged)
-    Q_PROPERTY(int launchGpuLayers READ launchGpuLayers WRITE setLaunchGpuLayers NOTIFY launchGpuLayersChanged)
-    Q_PROPERTY(int launchThreads READ launchThreads WRITE setLaunchThreads NOTIFY launchThreadsChanged)
-    Q_PROPERTY(int launchBatchSize READ launchBatchSize WRITE setLaunchBatchSize NOTIFY launchBatchSizeChanged)
-    Q_PROPERTY(int launchParallel READ launchParallel WRITE setLaunchParallel NOTIFY launchParallelChanged)
-    Q_PROPERTY(QString launchFlashAttn READ launchFlashAttn WRITE setLaunchFlashAttn NOTIFY launchFlashAttnChanged)
-    Q_PROPERTY(QString launchCacheTypeK READ launchCacheTypeK WRITE setLaunchCacheTypeK NOTIFY launchCacheTypeKChanged)
-    Q_PROPERTY(QString launchCacheTypeV READ launchCacheTypeV WRITE setLaunchCacheTypeV NOTIFY launchCacheTypeVChanged)
-    Q_PROPERTY(bool launchNoMmap READ launchNoMmap WRITE setLaunchNoMmap NOTIFY launchNoMmapChanged)
-    Q_PROPERTY(bool launchJinja READ launchJinja WRITE setLaunchJinja NOTIFY launchJinjaChanged)
-    Q_PROPERTY(QString launchExtraArgs READ launchExtraArgs WRITE setLaunchExtraArgs NOTIFY launchExtraArgsChanged)
 
     // --- Hugging Face ---
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
@@ -82,12 +74,6 @@ public:
     static constexpr const char *kDefaultModelAlias = "llocr-local";
     static constexpr const char *kDefaultHost = "127.0.0.1";
     static constexpr int kDefaultPort = 0;        // 0 = auto-pick
-    static constexpr int kDefaultCtxSize = 8192;
-    static constexpr int kDefaultGpuLayers = -1;   // -1 = default (do not set)
-    static constexpr int kDefaultThreads = 0;      // 0 = do not pass
-    static constexpr int kDefaultBatchSize = 0;    // 0 = do not pass
-    static constexpr int kDefaultParallel = 1;
-    static constexpr const char *kDefaultFlashAttn = "off";
     static constexpr int kDefaultStartupTimeoutMs = 180000;
 
     Q_INVOKABLE void forceSave();
@@ -201,28 +187,8 @@ public:
     void setLaunchHost(const QString &host);
     int launchPort() const;
     void setLaunchPort(int port);
-    int launchCtxSize() const;
-    void setLaunchCtxSize(int size);
-    int launchGpuLayers() const;
-    void setLaunchGpuLayers(int layers);
-    int launchThreads() const;
-    void setLaunchThreads(int threads);
-    int launchBatchSize() const;
-    void setLaunchBatchSize(int size);
-    int launchParallel() const;
-    void setLaunchParallel(int parallel);
-    QString launchFlashAttn() const;
-    void setLaunchFlashAttn(const QString &value);
-    QString launchCacheTypeK() const;
-    void setLaunchCacheTypeK(const QString &type);
-    QString launchCacheTypeV() const;
-    void setLaunchCacheTypeV(const QString &type);
-    bool launchNoMmap() const;
-    void setLaunchNoMmap(bool on);
-    bool launchJinja() const;
-    void setLaunchJinja(bool on);
-    QString launchExtraArgs() const;
-    void setLaunchExtraArgs(const QString &args);
+    QString launchProfileId() const;
+    void setLaunchProfileId(const QString &id);
 
     // --- Hugging Face ---
     QString hfToken() const;
@@ -264,22 +230,12 @@ signals:
     void startupTimeoutMsChanged();
     void allowNonLoopbackChanged();
     void launchPresetIdChanged();
+    void launchProfileIdChanged();
     void launchModelPathChanged();
     void launchMmprojPathChanged();
     void launchModelAliasChanged();
     void launchHostChanged();
     void launchPortChanged();
-    void launchCtxSizeChanged();
-    void launchGpuLayersChanged();
-    void launchThreadsChanged();
-    void launchBatchSizeChanged();
-    void launchParallelChanged();
-    void launchFlashAttnChanged();
-    void launchCacheTypeKChanged();
-    void launchCacheTypeVChanged();
-    void launchNoMmapChanged();
-    void launchJinjaChanged();
-    void launchExtraArgsChanged();
     void hfTokenChanged();
 
 private:
@@ -334,22 +290,12 @@ private:
 
     // Launch
     static constexpr const char *kLaunchPresetId = "launch/presetId";
+    static constexpr const char *kLaunchProfileId = "launch/profileId";
     static constexpr const char *kLaunchModelPath = "launch/modelPath";
     static constexpr const char *kLaunchMmprojPath = "launch/mmprojPath";
     static constexpr const char *kLaunchModelAlias = "launch/modelAlias";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
-    static constexpr const char *kLaunchCtxSize = "launch/ctxSize";
-    static constexpr const char *kLaunchGpuLayers = "launch/gpuLayers";
-    static constexpr const char *kLaunchThreads = "launch/threads";
-    static constexpr const char *kLaunchBatchSize = "launch/batchSize";
-    static constexpr const char *kLaunchParallel = "launch/parallel";
-    static constexpr const char *kLaunchFlashAttn = "launch/flashAttn";
-    static constexpr const char *kLaunchCacheTypeK = "launch/cacheTypeK";
-    static constexpr const char *kLaunchCacheTypeV = "launch/cacheTypeV";
-    static constexpr const char *kLaunchNoMmap = "launch/noMmap";
-    static constexpr const char *kLaunchJinja = "launch/jinja";
-    static constexpr const char *kLaunchExtraArgs = "launch/extraArgs";
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";

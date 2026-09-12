@@ -7,6 +7,7 @@
 
 #include "app/AppController.h"
 #include "app/I18n.h"
+#include "app/LaunchProfileStore.h"
 #include "app/OcrImageProvider.h"
 #include "app/RequestProfileStore.h"
 #include "app/SettingsStore.h"
@@ -52,9 +53,14 @@ int main(int argc, char* argv[]) {
     llocr::RequestProfileStore requestProfiles(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfiles", &requestProfiles);
 
+    // llama-server launch-parameter profiles (built-in presets + per-preset
+    // user copies; the selection auto-follows the installed runtime backend).
+    llocr::LaunchProfileStore launchProfiles(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", &launchProfiles);
+
     // Managed-runtime controller: single instance, owned here (ADR 36).
     // Created before the engine loads; QML only consumes the singleton.
-    llocr::RuntimeController runtimeController(settingsStore);
+    llocr::RuntimeController runtimeController(settingsStore, launchProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
 
     // § review 3.4: the managed server's live log moved out of the facade into
@@ -75,7 +81,8 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
 
     // Stage E model management: preset catalog, HF search/download, registry.
-    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController);
+    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController,
+                                         launchProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
 
     // Single-instance guard (§ Stage A task 7): when another instance holds the

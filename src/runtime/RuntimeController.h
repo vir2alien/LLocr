@@ -17,6 +17,7 @@ class QNetworkReply;
 namespace llocr {
 
 class SettingsStore;
+class LaunchProfileStore;
 class RuntimeLog;
 class SingleInstanceGuard;
 
@@ -43,7 +44,9 @@ class RuntimeController : public QObject
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
 
 public:
-    explicit RuntimeController(SettingsStore &settings, QObject *parent = nullptr);
+    explicit RuntimeController(SettingsStore &settings,
+                               LaunchProfileStore &launchProfiles,
+                               QObject *parent = nullptr);
 
     // --- QML-visible state ----------------------------------------------
     RuntimeState state() const { return m_state; }
@@ -63,11 +66,12 @@ public:
     }
 
     // ------- §H.2 memory estimation --------------------------------------
-    /// Best-effort RAM estimate for launching a managed model at ctxSize/…
-    /// Returns a QVariantMap (modelBytes, kvCacheBytes, totalBytes,
-    /// systemRamBytes, valid, error). Never throws.
-    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath,
-                                                int ctxSize);
+    /// Best-effort RAM estimate for launching a managed model. The context
+    /// size and KV cache types come from the active launch profile (their
+    /// ctx-size / cache-type-k / cache-type-v rows). Returns a QVariantMap
+    /// (modelBytes, kvCacheBytes, totalBytes, systemRamBytes, valid, error).
+    /// Never throws.
+    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath);
 
     /// §1.4 `canRecognize` (the mode/runtime part; `documentLoaded` is supplied
     /// by the caller). External is always eligible; Managed needs a Ready
@@ -169,6 +173,7 @@ private:
     SingleInstanceGuard *m_instanceGuard = nullptr;
 
     SettingsStore &m_settings;
+    LaunchProfileStore &m_launchProfiles;
 
     // In-flight managed resolve (dedup: all concurrent callers share it). Each
     // pending caller's callback is queued here and drained by completeResolve().

@@ -17,14 +17,18 @@ Item {
     function gib(bytes) { return bytes / (1024 * 1024 * 1024) }
     function refreshEstimate() {
         if (!Settings.launchModelPath.trim().length) { estTotal = 0; estRam = 0; return }
-        var m = Runtime.estimateModelMemory(Settings.launchModelPath, Settings.launchCtxSize)
+        // The context size comes from the active launch profile.
+        var m = Runtime.estimateModelMemory(Settings.launchModelPath)
         root.estTotal = m.totalBytes
         root.estRam = m.systemRamBytes
     }
     Connections {
         target: Settings
         function onLaunchModelPathChanged() { refreshEstimate() }
-        function onLaunchCtxSizeChanged() { refreshEstimate() }
+    }
+    Connections {
+        target: LaunchProfiles
+        function onProfileChanged() { refreshEstimate() }
     }
     Component.onCompleted: {
         refreshEstimate()
