@@ -52,7 +52,6 @@ public:
                            RequestProfileStore &requestProfiles,
                            QObject *parent = nullptr);
 
-    // --- QML getters ---
     bool busy() const { return m_recognition.busy(); }
     QString resultText() const;
     QString statusMessage() const { return m_statusMessage; }
@@ -71,15 +70,10 @@ public:
     bool currentPageEditable() const;
     bool currentPageEdited() const;
 
-    /// UI-facing page/box models. Deliberately non-const: a const accessor would
-    /// have to return const QObject*, forcing a const_cast, and QML delegates
-    /// need the mutable model instance.
     QObject *pageModel() { return &m_pageModel; }
     QObject *boxModel() { return &m_boxModel; }
 
     QString prompt() const { return m_prompt; }
-
-    // --- QML setters ---
 
     void setPrompt(const QString &prompt);
     void setCurrentPage(int index);
@@ -87,7 +81,6 @@ public:
     QImage currentImage() const;
     QImage pageImage(int index) const;
 
-    /// Crops the image-block of a page (used by OcrImageProvider and export).
     QImage croppedImage(int pageIndex, int boxIndex) const;
 
 signals:
@@ -107,33 +100,21 @@ signals:
 
 public slots:
     Q_INVOKABLE void openFiles(const QVariantList& fileUrls);
-
     Q_INVOKABLE void recognizeCurrent();
     Q_INVOKABLE void recognizeAll();
-
     Q_INVOKABLE void stop();
-
     Q_INVOKABLE bool removePage(int index);
-
     Q_INVOKABLE bool movePage(int from, int to);
-
     Q_INVOKABLE bool exportPages(const QUrl& fileUrl, int scope, int fromPage = 1, int toPage = 1);
-
     Q_INVOKABLE bool exportResult(const QUrl& fileUrl);
-
     Q_INVOKABLE void setCurrentPageText(const QString& text);
     Q_INVOKABLE void revertCurrentPageEdits();
-
-    // --- Image-block editing (called from the preview overlay) ---
     Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y,
                                       qreal width, qreal height);
     Q_INVOKABLE void onBoxRemoved(int boxIndex);
-
-    /// Replaces image://ocr/crop/<N> with data: URIs for WebEngine preview.
     Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown) const;
 
 private:
-    // Values are mirrored by raw ints in Main.qml (0 = all, 1 = current, 2 = range).
     enum ExportScope : int {
         ExportAll = 0,
         ExportCurrent = 1,
@@ -141,37 +122,26 @@ private:
     };
 
     void setStatus(const QString& message);
-
     void notifyDocumentChanged();
     void notifyPageChanged();
-
     void applyRawResult(int index, const OcrResult& rawResult);
-
     void updateBoxesForCurrent();
-
     QList<Exporter::Page> collectPages(int scope, int fromPage, int toPage) const;
-
     QString effectiveText(int index) const;
 
+private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
-
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
-
     RecognitionController m_recognition;
-
     QString m_prompt = "document parsing.";
-
     Exporter m_exporter;
-
     int m_currentPage = 0;
     QString m_statusMessage;
-
     int m_imageRevision = 0;
     int m_docRevision = 0;
-
     PageEditStore m_editStore;
 };
 

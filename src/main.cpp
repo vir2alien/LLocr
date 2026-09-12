@@ -13,118 +13,130 @@
 #include "app/SettingsStore.h"
 #include "app/UiController.h"
 #include "runtime/InstallTransaction.h"
+#include "runtime/ModelInstaller.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeInstaller.h"
 #include "runtime/RuntimeLog.h"
-#include "runtime/SelfTestController.h"
-#include "runtime/ModelInstaller.h"
 #include "runtime/RuntimePaths.h"
+#include "runtime/SelfTestController.h"
 #include "runtime/SingleInstanceGuard.h"
 
-int main(int argc, char* argv[]) {
-    QtWebEngineQuick::initialize();
-    QGuiApplication app(argc, argv);
+namespace {
 
+void setApplicationIdentity() {
     QCoreApplication::setOrganizationName(QStringLiteral("llocr"));
     QCoreApplication::setApplicationName(QStringLiteral("LLM OCR"));
+}
 
-    // Application / window icon, used by every top-level window (Windows
-    // taskbar, Linux WM/taskbar, and macOS window). Emits each size so the
-    // platform can pick the crispest available variant for the current scale
-    // factor. (The macOS Dock icon is additionally supplied by the .icns in the
-    // .app bundle; see the LLOCR_MACOS_APP_BUNDLE build option.)
-    {
-        QIcon windowIcon;
-        for (const auto size : {16, 24, 32, 48, 64, 128, 256, 512, 1024})
-            windowIcon.addFile(QStringLiteral(":/icons/llocr-%1.png").arg(size),
-                               QSize(size, size));
-        app.setWindowIcon(windowIcon);
-    }
+QIcon makeWindowIcon() {
+    QIcon windowIcon;
+    for (const auto size : {16, 24, 32, 48, 64, 128, 256, 512, 1024})
+        windowIcon.addFile(QStringLiteral(":/icons/llocr-%1.png").arg(size),
+                           QSize(size, size));
+    return windowIcon;
+}
 
+void applyVisualStyle(QGuiApplication& app) {
+    app.setWindowIcon(makeWindowIcon());
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
+}
 
-    llocr::SettingsStore settingsStore;
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", &settingsStore);
-    llocr::I18n i18n(settingsStore);
-
-    // Request-body profile (built-in defaults + user profile). Created before
-    // the engine loads; QML consumes the singleton, C++ consumers get the
-    // reference passed through.
-    llocr::RequestProfileStore requestProfiles(settingsStore);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfiles", &requestProfiles);
-
-    // llama-server launch-parameter profiles (built-in presets + per-preset
-    // user copies; the selection auto-follows the installed runtime backend).
-    llocr::LaunchProfileStore launchProfiles(settingsStore);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", &launchProfiles);
-
-    // Managed-runtime controller: single instance, owned here (ADR 36).
-    // Created before the engine loads; QML only consumes the singleton.
-    llocr::RuntimeController runtimeController(settingsStore, launchProfiles);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
-
-    // § review 3.4: the managed server's live log moved out of the facade into
-    // a dedicated singleton; RuntimeController pushes servers into it.
-    llocr::RuntimeLog runtimeLog(settingsStore);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeLog", &runtimeLog);
-    runtimeController.setLogTarget(&runtimeLog);
-
-    // § review 3.4: self-test state + wizard "Check" bridge moved out of the
-    // facade into a dedicated singleton that consumes Runtime's resolve API.
-    llocr::SelfTestController selfTestController(settingsStore, runtimeController,
-                                                 requestProfiles);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);
-
-    // Stage D install controller: release catalog, download & install. Also a
-    // singleton; owns its own DownloadManager and worker threads.
-    llocr::RuntimeInstaller runtimeInstaller(settingsStore);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
-
-    // Stage E model management: preset catalog, HF search/download, registry.
-    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController,
-                                         launchProfiles);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
-
-    // Single-instance guard (§ Stage A task 7): when another instance holds the
-    // lock, Managed operations are disabled via runtimeController.setSingleInstanceHeld().
-    llocr::RuntimePaths paths(settingsStore.runtimeRootDir(),
-                              settingsStore.runtimeModelsDir());
-    // Make sure <AppData>/LLocr exists before QLockFile tries to create the
-    // instance lock in it. Failures here are non-fatal: the lock file just
-    // cannot be created and External keeps working.
+void prepareRuntimeDirectories(const llocr::RuntimePaths& paths) {
     const QString dirError = paths.ensureDirectories();
     if (!dirError.isEmpty())
         qWarning().noquote() << dirError;
 
-    // ADR 39 / Stage D task 5: remove leftover staging/<uuid> trees from
-    // interrupted installs. Safe now that cleanupStaging skips "."/"..".
     llocr::InstallTransaction::cleanupStaging(paths);
+}
 
-    llocr::SingleInstanceGuard instanceGuard(paths.instanceLockPath());
-    QString guardError;
-    const bool soleInstance = instanceGuard.tryAcquire(guardError);
-    runtimeController.setSingleInstanceHeld(!soleInstance);
-    // The Runtime settings tab re-checks ownership when opened: a second window
-    // that started while another instance owned the runtime may take over once
-    // that owner exits, without an app restart.
-    runtimeController.bindSingleInstanceGuard(&instanceGuard);
-    if (!soleInstance) {
-        qWarning().noquote() << guardError;
-    }
+void connectShutdownHandlers(QGuiApplication& app,
+                             llocr::SingleInstanceGuard& instanceGuard,
+                             llocr::RuntimeController& runtimeController,
+                             llocr::RuntimeInstaller& runtimeInstaller,
+                             llocr::ModelInstaller& modelInstaller) {
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &instanceGuard,
                      &llocr::SingleInstanceGuard::release);
-    // §5.5: blocking shutdown of the managed server (terminate → 5 s → kill).
-    // Must run while the process is still alive; ~aboutToQuit is the last
-    // synchronous point before the event loop stops.
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &runtimeController,
                      &llocr::RuntimeController::shutdownSync);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &runtimeInstaller,
                      &llocr::RuntimeInstaller::shutdown);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &modelInstaller,
                      &llocr::ModelInstaller::shutdown);
+}
+
+void setupQmlEngine(QQmlApplicationEngine& engine,
+                    llocr::AppController& appController,
+                    llocr::UiController& uiController) {
+    qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/qml/Theme.qml")),
+                             "LLocr", 1, 0, "Theme");
+    qmlRegisterUncreatableType<llocr::UiController>(
+                "LLocr", 1, 0, "UiController",
+                "UiController is provided as a context property");
+
+    engine.addImageProvider(QStringLiteral("ocr"),
+                            new llocr::OcrImageProvider(&appController));
+
+    engine.rootContext()->setContextProperty(QStringLiteral("controller"),
+                                             &appController);
+    engine.rootContext()->setContextProperty(QStringLiteral("uiController"),
+                                             &uiController);
+}
+
+}  // namespace
+
+int main(int argc, char* argv[]) {
+    QtWebEngineQuick::initialize();
+    QGuiApplication app(argc, argv);
+
+    setApplicationIdentity();
+    applyVisualStyle(app);
+
+    llocr::SettingsStore settingsStore;
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", &settingsStore);
+
+    llocr::I18n i18n(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);
+
+    llocr::RequestProfileStore requestProfiles(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfiles", &requestProfiles);
+
+    llocr::LaunchProfileStore launchProfiles(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", &launchProfiles);
+
+    llocr::RuntimeController runtimeController(settingsStore, launchProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
+
+    llocr::RuntimeLog runtimeLog(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeLog", &runtimeLog);
+    runtimeController.setLogTarget(&runtimeLog);
+
+    llocr::SelfTestController selfTestController(settingsStore, runtimeController,
+                                                 requestProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);
+
+    llocr::RuntimeInstaller runtimeInstaller(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
+
+    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController,
+                                         launchProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
+
+    llocr::RuntimePaths runtimePaths(settingsStore.runtimeRootDir(),
+                                     settingsStore.runtimeModelsDir());
+    prepareRuntimeDirectories(runtimePaths);
+
+    llocr::SingleInstanceGuard instanceGuard(runtimePaths.instanceLockPath());
+    QString guardError;
+    const bool soleInstance = instanceGuard.tryAcquire(guardError);
+    runtimeController.setSingleInstanceHeld(!soleInstance);
+    runtimeController.bindSingleInstanceGuard(&instanceGuard);
+    if (!soleInstance)
+        qWarning().noquote() << guardError;
+
+    connectShutdownHandlers(app, instanceGuard, runtimeController,
+                            runtimeInstaller, modelInstaller);
 
     QQmlApplicationEngine engine;
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);
 
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &engine,
                      [&engine]() { engine.retranslate(); });
@@ -133,15 +145,7 @@ int main(int argc, char* argv[]) {
                                        requestProfiles);
     llocr::UiController uiController(settingsStore);
 
-    qmlRegisterSingletonType(QUrl("qrc:/qml/Theme.qml"), "LLocr", 1, 0, "Theme");
-
-    qmlRegisterUncreatableType<llocr::UiController>("LLocr", 1, 0, "UiController", "UiController is provided as a context property");
-
-    engine.addImageProvider(QStringLiteral("ocr"), new llocr::OcrImageProvider(&appController));
-
-    engine.rootContext()->setContextProperty(QStringLiteral("controller"), &appController);
-    engine.rootContext()->setContextProperty(QStringLiteral("uiController"), &uiController);
-
+    setupQmlEngine(engine, appController, uiController);
     i18n.applyInitial();
 
     QObject::connect(

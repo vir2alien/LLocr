@@ -55,9 +55,6 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
         emit imageRevisionChanged();
     });
 
-    // canRecognize() depends on the runtime state (mode, RuntimeState,
-    // busyState, config); propagate changes so the QML-side enabled-state
-    // follows Settings and the managed-runtime lifecycle.
     connect(&m_settings, &SettingsStore::modelNameChanged, this, [this]() {
         emit configChanged();
     });
@@ -93,8 +90,6 @@ bool AppController::hasResult() const
 
 bool AppController::canRecognize() const
 {
-    // §1.4: a document must be loaded, recognition idle, and the runtime part
-    // eligible (External always; Managed needs Ready or startable config).
     if (m_document.isEmpty() || m_recognition.busy())
         return false;
     return m_runtime.canRecognize(true);
@@ -416,14 +411,8 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y,
     QList<BoundingBox>& boxes = page.result.pages[0].boxes;
     if (boxIndex < 0 || boxIndex >= boxes.size())
         return;
-
-    // Update the source-of-truth coordinates. page.text is NOT touched: the
-    // image URL still points at the same box index and OcrImageProvider reads
-    // the rect lazily, so the crop already reflects the new bounds.
     boxes[boxIndex].rect = QRectF(x, y, width, height);
 
-    // Keep the UI-facing overlay model in sync so the box follows the cursor
-    // live during the drag.
     m_boxModel.updateBoxRect(boxIndex, x, y, width, height);
 
     emit boxesChanged();
@@ -443,10 +432,6 @@ void AppController::onBoxRemoved(int boxIndex)
 
     boxes.removeAt(boxIndex);
 
-    // Regenerate the page text so the box indices embedded in the image URLs
-    // shift correctly. The result replaces any manual edit, while the original
-    // recognition output (page.result.text) is left untouched so Revert
-    // restores the text as it was before the removal.
     m_editStore.replace(m_currentPage, rebuildPageText(page.result.pages[0]));
     m_pageModel.setEdited(m_currentPage, true);
 
@@ -504,8 +489,6 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
         return false;
     }
 
-    // Crops an image-block on demand during export. pageNumber is the 1-based
-    // page number carried by Exporter::Page (== document index + 1).
     const auto crop = [this](int pageNumber, int boxIndex) {
         return croppedImage(pageNumber - 1, boxIndex);
     };
