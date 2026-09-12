@@ -5,16 +5,11 @@ import QtQuick.Layouts
 import LLocr
 import "../Common"
 
-// SetupWizard → Step 5 "Done": summary. Marked complete when the wizard
-// actually reaches this step / Finish is pressed (SetupWizard calls markDone()).
-// Do NOT use Component.onCompleted here: StackLayout instantiates all children
-// eagerly, so it would fire at application startup and suppress the wizard trigger.
 Item {
     id: root
 
     property bool complete: true
 
-    // The wizard calls this on the Finish click; also safe to call multiple times.
     function markDone() {
         Settings.setupVersion = 1
         Settings.setupDismissed = false

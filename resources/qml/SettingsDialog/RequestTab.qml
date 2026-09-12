@@ -8,8 +8,6 @@ import "../Common"
 Item {
     id: root
 
-    // The table edits the draft copy only. Save commits the draft to the user
-    // profile, Cancel/reopen discards it (reloadDraft()).
     function loadValues() {
         RequestProfiles.reloadDraft()
     }

@@ -8,9 +8,6 @@ import "../Common"
 Item {
     id: root
 
-    // The table edits the draft copy of the selected preset only. Save commits
-    // the draft (selection + rows) to the launch profile store, Cancel/reopen
-    // discards it (reloadDraft()).
     function loadValues() {
         LaunchProfiles.reloadDraft()
     }
@@ -19,16 +16,29 @@ Item {
         LaunchProfiles.saveDraft()
     }
 
-    // Restore defaults: loads the built-in rows of the edited preset into the
-    // draft (uncommitted until Save).
     function resetValues() {
         LaunchProfiles.loadDefaultDraft()
     }
 
-    // Column proportions shared by the header and the delegates.
     readonly property real nameWidth: 0.24
     readonly property real valueWidth: 0.24
     readonly property real removeWidth: 28
+
+    Component.onCompleted: syncPresetModel()
+
+    function syncPresetModel() {
+        presetListModel.clear()
+        for (let i = 0; i < LaunchProfiles.presetIds.length; ++i)
+            presetListModel.append({ name: LaunchProfiles.presetNames[i] })
+        const idx = LaunchProfiles.presetIds.indexOf(LaunchProfiles.draftProfileId)
+        profileBox.currentIndex = idx >= 0 ? idx : 0
+    }
+
+    Connections {
+        target: LaunchProfiles
+        function onDraftProfileChanged() { syncPresetModel() }
+        function onActiveProfileChanged() { syncPresetModel() }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -55,7 +65,6 @@ Item {
             Item { Layout.fillWidth: true }
         }
 
-        // Header, anchored like the delegate rows so the columns line up.
         Item {
             Layout.fillWidth: true
             implicitHeight: headerValue.implicitHeight
@@ -153,7 +162,6 @@ Item {
             }
         }
 
-        // Add-parameter row.
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacing
@@ -191,23 +199,5 @@ Item {
             color: Theme.textMuted
             text: qsTr("llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings")
         }
-    }
-
-    Component.onCompleted: syncPresetModel()
-
-    Connections {
-        target: LaunchProfiles
-        function onDraftProfileChanged() { syncPresetModel() }
-        function onActiveProfileChanged() { syncPresetModel() }
-    }
-
-    // currentIndex is assigned imperatively: a declarative binding would be
-    // broken by the user's own combobox interaction.
-    function syncPresetModel() {
-        presetListModel.clear()
-        for (let i = 0; i < LaunchProfiles.presetIds.length; ++i)
-            presetListModel.append({ name: LaunchProfiles.presetNames[i] })
-        const idx = LaunchProfiles.presetIds.indexOf(LaunchProfiles.draftProfileId)
-        profileBox.currentIndex = idx >= 0 ? idx : 0
     }
 }

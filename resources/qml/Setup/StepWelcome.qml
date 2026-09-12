@@ -5,16 +5,11 @@ import QtQuick.Layouts
 import LLocr
 import "../Common"
 
-// SetupWizard → Step 1 "Welcome": choose between a managed local server
-// (recommended) and an existing external server/API. Choosing External finishes
-// the wizard immediately (setupVersion = 1) — the rest of the setup is unused.
 Item {
     id: root
 
-    // Whether "Local server" was chosen (enables the Next button).
     property bool complete: false
 
-    // Emitted when the user picks the External path; the wizard handles finishing.
     signal externalChosen()
 
     function chooseLocal() {
@@ -23,7 +18,6 @@ Item {
     }
 
     function chooseExternal() {
-        // §4.4 / ADR 31: an External profile counts as set up, no probing needed.
         Settings.connectionMode = "external"
         Settings.setupVersion = 1
         Settings.setupDismissed = false

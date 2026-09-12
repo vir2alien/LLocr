@@ -11,13 +11,11 @@ Item {
 
     property bool complete: Settings.launchModelPath.trim().length > 0
 
-    // §H.2 estimate for the selected model (see label below the status).
-    property var estTotal: 0
-    property var estRam: 0
+    property int estTotal: 0
+    property int estRam: 0
     function gib(bytes) { return bytes / (1024 * 1024 * 1024) }
     function refreshEstimate() {
         if (!Settings.launchModelPath.trim().length) { estTotal = 0; estRam = 0; return }
-        // The context size comes from the active launch profile.
         var m = Runtime.estimateModelMemory(Settings.launchModelPath)
         root.estTotal = m.totalBytes
         root.estRam = m.systemRamBytes
@@ -70,7 +68,6 @@ Item {
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
             color: Theme.textMuted
-            // §H.2 estimate shown next to the selected model.
             visible: root.complete && root.estTotal > 0
             text: qsTr("Estimated footprint: ~%1 GiB (model + context) on %2 GiB RAM")
                 .arg(root.gib(root.estTotal).toFixed(1))
@@ -121,8 +118,7 @@ Item {
                     Layout.fillHeight: true
                     currentIndex: modelTabBar.currentIndex
 
-                    // ----- Presets -------------------------------------------
-                    ColumnLayout {
+                    ColumnLayout {//Presets
                         spacing: 6
                         LLOLabel {
                             text: qsTr("Start from a preset")
@@ -188,10 +184,9 @@ Item {
                                 }
                             }
                         }
-                    }
+                    }//ColumnLayout
 
-                    // ----- Hugging Face search --------------------------------
-                    ColumnLayout {
+                    ColumnLayout {//Hugging Face search
                         spacing: 6
                         RowLayout {
                             Layout.fillWidth: true
@@ -268,10 +263,9 @@ Item {
                             text: qsTr("Results appear here. Models install into the managed "
                                        + "models directory.")
                         }
-                    }
+                    }//ColumnLayout
 
-                    // ----- Local file -------------------------------------------
-                    ColumnLayout {
+                    ColumnLayout {//Local file
                         spacing: 8
                         RowLayout {
                             Layout.fillWidth: true
@@ -300,15 +294,14 @@ Item {
                             text: qsTr("The local model is not managed: its license is your "
                                        + "responsibility, and it is not verified by the catalog.")
                         }
-                    }
+                    }//ColumnLayout
                 }
             }
-        }
+        }//Frame
 
         Item { Layout.fillHeight: true }
     }
 
-    // Confirm dialog for preset / remote installs (shows the license).
     Dialog {
         id: prepareDialog
         modal: true
@@ -355,7 +348,7 @@ Item {
             }
         }
         onAccepted: ModelInstaller.installPrepared()
-    }
+    }//Dialog
 
     FileDialog {
         id: modelPicker

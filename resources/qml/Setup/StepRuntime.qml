@@ -31,8 +31,7 @@ Item {
                        + "you already have.")
         }
 
-        // ----- Option A: install via RuntimeInstaller --------------------
-        GroupBox {
+        GroupBox {//Option A: install via RuntimeInstaller
             Layout.fillWidth: true
             title: qsTr("Download llama.cpp")
             font.pointSize: Theme.captionSize
@@ -119,7 +118,7 @@ Item {
                                + "manually below.")
                 }
             }
-        }
+        }//GroupBox
 
         Rectangle {
             Layout.fillWidth: true
@@ -127,7 +126,7 @@ Item {
             color: Theme.divider
         }
 
-        // ----- Option B: existing binary --------------------------------------
+        // Option B: existing binary
         LLOLabel {
             text: qsTr("Use an existing llama-server binary")
         }
