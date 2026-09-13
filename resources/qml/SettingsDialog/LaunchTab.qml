@@ -62,6 +62,10 @@ Item {
                 onActivated: LaunchProfiles.selectDraftProfile(
                                  LaunchProfiles.presetIds[currentIndex])
             }
+            LLOButton {
+                text: qsTr("Restore profile")
+                onClicked: root.resetValues()
+            }
             Item { Layout.fillWidth: true }
         }
 

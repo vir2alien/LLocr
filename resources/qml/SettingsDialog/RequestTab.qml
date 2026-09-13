@@ -32,6 +32,18 @@ Item {
 
         Item { implicitHeight: 4 }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacing
+
+            LLOButton {
+                text: qsTr("Restore profile")
+                onClicked: root.resetValues()
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
         // Header, anchored like the delegate rows so the columns line up.
         Item {
             Layout.fillWidth: true
