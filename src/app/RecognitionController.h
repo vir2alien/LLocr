@@ -8,8 +8,9 @@
 #include <QObject>
 #include <QString>
 
-#include "core/ProviderConfig.h"
-#include "providers/OpenAiProvider.h"
+#include "core/ConnectionConfig.h"
+#include "core/OcrRequest.h"
+#include "models/OcrModel.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeController.h"
 
@@ -32,8 +33,8 @@ public:
                                    QObject *parent = nullptr);
 
     bool busy() const { return m_busy; }
-    void startCurrent(int index, int totalPages, const QString& prompt);
-    void startAll(int totalPages, const QString& prompt);
+    void startCurrent(int index, int totalPages);
+    void startAll(int totalPages);
     void stop();
 
 signals:
@@ -47,11 +48,13 @@ private slots:
 
 private:
     void ensureConnectionReady();
+    void resolveModel();
     void recognizePage(int index);
     void finishRun();
     void setBusy(bool busy);
+    QString promptText() const;
     OcrRequest buildRequest(const QImage &image, const ResolvedConnection &conn) const;
-    ProviderConfig buildConfig(const ResolvedConnection &conn) const;
+    ConnectionConfig buildConfig(const ResolvedConnection &conn) const;
 
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
@@ -61,10 +64,9 @@ private:
     ResolvedConnection m_connection;
     bool m_connectionReady = false;
 
-    std::unique_ptr<OpenAiProvider> m_provider;
+    std::unique_ptr<OcrModel> m_model;
+    QString m_modelId;
     QFutureWatcher<OcrResult> m_watcher;
-
-    QString m_prompt;
 
     int m_totalPages = 0;
     int m_startIndex = 0;

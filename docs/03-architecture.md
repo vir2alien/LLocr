@@ -16,9 +16,10 @@
 │  OcrImageProvider (QQuickImageProvider) · SettingsStore  │
 │  UiController (theme) · I18n (language/retranslate)      │
 ├──────────────┬──────────────┬────────────┬───────────────┤
-│ LLM Provider │  Image/PDF   │  Parsers   │  Exporter     │
-│ ILlmProvider │  Loader      │ IOutputParser │ (TXT/MD/HTML)│
-│ OpenAiProvider│ DocumentModel│ raw/det    │ DOCX/PDF      │
+│  OCR models  │  Image/PDF   │  Parsers   │  Exporter     │
+│  OcrModel    │  Loader      │ IOutputParser │ (TXT/MD/HTML)│
+│  Unlimited…  │ DocumentModel│ raw/det    │ DOCX/PDF      │
+│  LlamaClient │              │            │               │
 ├──────────────┴──────┬───────┴────┬───────┴───────────────┤
 │   Managed Runtime (local llama.cpp)   │   internal infra  │
 │   RuntimeController — facade + resolve│   DownloadTask    │
@@ -36,38 +37,43 @@
 
 ## Principles
 - **The UI does not work directly** with network, files, or parsing — only via the backend.
-- The backend orchestrates: receives a request from the UI → calls the provider → parses → returns the result.
+- The backend orchestrates: receives a request from the UI → resolves the OCR
+  model adapter → sends the request via the transport → parses → returns the result.
 - Everything is asynchronous (QFuture / QPromise / signals); the UI does not block.
   Page navigation stays responsive **while a recognition run is in progress**.
 
-## Key abstraction: providers
+## Key abstraction: OCR models (adapters)
+Each supported OCR LLM gets its own adapter class; the shared mechanics live in
+the abstract base:
+
 ```cpp
-// Interface for a connection provider to an LLM
-class ILlmProvider {
+class OcrModel {                      // src/models/OcrModel.h — abstract base
 public:
-    virtual ~ILlmProvider() = default;
-    virtual QFuture<OcrResult> recognize(const OcrRequest& request,
-                                         const ProviderConfig& config) = 0;
-    virtual QString name() const = 0;
+    virtual QString id() const = 0;               // "unlimited-ocr"
+    virtual QString displayName() const = 0;      // "Unlimited-OCR"
+    virtual QList<OcrPromptVariant> promptVariants() const = 0;
+    virtual QString defaultParserId() const = 0;  // "det_tokens"
+
+    QFuture<OcrResult> recognize(const OcrRequest &request,
+                                 const ConnectionConfig &config);
+    void abort();
+protected:
+    virtual QByteArray buildRequestBody(const OcrRequest &, const QString &imageDataUrl) const;
+    virtual OcrResult parseResponse(const QByteArray &responseData) const;
 };
 ```
 
 The request and transport config are split:
 
 ```cpp
-struct OcrRequest {
+struct OcrRequest {                   // core/OcrRequest.h
     QImage image;
     QString prompt;
     QString modelId;
-    double temperature = 0.0;
-    int    maxTokens = 8192;
-    double dryMultiplier = 0.8;
-    double dryBase = 1.75;
-    int    dryAllowedLength = 35;
-    int    dryPenaltyLastN = 2048;
+    QList<RequestParameter> parameters;   // ordered body parameters (request profile)
 };
 
-struct ProviderConfig {   // transport only
+struct ConnectionConfig {             // core/ConnectionConfig.h — transport only
     QString baseUrl;      // e.g. http://localhost:8080
     QString apiKey;       // optional bearer token
     int     timeoutMs;    // per-request timeout
@@ -75,10 +81,17 @@ struct ProviderConfig {   // transport only
 ```
 
 Implementations:
-- `OpenAiProvider`  — any OpenAI-compatible API (Ollama, LM Studio, llama.cpp
-  server, hosted APIs). Transport-only. Async via `QPromise`; supports
+- `OcrModel` (base) implements `recognize()`/`abort()` as a template method over
+  the transport: encodes the image to a base64 data URL, builds the request body
+  (`buildRequestBody`, virtual), POSTs via `LlamaClient`, and parses the response
+  (`parseResponse`, virtual). Async via `QPromise`; per-request timeout;
   **`abort()`** so the UI Stop button can cancel an in-flight request.
-  Per-request timeout via `QTimer`.
+- `UnlimitedOcrModel` — one prompt variant ("document parsing."), parser
+  `det_tokens`. Adding another LLM = one new subclass + one line in
+  `OcrModelFactory`.
+- `LlamaClient` (`core/LlamaClient.h`) — thin transport: joins the
+  `/v1/chat/completions` URL, POSTs JSON with Bearer auth/timeout/`abort()`, and
+  extracts the server's error message.
 
 ## Key abstraction: resolved connection
 `RecognitionController` **never** deals with modes, processes, or health
@@ -111,22 +124,23 @@ ready, and what is it” is owned by `RuntimeController` (ADR 26/32/37). The
 recognition flow is then a pure pipeline:
 
 ```
-ensureConnectionReady() → ResolvedConnection → ProviderConfig → OcrRequest → OpenAiProvider
+ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrRequest → OcrModel (via LlamaClient)
 ```
 
 ## Configuration model
 The model + parser settings live in `SettingsStore` (persisted via `QSettings`,
 edited in the Settings dialog). When recognition starts, `RecognitionController`
-assembles them into an `OcrRequest` (model + prompt + generation params) and a
-`ProviderConfig` (connection transport) from the store.
+assembles an `OcrRequest` (prompt from the active OCR model adapter + request-body
+parameters) and a `ConnectionConfig` (connection transport) from the resolved
+connection and the store.
 
 - `SettingsStore` loads/saves connection/model/parser/UI settings via
-  `QSettings` (grouped keys: `provider/*`, `model/*`, `output/*`, `ui/*`,
-  `runtime/*`, `launch/*`, `hf/*`). Model settings include the **DRY sampling
-  parameters** (`model/dryMultiplier`, `model/dryBase`, `model/dryAllowedLength`,
-  `model/dryPenaltyLastN`). The recognition **prompt** is supplied by the chosen
-  **model preset** (a `ModelPreset.prompt`); a built-in default
-  (`AppController::m_prompt`, "document parsing.") applies when no preset is used.
+  `QSettings` (grouped keys: `provider/*`, `model/*`, `parser/*`, `ui/*`,
+  `runtime/*`, `launch/*`, `hf/*`; the `provider/` prefix is legacy storage,
+  kept for profile compatibility). `model/recipeId` selects the OCR model
+  adapter via `OcrModelFactory` (default `unlimited-ocr`). The recognition
+  **prompt** comes from the selected adapter's `promptVariants()` — the
+  authority moved from `AppController`/presets to the model adapter (ADR 58).
 - `parserId` selects the response-parsing strategy via `ParserFactory`
   (`raw` | `det_tokens`; default `det_tokens`).
 - In `Managed` mode the *connection* is **computed**, not configured: the
@@ -190,9 +204,10 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
   All connection/model/parser settings live in `SettingsStore` (exposed to QML
   as the `Settings` singleton), not on the controller.
 - **RecognitionController** — owns the recognition run loop (single page /
-  "recognize all"), the **stop** flag, and the `OpenAiProvider` instance.
+  "recognize all"), the **stop** flag, and the active `OcrModel` instance
+  (resolved via `OcrModelFactory` from `model/recipeId` at run start).
   Obtains the connection **only** via `RuntimeController::ensureConnectionReady()`
-  (ADR 37), builds `OcrRequest` + `ProviderConfig` from the resolved connection,
+  (ADR 37), builds `OcrRequest` + `ConnectionConfig` from the resolved connection,
   runs sequentially through pages, and emits `rawResultReady` per page.
 - **DocumentModel** — holds the loaded pages (`DocumentPage`: image +
   per-page `OcrResult` + `recognized` flag); loads single/multiple images
@@ -229,9 +244,10 @@ UI (file selection)
     → RecognitionController
         → RuntimeController::ensureConnectionReady()   [External: immediate;
             Managed: start → /health → /v1/models → alias]
-        → ResolvedConnection → ProviderConfig + OcrRequest
+        → OcrModelFactory::create(model/recipeId)
+        → ResolvedConnection → ConnectionConfig + OcrRequest
       → DocumentModel (decode image / render PDF page → QImage)
-      → OpenAiProvider.recognize()  [async, cancellable]
+      → OcrModel.recognize() → LlamaClient.postJson()  [async, cancellable]
       → OutputParser (from settings: raw / det_tokens)
     → OcrResult (text + optional normalized boxes)
   → AppController (applyRawResult → per-page OcrResult + PageEditStore)

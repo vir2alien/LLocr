@@ -68,6 +68,8 @@ Dialog {
         case SettingsDialog.TabsEnum.RequesetTabNum:
             requestTab.loadValues(); break;
         case SettingsDialog.TabsEnum.OutputTabNum: {
+            var midx = modelBox.model.indexOf(controller.modelIdToName(Settings.modelRecipeId))
+            modelBox.currentIndex = midx >= 0 ? midx : 0
             var idx = parserBox.model.indexOf(Settings.parserId)
             parserBox.currentIndex = idx >= 0 ? idx : 0
             break;
@@ -106,6 +108,7 @@ Dialog {
         launchTab.saveValues();
 
         Settings.parserId = parserBox.currentText;
+        Settings.modelRecipeId = controller.modelNameToId(modelBox.currentText);
         Settings.forceSave();
         I18n.setLanguage(Settings.language);
     }
@@ -136,6 +139,18 @@ Dialog {
 
             ColumnLayout {
                 spacing: 4
+                LLOLabel {
+                    text: qsTr("OCR model")
+                }
+                ComboBox {
+                    id: modelBox
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    model: controller.modelNames
+                }
+
+                Item { implicitHeight: 6 }
+
                 LLOLabel {
                     text: qsTr("Output parser")
                 }

@@ -10,21 +10,24 @@ LLocr provides a convenient interface to:
 
 ## Target requirements
 1. **Cross-platform** — Windows, macOS, Linux.
-2. **Configurable model & output** — model name, prompt, generation parameters
+2. **Configurable model & output** — model name, the request-body parameters
    and the output parser are all set by the user (see Settings), so different
-   models and output formats are supported without recompilation. For the
-   managed local runtime the prompt/parser/context are supplied by **model
-   presets** (pre-verified pairs; see Models below).
+   models and output formats are supported without recompilation. The
+   recognition prompt and the default parser come from the selected **OCR
+   model adapter** (e.g. `unlimited-ocr`); new LLMs are added as adapter
+   classes. For the managed local runtime the context is supplied by **model
+   presets** (see Models below).
 3. **Result export** — Markdown, DOCX (+ TXT, PDF, HTML).
 4. **RAG integration** — populate a vector database from scans.
 5. **Localizable & themeable UI** — language (System / English / Русский) and
    theme (System / Light / Dark) selectable in Settings.
 
-> **Note:** the app targets **only OpenAI-compatible connections**. Every
+> **Note:** the app targets **only llama.cpp-style OpenAI-compatible
+> connections** (no separate provider layer — see ADR 58). Every
 > model/connection/parser setting is edited in the **Settings dialog** and
-> persisted with `QSettings`. The recognition **prompt** is supplied by the
-> chosen **model preset** (a pre-verified model+parser+prompt pair, see Models);
-> a built-in default ("document parsing.") applies when no preset is in use.
+> persisted with `QSettings`. The recognition **prompt** is owned by the
+> selected **OCR model adapter** (`OcrModel::promptVariants()`; Unlimited-OCR
+> uses "document parsing.").
 
 ## User scenario (MVP) — status
 1. The user starts a local LLM runner (Ollama / LM Studio / llama.cpp server),
@@ -92,7 +95,8 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
 - **Model** — model name, temperature, max tokens, and the **DRY sampling
   parameters** (multiplier, base, allowed length, penalty last-N). In
   `Managed` mode the model id / alias is computed by the runtime, not typed.
-- **Output** — output parser (`raw` / `det_tokens`; default `det_tokens`).
+- **Output** — OCR model adapter (`unlimited-ocr`; `model/recipeId`) and output
+  parser (`raw` / `det_tokens`; default `det_tokens`).
 - **Runtime** — managed `llama-server` binary path + probe, Start/Stop/Restart,
   **Show log**, and the **stage-D installer** (release + backend pickers,
   «Download and install» with progress, «Installed: bXXXX (CUDA)», «Check for
@@ -100,10 +104,11 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
 - **Models** — installed-model table (activate/remove), the **preset catalog**,
   Hugging Face search + download, HF token, catalog import/export, GGUF check.
 
-> The recognition **prompt** is supplied by the selected **model preset**;
-> without a preset a built-in default (`AppController::m_prompt`, "document
-> parsing.") is used. The bbox coordinate range is hardcoded
-> (`DetTokensParser::kBboxCoordinateRange = 1000`), not exposed as a setting.
+> The recognition **prompt** is owned by the selected **OCR model adapter**
+> (`OcrModel::promptVariants()`; for Unlimited-OCR it is a single fixed variant
+> "document parsing.", ADR 58) and is not editable in the dialog. The bbox
+> coordinate range is hardcoded (`DetTokensParser::kBboxCoordinateRange = 1000`),
+> not exposed as a setting.
 >
 > **Secrets:** the API key and HF token are stored **in plaintext** in
 > `QSettings` (existing behavior) with an explicit UI warning; they are never

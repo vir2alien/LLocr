@@ -27,9 +27,9 @@
   > PDF rendering uses the **Qt PDF module**
   > (`QPdfDocument`). MuPDF remains a fallback option if higher-fidelity or faster rendering is later required.
   >
-  > The model prompt is **not** free-typed in `SettingsStore` — it is supplied
-  > by the chosen **model preset** (see `04.16`/`04.17`), with a built-in default
-  > (`AppController::m_prompt`, "document parsing.") when no preset is in use.
+  > The model prompt is **not** free-typed in `SettingsStore` — it is owned by
+  > the selected **OCR model adapter** (`OcrModel::promptVariants()`; for
+  > Unlimited-OCR a single fixed variant "document parsing.", ADR 58).
   > The bbox coordinate range is hardcoded (`DetTokensParser`, 1000).
 
   ## Managed local runtime (llama.cpp) — stages A–G ✅

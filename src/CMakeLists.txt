@@ -4,16 +4,22 @@ qt_add_executable(llocr
     # core
 
     core/OcrResult.h
-    core/ProviderConfig.h
+    core/OcrRequest.h
+    core/ConnectionConfig.h
+    core/LlamaClient.h
+    core/LlamaClient.cpp
     core/RequestProfile.h
     core/RequestProfile.cpp
     core/LaunchProfile.h
     core/LaunchProfile.cpp
 
-    # providers
-    providers/ILlmProvider.h
-    providers/OpenAiProvider.h
-    providers/OpenAiProvider.cpp
+    # models
+    models/OcrModel.h
+    models/OcrModel.cpp
+    models/UnlimitedOcrModel.h
+    models/UnlimitedOcrModel.cpp
+    models/OcrModelFactory.h
+    models/OcrModelFactory.cpp
 
     # parsers
     parsers/IOutputParser.h

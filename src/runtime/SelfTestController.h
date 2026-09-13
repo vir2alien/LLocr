@@ -9,11 +9,11 @@
 
 #include <memory>
 
+#include "models/OcrModel.h"
 #include "runtime/ResolvedConnection.h"
 
 namespace llocr {
 
-class OpenAiProvider;
 class RuntimeController;
 class SettingsStore;
 class RequestProfileStore;
@@ -65,7 +65,7 @@ private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
     RequestProfileStore &m_requestProfiles;
-    OpenAiProvider *m_selftestProvider = nullptr;
+    std::unique_ptr<OcrModel> m_selftestModel;
 
     bool m_selftestRunning = false;
     bool m_selftestOk = false;

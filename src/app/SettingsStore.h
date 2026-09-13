@@ -16,6 +16,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
     Q_PROPERTY(int connectionTimeoutMs READ connectionTimeoutMs WRITE setConnectionTimeoutMs NOTIFY connectionTimeoutMsChanged)
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
+    Q_PROPERTY(QString modelRecipeId READ modelRecipeId WRITE setModelRecipeId NOTIFY modelRecipeIdChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(int themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
@@ -66,6 +67,7 @@ public:
     static constexpr const char *kDefaultApiKey = "";
     static constexpr int kDefaultTimeoutMs = 120000;
     static constexpr const char *kDefaultModelName = "Unlimited-OCR";
+    static constexpr const char *kDefaultModelRecipeId = "unlimited-ocr";
     static constexpr const char *kDefaultParserId = "det_tokens";
     static constexpr int kDefaultThemeMode = 0; // System
     static constexpr const char *kDefaultLanguage = "system";
@@ -112,6 +114,10 @@ public:
     // Model
     QString modelName() const;
     void setModelName(const QString &modelName);
+
+    // OCR model (recipe)
+    QString modelRecipeId() const;
+    void setModelRecipeId(const QString &recipeId);
 
     // Parser
     QString parserId() const;
@@ -205,6 +211,7 @@ signals:
     void apiKeyChanged();
     void connectionTimeoutMsChanged();
     void modelNameChanged();
+    void modelRecipeIdChanged();
     void parserIdChanged();
     void themeModeChanged();
     void languageChanged();
@@ -257,6 +264,7 @@ private:
 
     // Model
     static constexpr const char *kModelName = "model/name";
+    static constexpr const char *kModelRecipeId = "model/recipeId";
     static constexpr const char *kParserId = "parser/id";
 
     // UI

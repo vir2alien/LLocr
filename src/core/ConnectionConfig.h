@@ -4,7 +4,7 @@
 
 namespace llocr {
 
-struct ProviderConfig {
+struct ConnectionConfig {
     // Connection
     QString baseUrl = QStringLiteral("http://localhost:8080");  ///< Without trailing slash.
     QString apiKey;                                             ///< Optional bearer token.

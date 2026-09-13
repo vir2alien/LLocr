@@ -18,7 +18,7 @@
 **Инварианты, которые нельзя нарушать:**
 
 - Существующий сценарий «внешний сервер / хостед API» продолжает работать без изменений.
-- `OpenAiProvider` остаётся transport-only и ничего не знает про `QProcess`.
+- Транспорт (`LlamaClient`, исторически `OpenAiProvider`) остаётся transport-only и ничего не знает про `QProcess`.
 - Приложение **никогда** не меняет `provider/mode` автоматически.
 - Managed-сервер слушает **только loopback**.
 
@@ -40,7 +40,7 @@
 
 | Режим | Поведение |
 | --- | --- |
-| `External` (**дефолт**, в т.ч. для всех существующих профилей) | `ProviderConfig.baseUrl` указывает на чужой сервер. Приложение ничего не запускает. |
+| `External` (**дефолт**, в т.ч. для всех существующих профилей) | `ConnectionConfig.baseUrl` указывает на чужой сервер. Приложение ничего не запускает. |
 | `Managed` | Приложение стартует `llama-server` на loopback, ждёт готовности, само формирует `baseUrl` и `modelId`, гасит процесс при выходе. |
 
 Переключатель — **Settings → Connection**. Всё ниже активно только в `Managed`.
@@ -118,9 +118,9 @@ public:
 ```
 ensureConnectionReady()
   → ResolvedConnection
-  → ProviderConfig{baseUrl, apiKey, timeoutMs}
+  → ConnectionConfig{baseUrl, apiKey, timeoutMs}
   → OcrRequest{... modelId ...}
-  → OpenAiProvider::recognize()
+  → OcrModel::recognize() → LlamaClient.postJson()
 ```
 
 Ошибка резолва → тот же путь обработки, что сетевая ошибка провайдера,

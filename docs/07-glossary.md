@@ -2,19 +2,28 @@
 
 ## Terms
 - **OCR** — recognizing text from images.
-- **LLM provider** — the connection to the model; here always an
-  **OpenAI-compatible** endpoint (llama.cpp server, Ollama, LM Studio, hosted API).
-- **ProviderConfig** — the **transport** settings struct (base URL, API key,
-  timeout). It is separate from the model settings: when a recognition starts,
-  `RecognitionController` assembles an `OcrRequest` (model + prompt + generation
-  params) from `SettingsStore` and a `ProviderConfig` (connection) for the
-  provider.
-- **OcrRequest** — the per-request payload for the provider: `image`, `prompt`,
-  `modelId`, plus generation params (`temperature`, `maxTokens`, and the DRY
-  sampling parameters). Defined in `providers/ILlmProvider.h`.
+- **OCR model (adapter)** — the per-model recipe (`models/OcrModel.h`): how to
+  talk to a specific OCR LLM — prompt variants, the default output parser, and
+  (via the base class) the OpenAI-style chat-completions request body and
+  response parsing. Implementations: `UnlimitedOcrModel` (id `unlimited-ocr`),
+  future `DeepSeekOcrModel` etc.; resolved by `OcrModelFactory` from the
+  `model/recipeId` setting (default `unlimited-ocr`).
+- **ConnectionConfig** — the **transport** settings struct (base URL, API key,
+  timeout), formerly `ProviderConfig`. It is separate from the model settings:
+  when a recognition starts, `RecognitionController` assembles an `OcrRequest`
+  (model + prompt + request-body parameters) from `SettingsStore` and a
+  `ConnectionConfig` (connection) for the transport.
+- **LlamaClient** — the thin HTTP transport (`core/LlamaClient.h`): joins the
+  `/v1/chat/completions` endpoint URL (`endpointUrl`), POSTs JSON with an
+  optional bearer token and per-request timeout, supports `abort()`, and
+  surfaces the server's error message. The former provider layer was reduced
+  to exactly this (ADR 58).
+- **OcrRequest** — the per-request payload: `image`, `prompt`, `modelId`, and
+  the ordered request-body parameters (`RequestParameter`). Defined in
+  `core/OcrRequest.h`.
 - **DRY sampling parameters** — llama.cpp's "Don't Repeat Yourself" sampler
   settings (`dry_multiplier`, `dry_base`, `dry_allowed_length`,
-  `dry_penalty_last_n`), exposed in **Settings → Model** and sent in the request
+  `dry_penalty_last_n`), part of the **request profile** and sent in the request
   body. Tuned for the Unlimited-OCR model.
 - **Output parser** — the strategy for parsing a model's response into a
   structured result (`raw`, `det_tokens`; default `det_tokens`), selected in
@@ -67,7 +76,9 @@
   vs **external** user-provided GGUF files (never deleted, only listed).
 - **Model preset** — a pre-verified pair `model + mmproj + parser + prompt +
   ctx-size` (e.g. Unlimited-OCR Q4_K_M); built-in `default-presets.json` plus
-  user `catalog.json`, merged by `id` (ADR 42/43).
+  user `catalog.json`, merged by `id` (ADR 42/43). The authoritative prompt/parser
+  source is now the **OCR model adapter** (ADR 58); the preset's `parser`/`prompt`
+  fields remain stored metadata.
 - **Request profile** — the ordered set of request-body parameters sent to
   llama.cpp next to `model`/`messages` (DRY params, temperature, max_tokens,
   stream, …). Built-in `:/profiles/request.json` plus user
@@ -101,7 +112,7 @@
 | 9    | Navigation stays live during recognition                     | Users browse other pages while a batch run proceeds.         |
 | 10   | Export written directly (TXT/MD/HTML); Markdown-as-source + Pandoc for DOCX/PDF | Ship useful export now; converge on the single-source pipeline. |
 | 11   | Thumbnails carry no bounding boxes                           | The strip only signals recognized/edited/current; boxes belong on the center preview only. |
-| 12   | OpenAI-like(llama.cpp-like)-compatible only                  | One clear connection type; connection/model/parser/generation params live in `SettingsStore` (Settings dialog + `QSettings`). The recognition prompt is supplied by the chosen **model preset** (see ADR 43); a built-in default (`AppController::m_prompt`) applies when no preset is in use. |
+| 12   | OpenAI-like(llama.cpp-like)-compatible only                  | One clear connection type; connection/model/parser/request-body params live in `SettingsStore` (Settings dialog + `QSettings`). Historically the prompt was preset-driven; since ADR 58 it belongs to the **OCR model adapter**. |
 | 13   | Window geometry persisted (`WindowSettings` + `SettingsStore` `ui/*`) | Persist window pos/size/visibility across sessions. |
 | 14   | Unit tests live in `tests/` (Qt Test), gated by `LLOCR_BUILD_TESTS` | Early coverage for parsers; more to come. |
 | 15   | JSON model-profile classes (`ModelProfile` / `ProfileRepository`) removed | Stage 2 replaced them with the **Settings dialog**; the leftover classes were dead code and were deleted. |
@@ -115,7 +126,7 @@
 | 23   | Pages can be **deleted** and **drag-reordered** in the thumbnail strip; `PageEditStore` and `PageListModel` remap indices afterwards | Multi-page documents need page management; edits must follow their page across reorder/removal. |
 | 24   | **Image/chart block editing** (move / resize / delete) directly on the preview; `rebuildPageText()` regenerates the page Markdown from the boxes | Editing regions is more convenient than re-running OCR; markdown image refs embed the box index, so removal forces a rebuild to keep `image://ocr/crop/<N>` indices consistent. |
 | 25   | Detected **duplicate** bounding boxes are collapsed and flagged (`OcrPage::hasDuplicates`, `PageListModel` duplicate role → red marker) | The model can emit the same region twice; the parser dedups it and the UI surfaces it. |
-| 26   | Two connection modes `External` / `Managed`; `OpenAiProvider` stays transport-only and knows nothing about `QProcess` | Don't break the existing external-server scenario; process management is a separate responsibility. |
+| 26   | Two connection modes `External` / `Managed`; the transport stays decoupled from `QProcess` (historically `OpenAiProvider`, since ADR 58 `LlamaClient` + `OcrModel`) | Don't break the existing external-server scenario; process management is a separate responsibility. |
 | 27   | The managed server is **only llama.cpp** (`llama-server`), minimum build **b4000** | A single predictable CLI; Ollama/LM Studio have their own managers; below b4000 the CLI drifts too much. |
 | 28   | Runtime installs come from **GitHub Releases** (`ggml-org/llama.cpp`) and are unpacked by our own code (vendored `miniz`), verifying `sha256` taken from the release body | Reproducibility, no external package manager; file size is *not* an integrity proof. |
 | 29   | Models download **directly from Hugging Face**, with the **commit SHA pinned** and `sha256` verified against `lfs.oid` | No Python dependency; `main` is mutable between browsing and downloading. |
@@ -147,5 +158,6 @@
 | 55   | Restored window position is **validated against the current screens** (`WindowSettings::visiblePosition`): the saved x/y is applied only while the window's title-bar band overlaps a connected screen, otherwise the window is centered on the **nearest** screen | A saved position from a previous session can point off-screen (monitor unplugged, resolution/arrangement changed, window closed while dragged past an edge) — the window would open with an unreachable title bar and couldn't be moved at all. Amendment to ADR 13. |
 | 56   | **Request profiles** replace the individual request settings (`model/temperature`, `model/maxTokens`, `model/dry*`): the request body (after `model`/`messages`) is assembled in profile order — built-in `:/profiles/request.json` + user `<AppData>/LLocr/profiles/request.json`, merged by name (user wins; new built-in parameters appear automatically), file written only when values differ from the defaults. UI = table on Settings → Request; edits touch the draft, **Save** commits, **Cancel**/reopen discards; **Restore defaults** loads the default profile (committed on Save). Values keep their JSON kind; `dry_sequence_breakers` default is `["\uE000"]` — the server (llama.cpp `server-schema.cpp`) **rejects an empty array** with 400 «dry_sequence_breakers must be a non-empty array of strings», and the private-use character never matches, keeping the breakers effectively disabled (the old `\uE000` hack was exactly that) | One place for the request layout instead of six scattered QSettings keys (server-launch profiles follow the same pattern next); `QJsonObject` sorts keys alphabetically on the wire anyway, so `order` governs the profile/table, not the literal body order. |
 | 57   | **Launch profiles** replace the `launch/*` parameter settings (`ctxSize`, `gpuLayers`, `threads`, `batchSize`, `parallel`, `flashAttn`, `cacheType*`, `noMmap`, `jinja`, `extraArgs`): `ServerLaunchConfig` emits the core flags (`--model/--mmproj/--alias/--host/--port`, single-sourced) then the active profile's rows verbatim (`--name [value]`, flags valueless, names starting with `-` passed through, reserved names skipped). Multiple built-in presets in `:/profiles/serverLaunch.json` tagged `os`/`backend`; the selection `launch/profileId` **auto-switches** (persisted) to a preset matching the installed backend (`runtime/backend`, falling back to platform detection when no runtime is installed). Settings → Launch tab: preset combobox + table with add/remove; draft discipline as ADR 56; per-preset user copies (full copies — deletions stick, preset updates reach only untouched presets) in `<AppData>/LLocr/profiles/serverLaunch.json`; `estimateModelMemory` reads `ctx-size`/`cache-type-*` from the active profile | Profiles can be updated by releases, cover per-OS/backend differences the flat settings could not, and free-form add/remove beats a fixed settings schema; the memory estimator and the wizard keep working by reading the profile. |
+| 58   | The **provider concept is removed**: `ILlmProvider`/`OpenAiProvider` deleted. Two orthogonal abstractions remain: **`OcrModel`** (`src/models/`) — per-OCR-LLM recipe (prompt variants, default parser, request-body building and response parsing via virtual hooks), instantiated by `OcrModelFactory` from the `model/recipeId` setting; and **`LlamaClient`** (`src/core/`) — thin transport (`endpointUrl` + POST/timeout/abort/server-error extraction). `ProviderConfig` renamed to **`ConnectionConfig`**; `OcrRequest` moved to `core/OcrRequest.h`; the `prompt` Q_PROPERTY removed from `AppController` (the prompt belongs to the model adapter). The persisted `QSettings` keys with the `provider/` prefix are **unchanged** (no profile migration) | Only llama.cpp remains as the server; its API is OpenAI-compatible, so a provider abstraction had no second implementation. Request/response handling was really model knowledge — it moves into the model hierarchy, giving one-class-per-LLM extensibility (future DeepSeek-OCR etc.). Parsers stay decoupled in `src/parsers/` and are referenced by id from the adapter. |
 
 > When decisions change — add a row to the table and update the affected files.

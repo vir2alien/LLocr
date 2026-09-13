@@ -26,6 +26,26 @@ target_sources(test_det_parser PRIVATE
 )
 add_test(NAME test_det_parser COMMAND test_det_parser)
 
+qt_add_executable(test_ocr_models test_ocr_models.cpp)
+
+target_include_directories(test_ocr_models PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_ocr_models PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Network
+)
+
+target_sources(test_ocr_models PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
+)
+add_test(NAME test_ocr_models COMMAND test_ocr_models)
+
 qt_add_executable(test_pagemodel test_pagemodel.cpp)
 
 target_include_directories(test_pagemodel PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -140,7 +160,10 @@ target_sources(test_runtime_lifetime PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelMemoryEstimator.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLog.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/SingleInstanceGuard.cpp
-    ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp
@@ -281,7 +304,10 @@ target_sources(test_ensure_connection PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLog.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/SelfTestController.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/SingleInstanceGuard.cpp
-    ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/app/RequestParametersModel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/RequestProfileStore.cpp
@@ -462,7 +488,10 @@ target_sources(test_model_installer PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelMemoryEstimator.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeLog.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/SingleInstanceGuard.cpp
-    ${CMAKE_SOURCE_DIR}/src/providers/OpenAiProvider.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp

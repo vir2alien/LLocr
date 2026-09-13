@@ -503,14 +503,14 @@
     </message>
 </context>
 <context>
-    <name>OpenAiProvider</name>
+    <name>OcrModel</name>
     <message>
-        <location filename="../../src/providers/OpenAiProvider.cpp" line="81"/>
+        <location filename="../../src/models/OcrModel.cpp" line="59"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный JSON-ответ</translation>
     </message>
     <message>
-        <location filename="../../src/providers/OpenAiProvider.cpp" line="86"/>
+        <location filename="../../src/models/OcrModel.cpp" line="64"/>
         <source>No choices in response</source>
         <translation>В ответе нет вариантов</translation>
     </message>
@@ -1457,6 +1457,11 @@
     </message>
     <message>
         <location filename="../qml/SettingsDialog.qml" line="141"/>
+        <source>OCR model</source>
+        <translation>Модель OCR</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="154"/>
         <source>Output parser</source>
         <translation>Парсер вывода</translation>
     </message>

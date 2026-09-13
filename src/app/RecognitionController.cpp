@@ -7,7 +7,8 @@
 
 #include "app/SettingsStore.h"
 #include "app/RequestProfileStore.h"
-#include "core/ProviderConfig.h"
+#include "core/ConnectionConfig.h"
+#include "models/OcrModelFactory.h"
 
 namespace llocr {
 
@@ -22,36 +23,51 @@ RecognitionController::RecognitionController(SettingsStore &settings,
     , m_requestProfiles(requestProfiles)
     , m_imageProvider(imageProvider)
 {
-    m_provider = std::make_unique<OpenAiProvider>();
-
     connect(&m_watcher, &QFutureWatcher<OcrResult>::finished, this,
             &RecognitionController::onRecognitionFinished);
 }
 
-void RecognitionController::startCurrent(int index, int totalPages, const QString& prompt)
+void RecognitionController::startCurrent(int index, int totalPages)
 {
     if (m_busy)
         return;
     m_totalPages = totalPages;
     m_startIndex = index;
-    m_prompt = prompt;
     m_stopRequested = false;
     m_recognizeAll = false;
+    resolveModel();
     setBusy(true);
     ensureConnectionReady();
 }
 
-void RecognitionController::startAll(int totalPages, const QString& prompt)
+void RecognitionController::startAll(int totalPages)
 {
     if (m_busy)
         return;
     m_totalPages = totalPages;
     m_startIndex = 0;
-    m_prompt = prompt;
     m_stopRequested = false;
     m_recognizeAll = true;
+    resolveModel();
     setBusy(true);
     ensureConnectionReady();
+}
+
+void RecognitionController::resolveModel()
+{
+    const QString recipeId = m_settings.modelRecipeId();
+    if (m_model && m_modelId == recipeId)
+        return;
+    m_model = OcrModelFactory::create(recipeId);
+    m_modelId = recipeId;
+}
+
+QString RecognitionController::promptText() const
+{
+    if (!m_model)
+        return QString();
+    const QList<OcrPromptVariant> variants = m_model->promptVariants();
+    return variants.isEmpty() ? QString() : variants.constFirst().text;
 }
 
 // Single async entry point (ADR 37): the runtime resolves the connection
@@ -92,12 +108,12 @@ void RecognitionController::recognizePage(int index)
 
     const QImage image = m_imageProvider(index);
     const OcrRequest request = buildRequest(image, m_connection);
-    m_watcher.setFuture(m_provider->recognize(request, buildConfig(m_connection)));
+    m_watcher.setFuture(m_model->recognize(request, buildConfig(m_connection)));
 }
 
-ProviderConfig RecognitionController::buildConfig(const ResolvedConnection &conn) const
+ConnectionConfig RecognitionController::buildConfig(const ResolvedConnection &conn) const
 {
-    ProviderConfig config;
+    ConnectionConfig config;
     config.apiKey = conn.apiKey;
     config.baseUrl = conn.baseUrl;
     config.timeoutMs = conn.timeoutMs;
@@ -109,7 +125,7 @@ OcrRequest RecognitionController::buildRequest(const QImage &image,
 {
     OcrRequest request;
     request.image = image;
-    request.prompt = m_prompt;
+    request.prompt = promptText();
     request.modelId = conn.modelId;
     request.parameters = m_requestProfiles.activeProfile().parameters;
     return request;
@@ -161,8 +177,8 @@ void RecognitionController::stop()
     if (!m_busy)
         return;
     m_stopRequested = true;
-    if (m_provider)
-        m_provider->abort();
+    if (m_model)
+        m_model->abort();
     m_runtime.cancelPendingStart();
     emit statusRequested(tr("Stopping…"));
 }

@@ -4,9 +4,10 @@
 
 #include "app/SettingsStore.h"
 #include "app/RequestProfileStore.h"
+#include "core/ConnectionConfig.h"
 #include "core/OcrResult.h"
-#include "core/ProviderConfig.h"
-#include "providers/OpenAiProvider.h"
+#include "models/OcrModel.h"
+#include "models/OcrModelFactory.h"
 #include "runtime/ConnectionMode.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/SelfTestController.h"
@@ -55,8 +56,8 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
 void SelfTestController::runSelfTestRequest(
     const ResolvedConnection &conn, std::shared_ptr<QFutureInterface<SelfTestResult>> promise)
 {
-    if (!m_selftestProvider)
-        m_selftestProvider = new OpenAiProvider(this);
+    if (!m_selftestModel)
+        m_selftestModel = OcrModelFactory::create(m_settings.modelRecipeId());
 
     OcrRequest request;
     request.image = makeTestImage();
@@ -65,7 +66,7 @@ void SelfTestController::runSelfTestRequest(
     // The self-test exercises the same body shape as a real recognition run.
     request.parameters = m_requestProfiles.activeProfile().parameters;
 
-    ProviderConfig config;
+    ConnectionConfig config;
     config.baseUrl = conn.baseUrl;
     config.apiKey = conn.apiKey;
     config.timeoutMs = conn.timeoutMs;
@@ -88,7 +89,7 @@ void SelfTestController::runSelfTestRequest(
                 promise->reportResult(std::move(r));
                 promise->reportFinished();
             });
-    watch->setFuture(m_selftestProvider->recognize(request, config));
+    watch->setFuture(m_selftestModel->recognize(request, config));
 }
 
 void SelfTestController::runSelfTestQml()

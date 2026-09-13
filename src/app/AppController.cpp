@@ -13,6 +13,7 @@
 #include "parsers/ParserFactory.h"
 
 #include "app/RequestProfileStore.h"
+#include "models/OcrModelFactory.h"
 
 namespace {
 
@@ -72,6 +73,25 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
 QStringList AppController::parserNames() const
 {
     return ParserFactory::registeredIds();
+}
+
+QStringList AppController::modelNames() const
+{
+    QStringList names;
+    const QStringList ids = OcrModelFactory::registeredIds();
+    for (const QString &id : ids)
+        names.append(OcrModelFactory::displayNameForId(id));
+    return names;
+}
+
+QString AppController::modelIdToName(const QString &modelId) const
+{
+    return OcrModelFactory::displayNameForId(modelId);
+}
+
+QString AppController::modelNameToId(const QString &modelName) const
+{
+    return OcrModelFactory::idForDisplayName(modelName);
 }
 
 bool AppController::hasImage() const
@@ -150,14 +170,6 @@ QImage AppController::croppedImage(int pageIndex, int boxIndex) const
     if (px.width() < 1 || px.height() < 1)
         return {};
     return page.image.copy(px);
-}
-
-void AppController::setPrompt(const QString &prompt)
-{
-    if (m_prompt == prompt)
-        return;
-    m_prompt = prompt;
-    emit promptChanged();
 }
 
 void AppController::setCurrentPage(int index)
@@ -313,7 +325,7 @@ void AppController::recognizeCurrent()
         return;
     }
 
-    m_recognition.startCurrent(m_currentPage, m_document.pageCount(), m_prompt);
+    m_recognition.startCurrent(m_currentPage, m_document.pageCount());
 }
 
 void AppController::recognizeAll()
@@ -325,7 +337,7 @@ void AppController::recognizeAll()
         return;
     }
 
-    m_recognition.startAll(m_document.pageCount(), m_prompt);
+    m_recognition.startAll(m_document.pageCount());
 }
 
 void AppController::applyRawResult(int index, const OcrResult& rawResult)

@@ -41,7 +41,7 @@ class AppController : public QObject
     Q_PROPERTY(QObject* pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject* boxModel READ boxModel CONSTANT)
 
-    Q_PROPERTY(QString prompt READ prompt WRITE setPrompt NOTIFY promptChanged)
+    Q_PROPERTY(QStringList modelNames READ modelNames CONSTANT)
 
     Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY configChanged)
 
@@ -64,6 +64,9 @@ public:
 
     bool canRecognize() const;
     QStringList parserNames() const;
+    QStringList modelNames() const;
+    Q_INVOKABLE QString modelIdToName(const QString &modelId) const;
+    Q_INVOKABLE QString modelNameToId(const QString &modelName) const;
 
     QStringList exportNameFilters() const;
 
@@ -73,9 +76,6 @@ public:
     QObject *pageModel() { return &m_pageModel; }
     QObject *boxModel() { return &m_boxModel; }
 
-    QString prompt() const { return m_prompt; }
-
-    void setPrompt(const QString &prompt);
     void setCurrentPage(int index);
 
     QImage currentImage() const;
@@ -86,7 +86,6 @@ public:
 signals:
     void busyChanged();
     void resultChanged();
-    void promptChanged();
     void statusChanged();
     void imageChanged();
     void documentChanged();
@@ -136,7 +135,6 @@ private:
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
     RecognitionController m_recognition;
-    QString m_prompt = "document parsing.";
     Exporter m_exporter;
     int m_currentPage = 0;
     QString m_statusMessage;

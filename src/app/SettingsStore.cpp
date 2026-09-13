@@ -22,6 +22,7 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs) },
     // Model
     { kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName)) },
+    { kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId)) },
     // Parser
     { kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId)) },
     // Connection mode / runtime
@@ -172,6 +173,19 @@ void SettingsStore::setModelName(const QString &modelName)
         return;
     m_settings.setValue(kModelName, modelName);
     emit modelNameChanged();
+}
+
+QString SettingsStore::modelRecipeId() const
+{
+    return m_settings.value(kModelRecipeId, QString::fromUtf8(kDefaultModelRecipeId)).toString();
+}
+
+void SettingsStore::setModelRecipeId(const QString &recipeId)
+{
+    if (modelRecipeId() == recipeId)
+        return;
+    m_settings.setValue(kModelRecipeId, recipeId);
+    emit modelRecipeIdChanged();
 }
 
 QString SettingsStore::parserId() const

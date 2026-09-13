@@ -2,18 +2,25 @@
 
 Status legend: ✅ implemented · 🟡 partial · ⬜ not started
 
-## 4.1 LLM provider (OpenAI-compatible only)
-- **OpenAiProvider** ✅: sends a request to `/v1/chat/completions` with an image
-  (base64 in `image_url`) and parses the response. Transport-only: the connection
-  config (`ProviderConfig`) is separate from the model/prompt params
-  (`OcrRequest`). Async (`QPromise`/`QFuture`), per-request timeout, and
-  **`abort()`** for Stop.
-- Configuration ✅: base URL, API key (optional), timeout — in `ProviderConfig`;
-  model name, temperature, max tokens, DRY params, parser — in `SettingsStore`
-  (`QSettings`), edited in the tabbed **Settings** dialog. The recognition
-  **prompt** is supplied by the chosen **model preset** (see 4.17); a built-in
-  default (`AppController::m_prompt`, "document parsing.") applies when no
-  preset is in use.
+## 4.1 OCR models and transport (llama.cpp, OpenAI-compatible API)
+- **OcrModel / UnlimitedOcrModel** ✅ (`src/models/`): each OCR LLM is one
+  adapter class. The abstract base `OcrModel` encodes the image (base64 data
+  URL), builds the OpenAI-style chat-completions body (`buildRequestBody`,
+  virtual hook) and parses the response (`parseResponse`, virtual hook);
+  async (`QPromise`/`QFuture`), per-request timeout, and **`abort()`** for Stop.
+  `UnlimitedOcrModel` supplies its single prompt variant ("document parsing.")
+  and the default parser (`det_tokens`); new LLMs are added as new subclasses
+  registered in `OcrModelFactory` (ADR 58).
+- **LlamaClient** ✅ (`core/LlamaClient.h`): thin transport — POSTs JSON to
+  `/v1/chat/completions` with an optional bearer token, per-request timeout and
+  `abort()`; surfaces the server's error message. Former provider layer reduced
+  to exactly this.
+- Configuration ✅: base URL, API key (optional), timeout — in `ConnectionConfig`;
+  the OCR model adapter (`model/recipeId`, default `unlimited-ocr`), model name
+  and the request-body parameters (request profile: temperature, max tokens, DRY
+  params) — in `SettingsStore` (`QSettings`), edited in the tabbed **Settings**
+  dialog. The recognition **prompt** comes from the selected model adapter's
+  `promptVariants()` (ADR 58).
 
 ## 4.2 Settings
 All configuration lives in the **Settings dialog**, grouped into tabs:
@@ -24,7 +31,8 @@ All configuration lives in the **Settings dialog**, grouped into tabs:
 | Connection | base URL, API key (optional), request timeout                       |
 | Model      | model name, temperature, max tokens, DRY multiplier, DRY base,      |
 |            | DRY allowed length, DRY penalty last-N                              |
-| Output     | output parser (`raw` / `det_tokens`; default `det_tokens`)           |
+| Output     | OCR model adapter (`unlimited-ocr`; `model/recipeId`), output parser    |
+|            | (`raw` / `det_tokens`; default `det_tokens`)                             |
 | Runtime    | managed `llama-server` path + probe, Start/Stop/Restart, Show log,   |
 |            | stage-D installer (release/backend, download+install, updates,      |
 |            | cleanup); “Launch setup wizard…”                                    |
@@ -43,9 +51,9 @@ Persistence is handled by `SettingsStore` (`QSettings`, grouped keys
 
 > **Not in the dialog yet:** the bbox coordinate range is hardcoded in
 > `DetTokensParser` (`kBboxCoordinateRange = 1000`). The recognition prompt is
-> supplied by the selected **model preset** (`ModelPreset.prompt`); without a
-> preset a built-in default (`AppController::m_prompt`, "document parsing.")
-> applies.
+> owned by the selected **OCR model adapter** (`promptVariants()`, ADR 58) and
+> is not editable in the dialog; the `parser`/`prompt` fields of model presets
+> are stored metadata only.
 
 ## 4.3 Themes
 Three options handled by `UiController` (a QML singleton), selected in
@@ -104,8 +112,8 @@ Three options handled by `UiController` (a QML singleton), selected in
 ## 4.8 Stop / cancellation
 - The Stop button calls `AppController::stop()`, which forwards to
   `RecognitionController::stop()` (it sets a stop flag and calls
-  `OpenAiProvider::abort()`); the sequential "recognize all" loop halts
-  cleanly and already-recognized pages are preserved. ✅
+  `OcrModel::abort()` → `LlamaClient::abort()`); the sequential "recognize all"
+  loop halts cleanly and already-recognized pages are preserved. ✅
 
 ## 4.9 Text editing
 - The right pane is an **editable** `TextArea` (read-only until the current

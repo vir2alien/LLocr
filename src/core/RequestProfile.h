@@ -37,7 +37,7 @@ struct RequestParameter
 };
 
 /// Request-body profile: an ordered list of parameters appended after the
-/// fixed head (`model`, `messages`) in OpenAiProvider::buildRequestBody.
+/// fixed head (`model`, `messages`) in OcrModel::buildRequestBody.
 /// Two sources are merged by name: a built-in profile shipped read-only in
 /// the Qt resources (:/profiles/request.json) and an optional user profile at
 /// <AppData>/LLocr/profiles/request.json (the user profile wins per name;

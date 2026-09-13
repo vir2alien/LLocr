@@ -162,8 +162,10 @@ LLocr/
 ├── CMakeLists.txt
 ├── src/
 │   ├── main.cpp
-│   ├── core/         # OcrResult, ProviderConfig (transport)
-│   ├── providers/    # ILlmProvider (OcrRequest), OpenAiProvider
+│   ├── core/         # OcrResult, ConnectionConfig (transport), OcrRequest,
+│   │                 #   LlamaClient, RequestProfile, LaunchProfile
+│   ├── models/       # OcrModel (abstract adapter), UnlimitedOcrModel,
+│   │                 #   OcrModelFactory
 │   ├── parsers/      # IOutputParser, RawParser, DetTokensParser,
 │   │                 #   ParserFactory, BlockStyle
 │   ├── runtime/      # ConnectionMode, ResolvedConnection, RuntimeState,
@@ -196,7 +198,8 @@ LLocr/
 └── AGENTS.md
 ```
 
-> **Note:** `OcrRequest` lives in `providers/ILlmProvider.h`;
-> `ProviderConfig` lives in `core/ProviderConfig.h`; `ResolvedConnection` and
-> the runtime layer live in `src/runtime/`. QML lives under
-> `resources/qml/`.
+> **Note:** `OcrRequest` lives in `core/OcrRequest.h`;
+> `ConnectionConfig` (transport, former `ProviderConfig`) and `LlamaClient`
+> live in `src/core/`; OCR model adapters live in `src/models/`;
+> `ResolvedConnection` and the runtime layer live in `src/runtime/`. QML lives
+> under `resources/qml/`.
