@@ -7,6 +7,7 @@
 #include <QQmlEngine>
 #include <QString>
 #include <QStringList>
+#include <QVariant>
 
 #include "runtime/DownloadTask.h"
 #include "runtime/InstallTransaction.h"
@@ -65,6 +66,12 @@ class RuntimeInstaller : public QObject
     Q_PROPERTY(QString installedBackend READ installedBackend NOTIFY installedChanged)
     Q_PROPERTY(bool hasUpdate READ hasUpdate NOTIFY hasUpdateChanged)
 
+    // Builds already on disk under <runtimeDir>/llama.cpp-* (a directory scan,
+    // not a settings value). Lets the UI offer any previously downloaded build
+    // for activation without a re-download — the settings-reset case wipes the
+    // active-build keys but leaves the directories in place.
+    Q_PROPERTY(int installedBuildCount READ installedBuildCount NOTIFY installedBuildsChanged)
+
     // Download/progress.
     Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
@@ -104,8 +111,21 @@ public:
     Q_INVOKABLE void cancelInstall();
 
     /// Removes every installed build except the active one. Returns a summary
-    /// or error message.
+    /// or error message. Refused while no build is active — the sweep would
+    /// otherwise delete every downloaded build.
     Q_INVOKABLE QString cleanupUnusedBuilds();
+
+    // --- Installed-builds scan / activation (no re-download) -----------------
+    /// Re-scans <runtimeDir> for llama.cpp-* build directories.
+    Q_INVOKABLE void rescanInstalledBuilds();
+    /// Row data for the installed-builds list: tag, build, backend,
+    /// backendDisplay, serverPath, binaryFound, active.
+    Q_INVOKABLE QVariantMap installedBuildInfo(int index) const;
+    /// Switches the managed runtime to the build at `index` (a settings-only
+    /// commit: serverPath + installedBuild + backend; the directory itself is
+    /// untouched). Returns an empty string on success, else a user-readable
+    /// error (also placed in statusMessage).
+    Q_INVOKABLE QString activateBuild(int index);
 
     /// Resolves a backend's display name for results (e.g. "cuda" → "CUDA").
     Q_INVOKABLE static QString backendDisplayName(const QString &backend);
@@ -135,6 +155,7 @@ public:
     QString installedBuild() const;
     QString installedBackend() const;
     bool hasUpdate() const { return m_hasUpdate; }
+    int installedBuildCount() const { return m_installedBuilds.size(); }
     double progress() const { return m_progress; }
     QString statusMessage() const { return m_statusMessage; }
     bool canInstall() const;
@@ -146,6 +167,10 @@ private:
     void setSelectedRelease(int index);
     void setStatusMessage(const QString &msg);
     void setProgress(double p);
+
+    // Absolute, cleaned, forward-slash form of `path` (Windows path
+    // comparisons must not depend on the separator, §AGENTS gotchas).
+    static QString normalizedPath(const QString &path);
 
     void startCatalogFetch();
     void onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error);
@@ -193,6 +218,9 @@ private:
     bool m_hasUpdate = false;
     QDateTime m_lastCatalogAt;   // when the catalog last loaded (§H.3 timestamp)
 
+    // Disk scan of <runtimeDir>/llama.cpp-* (see scanInstalledBuilds).
+    QList<InstalledBuildInfo> m_installedBuilds;
+
     QString m_pendingBackend;
     ReleaseAsset m_pendingMain;
     ReleaseAsset m_pendingCudart;
@@ -217,6 +245,7 @@ signals:
     void catalogChanged();
     void selectedReleaseChanged();
     void installedChanged();
+    void installedBuildsChanged();
     void hasUpdateChanged();
     void progressChanged();
     void statusMessageChanged();

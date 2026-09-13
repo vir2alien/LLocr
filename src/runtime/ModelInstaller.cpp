@@ -20,6 +20,7 @@
 #include "runtime/ModelInstaller.h"
 #include "runtime/ModelPresetCatalog.h"
 #include "runtime/RuntimeController.h"
+#include "runtime/RuntimePaths.h"
 
 namespace llocr {
 
@@ -148,7 +149,6 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     , m_settings(settings)
     , m_runtime(runtime)
     , m_launchProfiles(launchProfiles)
-    , m_paths(settings.runtimeRootDir(), settings.runtimeModelsDir())
     , m_downloads(new DownloadManager(this))
 {
     // Live progress: repaint the bar as data arrives, not only when a
@@ -230,8 +230,10 @@ void ModelInstaller::reloadPresets()
 void ModelInstaller::reloadPresetsInternal()
 {
     QString err;
+    const RuntimePaths paths(m_settings.runtimeRootDir(),
+                             m_settings.runtimeModelsDir());
     const QString userPath =
-        QDir(m_paths.modelsDir()).filePath(QStringLiteral("catalog.json"));
+        QDir(paths.modelsDir()).filePath(QStringLiteral("catalog.json"));
     m_presets = ModelPresetCatalog::load(userPath, err);
     if (!err.isEmpty())
         setStatusMessage(err);
@@ -242,7 +244,12 @@ void ModelInstaller::refreshInstalled()
 {
     QString err;
     bool rebuilt = false;
-    m_installed = ModelRegistry::load(m_paths.modelsDir(), rebuilt, err);
+    // Fresh paths from the current settings: the models-dir override can
+    // change mid-session (settings reset), the installed list must follow it
+    // rather than the copy captured at construction.
+    const RuntimePaths paths(m_settings.runtimeRootDir(),
+                             m_settings.runtimeModelsDir());
+    m_installed = ModelRegistry::load(paths.modelsDir(), rebuilt, err);
     if (!err.isEmpty() && !rebuilt)
         setStatusMessage(err);
     emit installedChanged();
@@ -251,8 +258,10 @@ void ModelInstaller::refreshInstalled()
 void ModelInstaller::rescanRegistry()
 {
     QString err;
-    m_installed = ModelRegistry::scanModelsDir(m_paths.modelsDir());
-    ModelRegistry::save(m_paths.modelsDir(), m_installed, err);
+    const RuntimePaths paths(m_settings.runtimeRootDir(),
+                             m_settings.runtimeModelsDir());
+    m_installed = ModelRegistry::scanModelsDir(paths.modelsDir());
+    ModelRegistry::save(paths.modelsDir(), m_installed, err);
     refreshInstalled();
 }
 
@@ -313,6 +322,23 @@ QString ModelInstaller::setActiveModel(int index)
     return QString();
 }
 
+QString ModelInstaller::activatePreset(int index)
+{
+    if (index < 0 || index >= m_presets.size())
+        return tr("Invalid model selection");
+    const ModelPreset &p = m_presets.at(index);
+    const QString modelLeaf = ModelCatalog::leafName(p.model);
+    for (int i = 0; i < m_installed.size(); ++i) {
+        const ModelEntry &e = m_installed.at(i);
+        if (e.repo != p.repo)
+            continue;
+        if (!e.modelPath.isEmpty()
+            && ModelCatalog::leafName(e.modelPath) == modelLeaf)
+            return setActiveModel(i);
+    }
+    return tr("The preset is not installed");
+}
+
 QString ModelInstaller::removeModel(int index)
 {
     if (index < 0 || index >= m_installed.size())
@@ -321,8 +347,10 @@ QString ModelInstaller::removeModel(int index)
     const bool active = !e.modelPath.isEmpty()
                         && e.modelPath == m_settings.launchModelPath();
     const bool ready = m_runtime.state() == RuntimeState::Ready;
+    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
+                                    m_settings.runtimeModelsDir());
     const QString guard =
-        ModelRegistry::removalError(e, m_paths.modelsDir(), active, ready);
+        ModelRegistry::removalError(e, currentPaths.modelsDir(), active, ready);
     if (!guard.isEmpty())
         return guard;
 
@@ -375,7 +403,7 @@ QString ModelInstaller::removeModel(int index)
     QList<ModelEntry> updated = m_installed;
     updated.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
     QString saveErr;
-    if (!ModelRegistry::save(m_paths.modelsDir(), updated, saveErr)) {
+    if (!ModelRegistry::save(currentPaths.modelsDir(), updated, saveErr)) {
         refreshInstalled();
         return tr("Model files removed, but the registry could not be saved: %1")
                    .arg(saveErr);
@@ -457,7 +485,9 @@ void ModelInstaller::beginPrepare(const ModelPreset &preset)
     const QString preferMmproj = preset.mmproj;
 
     const QString token = m_settings.hfToken();
-    const QString modelsDir = m_paths.modelsDir();
+    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
+                                    m_settings.runtimeModelsDir());
+    const QString modelsDir = currentPaths.modelsDir();
 
     QFuture<QPair<Pending, QString>> future =
         QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, token,
@@ -538,7 +568,9 @@ void ModelInstaller::installPrepared()
 
 void ModelInstaller::beginDownload()
 {
-    m_paths.ensureDirectories();
+    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
+                                    m_settings.runtimeModelsDir());
+    currentPaths.ensureDirectories();
     QDir().mkpath(m_pending.dir);
     setState(State::Downloading);
     setBusy(true);
@@ -745,7 +777,11 @@ void ModelInstaller::completeInstall()
     updated.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
     updated.append(e);
     QString saveErr;
-    if (!ModelRegistry::save(m_paths.modelsDir(), updated, saveErr)) {
+    // Save next to the prepared/downloaded files (m_pending.dir's parent), not
+    // the (possibly changed) current models dir — the registry must describe
+    // the directory the files actually landed in.
+    const QString pendingModelsDir = QFileInfo(m_pending.dir).absolutePath();
+    if (!ModelRegistry::save(pendingModelsDir, updated, saveErr)) {
         setBusy(false);
         setStatusMessage(tr("Model downloaded, but the registry could not be "
                             "saved: %1").arg(saveErr));
@@ -885,8 +921,10 @@ QString ModelInstaller::importCatalog(const QString &path)
         return err.isEmpty() ? tr("No valid presets in file") : err;
 
     QString loadErr;
+    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
+                                    m_settings.runtimeModelsDir());
     const QString userPath =
-        QDir(m_paths.modelsDir()).filePath(QStringLiteral("catalog.json"));
+        QDir(currentPaths.modelsDir()).filePath(QStringLiteral("catalog.json"));
     QList<ModelPreset> userCatalog = ModelPresetCatalog::load(userPath, loadErr);
     for (const ModelPreset &p : incoming) {
         userCatalog.removeIf([&](const ModelPreset &x) { return x.id == p.id; });
@@ -918,8 +956,10 @@ QString ModelInstaller::exportCatalog(const QString &path)
 QString ModelInstaller::resetUserCatalog()
 {
     QString err;
+    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
+                                    m_settings.runtimeModelsDir());
     const QString userPath =
-        QDir(m_paths.modelsDir()).filePath(QStringLiteral("catalog.json"));
+        QDir(currentPaths.modelsDir()).filePath(QStringLiteral("catalog.json"));
     if (!ModelPresetCatalog::resetUserCatalog(userPath, err))
         return err;
     reloadPresetsInternal();

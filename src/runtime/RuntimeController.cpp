@@ -146,6 +146,22 @@ ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings
     return settings.mode();
 }
 
+QString RuntimeController::configNotReadyMessage() const
+{
+    const QString program = m_settings.serverPath().trimmed();
+    if (program.isEmpty())
+        return tr("Managed server is not configured");
+    if (!QFileInfo(program).isFile())
+        return tr("File not found: %1").arg(program);
+
+    const QString model = m_settings.launchModelPath().trimmed();
+    if (model.isEmpty())
+        return tr("Model is not selected — pick a model in Settings → Models "
+                  "or in the Setup wizard");
+    return tr("Model file not found: %1 — re-select the model in Settings → Models")
+               .arg(model);
+}
+
 bool RuntimeController::canRecognize(bool documentLoaded) const
 {
     if (!documentLoaded)
@@ -200,8 +216,18 @@ void RuntimeController::ensureConnectionReady(
         return;
     }
 
-    if (!m_configValid) {
-        failNow(tr("Managed server is not configured"));
+    // A live server is the single source of truth (ADR 32): when it is already
+    // Ready/Starting, the /v1/models alias check validates the connection, so
+    // a stale settings-based config (e.g. the model path wiped by a settings
+    // reset while the server kept running) must not block the resolve — the
+    // recognition would otherwise refuse a fully usable server with the
+    // misleading "not configured" error. The gate only applies when a start
+    // would be needed (startServer() itself refuses a model-less Managed
+    // start, so a Ready server always has a model).
+    const bool serverLive = m_state == RuntimeState::Ready
+                         || m_state == RuntimeState::Starting;
+    if (!m_configValid && !serverLive) {
+        failNow(configNotReadyMessage());
         return;
     }
 
@@ -237,7 +263,7 @@ void RuntimeController::beginManagedResolve()
         break;
     case RuntimeState::NotConfigured:
         if (!m_configValid) {
-            failResolve(tr("Managed server is not configured"));
+            failResolve(configNotReadyMessage());
             break;
         }
         Q_FALLTHROUGH();
@@ -339,7 +365,8 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
     const QJsonArray data = doc.object().value(QStringLiteral("data")).toArray();
     if (data.isEmpty()) {
         setBusyState(AppBusyState::Idle);
-        failResolve(tr("Server advertised no models via /v1/models"));
+        failResolve(tr("Server advertised no models via /v1/models. "
+                       "Select a model in Settings → Models"));
         return;
     }
 
@@ -377,30 +404,32 @@ QString RuntimeController::describeServerFailure() const
 QString RuntimeController::translateServerLine(const QString &line)
 {
     // §7.5 error matrix → human-readable message; unknown lines pass through so
-    // the caller can still surface the raw tail.
+    // the caller can still surface the raw tail. tr() (not QObject::tr) is
+    // deliberate: the translation context must be llocr::RuntimeController,
+    // which is also where lupdate records these strings.
     if (line.isEmpty())
         return QString();
     if (line.contains(QStringLiteral("address already in use"))
         || line.contains(QStringLiteral("failed to bind"))
         || line.contains(QStringLiteral("cannot bind")))
-        return QObject::tr("Port is busy. Change the port or enable auto-pick");
+        return tr("Port is busy. Change the port or enable auto-pick");
     if (line.contains(QStringLiteral("unknown argument"))
         || line.contains(QStringLiteral("invalid argument")))
-        return QObject::tr("The server rejected an argument that is not supported by your build");
+        return tr("The server rejected an argument that is not supported by your build");
     if (line.contains(QStringLiteral("failed to load model"))
         || line.contains(QStringLiteral("no such file")))
-        return QObject::tr("Model file not found. Re-check the model path in Settings");
+        return tr("Model file not found. Re-check the model path in Settings");
     if (line.contains(QStringLiteral("cudaMalloc failed"))
         || line.contains(QStringLiteral("buffer_type_alloc_buffer")))
-        return QObject::tr("Not enough VRAM. Lower --n-gpu-layers or --ctx-size");
+        return tr("Not enough VRAM. Lower --n-gpu-layers or --ctx-size");
     if (line.contains(QStringLiteral("cudart64")))
-        return QObject::tr("CUDA runtime not installed. Install the CUDA archive or pick CPU/Vulkan");
+        return tr("CUDA runtime not installed. Install the CUDA archive or pick CPU/Vulkan");
     if (line.contains(QStringLiteral("libvulkan.so.1")))
-        return QObject::tr("Vulkan is unavailable; pick a different backend");
+        return tr("Vulkan is unavailable; pick a different backend");
     if (line.contains(QStringLiteral("unknown model architecture")))
-        return QObject::tr("This GGUF format is not supported by your llama.cpp build");
+        return tr("This GGUF format is not supported by your llama.cpp build");
     if (line.contains(QStringLiteral("did not answer /health")))
-        return QObject::tr("Server did not respond in time; see the log below");
+        return tr("Server did not respond in time; see the log below");
     return line;
 }
 
@@ -412,17 +441,35 @@ QString RuntimeController::startServer()
 {
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty())
-        return QObject::tr("No server binary selected");
+        return tr("No server binary selected");
     const QFileInfo fi(program);
     if (!fi.exists())
-        return QObject::tr("File not found: %1").arg(program);
+        return tr("File not found: %1").arg(program);
     if (m_lockedOut)
-        return QObject::tr("Another instance is already running");
+        return tr("Another instance is already running");
 
     if (m_server && (m_server->state() == RuntimeState::Starting
                      || m_server->state() == RuntimeState::Ready
                      || m_server->state() == RuntimeState::Stopping))
-        return QObject::tr("Server is already running");
+        return tr("Server is already running");
+
+    // Managed recognition needs a model; starting without one produces a
+    // Ready server that can never resolve (§7.5: recognition would fail with
+    // a confusing "not configured" while the server looks healthy). Fail
+    // fast with an actionable message instead. External mode is unaffected —
+    // there the managed start is a convenience, not a recognition dependency.
+    if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
+        const QString model = m_settings.launchModelPath().trimmed();
+        if (model.isEmpty() || !QFileInfo(model).isFile()) {
+            const QString msg = model.isEmpty()
+                ? tr("Model is not selected — pick a model in Settings → Models "
+                     "or in the Setup wizard")
+                : tr("Model file not found: %1 — re-select the model in "
+                     "Settings → Models").arg(model);
+            setStatusMessage(msg);
+            return msg;
+        }
+    }
 
     RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
     const ProbeResult probe =

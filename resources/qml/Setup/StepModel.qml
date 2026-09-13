@@ -30,6 +30,10 @@ Item {
     }
     Component.onCompleted: {
         refreshEstimate()
+        // Re-read the registry so models installed before a settings reset
+        // (index.json survives on disk) show up for activation without a
+        // re-download. load() rebuilds the index only when missing/corrupt.
+        ModelInstaller.refreshInstalled()
         ModelInstaller.reloadPresets()
     }
 
@@ -62,6 +66,73 @@ Item {
                   : (root.complete
                      ? qsTr("Model selected: %1").arg(Settings.launchModelPath)
                      : qsTr("No model selected yet."))
+        }
+
+        LLOLabel {
+            visible: ModelInstaller.installedCount > 0
+            text: qsTr("Installed models")
+            color: Theme.textPrimary
+        }
+
+        ListView {
+            id: installedList
+            visible: ModelInstaller.installedCount > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.min(ModelInstaller.installedCount, 3) * 34
+            clip: true
+            model: ModelInstaller.installedCount
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+            delegate: Rectangle {
+                id: installedRow
+                required property int index
+                property var info: ModelInstaller.installedInfo(index)
+                width: installedList.width
+                height: 34
+                color: info.active ? Theme.surfaceSunken : "transparent"
+                border.color: info.active ? Theme.accent : "transparent"
+                border.width: info.active ? 1 : 0
+                radius: Theme.radius
+
+                Connections {
+                    target: ModelInstaller
+                    function onInstalledChanged() {
+                        installedRow.info = Qt.binding(function () {
+                            return ModelInstaller.installedInfo(installedRow.index)
+                        })
+                    }
+                }
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    spacing: 6
+
+                    LLOLabel {
+                        Layout.preferredWidth: 200
+                        elide: Text.ElideMiddle
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
+                        color: Theme.textPrimary
+                        text: installedRow.info.title
+                    }
+                    LLOLabel {
+                        Layout.fillWidth: true
+                        elide: Text.ElideMiddle
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
+                        color: Theme.textMuted
+                        text: installedRow.info.origin === "managed"
+                              ? qsTr("managed") : qsTr("external")
+                    }
+                    LLOButton {
+                        text: installedRow.info.active ? qsTr("Active") : qsTr("Activate")
+                        enabled: !installedRow.info.active && !ModelInstaller.busy
+                        onClicked: ModelInstaller.setActiveModel(installedRow.index)
+                    }
+                }
+            }
         }
 
         LLOLabel {
@@ -173,9 +244,18 @@ Item {
                                               ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb) : ""
                                     }
                                     LLOButton {
-                                        text: qsTr("Install")
-                                        enabled: !ModelInstaller.busy && !pInfo.installed
+                                        // An installed preset is already on disk
+                                        // (e.g. before a settings reset): offer
+                                        // activation instead of a dead-end
+                                        // disabled Install.
+                                        text: pInfo.installed ? qsTr("Activate")
+                                                              : qsTr("Install")
+                                        enabled: !ModelInstaller.busy
                                         onClicked: {
+                                            if (pInfo.installed) {
+                                                ModelInstaller.activatePreset(index)
+                                                return
+                                            }
                                             prepareDialog.pendingIndex = index
                                             ModelInstaller.preparePreset(index)
                                             prepareDialog.open()

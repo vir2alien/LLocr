@@ -94,6 +94,7 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, QObject *parent)
     // a second GUI instance can use External while installs stay exclusive.
 
     m_paths.ensureDirectories();
+    rescanInstalledBuilds();
 }
 
 RuntimeInstaller::~RuntimeInstaller()
@@ -538,6 +539,10 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
     m_settings.forceSave();
     emit installedChanged();
 
+    // The new build directory just appeared on disk; refresh the scan so the
+    // installed-builds list (and its active flag) is current.
+    rescanInstalledBuilds();
+
     setState(State::Installed);
     releaseInstallLock();
 }
@@ -555,6 +560,17 @@ void RuntimeInstaller::cancelInstall()
 
 QString RuntimeInstaller::cleanupUnusedBuilds()
 {
+    // Safety guard: with no active build (e.g. right after a settings reset)
+    // the sweep would have no keep-tag and would delete EVERY downloaded
+    // build. Refuse instead — activation is a one click away.
+    if (installedBuild().isEmpty()) {
+        const QString msg = tr("No active runtime build — cleanup would remove "
+                               "every installed build. Install or activate a "
+                               "build first.");
+        setStatusMessage(msg);
+        return msg;
+    }
+
     // §H.6: sweeping the runtime dir must be exclusive vs a concurrent install.
     QString lockError;
     if (!acquireInstallLock(lockError)) {
@@ -581,6 +597,83 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
     setStatusMessage(summary);
     releaseInstallLock();
     return summary;
+}
+
+// ---------------------------------------------------------------------------
+// Installed-builds scan / activation
+// ---------------------------------------------------------------------------
+
+QString RuntimeInstaller::normalizedPath(const QString &path)
+{
+    return QDir::cleanPath(QDir::fromNativeSeparators(path));
+}
+
+void RuntimeInstaller::rescanInstalledBuilds()
+{
+    // Fresh paths from the current settings: the root-dir override can change
+    // at runtime (settings reset), the scan must follow it rather than the
+    // copy captured at construction.
+    const RuntimePaths paths(m_settings.runtimeRootDir(),
+                             m_settings.runtimeModelsDir());
+    const QList<InstalledBuildInfo> builds =
+        InstallTransaction::scanInstalledBuilds(paths);
+    if (builds == m_installedBuilds)
+        return;
+    m_installedBuilds = builds;
+    emit installedBuildsChanged();
+}
+
+QVariantMap RuntimeInstaller::installedBuildInfo(int index) const
+{
+    QVariantMap map;
+    if (index < 0 || index >= m_installedBuilds.size())
+        return map;
+    const InstalledBuildInfo &b = m_installedBuilds.at(index);
+    map.insert(QStringLiteral("tag"), b.tag);
+    map.insert(QStringLiteral("build"), b.build);
+    map.insert(QStringLiteral("backend"), b.backend);
+    map.insert(QStringLiteral("backendDisplay"),
+               b.backend.isEmpty() ? QString() : backendDisplayName(b.backend));
+    map.insert(QStringLiteral("serverPath"), b.serverPath);
+    map.insert(QStringLiteral("binaryFound"), !b.serverPath.isEmpty());
+    // Active = this build's binary is the currently selected server path.
+    map.insert(QStringLiteral("active"),
+               !b.serverPath.isEmpty() && !m_settings.serverPath().isEmpty()
+               && normalizedPath(b.serverPath)
+                      == normalizedPath(m_settings.serverPath()));
+    return map;
+}
+
+QString RuntimeInstaller::activateBuild(int index)
+{
+    if (m_busy)
+        return tr("An install is in progress");
+    if (index < 0 || index >= m_installedBuilds.size())
+        return tr("No such build");
+    const InstalledBuildInfo &b = m_installedBuilds.at(index);
+    if (b.serverPath.isEmpty())
+        return tr("The build directory contains no llama-server binary");
+
+    // A settings-only commit (the directory itself is untouched): point the
+    // managed runtime at this build's binary, same as the install commit does
+    // (§7.2). The QML side stops a running server before calling this.
+    m_settings.setServerPath(b.serverPath);
+    m_settings.setServerPathIsManaged(true);
+    if (!b.build.isEmpty())
+        m_settings.setInstalledBuild(b.build);
+    if (!b.backend.isEmpty())
+        m_settings.setRuntimeBackend(b.backend);
+    m_settings.forceSave();
+
+    setStatusMessage(tr("Activated %1%2")
+                         .arg(b.build.isEmpty() ? b.tag : b.build,
+                              b.backend.isEmpty()
+                                  ? QString()
+                                  : QStringLiteral(" (%1)")
+                                        .arg(backendDisplayName(b.backend))));
+    emit installedChanged();
+    rescanInstalledBuilds();   // refresh the active flags in the list
+    return QString();
 }
 
 ReleaseAsset RuntimeInstaller::pickAsset(const ReleaseInfo &release,

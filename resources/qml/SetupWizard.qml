@@ -25,6 +25,7 @@ Dialog {
         wizard.current = 0
         wizard.completed = false
         Settings.setupDismissed = false
+        RuntimeInstaller.rescanInstalledBuilds()
         wizard.open()
     }
 

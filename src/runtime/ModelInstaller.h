@@ -74,9 +74,20 @@ public:
     Q_INVOKABLE QString removeModel(int index);
     Q_INVOKABLE QString openModelFolder(int index);
 
+    /// Re-reads the registry from the current models dir (ModelRegistry::load
+    /// auto-rebuilds the index when missing/corrupt). Unlike rescanRegistry()
+    /// it never rewrites a valid index.json, so entries not confirmed by files
+    /// (e.g. hand-registered external models) survive.
+    Q_INVOKABLE void refreshInstalled();
+
     Q_INVOKABLE void rescanRegistry();
 
     Q_INVOKABLE QVariantMap presetInfo(int index) const;
+    /// Activates the installed model matching the preset at `index` (repo +
+    /// model file name, the same match `installed` uses). The wizard's preset
+    /// list shows Activate for already-installed presets, so a settings reset
+    /// can be recovered without a re-download.
+    Q_INVOKABLE QString activatePreset(int index);
     Q_INVOKABLE void preparePreset(int index);
     Q_INVOKABLE void installPrepared();
     Q_INVOKABLE void installRemote(int index);
@@ -118,7 +129,6 @@ private:
 
     void reloadPresetsInternal();
 
-    void refreshInstalled();
     bool isPresetInstalled(const ModelPreset &p) const;
     void beginPrepare(const ModelPreset &preset);
     void onPrepareDone(const Pending &p, const QString &err);
@@ -136,7 +146,6 @@ private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
     LaunchProfileStore &m_launchProfiles;
-    RuntimePaths m_paths;
     DownloadManager *m_downloads = nullptr;
 
     State m_state = State::Idle;

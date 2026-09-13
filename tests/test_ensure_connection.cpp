@@ -305,6 +305,125 @@ private slots:
 
         runtime.stopServer();
     }
+
+    // Settings-reset recovery: the server is already Ready, but the model path
+    // was wiped from the settings while it kept running. The running server is
+    // the source of truth — the resolve must go through (the /v1/models check
+    // with the first-model fallback validates it), not fail with
+    // "Managed server is not configured".
+    void readyServerResolvesAfterModelSettingWiped()
+    {
+        QTemporaryDir dir;
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        // Start once so the server is Ready.
+        int first = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
+        QTRY_VERIFY_WITH_TIMEOUT(first == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+
+        // Simulate the settings reset: the model path (and with it configValid)
+        // is gone while the server keeps running.
+        store.setLaunchModelPath(QString());
+        QVERIFY(!runtime.configValid());
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+
+        int done = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
+
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+        QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
+        QVERIFY(!resolved.baseUrl.isEmpty());
+        // The model id comes from the running server (mock advertises the
+        // default alias), not from the wiped settings.
+        QCOMPARE(resolved.modelId, QStringLiteral("llocr-local"));
+
+        runtime.stopServer();
+    }
+
+    // A Managed start without a selected model is refused with an actionable
+    // message instead of producing a Ready server that can never resolve.
+    void managedStartRefusedWithoutModel()
+    {
+        QTemporaryDir dir;
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        // launchModelPath intentionally left empty.
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+        QVERIFY(!runtime.configValid());
+
+        const QString err = runtime.startServer();
+        QVERIFY2(!err.isEmpty(), "start must be refused without a model");
+        QVERIFY2(err.contains(QStringLiteral("model"), Qt::CaseInsensitive),
+                 qPrintable(err));
+        // Nothing was spawned.
+        QVERIFY(runtime.state() != RuntimeState::Starting);
+        QVERIFY(runtime.state() != RuntimeState::Ready);
+
+        // The recognition gate reports the same actionable reason when a start
+        // would be needed (the server is not live).
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+        });
+        QVERIFY(resolved.error.contains(QStringLiteral("model"),
+                                        Qt::CaseInsensitive));
+    }
+
+    // A stale model path (recorded but no longer on disk) must name the path
+    // in both the start refusal and the recognition error.
+    void missingModelPathNamedInErrors()
+    {
+        QTemporaryDir dir;
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("gone.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+        QVERIFY(!runtime.configValid());
+
+        const QString err = runtime.startServer();
+        QVERIFY2(err.contains(QStringLiteral("gone.gguf")), qPrintable(err));
+
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+        });
+        QVERIFY2(resolved.error.contains(QStringLiteral("gone.gguf")),
+                 qPrintable(resolved.error));
+    }
 };
 
 QTEST_MAIN(TestEnsureConnection)

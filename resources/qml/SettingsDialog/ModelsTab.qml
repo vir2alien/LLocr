@@ -224,9 +224,13 @@ Item {
                               : ""
                     }
                     LLOButton {
-                        text: qsTr("Install")
-                        enabled: !ModelInstaller.busy && !pInfo.installed
+                        text: pInfo.installed ? qsTr("Activate") : qsTr("Install")
+                        enabled: !ModelInstaller.busy
                         onClicked: {
+                            if (pInfo.installed) {
+                                ModelInstaller.activatePreset(index)
+                                return
+                            }
                             ModelInstaller.preparePreset(index)
                             preparedIndex = index
                             pickDialog.open()

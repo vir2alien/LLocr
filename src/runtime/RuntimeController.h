@@ -142,6 +142,11 @@ private:
 
     void recomputeConfigValid();
 
+    /// Actionable explanation of a false `configValid` in Managed mode:
+    /// binary missing → "not configured", model unselected/missing → a message
+    /// pointing at Settings → Models (with the recorded path when it exists).
+    QString configNotReadyMessage() const;
+
     // External path: build ResolvedConnection directly from settings.
     ResolvedConnection resolveExternal() const;
     ResolvedConnection buildManagedConnection() const;

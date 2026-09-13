@@ -7,6 +7,8 @@
 #include <QThread>
 #include <QUuid>
 
+#include <algorithm>
+
 #include "runtime/ArchiveExtractor.h"
 #include "runtime/InstallTransaction.h"
 #include "runtime/RuntimeLocator.h"
@@ -224,6 +226,55 @@ QString InstallTransaction::cleanupUnusedBuilds(RuntimePaths paths,
         ++removed;
     }
     return QStringLiteral("Removed %1 build(s)").arg(removed);
+}
+
+QList<InstalledBuildInfo>
+InstallTransaction::scanInstalledBuilds(const RuntimePaths &paths)
+{
+    QList<InstalledBuildInfo> result;
+    const QDir runtime(paths.runtimeDir());
+    if (!runtime.exists())
+        return result;
+
+    const QString prefix = QStringLiteral("llama.cpp-");
+    const QStringList dirs =
+        runtime.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QString &name : dirs) {
+        if (!name.startsWith(prefix))
+            continue;   // staging/ and one-off leftovers are not installs
+        InstalledBuildInfo info;
+        info.tag = name;
+        // Tag layout: llama.cpp-<build>-<backend>-<os>-<arch>, where the
+        // backend itself may carry a hyphen ("cuda-cu12"), so os/arch are
+        // taken from the tail and everything in between is the backend token.
+        const QStringList parts = name.mid(prefix.size()).split(QLatin1Char('-'));
+        if (!parts.isEmpty())
+            info.build = parts.first();
+        if (parts.size() >= 4) {
+            info.backend = QStringList(parts.mid(1, parts.size() - 3))
+                               .join(QLatin1Char('-'));
+        } else if (parts.size() == 3) {
+            info.backend = parts.at(1);
+        }
+        const QString server = locateServer(runtime.filePath(name));
+        if (!server.isEmpty())
+            info.serverPath = server;
+        result.append(info);
+    }
+
+    // Newest first; unparsable build numbers ("unknown", malformed tags) sort
+    // last, then alphabetically by tag for a stable order.
+    std::sort(result.begin(), result.end(),
+              [](const InstalledBuildInfo &a, const InstalledBuildInfo &b) {
+                  const int ab = a.build.size() > 1 && a.build.startsWith(QLatin1Char('b'))
+                                     ? a.build.mid(1).toInt() : -1;
+                  const int bb = b.build.size() > 1 && b.build.startsWith(QLatin1Char('b'))
+                                     ? b.build.mid(1).toInt() : -1;
+                  if (ab != bb)
+                      return ab > bb;
+                  return a.tag < b.tag;
+              });
+    return result;
 }
 
 }  // namespace llocr

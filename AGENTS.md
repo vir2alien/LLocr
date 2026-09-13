@@ -161,12 +161,17 @@ variable, and vcpkg does **not** participate in the build.
       `detectPlatform()`/backend recommendation, CUDA cudart join, hardened
       `ArchiveExtractor` (ZIP + `.tar.gz` via zlib, ADR 34 amended),
       transactional `InstallTransaction`, cleanup of
-      unused builds; backend covered by `test_release_catalog` /
+      unused builds (refused while no build is active — the sweep would
+      otherwise delete every download); backend covered by `test_release_catalog` /
       `test_archive_extractor` / `test_install_transaction`. UI in
       **Settings → Runtime**: release/backend pickers, «Download and install»
       with progress, «Installed: bXXXX (CUDA)», «Check for updates»,
       «Clean up unused builds» — driven by the QML singleton `RuntimeInstaller`;
-      ru translations updated.
+      ru translations updated. Installed-build scan + activation (ADR 60,
+      `scanInstalledBuilds` + `activateBuild`): previously downloaded builds
+      are listed in Settings → Runtime and in the wizard's Runtime step and
+      can be activated without a re-download — recovers after a settings
+      reset; covered by `test_install_lock`.
     - **E** ✅ — models from Hugging Face: `ModelCatalog` (tree w/ pagination,
       revision pinning, mmproj / multi-part detection, path encoding),
       `ModelPreset` + `ModelPresetCatalog` (built-in `:/models/default-presets.json`
@@ -180,6 +185,19 @@ variable, and vcpkg does **not** participate in the build.
     - **G-core** ✅ — `ensureConnectionReady()` for Managed (start → health →
       /v1/models → alias, dedup of concurrent callers, `cancelPendingStart()`,
       `runSelfTest()`; error matrix §7.5); covered by `test_ensure_connection`.
+      ADR 61: the `configValid` gate applies only when a start would be
+      needed — a live Ready/Starting server is resolved via /v1/models
+      (first-model fallback) even when `launch/modelPath` is stale (settings
+      reset), and `startServer()` refuses a model-less Managed start with an
+      actionable message; `translateServerLine()` messages moved to the
+      correct `tr()` context. Tests: `readyServerResolvesAfterModelSettingWiped`,
+      `managedStartRefusedWithoutModel`, `missingModelPathNamedInErrors`.
+      ADR 62: model selection also recovers after a reset without a
+      re-download — `ModelInstaller` reads the registry via fresh
+      `RuntimePaths`, gained `refreshInstalled()` + `activatePreset()`, the
+      wizard's Model step lists installed models with Activate (and an
+      installed preset's Install button becomes Activate), refusals name the
+      recorded model path.
     - **F** ✅ — first-run wizard: `SetupWizard.qml` + `Setup/Step{Welcome,
       Runtime,Model,Launch,Done}.qml`, trigger per §4.4 (Timer in Main.qml, no
       network probes), per-step gating; External path sets `setupVersion = 1`;

@@ -11,6 +11,8 @@ Item {
 
     property bool complete: Settings.serverPath.trim().length > 0
 
+    Component.onCompleted: RuntimeInstaller.rescanInstalledBuilds()
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 20
@@ -79,6 +81,88 @@ Item {
                              ? qsTr("Ready to install.")
                              : RuntimeInstaller.statusMessage)
                     visible: text.length > 0
+                }
+
+                LLOLabel {
+                    visible: RuntimeInstaller.installedBuildCount > 0
+                    Layout.fillWidth: true
+                    text: qsTr("Installed builds")
+                    color: Theme.textPrimary
+                }
+
+                ListView {
+                    id: wizardBuildsList
+                    visible: RuntimeInstaller.installedBuildCount > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(RuntimeInstaller.installedBuildCount, 3) * 34
+                    clip: true
+                    model: RuntimeInstaller.installedBuildCount
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                    delegate: Rectangle {
+                        id: wizardBuildRow
+                        required property int index
+                        property var info: RuntimeInstaller.installedBuildInfo(index)
+                        width: wizardBuildsList.width
+                        height: 34
+                        color: info.active ? Theme.surfaceSunken : "transparent"
+                        border.color: info.active ? Theme.accent : "transparent"
+                        border.width: info.active ? 1 : 0
+                        radius: Theme.radius
+
+                        Connections {
+                            target: RuntimeInstaller
+                            function onInstalledBuildsChanged() {
+                                wizardBuildRow.info = Qt.binding(function () {
+                                    return RuntimeInstaller.installedBuildInfo(wizardBuildRow.index)
+                                })
+                            }
+                            function onInstalledChanged() {
+                                wizardBuildRow.info = Qt.binding(function () {
+                                    return RuntimeInstaller.installedBuildInfo(wizardBuildRow.index)
+                                })
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            spacing: 6
+
+                            LLOLabel {
+                                Layout.preferredWidth: 110
+                                elide: Text.ElideMiddle
+                                wrapMode: Text.NoWrap
+                                font.pointSize: Theme.captionSize
+                                color: Theme.textPrimary
+                                text: wizardBuildRow.info.build.length
+                                      ? wizardBuildRow.info.build : wizardBuildRow.info.tag
+                            }
+                            LLOLabel {
+                                Layout.fillWidth: true
+                                elide: Text.ElideMiddle
+                                wrapMode: Text.NoWrap
+                                font.pointSize: Theme.captionSize
+                                color: Theme.textMuted
+                                text: wizardBuildRow.info.binaryFound
+                                      ? (wizardBuildRow.info.backendDisplay.length
+                                         ? wizardBuildRow.info.backendDisplay
+                                         : wizardBuildRow.info.tag)
+                                      : qsTr("%1 — binary missing").arg(wizardBuildRow.info.tag)
+                            }
+                            LLOButton {
+                                text: wizardBuildRow.info.active ? qsTr("Active") : qsTr("Activate")
+                                enabled: !wizardBuildRow.info.active && !RuntimeInstaller.busy
+                                         && Runtime.state !== 2 && wizardBuildRow.info.binaryFound
+                                onClicked: {
+                                    if (Runtime.state === 3)
+                                        Runtime.stopServer()
+                                    RuntimeInstaller.activateBuild(wizardBuildRow.index)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 ProgressBar {

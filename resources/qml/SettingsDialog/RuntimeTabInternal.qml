@@ -13,6 +13,7 @@ ScrollView {
     property var releaseOptions: []
 
     function buildInstallOptions() {
+        RuntimeInstaller.rescanInstalledBuilds()
         var b = []
         for (var bi = 0; bi < RuntimeInstaller.availableBackends.length; bi++)
             b.push(RuntimeInstaller.backendDisplayName(RuntimeInstaller.availableBackends[bi]))
@@ -165,6 +166,91 @@ ScrollView {
                         .arg(RuntimeInstaller.installedBuild)
                         .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.installedBackend))
                   : qsTr("No runtime installed yet")
+        }
+
+        LLOLabel {
+            visible: RuntimeInstaller.installedBuildCount > 0
+            text: qsTr("Installed builds")
+        }
+
+        ListView {
+            id: buildsList
+            visible: RuntimeInstaller.installedBuildCount > 0
+            Layout.fillWidth: true
+            // Not capped and not interactive: the surrounding ScrollView
+            // scrolls the whole tab, so a long list just grows (a nested
+            // interactive Flickable would trap the wheel).
+            Layout.preferredHeight: RuntimeInstaller.installedBuildCount * 36
+            clip: true
+            model: RuntimeInstaller.installedBuildCount
+            interactive: false
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOff }
+
+            delegate: Rectangle {
+                id: buildRow
+                required property int index
+                property var info: RuntimeInstaller.installedBuildInfo(index)
+                width: buildsList.width
+                height: 36
+                color: info.active ? Theme.surfaceSunken : "transparent"
+                border.color: info.active ? Theme.accent : "transparent"
+                border.width: info.active ? 1 : 0
+                radius: Theme.radius
+
+                Connections {
+                    target: RuntimeInstaller
+                    function onInstalledBuildsChanged() {
+                        buildRow.info = Qt.binding(function () {
+                            return RuntimeInstaller.installedBuildInfo(buildRow.index)
+                        })
+                    }
+                    function onInstalledChanged() {
+                        buildRow.info = Qt.binding(function () {
+                            return RuntimeInstaller.installedBuildInfo(buildRow.index)
+                        })
+                    }
+                }
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    spacing: 6
+
+                    LLOLabel {
+                        Layout.preferredWidth: 110
+                        elide: Text.ElideMiddle
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
+                        color: Theme.textPrimary
+                        text: buildRow.info.build.length
+                              ? buildRow.info.build : buildRow.info.tag
+                    }
+                    LLOLabel {
+                        Layout.fillWidth: true
+                        elide: Text.ElideMiddle
+                        wrapMode: Text.NoWrap
+                        font.pointSize: Theme.captionSize
+                        color: Theme.textMuted
+                        text: buildRow.info.binaryFound
+                              ? buildRow.info.tag
+                              : qsTr("%1 — binary missing").arg(buildRow.info.tag)
+                    }
+                    LLOButton {
+                        text: buildRow.info.active ? qsTr("Active") : qsTr("Activate")
+                        enabled: !buildRow.info.active && !RuntimeInstaller.busy
+                                 && Runtime.state !== 2 && buildRow.info.binaryFound
+                        onClicked: {
+                            // Applying a different binary requires a restart,
+                            // so a Ready server is stopped first (same
+                            // discipline as the update plaque above).
+                            if (Runtime.state === 3)
+                                Runtime.stopServer()
+                            RuntimeInstaller.activateBuild(buildRow.index)
+                        }
+                    }
+                }
+            }
         }
 
         Rectangle {
