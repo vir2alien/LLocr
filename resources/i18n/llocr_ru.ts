@@ -4,7 +4,7 @@
 <context>
     <name>ExportDialog</name>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="9"/>
+        <location filename="../qml/ExportDialog.qml" line="10"/>
         <source>Export — pages</source>
         <translation>Экспорт — страницы</translation>
     </message>
@@ -29,12 +29,12 @@
         <translation>от</translation>
     </message>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="168"/>
+        <location filename="../qml/ExportDialog.qml" line="167"/>
         <source>to</source>
         <translation>до</translation>
     </message>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="186"/>
+        <location filename="../qml/ExportDialog.qml" line="183"/>
         <source>Only recognized pages inside the selection are exported.</source>
         <translation>Экспортируются только распознанные страницы в выбранном диапазоне.</translation>
     </message>
@@ -107,112 +107,112 @@
 <context>
     <name>Footer</name>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="52"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="137"/>
         <source>Launch settings changed — restart the server to apply them.</source>
         <translation>Параметры запуска изменены — перезапустите сервер, чтобы они применились.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="55"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="140"/>
         <source>Restart</source>
         <translation>Перезапустить</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="64"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="145"/>
         <source>Hide</source>
         <translation>Скрыть</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="127"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="188"/>
         <source>Stop server</source>
         <translation>Остановить сервер</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="128"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="188"/>
         <source>Start server</source>
         <translation>Запустить сервер</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="171"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="225"/>
         <source>Server log — click to open. %1</source>
         <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="242"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="50"/>
         <source>The local runtime is owned by another LLocr instance.</source>
         <translation>Локальный рантайм занят другим экземпляром LLocr.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="244"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="52"/>
         <source>Stop the managed llama-server and unload the model.</source>
         <translation>Остановить локальный llama-server и выгрузить модель.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="246"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="54"/>
         <source>Managed server is not fully configured — open Settings → Runtime.</source>
         <translation>Локальный сервер настроен не полностью — откройте Настройки → Рантайм.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="248"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="56"/>
         <source>Start the managed llama-server with the selected model.</source>
         <translation>Запустить локальный llama-server с выбранной моделью.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="269"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="70"/>
         <source>External</source>
         <translation>Внешний</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="271"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="72"/>
         <source>Runtime: not configured</source>
         <translation>Рантайм: не настроен</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="272"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="73"/>
         <source>Runtime: stopped</source>
         <translation>Рантайм: остановлен</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="275"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="76"/>
         <source>Runtime: starting…</source>
         <translation>Рантайм: запускается…</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="276"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="77"/>
         <source>Runtime: ready</source>
         <translation>Рантайм: готов</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="277"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="78"/>
         <source>Runtime: stopping…</source>
         <translation>Рантайм: останавливается…</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="280"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="81"/>
         <source>Runtime: failed</source>
         <translation>Рантайм: ошибка</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="281"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="82"/>
         <source>Runtime: unknown</source>
         <translation>Рантайм: неизвестно</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="328"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="262"/>
         <source>Restart server?</source>
         <translation>Перезапустить сервер?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="336"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="268"/>
         <source>Recognition is in progress. Restarting the server will interrupt the current job. Continue?</source>
         <translation>Идёт распознавание. Перезапуск сервера прервёт текущий процесс. Продолжить?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="349"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="279"/>
         <source>Stop server?</source>
         <translation>Остановить сервер?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="357"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="285"/>
         <source>Recognition is in progress. Stopping the server will interrupt the current job. Continue?</source>
         <translation>Идёт распознавание. Остановка сервера прервёт текущий процесс. Продолжить?</translation>
     </message>
@@ -220,32 +220,32 @@
 <context>
     <name>Header</name>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="28"/>
+        <location filename="../qml/MainWindow/Header.qml" line="30"/>
         <source>Open…</source>
         <translation>Открыть…</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="35"/>
+        <location filename="../qml/MainWindow/Header.qml" line="37"/>
         <source>Recognize</source>
         <translation>Распознать</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="41"/>
+        <location filename="../qml/MainWindow/Header.qml" line="43"/>
         <source>Recognize all</source>
         <translation>Распознать всё</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="48"/>
+        <location filename="../qml/MainWindow/Header.qml" line="50"/>
         <source>Stop</source>
         <translation>Стоп</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="80"/>
+        <location filename="../qml/MainWindow/Header.qml" line="81"/>
         <source>Export…</source>
         <translation>Экспорт…</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="95"/>
+        <location filename="../qml/MainWindow/Header.qml" line="96"/>
         <source>Settings...</source>
         <translation>Настройки…</translation>
     </message>
@@ -253,251 +253,245 @@
 <context>
     <name>ImagePanel</name>
     <message>
-        <location filename="../qml/MainWindow/ImagePanel.qml" line="18"/>
+        <location filename="../qml/MainWindow/ImagePanel.qml" line="20"/>
         <source>Open an image or PDF to begin</source>
         <translation>Откройте изображение или PDF, чтобы начать</translation>
     </message>
 </context>
 <context>
+    <name>LaunchTab</name>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="54"/>
+        <source>Profile</source>
+        <translation>Профиль</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="66"/>
+        <source>Restore profile</source>
+        <translation>Восстановить профиль</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="81"/>
+        <source>Parameter</source>
+        <translation>Параметр</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="89"/>
+        <source>Value</source>
+        <translation>Значение</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="97"/>
+        <source>Description</source>
+        <translation>Описание</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="132"/>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="185"/>
+        <source>(flag)</source>
+        <translation>(флаг)</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="178"/>
+        <source>New parameter name</source>
+        <translation>Имя нового параметра</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="188"/>
+        <source>Add</source>
+        <translation>Добавить</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="204"/>
+        <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings</source>
+        <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="17"/>
+        <location filename="../qml/Main.qml" line="18"/>
         <source>LLM OCR</source>
         <translation>LLM OCR</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="102"/>
+        <location filename="../qml/Main.qml" line="103"/>
         <source>Drop to open</source>
         <translation>Перетащите чтобы открыть</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="110"/>
+        <location filename="../qml/Main.qml" line="111"/>
         <source>Open images or PDF</source>
         <translation>Открыть изображения или PDF</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="113"/>
+        <location filename="../qml/Main.qml" line="114"/>
         <source>Documents (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf)</source>
         <translation>Документы (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf)</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="114"/>
+        <location filename="../qml/Main.qml" line="115"/>
         <source>All files (*)</source>
         <translation>Все файлы (*)</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="121"/>
+        <location filename="../qml/Main.qml" line="122"/>
         <source>Export recognized text</source>
         <translation>Экспорт распознанного текста</translation>
     </message>
 </context>
 <context>
-    <name>RequestTab</name>
-    <message>
-        <source>e.g. Unlimited-OCR, or the id your server exposes</source>
-        <translation type="vanished">например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
-    </message>
-    <message>
-        <source>Temperature</source>
-        <translation type="vanished">Температура</translation>
-    </message>
-    <message>
-        <source>Max tokens per page</source>
-        <translation type="vanished">Макс. токенов на стр.</translation>
-    </message>
-    <message>
-        <source>DRY multiplier</source>
-        <translation type="vanished">множитель DRY</translation>
-    </message>
-    <message>
-        <source>DRY base</source>
-        <translation type="vanished">DRY база штрафа</translation>
-    </message>
-    <message>
-        <source>DRY allowed length</source>
-        <translation type="vanished">DRY разрешенная длина</translation>
-    </message>
-    <message>
-        <source>DRY range</source>
-        <translation type="vanished">DRY диапазон</translation>
-    </message>
-    <message>
-        <source>DRY (Don&apos;t Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp</source>
-        <translation type="vanished">DRY (Don&apos;t Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="31"/>
-        <source>Parameter</source>
-        <translation>Параметр</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="35"/>
-        <source>Value</source>
-        <translation>Значение</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="44"/>
-        <source>Description</source>
-        <translation>Описание</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="83"/>
-        <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
-        <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
-    </message>
-</context>
-<context>
     <name>ModelsTab</name>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="30"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="44"/>
         <source>Models are stored locally and launched by the managed runtime.</source>
         <translation>Модели хранятся локально и запускаются управляемым рантаймом.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="144"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="162"/>
         <source>No models installed</source>
         <translation>Установленных моделей нет</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="229"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="246"/>
         <source>No presets available</source>
         <translation>Нет доступных пресетов</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="114"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="127"/>
         <source>managed</source>
         <translation>управляемая</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="114"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="127"/>
         <source>external</source>
         <translation>внешняя</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="117"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="130"/>
         <source>Active</source>
         <translation>Активна</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="117"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="130"/>
         <source>Activate</source>
         <translation>Активировать</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="124"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="135"/>
         <source>Remove</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="134"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="144"/>
         <source>Open folder</source>
         <translation>Открыть папку</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="154"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="172"/>
         <source>Preset catalog</source>
         <translation>Каталог пресетов</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="205"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="223"/>
         <source>~%1 GiB VRAM</source>
         <translation>~%1 ГиБ VRAM</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="209"/>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="301"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="227"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="316"/>
         <source>Install</source>
         <translation>Установить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="239"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="256"/>
         <source>Search Hugging Face</source>
         <translation>Поиск на Hugging Face</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="251"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="266"/>
         <source>e.g. vision gguf</source>
         <translation>напр. vision gguf</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="256"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="271"/>
         <source>Search</source>
         <translation>Поиск</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="322"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="334"/>
         <source>Results appear here. Models install into the managed models directory.</source>
         <translation>Результаты появятся здесь. Модели устанавливаются в управляемый каталог models.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="48"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="62"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="57"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="69"/>
         <source>Installed models: </source>
         <translation>Установленные модели: </translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="330"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="342"/>
         <source>HF token (optional)</source>
         <translation>HF-токен (необязательно)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="339"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="349"/>
         <source>read-only token for gated repos</source>
         <translation>токен только для чтения для gated-репозиториев</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="349"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="359"/>
         <source>Import catalog…</source>
         <translation>Импорт каталога…</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="355"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="363"/>
         <source>Export catalog…</source>
         <translation>Экспорт каталога…</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="361"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="367"/>
         <source>Restore defaults</source>
         <translation>Восстановить по умолчанию</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="377"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="381"/>
         <source>Install model</source>
         <translation>Установка модели</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="390"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="393"/>
         <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
         <translation>Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="402"/>
         <location filename="../qml/SettingsDialog/ModelsTab.qml" line="404"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="406"/>
         <source>License: %1</source>
         <translation>Лицензия: %1</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="417"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="419"/>
         <source>Import preset catalog</source>
         <translation>Импорт каталога пресетов</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="418"/>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="428"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="420"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="430"/>
         <source>JSON files (*.json)</source>
         <translation>JSON-файлы (*.json)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="418"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="420"/>
         <source>All files (*)</source>
         <translation>Все файлы (*)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="427"/>
+        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="429"/>
         <source>Export preset catalog</source>
         <translation>Экспорт каталога пресетов</translation>
     </message>
@@ -505,12 +499,12 @@
 <context>
     <name>OcrModel</name>
     <message>
-        <location filename="../../src/models/OcrModel.cpp" line="59"/>
+        <location filename="../../src/models/OcrModel.cpp" line="67"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный JSON-ответ</translation>
     </message>
     <message>
-        <location filename="../../src/models/OcrModel.cpp" line="64"/>
+        <location filename="../../src/models/OcrModel.cpp" line="72"/>
         <source>No choices in response</source>
         <translation>В ответе нет вариантов</translation>
     </message>
@@ -686,7 +680,7 @@
     </message>
     <message>
         <location filename="../../src/runtime/LlamaServerProcess.cpp" line="119"/>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="416"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="425"/>
         <source>Server is already running</source>
         <translation>Сервер уже запущен</translation>
     </message>
@@ -719,7 +713,7 @@
     </message>
     <message>
         <location filename="../../src/runtime/LlamaServerProcess.cpp" line="508"/>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="498"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="508"/>
         <source>Stopping…</source>
         <translation>Остановка…</translation>
     </message>
@@ -799,80 +793,80 @@
         <translation>По умолчанию — CPU; включите CUDA, если есть NVIDIA GPU</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="73"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="79"/>
         <source>No response</source>
         <translation type="unfinished">Нет ответа</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="81"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="87"/>
         <source>Recognition failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="377"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="386"/>
         <source>Port is busy. Change the port or enable auto-pick</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="380"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="389"/>
         <source>The server rejected an argument that is not supported by your build</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="383"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="392"/>
         <source>Model file not found. Re-check the model path in Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="386"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="395"/>
         <source>Not enough VRAM. Lower --n-gpu-layers or --ctx-size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="388"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="397"/>
         <source>CUDA runtime not installed. Install the CUDA archive or pick CPU/Vulkan</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="390"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="399"/>
         <source>Vulkan is unavailable; pick a different backend</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="392"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="401"/>
         <source>This GGUF format is not supported by your llama.cpp build</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="394"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="403"/>
         <source>Server did not respond in time; see the log below</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="406"/>
         <location filename="../../src/runtime/RuntimeLocator.cpp" line="90"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="415"/>
         <source>No server binary selected</source>
         <translation>Бинарник сервера не выбран</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="409"/>
         <location filename="../../src/runtime/RuntimeLocator.cpp" line="95"/>
         <location filename="../../src/runtime/RuntimeLocator.cpp" line="187"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="418"/>
         <source>File not found: %1</source>
         <translation>Файл не найден: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="411"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="420"/>
         <source>Another instance is already running</source>
         <translation>Другой экземпляр уже запущен</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="476"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="486"/>
         <source>Starting server…</source>
         <translation>Запуск сервера…</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="537"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="547"/>
         <source>No llama-server binary found automatically</source>
         <translation>Бинарник llama-server не найден автоматически</translation>
     </message>
@@ -944,7 +938,7 @@
         <translation>Не удалось сделать бинарник исполняемым</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimePaths.cpp" line="82"/>
+        <location filename="../../src/runtime/RuntimePaths.cpp" line="87"/>
         <source>Unable to create directory: %1</source>
         <translation>Не удалось создать папку: %1</translation>
     </message>
@@ -1034,17 +1028,17 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="456"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="477"/>
         <source>Could not resolve repository %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="462"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="483"/>
         <source>No files found in %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="469"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="490"/>
         <source>No usable model file found in %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1098,6 +1092,136 @@
         <source>Unable to remove user catalog: %1</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="156"/>
+        <source>Request profile has no parameters array</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="166"/>
+        <source>Request profile parameter is not an object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="172"/>
+        <source>Request profile parameter has an empty name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="176"/>
+        <source>Request profile has a duplicate parameter: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="186"/>
+        <source>Request profile parameter %1 has an invalid order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="198"/>
+        <source>Request profile parameter %1 has an unsupported value</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/LaunchProfile.cpp" line="80"/>
+        <source>Launch profile parameter has an empty name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/LaunchProfile.cpp" line="88"/>
+        <source>Launch profile parameter %1 has an invalid order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/LaunchProfile.cpp" line="112"/>
+        <source>Launch profile parameter %1 has an unsupported value</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/LaunchProfile.cpp" line="133"/>
+        <source>Launch profile is not an object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/LaunchProfile.cpp" line="139"/>
+        <source>Launch profile has an empty id</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/LaunchProfile.cpp" line="143"/>
+        <source>Launch profile file has a duplicate profile: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/LaunchProfile.cpp" line="162"/>
+        <source>Launch profile parameter is not an object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/LaunchProfile.cpp" line="170"/>
+        <source>Launch profile %1 has a duplicate parameter: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>RequestTab</name>
+    <message>
+        <source>e.g. Unlimited-OCR, or the id your server exposes</source>
+        <translation type="vanished">например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
+    </message>
+    <message>
+        <source>Temperature</source>
+        <translation type="vanished">Температура</translation>
+    </message>
+    <message>
+        <source>Max tokens per page</source>
+        <translation type="vanished">Макс. токенов на стр.</translation>
+    </message>
+    <message>
+        <source>DRY multiplier</source>
+        <translation type="vanished">множитель DRY</translation>
+    </message>
+    <message>
+        <source>DRY base</source>
+        <translation type="vanished">DRY база штрафа</translation>
+    </message>
+    <message>
+        <source>DRY allowed length</source>
+        <translation type="vanished">DRY разрешенная длина</translation>
+    </message>
+    <message>
+        <source>DRY range</source>
+        <translation type="vanished">DRY диапазон</translation>
+    </message>
+    <message>
+        <source>DRY (Don&apos;t Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp</source>
+        <translation type="vanished">DRY (Don&apos;t Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="40"/>
+        <source>Restore profile</source>
+        <translation>Восстановить профиль</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="57"/>
+        <source>Parameter</source>
+        <translation>Параметр</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="65"/>
+        <source>Value</source>
+        <translation>Значение</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="72"/>
+        <source>Description</source>
+        <translation>Описание</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="134"/>
+        <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
+        <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
+    </message>
 </context>
 <context>
     <name>RuntimeTab</name>
@@ -1107,22 +1231,22 @@
         <translation>Запустить мастер настройки…</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTab.qml" line="43"/>
+        <location filename="../qml/SettingsDialog/RuntimeTab.qml" line="40"/>
         <source>Walks you through installing a runtime and a model, then configures the launch.</source>
         <translation>Проведёт вас по установке рантайма и модели, затем настроит запуск.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTab.qml" line="49"/>
+        <location filename="../qml/SettingsDialog/RuntimeTab.qml" line="46"/>
         <source>Connection mode</source>
         <translation>Режим подключения</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTab.qml" line="60"/>
+        <location filename="../qml/SettingsDialog/RuntimeTab.qml" line="55"/>
         <source>External server</source>
         <translation>Внешний сервер</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTab.qml" line="61"/>
+        <location filename="../qml/SettingsDialog/RuntimeTab.qml" line="56"/>
         <source>Managed local server</source>
         <translation>Управляемый локальный сервер</translation>
     </message>
@@ -1130,37 +1254,42 @@
 <context>
     <name>RuntimeTabExternal</name>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="23"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="26"/>
         <source>Endpoint base URL</source>
         <translation>Базовый URL конечной точки</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="36"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="37"/>
         <source>Model name</source>
         <translation>Название модели</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="55"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="45"/>
+        <source>e.g. Unlimited-OCR, or the id your server exposes</source>
+        <translation>например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="50"/>
         <source>Optional model alias</source>
         <translation>Опциональное имя модели</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="38"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="56"/>
         <source>API key (optional)</source>
         <translation>API-ключ (необязательно)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="55"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="71"/>
         <source>Show</source>
         <translation>Показать</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="63"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="79"/>
         <source>Request timeout (ms)</source>
         <translation>Время ожидания запроса (мс)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="83"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="96"/>
         <source>Note: the API key is stored locally in plaintext. Avoid using production keys.</source>
         <translation>Примечание: API-ключ хранится локально в открытом виде. Не используйте рабочие ключи.</translation>
     </message>
@@ -1168,167 +1297,167 @@
 <context>
     <name>RuntimeTabInternal</name>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="56"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="57"/>
         <source>llama-server binary</source>
         <translation>Бинарник llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="68"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="67"/>
         <source>path to llama-server</source>
         <translation>путь к llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="73"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="72"/>
         <source>Browse…</source>
         <translation>Обзор…</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="84"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="81"/>
         <source>Auto-detect</source>
         <translation>Определить автоматически</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="98"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="93"/>
         <source>Not probed yet</source>
         <translation>Ещё не проверено</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="99"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="94"/>
         <source>No server binary selected</source>
         <translation>Бинарник сервера не выбран</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="114"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="109"/>
         <source>Check</source>
         <translation>Проверить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="120"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="113"/>
         <source>Start</source>
         <translation>Запустить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="127"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="118"/>
         <source>Stop</source>
         <translation>Остановить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="134"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="123"/>
         <source>Restart</source>
         <translation>Перезапустить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="144"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="131"/>
         <source>Show log</source>
         <translation>Показать журнал</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="158"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="142"/>
         <source>Managed mode uses this binary to run a local llama-server. Recognition in External mode is unaffected.</source>
         <translation>Режим Managed использует этот бинарник для запуска локального llama-server. Распознавание в режиме External не затрагивается.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="170"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="154"/>
         <source>Install llama.cpp</source>
         <translation>Установить llama.cpp</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="182"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="164"/>
         <source>Installed: %1 (%2)</source>
         <translation>Установлено: %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="185"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="167"/>
         <source>No runtime installed yet</source>
         <translation>Рантайм ещё не установлен</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="209"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="190"/>
         <source>A newer build %1 is available%2</source>
         <translation>Доступна новая сборка %1%2</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="212"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="193"/>
         <source> (checked %1)</source>
         <translation> (проверено %1)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="221"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="199"/>
         <source>Updating will install it after the running server is stopped.</source>
         <translation>Обновление установится после остановки работающего сервера.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="222"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="200"/>
         <source>You can keep working — updating installs in the background.</source>
         <translation>Можно продолжать работу — обновление установится в фоне.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="227"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="205"/>
         <source>Stop server and update</source>
         <translation>Остановить сервер и обновить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="228"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="206"/>
         <source>Update</source>
         <translation>Обновить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="239"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="215"/>
         <source>View changes</source>
         <translation>Посмотреть изменения</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="254"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="227"/>
         <source>Platform: %1 · recommended backend: %2</source>
         <translation>Платформа: %1 · рекомендуемый backend: %2</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="266"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="239"/>
         <source>Backend</source>
         <translation>Backend</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="281"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="252"/>
         <source>Release</source>
         <translation>Релиз</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="296"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="265"/>
         <source>Check for updates</source>
         <translation>Проверить обновления</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="314"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="280"/>
         <source>Open this tab or press “Check for updates” to load releases.</source>
         <translation>Откройте эту вкладку или нажмите «Проверить обновления», чтобы загрузить релизы.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="332"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="298"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="333"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="299"/>
         <source>Download and install</source>
         <translation>Скачать и установить</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="345"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="309"/>
         <source>Clean up unused builds</source>
         <translation>Очистить неиспользуемые сборки</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="357"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="318"/>
         <source>Press “Check for updates” to see if a newer release is available.</source>
         <translation>Нажмите «Проверить обновления», чтобы узнать о новых релизах.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="359"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="320"/>
         <source>A newer release is available.</source>
         <translation>Доступен более новый релиз.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="360"/>
+        <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="321"/>
         <source>Your runtime build is up to date.</source>
         <translation>Ваша сборка среды выполнения актуальна.</translation>
     </message>
@@ -1367,83 +1496,40 @@
     </message>
 </context>
 <context>
-    <name>LaunchTab</name>
-    <message>
-        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="37"/>
-        <source>Profile</source>
-        <translation>Профиль</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="50"/>
-        <source>Parameter</source>
-        <translation>Параметр</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="57"/>
-        <source>Value</source>
-        <translation>Значение</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="62"/>
-        <source>Description</source>
-        <translation>Описание</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="95"/>
-        <source>(flag)</source>
-        <translation>(флаг)</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="132"/>
-        <source>New parameter name</source>
-        <translation>Имя нового параметра</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="143"/>
-        <source>Add</source>
-        <translation>Добавить</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog/LaunchTab.qml" line="155"/>
-        <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings</source>
-        <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска</translation>
-    </message>
-</context>
-<context>
     <name>ServerLogWindow</name>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="18"/>
-        <location filename="../qml/ServerLogWindow.qml" line="43"/>
+        <location filename="../qml/ServerLogWindow.qml" line="10"/>
+        <location filename="../qml/ServerLogWindow.qml" line="35"/>
         <source>llama-server log</source>
         <translation>Журнал llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="123"/>
+        <location filename="../qml/ServerLogWindow.qml" line="102"/>
         <source>No log output yet.</source>
         <translation>Вывода журнала пока нет.</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="82"/>
+        <location filename="../qml/ServerLogWindow.qml" line="70"/>
         <source>Copy log</source>
         <translation>Скопировать журнал</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="88"/>
+        <location filename="../qml/ServerLogWindow.qml" line="74"/>
         <source>Open directory</source>
         <translation>Открыть папку</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="94"/>
+        <location filename="../qml/ServerLogWindow.qml" line="78"/>
         <source>Clear view</source>
         <translation>Очистить вид</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="101"/>
+        <location filename="../qml/ServerLogWindow.qml" line="83"/>
         <source>%1 line(s)</source>
         <translation>%1 строка(и)</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="62"/>
+        <location filename="../qml/ServerLogWindow.qml" line="51"/>
         <source>live</source>
         <translation>вживую</translation>
     </message>
@@ -1451,32 +1537,32 @@
 <context>
     <name>SettingsDialog</name>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="12"/>
+        <location filename="../qml/SettingsDialog.qml" line="13"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="141"/>
+        <location filename="../qml/SettingsDialog.qml" line="143"/>
         <source>OCR model</source>
         <translation>Модель OCR</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="154"/>
+        <location filename="../qml/SettingsDialog.qml" line="155"/>
         <source>Output parser</source>
         <translation>Парсер вывода</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="159"/>
+        <location filename="../qml/SettingsDialog.qml" line="170"/>
         <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
         <translation>«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="178"/>
+        <location filename="../qml/SettingsDialog.qml" line="193"/>
         <source>Select llama-server binary</source>
         <translation>Выберите бинарник llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="180"/>
+        <location filename="../qml/SettingsDialog.qml" line="195"/>
         <source>Executables (*)</source>
         <translation>Исполняемые файлы (*)</translation>
     </message>
@@ -1484,27 +1570,27 @@
 <context>
     <name>SetupWizard</name>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="21"/>
+        <location filename="../qml/SetupWizard.qml" line="16"/>
         <source>Setup</source>
         <translation>Настройка</translation>
     </message>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="80"/>
+        <location filename="../qml/SetupWizard.qml" line="63"/>
         <source>Skip</source>
         <translation>Пропустить</translation>
     </message>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="85"/>
+        <location filename="../qml/SetupWizard.qml" line="68"/>
         <source>Back</source>
         <translation>Назад</translation>
     </message>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="90"/>
+        <location filename="../qml/SetupWizard.qml" line="73"/>
         <source>Finish</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="90"/>
+        <location filename="../qml/SetupWizard.qml" line="73"/>
         <source>Next</source>
         <translation>Далее</translation>
     </message>
@@ -1512,62 +1598,62 @@
 <context>
     <name>StepDone</name>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="29"/>
+        <location filename="../qml/Setup/StepDone.qml" line="25"/>
         <source>Done</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="40"/>
+        <location filename="../qml/Setup/StepDone.qml" line="33"/>
         <source>Your local runtime is ready. Drop an image or PDF onto the window to start recognizing.</source>
         <translation>Локальный рантайм готов. Перетащите изображение или PDF в окно, чтобы начать распознавание.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="54"/>
+        <location filename="../qml/Setup/StepDone.qml" line="47"/>
         <source>Summary</source>
         <translation>Сводка</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="61"/>
+        <location filename="../qml/Setup/StepDone.qml" line="53"/>
         <source>Mode:</source>
         <translation>Режим:</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="62"/>
+        <location filename="../qml/Setup/StepDone.qml" line="54"/>
         <source>Local server (managed)</source>
         <translation>Локальный сервер (управляемый)</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="65"/>
+        <location filename="../qml/Setup/StepDone.qml" line="57"/>
         <source>Runtime:</source>
         <translation>Рантайм:</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="69"/>
+        <location filename="../qml/Setup/StepDone.qml" line="61"/>
         <source>Model:</source>
         <translation>Модель:</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="73"/>
+        <location filename="../qml/Setup/StepDone.qml" line="65"/>
         <source>Auto-start:</source>
         <translation>Автозапуск:</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="74"/>
+        <location filename="../qml/Setup/StepDone.qml" line="66"/>
         <source>On</source>
         <translation>Вкл</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="74"/>
+        <location filename="../qml/Setup/StepDone.qml" line="66"/>
         <source>Off</source>
         <translation>Выкл</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="77"/>
+        <location filename="../qml/Setup/StepDone.qml" line="69"/>
         <source>Port:</source>
         <translation>Порт:</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="78"/>
+        <location filename="../qml/Setup/StepDone.qml" line="70"/>
         <source>auto</source>
         <translation>авто</translation>
     </message>
@@ -1575,32 +1661,32 @@
 <context>
     <name>StepLaunch</name>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="74"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="82"/>
         <source>Launch</source>
         <translation>Запуск</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="169"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="163"/>
         <source>Estimated memory needs ~%1 GiB (model + context) — this looks high for %2 GiB of RAM.</source>
         <translation>Примерная потребность в памяти ~%1 ГБ (модель + контекст) — это много для %2 ГБ ОЗУ.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="179"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="170"/>
         <source>Reduce --ctx-size or --n-gpu-layers, or use a smaller model.</source>
         <translation>Уменьшите --ctx-size или --n-gpu-layers либо используйте модель меньше.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="189"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="179"/>
         <source>Memory estimate: ~%1 GiB total (%2 GiB model + %3 GiB KV cache) on %4 GiB RAM</source>
         <translation>Оценка памяти: всего ~%1 ГБ (%2 ГБ модель + %3 ГБ KV-кэш) при %4 ГБ ОЗУ</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="85"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="90"/>
         <source>Tune how the local server starts, then run a quick end-to-end check. It starts the server, loads your model and performs one OCR request.</source>
         <translation>Настройте, как запускается локальный сервер, затем выполните быструю сквозную проверку. Она запустит сервер, загрузит модель и выполнит один OCR-запрос.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="96"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="101"/>
         <source>Port</source>
         <translation>Порт</translation>
     </message>
@@ -1617,42 +1703,42 @@
         <translation type="vanished">Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="90"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="112"/>
         <source>Launch profile</source>
         <translation>Профиль запуска</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="116"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="130"/>
         <source>Start the server when the app launches</source>
         <translation>Запускать сервер при старте приложения</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="126"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="139"/>
         <source>Full parameter table: Settings → Launch. Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default.</source>
         <translation>Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="204"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="194"/>
         <source>Command preview</source>
         <translation>Предпросмотр команды</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="233"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="221"/>
         <source>Check</source>
         <translation>Проверить</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="245"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="230"/>
         <source>Running self-test…</source>
         <translation>Выполняется самопроверка…</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="248"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="233"/>
         <source>Self-test passed: “%1”</source>
         <translation>Самопроверка пройдена: «%1»</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="250"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="235"/>
         <source>Press Check to verify the full chain.</source>
         <translation>Нажмите «Проверить», чтобы удостовериться в работоспособности всей цепочки.</translation>
     </message>
@@ -1665,124 +1751,124 @@
         <translation>Модель</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="54"/>
+        <location filename="../qml/Setup/StepModel.qml" line="51"/>
         <source>Vision-capable GGUF models work with the managed server. Pick a preset, find one on Hugging Face, or point at a local file.</source>
         <translation>Ви-модели в формате GGUF работают с управляемым сервером. Выберите пресет, найдите модель на Hugging Face или укажите локальный файл.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="78"/>
+        <location filename="../qml/Setup/StepModel.qml" line="72"/>
         <source>Estimated footprint: ~%1 GiB (model + context) on %2 GiB RAM</source>
         <translation>Примерный размер: ~%1 ГБ (модель + контекст) на %2 ГБ ОЗУ</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="67"/>
+        <location filename="../qml/Setup/StepModel.qml" line="63"/>
         <source>Model selected: %1</source>
         <translation>Модель выбрана: %1</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="68"/>
+        <location filename="../qml/Setup/StepModel.qml" line="64"/>
         <source>No model selected yet.</source>
         <translation>Модель ещё не выбрана.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="119"/>
+        <location filename="../qml/Setup/StepModel.qml" line="111"/>
         <source>Presets</source>
         <translation>Пресеты</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="120"/>
+        <location filename="../qml/Setup/StepModel.qml" line="112"/>
         <source>Hugging Face</source>
         <translation>Hugging Face</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="121"/>
+        <location filename="../qml/Setup/StepModel.qml" line="113"/>
         <source>Local file</source>
         <translation>Локальный файл</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="133"/>
+        <location filename="../qml/Setup/StepModel.qml" line="124"/>
         <source>Start from a preset</source>
         <translation>Начать с пресета</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="182"/>
+        <location filename="../qml/Setup/StepModel.qml" line="173"/>
         <source>~%1 GiB VRAM</source>
         <translation>~%1 ГиБ VRAM</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="185"/>
-        <location filename="../qml/Setup/StepModel.qml" line="257"/>
+        <location filename="../qml/Setup/StepModel.qml" line="176"/>
+        <location filename="../qml/Setup/StepModel.qml" line="246"/>
         <source>Install</source>
         <translation>Установить</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="210"/>
+        <location filename="../qml/Setup/StepModel.qml" line="198"/>
         <source>e.g. vision gguf</source>
         <translation>напр. vision gguf</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="215"/>
+        <location filename="../qml/Setup/StepModel.qml" line="203"/>
         <source>Search</source>
         <translation>Поиск</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="277"/>
+        <location filename="../qml/Setup/StepModel.qml" line="263"/>
         <source>Results appear here. Models install into the managed models directory.</source>
         <translation>Результаты появятся здесь. Модели устанавливаются в управляемый каталог models.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="292"/>
+        <location filename="../qml/Setup/StepModel.qml" line="277"/>
         <source>path to a .gguf model</source>
         <translation>путь к модели .gguf</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="296"/>
+        <location filename="../qml/Setup/StepModel.qml" line="281"/>
         <source>Browse…</source>
         <translation>Обзор…</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="302"/>
+        <location filename="../qml/Setup/StepModel.qml" line="286"/>
         <source>Use this file</source>
         <translation>Использовать этот файл</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="312"/>
+        <location filename="../qml/Setup/StepModel.qml" line="294"/>
         <source>The local model is not managed: its license is your responsibility, and it is not verified by the catalog.</source>
         <translation>Локальная модель не управляется: за её лицензию отвечаете вы, и каталог её не проверяет.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="329"/>
+        <location filename="../qml/Setup/StepModel.qml" line="310"/>
         <source>Install model</source>
         <translation>Установка модели</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="342"/>
+        <location filename="../qml/Setup/StepModel.qml" line="321"/>
         <source>Review the license before installing. Downloading starts after confirmation.</source>
         <translation>Перед установкой ознакомьтесь с лицензией. Загрузка начнётся после подтверждения.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="356"/>
-        <location filename="../qml/Setup/StepModel.qml" line="358"/>
+        <location filename="../qml/Setup/StepModel.qml" line="334"/>
+        <location filename="../qml/Setup/StepModel.qml" line="336"/>
         <source>License: %1</source>
         <translation>Лицензия: %1</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="377"/>
+        <location filename="../qml/Setup/StepModel.qml" line="355"/>
         <source>Select a GGUF model</source>
         <translation>Выберите модель GGUF</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="378"/>
+        <location filename="../qml/Setup/StepModel.qml" line="356"/>
         <source>GGUF models (*.gguf)</source>
         <translation>Модели GGUF (*.gguf)</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="378"/>
+        <location filename="../qml/Setup/StepModel.qml" line="356"/>
         <source>All files (*)</source>
         <translation type="unfinished">Все файлы (*)</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="98"/>
+        <location filename="../qml/Setup/StepModel.qml" line="92"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -1790,87 +1876,87 @@
 <context>
     <name>StepRuntime</name>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="24"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="21"/>
         <source>Runtime (llama.cpp)</source>
         <translation>Рантайм (llama.cpp)</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="35"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="29"/>
         <source>LLM OCR manages a local llama-server process. First obtain its binary — by downloading a prebuilt build or pointing to one you already have.</source>
         <translation>LLM OCR управляет локальным процессом llama-server. Сначала получите его бинарник — скачав готовую сборку или указав уже имеющуюся.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="43"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="36"/>
         <source>Download llama.cpp</source>
         <translation>Скачать llama.cpp</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="54"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="47"/>
         <source>Backend</source>
         <translation>Backend</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="74"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="64"/>
         <source>Platform: %1 · recommended: %2</source>
         <translation>Платформа: %1 · рекомендуемый: %2</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="86"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="75"/>
         <source>Installed: %1 (%2)</source>
         <translation>Установлено: %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="90"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="79"/>
         <source>Ready to install.</source>
         <translation>Готово к установке.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="108"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="97"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="109"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="98"/>
         <source>Download and install</source>
         <translation>Скачать и установить</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="117"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="105"/>
         <source>Check for updates</source>
         <translation>Проверить обновления</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="131"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="116"/>
         <source>On Windows, a freshly downloaded binary can be flagged by SmartScreen or antivirus; if launch fails, pick the file manually below.</source>
         <translation>На Windows свежескачанный бинарник может быть помечен SmartScreen или антивирусом; если запуск не удаётся, выберите файл вручную ниже.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="146"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="131"/>
         <source>Use an existing llama-server binary</source>
         <translation>Использовать существующий бинарник llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="158"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="141"/>
         <source>path to llama-server</source>
         <translation>путь к llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="163"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="146"/>
         <source>Browse…</source>
         <translation>Обзор…</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="173"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="155"/>
         <source>Probe</source>
         <translation>Проверить</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="184"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="164"/>
         <source>No binary selected yet.</source>
         <translation>Бинарник ещё не выбран.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="194"/>
+        <location filename="../qml/Setup/StepRuntime.qml" line="175"/>
         <source>Select llama-server binary</source>
         <translation>Выберите бинарник llama-server</translation>
     </message>
@@ -1878,32 +1964,32 @@
 <context>
     <name>StepWelcome</name>
     <message>
-        <location filename="../qml/Setup/StepWelcome.qml" line="39"/>
+        <location filename="../qml/Setup/StepWelcome.qml" line="34"/>
         <source>Welcome to LLM OCR</source>
         <translation>Добро пожаловать в LLM OCR</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepWelcome.qml" line="50"/>
+        <location filename="../qml/Setup/StepWelcome.qml" line="42"/>
         <source>This assistant recognizes text from images and PDFs using a local LLM. Choose how to connect to a model.</source>
         <translation>Этот помощник распознаёт текст из изображений и PDF с помощью локальной LLM. Выберите, как подключиться к модели.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepWelcome.qml" line="79"/>
+        <location filename="../qml/Setup/StepWelcome.qml" line="71"/>
         <source>Local server (recommended)</source>
         <translation>Локальный сервер (рекомендуется)</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepWelcome.qml" line="80"/>
+        <location filename="../qml/Setup/StepWelcome.qml" line="72"/>
         <source>I already have a server or API</source>
         <translation>У меня уже есть сервер или API</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepWelcome.qml" line="91"/>
+        <location filename="../qml/Setup/StepWelcome.qml" line="81"/>
         <source>LLM OCR downloads and runs llama.cpp locally. Everything stays on this machine.</source>
         <translation>LLM OCR скачивает и запускает llama.cpp локально. Всё остаётся на этом компьютере.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepWelcome.qml" line="93"/>
+        <location filename="../qml/Setup/StepWelcome.qml" line="83"/>
         <source>Point to an existing OpenAI-compatible endpoint and configure it in Settings.</source>
         <translation>Укажите существующий OpenAI-совместимый endpoint и настройте его в Настройках.</translation>
     </message>
@@ -1911,37 +1997,37 @@
 <context>
     <name>ThumbDelegate</name>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="60"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="62"/>
         <source>Has duplicates</source>
         <translation>Дубликаты</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="61"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="63"/>
         <source>Edited</source>
         <translation>Изменено</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="62"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="64"/>
         <source>Recognized</source>
         <translation>Распознано</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="63"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="65"/>
         <source>Not recognized</source>
         <translation>Не распознано</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="66"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="68"/>
         <source>Page %1</source>
         <translation>Страница %1</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="104"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="107"/>
         <source>Delete page</source>
         <translation>Удалить страницу</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="105"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="108"/>
         <source>Delete page %1</source>
         <translation>Удалить страницу %1</translation>
     </message>
@@ -1949,7 +2035,7 @@
 <context>
     <name>ThumbPanel</name>
     <message>
-        <location filename="../qml/MainWindow/ThumbPanel.qml" line="11"/>
+        <location filename="../qml/MainWindow/ThumbPanel.qml" line="13"/>
         <source>No pages</source>
         <translation>Нет страниц</translation>
     </message>
@@ -1957,28 +2043,28 @@
 <context>
     <name>UITab</name>
     <message>
-        <location filename="../qml/SettingsDialog/UITab.qml" line="24"/>
+        <location filename="../qml/SettingsDialog/UITab.qml" line="25"/>
         <source>Language</source>
         <translation>Язык</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/UITab.qml" line="32"/>
-        <location filename="../qml/SettingsDialog/UITab.qml" line="46"/>
+        <location filename="../qml/SettingsDialog/UITab.qml" line="31"/>
+        <location filename="../qml/SettingsDialog/UITab.qml" line="43"/>
         <source>System</source>
         <translation>Как в ОС</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/UITab.qml" line="38"/>
+        <location filename="../qml/SettingsDialog/UITab.qml" line="37"/>
         <source>Theme</source>
         <translation>Тема</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/UITab.qml" line="46"/>
+        <location filename="../qml/SettingsDialog/UITab.qml" line="43"/>
         <source>Light</source>
         <translation>Светлая</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/UITab.qml" line="46"/>
+        <location filename="../qml/SettingsDialog/UITab.qml" line="43"/>
         <source>Dark</source>
         <translation>Тёмная</translation>
     </message>
@@ -1986,27 +2072,27 @@
 <context>
     <name>WorkPanel</name>
     <message>
-        <location filename="../qml/MainWindow/WorkPanel.qml" line="13"/>
+        <location filename="../qml/MainWindow/WorkPanel.qml" line="14"/>
         <source>Recognized text will appear here</source>
         <translation>Здесь появится распознанный текст</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/WorkPanel.qml" line="32"/>
+        <location filename="../qml/MainWindow/WorkPanel.qml" line="33"/>
         <source>Edited</source>
         <translation>Изменено</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/WorkPanel.qml" line="33"/>
+        <location filename="../qml/MainWindow/WorkPanel.qml" line="34"/>
         <source>Recognized</source>
         <translation>Распознано</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/WorkPanel.qml" line="42"/>
+        <location filename="../qml/MainWindow/WorkPanel.qml" line="41"/>
         <source>Revert</source>
         <translation>Отменить изменения</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/WorkPanel.qml" line="53"/>
+        <location filename="../qml/MainWindow/WorkPanel.qml" line="52"/>
         <source>Preview</source>
         <translation>Предпросмотр</translation>
     </message>
@@ -2014,44 +2100,44 @@
 <context>
     <name>llocr::AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="199"/>
+        <location filename="../../src/app/AppController.cpp" line="209"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="222"/>
+        <location filename="../../src/app/AppController.cpp" line="232"/>
         <source>No supported files selected.</source>
         <translation>Не выбрано ни одного поддерживаемого файла</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="224"/>
+        <location filename="../../src/app/AppController.cpp" line="234"/>
         <source>None of the selected files could be added.</source>
         <translation>Ни один из выбранных файлов не удалось добавить</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="236"/>
+        <location filename="../../src/app/AppController.cpp" line="246"/>
         <source>Added %1 file(s), %2 page(s); %3 file(s) skipped.</source>
         <translation>Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="239"/>
+        <location filename="../../src/app/AppController.cpp" line="249"/>
         <source>Added %1 file(s), %2 page(s).</source>
         <translation>Добавлено файлов: %1, страниц: %2</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="260"/>
-        <location filename="../../src/app/AppController.cpp" line="278"/>
+        <location filename="../../src/app/AppController.cpp" line="270"/>
+        <location filename="../../src/app/AppController.cpp" line="288"/>
         <source>Page %1 deleted.</source>
         <translation>Страница %1 удалена</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="303"/>
+        <location filename="../../src/app/AppController.cpp" line="313"/>
         <source>Moved page %1 to position %2.</source>
         <translation>Страница %1 перемещена на позицию %2.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="314"/>
-        <location filename="../../src/app/AppController.cpp" line="326"/>
+        <location filename="../../src/app/AppController.cpp" line="324"/>
+        <location filename="../../src/app/AppController.cpp" line="336"/>
         <source>Set a model name in Settings first.</source>
         <translation>Сначала укажите название модели в настройках.</translation>
     </message>
@@ -2066,32 +2152,32 @@
         <translation>Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="510"/>
+        <location filename="../../src/app/AppController.cpp" line="508"/>
         <source>%1 (%2 page(s)).</source>
         <translation>%1 (%2 стр.).</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="523"/>
+        <location filename="../../src/app/AppController.cpp" line="521"/>
         <source>Markdown (*.md)</source>
         <translation>Markdown (*.md)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="523"/>
+        <location filename="../../src/app/AppController.cpp" line="521"/>
         <source>Plain text (*.txt)</source>
         <translation>Обычный текст (*.txt)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="523"/>
+        <location filename="../../src/app/AppController.cpp" line="521"/>
         <source>HTML (*.html)</source>
         <translation>HTML (*.html)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="525"/>
+        <location filename="../../src/app/AppController.cpp" line="523"/>
         <source>Word document (*.docx)</source>
         <translation>Документ Word (*.docx)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="526"/>
+        <location filename="../../src/app/AppController.cpp" line="524"/>
         <source>PDF (*.pdf)</source>
         <translation>PDF (*.pdf)</translation>
     </message>
@@ -2099,143 +2185,144 @@
 <context>
     <name>llocr::ModelInstaller</name>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="294"/>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="314"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="297"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="319"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="391"/>
         <source>Invalid model selection</source>
         <translation>Неверный выбор модели</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="297"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="300"/>
         <source>This model has no model file selected</source>
         <translation>У этой модели не выбран файл модели</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="361"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="366"/>
         <source>Unable to remove model file: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="367"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="372"/>
         <source>Unable to remove model directory: %1</source>
         <translation>Не удалось удалить каталог модели: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="392"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="397"/>
         <source>Model folder not found</source>
         <translation>Папка модели не найдена</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="394"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="399"/>
         <source>Model folder not found: %1</source>
         <translation>Папка модели не найдена: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="375"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="380"/>
         <source>Model files removed, but the registry could not be saved: %1</source>
         <translation>Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="420"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="441"/>
         <source>No preset selected</source>
         <translation>Пресет не выбран</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="431"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="452"/>
         <source>Looking up %1 …</source>
         <translation>Поиск %1 …</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="502"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="523"/>
         <source>Ready: %1 (%2)</source>
         <translation>Готово: %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="511"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="532"/>
         <source>Nothing prepared to install</source>
         <translation>Ничего не подготовлено к установке</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="525"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="546"/>
         <source>Downloading %1 …</source>
         <translation type="unfinished">Скачивание %1 …</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="539"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="560"/>
         <source>Repository contains identically named files in different subdirectories; cannot install</source>
         <translation>В репозитории есть файлы с одинаковыми именами в разных подкаталогах; установка невозможна</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="654"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="675"/>
         <source>Download failed — check your connection and try again</source>
         <translation type="unfinished">Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="673"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="694"/>
         <source>Unable to read downloaded file %1</source>
         <translation>Не удалось прочитать скачанный файл %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="679"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="700"/>
         <source>File %1 is not a valid GGUF (missing magic)</source>
         <translation>Файл %1 не является корректным GGUF (отсутствует сигнатура)</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="729"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="750"/>
         <source>Model downloaded, but the registry could not be saved: %1</source>
         <translation>Модель загружена, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="749"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="772"/>
         <source>Installed %1</source>
         <translation>Установлено %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="759"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="782"/>
         <source>Enter a search query</source>
         <translation>Введите поисковый запрос</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="768"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="791"/>
         <source>Searching Hugging Face …</source>
         <translation>Поиск на Hugging Face …</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="794"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="817"/>
         <source>No models found</source>
         <translation>Модели не найдены</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="795"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="818"/>
         <source>%1 model(s) found</source>
         <translation>Найдено моделей: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="820"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="843"/>
         <source>Invalid search selection</source>
         <translation>Некорректный выбор результата поиска</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="837"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="860"/>
         <source>Download canceled</source>
         <translation>Скачивание отменено</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="845"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="868"/>
         <source>Unable to open catalog: %1</source>
         <translation>Не удалось открыть каталог: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="849"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="872"/>
         <source>Catalog is not valid JSON: %1</source>
         <translation>Каталог не является корректным JSON: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="857"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="880"/>
         <source>Unexpected catalog shape</source>
         <translation>Неожиданный формат каталога</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="862"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="885"/>
         <source>No valid presets in file</source>
         <translation>В файле нет корректных пресетов</translation>
     </message>
@@ -2243,48 +2330,48 @@
 <context>
     <name>llocr::RecognitionController</name>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="66"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="85"/>
         <source>Stopped before recognition started.</source>
         <translation type="unfinished">Остановлено до начала распознавания.</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="69"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="88"/>
         <source>Connection is not configured.</source>
         <translation>Подключение не настроено.</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="88"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="107"/>
         <source>Recognizing page %1 of %2…</source>
         <translation>Распознавание страницы %1 из %2…</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="127"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="141"/>
         <source>No response</source>
         <translation>Нет ответа</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="132"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="146"/>
         <source>Stopped at page %1.</source>
         <translation>Остановлено на странице %1.</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="134"/>
-        <location filename="../../src/app/RecognitionController.cpp" line="135"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="148"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="149"/>
         <source>Error on page %1: %2</source>
         <translation>Ошибка на странице %1: %2</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="144"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="158"/>
         <source>Stopped after page %1.</source>
         <translation>Остановлено после страницы %1.</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="157"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="171"/>
         <source>Done.</source>
         <translation>Готово.</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="169"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="183"/>
         <source>Stopping…</source>
         <translation>Остановка…</translation>
     </message>
@@ -2292,43 +2379,43 @@
 <context>
     <name>llocr::RuntimeController</name>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="190"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="199"/>
         <source>Another LLocr instance is already running</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="195"/>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="231"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="204"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="240"/>
         <source>Managed server is not configured</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="203"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="212"/>
         <source>Server is not set to start automatically. Start it from the main window or Settings → Runtime.</source>
         <translation>Сервер не настроен на автозапуск. Запустите его из главного окна или через Настройки → Рантайм.</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="325"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="334"/>
         <source>Failed to query /v1/models: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="333"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="342"/>
         <source>Server advertised no models via /v1/models</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="362"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="371"/>
         <source>Server failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="595"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="621"/>
         <source>Server start cancelled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="596"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="622"/>
         <source>Stopped</source>
         <translation type="unfinished">Остановлено</translation>
     </message>
@@ -2425,28 +2512,28 @@
 <context>
     <name>llocr::SelfTestController</name>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="31"/>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="98"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="35"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="104"/>
         <source>Self-test is available only in Managed mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="42"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="46"/>
         <source>Server not available</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="60"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="64"/>
         <source>Describe the text in this image in one short line.</source>
         <translation type="unfinished">Опишите одним коротким предложением текст на этом изображении.</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="104"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="110"/>
         <source>Running self-test…</source>
         <translation type="unfinished">Выполняется самопроверка…</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="115"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="121"/>
         <source>Recognition failed</source>
         <translation type="unfinished"></translation>
     </message>
