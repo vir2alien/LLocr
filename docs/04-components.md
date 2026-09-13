@@ -17,10 +17,9 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   to exactly this.
 - Configuration ✅: base URL, API key (optional), timeout — in `ConnectionConfig`;
   the OCR model adapter (`model/recipeId`, default `unlimited-ocr`), model name
-  and the request-body parameters (request profile: temperature, max tokens, DRY
-  params) — in `SettingsStore` (`QSettings`), edited in the tabbed **Settings**
-  dialog. The recognition **prompt** comes from the selected model adapter's
-  `promptVariants()` (ADR 58).
+  and the request-body parameters — one **request profile per OCR model**
+  (DRY params, temperature, max tokens; ADR 59). The recognition **prompt**
+  comes from the selected model adapter's `promptVariants()` (ADR 58).
 
 ## 4.2 Settings
 All configuration lives in the **Settings dialog**, grouped into tabs:
@@ -28,26 +27,27 @@ All configuration lives in the **Settings dialog**, grouped into tabs:
 | Tab        | Fields                                                              |
 | ---------- | ------------------------------------------------------------------- |
 | UI         | language (System / English / Русский), theme (System / Light / Dark) |
-| Connection | base URL, API key (optional), request timeout                       |
-| Model      | model name, temperature, max tokens, DRY multiplier, DRY base,      |
-|            | DRY allowed length, DRY penalty last-N                              |
-| Output     | OCR model adapter (`unlimited-ocr`; `model/recipeId`), output parser    |
-|            | (`raw` / `det_tokens`; default `det_tokens`)                             |
-| Runtime    | managed `llama-server` path + probe, Start/Stop/Restart, Show log,   |
-|            | stage-D installer (release/backend, download+install, updates,      |
-|            | cleanup); “Launch setup wizard…”                                    |
+| Request    | OCR model adapter combobox (`unlimited-ocr`; `model/recipeId`) + the  |
+|            | request profile table (ADR 56); one **profile per OCR model**, keyed  |
+|            | by the model id; switching the model switches the profile (ADR 59)    |
+| Output     | output parser (`raw` / `det_tokens`; default `det_tokens`)           |
+| Runtime    | connection (base URL, API key, timeout — External sub-tab), managed   |
+|            | `llama-server` path + probe, Start/Stop/Restart, Show log, stage-D    |
+|            | installer (release/backend, download+install, updates, cleanup);      |
+|            | “Launch setup wizard…”                                               |
+| Launch     | llama-server launch-parameter presets + table (ADR 57)               |
 | Models     | installed models table (activate/remove), preset catalog, HF search  |
-|            | + install, HF token, catalog import/export (see 4.17)               |
+|            | + install, HF token, catalog import/export (see 4.17)                |
 
 Persistence is handled by `SettingsStore` (`QSettings`, grouped keys
 `provider/*`, `model/*`, `output/*`, `runtime/*`, `launch/*`, `hf/*`). UI state
 (theme, language, window geometry) is persisted under `ui/*`.
 
 > The recognition **mode** (`External` / `Managed`) is chosen by the first-run
-> wizard; existing profiles stay `External` (ADR 26/31). In `Managed` mode the
-> launch parameters live in the wizard's **Launch** step (port, ctx-size,
-> n-gpu-layers, `autoStart`, command preview + self-test), there is no separate
-> “Launch” settings tab.
+> wizard; existing profiles stay `External` (ADR 26/31). The **Launch** tab
+> edits the llama-server launch-parameter profiles; the first-run wizard's
+> **Launch** step (port, ctx-size, n-gpu-layers, `autoStart`, command preview
+> + self-test) covers the same profile on a clean setup.
 
 > **Not in the dialog yet:** the bbox coordinate range is hardcoded in
 > `DetTokensParser` (`kBboxCoordinateRange = 1000`). The recognition prompt is

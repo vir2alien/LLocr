@@ -15,8 +15,10 @@ namespace llocr {
 
 namespace {
 
-constexpr int kSchemaVersion = 1;
+constexpr int kSchemaVersion = 2;
 constexpr const char *kSchemaKey = "schemaVersion";
+constexpr const char *kProfilesKey = "profiles";
+constexpr const char *kIdKey = "id";
 constexpr const char *kParametersKey = "parameters";
 constexpr const char *kOrderKey = "order";
 constexpr const char *kNameKey = "name";
@@ -156,9 +158,10 @@ RequestProfile RequestProfile::fromJson(const QJsonObject &root, QString &error)
         error = QObject::tr("Request profile has no parameters array");
         return RequestProfile();
     }
-    const QJsonArray params = root.value(QLatin1String(kParametersKey)).toArray();
 
     RequestProfile profile;
+    profile.id = root.value(QLatin1String(kIdKey)).toString();
+    const QJsonArray params = root.value(QLatin1String(kParametersKey)).toArray();
     QSet<QString> seen;
     int fallbackOrder = 1;
     for (const QJsonValue &entry : params) {
@@ -223,9 +226,56 @@ QJsonObject RequestProfile::toJson() const
         params.append(obj);
     }
     QJsonObject root;
-    root.insert(QLatin1String(kSchemaKey), kSchemaVersion);
+    if (!id.isEmpty())
+        root.insert(QLatin1String(kIdKey), id);
     root.insert(QLatin1String(kParametersKey), params);
     return root;
+}
+
+QList<RequestProfile> RequestProfile::profilesFromJson(const QJsonObject &root,
+                                                       QString &error)
+{
+    if (root.contains(QLatin1String(kProfilesKey))) {
+        const QJsonArray profiles =
+            root.value(QLatin1String(kProfilesKey)).toArray();
+
+        QList<RequestProfile> out;
+        QSet<QString> seen;
+        for (const QJsonValue &entry : profiles) {
+            if (!entry.isObject()) {
+                error = QObject::tr("Request profile is not an object");
+                return QList<RequestProfile>();
+            }
+            const QJsonObject obj = entry.toObject();
+            const QString id = obj.value(QLatin1String(kIdKey)).toString();
+            if (id.isEmpty()) {
+                error = QObject::tr("Request profile has an empty id");
+                return QList<RequestProfile>();
+            }
+            if (seen.contains(id)) {
+                error = QObject::tr("Request profile file has a duplicate profile: %1")
+                            .arg(id);
+                return QList<RequestProfile>();
+            }
+            seen.insert(id);
+
+            const RequestProfile profile = fromJson(obj, error);
+            if (!error.isEmpty())
+                return QList<RequestProfile>();
+            out.append(profile);
+        }
+        return out;
+    }
+
+    if (root.contains(QLatin1String(kParametersKey))) {
+        const RequestProfile legacy = fromJson(root, error);
+        if (!error.isEmpty())
+            return QList<RequestProfile>();
+        return { legacy };
+    }
+
+    error = QObject::tr("Request profile file has neither profiles nor parameters");
+    return QList<RequestProfile>();
 }
 
 RequestProfile RequestProfile::merge(const RequestProfile &defaults,

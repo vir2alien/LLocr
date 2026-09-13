@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QHash>
+#include <QList>
 #include <QObject>
 #include <QString>
 
@@ -11,9 +13,10 @@ namespace llocr {
 
 class SettingsStore;
 
-/// Owns the OCR request-body profile: built-in defaults (read-only resource)
-/// merged with an optional user profile (<AppData>/LLocr/profiles/request.json,
-/// written only when the user changed something).
+/// Owns the OCR request-body profiles: built-in profiles (read-only resource)
+/// merged with per-profile user copies
+/// (<AppData>/LLocr/profiles/request.json, written only when the user changed
+/// something). Profiles are keyed by a unique id.
 ///
 /// Two states are kept apart:
 ///  - the *active* profile (merged, persisted) — what the recognition pipeline
@@ -25,6 +28,7 @@ class RequestProfileStore : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QAbstractListModel *draftModel READ draftModel CONSTANT)
+    Q_PROPERTY(QString draftProfileId READ draftProfileId NOTIFY draftProfileChanged)
 
 public:
     /// `builtInPath` is overridable for unit tests; production code uses the
@@ -36,44 +40,57 @@ public:
 
     QAbstractListModel *draftModel() const { return m_model; }
 
-    /// The merged, persisted profile — the single source for request bodies.
-    const RequestProfile &activeProfile() const { return m_active; }
+    QString draftProfileId() const { return m_draftProfileId; }
 
-    /// True when the user profile file exists on disk.
+    QString activeProfileId() const;
+
+    /// The merged, persisted profile — the single source for request bodies.
+    RequestProfile activeProfile() const;
+
+    /// True when the user profiles file exists on disk.
     Q_INVOKABLE bool hasUserProfile() const;
 
-    /// Discards unsaved draft edits: the table shows the persisted values again.
+    /// Discards unsaved draft edits: the table shows the persisted values of
+    /// the active profile again.
     Q_INVOKABLE void reloadDraft();
 
-    /// Loads the built-in defaults into the draft (uncommitted; a following
-    /// saveDraft() makes them persistent).
-    Q_INVOKABLE void loadDefaultDraft();
+    Q_INVOKABLE void selectDraftProfile(const QString &id);
 
     /// Applies a free-text edit to one draft row. Returns false when the text
     /// does not parse for that parameter's value kind (row left untouched).
     Q_INVOKABLE bool setDraftValue(int row, const QString &text);
 
-    /// Commits the draft: writes the user profile, or removes the file when
-    /// the draft equals the built-in defaults (a user profile exists only for
-    /// changed settings). Emits profileChanged.
+    /// Commits the draft: writes the user copy of the edited profile, or
+    /// removes that copy when the draft equals the built-in profile (a user
+    /// copy exists only for changed settings). Emits profileChanged.
     Q_INVOKABLE void saveDraft();
 
-    /// Restores defaults immediately (file removal + draft reset) and emits
-    /// profileChanged.
+    /// Loads the built-in rows of the edited profile into the draft
+    /// (uncommitted; a following saveDraft() makes them persistent).
+    Q_INVOKABLE void loadDefaultDraft();
+
+    /// Restores defaults immediately (drops the user copy of the edited
+    /// profile + draft reset) and emits profileChanged.
     Q_INVOKABLE void resetToDefaults();
 
 signals:
-    /// Emitted when the persisted (active) profile changes: after a save or a
-    /// reset. Consumers read activeProfile() again at their next use.
+    /// Emitted when a persisted profile changes: after a save or a reset.
+    /// Consumers read activeProfile() again at their next use.
     void profileChanged();
+    void draftProfileChanged();
 
 private:
     QString userPath() const;
-    void reloadActive();
+    void reloadUserProfiles();
+    void persistUserProfiles();
+    const RequestProfile *findBuiltIn(const QString &id) const;
+    RequestProfile mergedProfile(const QString &id) const;
+    void loadDraftRows();
 
     SettingsStore &m_settings;
-    RequestProfile m_defaults;
-    RequestProfile m_active;
+    QList<RequestProfile> m_profiles;
+    QHash<QString, RequestProfile> m_userProfiles;
+    QString m_draftProfileId;
     RequestParametersModel *m_model;
 };
 

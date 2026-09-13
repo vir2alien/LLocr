@@ -130,9 +130,10 @@ ensureConnectionReady() → ResolvedConnection → ConnectionConfig → OcrReque
 ## Configuration model
 The model + parser settings live in `SettingsStore` (persisted via `QSettings`,
 edited in the Settings dialog). When recognition starts, `RecognitionController`
-assembles an `OcrRequest` (prompt from the active OCR model adapter + request-body
-parameters) and a `ConnectionConfig` (connection transport) from the resolved
-connection and the store.
+assembles an `OcrRequest` (prompt from the active OCR model adapter + the
+request-body parameters of that model's request profile, ADR 59) and a
+`ConnectionConfig` (connection transport) from the resolved connection and the
+store.
 
 - `SettingsStore` loads/saves connection/model/parser/UI settings via
   `QSettings` (grouped keys: `provider/*`, `model/*`, `parser/*`, `ui/*`,

@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
@@ -11,6 +12,12 @@
 #include "runtime/RuntimePaths.h"
 
 namespace llocr {
+
+namespace {
+
+constexpr int kSchemaVersion = 2;
+
+}  // namespace
 
 RequestProfileStore::RequestProfileStore(SettingsStore &settings,
                                          const QString &builtInPath,
@@ -28,17 +35,22 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings,
         if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
             error = parseError.errorString();
         } else {
-            m_defaults = RequestProfile::fromJson(doc.object(), error);
+            m_profiles = RequestProfile::profilesFromJson(doc.object(), error);
         }
     } else {
         error = builtIn.errorString();
     }
     if (!error.isEmpty())
-        qWarning("RequestProfileStore: cannot load built-in profile %s: %s",
+        qWarning("RequestProfileStore: cannot load built-in profiles %s: %s",
                  qUtf8Printable(builtInPath), qUtf8Printable(error));
 
-    reloadActive();
-    m_model->resetFrom(m_active.parameters);
+    for (RequestProfile &profile : m_profiles) {
+        if (profile.id.isEmpty())
+            profile.id = QString::fromUtf8(SettingsStore::kDefaultModelRecipeId);
+    }
+
+    reloadUserProfiles();
+    reloadDraft();
 }
 
 QString RequestProfileStore::userPath() const
@@ -54,39 +66,125 @@ bool RequestProfileStore::hasUserProfile() const
     return QFile::exists(userPath());
 }
 
-void RequestProfileStore::reloadActive()
+void RequestProfileStore::reloadUserProfiles()
 {
-    RequestProfile user;
+    m_userProfiles.clear();
     QFile userFile(userPath());
-    if (userFile.exists()) {
-        QString error;
-        if (userFile.open(QIODevice::ReadOnly)) {
-            QJsonParseError parseError{};
-            const QJsonDocument doc = QJsonDocument::fromJson(userFile.readAll(),
-                                                              &parseError);
-            if (parseError.error != QJsonParseError::NoError || !doc.isObject())
-                error = parseError.errorString();
-            else
-                user = RequestProfile::fromJson(doc.object(), error);
-        } else {
-            error = userFile.errorString();
-        }
-        if (!error.isEmpty())
-            qWarning("RequestProfileStore: cannot load user profile %s: %s "
-                     "(falling back to the built-in defaults)",
-                     qUtf8Printable(userPath()), qUtf8Printable(error));
+    if (!userFile.exists())
+        return;
+    QString error;
+    QList<RequestProfile> parsedProfiles;
+    if (userFile.open(QIODevice::ReadOnly)) {
+        QJsonParseError parseError{};
+        const QJsonDocument doc = QJsonDocument::fromJson(userFile.readAll(),
+                                                          &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+            error = parseError.errorString();
+        else
+            parsedProfiles = RequestProfile::profilesFromJson(doc.object(), error);
+    } else {
+        error = userFile.errorString();
     }
-    m_active = RequestProfile::merge(m_defaults, user);
+    if (!error.isEmpty())
+        qWarning("RequestProfileStore: cannot load user profiles %s: %s "
+                 "(falling back to the built-in profiles)",
+                 qUtf8Printable(userPath()), qUtf8Printable(error));
+
+    for (const RequestProfile &profile : parsedProfiles) {
+        RequestProfile copy = profile;
+        if (copy.id.isEmpty())
+            copy.id = QString::fromUtf8(SettingsStore::kDefaultModelRecipeId);
+        m_userProfiles.insert(copy.id, copy);
+    }
+}
+
+void RequestProfileStore::persistUserProfiles()
+{
+    if (m_userProfiles.isEmpty()) {
+        QFile file(userPath());
+        if (file.exists() && !file.remove())
+            qWarning("RequestProfileStore: cannot remove user profiles %s: %s",
+                     qUtf8Printable(userPath()),
+                     qUtf8Printable(file.errorString()));
+        return;
+    }
+
+    QDir().mkpath(QFileInfo(userPath()).absolutePath());
+    QJsonObject root;
+    root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
+    QJsonArray profiles;
+    for (const RequestProfile &profile : m_userProfiles)
+        profiles.append(profile.toJson());
+    root.insert(QStringLiteral("profiles"), profiles);
+
+    QSaveFile file(userPath());
+    if (!file.open(QIODevice::WriteOnly)) {
+        qWarning("RequestProfileStore: cannot write user profiles %s: %s",
+                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
+        return;
+    }
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    if (!file.commit()) {
+        qWarning("RequestProfileStore: cannot commit user profiles %s: %s",
+                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
+        return;
+    }
+}
+
+const RequestProfile *RequestProfileStore::findBuiltIn(const QString &id) const
+{
+    for (const RequestProfile &profile : m_profiles)
+        if (profile.id == id)
+            return &profile;
+    return nullptr;
+}
+
+QString RequestProfileStore::activeProfileId() const
+{
+    const QString id = m_settings.modelRecipeId();
+    if (findBuiltIn(id) || m_userProfiles.contains(id))
+        return id;
+    if (!m_profiles.isEmpty())
+        return m_profiles.constFirst().id;
+    return id;
+}
+
+RequestProfile RequestProfileStore::mergedProfile(const QString &id) const
+{
+    static const RequestProfile kEmpty;
+    const RequestProfile *builtIn = findBuiltIn(id);
+    if (!builtIn && !m_userProfiles.contains(id))
+        return kEmpty;
+    return RequestProfile::merge(builtIn ? *builtIn : kEmpty,
+                                 m_userProfiles.value(id, kEmpty));
+}
+
+RequestProfile RequestProfileStore::activeProfile() const
+{
+    return mergedProfile(activeProfileId());
+}
+
+void RequestProfileStore::loadDraftRows()
+{
+    m_model->resetFrom(mergedProfile(m_draftProfileId).parameters);
 }
 
 void RequestProfileStore::reloadDraft()
 {
-    m_model->resetFrom(m_active.parameters);
+    m_draftProfileId = activeProfileId();
+    loadDraftRows();
+    emit draftProfileChanged();
 }
 
-void RequestProfileStore::loadDefaultDraft()
+void RequestProfileStore::selectDraftProfile(const QString &id)
 {
-    m_model->resetFrom(m_defaults.parameters);
+    if (id == m_draftProfileId)
+        return;
+    if (!findBuiltIn(id) && !m_userProfiles.contains(id))
+        return;
+    m_draftProfileId = id;
+    loadDraftRows();
+    emit draftProfileChanged();
 }
 
 bool RequestProfileStore::setDraftValue(int row, const QString &text)
@@ -96,49 +194,44 @@ bool RequestProfileStore::setDraftValue(int row, const QString &text)
 
 void RequestProfileStore::saveDraft()
 {
+    if (m_draftProfileId.isEmpty())
+        return;
+
     RequestProfile draft;
+    draft.id = m_draftProfileId;
     draft.parameters = m_model->parameters();
     draft.sortByOrder();
 
-    if (draft == m_defaults) {
-        // A user profile exists only for changed settings.
-        QFile userFile(userPath());
-        if (userFile.exists() && !userFile.remove())
-            qWarning("RequestProfileStore: cannot remove user profile %s: %s",
-                     qUtf8Printable(userPath()),
-                     qUtf8Printable(userFile.errorString()));
-        reloadActive();
+    bool changed = false;
+    const RequestProfile *builtIn = findBuiltIn(m_draftProfileId);
+    if (builtIn && draft == *builtIn) {
+        if (m_userProfiles.contains(m_draftProfileId)) {
+            m_userProfiles.remove(m_draftProfileId);
+            persistUserProfiles();
+            changed = true;
+        }
+    } else {
+        m_userProfiles.insert(m_draftProfileId, draft);
+        persistUserProfiles();
+        changed = true;
+    }
+
+    if (changed)
         emit profileChanged();
-        return;
-    }
+}
 
-    QDir().mkpath(QFileInfo(userPath()).absolutePath());
-    QSaveFile file(userPath());
-    if (!file.open(QIODevice::WriteOnly)) {
-        qWarning("RequestProfileStore: cannot write user profile %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
-        return;
-    }
-    file.write(QJsonDocument(draft.toJson()).toJson(QJsonDocument::Indented));
-    if (!file.commit()) {
-        qWarning("RequestProfileStore: cannot commit user profile %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
-        return;
-    }
-
-    reloadActive();
-    emit profileChanged();
+void RequestProfileStore::loadDefaultDraft()
+{
+    const RequestProfile *builtIn = findBuiltIn(m_draftProfileId);
+    m_model->resetFrom(builtIn ? builtIn->parameters
+                               : QList<RequestParameter>());
 }
 
 void RequestProfileStore::resetToDefaults()
 {
-    QFile userFile(userPath());
-    if (userFile.exists() && !userFile.remove())
-        qWarning("RequestProfileStore: cannot remove user profile %s: %s",
-                 qUtf8Printable(userPath()),
-                 qUtf8Printable(userFile.errorString()));
-    reloadActive();
-    loadDefaultDraft();
+    if (m_userProfiles.remove(m_draftProfileId))
+        persistUserProfiles();
+    loadDraftRows();
     emit profileChanged();
 }
 

@@ -37,25 +37,34 @@ struct RequestParameter
 };
 
 /// Request-body profile: an ordered list of parameters appended after the
-/// fixed head (`model`, `messages`) in OcrModel::buildRequestBody.
-/// Two sources are merged by name: a built-in profile shipped read-only in
-/// the Qt resources (:/profiles/request.json) and an optional user profile at
-/// <AppData>/LLocr/profiles/request.json (the user profile wins per name;
+/// fixed head (`model`, `messages`) in OcrModel::buildRequestBody. Profiles
+/// are keyed by a unique `id` (the OCR model id); the active profile follows
+/// the `model/recipeId` setting. Two sources are merged by parameter name:
+/// a built-in profile shipped read-only in the Qt resources
+/// (:/profiles/request.json) and an optional per-profile user copy at
+/// <AppData>/LLocr/profiles/request.json (the user value wins per name;
 /// built-in parameters missing from the user file stay, so new built-in
 /// parameters appear automatically — § request-profiles decision).
 struct RequestProfile
 {
+    QString id;
     QList<RequestParameter> parameters;
 
     static constexpr const char *kBuiltInPath = ":/profiles/request.json";
 
-    /// Parses a `{ schemaVersion, parameters: [ { order, name, value,
+    /// Parses a `{ id?, parameters: [ { order, name, value,
     /// description? } ] }` object. Returns an empty profile and a non-empty
     /// `error` on failure.
     static RequestProfile fromJson(const QJsonObject &root, QString &error);
 
-    /// Serializes to the built-in-style JSON object.
+    /// Serializes to the per-profile JSON object (`id` omitted when empty).
     QJsonObject toJson() const;
+
+    /// Parses a whole file: `{ schemaVersion, profiles: [ … ] }` (ids are
+    /// required and unique) or a legacy single-profile `{ parameters: [...] }`
+    /// root (the profile gets an empty id; the caller assigns the default).
+    static QList<RequestProfile> profilesFromJson(const QJsonObject &root,
+                                                  QString &error);
 
     /// Merges by name: defaults first (in their order), each overridden by the
     /// user value when present; user-only parameters are appended after the

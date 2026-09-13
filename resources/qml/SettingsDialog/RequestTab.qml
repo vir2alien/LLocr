@@ -9,6 +9,8 @@ Item {
     id: root
 
     function loadValues() {
+        var midx = modelBox.model.indexOf(controller.modelIdToName(Settings.modelRecipeId))
+        modelBox.currentIndex = midx >= 0 ? midx : 0
         RequestProfiles.reloadDraft()
     }
 
@@ -31,6 +33,23 @@ Item {
         spacing: Theme.spacingSmall
 
         Item { implicitHeight: 4 }
+
+        LLOLabel {
+            text: qsTr("OCR model")
+        }
+
+        ComboBox {
+            id: modelBox
+            Layout.fillWidth: true
+            implicitHeight: Theme.controlHeight
+            model: controller.modelNames
+            onActivated: {
+                RequestProfiles.selectDraftProfile(
+                            controller.modelNameToId(modelBox.currentText))
+            }
+        }
+
+        Item { implicitHeight: 6 }
 
         RowLayout {
             Layout.fillWidth: true

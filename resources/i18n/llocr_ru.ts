@@ -1093,33 +1093,53 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="156"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="157"/>
         <source>Request profile has no parameters array</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="166"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="169"/>
         <source>Request profile parameter is not an object</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="172"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="175"/>
         <source>Request profile parameter has an empty name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="176"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="179"/>
         <source>Request profile has a duplicate parameter: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="186"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="189"/>
         <source>Request profile parameter %1 has an invalid order</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="198"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="201"/>
         <source>Request profile parameter %1 has an unsupported value</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="246"/>
+        <source>Request profile is not an object</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="252"/>
+        <source>Request profile has an empty id</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="256"/>
+        <source>Request profile file has a duplicate profile: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/core/RequestProfile.cpp" line="277"/>
+        <source>Request profile file has neither profiles nor parameters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1198,27 +1218,32 @@
         <translation type="vanished">DRY (Don&apos;t Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="40"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="38"/>
+        <source>OCR model</source>
+        <translation>Модель OCR</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="59"/>
         <source>Restore profile</source>
         <translation>Восстановить профиль</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="57"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="76"/>
         <source>Parameter</source>
         <translation>Параметр</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="65"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="84"/>
         <source>Value</source>
         <translation>Значение</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="72"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="91"/>
         <source>Description</source>
         <translation>Описание</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RequestTab.qml" line="134"/>
+        <location filename="../qml/SettingsDialog/RequestTab.qml" line="153"/>
         <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
         <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
     </message>
@@ -1543,26 +1568,21 @@
     </message>
     <message>
         <location filename="../qml/SettingsDialog.qml" line="143"/>
-        <source>OCR model</source>
-        <translation>Модель OCR</translation>
-    </message>
-    <message>
-        <location filename="../qml/SettingsDialog.qml" line="155"/>
         <source>Output parser</source>
         <translation>Парсер вывода</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="170"/>
+        <location filename="../qml/SettingsDialog.qml" line="158"/>
         <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
         <translation>«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="193"/>
+        <location filename="../qml/SettingsDialog.qml" line="181"/>
         <source>Select llama-server binary</source>
         <translation>Выберите бинарник llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="195"/>
+        <location filename="../qml/SettingsDialog.qml" line="183"/>
         <source>Executables (*)</source>
         <translation>Исполняемые файлы (*)</translation>
     </message>

@@ -18,6 +18,40 @@ namespace {
 
 // Built-in-style defaults: two parameters to exercise merge ordering.
 constexpr const char *kDefaultsJson = R"({
+    "schemaVersion": 2,
+    "profiles": [
+        {
+            "id": "unlimited-ocr",
+            "parameters": [
+                { "order": 1, "name": "alpha", "value": 0.8,
+                  "description": "alpha description" },
+                { "order": 2, "name": "beta",  "value": 35 }
+            ]
+        }
+    ]
+})";
+
+constexpr const char *kTwoProfilesJson = R"({
+    "schemaVersion": 2,
+    "profiles": [
+        {
+            "id": "unlimited-ocr",
+            "parameters": [
+                { "order": 1, "name": "alpha", "value": 0.8,
+                  "description": "alpha description" },
+                { "order": 2, "name": "beta",  "value": 35 }
+            ]
+        },
+        {
+            "id": "deepseek-ocr",
+            "parameters": [
+                { "order": 1, "name": "gamma", "value": 1 }
+            ]
+        }
+    ]
+})";
+
+constexpr const char *kLegacyDefaultsJson = R"({
     "schemaVersion": 1,
     "parameters": [
         { "order": 1, "name": "alpha", "value": 0.8,
@@ -26,9 +60,18 @@ constexpr const char *kDefaultsJson = R"({
     ]
 })";
 
-// Writes a built-in-style profile to a temp file and returns its path (the
-// caller checks the result with QVERIFY — helpers cannot use QVERIFY because
-// it expands to a bare `return;`).
+constexpr const char *kProfileJson = R"({
+    "id": "unlimited-ocr",
+    "parameters": [
+        { "order": 1, "name": "alpha", "value": 0.8,
+          "description": "alpha description" },
+        { "order": 2, "name": "beta",  "value": 35 }
+    ]
+})";
+
+// Writes a built-in-style profile file to a temp file and returns its path
+// (the caller checks the result with QVERIFY — helpers cannot use QVERIFY
+// because it expands to a bare `return;`).
 QString writeProfile(const QTemporaryDir &dir, const QString &name,
                      const QByteArray &json)
 {
@@ -53,13 +96,14 @@ const RequestParameter *findParameter(const RequestProfile &profile,
     return nullptr;
 }
 
-RequestProfile parseDefaults()
+RequestProfile parseBuiltInDefaults()
 {
     QString error;
-    const RequestProfile profile =
-        RequestProfile::fromJson(objectFromJson(kDefaultsJson), error);
+    const QList<RequestProfile> profiles =
+        RequestProfile::profilesFromJson(objectFromJson(kDefaultsJson), error);
     Q_ASSERT(error.isEmpty());
-    return profile;
+    Q_ASSERT(profiles.size() == 1);
+    return profiles.constFirst();
 }
 
 }  // namespace
@@ -84,8 +128,9 @@ private slots:
     {
         QString error;
         const RequestProfile profile =
-            RequestProfile::fromJson(objectFromJson(kDefaultsJson), error);
+            RequestProfile::fromJson(objectFromJson(kProfileJson), error);
         QVERIFY(error.isEmpty());
+        QCOMPARE(profile.id, QStringLiteral("unlimited-ocr"));
         QCOMPARE(profile.parameters.size(), 2);
         QCOMPARE(profile.parameters.at(0).name, QStringLiteral("alpha"));
         QCOMPARE(profile.parameters.at(0).order, 1);
@@ -97,6 +142,7 @@ private slots:
         QVERIFY(profile.parameters.at(1).description.isEmpty());
 
         const QJsonObject back = profile.toJson();
+        QCOMPARE(back.value("id").toString(), QStringLiteral("unlimited-ocr"));
         QVERIFY(back.value("parameters").toArray().at(0).toObject()
                     .value("description")
                     .toString() == QStringLiteral("alpha description"));
@@ -106,8 +152,70 @@ private slots:
         const RequestProfile reparsed = RequestProfile::fromJson(back, error2);
         QVERIFY(error2.isEmpty());
         QVERIFY(profile == reparsed);
+        QCOMPARE(reparsed.id, QStringLiteral("unlimited-ocr"));
         QCOMPARE(reparsed.parameters.at(0).description,
                  QStringLiteral("alpha description"));
+    }
+
+    void parseProfilesFile()
+    {
+        QString error;
+        const QList<RequestProfile> profiles =
+            RequestProfile::profilesFromJson(objectFromJson(kTwoProfilesJson),
+                                             error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(profiles.size(), 2);
+        QCOMPARE(profiles.at(0).id, QStringLiteral("unlimited-ocr"));
+        QCOMPARE(profiles.at(1).id, QStringLiteral("deepseek-ocr"));
+        QCOMPARE(profiles.at(1).parameters.size(), 1);
+        QCOMPARE(profiles.at(1).parameters.at(0).name, QStringLiteral("gamma"));
+
+        // Legacy single-profile file: one profile with an empty id.
+        const QList<RequestProfile> legacy =
+            RequestProfile::profilesFromJson(objectFromJson(kLegacyDefaultsJson),
+                                             error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(legacy.size(), 1);
+        QVERIFY(legacy.at(0).id.isEmpty());
+        QCOMPARE(legacy.at(0).parameters.size(), 2);
+    }
+
+    void parseProfilesFileErrors()
+    {
+        QString error;
+
+        RequestProfile::profilesFromJson(objectFromJson("{}"), error);
+        QVERIFY(!error.isEmpty());
+
+        const QByteArray notObject = R"({ "profiles": [ "x" ] })";
+        RequestProfile::profilesFromJson(objectFromJson(notObject), error);
+        QVERIFY(!error.isEmpty());
+
+        const QByteArray emptyId = R"({
+            "profiles": [ { "parameters": [] } ]
+        })";
+        RequestProfile::profilesFromJson(objectFromJson(emptyId), error);
+        QVERIFY(!error.isEmpty());
+
+        const QByteArray duplicateId = R"({
+            "profiles": [
+                { "id": "a", "parameters": [] },
+                { "id": "a", "parameters": [] }
+            ]
+        })";
+        RequestProfile::profilesFromJson(objectFromJson(duplicateId), error);
+        QVERIFY(!error.isEmpty());
+
+        const QByteArray duplicateParameter = R"({
+            "profiles": [
+                { "id": "a", "parameters": [
+                    { "order": 1, "name": "x", "value": 1 },
+                    { "order": 2, "name": "x", "value": 2 }
+                ] }
+            ]
+        })";
+        RequestProfile::profilesFromJson(objectFromJson(duplicateParameter), error);
+        QVERIFY(!error.isEmpty());
     }
 
     void parseErrors()
@@ -190,13 +298,15 @@ private slots:
     void mergeOverridesByNameAndKeepsNewDefaults()
     {
         QString error;
-        const RequestProfile defaults =
-            RequestProfile::fromJson(objectFromJson(kDefaultsJson), error);
+        const QList<RequestProfile> parsed =
+            RequestProfile::profilesFromJson(objectFromJson(kDefaultsJson), error);
         QVERIFY(error.isEmpty());
+        const RequestProfile defaults = parsed.constFirst();
 
         // User overrides alpha (with a stale description), and still carries a
         // stale parameter "old" (absent from the current defaults).
         const QByteArray userJson = R"({
+            "id": "unlimited-ocr",
             "parameters": [
                 { "order": 1, "name": "alpha", "value": 0.5,
                   "description": "stale text" },
@@ -274,7 +384,7 @@ private slots:
         RequestParametersModel model;
         QString error;
         const RequestProfile parsed =
-            RequestProfile::fromJson(objectFromJson(kDefaultsJson), error);
+            RequestProfile::fromJson(objectFromJson(kProfileJson), error);
         QVERIFY(error.isEmpty());
         model.resetFrom(parsed.parameters);
         QCOMPARE(model.rowCount(), 2);
@@ -308,10 +418,11 @@ private slots:
 
         RequestProfileStore store(settings, defaultsPath);
 
-        // Nothing changed yet: no user profile, active == defaults.
+        // Nothing changed yet: no user profile, active == built-in.
         QVERIFY(!store.hasUserProfile());
+        QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 2);
-        QVERIFY(store.activeProfile() == parseDefaults());
+        QVERIFY(store.activeProfile() == parseBuiltInDefaults());
 
         // Draft edits do not touch the persisted profile.
         QVERIFY(store.setDraftValue(0, "0.1"));
@@ -323,6 +434,18 @@ private slots:
         QVERIFY(store.hasUserProfile());
         QCOMPARE(findParameter(store.activeProfile(), "alpha")->value.toDouble(),
                  0.1);
+
+        // The user file is a profiles array keyed by the profile id.
+        QFile userFile(QDir(dir.path()).filePath(
+                           QStringLiteral("profiles/request.json")));
+        QVERIFY(userFile.open(QIODevice::ReadOnly));
+        const QJsonObject root = QJsonDocument::fromJson(userFile.readAll()).object();
+        userFile.close();
+        const QJsonArray savedProfiles = root.value("profiles").toArray();
+        QCOMPARE(savedProfiles.size(), 1);
+        QCOMPARE(savedProfiles.at(0).toObject().value("id").toString(),
+                 QStringLiteral("unlimited-ocr"));
+        QCOMPARE(savedProfiles.at(0).toObject().value("parameters").toArray().size(), 2);
 
         // A fresh store reads the saved values back.
         RequestProfileStore store2(settings, defaultsPath);
@@ -337,7 +460,108 @@ private slots:
         QVERIFY(!store2.hasUserProfile());
         QCOMPARE(findParameter(store2.activeProfile(), "alpha")->value.toDouble(),
                  0.8);
-        QVERIFY(store2.activeProfile() == parseDefaults());
+        QVERIFY(store2.activeProfile() == parseBuiltInDefaults());
+    }
+
+    void legacyUserFileAdoptedByDefaultProfile()
+    {
+        QTemporaryDir dir;
+        const QString defaultsPath =
+            writeProfile(dir, "defaults.json", kDefaultsJson);
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+
+        QVERIFY(QDir().mkpath(QDir(dir.path()).filePath("profiles")));
+        QFile userFile(QDir(dir.path()).filePath("profiles/request.json"));
+        QVERIFY(userFile.open(QIODevice::WriteOnly));
+        userFile.write(R"({
+            "schemaVersion": 1,
+            "parameters": [
+                { "order": 1, "name": "alpha", "value": 0.1 }
+            ]
+        })");
+        userFile.close();
+
+        RequestProfileStore store(settings, defaultsPath);
+        QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(findParameter(store.activeProfile(), "alpha")->value.toDouble(),
+                 0.1);
+        QCOMPARE(findParameter(store.activeProfile(), "beta")->value.toDouble(),
+                 35.0);
+
+        // Saving the defaults for the edited profile removes the migrated copy.
+        store.loadDefaultDraft();
+        store.saveDraft();
+        QVERIFY(!store.hasUserProfile());
+    }
+
+    void activeProfileFollowsModelRecipe()
+    {
+        QTemporaryDir dir;
+        const QString defaultsPath =
+            writeProfile(dir, "defaults.json", kTwoProfilesJson);
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("unlimited-ocr"));
+
+        RequestProfileStore store(settings, defaultsPath);
+        QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(store.activeProfile().parameters.size(), 2);
+
+        settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
+        QCOMPARE(store.activeProfileId(), QStringLiteral("deepseek-ocr"));
+        QCOMPARE(store.activeProfile().parameters.size(), 1);
+        QCOMPARE(findParameter(store.activeProfile(), "gamma")->value.toDouble(),
+                 1.0);
+
+        // Unknown model id: the first built-in profile wins.
+        settings.setModelRecipeId(QStringLiteral("unknown-model"));
+        QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
+    }
+
+    void selectDraftProfileSwitchesDraft()
+    {
+        QTemporaryDir dir;
+        const QString defaultsPath =
+            writeProfile(dir, "defaults.json", kTwoProfilesJson);
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+
+        RequestProfileStore store(settings, defaultsPath);
+        QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(store.activeProfile().parameters.size(), 2);
+
+        store.selectDraftProfile(QStringLiteral("deepseek-ocr"));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("deepseek-ocr"));
+        QCOMPARE(store.draftModel()->rowCount(), 1);
+        // The active profile still follows the model setting.
+        QVERIFY(store.activeProfile() == parseBuiltInDefaults());
+
+        // Unknown ids are ignored.
+        store.selectDraftProfile(QStringLiteral("no-such-profile"));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("deepseek-ocr"));
+
+        // Edits are committed for the edited profile only.
+        QVERIFY(store.setDraftValue(0, "2"));
+        store.saveDraft();
+        QVERIFY(!findParameter(store.activeProfile(), "gamma"));
+        QCOMPARE(store.draftModel()->rowCount(), 1);
+
+        settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
+        QCOMPARE(findParameter(store.activeProfile(), "gamma")->value.toDouble(),
+                 2.0);
+
+        // Reset drops only the edited profile's user copy.
+        store.resetToDefaults();
+        QCOMPARE(findParameter(store.activeProfile(), "gamma")->value.toDouble(),
+                 1.0);
+        QVERIFY(!store.hasUserProfile());
     }
 
     void storeCorruptUserFallsBackToDefaults()
@@ -360,7 +584,7 @@ private slots:
 
         RequestProfileStore store(settings, defaultsPath);
         // Corrupt user profile: defaults win instead of failing.
-        QVERIFY(store.activeProfile() == parseDefaults());
+        QVERIFY(store.activeProfile() == parseBuiltInDefaults());
     }
 };
 
