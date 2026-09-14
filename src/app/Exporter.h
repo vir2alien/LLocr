@@ -3,6 +3,8 @@
 #include <functional>
 
 #include <QImage>
+#include <QList>
+#include <QPair>
 #include <QString>
 #include <QStringList>
 
@@ -61,6 +63,10 @@ public:
     static QString buildMarkdown(const QList<Page>& pages);
     static QString buildPlainText(const QList<Page>& pages);
     static QString buildHtml(const QList<Page>& pages);
+
+    /// Unique (pageNumber, boxIndex) pairs actually referenced by the image
+    /// blocks of the given pages, in order of first appearance.
+    static QList<QPair<int, int>> referencedCrops(const QList<Page>& pages);
 
     Result exportToFile(const QList<Page>& pages, const QString& filePath,
                         const CropProvider& crop = {}) const;

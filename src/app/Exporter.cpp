@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QSet>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
@@ -82,6 +83,29 @@ QRegularExpression Exporter::imageRefRegex()
     static const QRegularExpression re(
         QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)(?:/(\d+))?\))"));
     return re;
+}
+
+QList<QPair<int, int>> Exporter::referencedCrops(const QList<Page>& pages)
+{
+    const QRegularExpression re = imageRefRegex();
+    QList<QPair<int, int>> refs;
+    QSet<QPair<int, int>> seen;
+    for (const Page& page : pages) {
+        QRegularExpressionMatchIterator it = re.globalMatch(page.text);
+        while (it.hasNext()) {
+            const QRegularExpressionMatch m = it.next();
+            bool ok = false;
+            const int box = m.captured(2).toInt(&ok);
+            if (!ok)
+                continue;
+            const QPair<int, int> key{page.number, box};
+            if (!seen.contains(key)) {
+                seen.insert(key);
+                refs.append(key);
+            }
+        }
+    }
+    return refs;
 }
 
 // Renders the body of a page: text is HTML-escaped except Markdown image

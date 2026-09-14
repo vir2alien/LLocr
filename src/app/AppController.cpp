@@ -6,8 +6,10 @@
 
 #include <QBuffer>
 #include <QFileInfo>
+#include <QHash>
 #include <QRegularExpression>
 #include <QVariantMap>
+#include <QtConcurrent/QtConcurrentRun>
 
 #include "parsers/DetTokensParser.h"
 #include "parsers/ParserFactory.h"
@@ -496,6 +498,11 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
         return false;
     }
 
+    if (m_exporting) {
+        setStatus(tr("An export is already in progress."));
+        return false;
+    }
+
     const QList<Exporter::Page> pages = collectPages(scope, fromPage, toPage);
     if (pages.isEmpty()) {
         setStatus(tr("Nothing to export for the selected pages "
@@ -503,13 +510,31 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
         return false;
     }
 
-    const auto crop = [this](int pageNumber, int boxIndex) {
-        return croppedImage(pageNumber - 1, boxIndex);
-    };
-    const Exporter::Result result = m_exporter.exportToFile(pages, path, crop);
-    setStatus(result.success ? tr("%1 (%2 page(s)).").arg(result.message).arg(pages.size())
-                             : result.message);
-    return result.success;
+    QHash<QPair<int, int>, QImage> crops;
+    const QList<QPair<int, int>> refs = Exporter::referencedCrops(pages);
+    for (const auto& ref : refs)
+        crops.insert(ref, croppedImage(ref.first - 1, ref.second));
+
+    m_exporting = true;
+    emit exportingChanged();
+    setStatus(tr("Exporting…"));
+
+    QtConcurrent::run(
+        [exporter = m_exporter, pages, crops, path]() {
+            return exporter.exportToFile(
+                pages, path,
+                [&crops](int pageNumber, int boxIndex) {
+                    return crops.value({pageNumber, boxIndex});
+                });
+        })
+        .then(this, [this, pageCount = pages.size()](const Exporter::Result& result) {
+            m_exporting = false;
+            emit exportingChanged();
+            setStatus(result.success
+                          ? tr("%1 (%2 page(s)).").arg(result.message).arg(pageCount)
+                          : result.message);
+        });
+    return true;
 }
 
 bool AppController::exportResult(const QUrl& fileUrl)

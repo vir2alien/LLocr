@@ -2194,6 +2194,16 @@
         <translation>Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
     </message>
     <message>
+        <location filename="../../src/app/AppController.cpp" line="501"/>
+        <source>An export is already in progress.</source>
+        <translation>Экспорт уже выполняется.</translation>
+    </message>
+    <message>
+        <location filename="../../src/app/AppController.cpp" line="511"/>
+        <source>Exporting…</source>
+        <translation>Экспорт…</translation>
+    </message>
+    <message>
         <location filename="../../src/app/AppController.cpp" line="508"/>
         <source>%1 (%2 page(s)).</source>
         <translation>%1 (%2 стр.).</translation>

@@ -79,7 +79,7 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Export…")
-            enabled: controller.hasResult
+            enabled: controller.hasResult && !controller.exporting
             onClicked: {
                 if (controller.pageCount > 1) {
                     exportOptionsDialog.open()

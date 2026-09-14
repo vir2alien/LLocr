@@ -38,6 +38,8 @@ class AppController : public QObject
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters CONSTANT)
 
+    Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged)
+
     Q_PROPERTY(QObject* pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject* boxModel READ boxModel CONSTANT)
 
@@ -53,6 +55,7 @@ public:
                            QObject *parent = nullptr);
 
     bool busy() const { return m_recognition.busy(); }
+    bool exporting() const { return m_exporting; }
     QString resultText() const;
     QString statusMessage() const { return m_statusMessage; }
     bool hasImage() const;
@@ -85,6 +88,7 @@ public:
 
 signals:
     void busyChanged();
+    void exportingChanged();
     void resultChanged();
     void statusChanged();
     void imageChanged();
@@ -136,6 +140,7 @@ private:
     BoxListModel m_boxModel;
     RecognitionController m_recognition;
     Exporter m_exporter;
+    bool m_exporting = false;
     int m_currentPage = 0;
     QString m_statusMessage;
     int m_imageRevision = 0;
