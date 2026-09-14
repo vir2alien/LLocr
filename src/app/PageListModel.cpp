@@ -39,13 +39,14 @@ QVariant PageListModel::data(const QModelIndex& index, int role) const
 
 QHash<int, QByteArray> PageListModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         { PageIndexRole,     "pageIndex" },
         { RecognizedRole,    "recognized" },
         { CurrentRole,       "current" },
         { EditedRole,        "edited" },
         { HasDuplicatesRole, "hasDuplicates" },
     };
+    return roles;
 }
 
 void PageListModel::setPageCount(int count)

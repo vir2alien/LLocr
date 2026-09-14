@@ -145,7 +145,7 @@ QVariant DownloadManager::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> DownloadManager::roleNames() const
 {
-    return {{NameRole, "name"},
+    static const QHash<int, QByteArray> roles = {{NameRole, "name"},
             {TargetDirRole, "targetDir"},
             {TotalBytesRole, "totalBytes"},
             {ReceivedBytesRole, "receivedBytes"},
@@ -153,6 +153,7 @@ QHash<int, QByteArray> DownloadManager::roleNames() const
             {EtaRole, "eta"},
             {StateRole, "state"},
             {ErrorRole, "error"}};
+    return roles;
 }
 
 void DownloadManager::startNextQueued()

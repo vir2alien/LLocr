@@ -36,13 +36,14 @@ QVariant RequestParametersModel::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> RequestParametersModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         { NameRole, "name" },
         { ValueTextRole, "valueText" },
         { KindRole, "kind" },
         { OrderRole, "order" },
         { DescriptionRole, "description" },
     };
+    return roles;
 }
 
 void RequestParametersModel::resetFrom(const QList<RequestParameter> &parameters)

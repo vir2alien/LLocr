@@ -35,7 +35,7 @@ QVariant BoxListModel::data(const QModelIndex& index, int role) const
 
 QHash<int, QByteArray> BoxListModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         {XRole,      "boxX"},
         {YRole,      "boxY"},
         {WidthRole,  "boxWidth"},
@@ -43,6 +43,7 @@ QHash<int, QByteArray> BoxListModel::roleNames() const
         {TextRole,   "boxText"},
         {LabelRole,  "boxLabel"},
     };
+    return roles;
 }
 
 void BoxListModel::setBoxes(const QList<BoundingBox>& boxes) {

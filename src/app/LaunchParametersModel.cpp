@@ -51,12 +51,13 @@ QVariant LaunchParametersModel::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> LaunchParametersModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         { NameRole, "name" },
         { ValueTextRole, "valueText" },
         { KindRole, "kind" },
         { DescriptionRole, "description" },
     };
+    return roles;
 }
 
 void LaunchParametersModel::resetFrom(const QList<LaunchParameter> &parameters)

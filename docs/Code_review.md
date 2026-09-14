@@ -113,7 +113,7 @@ FIXED **[D-C-21] cudart archive extraction runs in the `.then()` continuation on
 The main archive is extracted on a worker, but the companion CUDA-runtime zip (hundreds of MB) is extracted inside the main-thread continuation → multi-second UI freeze.
 *Fix*: chain it as a second `QtConcurrent::run` stage.
 
-**[D-C-22] `roleNames()` rebuilds the QHash on every call in all five list models** — `BoxListModel.cpp:36`, `PageListModel.cpp:40`, `LaunchParametersModel.cpp:52`, `RequestParametersModel.cpp:37`, `DownloadManager.cpp:146` — Confidence 80
+FIXED **[D-C-22] `roleNames()` rebuilds the QHash on every call in all five list models** — `BoxListModel.cpp:36`, `PageListModel.cpp:40`, `LaunchParametersModel.cpp:52`, `RequestParametersModel.cpp:37`, `DownloadManager.cpp:146` — Confidence 80
 Pure per-call allocation; cache as a member/static const.
 
 ---
