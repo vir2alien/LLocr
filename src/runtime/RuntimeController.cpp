@@ -533,6 +533,12 @@ QString RuntimeController::startServer()
         setStatusMessage(err);
         return err;
     }
+    if (m_server->state() == RuntimeState::Failed) {
+        setBusyState(AppBusyState::Idle);
+        const QString fail = describeServerFailure();
+        setStatusMessage(fail);
+        return fail;
+    }
     setState(RuntimeState::Starting);
     setStatusMessage(QObject::tr("Starting server…"));
     return QString();
