@@ -159,6 +159,7 @@ private:
     void completeResolve(ResolvedConnection conn);
     void failResolve(const QString &message);
     void onServerStateForResolve();
+    void cancelPendingRestart();
 
     void fetchManagedModels();
     void onModelsReply(QNetworkReply *reply);
@@ -169,6 +170,7 @@ private:
 
     // Constructs a server from the current settings (owned here).
     class LlamaServerProcess *m_server = nullptr;
+    QMetaObject::Connection m_restartConn;
 
     // Live-log view to push servers into (§ review 3.4); owned by main.cpp.
     RuntimeLog *m_logTarget = nullptr;

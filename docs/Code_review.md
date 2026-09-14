@@ -28,7 +28,7 @@ Full Code Review Report — LLocr (C++ + QML)
 
 ### Runtime / process lifecycle
 
-**[D-C-01] `restartServer()` never restarts a Ready/Starting server** — `src/runtime/RuntimeController.cpp:549-575` — Confidence 92
+FIXED **[D-C-01] `restartServer()` never restarts a Ready/Starting server** — `src/runtime/RuntimeController.cpp:549-575` — Confidence 92
 The handler is connected with `Qt::SingleShotConnection`, so it fires on the *first* `stateChanged` emission. For a Ready/Starting server, `m_server->stop()` synchronously emits `Stopping` first; the lambda sees `state != Stopped`, returns, and the connection is auto-released — the later `Stopped` emission never reaches it. Also `restartConn` is captured by value *before* `connect()` returns, so the in-lambda copy is an invalid connection (the `disconnect` is dead code either way). Only the Failed path works.
 *Fix*: drop `SingleShotConnection`; keep a persistent connection that disconnects itself when `Stopped` is observed (captured by reference/member, not by value).
 

@@ -542,12 +542,21 @@ void RuntimeController::stopServer()
 {
     if (!m_server)
         return;
+    cancelPendingRestart();
     setBusyState(AppBusyState::StoppingRuntime);
     // §2.7: stop() is asynchronous now; the Stopped state arrives via the
     // server's stateChanged signal when the child actually exits.
     m_server->stop();
     setLoadProgressPercent(-1);
     setBusyState(AppBusyState::Idle);
+}
+
+void RuntimeController::cancelPendingRestart()
+{
+    if (m_restartConn) {
+        disconnect(m_restartConn);
+        m_restartConn = QMetaObject::Connection();
+    }
 }
 
 void RuntimeController::restartServer()
@@ -557,19 +566,18 @@ void RuntimeController::restartServer()
     if (m_server && m_server->state() != RuntimeState::Stopped) {
         setBusyState(AppBusyState::StoppingRuntime);
         setStatusMessage(QObject::tr("Stopping…"));
-        QMetaObject::Connection restartConn;
-        restartConn = connect(
+        cancelPendingRestart();
+        m_restartConn = connect(
             m_server, &LlamaServerProcess::stateChanged, this,
-            [this, restartConn]() {
+            [this]() {
                 if (m_server->state() != RuntimeState::Stopped)
                     return;
-                disconnect(restartConn);
+                cancelPendingRestart();
                 setBusyState(AppBusyState::Idle);
                 const QString err = startServer();
                 if (!err.isEmpty())
                     setStatusMessage(err);
-            },
-            Qt::SingleShotConnection);
+            });
         m_server->stop();
         return;
     }
@@ -675,6 +683,7 @@ void RuntimeController::cancelPendingStart()
 
 void RuntimeController::shutdownSync()
 {
+    cancelPendingRestart();
     if (m_server)
         m_server->shutdownSync(kShutdownTimeoutMs);
 }
