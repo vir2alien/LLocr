@@ -82,7 +82,6 @@ ScrollView {
                 text: qsTr("Auto-detect")
                 onClicked: {
                     Settings.serverPath = Runtime.autoDiscoverPath()
-                    serverPathField.text = Settings.serverPath
                 }
             }
             LLOLabel {

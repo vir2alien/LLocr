@@ -436,7 +436,6 @@ Item {
         nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
         onAccepted: {
             const path = Runtime.localPath(selectedFile)
-            localPathField.text = path
             Settings.launchModelPath = path
         }
     }

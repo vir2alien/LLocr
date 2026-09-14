@@ -146,7 +146,7 @@ FIXED **[D-Q-05] Wizard memory estimate broken for ≥2 GiB models: 32-bit `prop
 Sibling of the layout (not inside it): `Layout.fillWidth` is a no-op, no anchors → renders at (0,0) overlapping the top status label; implicit text width means a long localized error overflows the 520 px dialog.
 *Fix*: move it into the ColumnLayout (or anchor it explicitly with wrap).
 
-**[D-Q-07] Redundant imperative `field.text = path` assignments permanently destroy `Settings.*` bindings** — `RuntimeTabInternal.qml:85`, `Setup/StepRuntime.qml:263`, `Setup/StepModel.qml:439` — Confidence 85
+FIXED **[D-Q-07] Redundant imperative `field.text = path` assignments permanently destroy `Settings.*` bindings** — `RuntimeTabInternal.qml:85`, `Setup/StepRuntime.qml:263`, `Setup/StepModel.qml:439` — Confidence 85
 In all three the preceding `Settings.*` write already updates the bound field, and the imperative write breaks the binding for good — e.g. after Browse-picking a GGUF, a later `ModelInstaller::setActiveModel` (`ModelInstaller.cpp:311`) changes `Settings.launchModelPath` but the "Local file" field keeps showing the old path.
 *Fix*: delete the imperative assignments; fields bound to `Settings.*` should never be assigned imperatively.
 

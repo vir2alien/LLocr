@@ -260,7 +260,6 @@ Item {
         onAccepted: {
             const path = Runtime.localPath(selectedFile)
             Settings.serverPath = path
-            pathField.text = path
         }
     }
 }
