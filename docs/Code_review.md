@@ -4,23 +4,24 @@ Full Code Review Report — LLocr (C++ + QML)
 **Method**: both review skills' Phase 1 deterministic linting (C++ linter: 229 findings; QML linter: 373), Phase 1b system `qmllint` (Qt 6.10.3, 1,051 warnings), and 12 parallel deep-analysis agents (6 C++ missions + 6 QML missions), deduplicated and confidence-scored. Framework mode: not applicable (no Qt-module signals found).
 
 **Issues found**: 229 + 373 mechanical (mostly style; ~15 verified false-positive clusters, see §4), 46 confirmed deep findings, 15 investigation targets.
+**Status**: 21 of 46 deep findings fixed (all Tier-1 hangs, all user-visible breakage, security XSS, crash-risk D-C-08, and the Tier-2 performance block); see FIXED marks in §1–§2 and the remaining-work plan at the end of §5.
 
 ---
 
 ## 0. Executive summary — the 10 issues that matter most
 
-| #   | Location                                             | Issue                                                                                                                                                                                                       | Confidence |
-| --- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `src/runtime/ModelInstaller.cpp:608-631`             | Model install **hangs forever in "Downloading"** when a download fails synchronously (e.g. "not enough free space" on a multi-GB GGUF) — `downloadFinished(false)` is emitted before the installer connects | 95         |
-| 2   | `src/runtime/RuntimeController.cpp:549-575`          | **"Restart" never restarts** a Ready/Starting server — the `Qt::SingleShotConnection` handler is consumed by the transient `Stopping` emission                                                              | 92         |
-| 3   | `resources/qml/SettingsDialog/ModelsTab.qml:292-294` | HF search rows go stale when a new search returns the same row count → **Install installs the wrong model**                                                                                                 | 88         |
-| 4   | `resources/preview/preview.html:88-90`               | Markdown preview renders **unsanitized OCR/LLM HTML** via `marked.parse()` → `innerHTML` — script execution inside WebEngineView (XSS on arbitrary scanned documents)                                       | 90         |
-| 5   | `src/runtime/RuntimeController.cpp:301-319, 537-547` | Pressing **Stop (footer) during a managed resolve leaves `busy` stuck forever** — spinner spins, recognition never fails                                                                                    | 85         |
-| 6   | `resources/qml/Setup/StepModel.qml:14-15`            | Wizard memory estimate stored in **32-bit `property int`** → warning silently hidden/garbage for every real (≥2 GiB) model — the H.2 feature doesn't fire when it matters                                   | 92         |
-| 7   | `resources/qml/ServerLogWindow.qml:118-146`          | Live-indicator is **dead code**: `root.liveDot`/`root.liveFlash` are ids of nested objects, not root properties — the dot never turns green                                                                 | 100        |
-| 8   | `src/runtime/DownloadTask.cpp:273`                   | GGUF/runtime **download has no timeout of any kind** — a stalled CDN connection hangs the task indefinitely (every other network path is bounded)                                                           | 90         |
-| 9   | `src/app/OcrImageProvider.cpp:15-58`                 | Async thumbnail requests **read `DocumentModel` on the loader thread with no synchronization** — data race when pages are opened/deleted/reordered                                                          | 82         |
-| 10  | `resources/qml/SettingsDialog.qml:187`               | Browse→pick a server binary throws `ReferenceError: serverPathField is not defined` — **capability probe silently never runs**                                                                              | 92         |
+| #   | Location                                             | Issue                                                                                                                                                                                                       | Confidence | Status |
+| --- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------ |
+| 1   | `src/runtime/ModelInstaller.cpp:608-631`             | Model install **hangs forever in "Downloading"** when a download fails synchronously (e.g. "not enough free space" on a multi-GB GGUF) — `downloadFinished(false)` is emitted before the installer connects | 95         | FIXED  |
+| 2   | `src/runtime/RuntimeController.cpp:549-575`          | **"Restart" never restarts** a Ready/Starting server — the `Qt::SingleShotConnection` handler is consumed by the transient `Stopping` emission                                                              | 92         | FIXED  |
+| 3   | `resources/qml/SettingsDialog/ModelsTab.qml:292-294` | HF search rows go stale when a new search returns the same row count → **Install installs the wrong model**                                                                                                 | 88         | FIXED  |
+| 4   | `resources/preview/preview.html:88-90`               | Markdown preview renders **unsanitized OCR/LLM HTML** via `marked.parse()` → `innerHTML` — script execution inside WebEngineView (XSS on arbitrary scanned documents)                                       | 90         | FIXED  |
+| 5   | `src/runtime/RuntimeController.cpp:301-319, 537-547` | Pressing **Stop (footer) during a managed resolve leaves `busy` stuck forever** — spinner spins, recognition never fails                                                                                    | 85         | FIXED  |
+| 6   | `resources/qml/Setup/StepModel.qml:14-15`            | Wizard memory estimate stored in **32-bit `property int`** → warning silently hidden/garbage for every real (≥2 GiB) model — the H.2 feature doesn't fire when it matters                                   | 92         | FIXED  |
+| 7   | `resources/qml/ServerLogWindow.qml:118-146`          | Live-indicator is **dead code**: `root.liveDot`/`root.liveFlash` are ids of nested objects, not root properties — the dot never turns green                                                                 | 100        | FIXED  |
+| 8   | `src/runtime/DownloadTask.cpp:273`                   | GGUF/runtime **download has no timeout of any kind** — a stalled CDN connection hangs the task indefinitely (every other network path is bounded)                                                           | 90         | FIXED  |
+| 9   | `src/app/OcrImageProvider.cpp:15-58`                 | Async thumbnail requests **read `DocumentModel` on the loader thread with no synchronization** — data race when pages are opened/deleted/reordered                                                          | 82         | FIXED  |
+| 10  | `resources/qml/SettingsDialog.qml:187`               | Browse→pick a server binary throws `ReferenceError: serverPathField is not defined` — **capability probe silently never runs**                                                                              | 92         | FIXED  |
 
 ---
 
@@ -166,9 +167,10 @@ Vendored **marked v15.0.12** passes raw inline HTML through by design; `el.inner
 
 ### Performance & memory
 
-**[D-Q-11] Thumbnail strip decodes and caches full-resolution pages for ~150 px thumbs** — `ThumbDelegate.qml:36-44`, aggravated by `ThumbPanel.qml:25` (`cacheBuffer: 10000`) and `AppController.cpp:52-57` (`docRevision` bump on every document change re-keys *all* thumbnail URLs) — Confidence 95 (3 agents)
+PARTIALLY FIXED **[D-Q-11] Thumbnail strip decodes and caches full-resolution pages for ~150 px thumbs** — `ThumbDelegate.qml:36-44`, aggravated by `ThumbPanel.qml:25` (`cacheBuffer: 10000`) and `AppController.cpp:52-57` (`docRevision` bump on every document change re-keys *all* thumbnail URLs) — Confidence 95 (3 agents)
 No `sourceSize` → `requestedSize` invalid → the provider's scaling branch never runs → each thumb is a full-res ~8.7 MB (150 dpi PDF) to ~35 MB (300 dpi scan) texture; `cacheBuffer: 10000` keeps ~45 extra delegates per side alive; `cache: true` retains them; every open/delete/move re-decodes the whole strip.
 *Fix*: set `sourceSize` to display size × devicePixelRatio (provider then scales, ~10-40× less memory); reduce `cacheBuffer` to ~800-1500 px; key URLs on per-page revisions.
+*Done (fix 18)*: the dominant issue is resolved architecturally — `page/N` now serves pre-rendered small thumbnails (~220×300, `DocumentModel::thumbnail`) instead of full-res pages, so thumb memory dropped from ~8–35 MB to ~0.3 MB per page regardless of `sourceSize`. *Remaining*: reduce `cacheBuffer`, key URLs on per-page revisions (both minor now that payloads are small).
 
 **[D-Q-12] Main preview decodes full-resolution pages synchronously on the GUI thread** — `resources/qml/MainWindow/ImagePreview.qml:7-13` — Confidence 90
 No `sourceSize`, no `asynchronous`, `cache: false` — every page switch copies and uploads a full-res texture (up to ~134 MB for a 600 dpi scan) in binding evaluation on the GUI thread; minification aliasing as a bonus.
@@ -292,13 +294,42 @@ Model protocol: all five `data()` switches cover their roles; begin/end pairs ba
 
 ---
 
-## 5. Suggested fix order
+## 5. Fix status & remaining work plan
 
-1. **Data-loss/hang class**: D-C-04 (install hang), D-C-02 (footer stop), D-C-05 (download timeout), D-C-01 (restart), D-C-03 (Failed→Starting) — all in the runtime path you just stabilized in Stage H.
-2. **User-visible breakage**: D-Q-04 (wrong model installed), D-Q-05 (memory warning), D-Q-03 (probe skipped), D-Q-01 (live dot), D-Q-02 (arrows), D-Q-09 (language switch).
-3. **Security**: D-Q-10 (DOMPurify + CSP).
-4. **Crash risk**: D-C-07, D-C-08 (+ I-05, I-06, I-07 under ASan).
-5. **Performance**: D-Q-11/D-Q-12 (thumbnails/preview), D-C-17–D-C-22, D-Q-13, D-Q-14.
-6. **Structure**: D-C-15/D-Q-16 (deduplicate installers), D-Q-17 (named state enums), D-Q-18 (Bound migration).
+**Fixed (fixes 1–21, all verified by build + ctest 23/23):**
 
-Nothing was modified — the review is read-only. If you want, I can start with a fix branch for the tier-1 runtime bugs (D-C-01…D-C-05 are all small, localized changes), or produce detailed patches for any subset above.
+1. **Data-loss/hang class**: D-C-04 (install hang), D-C-02 (footer stop), D-C-05 (download timeout), D-C-01 (restart), D-C-03 (Failed→Starting) — ✅ all fixed.
+2. **User-visible breakage**: D-Q-04 (wrong model installed), D-Q-05 (memory warning), D-Q-03 (probe skipped), D-Q-01 (live dot), D-Q-02 (arrows), D-Q-09 (language switch) — ✅ all fixed.
+3. **Security**: D-Q-10 (DOMPurify + CSP + `localContentCanAccessFileUrls: false`) — ✅ fixed.
+4. **Crash risk**: D-C-08 (document lock) — ✅ fixed; D-C-07 remains (see plan below).
+5. **Performance**: D-C-17, D-C-18, D-C-19, D-C-20, D-C-21, D-C-22, D-Q-13 — ✅ all fixed; D-Q-11 — ✅ partially fixed (thumbnails are small now; cacheBuffer + URL keying remain).
+
+**Remaining queue (suggested order):**
+
+1. **Quick correctness wins (small, low-risk):**
+   - D-C-10 — remove the two `qDebug()` dumps of full OCR text (`DetTokensParser.cpp:300`, `RecognitionController.cpp:149`);
+   - D-C-16 — route `selectedRelease` clamp/emit through `setSelectedRelease()` (`RuntimeInstaller.cpp:265-266, 315-316`);
+   - D-C-13 — add the change guard to `setWindowState()` (`SettingsStore.cpp:287-291`);
+   - D-C-11 — make `pageModel`/`boxModel` READ accessors const (`AppController.h:76-77`);
+   - D-Q-11 remainder — reduce `cacheBuffer` to ~800-1500 px (`ThumbPanel.qml:25`); optionally per-page URL keying.
+2. **User-visible QML fixes:**
+   - D-Q-06 — move `statusMsg` into ModelsTab's ColumnLayout (`ModelsTab.qml:442-448`);
+   - D-Q-08 — restore revert via `text = Qt.binding(() => model.valueText)` (`LaunchTab.qml:139`, `RequestTab.qml:132`);
+   - D-Q-22 — wrap ModelsTab in a ScrollView (like RuntimeTabInternal);
+   - D-Q-20 — `Layout.preferredWidth/Height` for the 9×9 dot (`ThumbDelegate.qml:51-52`) and `Layout.fillWidth` for StepWelcome cards;
+   - D-Q-21 — plaque height `+ 2 * margins` (`StepLaunch.qml:145-158`, `RuntimeTabInternal.qml:256-268`).
+3. **Robustness / latent UB:**
+   - D-C-07 — lifetime-guard `m_resolveCallbacks` (`QPointer` context per callback);
+   - D-C-06 — evict finished DownloadTasks (defer-delete + beginRemoveRows) or cap as session log;
+   - I-05/I-06/I-07 — ASan pass, then per-item fixes (watcher parent, provider/controller teardown order, defensive `~DownloadTask`).
+4. **Structure (bigger refactors, schedule deliberately):**
+   - D-Q-15 — remove wizard-step `Component.onCompleted` startup scans;
+   - D-C-14 — shared numeric validator + single `detectPlatform()` call;
+   - D-C-15 / D-Q-16 — extract shared installer components (status row, lists) and one download-aggregation helper (this also subsumes the D-C-04-style divergence class);
+   - D-Q-17 — named state enums for QML (+ fix `RequesetTabNum`/`savaValues` typos);
+   - D-Q-18 — `pragma ComponentBehavior: Bound` + required properties migration (file-by-file);
+   - D-Q-19 — wizard `steps` list instead of `children[]`;
+   - D-Q-23 — register `controller`/`uiController` as singletons.
+5. **Deferred / verify-only:** investigations I-01…I-15 (§3) — each has a verify recipe; D-Q-12 (preview sourceSize) and D-Q-14 (sticky Loader) if preview perf is still noticeable after fix 14/18; D-Q-06 partial overlap with D-Q-22 (do together).
+
+*Note on rebuilds: localized MSVC breaks `/showIncludes` dependency tracking — after changing a header, delete the affected `.obj` files (or rebuild the target from clean) before linking.*
