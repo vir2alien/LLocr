@@ -11,8 +11,8 @@ Item {
 
     property bool complete: Settings.launchModelPath.trim().length > 0
 
-    property int estTotal: 0
-    property int estRam: 0
+    property real estTotal: 0
+    property real estRam: 0
     function gib(bytes) { return bytes / (1024 * 1024 * 1024) }
     function refreshEstimate() {
         if (!Settings.launchModelPath.trim().length) { estTotal = 0; estRam = 0; return }

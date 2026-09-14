@@ -138,7 +138,7 @@ FIXED **[D-Q-04] HF search rows stale on equal-count re-search → Install targe
 `model: ModelInstaller.searchCount` with non-reactive `searchResult(index)` delegates and no `Connections` refresh (the sibling installed/builds lists all have one). `startSearch` never clears `m_searchResults`; when two searches return the same count, nothing resets → rows show search A's titles while `installRemote(index)` indexes search B's list. Equal counts are the common case (fixed HF page size).
 *Fix*: clear `m_searchResults` at search start (count N→0→M forces resets), add a revision counter, or expose a proper QAbstractListModel.
 
-**[D-Q-05] Wizard memory estimate broken for ≥2 GiB models: 32-bit `property int`** — `resources/qml/Setup/StepModel.qml:14-15` (usage 142-145) — Confidence 92
+FIXED **[D-Q-05] Wizard memory estimate broken for ≥2 GiB models: 32-bit `property int`** — `resources/qml/Setup/StepModel.qml:14-15` (usage 142-145) — Confidence 92
 `estTotal`/`estRam` take qint64 byte counts; values ≥ 2³¹ wrap → the warning label `visible: estTotal > 0` hides exactly for the large models it exists to warn about, or shows garbage. `StepLaunch.qml:16-19` uses `property real` for the identical data — the correct form is already in the codebase.
 *Fix*: change the two properties to `real`.
 
