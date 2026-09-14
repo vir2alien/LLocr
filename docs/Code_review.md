@@ -126,7 +126,7 @@ FIXED **[D-Q-01] Server-log live indicator is dead code** — `resources/qml/Ser
 `root.liveDot`/`root.liveFlash` read non-existent root properties (they are ids of a header Rectangle and a file-scope Timer) → the guard is always false: the dot never turns green, `liveFlash` never restarts. Had it been written without `root.`, the ids would resolve.
 *Fix*: reference the bare ids, or hoist real root properties and bind the visuals declaratively.
 
-**[D-Q-02] Export SpinBox arrows permanently muted: `sb.up.enabled`/`sb.down.enabled` don't exist** — `resources/qml/ExportDialog.qml:94, 111` — Confidence 95 (5 agents)
+FIXED **[D-Q-02] Export SpinBox arrows permanently muted: `sb.up.enabled`/`sb.down.enabled` don't exist** — `resources/qml/ExportDialog.qml:94, 111` — Confidence 95 (5 agents)
 `QQuickIndicatorButton` (SpinBox up/down) exposes only `pressed/hovered/indicator/…` — verified against the Qt private header. The ternary always takes the muted branch.
 *Fix*: derive per-direction dimming from `sb.value` vs `sb.from`/`sb.to`, or use `sb.up.pressed` for feedback.
 

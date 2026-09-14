@@ -91,7 +91,7 @@ Dialog {
             Text {
                 text: "▲"
                 font.pointSize: Theme.iconSize
-                color: sb.up.enabled ? Theme.textSecondary : Theme.textMuted
+                color: sb.enabled && sb.value < sb.to ? Theme.textSecondary : Theme.textMuted
                 anchors.centerIn: parent
             }
         }
@@ -108,7 +108,7 @@ Dialog {
             Text {
                 text: "▼"
                 font.pointSize: Theme.iconSize
-                color: sb.down.enabled ? Theme.textSecondary : Theme.textMuted
+                color: sb.enabled && sb.value > sb.from ? Theme.textSecondary : Theme.textMuted
                 anchors.centerIn: parent
             }
         }
