@@ -15,6 +15,10 @@ RuntimeLog::RuntimeLog(SettingsStore &settings, QObject *parent)
     : QObject(parent)
     , m_settings(settings)
 {
+    m_flushTimer.setSingleShot(true);
+    m_flushTimer.setInterval(200);
+    connect(&m_flushTimer, &QTimer::timeout, this,
+            [this]() { emit serverLogChanged(); });
 }
 
 void RuntimeLog::setServer(LlamaServerProcess *server)
@@ -24,10 +28,11 @@ void RuntimeLog::setServer(LlamaServerProcess *server)
     if (m_server)
         disconnect(m_server, nullptr, this, nullptr);
     m_server = server;
+    m_flushTimer.stop();
     if (m_server) {
         // Every appended line (and clearLog's refresh) changes the visible tail.
         connect(m_server, &LlamaServerProcess::logLineAppended, this,
-                [this](const QString &) { emit serverLogChanged(); });
+                [this](const QString &) { m_flushTimer.start(); });
         // The server is owned by RuntimeController, but detach defensively so a
         // shorter-lived owner cannot leave this view pointing at garbage.
         connect(m_server, &QObject::destroyed, this,
@@ -68,6 +73,7 @@ void RuntimeLog::clearServerLog()
 {
     if (m_server)
         m_server->clearLog();
+    m_flushTimer.stop();
     emit serverLogChanged();
 }
 

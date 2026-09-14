@@ -174,7 +174,7 @@ No `sourceSize` → `requestedSize` invalid → the provider's scaling branch ne
 No `sourceSize`, no `asynchronous`, `cache: false` — every page switch copies and uploads a full-res texture (up to ~134 MB for a 600 dpi scan) in binding evaluation on the GUI thread; minification aliasing as a bonus.
 *Fix*: `sourceSize` bound to viewport × devicePixelRatio (provider honors it with Smooth+KeepAspectRatio) + `asynchronous: true`.
 
-**[D-Q-13] Server log rebuilt in full and re-set on every appended line, even while the window is hidden** — `ServerLogWindow.qml:102` + `src/runtime/RuntimeLog.cpp:29-44` — Confidence 95
+FIXED **[D-Q-13] Server log rebuilt in full and re-set on every appended line, even while the window is hidden** — `ServerLogWindow.qml:102` + `src/runtime/RuntimeLog.cpp:29-44` — Confidence 95
 Per-line `serverLogChanged()` → `ringBuffer(2000).join("\n")` → wholesale `TextArea` re-layout of up to 2000 lines, during exactly the phases when llama-server bursts hundreds of lines per second. The window is instantiated at startup (`Main.qml:144-146`), so the churn runs even when closed.
 *Fix*: coalesce in C++ (dirty flag + 150-250 ms flush) or an append-only model; QML stopgap: gate the binding on `root.visible`.
 

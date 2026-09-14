@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QTimer>
 
 #include <QQmlEngine>
 
@@ -54,6 +55,7 @@ signals:
 private:
     SettingsStore &m_settings;
     LlamaServerProcess *m_server = nullptr;
+    QTimer m_flushTimer;
 };
 
 }  // namespace llocr

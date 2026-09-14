@@ -99,7 +99,7 @@ ApplicationWindow {
 
         TextArea {
             id: logArea
-            text: RuntimeLog.serverLog || qsTr("No log output yet.")
+            text: root.visible ? (RuntimeLog.serverLog || qsTr("No log output yet.")) : ""
             readOnly: true
             wrapMode: TextEdit.NoWrap
             font.family: "monospace"
