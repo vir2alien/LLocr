@@ -424,6 +424,7 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y,
     if (boxIndex < 0 || boxIndex >= boxes.size())
         return;
     boxes[boxIndex].rect = QRectF(x, y, width, height);
+    ++m_cropRevision;
 
     m_boxModel.updateBoxRect(boxIndex, x, y, width, height);
 
@@ -443,6 +444,7 @@ void AppController::onBoxRemoved(int boxIndex)
         return;
 
     boxes.removeAt(boxIndex);
+    ++m_cropRevision;
 
     m_editStore.replace(m_currentPage, rebuildPageText(page.result.pages[0]));
     m_pageModel.setEdited(m_currentPage, true);
@@ -554,6 +556,11 @@ void AppController::notifyPageChanged()
 
 QString AppController::resolveImagesForPreview(const QString& markdown) const
 {
+    if (m_previewCacheRevision == m_imageRevision
+        && m_previewCacheCropRevision == m_cropRevision
+        && m_previewCacheText == markdown)
+        return m_previewCacheResult;
+
     static const QRegularExpression re(
         QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)\))"));
 
@@ -583,6 +590,10 @@ QString AppController::resolveImagesForPreview(const QString& markdown) const
         last = m.capturedEnd();
     }
     result += markdown.mid(last);
+    m_previewCacheRevision = m_imageRevision;
+    m_previewCacheCropRevision = m_cropRevision;
+    m_previewCacheText = markdown;
+    m_previewCacheResult = result;
     return result;
 }
 

@@ -140,6 +140,11 @@ private:
     QString m_statusMessage;
     int m_imageRevision = 0;
     int m_docRevision = 0;
+    int m_cropRevision = 0;
+    mutable int m_previewCacheRevision = -1;
+    mutable int m_previewCacheCropRevision = -1;
+    mutable QString m_previewCacheText;
+    mutable QString m_previewCacheResult;
     PageEditStore m_editStore;
 };
 

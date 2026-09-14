@@ -6,7 +6,17 @@ import LLocr
 import "../Common"
 
 Rectangle {
+    id: root
     color: Theme.surfaceAlt
+
+    property string previewMarkdown: ""
+
+    Timer {
+        id: previewDebounce
+        interval: 250
+        onTriggered:
+            root.previewMarkdown = controller.resolveImagesForPreview(textArea.text)
+    }
     LLOLabel {
         anchors.centerIn: parent
         verticalAlignment: Text.AlignVCenter
@@ -88,6 +98,7 @@ Rectangle {
                     onTextChanged: {
                         if (!syncing)
                             controller.setCurrentPageText(text)
+                        previewDebounce.restart()
                     }
 
                     Component.onCompleted: reload()
@@ -102,6 +113,7 @@ Rectangle {
             // --- 1: Preview ---
             Loader {
                 active: previewSwitch.checked
+                onActiveChanged: if (active) previewDebounce.restart()
                 sourceComponent: previewComponent
             }
         }
@@ -110,7 +122,7 @@ Rectangle {
     Component {
         id: previewComponent
         MarkdownPreview {
-            markdown: controller.resolveImagesForPreview(textArea.text)
+            markdown: root.previewMarkdown
             dark: Theme.dark
             bgColor: Theme.surfaceAlt
             fgColor: Theme.textPrimary

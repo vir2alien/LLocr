@@ -93,7 +93,7 @@ Two sites bypass `setSelectedRelease()` in opposite directions (one silent clamp
 
 ### Performance
 
-**[D-C-17] Markdown preview re-encodes every image crop to PNG base64 on the GUI thread per text change** — `src/app/AppController.cpp:555-584` (binding at `WorkPanel.qml:113`) — Confidence 92
+FIXED **[D-C-17] Markdown preview re-encodes every image crop to PNG base64 on the GUI thread per text change** — `src/app/AppController.cpp:555-584` (binding at `WorkPanel.qml:113`) — Confidence 92
 A live QML binding calls the Q_INVOKABLE on every text change; each run regex-scans the text and does `QImage::copy` + full-res `save("PNG")` + base64 expansion per crop. The 250 ms MarkdownPreview debounce only covers the WebEngine push, not this.
 *Fix*: cache the resolved string keyed on (docRevision, imageRevision, text), debounce, and/or scale crops to display size; long-term serve crops via a scheme handler.
 
