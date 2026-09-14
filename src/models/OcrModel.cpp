@@ -9,19 +9,20 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPromise>
+#include <QtConcurrent/QtConcurrentRun>
 
 #include <algorithm>
 
 namespace llocr {
 
-QString OcrModel::encodeImageDataUrl(const QImage &image, const QString &format)
+QString OcrModel::encodeImageDataUrl(const QImage &image, const QString &format, int quality)
 {
     const QString fmt = format.isEmpty() ? QStringLiteral("png") : format.toLower();
 
     QByteArray raw;
     QBuffer buffer(&raw);
     buffer.open(QIODevice::WriteOnly);
-    image.save(&buffer, fmt.toUpper().toLatin1().constData());
+    image.save(&buffer, fmt.toUpper().toLatin1().constData(), quality);
     buffer.close();
 
     return QStringLiteral("data:image/%1;base64,%2")
@@ -86,22 +87,31 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
     promise->start();
     QFuture<OcrResult> future = promise->future();
 
-    const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("png"));
-    const QByteArray body = buildRequestBody(request, dataUrl);
-
-    auto *watcher = new QFutureWatcher<HttpResponse>();
-    watcher->setFuture(m_client.postJson(LlamaClient::endpointUrl(config.baseUrl), body,
-                                         config.apiKey, config.timeoutMs));
-    QObject::connect(watcher, &QFutureWatcher<HttpResponse>::finished, watcher,
-                     [this, promise, watcher]() mutable {
-                         const HttpResponse response =
-                             watcher->future().resultCount() > 0 ? watcher->result() : HttpResponse{};
-                         if (response.success)
-                             promise->addResult(parseResponse(response.body));
-                         else
-                             promise->addResult(OcrResult::makeError(response.error));
-                         promise->finish();
-                         watcher->deleteLater();
+    auto *encodeWatcher = new QFutureWatcher<QByteArray>();
+    encodeWatcher->setFuture(QtConcurrent::run([this, request, config]() {
+        const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("jpeg"), 90);
+        return buildRequestBody(request, dataUrl);
+    }));
+    QObject::connect(encodeWatcher, &QFutureWatcher<QByteArray>::finished, encodeWatcher,
+                     [this, promise, encodeWatcher, config]() {
+                         encodeWatcher->deleteLater();
+                         const QByteArray body = encodeWatcher->future().resultCount() > 0
+                                                     ? encodeWatcher->result()
+                                                     : QByteArray();
+                         auto *watcher = new QFutureWatcher<HttpResponse>();
+                         watcher->setFuture(m_client.postJson(LlamaClient::endpointUrl(config.baseUrl), body,
+                                                              config.apiKey, config.timeoutMs));
+                         QObject::connect(watcher, &QFutureWatcher<HttpResponse>::finished, watcher,
+                                          [this, promise, watcher]() mutable {
+                                              const HttpResponse response =
+                                                  watcher->future().resultCount() > 0 ? watcher->result() : HttpResponse{};
+                                              if (response.success)
+                                                  promise->addResult(parseResponse(response.body));
+                                              else
+                                                  promise->addResult(OcrResult::makeError(response.error));
+                                              promise->finish();
+                                              watcher->deleteLater();
+                                          });
                      });
 
     return future;

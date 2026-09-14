@@ -42,7 +42,8 @@ protected:
     LlamaClient m_client;
 
 private:
-    static QString encodeImageDataUrl(const QImage &image, const QString &format);
+    static QString encodeImageDataUrl(const QImage &image, const QString &format,
+                                      int quality = -1);
 };
 
 } // namespace llocr

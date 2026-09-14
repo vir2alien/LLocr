@@ -97,7 +97,7 @@ FIXED **[D-C-17] Markdown preview re-encodes every image crop to PNG base64 on t
 A live QML binding calls the Q_INVOKABLE on every text change; each run regex-scans the text and does `QImage::copy` + full-res `save("PNG")` + base64 expansion per crop. The 250 ms MarkdownPreview debounce only covers the WebEngine push, not this.
 *Fix*: cache the resolved string keyed on (docRevision, imageRevision, text), debounce, and/or scale crops to display size; long-term serve crops via a scheme handler.
 
-**[D-C-18] Whole export pipeline runs synchronously on the GUI thread** — `src/app/Exporter.cpp:328` (`waitForFinished(120000)`), entry `AppController::exportPages` — Confidence 90
+FIXED **[D-C-18] Whole export pipeline runs synchronously on the GUI thread** — `src/app/Exporter.cpp:328` (`waitForFinished(120000)`), entry `AppController::exportPages` — Confidence 90
 DOCX/PDF via Pandoc blocks the event loop up to 2 minutes; the built-in PDF fallback holds all crops of all pages in RAM. No busy indication.
 *Fix*: run `exportToFile` on `QtConcurrent`; disable the dialog meanwhile; cap PDF memory via temp files.
 
