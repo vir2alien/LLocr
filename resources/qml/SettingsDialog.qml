@@ -184,7 +184,6 @@ Dialog {
         onAccepted: {
             const path = Runtime.localPath(selectedFile)
             Settings.serverPath = path
-            serverPathField.text = path
             Runtime.probeRuntimePath(path)
         }
     }

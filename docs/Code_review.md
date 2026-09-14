@@ -130,7 +130,7 @@ Pure per-call allocation; cache as a member/static const.
 `QQuickIndicatorButton` (SpinBox up/down) exposes only `pressed/hovered/indicator/…` — verified against the Qt private header. The ternary always takes the muted branch.
 *Fix*: derive per-direction dimming from `sb.value` vs `sb.from`/`sb.to`, or use `sb.up.pressed` for feedback.
 
-**[D-Q-03] Browse→pick server binary: `ReferenceError: serverPathField is not defined`, probe silently skipped** — `resources/qml/SettingsDialog.qml:187` — Confidence 92
+FIXED **[D-Q-03] Browse→pick server binary: `ReferenceError: serverPathField is not defined`, probe silently skipped** — `resources/qml/SettingsDialog.qml:187` — Confidence 92
 `serverPathField` is an id in a *different document* (`RuntimeTabInternal.qml:64`); cross-document id lookup is impossible. The handler aborts after saving the setting, so `Runtime.probeRuntimePath(path)` never runs (status stays "Not probed yet"; the field still updates via its binding).
 *Fix*: delete the redundant assignment (the binding already syncs), or move the FileDialog into RuntimeTabInternal / expose a function on the tab.
 
