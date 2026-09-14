@@ -597,11 +597,15 @@ void ModelInstaller::beginDownload()
 
     const QString repo = m_pending.repo;
     const QString rev = m_pending.revision;
-    for (const QString &path : m_pending.modelNames)
+    for (const QString &path : m_pending.modelNames) {
         enqueueFile(path, repo, rev);
+        if (m_state != State::Downloading)
+            return;
+    }
     // Multi-quant installs share the repo folder: skip the projector when the
     // same file is already on disk instead of re-downloading it per quant.
-    if (!m_pending.mmprojRel.isEmpty() && !mmprojAlreadyOnDisk())
+    if (m_state == State::Downloading && !m_pending.mmprojRel.isEmpty()
+        && !mmprojAlreadyOnDisk())
         enqueueFile(m_pending.mmprojRel, repo, rev);
 }
 
@@ -627,6 +631,16 @@ void ModelInstaller::enqueueFile(const QString &repoPath, const QString &repo,
     ++m_downloadCount;
     connect(task, &DownloadTask::downloadFinished, this,
             [this](bool ok) { onOneDownloadFinished(ok); });
+    const auto st = task->state();
+    if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed
+        || st == DownloadTask::State::Canceled) {
+        ++m_downloadDone;
+        if (st != DownloadTask::State::Completed)
+            m_downloadFailed = true;
+        emitDownloadProgress();
+        if (m_downloadDone == m_downloadCount)
+            maybeFinishDownloads();
+    }
 }
 
 QString ModelInstaller::expectedShaFor(const QString &repoPath) const
