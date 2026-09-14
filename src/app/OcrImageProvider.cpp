@@ -25,7 +25,7 @@ QImage OcrImageProvider::requestImage(const QString& id, QSize* size,
         bool ok = false;
         const int index = key.mid(5).toInt(&ok);
         if (ok)
-            image = m_controller->pageImage(index);
+            image = m_controller->pageThumbnail(index);
     } else if (key.startsWith(QStringLiteral("crop/"))) {
         const QStringList parts = key.mid(5).split(QLatin1Char('/'));
         if (parts.size() == 2) {

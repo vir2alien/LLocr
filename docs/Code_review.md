@@ -101,11 +101,11 @@ FIXED **[D-C-18] Whole export pipeline runs synchronously on the GUI thread** �
 DOCX/PDF via Pandoc blocks the event loop up to 2 minutes; the built-in PDF fallback holds all crops of all pages in RAM. No busy indication.
 *Fix*: run `exportToFile` on `QtConcurrent`; disable the dialog meanwhile; cap PDF memory via temp files.
 
-**[D-C-19] Each recognition request PNG-encodes the full-resolution page on the GUI thread** — `src/models/OcrModel.cpp:89, 17-28` — Confidence 88
+FIXED **[D-C-19] Each recognition request PNG-encodes the full-resolution page on the GUI thread** — `src/models/OcrModel.cpp:89, 17-28` — Confidence 88
 ~1–3 MB PNG + base64 per page, between HTTP round-trips in batch mode.
 *Fix*: move encode+body-build into the existing QtConcurrent stage; consider JPEG ~90 (5–10× smaller/faster, llama-server accepts it).
 
-**[D-C-20] `DocumentModel` holds every page's full-resolution image in RAM for the whole session** — `src/app/DocumentModel.cpp:61-93` — Confidence 85
+FIXED **[D-C-20] `DocumentModel` holds every page's full-resolution image in RAM for the whole session** — `src/app/DocumentModel.cpp:61-93` — Confidence 85
 100-page PDF ≈ 830 MB before any results; no lazy render/eviction.
 *Fix*: store path+index+size and render on demand (full DPI for the current page, reduced for the strip).
 

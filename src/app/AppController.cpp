@@ -34,7 +34,7 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
     , m_runtime(runtime)
     , m_recognition(
           settings, runtime, requestProfiles,
-          [this](int index) { return m_document.page(index).image; })
+          [this](int index) { return pageImage(index); })
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
@@ -137,19 +137,22 @@ bool AppController::currentPageEdited() const
     return m_editStore.isEdited(m_currentPage);
 }
 
-QImage AppController::currentImage() const
+QImage AppController::currentImage()
 {
     return pageImage(m_currentPage);
 }
 
-QImage AppController::pageImage(int index) const
+QImage AppController::pageImage(int index)
 {
-    if (!m_document.isValidIndex(index))
-        return {};
-    return m_document.page(index).image;
+    return m_document.fullImage(index);
 }
 
-QImage AppController::croppedImage(int pageIndex, int boxIndex) const
+QImage AppController::pageThumbnail(int index) const
+{
+    return m_document.thumbnail(index);
+}
+
+QImage AppController::croppedImage(int pageIndex, int boxIndex)
 {
     if (!m_document.isValidIndex(pageIndex))
         return {};
@@ -164,14 +167,19 @@ QImage AppController::croppedImage(int pageIndex, int boxIndex) const
     if (norm.width() <= 0.0 || norm.height() <= 0.0)
         return {};
 
-    QRect px(qRound(norm.x() * page.image.width()),
-             qRound(norm.y() * page.image.height()),
-             qRound(norm.width() * page.image.width()),
-             qRound(norm.height() * page.image.height()));
-    px = px.intersected(page.image.rect());
+    m_document.fullImage(pageIndex);
+    const QImage& img = m_document.page(pageIndex).image;
+    if (img.isNull())
+        return {};
+
+    QRect px(qRound(norm.x() * img.width()),
+             qRound(norm.y() * img.height()),
+             qRound(norm.width() * img.width()),
+             qRound(norm.height() * img.height()));
+    px = px.intersected(img.rect());
     if (px.width() < 1 || px.height() < 1)
         return {};
-    return page.image.copy(px);
+    return img.copy(px);
 }
 
 void AppController::setCurrentPage(int index)
@@ -579,7 +587,7 @@ void AppController::notifyPageChanged()
     emit editStateChanged();
 }
 
-QString AppController::resolveImagesForPreview(const QString& markdown) const
+QString AppController::resolveImagesForPreview(const QString& markdown)
 {
     if (m_previewCacheRevision == m_imageRevision
         && m_previewCacheCropRevision == m_cropRevision

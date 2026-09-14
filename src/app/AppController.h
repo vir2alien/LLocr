@@ -81,10 +81,11 @@ public:
 
     void setCurrentPage(int index);
 
-    QImage currentImage() const;
-    QImage pageImage(int index) const;
+    QImage currentImage();
+    QImage pageImage(int index);
+    QImage pageThumbnail(int index) const;
 
-    QImage croppedImage(int pageIndex, int boxIndex) const;
+    QImage croppedImage(int pageIndex, int boxIndex);
 
 signals:
     void busyChanged();
@@ -115,7 +116,7 @@ public slots:
     Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y,
                                       qreal width, qreal height);
     Q_INVOKABLE void onBoxRemoved(int boxIndex);
-    Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown) const;
+    Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown);
 
 private:
     enum ExportScope : int {

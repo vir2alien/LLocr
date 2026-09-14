@@ -1,10 +1,13 @@
 #pragma once
 
+#include <QHash>
 #include <QImage>
 #include <QList>
 #include <QString>
 #include <QStringList>
 #include "core/OcrResult.h"
+
+class QPdfDocument;
 
 namespace llocr {
 
@@ -13,14 +16,21 @@ namespace llocr {
  */
 
 struct DocumentPage {
+    QImage thumb;
     QImage image;
     OcrResult result;
     bool recognized = false;
+    QString sourcePath;
+    int pdfIndex = -1;
+    QSize pixelSize;
 };
 
 class DocumentModel
 {
 public:
+    DocumentModel() = default;
+    ~DocumentModel();
+
     bool loadImage(const QString& path);
     bool loadImages(const QStringList& paths);
     bool loadPdf(const QString& path);
@@ -40,8 +50,19 @@ public:
 
     bool isValidIndex(int index) const;
 
+    QImage fullImage(int index);
+    const QImage& thumbnail(int index) const;
+
 private:
+    bool decodeSource(DocumentPage& page);
+    QImage renderFull(const DocumentPage& page);
+    void ensureFullImage(int index);
+    void evictFullImages();
+    QPdfDocument* pdfFor(const QString& path);
+
     QList<DocumentPage> m_pages;
+    QHash<QString, QPdfDocument*> m_pdfs;
+    QList<int> m_fullCache;
 };
 
 } // namespace llocr
