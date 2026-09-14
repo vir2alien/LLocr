@@ -134,7 +134,7 @@ Pure per-call allocation; cache as a member/static const.
 `serverPathField` is an id in a *different document* (`RuntimeTabInternal.qml:64`); cross-document id lookup is impossible. The handler aborts after saving the setting, so `Runtime.probeRuntimePath(path)` never runs (status stays "Not probed yet"; the field still updates via its binding).
 *Fix*: delete the redundant assignment (the binding already syncs), or move the FileDialog into RuntimeTabInternal / expose a function on the tab.
 
-**[D-Q-04] HF search rows stale on equal-count re-search → Install targets the wrong model** — `resources/qml/SettingsDialog/ModelsTab.qml:292-294`, `resources/qml/Setup/StepModel.qml:296-300`; backing `src/runtime/ModelInstaller.cpp:813-858` — Confidence 88
+FIXED **[D-Q-04] HF search rows stale on equal-count re-search → Install targets the wrong model** — `resources/qml/SettingsDialog/ModelsTab.qml:292-294`, `resources/qml/Setup/StepModel.qml:296-300`; backing `src/runtime/ModelInstaller.cpp:813-858` — Confidence 88
 `model: ModelInstaller.searchCount` with non-reactive `searchResult(index)` delegates and no `Connections` refresh (the sibling installed/builds lists all have one). `startSearch` never clears `m_searchResults`; when two searches return the same count, nothing resets → rows show search A's titles while `installRemote(index)` indexes search B's list. Equal counts are the common case (fixed HF page size).
 *Fix*: clear `m_searchResults` at search start (count N→0→M forces resets), add a revision counter, or expose a proper QAbstractListModel.
 

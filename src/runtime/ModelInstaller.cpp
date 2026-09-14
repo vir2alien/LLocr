@@ -836,6 +836,7 @@ void ModelInstaller::startSearch()
     const QString q = m_searchQuery.trimmed();
     const QString token = m_settings.hfToken();
     m_searchActive = true;
+    m_searchResults.clear();
     setBusy(true);
     setState(State::Fetching);
     setStatusMessage(tr("Searching Hugging Face …"));
