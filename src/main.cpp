@@ -140,6 +140,14 @@ int main(int argc, char* argv[]) {
 
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &engine,
                      [&engine]() { engine.retranslate(); });
+    QObject::connect(&i18n, &llocr::I18n::languageApplied, &runtimeController,
+                     &llocr::RuntimeController::retranslate);
+    QObject::connect(&i18n, &llocr::I18n::languageApplied, &runtimeInstaller,
+                     &llocr::RuntimeInstaller::retranslate);
+    QObject::connect(&i18n, &llocr::I18n::languageApplied, &modelInstaller,
+                     &llocr::ModelInstaller::retranslate);
+    QObject::connect(&i18n, &llocr::I18n::languageApplied, &selfTestController,
+                     &llocr::SelfTestController::retranslate);
 
     llocr::AppController appController(settingsStore, runtimeController,
                                        requestProfiles);

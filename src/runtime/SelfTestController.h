@@ -54,6 +54,8 @@ public:
     bool selftestOk() const { return m_selftestOk; }
     QString selftestMessage() const { return m_selftestMessage; }
 
+    void retranslate();
+
 signals:
     void selftestFinished();
 

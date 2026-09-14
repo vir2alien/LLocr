@@ -129,6 +129,8 @@ public:
     /// Blocking shutdown (main.cpp ~aboutToQuit path). §5.5.
     void shutdownSync();
 
+    void retranslate();
+
     static ConnectionMode modeFromSettings(const SettingsStore &settings);
 
 private:

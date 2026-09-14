@@ -694,4 +694,10 @@ void RuntimeController::shutdownSync()
         m_server->shutdownSync(kShutdownTimeoutMs);
 }
 
+void RuntimeController::retranslate()
+{
+    if (m_server)
+        m_server->retranslate();
+}
+
 }  // namespace llocr

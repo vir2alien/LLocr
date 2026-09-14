@@ -94,6 +94,8 @@ public:
 
     void shutdown();
 
+    void retranslate();
+
     // --- QML-facing API ----------------------------------------------------
     /// Returns a short human-readable label for a release row, e.g.
     /// "b10594 — 2026-03-12". Empty when the index is out of range.

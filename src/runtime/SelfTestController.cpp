@@ -92,6 +92,14 @@ void SelfTestController::runSelfTestRequest(
     watch->setFuture(m_selftestModel->recognize(request, config));
 }
 
+void SelfTestController::retranslate()
+{
+    if (m_selftestRunning) {
+        m_selftestMessage = tr("Running self-test…");
+        emit selftestFinished();
+    }
+}
+
 void SelfTestController::runSelfTestQml()
 {
     if (m_selftestRunning)

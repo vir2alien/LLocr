@@ -154,7 +154,7 @@ In all three the preceding `Settings.*` write already updates the bound field, a
 After a rejected `setDraftValue`, the binding is gone; once rows shift after removal, the field shows a previous row's value and the `if (text === model.valueText) return` guard silently swallows edits.
 *Fix*: restore with `text = Qt.binding(() => model.valueText)`.
 
-**[D-Q-09] C++ singleton status strings are not retranslated on language switch** — `Footer.qml:74-80, 171-177` (+ ModelsTab.qml:42, RuntimeTabInternal.qml:367, StepModel.qml:65, StepLaunch.qml:231-234) — Confidence 85
+FIXED **[D-Q-09] C++ singleton status strings are not retranslated on language switch** — `Footer.qml:74-80, 171-177` (+ ModelsTab.qml:42, RuntimeTabInternal.qml:367, StepModel.qml:65, StepLaunch.qml:231-234) — Confidence 85
 `engine.retranslate()` re-runs QML `qsTr()` bindings, but `Runtime/ModelInstaller/RuntimeInstaller/SelfTest` `statusMessage` strings are `tr()`-built C++ values with **no `LanguageChange` handler** (grep: none) — after a switch the UI shows a mix of old-language status text and new-language labels until the next state change.
 *Fix*: handle `QEvent::LanguageChange` in the singletons and regenerate + re-emit `statusMessage`; or store state codes in C++ and translate in QML.
 

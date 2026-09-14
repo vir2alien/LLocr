@@ -546,6 +546,26 @@ void LlamaServerProcess::shutdownSync(unsigned baseTimeoutMs)
     setStatus(QObject::tr("Stopped"));
 }
 
+void LlamaServerProcess::retranslate()
+{
+    switch (m_state) {
+    case RuntimeState::Starting:
+        if (m_loadPercent >= 0)
+            setStatus(QObject::tr("Loading model… %1%").arg(m_loadPercent));
+        else
+            setStatus(QObject::tr("Starting server (attempt %1)").arg(m_attemptsTotal));
+        break;
+    case RuntimeState::Stopping:
+        setStatus(QObject::tr("Stopping…"));
+        break;
+    case RuntimeState::Stopped:
+        setStatus(QObject::tr("Stopped"));
+        break;
+    default:
+        break;
+    }
+}
+
 bool LlamaServerProcess::isRunning() const
 {
     return m_process.state() != QProcess::NotRunning

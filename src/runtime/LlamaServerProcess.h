@@ -67,6 +67,8 @@ public:
     /// record removal. §5.5.
     void shutdownSync(unsigned baseTimeoutMs = 5000);
 
+    void retranslate();
+
     bool isRunning() const;
     RuntimeState state() const;
     QString statusMessage() const;

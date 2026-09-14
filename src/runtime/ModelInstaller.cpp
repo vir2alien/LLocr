@@ -204,6 +204,24 @@ void ModelInstaller::setStatusMessage(const QString &msg)
     emit statusMessageChanged();
 }
 
+void ModelInstaller::retranslate()
+{
+    switch (m_state) {
+    case State::Downloading:
+        setStatusMessage(tr("Downloading %1 …").arg(m_pending.title));
+        break;
+    case State::ReadyToDownload:
+        setStatusMessage(tr("Ready: %1 (%2)").arg(m_pending.title, m_pending.repo));
+        break;
+    case State::Fetching:
+        if (m_searchActive)
+            setStatusMessage(tr("Searching Hugging Face …"));
+        break;
+    default:
+        break;
+    }
+}
+
 void ModelInstaller::setSearchQuery(const QString &q)
 {
     if (m_searchQuery == q)

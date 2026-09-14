@@ -154,6 +154,26 @@ void RuntimeInstaller::setStatusMessage(const QString &msg)
     emit statusMessageChanged();
 }
 
+void RuntimeInstaller::retranslate()
+{
+    switch (m_state) {
+    case State::Fetching:
+        setStatusMessage(tr("Checking for updates…"));
+        break;
+    case State::Downloading:
+        setStatusMessage(tr("Downloading %1 …")
+                             .arg(m_pendingMain.fileName.isEmpty()
+                                      ? tr("runtime")
+                                      : m_pendingMain.fileName));
+        break;
+    case State::Installing:
+        setStatusMessage(tr("Installing %1 …").arg(backendDisplayName(m_pendingBackend)));
+        break;
+    default:
+        break;
+    }
+}
+
 void RuntimeInstaller::setProgress(double p)
 {
     if (qFuzzyCompare(m_progress, p) || p < 0.0 || p > 1.0)

@@ -55,6 +55,8 @@ public:
 
     void shutdown();
 
+    void retranslate();
+
     // --- accessors for properties -----------------------------------------
     int stateInt() const { return static_cast<int>(m_state); }
     bool busy() const { return m_busy; }
