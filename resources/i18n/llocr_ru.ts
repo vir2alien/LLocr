@@ -2448,6 +2448,11 @@
         <translation>Сервер не настроен на автозапуск. Запустите его из главного окна или через Настройки → Рантайм.</translation>
     </message>
     <message>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="319"/>
+        <source>Server stopped</source>
+        <translation>Сервер остановлен</translation>
+    </message>
+    <message>
         <location filename="../../src/runtime/RuntimeController.cpp" line="360"/>
         <source>Failed to query /v1/models: %1</source>
         <translation>Не удалось получить список моделей (/v1/models): %1</translation>

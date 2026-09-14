@@ -315,6 +315,10 @@ void RuntimeController::onServerStateForResolve()
     } else if (m_state == RuntimeState::Failed) {
         setBusyState(AppBusyState::Idle);
         failResolve(describeServerFailure());
+    } else if (m_state == RuntimeState::Stopping
+               || m_state == RuntimeState::Stopped) {
+        setBusyState(AppBusyState::Idle);
+        failResolve(tr("Server stopped"));
     }
 }
 
