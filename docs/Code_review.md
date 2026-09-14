@@ -122,7 +122,7 @@ Pure per-call allocation; cache as a member/static const.
 
 ### Functional bugs
 
-**[D-Q-01] Server-log live indicator is dead code** — `resources/qml/ServerLogWindow.qml:118-146` (ids at :42, :141) — Confidence 100 (4 agents independently)
+FIXED **[D-Q-01] Server-log live indicator is dead code** — `resources/qml/ServerLogWindow.qml:118-146` (ids at :42, :141) — Confidence 100 (4 agents independently)
 `root.liveDot`/`root.liveFlash` read non-existent root properties (they are ids of a header Rectangle and a file-scope Timer) → the guard is always false: the dot never turns green, `liveFlash` never restarts. Had it been written without `root.`, the ids would resolve.
 *Fix*: reference the bare ids, or hoist real root properties and bind the visuals declaratively.
 

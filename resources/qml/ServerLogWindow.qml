@@ -117,10 +117,10 @@ ApplicationWindow {
             onTextChanged: {
                 if (!root.userScrolledUp && vScroller.visible)
                     vScroller.position = 1.0 - vScroller.size
-                if (root.liveDot && root.liveFlash) {
-                    root.liveDot.color = Theme.success
-                    root.liveDot.opacity = 1.0
-                    root.liveFlash.restart()
+                if (liveDot && liveFlash) {
+                    liveDot.color = Theme.success
+                    liveDot.opacity = 1.0
+                    liveFlash.restart()
                 }
             }
         }
@@ -142,8 +142,8 @@ ApplicationWindow {
         interval: 500
         repeat: false
         onTriggered: {
-            root.liveDot.color = Theme.textMuted
-            root.liveDot.opacity = 0.5
+            liveDot.color = Theme.textMuted
+            liveDot.opacity = 0.5
         }
     }
 }
