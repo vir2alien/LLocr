@@ -32,7 +32,7 @@ Full Code Review Report — LLocr (C++ + QML)
 The handler is connected with `Qt::SingleShotConnection`, so it fires on the *first* `stateChanged` emission. For a Ready/Starting server, `m_server->stop()` synchronously emits `Stopping` first; the lambda sees `state != Stopped`, returns, and the connection is auto-released — the later `Stopped` emission never reaches it. Also `restartConn` is captured by value *before* `connect()` returns, so the in-lambda copy is an invalid connection (the `disconnect` is dead code either way). Only the Failed path works.
 *Fix*: drop `SingleShotConnection`; keep a persistent connection that disconnects itself when `Stopped` is observed (captured by reference/member, not by value).
 
-**[D-C-02] Footer "Stop server" during a Managed resolve leaves `busy` stuck forever** — `src/runtime/RuntimeController.cpp:301-319, 537-547` — Confidence 85
+FIXED **[D-C-02] Footer "Stop server" during a Managed resolve leaves `busy` stuck forever** — `src/runtime/RuntimeController.cpp:301-319, 537-547` — Confidence 85
 `onServerStateForResolve()` handles only Ready→fetch and Failed→fail; the `Stopping`/`Stopped` states fall through both branches. The UI explicitly allows stopping while a resolve is in flight (Footer.qml:184-198 with confirmation → `Runtime.stopServer()`), but `stopServer()` never touches the resolve state. Result: `m_resolveCallbacks` keeps the recognition callback, `controller.busy` stays true, the spinner spins until the user presses the *work-panel* Stop (which routes through `cancelPendingStart()`).
 *Fix*: in the `stateChanged` handler, call `failResolve(tr("Server stopped"))` when `m_resolveInProgress` and the state enters Stopping/Stopped (or make `stopServer()` call `cancelPendingStart()` first).
 
@@ -44,7 +44,7 @@ FIXED **[D-C-04] Download-completion signal lost when a task fails synchronously
 `DownloadManager::enqueue()` starts the task synchronously; `DownloadTask::start()` has three synchronous `fail(); emit downloadFinished(false);` paths (mkpath failure, free-space check on a resumable `.part`, URL-scheme rejection). `ModelInstaller::enqueueFile` connects its counting handler only **after** `enqueue()` returns, so the emission is lost → `m_downloadDone` can never reach `m_downloadCount` → `maybeFinishDownloads()` never runs → busy spinner forever, no error. `RuntimeInstaller::enqueueDownload` (`RuntimeInstaller.cpp:395-415`) guards this exact race with a post-connect `task->state()` check and an explicit comment — ModelInstaller was never given the same fix. Realistic trigger: "Not enough free space on the target volume".
 *Fix*: mirror RuntimeInstaller's post-enqueue state check; better, consolidate the completion arithmetic into `DownloadManager` (see D-C-15).
 
-**[D-C-05] GGUF/runtime download has no timeout of any kind** — `src/runtime/DownloadTask.cpp:273` — Confidence 90 (2 agents)
+FIXED **[D-C-05] GGUF/runtime download has no timeout of any kind** — `src/runtime/DownloadTask.cpp:273` — Confidence 90 (2 agents)
 The body-streaming request sets no `setTransferTimeout()` and has no watchdog; a stalled TCP peer (zero-window, half-open after sleep/resume) fires no further signals — the download hangs forever with no failure and no resume. Every other network path in the codebase bounds itself (LlamaClient manual QTimer, ModelCatalog `waitForReply`, ReleaseCatalog `setTransferTimeout`, RuntimeController health poll).
 *Fix*: `setTransferTimeout()` (inactivity timeout — safe for multi-GB transfers) or an inactivity watchdog → `fail()` so the pipeline can resume.
 

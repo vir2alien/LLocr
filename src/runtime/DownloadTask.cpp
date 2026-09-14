@@ -273,6 +273,7 @@ void DownloadTask::issueRequest()
     QNetworkRequest req(m_effectiveUrl);
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::ManualRedirectPolicy);
+    req.setTransferTimeout(30000);
     if (!m_authorization.isEmpty())
         req.setRawHeader("Authorization", m_authorization.toUtf8());
     if (m_resumeRequested && m_receivedBytes > 0 && !m_ifRangeValue.isEmpty()) {
