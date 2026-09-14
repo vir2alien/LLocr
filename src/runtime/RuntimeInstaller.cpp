@@ -506,8 +506,8 @@ void RuntimeInstaller::runInstallAsync()
             return {out, out.warning};
         });
 
-    future.then(this, [this, cudartZip, hasCudart](
-                           const QPair<InstallOutput, QString> &res) {
+    future.then([cudartZip, hasCudart](QPair<InstallOutput, QString> res)
+                    -> QPair<InstallOutput, QString> {
         InstallOutput out = res.first;
         QString warning = res.second;
         // CUDA: unpack the cudart runtime into the same directory as the server
@@ -520,6 +520,10 @@ void RuntimeInstaller::runInstallAsync()
             if (!ex.error.isEmpty())
                 warning = tr("CUDA runtime extraction warning: %1").arg(ex.error);
         }
+        return {out, warning};
+    }).then(this, [this](const QPair<InstallOutput, QString> &res) {
+        const InstallOutput out = res.first;
+        const QString warning = res.second;
         m_downloadedMainZip = QDir(m_paths.runtimeDir()).filePath(m_pendingMain.fileName);
         m_downloadedCudartZip = m_pendingHasCudart
                                     ? QDir(m_paths.runtimeDir()).filePath(m_pendingCudart.fileName)

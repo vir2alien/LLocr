@@ -109,7 +109,7 @@ FIXED **[D-C-20] `DocumentModel` holds every page's full-resolution image in RAM
 100-page PDF ≈ 830 MB before any results; no lazy render/eviction.
 *Fix*: store path+index+size and render on demand (full DPI for the current page, reduced for the strip).
 
-**[D-C-21] cudart archive extraction runs in the `.then()` continuation on the main thread** — `src/runtime/RuntimeInstaller.cpp:490-502` — Confidence 90
+FIXED **[D-C-21] cudart archive extraction runs in the `.then()` continuation on the main thread** — `src/runtime/RuntimeInstaller.cpp:490-502` — Confidence 90
 The main archive is extracted on a worker, but the companion CUDA-runtime zip (hundreds of MB) is extracted inside the main-thread continuation → multi-second UI freeze.
 *Fix*: chain it as a second `QtConcurrent::run` stage.
 
