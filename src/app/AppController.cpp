@@ -7,6 +7,7 @@
 #include <QBuffer>
 #include <QFileInfo>
 #include <QHash>
+#include <QReadWriteLock>
 #include <QRegularExpression>
 #include <QVariantMap>
 #include <QtConcurrent/QtConcurrentRun>
@@ -144,16 +145,19 @@ QImage AppController::currentImage()
 
 QImage AppController::pageImage(int index)
 {
+    QWriteLocker locker(&m_documentLock);
     return m_document.fullImage(index);
 }
 
 QImage AppController::pageThumbnail(int index) const
 {
+    QReadLocker locker(&m_documentLock);
     return m_document.thumbnail(index);
 }
 
 QImage AppController::croppedImage(int pageIndex, int boxIndex)
 {
+    QWriteLocker locker(&m_documentLock);
     if (!m_document.isValidIndex(pageIndex))
         return {};
     const DocumentPage& page = m_document.page(pageIndex);
@@ -227,8 +231,11 @@ void AppController::openFiles(const QVariantList& fileUrls)
 
     for (const QString& path : paths) {
         const int pagesBefore = m_document.pageCount();
-        const bool ok = isPdfPath(path) ? m_document.appendPdf(path)
-                                        : m_document.appendImage(path);
+        const bool ok = [&]() {
+            QWriteLocker locker(&m_documentLock);
+            return isPdfPath(path) ? m_document.appendPdf(path)
+                                   : m_document.appendImage(path);
+        }();
         if (ok) {
             ++addedFiles;
             addedPages += m_document.pageCount() - pagesBefore;
@@ -269,7 +276,10 @@ bool AppController::removePage(int index)
     if (!m_document.isValidIndex(index))
         return false;
 
-    m_document.removePage(index);
+    {
+        QWriteLocker locker(&m_documentLock);
+        m_document.removePage(index);
+    }
 
     if (m_document.isEmpty()) {
         m_editStore.clear();
@@ -310,7 +320,10 @@ bool AppController::movePage(int from, int to)
     if (from == to)
         return true;
 
-    m_document.movePage(from, to);
+    {
+        QWriteLocker locker(&m_documentLock);
+        m_document.movePage(from, to);
+    }
     m_pageModel.movePage(from, to);
 
     m_editStore.remapAfterMove(from, to);

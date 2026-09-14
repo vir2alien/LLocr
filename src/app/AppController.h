@@ -2,6 +2,7 @@
 
 #include <QImage>
 #include <QObject>
+#include <QReadWriteLock>
 #include <QUrl>
 #include <QVariantMap>
 
@@ -152,6 +153,7 @@ private:
     mutable QString m_previewCacheText;
     mutable QString m_previewCacheResult;
     PageEditStore m_editStore;
+    mutable QReadWriteLock m_documentLock;
 };
 
 }  // namespace llocr

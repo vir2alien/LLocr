@@ -56,7 +56,7 @@ Tasks are parented to the manager and appended to `m_tasks` but never removed/de
 If a consumer is destroyed while a resolve is in flight (a Managed start can legitimately stay `Starting` up to the 180 s startup timeout), `completeResolve()` invokes the queued lambda into a destroyed object → use-after-free. Today only the accident of stack-object construction order in `main.cpp` prevents it.
 *Fix*: store `{QPointer<QObject> ctx, std::function}` pairs and skip dead contexts, or move to per-caller QFuture/signal connections.
 
-**[D-C-08] Async image requests read `DocumentModel` on the loader thread with no synchronization** — `src/app/OcrImageProvider.cpp:15-58` (+ `ThumbDelegate.qml:40`, `AppController::pageImage`) — Confidence 82
+FIXED **[D-C-08] Async image requests read `DocumentModel` on the loader thread with no synchronization** — `src/app/OcrImageProvider.cpp:15-58` (+ `ThumbDelegate.qml:40`, `AppController::pageImage`) — Confidence 82
 `ThumbDelegate` sets `asynchronous: true`, so `requestImage` runs on the engine loader thread and reads `m_document` (a plain member, no mutex anywhere in the project) while the GUI thread can open/delete/reorder pages — exactly the moments when `docRevision` bumps re-issue requests → data race on the page vector. (The synchronous preview path is safe.)
 *Fix*: guard `pageImage`/`croppedImage` with a QMutex, or hand the provider immutable snapshots.
 
