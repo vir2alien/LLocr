@@ -12,6 +12,7 @@ the licenses that govern it. Each component's full license text is kept in the
 | Chromium       | Bundled inside Qt WebEngine             | BSD-3-Clause| [`licenses/Chromium-LICENSE.txt`](licenses/Chromium-LICENSE.txt) |
 | marked         | Markdown → HTML in the preview          | MIT         | [`licenses/marked-LICENSE.txt`](licenses/marked-LICENSE.txt) |
 | KaTeX          | LaTeX rendering in the preview          | MIT         | [`licenses/KaTeX-LICENSE.txt`](licenses/KaTeX-LICENSE.txt) |
+| DOMPurify      | HTML sanitization in the preview        | Apache-2.0 OR MPL-2.0 | [`licenses/DOMPurify-LICENSE.txt`](licenses/DOMPurify-LICENSE.txt) |
 | zlib           | ZIP/gzip decompression + CRC-32 in the runtime installer (`ArchiveExtractor`) | zlib License | [`licenses/zlib-LICENSE.txt`](licenses/zlib-LICENSE.txt) |
 
 ---
@@ -76,6 +77,19 @@ the licenses that govern it. Each component's full license text is kept in the
   `resources/preview/KaTeX-LICENSE.txt`.
 - **Copyright:** Copyright (c) 2013-2020 Khan Academy and other contributors.
 - **License text:** [`licenses/KaTeX-LICENSE.txt`](licenses/KaTeX-LICENSE.txt)
+
+---
+
+## DOMPurify
+
+- **Project:** DOMPurify (https://github.com/cure53/DOMPurify)
+- **License:** Apache License 2.0 OR Mozilla Public License 2.0
+- **Usage:** Sanitizes the HTML produced by marked (and the math-restored
+  markup) before it is inserted into the preview DOM, so untrusted text from
+  OCR/LLM output cannot execute scripts. Distributed under
+  `resources/preview/purify.min.js`, version 3.2.4.
+- **Copyright:** Copyright (c) Cure53 and other contributors.
+- **License text:** [`licenses/DOMPurify-LICENSE.txt`](licenses/DOMPurify-LICENSE.txt)
 
 ---
 

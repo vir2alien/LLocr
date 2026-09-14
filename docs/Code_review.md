@@ -160,7 +160,7 @@ FIXED **[D-Q-09] C++ singleton status strings are not retranslated on language s
 
 ### Security
 
-**[D-Q-10] Markdown preview renders unsanitized OCR/LLM HTML — script execution inside WebEngineView** — `resources/preview/preview.html:88-90` (also :50, :61-63; `MarkdownPreview.qml:36-46`) — Confidence 90
+FIXED **[D-Q-10] Markdown preview renders unsanitized OCR/LLM HTML — script execution inside WebEngineView** — `resources/preview/preview.html:88-90` (also :50, :61-63; `MarkdownPreview.qml:36-46`) — Confidence 90
 Vendored **marked v15.0.12** passes raw inline HTML through by design; `el.innerHTML = marked.parse(p.md)` on untrusted OCR/LLM text executes injected JS (inline handlers are not "navigations", so the `onNavigationRequested` blocker doesn't help). The page runs with `localContentCanAccessFileUrls: true`, no CSP, default persistent profile. `restoreMath()` re-inserts stashed `$…$` content post-parse — same class.
 *Fix*: bundle DOMPurify locally and sanitize before `innerHTML` (and after math restore); set `localContentCanAccessFileUrls: false`; add a CSP meta; consider an off-the-record profile. If link-opening is wired later, restrict to http(s) + user confirmation.
 

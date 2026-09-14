@@ -35,7 +35,7 @@ Item {
         backgroundColor: root.bgColor
         url: "qrc:/preview/preview.html"
 
-        settings.localContentCanAccessFileUrls: true
+        settings.localContentCanAccessFileUrls: false
         settings.localContentCanAccessRemoteUrls: false
 
         onContextMenuRequested: (request) => request.accepted = true
