@@ -85,6 +85,8 @@ qt_add_executable(llocr
     runtime/DownloadTask.cpp
     runtime/DownloadManager.h
     runtime/DownloadManager.cpp
+    runtime/DownloadGroup.h
+    runtime/DownloadGroup.cpp
     runtime/RuntimeController.h
     runtime/RuntimeController.cpp
     runtime/RuntimeLog.h
@@ -159,6 +161,12 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/SettingsDialog/ModelsTab.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOButton.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOLabel.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Common/RuntimeBuildsList.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Common/ModelInstalledList.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Common/ModelPresetList.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Common/HfSearchList.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Common/InstallerProgressRow.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Common/InstallerStatusLabel.qml"
 )
 
 qt_add_resources(llocr "app_conf"

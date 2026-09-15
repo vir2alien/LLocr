@@ -18,6 +18,7 @@
 
 #include "app/LaunchProfileStore.h"
 #include "app/SettingsStore.h"
+#include "runtime/DownloadGroup.h"
 #include "runtime/DownloadManager.h"
 #include "runtime/ModelInstaller.h"
 #include "runtime/ModelPresetCatalog.h"
@@ -155,8 +156,12 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
 {
     // Live progress: repaint the bar as data arrives, not only when a
     // file finishes (§ Stage E task 2).
-    connect(m_downloads, &DownloadManager::progressChanged, this,
-            [this]() { emitDownloadProgress(); });
+    m_group = new DownloadGroup(m_downloads, this);
+    connect(m_group, &DownloadGroup::progressChanged, this,
+            [this]() { setProgress(m_group->progress()); });
+    connect(m_group, &DownloadGroup::allFinished, this, [this](bool) {
+        maybeFinishDownloads();
+    });
 
     reloadPresetsInternal();
     refreshInstalled();
@@ -601,9 +606,7 @@ void ModelInstaller::beginDownload()
     setProgress(0.0);
     setStatusMessage(tr("Downloading %1 …").arg(m_pending.title));
 
-    m_downloadCount = 0;
-    m_downloadDone = 0;
-    m_downloadFailed = false;
+    m_group->begin();
 
     QSet<QString> leaves;
     for (const QString &path : m_pending.modelNames)
@@ -650,21 +653,7 @@ void ModelInstaller::enqueueFile(const QString &repoPath, const QString &repo,
     req.sha256 = expectedShaFor(repoPath);
     req.authorization = auth;
 
-    const int row = m_downloads->enqueue(req);
-    DownloadTask *task = m_downloads->taskAt(row);
-    ++m_downloadCount;
-    connect(task, &DownloadTask::downloadFinished, this,
-            [this](bool ok) { onOneDownloadFinished(ok); });
-    const auto st = task->state();
-    if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed
-        || st == DownloadTask::State::Canceled) {
-        ++m_downloadDone;
-        if (st != DownloadTask::State::Completed)
-            m_downloadFailed = true;
-        emitDownloadProgress();
-        if (m_downloadDone == m_downloadCount)
-            maybeFinishDownloads();
-    }
+    m_group->enqueue(req);
 }
 
 QString ModelInstaller::expectedShaFor(const QString &repoPath) const
@@ -719,28 +708,11 @@ bool ModelInstaller::mmprojAlreadyOnDisk() const
     return QString::fromLatin1(hash.result().toHex()) == expected.toLower();
 }
 
-void ModelInstaller::onOneDownloadFinished(bool ok)
-{
-    ++m_downloadDone;
-    if (!ok)
-        m_downloadFailed = true;
-    emitDownloadProgress();
-    if (m_downloadDone == m_downloadCount)
-        maybeFinishDownloads();
-}
-
-void ModelInstaller::emitDownloadProgress()
-{
-    const qint64 total = m_downloads->totalBytes();
-    const qint64 received = m_downloads->receivedBytes();
-    setProgress(total > 0 ? double(received) / double(total) : 0.0);
-}
-
 void ModelInstaller::maybeFinishDownloads()
 {
     if (m_state != State::Downloading)
         return;
-    if (m_downloadFailed) {
+    if (m_group->failed()) {
         setBusy(false);
         setStatusMessage(tr("Download failed — check your connection and try again"));
         setState(State::Error);

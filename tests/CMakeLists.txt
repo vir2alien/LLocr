@@ -489,6 +489,7 @@ target_link_libraries(test_model_installer PRIVATE
 
 target_sources(test_model_installer PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelInstaller.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadGroup.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelRegistry.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelCatalog.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelPreset.cpp
@@ -566,6 +567,7 @@ target_link_libraries(test_install_lock PRIVATE
 
 target_sources(test_install_lock PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimeInstaller.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadGroup.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/DownloadManager.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/DownloadTask.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp

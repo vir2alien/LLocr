@@ -12,6 +12,7 @@
 
 #include "app/SettingsStore.h"
 #include "runtime/ArchiveExtractor.h"
+#include "runtime/DownloadGroup.h"
 #include "runtime/DownloadManager.h"
 #include "runtime/DownloadTask.h"
 #include "runtime/InstallTransaction.h"
@@ -67,6 +68,7 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, QObject *parent)
     , m_paths(settings.runtimeRootDir(), settings.runtimeModelsDir())
     , m_installLock(m_paths.installLockPath())
     , m_downloads(new DownloadManager(this))
+    , m_group(new DownloadGroup(m_downloads, this))
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
     m_platformLabel = QStringLiteral("%1 %2").arg(osLabel(info), info.arch);
@@ -78,16 +80,17 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, QObject *parent)
     else if (!m_availableBackends.isEmpty())
         m_backend = m_availableBackends.first();
 
-    connect(m_downloads, &DownloadManager::progressChanged, this, [this]() {
-        const qint64 total = m_downloads->totalBytes();
-        const qint64 received = m_downloads->receivedBytes();
-        setProgress(total > 0 ? double(received) / double(total) : 0.0);
+    connect(m_group, &DownloadGroup::progressChanged, this, [this]() {
+        setProgress(m_group->progress());
         if (m_state == State::Downloading) {
             setStatusMessage(tr("Downloading %1 …")
                                  .arg(m_pendingMain.fileName.isEmpty()
                                           ? tr("runtime")
                                           : m_pendingMain.fileName));
         }
+    });
+    connect(m_group, &DownloadGroup::allFinished, this, [this](bool) {
+        maybeFinishDownloads();
     });
 
     // §H.6: dedicated install lock, independent of the app instance lock, so
@@ -391,11 +394,9 @@ void RuntimeInstaller::beginDownloads()
     const QString targetDir = m_paths.runtimeDir();
     QDir().mkpath(targetDir);
 
-    m_pendingDownloadCount = 0;
-    m_pendingDownloadDone = 0;
-    m_pendingDownloadFailed = false;
+    m_group->begin();
 
-    enqueueDownload(DownloadTask::Request{
+    m_group->enqueue(DownloadTask::Request{
         QUrl(m_pendingMain.downloadUrl), targetDir, m_pendingMain.fileName,
         m_pendingMain.sha256, QString()});
 
@@ -406,54 +407,17 @@ void RuntimeInstaller::beginDownloads()
         return;
 
     if (m_pendingHasCudart) {
-        enqueueDownload(DownloadTask::Request{
+        m_group->enqueue(DownloadTask::Request{
             QUrl(m_pendingCudart.downloadUrl), targetDir, m_pendingCudart.fileName,
             m_pendingCudart.sha256, QString()});
     }
-}
-
-void RuntimeInstaller::enqueueDownload(const DownloadTask::Request &request)
-{
-    DownloadTask *task = m_downloads->taskAt(m_downloads->enqueue(request));
-    ++m_pendingDownloadCount;
-    connect(task, &DownloadTask::downloadFinished, this,
-            [this](bool ok) { onOneDownloadFinished(ok); });
-    // A task can fail synchronously (e.g. no free space) before the connect
-    // above runs; handle that state here to avoid missing the completion.
-    const auto st = task->state();
-    if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed
-        || st == DownloadTask::State::Canceled) {
-        ++m_pendingDownloadDone;
-        if (st != DownloadTask::State::Completed)
-            m_pendingDownloadFailed = true;
-        emitDownloadProgress();
-        if (m_pendingDownloadDone == m_pendingDownloadCount)
-            maybeFinishDownloads();
-    }
-}
-
-void RuntimeInstaller::onOneDownloadFinished(bool ok)
-{
-    ++m_pendingDownloadDone;
-    if (!ok)
-        m_pendingDownloadFailed = true;
-    emitDownloadProgress();
-    if (m_pendingDownloadDone == m_pendingDownloadCount)
-        maybeFinishDownloads();
-}
-
-void RuntimeInstaller::emitDownloadProgress()
-{
-    const qint64 total = m_downloads->totalBytes();
-    const qint64 received = m_downloads->receivedBytes();
-    setProgress(total > 0 ? double(received) / double(total) : 0.0);
 }
 
 void RuntimeInstaller::maybeFinishDownloads()
 {
     if (m_state != State::Downloading)
         return;
-    if (m_pendingDownloadFailed) {
+    if (m_group->failed()) {
         setBusy(false);
         setStatusMessage(tr("Download failed — check your connection and try again"));
         setState(State::Error);

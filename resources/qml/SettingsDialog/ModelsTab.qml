@@ -10,13 +10,6 @@ Item {
     id: root
     property int preparedIndex: -1
 
-    function fmtBytes(bytes) {
-        if (bytes <= 0) return ""
-        if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + " GiB"
-        if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MiB"
-        return (bytes / 1024).toFixed(1) + " KiB"
-    }
-
     Connections {
         target: ModelInstaller
         function onStateChanged() {
@@ -42,122 +35,32 @@ Item {
             width: parent.width
             spacing: 6
 
-            LLOLabel {
-                Layout.fillWidth: true
-                font.pointSize: Theme.captionSize
-                color: ModelInstaller.state === ModelInstaller.Error ? Theme.error
-                     : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
-                text: ModelInstaller.statusMessage.length
+            InstallerStatusLabel {
+                isError: ModelInstaller.state === ModelInstaller.Error
+                busy: ModelInstaller.busy
+                statusText: ModelInstaller.statusMessage.length
                       ? ModelInstaller.statusMessage
                       : qsTr("Models are stored locally and launched by the managed runtime.")
             }
 
-            RowLayout {
+            InstallerProgressRow {
                 Layout.fillWidth: true
-                Layout.fillHeight: false
-                spacing: 6
-
-                ProgressBar {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 12
-                    visible: ModelInstaller.busy
-                    from: 0
-                    to: 1
-                    value: ModelInstaller.progress
-                }
-
-                LLOButton {
-                    text: qsTr("Cancel")
-                    visible: ModelInstaller.state === ModelInstaller.Downloading
-                    onClicked: ModelInstaller.cancelInstall()
-                }
+                busy: ModelInstaller.busy
+                progress: ModelInstaller.progress
+                cancelVisible: ModelInstaller.state === ModelInstaller.Downloading
+                onCancelClicked: ModelInstaller.cancelInstall()
             }
 
             LLOLabel {
                 text: qsTr("Installed models: ")
             }
 
-            ListView {
+            ModelInstalledList {
                 id: installedList
-                visible: count > 0
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(installedList.count, 3) * 40
-                clip: true
-                model: ModelInstaller.installedCount
-                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                delegate: Rectangle {
-                    required property int index
-                    property var info: ModelInstaller.installedInfo(index)
-                    Connections {
-                        target: ModelInstaller
-                        function onInstalledChanged() {
-                            delegateRoot.info = Qt.binding(function () {
-                                return ModelInstaller.installedInfo(delegateRoot.index)
-                            })
-                        }
-                    }
-                    id: delegateRoot
-                    width: installedList.width
-                    height: 40
-                    color: info.active ? Theme.surfaceSunken : "transparent"
-                    border.color: info.active ? Theme.accent : "transparent"
-                    border.width: info.active ? 1 : 0
-                    radius: Theme.radius
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 6
-                        anchors.rightMargin: 6
-                        spacing: 6
-
-                        LLOLabel {
-                            Layout.fillWidth: true
-                            elide: Text.ElideMiddle
-                            wrapMode: Text.NoWrap
-                            font.pointSize: Theme.captionSize
-                            color: Theme.textPrimary
-                            text: info.title
-                        }
-                        LLOLabel {
-                            Layout.preferredWidth: 70
-                            horizontalAlignment: Text.AlignRight
-                            wrapMode: Text.NoWrap
-                            font.pointSize: Theme.captionSize
-                            color: Theme.textMuted
-                            text: fmtBytes(info.size)
-                        }
-                        LLOLabel {
-                            Layout.preferredWidth: 80
-                            elide: Text.ElideMiddle
-                            wrapMode: Text.NoWrap
-                            font.pointSize: Theme.captionSize
-                            color: info.origin === "managed" ? Theme.textSecondary : Theme.textMuted
-                            text: info.origin === "managed" ? qsTr("managed") : qsTr("external")
-                        }
-                        LLOButton {
-                            text: info.active ? qsTr("Active") : qsTr("Activate")
-                            enabled: !info.active
-                            onClicked: ModelInstaller.setActiveModel(index)
-                        }
-                        LLOButton {
-                            text: qsTr("Remove")
-                            enabled: info.origin === "managed"
-                            onClicked: {
-                                const err = ModelInstaller.removeModel(index)
-                                if (err.length)
-                                    statusMsg.text = err
-                            }
-                        }
-                        LLOButton {
-                            text: qsTr("Open folder")
-                            onClicked: {
-                                const err = ModelInstaller.openModelFolder(index)
-                                if (err.length)
-                                    statusMsg.text = err
-                            }
-                        }
-                    }
-                }
+                Layout.preferredHeight: Math.min(ModelInstaller.installedCount, 3) * 40
+                managementActions: true
+                onActionError: (msg) => statusMsg.text = msg
             }//ListView
 
             LLOLabel {
@@ -180,71 +83,14 @@ Item {
                 text: qsTr("Preset catalog")
             }
 
-            ListView {
+            ModelPresetList {
                 id: presetList
-                visible: count > 0
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(presetList.count, 3) * 36
-                clip: true
-                model: ModelInstaller.presetCount
-                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                delegate: Rectangle {
-                    required property int index
-                    property var pInfo: ModelInstaller.presetInfo(index)
-                    function refreshPresetInfo() {
-                        pInfo = ModelInstaller.presetInfo(index)
-                    }
-                    Connections {
-                        target: ModelInstaller
-                        function onInstalledChanged() { presetRoot.refreshPresetInfo() }
-                        function onPresetsChanged() { presetRoot.refreshPresetInfo() }
-                    }
-                    id: presetRoot
-                    width: presetList.width
-                    height: 36
-                    color: "transparent"
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 6
-                        anchors.rightMargin: 6
-                        spacing: 6
-                        LLOLabel {
-                            Layout.preferredWidth: 160
-                            elide: Text.ElideMiddle
-                            wrapMode: Text.NoWrap
-                            font.pointSize: Theme.captionSize
-                            color: Theme.textPrimary
-                            text: pInfo.title
-                        }
-                        LLOLabel {
-                            Layout.fillWidth: true
-                            elide: Text.ElideMiddle
-                            wrapMode: Text.NoWrap
-                            font.pointSize: Theme.captionSize
-                            color: Theme.textMuted
-                            text: pInfo.repo
-                        }
-                        LLOLabel {
-                            font.pointSize: Theme.captionSize
-                            color: Theme.textMuted
-                            text: pInfo.approxVramGb > 0
-                                  ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb)
-                                  : ""
-                        }
-                        LLOButton {
-                            text: pInfo.installed ? qsTr("Activate") : qsTr("Install")
-                            enabled: !ModelInstaller.busy
-                            onClicked: {
-                                if (pInfo.installed) {
-                                    ModelInstaller.activatePreset(index)
-                                    return
-                                }
-                                ModelInstaller.preparePreset(index)
-                                preparedIndex = index
-                                pickDialog.open()
-                            }
-                        }
-                    }
+                onInstallClicked: (index) => {
+                    ModelInstaller.preparePreset(index)
+                    preparedIndex = index
+                    pickDialog.open()
                 }
             }//ListView
 
@@ -288,52 +134,14 @@ Item {
                 }
             }
 
-            ListView {
+            HfSearchList {
                 id: searchList
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(searchList.count, 3) * 32
-                clip: true
-                visible: ModelInstaller.searchCount > 0
-                model: ModelInstaller.searchCount
-                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-                delegate: Rectangle {
-                    required property int index
-                    property var sInfo: ModelInstaller.searchResult(index)
-                    width: searchList.width
-                    height: 32
-                    color: "transparent"
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 6
-                        anchors.rightMargin: 6
-                        spacing: 6
-                        LLOLabel {
-                            Layout.preferredWidth: 180
-                            elide: Text.ElideMiddle
-                            wrapMode: Text.NoWrap
-                            font.pointSize: Theme.captionSize
-                            color: Theme.textPrimary
-                            text: sInfo.title
-                        }
-                        LLOLabel {
-                            Layout.fillWidth: true
-                            elide: Text.ElideMiddle
-                            wrapMode: Text.NoWrap
-                            font.pointSize: Theme.captionSize
-                            color: Theme.textMuted
-                            text: sInfo.id
-                        }
-                        LLOButton {
-                            text: qsTr("Install")
-                            enabled: !ModelInstaller.busy
-                            onClicked: {
-                                ModelInstaller.installRemote(index)
-                                preparedIndex = -1
-                                pickDialog.open()
-                            }
-                        }
-                    }
+                onInstallClicked: (index) => {
+                    ModelInstaller.installRemote(index)
+                    preparedIndex = -1
+                    pickDialog.open()
                 }
             }
 

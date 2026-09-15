@@ -12,6 +12,7 @@
 
 namespace llocr {
 
+class DownloadGroup;
 class DownloadManager;
 class LaunchProfileStore;
 class RuntimeController;
@@ -140,8 +141,6 @@ private:
                      const QString &commitSha);
     QString expectedShaFor(const QString &repoPath) const;
     bool mmprojAlreadyOnDisk() const;
-    void onOneDownloadFinished(bool ok);
-    void emitDownloadProgress();
     void maybeFinishDownloads();
     void completeInstall();
 
@@ -164,9 +163,8 @@ private:
 
     Pending m_pending;
     int m_prepareGeneration = 0;
-    int m_downloadCount = 0;
-    int m_downloadDone = 0;
-    bool m_downloadFailed = false;
+
+    DownloadGroup *m_group = nullptr;
 
 signals:
     void stateChanged();

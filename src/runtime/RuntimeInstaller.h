@@ -16,6 +16,7 @@
 
 namespace llocr {
 
+class DownloadGroup;
 class DownloadManager;
 class SettingsStore;
 
@@ -189,9 +190,6 @@ private:
                            bool wantCudart) const;
 
     // Download-phase helpers.
-    void enqueueDownload(const DownloadTask::Request &request);
-    void onOneDownloadFinished(bool ok);
-    void emitDownloadProgress();
     void maybeFinishDownloads();
 
     // §H.6 install exclusive-lock helpers (`.install.lock`).
@@ -227,13 +225,11 @@ private:
     ReleaseAsset m_pendingMain;
     ReleaseAsset m_pendingCudart;
     bool m_pendingHasCudart = false;
-    int m_pendingDownloadCount = 0;
-    int m_pendingDownloadDone = 0;
-    bool m_pendingDownloadFailed = false;
     QString m_downloadedMainZip;
     QString m_downloadedCudartZip;
 
     DownloadManager *m_downloads = nullptr;
+    DownloadGroup *m_group = nullptr;
 
     // §H.6: exclusive lock held for the whole install/cleanup duration.
     // Value member (QLockFile is not a QObject), path set in the ctor init-list.

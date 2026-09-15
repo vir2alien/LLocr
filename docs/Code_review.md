@@ -4,7 +4,7 @@ Full Code Review Report — LLocr (C++ + QML)
 **Method**: both review skills' Phase 1 deterministic linting (C++ linter: 229 findings; QML linter: 373), Phase 1b system `qmllint` (Qt 6.10.3, 1,051 warnings), and 12 parallel deep-analysis agents (6 C++ missions + 6 QML missions), deduplicated and confidence-scored. Framework mode: not applicable (no Qt-module signals found).
 
 **Issues found**: 229 + 373 mechanical (mostly style; ~15 verified false-positive clusters, see §4), 46 confirmed deep findings, 15 investigation targets.
-**Status**: 37 of 46 deep findings fixed (all Tier-1 hangs, all user-visible breakage, security XSS, crash-risk D-C-08, the Tier-2 performance block, fix round 2 and fix round 4 — see FIXED marks in §1–§2 and the remaining-work plan at the end of §5). D-Q-11 is partially fixed with a small optional remnant.
+**Status**: 39 of 46 deep findings fixed (all Tier-1 hangs, all user-visible breakage, security XSS, crash-risk D-C-08, the Tier-2 performance block, fix rounds 2, 4 and 5 — see FIXED marks in §1–§2 and the remaining-work plan at the end of §5). D-Q-11 is partially fixed with a small optional remnant.
 
 ---
 
@@ -90,9 +90,10 @@ Same strict finite-number validator implemented twice (drift risk); the determin
 *Fix*: hoist one shared helper; call `detectPlatform()` once and take both fields.
 *Done*: shared `llocr::toFiniteNumber()` in the new `src/core/ValueParsing.h` (also removes the double parse in the Flag→Number paths); `activeProfileId()` calls `detectPlatform()` once.
 
-**[D-C-15] Substantial copy-paste between `RuntimeInstaller` and `ModelInstaller`** — `RuntimeInstaller.cpp:114-157, 357-447` vs `ModelInstaller.cpp:224-259, 570-711` — Confidence 85
+FIXED **[D-C-15] Substantial copy-paste between `RuntimeInstaller` and `ModelInstaller`** — `RuntimeInstaller.cpp:114-157, 357-447` vs `ModelInstaller.cpp:224-259, 570-711` — Confidence 85
 State enums + guarded setters, progress wiring, `emitDownloadProgress`/`onOneDownloadFinished`/`maybeFinishDownloads`, cancel/shutdown pairs, QtConcurrent+`QPair`+`.then()` plumbing are near line-for-line duplicates — and the divergence already produced D-C-04.
 *Fix*: extract a shared download-aggregation helper and an async-step wrapper.
+*Done (fix round 5)*: the download-completion arithmetic (counters, sync-fail post-enqueue re-check, byte-progress aggregation, single `allFinished` per group) extracted into the new `runtime/DownloadGroup` (h+cpp, in `src/CMakeLists.txt` + `test_model_installer`/`test_install_lock` sources); both installers now hold a `m_group` and keep only their own state transitions in `maybeFinishDownloads()`. The async-step wrapper was deliberately NOT extracted: the two flows differ in guard strategy (prepare-generation counter vs chained `.then` continuations with different payloads), so a generic wrapper would be a forced abstraction; the diverged state-guard classes (D-C-04) are now structurally impossible to re-diverge.
 
 FIXED **[D-C-16] `selectedRelease` clamped without NOTIFY; `installUpdate()` over-emits** — `src/runtime/RuntimeInstaller.cpp:265-266, 315-316` — Confidence 84
 Two sites bypass `setSelectedRelease()` in opposite directions (one silent clamp without signal → stale QML binding; one unconditional emit without change).
@@ -198,9 +199,10 @@ FIXED **[D-Q-15] Wizard steps' `Component.onCompleted` side effects run at every
 
 ### Structure & maintainability
 
-**[D-Q-16] Installer UI duplicated across Settings tabs and wizard steps** — `RuntimeTabInternal.qml:176-409` ≈ `StepRuntime.qml:93-204`; `ModelsTab.qml:37-241` ≈ `StepModel.qml:59-346` — Confidence 90
+FIXED **[D-Q-16] Installer UI duplicated across Settings tabs and wizard steps** — `RuntimeTabInternal.qml:176-409` ≈ `StepRuntime.qml:93-204`; `ModelsTab.qml:37-241` ≈ `StepModel.qml:59-346` — Confidence 90
 13 duplicated blocks (backend combo, status label formula, builds/models ListView + ~60-line delegate, progress+cancel gating, update check, license dialogs); the fragile `Connections { onXChanged → var = Qt.binding(...) }` re-bind workaround appears **9 times**; the copies have already diverged (backendDisplay fallback exists in only one).
 *Fix*: extract `Common/` components (status row, builds list, models list) or drive rows from real QAbstractListModels; delete the re-bind glue.
+*Done (fix round 5)*: five new `Common/` components — `RuntimeBuildsList` (delegate + refresh glue + unified backendDisplay fallback + activate logic; `scrollable`/`rowHeight` props), `ModelInstalledList` (glue + unified busy-gate on Activate; `managementActions` toggles size/Remove/Open-folder; `actionError` signal), `ModelPresetList` (glue + Activate inside; `installClicked` signal), `HfSearchList` (`installClicked`), `InstallerProgressRow` (progress + Cancel gating) and `InstallerStatusLabel` (the shared error/busy/muted color formula). All 10 re-bind glue blocks deleted; license/update dialogs stay in the consumers (they genuinely differ).
 
 FIXED **[D-Q-17] 28+ raw integer state comparisons in QML against three C++ enums** — `Footer.qml` (6), `RuntimeTabInternal.qml` (14), `ModelsTab.qml` (3), `StepRuntime.qml` (7), `StepModel.qml` (2) — Confidence 92
 `Runtime.state === 0..5`, `RuntimeInstaller.state === 0/1/3/4/6`, `ModelInstaller.state === 2/3/4`, `busyState === 1`, plus tab indices (`selectTab(1)`, `openSettingsRequested(4)`) and the wizard's magic `4`. Any C++ enum reordering silently flips dot colors, disables wrong buttons. (Also: `RequesetTabNum` typo in SettingsDialog.qml:24, and `savaValues()` typo in RuntimeTabExternal.qml:18 / UITab.qml:19 / callers.)
@@ -328,10 +330,14 @@ Model protocol: all five `data()` switches cover their roles; begin/end pairs ba
 
 1. **D-Q-17 named enums**: `RuntimeState`/`AppBusyState` moved into `RuntimeController` as `Q_ENUM`s (QML: `Runtime.Ready`, `Runtime.StartingRuntime`, …); `RuntimeState.h` now holds only type aliases so the C++ spelling is unchanged. All 32 raw `=== N` state comparisons in QML migrated to named enum values across Footer, RuntimeTabInternal, ModelsTab, StepModel, StepRuntime. `ModelInstaller`/`RuntimeInstaller` state enums already had `Q_ENUM` and are now used by name in QML. En route: `RuntimeController.h` dropped the unused `<QQmlEngine>` include and inert `QML_ELEMENT`/`QML_SINGLETON` macros (registration is manual) — the alias header would otherwise drag QtQml include paths into non-QML test targets; `test_server_process.cpp` compares these enums via `int(...)` casts so QTest's enum formatting (`QMetaEnum::fromType`) does not demand the moc symbol in a target that doesn't compile `RuntimeController.cpp`. Behavior change (intentional, I-09 precedent): the Footer badge click in Managed mode with a not-configured runtime now opens the **Runtime** tab (`RuntimeTabNum`), not Launch (`4`).
 
+**Fixed (fix round 5, verified by build + ctest 24/24 + qmllint):**
+
+1. **D-C-15 shared download aggregation**: new `runtime/DownloadGroup` owns the install download accounting (counters, the sync-fail post-enqueue re-check from D-C-04, byte-progress aggregation, single `allFinished` per group); `RuntimeInstaller`/`ModelInstaller` keep only their state transitions. Registered in `src/CMakeLists.txt` and in the `test_model_installer`/`test_install_lock` source lists. The generic async-step wrapper was declined — the two async flows differ in guard strategy (generation counter vs `.then` chain shape), a wrapper would be a forced abstraction.
+2. **D-Q-16 shared installer components**: `Common/RuntimeBuildsList`, `Common/ModelInstalledList`, `Common/ModelPresetList`, `Common/HfSearchList`, `Common/InstallerProgressRow`, `Common/InstallerStatusLabel` replace the four duplicated installer blocks in RuntimeTabInternal/StepRuntime/ModelsTab/StepModel; all 10 `Connections`-rebind glue blocks are gone (refresh helpers live inside the components). Reconciled divergences: backendDisplay fallback now everywhere; Activate is busy-gated everywhere; preset title column unified at 150 px. License/update dialogs stay consumer-side (they genuinely differ).
+
 **Remaining queue (suggested order):**
 
 1. **Structure (bigger refactors, schedule deliberately):**
-   - D-C-15 / D-Q-16 — extract shared installer components (status row, lists) and one download-aggregation helper (this also subsumes the D-C-04-style divergence class);
    - D-Q-18 — `pragma ComponentBehavior: Bound` + required properties migration (file-by-file).
 2. **ASan / verify-only:** I-04/I-05/I-06/I-07 — needs an ASan-instrumented build (I-05 note: `OcrModel` is not a QObject, so "parent the watcher" is not applicable without a larger refactor). Investigations I-01, I-02, I-14, I-15 (§3) — each has a verify recipe; I-15 partially mitigated by the D-Q-15/D-Q-21 changes. I-10…I-13 — ✅ fixed in round 3.
 3. **Optional leftovers:** D-Q-11 per-page URL keying (thumbnails are small now); D-Q-12 (preview sourceSize) and D-Q-14 (sticky Loader) if preview perf is still noticeable after the structural fixes.

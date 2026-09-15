@@ -71,19 +71,18 @@ Item {
                         .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.recommendedBackend))
                 }
 
-                LLOLabel {
+                InstallerStatusLabel {
                     Layout.fillWidth: true
-                    font.pointSize: Theme.captionSize
-                    color: RuntimeInstaller.state === RuntimeInstaller.Error ? Theme.error
-                         : (RuntimeInstaller.busy ? Theme.textSecondary : Theme.textMuted)
-                    text: RuntimeInstaller.installedBuild.length
+                    isError: RuntimeInstaller.state === RuntimeInstaller.Error
+                    busy: RuntimeInstaller.busy
+                    statusText: RuntimeInstaller.installedBuild.length
                           ? qsTr("Installed: %1 (%2)")
                                 .arg(RuntimeInstaller.installedBuild)
                                 .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.installedBackend))
                           : (RuntimeInstaller.state === RuntimeInstaller.Idle
                              ? qsTr("Ready to install.")
                              : RuntimeInstaller.statusMessage)
-                    visible: text.length > 0
+                    visible: statusText.length > 0
                 }
 
                 LLOLabel {
@@ -93,79 +92,11 @@ Item {
                     color: Theme.textPrimary
                 }
 
-                ListView {
+                RuntimeBuildsList {
                     id: wizardBuildsList
-                    visible: RuntimeInstaller.installedBuildCount > 0
                     Layout.fillWidth: true
                     Layout.preferredHeight: Math.min(RuntimeInstaller.installedBuildCount, 3) * 34
-                    clip: true
-                    model: RuntimeInstaller.installedBuildCount
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-                    delegate: Rectangle {
-                        id: wizardBuildRow
-                        required property int index
-                        property var info: RuntimeInstaller.installedBuildInfo(index)
-                        width: wizardBuildsList.width
-                        height: 34
-                        color: info.active ? Theme.surfaceSunken : "transparent"
-                        border.color: info.active ? Theme.accent : "transparent"
-                        border.width: info.active ? 1 : 0
-                        radius: Theme.radius
-
-                        Connections {
-                            target: RuntimeInstaller
-                            function onInstalledBuildsChanged() {
-                                wizardBuildRow.info = Qt.binding(function () {
-                                    return RuntimeInstaller.installedBuildInfo(wizardBuildRow.index)
-                                })
-                            }
-                            function onInstalledChanged() {
-                                wizardBuildRow.info = Qt.binding(function () {
-                                    return RuntimeInstaller.installedBuildInfo(wizardBuildRow.index)
-                                })
-                            }
-                        }
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 6
-                            anchors.rightMargin: 6
-                            spacing: 6
-
-                            LLOLabel {
-                                Layout.preferredWidth: 110
-                                elide: Text.ElideMiddle
-                                wrapMode: Text.NoWrap
-                                font.pointSize: Theme.captionSize
-                                color: Theme.textPrimary
-                                text: wizardBuildRow.info.build.length
-                                      ? wizardBuildRow.info.build : wizardBuildRow.info.tag
-                            }
-                            LLOLabel {
-                                Layout.fillWidth: true
-                                elide: Text.ElideMiddle
-                                wrapMode: Text.NoWrap
-                                font.pointSize: Theme.captionSize
-                                color: Theme.textMuted
-                                text: wizardBuildRow.info.binaryFound
-                                      ? (wizardBuildRow.info.backendDisplay.length
-                                         ? wizardBuildRow.info.backendDisplay
-                                         : wizardBuildRow.info.tag)
-                                      : qsTr("%1 — binary missing").arg(wizardBuildRow.info.tag)
-                            }
-                            LLOButton {
-                                text: wizardBuildRow.info.active ? qsTr("Active") : qsTr("Activate")
-                                enabled: !wizardBuildRow.info.active && !RuntimeInstaller.busy
-                                         && Runtime.state !== Runtime.Starting && wizardBuildRow.info.binaryFound
-                                onClicked: {
-                                    if (Runtime.state === Runtime.Ready)
-                                        Runtime.stopServer()
-                                    RuntimeInstaller.activateBuild(wizardBuildRow.index)
-                                }
-                            }
-                        }
-                    }
+                    rowHeight: 34
                 }
 
                 ProgressBar {

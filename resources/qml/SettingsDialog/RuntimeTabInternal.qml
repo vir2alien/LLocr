@@ -172,7 +172,7 @@ ScrollView {
             text: qsTr("Installed builds")
         }
 
-        ListView {
+        RuntimeBuildsList {
             id: buildsList
             visible: RuntimeInstaller.installedBuildCount > 0
             Layout.fillWidth: true
@@ -180,76 +180,7 @@ ScrollView {
             // scrolls the whole tab, so a long list just grows (a nested
             // interactive Flickable would trap the wheel).
             Layout.preferredHeight: RuntimeInstaller.installedBuildCount * 36
-            clip: true
-            model: RuntimeInstaller.installedBuildCount
-            interactive: false
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOff }
-
-            delegate: Rectangle {
-                id: buildRow
-                required property int index
-                property var info: RuntimeInstaller.installedBuildInfo(index)
-                width: buildsList.width
-                height: 36
-                color: info.active ? Theme.surfaceSunken : "transparent"
-                border.color: info.active ? Theme.accent : "transparent"
-                border.width: info.active ? 1 : 0
-                radius: Theme.radius
-
-                Connections {
-                    target: RuntimeInstaller
-                    function onInstalledBuildsChanged() {
-                        buildRow.info = Qt.binding(function () {
-                            return RuntimeInstaller.installedBuildInfo(buildRow.index)
-                        })
-                    }
-                    function onInstalledChanged() {
-                        buildRow.info = Qt.binding(function () {
-                            return RuntimeInstaller.installedBuildInfo(buildRow.index)
-                        })
-                    }
-                }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 6
-                    anchors.rightMargin: 6
-                    spacing: 6
-
-                    LLOLabel {
-                        Layout.preferredWidth: 110
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textPrimary
-                        text: buildRow.info.build.length
-                              ? buildRow.info.build : buildRow.info.tag
-                    }
-                    LLOLabel {
-                        Layout.fillWidth: true
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textMuted
-                        text: buildRow.info.binaryFound
-                              ? buildRow.info.tag
-                              : qsTr("%1 — binary missing").arg(buildRow.info.tag)
-                    }
-                    LLOButton {
-                        text: buildRow.info.active ? qsTr("Active") : qsTr("Activate")
-                        enabled: !buildRow.info.active && !RuntimeInstaller.busy
-                                 && Runtime.state !== Runtime.Starting && buildRow.info.binaryFound
-                        onClicked: {
-                            // Applying a different binary requires a restart,
-                            // so a Ready server is stopped first (same
-                            // discipline as the update plaque above).
-                            if (Runtime.state === Runtime.Ready)
-                                Runtime.stopServer()
-                            RuntimeInstaller.activateBuild(buildRow.index)
-                        }
-                    }
-                }
-            }
+            scrollable: false
         }
 
         Rectangle {
@@ -355,13 +286,11 @@ ScrollView {
 
         }
 
-        LLOLabel {
+        InstallerStatusLabel {
             id: installStatusLabel
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: RuntimeInstaller.state === RuntimeInstaller.Error ? Theme.error
-                 : (RuntimeInstaller.busy ? Theme.textSecondary : Theme.textMuted)
-            text: RuntimeInstaller.state === RuntimeInstaller.Idle
+            isError: RuntimeInstaller.state === RuntimeInstaller.Error
+            busy: RuntimeInstaller.busy
+            statusText: RuntimeInstaller.state === RuntimeInstaller.Idle
                   ? qsTr("Open this tab or press \u201cCheck for updates\u201d to load releases.")
                   : RuntimeInstaller.statusMessage
         }

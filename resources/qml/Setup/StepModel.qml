@@ -58,12 +58,10 @@ Item {
                        + "preset, find one on Hugging Face, or point at a local file.")
         }
 
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: ModelInstaller.state === ModelInstaller.Error ? Theme.error
-                 : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
-            text: ModelInstaller.statusMessage.length
+        InstallerStatusLabel {
+            isError: ModelInstaller.state === ModelInstaller.Error
+            busy: ModelInstaller.busy
+            statusText: ModelInstaller.statusMessage.length
                   ? ModelInstaller.statusMessage
                   : (root.complete
                      ? qsTr("Model selected: %1").arg(Settings.launchModelPath)
@@ -76,65 +74,11 @@ Item {
             color: Theme.textPrimary
         }
 
-        ListView {
+        ModelInstalledList {
             id: installedList
-            visible: ModelInstaller.installedCount > 0
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(ModelInstaller.installedCount, 3) * 34
-            clip: true
-            model: ModelInstaller.installedCount
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-            delegate: Rectangle {
-                id: installedRow
-                required property int index
-                property var info: ModelInstaller.installedInfo(index)
-                width: installedList.width
-                height: 34
-                color: info.active ? Theme.surfaceSunken : "transparent"
-                border.color: info.active ? Theme.accent : "transparent"
-                border.width: info.active ? 1 : 0
-                radius: Theme.radius
-
-                Connections {
-                    target: ModelInstaller
-                    function onInstalledChanged() {
-                        installedRow.info = Qt.binding(function () {
-                            return ModelInstaller.installedInfo(installedRow.index)
-                        })
-                    }
-                }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 6
-                    anchors.rightMargin: 6
-                    spacing: 6
-
-                    LLOLabel {
-                        Layout.preferredWidth: 200
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textPrimary
-                        text: installedRow.info.title
-                    }
-                    LLOLabel {
-                        Layout.fillWidth: true
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textMuted
-                        text: installedRow.info.origin === "managed"
-                              ? qsTr("managed") : qsTr("external")
-                    }
-                    LLOButton {
-                        text: installedRow.info.active ? qsTr("Active") : qsTr("Activate")
-                        enabled: !installedRow.info.active && !ModelInstaller.busy
-                        onClicked: ModelInstaller.setActiveModel(installedRow.index)
-                    }
-                }
-            }
+            rowHeight: 34
         }
 
         LLOLabel {
@@ -147,25 +91,13 @@ Item {
                 .arg(root.gib(root.estRam).toFixed(1))
         }
 
-        RowLayout {
+        InstallerProgressRow {
             Layout.fillWidth: true
             Layout.fillHeight: false
-            spacing: 6
-
-            ProgressBar {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 12
-                visible: ModelInstaller.busy
-                from: 0
-                to: 1
-                value: ModelInstaller.progress
-            }
-
-            LLOButton {
-                text: qsTr("Cancel")
-                visible: ModelInstaller.state === ModelInstaller.Downloading
-                onClicked: ModelInstaller.cancelInstall()
-            }
+            busy: ModelInstaller.busy
+            progress: ModelInstaller.progress
+            cancelVisible: ModelInstaller.state === ModelInstaller.Downloading
+            onCancelClicked: ModelInstaller.cancelInstall()
         }
 
         Frame {
@@ -196,74 +128,15 @@ Item {
                         LLOLabel {
                             text: qsTr("Start from a preset")
                         }
-                        ListView {
+                        ModelPresetList {
                             id: presetList
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            clip: true
-                            model: ModelInstaller.presetCount
-                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                            delegate: Rectangle {
-                                required property int index
-                                property var pInfo: ModelInstaller.presetInfo(index)
-                                function refreshPresetInfo() {
-                                    pInfo = ModelInstaller.presetInfo(index)
-                                }
-                                Connections {
-                                    target: ModelInstaller
-                                    function onInstalledChanged() { presetRoot.refreshPresetInfo() }
-                                    function onPresetsChanged() { presetRoot.refreshPresetInfo() }
-                                }
-                                id: presetRoot
-                                width: presetList.width
-                                height: 34
-                                color: "transparent"
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 4
-                                    anchors.rightMargin: 4
-                                    spacing: 6
-                                    LLOLabel {
-                                        Layout.preferredWidth: 150
-                                        elide: Text.ElideMiddle
-                                        wrapMode: Text.NoWrap
-                                        font.pointSize: Theme.captionSize
-                                        color: Theme.textPrimary
-                                        text: pInfo.title
-                                    }
-                                    LLOLabel {
-                                        Layout.fillWidth: true
-                                        elide: Text.ElideMiddle
-                                        wrapMode: Text.NoWrap
-                                        font.pointSize: Theme.captionSize
-                                        color: Theme.textMuted
-                                        text: pInfo.repo
-                                    }
-                                    LLOLabel {
-                                        font.pointSize: Theme.captionSize
-                                        color: Theme.textMuted
-                                        text: pInfo.approxVramGb > 0
-                                              ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb) : ""
-                                    }
-                                    LLOButton {
-                                        // An installed preset is already on disk
-                                        // (e.g. before a settings reset): offer
-                                        // activation instead of a dead-end
-                                        // disabled Install.
-                                        text: pInfo.installed ? qsTr("Activate")
-                                                              : qsTr("Install")
-                                        enabled: !ModelInstaller.busy
-                                        onClicked: {
-                                            if (pInfo.installed) {
-                                                ModelInstaller.activatePreset(index)
-                                                return
-                                            }
-                                            prepareDialog.pendingIndex = index
-                                            ModelInstaller.preparePreset(index)
-                                            prepareDialog.open()
-                                        }
-                                    }
-                                }
+                            rowHeight: 34
+                            onInstallClicked: (index) => {
+                                prepareDialog.pendingIndex = index
+                                ModelInstaller.preparePreset(index)
+                                prepareDialog.open()
                             }
                         }
                     }//ColumnLayout
@@ -289,51 +162,15 @@ Item {
                                 }
                             }
                         }
-                        ListView {
+                        HfSearchList {
                             id: searchList
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            clip: true
-                            visible: ModelInstaller.searchCount > 0
-                            model: ModelInstaller.searchCount
-                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                            delegate: Rectangle {
-                                required property int index
-                                property var sInfo: ModelInstaller.searchResult(index)
-                                width: searchList.width
-                                height: 30
-                                color: "transparent"
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 4
-                                    anchors.rightMargin: 4
-                                    spacing: 6
-                                    LLOLabel {
-                                        Layout.preferredWidth: 150
-                                        elide: Text.ElideMiddle
-                                        wrapMode: Text.NoWrap
-                                        font.pointSize: Theme.captionSize
-                                        color: Theme.textPrimary
-                                        text: sInfo.title
-                                    }
-                                    LLOLabel {
-                                        Layout.fillWidth: true
-                                        elide: Text.ElideMiddle
-                                        wrapMode: Text.NoWrap
-                                        font.pointSize: Theme.captionSize
-                                        color: Theme.textMuted
-                                        text: sInfo.id
-                                    }
-                                    LLOButton {
-                                        text: qsTr("Install")
-                                        enabled: !ModelInstaller.busy
-                                        onClicked: {
-                                            prepareDialog.pendingIndex = -1
-                                            ModelInstaller.installRemote(index)
-                                            prepareDialog.open()
-                                        }
-                                    }
-                                }
+                            rowHeight: 30
+                            onInstallClicked: (index) => {
+                                prepareDialog.pendingIndex = -1
+                                ModelInstaller.installRemote(index)
+                                prepareDialog.open()
                             }
                         }
                         LLOLabel {
