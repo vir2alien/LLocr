@@ -288,15 +288,7 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases,
     if (m_selectedRelease >= m_releases.size())
         setSelectedRelease(0);
 
-    const int latestBuild = m_releases.first().build;
-    const int cur = installedBuild().startsWith(QLatin1Char('b'))
-                        ? installedBuild().mid(1).toInt()
-                        : -1;
-    const bool upd = cur >= 0 && latestBuild > cur;
-    if (m_hasUpdate != upd) {
-        m_hasUpdate = upd;
-        emit hasUpdateChanged();
-    }
+    recomputeHasUpdate();
 
     QDate newest = QDate::fromString(m_releases.first().publishedAt.left(10), Qt::ISODate);
     setStatusMessage(tr("Latest release: %1 (%2)")
@@ -529,9 +521,23 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
     // The new build directory just appeared on disk; refresh the scan so the
     // installed-builds list (and its active flag) is current.
     rescanInstalledBuilds();
+    recomputeHasUpdate();
 
     setState(State::Installed);
     releaseInstallLock();
+}
+
+void RuntimeInstaller::recomputeHasUpdate()
+{
+    const int latestBuild = m_releases.isEmpty() ? -1 : m_releases.first().build;
+    const int cur = installedBuild().startsWith(QLatin1Char('b'))
+                        ? installedBuild().mid(1).toInt()
+                        : -1;
+    const bool upd = cur >= 0 && latestBuild > cur;
+    if (m_hasUpdate != upd) {
+        m_hasUpdate = upd;
+        emit hasUpdateChanged();
+    }
 }
 
 void RuntimeInstaller::cancelInstall()
@@ -660,6 +666,7 @@ QString RuntimeInstaller::activateBuild(int index)
                                         .arg(backendDisplayName(b.backend))));
     emit installedChanged();
     rescanInstalledBuilds();   // refresh the active flags in the list
+    recomputeHasUpdate();
     return QString();
 }
 

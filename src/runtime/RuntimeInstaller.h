@@ -177,6 +177,7 @@ private:
 
     void startCatalogFetch();
     void onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error);
+    void recomputeHasUpdate();
 
     // Pipeline steps, each invoked on the main thread.
     void beginInstall(const QString &backend);
