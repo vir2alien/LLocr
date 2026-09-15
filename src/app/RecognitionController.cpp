@@ -1,6 +1,5 @@
 #include "app/RecognitionController.h"
 
-#include <QDebug>
 #include <QFutureWatcher>
 
 #include <functional>
@@ -75,7 +74,7 @@ QString RecognitionController::promptText() const
 void RecognitionController::ensureConnectionReady()
 {
     m_connectionReady = false;
-    m_runtime.ensureConnectionReady([this](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, [this](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
         if (conn.baseUrl.isEmpty()) {
@@ -106,7 +105,17 @@ void RecognitionController::recognizePage(int index)
     m_recognizingIndex = index;
     emit statusRequested(tr("Recognizing page %1 of %2…").arg(index + 1).arg(m_totalPages));
 
-    const QImage image = m_imageProvider(index);
+    QString imageError;
+    const QImage image = m_imageProvider(index, imageError);
+    if (image.isNull()) {
+        emit statusRequested(tr("Error on page %1: %2")
+                                 .arg(index + 1)
+                                 .arg(imageError.isEmpty()
+                                          ? tr("the page has no image to recognize")
+                                          : imageError));
+        finishRun();
+        return;
+    }
     const OcrRequest request = buildRequest(image, m_connection);
     m_watcher.setFuture(m_model->recognize(request, buildConfig(m_connection)));
 }
@@ -146,7 +155,6 @@ void RecognitionController::onRecognitionFinished()
             emit statusRequested(tr("Stopped at page %1.").arg(index + 1));
         else {
             emit statusRequested(tr("Error on page %1: %2").arg(index + 1).arg(raw.errorMessage));
-            qDebug() << tr("Error on page %1: %2").arg(index + 1).arg(raw.errorMessage);
         }
         finishRun();
         return;

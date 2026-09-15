@@ -50,13 +50,13 @@ public:
 
     bool isValidIndex(int index) const;
 
-    QImage fullImage(int index);
+    QImage fullImage(int index, QString *error = nullptr);
     const QImage& thumbnail(int index) const;
 
 private:
-    bool decodeSource(DocumentPage& page);
-    QImage renderFull(const DocumentPage& page);
-    void ensureFullImage(int index);
+    bool decodeSource(DocumentPage& page, QString *error = nullptr);
+    QImage renderFull(const DocumentPage& page, QString *error = nullptr);
+    void ensureFullImage(int index, QString *error = nullptr);
     void evictFullImages();
     QPdfDocument* pdfFor(const QString& path);
 

@@ -7,6 +7,10 @@
 
 namespace llocr {
 
+namespace {
+constexpr int kMaxFinishedTasks = 10;
+}
+
 DownloadManager::DownloadManager(QObject *parent)
     : QAbstractListModel(parent)
     , m_nam(new QNetworkAccessManager(this))
@@ -58,6 +62,8 @@ int DownloadManager::enqueue(const DownloadTask::Request &request)
 
     recalcAggregate();
     startNextQueued();
+    QMetaObject::invokeMethod(this, [this]() { evictFinishedTasks(); },
+                              Qt::QueuedConnection);
     return row;
 }
 
@@ -212,7 +218,28 @@ void DownloadManager::onTaskFinished(DownloadTask *task, bool ok)
     recalcAggregate();
     // Defer so a task that finished synchronously (free-space/mkdir failure)
     // cannot re-enter startNextQueued() and double-start its successors.
-    QMetaObject::invokeMethod(this, [this]() { startNextQueued(); }, Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, [this]() { startNextQueued(); evictFinishedTasks(); },
+                              Qt::QueuedConnection);
+}
+
+void DownloadManager::evictFinishedTasks()
+{
+    QList<int> terminalRows;
+    for (int i = 0; i < m_tasks.size(); ++i) {
+        const auto st = m_tasks.at(i)->state();
+        if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed
+            || st == DownloadTask::State::Canceled)
+            terminalRows.append(i);
+    }
+    const int excess = terminalRows.size() - kMaxFinishedTasks;
+    for (int k = 0; k < excess; ++k) {
+        const int row = terminalRows.at(k) - k;
+        beginRemoveRows(QModelIndex(), row, row);
+        DownloadTask *task = m_tasks.takeAt(row);
+        endRemoveRows();
+        task->disconnect(this);
+        task->deleteLater();
+    }
 }
 
 }  // namespace llocr

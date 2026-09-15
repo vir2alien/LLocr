@@ -28,7 +28,9 @@ Item {
         target: LaunchProfiles
         function onProfileChanged() { refreshEstimate() }
     }
-    Component.onCompleted: {
+    onVisibleChanged: {
+        if (!visible)
+            return
         refreshEstimate()
         // Re-read the registry so models installed before a settings reset
         // (index.json survives on disk) show up for activation without a

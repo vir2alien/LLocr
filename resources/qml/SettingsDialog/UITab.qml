@@ -16,9 +16,9 @@ ColumnLayout {
         themeBox.currentIndex = themeIdx >= 0 ? themeIdx : 0
     }
 
-    function savaValues() {
+    function saveValues() {
         Settings.language = ["system", "en", "ru"][languageBox.currentIndex];
-        uiController.mode = [UiController.System, UiController.Light, UiController.Dark][themeBox.currentIndex];
+        UiController.mode = [UiController.System, UiController.Light, UiController.Dark][themeBox.currentIndex];
     }
 
     LLOLabel {

@@ -21,7 +21,7 @@ Dialog {
 
     property var logWindowRef: null
 
-    enum TabsEnum {UiTabNum = 0, RequesetTabNum = 1, OutputTabNum = 2, RuntimeTabNum = 3, LaunchTabNum = 4, ModelsTabNum = 5}
+    enum TabsEnum {UiTabNum = 0, RequestTabNum = 1, OutputTabNum = 2, RuntimeTabNum = 3, LaunchTabNum = 4, ModelsTabNum = 5}
 
     anchors.centerIn: parent
     width: 520
@@ -65,7 +65,7 @@ Dialog {
         switch (index) {
         case SettingsDialog.TabsEnum.UiTabNum:
             uiTab.loadValues(); break;
-        case SettingsDialog.TabsEnum.RequesetTabNum:
+        case SettingsDialog.TabsEnum.RequestTabNum:
             requestTab.loadValues(); break;
         case SettingsDialog.TabsEnum.OutputTabNum: {
             var idx = parserBox.model.indexOf(Settings.parserId)
@@ -100,7 +100,7 @@ Dialog {
     }
 
     onAccepted: {
-        uiTab.savaValues();
+        uiTab.saveValues();
         requestTab.saveValues();
         runtimeTab.saveValues();
         launchTab.saveValues();
@@ -146,7 +146,7 @@ Dialog {
                     id: parserBox
                     Layout.fillWidth: true
                     implicitHeight: Theme.controlHeight
-                    model: controller.parserNames
+                    model: Controller.parserNames
                 }
 
                 Item { implicitHeight: 6 }

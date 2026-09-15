@@ -17,12 +17,16 @@ namespace llocr {
 
 QString OcrModel::encodeImageDataUrl(const QImage &image, const QString &format, int quality)
 {
+    if (image.isNull())
+        return QString();
+
     const QString fmt = format.isEmpty() ? QStringLiteral("png") : format.toLower();
 
     QByteArray raw;
     QBuffer buffer(&raw);
     buffer.open(QIODevice::WriteOnly);
-    image.save(&buffer, fmt.toUpper().toLatin1().constData(), quality);
+    if (!image.save(&buffer, fmt.toUpper().toLatin1().constData(), quality))
+        return QString();
     buffer.close();
 
     return QStringLiteral("data:image/%1;base64,%2")
@@ -89,7 +93,9 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
 
     auto *encodeWatcher = new QFutureWatcher<QByteArray>();
     encodeWatcher->setFuture(QtConcurrent::run([this, request, config]() {
-        const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("jpeg"), 90);
+        const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("png"));
+        if (dataUrl.isEmpty())
+            return QByteArray();
         return buildRequestBody(request, dataUrl);
     }));
     QObject::connect(encodeWatcher, &QFutureWatcher<QByteArray>::finished, encodeWatcher,
@@ -98,6 +104,18 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
                          const QByteArray body = encodeWatcher->future().resultCount() > 0
                                                      ? encodeWatcher->result()
                                                      : QByteArray();
+                         if (body.isEmpty()) {
+                             const bool hasResult =
+                                 encodeWatcher->future().resultCount() > 0;
+                             promise->addResult(OcrResult::makeError(
+                                 QCoreApplication::translate("OcrModel",
+                                     "Failed to encode the page image")
+                                     + (hasResult
+                                            ? QStringLiteral(" (image is null)")
+                                            : QStringLiteral(" (out of memory?)"))));
+                             promise->finish();
+                             return;
+                         }
                          auto *watcher = new QFutureWatcher<HttpResponse>();
                          watcher->setFuture(m_client.postJson(LlamaClient::endpointUrl(config.baseUrl), body,
                                                               config.apiKey, config.timeoutMs));

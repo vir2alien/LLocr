@@ -4,7 +4,7 @@ Full Code Review Report — LLocr (C++ + QML)
 **Method**: both review skills' Phase 1 deterministic linting (C++ linter: 229 findings; QML linter: 373), Phase 1b system `qmllint` (Qt 6.10.3, 1,051 warnings), and 12 parallel deep-analysis agents (6 C++ missions + 6 QML missions), deduplicated and confidence-scored. Framework mode: not applicable (no Qt-module signals found).
 
 **Issues found**: 229 + 373 mechanical (mostly style; ~15 verified false-positive clusters, see §4), 46 confirmed deep findings, 15 investigation targets.
-**Status**: 21 of 46 deep findings fixed (all Tier-1 hangs, all user-visible breakage, security XSS, crash-risk D-C-08, and the Tier-2 performance block); see FIXED marks in §1–§2 and the remaining-work plan at the end of §5.
+**Status**: 36 of 46 deep findings fixed (all Tier-1 hangs, all user-visible breakage, security XSS, crash-risk D-C-08, the Tier-2 performance block, and fix round 2 — see FIXED marks in §1–§2 and the remaining-work plan at the end of §5). D-Q-11 and D-Q-17 are partially fixed with small optional remnants.
 
 ---
 
@@ -49,13 +49,15 @@ FIXED **[D-C-05] GGUF/runtime download has no timeout of any kind** — `src/run
 The body-streaming request sets no `setTransferTimeout()` and has no watchdog; a stalled TCP peer (zero-window, half-open after sleep/resume) fires no further signals — the download hangs forever with no failure and no resume. Every other network path in the codebase bounds itself (LlamaClient manual QTimer, ModelCatalog `waitForReply`, ReleaseCatalog `setTransferTimeout`, RuntimeController health poll).
 *Fix*: `setTransferTimeout()` (inactivity timeout — safe for multi-GB transfers) or an inactivity watchdog → `fail()` so the pipeline can resume.
 
-**[D-C-06] `DownloadManager` never removes finished tasks — unbounded growth for the app session** — `src/runtime/DownloadManager.cpp:39-62` — Confidence 95
+FIXED **[D-C-06] `DownloadManager` never removes finished tasks — unbounded growth for the app session** — `src/runtime/DownloadManager.cpp:39-62` — Confidence 95
 Tasks are parented to the manager and appended to `m_tasks` but never removed/deleted after Completed/Failed/Canceled; every install retry re-enqueues all parts as brand-new tasks. Bounded-per-session leak (small objects), but genuine monotonic accumulation in app-lifetime singletons.
 *Fix*: defer-delete terminal tasks (`beginRemoveRows`/`endRemoveRows` + `deleteLater`), or cap as a session log; make retries resume existing rows.
+*Done*: terminal tasks beyond a cap of 10 are evicted via a queued `evictFinishedTasks()` pass (runs from `onTaskFinished` and after `enqueue`), `beginRemoveRows`/`endRemoveRows` + `deleteLater`; the cap keeps `taskAt()` polling in tests and installers valid. Resume-existing-rows retry stays out of scope (D-C-15).
 
-**[D-C-07] `m_resolveCallbacks` stores raw `std::function`s capturing raw `this` of consumers — no lifetime guard** — `src/runtime/RuntimeController.h:185, .cpp:203-292`; capture sites `RecognitionController.cpp:78`, `SelfTestController.cpp:43` — Confidence 80
+FIXED **[D-C-07] `m_resolveCallbacks` stores raw `std::function`s capturing raw `this` of consumers — no lifetime guard** — `src/runtime/RuntimeController.h:185, .cpp:203-292`; capture sites `RecognitionController.cpp:78`, `SelfTestController.cpp:43` — Confidence 80
 If a consumer is destroyed while a resolve is in flight (a Managed start can legitimately stay `Starting` up to the 180 s startup timeout), `completeResolve()` invokes the queued lambda into a destroyed object → use-after-free. Today only the accident of stack-object construction order in `main.cpp` prevents it.
 *Fix*: store `{QPointer<QObject> ctx, std::function}` pairs and skip dead contexts, or move to per-caller QFuture/signal connections.
+*Done*: callbacks are queued as `{QPointer<QObject> context, guarded, fn}` (`PendingResolve`); a new `ensureConnectionReady(QObject *context, fn)` overload is used by `RecognitionController` and `SelfTestController` (passing `this`), `completeResolve()` skips dead guarded contexts. The 1-arg overload (used by tests) stays unguarded.
 
 FIXED **[D-C-08] Async image requests read `DocumentModel` on the loader thread with no synchronization** — `src/app/OcrImageProvider.cpp:15-58` (+ `ThumbDelegate.qml:40`, `AppController::pageImage`) — Confidence 82
 `ThumbDelegate` sets `asynchronous: true`, so `requestImage` runs on the engine loader thread and reads `m_document` (a plain member, no mutex anywhere in the project) while the GUI thread can open/delete/reorder pages — exactly the moments when `docRevision` bumps re-issue requests → data race on the page vector. (The synchronous preview path is safe.)
@@ -67,30 +69,34 @@ FIXED **[D-C-08] Async image requests read `DocumentModel` on the loader thread 
 Only `PageIndexRole` is row-derived and needs refetch, but the empty roles list means "all roles changed" — every delegate re-fetches `recognized/edited/hasDuplicates/current` and re-evaluates the thumbnail `Image.source` on every page delete and drag-reorder.
 *Fix*: pass `{ PageIndexRole }` explicitly (the emission itself is intentional and covered by `renumberNotifiesAllRows`).
 
-**[D-C-10] Leftover `qDebug()` dumps of full OCR text** — `src/parsers/DetTokensParser.cpp:300`, `src/app/RecognitionController.cpp:149` — Confidence 88
+FIXED **[D-C-10] Leftover `qDebug()` dumps of full OCR text** — `src/parsers/DetTokensParser.cpp:300`, `src/app/RecognitionController.cpp:149` — Confidence 88
 Every recognized page's entire raw model output is written to stderr in release builds; costs formatting of large strings, pollutes logs, leaks document content.
 *Fix*: remove; gate any logging behind an off-by-default `qCDebug` category.
+*Done*: both `qDebug()` lines removed (the error already reaches the UI via `statusRequested`); no category introduced.
 
-**[D-C-11] Non-const Q_PROPERTY READ accessors `pageModel`/`boxModel`** — `src/app/AppController.h:76-77` — Confidence 85
+FIXED **[D-C-11] Non-const Q_PROPERTY READ accessors `pageModel`/`boxModel`** — `src/app/AppController.h:76-77` — Confidence 85
 Only non-const property getters in the project; `QMetaProperty::read()` is specified against `const QObject*`. Trivially constable.
+*Done*: both getters are `const` now (member address taken through `const_cast`, the standard CONSTANT-property idiom).
 
 **[D-C-12] Const methods return mutable raw pointers** — `src/app/LaunchProfileStore.h:48`, `src/app/RequestProfileStore.h:41`, `src/runtime/DownloadManager.h:45` — Confidence 80
 `draftModel() const` (×2), `taskAt(int) const` hand out mutable interiors; `const` gives no protection at the class boundary. Add const overloads or pick one convention.
 
-**[D-C-13] `setWindowState()` is the only SettingsStore setter without the change guard** — `src/app/SettingsStore.cpp:287-291` — Confidence 88
+FIXED **[D-C-13] `setWindowState()` is the only SettingsStore setter without the change guard** — `src/app/SettingsStore.cpp:287-291` — Confidence 88
 Unconditional QSettings write + NOTIFY on every assignment, defeating the dedup invariant the other ~35 setters share.
+*Done*: same early-return guard as the other setters.
 
-**[D-C-14] Duplicated numeric validation; `detectPlatform()` called twice per `activeProfileId()`** — `src/app/LaunchParametersModel.cpp:9-14` vs `src/core/RequestProfile.cpp:117-123`; `LaunchProfileStore.cpp:176-177` — Confidence 82
+FIXED **[D-C-14] Duplicated numeric validation; `detectPlatform()` called twice per `activeProfileId()`** — `src/app/LaunchParametersModel.cpp:9-14` vs `src/core/RequestProfile.cpp:117-123`; `LaunchProfileStore.cpp:176-177` — Confidence 82
 Same strict finite-number validator implemented twice (drift risk); the deterministic `detectPlatform()` runs twice on every recognition request and draft reload.
 *Fix*: hoist one shared helper; call `detectPlatform()` once and take both fields.
+*Done*: shared `llocr::toFiniteNumber()` in the new `src/core/ValueParsing.h` (also removes the double parse in the Flag→Number paths); `activeProfileId()` calls `detectPlatform()` once.
 
 **[D-C-15] Substantial copy-paste between `RuntimeInstaller` and `ModelInstaller`** — `RuntimeInstaller.cpp:114-157, 357-447` vs `ModelInstaller.cpp:224-259, 570-711` — Confidence 85
 State enums + guarded setters, progress wiring, `emitDownloadProgress`/`onOneDownloadFinished`/`maybeFinishDownloads`, cancel/shutdown pairs, QtConcurrent+`QPair`+`.then()` plumbing are near line-for-line duplicates — and the divergence already produced D-C-04.
 *Fix*: extract a shared download-aggregation helper and an async-step wrapper.
 
-**[D-C-16] `selectedRelease` clamped without NOTIFY; `installUpdate()` over-emits** — `src/runtime/RuntimeInstaller.cpp:265-266, 315-316` — Confidence 84
+FIXED **[D-C-16] `selectedRelease` clamped without NOTIFY; `installUpdate()` over-emits** — `src/runtime/RuntimeInstaller.cpp:265-266, 315-316` — Confidence 84
 Two sites bypass `setSelectedRelease()` in opposite directions (one silent clamp without signal → stale QML binding; one unconditional emit without change).
-*Fix*: route both through the setter (clamp inside it).
+*Done*: both sites go through `setSelectedRelease()`, whose change-dedup supplies the missing signal in one direction and removes the unconditional emit in the other.
 
 ### Performance
 
@@ -105,6 +111,7 @@ DOCX/PDF via Pandoc blocks the event loop up to 2 minutes; the built-in PDF fall
 FIXED **[D-C-19] Each recognition request PNG-encodes the full-resolution page on the GUI thread** — `src/models/OcrModel.cpp:89, 17-28` — Confidence 88
 ~1–3 MB PNG + base64 per page, between HTTP round-trips in batch mode.
 *Fix*: move encode+body-build into the existing QtConcurrent stage; consider JPEG ~90 (5–10× smaller/faster, llama-server accepts it).
+*Regression note (fix round 2)*: the JPEG ~90 variant of this fix (commit c748ffb) broke recognition against the real server — llama.cpp **b10964** mtmd fails to decode Qt-encoded JPEG (`mtmd_helper_bitmap_init_from_buf: failed to decode buffer as either image/audio/video` → HTTP 400 "Failed to load image or audio file"), while the same server+mmproj processed PNG fine. Reverted to PNG; the QtConcurrent off-GUI-thread encode is kept. Also hardened: a null image or failed encode now fails the request locally with a clear error instead of posting an empty data URL (covered by `test_ocr_models::recognizeSendsDecodableJpegDataUrl` — now PNG — and `recognizeFailsCleanlyOnNullImage`). *Follow-up*: the local guard fired in the app — the image reaching the encoder was empty. **Root cause (not in this review):** D-C-20's lazy `renderFull()` passed a fresh `DocumentPage` with an **empty `sourcePath`** to `decodeSource()`, so every full-image decode failed with "file not found" while thumbnails (decoded at open from the real path) worked — exactly the empty payload the server rejected. Fixed by copying `sourcePath` into the decode page; error reason now propagates `QImageReader::errorString()`/PDF-open failures through `DocumentModel::fullImage` → `AppController::pageImage` → `RecognitionController` (fail-fast per page); `decodeSource()` keeps `setAllocationLimit(0)` as hardening. Regression coverage: new `test_document_model` target (raster full-decode, missing-file error, cached re-fetch).
 
 FIXED **[D-C-20] `DocumentModel` holds every page's full-resolution image in RAM for the whole session** — `src/app/DocumentModel.cpp:61-93` — Confidence 85
 100-page PDF ≈ 830 MB before any results; no lazy render/eviction.
@@ -143,17 +150,17 @@ FIXED **[D-Q-05] Wizard memory estimate broken for ≥2 GiB models: 32-bit `prop
 `estTotal`/`estRam` take qint64 byte counts; values ≥ 2³¹ wrap → the warning label `visible: estTotal > 0` hides exactly for the large models it exists to warn about, or shows garbage. `StepLaunch.qml:16-19` uses `property real` for the identical data — the correct form is already in the codebase.
 *Fix*: change the two properties to `real`.
 
-**[D-Q-06] ModelsTab error label `statusMsg` is outside the ColumnLayout** — `resources/qml/SettingsDialog/ModelsTab.qml:442-448` — Confidence 92
+FIXED **[D-Q-06] ModelsTab error label `statusMsg` is outside the ColumnLayout** — `resources/qml/SettingsDialog/ModelsTab.qml:442-448` — Confidence 92
 Sibling of the layout (not inside it): `Layout.fillWidth` is a no-op, no anchors → renders at (0,0) overlapping the top status label; implicit text width means a long localized error overflows the 520 px dialog.
-*Fix*: move it into the ColumnLayout (or anchor it explicitly with wrap).
+*Done*: moved into the ColumnLayout (bottom, after the catalog buttons) with `Layout.fillWidth` + elide — fixed together with D-Q-22.
 
 FIXED **[D-Q-07] Redundant imperative `field.text = path` assignments permanently destroy `Settings.*` bindings** — `RuntimeTabInternal.qml:85`, `Setup/StepRuntime.qml:263`, `Setup/StepModel.qml:439` — Confidence 85
 In all three the preceding `Settings.*` write already updates the bound field, and the imperative write breaks the binding for good — e.g. after Browse-picking a GGUF, a later `ModelInstaller::setActiveModel` (`ModelInstaller.cpp:311`) changes `Settings.launchModelPath` but the "Local file" field keeps showing the old path.
 *Fix*: delete the imperative assignments; fields bound to `Settings.*` should never be assigned imperatively.
 
-**[D-Q-08] Delegate revert `text = model.valueText` destroys the row's model binding** — `SettingsDialog/LaunchTab.qml:139`, `RequestTab.qml:132` — Confidence 80
+FIXED **[D-Q-08] Delegate revert `text = model.valueText` destroys the row's model binding** — `SettingsDialog/LaunchTab.qml:139`, `RequestTab.qml:132` — Confidence 80
 After a rejected `setDraftValue`, the binding is gone; once rows shift after removal, the field shows a previous row's value and the `if (text === model.valueText) return` guard silently swallows edits.
-*Fix*: restore with `text = Qt.binding(() => model.valueText)`.
+*Done*: revert is `text = Qt.binding(() => model.valueText)` in both tabs.
 
 FIXED **[D-Q-09] C++ singleton status strings are not retranslated on language switch** — `Footer.qml:74-80, 171-177` (+ ModelsTab.qml:42, RuntimeTabInternal.qml:367, StepModel.qml:65, StepLaunch.qml:231-234) — Confidence 85
 `engine.retranslate()` re-runs QML `qsTr()` bindings, but `Runtime/ModelInstaller/RuntimeInstaller/SelfTest` `statusMessage` strings are `tr()`-built C++ values with **no `LanguageChange` handler** (grep: none) — after a switch the UI shows a mix of old-language status text and new-language labels until the next state change.
@@ -167,10 +174,11 @@ Vendored **marked v15.0.12** passes raw inline HTML through by design; `el.inner
 
 ### Performance & memory
 
-PARTIALLY FIXED **[D-Q-11] Thumbnail strip decodes and caches full-resolution pages for ~150 px thumbs** — `ThumbDelegate.qml:36-44`, aggravated by `ThumbPanel.qml:25` (`cacheBuffer: 10000`) and `AppController.cpp:52-57` (`docRevision` bump on every document change re-keys *all* thumbnail URLs) — Confidence 95 (3 agents)
+FIXED **[D-Q-11] Thumbnail strip decodes and caches full-resolution pages for ~150 px thumbs** — `ThumbDelegate.qml:36-44`, aggravated by `ThumbPanel.qml:25` (`cacheBuffer: 10000`) and `AppController.cpp:52-57` (`docRevision` bump on every document change re-keys *all* thumbnail URLs) — Confidence 95 (3 agents)
 No `sourceSize` → `requestedSize` invalid → the provider's scaling branch never runs → each thumb is a full-res ~8.7 MB (150 dpi PDF) to ~35 MB (300 dpi scan) texture; `cacheBuffer: 10000` keeps ~45 extra delegates per side alive; `cache: true` retains them; every open/delete/move re-decodes the whole strip.
 *Fix*: set `sourceSize` to display size × devicePixelRatio (provider then scales, ~10-40× less memory); reduce `cacheBuffer` to ~800-1500 px; key URLs on per-page revisions.
-*Done (fix 18)*: the dominant issue is resolved architecturally — `page/N` now serves pre-rendered small thumbnails (~220×300, `DocumentModel::thumbnail`) instead of full-res pages, so thumb memory dropped from ~8–35 MB to ~0.3 MB per page regardless of `sourceSize`. *Remaining*: reduce `cacheBuffer`, key URLs on per-page revisions (both minor now that payloads are small).
+*Done (fix 18)*: the dominant issue is resolved architecturally — `page/N` now serves pre-rendered small thumbnails (~220×300, `DocumentModel::thumbnail`) instead of full-res pages, so thumb memory dropped from ~8–35 MB to ~0.3 MB per page regardless of `sourceSize`.
+*Done (fix round 2)*: `cacheBuffer: 1000`. *Remaining (optional)*: per-page URL keying so an open/delete/move no longer re-decodes the whole strip.
 
 **[D-Q-12] Main preview decodes full-resolution pages synchronously on the GUI thread** — `resources/qml/MainWindow/ImagePreview.qml:7-13` — Confidence 90
 No `sourceSize`, no `asynchronous`, `cache: false` — every page switch copies and uploads a full-res texture (up to ~134 MB for a 600 dpi scan) in binding evaluation on the GUI thread; minification aliasing as a bonus.
@@ -184,9 +192,9 @@ Per-line `serverLogChanged()` → `ringBuffer(2000).join("\n")` → wholesale `T
 Toggling Preview off/on re-initializes Chromium + marked + KaTeX each time (hundreds of ms, visible blank, scroll lost); also re-pushes large base64 payloads if a recognition is running.
 *Fix*: latch the Loader active after first activation and toggle `visible` instead (accept a resident renderer), or show an explicit "rendering…" placeholder.
 
-**[D-Q-15] Wizard steps' `Component.onCompleted` side effects run at every application startup** — `Setup/StepRuntime.qml:14`, `Setup/StepModel.qml:31-38` — Confidence 85
+FIXED **[D-Q-15] Wizard steps' `Component.onCompleted` side effects run at every application startup** — `Setup/StepRuntime.qml:14`, `Setup/StepModel.qml:31-38` (also `Setup/StepLaunch.qml:60-63`) — Confidence 85
 `SetupWizard` is declared eagerly in Main.qml; its steps are plain StackLayout children, so `rescanInstalledBuilds()`, `estimateModelMemory()`, `refreshInstalled()`, `reloadPresets()` all run at startup even for users who never see the wizard — then run again from `startWizard()`/`onAboutToShow`.
-*Fix*: delete the onCompleted scans (explicit callers already exist) or gate on `wizard.opened`; longer term, make steps lazy.
+*Done*: the step `Component.onCompleted` hooks became `onVisibleChanged` guards (StackLayout toggles child visibility, so the scans now run when the step is actually shown); `ModelInstaller.refreshInstalled()` moved to the Models-tab toggle in `SDTabBar.qml` so the ADR-62 reset recovery still covers the Settings tab without the wizard.
 
 ### Structure & maintainability
 
@@ -194,33 +202,34 @@ Toggling Preview off/on re-initializes Chromium + marked + KaTeX each time (hund
 13 duplicated blocks (backend combo, status label formula, builds/models ListView + ~60-line delegate, progress+cancel gating, update check, license dialogs); the fragile `Connections { onXChanged → var = Qt.binding(...) }` re-bind workaround appears **9 times**; the copies have already diverged (backendDisplay fallback exists in only one).
 *Fix*: extract `Common/` components (status row, builds list, models list) or drive rows from real QAbstractListModels; delete the re-bind glue.
 
-**[D-Q-17] 28+ raw integer state comparisons in QML against three C++ enums** — `Footer.qml` (6), `RuntimeTabInternal.qml` (14), `ModelsTab.qml` (3), `StepRuntime.qml` (7), `StepModel.qml` (2) — Confidence 92
+PARTIALLY FIXED **[D-Q-17] 28+ raw integer state comparisons in QML against three C++ enums** — `Footer.qml` (6), `RuntimeTabInternal.qml` (14), `ModelsTab.qml` (3), `StepRuntime.qml` (7), `StepModel.qml` (2) — Confidence 92
 `Runtime.state === 0..5`, `RuntimeInstaller.state === 0/1/3/4/6`, `ModelInstaller.state === 2/3/4`, `busyState === 1`, plus tab indices (`selectTab(1)`, `openSettingsRequested(4)`) and the wizard's magic `4`. Any C++ enum reordering silently flips dot colors, disables wrong buttons. (Also: `RequesetTabNum` typo in SettingsDialog.qml:24, and `savaValues()` typo in RuntimeTabExternal.qml:18 / UITab.qml:19 / callers.)
 *Fix*: expose a QML singleton with named enums (or int constants on the C++ singletons); fix typos.
+*Done (fix round 2)*: `RequesetTabNum` → `RequestTabNum`, `savaValues()` → `saveValues()` (both definitions and all callers), and the wizard's magic `4` (D-Q-19). *Remaining*: the named-enum exposure — deferred (needs C++ Q_ENUM plumbing for the three state enums and a 28-site QML migration; runtime-verifiable only with the app running).
 
 **[D-Q-18] No `pragma ComponentBehavior: Bound`; delegates + 3 cross-document id reaches** — project-wide (zero matches); concrete reaches: `ThumbDelegate.qml:93,150,153-161` → `thumbList.*`, `Header.qml:31,85-88,97` → Main.qml ids, `RuntimeTabInternal.qml:134` → `dialog.*` — Confidence 85
 The unqualified context chain is exactly what Bound mode removes; D-Q-03 is this bug class in the wild. Delegates in ThumbDelegate/LaunchTab/RequestTab/StepWelcome read `model.<role>` without required properties (ImagePreview.qml:46-54 already demonstrates the correct fully-required pattern; roles verified to match C++ `roleNames()` everywhere).
 *Fix*: migrate file-by-file (start with Setup/*, SettingsDialog/*): add required properties, pass cross-file state via explicit properties/signals.
 
-**[D-Q-19] Wizard step machine couples to `StackLayout.children[]` and magic index 4** — `SetupWizard.qml:39-85` — Confidence 85
+FIXED **[D-Q-19] Wizard step machine couples to `StackLayout.children[]` and magic index 4** — `SetupWizard.qml:39-85` — Confidence 85
 `stackLayout.children[current]` breaks (Next permanently disabled, no diagnostic) if any extra Item is ever added to the StackLayout; `4` hardcoded in three gating expressions.
-*Fix*: explicit `property list<Item> steps` + derived `lastStep`.
+*Done*: `property list<Item> steps` + derived `lastStep` and a declarative `readonly currentStep: steps[current]`; all three `4` comparisons now use `lastStep`.
 
-**[D-Q-20] Layout-managed items sized with explicit `width`/`height` (documented UB)** — `ThumbDelegate.qml:51-52` (9×9 status dot), `Setup/StepWelcome.qml:50-52` (`width: root.width - 40`, hardcoded 2× the parent's 20px margins) — Confidence 85
+FIXED **[D-Q-20] Layout-managed items sized with explicit `width`/`height` (documented UB)** — `ThumbDelegate.qml:51-52` (9×9 status dot), `Setup/StepWelcome.qml:50-52` (`width: root.width - 40`, hardcoded 2× the parent's 20px margins) — Confidence 85
 Qt Layouts docs: explicit width/height on layout children is "undefined behavior"; works today via the fallback, collapses under compression or future behavior changes. The `- 40` also duplicates the parent's margins.
-*Fix*: `Layout.preferredWidth/Height` + `implicitWidth/Height`; `Layout.fillWidth: true` for the cards.
+*Done*: the dot uses `Layout.preferredWidth/Height`; the StepWelcome cards use `Layout.fillWidth: true` + `Layout.preferredHeight`.
 
-**[D-Q-21] Warning-plaque height ignores its 8px margins — 8px vertical deficit** — `Setup/StepLaunch.qml:145-158`, `RuntimeTabInternal.qml:256-268` — Confidence 82
+FIXED **[D-Q-21] Warning-plaque height ignores its 8px margins — 8px vertical deficit** — `Setup/StepLaunch.qml:145-158`, `RuntimeTabInternal.qml:256-268` — Confidence 82
 `implicitHeight: inner.implicitHeight + Theme.spacing` (+8) vs `anchors.margins: 8` (16px chrome) → the bottom row draws ~8px past the plaque border.
-*Fix*: `inner.implicitHeight + 2 * 8`, or derive the outer size from real chrome.
+*Done*: `inner.implicitHeight + 2 * 8` in both plaques.
 
-**[D-Q-22] ModelsTab is the only tab without internal scrolling — bottom controls get clipped** — `ModelsTab.qml:33-378` (dialog `SettingsDialog.qml:27-28, 116-129`) — Confidence 80
+FIXED **[D-Q-22] ModelsTab is the only tab without internal scrolling — bottom controls get clipped** — `ModelsTab.qml:33-378` (dialog `SettingsDialog.qml:27-28, 116-129`) — Confidence 80
 ~17 rows in a fixed 520×600 dialog; with 3+ installed models + presets + one search result the content exceeds the ~476 px budget and `clip: true` silently swallows the HF-token field and Import/Export/Restore row; worse with Russian labels. RuntimeTabInternal already wraps itself in a ScrollView — precedent exists.
-*Fix*: same ScrollView treatment.
+*Done*: same ScrollView treatment (`contentWidth: availableWidth`, `contentHeight: layout.implicitHeight`); dialogs stay outside the ScrollView; the now-dead `Item { Layout.fillHeight }` filler removed.
 
-**[D-Q-23] `controller`/`uiController` exposed as context properties instead of registered singletons** — `src/main.cpp:79-82` — Confidence 95
+FIXED **[D-Q-23] `controller`/`uiController` exposed as context properties instead of registered singletons** — `src/main.cpp:79-82` — Confidence 95
 Nine singletons are properly registered; these two aren't — untyped, unlintable (a large share of the 957 `[unqualified]` warnings), string lookup per binding evaluation, root-context lifetime coupling (today safe by declaration order).
-*Fix*: `qmlRegisterSingletonInstance` for both; also converts most of the qmllint noise into checked lookups.
+*Done*: `qmlRegisterSingletonInstance` for both (`Controller`, `UiController`); the `UiController` uncreatable-type registration was replaced by the instance registration (QML enum access `UiController.System` keeps working through the type metaobject); all QML uses renamed `controller.` → `Controller.`, `uiController.` → `UiController.` (sed sweep, includes `Theme.qml` which gained `import LLocr` — its URL registration makes the self-import safe); `<QQmlContext>` include dropped.
 
 ---
 
@@ -296,40 +305,28 @@ Model protocol: all five `data()` switches cover their roles; begin/end pairs ba
 
 ## 5. Fix status & remaining work plan
 
-**Fixed (fixes 1–21, all verified by build + ctest 23/23):**
+**Fixed (fixes 1–21, verified by build + ctest 23/23):**
 
 1. **Data-loss/hang class**: D-C-04 (install hang), D-C-02 (footer stop), D-C-05 (download timeout), D-C-01 (restart), D-C-03 (Failed→Starting) — ✅ all fixed.
 2. **User-visible breakage**: D-Q-04 (wrong model installed), D-Q-05 (memory warning), D-Q-03 (probe skipped), D-Q-01 (live dot), D-Q-02 (arrows), D-Q-09 (language switch) — ✅ all fixed.
 3. **Security**: D-Q-10 (DOMPurify + CSP + `localContentCanAccessFileUrls: false`) — ✅ fixed.
-4. **Crash risk**: D-C-08 (document lock) — ✅ fixed; D-C-07 remains (see plan below).
-5. **Performance**: D-C-17, D-C-18, D-C-19, D-C-20, D-C-21, D-C-22, D-Q-13 — ✅ all fixed; D-Q-11 — ✅ partially fixed (thumbnails are small now; cacheBuffer + URL keying remain).
+4. **Crash risk**: D-C-08 (document lock) — ✅ fixed; D-C-07 — ✅ fixed in round 2.
+5. **Performance**: D-C-17, D-C-18, D-C-19, D-C-20, D-C-21, D-C-22, D-Q-13 — ✅ all fixed; D-Q-11 — ✅ partially fixed (thumbnails are small now; cacheBuffer + URL keying remain). D-C-19 follow-up (fix round 2): JPEG payload reverted to PNG — b10964's mtmd decoder rejected Qt JPEG (see the regression note in §1); async encode kept, empty-payload guard added.
+
+**Fixed (fix round 2, verified by clean rebuild + ctest 23/23 + qmllint):**
+
+1. **Quick correctness wins**: D-C-10 (qDebug OCR dumps removed), D-C-16 (`selectedRelease` via setter), D-C-13 (`setWindowState` guard), D-C-11 (const `pageModel`/`boxModel`), D-Q-11 remainder (`cacheBuffer: 1000`) — ✅ all fixed.
+2. **User-visible QML fixes**: D-Q-06 (`statusMsg` inside the ColumnLayout), D-Q-08 (revert via `Qt.binding`), D-Q-22 (ModelsTab ScrollView), D-Q-20 (`Layout.preferred*` for the 9×9 dot and StepWelcome cards), D-Q-21 (plaque `+ 2 * 8`) — ✅ all fixed.
+3. **Robustness**: D-C-07 (QPointer-guarded `m_resolveCallbacks`, new `ensureConnectionReady(context, fn)` overload), D-C-06 (terminal DownloadTask eviction, cap 10, queued remove+deleteLater) — ✅ fixed. Also fixed en route: `cancelPendingStart()` resolved with the cancellation error *before* stopping the server — the synchronous `Stopping` emission used to overwrite the cancellation message with "Server stopped" (caught by `cancelPendingStartInterrupts`).
+4. **Structure**: D-Q-15 (step scans moved to `onVisibleChanged`; ADR-62 `refreshInstalled()` kept alive via the Models-tab toggle), D-C-14 (shared `toFiniteNumber` in the new `core/ValueParsing.h` + single `detectPlatform()`), D-Q-19 (wizard `steps` list + derived `lastStep`), D-Q-23 (`Controller`/`UiController` registered as singletons; QML renamed), D-Q-17 typos (`RequestTabNum`, `saveValues`) — ✅ fixed.
 
 **Remaining queue (suggested order):**
 
-1. **Quick correctness wins (small, low-risk):**
-   - D-C-10 — remove the two `qDebug()` dumps of full OCR text (`DetTokensParser.cpp:300`, `RecognitionController.cpp:149`);
-   - D-C-16 — route `selectedRelease` clamp/emit through `setSelectedRelease()` (`RuntimeInstaller.cpp:265-266, 315-316`);
-   - D-C-13 — add the change guard to `setWindowState()` (`SettingsStore.cpp:287-291`);
-   - D-C-11 — make `pageModel`/`boxModel` READ accessors const (`AppController.h:76-77`);
-   - D-Q-11 remainder — reduce `cacheBuffer` to ~800-1500 px (`ThumbPanel.qml:25`); optionally per-page URL keying.
-2. **User-visible QML fixes:**
-   - D-Q-06 — move `statusMsg` into ModelsTab's ColumnLayout (`ModelsTab.qml:442-448`);
-   - D-Q-08 — restore revert via `text = Qt.binding(() => model.valueText)` (`LaunchTab.qml:139`, `RequestTab.qml:132`);
-   - D-Q-22 — wrap ModelsTab in a ScrollView (like RuntimeTabInternal);
-   - D-Q-20 — `Layout.preferredWidth/Height` for the 9×9 dot (`ThumbDelegate.qml:51-52`) and `Layout.fillWidth` for StepWelcome cards;
-   - D-Q-21 — plaque height `+ 2 * margins` (`StepLaunch.qml:145-158`, `RuntimeTabInternal.qml:256-268`).
-3. **Robustness / latent UB:**
-   - D-C-07 — lifetime-guard `m_resolveCallbacks` (`QPointer` context per callback);
-   - D-C-06 — evict finished DownloadTasks (defer-delete + beginRemoveRows) or cap as session log;
-   - I-05/I-06/I-07 — ASan pass, then per-item fixes (watcher parent, provider/controller teardown order, defensive `~DownloadTask`).
-4. **Structure (bigger refactors, schedule deliberately):**
-   - D-Q-15 — remove wizard-step `Component.onCompleted` startup scans;
-   - D-C-14 — shared numeric validator + single `detectPlatform()` call;
+1. **Structure (bigger refactors, schedule deliberately):**
    - D-C-15 / D-Q-16 — extract shared installer components (status row, lists) and one download-aggregation helper (this also subsumes the D-C-04-style divergence class);
-   - D-Q-17 — named state enums for QML (+ fix `RequesetTabNum`/`savaValues` typos);
-   - D-Q-18 — `pragma ComponentBehavior: Bound` + required properties migration (file-by-file);
-   - D-Q-19 — wizard `steps` list instead of `children[]`;
-   - D-Q-23 — register `controller`/`uiController` as singletons.
-5. **Deferred / verify-only:** investigations I-01…I-15 (§3) — each has a verify recipe; D-Q-12 (preview sourceSize) and D-Q-14 (sticky Loader) if preview perf is still noticeable after fix 14/18; D-Q-06 partial overlap with D-Q-22 (do together).
+   - D-Q-17 remainder — named state enums for QML (C++ Q_ENUM plumbing + 28-site migration, needs runtime verification);
+   - D-Q-18 — `pragma ComponentBehavior: Bound` + required properties migration (file-by-file).
+2. **ASan / verify-only:** I-05/I-06/I-07 — needs an ASan-instrumented build (I-05 note: `OcrModel` is not a QObject, so "parent the watcher" is not applicable without a larger refactor). Investigations I-01…I-14 (§3) — each has a verify recipe; I-15 partially mitigated by the D-Q-15/D-Q-21 changes.
+3. **Optional leftovers:** D-Q-11 per-page URL keying (thumbnails are small now); D-Q-12 (preview sourceSize) and D-Q-14 (sticky Loader) if preview perf is still noticeable after the structural fixes.
 
 *Note on rebuilds: localized MSVC breaks `/showIncludes` dependency tracking — after changing a header, delete the affected `.obj` files (or rebuild the target from clean) before linking.*

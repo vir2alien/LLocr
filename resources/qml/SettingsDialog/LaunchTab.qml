@@ -136,7 +136,7 @@ Item {
                         if (text === model.valueText)
                             return
                         if (!LaunchProfiles.setDraftValue(index, text))
-                            text = model.valueText
+                            text = Qt.binding(() => model.valueText)
                     }
                 }
 

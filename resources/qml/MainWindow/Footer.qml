@@ -20,7 +20,7 @@ Item {
     signal openSettingsRequested(int tab)
 
     function requestRestart() {
-        if (controller.busy) {
+        if (Controller.busy) {
             restartConfirmDialog.open()
             return
         }
@@ -34,7 +34,7 @@ Item {
     }
 
     function requestStop() {
-        if (controller.busy) {
+        if (Controller.busy) {
             stopConfirmDialog.open()
             return
         }
@@ -169,14 +169,14 @@ Item {
                 spacing: Theme.spacingSmall
 
                 LLOLabel {
-                    text: controller.statusMessage
+                    text: Controller.statusMessage
                     color: Theme.textMuted
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
                     Layout.fillWidth: true
                 }
                 BusyIndicator {
-                    running: controller.busy || Runtime.busyState === 1
+                    running: Controller.busy || Runtime.busyState === 1
                     visible: running
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28

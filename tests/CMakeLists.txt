@@ -60,6 +60,22 @@ target_sources(test_pagemodel PRIVATE
 )
 add_test(NAME test_pagemodel COMMAND test_pagemodel)
 
+qt_add_executable(test_document_model test_document_model.cpp)
+
+target_include_directories(test_document_model PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_document_model PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Pdf
+)
+
+target_sources(test_document_model PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app/DocumentModel.cpp
+)
+add_test(NAME test_document_model COMMAND test_document_model)
+
 qt_add_executable(test_settings_store test_settings_store.cpp)
 
 target_include_directories(test_settings_store PRIVATE ${CMAKE_SOURCE_DIR}/src)

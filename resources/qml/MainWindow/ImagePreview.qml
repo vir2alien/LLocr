@@ -7,8 +7,8 @@ import LLocr
 Image {
     id: previewImage
     fillMode: Image.PreserveAspectFit
-    source: controller.hasImage
-            ? "image://ocr/current?" + controller.imageRevision
+    source: Controller.hasImage
+            ? "image://ocr/current?" + Controller.imageRevision
             : ""
     cache: false
 
@@ -21,7 +21,7 @@ Image {
         property int selectedBoxIndex: -1
 
         Connections {
-            target: controller
+            target: Controller
             function onPageChanged() { imageArea.selectedBoxIndex = -1 }
             function onDocumentChanged() { imageArea.selectedBoxIndex = -1 }
             function onResultChanged() { imageArea.selectedBoxIndex = -1 }
@@ -34,15 +34,15 @@ Image {
 
         Keys.onDeletePressed: (event) => {
             if (imageArea.selectedBoxIndex >= 0
-                    && controller.boxModel.isImageBox(imageArea.selectedBoxIndex)) {
-                controller.boxModel.removeBox(imageArea.selectedBoxIndex)
+                    && Controller.boxModel.isImageBox(imageArea.selectedBoxIndex)) {
+                Controller.boxModel.removeBox(imageArea.selectedBoxIndex)
                 imageArea.selectedBoxIndex = -1
                 event.accepted = true
             }
         }
 
         Repeater {
-            model: controller.boxModel
+            model: Controller.boxModel
             delegate: Rectangle {
                 id: boxDelegate
                 required property int index
@@ -114,7 +114,7 @@ Image {
                         const dy = (p.y - grabY) / imageArea.height
                         const nx = Math.max(0, Math.min(1 - boxWidth, origX + dx))
                         const ny = Math.max(0, Math.min(1 - boxHeight, origY + dy))
-                        controller.onBoxRectChanged(boxDelegate.index, nx, ny,
+                        Controller.onBoxRectChanged(boxDelegate.index, nx, ny,
                                                     boxWidth, boxHeight)
                     }
                 }//MouseArea
@@ -130,7 +130,7 @@ Image {
                     anchors.margins: 1
                     font.pointSize: Theme.captionSize
                     onClicked: {
-                        controller.boxModel.removeBox(boxDelegate.index)
+                        Controller.boxModel.removeBox(boxDelegate.index)
                         imageArea.selectedBoxIndex = -1
                     }
                 }
@@ -221,7 +221,7 @@ Image {
                                     startX, startY, startW, startH,
                                     (p.x - grabX) / imageArea.width,
                                     (p.y - grabY) / imageArea.height)
-                                controller.onBoxRectChanged(boxDelegate.index,
+                                Controller.onBoxRectChanged(boxDelegate.index,
                                                             r.x, r.y, r.w, r.h)
                             }
                         }//MouseArea

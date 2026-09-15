@@ -20,7 +20,7 @@ ColumnLayout {
     }
 
     function saveValues() {
-        rtExternal.savaValues();
+        rtExternal.saveValues();
     }
 
     RowLayout {

@@ -30,352 +30,369 @@ Item {
         }
     }
 
-    ColumnLayout {
+    ScrollView {
         anchors.fill: parent
-        spacing: 6
+        contentWidth: availableWidth
+        contentHeight: modelsLayout.implicitHeight
+        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: ModelInstaller.state === 4 ? Theme.error
-                 : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
-            text: ModelInstaller.statusMessage.length
-                  ? ModelInstaller.statusMessage
-                  : qsTr("Models are stored locally and launched by the managed runtime.")
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: false
+        ColumnLayout {
+            id: modelsLayout
+            width: parent.width
             spacing: 6
 
-            ProgressBar {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 12
-                visible: ModelInstaller.busy
-                from: 0
-                to: 1
-                value: ModelInstaller.progress
-            }
-
-            LLOButton {
-                text: qsTr("Cancel")
-                visible: ModelInstaller.state === 3
-                onClicked: ModelInstaller.cancelInstall()
-            }
-        }
-
-        LLOLabel {
-            text: qsTr("Installed models: ")
-        }
-
-        ListView {
-            id: installedList
-            visible: count > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(installedList.count, 3) * 40
-            clip: true
-            model: ModelInstaller.installedCount
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-            delegate: Rectangle {
-                required property int index
-                property var info: ModelInstaller.installedInfo(index)
-                Connections {
-                    target: ModelInstaller
-                    function onInstalledChanged() {
-                        delegateRoot.info = Qt.binding(function () {
-                            return ModelInstaller.installedInfo(delegateRoot.index)
-                        })
-                    }
-                }
-                id: delegateRoot
-                width: installedList.width
-                height: 40
-                color: info.active ? Theme.surfaceSunken : "transparent"
-                border.color: info.active ? Theme.accent : "transparent"
-                border.width: info.active ? 1 : 0
-                radius: Theme.radius
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 6
-                    anchors.rightMargin: 6
-                    spacing: 6
-
-                    LLOLabel {
-                        Layout.fillWidth: true
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textPrimary
-                        text: info.title
-                    }
-                    LLOLabel {
-                        Layout.preferredWidth: 70
-                        horizontalAlignment: Text.AlignRight
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textMuted
-                        text: fmtBytes(info.size)
-                    }
-                    LLOLabel {
-                        Layout.preferredWidth: 80
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: info.origin === "managed" ? Theme.textSecondary : Theme.textMuted
-                        text: info.origin === "managed" ? qsTr("managed") : qsTr("external")
-                    }
-                    LLOButton {
-                        text: info.active ? qsTr("Active") : qsTr("Activate")
-                        enabled: !info.active
-                        onClicked: ModelInstaller.setActiveModel(index)
-                    }
-                    LLOButton {
-                        text: qsTr("Remove")
-                        enabled: info.origin === "managed"
-                        onClicked: {
-                            const err = ModelInstaller.removeModel(index)
-                            if (err.length)
-                                statusMsg.text = err
-                        }
-                    }
-                    LLOButton {
-                        text: qsTr("Open folder")
-                        onClicked: {
-                            const err = ModelInstaller.openModelFolder(index)
-                            if (err.length)
-                                statusMsg.text = err
-                        }
-                    }
-                }
-            }
-        }//ListView
-
-        LLOLabel {
-            visible: installedList.count === 0
-            Layout.fillWidth: true
-            elide: Text.ElideMiddle
-            wrapMode: Text.NoWrap
-            font.pointSize: Theme.captionSize
-            color: Theme.textPrimary
-            text: qsTr("No models installed")
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.divider
-        }
-
-        LLOLabel {
-            text: qsTr("Preset catalog")
-        }
-
-        ListView {
-            id: presetList
-            visible: count > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(presetList.count, 3) * 36
-            clip: true
-            model: ModelInstaller.presetCount
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-            delegate: Rectangle {
-                required property int index
-                property var pInfo: ModelInstaller.presetInfo(index)
-                Connections {
-                    target: ModelInstaller
-                    function onInstalledChanged() {
-                        presetRoot.pInfo = Qt.binding(function () {
-                            return ModelInstaller.presetInfo(presetRoot.index)
-                        })
-                    }
-                }
-                id: presetRoot
-                width: presetList.width
-                height: 36
-                color: "transparent"
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 6
-                    anchors.rightMargin: 6
-                    spacing: 6
-                    LLOLabel {
-                        Layout.preferredWidth: 160
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textPrimary
-                        text: pInfo.title
-                    }
-                    LLOLabel {
-                        Layout.fillWidth: true
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textMuted
-                        text: pInfo.repo
-                    }
-                    LLOLabel {
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textMuted
-                        text: pInfo.approxVramGb > 0
-                              ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb)
-                              : ""
-                    }
-                    LLOButton {
-                        text: pInfo.installed ? qsTr("Activate") : qsTr("Install")
-                        enabled: !ModelInstaller.busy
-                        onClicked: {
-                            if (pInfo.installed) {
-                                ModelInstaller.activatePreset(index)
-                                return
-                            }
-                            ModelInstaller.preparePreset(index)
-                            preparedIndex = index
-                            pickDialog.open()
-                        }
-                    }
-                }
-            }
-        }//ListView
-
-        LLOLabel {
-            visible: presetList.count === 0
-            Layout.fillWidth: true
-            elide: Text.ElideMiddle
-            wrapMode: Text.NoWrap
-            font.pointSize: Theme.captionSize
-            color: Theme.textPrimary
-            text: qsTr("No presets available")
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.divider
-        }
-
-        LLOLabel {
-            text: qsTr("Search Hugging Face")
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            TextField {
-                id: searchField
-                Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                placeholderText: qsTr("e.g. vision gguf")
-                text: ModelInstaller.searchQuery
-                onEditingFinished: ModelInstaller.searchQuery = text.trim()
-            }
-            LLOButton {
-                text: qsTr("Search")
-                onClicked: {
-                    ModelInstaller.searchQuery = searchField.text.trim()
-                    ModelInstaller.startSearch()
-                }
-            }
-        }
-
-        ListView {
-            id: searchList
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(searchList.count, 3) * 32
-            clip: true
-            visible: ModelInstaller.searchCount > 0
-            model: ModelInstaller.searchCount
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-            delegate: Rectangle {
-                required property int index
-                property var sInfo: ModelInstaller.searchResult(index)
-                width: searchList.width
-                height: 32
-                color: "transparent"
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 6
-                    anchors.rightMargin: 6
-                    spacing: 6
-                    LLOLabel {
-                        Layout.preferredWidth: 180
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textPrimary
-                        text: sInfo.title
-                    }
-                    LLOLabel {
-                        Layout.fillWidth: true
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textMuted
-                        text: sInfo.id
-                    }
-                    LLOButton {
-                        text: qsTr("Install")
-                        enabled: !ModelInstaller.busy
-                        onClicked: {
-                            ModelInstaller.installRemote(index)
-                            preparedIndex = -1
-                            pickDialog.open()
-                        }
-                    }
-                }
-            }
-        }
-
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: Theme.textMuted
-            visible: !ModelInstaller.searchActive
-                     && ModelInstaller.searchCount === 0
-            text: qsTr("Results appear here. Models install into the managed "
-                       + "models directory.")
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
             LLOLabel {
-                text: qsTr("HF token (optional)")
-            }
-            TextField {
-                id: tokenField
                 Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                echoMode: TextInput.Password
-                placeholderText: qsTr("read-only token for gated repos")
-                text: ModelInstaller.hfToken()
-                onEditingFinished: ModelInstaller.setHfToken(text.trim())
+                font.pointSize: Theme.captionSize
+                color: ModelInstaller.state === 4 ? Theme.error
+                     : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
+                text: ModelInstaller.statusMessage.length
+                      ? ModelInstaller.statusMessage
+                      : qsTr("Models are stored locally and launched by the managed runtime.")
             }
-        }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            LLOButton {
-                text: qsTr("Import catalog…")
-                onClicked: importDialog.open()
-            }
-            LLOButton {
-                text: qsTr("Export catalog…")
-                onClicked: exportDialog.open()
-            }
-            LLOButton {
-                text: qsTr("Restore defaults")
-                onClicked: ModelInstaller.resetUserCatalog()
-            }
-            Item { Layout.fillWidth: true }
-        }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: false
+                spacing: 6
 
-        Item { Layout.fillHeight: true }
-    }//ColumnLayout
+                ProgressBar {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 12
+                    visible: ModelInstaller.busy
+                    from: 0
+                    to: 1
+                    value: ModelInstaller.progress
+                }
+
+                LLOButton {
+                    text: qsTr("Cancel")
+                    visible: ModelInstaller.state === 3
+                    onClicked: ModelInstaller.cancelInstall()
+                }
+            }
+
+            LLOLabel {
+                text: qsTr("Installed models: ")
+            }
+
+            ListView {
+                id: installedList
+                visible: count > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(installedList.count, 3) * 40
+                clip: true
+                model: ModelInstaller.installedCount
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                delegate: Rectangle {
+                    required property int index
+                    property var info: ModelInstaller.installedInfo(index)
+                    Connections {
+                        target: ModelInstaller
+                        function onInstalledChanged() {
+                            delegateRoot.info = Qt.binding(function () {
+                                return ModelInstaller.installedInfo(delegateRoot.index)
+                            })
+                        }
+                    }
+                    id: delegateRoot
+                    width: installedList.width
+                    height: 40
+                    color: info.active ? Theme.surfaceSunken : "transparent"
+                    border.color: info.active ? Theme.accent : "transparent"
+                    border.width: info.active ? 1 : 0
+                    radius: Theme.radius
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 6
+                        anchors.rightMargin: 6
+                        spacing: 6
+
+                        LLOLabel {
+                            Layout.fillWidth: true
+                            elide: Text.ElideMiddle
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textPrimary
+                            text: info.title
+                        }
+                        LLOLabel {
+                            Layout.preferredWidth: 70
+                            horizontalAlignment: Text.AlignRight
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textMuted
+                            text: fmtBytes(info.size)
+                        }
+                        LLOLabel {
+                            Layout.preferredWidth: 80
+                            elide: Text.ElideMiddle
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: info.origin === "managed" ? Theme.textSecondary : Theme.textMuted
+                            text: info.origin === "managed" ? qsTr("managed") : qsTr("external")
+                        }
+                        LLOButton {
+                            text: info.active ? qsTr("Active") : qsTr("Activate")
+                            enabled: !info.active
+                            onClicked: ModelInstaller.setActiveModel(index)
+                        }
+                        LLOButton {
+                            text: qsTr("Remove")
+                            enabled: info.origin === "managed"
+                            onClicked: {
+                                const err = ModelInstaller.removeModel(index)
+                                if (err.length)
+                                    statusMsg.text = err
+                            }
+                        }
+                        LLOButton {
+                            text: qsTr("Open folder")
+                            onClicked: {
+                                const err = ModelInstaller.openModelFolder(index)
+                                if (err.length)
+                                    statusMsg.text = err
+                            }
+                        }
+                    }
+                }
+            }//ListView
+
+            LLOLabel {
+                visible: installedList.count === 0
+                Layout.fillWidth: true
+                elide: Text.ElideMiddle
+                wrapMode: Text.NoWrap
+                font.pointSize: Theme.captionSize
+                color: Theme.textPrimary
+                text: qsTr("No models installed")
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.divider
+            }
+
+            LLOLabel {
+                text: qsTr("Preset catalog")
+            }
+
+            ListView {
+                id: presetList
+                visible: count > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(presetList.count, 3) * 36
+                clip: true
+                model: ModelInstaller.presetCount
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                delegate: Rectangle {
+                    required property int index
+                    property var pInfo: ModelInstaller.presetInfo(index)
+                    Connections {
+                        target: ModelInstaller
+                        function onInstalledChanged() {
+                            presetRoot.pInfo = Qt.binding(function () {
+                                return ModelInstaller.presetInfo(presetRoot.index)
+                            })
+                        }
+                    }
+                    id: presetRoot
+                    width: presetList.width
+                    height: 36
+                    color: "transparent"
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 6
+                        anchors.rightMargin: 6
+                        spacing: 6
+                        LLOLabel {
+                            Layout.preferredWidth: 160
+                            elide: Text.ElideMiddle
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textPrimary
+                            text: pInfo.title
+                        }
+                        LLOLabel {
+                            Layout.fillWidth: true
+                            elide: Text.ElideMiddle
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textMuted
+                            text: pInfo.repo
+                        }
+                        LLOLabel {
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textMuted
+                            text: pInfo.approxVramGb > 0
+                                  ? qsTr("~%1 GiB VRAM").arg(pInfo.approxVramGb)
+                                  : ""
+                        }
+                        LLOButton {
+                            text: pInfo.installed ? qsTr("Activate") : qsTr("Install")
+                            enabled: !ModelInstaller.busy
+                            onClicked: {
+                                if (pInfo.installed) {
+                                    ModelInstaller.activatePreset(index)
+                                    return
+                                }
+                                ModelInstaller.preparePreset(index)
+                                preparedIndex = index
+                                pickDialog.open()
+                            }
+                        }
+                    }
+                }
+            }//ListView
+
+            LLOLabel {
+                visible: presetList.count === 0
+                Layout.fillWidth: true
+                elide: Text.ElideMiddle
+                wrapMode: Text.NoWrap
+                font.pointSize: Theme.captionSize
+                color: Theme.textPrimary
+                text: qsTr("No presets available")
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.divider
+            }
+
+            LLOLabel {
+                text: qsTr("Search Hugging Face")
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    id: searchField
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    placeholderText: qsTr("e.g. vision gguf")
+                    text: ModelInstaller.searchQuery
+                    onEditingFinished: ModelInstaller.searchQuery = text.trim()
+                }
+                LLOButton {
+                    text: qsTr("Search")
+                    onClicked: {
+                        ModelInstaller.searchQuery = searchField.text.trim()
+                        ModelInstaller.startSearch()
+                    }
+                }
+            }
+
+            ListView {
+                id: searchList
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(searchList.count, 3) * 32
+                clip: true
+                visible: ModelInstaller.searchCount > 0
+                model: ModelInstaller.searchCount
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                delegate: Rectangle {
+                    required property int index
+                    property var sInfo: ModelInstaller.searchResult(index)
+                    width: searchList.width
+                    height: 32
+                    color: "transparent"
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 6
+                        anchors.rightMargin: 6
+                        spacing: 6
+                        LLOLabel {
+                            Layout.preferredWidth: 180
+                            elide: Text.ElideMiddle
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textPrimary
+                            text: sInfo.title
+                        }
+                        LLOLabel {
+                            Layout.fillWidth: true
+                            elide: Text.ElideMiddle
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textMuted
+                            text: sInfo.id
+                        }
+                        LLOButton {
+                            text: qsTr("Install")
+                            enabled: !ModelInstaller.busy
+                            onClicked: {
+                                ModelInstaller.installRemote(index)
+                                preparedIndex = -1
+                                pickDialog.open()
+                            }
+                        }
+                    }
+                }
+            }
+
+            LLOLabel {
+                Layout.fillWidth: true
+                font.pointSize: Theme.captionSize
+                color: Theme.textMuted
+                visible: !ModelInstaller.searchActive
+                         && ModelInstaller.searchCount === 0
+                text: qsTr("Results appear here. Models install into the managed "
+                           + "models directory.")
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                LLOLabel {
+                    text: qsTr("HF token (optional)")
+                }
+                TextField {
+                    id: tokenField
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    echoMode: TextInput.Password
+                    placeholderText: qsTr("read-only token for gated repos")
+                    text: ModelInstaller.hfToken()
+                    onEditingFinished: ModelInstaller.setHfToken(text.trim())
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                LLOButton {
+                    text: qsTr("Import catalog…")
+                    onClicked: importDialog.open()
+                }
+                LLOButton {
+                    text: qsTr("Export catalog…")
+                    onClicked: exportDialog.open()
+                }
+                LLOButton {
+                    text: qsTr("Restore defaults")
+                    onClicked: ModelInstaller.resetUserCatalog()
+                }
+                Item { Layout.fillWidth: true }
+            }
+
+            LLOLabel {
+                id: statusMsg
+                Layout.fillWidth: true
+                visible: text.length > 0
+                color: Theme.textSecondary
+                font.pointSize: Theme.captionSize
+                elide: Text.ElideRight
+                wrapMode: Text.NoWrap
+            }
+        }//ColumnLayout
+    }//ScrollView
 
     Dialog {
         id: pickDialog
@@ -437,13 +454,5 @@ Item {
             const err = ModelInstaller.exportCatalog(Runtime.localPath(selectedFile))
             if (err.length) statusMsg.text = err
         }
-    }
-
-    LLOLabel {
-        id: statusMsg
-        visible: text.length > 0
-        color: Theme.textSecondary
-        font.pointSize: Theme.captionSize
-        Layout.fillWidth: true
     }
 }

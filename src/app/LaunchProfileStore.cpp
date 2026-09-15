@@ -168,13 +168,14 @@ bool LaunchProfileStore::presetMatches(const LaunchProfile &preset,
 QString LaunchProfileStore::activeProfileId() const
 {
     const QString stored = m_settings.launchProfileId();
+    const PlatformInfo platform = ReleaseCatalog::detectPlatform();
     // No runtime installed yet: fall back to the platform's recommended
     // backend so the resolved profile still makes sense (cpu on Windows/
     // Linux, metal on macOS).
     QString backend = m_settings.runtimeBackend();
     if (backend.isEmpty())
-        backend = ReleaseCatalog::detectPlatform().backend;
-    const QString osTag = ReleaseCatalog::detectPlatform().osTag;
+        backend = platform.backend;
+    const QString osTag = platform.osTag;
 
     if (const LaunchProfile *storedPreset = findPreset(stored);
         storedPreset && presetMatches(*storedPreset, backend, osTag))

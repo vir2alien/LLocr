@@ -255,7 +255,7 @@ ScrollView {
         Rectangle {
             Layout.fillWidth: true
             visible: RuntimeInstaller.hasUpdate
-            implicitHeight: updatePlaque.implicitHeight + Theme.spacing
+            implicitHeight: updatePlaque.implicitHeight + 2 * 8
             color: Theme.warningBg
             border.color: Theme.warning
             border.width: 1

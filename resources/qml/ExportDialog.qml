@@ -46,7 +46,7 @@ Dialog {
     onAboutToShow: {
         scopeAll.checked = true
         fromSpin.value = 1
-        toSpin.value = controller.pageCount
+        toSpin.value = Controller.pageCount
     }
 
     onAccepted: {
@@ -137,7 +137,7 @@ Dialog {
         }
         RadioButton {
             id: scopeCurrent
-            text: qsTr("Current page (%1)").arg(controller.currentPage + 1)
+            text: qsTr("Current page (%1)").arg(Controller.currentPage + 1)
             font.pointSize: Theme.captionSize
             ButtonGroup.group: scopeGroup
         }
@@ -161,7 +161,7 @@ Dialog {
             CompactSpinBox {
                 id: fromSpin
                 from: 1
-                to: controller.pageCount
+                to: Controller.pageCount
             }
             LLOLabel {
                 text: qsTr("to")
@@ -170,7 +170,7 @@ Dialog {
             CompactSpinBox {
                 id: toSpin
                 from: 1
-                to: controller.pageCount
+                to: Controller.pageCount
             }
         }
 

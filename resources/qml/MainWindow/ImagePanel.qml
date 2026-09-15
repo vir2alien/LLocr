@@ -16,7 +16,7 @@ Rectangle {
 
     LLOLabel {
         anchors.centerIn: parent
-        visible: !controller.hasImage
+        visible: !Controller.hasImage
         text: qsTr("Open an image or PDF to begin")
         color: Theme.textMuted
     }

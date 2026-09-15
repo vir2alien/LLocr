@@ -1,5 +1,7 @@
 #include "core/RequestProfile.h"
 
+#include "core/ValueParsing.h"
+
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -9,7 +11,6 @@
 #include <QStringList>
 
 #include <algorithm>
-#include <cmath>
 
 namespace llocr {
 
@@ -115,11 +116,10 @@ bool RequestProfile::textToValue(const QString &text, RequestValueKind kind,
 {
     switch (kind) {
     case RequestValueKind::Number: {
-        bool ok = false;
-        const double number = text.trimmed().toDouble(&ok);
-        if (!ok || !qIsFinite(number))
+        const auto number = toFiniteNumber(text);
+        if (!number)
             return false;
-        out = QVariant(number);
+        out = QVariant(*number);
         return true;
     }
     case RequestValueKind::Boolean: {

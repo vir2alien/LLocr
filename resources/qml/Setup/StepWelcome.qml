@@ -48,8 +48,8 @@ Item {
         Repeater {
             model: 2
             Rectangle {
-                width: root.width - 40
-                height: 82
+                Layout.fillWidth: true
+                Layout.preferredHeight: 82
                 radius: Theme.radius
                 color: mouse.containsMouse ? Theme.surfaceAlt : Theme.surface
                 border.color: Theme.border

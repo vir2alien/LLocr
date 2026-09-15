@@ -40,7 +40,7 @@ Item {
                 asynchronous: true
                 cache: true
                 source: "image://ocr/page/" + model.pageIndex
-                        + "?r=" + controller.docRevision
+                        + "?r=" + Controller.docRevision
             }
 
             RowLayout {
@@ -48,8 +48,8 @@ Item {
                 spacing: Theme.spacingSmall
 
                 Rectangle {
-                    width: 9
-                    height: 9
+                    Layout.preferredWidth: 9
+                    Layout.preferredHeight: 9
                     radius: model.edited ? 2 : 5
                     color: model.hasDuplicates ? "#d32f2f"
                            : (model.edited ? Theme.textPrimary
@@ -78,7 +78,7 @@ Item {
         }
 
         TapHandler {
-            onTapped: controller.currentPage = model.pageIndex
+            onTapped: Controller.currentPage = model.pageIndex
         }
     }// Rectangle card
 
@@ -90,8 +90,8 @@ Item {
         implicitWidth: 20
         implicitHeight: 20
         padding: 0
-        visible: thumbHover.hovered && !controller.busy && thumbList.draggedIndex === -1
-        enabled: !controller.busy
+        visible: thumbHover.hovered && !Controller.busy && thumbList.draggedIndex === -1
+        enabled: !Controller.busy
         opacity: visible ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 100 } }
         text: "\u2715"
@@ -107,7 +107,7 @@ Item {
         ToolTip.text: qsTr("Delete page")
         Accessible.name: qsTr("Delete page %1").arg(model.pageIndex + 1)
 
-        onClicked: controller.removePage(model.pageIndex)
+        onClicked: Controller.removePage(model.pageIndex)
     }// ToolButton
 
     Rectangle {
@@ -119,7 +119,7 @@ Item {
         anchors.margins: 2
         radius: 3
         z: 2
-        visible: (thumbHover.hovered || dragActive) && !controller.busy
+        visible: (thumbHover.hovered || dragActive) && !Controller.busy
         opacity: visible ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 100 } }
         color: dragActive ? Theme.accent : Theme.surfaceAlt
@@ -136,7 +136,7 @@ Item {
         DragHandler {
             id: dragHandler
             target: delegateRoot
-            enabled: !controller.busy
+            enabled: !Controller.busy
             cursorShape: Qt.SizeVerCursor
 
             yAxis.enabled: true
@@ -156,7 +156,7 @@ Item {
                     thumbList.draggedIndex = -1
 
                     if (fromIndex !== -1 && fromIndex !== toIndex)
-                        controller.movePage(fromIndex, toIndex)
+                        Controller.movePage(fromIndex, toIndex)
                     else
                         delegateRoot.y = index * (delegateRoot.height + thumbList.spacing) // вернуть на место
                 }

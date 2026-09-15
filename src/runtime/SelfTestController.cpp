@@ -40,7 +40,7 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
 
     // Start (or reuse) the server first, then issue one real request. The
     // resolve machinery lives on RuntimeController (single source of truth).
-    m_runtime.ensureConnectionReady([this, promise](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, [this, promise](const ResolvedConnection &conn) {
         if (conn.baseUrl.isEmpty()) {
             SelfTestResult r;
             r.error = conn.error.isEmpty() ? tr("Server not available") : conn.error;

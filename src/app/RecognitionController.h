@@ -24,7 +24,7 @@ class RecognitionController : public QObject
     Q_OBJECT
 
 public:
-    using ImageProvider = std::function<QImage(int pageIndex)>;
+    using ImageProvider = std::function<QImage(int pageIndex, QString &error)>;
 
     explicit RecognitionController(SettingsStore &settings,
                                    RuntimeController &runtime,

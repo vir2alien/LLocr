@@ -15,7 +15,7 @@ ColumnLayout {
         timeoutField.text = Settings.connectionTimeoutMs.toString()
     }
 
-    function savaValues() {
+    function saveValues() {
         Settings.modelName = modelNameField.text;
         Settings.baseUrl = baseUrlField.text;
         Settings.apiKey = apiKeyField.text;

@@ -15,12 +15,12 @@ Rectangle {
         id: previewDebounce
         interval: 250
         onTriggered:
-            root.previewMarkdown = controller.resolveImagesForPreview(textArea.text)
+            root.previewMarkdown = Controller.resolveImagesForPreview(textArea.text)
     }
     LLOLabel {
         anchors.centerIn: parent
         verticalAlignment: Text.AlignVCenter
-        visible: !controller.hasResult && !previewSwitch.checked
+        visible: !Controller.hasResult && !previewSwitch.checked
         text: qsTr("Recognized text will appear here")
         color: Theme.textMuted
         horizontalAlignment: Text.AlignHCenter
@@ -30,7 +30,7 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        visible: controller.hasResult
+        visible: Controller.hasResult
         spacing: 0
         RowLayout {
             Layout.fillWidth: true
@@ -39,18 +39,18 @@ Rectangle {
             Layout.margins: Theme.spacingSmall
 
             LLOLabel {
-                visible: controller.currentPageEditable
-                text: controller.currentPageEdited ? qsTr("Edited")
+                visible: Controller.currentPageEditable
+                text: Controller.currentPageEdited ? qsTr("Edited")
                                                    : qsTr("Recognized")
-                color: controller.currentPageEdited ? Theme.textPrimary
+                color: Controller.currentPageEdited ? Theme.textPrimary
                                                    : Theme.textMuted
-                font.bold: controller.currentPageEdited
+                font.bold: Controller.currentPageEdited
             }
 
             LLOButton {
                 text: qsTr("Revert")
-                visible: controller.currentPageEditable && controller.currentPageEdited
-                onClicked: controller.revertCurrentPageEdits()
+                visible: Controller.currentPageEditable && Controller.currentPageEdited
+                onClicked: Controller.revertCurrentPageEdits()
             }
 
             Item { Layout.fillWidth: true }
@@ -77,7 +77,7 @@ Rectangle {
             ScrollView {
                 TextArea {
                     id: textArea
-                    readOnly: !controller.currentPageEditable
+                    readOnly: !Controller.currentPageEditable
                     wrapMode: TextArea.Wrap
                     selectByMouse: true
                     color: Theme.textPrimary
@@ -87,7 +87,7 @@ Rectangle {
                     property bool syncing: false
 
                     function reload() {
-                        var t = controller.resultText
+                        var t = Controller.resultText
                         if (text === t)
                             return
                         syncing = true
@@ -97,14 +97,14 @@ Rectangle {
 
                     onTextChanged: {
                         if (!syncing)
-                            controller.setCurrentPageText(text)
+                            Controller.setCurrentPageText(text)
                         previewDebounce.restart()
                     }
 
                     Component.onCompleted: reload()
 
                     Connections {
-                        target: controller
+                        target: Controller
                         function onResultChanged() { textArea.reload() }
                     }
                 }

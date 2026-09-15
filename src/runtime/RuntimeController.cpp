@@ -191,6 +191,12 @@ ResolvedConnection RuntimeController::resolveExternal() const
 void RuntimeController::ensureConnectionReady(
     const std::function<void(const ResolvedConnection &)> &onResolved)
 {
+    ensureConnectionReady(nullptr, onResolved);
+}
+
+void RuntimeController::ensureConnectionReady(
+    QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved)
+{
     // External resolves synchronously (ADR 26); never transitions through a
     // Starting state.
     if (modeFromSettings(m_settings) == ConnectionMode::External) {
@@ -201,7 +207,7 @@ void RuntimeController::ensureConnectionReady(
     // Managed: deduplicate — concurrent callers share the in-flight resolve by
     // queuing their callback; completeResolve() invokes every queued callback.
     if (m_resolveInProgress) {
-        m_resolveCallbacks.push_back(onResolved);
+        m_resolveCallbacks.push_back({context, context != nullptr, onResolved});
         return;
     }
 
@@ -242,7 +248,7 @@ void RuntimeController::ensureConnectionReady(
     }
 
     m_resolveInProgress = true;
-    m_resolveCallbacks.push_back(onResolved);
+    m_resolveCallbacks.push_back({context, context != nullptr, onResolved});
     beginManagedResolve();
 }
 
@@ -287,8 +293,11 @@ void RuntimeController::completeResolve(ResolvedConnection conn)
     m_resolveInProgress = false;
     const auto callbacks = std::move(m_resolveCallbacks);
     m_resolveCallbacks.clear();
-    for (const auto &cb : callbacks)
-        cb(conn);
+    for (const auto &cb : callbacks) {
+        if (cb.guarded && cb.context.isNull())
+            continue;
+        cb.onResolved(conn);
+    }
 }
 
 void RuntimeController::failResolve(const QString &message)
@@ -672,18 +681,18 @@ void RuntimeController::cancelPendingStart()
     if (!m_resolveInProgress)
         return;
 
-    // Interrupt a still-starting server (a Ready server is left running for
-    // reuse). The recognition flow drops out via the resolve error below.
-    // §2.7: stop() is asynchronous; the Stopped state arrives via the server's
-    // stateChanged signal, so only reset the resolve machinery here.
-    if (m_server && m_server->state() == RuntimeState::Starting) {
-        m_server->stop();
-        setLoadProgressPercent(-1);
-    }
     // Reset unconditionally: in the /v1/models window (server Ready) or while
     // Stopping, busyState is still StartingRuntime and must not stick.
     setBusyState(AppBusyState::Idle);
     failResolve(tr("Server start cancelled"));
+    // Interrupt a still-starting server (a Ready server is left running for
+    // reuse). The resolve is already completed above, so the synchronous
+    // Stopping emission from stop() no longer reaches the resolve machinery
+    // and cannot overwrite the cancellation error.
+    if (m_server && m_server->state() == RuntimeState::Starting) {
+        m_server->stop();
+        setLoadProgressPercent(-1);
+    }
     setStatusMessage(tr("Stopped"));
 }
 

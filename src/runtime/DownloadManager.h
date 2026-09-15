@@ -66,6 +66,7 @@ private:
     void startNextQueued();
     void recalcAggregate();
     void onTaskFinished(DownloadTask *task, bool ok);
+    void evictFinishedTasks();
     int countRunning() const;
 
     QNetworkAccessManager *m_nam = nullptr;

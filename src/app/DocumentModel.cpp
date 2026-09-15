@@ -150,13 +150,21 @@ bool DocumentModel::isValidIndex(int index) const
     return index >= 0 && index < m_pages.size();
 }
 
-bool DocumentModel::decodeSource(DocumentPage& page)
+bool DocumentModel::decodeSource(DocumentPage& page, QString *error)
 {
     QImageReader reader(page.sourcePath);
     reader.setAutoTransform(true);
+    reader.setAllocationLimit(0);
     QImage image = reader.read();
-    if (image.isNull())
+    if (image.isNull()) {
+        if (error)
+            *error = QStringLiteral("Failed to read %1: %2")
+                         .arg(page.sourcePath,
+                              reader.errorString().isEmpty()
+                                  ? QStringLiteral("unknown error")
+                                  : reader.errorString());
         return false;
+    }
 
     if (image.format() != QImage::Format_RGB32
         && image.format() != QImage::Format_ARGB32) {
@@ -167,12 +175,16 @@ bool DocumentModel::decodeSource(DocumentPage& page)
     return true;
 }
 
-QImage DocumentModel::renderFull(const DocumentPage& page)
+QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
 {
     if (page.pdfIndex >= 0) {
         QPdfDocument* pdf = pdfFor(page.sourcePath);
-        if (!pdf)
+        if (!pdf) {
+            if (error)
+                *error = QStringLiteral("Failed to open %1 as a PDF document")
+                             .arg(page.sourcePath);
             return QImage();
+        }
         QPdfDocumentRenderOptions options;
         QImage image = pdf->render(page.pdfIndex, page.pixelSize, options);
         if (image.isNull()) {
@@ -184,18 +196,19 @@ QImage DocumentModel::renderFull(const DocumentPage& page)
     }
 
     DocumentPage decoded;
-    if (!decodeSource(decoded))
+    decoded.sourcePath = page.sourcePath;
+    if (!decodeSource(decoded, error))
         return QImage();
     return decoded.image;
 }
 
-void DocumentModel::ensureFullImage(int index)
+void DocumentModel::ensureFullImage(int index, QString *error)
 {
     if (!isValidIndex(index))
         return;
     if (!m_pages[index].image.isNull())
         return;
-    m_pages[index].image = renderFull(m_pages[index]);
+    m_pages[index].image = renderFull(m_pages[index], error);
     m_fullCache.removeAll(index);
     m_fullCache.prepend(index);
     evictFullImages();
@@ -224,11 +237,16 @@ QPdfDocument* DocumentModel::pdfFor(const QString& path)
     return pdf;
 }
 
-QImage DocumentModel::fullImage(int index)
+QImage DocumentModel::fullImage(int index, QString *error)
 {
-    ensureFullImage(index);
-    if (!isValidIndex(index))
+    if (error)
+        error->clear();
+    if (!isValidIndex(index)) {
+        if (error)
+            *error = QStringLiteral("Invalid page index %1").arg(index + 1);
         return QImage();
+    }
+    ensureFullImage(index, error);
     return m_pages[index].image;
 }
 

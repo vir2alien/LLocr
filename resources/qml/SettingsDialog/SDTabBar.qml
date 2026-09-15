@@ -56,6 +56,7 @@ TabBar {
         text: qsTr("Models")
         onToggled: {
             if (checked) {
+                ModelInstaller.refreshInstalled()
                 ModelInstaller.reloadPresets()
                 ModelInstaller.rescanRegistry()
             }

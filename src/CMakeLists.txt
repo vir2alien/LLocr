@@ -12,6 +12,7 @@ qt_add_executable(llocr
     core/RequestProfile.cpp
     core/LaunchProfile.h
     core/LaunchProfile.cpp
+    core/ValueParsing.h
 
     # models
     models/OcrModel.h

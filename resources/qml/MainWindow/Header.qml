@@ -35,43 +35,43 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Recognize")
-            enabled: controller.hasImage && !controller.busy
-                     && controller.canRecognize
-            onClicked: controller.recognizeCurrent()
+            enabled: Controller.hasImage && !Controller.busy
+                     && Controller.canRecognize
+            onClicked: Controller.recognizeCurrent()
         }
         ToolButton {
             text: qsTr("Recognize all")
-            enabled: controller.hasImage && !controller.busy
-                     && controller.pageCount > 1
-                     && controller.canRecognize
-            onClicked: controller.recognizeAll()
+            enabled: Controller.hasImage && !Controller.busy
+                     && Controller.pageCount > 1
+                     && Controller.canRecognize
+            onClicked: Controller.recognizeAll()
         }
         ToolButton {
             text: qsTr("Stop")
-            enabled: controller.busy
-            onClicked: controller.stop()
+            enabled: Controller.busy
+            onClicked: Controller.stop()
         }
 
-        ToolSeparator { visible: controller.pageCount > 1 }
+        ToolSeparator { visible: Controller.pageCount > 1 }
 
         RowLayout {
-            visible: controller.pageCount > 1
+            visible: Controller.pageCount > 1
             spacing: 0
 
             ToolButton {
                 text: "\u2039"
-                enabled: controller.currentPage > 0
-                onClicked: controller.currentPage = controller.currentPage - 1
+                enabled: Controller.currentPage > 0
+                onClicked: Controller.currentPage = Controller.currentPage - 1
             }
             LLOLabel {
-                text: (controller.currentPage + 1) + " / " + controller.pageCount
+                text: (Controller.currentPage + 1) + " / " + Controller.pageCount
                 horizontalAlignment: Text.AlignHCenter
                 Layout.minimumWidth: 56
             }
             ToolButton {
                 text: "\u203a"
-                enabled: controller.currentPage < controller.pageCount - 1
-                onClicked: controller.currentPage = controller.currentPage + 1
+                enabled: Controller.currentPage < Controller.pageCount - 1
+                onClicked: Controller.currentPage = Controller.currentPage + 1
             }
         }
 
@@ -79,9 +79,9 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Export…")
-            enabled: controller.hasResult && !controller.exporting
+            enabled: Controller.hasResult && !Controller.exporting
             onClicked: {
-                if (controller.pageCount > 1) {
+                if (Controller.pageCount > 1) {
                     exportOptionsDialog.open()
                 } else {
                     exportDialog.scope = 0 //export all

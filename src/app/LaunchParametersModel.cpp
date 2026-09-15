@@ -1,19 +1,8 @@
 #include "app/LaunchParametersModel.h"
 
-#include <cmath>
+#include "core/ValueParsing.h"
 
 namespace llocr {
-
-namespace {
-
-bool isNumericText(const QString &text)
-{
-    bool ok = false;
-    const double number = text.trimmed().toDouble(&ok);
-    return ok && qIsFinite(number);
-}
-
-}  // namespace
 
 LaunchParametersModel::LaunchParametersModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -77,7 +66,7 @@ bool LaunchParametersModel::setValue(int row, const QString &text)
 
     LaunchParameter &p = m_parameters[row];
     if (p.kind == LaunchValueKind::Number && !text.trimmed().isEmpty()
-        && !isNumericText(text))
+        && !toFiniteNumber(text).has_value())
         return false;  // a Number row only accepts numeric text
 
     LaunchValueKind nextKind = p.kind;
@@ -86,11 +75,9 @@ bool LaunchParametersModel::setValue(int row, const QString &text)
         nextKind = LaunchValueKind::Flag;  // emptied value → bare flag
     } else if (p.kind == LaunchValueKind::Flag) {
         // A filled flag row becomes a value row.
-        nextKind = isNumericText(text) ? LaunchValueKind::Number
-                                       : LaunchValueKind::Text;
-        nextValue = nextKind == LaunchValueKind::Number
-                        ? QVariant(text.trimmed().toDouble())
-                        : QVariant(text);
+        const auto number = toFiniteNumber(text);
+        nextKind = number ? LaunchValueKind::Number : LaunchValueKind::Text;
+        nextValue = number ? QVariant(*number) : QVariant(text);
     } else {
         nextValue = p.kind == LaunchValueKind::Number
                         ? QVariant(text.trimmed().toDouble())
@@ -127,9 +114,9 @@ bool LaunchParametersModel::appendRow(const QString &name, const QString &text)
     parameter.order = m_parameters.isEmpty() ? 1 : m_parameters.last().order + 1;
     if (text.trimmed().isEmpty()) {
         parameter.kind = LaunchValueKind::Flag;
-    } else if (isNumericText(text)) {
+    } else if (const auto number = toFiniteNumber(text)) {
         parameter.kind = LaunchValueKind::Number;
-        parameter.value = QVariant(text.trimmed().toDouble());
+        parameter.value = QVariant(*number);
     } else {
         parameter.kind = LaunchValueKind::Text;
         parameter.value = QVariant(text);

@@ -11,7 +11,10 @@ Item {
 
     property bool complete: Settings.serverPath.trim().length > 0
 
-    Component.onCompleted: RuntimeInstaller.rescanInstalledBuilds()
+    onVisibleChanged: {
+        if (visible)
+            RuntimeInstaller.rescanInstalledBuilds()
+    }
 
     ColumnLayout {
         anchors.fill: parent

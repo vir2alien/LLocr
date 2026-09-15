@@ -1,7 +1,6 @@
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
-#include <QQmlContext>
 #include <QQuickStyle>
 #include <QtWebEngineQuick/qtwebenginequickglobal.h>
 
@@ -69,17 +68,11 @@ void setupQmlEngine(QQmlApplicationEngine& engine,
                     llocr::UiController& uiController) {
     qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/qml/Theme.qml")),
                              "LLocr", 1, 0, "Theme");
-    qmlRegisterUncreatableType<llocr::UiController>(
-                "LLocr", 1, 0, "UiController",
-                "UiController is provided as a context property");
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "Controller", &appController);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "UiController", &uiController);
 
     engine.addImageProvider(QStringLiteral("ocr"),
                             new llocr::OcrImageProvider(&appController));
-
-    engine.rootContext()->setContextProperty(QStringLiteral("controller"),
-                                             &appController);
-    engine.rootContext()->setContextProperty(QStringLiteral("uiController"),
-                                             &uiController);
 }
 
 }  // namespace

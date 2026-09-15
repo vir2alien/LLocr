@@ -9,7 +9,7 @@ import "../Common"
 Rectangle {
     LLOLabel {
         anchors.centerIn: parent
-        visible: controller.hasImage && controller.pageCount === 0
+        visible: Controller.hasImage && Controller.pageCount === 0
         text: qsTr("No pages")
         color: Theme.textMuted
     }
@@ -22,11 +22,11 @@ Rectangle {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar {}
-        cacheBuffer: 10000
+        cacheBuffer: 1000
 
         interactive: draggedIndex === -1
 
-        model: controller.pageModel
+        model: Controller.pageModel
 
         property int draggedIndex: -1
 

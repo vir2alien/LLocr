@@ -17,6 +17,9 @@ Dialog {
 
     property int current: 0
     property bool completed: false
+    property list<Item> steps: [stepWelcome, stepRuntime, stepModel, stepLaunch, stepDone]
+    readonly property int lastStep: steps.length - 1
+    readonly property Item currentStep: steps[current]
     readonly property bool canProceed: currentStep && currentStep.complete
 
     signal openConnectionSettings()
@@ -55,10 +58,6 @@ Dialog {
         StepDone { id: stepDone }
     }
 
-    property Item currentStep
-    onCurrentChanged: wizard.currentStep = stackLayout.children[wizard.current]
-    Component.onCompleted: wizard.currentStep = stackLayout.children[0]
-
     footer: DialogButtonBox {
         LLOButton {
             text: qsTr("Skip")
@@ -67,14 +66,14 @@ Dialog {
         }
         LLOButton {
             text: qsTr("Back")
-            visible: wizard.current > 0 && wizard.current < 4
+            visible: wizard.current > 0 && wizard.current < wizard.lastStep
             onClicked: wizard.current = Math.max(0, wizard.current - 1)
         }
         LLOButton {
-            text: wizard.current === 4 ? qsTr("Finish") : qsTr("Next")
+            text: wizard.current === wizard.lastStep ? qsTr("Finish") : qsTr("Next")
             enabled: wizard.canProceed
             onClicked: {
-                if (wizard.current === 4) {
+                if (wizard.current === wizard.lastStep) {
                     wizard.completed = true
                     stepDone.markDone()
                     wizard.accept()

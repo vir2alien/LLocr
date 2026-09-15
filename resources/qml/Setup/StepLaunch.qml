@@ -57,7 +57,9 @@ Item {
         function onProfileChanged() { refreshAll() }
         function onActiveProfileChanged() { syncPresetModel() }
     }
-    Component.onCompleted: {
+    onVisibleChanged: {
+        if (!visible)
+            return
         refreshAll()
         syncPresetModel()
     }
@@ -145,7 +147,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             visible: root.hasMemoryWarning
-            implicitHeight: memoryCol.implicitHeight + Theme.spacing
+            implicitHeight: memoryCol.implicitHeight + 2 * 8
             color: Theme.warningBg
             border.color: Theme.warning
             border.width: 1

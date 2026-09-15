@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QPointer>
 #include <QQmlEngine>
 #include <QString>
 
@@ -86,6 +87,8 @@ public:
     //            callers share the in-flight resolve: each callback is queued
     //            and all are invoked once the single resolve completes (3.3).
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
+    void ensureConnectionReady(QObject *context,
+                               const std::function<void(const ResolvedConnection &)> &onResolved);
 
     /// Cancels a pending startup (called by RecognitionController::stop() while
     /// the app is in StartingRuntime). Interrupts the start wait, completes any
@@ -186,7 +189,12 @@ private:
 
     // In-flight managed resolve (dedup: all concurrent callers share it). Each
     // pending caller's callback is queued here and drained by completeResolve().
-    std::vector<std::function<void(const ResolvedConnection &)>> m_resolveCallbacks;
+    struct PendingResolve {
+        QPointer<QObject> context;
+        bool guarded = false;
+        std::function<void(const ResolvedConnection &)> onResolved;
+    };
+    std::vector<PendingResolve> m_resolveCallbacks;
     bool m_resolveInProgress = false;
 
     QNetworkAccessManager *m_modelsNet = nullptr;

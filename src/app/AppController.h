@@ -77,13 +77,13 @@ public:
     bool currentPageEditable() const;
     bool currentPageEdited() const;
 
-    QObject *pageModel() { return &m_pageModel; }
-    QObject *boxModel() { return &m_boxModel; }
+    QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
+    QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
 
     void setCurrentPage(int index);
 
     QImage currentImage();
-    QImage pageImage(int index);
+    QImage pageImage(int index, QString *error = nullptr);
     QImage pageThumbnail(int index) const;
 
     QImage croppedImage(int pageIndex, int boxIndex);

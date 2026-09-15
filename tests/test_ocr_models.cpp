@@ -1,10 +1,77 @@
 #include <QtTest>
 
+#include <QFuture>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QTcpServer>
+#include <QTcpSocket>
+
+#include "core/ConnectionConfig.h"
 #include "core/OcrRequest.h"
 #include "models/OcrModelFactory.h"
 #include "models/UnlimitedOcrModel.h"
 
 using namespace llocr;
+
+namespace {
+
+class RecordingServer : public QObject
+{
+public:
+    QByteArray body;
+    bool gotRequest = false;
+
+    bool start()
+    {
+        connect(&m_server, &QTcpServer::newConnection, this, [this]() {
+            while (QTcpSocket *socket = m_server.nextPendingConnection()) {
+                m_buffers.insert(socket, QByteArray());
+                connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
+                    m_buffers[socket].append(socket->readAll());
+                    maybeRespond(socket);
+                });
+                connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
+            }
+        });
+        return m_server.listen(QHostAddress::LocalHost, 0);
+    }
+
+    quint16 port() const { return m_server.serverPort(); }
+
+private:
+    void maybeRespond(QTcpSocket *socket)
+    {
+        const QByteArray &raw = m_buffers.value(socket);
+        const int headerEnd = raw.indexOf("\r\n\r\n");
+        if (headerEnd < 0)
+            return;
+        int contentLength = 0;
+        const QList<QByteArray> lines = raw.left(headerEnd).split('\n');
+        for (const QByteArray &line : lines) {
+            if (line.toLower().startsWith("content-length:"))
+                contentLength = line.mid(15).trimmed().toInt();
+        }
+        if (raw.size() < headerEnd + 4 + contentLength)
+            return;
+        body = raw.mid(headerEnd + 4, contentLength);
+        gotRequest = true;
+
+        const QByteArray replyBody =
+            "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"ok\"}}]}";
+        socket->write("HTTP/1.1 200 OK\r\n"
+                      "Content-Type: application/json\r\n"
+                      "Content-Length: " + QByteArray::number(replyBody.size()) + "\r\n"
+                      "Connection: close\r\n\r\n" + replyBody);
+        socket->flush();
+        socket->disconnectFromHost();
+    }
+
+    QTcpServer m_server;
+    QHash<QTcpSocket *, QByteArray> m_buffers;
+};
+
+}  // namespace
 
 class TestOcrModels : public QObject {
     Q_OBJECT
@@ -44,6 +111,81 @@ private slots:
         QCOMPARE(variants.first().text, QStringLiteral("document parsing."));
         QVERIFY(!variants.first().id.isEmpty());
         QVERIFY(!variants.first().title.isEmpty());
+    }
+
+    void recognizeSendsDecodableJpegDataUrl() {
+        RecordingServer server;
+        QVERIFY(server.start());
+
+        QImage image(137, 91, QImage::Format_ARGB32);
+        for (int y = 0; y < image.height(); ++y) {
+            for (int x = 0; x < image.width(); ++x)
+                image.setPixel(x, y, qRgb(x % 256, y % 256, (x + y) % 256));
+        }
+
+        OcrRequest request;
+        request.image = image;
+        request.prompt = QStringLiteral("document parsing.");
+        request.modelId = QStringLiteral("unlimited-ocr");
+
+        ConnectionConfig config;
+        config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
+        config.timeoutMs = 10000;
+
+        const auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        QVERIFY(model != nullptr);
+
+        QFuture<OcrResult> future = model->recognize(request, config);
+        QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
+        QVERIFY(server.gotRequest);
+
+        const QJsonDocument doc = QJsonDocument::fromJson(server.body);
+        QVERIFY(doc.isObject());
+        const QJsonArray content = doc.object()
+                                       .value(QStringLiteral("messages")).toArray().at(0).toObject()
+                                       .value(QStringLiteral("content")).toArray();
+        QString dataUrl;
+        QString textPart;
+        for (const QJsonValue &part : content) {
+            const QJsonObject obj = part.toObject();
+            if (obj.value(QStringLiteral("type")).toString() == QStringLiteral("image_url"))
+                dataUrl = obj.value(QStringLiteral("image_url")).toObject()
+                              .value(QStringLiteral("url")).toString();
+            if (obj.value(QStringLiteral("type")).toString() == QStringLiteral("text"))
+                textPart = obj.value(QStringLiteral("text")).toString();
+        }
+        QCOMPARE(textPart, QStringLiteral("document parsing."));
+
+        QVERIFY(!dataUrl.isEmpty());
+        QVERIFY(dataUrl.startsWith(QStringLiteral("data:image/png;base64,")));
+        const QByteArray png = QByteArray::fromBase64(
+            dataUrl.mid(QStringLiteral("data:image/png;base64,").size()).toLatin1());
+        QVERIFY(png.size() > 100);
+        QVERIFY(png.startsWith("\x89PNG"));
+
+        const QImage decoded = QImage::fromData(png, "PNG");
+        QVERIFY(!decoded.isNull());
+        QCOMPARE(decoded.width(), 137);
+        QCOMPARE(decoded.height(), 91);
+    }
+
+    void recognizeFailsCleanlyOnNullImage() {
+        OcrRequest request;
+        request.prompt = QStringLiteral("document parsing.");
+        request.modelId = QStringLiteral("unlimited-ocr");
+
+        ConnectionConfig config;
+        config.baseUrl = QStringLiteral("http://127.0.0.1:1");
+        config.timeoutMs = 1000;
+
+        const auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        QVERIFY(model != nullptr);
+
+        QFuture<OcrResult> future = model->recognize(request, config);
+        QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 5000);
+        const OcrResult result = future.result();
+        QVERIFY(!result.success);
+        QVERIFY(!result.errorMessage.isEmpty());
     }
 };
 

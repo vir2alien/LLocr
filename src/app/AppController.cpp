@@ -35,7 +35,7 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
     , m_runtime(runtime)
     , m_recognition(
           settings, runtime, requestProfiles,
-          [this](int index) { return pageImage(index); })
+          [this](int index, QString &error) { return pageImage(index, &error); })
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
@@ -143,10 +143,10 @@ QImage AppController::currentImage()
     return pageImage(m_currentPage);
 }
 
-QImage AppController::pageImage(int index)
+QImage AppController::pageImage(int index, QString *error)
 {
     QWriteLocker locker(&m_documentLock);
-    return m_document.fullImage(index);
+    return m_document.fullImage(index, error);
 }
 
 QImage AppController::pageThumbnail(int index) const

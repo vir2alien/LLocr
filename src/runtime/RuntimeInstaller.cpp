@@ -283,7 +283,7 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases,
     m_releases = releases;
     m_lastCatalogAt = QDateTime::currentDateTime();
     if (m_selectedRelease >= m_releases.size())
-        m_selectedRelease = 0;
+        setSelectedRelease(0);
 
     const int latestBuild = m_releases.first().build;
     const int cur = installedBuild().startsWith(QLatin1Char('b'))
@@ -332,8 +332,7 @@ void RuntimeInstaller::installUpdate()
 {
     if (m_releases.isEmpty())
         return;
-    m_selectedRelease = 0;
-    emit selectedReleaseChanged();
+    setSelectedRelease(0);
     startDownloadAndInstall();
 }
 

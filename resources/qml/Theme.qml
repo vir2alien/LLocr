@@ -2,8 +2,10 @@ pragma Singleton
 
 import QtQuick
 
+import LLocr
+
 QtObject {
-    readonly property bool dark: uiController.dark
+    readonly property bool dark: UiController.dark
 
     // --- Surfaces (back to front) ---
     readonly property color background: dark ? "#1c1c1c" : "#f2f2f2"
@@ -51,7 +53,7 @@ QtObject {
 
     // --- Text pt sizes ---
 
-    readonly property real textScale: 1//uiController.textScale
+    readonly property real textScale: 1//UiController.textScale
     readonly property int iconSize: 9 * textScale
     readonly property real captionSize: 8 * textScale //бейджи, счётчики, технические подписи
     readonly property real footnoteSize: 9 * textScale //сноски, подсказки, вторичные подписи

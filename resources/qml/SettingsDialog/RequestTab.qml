@@ -9,7 +9,7 @@ Item {
     id: root
 
     function loadValues() {
-        var midx = modelBox.model.indexOf(controller.modelIdToName(Settings.modelRecipeId))
+        var midx = modelBox.model.indexOf(Controller.modelIdToName(Settings.modelRecipeId))
         modelBox.currentIndex = midx >= 0 ? midx : 0
         RequestProfiles.reloadDraft()
     }
@@ -42,10 +42,10 @@ Item {
             id: modelBox
             Layout.fillWidth: true
             implicitHeight: Theme.controlHeight
-            model: controller.modelNames
+            model: Controller.modelNames
             onActivated: {
                 RequestProfiles.selectDraftProfile(
-                            controller.modelNameToId(modelBox.currentText))
+                            Controller.modelNameToId(modelBox.currentText))
             }
         }
 
@@ -129,7 +129,7 @@ Item {
                         if (text === model.valueText)
                             return
                         if (!RequestProfiles.setDraftValue(index, text))
-                            text = model.valueText
+                            text = Qt.binding(() => model.valueText)
                     }
                 }
 

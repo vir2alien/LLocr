@@ -286,6 +286,8 @@ int SettingsStore::windowState() const
 
 void SettingsStore::setWindowState(int winState)
 {
+    if (windowState() == winState)
+        return;
     m_settings.setValue(kWindowState, winState);
     emit windowStateChanged();
 }

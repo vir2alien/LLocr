@@ -50,7 +50,7 @@ ApplicationWindow {
             SplitView.minimumWidth: 120
             SplitView.maximumWidth: 300
             color: Theme.surface
-            visible: controller.hasImage
+            visible: Controller.hasImage
         }
 
         ImagePanel {
@@ -76,7 +76,7 @@ ApplicationWindow {
         onDropped: (drop) => {
             const urls = drop.urls.map(function(u) { return u })
             drop.accept()
-            controller.openFiles(urls)
+            Controller.openFiles(urls)
         }
     }
 
@@ -114,20 +114,20 @@ ApplicationWindow {
             qsTr("Documents (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf)"),
             qsTr("All files (*)")
         ]
-        onAccepted: controller.openFiles(selectedFiles)
+        onAccepted: Controller.openFiles(selectedFiles)
     }
 
     FileDialog {
         id: exportDialog
         title: qsTr("Export recognized text")
         fileMode: FileDialog.SaveFile
-        nameFilters: controller.exportNameFilters
+        nameFilters: Controller.exportNameFilters
 
         property int scope: 0 //0 = all, 1 = current, 2 = range
         property int fromPage: 1
         property int toPage: 1
 
-        onAccepted: controller.exportPages(selectedFile,
+        onAccepted: Controller.exportPages(selectedFile,
                                            exportDialog.scope,
                                            exportDialog.fromPage,
                                            exportDialog.toPage)
