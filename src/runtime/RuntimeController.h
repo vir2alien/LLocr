@@ -2,15 +2,14 @@
 
 #include <QObject>
 #include <QPointer>
-#include <QQmlEngine>
 #include <QString>
+#include <QVariant>
 
 #include <functional>
 #include <vector>
 
 #include "runtime/ConnectionMode.h"
 #include "runtime/ResolvedConnection.h"
-#include "runtime/RuntimeState.h"
 
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -34,8 +33,6 @@ class SingleInstanceGuard;
 class RuntimeController : public QObject
 {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
 
     Q_PROPERTY(int state READ stateInt NOTIFY stateChanged)
     Q_PROPERTY(int busyState READ busyStateInt NOTIFY busyStateChanged)
@@ -48,6 +45,30 @@ public:
     explicit RuntimeController(SettingsStore &settings,
                                LaunchProfileStore &launchProfiles,
                                QObject *parent = nullptr);
+
+    // App-wide busy states. These are exclusive: at any moment the app is in at
+    // most one. A single `busy` bool is not enough once the app can start and
+    // stop a local server, download files, or install a runtime.
+    enum class AppBusyState {
+        Idle,
+        StartingRuntime,  // server is starting / loading the model
+        Recognizing,
+        StoppingRuntime,
+        Downloading,      // model or runtime download in progress
+        Installing,       // archive extraction / verification
+    };
+    Q_ENUM(AppBusyState)
+
+    // State of the managed llama-server process (only meaningful in `Managed`).
+    enum class RuntimeState {
+        NotConfigured,  // no valid binary / no model selected
+        Stopped,
+        Starting,
+        Ready,
+        Stopping,
+        Failed,
+    };
+    Q_ENUM(RuntimeState)
 
     // --- QML-visible state ----------------------------------------------
     RuntimeState state() const { return m_state; }

@@ -4,7 +4,7 @@ Full Code Review Report — LLocr (C++ + QML)
 **Method**: both review skills' Phase 1 deterministic linting (C++ linter: 229 findings; QML linter: 373), Phase 1b system `qmllint` (Qt 6.10.3, 1,051 warnings), and 12 parallel deep-analysis agents (6 C++ missions + 6 QML missions), deduplicated and confidence-scored. Framework mode: not applicable (no Qt-module signals found).
 
 **Issues found**: 229 + 373 mechanical (mostly style; ~15 verified false-positive clusters, see §4), 46 confirmed deep findings, 15 investigation targets.
-**Status**: 36 of 46 deep findings fixed (all Tier-1 hangs, all user-visible breakage, security XSS, crash-risk D-C-08, the Tier-2 performance block, and fix round 2 — see FIXED marks in §1–§2 and the remaining-work plan at the end of §5). D-Q-11 and D-Q-17 are partially fixed with small optional remnants.
+**Status**: 37 of 46 deep findings fixed (all Tier-1 hangs, all user-visible breakage, security XSS, crash-risk D-C-08, the Tier-2 performance block, fix round 2 and fix round 4 — see FIXED marks in §1–§2 and the remaining-work plan at the end of §5). D-Q-11 is partially fixed with a small optional remnant.
 
 ---
 
@@ -202,10 +202,10 @@ FIXED **[D-Q-15] Wizard steps' `Component.onCompleted` side effects run at every
 13 duplicated blocks (backend combo, status label formula, builds/models ListView + ~60-line delegate, progress+cancel gating, update check, license dialogs); the fragile `Connections { onXChanged → var = Qt.binding(...) }` re-bind workaround appears **9 times**; the copies have already diverged (backendDisplay fallback exists in only one).
 *Fix*: extract `Common/` components (status row, builds list, models list) or drive rows from real QAbstractListModels; delete the re-bind glue.
 
-PARTIALLY FIXED **[D-Q-17] 28+ raw integer state comparisons in QML against three C++ enums** — `Footer.qml` (6), `RuntimeTabInternal.qml` (14), `ModelsTab.qml` (3), `StepRuntime.qml` (7), `StepModel.qml` (2) — Confidence 92
+FIXED **[D-Q-17] 28+ raw integer state comparisons in QML against three C++ enums** — `Footer.qml` (6), `RuntimeTabInternal.qml` (14), `ModelsTab.qml` (3), `StepRuntime.qml` (7), `StepModel.qml` (2) — Confidence 92
 `Runtime.state === 0..5`, `RuntimeInstaller.state === 0/1/3/4/6`, `ModelInstaller.state === 2/3/4`, `busyState === 1`, plus tab indices (`selectTab(1)`, `openSettingsRequested(4)`) and the wizard's magic `4`. Any C++ enum reordering silently flips dot colors, disables wrong buttons. (Also: `RequesetTabNum` typo in SettingsDialog.qml:24, and `savaValues()` typo in RuntimeTabExternal.qml:18 / UITab.qml:19 / callers.)
 *Fix*: expose a QML singleton with named enums (or int constants on the C++ singletons); fix typos.
-*Done (fix round 2)*: `RequesetTabNum` → `RequestTabNum`, `savaValues()` → `saveValues()` (both definitions and all callers), and the wizard's magic `4` (D-Q-19). *Remaining*: the named-enum exposure — deferred (needs C++ Q_ENUM plumbing for the three state enums and a 28-site QML migration; runtime-verifiable only with the app running).
+*Done (fix round 2)*: `RequesetTabNum` → `RequestTabNum`, `savaValues()` → `saveValues()` (both definitions and all callers), and the wizard's magic `4` (D-Q-19). *Done (fix round 4)*: `RuntimeState`/`AppBusyState` moved into `RuntimeController` with `Q_ENUM` (QML: `Runtime.Ready`, `Runtime.StartingRuntime`, …; `RuntimeState.h` keeps type aliases for C++); `RuntimeInstaller`/`ModelInstaller` enums already had `Q_ENUM` (QML: `RuntimeInstaller.Downloading`, `ModelInstaller.Error`, …); all 32 raw comparisons migrated to named values; the Footer not-configured badge now opens `SettingsDialog.TabsEnum.RuntimeTabNum` (was the raw `4` = LaunchTab).
 
 **[D-Q-18] No `pragma ComponentBehavior: Bound`; delegates + 3 cross-document id reaches** — project-wide (zero matches); concrete reaches: `ThumbDelegate.qml:93,150,153-161` → `thumbList.*`, `Header.qml:31,85-88,97` → Main.qml ids, `RuntimeTabInternal.qml:134` → `dialog.*` — Confidence 85
 The unqualified context chain is exactly what Bound mode removes; D-Q-03 is this bug class in the wild. Delegates in ThumbDelegate/LaunchTab/RequestTab/StepWelcome read `model.<role>` without required properties (ImagePreview.qml:46-54 already demonstrates the correct fully-required pattern; roles verified to match C++ `roleNames()` everywhere).
@@ -324,11 +324,14 @@ Model protocol: all five `data()` switches cover their roles; begin/end pairs ba
 
 1. **Investigation fixes**: I-10 (restart banner dirty-watch now tracks `Settings.serverPath`), I-11 (preset delegates refresh on `presetsChanged` too), I-12 (ComboBox `currentIndex` re-synced on retranslate-driven model replacement — UITab ×2, RuntimeTab ×1), I-13 (log autoscroll rewritten as explicit `Flickable` + `TextArea.flickable` writing `contentY`, gated on `atYEnd`).
 
+**Fixed (fix round 4, verified by clean rebuild + ctest 24/24 + qmllint):**
+
+1. **D-Q-17 named enums**: `RuntimeState`/`AppBusyState` moved into `RuntimeController` as `Q_ENUM`s (QML: `Runtime.Ready`, `Runtime.StartingRuntime`, …); `RuntimeState.h` now holds only type aliases so the C++ spelling is unchanged. All 32 raw `=== N` state comparisons in QML migrated to named enum values across Footer, RuntimeTabInternal, ModelsTab, StepModel, StepRuntime. `ModelInstaller`/`RuntimeInstaller` state enums already had `Q_ENUM` and are now used by name in QML. En route: `RuntimeController.h` dropped the unused `<QQmlEngine>` include and inert `QML_ELEMENT`/`QML_SINGLETON` macros (registration is manual) — the alias header would otherwise drag QtQml include paths into non-QML test targets; `test_server_process.cpp` compares these enums via `int(...)` casts so QTest's enum formatting (`QMetaEnum::fromType`) does not demand the moc symbol in a target that doesn't compile `RuntimeController.cpp`. Behavior change (intentional, I-09 precedent): the Footer badge click in Managed mode with a not-configured runtime now opens the **Runtime** tab (`RuntimeTabNum`), not Launch (`4`).
+
 **Remaining queue (suggested order):**
 
 1. **Structure (bigger refactors, schedule deliberately):**
    - D-C-15 / D-Q-16 — extract shared installer components (status row, lists) and one download-aggregation helper (this also subsumes the D-C-04-style divergence class);
-   - D-Q-17 remainder — named state enums for QML (C++ Q_ENUM plumbing + 28-site migration, needs runtime verification);
    - D-Q-18 — `pragma ComponentBehavior: Bound` + required properties migration (file-by-file).
 2. **ASan / verify-only:** I-04/I-05/I-06/I-07 — needs an ASan-instrumented build (I-05 note: `OcrModel` is not a QObject, so "parent the watcher" is not applicable without a larger refactor). Investigations I-01, I-02, I-14, I-15 (§3) — each has a verify recipe; I-15 partially mitigated by the D-Q-15/D-Q-21 changes. I-10…I-13 — ✅ fixed in round 3.
 3. **Optional leftovers:** D-Q-11 per-page URL keying (thumbnails are small now); D-Q-12 (preview sourceSize) and D-Q-14 (sticky Loader) if preview perf is still noticeable after the structural fixes.

@@ -10,6 +10,8 @@
 #include <QJsonParseError>
 #include <QNetworkAccessManager>
 #include <QRegularExpression>
+
+#include "runtime/RuntimeState.h"
 #include <QSet>
 #include <algorithm>
 #include <QtConcurrent>

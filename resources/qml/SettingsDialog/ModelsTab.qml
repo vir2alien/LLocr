@@ -20,7 +20,7 @@ Item {
     Connections {
         target: ModelInstaller
         function onStateChanged() {
-            if (ModelInstaller.state === 2 && pickDialog.visible) {
+            if (ModelInstaller.state === ModelInstaller.ReadyToDownload && pickDialog.visible) {
                 const idx = preparedIndex
                 if (idx >= 0 && idx < ModelInstaller.presetCount)
                     pickDialog.license = ModelInstaller.presetInfo(idx).license
@@ -45,7 +45,7 @@ Item {
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
-                color: ModelInstaller.state === 4 ? Theme.error
+                color: ModelInstaller.state === ModelInstaller.Error ? Theme.error
                      : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
                 text: ModelInstaller.statusMessage.length
                       ? ModelInstaller.statusMessage
@@ -68,7 +68,7 @@ Item {
 
                 LLOButton {
                     text: qsTr("Cancel")
-                    visible: ModelInstaller.state === 3
+                    visible: ModelInstaller.state === ModelInstaller.Downloading
                     onClicked: ModelInstaller.cancelInstall()
                 }
             }

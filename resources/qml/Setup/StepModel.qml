@@ -61,7 +61,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
-            color: ModelInstaller.state === 4 ? Theme.error
+            color: ModelInstaller.state === ModelInstaller.Error ? Theme.error
                  : (ModelInstaller.busy ? Theme.textSecondary : Theme.textMuted)
             text: ModelInstaller.statusMessage.length
                   ? ModelInstaller.statusMessage
@@ -163,7 +163,7 @@ Item {
 
             LLOButton {
                 text: qsTr("Cancel")
-                visible: ModelInstaller.state === 3
+                visible: ModelInstaller.state === ModelInstaller.Downloading
                 onClicked: ModelInstaller.cancelInstall()
             }
         }

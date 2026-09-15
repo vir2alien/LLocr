@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import LLocr
 
 import "../Common"
+import ".."
 
 Item {
     id: root
@@ -15,7 +16,7 @@ Item {
     property bool bannerDismissed: false
     property var logWindow: null
 
-    readonly property bool serverActive: Runtime.state === 2 || Runtime.state === 3
+    readonly property bool serverActive: Runtime.state === Runtime.Starting || Runtime.state === Runtime.Ready
 
     signal openSettingsRequested(int tab)
 
@@ -58,10 +59,10 @@ Item {
 
     function dotColor(state) {
         switch (state) {
-        case 2:  return Theme.warning // Starting — yellow
-        case 3:  return Theme.success // Ready — green
-        case 5:  return Theme.error   // Failed — red
-        default: return Theme.nothing // Stopped / NotConfigured / Stopping — grey
+        case Runtime.Starting:  return Theme.warning
+        case Runtime.Ready:     return Theme.success
+        case Runtime.Failed:    return Theme.error
+        default: return Theme.nothing
         }
     }
 
@@ -69,16 +70,16 @@ Item {
         if (Settings.connectionMode === "external")
             return qsTr("External")
         switch (Runtime.state) {
-        case 0:  return qsTr("Runtime: not configured")
-        case 1:  return qsTr("Runtime: stopped")
-        case 2:  return Runtime.statusMessage.length
-                       ? Runtime.statusMessage
-                       : qsTr("Runtime: starting…")
-        case 3:  return qsTr("Runtime: ready")
-        case 4:  return qsTr("Runtime: stopping…")
-        case 5:  return Runtime.statusMessage.length
-                       ? Runtime.statusMessage
-                       : qsTr("Runtime: failed")
+        case Runtime.NotConfigured: return qsTr("Runtime: not configured")
+        case Runtime.Stopped:       return qsTr("Runtime: stopped")
+        case Runtime.Starting:      return Runtime.statusMessage.length
+                                           ? Runtime.statusMessage
+                                           : qsTr("Runtime: starting…")
+        case Runtime.Ready:         return qsTr("Runtime: ready")
+        case Runtime.Stopping:      return qsTr("Runtime: stopping…")
+        case Runtime.Failed:        return Runtime.statusMessage.length
+                                           ? Runtime.statusMessage
+                                           : qsTr("Runtime: failed")
         default: return qsTr("Runtime: unknown")
         }
     }
@@ -107,7 +108,7 @@ Item {
     Connections {
         target: Runtime
         function onStateChanged() {
-            if (Runtime.state === 3)
+            if (Runtime.state === Runtime.Ready)
                 root.launchDirty = false
         }
     }
@@ -120,7 +121,7 @@ Item {
         Rectangle {//Restart banner
             Layout.fillWidth: true
             Layout.preferredHeight: banner.implicitHeight + 12
-            visible: Runtime.state === 3 && root.launchDirty && !root.bannerDismissed
+            visible: Runtime.state === Runtime.Ready && root.launchDirty && !root.bannerDismissed
             color: Theme.surfaceAlt
             border.color: Theme.border
             border.width: 1
@@ -177,7 +178,7 @@ Item {
                     Layout.fillWidth: true
                 }
                 BusyIndicator {
-                    running: Controller.busy || Runtime.busyState === 1
+                    running: Controller.busy || Runtime.busyState === Runtime.StartingRuntime
                     visible: running
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
@@ -189,8 +190,8 @@ Item {
                     text: root.serverActive ? qsTr("Stop server") : qsTr("Start server")
                     enabled: !Runtime.lockedOut
                              && (root.serverActive
-                                 || (Runtime.configValid
-                                     && Runtime.state !== 4))
+                                 && (Runtime.configValid
+                                     && Runtime.state !== Runtime.Stopping))
                     onClicked: {
                         if (root.serverActive)
                             root.requestStop()
@@ -214,8 +215,8 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (Settings.connectionMode === "managed"
-                                && Runtime.state === 0) {
-                            root.openSettingsRequested(4)
+                                && Runtime.state === Runtime.NotConfigured) {
+                            root.openSettingsRequested(SettingsDialog.TabsEnum.RuntimeTabNum)
                         } else if (root.logWindow) {
                             root.logWindow.show()
                         }
@@ -245,7 +246,7 @@ Item {
 
                         LLOLabel {
                             id: stateLabel
-                            color: Runtime.state === 5 ? Theme.error : Theme.textSecondary
+                            color: Runtime.state === Runtime.Failed ? Theme.error : Theme.textSecondary
                             text: root.stateText()
                             elide: Text.ElideRight
                             wrapMode: Text.NoWrap

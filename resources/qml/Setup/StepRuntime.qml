@@ -74,13 +74,13 @@ Item {
                 LLOLabel {
                     Layout.fillWidth: true
                     font.pointSize: Theme.captionSize
-                    color: RuntimeInstaller.state === 6 ? Theme.error
+                    color: RuntimeInstaller.state === RuntimeInstaller.Error ? Theme.error
                          : (RuntimeInstaller.busy ? Theme.textSecondary : Theme.textMuted)
                     text: RuntimeInstaller.installedBuild.length
                           ? qsTr("Installed: %1 (%2)")
                                 .arg(RuntimeInstaller.installedBuild)
                                 .arg(RuntimeInstaller.backendDisplayName(RuntimeInstaller.installedBackend))
-                          : (RuntimeInstaller.state === 0
+                          : (RuntimeInstaller.state === RuntimeInstaller.Idle
                              ? qsTr("Ready to install.")
                              : RuntimeInstaller.statusMessage)
                     visible: text.length > 0
@@ -157,9 +157,9 @@ Item {
                             LLOButton {
                                 text: wizardBuildRow.info.active ? qsTr("Active") : qsTr("Activate")
                                 enabled: !wizardBuildRow.info.active && !RuntimeInstaller.busy
-                                         && Runtime.state !== 2 && wizardBuildRow.info.binaryFound
+                                         && Runtime.state !== Runtime.Starting && wizardBuildRow.info.binaryFound
                                 onClicked: {
-                                    if (Runtime.state === 3)
+                                    if (Runtime.state === Runtime.Ready)
                                         Runtime.stopServer()
                                     RuntimeInstaller.activateBuild(wizardBuildRow.index)
                                 }
@@ -181,10 +181,10 @@ Item {
                     Layout.fillWidth: true
                     spacing: 6
                     LLOButton {
-                        text: RuntimeInstaller.state === 3 ? qsTr("Cancel")
-                                                           : qsTr("Download and install")
-                        enabled: !(RuntimeInstaller.state === 1 || RuntimeInstaller.state === 4)
-                        onClicked: RuntimeInstaller.state === 3
+                        text: RuntimeInstaller.state === RuntimeInstaller.Downloading ? qsTr("Cancel")
+                                                                                       : qsTr("Download and install")
+                        enabled: !(RuntimeInstaller.state === RuntimeInstaller.Fetching || RuntimeInstaller.state === RuntimeInstaller.Installing)
+                        onClicked: RuntimeInstaller.state === RuntimeInstaller.Downloading
                                        ? RuntimeInstaller.cancelInstall()
                                        : RuntimeInstaller.startDownloadAndInstall()
                     }

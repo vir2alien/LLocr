@@ -53,7 +53,7 @@ void TestServerProcess::reachesReadyAndStops()
     QVERIFY(s->resolvedPort() > 0);
     QVERIFY(s->startCount() == 1);
     s->stop();
-    QTRY_COMPARE_WITH_TIMEOUT(s->state(), RuntimeState::Stopped, 8000);
+    QTRY_COMPARE_WITH_TIMEOUT(int(s->state()), int(RuntimeState::Stopped), 8000);
     QVERIFY(s->isRunning() == false);
     QVERIFY(QFile::exists(logFile));
 }
@@ -69,7 +69,7 @@ void TestServerProcess::ringBufferCapturesOutput()
         static_cast<int>(m->ringBuffer().filter(QStringLiteral("llama_model_loader")).size()) >= 5,
         12000);
     m->stop();
-    QTRY_COMPARE_WITH_TIMEOUT(m->state(), RuntimeState::Stopped, 8000);
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
 }
 
 void TestServerProcess::healthyTimeout()
@@ -85,7 +85,7 @@ void TestServerProcess::healthyTimeout()
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Failed, 10000);
     m->stop();
-    QTRY_COMPARE_WITH_TIMEOUT(m->state(), RuntimeState::Stopped, 8000);
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
 }
 
 void TestServerProcess::crashAndAutoRestartRecovery()
@@ -108,7 +108,7 @@ void TestServerProcess::crashAndAutoRestartRecovery()
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 20000);
     QVERIFY(m->startCount() >= 2);
     m->stop();
-    QTRY_COMPARE_WITH_TIMEOUT(m->state(), RuntimeState::Stopped, 8000);
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
 }
 
 void TestServerProcess::stopDuringStartupIsSafe()
@@ -123,7 +123,7 @@ void TestServerProcess::stopDuringStartupIsSafe()
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Starting, 3000);
     m->stop();
-    QTRY_COMPARE_WITH_TIMEOUT(m->state(), RuntimeState::Stopped, 5000);
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 5000);
 }
 
 void TestServerProcess::reportsTensorLoadPercent()
@@ -140,7 +140,7 @@ void TestServerProcess::reportsTensorLoadPercent()
     QVERIFY(m->statusMessage().contains(QStringLiteral("Loading model")));
     QVERIFY(m->loadProgressPercent() >= 0 && m->loadProgressPercent() <= 100);
     m->stop();
-    QTRY_COMPARE_WITH_TIMEOUT(m->state(), RuntimeState::Stopped, 8000);
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
 }
 
 QTEST_MAIN(TestServerProcess)

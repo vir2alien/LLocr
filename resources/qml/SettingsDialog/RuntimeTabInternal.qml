@@ -111,17 +111,17 @@ ScrollView {
             }
             LLOButton {
                 text: qsTr("Start")
-                enabled: canManage && Runtime.state !== 2 && Runtime.state !== 3
+                enabled: canManage && Runtime.state !== Runtime.Starting && Runtime.state !== Runtime.Ready
                 onClicked: Runtime.startServer()
             }
             LLOButton {
                 text: qsTr("Stop")
-                enabled: canManage && (Runtime.state === 2 || Runtime.state === 3)
+                enabled: canManage && (Runtime.state === Runtime.Starting || Runtime.state === Runtime.Ready)
                 onClicked: Runtime.stopServer()
             }
             LLOButton {
                 text: qsTr("Restart")
-                enabled: canManage && Runtime.state === 3
+                enabled: canManage && Runtime.state === Runtime.Ready
                 onClicked: Runtime.restartServer()
             }
             Item { Layout.fillWidth: true }
@@ -238,12 +238,12 @@ ScrollView {
                     LLOButton {
                         text: buildRow.info.active ? qsTr("Active") : qsTr("Activate")
                         enabled: !buildRow.info.active && !RuntimeInstaller.busy
-                                 && Runtime.state !== 2 && buildRow.info.binaryFound
+                                 && Runtime.state !== Runtime.Starting && buildRow.info.binaryFound
                         onClicked: {
                             // Applying a different binary requires a restart,
                             // so a Ready server is stopped first (same
                             // discipline as the update plaque above).
-                            if (Runtime.state === 3)
+                            if (Runtime.state === Runtime.Ready)
                                 Runtime.stopServer()
                             RuntimeInstaller.activateBuild(buildRow.index)
                         }
@@ -280,18 +280,18 @@ ScrollView {
                 }
                 LLOLabel {
                     Layout.fillWidth: true
-                    text: Runtime.state === 3
+                    text: Runtime.state === Runtime.Ready
                           ? qsTr("Updating will install it after the running server is stopped.")
                           : qsTr("You can keep working — updating installs in the background.")
                 }
                 RowLayout {
                     spacing: 6
                     LLOButton {
-                        text: Runtime.state === 3 ? qsTr("Stop server and update")
-                                                : qsTr("Update")
+                        text: Runtime.state === Runtime.Ready ? qsTr("Stop server and update")
+                                                              : qsTr("Update")
                         enabled: !RuntimeInstaller.busy
                         onClicked: {
-                            if (Runtime.state === 3)
+                            if (Runtime.state === Runtime.Ready)
                                 Runtime.stopServer()
                             RuntimeInstaller.installUpdate()
                         }
@@ -359,9 +359,9 @@ ScrollView {
             id: installStatusLabel
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
-            color: RuntimeInstaller.state === 6 ? Theme.error
+            color: RuntimeInstaller.state === RuntimeInstaller.Error ? Theme.error
                  : (RuntimeInstaller.busy ? Theme.textSecondary : Theme.textMuted)
-            text: RuntimeInstaller.state === 0
+            text: RuntimeInstaller.state === RuntimeInstaller.Idle
                   ? qsTr("Open this tab or press \u201cCheck for updates\u201d to load releases.")
                   : RuntimeInstaller.statusMessage
         }
@@ -380,11 +380,11 @@ ScrollView {
             Layout.fillWidth: true
             spacing: 6
             LLOButton {
-                text: RuntimeInstaller.state === 3 ? qsTr("Cancel")
-                                                   : qsTr("Download and install")
-                enabled: !(RuntimeInstaller.state === 1 || RuntimeInstaller.state === 4)
+                text: RuntimeInstaller.state === RuntimeInstaller.Downloading ? qsTr("Cancel")
+                                                                              : qsTr("Download and install")
+                enabled: !(RuntimeInstaller.state === RuntimeInstaller.Fetching || RuntimeInstaller.state === RuntimeInstaller.Installing)
                 onClicked: {
-                    if (RuntimeInstaller.state === 3)
+                    if (RuntimeInstaller.state === RuntimeInstaller.Downloading)
                         RuntimeInstaller.cancelInstall()
                     else
                         RuntimeInstaller.startDownloadAndInstall()
@@ -399,7 +399,7 @@ ScrollView {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: RuntimeInstaller.state === 0
+                text: RuntimeInstaller.state === RuntimeInstaller.Idle
                       ? qsTr("Press “Check for updates” to see if a newer release is available.")
                       : (RuntimeInstaller.hasUpdate
                          ? qsTr("A newer release is available.")
