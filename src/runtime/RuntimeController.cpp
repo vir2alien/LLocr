@@ -18,6 +18,7 @@
 #include "runtime/RuntimeLocator.h"
 #include "runtime/RuntimeLog.h"
 #include "runtime/RuntimePaths.h"
+#include "runtime/ServerCapabilities.h"
 #include "runtime/ServerLaunchConfig.h"
 #include "runtime/SingleInstanceGuard.h"
 
@@ -630,14 +631,16 @@ QString RuntimeController::launchCommandPreview()
     if (program.isEmpty())
         return QString();
     RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
-    const ProbeResult probe =
-        RuntimeLocator::probeCached(program, paths.cacheDir(), kProbeTimeoutMs);
-    if (!probe.ok)
-        return QString();
+    // Preview must never block the GUI: serve the cached probe when present,
+    // otherwise render with default (conservative) capabilities. The real
+    // probe runs later, on startServer()/"Check", and refreshes the preview.
+    ProbeResult probe;
+    const bool probed = RuntimeLocator::cachedProbe(program, paths.cacheDir(), probe);
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings,
                                                               m_launchProfiles);
     cfg.program = program;
-    return cfg.toDisplayCommand(probe.capabilities);
+    return cfg.toDisplayCommand(probe.ok ? probe.capabilities
+                                         : ServerCapabilities{});
 }
 
 QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath)

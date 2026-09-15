@@ -47,6 +47,12 @@ public:
     static ProbeResult probeCached(const QString &binaryPath, const QString &cacheDir,
                                    int timeoutMs = 5000);
 
+    // Serves the cached result only (in-memory slot, then the persistent JSON
+    // cache) and never spawns a process; false when nothing cached. Safe for
+    // UI-preview paths where a hung binary must not stall the caller.
+    static bool cachedProbe(const QString &binaryPath, const QString &cacheDir,
+                            ProbeResult &out);
+
     // --version may legitimately be unknown on exotic builds; --help is the
     // secondary probe. Returns the joined diagnostics for the probe UI line.
     static QString probeSummary(const ProbeResult &r);

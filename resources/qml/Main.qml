@@ -158,7 +158,7 @@ ApplicationWindow {
 
         onOpenConnectionSettings: {
             settingsDialog.open()
-            settingsDialog.selectTab(1)
+            settingsDialog.selectTab(SettingsDialog.TabsEnum.RuntimeTabNum)
         }
     }
 

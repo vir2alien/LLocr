@@ -252,6 +252,18 @@ void RuntimeLocator::cacheProbe(const QString &binaryPath, const ProbeResult &re
 // §5.3 step 4 / ADR 41: persistent capabilities cache (capabilities-<sha1>.json)
 // ---------------------------------------------------------------------------
 
+bool RuntimeLocator::cachedProbe(const QString &binaryPath, const QString &cacheDir,
+                                 ProbeResult &out)
+{
+    if (probeFromCache(binaryPath, out))
+        return true;
+    if (probeFromDiskCache(binaryPath, cacheDir, out)) {
+        cacheProbe(binaryPath, out);
+        return true;
+    }
+    return false;
+}
+
 bool RuntimeLocator::probeFromDiskCache(const QString &binaryPath, const QString &cacheDir,
                                         ProbeResult &out)
 {

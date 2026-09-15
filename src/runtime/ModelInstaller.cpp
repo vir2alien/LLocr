@@ -554,7 +554,11 @@ void ModelInstaller::beginPrepare(const ModelPreset &preset)
             return {std::move(p), QString()};
         });
 
-    future.then(this, [this](const QPair<Pending, QString> &res) {
+    const int generation = ++m_prepareGeneration;
+
+    future.then(this, [this, generation](const QPair<Pending, QString> &res) {
+        if (generation != m_prepareGeneration)
+            return;
         setBusy(false);
         onPrepareDone(res.first, res.second);
     });
@@ -924,6 +928,7 @@ void ModelInstaller::installRemote(int index)
 
 void ModelInstaller::cancelInstall()
 {
+    ++m_prepareGeneration;
     m_downloads->cancelAll(true);
     setBusy(false);
     setStatusMessage(tr("Download canceled"));

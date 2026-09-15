@@ -163,6 +163,7 @@ private:
     bool m_searchActive = false;
 
     Pending m_pending;
+    int m_prepareGeneration = 0;
     int m_downloadCount = 0;
     int m_downloadDone = 0;
     bool m_downloadFailed = false;
