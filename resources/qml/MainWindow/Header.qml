@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -7,6 +9,12 @@ import LLocr
 import "../Common"
 
 ToolBar {
+    id: headerRoot
+
+    signal openFileRequested()
+    signal exportRequested(bool multiPage)
+    signal settingsRequested()
+
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
 
@@ -28,7 +36,7 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Open…")
-            onClicked: fileDialog.open()
+            onClicked: headerRoot.openFileRequested()
         }
 
         ToolSeparator {}
@@ -82,10 +90,9 @@ ToolBar {
             enabled: Controller.hasResult && !Controller.exporting
             onClicked: {
                 if (Controller.pageCount > 1) {
-                    exportOptionsDialog.open()
+                    headerRoot.exportRequested(true)
                 } else {
-                    exportDialog.scope = 0 //export all
-                    exportDialog.open()
+                    headerRoot.exportRequested(false)
                 }
             }
         }
@@ -94,7 +101,7 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Settings...")
-            onClicked: settingsDialog.open()
+            onClicked: headerRoot.settingsRequested()
         }
     }
 } // ToolBar

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,6 +15,8 @@ Dialog {
     width: 360
     implicitHeight: 250
     standardButtons: Dialog.Ok | Dialog.Cancel
+
+    signal exportRequested(int scope, int fromPage, int toPage)
 
     background: Rectangle {
         color: Theme.surface
@@ -50,11 +54,9 @@ Dialog {
     }
 
     onAccepted: {
-        exportDialog.scope = scopeCurrent.checked ? 1
-                            : (scopeRange.checked ? 2 : 0)
-        exportDialog.fromPage = fromSpin.value
-        exportDialog.toPage = toSpin.value
-        exportDialog.open()
+        exportOptionsDialog.exportRequested(
+            scopeCurrent.checked ? 1 : (scopeRange.checked ? 2 : 0),
+            fromSpin.value, toSpin.value)
     }
 
     component CompactSpinBox: SpinBox {

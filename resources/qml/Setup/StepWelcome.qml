@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -48,6 +50,10 @@ Item {
         Repeater {
             model: 2
             Rectangle {
+                id: choiceCard
+
+                required property int index
+
                 Layout.fillWidth: true
                 Layout.preferredHeight: 82
                 radius: Theme.radius
@@ -59,7 +65,7 @@ Item {
                     id: mouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: index === 0 ? root.chooseLocal() : root.chooseExternal()
+                    onClicked: choiceCard.index === 0 ? root.chooseLocal() : root.chooseExternal()
                 }
 
                 ColumnLayout {
@@ -67,7 +73,7 @@ Item {
                     anchors.margins: 12
                     spacing: 4
                     LLOLabel {
-                        text: index === 0
+                        text: choiceCard.index === 0
                               ? qsTr("Local server (recommended)")
                               : qsTr("I already have a server or API")
                         font.bold: true
@@ -77,7 +83,7 @@ Item {
                         Layout.fillWidth: true
                         font.pointSize: Theme.captionSize
                         color: Theme.textMuted
-                        text: index === 0
+                        text: choiceCard.index === 0
                               ? qsTr("LLM OCR downloads and runs llama.cpp locally. "
                                      + "Everything stays on this machine.")
                               : qsTr("Point to an existing OpenAI-compatible endpoint "

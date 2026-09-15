@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
@@ -164,6 +166,8 @@ Dialog {
 
             RuntimeTab {
                 id: runtimeTab
+                setupWizardRef: dialog.setupWizardRef
+                logWindowRef: dialog.logWindowRef
             }
 
             LaunchTab {

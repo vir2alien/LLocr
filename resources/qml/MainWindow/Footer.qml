@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -190,7 +192,7 @@ Item {
                     text: root.serverActive ? qsTr("Stop server") : qsTr("Start server")
                     enabled: !Runtime.lockedOut
                              && (root.serverActive
-                                 && (Runtime.configValid
+                                 || (Runtime.configValid
                                      && Runtime.state !== Runtime.Stopping))
                     onClicked: {
                         if (root.serverActive)

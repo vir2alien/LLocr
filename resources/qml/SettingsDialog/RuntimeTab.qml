@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,6 +11,9 @@ ColumnLayout {
     id: runtimeLayout
     clip: true
     spacing: 4
+
+    property var setupWizardRef: null
+    property var logWindowRef: null
 
     Layout.maximumHeight: Number.POSITIVE_INFINITY
 
@@ -29,8 +34,8 @@ ColumnLayout {
         LLOButton {
             text: qsTr("Launch setup wizard…")
             onClicked: {
-                if (dialog.setupWizardRef)
-                    dialog.setupWizardRef.startWizard()
+                if (runtimeLayout.setupWizardRef)
+                    runtimeLayout.setupWizardRef.startWizard()
             }
         }
         LLOLabel {
@@ -82,6 +87,7 @@ ColumnLayout {
 
     RuntimeTabInternal {
         id: rtInternal
+        logWindowRef: runtimeLayout.logWindowRef
         visible: connectionMode === 1
         Layout.fillWidth: true
         Layout.fillHeight: true

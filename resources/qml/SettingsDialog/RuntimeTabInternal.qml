@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,6 +10,8 @@ import "../Common"
 ScrollView {
     contentWidth: availableWidth
     contentHeight: formLayout.implicitHeight
+
+    property var logWindowRef: null
 
     property var backendOptions: []
     property var releaseOptions: []
@@ -130,8 +134,8 @@ ScrollView {
         LLOButton {
             text: qsTr("Show log")
             onClicked: {
-                if (dialog.logWindowRef)
-                    dialog.logWindowRef.show()
+                if (logWindowRef)
+                    logWindowRef.show()
             }
         }
 

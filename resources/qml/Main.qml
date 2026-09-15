@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -26,7 +28,18 @@ ApplicationWindow {
         window: mainWindow
     }
 
-    header: Header {}
+    header: Header {
+        onOpenFileRequested: fileDialog.open()
+        onExportRequested: (multiPage) => {
+            if (multiPage) {
+                exportOptionsDialog.open()
+            } else {
+                exportDialog.scope = 0
+                exportDialog.open()
+            }
+        }
+        onSettingsRequested: settingsDialog.open()
+    }
 
     SplitView {
         anchors.fill: parent
@@ -151,6 +164,12 @@ ApplicationWindow {
 
     ExportDialog {
         id: exportOptionsDialog
+        onExportRequested: (scope, fromPage, toPage) => {
+            exportDialog.scope = scope
+            exportDialog.fromPage = fromPage
+            exportDialog.toPage = toPage
+            exportDialog.open()
+        }
     }
 
     SetupWizard {

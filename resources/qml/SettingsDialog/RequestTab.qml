@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -101,6 +103,13 @@ Item {
             model: RequestProfiles.draftModel
 
             delegate: Item {
+                id: paramRow
+
+                required property int index
+                required property string name
+                required property string valueText
+                required property string description
+
                 width: paramsList.width
                 implicitHeight: Math.max(Theme.controlHeight,
                                          descriptionLabel.implicitHeight)
@@ -112,7 +121,7 @@ Item {
                     width: parent.width * root.nameWidth
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
-                    text: model.name
+                    text: paramRow.name
                 }
 
                 TextField {
@@ -123,13 +132,13 @@ Item {
                     width: parent.width * root.valueWidth
                     implicitHeight: Theme.controlHeight
                     selectByMouse: true
-                    text: model.valueText
+                    text: paramRow.valueText
 
                     onEditingFinished: {
-                        if (text === model.valueText)
+                        if (text === paramRow.valueText)
                             return
-                        if (!RequestProfiles.setDraftValue(index, text))
-                            text = Qt.binding(() => model.valueText)
+                        if (!RequestProfiles.setDraftValue(paramRow.index, text))
+                            text = Qt.binding(() => paramRow.valueText)
                     }
                 }
 
@@ -141,7 +150,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     font.pointSize: Theme.captionSize
                     color: Theme.textMuted
-                    text: model.description
+                    text: paramRow.description
                 }
             }
         }

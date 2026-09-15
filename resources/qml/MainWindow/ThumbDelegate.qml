@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,7 +11,15 @@ import "../Common"
 Item {
     id: delegateRoot
 
-    property int pageIdx: model.pageIndex
+    required property int index
+    required property int pageIndex
+    required property bool current
+    required property bool recognized
+    required property bool edited
+    required property bool hasDuplicates
+
+    property ListView listView
+    property int pageIdx: pageIndex
     property bool dragActive: dragHandler.active
 
     z: dragActive ? 10 : 1
@@ -20,9 +30,9 @@ Item {
         id: card
         anchors.fill: parent
         radius: Theme.radius
-        color: model.current ? Theme.selected : "transparent"
+        color: current ? Theme.selected : "transparent"
         border.color: dragActive ? Theme.accent
-                      : (model.current ? Theme.accent : Theme.divider)
+                      : (current ? Theme.accent : Theme.divider)
         border.width: 1
 
         scale: delegateRoot.dragActive ? 1.03 : 1.0
@@ -39,7 +49,7 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
                 cache: true
-                source: "image://ocr/page/" + model.pageIndex
+                source: "image://ocr/page/" + pageIndex
                         + "?r=" + Controller.docRevision
             }
 
@@ -50,25 +60,25 @@ Item {
                 Rectangle {
                     Layout.preferredWidth: 9
                     Layout.preferredHeight: 9
-                    radius: model.edited ? 2 : 5
-                    color: model.hasDuplicates ? "#d32f2f"
-                           : (model.edited ? Theme.textPrimary
-                           : (model.recognized ? Theme.textSecondary
-                                               : "transparent"))
-                    border.width: model.recognized || model.edited || model.hasDuplicates ? 0 : 1
+                    radius: edited ? 2 : 5
+                    color: hasDuplicates ? "#d32f2f"
+                           : (edited ? Theme.textPrimary
+                           : (recognized ? Theme.textSecondary
+                                         : "transparent"))
+                    border.width: recognized || edited || hasDuplicates ? 0 : 1
                     border.color: Theme.textMuted
 
                     Accessible.role: Accessible.StaticText
-                    Accessible.name: model.hasDuplicates ? qsTr("Has duplicates")
-                                     : (model.edited ? qsTr("Edited")
-                                     : (model.recognized ? qsTr("Recognized")
-                                                         : qsTr("Not recognized")))
+                    Accessible.name: hasDuplicates ? qsTr("Has duplicates")
+                                     : (edited ? qsTr("Edited")
+                                     : (recognized ? qsTr("Recognized")
+                                                   : qsTr("Not recognized")))
                 }
                 LLOLabel {
-                    text: qsTr("Page %1").arg(model.pageIndex + 1)
+                    text: qsTr("Page %1").arg(pageIndex + 1)
                     font.pointSize: Theme.captionSize
-                    color: model.hasDuplicates ? "#d32f2f"
-                            : (model.recognized ? Theme.textSecondary
+                    color: hasDuplicates ? "#d32f2f"
+                            : (recognized ? Theme.textSecondary
                             : Theme.textMuted)
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
@@ -78,7 +88,7 @@ Item {
         }
 
         TapHandler {
-            onTapped: Controller.currentPage = model.pageIndex
+            onTapped: Controller.currentPage = pageIndex
         }
     }// Rectangle card
 
@@ -90,7 +100,7 @@ Item {
         implicitWidth: 20
         implicitHeight: 20
         padding: 0
-        visible: thumbHover.hovered && !Controller.busy && thumbList.draggedIndex === -1
+        visible: thumbHover.hovered && !Controller.busy && listView.draggedIndex === -1
         enabled: !Controller.busy
         opacity: visible ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 100 } }
@@ -105,9 +115,9 @@ Item {
 
         ToolTip.visible: hovered
         ToolTip.text: qsTr("Delete page")
-        Accessible.name: qsTr("Delete page %1").arg(model.pageIndex + 1)
+        Accessible.name: qsTr("Delete page %1").arg(pageIndex + 1)
 
-        onClicked: Controller.removePage(model.pageIndex)
+        onClicked: Controller.removePage(pageIndex)
     }// ToolButton
 
     Rectangle {
@@ -147,18 +157,18 @@ Item {
             onActiveChanged: {
                 if (active) {
                     fromIndex = index
-                    thumbList.draggedIndex = index
+                    listView.draggedIndex = index
                 } else {
                     const centerY = delegateRoot.y + delegateRoot.height / 2
-                    let toIndex = Math.floor(centerY / (delegateRoot.height + thumbList.spacing))
-                    toIndex = Math.max(0, Math.min(thumbList.count - 1, toIndex))
+                    let toIndex = Math.floor(centerY / (delegateRoot.height + listView.spacing))
+                    toIndex = Math.max(0, Math.min(listView.count - 1, toIndex))
 
-                    thumbList.draggedIndex = -1
+                    listView.draggedIndex = -1
 
                     if (fromIndex !== -1 && fromIndex !== toIndex)
                         Controller.movePage(fromIndex, toIndex)
                     else
-                        delegateRoot.y = index * (delegateRoot.height + thumbList.spacing) // вернуть на место
+                        delegateRoot.y = index * (delegateRoot.height + listView.spacing) // вернуть на место
                 }
             }
         }//DragHandler

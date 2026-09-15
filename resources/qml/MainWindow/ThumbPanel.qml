@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -35,6 +37,7 @@ Rectangle {
         }
 
         delegate: ThumbDelegate {
+            listView: thumbList
             width: thumbList.width - Theme.spacingSmall
             height: width * 1.3 + 22
         }
