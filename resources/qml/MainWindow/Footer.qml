@@ -96,6 +96,7 @@ Item {
         function onLaunchMmprojPathChanged() { root.markLaunchDirty() }
         function onLaunchPresetIdChanged() { root.markLaunchDirty() }
         function onLaunchProfileIdChanged() { root.markLaunchDirty() }
+        function onServerPathChanged() { root.markLaunchDirty() }
     }
 
     Connections {

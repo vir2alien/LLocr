@@ -86,18 +86,31 @@ ApplicationWindow {
         }
     }
 
-    ScrollView {
-        id: scroll
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: 10
+        color: Theme.surfaceSunken
+        border.color: Theme.border
+        border.width: 1
+        radius: Theme.controlRadius
+    }
+
+    Flickable {
+        id: logScroll
         anchors.fill: parent
         anchors.margins: 10
         clip: true
+        contentWidth: logArea.contentWidth
+        contentHeight: logArea.contentHeight
 
-        ScrollBar.vertical: ScrollBar {
-            id: vScroller
-            policy: ScrollBar.AsNeeded
+        function scrollToBottom() {
+            Qt.callLater(function () {
+                logScroll.contentY =
+                    Math.max(0, logScroll.contentHeight - logScroll.height)
+            })
         }
 
-        TextArea {
+        TextArea.flickable: TextArea {
             id: logArea
             text: root.visible ? (RuntimeLog.serverLog || qsTr("No log output yet.")) : ""
             readOnly: true
@@ -107,16 +120,9 @@ ApplicationWindow {
             color: Theme.textPrimary
             selectByMouse: true
 
-            background: Rectangle {
-                color: Theme.surfaceSunken
-                border.color: Theme.border
-                border.width: 1
-                radius: Theme.controlRadius
-            }
-
             onTextChanged: {
-                if (!root.userScrolledUp && vScroller.visible)
-                    vScroller.position = 1.0 - vScroller.size
+                if (logScroll.atYEnd)
+                    logScroll.scrollToBottom()
                 if (liveDot && liveFlash) {
                     liveDot.color = Theme.success
                     liveDot.opacity = 1.0
@@ -124,17 +130,8 @@ ApplicationWindow {
                 }
             }
         }
-    }
 
-    property bool userScrolledUp: false
-
-    Connections {
-        target: vScroller
-        function onPositionChanged() {
-            root.userScrolledUp =
-                vScroller.visible
-                && vScroller.position + vScroller.size < 0.99
-        }
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
     }
 
     Timer {

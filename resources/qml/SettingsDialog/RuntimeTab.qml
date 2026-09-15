@@ -55,15 +55,15 @@ ColumnLayout {
             { value: "external", text: qsTr("External server") },
             { value: "managed", text: qsTr("Managed local server") }
         ]
-        onActivated: (idx) => Settings.connectionMode = model[idx].value
-        Component.onCompleted:
+        function syncMode() {
             currentIndex = Settings.connectionMode === "managed" ? 1 : 0
+        }
+        onActivated: (idx) => Settings.connectionMode = model[idx].value
+        onModelChanged: syncMode()
+        Component.onCompleted: syncMode()
         Connections {
             target: Settings
-            function onConnectionModeChanged() {
-                connectionModeBox.currentIndex =
-                    Settings.connectionMode === "managed" ? 1 : 0
-            }
+            function onConnectionModeChanged() { connectionModeBox.syncMode() }
         }
     }
 

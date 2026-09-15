@@ -206,13 +206,13 @@ Item {
                             delegate: Rectangle {
                                 required property int index
                                 property var pInfo: ModelInstaller.presetInfo(index)
+                                function refreshPresetInfo() {
+                                    pInfo = ModelInstaller.presetInfo(index)
+                                }
                                 Connections {
                                     target: ModelInstaller
-                                    function onInstalledChanged() {
-                                        presetRoot.pInfo = Qt.binding(function () {
-                                            return ModelInstaller.presetInfo(presetRoot.index)
-                                        })
-                                    }
+                                    function onInstalledChanged() { presetRoot.refreshPresetInfo() }
+                                    function onPresetsChanged() { presetRoot.refreshPresetInfo() }
                                 }
                                 id: presetRoot
                                 width: presetList.width
