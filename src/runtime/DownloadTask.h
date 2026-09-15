@@ -71,6 +71,7 @@ public:
     };
 
     DownloadTask(const Request &request, QNetworkAccessManager *nam, QObject *parent = nullptr);
+    ~DownloadTask() override;
 
     State state() const { return m_state; }
     QString fileName() const { return m_fileName; }

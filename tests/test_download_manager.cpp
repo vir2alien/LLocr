@@ -1,3 +1,4 @@
+#include <QAbstractItemModelTester>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -274,6 +275,7 @@ void TestDownloadManager::simpleDownload()
     QVERIFY(server.start());
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("file.bin"), dir.path(), "file.bin", sha256Hex(data)));
 
@@ -308,6 +310,7 @@ void TestDownloadManager::resumeFromSeededPartial()
     QVERIFY(seedPartial(dir.path(), "model.bin", data, split, kEtagV1));
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin", sha256Hex(data)));
     DownloadTask *task = mgr.taskAt(row);
@@ -333,6 +336,7 @@ void TestDownloadManager::changedValidatorForcesFullRedownload()
     QVERIFY(seedPartial(dir.path(), "model.bin", oldData, 2000, kEtagV1));
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin", sha256Hex(newData)));
     DownloadTask *task = mgr.taskAt(row);
@@ -359,6 +363,7 @@ void TestDownloadManager::incorrectContentRangeRestartsFresh()
     QVERIFY(seedPartial(dir.path(), "model.bin", data, 2000, kEtagV1));
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin", sha256Hex(data)));
     DownloadTask *task = mgr.taskAt(row);
@@ -381,6 +386,7 @@ void TestDownloadManager::badSha256RemovesFile()
     QVERIFY(server.start());
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const QString badSha(64, QLatin1Char('0'));
     const int row = mgr.enqueue(makeReq(server.url("f.bin"), dir.path(), "f.bin", badSha));
@@ -403,6 +409,7 @@ void TestDownloadManager::cancelKeepsPartial()
     QVERIFY(server.start());
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("big.bin"), dir.path(), "big.bin"));
     DownloadTask *task = mgr.taskAt(row);
@@ -422,6 +429,7 @@ void TestDownloadManager::cancelDeletesPartial()
     QVERIFY(server.start());
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("big.bin"), dir.path(), "big.bin"));
     DownloadTask *task = mgr.taskAt(row);
@@ -441,6 +449,7 @@ void TestDownloadManager::insufficientSpaceFails()
     QVERIFY(server.start());
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     mgr.setFreeBytesQuery([](const QString &) { return qint64(0); });
     const int row = mgr.enqueue(makeReq(server.url("m.bin"), dir.path(), "m.bin"));
@@ -458,6 +467,7 @@ void TestDownloadManager::parallelLimitRespectsTwoSlots()
     QVERIFY(server.start());
 
     DownloadManager mgr;
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     for (int i = 0; i < 4; ++i) {
         const QString name = QStringLiteral("f%1.bin").arg(i);
@@ -481,6 +491,7 @@ void TestDownloadManager::refusesInsecureUrlByDefault()
 {
     QTemporaryDir dir;
     DownloadManager mgr;  // allowLoopbackHttp stays false
+    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     const int row = mgr.enqueue(makeReq(QStringLiteral("http://127.0.0.1:1/x"), dir.path(), "x"));
     DownloadTask *task = mgr.taskAt(row);
     QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 3000);

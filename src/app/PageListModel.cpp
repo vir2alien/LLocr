@@ -107,6 +107,10 @@ void PageListModel::setHasDuplicates(int index, bool hasDup)
 
 void PageListModel::setCurrent(int index)
 {
+    // -1 is the legal "no current" sentinel; anything outside the row range
+    // (e.g. a stale caller index after a clear) must not poison m_current.
+    if (index < -1 || index >= m_recognized.size())
+        return;
     if (index == m_current)
         return;
     const int previous = m_current;

@@ -1,3 +1,4 @@
+#include <QAbstractItemModelTester>
 #include <QtTest>
 #include <QCoreApplication>
 #include <QDir>
@@ -417,6 +418,7 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
 
         RequestProfileStore store(settings, defaultsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         // Nothing changed yet: no user profile, active == built-in.
         QVERIFY(!store.hasUserProfile());
@@ -485,6 +487,7 @@ private slots:
         userFile.close();
 
         RequestProfileStore store(settings, defaultsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(findParameter(store.activeProfile(), "alpha")->value.toDouble(),
                  0.1);
@@ -509,6 +512,7 @@ private slots:
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("unlimited-ocr"));
 
         RequestProfileStore store(settings, defaultsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 2);
 
@@ -534,6 +538,7 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
 
         RequestProfileStore store(settings, defaultsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 2);
 
@@ -583,6 +588,7 @@ private slots:
         broken.close();
 
         RequestProfileStore store(settings, defaultsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         // Corrupt user profile: defaults win instead of failing.
         QVERIFY(store.activeProfile() == parseBuiltInDefaults());
     }

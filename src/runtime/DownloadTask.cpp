@@ -163,6 +163,15 @@ DownloadTask::DownloadTask(const Request &request, QNetworkAccessManager *nam, Q
 {
 }
 
+DownloadTask::~DownloadTask()
+{
+    if (!m_reply)
+        return;
+    m_reply->disconnect(this);
+    m_reply->abort();
+    m_reply->deleteLater();
+}
+
 QString DownloadTask::expectedSha256() const
 {
     return m_request.sha256;

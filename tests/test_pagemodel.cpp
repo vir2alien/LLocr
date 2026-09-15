@@ -157,6 +157,33 @@ private slots:
         QCOMPARE(model.rowCount(), 2);
     }
 
+    void setCurrentGuardsRange()
+    {
+        PageListModel model;
+        model.setPageCount(3);
+        QAbstractItemModelTester tester(&model,
+                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        model.setCurrent(1);
+        QVERIFY(isCurrent(model, 1));
+
+        // Out-of-range indices must be rejected, leaving the current row put.
+        model.setCurrent(-5);
+        QVERIFY(isCurrent(model, 1));
+
+        model.setCurrent(99);
+        QVERIFY(isCurrent(model, 1));
+
+        // -1 is the documented "no current" sentinel.
+        model.setCurrent(-1);
+        for (int row = 0; row < model.rowCount(); ++row)
+            QVERIFY(!isCurrent(model, row));
+
+        // And a valid selection still works after the sentinel.
+        model.setCurrent(2);
+        QVERIFY(isCurrent(model, 2));
+    }
+
     bool isCurrent(const PageListModel& model, int row) const
     {
         const QModelIndex mi = model.index(row);

@@ -1,3 +1,4 @@
+#include <QAbstractItemModelTester>
 #include <QtTest>
 #include <QCoreApplication>
 #include <QDir>
@@ -85,6 +86,7 @@ private slots:
         // No runtime installed: the platform-recommended backend resolves
         // (cpu on Windows/Linux, metal on macOS — both presets exist).
         LaunchProfileStore store(settings, presetsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         const QString initialId = store.activeProfileId();
         QVERIFY(initialId == QStringLiteral("metal")
                 || initialId == QStringLiteral("cpu"));
@@ -115,6 +117,7 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         settings.setRuntimeBackend(QStringLiteral("cpu"));
         LaunchProfileStore store(settings, presetsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.activeProfileId(), QStringLiteral("cpu"));
         QCOMPARE(store.draftModel()->rowCount(), 1);
         QCOMPARE(store.draftModel()->data(
@@ -155,6 +158,7 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         settings.setRuntimeBackend(QStringLiteral("cpu"));
         LaunchProfileStore store(settings, presetsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         // The UI must not add reserved or duplicate names.
         QVERIFY(!store.appendDraftParameter(QStringLiteral("model"), QString()));
@@ -190,6 +194,7 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         settings.setRuntimeBackend(QStringLiteral("cpu"));
         LaunchProfileStore store(settings, presetsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         // Switching the draft preset loads that preset's rows (uncommitted).
         store.selectDraftProfile(QStringLiteral("metal"));
@@ -224,6 +229,7 @@ private slots:
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         LaunchProfileStore store(settings, presetsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QVERIFY(store.presetIds().isEmpty());
         QVERIFY(store.activeProfile().parameters.isEmpty());
         QVERIFY(store.draftModel()->rowCount() == 0);

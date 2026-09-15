@@ -129,6 +129,10 @@ int main(int argc, char* argv[]) {
     connectShutdownHandlers(app, instanceGuard, runtimeController,
                             runtimeInstaller, modelInstaller);
 
+    llocr::AppController appController(settingsStore, runtimeController,
+                                       requestProfiles);
+    llocr::UiController uiController(settingsStore);
+
     QQmlApplicationEngine engine;
 
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &engine,
@@ -141,10 +145,6 @@ int main(int argc, char* argv[]) {
                      &llocr::ModelInstaller::retranslate);
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &selfTestController,
                      &llocr::SelfTestController::retranslate);
-
-    llocr::AppController appController(settingsStore, runtimeController,
-                                       requestProfiles);
-    llocr::UiController uiController(settingsStore);
 
     setupQmlEngine(engine, appController, uiController);
     i18n.applyInitial();
