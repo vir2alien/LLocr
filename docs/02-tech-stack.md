@@ -11,7 +11,7 @@
   | Images        | QImage                          | ✅ used | Loading/displaying                                   |
   | PDF           | **Qt PDF (`QPdfDocument`)**     | ✅ used | Ships with Qt6; no extra native dep (see ADR #7)     |
   | Box rendering | QML `Repeater` over a list model| ✅ used | Overlay bboxes on the preview (normalized rects); image blocks are movable / resizable / deletable |
-  | Export        | **Direct writer (TXT/MD/HTML)** + Pandoc for DOCX/PDF, PDF fallback | ✅ done | Pandoc discovered via `QStandardPaths`; built-in `QPdfWriter` fallback |
+  | Export        | Direct writer (TXT/MD) + **preview-pipeline render** for HTML/PDF (`ExportRenderer`, headless WebEngine) + Pandoc for DOCX | ✅ done | HTML/PDF match the Markdown preview (marked + KaTeX); built-in `QPdfWriter` fallback |
   | i18n          | Qt Linguist (`qsTr`/`tr` + `.ts`) | ✅ done | Runtime retranslate; language persisted in `SettingsStore` (`ui/language`) |
   | Markdown preview | Qt WebEngine + marked + KaTeX | ✅ done | Toggle in the right text pane; image refs resolved via data: URIs |
   | Tests         | Qt Test (unit tests in `tests/`) | ✅ done | 4 base + 13 runtime targets (see 4.12); helper `mock_llama_server` |
@@ -21,10 +21,14 @@
   | Model presets | `default-presets.json` + user `catalog.json` | ✅ done | Pre-verified `model+mmproj+parser+prompt+ctx` pairs; merge-by-id |
   | No-orphan processes | `ProcessGuard` (Job Object / `PDEATHSIG` / best-effort macOS) | ✅ done | Strong on Win/Linux, best-effort on macOS (owner.json + next-start detection) |
 
-  > **Note:** export is done via a **direct per-page writer** (TXT / Markdown /
-  > HTML) plus **Pandoc for DOCX/PDF** (with a built-in `QPdfWriter` fallback
-  > for PDF). Markdown remains the single internal source of truth.
-  > PDF rendering uses the **Qt PDF module**
+  > **Note:** export is done via a **direct per-page writer** (TXT / Markdown)
+  > plus a **preview-pipeline render for HTML/PDF** — a headless
+  > `QWebEnginePage` running the same marked + DOMPurify + KaTeX bundle as the
+  > on-screen preview, so both formats match the preview 1:1 (ADR 63). PDF is
+  > printed via `QWebEnginePage::printToPdf` (A4), with a built-in `QPdfWriter`
+  > fallback; **DOCX stays with Pandoc** (native Word equations). Markdown
+  > remains the single internal source of truth.
+  > PDF *input* rendering uses the **Qt PDF module**
   > (`QPdfDocument`). MuPDF remains a fallback option if higher-fidelity or faster rendering is later required.
   >
   > The model prompt is **not** free-typed in `SettingsStore` — it is owned by

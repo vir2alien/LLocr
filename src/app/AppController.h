@@ -9,6 +9,7 @@
 #include "app/BoxListModel.h"
 #include "app/DocumentModel.h"
 #include "app/Exporter.h"
+#include "app/ExportRenderer.h"
 #include "app/PageListModel.h"
 #include "app/PageEditStore.h"
 #include "app/RecognitionController.h"
@@ -133,6 +134,12 @@ private:
     QList<Exporter::Page> collectPages(int scope, int fromPage, int toPage) const;
     QString effectiveText(int index) const;
 
+    void finishExport(const Exporter::Result& result, int pageCount);
+    Exporter::Result finalizeRenderedExport(
+        Exporter::Format format, const QString& path,
+        const QList<Exporter::Page>& pages, const Exporter::CropProvider& crop,
+        bool renderOk, const QString& renderedHtml, const QString& renderError) const;
+
 private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
@@ -141,6 +148,7 @@ private:
     BoxListModel m_boxModel;
     RecognitionController m_recognition;
     Exporter m_exporter;
+    ExportRenderer m_exportRenderer;
     bool m_exporting = false;
     int m_currentPage = 0;
     QString m_statusMessage;

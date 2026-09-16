@@ -46,7 +46,19 @@ public:
     static QString buildPlainText(const QList<Page>& pages);
     static QString buildHtml(const QList<Page>& pages);
 
-    //(pageNumber, boxIndex)
+
+    static QString embedImagesAsDataUrls(
+        const QString& markdown, const std::function<QImage(int boxIndex)>& crop);
+
+    static QString katexCssForExport();
+    static QString exportStyleSheet();
+    static QString assembleHtmlDocument(const QStringList& pageSections);
+
+    static Result writeTextFile(const QString& path, const QString& content);
+
+    static Result writePdfFallback(const QList<Page> &pages, const QString &path,
+                                   const CropProvider &crop);
+
     static QList<QPair<int, int>> referencedCrops(const QList<Page> &pages);
 
     Result exportToFile(const QList<Page>& pages, const QString& filePath,
@@ -66,14 +78,9 @@ private:
     Result exportViaPandoc(const QList<Page>& pages, const QString& filePath,
                            const CropProvider& crop, const QStringList& extraArgs) const;
 
-    static Result writeTextFile(const QString& path, const QString& content);
-
     static Result runPandoc(const QString& markdown,
                             const QString& outputPath,
                             const QStringList& extraArgs);
-
-    // pdf when Pandoc is not available
-    static Result writePdfFallback(const QList<Page> &pages, const QString &path, const CropProvider &crop);
 };
 
 } // namespace llocr

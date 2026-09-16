@@ -35,6 +35,11 @@ private slots:
     void exportMarkdownEmbedsCroppedImages();
     void exportHtmlRendersImages();
     void plainTextStripsImageReferences();
+
+    void embedImagesAsDataUrlsConvertsRefs();
+    void embedImagesAsDataUrlsKeepsNullCrops();
+    void assembleHtmlDocumentIsSelfContained();
+    void exportStyleSheetHasPrintRules();
 };
 
 void ExporterTest::suffixMapping_data()
@@ -235,6 +240,55 @@ void ExporterTest::plainTextStripsImageReferences()
     QVERIFY(!txt.contains("image://ocr"));
     QVERIFY(!txt.contains("![Figure]"));
     QVERIFY(txt.contains("Body text"));
+}
+
+void ExporterTest::embedImagesAsDataUrlsConvertsRefs()
+{
+    QImage img(4, 2, QImage::Format_RGB32);
+    img.fill(Qt::red);
+    const QString md = QStringLiteral("A\n\n![Fig](image://ocr/crop/2)\n\nB");
+    const QString out = Exporter::embedImagesAsDataUrls(md, [&img](int boxIndex) {
+        return boxIndex == 2 ? img : QImage();
+    });
+
+    QVERIFY(out.contains(QStringLiteral("A")));
+    QVERIFY(out.contains(QStringLiteral("B")));
+    QVERIFY(!out.contains(QStringLiteral("image://ocr")));
+    QVERIFY(out.contains(QStringLiteral("![Fig](data:image/png;base64,")));
+}
+
+void ExporterTest::embedImagesAsDataUrlsKeepsNullCrops()
+{
+    const QString md = QStringLiteral("![X](image://ocr/crop/5)");
+    const QString out =
+        Exporter::embedImagesAsDataUrls(md, [](int) { return QImage(); });
+    QCOMPARE(out, md);
+}
+
+void ExporterTest::assembleHtmlDocumentIsSelfContained()
+{
+    const QString html = Exporter::assembleHtmlDocument(
+        { QStringLiteral("<section><h2>Page 1</h2><p>hi</p></section>") });
+
+    QVERIFY(html.startsWith(QStringLiteral("<!DOCTYPE html>")));
+    QVERIFY(html.contains(QStringLiteral("<meta charset=\"utf-8\">")));
+    QVERIFY(html.contains(QStringLiteral("<section><h2>Page 1</h2><p>hi</p></section>")));
+    // KaTeX CSS is inlined with the bundled font as a data: URI…
+    QVERIFY(html.contains(QStringLiteral("data:font/woff2;base64,")));
+    QVERIFY(!html.contains(QStringLiteral("url(fonts/")));
+    // …and the woff/ttf sources are dropped.
+    QVERIFY(!html.contains(QStringLiteral("truetype")));
+    // The shared stylesheet (with the print rules) is embedded as well.
+    QVERIFY(html.contains(QStringLiteral("@media print")));
+    QVERIFY(html.trimmed().endsWith(QStringLiteral("</html>")));
+}
+
+void ExporterTest::exportStyleSheetHasPrintRules()
+{
+    const QString css = Exporter::exportStyleSheet();
+    QVERIFY(css.contains(QStringLiteral("@media print")));
+    QVERIFY(css.contains(QStringLiteral(".export-page")));
+    QVERIFY(css.contains(QStringLiteral("break-inside:avoid")));
 }
 
 QTEST_MAIN(ExporterTest)

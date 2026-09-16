@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <QBuffer>
+#include <QCoreApplication>
 #include <QFileInfo>
 #include <QHash>
 #include <QReadWriteLock>
@@ -48,6 +49,12 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
             &AppController::applyRawResult);
 
     connect(&m_boxModel, &BoxListModel::boxRemoved, this, &AppController::onBoxRemoved);
+
+    connect(&m_exportRenderer, &ExportRenderer::progress, this,
+            [this](int pagesDone, int pagesTotal) {
+        if (m_exporting)
+            setStatus(tr("Exporting… (%1/%2)").arg(pagesDone).arg(pagesTotal));
+    });
 
     connect(this, &AppController::pageChanged, this, [this]() {
         ++m_imageRevision;
@@ -537,26 +544,99 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
     for (const auto& ref : refs)
         crops.insert(ref, croppedImage(ref.first - 1, ref.second));
 
+    const Exporter::CropProvider cropProvider = [crops](int pageNumber, int boxIndex) {
+        return crops.value({pageNumber, boxIndex});
+    };
+
     m_exporting = true;
     emit exportingChanged();
     setStatus(tr("Exporting…"));
 
+    const Exporter::Format format =
+        Exporter::formatForSuffix(QFileInfo(path).suffix());
+
+    if (format == Exporter::Format::Html || format == Exporter::Format::Pdf) {
+        QtConcurrent::run([pages, cropProvider]() {
+            QList<ExportRenderer::PageInput> embedded;
+            embedded.reserve(pages.size());
+            for (const Exporter::Page& page : pages) {
+                embedded.append(
+                    { page.number, Exporter::embedImagesAsDataUrls(
+                                       page.text,
+                                       [&page, cropProvider](int boxIndex) {
+                                           return cropProvider(page.number, boxIndex);
+                                       }) });
+            }
+            return embedded;
+        })
+            .then(this,
+                  [this, pages, path, format, cropProvider](
+                      QList<ExportRenderer::PageInput> embedded) {
+                const ExportRenderer::Output output =
+                    format == Exporter::Format::Pdf ? ExportRenderer::Output::Pdf
+                                                    : ExportRenderer::Output::Html;
+                m_exportRenderer.render(
+                    output, embedded, Exporter::exportStyleSheet(), path,
+                    [this, pages, path, format, cropProvider](
+                        bool ok, const QString& html, const QString& error) {
+                        const Exporter::Result result = finalizeRenderedExport(
+                            format, path, pages, cropProvider, ok, html, error);
+                        finishExport(result, pages.size());
+                    });
+            });
+        return true;
+    }
+
     QtConcurrent::run(
-        [exporter = m_exporter, pages, crops, path]() {
-            return exporter.exportToFile(
-                pages, path,
-                [&crops](int pageNumber, int boxIndex) {
-                    return crops.value({pageNumber, boxIndex});
-                });
+        [exporter = m_exporter, pages, path, cropProvider]() {
+            return exporter.exportToFile(pages, path, cropProvider);
         })
         .then(this, [this, pageCount = pages.size()](const Exporter::Result& result) {
-            m_exporting = false;
-            emit exportingChanged();
-            setStatus(result.success
-                          ? tr("%1 (%2 page(s)).").arg(result.message).arg(pageCount)
-                          : result.message);
+            finishExport(result, pageCount);
         });
     return true;
+}
+
+void AppController::finishExport(const Exporter::Result& result, int pageCount)
+{
+    m_exporting = false;
+    emit exportingChanged();
+    setStatus(result.success
+                  ? tr("%1 (%2 page(s)).").arg(result.message).arg(pageCount)
+                  : result.message);
+}
+
+Exporter::Result AppController::finalizeRenderedExport(
+    Exporter::Format format, const QString& path, const QList<Exporter::Page>& pages,
+    const Exporter::CropProvider& crop, bool renderOk, const QString& renderedHtml,
+    const QString& renderError) const
+{
+    if (format == Exporter::Format::Pdf) {
+        if (renderOk)
+            return Exporter::Result::ok(
+                QCoreApplication::translate("Exporter", "Exported to %1")
+                    .arg(QFileInfo(path).fileName()));
+        const Exporter::Result fb = Exporter::writePdfFallback(pages, path, crop);
+        if (fb.success)
+            return Exporter::Result::ok(
+                QCoreApplication::translate(
+                    "Exporter", "Exported PDF using the built-in writer (%1).")
+                    .arg(renderError));
+        return fb;
+    }
+
+    if (renderOk)
+        return Exporter::writeTextFile(
+            path, Exporter::assembleHtmlDocument({ renderedHtml }));
+
+    // Rendering failed — degrade to the old escaped-text writer.
+    const Exporter::Result fb = m_exporter.exportToFile(pages, path, crop);
+    if (fb.success)
+        return Exporter::Result::ok(
+            QCoreApplication::translate(
+                "Exporter", "Exported HTML using the basic writer (%1).")
+                .arg(renderError));
+    return fb;
 }
 
 QStringList AppController::exportNameFilters() const

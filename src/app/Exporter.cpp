@@ -1,5 +1,6 @@
 #include "app/Exporter.h"
 
+#include <QBuffer>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -144,6 +145,109 @@ QString Exporter::buildHtml(const QList<Page>& pages)
         .arg(body);
 }
 
+QString Exporter::embedImagesAsDataUrls(
+    const QString& markdown, const std::function<QImage(int boxIndex)>& crop)
+{
+    const QRegularExpression re = imageRefRegex();
+    QString out;
+    QStringView view(markdown);
+    qsizetype last = 0;
+    QRegularExpressionMatchIterator it = re.globalMatch(markdown);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch m = it.next();
+        bool okIndex = false;
+        const int boxIndex = m.captured(2).toInt(&okIndex);
+        QImage image;
+        if (okIndex && crop)
+            image = crop(boxIndex);
+        if (image.isNull())
+            continue;  // keep the reference as-is (stale crop)
+
+        QByteArray png;
+        QBuffer buffer(&png);
+        if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG"))
+            continue;
+
+        out += view.sliced(last, m.capturedStart() - last);
+        out += QStringLiteral("![%1](data:image/png;base64,%2)")
+                   .arg(m.captured(1), QString::fromLatin1(png.toBase64()));
+        last = m.capturedEnd();
+    }
+    out += view.sliced(last);
+    return out;
+}
+
+QString Exporter::katexCssForExport()
+{
+    QFile cssFile(QStringLiteral(":/preview/katex.min.css"));
+    if (!cssFile.open(QIODevice::ReadOnly))
+        return {};
+    QString css = QString::fromUtf8(cssFile.readAll());
+
+    static const QRegularExpression legacySources(QStringLiteral(
+        R"(,\s*url\(fonts/[^)]+?\.woff\)\s*format\(["']woff["']\)|)"
+        R"(,\s*url\(fonts/[^)]+?\.ttf\)\s*format\(["']truetype["']\))"));
+    css.remove(legacySources);
+
+    static const QRegularExpression woff2Ref(
+        QStringLiteral(R"(url\((fonts/[^)]+?\.woff2)\))"));
+    QString out;
+    QStringView view(css);
+    qsizetype last = 0;
+    QRegularExpressionMatchIterator it = woff2Ref.globalMatch(css);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch m = it.next();
+        QFile font(QStringLiteral(":/preview/") + m.captured(1));
+        if (!font.open(QIODevice::ReadOnly))
+            continue;  // leave the original reference untouched
+        out += view.sliced(last, m.capturedStart() - last);
+        out += QStringLiteral("url(data:font/woff2;base64,%1)")
+                   .arg(QString::fromLatin1(font.readAll().toBase64()));
+        last = m.capturedEnd();
+    }
+    out += view.sliced(last);
+    return out;
+}
+
+QString Exporter::exportStyleSheet()
+{
+    return QStringLiteral(
+        "body{margin:0;padding:24px 28px;background:#fff;color:#1a1a1a;"
+        "font-family:-apple-system,\"Segoe UI\",Roboto,sans-serif;"
+        "font-size:11pt;line-height:1.5;word-wrap:break-word;}"
+        "h2{border-bottom:1px solid #ccc;padding-bottom:.2em;}"
+        "table{border-collapse:collapse;margin:12px 0;}"
+        "th,td{border:1px solid #999;padding:5px 9px;text-align:left;}"
+        "th{background:rgba(0,0,0,0.06);}"
+        "pre{white-space:pre-wrap;background:rgba(128,128,128,0.12);"
+        "padding:9px 11px;border-radius:4px;}"
+        "code{font-family:\"SF Mono\",Consolas,monospace;font-size:0.9em;}"
+        "blockquote{margin:12px 0;padding-left:12px;"
+        "border-left:3px solid #ccc;color:#666;}"
+        "img{max-width:100%;height:auto;}"
+        ".katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0;}"
+        "@media print{"
+        "body{padding:0;}"
+        ".export-page{break-before:page;}"
+        ".export-page:first-child{break-before:auto;}"
+        "h2{break-after:avoid;}"
+        "pre,table,blockquote,.katex-display{break-inside:avoid;}"
+        "}");
+}
+
+QString Exporter::assembleHtmlDocument(const QStringList& pageSections)
+{
+    QString html;
+    html += QStringLiteral("<!DOCTYPE html>\n<html>\n<head>\n"
+                           "<meta charset=\"utf-8\">\n<title>OCR result</title>\n");
+    html += QLatin1String("<style>") + katexCssForExport() + QLatin1String("</style>\n");
+    html += QLatin1String("<style>") + exportStyleSheet() + QLatin1String("</style>\n");
+    html += QLatin1String("</head>\n<body>\n");
+    html += pageSections.join(QLatin1Char('\n'));
+    html += QLatin1String("\n</body>\n</html>\n");
+    return html;
+}
+
 Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString& filePath,
                                         const CropProvider& crop) const
 {
@@ -199,8 +303,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
             const Result fb = writePdfFallback(pages, filePath, crop);
             if (fb.success)
                 return Result::ok(QCoreApplication::translate("Exporter",
-                    "Exported PDF using the built-in writer "
-                    "(Pandoc failed: %1).").arg(r.message));
+                    "Exported PDF using the built-in writer (%1).").arg(r.message));
             return fb;
         }
         return writePdfFallback(pages, filePath, crop);

@@ -139,10 +139,18 @@ i.e. the user's edit when present, else the raw recognition.
 | -------- | ------------------------------------------------ | ------ |
 | TXT      | directly (page separators)                       | ✅     |
 | Markdown | directly (`## Page N`) — the internal source     | ✅     |
-| HTML     | directly (escaped, self-contained `<section>`)   | ✅     |
-| DOCX     | via **Pandoc** (Markdown on stdin → .docx)       | ✅     |
-| PDF      | **Pandoc** if available, else built-in `QPdfWriter` + `QTextDocument` fallback | ✅ |
+| HTML     | **preview-pipeline render** (`ExportRenderer`): marked + DOMPurify + KaTeX in a headless `QWebEnginePage`, self-contained file (styles + KaTeX fonts inlined); fallback — escaped-text writer | ✅ |
+| DOCX     | via **Pandoc** (Markdown on stdin → .docx, native Word equations) | ✅     |
+| PDF      | **preview-pipeline render** (`ExportRenderer` + `QWebEnginePage::printToPdf`, A4); fallback — built-in `QPdfWriter` + `QTextDocument` | ✅ |
 
+- The HTML/PDF render path reuses the preview bundle (`qrc:/preview/export.html`:
+  marked + DOMPurify + KaTeX), so the export matches the Markdown preview 1:1
+  (real headings, tables, code blocks, math). Pandoc is **not** needed for PDF
+  anymore (the old Pandoc→LaTeX path is gone); it stays for DOCX only (ADR 63).
+- The render runs on the **UI thread** (`ExportRenderer`, off-screen
+  `QWebEnginePage`); the heavy crop→PNG/base64 encoding and file writing stay
+  on worker threads. Progress is surfaced in the status line
+  ("Exporting… (n/N)").
 - Pandoc is discovered once via `QStandardPaths::findExecutable("pandoc")`
   (`Exporter::isPandocAvailable()` / `pandocExecutable()`).
 - The Save dialog advertises **DOCX only when Pandoc is present**
@@ -150,8 +158,10 @@ i.e. the user's edit when present, else the raw recognition.
   built-in fallback writer.
 - Image blocks are emitted as `![alt](image://ocr/crop/<boxIndex>)`. Since those
   references have no meaning outside the app, every export path resolves them
-  to real image files first (`Exporter::resolveImageReferences`, using the
-  cropped pixels from `AppController::croppedImage`).
+  first: the render path embeds them as `data:` URLs
+  (`Exporter::embedImagesAsDataUrls`), the direct writers save real image files
+  next to the output (`Exporter::resolveImageReferences`, using the cropped
+  pixels from `AppController::croppedImage`).
 - Export scope is selectable for multi-page documents: **All recognized
   pages**, **Current page**, or a **page range** (only recognized pages in the
   selection are exported).

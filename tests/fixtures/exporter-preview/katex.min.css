@@ -1,0 +1,3 @@
+@font-face{font-family:KaTeX_Fake;src:url(fonts/KaTeX_Fake-Regular.woff2) format("woff2"),url(fonts/KaTeX_Fake-Regular.woff) format("woff"),url(fonts/KaTeX_Fake-Regular.ttf) format("truetype")}
+.katex{font-family:KaTeX_Fake}
+.katex .base{width:100%}

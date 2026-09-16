@@ -138,7 +138,9 @@
   
   Unit tests are all wired into `tests/CMakeLists.txt` and run via ctest:
   the four base targets (`test_det_parser`, `test_pagemodel`,
-  `test_settings_store`, `test_exporter`) plus the local-runtime suite
+  `test_settings_store`, `test_exporter`) plus the export-render integration
+  test (`test_export_renderer` — headless WebEngine, needs the Qt DLLs on
+  `PATH`) plus the local-runtime suite
   (`test_launch_config`, `test_runtime_lifetime`, `test_runtime_locator`,
   `test_capabilities`, `test_server_process`, `test_ensure_connection`,
   (`test_download_manager`, `test_release_catalog`, `test_archive_extractor`,

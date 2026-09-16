@@ -40,6 +40,8 @@ qt_add_executable(llocr
     app/DocumentModel.cpp
     app/Exporter.h
     app/Exporter.cpp
+    app/ExportRenderer.h
+    app/ExportRenderer.cpp
     app/I18n.h
     app/I18n.cpp
     app/OcrImageProvider.h
@@ -244,6 +246,7 @@ target_link_libraries(llocr PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Pdf
+    Qt6::WebEngineCore
     Qt6::WebEngineQuick
     ZLIB::ZLIB
 )

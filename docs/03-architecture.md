@@ -233,9 +233,14 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
 - **UiController** — System / Light / Dark theme handling (`QML_ELEMENT`).
 - **I18n** — runtime language switching via Qt Linguist (`qsTr`/`tr` +
   `.ts`); installs translators, emits `languageApplied` for `engine.retranslate()`.
-- **Exporter** — turns pages into TXT / MD / HTML directly, DOCX / PDF via
-  Pandoc (with a `QPdfWriter` PDF fallback); resolves `image://ocr/crop/*`
-  references to real files on export.
+- **Exporter** — turns pages into TXT / MD directly, assembles the standalone
+  HTML file from the rendered sections, keeps the DOCX (Pandoc) and PDF
+  (`QPdfWriter`) fallback writers, and resolves `image://ocr/crop/*`
+  references (files for direct writers, `data:` URLs for the render path).
+- **ExportRenderer** — headless `QWebEnginePage` running the preview bundle
+  (`qrc:/preview/export.html`: marked + DOMPurify + KaTeX) to produce the
+  formatted HTML sections for export and to print PDF via `printToPdf`;
+  UI-thread only, callback-based (ADR 63).
 - **WindowSettings** (QML) — persists window position/size/visibility.
 
 ## Data flow (OCR)

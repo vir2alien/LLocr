@@ -225,7 +225,49 @@ target_link_libraries(test_exporter PRIVATE
 target_sources(test_exporter PRIVATE
     ${CMAKE_SOURCE_DIR}/src/app/Exporter.cpp
 )
+
+# Minimal fixture for the export-assembly tests: a fake katex.min.css with
+# data-URI-able font references. The real bundle lives in the llocr target
+# only, so the test registers its own copy under the same :/preview/ prefix.
+qt_add_resources(test_exporter "exporter_preview_fixture"
+    PREFIX "/preview"
+    BASE "${CMAKE_SOURCE_DIR}/tests/fixtures/exporter-preview"
+    FILES
+        "${CMAKE_SOURCE_DIR}/tests/fixtures/exporter-preview/katex.min.css"
+        "${CMAKE_SOURCE_DIR}/tests/fixtures/exporter-preview/fonts/KaTeX_Fake-Regular.woff2"
+)
 add_test(NAME test_exporter COMMAND test_exporter)
+
+# ---- Export renderer: headless WebEngine integration -----------------------
+# Reuses the same :/preview/ bundle as the application (export.html drives the
+# render); needs the WebEngine runtime, so it is the slowest unit target.
+qt_add_executable(test_export_renderer test_export_renderer.cpp)
+
+target_include_directories(test_export_renderer PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_export_renderer PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::WebEngineCore
+    Qt6::WebEngineQuick
+)
+
+target_sources(test_export_renderer PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app/Exporter.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/ExportRenderer.cpp
+)
+
+file(GLOB_RECURSE TEST_PREVIEW_FILES
+    "${CMAKE_SOURCE_DIR}/resources/preview/*")
+list(FILTER TEST_PREVIEW_FILES EXCLUDE REGEX "\\.DS_Store$")
+
+qt_add_resources(test_export_renderer "export_renderer_preview_res"
+    PREFIX "/preview"
+    BASE "${CMAKE_SOURCE_DIR}/resources/preview"
+    FILES ${TEST_PREVIEW_FILES}
+)
+add_test(NAME test_export_renderer COMMAND test_export_renderer)
 
 # ---- Stage B: capabilities -------------------------------------------------
 qt_add_executable(test_capabilities test_capabilities.cpp)
