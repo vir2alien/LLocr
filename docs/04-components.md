@@ -152,7 +152,11 @@ i.e. the user's edit when present, else the raw recognition.
   on worker threads. Progress is surfaced in the status line
   ("Exporting… (n/N)").
 - Pandoc is discovered once via `QStandardPaths::findExecutable("pandoc")`
-  (`Exporter::isPandocAvailable()` / `pandocExecutable()`).
+  (`Exporter::isPandocAvailable()` / `pandocExecutable()`); when the PATH
+  lookup fails, the installers' well-known locations are probed too — Windows:
+  `%LOCALAPPDATA%\Pandoc`, `Program Files\Pandoc`, `Program Files (x86)\Pandoc`;
+  macOS: `/usr/local/bin`, `/opt/homebrew/bin`, `/opt/local/bin` — a GUI launch
+  often sees a stale or shortened PATH even with Pandoc installed.
 - The Save dialog advertises **DOCX only when Pandoc is present**
   (`AppController::exportNameFilters`). PDF is always offered because of the
   built-in fallback writer.

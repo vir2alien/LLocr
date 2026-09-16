@@ -20,6 +20,44 @@
 namespace llocr {
 
 
+namespace {
+
+QString locatePandoc()
+{
+    QString exe = QStandardPaths::findExecutable(QStringLiteral("pandoc"));
+    if (!exe.isEmpty())
+        return exe;
+
+    QStringList candidates;
+#ifdef Q_OS_WIN
+    const QString relative = QStringLiteral("Pandoc/pandoc.exe");
+    const QString localAppData = qEnvironmentVariable("LOCALAPPDATA");
+    if (!localAppData.isEmpty())
+        candidates << QDir(localAppData).filePath(relative);
+    const QString programFiles = qEnvironmentVariable("ProgramFiles");
+    if (!programFiles.isEmpty())
+        candidates << QDir(programFiles).filePath(relative);
+    const QString programFilesX86 = qEnvironmentVariable("ProgramFiles(x86)");
+    if (!programFilesX86.isEmpty())
+        candidates << QDir(programFilesX86).filePath(relative);
+#elif defined(Q_OS_MAC)
+    candidates << QStringLiteral("/usr/local/bin/pandoc")
+               << QStringLiteral("/opt/homebrew/bin/pandoc")
+               << QStringLiteral("/opt/local/bin/pandoc");
+#else
+    candidates << QStringLiteral("/usr/local/bin/pandoc");
+#endif
+
+    for (const QString& candidate : candidates) {
+        const QFileInfo info(candidate);
+        if (info.isFile() && info.isExecutable())
+            return info.absoluteFilePath();
+    }
+    return {};
+}
+
+}  // namespace
+
 Exporter::Format Exporter::formatForSuffix(const QString& suffix)
 {
     const QString s = suffix.toLower();
@@ -38,7 +76,7 @@ Exporter::Format Exporter::formatForSuffix(const QString& suffix)
 
 QString Exporter::pandocExecutable()
 {
-    static const QString exe = QStandardPaths::findExecutable(QStringLiteral("pandoc"));
+    static const QString exe = locatePandoc();
     return exe;
 }
 
@@ -353,8 +391,8 @@ Exporter::Result Exporter::exportViaPandoc(const QList<Page>& pages,
     QString markdown;
     QStringList extra = extraArgs;
 
+    QTemporaryDir tmp;
     if (crop) {
-        QTemporaryDir tmp;
         if (!tmp.isValid())
             return Result::fail(QCoreApplication::translate("Exporter",
                 "Cannot create a temporary directory for images."));

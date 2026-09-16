@@ -34,12 +34,14 @@ private slots:
     void resolveImageReferencesKeepsStaleRefs();
     void exportMarkdownEmbedsCroppedImages();
     void exportHtmlRendersImages();
+    void exportDocxEmbedsCroppedImages();
     void plainTextStripsImageReferences();
 
     void embedImagesAsDataUrlsConvertsRefs();
     void embedImagesAsDataUrlsKeepsNullCrops();
     void assembleHtmlDocumentIsSelfContained();
     void exportStyleSheetHasPrintRules();
+    void pandocDetectionConsistent();
 };
 
 void ExporterTest::suffixMapping_data()
@@ -233,6 +235,33 @@ void ExporterTest::exportHtmlRendersImages()
     QVERIFY(!content.contains("image://ocr"));
 }
 
+void ExporterTest::exportDocxEmbedsCroppedImages()
+{
+    if (!Exporter::isPandocAvailable())
+        QSKIP("pandoc is not available on this machine");
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath("result.docx");
+
+    QImage img(40, 20, QImage::Format_RGB32);
+    img.fill(Qt::blue);
+    const auto crop = [&img](int, int) { return img; };
+
+    Exporter exporter;
+    const Exporter::Result r =
+        exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
+    QVERIFY2(r.success, qPrintable(r.message));
+
+    // A .docx is a ZIP; entry names are stored uncompressed, so the embedded
+    // crop must be visible as a word/media/ entry in the raw bytes.
+    QFile f(path);
+    QVERIFY(f.open(QIODevice::ReadOnly));
+    const QByteArray raw = f.readAll();
+    QVERIFY2(raw.contains("word/media/"),
+             "docx contains no embedded images (pandoc did not resolve the crops)");
+}
+
 void ExporterTest::plainTextStripsImageReferences()
 {
     const QString txt = Exporter::buildPlainText(
@@ -289,6 +318,20 @@ void ExporterTest::exportStyleSheetHasPrintRules()
     QVERIFY(css.contains(QStringLiteral("@media print")));
     QVERIFY(css.contains(QStringLiteral(".export-page")));
     QVERIFY(css.contains(QStringLiteral("break-inside:avoid")));
+}
+
+void ExporterTest::pandocDetectionConsistent()
+{
+    const QString exe = Exporter::pandocExecutable();
+    QCOMPARE(Exporter::isPandocAvailable(), !exe.isEmpty());
+    if (exe.isEmpty())
+        QSKIP("pandoc is not installed on this machine");
+
+    // Whatever the discovery path (PATH or the well-known install dirs),
+    // the result must point at a real executable file.
+    const QFileInfo info(exe);
+    QVERIFY2(info.isFile(), qPrintable(exe));
+    QVERIFY(info.exists());
 }
 
 QTEST_MAIN(ExporterTest)
