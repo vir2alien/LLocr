@@ -537,6 +537,7 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
 
     const QString summary = InstallTransaction::cleanupUnusedBuilds(m_paths, keepTag);
     setStatusMessage(summary);
+    rescanInstalledBuilds();
     releaseInstallLock();
     return summary;
 }
