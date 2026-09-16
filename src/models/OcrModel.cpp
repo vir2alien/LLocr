@@ -34,7 +34,7 @@ QString OcrModel::encodeImageDataUrl(const QImage &image, const QString &format,
 }
 
 QByteArray OcrModel::buildRequestBody(const OcrRequest &request,
-                                      const QString &imageDataUrl) const
+                                      const QString &imageDataUrl)
 {
     QJsonObject textPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.prompt}};
     QJsonObject imageUrl{{QStringLiteral("url"), imageDataUrl}};
@@ -64,7 +64,7 @@ QByteArray OcrModel::buildRequestBody(const OcrRequest &request,
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
-OcrResult OcrModel::parseResponse(const QByteArray &responseData) const
+OcrResult OcrModel::parseResponse(const QByteArray &responseData)
 {
     QJsonParseError parseError{};
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
@@ -91,15 +91,15 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
     promise->start();
     QFuture<OcrResult> future = promise->future();
 
+    // I-05: the chain must be self-contained — no `this` captures — so a
+    // mid-flight model destruction (recipe switch, shutdown) cannot dangle.
+    // The per-request client is shared between the chain and abort().
+    auto client = std::make_shared<LlamaClient>();
+    m_activeClient = client;
+
     auto *encodeWatcher = new QFutureWatcher<QByteArray>();
-    encodeWatcher->setFuture(QtConcurrent::run([this, request, config]() {
-        const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("png"));
-        if (dataUrl.isEmpty())
-            return QByteArray();
-        return buildRequestBody(request, dataUrl);
-    }));
     QObject::connect(encodeWatcher, &QFutureWatcher<QByteArray>::finished, encodeWatcher,
-                     [this, promise, encodeWatcher, config]() {
+                     [promise, encodeWatcher, client, config]() {
                          encodeWatcher->deleteLater();
                          const QByteArray body = encodeWatcher->future().resultCount() > 0
                                                      ? encodeWatcher->result()
@@ -117,10 +117,11 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
                              return;
                          }
                          auto *watcher = new QFutureWatcher<HttpResponse>();
-                         watcher->setFuture(m_client.postJson(LlamaClient::endpointUrl(config.baseUrl), body,
-                                                              config.apiKey, config.timeoutMs));
+                         // `client` is captured through the whole network phase:
+                         // without it the last shared_ptr dies with this handler
+                         // and ~QNetworkAccessManager kills the in-flight reply.
                          QObject::connect(watcher, &QFutureWatcher<HttpResponse>::finished, watcher,
-                                          [this, promise, watcher]() mutable {
+                                          [client, promise, watcher]() {
                                               const HttpResponse response =
                                                   watcher->future().resultCount() > 0 ? watcher->result() : HttpResponse{};
                                               if (response.success)
@@ -130,14 +131,23 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
                                               promise->finish();
                                               watcher->deleteLater();
                                           });
+                         watcher->setFuture(client->postJson(LlamaClient::endpointUrl(config.baseUrl), body,
+                                                             config.apiKey, config.timeoutMs));
                      });
+    encodeWatcher->setFuture(QtConcurrent::run([request]() {
+        const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("png"));
+        if (dataUrl.isEmpty())
+            return QByteArray();
+        return buildRequestBody(request, dataUrl);
+    }));
 
     return future;
 }
 
 void OcrModel::abort()
 {
-    m_client.abort();
+    if (m_activeClient)
+        m_activeClient->abort();
 }
 
 } // namespace llocr

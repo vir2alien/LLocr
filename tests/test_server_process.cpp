@@ -19,6 +19,7 @@ private slots:
     void ringBufferCapturesOutput();
     void healthyTimeout();
     void crashAndAutoRestartRecovery();
+    void crashWindowReportsRestarting();
     void stopDuringStartupIsSafe();
     void reportsTensorLoadPercent();
 };
@@ -107,6 +108,29 @@ void TestServerProcess::crashAndAutoRestartRecovery()
     QTRY_VERIFY_WITH_TIMEOUT(m->startCount() >= 2, 15000);
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 20000);
     QVERIFY(m->startCount() >= 2);
+    m->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
+}
+
+void TestServerProcess::crashWindowReportsRestarting()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    // I-04: while the ~500 ms auto-restart window is pending, the wrapper
+    // must surface Starting — never the stale Ready with a dead child, or a
+    // resolve started here would hit a dead port.
+    QScopedPointer<LlamaServerProcess> m(
+        makeServer({QStringLiteral("--crash-after"), QStringLiteral("2500")},
+                   60000, true, dir, logFile));
+    QVERIFY(m->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 12000);
+
+    // The status flips synchronously with the state at crash detection.
+    QTRY_VERIFY_WITH_TIMEOUT(
+        m->statusMessage().contains(QStringLiteral("restarting")), 10000);
+    QCOMPARE(int(m->state()), int(RuntimeState::Starting));
+
+    // Stop during the window must land on Stopped and cancel the respawn.
     m->stop();
     QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
 }

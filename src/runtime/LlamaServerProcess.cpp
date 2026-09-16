@@ -466,6 +466,11 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
     if (restartEligible && remaining > 0) {
         m_restartWindowCount++;
         m_autoRestartScheduled = true;
+        // I-04: a dead child must not keep the stale Ready state while the
+        // respawn is pending — a resolve started in this window would hit a
+        // dead port. Starting keeps ensureConnectionReady on the waiting path.
+        setStatus(QObject::tr("Server crashed — restarting…"));
+        setState(RuntimeState::Starting);
         QTimer::singleShot(kRestartDelayMs, this, [this]() {
             m_autoRestartScheduled = false;
             // stop()/shutdownSync() may have requested a stop during the

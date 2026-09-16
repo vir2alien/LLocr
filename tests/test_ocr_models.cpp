@@ -169,6 +169,38 @@ private slots:
         QCOMPARE(decoded.height(), 91);
     }
 
+    void futureCompletesAfterModelDestruction() {
+        RecordingServer server;
+        QVERIFY(server.start());
+
+        QImage image(64, 48, QImage::Format_ARGB32);
+        image.fill(Qt::gray);
+
+        OcrRequest request;
+        request.image = image;
+        request.prompt = QStringLiteral("document parsing.");
+        request.modelId = QStringLiteral("unlimited-ocr");
+
+        ConnectionConfig config;
+        config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
+        config.timeoutMs = 10000;
+
+        auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        QFuture<OcrResult> future = model->recognize(request, config);
+
+        // I-05: the async chain is self-contained (no `this` captures), so
+        // destroying the model mid-flight must neither dangle nor lose the
+        // result — the future still completes with the parsed answer.
+        model.reset();
+
+        QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
+        QVERIFY(future.resultCount() > 0);
+        QVERIFY2(future.result().success,
+                 future.result().errorMessage.toUtf8().constData());
+        QVERIFY(server.gotRequest);
+        QCOMPARE(future.result().text, QStringLiteral("ok"));
+    }
+
     void recognizeFailsCleanlyOnNullImage() {
         OcrRequest request;
         request.prompt = QStringLiteral("document parsing.");

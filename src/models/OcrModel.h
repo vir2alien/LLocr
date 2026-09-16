@@ -5,6 +5,8 @@
 #include <QList>
 #include <QString>
 
+#include <memory>
+
 #include "core/ConnectionConfig.h"
 #include "core/LlamaClient.h"
 #include "core/OcrRequest.h"
@@ -35,13 +37,16 @@ public:
     void abort();
 
 protected:
-    virtual QByteArray buildRequestBody(const OcrRequest &request,
-                                        const QString &imageDataUrl) const;
-    virtual OcrResult parseResponse(const QByteArray &responseData) const;
-
-    LlamaClient m_client;
+    static QByteArray buildRequestBody(const OcrRequest &request,
+                                       const QString &imageDataUrl);
+    static OcrResult parseResponse(const QByteArray &responseData);
 
 private:
+    // Per-request client (I-05): the async chain owns a shared_ptr copy, so a
+    // mid-flight model destruction cannot dangle; this member keeps the
+    // current one reachable for abort().
+    std::shared_ptr<LlamaClient> m_activeClient;
+
     static QString encodeImageDataUrl(const QImage &image, const QString &format,
                                       int quality = -1);
 };
