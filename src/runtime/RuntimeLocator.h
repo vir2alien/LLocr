@@ -27,8 +27,6 @@ public:
                             ProbeResult &out);
     static QString probeSummary(const ProbeResult &r);
     static QString autoDiscover(int timeoutMs = 5000);
-    static QString ensureExecutable(const QString &binaryPath, bool pathManaged,
-                                    bool &needsConfirmation);
 
 private:
     static QString runProbe(const QString &binaryPath, QStringList args,

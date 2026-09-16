@@ -66,27 +66,6 @@ bool DocumentModel::appendImage(const QString& path)
     return true;
 }
 
-bool DocumentModel::loadImages(const QStringList& paths)
-{
-    clear();
-
-    bool anyLoaded = false;
-    for (const QString& path : paths)
-        anyLoaded = appendImage(path) || anyLoaded;
-
-    return anyLoaded;
-}
-
-bool DocumentModel::loadPdf(const QString& path)
-{
-    QPdfDocument* pdf = pdfFor(path);
-    if (!pdf || pdf->pageCount() <= 0)
-        return false;
-
-    clear();
-    return appendPdf(path);
-}
-
 bool DocumentModel::appendPdf(const QString& path)
 {
     QPdfDocument* pdf = pdfFor(path);

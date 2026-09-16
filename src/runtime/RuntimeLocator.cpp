@@ -159,28 +159,6 @@ QString RuntimeLocator::autoDiscover(int timeoutMs)
     return QString();
 }
 
-QString RuntimeLocator::ensureExecutable(const QString &binaryPath, bool pathManaged,
-                                         bool &needsConfirmation)
-{
-    needsConfirmation = false;
-    const QFileInfo fi(binaryPath);
-    if (!fi.exists())
-        return QObject::tr("File not found: %1").arg(binaryPath);
-#ifdef Q_OS_UNIX
-    if (fi.isExecutable())
-        return QString();
-    if (!pathManaged) {
-        needsConfirmation = true;
-        return QObject::tr("The selected file is not executable");
-    }
-    QFile f(binaryPath);
-    if (!f.setPermissions(f.permissions() | QFileDevice::ExeUser | QFileDevice::ExeGroup
-                                        | QFileDevice::ExeOther))
-        return QObject::tr("Unable to make the binary executable");
-#endif
-    return QString();
-}
-
 namespace {
 
 struct ProbeKey {

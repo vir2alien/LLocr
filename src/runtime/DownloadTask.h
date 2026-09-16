@@ -55,17 +55,14 @@ public:
     State state() const { return m_state; }
     QString fileName() const { return m_fileName; }
     QString targetDir() const { return m_targetDir; }
-    QString finalPath() const { return m_finalPath; }
     QString partPath() const { return m_partPath; }
     qint64 totalBytes() const { return m_totalBytes; }
     qint64 receivedBytes() const { return m_receivedBytes; }
     int speedBytesPerSec() const { return m_speedBps; }
     int etaSec() const { return m_etaSec; }
     QString error() const { return m_error; }
-    QString expectedSha256() const;
 
     void start();
-    void pause();
     void cancel(bool deletePartial);
     void abortDownload();
 

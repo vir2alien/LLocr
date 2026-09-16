@@ -152,11 +152,6 @@ DownloadTask::~DownloadTask()
     m_reply->deleteLater();
 }
 
-QString DownloadTask::expectedSha256() const
-{
-    return m_request.sha256;
-}
-
 void DownloadTask::setFreeBytesQuery(FreeBytesQuery query)
 {
     if (query)
@@ -605,15 +600,6 @@ void DownloadTask::readMeta()
     m_resumeLastModified = o.value(QStringLiteral("lastModified")).toString();
     const double total = o.value(QStringLiteral("total")).toDouble(-1);
     m_resumeExpectedTotal = total < 0 ? -1 : static_cast<qint64>(total);
-}
-
-void DownloadTask::pause()
-{
-    if (m_state != State::Running)
-        return;
-    m_pauseRequested = true;
-    if (m_reply)
-        m_reply->abort();
 }
 
 void DownloadTask::cancel(bool deletePartial)

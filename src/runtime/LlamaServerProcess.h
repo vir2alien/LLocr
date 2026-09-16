@@ -63,7 +63,6 @@ signals:
     void stateChanged();
     void statusMessageChanged();
     void logLineAppended(QString line);
-    void healthReached();
     void loadProgressChanged();
 
 private:

@@ -33,9 +33,7 @@ public:
     int enqueue(const DownloadTask::Request &request);
 
     void cancel(int row, bool deletePartial);
-    void pause(int row);
     void cancelAll(bool deletePartial);
-    void pauseAll();
 
     DownloadTask *taskAt(int row) const;
 

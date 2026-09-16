@@ -68,7 +68,6 @@ public:
     void retranslate();
 
     Q_INVOKABLE QString releaseLabel(int index) const;
-    Q_INVOKABLE int releaseBuild(int index) const;
     Q_INVOKABLE void checkForUpdates();
     Q_INVOKABLE void startDownloadAndInstall();
     Q_INVOKABLE void cancelInstall();

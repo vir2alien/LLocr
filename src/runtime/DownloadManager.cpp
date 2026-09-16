@@ -84,23 +84,10 @@ void DownloadManager::cancel(int row, bool deletePartial)
     m_tasks.at(row)->cancel(deletePartial);
 }
 
-void DownloadManager::pause(int row)
-{
-    if (row < 0 || row >= m_tasks.size())
-        return;
-    m_tasks.at(row)->pause();
-}
-
 void DownloadManager::cancelAll(bool deletePartial)
 {
     for (DownloadTask *task : m_tasks)
         task->cancel(deletePartial);
-}
-
-void DownloadManager::pauseAll()
-{
-    for (DownloadTask *task : m_tasks)
-        task->pause();
 }
 
 DownloadTask *DownloadManager::taskAt(int row) const

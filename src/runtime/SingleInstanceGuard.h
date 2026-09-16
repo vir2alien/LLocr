@@ -15,7 +15,6 @@ public:
 
     bool tryAcquire(QString &errorMessage);
     void release();
-    bool holdsLock() const { return m_holdsLock; }
 
 private:
     QLockFile m_lockFile;

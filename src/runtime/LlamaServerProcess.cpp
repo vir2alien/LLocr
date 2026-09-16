@@ -193,7 +193,6 @@ void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
         m_healthReached = true;
         setState(RuntimeState::Ready);
         setStatus(QStringLiteral("Ready"));
-        emit healthReached();
         return;
     }
     if (!m_modelsProbed) {
@@ -218,7 +217,6 @@ void LlamaServerProcess::tryModelsFallback()
             m_healthReached = true;
             setState(RuntimeState::Ready);
             setStatus(QStringLiteral("Ready"));
-            emit healthReached();
         }
     });
 }

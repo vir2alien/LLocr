@@ -559,11 +559,6 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
     return true;
 }
 
-bool AppController::exportResult(const QUrl& fileUrl)
-{
-    return exportPages(fileUrl, ExportAll, 1, m_document.pageCount());
-}
-
 QStringList AppController::exportNameFilters() const
 {
     QStringList filters;

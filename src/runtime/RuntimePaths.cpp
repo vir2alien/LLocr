@@ -58,11 +58,6 @@ QString RuntimePaths::cacheDir() const
     return QDir(m_rootDir).filePath(QStringLiteral("cache"));
 }
 
-QString RuntimePaths::modelDir(const QString &repo) const
-{
-    return QDir(m_modelsDir).filePath(repo);
-}
-
 QString RuntimePaths::instanceLockPath() const
 {
     return QDir(m_rootDir).filePath(QStringLiteral(".instance.lock"));

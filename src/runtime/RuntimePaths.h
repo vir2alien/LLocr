@@ -21,7 +21,6 @@ public:
     QString logsDir() const;
     QString profilesDir() const;
     QString cacheDir() const;
-    QString modelDir(const QString &repo) const;
     QString instanceLockPath() const;
     QString installLockPath() const;
     QString serverLogPath() const;

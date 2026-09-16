@@ -220,13 +220,6 @@ QString RuntimeInstaller::releaseLabel(int index) const
     return QStringLiteral("%1 · %2").arg(r.tagName, when);
 }
 
-int RuntimeInstaller::releaseBuild(int index) const
-{
-    if (index < 0 || index >= m_releases.size())
-        return -1;
-    return m_releases.at(index).build;
-}
-
 void RuntimeInstaller::checkForUpdates()
 {
     if (m_state == State::Fetching)
