@@ -12,9 +12,7 @@ namespace {
 
 // Regex helpers
 
-// Matches a wrapped token as emitted by the current model:
-//   <|det|>label [x1, y1, x2, y2]<|/det|>
-// Label is an ASCII identifier (title, text, image, image_caption, …).
+// <|det|>label [x1, y1, x2, y2]<|/det|>
 const QRegularExpression &wrappedTokenRegex()
 {
     static const QRegularExpression re(
@@ -30,9 +28,6 @@ const QRegularExpression &tokenStartRegex()
     return re;
 }
 
-// The model streams JSON-escaped text: newlines appear as the two characters
-// \n and backslashes are doubled (LaTeX \( is streamed as \\( ). Decode the
-// common JSON escapes so the token content becomes the real text.
 QString unescapeModelText(const QString &text)
 {
     QString out;
@@ -60,11 +55,6 @@ QString unescapeModelText(const QString &text)
     return out;
 }
 
-// Model control tokens that must never appear in the final text: a trailing
-// <|end_of_sentence|> marker, and any <|det|>/<|/det|> wrappers not consumed
-// as tokens, <|grounding|>, <|ref|>, etc. The model emits the EOS marker with
-// full-width pipes (｜ U+FF5C) and ▁ (U+2581) space markers, so match both
-// pipe widths.
 QString stripServiceTokens(const QString &text)
 {
     static const QRegularExpression re(
@@ -75,9 +65,6 @@ QString stripServiceTokens(const QString &text)
 }
 
 // LaTeX math to Markdown
-// Convert LaTeX math delimiters to Markdown:
-//   \( ... \) → $ ... $        (inline math)
-//   \[ ... \] → $$ ... $$      (display math)
 QString convertMath(const QString &text)
 {
     static const QRegularExpression inlineRe(
@@ -94,8 +81,6 @@ QString convertMath(const QString &text)
 }
 
 // Display (block) math -> clean Markdown block.
-// Strips optional surrounding \[ / \] and wraps the body in $$ … $$ on its own
-// lines. Used for the dedicated “equation” token, which is always display math.
 QString formatEquation(const QString &text)
 {
     static const QRegularExpression wrapperRe(
@@ -110,9 +95,6 @@ QString formatEquation(const QString &text)
 }
 
 // Title to heading level
-// "3. Methodology"      -> 1 group  -> level 2 (##)
-// "3.1. Long-horizon"   -> 2 groups -> level 3 (###) etc
-// No numbering prefix -> fall back to level 2 (##).
 int headingLevelFor(const QString &title)
 {
     static const QRegularExpression re(QStringLiteral(R"(^\s*(\d+\s*\.\s*)+)"));
@@ -128,9 +110,6 @@ int headingLevelFor(const QString &title)
     return std::clamp(groups + 1, 1, 5);
 }
 
-// Escape a single cell value for a GFM pipe table: escape unescaped pipe
-// characters (so a literal | does not break column layout) and collapse newlines
-// to spaces. Math formatting is performed first.
 QString escapeTableCell(QString cell)
 {
     cell = convertMath(cell);
@@ -141,11 +120,6 @@ QString escapeTableCell(QString cell)
     return cell;
 }
 
-// Build a GFM pipe table from an HTML <table>...</table> fragment.
-// Handles <tr> rows and <td>/<th> cells, honoring rowspan/colspan by laying
-// the cells out into a dense 2D grid so every row has the same column count.
-// Falls back to the raw (math-converted) text when the content is not a
-// well-formed HTML table.
 QString formatTable(const QString &text)
 {
     const QString trimmed = text.trimmed();
@@ -162,9 +136,6 @@ QString formatTable(const QString &text)
         QStringLiteral(R"(\b(rowspan|colspan)\s*=\s*["']?(\d+)["']?)"),
         QRegularExpression::CaseInsensitiveOption);
 
-    // Lay cells into a grid. A cell with rowspan/colspan occupies a block of
-    // <rowspan> x <colspan> cells; already-occupied grid slots are skipped when
-    // placing the next cell so the columns line up.
     QVector<QVector<QString>> grid;
     grid.reserve(16);
 
@@ -200,7 +171,6 @@ QString formatTable(const QString &text)
             rowspan = std::max(1, rowspan);
             colspan = std::max(1, colspan);
 
-            // Skip slots already claimed by a previous rowspan cell.
             while (gridRow < grid.size() && gridCol < grid.at(gridRow).size()
                    && !grid.at(gridRow).at(gridCol).isEmpty())
                 ++gridCol;
@@ -226,9 +196,8 @@ QString formatTable(const QString &text)
     if (!anyRows || grid.isEmpty())
         return convertMath(trimmed);
 
-    // Normalize: every row to the width of the widest row.
     int cols = 0;
-    for (const auto &row : grid)
+    for (const auto &row : std::as_const(grid))
         cols = std::max(cols, static_cast<int>(row.size()));
 
     QString out;
@@ -243,7 +212,6 @@ QString formatTable(const QString &text)
 
     writeRow(grid.first());
 
-    // GFM separator row.
     out += QLatin1Char('|');
     for (int c = 0; c < cols; ++c)
         out += QStringLiteral(" --- |");
@@ -304,7 +272,6 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
     OcrPage page;
     QStringList blocks;
 
-    // 1) tokens positions
     struct Token {
         QString label;
         int x1, y1, x2, y2;
@@ -313,8 +280,6 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
     };
     QList<Token> tokens;
 
-    // The current model wraps tokens in <|det|>…<|/det|>; the legacy bare
-    // "label [coords]" form is still accepted as a fallback.
     const bool wrapped = rawText.contains(QStringLiteral("<|det|>"));
     const QRegularExpression &re = wrapped ? wrappedTokenRegex() : tokenStartRegex();
     QRegularExpressionMatchIterator it = re.globalMatch(rawText);
@@ -332,7 +297,6 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         tokens.append(t);
     }
 
-    // No tokens -> raw text.
     if (tokens.isEmpty()) {
         page.text =
             stripServiceTokens(wrapped ? unescapeModelText(rawText) : rawText).trimmed();
@@ -344,7 +308,6 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
     result.success = true;
 
-    // 2) capture text before the first token (if any)
     {
         QString preamble = rawText.left(tokens.first().tokenStart);
         if (wrapped)   // decode JSON escapes only for the model's wrapped stream
@@ -359,13 +322,10 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         }
     }
 
-    // 3) process each token
     const double range = kBboxCoordinateRange;
 
-    // Dedup tolerance: ±10 px in the raw 0–1000 coordinate space.
     constexpr double kDedupTolerance = 10.0 / kBboxCoordinateRange;
 
-    // Raw pixel coords stored alongside each box for dedup comparison.
     struct RawCoords { int x1, y1, x2, y2; };
     QList<RawCoords> rawCoords;
 
@@ -375,7 +335,7 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
                                 ? tokens.at(i + 1).tokenStart
                                 : rawText.size();
         QString boxText = rawText.mid(t.textStart, spanEnd - t.textStart);
-        if (wrapped)   // decode JSON escapes only for the model's wrapped stream
+        if (wrapped)
             boxText = unescapeModelText(boxText);
         boxText = stripServiceTokens(boxText).trimmed();
 
@@ -389,11 +349,6 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         box.text  = boxText;
         box.rect  = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
 
-        // Check if this box is a near-duplicate of an earlier one (within
-        // ±10 px on all four coordinates). When a duplicate is detected,
-        // replace the *earlier* box with the current (later) one — the model
-        // sometimes glitches and emits a garbled block first, then corrects
-        // itself with a near-identical bbox.
         int dupIndex = -1;
         for (int j = 0; j < rawCoords.size(); ++j) {
             const RawCoords &rc = rawCoords.at(j);
@@ -405,7 +360,6 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         }
 
         if (dupIndex >= 0) {
-            // Replace the earlier box — keep the last variant.
             page.hasDuplicates = true;
 
             page.boxes[dupIndex] = box;
@@ -419,9 +373,6 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
             continue;
         }
 
-        // Actual index of this box inside page.boxes (a preamble box, if
-        // present, shifts the indices by one). The image URL must embed this
-        // index so it stays valid after rebuildPageText() regenerates the text.
         const int boxIndex = page.boxes.size();
         page.boxes.append(box);
         rawCoords.append({ t.x1, t.y1, t.x2, t.y2 });

@@ -5,7 +5,6 @@
 namespace llocr {
 
 struct ConnectionConfig {
-    // Connection
     QString baseUrl = QStringLiteral("http://localhost:8080");  ///< Without trailing slash.
     QString apiKey;                                             ///< Optional bearer token.
     int timeoutMs = 240000;                                     ///< Per-request timeout.

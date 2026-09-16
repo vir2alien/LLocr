@@ -13,10 +13,6 @@
 #include <QUrl>
 
 #ifdef Q_OS_WIN
-// For CREATE_NO_WINDOW in the process-create modifier below. It lives in the
-// Windows SDK (WinBase.h) and is not pulled in transitively by the Qt headers
-// under MSVC; MinGW headers happened to expose it, which is why this compile
-// error only surfaced after the switch to the MSVC 2022 64-bit kit.
 #include <windows.h>
 #endif
 
@@ -26,17 +22,12 @@
 namespace llocr {
 
 namespace {
-// Tuning knobs for log rotation and bounded auto-restart (review 2.7).
 constexpr qint64 kLogRotateSizeBytes = 5 * 1024 * 1024;   // rotate at 5 MB
 constexpr int kLogRotateCheckEveryLines = 256;            // check each N lines
 constexpr qint64 kRestartWindowMs = 5 * 60 * 1000;        // bounded auto-restart
 constexpr int kMaxRestartsInWindow = 3;                   //   ≤3 per window
 constexpr int kRestartDelayMs = 500;                      // grace before respawn
 }  // namespace
-
-// ---------------------------------------------------------------------------
-// Port selection (§5 task 4 / ADR 33)
-// ---------------------------------------------------------------------------
 
 int LlamaServerProcess::pickFreePort(QString *error)
 {
@@ -54,15 +45,10 @@ int LlamaServerProcess::pickFreePort(QString *error)
     return 0;
 }
 
-// ---------------------------------------------------------------------------
-// Construction / start
-// ---------------------------------------------------------------------------
-
 LlamaServerProcess::LlamaServerProcess(const Options &opts, QObject *parent)
     : QObject(parent)
     , m_opts(opts)
 {
-    // Only setProgram/setArguments — never a shell (7.1).
     m_process.setProcessChannelMode(QProcess::MergedChannels);
     m_process.setProgram(m_opts.program);
 #ifdef Q_OS_WIN
@@ -70,13 +56,11 @@ LlamaServerProcess::LlamaServerProcess(const Options &opts, QObject *parent)
         [](QProcess::CreateProcessArguments *args) { args->flags |= CREATE_NO_WINDOW; });
 #endif
 
-    // Output + exit capture: connected once, so restarts never duplicate.
     connect(&m_process, &QProcess::readyReadStandardOutput, this,
             &LlamaServerProcess::onReadyRead);
     connect(&m_process, &QProcess::finished, this, &LlamaServerProcess::onProcessFinished);
 }
 
-// §3.3: flush and close the persistent log handle (stop/shutdown/destructor).
 void LlamaServerProcess::closeLogFile()
 {
     if (m_logFile.isOpen()) {
@@ -88,13 +72,6 @@ void LlamaServerProcess::closeLogFile()
 LlamaServerProcess::~LlamaServerProcess()
 {
     closeLogFile();
-    // Safety net: never leave the child server orphaned when this object is
-    // destroyed while the process is still alive. In the app this is a no-op
-    // for the normal shutdown path (shutdownSync() stops the process first);
-    // in tests the synchronous stop keeps successive test cases from
-    // accumulating live children / bound ports, which previously made the
-    // suite flaky (and leaked “QProcess: Destroyed while process is still
-    // running” warnings).
     if (m_process.state() != QProcess::NotRunning) {
         m_process.terminate();
         if (!m_process.waitForFinished(2000))
@@ -104,9 +81,6 @@ LlamaServerProcess::~LlamaServerProcess()
 
 void LlamaServerProcess::setOptions(const Options &opts)
 {
-    // 4.4: contract says “no-op while running” — guard it so a pending/active
-    // restart respawns with the previously-committed options, not silently
-    // one with these new ones.
     if (m_process.state() != QProcess::NotRunning)
         return;
     m_opts = opts;
@@ -125,17 +99,9 @@ QString LlamaServerProcess::start()
 
 void LlamaServerProcess::spawn()
 {
-    // 4.3: reset per-start probe flags here (not in start()) so auto-restart —
-    // which calls spawn() directly — re-enables the /v1/models fallback.
     m_healthReached = false;
     m_modelsProbed = false;
-    // § review 2.3: a stale in-flight probe from a previous attempt must not
-    // block polling of the freshly spawned process.
     m_healthInFlight = false;
-    // 2.4: resolve the port for THIS attempt. A fixed port (opts.port != 0)
-    // is reused; auto-pick (port 0) picks a fresh free port on every spawn so
-    // a TOCTOU collision (port taken between our probe and the child's bind) is
-    // not retried on the same busy port — the next attempt simply gets another.
     if (m_opts.port == 0)
         m_port = pickFreePort(nullptr);
     else
@@ -144,7 +110,6 @@ void LlamaServerProcess::spawn()
         markFailed(QObject::tr("Unable to allocate a free loopback port"));
         return;
     }
-    // §3.5: assemble via QUrl so an IPv6 host (::1) is bracketed correctly.
     if (m_opts.baseUrl.isEmpty()) {
         QUrl url;
         url.setScheme(QStringLiteral("http"));
@@ -163,9 +128,6 @@ void LlamaServerProcess::spawn()
     ProcessGuard::install(m_process);
 
     QStringList args = m_opts.arguments;
-    // Single source for --port (review 2.5): for a fixed port the flag already
-    // comes from ServerLaunchConfig::toArguments(); only auto-pick (port 0 →
-    // resolved here) needs us to add it, and never twice.
     if (!args.contains(QStringLiteral("--port")) && m_port > 0) {
         args.append(QStringLiteral("--port"));
         args.append(QString::number(m_port));
@@ -174,13 +136,7 @@ void LlamaServerProcess::spawn()
     if (!m_opts.workingDirectory.isEmpty())
         m_process.setWorkingDirectory(m_opts.workingDirectory);
 
-    // Capture output for the ring buffer / rotating log.
     m_lineBuffer.clear();
-    // §H.7 task 1: a fresh llama.cpp spawn is fast (fork/exec), so a 5 s upper
-    // bound on the synchronous wait keeps worst-case main-thread blocking low
-    // without failing legitimately slow first starts (cold disk, AV scanning
-    // on Windows). The real startup cost (model load) is covered by the health
-    // watchdog below.
     m_process.start(QIODevice::ReadOnly);
     if (!m_process.waitForStarted(5000)) {
         m_lastError = m_process.errorString();
@@ -197,19 +153,12 @@ void LlamaServerProcess::spawn()
     armHealthPolling();
 }
 
-// ---------------------------------------------------------------------------
-// Health watchdog (§5 task 3)
-// ---------------------------------------------------------------------------
-
 void LlamaServerProcess::armHealthPolling()
 {
     if (!m_net)
         m_net = new QNetworkAccessManager(this);
     if (!m_healthTimer) {
         m_healthTimer = new QTimer(this);
-        // §H.7 task 1: health-interval tuned to fast starts — loopback probes
-        // are cheap, and halves the time-to-Ready detection for a quick model
-        // load. The startup timeout, not the interval, bounds the failure case.
         m_healthTimer->setInterval(250);
         connect(m_healthTimer, &QTimer::timeout, this, [this]() {
     if (m_state != RuntimeState::Starting)
@@ -219,9 +168,6 @@ void LlamaServerProcess::armHealthPolling()
                                .arg(m_opts.startupTimeoutMs));
                 return;
             }
-            // § review 2.3: single-flight — skip a new probe while the previous
-            // one is still unanswered so requests cannot pile up behind a slow
-            // endpoint (harmless on loopback, noisy under a stalled pipe).
             if (m_healthInFlight)
                 return;
             m_healthInFlight = true;
@@ -237,7 +183,6 @@ void LlamaServerProcess::armHealthPolling()
 void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
 {
     reply->deleteLater();
-    // The reply has finished, so a new probe may be sent on the next tick.
     m_healthInFlight = false;
     if (m_state != RuntimeState::Starting)
         return;
@@ -251,17 +196,12 @@ void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
         emit healthReached();
         return;
     }
-    // §2.9: /health unavailable — try /v1/models once per startup attempt
-    // before declaring failure (some builds/servers do not expose /health).
     if (!m_modelsProbed) {
         m_modelsProbed = true;
         tryModelsFallback();
     }
-    // otherwise keep polling until the timeout fires
 }
 
-// §2.9 fallback probe: HTTP 200 with a JSON body containing "data" counts as
-// healthy. Runs at most once per startup attempt (m_modelsProbed guard).
 void LlamaServerProcess::tryModelsFallback()
 {
     QNetworkReply *reply =
@@ -280,13 +220,8 @@ void LlamaServerProcess::tryModelsFallback()
             setStatus(QStringLiteral("Ready"));
             emit healthReached();
         }
-        // Not healthy via the fallback → the regular polling continues.
     });
 }
-
-// ---------------------------------------------------------------------------
-// Output capture → ring + rolling file
-// ---------------------------------------------------------------------------
 
 void LlamaServerProcess::onReadyRead()
 {
@@ -296,7 +231,6 @@ void LlamaServerProcess::onReadyRead()
         return;
 
     m_lineBuffer += text;
-    // Split complete lines; keep the trailing partial for the next read.
     int nl;
     while ((nl = m_lineBuffer.indexOf(u'\n')) >= 0) {
         QString line = m_lineBuffer.left(nl);
@@ -323,8 +257,6 @@ void LlamaServerProcess::appendLogFile(const QString &line)
 {
     if (m_opts.logFile.isEmpty())
         return;
-    // §3.3: keep one handle open in append mode; check rotation only every
-    // 256 lines (the 5 MB threshold is far above a per-line write).
     if (!m_logFile.isOpen()) {
         m_logFile.setFileName(m_opts.logFile);
         if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append
@@ -335,8 +267,6 @@ void LlamaServerProcess::appendLogFile(const QString &line)
     if (++m_linesSinceRotateCheck >= kLogRotateCheckEveryLines) {
         m_linesSinceRotateCheck = 0;
         if (rotateLogIfNeeded()) {
-            // 4.5: rotation closed the persistent handle — reopen immediately
-            // so this current (trigger) line is written rather than lost.
             m_logFile.setFileName(m_opts.logFile);
             if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append
                                 | QIODevice::Text))
@@ -348,12 +278,6 @@ void LlamaServerProcess::appendLogFile(const QString &line)
     m_logStream.flush();
 }
 
-// §H.7 task 2: classify a raw llama.cpp stderr line into a stable, readable
-// status. The important case is model-load progress, surfaced as an explicit
-// percentage (llama.cpp prints "loading tensors, NN%" and "load_tensors:
-// NN%"); significant milestones get a short placeholder; everything else is
-// skipped so the status never becomes a noisy dump of arbitrary "load"/"model"
-// lines.
 void LlamaServerProcess::classifyLine(const QString &line)
 {
     const int pct = parseLoadPercent(line);
@@ -367,24 +291,13 @@ void LlamaServerProcess::classifyLine(const QString &line)
         setStatus(QObject::tr("Preparing context…"));
         return;
     }
-    // §3.2: non-milestone lines are intentionally not surfaced as status —
-    // emitting raw print_info/tensor lines caused a status-signal storm while
-    // the model loads.
 }
 
 int LlamaServerProcess::parseLoadPercent(const QString &line)
 {
-    // § review 2.1: only the model-load context carries the progress we surface.
-    // Both the modern "llama_model_loader: - loading tensors, N%" and the
-    // legacy "load_tensors: N%" forms literally contain "tensors", so the gate
-    // is stable across llama.cpp log-format changes.
     if (!line.contains(QStringLiteral("tensors")))
         return -1;
 
-    // The LAST "<number> %" token in the line wins. Anchoring on a digit-run
-    // immediately followed by '%' means a stray "%" elsewhere (or a digit in a
-    // foreign word) can never shift the parse, and integer/fractional percents
-    // ("25%", "25.00%") are both read. Positions within 0..100 are honoured.
     static const QRegularExpression percentRe(
         QStringLiteral("(\\d{1,5}(?:[.,]\\d{1,3})?)\\s*%"));
 
@@ -396,8 +309,6 @@ int LlamaServerProcess::parseLoadPercent(const QString &line)
         last = it.next();
 
     bool ok = false;
-    // Normalize a comma decimal separator (some locales print "12,5%");
-    // llama.cpp progress is 0..100 so a comma can only be a decimal point.
     const QString token = QString(last.captured(1)).replace(u',', u'.');
     const double value = token.toDouble(&ok);
     if (!ok)
@@ -410,9 +321,7 @@ bool LlamaServerProcess::rotateLogIfNeeded()
     const QFileInfo fi(m_opts.logFile);
     if (!fi.exists() || fi.size() < kLogRotateSizeBytes)
         return false;
-    // Close the persistent handle so the rename works.
     closeLogFile();
-    // Rotate *.log -> *.1 -> *.2 -> *.3 (drop the oldest).
     const QString base = m_opts.logFile;
     QFile::remove(base + QStringLiteral(".3"));
     QFile::rename(base + QStringLiteral(".2"), base + QStringLiteral(".3"));
@@ -421,18 +330,11 @@ bool LlamaServerProcess::rotateLogIfNeeded()
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// Process exit / auto-restart (§5 task 3)
-// ---------------------------------------------------------------------------
-
 void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatus)
 {
     if (m_healthTimer)
         m_healthTimer->stop();
 
-    // 4.2: the child terminated for whatever reason — its owner record is now
-    // stale and must not linger (macOS would reuse the dead pid/port). A later
-    // respawn (auto-restart) re-writes owner.json in spawn().
     clearOwnerJson();
 
     if (m_stopRequested) {
@@ -443,13 +345,10 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
         return;
     }
 
-    // If the port was busy, surface a specific, actionable error (7.5).
     if (m_lastError.isEmpty())
         m_lastError = QObject::tr("Server process exited unexpectedly");
     setStatus(m_lastError);
 
-    // §3.1: when auto-restart is still eligible, do not pass through Failed —
-    // enter it only once the restart budget is exhausted or restart is off.
     const bool restartEligible = m_opts.autoRestart && !m_stopRequested
                                  && m_state != RuntimeState::Failed;
     int remaining = 0;
@@ -466,15 +365,10 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
     if (restartEligible && remaining > 0) {
         m_restartWindowCount++;
         m_autoRestartScheduled = true;
-        // I-04: a dead child must not keep the stale Ready state while the
-        // respawn is pending — a resolve started in this window would hit a
-        // dead port. Starting keeps ensureConnectionReady on the waiting path.
         setStatus(QObject::tr("Server crashed — restarting…"));
         setState(RuntimeState::Starting);
         QTimer::singleShot(kRestartDelayMs, this, [this]() {
             m_autoRestartScheduled = false;
-            // stop()/shutdownSync() may have requested a stop during the
-            // 500 ms restart window — do not resurrect the server.
             if (m_stopRequested)
                 return;
             spawn();
@@ -486,10 +380,6 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
         emit statusMessageChanged();
     }
 }
-
-// ---------------------------------------------------------------------------
-// Control
-// ---------------------------------------------------------------------------
 
 void LlamaServerProcess::stop(unsigned graceMs)
 {
@@ -504,11 +394,6 @@ void LlamaServerProcess::stop(unsigned graceMs)
             clearOwnerJson();
         return;
     }
-
-    // §2.7: asynchronous stop — terminate now, kill after the grace period if
-    // the child is still alive. The final Stopped state is entered from
-    // onProcessFinished() when the child actually exits, so the GUI thread
-    // never blocks for up to ~7 s.
     setState(RuntimeState::Stopping);
     setStatus(QObject::tr("Stopping…"));
     m_process.terminate();
@@ -525,8 +410,6 @@ void LlamaServerProcess::stop(unsigned graceMs)
 
 void LlamaServerProcess::shutdownSync(unsigned baseTimeoutMs)
 {
-    // Mark as user-requested so onProcessFinished() cannot take the
-    // failure/auto-restart branch during shutdown.
     m_stopRequested = true;
     if (m_healthTimer)
         m_healthTimer->stop();
@@ -534,8 +417,6 @@ void LlamaServerProcess::shutdownSync(unsigned baseTimeoutMs)
         m_killTimer->stop();
     closeLogFile();
     if (!m_opts.stopOnExit) {
-        // Intentionally leave the server running; owner file stays so the next
-        // launch offers reuse or kill.
         return;
     }
     if (m_process.state() != QProcess::NotRunning) {
@@ -626,10 +507,6 @@ int LlamaServerProcess::resolvedPort() const
     return m_port;
 }
 
-// ---------------------------------------------------------------------------
-// owner.json (§5.4 macOS best-effort; written on all platforms, used on mac)
-// ---------------------------------------------------------------------------
-
 void LlamaServerProcess::writeOwnerJson()
 {
     if (m_opts.ownerJsonPath.isEmpty())
@@ -678,10 +555,6 @@ void LlamaServerProcess::markFailed(const QString &reason)
         m_healthTimer->stop();
     setState(RuntimeState::Failed);
     setStatus(reason);
-    // 4.1: entering Failed must never leave a live child behind — otherwise a
-    // subsequent start() would report “Server is already running” against an
-    // unresponsive server (deadlock), and its eventual natural death would
-    // trigger a bogus auto-restart. Kill it before emitting.
     if (m_process.state() != QProcess::NotRunning) {
         m_process.kill();
         m_process.waitForFinished(2000);

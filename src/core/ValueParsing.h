@@ -1,8 +1,6 @@
 #pragma once
 
 #include <QString>
-
-#include <cmath>
 #include <optional>
 
 namespace llocr {

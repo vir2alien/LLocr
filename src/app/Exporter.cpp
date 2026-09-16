@@ -63,7 +63,6 @@ QString Exporter::buildMarkdown(const QList<Page>& pages)
 
 QString Exporter::buildPlainText(const QList<Page>& pages)
 {
-    // A plain-text file cannot carry images, so drop the image block refs.
     const QRegularExpression re = imageRefRegex();
     QString out;
     for (const Page& page : pages) {
@@ -78,8 +77,7 @@ QString Exporter::buildPlainText(const QList<Page>& pages)
 
 QRegularExpression Exporter::imageRefRegex()
 {
-    // Matches a Markdown image whose source is image://ocr/crop/<boxIndex>
-    // (optionally a two-part crop/<page>/<box> form).
+    // image://ocr/crop/<boxIndex>
     static const QRegularExpression re(
         QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)(?:/(\d+))?\))"));
     return re;
@@ -108,8 +106,6 @@ QList<QPair<int, int>> Exporter::referencedCrops(const QList<Page>& pages)
     return refs;
 }
 
-// Renders the body of a page: text is HTML-escaped except Markdown image
-// references, which become real <img> tags so viewers/PDF show the picture.
 static QString htmlFromMarkdown(const QString& markdown)
 {
     static const QRegularExpression imageRe(
@@ -279,6 +275,7 @@ Exporter::ResolvedImages Exporter::resolveImageReferences(
     QString processed;
     int last = 0;
     QRegularExpressionMatchIterator it = re.globalMatch(markdown);
+    QStringView markdownView(markdown);
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
         const QString alt = m.captured(1);
@@ -300,15 +297,14 @@ Exporter::ResolvedImages Exporter::resolveImageReferences(
         }
 
         if (fileName.isEmpty()) {
-            // Keep the original reference (e.g. stale box index).
-            processed += markdown.mid(last, m.capturedEnd() - last);
+            processed += markdownView.sliced(last, m.capturedEnd() - last);
         } else {
-            processed += markdown.mid(last, m.capturedStart() - last);
+            processed += markdownView.sliced(last, m.capturedStart() - last);
             processed += QStringLiteral("![%1](%2%3)").arg(alt, referencePrefix, fileName);
         }
         last = m.capturedEnd();
     }
-    processed += markdown.mid(last);
+    processed += markdownView.sliced(last);
 
     result.processedMarkdown = processed;
     return result;
@@ -376,19 +372,17 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
         "h2{font-size:14pt;margin-top:16pt;} pre{white-space:pre-wrap;}"
         "img{max-width:100%;}"));
 
-    // Replace every image ref with a unique local name and embed the cropped
-    // pixels directly as a document resource (works for any custom scheme).
     QList<Page> rendered = pages;
     if (crop) {
         const QRegularExpression re = imageRefRegex();
         for (int i = 0; i < pages.size(); ++i) {
-            const QString original = pages.at(i).text;
+            const QStringView original = pages.at(i).text;
             QString out;
             int last = 0;
-            QRegularExpressionMatchIterator it = re.globalMatch(original);
+            QRegularExpressionMatchIterator it = re.globalMatchView(original);
             while (it.hasNext()) {
                 const QRegularExpressionMatch m = it.next();
-                out += original.mid(last, m.capturedStart() - last);
+                out += original.sliced(last, m.capturedStart() - last);
                 const QString alt = m.captured(1);
                 const int boxIndex = m.captured(2).toInt();
                 const QImage img = crop(pages.at(i).number, boxIndex);
@@ -402,7 +396,7 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
                 }
                 last = m.capturedEnd();
             }
-            out += original.mid(last);
+            out += original.sliced(last);
             rendered[i].text = out;
         }
     }

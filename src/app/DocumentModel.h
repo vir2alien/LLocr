@@ -11,10 +11,6 @@ class QPdfDocument;
 
 namespace llocr {
 
-/**
- * @brief Holds the opened document
- */
-
 struct DocumentPage {
     QImage thumb;
     QImage image;
@@ -60,6 +56,7 @@ private:
     void evictFullImages();
     QPdfDocument* pdfFor(const QString& path);
 
+private:
     QList<DocumentPage> m_pages;
     QHash<QString, QPdfDocument*> m_pdfs;
     QList<int> m_fullCache;

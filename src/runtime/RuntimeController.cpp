@@ -25,12 +25,6 @@
 namespace llocr {
 
 namespace {
-// Named timeouts/limits for the managed-runtime network/probe/shutdown paths
-// (review 2.7). The probe budget is generous: on macOS the very first exec of
-// a llama.cpp build past a cold `com.apple.metal` shader cache takes tens of
-// seconds (compiling ~20-30 MB of kernel libraries, ADR 53); once built the
-// probe answers in ~50 ms, so the budget only matters on a cold cache or a
-// genuinely frozen binary.
 constexpr int kModelsRequestTimeoutMs = 10000;  // /v1/models query
 constexpr int kProbeTimeoutMs = 120000;         // RuntimeLocator::probeCached (cold Metal cache)
 constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
@@ -43,8 +37,6 @@ RuntimeController::RuntimeController(SettingsStore &settings,
     , m_settings(settings)
     , m_launchProfiles(launchProfiles)
 {
-    // §1.4 configValid = a valid server binary is selected AND (in Managed) the
-    // model file exists. Recompute it whenever any input changes.
     recomputeConfigValid();
     connect(&m_settings, &SettingsStore::serverPathChanged, this,
             &RuntimeController::recomputeConfigValid);
@@ -115,12 +107,6 @@ void RuntimeController::setLoadProgressPercent(int pct)
 
 void RuntimeController::recomputeConfigValid()
 {
-    // A server binary must be selected and exist on disk. In Managed the model
-    // file must also exist; External mode depends on neither.
-    // §3.8: configValid deliberately means only "files exist" — it does NOT
-    // imply the locator probe passed. The probe (capabilities, version) runs
-    // later, at start time (probeCached in startServer()). This is a known,
-    // accepted deviation from the stricter §1.4 wording of `canRecognize`.
     bool valid = !m_settings.serverPath().trimmed().isEmpty();
     if (valid && !QFileInfo(m_settings.serverPath()).isFile())
         valid = false;
@@ -143,7 +129,6 @@ void RuntimeController::recomputeConfigValid()
 
 ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings)
 {
-    // Typed facade: the string↔enum mapping lives in SettingsStore (review 2.6).
     return settings.mode();
 }
 
@@ -175,10 +160,6 @@ bool RuntimeController::canRecognize(bool documentLoaded) const
            && (m_settings.autoStart() || m_settings.startOnDemand());
 }
 
-// ---------------------------------------------------------------------------
-// Resolution
-// ---------------------------------------------------------------------------
-
 ResolvedConnection RuntimeController::resolveExternal() const
 {
     ResolvedConnection conn;
@@ -198,15 +179,11 @@ void RuntimeController::ensureConnectionReady(
 void RuntimeController::ensureConnectionReady(
     QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved)
 {
-    // External resolves synchronously (ADR 26); never transitions through a
-    // Starting state.
     if (modeFromSettings(m_settings) == ConnectionMode::External) {
         onResolved(resolveExternal());
         return;
     }
 
-    // Managed: deduplicate — concurrent callers share the in-flight resolve by
-    // queuing their callback; completeResolve() invokes every queued callback.
     if (m_resolveInProgress) {
         m_resolveCallbacks.push_back({context, context != nullptr, onResolved});
         return;
@@ -223,14 +200,6 @@ void RuntimeController::ensureConnectionReady(
         return;
     }
 
-    // A live server is the single source of truth (ADR 32): when it is already
-    // Ready/Starting, the /v1/models alias check validates the connection, so
-    // a stale settings-based config (e.g. the model path wiped by a settings
-    // reset while the server kept running) must not block the resolve — the
-    // recognition would otherwise refuse a fully usable server with the
-    // misleading "not configured" error. The gate only applies when a start
-    // would be needed (startServer() itself refuses a model-less Managed
-    // start, so a Ready server always has a model).
     const bool serverLive = m_state == RuntimeState::Ready
                          || m_state == RuntimeState::Starting;
     if (!m_configValid && !serverLive) {
@@ -238,7 +207,6 @@ void RuntimeController::ensureConnectionReady(
         return;
     }
 
-    // Not currently Ready/Starting: only auto-start when the user allowed it.
     if (m_state != RuntimeState::Ready && m_state != RuntimeState::Starting
         && m_state != RuntimeState::Stopping) {
         if (!m_settings.autoStart() && !m_settings.startOnDemand()) {
@@ -253,20 +221,14 @@ void RuntimeController::ensureConnectionReady(
     beginManagedResolve();
 }
 
-// --- Managed resolve machinery ---------------------------------------------
-
 void RuntimeController::beginManagedResolve()
 {
     switch (m_state) {
     case RuntimeState::Ready:
-        // Still verify the alias via /v1/models (§4.2) instead of trusting
-        // settings blindly.
         fetchManagedModels();
         break;
     case RuntimeState::Starting:
     case RuntimeState::Stopping:
-        // Already going (e.g. started from Settings → Runtime); the
-        // stateChanged handler drives the resolve to completion.
         break;
     case RuntimeState::NotConfigured:
         if (!m_configValid) {
@@ -310,10 +272,6 @@ void RuntimeController::failResolve(const QString &message)
 
 void RuntimeController::onServerStateForResolve()
 {
-    // Manual start (Settings → Runtime / footer toggle): no resolve is in
-    // flight, so nothing else clears StartingRuntime. Without this reset the
-    // footer load-progress bar (visible while busyState == StartingRuntime)
-    // sticks around next to "Runtime: ready" after the model finishes loading.
     if (!m_resolveInProgress) {
         if (m_state == RuntimeState::Ready || m_state == RuntimeState::Stopped
             || m_state == RuntimeState::Failed)
@@ -336,7 +294,6 @@ ResolvedConnection RuntimeController::buildManagedConnection() const
 {
     ResolvedConnection conn;
     const int port = m_server ? m_server->resolvedPort() : m_settings.launchPort();
-    // §3.5: assemble via QUrl so an IPv6 host (::1) is bracketed correctly.
     QUrl url;
     url.setScheme(QStringLiteral("http"));
     url.setHost(m_settings.launchHost());
@@ -417,10 +374,6 @@ QString RuntimeController::describeServerFailure() const
 
 QString RuntimeController::translateServerLine(const QString &line)
 {
-    // §7.5 error matrix → human-readable message; unknown lines pass through so
-    // the caller can still surface the raw tail. tr() (not QObject::tr) is
-    // deliberate: the translation context must be llocr::RuntimeController,
-    // which is also where lupdate records these strings.
     if (line.isEmpty())
         return QString();
     if (line.contains(QStringLiteral("address already in use"))
@@ -447,10 +400,6 @@ QString RuntimeController::translateServerLine(const QString &line)
     return line;
 }
 
-// ---------------------------------------------------------------------------
-// Stage B: managed server lifecycle (Runtime settings tab)
-// ---------------------------------------------------------------------------
-
 QString RuntimeController::startServer()
 {
     const QString program = m_settings.serverPath().trimmed();
@@ -467,11 +416,6 @@ QString RuntimeController::startServer()
                      || m_server->state() == RuntimeState::Stopping))
         return tr("Server is already running");
 
-    // Managed recognition needs a model; starting without one produces a
-    // Ready server that can never resolve (§7.5: recognition would fail with
-    // a confusing "not configured" while the server looks healthy). Fail
-    // fast with an actionable message instead. External mode is unaffected —
-    // there the managed start is a convenience, not a recognition dependency.
     if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
         const QString model = m_settings.launchModelPath().trimmed();
         if (model.isEmpty() || !QFileInfo(model).isFile()) {
@@ -498,9 +442,6 @@ QString RuntimeController::startServer()
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings,
                                                               m_launchProfiles);
     cfg.program = program;
-    // toArguments() emits --host/--port for the configured port; LlamaServerProcess
-    // only fills a --port when the argv has none (auto-pick, port 0) — so the
-    // port has a single source and no duplicate flag is produced (review 2.5).
     QStringList args = cfg.toArguments(probe.capabilities);
 
     LlamaServerProcess::Options opts;
@@ -529,8 +470,7 @@ QString RuntimeController::startServer()
     } else {
         m_server->setOptions(opts);
     }
-    // The dedicated log view follows the live server (§ review 3.4); it is set
-    // once per (re)spawn so restarts keep the window attached.
+
     if (m_logTarget)
         m_logTarget->setServer(m_server);
 
@@ -560,8 +500,6 @@ void RuntimeController::stopServer()
         return;
     cancelPendingRestart();
     setBusyState(AppBusyState::StoppingRuntime);
-    // §2.7: stop() is asynchronous now; the Stopped state arrives via the
-    // server's stateChanged signal when the child actually exits.
     m_server->stop();
     setLoadProgressPercent(-1);
     setBusyState(AppBusyState::Idle);
@@ -577,8 +515,6 @@ void RuntimeController::cancelPendingRestart()
 
 void RuntimeController::restartServer()
 {
-    // §2.7: stop() is asynchronous, so a fresh start cannot run in the same
-    // tick. Terminate now; start once the server reports Stopped.
     if (m_server && m_server->state() != RuntimeState::Stopped) {
         setBusyState(AppBusyState::StoppingRuntime);
         setStatusMessage(QObject::tr("Stopping…"));
@@ -604,8 +540,6 @@ void RuntimeController::restartServer()
 
 QString RuntimeController::probeRuntimePath(const QString &path)
 {
-    // Long budget: the first exec after a cold Metal-cache can block for tens
-    // of seconds (ADR 53); once warmed the probe is ~50 ms.
     const ProbeResult r = RuntimeLocator::probe(path, kProbeTimeoutMs);
     const QString summary = RuntimeLocator::probeSummary(r);
     setStatusMessage(summary);
@@ -614,7 +548,6 @@ QString RuntimeController::probeRuntimePath(const QString &path)
 
 QString RuntimeController::autoDiscoverPath()
 {
-    // Long probe budget: cold Metal shader cache can delay the first exec (ADR 53).
     const QString found = RuntimeLocator::autoDiscover(kProbeTimeoutMs);
     if (!found.isEmpty())
         setStatusMessage(RuntimeLocator::probeSummary(RuntimeLocator::probe(found, kProbeTimeoutMs)));
@@ -631,11 +564,8 @@ QString RuntimeController::launchCommandPreview()
     if (program.isEmpty())
         return QString();
     RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
-    // Preview must never block the GUI: serve the cached probe when present,
-    // otherwise render with default (conservative) capabilities. The real
-    // probe runs later, on startServer()/"Check", and refreshes the preview.
     ProbeResult probe;
-    const bool probed = RuntimeLocator::cachedProbe(program, paths.cacheDir(), probe);
+    RuntimeLocator::cachedProbe(program, paths.cacheDir(), probe);
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings,
                                                               m_launchProfiles);
     cfg.program = program;
@@ -646,9 +576,6 @@ QString RuntimeController::launchCommandPreview()
 QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath)
 {
     QVariantMap out;
-    // Context size and KV cache types live in the active launch profile;
-    // documented fallbacks keep the estimate working for profiles without
-    // those rows.
     const LaunchProfile &profile = m_launchProfiles.activeProfile();
     int ctxSize = 8192;
     QString cacheTypeK;
@@ -684,14 +611,8 @@ void RuntimeController::cancelPendingStart()
     if (!m_resolveInProgress)
         return;
 
-    // Reset unconditionally: in the /v1/models window (server Ready) or while
-    // Stopping, busyState is still StartingRuntime and must not stick.
     setBusyState(AppBusyState::Idle);
     failResolve(tr("Server start cancelled"));
-    // Interrupt a still-starting server (a Ready server is left running for
-    // reuse). The resolve is already completed above, so the synchronous
-    // Stopping emission from stop() no longer reaches the resolve machinery
-    // and cannot overwrite the cancellation error.
     if (m_server && m_server->state() == RuntimeState::Starting) {
         m_server->stop();
         setLoadProgressPercent(-1);

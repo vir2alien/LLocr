@@ -23,22 +23,6 @@ namespace llocr {
 
 namespace {
 
-// ---------------------------------------------------------------------------
-// Minimal GGUF header metadata reader.
-//
-// Layout (version ≥ 2, strings are u64-length + bytes):
-//   magic   : 4 bytes "GGUF"
-//   version : u32
-//   tensor_count : u64
-//   metadata_kv_count : u64
-//   then `metadata_kv_count` kv-pairs:
-//     key        : u64 len + bytes
-//     value_type : u32
-//     value      : scalar or array (see GGUFType)
-// We only need a small subset of integer hyperparameters, so anything else
-// (strings, arrays, floats) is skipped by reading past it.
-// ---------------------------------------------------------------------------
-
 enum GGUFType : quint32 {
     Uint8 = 0,
     Int8 = 1,
@@ -57,9 +41,6 @@ enum GGUFType : quint32 {
 
 class GgufReader {
 public:
-    // GGUF metadata lives at the start of the file; a bounded prefix is enough
-    // for the few-KB header. Reading the whole multi-GB model would freeze the
-    // GUI thread (estimateModelMemory is Q_INVOKABLE) and can OOM.
     static constexpr qint64 kMaxHeaderBytes = 8 * 1024 * 1024;  // 8 MiB
 
     GgufReader(const QString &path)
@@ -72,13 +53,6 @@ public:
         m_data = m_file.read(kMaxHeaderBytes);
     }
 
-    // § review 1.4: the whole header is read through QDataStream over the
-    // bounded prefix. LittleEndian matches the GGUF format; status() after each
-    // read replaces the manual position/bounds tracking. Float32/Float64 are
-    // read as raw little-endian bit patterns and memcpy'd into float/double:
-    // QDataStream's single setFloatingPointPrecision cannot serve a header that
-    // interleaves Float32 and Float64 values, and memcpy avoids strict-aliasing
-    // UB (review 4.6).
     bool run(QHash<QString, QVariant> &out, QString &error)
     {
         if (!m_error.isEmpty()) {
@@ -147,7 +121,6 @@ private:
         quint64 len = 0;
         if (!takeU64(in, len))
             return false;
-        // len is attacker-controlled: never allocate past the bounded prefix.
         if (len > static_cast<quint64>(in.device()->bytesAvailable()))
             return false;
         QByteArray raw(static_cast<int>(len), Qt::Uninitialized);
@@ -157,7 +130,6 @@ private:
         return true;
     }
 
-    // Reads a single metadata value of `type`, advancing past its payload.
     bool takeValue(QDataStream &in, quint32 type, QVariant &value) const
     {
         switch (type) {
@@ -200,7 +172,6 @@ private:
     QFile m_file;
 };
 
-// Picks the first value among candidate keys that exists in `meta`.
 bool readIntMeta(const QHash<QString, QVariant> &meta,
                  const QString &candidate1, const QString &candidate2,
                  qint64 &value)
@@ -233,14 +204,10 @@ ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize,
     e.ctxSize = ctxSize <= 0 ? 8192 : ctxSize;
     e.systemRamBytes = systemPhysicalRamBytes();
 
-    // bytes per value: f32 → 4, otherwise f16 → 2. If either cache is f32 the
-    // effective footprint is larger; we use the larger of the two.
     const QString kt = cacheType(cacheTypeK);
     const QString vt = cacheType(cacheTypeV);
     e.bytesPerValue = (kt == "f32" || vt == "f32") ? 4 : 2;
 
-    // Parse hyperparameters. Best-effort: unknown architecture keys → fall back
-    // to a rough per-token default so a warning can still be shown.
     QHash<QString, QVariant> meta;
     GgufReader reader(modelPath);
     e.valid = reader.run(meta, e.error);
@@ -263,12 +230,9 @@ ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize,
                             arch + ".n_embd", nEmbd);
         }
     }
-    // head_dim == n_embd / head_count for standard (non-MQA/GQA-by-groups) attn.
     if (headCount > 0 && nEmbd > 0)
         headDim = nEmbd / headCount;
 
-    // Fall-back assumptions when metadata is missing (documented, approximate):
-    // typical vision LLMs approximate 28 layers, 8 KV heads, 128 head dim.
     if (nLayer <= 0) nLayer = 28;
     if (nKvHead <= 0) nKvHead = 8;
     if (headDim <= 0) headDim = 128;

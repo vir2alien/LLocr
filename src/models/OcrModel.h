@@ -42,13 +42,10 @@ protected:
     static OcrResult parseResponse(const QByteArray &responseData);
 
 private:
-    // Per-request client (I-05): the async chain owns a shared_ptr copy, so a
-    // mid-flight model destruction cannot dangle; this member keeps the
-    // current one reachable for abort().
-    std::shared_ptr<LlamaClient> m_activeClient;
+    static QString encodeImageDataUrl(const QImage &image, const QString &format, int quality = -1);
 
-    static QString encodeImageDataUrl(const QImage &image, const QString &format,
-                                      int quality = -1);
+private:
+    std::shared_ptr<LlamaClient> m_activeClient;
 };
 
 } // namespace llocr

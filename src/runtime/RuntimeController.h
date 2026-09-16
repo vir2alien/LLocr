@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <QUrl>
 #include <QVariant>
 
 #include <functional>
@@ -21,15 +22,6 @@ class LaunchProfileStore;
 class RuntimeLog;
 class SingleInstanceGuard;
 
-// Facade over every managed-runtime concern (process, downloads, installs,
-// model selection). A single instance is created in main.cpp — before the QML
-// engine loads — and lives for the whole process (ADR 36). QML must NOT
-// instantiate it; it only consumes the already-registered singleton.
-//
-// Recognition goes through exactly one async entry point:
-// ensureConnectionReady(). In External it resolves immediately from settings;
-// in Managed (Stage G-core) it starts the server, waits for /health, queries
-// /v1/models, verifies the alias, and returns the computed ResolvedConnection.
 class RuntimeController : public QObject
 {
     Q_OBJECT
@@ -46,9 +38,6 @@ public:
                                LaunchProfileStore &launchProfiles,
                                QObject *parent = nullptr);
 
-    // App-wide busy states. These are exclusive: at any moment the app is in at
-    // most one. A single `busy` bool is not enough once the app can start and
-    // stop a local server, download files, or install a runtime.
     enum class AppBusyState {
         Idle,
         StartingRuntime,  // server is starting / loading the model
@@ -59,7 +48,6 @@ public:
     };
     Q_ENUM(AppBusyState)
 
-    // State of the managed llama-server process (only meaningful in `Managed`).
     enum class RuntimeState {
         NotConfigured,  // no valid binary / no model selected
         Stopped,
@@ -70,87 +58,34 @@ public:
     };
     Q_ENUM(RuntimeState)
 
-    // --- QML-visible state ----------------------------------------------
     RuntimeState state() const { return m_state; }
     AppBusyState busyState() const { return m_busyState; }
     QString statusMessage() const { return m_statusMessage; }
-    /// Model-load progress of the managed server (0..100), or -1 when not
-    /// loading / unknown. Diffuses §H.7 stderr classification to QML.
     int loadProgressPercent() const { return m_loadProgressPercent; }
     bool configValid() const { return m_configValid; }
     bool lockedOut() const { return m_lockedOut; }
 
-    /// Converts a file URL (e.g. FileDialog.selectedFile) to a local path.
-    /// Non-file URLs pass through unchanged.
     Q_INVOKABLE static QString localPath(const QUrl &url)
     {
         return url.isLocalFile() ? url.toLocalFile() : url.toString();
     }
 
-    // ------- §H.2 memory estimation --------------------------------------
-    /// Best-effort RAM estimate for launching a managed model. The context
-    /// size and KV cache types come from the active launch profile (their
-    /// ctx-size / cache-type-k / cache-type-v rows). Returns a QVariantMap
-    /// (modelBytes, kvCacheBytes, totalBytes, systemRamBytes, valid, error).
-    /// Never throws.
     Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath);
-
-    /// §1.4 `canRecognize` (the mode/runtime part; `documentLoaded` is supplied
-    /// by the caller). External is always eligible; Managed needs a Ready
-    /// server, or a Stopped-but-startable one (configValid + auto/manual start).
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
-
-    // --- ARM-coordinated resolution --------------------------------------
-    // External:  resolves immediately from SettingsStore (called synchronously
-    //            on the caller's thread, ADR 26).
-    // Managed:   starts the process, waits for /health + /v1/models, computes
-    //            the ResolvedConnection, then invokes onResolved. Concurrent
-    //            callers share the in-flight resolve: each callback is queued
-    //            and all are invoked once the single resolve completes (3.3).
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(QObject *context,
                                const std::function<void(const ResolvedConnection &)> &onResolved);
-
-    /// Cancels a pending startup (called by RecognitionController::stop() while
-    /// the app is in StartingRuntime). Interrupts the start wait, completes any
-    /// pending resolve with an error, and stops a still-starting server. No-op
-    /// in External or when nothing is pending.
     void cancelPendingStart();
-
-    // --- Wiring helpers --------------------------------------------------
     void setSingleInstanceHeld(bool held);
-    /// Binds the single-instance guard so `refreshSingleInstanceLock()` can
-    /// re-acquire the runtime-owner lock when the previous instance exits (a
-    /// second window that opened while another ran must be able to take over
-    /// runtime control after that instance closes — ADR 46 note).
     void bindSingleInstanceGuard(SingleInstanceGuard *guard);
-    /// Re-checks the instance lock: if the owning instance has exited, take
-    /// ownership and clear `lockedOut` so Managed actions become available
-    /// again. Safe to call repeatedly (tryAcquire is idempotent while already
-    /// holding). Called from QML when the Runtime settings tab opens.
     Q_INVOKABLE void refreshSingleInstanceLock();
-    /// Gives the façade a log view to push live servers into (§ review 3.4).
-    /// The view is owned by the caller (main.cpp); nullptr detaches.
     void setLogTarget(RuntimeLog *log);
-
-    // --- Stage B: managed server lifecycle (Runtime settings tab) --------
-    /// Starts the managed llama-server with the current launch/* settings.
-    /// Empty on success; an error message otherwise. Requires a valid binary.
     Q_INVOKABLE QString startServer();
     Q_INVOKABLE void stopServer();
     Q_INVOKABLE void restartServer();
-    /// Runs the locator probe synchronously; the summary is surfaced via
-    /// statusMessage (there is no dedicated probeResult property). Returns
-    /// the same summary.
     Q_INVOKABLE QString probeRuntimePath(const QString &path);
-    /// Auto-discovers a llama-server binary via RuntimeLocator::autoDiscover()
-    /// and returns the found path (or an empty string).
     Q_INVOKABLE QString autoDiscoverPath();
-    /// Shell-escaped command line for the managed launch (wizard preview). Empty
-    /// in External mode or when the binary cannot be probed. Delegates to
-    /// ServerLaunchConfig::toDisplayCommand() — single source of truth (3.2).
     Q_INVOKABLE QString launchCommandPreview();
-    /// Blocking shutdown (main.cpp ~aboutToQuit path). §5.5.
     void shutdownSync();
 
     void retranslate();
@@ -167,20 +102,11 @@ private:
     void setLoadProgressPercent(int pct);
 
     void recomputeConfigValid();
-
-    /// Actionable explanation of a false `configValid` in Managed mode:
-    /// binary missing → "not configured", model unselected/missing → a message
-    /// pointing at Settings → Models (with the recorded path when it exists).
     QString configNotReadyMessage() const;
 
-    // External path: build ResolvedConnection directly from settings.
     ResolvedConnection resolveExternal() const;
     ResolvedConnection buildManagedConnection() const;
 
-    // --- Managed resolve machinery (Stage G-core) ------------------------
-    // Starts (or attaches to) a managed-server resolve; on completion the queued
-    // callbacks (registered via ensureConnectionReady) are all invoked. Only
-    // meaningful in Managed mode.
     void beginManagedResolve();
     void completeResolve(ResolvedConnection conn);
     void failResolve(const QString &message);
@@ -190,43 +116,8 @@ private:
     void fetchManagedModels();
     void onModelsReply(QNetworkReply *reply);
 
-    // §7.5 error matrix: map a raw server line / failure to a human message.
     QString describeServerFailure() const;
     static QString translateServerLine(const QString &line);
-
-    // Constructs a server from the current settings (owned here).
-    class LlamaServerProcess *m_server = nullptr;
-    QMetaObject::Connection m_restartConn;
-
-    // Live-log view to push servers into (§ review 3.4); owned by main.cpp.
-    RuntimeLog *m_logTarget = nullptr;
-
-    // Runtime-owner instance lock (ADR 46); owned by main.cpp, bound via
-    // bindSingleInstanceGuard(). Null when not bound (tests).
-    SingleInstanceGuard *m_instanceGuard = nullptr;
-
-    SettingsStore &m_settings;
-    LaunchProfileStore &m_launchProfiles;
-
-    // In-flight managed resolve (dedup: all concurrent callers share it). Each
-    // pending caller's callback is queued here and drained by completeResolve().
-    struct PendingResolve {
-        QPointer<QObject> context;
-        bool guarded = false;
-        std::function<void(const ResolvedConnection &)> onResolved;
-    };
-    std::vector<PendingResolve> m_resolveCallbacks;
-    bool m_resolveInProgress = false;
-
-    QNetworkAccessManager *m_modelsNet = nullptr;
-    QString m_modelsBaseUrl;   // base url captured at resolve time
-
-    RuntimeState m_state = RuntimeState::NotConfigured;
-    AppBusyState m_busyState = AppBusyState::Idle;
-    QString m_statusMessage;
-    int m_loadProgressPercent = -1;
-    bool m_configValid = false;
-    bool m_lockedOut = false;
 
 signals:
     void stateChanged();
@@ -235,6 +126,29 @@ signals:
     void loadProgressChanged();
     void configValidChanged();
     void lockedOutChanged();
+
+private:
+    class LlamaServerProcess *m_server = nullptr;
+    QMetaObject::Connection m_restartConn;
+    RuntimeLog *m_logTarget = nullptr;
+    SingleInstanceGuard *m_instanceGuard = nullptr;
+    SettingsStore &m_settings;
+    LaunchProfileStore &m_launchProfiles;
+    struct PendingResolve {
+        QPointer<QObject> context;
+        bool guarded = false;
+        std::function<void(const ResolvedConnection &)> onResolved;
+    };
+    std::vector<PendingResolve> m_resolveCallbacks;
+    bool m_resolveInProgress = false;
+    QNetworkAccessManager *m_modelsNet = nullptr;
+    QString m_modelsBaseUrl;
+    RuntimeState m_state = RuntimeState::NotConfigured;
+    AppBusyState m_busyState = AppBusyState::Idle;
+    QString m_statusMessage;
+    int m_loadProgressPercent = -1;
+    bool m_configValid = false;
+    bool m_lockedOut = false;
 };
 
 }  // namespace llocr

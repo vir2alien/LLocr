@@ -42,7 +42,6 @@ const QString kServerName =
     QStringLiteral("llama-server");
 #endif
 
-// Depth-first search for the server binary beneath `root`.
 QString locateServer(const QString &root)
 {
     QStringList stack;
@@ -65,18 +64,8 @@ QString locateServer(const QString &root)
     return QString();
 }
 
-// Probes a freshly-extracted server binary with a LONG timeout. On macOS the
-// FIRST run of a brand-new llama.cpp build compiles the Metal shader cache
-// (GGML metal library init writes ~20-30 MB under com.apple.metal) and can
-// block for many seconds (observed 17 s cold on this machine) before --version
-// prints. The regular 5 s probe is far too short, and retrying with a short
-// timeout would kill the compiler mid-flight every time, so the cache would
-// never finish building (ADR 53). One patient run lets the cache complete; all
-// subsequent probes (UI Check, managed start) then answer in milliseconds.
 ProbeResult probeInstalledBinary(const QString &serverAbs)
 {
-    // A generous budget: covers cold Metal shader compilation on slow machines
-    // and busy systems; a truly frozen binary still aborts the install.
     constexpr int kInstallProbeTimeoutMs = 120000;
     return RuntimeLocator::probe(serverAbs, kInstallProbeTimeoutMs);
 }
@@ -89,7 +78,6 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
 {
     InstallOutput out;
 
-    // 2. Verify size, then sha256 (when the release published one).
     const QFileInfo zfi(archivePath);
     if (!zfi.exists()) {
         out.error = QObject::tr("Downloaded archive missing: %1").arg(archivePath);
@@ -112,7 +100,6 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
                                   "integrity was not verified");
     }
 
-    // 3-4. Extract into a unique staging dir with the hardened extractor.
     const QString uuid = QUuid::createUuid().toString();
     const QString stagingPath = QDir(paths.stagingDir()).filePath(uuid);
     if (!QDir().mkpath(stagingPath)) {
@@ -129,10 +116,6 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
     if (out.warning.isEmpty())
         out.warning = ex.warning;
 
-    // 5-6. Locate the binary and probe it. The first exec of a fresh macOS
-    // binary may have to compile the Metal shader cache (tens of seconds) —
-    // probeInstalledBinary() uses a long timeout so the cache can complete
-    // instead of timing out (ADR 53).
     const QString serverAbs = locateServer(stagingPath);
     if (serverAbs.isEmpty()) {
         out.error = QObject::tr("No llama-server binary found in the release archive");
@@ -157,11 +140,6 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
     if (build.isEmpty())
         build = QStringLiteral("unknown");
 
-    // 7. Atomic rename staging/<uuid> -> runtime/<finalTag>. When a previous
-    // install exists, move it aside first so a failed rename cannot destroy
-    // the last good build (ADR 39 transactionality). Universal assets (empty
-    // backend token, e.g. `...-bin-macos-arm64`) get a stable "cpu" label so
-    // the tag never carries a double separator.
     const QString finalTag = QStringLiteral("llama.cpp-%1-%2-%3-%4")
                                  .arg(build,
                                       asset.backend.isEmpty()
@@ -180,7 +158,6 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
     }
     if (!QDir().rename(stagingPath, finalDir)) {
         out.error = QObject::tr("Atomic rename of the install into place failed");
-        // Roll back: restore the previous install if it was moved aside.
         if (!backupDir.isEmpty())
             QDir().rename(backupDir, finalDir);
         QDir(stagingPath).removeRecursively();
@@ -192,13 +169,9 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
     out.ok = true;
     out.build = build;
     out.tag = finalTag;
-    // The binary may live under a top-level build folder (e.g.
-    // `llama-b10825/llama-server` in the macOS tarballs); record the path
-    // relative to the staging root so it resolves inside the renamed install.
     const QString relServer = QDir(stagingPath).relativeFilePath(serverAbs);
     out.serverPath = QDir(finalDir).filePath(relServer);
 
-    // 8. Commit settings last, after the install is live.
     if (commit)
         commit(out);
     return out;
@@ -244,9 +217,6 @@ InstallTransaction::scanInstalledBuilds(const RuntimePaths &paths)
             continue;   // staging/ and one-off leftovers are not installs
         InstalledBuildInfo info;
         info.tag = name;
-        // Tag layout: llama.cpp-<build>-<backend>-<os>-<arch>, where the
-        // backend itself may carry a hyphen ("cuda-cu12"), so os/arch are
-        // taken from the tail and everything in between is the backend token.
         const QStringList parts = name.mid(prefix.size()).split(QLatin1Char('-'));
         if (!parts.isEmpty())
             info.build = parts.first();
@@ -262,8 +232,6 @@ InstallTransaction::scanInstalledBuilds(const RuntimePaths &paths)
         result.append(info);
     }
 
-    // Newest first; unparsable build numbers ("unknown", malformed tags) sort
-    // last, then alphabetically by tag for a stable order.
     std::sort(result.begin(), result.end(),
               [](const InstalledBuildInfo &a, const InstalledBuildInfo &b) {
                   const int ab = a.build.size() > 1 && a.build.startsWith(QLatin1Char('b'))

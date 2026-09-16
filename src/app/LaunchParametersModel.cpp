@@ -67,14 +67,13 @@ bool LaunchParametersModel::setValue(int row, const QString &text)
     LaunchParameter &p = m_parameters[row];
     if (p.kind == LaunchValueKind::Number && !text.trimmed().isEmpty()
         && !toFiniteNumber(text).has_value())
-        return false;  // a Number row only accepts numeric text
+        return false;
 
     LaunchValueKind nextKind = p.kind;
     QVariant nextValue;
     if (text.trimmed().isEmpty()) {
-        nextKind = LaunchValueKind::Flag;  // emptied value → bare flag
+        nextKind = LaunchValueKind::Flag;
     } else if (p.kind == LaunchValueKind::Flag) {
-        // A filled flag row becomes a value row.
         const auto number = toFiniteNumber(text);
         nextKind = number ? LaunchValueKind::Number : LaunchValueKind::Text;
         nextValue = number ? QVariant(*number) : QVariant(text);
@@ -105,7 +104,7 @@ bool LaunchParametersModel::appendRow(const QString &name, const QString &text)
         return false;
     if (LaunchProfile::reservedArgNames().contains(clean))
         return false;
-    for (const LaunchParameter &p : m_parameters)
+    for (const LaunchParameter &p : std::as_const(m_parameters))
         if (p.name == clean)
             return false;
 

@@ -5,12 +5,6 @@
 
 namespace llocr {
 
-/**
- * @brief model for the left-hand page-preview panel
- *
- * No bounding boxes here
- */
-
 class PageListModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -31,21 +25,13 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     void setPageCount(int count);
-
     void appendPages(int count);
-
     void setRecognized(int index, bool recognized);
-
     void setEdited(int index, bool edited);
-
     void setHasDuplicates(int index, bool hasDup);
-
     void setCurrent(int index);
-
     void removePage(int index);
-
     void movePage(int from, int to);
-
     void clear();
 
 private:

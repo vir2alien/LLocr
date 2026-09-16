@@ -18,9 +18,6 @@ namespace {
 const QRegularExpression kSplitRe(
     QStringLiteral(R"(^(.*)-(\d{3,5})-of-(\d{3,5})\.gguf$)"));
 
-// Quant/format tokens, most-specific-first. Captured token must be bordered by
-// a non-alphanumeric or the end of the name so directory/repo tokens are not
-// picked up.
 const QRegularExpression kQuantRe(QStringLiteral(
     "(?:^|[^A-Za-z0-9])("
     "Q[3456]_K_[SML]|IQ[124][0-9]?_[A-Z_]+|Q[0-9]_[01]|Q[3456]_K|B[2-8]_0|"
@@ -38,15 +35,12 @@ QString quantInName(const QString &name)
     return last;
 }
 
-// Payload of a followed GET: final status, body and the final reply's Link
-// header (used for pagination). -1 status means timeout / network failure.
 struct GetResult {
     int status = -1;
     QByteArray body;
     QByteArray linkHeader;
 };
 
-// Issues a GET with ManualRedirectPolicy and an optional Authorization header.
 QNetworkReply *issueGet(QNetworkAccessManager *nam, const QUrl &url,
                         const QByteArray &authorization)
 {
@@ -58,8 +52,6 @@ QNetworkReply *issueGet(QNetworkAccessManager *nam, const QUrl &url,
     return nam->get(req);
 }
 
-// Waits for the reply to finish, aborting after `timeoutMs`. Returns false on
-// timeout (ownership of `reply` is transferred to deleteLater).
 bool waitForReply(QNetworkReply *reply, int timeoutMs)
 {
     bool timedOut = false;
@@ -81,8 +73,6 @@ bool waitForReply(QNetworkReply *reply, int timeoutMs)
     return true;
 }
 
-// Follows up to kMaxRedirects hops (§7.3): https only, Authorization dropped on
-// host change (ADR 45). Returns the final status/body/Link, -1 on failure.
 GetResult pullGet(QNetworkAccessManager *nam, const QUrl &start,
                   const QByteArray &authorization, int timeoutMs)
 {
@@ -271,8 +261,6 @@ QString ModelCatalog::quantizationFromName(const QString &name)
 
 QString ModelCatalog::encodePath(const QString &path)
 {
-    // toPercentEncoding(input, exclude, ...): exclude set reserves '/', so each
-    // segment is percent-encoded individually while the separator survives.
     return QString::fromUtf8(QUrl::toPercentEncoding(
         path, QByteArrayLiteral("/")));
 }

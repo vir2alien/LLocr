@@ -38,8 +38,6 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
         return promise->future();
     }
 
-    // Start (or reuse) the server first, then issue one real request. The
-    // resolve machinery lives on RuntimeController (single source of truth).
     m_runtime.ensureConnectionReady(this, [this, promise](const ResolvedConnection &conn) {
         if (conn.baseUrl.isEmpty()) {
             SelfTestResult r;
@@ -63,7 +61,6 @@ void SelfTestController::runSelfTestRequest(
     request.image = makeTestImage();
     request.prompt = tr("Describe the text in this image in one short line.");
     request.modelId = conn.modelId;
-    // The self-test exercises the same body shape as a real recognition run.
     request.parameters = m_requestProfiles.activeProfile().parameters;
 
     ConnectionConfig config;
@@ -104,9 +101,6 @@ void SelfTestController::runSelfTestQml()
 {
     if (m_selftestRunning)
         return;
-    // The External-mode guard and the resolve→request chain live in
-    // runSelfTest() (single source of truth); this only mirrors its
-    // SelfTestResult into the QML-visible selftest* state.
     if (RuntimeController::modeFromSettings(m_settings) == ConnectionMode::External) {
         m_selftestOk = false;
         m_selftestMessage = tr("Self-test is available only in Managed mode");
@@ -135,9 +129,6 @@ void SelfTestController::runSelfTestQml()
 
 QImage SelfTestController::makeTestImage()
 {
-    // Built-in synthetic test image: small white surface with a black bar so a
-    // real model has something cheap to describe and the full HTTP round-trip
-    // is exercised end-to-end.
     QImage img(32, 32, QImage::Format_RGB32);
     img.fill(Qt::white);
     QPainter p(&img);

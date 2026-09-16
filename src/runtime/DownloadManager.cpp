@@ -23,11 +23,6 @@ DownloadManager::DownloadManager(QObject *parent)
 
 DownloadManager::~DownloadManager()
 {
-    // Stop and detach every task before our own members are destroyed. The
-    // QNetworkReply objects are children of m_nam, which is deleted in the
-    // QObject base destructor (after this destructor body) — by then our
-    // m_tasks/m_nam members would be gone, so any re-entrant finished() signal
-    // must not reach callbacks on `this`.
     for (DownloadTask *task : m_tasks) {
         task->abortDownload();
         task->disconnect(this);
@@ -194,7 +189,7 @@ void DownloadManager::recalcAggregate()
     qint64 total = 0;
     qint64 received = 0;
     int speed = 0;
-    for (const DownloadTask *task : m_tasks) {
+    for (const DownloadTask *task : std::as_const(m_tasks)) {
         if (task->totalBytes() > 0)
             total += task->totalBytes();
         received += task->receivedBytes();
@@ -216,8 +211,6 @@ void DownloadManager::onTaskFinished(DownloadTask *task, bool ok)
     if (row >= 0)
         emit dataChanged(index(row), index(row), {StateRole, ErrorRole});
     recalcAggregate();
-    // Defer so a task that finished synchronously (free-space/mkdir failure)
-    // cannot re-enter startNextQueued() and double-start its successors.
     QMetaObject::invokeMethod(this, [this]() { startNextQueued(); evictFinishedTasks(); },
                               Qt::QueuedConnection);
 }

@@ -107,8 +107,6 @@ void PageListModel::setHasDuplicates(int index, bool hasDup)
 
 void PageListModel::setCurrent(int index)
 {
-    // -1 is the legal "no current" sentinel; anything outside the row range
-    // (e.g. a stale caller index after a clear) must not poison m_current.
     if (index < -1 || index >= m_recognized.size())
         return;
     if (index == m_current)
@@ -153,8 +151,6 @@ void PageListModel::movePage(int from, int to)
     if (from == to)
         return;
 
-    // Within the same parent, moving down requires destinationChild = to + 1
-    // so that the moved row actually ends up at index `to`.
     const int destChild = (to > from) ? to + 1 : to;
     if (!beginMoveRows(QModelIndex(), from, from, QModelIndex(), destChild))
         return;

@@ -9,10 +9,6 @@ class QNetworkAccessManager;
 
 namespace llocr {
 
-// A bounded queue of resumable downloads (§ Stage C task 3). At most two run
-// concurrently; the rest wait in `Queued`. Exposes the list as a
-// QAbstractListModel (name, targetDir, size, received, speed, eta, state,
-// error) and aggregates progress for a single status line.
 class DownloadManager : public QAbstractListModel
 {
     Q_OBJECT
@@ -31,10 +27,9 @@ public:
     Q_ENUM(Role)
 
     explicit DownloadManager(QObject *parent = nullptr);
+    void extracted();
     ~DownloadManager() override;
 
-    /// Adds a download to the queue and returns its row. It starts immediately
-    /// if a slot is free, otherwise waits for one to finish.
     int enqueue(const DownloadTask::Request &request);
 
     void cancel(int row, bool deletePartial);
@@ -48,15 +43,12 @@ public:
     QVariant data(const QModelIndex &index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    // Aggregated progress across all tasks.
     qint64 totalBytes() const { return m_totalBytes; }
     qint64 receivedBytes() const { return m_receivedBytes; }
     int speedBytesPerSec() const { return m_speedBps; }
     int etaSec() const { return m_etaSec; }
 
-    /// Loopback http is rejected by default (§7.3); tests opt in.
     void setAllowLoopbackHttp(bool allow);
-    /// Inject the free-space probe (tests); defaults to QStorageInfo.
     void setFreeBytesQuery(DownloadTask::FreeBytesQuery query);
 
 signals:
@@ -69,6 +61,7 @@ private:
     void evictFinishedTasks();
     int countRunning() const;
 
+private:
     QNetworkAccessManager *m_nam = nullptr;
     QList<DownloadTask *> m_tasks;
     int m_maxParallel = 2;

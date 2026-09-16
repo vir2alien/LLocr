@@ -154,8 +154,6 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     , m_launchProfiles(launchProfiles)
     , m_downloads(new DownloadManager(this))
 {
-    // Live progress: repaint the bar as data arrives, not only when a
-    // file finishes (§ Stage E task 2).
     m_group = new DownloadGroup(m_downloads, this);
     connect(m_group, &DownloadGroup::progressChanged, this,
             [this]() { setProgress(m_group->progress()); });
@@ -269,9 +267,6 @@ void ModelInstaller::refreshInstalled()
 {
     QString err;
     bool rebuilt = false;
-    // Fresh paths from the current settings: the models-dir override can
-    // change mid-session (settings reset), the installed list must follow it
-    // rather than the copy captured at construction.
     const RuntimePaths paths(m_settings.runtimeRootDir(),
                              m_settings.runtimeModelsDir());
     m_installed = ModelRegistry::load(paths.modelsDir(), rebuilt, err);
@@ -297,9 +292,6 @@ QVariantMap ModelInstaller::installedInfo(int index) const
         return out;
     const ModelEntry &e = m_installed.at(index);
 
-    // Display name derived from the model file, e.g. "Unlimited-OCR-Q8_0.gguf"
-    // → "Unlimited-OCR Q8_0". The stored title is the repo id for search
-    // installs and is not user friendly.
     QString display = QFileInfo(e.modelPath).completeBaseName();
     const QString q = e.quantization.trimmed();
     if (!q.isEmpty() && display.endsWith(QLatin1Char('-') + q))
@@ -381,11 +373,8 @@ QString ModelInstaller::removeModel(int index)
 
     QDir d(e.dir);
 
-    // A repo directory may be shared by several quants (multi-quant installs
-    // with a common mmproj). Only delete the files this entry owns; the shared
-    // mmproj is removed only when no other entry in the same directory uses it.
     bool sharedDir = false;
-    for (const ModelEntry &x : m_installed) {
+    for (const ModelEntry &x : std::as_const(m_installed)) {
         if (&x == &e)
             continue;
         if (QFileInfo(x.dir).canonicalFilePath()
@@ -400,7 +389,7 @@ QString ModelInstaller::removeModel(int index)
         owned.prepend(e.modelPath);
         bool mmprojShared = false;
         if (!e.mmprojPath.isEmpty()) {
-            for (const ModelEntry &x : m_installed) {
+            for (const ModelEntry &x : std::as_const(m_installed)) {
                 if (&x == &e)
                     continue;
                 if (QFileInfo(x.dir).canonicalFilePath()
@@ -454,8 +443,6 @@ QString ModelInstaller::openModelFolder(int index)
     return QString();
 }
 
-// True when the file the preset installs (same repo + same model file name) is
-// already present in the registry, so the Install button can be disabled.
 bool ModelInstaller::isPresetInstalled(const ModelPreset &p) const
 {
     const QString modelLeaf = ModelCatalog::leafName(p.model);
@@ -609,7 +596,7 @@ void ModelInstaller::beginDownload()
     m_group->begin();
 
     QSet<QString> leaves;
-    for (const QString &path : m_pending.modelNames)
+    for (const QString &path : std::as_const(m_pending.modelNames))
         leaves.insert(ModelCatalog::leafName(path));
     if (!m_pending.mmprojRel.isEmpty())
         leaves.insert(ModelCatalog::leafName(m_pending.mmprojRel));
@@ -624,13 +611,11 @@ void ModelInstaller::beginDownload()
 
     const QString repo = m_pending.repo;
     const QString rev = m_pending.revision;
-    for (const QString &path : m_pending.modelNames) {
+    for (const QString &path : std::as_const(m_pending.modelNames)) {
         enqueueFile(path, repo, rev);
         if (m_state != State::Downloading)
             return;
     }
-    // Multi-quant installs share the repo folder: skip the projector when the
-    // same file is already on disk instead of re-downloading it per quant.
     if (m_state == State::Downloading && !m_pending.mmprojRel.isEmpty()
         && !mmprojAlreadyOnDisk())
         enqueueFile(m_pending.mmprojRel, repo, rev);
@@ -669,8 +654,6 @@ QString ModelInstaller::expectedShaFor(const QString &repoPath) const
     return QString();
 }
 
-// True when the projector for the pending install is already in the target
-// folder and matches what we would download, so the download can be skipped.
 bool ModelInstaller::mmprojAlreadyOnDisk() const
 {
     const QString target = QDir(m_pending.dir)
@@ -679,8 +662,6 @@ bool ModelInstaller::mmprojAlreadyOnDisk() const
     if (!fi.exists() || fi.size() <= 0)
         return false;
 
-    // The same pinned revision recorded for this folder and this projector
-    // means the on-disk file is exactly the one we would fetch.
     if (!m_pending.revision.isEmpty()) {
         for (const ModelEntry &x : std::as_const(m_installed)) {
             if (x.revision == m_pending.revision && x.mmprojPath == target)
@@ -688,8 +669,6 @@ bool ModelInstaller::mmprojAlreadyOnDisk() const
         }
     }
 
-    // Otherwise trust the pinned digest (lfs.oid / preset sha256) so a stale
-    // or corrupt copy is re-downloaded instead of silently reused.
     const QString expected = expectedShaFor(m_pending.mmprojRel);
     if (expected.isEmpty())
         return false;
@@ -729,7 +708,6 @@ void ModelInstaller::completeInstall()
 
     const QString primary = localPath(m_pending.modelNames.first());
 
-    // GGUF magic validation (§ Stage E task 5).
     QFile f(primary);
     if (!f.open(QIODevice::ReadOnly)) {
         setBusy(false);
@@ -750,8 +728,6 @@ void ModelInstaller::completeInstall()
         const QString baseId = repoDirName(m_pending.repo);
         const QString quant = ModelCatalog::quantizationFromName(
             ModelCatalog::leafName(m_pending.modelNames.first()));
-        // Per-quant id: several quants of one repo may coexist in the same
-        // directory (shared mmproj) and must not overwrite each other.
         e.id = quant.isEmpty() ? baseId : baseId + QLatin1Char('_') + quant;
     }
     e.title = m_pending.title;
@@ -761,7 +737,7 @@ void ModelInstaller::completeInstall()
     e.dir = m_pending.dir;
     e.origin = ModelOrigin::Managed;
     e.modelPath = primary;
-    for (const QString &path : m_pending.modelNames) {
+    for (const QString &path : std::as_const(m_pending.modelNames)) {
         if (path != m_pending.modelNames.first())
             e.parts.append(localPath(path));
     }
@@ -777,7 +753,7 @@ void ModelInstaller::completeInstall()
     e.addedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
     qint64 total = 0;
-    for (const QString &path : m_pending.modelNames)
+    for (const QString &path : std::as_const(m_pending.modelNames))
         total += QFileInfo(localPath(path)).size();
     if (!m_pending.mmprojRel.isEmpty())
         total += QFileInfo(localPath(m_pending.mmprojRel)).size();
@@ -787,9 +763,6 @@ void ModelInstaller::completeInstall()
     updated.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
     updated.append(e);
     QString saveErr;
-    // Save next to the prepared/downloaded files (m_pending.dir's parent), not
-    // the (possibly changed) current models dir — the registry must describe
-    // the directory the files actually landed in.
     const QString pendingModelsDir = QFileInfo(m_pending.dir).absolutePath();
     if (!ModelRegistry::save(pendingModelsDir, updated, saveErr)) {
         setBusy(false);
@@ -800,7 +773,6 @@ void ModelInstaller::completeInstall()
     }
     m_installed = updated;
 
-    // Settings are the very last step (§7.2).
     m_settings.setLaunchModelPath(e.modelPath);
     if (!e.mmprojPath.isEmpty())
         m_settings.setLaunchMmprojPath(e.mmprojPath);
@@ -808,7 +780,6 @@ void ModelInstaller::completeInstall()
         m_settings.setLaunchPresetId(m_pending.presetId);
     if (!e.parser.isEmpty())
         m_settings.setParserId(e.parser);
-    // The context size lives in the active launch profile now.
     if (e.ctxSize > 0)
         m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
                                                 e.ctxSize);

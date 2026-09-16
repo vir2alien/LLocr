@@ -6,10 +6,6 @@
 
 namespace llocr {
 
-/**
- * @brief Turns raw model text into a structured OcrResult.
- */
-
 class IOutputParser {
 public:
     virtual ~IOutputParser() = default;

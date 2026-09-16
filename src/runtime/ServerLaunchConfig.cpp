@@ -25,8 +25,6 @@ ServerLaunchConfig ServerLaunchConfig::fromSettings(
 
 namespace {
 
-// Quote a single token for display so it survives copy-paste into a shell.
-// Wraps in double quotes and escapes embedded backslashes and quotes.
 QString displayEscape(const QString &token)
 {
     if (token.isEmpty())
@@ -49,7 +47,6 @@ QString displayEscape(const QString &token)
     return out;
 }
 
-// Appends one flag + value pair as two argv tokens: { flag, value }.
 void appendPair(QStringList &args, const QString &flag, const QString &value)
 {
     args.append(flag);
@@ -62,7 +59,6 @@ QStringList ServerLaunchConfig::toArguments(const ServerCapabilities &caps) cons
 {
     QStringList args;
 
-    // --- Model / connection (never part of a launch profile) ---------------
     if (!modelPath.isEmpty())
         appendPair(args, QStringLiteral("--model"), modelPath);
 
@@ -78,7 +74,6 @@ QStringList ServerLaunchConfig::toArguments(const ServerCapabilities &caps) cons
     if (port > 0)
         appendPair(args, QStringLiteral("--port"), QString::number(port));
 
-    // --- Launch-profile rows (profile order) -------------------------------
     QList<LaunchParameter> rows = parameters;
     std::stable_sort(rows.begin(), rows.end(),
                      [](const LaunchParameter &a, const LaunchParameter &b) {

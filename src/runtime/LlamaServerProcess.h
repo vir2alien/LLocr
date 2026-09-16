@@ -15,14 +15,6 @@ class QNetworkReply;
 
 namespace llocr {
 
-// Owns one llama-server child process: spawning, stdout/stderr logging (ring
-// buffer + rotating file), health-gating, controlled stop and bounded
-// auto-restart (§5 Stage B task 3). It never builds the argv — the caller
-// passes a fully formed ServerLaunchConfig-derived program+arguments — never
-// attaches to a foreign process (ADR 33), and never uses a shell (7.1).
-//
-// Port: when Options.port is 0 a free loopback port is picked before spawn;
-// a fixed busy port is surfaced as an error (no auto-attach).
 class LlamaServerProcess : public QObject
 {
     Q_OBJECT
@@ -30,9 +22,6 @@ class LlamaServerProcess : public QObject
 public:
     struct Options {
         QString program;          // absolute path to llama-server
-        // Full argv from ServerLaunchConfig::toArguments(), which already
-        // carries --host/--port for a fixed port. This process only appends
-        // --port when the argv has none (auto-pick, port 0). Single source (2.5).
         QStringList arguments;
         QString workingDirectory;
         QString host = QStringLiteral("127.0.0.1");
@@ -48,23 +37,9 @@ public:
     explicit LlamaServerProcess(const Options &opts, QObject *parent = nullptr);
     ~LlamaServerProcess() override;
 
-    // Re-applies the launch options for the next start (settings may have
-    // changed since the process object was created). No-op while running.
     void setOptions(const Options &opts);
-
-    // Resolves the port, spawns the child, arms the health watchdog and the
-    // ProcessGuard. Returns empty on success else a human-readable error.
     QString start();
-
-    // Asynchronously stops the child if running and cancels any pending
-    // restart. Uses terminate → (grace timer) → kill; the final Stopped state
-    // is entered from onProcessFinished() when the child actually exits.
-    // Removes the owner record. Idempotent. Safe to call from the GUI thread.
     void stop(unsigned graceMs = 5000);
-
-    /// Blocking shutdown for ~aboutToQuit (event loop is already stopped):
-    /// terminate → wait ≤ baseTimeoutMs → kill → wait ≤ 2000, then owner
-    /// record removal. §5.5.
     void shutdownSync(unsigned baseTimeoutMs = 5000);
 
     void retranslate();
@@ -73,24 +48,15 @@ public:
     RuntimeState state() const;
     QString statusMessage() const;
     QString lastError() const;
-
-    /// Model-load progress parsed from stderr (llama.cpp prints
-    /// "loading tensors, NN%" / "load_tensors: NN%"). -1 while unknown/not
-    /// loading, 0..100 during a load. §H.7 task 2.
     int loadProgressPercent() const { return m_loadPercent; }
 
     QStringList ringBuffer(int maxLines = -1) const;
     QString logFilePath() const;
-    /// Clears the in-memory ring buffer (live log view) without touching the
-    /// rolling file. Emits logLineAppended so the UI view refreshes.
     void clearLog();
 
     int startCount() const;
     int restartCount() const;
     int resolvedPort() const;
-
-    /// Picks a free loopback port, retrying on a racing allocator. Returns 0
-    /// (and sets *error) on failure. Never attaches to an existing listener.
     static int pickFreePort(QString *error = nullptr);
 
 signals:
@@ -119,15 +85,15 @@ private:
     void setStatus(const QString &status);
     void appendLogFile(const QString &line);
 
+private:
     Options m_opts;
 
     QProcess m_process;
     QNetworkAccessManager *m_net = nullptr;
     QTimer *m_healthTimer = nullptr;
-    QTimer *m_killTimer = nullptr;   // §2.7: grace timer terminate → kill
-    bool m_modelsProbed = false;     // §2.9: /v1/models fallback used this start
+    QTimer *m_killTimer = nullptr;
+    bool m_modelsProbed = false;
 
-    // §3.3: the rotating log stays open in append mode across lines.
     QFile m_logFile;
     QTextStream m_logStream;
     int m_linesSinceRotateCheck = 0;
@@ -137,10 +103,6 @@ private:
     int m_restartWindowCount = 0;
 
     bool m_healthReached = false;
-    // § review 2.3: single-flight health poll — do not fire a new /health
-    // request while the previous one is still in flight. Set when a probe is
-    // sent, cleared when its reply lands. Reset on every spawn() so an
-    // auto-restart never inherits a stale in-flight state.
     bool m_healthInFlight = false;
     bool m_autoRestartScheduled = false;
     bool m_stopRequested = false;
@@ -148,7 +110,7 @@ private:
     int m_loadPercent = -1;
 
     QString m_healthUrl;
-    int m_port = 0;  // 2.4: concrete port for the current spawn (auto-pick re-picks each attempt)
+    int m_port = 0;
     QString m_lineBuffer;
     QStringList m_ring;
     int m_ringMaxLines = 2000;

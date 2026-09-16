@@ -9,8 +9,9 @@
 #include <QHash>
 #include <QReadWriteLock>
 #include <QRegularExpression>
-#include <QVariantMap>
+#include <QStringView>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QVariantMap>
 
 #include "parsers/DetTokensParser.h"
 #include "parsers/ParserFactory.h"
@@ -611,12 +612,14 @@ QString AppController::resolveImagesForPreview(const QString& markdown)
         QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)\))"));
 
     QString result;
-    int last = 0;
+    qsizetype last = 0;
     auto it = re.globalMatch(markdown);
 
+    QStringView markdownView(markdown);
     while (it.hasNext()) {
         const auto m = it.next();
-        result += markdown.mid(last, m.capturedStart() - last);
+        const qsizetype start = m.capturedStart();
+        result += markdownView.sliced(last, start - last);
 
         const int boxIndex = m.captured(2).toInt();
         const QImage img = croppedImage(m_currentPage, boxIndex);
@@ -628,14 +631,14 @@ QString AppController::resolveImagesForPreview(const QString& markdown)
                 result += QStringLiteral("![%1](data:image/png;base64,%2)")
                               .arg(m.captured(1), QString::fromLatin1(bytes.toBase64()));
             } else {
-                result += m.captured();
+                result += m.capturedView();
             }
         } else {
-            result += m.captured();
+            result += m.capturedView();
         }
         last = m.capturedEnd();
     }
-    result += markdown.mid(last);
+    result += markdownView.sliced(last);
     m_previewCacheRevision = m_imageRevision;
     m_previewCacheCropRevision = m_cropRevision;
     m_previewCacheText = markdown;

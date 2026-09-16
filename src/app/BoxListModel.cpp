@@ -57,7 +57,6 @@ void BoxListModel::setFromResult(const OcrResult& result)
     if (result.pages.isEmpty()) {
         setBoxes({});
     } else {
-        // TODO check this
         setBoxes(result.pages.first().boxes);
     }
 }

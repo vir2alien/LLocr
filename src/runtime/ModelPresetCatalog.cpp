@@ -78,7 +78,6 @@ QList<ModelPreset> ModelPresetCatalog::load(const QString &userCatalogPath,
 {
     QList<ModelPreset> out;
 
-    // Built-in catalog is resource-backed; failures here are real errors.
     QString builtinErr;
     QList<ModelPreset> builtIn = readFile(QLatin1String(kBuiltInPath),
                                            QObject::tr("built-in preset catalog"),
@@ -88,13 +87,11 @@ QList<ModelPreset> ModelPresetCatalog::load(const QString &userCatalogPath,
         return QList<ModelPreset>();
     }
 
-    // User catalog overrides by id; a missing file is not an error.
     QString userErr;
     QList<ModelPreset> user =
         readFile(userCatalogPath, QObject::tr("user preset catalog"), userErr,
                  /*missingIsOk=*/true);
 
-    // Merge by id: keep built-in first, then replace/append user entries.
     QList<ModelPreset> merged;
     QHash<QString, int> indexById;
     for (const ModelPreset &p : builtIn) {

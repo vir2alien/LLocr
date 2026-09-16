@@ -28,6 +28,7 @@ signals:
 private:
     void onOneFinished(bool ok);
 
+private:
     DownloadManager *m_manager = nullptr;
     int m_count = 0;
     int m_done = 0;

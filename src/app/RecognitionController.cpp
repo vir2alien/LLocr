@@ -69,8 +69,6 @@ QString RecognitionController::promptText() const
     return variants.isEmpty() ? QString() : variants.constFirst().text;
 }
 
-// Single async entry point (ADR 37): the runtime resolves the connection
-// (External immediate, Managed later — Stage G-core), then pages flow.
 void RecognitionController::ensureConnectionReady()
 {
     m_connectionReady = false;
@@ -78,8 +76,6 @@ void RecognitionController::ensureConnectionReady()
         if (!m_busy)
             return;  // stopped while resolving
         if (conn.baseUrl.isEmpty()) {
-            // §H.1: stopping while the managed server was still starting
-            // must read as “stopped”, not as a start error.
             if (m_stopRequested)
                 emit statusRequested(tr("Stopped before recognition started."));
             else

@@ -38,10 +38,6 @@ bool isSubpathOf(const QString &path, const QString &dir)
 {
     if (dir.isEmpty())
         return false;
-    // Normalize to '/' before comparing: Qt path APIs may return a mix of
-    // '/' and '\' on Windows while QDir::separator() is '\', which broke the
-    // simple startsWith(dir + separator) check after the toolchain moved to
-    // MSVC 2022 (it worked on MinGW/macOS where '/' is the native separator).
     const QString p = QDir::cleanPath(QDir::fromNativeSeparators(path));
     const QString d = QDir::cleanPath(QDir::fromNativeSeparators(dir));
     if (d.isEmpty())
@@ -49,14 +45,11 @@ bool isSubpathOf(const QString &path, const QString &dir)
     return p == d || p.startsWith(d + QLatin1Char('/'));
 }
 
-// Split names sort so the "…-00001-of-NNN" part is first.
 void sortSplitParts(QStringList *names)
 {
     std::sort(names->begin(), names->end(), &ModelCatalog::splitAscending);
 }
 
-// Grouping key shared by all files of one quant: "Unlimited-OCR-Q8_0.gguf" and
-// "Unlimited-OCR-Q8_0-00001-of-00002.gguf" both map to "Unlimited-OCR-Q8_0".
 QString modelStem(const QString &name)
 {
     QString base;
@@ -164,7 +157,6 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
     if (!f.exists()) {
         rebuilt = true;
         const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
-        // Persist the rebuilt index so every launch does not re-scan (§3.13).
         QString saveErr;
         save(modelsDir, scanned, saveErr);
         return scanned;
@@ -207,10 +199,6 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
             out.append(std::move(e));
     }
 
-    // Multi-quant reconciliation: older indexes kept a single entry per repo
-    // directory (first quant only) and separately-downloaded quants have no
-    // row at all. Re-scan and append any on-disk model the index does not
-    // already reference; existing rows keep their install-time metadata.
     for (const ModelEntry &s : scanModelsDir(modelsDir)) {
         if (s.modelPath.isEmpty())
             continue;
@@ -229,10 +217,6 @@ bool ModelRegistry::save(const QString &modelsDir, const QList<ModelEntry> &entr
 {
     QDir().mkpath(modelsDir);
 
-    // H.6 / ADR 46: guard the read-modify-write cycle on index.json with the
-    // per-write registry lock so a second GUI instance cannot interleave and
-    // lose updates. The atomic rename protects against corruption, not against
-    // lost writes.
     QLockFile lock(lockPathFor(modelsDir));
     lock.setStaleLockTime(30 * 1000);
     if (!lock.tryLock(5000)) {
@@ -277,10 +261,6 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
         if (gguFs.isEmpty())
             continue;
 
-        // A repo directory may hold several quants of the same model (e.g.
-        // Unlimited-OCR-Q4_K_M.gguf + Unlimited-OCR-Q8_0.gguf) sharing one
-        // mmproj. Emit one entry per quant; split parts of one quant are
-        // grouped into a single entry.
         QString mmprojRel;
         QHash<QString, QStringList> byStem;
         for (const QString &name : gguFs) {
@@ -303,7 +283,6 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
         stems.sort();
         for (const QString &stem : stems) {
             QStringList modelParts = byStem.value(stem);
-            // Split names sort so the "…-00001-of-NNN" part is first.
             sortSplitParts(&modelParts);
 
             ModelEntry e;
@@ -312,9 +291,6 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
             e.id = quant.isEmpty() ? dirName
                                    : dirName + QLatin1Char('_') + quant;
             e.title = dirName;
-            // The dir name "org__repo" is not a valid HF repo id; reconstruct
-            // org/repo from it (§3.12). A persisted repoId (set at install time)
-            // wins when the entry is later loaded from a real index.json.
             const int sep = dirName.indexOf(QLatin1String("__"));
             e.repoId = sep > 0
                 ? dirName.left(sep) + QLatin1Char('/') + dirName.mid(sep + 2)
@@ -346,9 +322,6 @@ QString ModelRegistry::removalError(const ModelEntry &e, const QString &modelsDi
     if (e.origin != ModelOrigin::Managed)
         return QObject::tr(
             "This model is external and can only be hidden from the list, not deleted");
-    // Canonical when it exists (symlink-resolved, §5 task 6), otherwise absolute:
-    // the removal guard must also work for paths that only exist conceptually (
-    // tests) and for directories about to be created.
     const QString modelPath =
         canonicalPath(e.modelPath).isEmpty()
             ? QFileInfo(e.modelPath).absoluteFilePath()

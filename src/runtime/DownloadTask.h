@@ -14,29 +14,8 @@ class QNetworkReply;
 
 namespace llocr {
 
-// Sanitizes a provenance-supplied file name for writing into a target
-// directory (§ Stage C task 1). Strips path separators, drive letters, control
-// characters and leading/trailing dots/space, and renames Windows reserved
-// device names (CON, NUL, COM1…). Guarantees that joining the result to a
-// directory can never escape it (no `/`, `\`, `..` survives).
 QString sanitizeFileName(const QString &name);
 
-// One resumable HTTP(S) download (§ Stage C task 1). The on-disk contract is:
-//
-//   <targetDir>/<fileName>.part       partial payload (streaming write)
-//   <targetDir>/<fileName>.part.meta  resume metadata (JSON, QSaveFile)
-//   <targetDir>/<fileName>            final, verified result of a rename
-//
-// Resume follows the strict protocol: the persisted ETag/Last-Modified is sent
-// back as `If-Range` together with `Range: bytes=<size>-`; a 206 reply is only
-// trusted when `Content-Range` is a `bytes` range whose start equals the `.part`
-// size and whose total matches the recorded total. Anything else (a 200, a
-// changed validator, a malformed range) restarts from scratch. SHA-256 is
-// streamed; on resume the existing `.part` is re-hashed from disk first.
-//
-// Redirects (§7.3) use QNetworkRequest::ManualRedirectPolicy plus a stricter
-// policy: https-only (loopback http opt-in for tests), ≤5 hops, and the
-// Authorization header is dropped whenever the host changes.
 class DownloadTask : public QObject
 {
     Q_OBJECT
@@ -85,21 +64,13 @@ public:
     QString error() const { return m_error; }
     QString expectedSha256() const;
 
-    // --- control ------------------------------------------------------------
     void start();
-    // User-initiated pause: keep .part + .meta, transition to Paused.
     void pause();
-    // User-initiated cancel. When deletePartial is true the .part/.meta are
-    // removed (§ Stage C task 2); otherwise they are retained for resume.
     void cancel(bool deletePartial);
-    // Network loss / app exit: keep .part + .meta, transition to Failed.
     void abortDownload();
 
-    // --- redirect / proxy policy --------------------------------------------
-    // Loopback http is rejected by default (§7.3); tests opt in.
     void setAllowLoopbackHttp(bool allow) { m_allowLoopbackHttp = allow; }
 
-    // The free-space probe defaults to QStorageInfo; tests inject a fake.
     using FreeBytesQuery = std::function<qint64(const QString &dirPath)>;
     void setFreeBytesQuery(FreeBytesQuery query);
 
@@ -129,14 +100,13 @@ private:
     void fail(const QString &message);
     void setState(State next);
 
-    // https-only, with loopback http permitted only when opted in (§7.3).
     bool isAllowedUrl(const QUrl &url) const;
 
-    // Resume helpers.
     bool hasResumeValidator() const;
     QString ifRangeValue() const;
     void hashExistingPart();
 
+private:
     Request m_request;
     QNetworkAccessManager *m_nam = nullptr;
 
@@ -164,7 +134,6 @@ private:
     int m_redirectCount = 0;
     bool m_allowLoopbackHttp = false;
 
-    // Resume state (derived from .part/.meta at start()).
     qint64 m_resumeBytes = 0;
     QString m_resumeEtag;
     QString m_resumeLastModified;

@@ -33,6 +33,7 @@ public:
 private:
     static QString extractServerError(const QByteArray &responseData);
 
+private:
     QNetworkAccessManager m_network;
     QPointer<QNetworkReply> m_currentReply;
 };

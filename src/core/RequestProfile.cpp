@@ -86,8 +86,6 @@ QJsonValue RequestProfile::valueToJson(const QVariant &value)
     case QMetaType::QString:
         return QJsonValue(value.toString());
     default:
-        // Unknown types should not appear in a profile; serialize as a string
-        // rather than dropping the parameter silently.
         return QJsonValue(value.toString());
     }
 }
@@ -300,8 +298,6 @@ RequestProfile RequestProfile::merge(const RequestProfile &defaults,
         }
     }
 
-    // User-only parameters (e.g. from an older built-in profile) are appended
-    // after the built-in ones, sorted by their own order.
     QList<RequestParameter> extra = userByName.values();
     std::stable_sort(extra.begin(), extra.end(),
                      [](const RequestParameter &a, const RequestParameter &b) {

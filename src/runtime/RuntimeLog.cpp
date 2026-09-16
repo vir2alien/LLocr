@@ -30,11 +30,8 @@ void RuntimeLog::setServer(LlamaServerProcess *server)
     m_server = server;
     m_flushTimer.stop();
     if (m_server) {
-        // Every appended line (and clearLog's refresh) changes the visible tail.
         connect(m_server, &LlamaServerProcess::logLineAppended, this,
                 [this](const QString &) { m_flushTimer.start(); });
-        // The server is owned by RuntimeController, but detach defensively so a
-        // shorter-lived owner cannot leave this view pointing at garbage.
         connect(m_server, &QObject::destroyed, this,
                 [this]() { m_server = nullptr; });
     }

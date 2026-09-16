@@ -20,7 +20,7 @@ QString PageEditStore::effectiveText(const DocumentModel& doc, int index) const
 PageEditStore::Change PageEditStore::setText(int index, const QString& original, const QString& text)
 {
     if (text == original) {
-        if (m_edits.remove(index) > 0)
+        if (m_edits.remove(index))
             return Change::NowClean;
         return Change::None;
     }
@@ -36,7 +36,7 @@ void PageEditStore::replace(int index, const QString& text)
 
 bool PageEditStore::revert(int index)
 {
-    return m_edits.remove(index) > 0;
+    return m_edits.remove(index);
 }
 
 void PageEditStore::clear()

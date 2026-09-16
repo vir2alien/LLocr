@@ -18,12 +18,6 @@ class RuntimeController;
 class SettingsStore;
 class RequestProfileStore;
 
-// QML-facing self-test state + entry point, extracted from the RuntimeController
-// facade (§ review 3.4). The actual resolve→request chain is driven through
-// RuntimeController::ensureConnectionReady() — this class is a separate consumer
-// of the facade's resolve API, which is exactly what the review wanted: the
-// facade no longer carries the selftest* surface and the temptation to duplicate
-// it (review 3.1) is gone.
 class SelfTestController : public QObject
 {
     Q_OBJECT
@@ -39,15 +33,7 @@ public:
                                 RequestProfileStore &requestProfiles,
                                 QObject *parent = nullptr);
 
-    /// Runs an independent self-test (used by the master wizard "Check" button).
-    /// Starts the managed server if needed, waits for readiness, then issues one
-    /// real OCR request against a built-in test image and returns the text. In
-    /// External this reports NotConfigured (there is nothing to self-test here).
     QFuture<SelfTestResult> runSelfTest();
-
-    /// QML-friendly variant: starts the self-test and reports progress via the
-    /// `selftest*` properties / `selftestFinished` signal (QFuture is unusable
-    /// from QML). No-op while already running.
     Q_INVOKABLE void runSelfTestQml();
 
     bool selftestRunning() const { return m_selftestRunning; }
@@ -64,6 +50,7 @@ private:
                             std::shared_ptr<QFutureInterface<SelfTestResult>> promise);
     static QImage makeTestImage();
 
+private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
     RequestProfileStore &m_requestProfiles;

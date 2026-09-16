@@ -9,9 +9,6 @@ class QJsonObject;
 
 namespace llocr {
 
-/// JSON kind of a request-parameter value. Numbers keep the single JSON
-/// number kind (no int/double split): the request profile is user-editable
-/// free text and strictness beyond the JSON kind is not required.
 enum class RequestValueKind
 {
     Number,     // QVariant(double)
@@ -20,10 +17,6 @@ enum class RequestValueKind
     StringList  // QVariant(QStringList) — JSON array of strings
 };
 
-/// One named parameter of the OCR request body. `order` is the parameter's
-/// position inside the request profile (1-based); the profile is the single
-/// source of the body layout. `description` is optional UI documentation
-/// shown in the settings table (not part of the request body).
 struct RequestParameter
 {
     QString name;
@@ -36,63 +29,29 @@ struct RequestParameter
     bool operator!=(const RequestParameter &other) const { return !(*this == other); }
 };
 
-/// Request-body profile: an ordered list of parameters appended after the
-/// fixed head (`model`, `messages`) in OcrModel::buildRequestBody. Profiles
-/// are keyed by a unique `id` (the OCR model id); the active profile follows
-/// the `model/recipeId` setting. Two sources are merged by parameter name:
-/// a built-in profile shipped read-only in the Qt resources
-/// (:/profiles/request.json) and an optional per-profile user copy at
-/// <AppData>/LLocr/profiles/request.json (the user value wins per name;
-/// built-in parameters missing from the user file stay, so new built-in
-/// parameters appear automatically — § request-profiles decision).
 struct RequestProfile
 {
     QString id;
     QList<RequestParameter> parameters;
 
     static constexpr const char *kBuiltInPath = ":/profiles/request.json";
-
-    /// Parses a `{ id?, parameters: [ { order, name, value,
-    /// description? } ] }` object. Returns an empty profile and a non-empty
-    /// `error` on failure.
     static RequestProfile fromJson(const QJsonObject &root, QString &error);
-
-    /// Serializes to the per-profile JSON object (`id` omitted when empty).
     QJsonObject toJson() const;
-
-    /// Parses a whole file: `{ schemaVersion, profiles: [ … ] }` (ids are
-    /// required and unique) or a legacy single-profile `{ parameters: [...] }`
-    /// root (the profile gets an empty id; the caller assigns the default).
     static QList<RequestProfile> profilesFromJson(const QJsonObject &root,
                                                   QString &error);
 
-    /// Merges by name: defaults first (in their order), each overridden by the
-    /// user value when present; user-only parameters are appended after the
-    /// built-in ones, sorted by their own order.
     static RequestProfile merge(const RequestProfile &defaults,
                                 const RequestProfile &user);
 
-    /// Compares parameter (name, kind, value) triples in order-sorted order;
-    /// `description` is documentation, not a setting, so it is not compared.
     bool operator==(const RequestProfile &other) const;
     bool operator!=(const RequestProfile &other) const { return !(*this == other); }
 
-    /// Stable-sorts the parameters by `order`.
     void sortByOrder();
-
-    // --- Value conversion helpers shared by the profile file, the request
-    // body and the UI table ---
-
     static QJsonValue valueToJson(const QVariant &value);
-    /// Returns false for unsupported JSON values (object, null, mixed arrays).
     static bool valueFromJson(const QJsonValue &value,
                               RequestValueKind &kind, QVariant &out);
 
-    /// Human-readable text for the UI table.
     static QString valueToText(const QVariant &value);
-    /// Parses UI text strictly by kind: Number accepts only a finite number
-    /// literal, Boolean only true/false, StringList is a comma-separated list
-    /// of strings. Returns false (out untouched) on a format mismatch.
     static bool textToValue(const QString &text, RequestValueKind kind,
                             QVariant &out);
 };

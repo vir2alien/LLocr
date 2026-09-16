@@ -26,11 +26,9 @@ class SettingsStore : public QObject
     Q_PROPERTY(int windowHeight READ windowHeight WRITE setWindowHeight NOTIFY windowHeightChanged)
     Q_PROPERTY(int windowState READ windowState WRITE setWindowState NOTIFY windowStateChanged)
 
-    // --- Connection mode / Managed runtime ---
     Q_PROPERTY(QString connectionMode READ connectionMode WRITE setConnectionMode NOTIFY connectionModeChanged)
     Q_PROPERTY(QString lastExternalBaseUrl READ lastExternalBaseUrl WRITE setLastExternalBaseUrl NOTIFY lastExternalBaseUrlChanged)
 
-    // --- Runtime (setup) ---
     Q_PROPERTY(int setupVersion READ setupVersion WRITE setSetupVersion NOTIFY setupVersionChanged)
     Q_PROPERTY(bool setupDismissed READ setupDismissed WRITE setSetupDismissed NOTIFY setupDismissedChanged)
     Q_PROPERTY(QString serverPath READ serverPath WRITE setServerPath NOTIFY serverPathChanged)
@@ -46,10 +44,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(int startupTimeoutMs READ startupTimeoutMs WRITE setStartupTimeoutMs NOTIFY startupTimeoutMsChanged)
     Q_PROPERTY(bool allowNonLoopback READ allowNonLoopback WRITE setAllowNonLoopback NOTIFY allowNonLoopbackChanged)
 
-    // --- Launch (managed server argv) ---
     Q_PROPERTY(QString launchPresetId READ launchPresetId WRITE setLaunchPresetId NOTIFY launchPresetIdChanged)
-    // Selected launch-profile preset (auto-switched to the runtime backend by
-    // LaunchProfileStore; empty = resolve).
     Q_PROPERTY(QString launchProfileId READ launchProfileId WRITE setLaunchProfileId NOTIFY launchProfileIdChanged)
     Q_PROPERTY(QString launchModelPath READ launchModelPath WRITE setLaunchModelPath NOTIFY launchModelPathChanged)
     Q_PROPERTY(QString launchMmprojPath READ launchMmprojPath WRITE setLaunchMmprojPath NOTIFY launchMmprojPathChanged)
@@ -57,37 +52,15 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
 
-    // --- Hugging Face ---
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
 
 public:
     explicit SettingsStore(QObject *parent = nullptr);
-    // Defaults
-    static constexpr const char *kDefaultBaseUrl = "http://localhost:8080";
-    static constexpr const char *kDefaultApiKey = "";
-    static constexpr int kDefaultTimeoutMs = 120000;
-    static constexpr const char *kDefaultModelName = "Unlimited-OCR";
-    static constexpr const char *kDefaultModelRecipeId = "unlimited-ocr";
-    static constexpr const char *kDefaultParserId = "det_tokens";
-    static constexpr int kDefaultThemeMode = 0; // System
-    static constexpr const char *kDefaultLanguage = "system";
-
-    // Runtime / launch defaults (Stage A, §4.1).
-    static constexpr const char *kDefaultModelAlias = "llocr-local";
-    static constexpr const char *kDefaultHost = "127.0.0.1";
-    static constexpr int kDefaultPort = 0;        // 0 = auto-pick
-    static constexpr int kDefaultStartupTimeoutMs = 180000;
 
     Q_INVOKABLE void forceSave();
     Q_INVOKABLE void resetToDefaults();
     Q_INVOKABLE bool contains(const QString &key) const;
 
-    /// Defaults table (review 3.5) — the single registry of every setting that
-    /// `resetToDefaults()` touches. `key` is the persisted QSettings key,
-    /// `property` is the Q_PROPERTY name (reset writes through the setter so
-    /// NOTIFY fires and per-key validation still applies), `defaultValue`
-    /// carries the type. Adding a new resettable setting is one row here;
-    /// `resetToDefaults()` iterates it, so the manual setter list cannot drift.
     struct SettingDefault
     {
         const char *key;
@@ -97,13 +70,8 @@ public:
     static const SettingDefault *defaults();
     static int defaultsCount();
 
-    /// Applies §4.4 migration: existing profiles must not see the first-run
-    /// wizard, and `provider/mode` must never be flipped automatically.
-    /// Runs once per construction (guarded by the presence of
-    /// `runtime/setupVersion`).
     void applyStartupMigration();
 
-    // Connection
     QString baseUrl() const;
     void setBaseUrl(const QString &url);
     QString apiKey() const;
@@ -111,19 +79,15 @@ public:
     int connectionTimeoutMs() const;
     void setConnectionTimeoutMs(int timeOut);
 
-    // Model
     QString modelName() const;
     void setModelName(const QString &modelName);
 
-    // OCR model (recipe)
     QString modelRecipeId() const;
     void setModelRecipeId(const QString &recipeId);
 
-    // Parser
     QString parserId() const;
     void setParserId(const QString &parserName);
 
-    // UI
     int themeMode() const;
     void setThemeMode(int mode);
     QString language() const;
@@ -139,10 +103,6 @@ public:
     int windowState() const;
     void setWindowState(int winState);
 
-    // --- Connection mode ---
-    // String form is QML-facing (persisted in QSettings; ADR 26). The typed
-    // mode()/setMode() are the canonical C++ barrier — all string↔enum mapping
-    // lives here (review 2.6).
     QString connectionMode() const;
     void setConnectionMode(const QString &mode);
     ConnectionMode mode() const;
@@ -150,7 +110,6 @@ public:
     QString lastExternalBaseUrl() const;
     void setLastExternalBaseUrl(const QString &url);
 
-    // --- Runtime (setup) ---
     int setupVersion() const;
     void setSetupVersion(int version);
     bool setupDismissed() const;
@@ -180,7 +139,6 @@ public:
     bool allowNonLoopback() const;
     void setAllowNonLoopback(bool on);
 
-    // --- Launch ---
     QString launchPresetId() const;
     void setLaunchPresetId(const QString &id);
     QString launchModelPath() const;
@@ -196,15 +154,8 @@ public:
     QString launchProfileId() const;
     void setLaunchProfileId(const QString &id);
 
-    // --- Hugging Face ---
     QString hfToken() const;
     void setHfToken(const QString &token);
-
-public:
-    // Connection mode constants (values stored in QSettings).
-    static constexpr const char *kModeExternal = "external";
-    static constexpr const char *kModeManaged = "managed";
-    static constexpr int kCurrentSetupVersion = 1;
 
 signals:
     void baseUrlChanged();
@@ -245,29 +196,36 @@ signals:
     void launchPortChanged();
     void hfTokenChanged();
 
+public:
+    static constexpr const char *kModeExternal = "external";
+    static constexpr const char *kModeManaged = "managed";
+    static constexpr int kCurrentSetupVersion = 1;
+    static constexpr const char *kDefaultBaseUrl = "http://localhost:8080";
+    static constexpr const char *kDefaultApiKey = "";
+    static constexpr int kDefaultTimeoutMs = 120000;
+    static constexpr const char *kDefaultModelName = "Unlimited-OCR";
+    static constexpr const char *kDefaultModelRecipeId = "unlimited-ocr";
+    static constexpr const char *kDefaultParserId = "det_tokens";
+    static constexpr int kDefaultThemeMode = 0;  // System
+    static constexpr const char *kDefaultLanguage = "system";
+    static constexpr const char *kDefaultModelAlias = "llocr-local";
+    static constexpr const char *kDefaultHost = "127.0.0.1";
+    static constexpr int kDefaultPort = 0;  // 0 = auto-pick
+    static constexpr int kDefaultStartupTimeoutMs = 180000;
+
 private:
-    // QSettings stores each value only once the application/organization
-    // identity is set (registry on Windows, plist on macOS, INI on Linux/Unix).
-    // main.cpp configures it, but unit tests construct SettingsStore directly
-    // without main(); a bare QSettings() would then report status()==AccessError
-    // and silently drop every setValue(). Mirror the app identity here so the
-    // member is usable everywhere (first construction wins; harmless no-op
-    // when main() already set the names).
     static QSettings makeSettings();
     QSettings m_settings = makeSettings();
     static const SettingDefault kDefaults[];
 
-    // Connection
     static constexpr const char *kBaseUrl = "provider/baseUrl";
     static constexpr const char *kApiKey = "provider/apiKey";
     static constexpr const char *kTimeoutMs = "provider/timeoutMs";
 
-    // Model
     static constexpr const char *kModelName = "model/name";
     static constexpr const char *kModelRecipeId = "model/recipeId";
     static constexpr const char *kParserId = "parser/id";
 
-    // UI
     static constexpr const char *kThemeMode = "ui/theme";
     static constexpr const char *kLanguage = "ui/language";
     static constexpr const char *kWindowX = "ui/windowX";
@@ -276,7 +234,6 @@ private:
     static constexpr const char *kWindowHeight = "ui/windowHeight";
     static constexpr const char *kWindowState = "ui/windowState";
 
-    // Connection mode
     static constexpr const char *kConnectionMode = "provider/mode";
     static constexpr const char *kLastExternalBaseUrl = "provider/lastExternalBaseUrl";
 

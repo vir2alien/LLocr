@@ -5,27 +5,15 @@
 
 namespace llocr {
 
-// Every setting reset by resetToDefaults(), in the exact order the old manual
-// list used. Order matters at the two ends:
-//  - baseUrl is reset BEFORE connectionMode, because setConnectionMode(External)
-//    restores lastExternalBaseUrl over baseUrl (ADR 26 / §7.9);
-//  - lastExternalBaseUrl must be LAST so that restore happens first.
-// Window geometry (ui/windowX…State) is intentionally NOT here: it is UI
-// state, not a user setting, and the previous reset also left it alone.
 const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
-    // UI
     { kLanguage, "language", QVariant(QString::fromUtf8(kDefaultLanguage)) },
     { kThemeMode, "themeMode", QVariant(kDefaultThemeMode) },
-    // Connection
     { kBaseUrl, "baseUrl", QVariant(QString::fromUtf8(kDefaultBaseUrl)) },
     { kApiKey, "apiKey", QVariant(QString::fromUtf8(kDefaultApiKey)) },
     { kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs) },
-    // Model
     { kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName)) },
     { kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId)) },
-    // Parser
     { kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId)) },
-    // Connection mode / runtime
     { kConnectionMode, "connectionMode", QVariant(QString::fromUtf8(kModeExternal)) },
     { kSetupVersion, "setupVersion", QVariant(0) },  // 0 = re-run first-run wizard
     { kSetupDismissed, "setupDismissed", QVariant(false) },
@@ -41,7 +29,6 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kAutoRestart, "autoRestart", QVariant(true) },
     { kStartupTimeoutMs, "startupTimeoutMs", QVariant(kDefaultStartupTimeoutMs) },
     { kAllowNonLoopback, "allowNonLoopback", QVariant(false) },
-    // Launch
     { kLaunchPresetId, "launchPresetId", QVariant(QString()) },
     { kLaunchProfileId, "launchProfileId", QVariant(QString()) },
     { kLaunchModelPath, "launchModelPath", QVariant(QString()) },
@@ -49,9 +36,7 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kLaunchModelAlias, "launchModelAlias", QVariant(QString::fromUtf8(kDefaultModelAlias)) },
     { kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost)) },
     { kLaunchPort, "launchPort", QVariant(kDefaultPort) },
-    // Hugging Face
     { kHfToken, "hfToken", QVariant(QString()) },
-    // Saved external endpoint — must stay LAST (see the order comment above).
     { kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString()) },
 };
 
@@ -62,10 +47,6 @@ SettingsStore::SettingsStore(QObject *parent) : QObject(parent)
 
 QSettings SettingsStore::makeSettings()
 {
-    // The unit tests have no main.cpp, so the app identity would be unset and
-    // a bare QSettings() would be unwritable (status()==AccessError): every
-    // setValue() becomes a silent no-op. Match the names main.cpp sets so the
-    // member is functional everywhere.
     if (QCoreApplication::organizationName().isEmpty()) {
         QCoreApplication::setOrganizationName(QStringLiteral("llocr"));
         QCoreApplication::setApplicationName(QStringLiteral("LLM OCR"));
@@ -80,13 +61,9 @@ bool SettingsStore::contains(const QString &key) const
 
 void SettingsStore::applyStartupMigration()
 {
-    // §4.4: run only once. After this, runtime/setupVersion exists and the
-    // guard below never executes again.
     if (!m_settings.contains(kSetupVersion)) {
         const bool looksConfigured = m_settings.contains(kBaseUrl)
                                   && !m_settings.value(kBaseUrl).toString().isEmpty();
-        // Never flip the mode automatically: every pre-existing profile stays
-        // in External (ADR 26 / §1.1).
         m_settings.setValue(kConnectionMode, QString::fromUtf8(kModeExternal));
         m_settings.setValue(kSetupVersion, looksConfigured ? kCurrentSetupVersion : 0);
     }
@@ -99,10 +76,6 @@ void SettingsStore::forceSave()
 
 void SettingsStore::resetToDefaults()
 {
-    // Table-driven (review 3.5): every resettable key is one row in
-    // kDefaults; writing through the Q_PROPERTY keeps the setters' guards,
-    // validation and NOTIFY emission, so this behaves exactly like the manual
-    // setter list it replaces.
     const QMetaObject *mo = metaObject();
     for (const SettingDefault &entry : kDefaults) {
         const QMetaProperty prop = mo->property(mo->indexOfProperty(entry.property));
@@ -299,9 +272,6 @@ QString SettingsStore::connectionMode() const
 
 ConnectionMode SettingsStore::mode() const
 {
-    // Single barrier: an unknown/typo stored value falls back to External
-    // (ADR 26 — never flip the mode silently). Comparing against the enum
-    // everywhere keeps the string↔enum mapping here (review 2.6).
     return connectionMode() == QString::fromUtf8(kModeManaged)
                ? ConnectionMode::Managed
                : ConnectionMode::External;
@@ -315,9 +285,6 @@ void SettingsStore::setMode(ConnectionMode mode)
 
 void SettingsStore::setConnectionMode(const QString &mode)
 {
-    // Only the two known modes are valid; anything else (e.g. a typo) is
-    // rejected so an unrecognized value never persists and later silently
-    // reads back as External.
     if (mode != QString::fromUtf8(kModeExternal)
         && mode != QString::fromUtf8(kModeManaged)) {
         qWarning("Ignoring invalid connection mode %s", qPrintable(mode));
@@ -325,10 +292,6 @@ void SettingsStore::setConnectionMode(const QString &mode)
     }
     if (connectionMode() == mode)
         return;
-    // §4.1/§7.9: entering Managed preserves the external endpoint for the way
-    // back; returning to External restores it. provider/baseUrl itself is never
-    // clobbered while in Managed (the controller builds the managed URL in
-    // memory), so restoring only re-applies what we saved.
     if (mode == QString::fromUtf8(kModeManaged)) {
         const QString current = baseUrl();
         if (!current.isEmpty())

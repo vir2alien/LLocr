@@ -9,25 +9,13 @@
 
 namespace llocr {
 
-// ---------------------------------------------------------------------------
-// Build-number parsing (tolerant, §5.3 step 2)
-// ---------------------------------------------------------------------------
-
 int ServerCapabilities::extractBuildNumber(const QString &versionOutput)
 {
-    // Several tolerant regexes; fall back to "unknown" (-1) when none hit
-    // (§5 Stage B task 1: “версия неизвестна, но бинарник отвечает”).
-
-    // 1) "build: 4536 (b4536)", "build b999", "build = 12000".
     static const QRegularExpression buildWord(
         QStringLiteral(R"(\bbuild[ :=]+\s*(?:b)?(\d{2,6})\b)"),
         QRegularExpression::CaseInsensitiveOption);
-    // 2) bare b-tag: "b10594", "b3999". \b anchors the leading b at a word
-    //    boundary, so a run at the start of the string matches (a digit must
-    //    follow).
     static const QRegularExpression bTag(QStringLiteral(R"(\bb(\d{3,6})\b)"),
                                          QRegularExpression::CaseInsensitiveOption);
-    // 3) "version: 4536" (some builds print this).
     static const QRegularExpression versionWord(
         QStringLiteral(R"(\b(?:version|release)[ :=]+\s*(\d{3,6})\b)"),
         QRegularExpression::CaseInsensitiveOption);
@@ -41,10 +29,6 @@ int ServerCapabilities::extractBuildNumber(const QString &versionOutput)
         return -1;
     return m.captured(1).toInt();
 }
-
-// ---------------------------------------------------------------------------
-// Detection (allowlist by build range, refined by --help text). §5.3.
-// ---------------------------------------------------------------------------
 
 ServerCapabilities ServerCapabilities::detect(const QString &versionOutput,
                                               const QString &helpOutput)
@@ -60,12 +44,7 @@ ServerCapabilities ServerCapabilities::detect(const QString &versionOutput,
         caps.belowMinimum = build < kMinimumBuildNumber;
     }
 
-    // --- Allowlist by build range (ADR 41 step 2) ------------------------
-    // only applied when a build number was parsed; conservative defaults when
-    // unknown (the --help pass below may still enable flags it proves).
     if (build > 0) {
-        // --flash-attn predates b4000 (bare boolean). Value form appeared
-        // around the Flash-Attention rework (on|off|auto).
         caps.supportsFlashAttn = true;
         caps.supportsFlashAttnValue = (build >= 5000);
         caps.supportsAlias = (build >= 5000);
@@ -74,12 +53,10 @@ ServerCapabilities ServerCapabilities::detect(const QString &versionOutput,
         caps.supportsCacheTypeV = (build >= 5400);
     }
 
-    // --- --help refinement (step 3): enable/disable each flag. -----------
     if (!helpOutput.isEmpty()) {
         const bool hasFlash = helpOutput.contains(QStringLiteral("--flash-attn"));
         caps.supportsFlashAttn = caps.supportsFlashAttn && hasFlash;
         if (hasFlash) {
-            // on|off|auto (or [on|off]) text ⇒ the binary accepts a value.
             caps.supportsFlashAttnValue =
                 helpOutput.contains(QStringLiteral("on|off|auto"));
         }
@@ -95,11 +72,6 @@ ServerCapabilities ServerCapabilities::detect(const QString &versionOutput,
 
     return caps;
 }
-
-// ---------------------------------------------------------------------------
-// JSON (cache) — §7.2 requires schema-versioned JSON and atomic writes.
-// '1' bytes are stored as booleans to keep the file small and editable.
-// ---------------------------------------------------------------------------
 
 QJsonObject ServerCapabilities::toJson() const
 {
@@ -138,9 +110,6 @@ QString ServerCapabilities::cacheFileName(const QString &cacheDir,
                                           const QString &binaryPath)
 {
     const QFileInfo fi(binaryPath);
-    // Key = absolute path + mtime (ms) + size: identical in strength to the
-    // in-memory ProbeKey, so replacing a binary that keeps the same mtime
-    // second still invalidates the entry (sized entry vs. rebuild).
     const QString key = QStringLiteral("%1@%2@%3")
                             .arg(fi.absoluteFilePath(),
                                  QString::number(fi.lastModified().toMSecsSinceEpoch()),

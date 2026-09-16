@@ -22,18 +22,6 @@ namespace llocr {
 
 namespace {
 
-// Tolerant asset-name parser (§ Stage D task 1). Matches the llama.cpp layout:
-//
-//   llama-b<build>-bin-<os>-<arch>.<zip|tar.gz>            (generic build)
-//   llama-b<build>-bin-<os>-<backend...>-<arch>.<ext>      (backend build)
-//   cudart-llama-bin-win-cuda-<ver>.zip
-//
-// llama.cpp previously published `llama-b<build>-bin-<os>-<backend>-<arch>.zip`
-// for every platform, but since b1082x macOS and Linux switched to
-// `.tar.gz` and the backend token disappeared for macOS (`...-bin-macos-arm64`)
-// and generic Ubuntu (`...-bin-ubuntu-x64`). The backend token may itself
-// contain dashes (e.g. "cuda-cu12"), so the generic shape anchors os and arch
-// and lets backend span the middle. `ubuntu` is normalized to `linux`.
 const QRegularExpression kGenericRe(
     QStringLiteral(R"(^llama-b(\d+)-bin-([a-z0-9]+)-([a-z0-9]+)\.(zip|tar\.gz)$)"));
 
@@ -43,8 +31,6 @@ const QRegularExpression kBackendRe(
 const QRegularExpression kCudartRe(
     QStringLiteral(R"(^cudart-llama-bin-win-cuda-([0-9a-z.]+?)(?:-(x64|arm64))?\.zip$)"));
 
-// Body entries: 64 hex chars followed by a file name, with an optional
-// "sha256:" prefix. Matches across the common llama.cpp "### sha256" blocks.
 const QRegularExpression kShaRe(
     QStringLiteral(R"((?:sha256\s*[:=]\s*)?([0-9a-fA-F]{64})\s+(\S+))"));
 
@@ -54,7 +40,6 @@ QString normalizedLower(const QString &s) { return s.toLower(); }
 
 int extractBuildNumberFromTag(const QString &tagName)
 {
-    // Accepts "b10594", "10594", "v10594".
     QString t = tagName.toLower();
     if (t.startsWith(QLatin1String("b")))
         t = t.mid(1);
@@ -82,8 +67,6 @@ ReleaseAsset ReleaseCatalog::parseAssetName(const QString &fileName,
     }
     const QRegularExpressionMatch gm = kGenericRe.match(fileName);
     if (gm.hasMatch()) {
-        // No backend token: a universal build (macOS arm64/x64, generic Ubuntu)
-        // that serves any requested backend.
         a.os = gm.captured(2);
         a.arch = gm.captured(3);
         a.build = QStringLiteral("b%1").arg(gm.captured(1));
@@ -98,7 +81,6 @@ ReleaseAsset ReleaseCatalog::parseAssetName(const QString &fileName,
     }
     if (a.os == QStringLiteral("ubuntu"))
         a.os = QStringLiteral("linux");
-    // The trailing build may be a stable hash (e.g. "b10594-4f2a") or a bare build.
     return a;
 }
 
@@ -107,10 +89,6 @@ QHash<QString, QString> ReleaseCatalog::parseSha256Table(const QString &body)
     QHash<QString, QString> out;
     if (body.trimmed().isEmpty())
         return out;
-
-    // Fallback: line-based scan for blocks like:
-    //   sha256: d3b1...  llama-b1234-bin-win-cuda-x64.7z
-    // Also handle the bare "hex  filename" form that some older bodies use.
     QRegularExpressionMatchIterator it = kShaRe.globalMatch(body);
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
@@ -153,7 +131,6 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items,
             r.assets.append(parseAssetName(name, url, sz));
         }
 
-        // Attach sha256 digests published in the body to matching assets.
         const QString body = o.value(QStringLiteral("body")).toString();
         r.body = body;
         const QHash<QString, QString> table = parseSha256Table(body);
@@ -171,10 +148,6 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items,
         error = QObject::tr("The GitHub releases response contained no releases");
     return releases;
 }
-
-// ---------------------------------------------------------------------------
-// Local cache
-// ---------------------------------------------------------------------------
 
 QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir,
                                              QDateTime &cachedAt,
@@ -223,10 +196,6 @@ void ReleaseCatalog::resetCache(const QString &cacheDir)
         f.remove();
 }
 
-// ---------------------------------------------------------------------------
-// Network fetch
-// ---------------------------------------------------------------------------
-
 QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam,
                                                       QString cacheDir, QString &error,
                                                       int timeoutMs)
@@ -245,16 +214,11 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
         return QList<ReleaseInfo>();
     }
 
-    // Build the request with the GitHub API media type and a descriptive UA.
     QNetworkRequest request((QUrl(QLatin1String(kApiUrl))));
     request.setRawHeader(QByteArrayLiteral("Accept"),
                          QByteArrayLiteral("application/vnd.github+json"));
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       QStringLiteral("LLocr/0.2.0").toUtf8());
-
-    // The transfer timeout is applied by the network stack itself (aborts the
-    // reply and emits finished on expiry), so there is no hand-rolled
-    // QTimer/timedOut flag (review 2.2).
     request.setTransferTimeout(timeoutMs);
 
     QNetworkReply *reply = nam->get(request);
@@ -274,7 +238,6 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     reply->deleteLater();
 
     if (status == 403) {
-        // GitHub rate limit for anonymous clients; surface the reset time.
         const QByteArray resetRaw =
             reply->rawHeader(QByteArrayLiteral("X-RateLimit-Reset"));
         qint64 resetEpoch = resetRaw.toLongLong();
@@ -305,8 +268,6 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     if (parsed.isEmpty() && error.isEmpty())
         error = QObject::tr("No releases parsed");
 
-    // Persist the raw items array (GitHub shape) so loadCache() re-parses it
-    // identically on a later run. Bodies are kept: they hold the sha256 table.
     QDir().mkpath(cacheDir);
     QSaveFile sf(QDir(cacheDir).filePath(QStringLiteral("releases.json")));
     if (sf.open(QIODevice::WriteOnly)) {
@@ -315,10 +276,6 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     }
     return parsed;
 }
-
-// ---------------------------------------------------------------------------
-// Platform detection
-// ---------------------------------------------------------------------------
 
 PlatformInfo ReleaseCatalog::detectPlatform()
 {
@@ -335,8 +292,6 @@ PlatformInfo ReleaseCatalog::detectPlatform()
     else if (arch == QLatin1String("arm64") || arch == QLatin1String("aarch64"))
         info.arch = QStringLiteral("arm64");
     if (kernel.startsWith(QLatin1String("win"))) {
-        // QSysInfo::kernelType() is "winnt" on Windows and "darwin" on macOS:
-        // a plain contains("win") would match "darwin", so anchor on the prefix.
         info.os = PlatformOs::Windows;
         info.osTag = QStringLiteral("win");
         info.backend = QStringLiteral("cpu");

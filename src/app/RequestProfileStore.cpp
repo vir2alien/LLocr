@@ -90,7 +90,7 @@ void RequestProfileStore::reloadUserProfiles()
                  "(falling back to the built-in profiles)",
                  qUtf8Printable(userPath()), qUtf8Printable(error));
 
-    for (const RequestProfile &profile : parsedProfiles) {
+    for (const RequestProfile &profile : std::as_const(parsedProfiles)) {
         RequestProfile copy = profile;
         if (copy.id.isEmpty())
             copy.id = QString::fromUtf8(SettingsStore::kDefaultModelRecipeId);
@@ -113,7 +113,7 @@ void RequestProfileStore::persistUserProfiles()
     QJsonObject root;
     root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
     QJsonArray profiles;
-    for (const RequestProfile &profile : m_userProfiles)
+    for (const RequestProfile &profile : std::as_const(m_userProfiles))
         profiles.append(profile.toJson());
     root.insert(QStringLiteral("profiles"), profiles);
 
@@ -133,9 +133,11 @@ void RequestProfileStore::persistUserProfiles()
 
 const RequestProfile *RequestProfileStore::findBuiltIn(const QString &id) const
 {
-    for (const RequestProfile &profile : m_profiles)
-        if (profile.id == id)
+    for (const RequestProfile &profile : std::as_const(m_profiles)) {
+        if (profile.id == id) {
             return &profile;
+        }
+    }
     return nullptr;
 }
 

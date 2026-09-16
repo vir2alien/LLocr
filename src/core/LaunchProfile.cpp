@@ -8,7 +8,6 @@
 #include <QStringList>
 
 #include <algorithm>
-#include <cmath>
 
 namespace llocr {
 
@@ -70,8 +69,6 @@ const LaunchParameter *LaunchProfile::find(const QString &name) const
 
 namespace {
 
-/// Parses one `{ order, name, value?, description? }` parameter object.
-/// Returns false (with `error` set) on a malformed entry.
 bool parseParameter(const QJsonObject &obj, int fallbackOrder,
                     LaunchParameter &out, QString &error)
 {
@@ -108,7 +105,6 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder,
         out.value = QVariant(value.toString());
         break;
     default:
-        // bool / array / object values make no sense on a command line.
         error = QObject::tr("Launch profile parameter %1 has an unsupported value")
                     .arg(name);
         return false;
@@ -124,7 +120,6 @@ QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root,
                                               QString &error)
 {
     const QJsonArray profiles = root.value(QLatin1String(kProfilesKey)).toArray();
-    // A missing/empty `profiles` array is a valid (empty) catalog.
 
     QList<LaunchProfile> out;
     QSet<QString> seen;
@@ -191,7 +186,6 @@ QJsonObject LaunchProfile::toJson() const
             obj.insert(QLatin1String(kValueKey), p.value.toDouble());
         else if (p.kind == LaunchValueKind::Text)
             obj.insert(QLatin1String(kValueKey), p.value.toString());
-        // Flag: no value key.
         if (!p.description.isEmpty())
             obj.insert(QLatin1String(kDescriptionKey), p.description);
         params.append(obj);

@@ -22,11 +22,7 @@ QString RuntimeLocator::runProbe(const QString &binaryPath, QStringList args,
     proc.setArguments(args);
     proc.setProcessChannelMode(QProcess::MergedChannels);
     proc.start(QIODevice::ReadOnly);
-    // Spawning a freshly-launched binary is fast in practice (fork/exec, page-in
-    // of the loader); a 2.5 s bound on the startup wait catches a hung exec
-    // without holding the calling (UI) thread for the full timeout (§H.7 task
-    // 1 — avoids stalls on slow/large disks). The remaining budget goes to the
-    // actual run.
+
     const int spawnBudget = qMin(2500, timeoutMs);
     if (!proc.waitForStarted(spawnBudget)) {
         error = QObject::tr("Failed to start the binary: %1").arg(proc.errorString());
@@ -45,16 +41,11 @@ QString RuntimeLocator::runProbe(const QString &binaryPath, QStringList args,
 
 ProbeResult RuntimeLocator::probe(const QString &binaryPath, int timeoutMs)
 {
-    // Always a fresh probe: the user-facing "Check" button must reflect the
-    // current on-disk state even when only permissions changed (mtime-stable).
     return probeImpl(binaryPath, timeoutMs);
 }
 
 ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, int timeoutMs)
 {
-    // For the manage startServer() path, an unchanged binary (same path, mtime,
-    // size) is not re-probed — no subprocess spawn and no main-thread stall on
-    // repeated recognition starts. A changed file misses and re-probes.
     ProbeResult cached;
     if (probeFromCache(binaryPath, cached))
         return cached;
@@ -66,15 +57,11 @@ ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, int timeoutMs
 ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, const QString &cacheDir,
                                         int timeoutMs)
 {
-    // Same as above, plus a persistent JSON cache (ServerCapabilities::
-    // cacheFileName) so an unchanged binary is not re-spawned across app runs:
-    // a fresh process misses the in-memory slot but serves from disk. Only
-    // successful probes are written, so a transient failure re-probes next time.
     ProbeResult cached;
     if (probeFromCache(binaryPath, cached))
         return cached;
     if (probeFromDiskCache(binaryPath, cacheDir, cached)) {
-        cacheProbe(binaryPath, cached);  // refresh the in-memory slot too
+        cacheProbe(binaryPath, cached);
         return cached;
     }
     const ProbeResult r = probeImpl(binaryPath, timeoutMs);
@@ -96,12 +83,6 @@ ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
         return r;
     }
 
-    // One wall-clock budget shared by both spawns: --version gets the full
-    // amount, --help the remainder — the whole probe can never take longer than
-    // timeoutMs (plus the bounded kill grace on a genuinely hung spawn), instead
-    // of 2 × timeoutMs when each ran with a fresh budget. If --version consumed
-    // everything, --help is skipped and the flags fall back to the build
-    // allowlist (same as a build that prints no help). §H.7 follow-up.
     QElapsedTimer budget;
     budget.start();
     QString errVersion, errHelp;
@@ -169,7 +150,7 @@ QString RuntimeLocator::autoDiscover(int timeoutMs)
           << QStringLiteral("/opt/local/bin");
 #endif
 
-    for (const QString &root : roots) {
+    for (const QString &root : std::as_const(roots)) {
         const QString candidate =
             QDir(root).filePath(QStringLiteral("llama-server"));
         if (QFileInfo::exists(candidate) && probe(candidate, timeoutMs).ok)
@@ -187,14 +168,11 @@ QString RuntimeLocator::ensureExecutable(const QString &binaryPath, bool pathMan
         return QObject::tr("File not found: %1").arg(binaryPath);
 #ifdef Q_OS_UNIX
     if (fi.isExecutable())
-        return QString();  // already runnable
+        return QString();
     if (!pathManaged) {
-        // A manually chosen file outside our runtime root: confirm before
-        // changing permissions (the UI shows the prompt). §5 task 1.
         needsConfirmation = true;
         return QObject::tr("The selected file is not executable");
     }
-    // Inside the managed runtime root only: restore the executable bit.
     QFile f(binaryPath);
     if (!f.setPermissions(f.permissions() | QFileDevice::ExeUser | QFileDevice::ExeGroup
                                         | QFileDevice::ExeOther))
@@ -203,19 +181,16 @@ QString RuntimeLocator::ensureExecutable(const QString &binaryPath, bool pathMan
     return QString();
 }
 
-// --- §H.7 probe cache ------------------------------------------------
-
 namespace {
-// A single managed server binary is used at a time, so one cached probe (with
-// an exact `path + mtime + size` match) is enough to skip the redundant
-// --version/--help spawn on consecutive starts. Invalidation: an on-disk change
-// (mtime/size) or a different path naturally misses and re-probes (review 3.6:
-// the old 4-slot LRU re-ordered a QVector for what is a single binary).
-// Main-thread only: probeCached() is called from the QML startServer()/
-// launchCommandPreview() paths; the install flow uses probe() (always fresh)
-// and does not touch this.
+
+struct ProbeKey {
+    QString path;
+    qint64 mtimeMs;
+    qint64 size;
+    bool operator==(const ProbeKey &o) const { return path == o.path && mtimeMs == o.mtimeMs && size == o.size; }
+};
 struct ProbeCacheSlot {
-    RuntimeLocator::ProbeKey key;
+    ProbeKey key;
     ProbeResult result;
     bool valid = false;
 };
@@ -248,10 +223,6 @@ void RuntimeLocator::cacheProbe(const QString &binaryPath, const ProbeResult &re
     s_probeCache.valid = true;
 }
 
-// ---------------------------------------------------------------------------
-// §5.3 step 4 / ADR 41: persistent capabilities cache (capabilities-<sha1>.json)
-// ---------------------------------------------------------------------------
-
 bool RuntimeLocator::cachedProbe(const QString &binaryPath, const QString &cacheDir,
                                  ProbeResult &out)
 {
@@ -283,7 +254,6 @@ bool RuntimeLocator::probeFromDiskCache(const QString &binaryPath, const QString
     out.capabilities = caps;
     out.version = caps.versionText;
     out.ok = caps.ok;
-    // Mirror probeImpl()'s diagnostics for a below-minimum cached build.
     if (caps.ok && caps.belowMinimum) {
         out.error = QObject::tr("Requires llama.cpp %1 or newer").arg(
             QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
@@ -296,8 +266,6 @@ bool RuntimeLocator::probeFromDiskCache(const QString &binaryPath, const QString
 void RuntimeLocator::writeDiskCache(const QString &binaryPath, const QString &cacheDir,
                                     const ProbeResult &result)
 {
-    // Never cache failed/aborted probes: a transient error (busy system,
-    // timeout) must not mask a later-fixed binary until its mtime/size changes.
     if (cacheDir.isEmpty() || !result.ok)
         return;
     if (!QDir().mkpath(cacheDir))

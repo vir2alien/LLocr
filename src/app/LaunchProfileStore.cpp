@@ -81,8 +81,6 @@ void LaunchProfileStore::reloadUserProfiles()
         qWarning("LaunchProfileStore: cannot load user profiles %s: %s "
                  "(falling back to the built-in presets)",
                  qUtf8Printable(userPath()), qUtf8Printable(error));
-    // User copies keep only id + parameters in the map (metadata comes from
-    // the built-in preset; the id is the map key anyway).
     QHash<QString, LaunchProfile> cleaned;
     for (const LaunchProfile &p : parsedProfiles) {
         LaunchProfile copy = p;
@@ -100,8 +98,6 @@ void LaunchProfileStore::reloadUserProfiles()
 void LaunchProfileStore::persistUserProfiles()
 {
     if (m_userProfiles.isEmpty()) {
-        // No customized presets left: the file must go (a user file exists
-        // only while something differs from the built-ins).
         QFile file(userPath());
         if (file.exists() && !file.remove())
             qWarning("LaunchProfileStore: cannot remove user profiles %s: %s",
@@ -169,9 +165,6 @@ QString LaunchProfileStore::activeProfileId() const
 {
     const QString stored = m_settings.launchProfileId();
     const PlatformInfo platform = ReleaseCatalog::detectPlatform();
-    // No runtime installed yet: fall back to the platform's recommended
-    // backend so the resolved profile still makes sense (cpu on Windows/
-    // Linux, metal on macOS).
     QString backend = m_settings.runtimeBackend();
     if (backend.isEmpty())
         backend = platform.backend;
@@ -181,9 +174,6 @@ QString LaunchProfileStore::activeProfileId() const
         storedPreset && presetMatches(*storedPreset, backend, osTag))
         return stored;
 
-    // Best match: backend + os (empty tags match anything), then backend on
-    // any os, then keep the stored id (nothing better exists for this
-    // backend).
     for (const LaunchProfile &p : m_presets)
         if (presetMatches(p, backend, osTag))
             return p.id;
@@ -257,7 +247,7 @@ void LaunchProfileStore::removeDraftRow(int row)
 void LaunchProfileStore::saveDraft()
 {
     if (m_draftProfileId.isEmpty())
-        return;  // degenerate: no presets exist at all, nothing to key a copy
+        return;
 
     LaunchProfile draft;
     draft.id = m_draftProfileId;
@@ -270,7 +260,6 @@ void LaunchProfileStore::saveDraft()
         draft.description = preset->description;
     }
 
-    // A user copy exists only while the preset differs from the built-in one.
     const bool hadCopy = m_userProfiles.contains(m_draftProfileId);
     const bool matchesPreset =
         findPreset(m_draftProfileId)
@@ -327,7 +316,7 @@ void LaunchProfileStore::setActiveProfileNumber(const QString &name, double valu
         }
     }
     if (!row || row->kind != LaunchValueKind::Number)
-        return;  // the profile owns the parameter set; nothing to update
+        return;
     if (row->value.toDouble() == value)
         return;
     row->value = QVariant(value);

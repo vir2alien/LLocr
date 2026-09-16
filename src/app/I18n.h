@@ -25,6 +25,7 @@ signals:
 private:
     void install(const QString &language);
 
+private:
     const SettingsStore &m_settings;
     QTranslator *m_appTranslator = nullptr;
     QTranslator *m_qtTranslator = nullptr;

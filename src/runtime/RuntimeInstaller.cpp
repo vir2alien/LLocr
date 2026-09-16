@@ -47,10 +47,6 @@ QString osLabel(const PlatformInfo &info)
     }
 }
 
-// True when the asset's backend token belongs to the requested backend
-// (exact or prefixed: "cuda" also matches "cuda-cu12" release assets). An
-// empty token is a universal build (e.g. `...-bin-macos-arm64`) that fits any
-// backend request.
 bool backendMatches(const QString &assetBackend, const QString &requested)
 {
     if (assetBackend.isEmpty())
@@ -93,9 +89,6 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, QObject *parent)
         maybeFinishDownloads();
     });
 
-    // §H.6: dedicated install lock, independent of the app instance lock, so
-    // a second GUI instance can use External while installs stay exclusive.
-
     m_paths.ensureDirectories();
     rescanInstalledBuilds();
 }
@@ -112,10 +105,6 @@ void RuntimeInstaller::shutdown()
         m_downloads->cancelAll(true);
     releaseInstallLock();
 }
-
-// ---------------------------------------------------------------------------
-// State / property helpers
-// ---------------------------------------------------------------------------
 
 void RuntimeInstaller::setState(State next)
 {
@@ -213,7 +202,6 @@ QString RuntimeInstaller::backendDisplayName(const QString &backend)
     if (wellKnown.contains(backend))
         return wellKnown.value(backend);
 
-    // e.g. "cuda-cu12" → "CUDA 12".
     const int hyphen = backend.indexOf(QLatin1Char('-'));
     if (hyphen > 0) {
         const QString base = backend.left(hyphen);
@@ -241,10 +229,6 @@ int RuntimeInstaller::releaseBuild(int index) const
     return m_releases.at(index).build;
 }
 
-// ---------------------------------------------------------------------------
-// Catalog fetch
-// ---------------------------------------------------------------------------
-
 void RuntimeInstaller::checkForUpdates()
 {
     if (m_state == State::Fetching)
@@ -258,8 +242,6 @@ void RuntimeInstaller::startCatalogFetch()
     setBusy(true);
     setStatusMessage(tr("Checking for updates…"));
 
-    // The fetch + cache write is synchronous inside ReleaseCatalog; run it on the
-    // pool and marshal the (copyable) result back to the main thread via .then().
     const QString cacheDir = m_paths.cacheDir();
     auto future = QtConcurrent::run([cacheDir]() -> QPair<QList<ReleaseInfo>, QString> {
         QNetworkAccessManager nam;
@@ -331,10 +313,6 @@ void RuntimeInstaller::installUpdate()
     startDownloadAndInstall();
 }
 
-// ---------------------------------------------------------------------------
-// Download + install pipeline
-// ---------------------------------------------------------------------------
-
 void RuntimeInstaller::startDownloadAndInstall()
 {
     if (m_state == State::Fetching || m_state == State::Downloading)
@@ -381,8 +359,6 @@ void RuntimeInstaller::beginDownloads()
     setProgress(0.0);
     setStatusMessage(tr("Downloading %1 …").arg(m_pendingMain.fileName));
 
-    // Archives land beside the runtime (ADR 40: .part lives in the target
-    // volume) and are removed after the install commits.
     const QString targetDir = m_paths.runtimeDir();
     QDir().mkpath(targetDir);
 
@@ -392,9 +368,6 @@ void RuntimeInstaller::beginDownloads()
         QUrl(m_pendingMain.downloadUrl), targetDir, m_pendingMain.fileName,
         m_pendingMain.sha256, QString()});
 
-    // A synchronous main-download failure already ran maybeFinishDownloads()
-    // (state → Error, lock released); do not enqueue the companion cudart
-    // download with an inconsistent pending count.
     if (m_state != State::Downloading)
         return;
 
@@ -416,7 +389,6 @@ void RuntimeInstaller::maybeFinishDownloads()
         releaseInstallLock();
         return;
     }
-    // All archives landed; verify then install on a worker thread.
     setState(State::Installing);
     runInstallAsync();
 }
@@ -465,10 +437,6 @@ void RuntimeInstaller::runInstallAsync()
                     -> QPair<InstallOutput, QString> {
         InstallOutput out = res.first;
         QString warning = res.second;
-        // CUDA: unpack the cudart runtime into the same directory as the server
-        // binary (additive; archive names differ, so no files from the main build
-        // are overwritten). Extracting into runtimeDir() would leave
-        // cudart64_*.dll away from llama-server and break CUDA loading.
         if (out.ok && hasCudart) {
             const QString serverDir = QFileInfo(out.serverPath).absolutePath();
             const ExtractResult ex = ArchiveExtractor::extractZip(cudartZip, serverDir);
@@ -489,8 +457,6 @@ void RuntimeInstaller::runInstallAsync()
 
 void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString &warning)
 {
-    // Remove the downloaded archives first; the installed build is already live
-    // by the time this runs.
     QFile::remove(m_downloadedMainZip);
     if (!m_downloadedCudartZip.isEmpty())
         QFile::remove(m_downloadedCudartZip);
@@ -510,7 +476,6 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
         setStatusMessage(tr("Installed %1 (%2). %3")
                              .arg(out.build, backendDisplayName(m_pendingBackend), warning));
 
-    // Settings are the very last step (§7.2 / Stage D task 5).
     m_settings.setServerPath(out.serverPath);
     m_settings.setServerPathIsManaged(true);
     m_settings.setInstalledBuild(out.build);
@@ -518,8 +483,6 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
     m_settings.forceSave();
     emit installedChanged();
 
-    // The new build directory just appeared on disk; refresh the scan so the
-    // installed-builds list (and its active flag) is current.
     rescanInstalledBuilds();
     recomputeHasUpdate();
 
@@ -553,9 +516,6 @@ void RuntimeInstaller::cancelInstall()
 
 QString RuntimeInstaller::cleanupUnusedBuilds()
 {
-    // Safety guard: with no active build (e.g. right after a settings reset)
-    // the sweep would have no keep-tag and would delete EVERY downloaded
-    // build. Refuse instead — activation is a one click away.
     if (installedBuild().isEmpty()) {
         const QString msg = tr("No active runtime build — cleanup would remove "
                                "every installed build. Install or activate a "
@@ -564,14 +524,12 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
         return msg;
     }
 
-    // §H.6: sweeping the runtime dir must be exclusive vs a concurrent install.
     QString lockError;
     if (!acquireInstallLock(lockError)) {
         setStatusMessage(lockError);
         return lockError;
     }
 
-    // Keep the build that matches the currently installed tag; sweep the rest.
     QString keepTag;
     if (!installedBuild().isEmpty()) {
         const QString prefix =
@@ -592,10 +550,6 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
     return summary;
 }
 
-// ---------------------------------------------------------------------------
-// Installed-builds scan / activation
-// ---------------------------------------------------------------------------
-
 QString RuntimeInstaller::normalizedPath(const QString &path)
 {
     return QDir::cleanPath(QDir::fromNativeSeparators(path));
@@ -603,9 +557,6 @@ QString RuntimeInstaller::normalizedPath(const QString &path)
 
 void RuntimeInstaller::rescanInstalledBuilds()
 {
-    // Fresh paths from the current settings: the root-dir override can change
-    // at runtime (settings reset), the scan must follow it rather than the
-    // copy captured at construction.
     const RuntimePaths paths(m_settings.runtimeRootDir(),
                              m_settings.runtimeModelsDir());
     const QList<InstalledBuildInfo> builds =
@@ -629,7 +580,6 @@ QVariantMap RuntimeInstaller::installedBuildInfo(int index) const
                b.backend.isEmpty() ? QString() : backendDisplayName(b.backend));
     map.insert(QStringLiteral("serverPath"), b.serverPath);
     map.insert(QStringLiteral("binaryFound"), !b.serverPath.isEmpty());
-    // Active = this build's binary is the currently selected server path.
     map.insert(QStringLiteral("active"),
                !b.serverPath.isEmpty() && !m_settings.serverPath().isEmpty()
                && normalizedPath(b.serverPath)
@@ -647,9 +597,6 @@ QString RuntimeInstaller::activateBuild(int index)
     if (b.serverPath.isEmpty())
         return tr("The build directory contains no llama-server binary");
 
-    // A settings-only commit (the directory itself is untouched): point the
-    // managed runtime at this build's binary, same as the install commit does
-    // (§7.2). The QML side stops a running server before calling this.
     m_settings.setServerPath(b.serverPath);
     m_settings.setServerPathIsManaged(true);
     if (!b.build.isEmpty())
@@ -665,7 +612,7 @@ QString RuntimeInstaller::activateBuild(int index)
                                   : QStringLiteral(" (%1)")
                                         .arg(backendDisplayName(b.backend))));
     emit installedChanged();
-    rescanInstalledBuilds();   // refresh the active flags in the list
+    rescanInstalledBuilds();
     recomputeHasUpdate();
     return QString();
 }

@@ -384,15 +384,8 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
     return result;
 }
 
-// ---------------------------------------------------------------------------
-// tar.gz support (llama.cpp macOS/Linux release archives, ADR 34 amended)
-// ---------------------------------------------------------------------------
-
 namespace {
 
-// Parses an octal ASCII field. Tar numeric fields are zero-padded with NULs
-// or spaces (some writers leave them entirely blank for 0); strip both before
-// parsing. Returns -1 only for non-octal garbage.
 qint64 parseOctalField(const QByteArray &field)
 {
     QString s = QString::fromLatin1(field.constData(), field.size());
@@ -414,8 +407,6 @@ QString fieldString(const QByteArray &field)
     return QString::fromLatin1(field.constData(), len);
 }
 
-// Parses a PAX extended-header record stream: lines of "<len> key=value\n".
-// Returns the `path=` / `linkpath=` values if present.
 struct PaxValues {
     QString path;
     QString linkpath;
@@ -466,9 +457,6 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
         return result;
     }
 
-    // Decompress the whole stream into memory (the ZIP path reads the whole
-    // archive into memory too; llama.cpp tarballs are a few hundred MB at most).
-    // inflateInit2(15 + 32) auto-detects the zlib/gzip wrapper.
     z_stream stream{};
     stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(compressed.constData()));
     stream.avail_in = static_cast<uInt>(compressed.size());
@@ -517,7 +505,6 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
         return result;
     }
 
-    // --- ustar walk --------------------------------------------------------
     QSet<QString> written;
     qint64 pos = 0;
     QString pendingLongName;      // from a GNU 'L' entry
@@ -549,7 +536,6 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
             return result;
         }
 
-        // Payload belongs to this header; the next header starts aligned to 512.
         const qint64 payloadStart = pos;
         const qint64 payloadEnd = payloadStart + fileSize;
         if (payloadEnd > size) {
@@ -563,8 +549,6 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
         }
         const QByteArray payload = tar.sliced(payloadStart, qint64(fileSize));
 
-        // GNU long name / PAX extended header: consume and remember; the next
-        // regular entry uses the recorded name.
         if (typeflag == 'L') {
             pendingLongName = QString::fromUtf8(payload.constData(), payload.size());
             pendingLongName = pendingLongName.trimmed();
@@ -598,7 +582,6 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
             return result;
         }
 
-        // Reset the remembered long name / pax values after use.
         pendingLongName.clear();
         pendingPax = PaxValues{};
 
@@ -609,8 +592,7 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
             QString target = linkName;
             if (target.isEmpty())
                 target = pendingPax.linkpath;
-            // Only simple, relative, in-tree links are created. The llama.cpp
-            // macOS tarballs link e.g. `libggml.dylib -> libggml.0.dylib`.
+
             if (target.startsWith(QLatin1Char('/')) || target.contains(QLatin1String(".."))) {
                 result.warning = QObject::tr("Skipped unsafe symlink %1").arg(normalized);
                 continue;
@@ -632,7 +614,7 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
                 QFile::remove(dest);
             if (QFile::link(target, dest))
                 continue;
-            // Some platforms need a cleanup of the half-created link.
+
             result.warning = QObject::tr("Unable to create symlink %1 (skipped)").arg(normalized);
             continue;
         }
@@ -641,11 +623,9 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
             continue;
         }
         if (typeflag != '0' && typeflag != 0 && typeflag != '7') {
-            // char/block devices, fifos: not needed for llama.cpp; skip.
             continue;
         }
 
-        // Regular file.
         if (normalized.isEmpty()) {
             result.error = QStringLiteral("empty tar entry name");
             return result;

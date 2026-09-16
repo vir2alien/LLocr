@@ -25,13 +25,9 @@ namespace llocr {
 
 namespace {
 
-// Force buffered pages to the backing store before an atomic rename (§ Stage C
-// task 1: "flush + fsync" — QFile::flush() only drains the C++ side).
 void flushToDisk(QFile &file)
 {
 #ifdef Q_OS_WIN
-    // _get_osfhandle converts the CRT fd to a native HANDLE; the CRT fd itself
-    // must not be reinterpreted as one.
     const HANDLE h = reinterpret_cast<HANDLE>(_get_osfhandle(file.handle()));
     if (h != INVALID_HANDLE_VALUE && !FlushFileBuffers(h))
         qWarning("FlushFileBuffers failed for download file (error %lu)",
@@ -43,8 +39,6 @@ void flushToDisk(QFile &file)
 #endif
 }
 
-// "bytes 0-1023/4096" | "bytes 1024-4095/*" (total unknown). Returns false on
-// any mismatch: wrong unit, missing dash/slash, non-numeric bounds, end<start.
 bool parseContentRange(const QString &value, qint64 &start, qint64 &end, qint64 &total)
 {
     const QString v = value.trimmed();
@@ -79,15 +73,6 @@ bool parseContentRange(const QString &value, qint64 &start, qint64 &end, qint64 
 
 }  // namespace
 
-// ---------------------------------------------------------------------------
-// File-name sanitization
-// ---------------------------------------------------------------------------
-
-// Stage C: “collisions resolved by a suffix”. If <dir>/<name> (the final
-// target) already exists, append -1, -2, … before the extension. An existing
-// `.part` is deliberately NOT treated as a collision: resume must reuse the
-// exact same part path, so a seeded/partial `.part` must not push the task to a
-// different `-N` name and strand the resumable data.
 QString resolveFileNameCollision(const QString &dir, const QString &name)
 {
     if (!QFileInfo::exists(QDir(dir).filePath(name)))
@@ -116,7 +101,6 @@ QString sanitizeFileName(const QString &name)
             continue;                       // path separators / drive colon
         out.append(c);
     }
-    // Trim bracketing whitespace and dots: blocks hidden files and a bare "..".
     out = out.trimmed();
     while (out.endsWith(QLatin1Char('.')) || out.endsWith(QLatin1Char(' ')))
         out.chop(1);
@@ -143,10 +127,6 @@ QString sanitizeFileName(const QString &name)
 
     return out;
 }
-
-// ---------------------------------------------------------------------------
-// Construction / control
-// ---------------------------------------------------------------------------
 
 DownloadTask::DownloadTask(const Request &request, QNetworkAccessManager *nam, QObject *parent)
     : QObject(parent)
@@ -198,10 +178,6 @@ void DownloadTask::fail(const QString &message)
     setState(State::Failed);
 }
 
-// ---------------------------------------------------------------------------
-// start() — inspect .part/.meta, decide resume, issue the first request
-// ---------------------------------------------------------------------------
-
 void DownloadTask::start()
 {
     if (m_state == State::Running || m_state == State::Verifying)
@@ -229,7 +205,6 @@ void DownloadTask::start()
         readMeta();
     }
 
-    // A resume is only safe with a validator; otherwise fall back to a fresh
     // download (the stale .part is truncated on the 200 path).
     m_resumeRequested = m_resumeBytes > 0 && hasResumeValidator();
     m_ifRangeValue = m_resumeRequested ? ifRangeValue() : QString();
@@ -307,8 +282,6 @@ bool DownloadTask::hasResumeValidator() const
 
 QString DownloadTask::ifRangeValue() const
 {
-    // Weak ETags (W/…) must not be used for If-Range (RFC 7233); fall back to
-    // the Last-Modified date when present.
     const bool weak = m_resumeEtag.startsWith(QStringLiteral("W/"));
     if (!m_resumeEtag.isEmpty() && !weak)
         return m_resumeEtag;
@@ -330,10 +303,6 @@ void DownloadTask::hashExistingPart()
     }
     existing.close();
 }
-
-// ---------------------------------------------------------------------------
-// Metadata (headers) — classify 206 vs 200 and validate Content-Range
-// ---------------------------------------------------------------------------
 
 void DownloadTask::onMetadata(QNetworkReply *reply)
 {
@@ -421,7 +390,6 @@ void DownloadTask::openForAppend()
 void DownloadTask::restartFresh(QNetworkReply *reply)
 {
     closeFile();
-    // Drop the unusable partial state, then re-request the whole object.
     m_resumeRequested = false;
     m_ifRangeValue.clear();
     m_receivedBytes = 0;
@@ -430,18 +398,11 @@ void DownloadTask::restartFresh(QNetworkReply *reply)
     QFile::remove(m_partPath);
     QFile::remove(m_metaPath);
 
-    // Detach from the reply BEFORE aborting it: abort() emits finished()
-    // synchronously, and that handler must treat this reply as no longer
-    // current rather than turning the restart into a failure.
     m_reply = nullptr;
     reply->abort();
     reply->deleteLater();
     issueRequest();
 }
-
-// ---------------------------------------------------------------------------
-// Body streaming
-// ---------------------------------------------------------------------------
 
 void DownloadTask::onData(QNetworkReply *reply)
 {
@@ -473,8 +434,6 @@ void DownloadTask::updateProgress()
         return;
     }
     const qint64 elapsedMs = qMax<qint64>(1, m_speedClock.elapsed());
-    // Throttle UI notifications to the same 200 ms cadence as speed/ETA;
-    // m_receivedBytes stays exact.
     if (elapsedMs >= 200) {
         emit progressChanged();
         const qint64 delta = m_receivedBytes - m_speedSampleBytes;
@@ -486,10 +445,6 @@ void DownloadTask::updateProgress()
                        : 0;
     }
 }
-
-// ---------------------------------------------------------------------------
-// Finish — redirects, cancel/abort, or final verification
-// ---------------------------------------------------------------------------
 
 void DownloadTask::onFinished(QNetworkReply *reply)
 {
@@ -552,8 +507,6 @@ void DownloadTask::handleRedirect(const QUrl &target)
         return;
     }
 
-    // Drop the Authorization header when the host changes (ADR 45 / §7.3), so
-    // a personal HF token never leaks to a CDN.
     if (next.host() != m_effectiveUrl.host())
         m_authorization.clear();
 
@@ -574,10 +527,6 @@ bool DownloadTask::isAllowedUrl(const QUrl &url) const
            || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
 }
 
-// ---------------------------------------------------------------------------
-// Verification → rename / metadata
-// ---------------------------------------------------------------------------
-
 void DownloadTask::verifySha256()
 {
     const QByteArray digest = m_hash.result().toHex();
@@ -591,10 +540,6 @@ void DownloadTask::verifySha256()
         return;
     }
 
-    // Atomic promotion: the .part already lives on the target volume (§3.1).
-    // POSIX rename replaces the destination atomically, so the previous valid
-    // file survives a failure; only fall back to remove-then-rename when the
-    // target exists and rename refuses (e.g. Windows).
     if (!QFile::rename(m_partPath, m_finalPath)) {
         if (!QFileInfo::exists(m_finalPath)) {
             m_error = QObject::tr("Unable to finalize %1").arg(m_fileName);
@@ -627,10 +572,6 @@ void DownloadTask::closeFile()
     }
     m_fileOpen = false;
 }
-
-// ---------------------------------------------------------------------------
-// Resume metadata (JSON, QSaveFile, schema-versioned — §7.2)
-// ---------------------------------------------------------------------------
 
 void DownloadTask::persistMeta()
 {
@@ -666,10 +607,6 @@ void DownloadTask::readMeta()
     m_resumeExpectedTotal = total < 0 ? -1 : static_cast<qint64>(total);
 }
 
-// ---------------------------------------------------------------------------
-// Control verbs
-// ---------------------------------------------------------------------------
-
 void DownloadTask::pause()
 {
     if (m_state != State::Running)
@@ -688,7 +625,6 @@ void DownloadTask::cancel(bool deletePartial)
     if (m_reply) {
         m_reply->abort();
     } else {
-        // Not started: nothing on disk beyond a prior partial when requested.
         if (m_cancelDeletePartial) {
             QFile::remove(m_partPath);
             QFile::remove(m_metaPath);

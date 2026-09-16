@@ -34,7 +34,6 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
     QNetworkReply *reply = m_network.post(request, body);
     m_currentReply = reply;
 
-    // Guard against a hung endpoint.
     auto *timer = new QTimer(reply);
     timer->setSingleShot(true);
     QObject::connect(timer, &QTimer::timeout, reply, [reply]() { reply->abort(); });
@@ -43,10 +42,6 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
     QObject::connect(reply, &QNetworkReply::finished, reply, [reply, promise]() mutable {
         HttpResponse response;
         if (reply->error() != QNetworkReply::NoError) {
-            // Prefer the server's own error message (llama.cpp sends
-            // {"error":{"message": ...}} with the exact reason, e.g. which
-            // sampling parameter was rejected); fall back to the Qt-level
-            // description.
             QString error = reply->errorString();
             const QString serverError = extractServerError(reply->readAll());
             if (!serverError.isEmpty())

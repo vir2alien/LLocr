@@ -49,10 +49,6 @@ QByteArray OcrModel::buildRequestBody(const OcrRequest &request,
         {QStringLiteral("messages"), QJsonArray{message}}
     };
 
-    // The request profile drives the body parameters. The parameters carry
-    // their position (order) from the profile; QJsonObject itself re-sorts
-    // keys alphabetically during serialization, which llama.cpp treats as
-    // irrelevant — the order governs the profile file and the settings table.
     QList<RequestParameter> parameters = request.parameters;
     std::stable_sort(parameters.begin(), parameters.end(),
                      [](const RequestParameter &a, const RequestParameter &b) {
@@ -90,10 +86,6 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
     auto promise = std::make_shared<QPromise<OcrResult>>();
     promise->start();
     QFuture<OcrResult> future = promise->future();
-
-    // I-05: the chain must be self-contained — no `this` captures — so a
-    // mid-flight model destruction (recipe switch, shutdown) cannot dangle.
-    // The per-request client is shared between the chain and abort().
     auto client = std::make_shared<LlamaClient>();
     m_activeClient = client;
 
@@ -117,9 +109,6 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
                              return;
                          }
                          auto *watcher = new QFutureWatcher<HttpResponse>();
-                         // `client` is captured through the whole network phase:
-                         // without it the last shared_ptr dies with this handler
-                         // and ~QNetworkAccessManager kills the in-flight reply.
                          QObject::connect(watcher, &QFutureWatcher<HttpResponse>::finished, watcher,
                                           [client, promise, watcher]() {
                                               const HttpResponse response =
