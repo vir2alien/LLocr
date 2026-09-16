@@ -3,7 +3,6 @@
 #include <QList>
 #include <QString>
 #include <QVariant>
-#include <QJsonValue>
 
 class QJsonObject;
 

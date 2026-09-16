@@ -2,7 +2,6 @@
 
 #include <QObject>
 #include <QQmlEngine>
-#include <QString>
 
 #include "app/SettingsStore.h"
 

@@ -1,6 +1,5 @@
 #include "core/LaunchProfile.h"
 
-#include <QHash>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>

@@ -3,7 +3,6 @@
 #include <QDateTime>
 #include <QHash>
 #include <QJsonArray>
-#include <QJsonObject>
 #include <QList>
 #include <QString>
 

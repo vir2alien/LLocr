@@ -14,7 +14,6 @@
 //   --hello N           print N "llama_model_loader: loading" lines at startup
 
 #include <QCoreApplication>
-#include <QDateTime>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>

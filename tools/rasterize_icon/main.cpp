@@ -22,13 +22,10 @@
 // build. The generated PNGs/ICO/ICNS live under resources/icons.
 #include <QImage>
 #include <QPainter>
-#include <QColor>
 #include <QRectF>
 #include <QSvgRenderer>
 #include <QDir>
-#include <QFile>
 #include <cstdio>
-#include <cstdlib>
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {

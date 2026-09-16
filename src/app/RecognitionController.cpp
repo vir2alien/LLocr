@@ -2,7 +2,6 @@
 
 #include <QFutureWatcher>
 
-#include <functional>
 
 #include "app/SettingsStore.h"
 #include "app/RequestProfileStore.h"

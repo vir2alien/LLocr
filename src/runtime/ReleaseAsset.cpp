@@ -1,4 +1,3 @@
-#include <QList>
 
 #include "runtime/ReleaseAsset.h"
 

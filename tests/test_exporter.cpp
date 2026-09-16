@@ -1,6 +1,5 @@
 #include <QtTest>
 
-#include <QDir>
 #include <QImage>
 
 #include "app/Exporter.h"

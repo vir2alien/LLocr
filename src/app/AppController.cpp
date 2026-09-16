@@ -11,7 +11,7 @@
 #include <QRegularExpression>
 #include <QStringView>
 #include <QtConcurrent/QtConcurrentRun>
-#include <QVariantMap>
+#include <QVariant>
 
 #include "parsers/DetTokensParser.h"
 #include "parsers/ParserFactory.h"

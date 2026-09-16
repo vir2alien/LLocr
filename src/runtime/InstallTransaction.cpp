@@ -4,7 +4,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QStringList>
-#include <QThread>
 #include <QUuid>
 
 #include <algorithm>

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QCoreApplication>
-#include <QProcess>
 #include <QString>
 
 #include "runtime/ServerCapabilities.h"

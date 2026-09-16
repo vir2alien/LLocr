@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QHash>
-#include <QJsonObject>
 #include <QObject>
 #include <QString>
 

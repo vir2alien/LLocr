@@ -3,7 +3,6 @@
 #include <QFileInfo>
 #include <QList>
 #include <QTemporaryDir>
-#include <QtCore>
 #include <QtTest>
 
 #include <functional>

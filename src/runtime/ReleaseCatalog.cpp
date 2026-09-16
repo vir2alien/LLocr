@@ -1,4 +1,3 @@
-#include <QCoreApplication>
 #include <QDir>
 #include <QEventLoop>
 #include <QFile>
@@ -12,7 +11,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSaveFile>
-#include <QStandardPaths>
 #include <QSysInfo>
 #include <QUrl>
 

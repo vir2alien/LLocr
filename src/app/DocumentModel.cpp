@@ -1,8 +1,6 @@
 #include "app/DocumentModel.h"
 
-#include <QFileInfo>
 #include <QImageReader>
-#include <QPainter>
 
 #include <QPdfDocument>
 #include <QPdfDocumentRenderOptions>

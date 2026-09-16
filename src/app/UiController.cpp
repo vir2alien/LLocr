@@ -1,7 +1,6 @@
 #include "app/UiController.h"
 
 #include <QGuiApplication>
-#include <QSettings>
 #include <QStyleHints>
 
 namespace llocr {

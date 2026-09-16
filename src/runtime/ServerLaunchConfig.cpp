@@ -1,4 +1,3 @@
-#include <QRegularExpression>
 
 #include "runtime/ServerLaunchConfig.h"
 

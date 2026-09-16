@@ -6,7 +6,6 @@
 #include <QDesktopServices>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QJsonObject>
 #include <QJsonParseError>
 #include <QNetworkAccessManager>
 #include <QRegularExpression>

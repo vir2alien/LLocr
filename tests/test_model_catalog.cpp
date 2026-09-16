@@ -1,8 +1,6 @@
-#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonValue>
 #include <QNetworkAccessManager>
 #include <QTcpServer>
 #include <QTcpSocket>

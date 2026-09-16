@@ -1,9 +1,5 @@
 #include <QFile>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QTemporaryDir>
-#include <QTemporaryFile>
 #include <QTest>
 
 #include "runtime/ModelPreset.h"

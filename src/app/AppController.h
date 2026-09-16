@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QReadWriteLock>
 #include <QUrl>
-#include <QVariantMap>
+#include <QVariant>
 
 #include "app/BoxListModel.h"
 #include "app/DocumentModel.h"

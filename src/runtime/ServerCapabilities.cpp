@@ -1,9 +1,7 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFileInfo>
-#include <QJsonDocument>
 #include <QRegularExpression>
-#include <QTextStream>
 
 #include "runtime/ServerCapabilities.h"
 

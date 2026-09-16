@@ -4,7 +4,6 @@
 
 #include <QHash>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QObject>
 #include <QSet>

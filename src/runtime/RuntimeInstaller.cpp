@@ -3,9 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QLockFile>
 #include <QNetworkAccessManager>
-#include <QTime>
 #include <QUrl>
 
 #include <QtConcurrent>

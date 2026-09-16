@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cstdint>
 #include <functional>
 
 #include <zlib.h>
