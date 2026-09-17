@@ -5,6 +5,7 @@
 #include <QList>
 #include <QString>
 #include <QStringList>
+#include <memory>
 #include "core/OcrResult.h"
 
 class QPdfDocument;
@@ -24,11 +25,25 @@ struct DocumentPage {
     DocumentSource sourceType = DocumentSource::Image;
     int sourcePageIndex = -1;
     QSize pixelSize;
+    QString sourceError;
 };
 
 class DocumentModel
 {
 public:
+    struct PreparedDjVu {
+        QList<DocumentPage> pages;
+        std::shared_ptr<DjVuDocument> document;
+        QString error;
+        QStringList warnings;
+    };
+
+    // Preparation owns an independent decoder and may run without a live model.
+    static PreparedDjVu prepareDjVu(const QString& path);
+    // Call on the owner thread under the same lock as other model mutations.
+    // Shared decoder access must remain serialized after committing.
+    void appendPreparedDjVu(const PreparedDjVu& prepared);
+
     DocumentModel() = default;
     ~DocumentModel();
     Q_DISABLE_COPY_MOVE(DocumentModel)
@@ -65,7 +80,7 @@ private:
 private:
     QList<DocumentPage> m_pages;
     QHash<QString, QPdfDocument*> m_pdfs;
-    QHash<QString, DjVuDocument*> m_djvus;
+    QHash<QString, std::shared_ptr<DjVuDocument>> m_djvus;
     QList<int> m_fullCache;
 };
 

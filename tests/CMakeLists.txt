@@ -99,6 +99,7 @@ qt_add_executable(test_djvu_document test_djvu_document.cpp)
 target_include_directories(test_djvu_document PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(test_djvu_document PRIVATE
+    Qt6::Concurrent
     Qt6::Test
     Qt6::Core
     Qt6::Gui
@@ -112,6 +113,57 @@ target_sources(test_djvu_document PRIVATE
     ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.cpp
 )
 add_test(NAME test_djvu_document COMMAND test_djvu_document)
+
+# Exercise the real AppController and its app/runtime dependencies, without the
+# GUI entry point, QML/resources generated for llocr, or a dependency on llocr's
+# build. Resolve relative sources against the declaring target, not tests/.
+qt_add_executable(test_app_import test_app_import.cpp)
+get_target_property(app_import_sources llocr SOURCES)
+get_target_property(app_import_source_dir llocr SOURCE_DIR)
+foreach(source IN LISTS app_import_sources)
+    if(source MATCHES "^[$]<")
+        continue()
+    endif()
+    get_filename_component(source "${source}" ABSOLUTE BASE_DIR "${app_import_source_dir}")
+    if(source MATCHES "^${app_import_source_dir}/(app|core|models|parsers|runtime)/.*[.](cpp|h)$"
+            AND NOT source MATCHES "/(I18n|OcrImageProvider|UiController)[.](cpp|h)$")
+        target_sources(test_app_import PRIVATE "${source}")
+    endif()
+endforeach()
+
+target_include_directories(test_app_import PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(test_app_import PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Network
+    Qt6::Concurrent
+    Qt6::Qml
+    Qt6::Pdf
+    Qt6::WebEngineCore
+    DjVuLibre::DjVuLibre
+    ZLIB::ZLIB
+)
+qt_add_resources(test_app_import "app_import_profiles"
+    PREFIX "/profiles"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/profiles/request.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
+)
+if(WIN32)
+    add_custom_command(TARGET test_app_import POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "$<TARGET_FILE:DjVuLibre::DjVuLibre>"
+            "$<TARGET_FILE_DIR:test_app_import>"
+        VERBATIM
+    )
+endif()
+add_test(NAME test_app_import COMMAND test_app_import)
+set_tests_properties(test_app_import PROPERTIES
+    TIMEOUT 90
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+)
 
 qt_add_executable(test_settings_store test_settings_store.cpp)
 

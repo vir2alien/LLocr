@@ -36,6 +36,7 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Open…")
+            enabled: !Controller.busy && !Controller.importing && !Controller.exporting
             onClicked: headerRoot.openFileRequested()
         }
 
@@ -87,7 +88,7 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Export…")
-            enabled: Controller.hasResult && !Controller.exporting
+            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
             onClicked: {
                 if (Controller.pageCount > 1) {
                     headerRoot.exportRequested(true)

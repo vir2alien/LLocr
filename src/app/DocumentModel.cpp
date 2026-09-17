@@ -4,7 +4,10 @@
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QImageReader>
+#include <exception>
 #include <memory>
+#include <new>
+#include <utility>
 
 #include <QPdfDocument>
 #include <QPdfDocumentRenderOptions>
@@ -114,38 +117,86 @@ bool DocumentModel::appendFile(const QString& path, QString* error)
     return ok;
 }
 
+DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString& path)
+{
+    PreparedDjVu prepared;
+    try {
+        const QString key = QFileInfo(path).absoluteFilePath();
+        auto document = std::make_shared<DjVuDocument>();
+        QList<DocumentPage> pages;
+        if (document->open(key, &prepared.error)) {
+            const int count = document->pageCount();
+            pages.reserve(count);
+            for (int i = 0; i < count; ++i) {
+                DocumentPage page;
+                page.sourcePath = key;
+                page.sourceType = DocumentSource::DjVu;
+                page.sourcePageIndex = i;
+                QString pageError;
+                page.pixelSize = document->pageSize(i, &pageError);
+                if (!page.pixelSize.isEmpty())
+                    page.thumb = document->render(i, fitWithin(page.pixelSize,
+                                                 QSize(kThumbMaxWidth, kThumbMaxHeight)),
+                                                 &pageError);
+                if (page.thumb.isNull()) {
+                    if (pageError.isEmpty())
+                        pageError = QCoreApplication::translate("DocumentModel",
+                            "Failed to read DjVu %1, page %2.").arg(path).arg(i + 1);
+                    page.sourceError = pageError;
+                    prepared.warnings.append(pageError);
+                    if (page.pixelSize.isEmpty())
+                        page.pixelSize = QSize(800, 1000);
+                    page.thumb = QImage(fitWithin(page.pixelSize,
+                                        QSize(kThumbMaxWidth, kThumbMaxHeight)), QImage::Format_RGB32);
+                    if (page.thumb.isNull())
+                        throw std::bad_alloc();
+                    page.thumb.fill(Qt::white);
+                }
+                pages.append(page);
+            }
+            if (count > 0 && pages.size() == count && prepared.error.isEmpty()) {
+                prepared.pages = std::move(pages);
+                prepared.document = std::move(document);
+                return prepared;
+            }
+        }
+        if (prepared.error.isEmpty())
+            prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1.")
+                                 .arg(path);
+    } catch (const std::bad_alloc&) {
+        // A literal avoids allocating again while reporting an allocation failure.
+        prepared.error = QStringLiteral("Not enough memory to prepare DjVu document.");
+    } catch (const std::exception& exception) {
+        prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1: %2")
+                             .arg(path, QString::fromUtf8(exception.what()));
+    } catch (...) {
+        prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1.")
+                             .arg(path);
+    }
+    // Only the success path publishes pages or a decoder, even after a late failure.
+    return prepared;
+}
+
+void DocumentModel::appendPreparedDjVu(const PreparedDjVu& prepared)
+{
+    if (!prepared.error.isEmpty() || prepared.pages.isEmpty() || !prepared.document)
+        return;
+    const QString& key = prepared.pages.first().sourcePath;
+    m_pages.reserve(m_pages.size() + prepared.pages.size());
+    // Existing pages must keep their decoder, even if the same source is imported again.
+    if (!m_djvus.contains(key))
+        m_djvus.insert(key, prepared.document);
+    m_pages.append(prepared.pages);
+}
+
 bool DocumentModel::appendDjVu(const QString& path, QString* error)
 {
+    const PreparedDjVu prepared = prepareDjVu(path);
     if (error)
-        error->clear();
-    const QString key = QFileInfo(path).absoluteFilePath();
-    std::unique_ptr<DjVuDocument> pending;
-    DjVuDocument* document = m_djvus.value(key, nullptr);
-    if (!document) {
-        pending = std::make_unique<DjVuDocument>();
-        if (!pending->open(key, error))
-            return false;
-        document = pending.get();
-    }
-    QList<DocumentPage> pages;
-    for (int i = 0; i < document->pageCount(); ++i) {
-        DocumentPage page;
-        page.sourcePath = key;
-        page.sourceType = DocumentSource::DjVu;
-        page.sourcePageIndex = i;
-        page.pixelSize = document->pageSize(i, error);
-        if (page.pixelSize.isEmpty())
-            return false;
-        page.thumb = document->render(i, fitWithin(page.pixelSize,
-                                     QSize(kThumbMaxWidth, kThumbMaxHeight)), error);
-        if (page.thumb.isNull())
-            return false;
-        pages.append(page);
-    }
-    // Do not expose partial documents when a later page fails to decode.
-    if (pending)
-        m_djvus.insert(key, pending.release());
-    m_pages.append(pages);
+        *error = prepared.error;
+    if (!prepared.error.isEmpty())
+        return false;
+    appendPreparedDjVu(prepared);
     return true;
 }
 
@@ -173,7 +224,6 @@ void DocumentModel::clear()
     m_fullCache.clear();
     qDeleteAll(m_pdfs);
     m_pdfs.clear();
-    qDeleteAll(m_djvus);
     m_djvus.clear();
 }
 
@@ -209,8 +259,18 @@ bool DocumentModel::decodeSource(DocumentPage& page, QString *error)
 
 QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
 {
+    if (!page.sourceError.isEmpty()) {
+        QImage placeholder(page.pixelSize, QImage::Format_RGB32);
+        if (placeholder.isNull()) {
+            if (error)
+                *error = page.sourceError;
+            return {};
+        }
+        placeholder.fill(Qt::white);
+        return placeholder;
+    }
     if (page.sourceType == DocumentSource::DjVu) {
-        DjVuDocument* document = m_djvus.value(page.sourcePath, nullptr);
+        const auto document = m_djvus.value(page.sourcePath);
         if (!document) {
             if (error)
                 *error = QCoreApplication::translate("DocumentModel", "DjVu document is not open: %1")

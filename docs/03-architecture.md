@@ -216,7 +216,11 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
   and supports append/remove/reorder. `DocumentSource` and `sourcePageIndex`
   identify the source independently of the current display order. DjVu errors
   propagate through `appendFile()` / `fullImage()`; the OCR pipeline remains
-  format-independent.
+  format-independent. DjVu import is split into static `prepareDjVu()` on a
+  worker and `appendPreparedDjVu()` on the GUI thread under the document
+  lock. `PreparedDjVu` owns pages and a shared non-QObject decoder, so its
+  lifetime is independent of the controller. `AppController.importing` is
+  separate from recognition `busy`; queued file processing preserves order.
 - **PageListModel** — feeds the left thumbnail strip: page index, recognized
   flag, edited flag, duplicate flag, current-page highlight. Deliberately
   carries **no** boxes.

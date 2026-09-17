@@ -30,7 +30,8 @@ public:
                                    RuntimeController &runtime,
                                    RequestProfileStore &requestProfiles,
                                    ImageProvider imageProvider,
-                                   QObject *parent = nullptr);
+                                   QObject *parent = nullptr,
+                                   std::function<bool(int)> skipPage = {});
 
     bool busy() const { return m_busy; }
     void startCurrent(int index, int totalPages);
@@ -60,6 +61,8 @@ private:
     RuntimeController &m_runtime;
     RequestProfileStore &m_requestProfiles;
     ImageProvider m_imageProvider;
+    std::function<bool(int)> m_skipPage;
+    int m_skippedPages = 0;
 
     ResolvedConnection m_connection;
     bool m_connectionReady = false;

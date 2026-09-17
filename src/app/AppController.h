@@ -6,6 +6,7 @@
 #include <QReadWriteLock>
 #include <QUrl>
 #include <QVariant>
+#include <memory>
 
 #include "app/BoxListModel.h"
 #include "app/DocumentModel.h"
@@ -27,8 +28,10 @@ class AppController : public QObject
     Q_OBJECT
 
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+    Q_PROPERTY(bool importing READ importing NOTIFY importingChanged)
     Q_PROPERTY(QString resultText READ resultText NOTIFY resultChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusChanged)
+    Q_PROPERTY(QString currentPageWarning READ currentPageWarning NOTIFY pageChanged)
     Q_PROPERTY(bool hasImage READ hasImage NOTIFY imageChanged)
     Q_PROPERTY(int pageCount READ pageCount NOTIFY documentChanged)
     Q_PROPERTY(int currentPage READ currentPage WRITE setCurrentPage NOTIFY pageChanged)
@@ -59,8 +62,10 @@ public:
 
     bool busy() const { return m_recognition.busy(); }
     bool exporting() const { return m_exporting; }
+    bool importing() const { return m_importing; }
     QString resultText() const;
     QString statusMessage() const { return m_statusMessage; }
+    QString currentPageWarning() const;
     bool hasImage() const;
     bool hasResult() const;
     int pageCount() const { return m_document.pageCount(); }
@@ -92,6 +97,7 @@ public:
 
 signals:
     void busyChanged();
+    void importingChanged();
     void exportingChanged();
     void resultChanged();
     void statusChanged();
@@ -127,6 +133,11 @@ private:
         ExportRange = 2,
     };
 
+    struct ImportState;
+    void importNextFile(const std::shared_ptr<ImportState>& state);
+    void recordImportedFile(const std::shared_ptr<ImportState>& state,
+                            int pagesBefore, const QString& error);
+    void finishImport(const ImportState& state);
     void setStatus(const QString& message);
     void notifyDocumentChanged();
     void notifyPageChanged();
@@ -153,6 +164,7 @@ private:
     Exporter m_exporter;
     ExportRenderer m_exportRenderer;
     bool m_exporting = false;
+    bool m_importing = false;
     int m_currentPage = 0;
     QString m_statusMessage;
     int m_imageRevision = 0;

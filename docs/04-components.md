@@ -98,15 +98,28 @@ Three options handled by `UiController` (a QML singleton), selected in
   process or a Qt image plugin. QML does not access the library directly.
   CMake links `DjVuLibre::DjVuLibre` into every target compiling
   `DocumentModel.cpp`: `llocr`, `test_document_model`, and
-  `test_djvu_document` (the latter compiles both document sources).
+  `test_djvu_document`, plus the `test_app_import` controller integration test.
   See ADR 65 and [dependency setup](06-dev-setup.md#djvulibre-required).
   `.djvu` and `.djv` files share the image/PDF opening and drag-and-drop path.
   Native scan resolution is retained up to 40 megapixels and 16384 pixels per
   side. Orientation is preserved; full-size images are rendered lazily through
   the existing four-image cache. Decoder waits are bounded to 30 seconds per
-  operation. Import generates thumbnails synchronously, like PDF, so large
-  documents can still delay the UI. A failed page rejects the whole DjVu import
-  instead of silently adding a blank page.
+  operation. DjVu import prepares metadata and thumbnails on a `QtConcurrent`
+  worker with an independent decoder; a GUI-owned `QFutureWatcher` commits
+  the prepared pages under a short `m_documentLock` write lock. No worker
+  accesses the controller or live document. Files are processed sequentially
+  to preserve mixed-selection order. `importing` drives the footer spinner
+  and a filename/file-count status, and prevents overlapping import, OCR,
+  export, page removal and reordering. Unreadable pages become white replacements
+  preserving source indices; metadata failures use an 800×1000 fallback size.
+  `sourceError` retains the decoder error; import reports a warning count and
+  the first error, and selecting a replacement shows its warning in the footer.
+  OCR skips replacements; they remain unrecognized and are not included in
+  recognized-text export. Failure to open the document itself still rejects
+  the file. Closing the controller disconnects delivery
+  without waiting on the worker (the thread pool can still wait at app exit).
+  Import cancellation and per-page progress are not implemented. PDF/raster
+  loading and lazy full-size rendering retain their existing synchronous paths.
 - Multi-page documents → page-by-page processing, with a **"Recognize all"**
   batch run and a page-thumbnail strip. ✅
 - Pages can be **deleted** (`removePage`) and **drag-reordered** (`movePage`);

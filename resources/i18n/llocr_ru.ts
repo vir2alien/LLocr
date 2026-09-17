@@ -46,6 +46,18 @@
 <context>
     <name>DocumentModel</name>
     <message>
+        <source>Failed to read DjVu %1, page %2.</source>
+        <translation>Не удалось прочитать DjVu %1, страницу %2.</translation>
+    </message>
+    <message>
+        <source>Failed to open DjVu %1.</source>
+        <translation>Не удалось открыть DjVu %1.</translation>
+    </message>
+    <message>
+        <source>Failed to open DjVu %1: %2</source>
+        <translation>Не удалось открыть DjVu %1: %2</translation>
+    </message>
+    <message>
         <source>Failed to open %1.</source>
         <translation>Не удалось открыть %1.</translation>
     </message>
@@ -167,6 +179,10 @@
 </context>
 <context>
     <name>Footer</name>
+    <message>
+        <source>Blank replacement — this page could not be decoded. %1</source>
+        <translation>Пустая страница вместо повреждённой — не удалось декодировать оригинал. %1</translation>
+    </message>
     <message>
         <location filename="../qml/MainWindow/Footer.qml" line="141"/>
         <source>Launch settings changed — restart the server to apply them.</source>
@@ -2330,6 +2346,14 @@
 <context>
     <name>llocr::AppController</name>
     <message>
+        <source>Warning: %1 page(s) replaced with blank pages. %2</source>
+        <translation>Внимание: %1 стр. заменено пустыми страницами. %2</translation>
+    </message>
+    <message>
+        <source>Importing %1 (%2/%3)…</source>
+        <translation>Импорт %1 (%2/%3)…</translation>
+    </message>
+    <message>
         <location filename="../../src/app/AppController.cpp" line="234"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
@@ -2614,6 +2638,14 @@
 </context>
 <context>
     <name>llocr::RecognitionController</name>
+    <message>
+        <source>Page %1 is a blank replacement for an unreadable page; recognition skipped.</source>
+        <translation>Страница %1 — пустая замена нечитаемой страницы; распознавание пропущено.</translation>
+    </message>
+    <message>
+        <source>Done. Skipped %1 unreadable page(s).</source>
+        <translation>Готово. Пропущено нечитаемых страниц: %1.</translation>
+    </message>
     <message>
         <location filename="../../src/app/RecognitionController.cpp" line="79"/>
         <source>Stopped before recognition started.</source>

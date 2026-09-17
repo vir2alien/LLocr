@@ -153,6 +153,18 @@ Item {
             }
         }//Rectangle
 
+        LLOLabel {
+            Layout.fillWidth: true
+            Layout.leftMargin: Theme.spacing * 2
+            Layout.rightMargin: Theme.spacing * 2
+            visible: Controller.currentPageWarning.length > 0
+            text: qsTr("Blank replacement — this page could not be decoded. %1")
+                       .arg(Controller.currentPageWarning)
+            textFormat: Text.PlainText
+            wrapMode: Text.Wrap
+            color: Theme.error
+        }
+
         Rectangle {//Toolbar row
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.controlHeight + 8
@@ -174,13 +186,15 @@ Item {
 
                 LLOLabel {
                     text: Controller.statusMessage
+                    textFormat: Text.PlainText
                     color: Theme.textMuted
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
                     Layout.fillWidth: true
                 }
                 BusyIndicator {
-                    running: Controller.busy || Runtime.busyState === Runtime.StartingRuntime
+                    running: Controller.busy || Controller.importing
+                                                 || Runtime.busyState === Runtime.StartingRuntime
                     visible: running
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28

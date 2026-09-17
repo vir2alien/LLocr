@@ -7,6 +7,8 @@
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QFileInfo>
+#include <QFutureWatcher>
+#include <QTimer>
 #include <QHash>
 #include <QMarginsF>
 #include <QPageLayout>
@@ -32,7 +34,11 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
     , m_runtime(runtime)
     , m_recognition(
           settings, runtime, requestProfiles,
-          [this](int index, QString &error) { return pageImage(index, &error); })
+          [this](int index, QString &error) { return pageImage(index, &error); },
+                    nullptr, [this](int index) {
+                        QReadLocker locker(&m_documentLock);
+                        return m_document.isValidIndex(index) && !m_document.page(index).sourceError.isEmpty();
+                    })
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
@@ -116,7 +122,7 @@ bool AppController::hasResult() const
 
 bool AppController::canRecognize() const
 {
-    if (m_document.isEmpty() || m_recognition.busy())
+    if (m_document.isEmpty() || m_recognition.busy() || m_importing)
         return false;
     return m_runtime.canRecognize(true);
 }
@@ -124,6 +130,13 @@ bool AppController::canRecognize() const
 QString AppController::effectiveText(int index) const
 {
     return m_editStore.effectiveText(m_document, index);
+}
+
+QString AppController::currentPageWarning() const
+{
+    QReadLocker locker(&m_documentLock);
+    return m_document.isValidIndex(m_currentPage) ? m_document.page(m_currentPage).sourceError
+                                                 : QString();
 }
 
 QString AppController::resultText() const
@@ -209,9 +222,19 @@ void AppController::updateBoxesForCurrent()
         m_boxModel.setBoxes({});
 }
 
+struct AppController::ImportState {
+    QStringList paths;
+    int next = 0;
+    int addedFiles = 0;
+    int addedPages = 0;
+    int skipped = 0;
+    QString firstError;
+    QStringList warnings;
+};
+
 void AppController::openFiles(const QVariantList& fileUrls)
 {
-    if (m_recognition.busy())
+    if (m_recognition.busy() || m_importing || m_exporting)
         return;
 
     QStringList paths;
@@ -227,59 +250,98 @@ void AppController::openFiles(const QVariantList& fileUrls)
         return;
     }
 
-    const bool wasEmpty = m_document.isEmpty();
-    int addedFiles = 0;
-    int addedPages = 0;
-    int skipped = 0;
-    QString firstError;
+    auto state = std::make_shared<ImportState>();
+    state->paths = std::move(paths);
+    m_importing = true;
+    emit importingChanged();
+    emit configChanged();
+    importNextFile(state);
+}
 
-    for (const QString& path : paths) {
-        QString fileError;
-        const int pagesBefore = m_document.pageCount();
-        const bool ok = [&]() {
-            QWriteLocker locker(&m_documentLock);
-            return m_document.appendFile(path, &fileError);
-        }();
-        if (ok) {
-            ++addedFiles;
-            addedPages += m_document.pageCount() - pagesBefore;
-        } else {
-            ++skipped;
-            if (firstError.isEmpty())
-                firstError = fileError;
-        }
-    }
-
-    if (addedPages == 0) {
-        if (!firstError.isEmpty())
-            setStatus(firstError);
-        else if (wasEmpty)
-            setStatus(tr("No supported files selected."));
-        else
-            setStatus(tr("None of the selected files could be added."));
+void AppController::importNextFile(const std::shared_ptr<ImportState>& state)
+{
+    if (state->next >= state->paths.size()) {
+        finishImport(*state);
         return;
     }
-
-    if (wasEmpty) {
-        m_currentPage = 0;
+    const QString path = state->paths.at(state->next++);
+    setStatus(tr("Importing %1 (%2/%3)…")
+                  .arg(QFileInfo(path).fileName()).arg(state->next).arg(state->paths.size()));
+    const int pagesBefore = m_document.pageCount();
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    if (suffix == QStringLiteral("djvu") || suffix == QStringLiteral("djv")) {
+        auto *watcher = new QFutureWatcher<DocumentModel::PreparedDjVu>(this);
+        connect(watcher, &QFutureWatcher<DocumentModel::PreparedDjVu>::finished, this,
+                [this, watcher, state, pagesBefore]() {
+            const auto prepared = watcher->result();
+            watcher->deleteLater();
+            {
+                QWriteLocker locker(&m_documentLock);
+                m_document.appendPreparedDjVu(prepared);
+            }
+            state->warnings.append(prepared.warnings);
+            recordImportedFile(state, pagesBefore, prepared.error);
+        });
+        // Neither the controller nor its live document/lock is accessed by the worker.
+        watcher->setFuture(QtConcurrent::run([path]() {
+            return DocumentModel::prepareDjVu(path);
+        }));
+        return;
     }
-    m_pageModel.appendPages(addedPages);
-    m_pageModel.setCurrent(m_currentPage);
-    updateBoxesForCurrent();
+    QString error;
+    {
+        QWriteLocker locker(&m_documentLock);
+        m_document.appendFile(path, &error);
+    }
+    recordImportedFile(state, pagesBefore, error);
+}
 
-    if (skipped > 0) {
-        setStatus(tr("Added %1 file(s), %2 page(s); %3 file(s) skipped.")
-                      .arg(addedFiles).arg(addedPages).arg(skipped));
+void AppController::recordImportedFile(const std::shared_ptr<ImportState>& state,
+                                       int pagesBefore, const QString& error)
+{
+    const int added = m_document.pageCount() - pagesBefore;
+    if (added > 0) {
+        ++state->addedFiles;
+        state->addedPages += added;
+        if (pagesBefore == 0)
+            m_currentPage = 0;
+        m_pageModel.appendPages(added);
+        m_pageModel.setCurrent(m_currentPage);
+        updateBoxesForCurrent();
+        notifyDocumentChanged();
     } else {
-        setStatus(tr("Added %1 file(s), %2 page(s).").arg(addedFiles).arg(addedPages));
+        ++state->skipped;
+        if (state->firstError.isEmpty())
+            state->firstError = error;
     }
+    // Yield between files, avoid recursive synchronous imports for mixed selections.
+    QTimer::singleShot(0, this, [this, state]() { importNextFile(state); });
+}
 
-    notifyDocumentChanged();
+void AppController::finishImport(const ImportState& state)
+{
+    if (state.addedPages == 0) {
+        setStatus(state.firstError.isEmpty() ? tr("None of the selected files could be added.")
+                                            : state.firstError);
+    } else if (state.skipped > 0) {
+        setStatus(tr("Added %1 file(s), %2 page(s); %3 file(s) skipped.")
+                      .arg(state.addedFiles).arg(state.addedPages).arg(state.skipped));
+    } else {
+        setStatus(tr("Added %1 file(s), %2 page(s).")
+                      .arg(state.addedFiles).arg(state.addedPages));
+    }
+    if (!state.warnings.isEmpty())
+        setStatus(m_statusMessage + QStringLiteral("\n")
+                  + tr("Warning: %1 page(s) replaced with blank pages. %2")
+                        .arg(state.warnings.size()).arg(state.warnings.first()));
+    m_importing = false;
+    emit importingChanged();
+    emit configChanged();
 }
 
 bool AppController::removePage(int index)
 {
-    if (m_recognition.busy())
+    if (m_recognition.busy() || m_importing)
         return false;
     if (!m_document.isValidIndex(index))
         return false;
@@ -321,7 +383,7 @@ bool AppController::removePage(int index)
 
 bool AppController::movePage(int from, int to)
 {
-    if (m_recognition.busy())
+    if (m_recognition.busy() || m_importing)
         return false;
     if (!m_document.isValidIndex(from) || !m_document.isValidIndex(to))
         return false;
@@ -349,7 +411,7 @@ bool AppController::movePage(int from, int to)
 
 void AppController::recognizeCurrent()
 {
-    if (m_recognition.busy() || m_document.isEmpty())
+    if (m_recognition.busy() || m_importing || m_document.isEmpty())
         return;
     if (!canRecognize()) {
         setStatus(tr("Set a model name in Settings first."));
@@ -361,7 +423,7 @@ void AppController::recognizeCurrent()
 
 void AppController::recognizeAll()
 {
-    if (m_recognition.busy() || m_document.isEmpty())
+    if (m_recognition.busy() || m_importing || m_document.isEmpty())
         return;
     if (!canRecognize()) {
         setStatus(tr("Set a model name in Settings first."));
@@ -525,6 +587,8 @@ QList<Exporter::Page> AppController::collectPages(int scope, int fromPage, int t
 
 bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, int toPage)
 {
+    if (m_importing)
+        return false;
     const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
     if (path.isEmpty()) {
         setStatus(tr("No output path."));

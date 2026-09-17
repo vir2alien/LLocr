@@ -2,9 +2,14 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFutureWatcher>
 #include <QPainter>
 #include <QPdfWriter>
+#include <QSemaphore>
 #include <QTemporaryDir>
+#include <QThread>
+#include <QTimer>
+#include <QtConcurrent/QtConcurrentRun>
 #include <limits>
 
 #include "app/DjVuDocument.h"
@@ -33,6 +38,14 @@ void compareQuadrants(const QImage& image, const QList<QColor>& expected)
                  qPrintable(QStringLiteral("Quadrant %1: expected %2, got %3")
                                 .arg(i).arg(color.name(), actual.name())));
     }
+}
+
+void compareWhite(const QImage& image)
+{
+    QVERIFY(!image.isNull());
+    QImage expected(image.size(), QImage::Format_RGB32);
+    expected.fill(Qt::white);
+    QCOMPARE(image.convertToFormat(QImage::Format_RGB32), expected);
 }
 
 QList<QColor> colors(int page)
@@ -247,6 +260,7 @@ private slots:
         DocumentPage defaults;
         QCOMPARE(defaults.sourceType, DocumentSource::Image);
         QCOMPARE(defaults.sourcePageIndex, -1);
+        QVERIFY(defaults.sourceError.isEmpty());
         DocumentModel model;
         const QString path = fixture("multipage.djvu");
         QString error;
@@ -259,6 +273,7 @@ private slots:
             QCOMPARE(page.sourcePageIndex, i);
             QCOMPARE(page.sourcePath, path);
             QCOMPARE(page.pixelSize, nativeSize(i));
+            QVERIFY(page.sourceError.isEmpty());
             QVERIFY(page.image.isNull());
             QVERIFY(!page.recognized);
             QVERIFY(!page.thumb.isNull());
@@ -322,16 +337,141 @@ private slots:
         compareQuadrants(model.fullImage(0), colors(0));
     }
 
+    void damagedPagesPreserveOrderAndWarnings()
+    {
+        const QString path = fixture("bad-second-page.djvu");
+        DjVuDocument decoder;
+        QVERIFY(decoder.open(path));
+        QString originalError;
+        QVERIFY(decoder.pageSize(1, &originalError).isEmpty());
+        QVERIFY(originalError.contains(path));
+        QVERIFY(originalError.contains(QStringLiteral("page 2")));
+
+        auto prepared = DocumentModel::prepareDjVu(path);
+        QVERIFY2(prepared.error.isEmpty(), qPrintable(prepared.error));
+        QVERIFY(prepared.document);
+        QCOMPARE(prepared.pages.size(), 3);
+        QCOMPARE(prepared.warnings, QStringList{originalError});
+        for (int i = 0; i < 3; ++i) {
+            const auto& page = prepared.pages[i];
+            QCOMPARE(page.sourcePath, path);
+            QCOMPARE(page.sourceType, DocumentSource::DjVu);
+            QCOMPARE(page.sourcePageIndex, i);
+            QVERIFY(page.image.isNull());
+            QVERIFY(!page.recognized);
+            QCOMPARE(page.sourceError, i == 1 ? originalError : QString());
+            QCOMPARE(page.pixelSize, i == 1 ? QSize(800, 1000) : nativeSize(i));
+            QVERIFY(page.thumb.width() <= 220);
+            QVERIFY(page.thumb.height() <= 300);
+            if (i == 1)
+                compareWhite(page.thumb);
+            else
+                compareQuadrants(page.thumb, colors(i));
+        }
+
+        DocumentModel model;
+        model.appendPreparedDjVu(prepared);
+        QCOMPARE(model.pageCount(), 3);
+        QString error = QStringLiteral("stale error");
+        const QImage placeholder = model.fullImage(1, &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(placeholder.size(), QSize(800, 1000));
+        compareWhite(placeholder);
+        QCOMPARE(model.fullImage(1, &error).cacheKey(), placeholder.cacheKey());
+        QVERIFY(error.isEmpty());
+        compareQuadrants(model.fullImage(0), colors(0));
+        compareQuadrants(model.fullImage(2), colors(2));
+
+        QVERIFY(model.appendDjVu(fixture("multipage.djvu")));
+        for (int row : {0, 2, 3, 4, 5})
+            QVERIFY(!model.fullImage(row).isNull());
+        QVERIFY(model.page(1).image.isNull()); // The placeholder was evicted too.
+        QCOMPARE(model.page(1).sourceError, originalError);
+        compareWhite(model.thumbnail(1));
+
+        // Make decoder retries observable after eviction, without timing checks.
+        QVERIFY(prepared.document->open(fixture("multipage.djvu")));
+        const QImage reloaded = model.fullImage(1, &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(reloaded.size(), QSize(800, 1000));
+        compareWhite(reloaded);
+        QCOMPARE(model.page(1).sourceError, originalError);
+        QVERIFY(model.movePage(1, 0));
+        QCOMPARE(model.page(0).sourcePageIndex, 1);
+        QCOMPARE(model.page(0).sourceError, originalError);
+        QVERIFY(model.removePage(1)); // Remove the original healthy first page.
+        QCOMPARE(model.page(1).sourcePageIndex, 2);
+        QVERIFY(model.page(1).sourceError.isEmpty());
+        QCOMPARE(model.page(0).sourceError, originalError);
+        compareWhite(model.fullImage(0));
+        compareWhite(model.thumbnail(0));
+        QVERIFY(model.removePage(0));
+        for (int i = 0; i < model.pageCount(); ++i)
+            QVERIFY(model.page(i).sourceError.isEmpty());
+
+        for (bool dispatch : {false, true}) {
+            DocumentModel appended;
+            error = QStringLiteral("stale error");
+            QVERIFY(dispatch ? appended.appendFile(path, &error) : appended.appendDjVu(path, &error));
+            QVERIFY(error.isEmpty());
+            QCOMPARE(appended.pageCount(), 3);
+            QCOMPARE(appended.page(1).sourceError, originalError);
+            compareWhite(appended.fullImage(1));
+            compareQuadrants(appended.fullImage(0), colors(0));
+            compareQuadrants(appended.fullImage(2), colors(2));
+        }
+    }
+
+    void renderFailureKeepsValidMetadata()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile source(fixture("wide-info.djvu"));
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        QByteArray bytes = source.readAll();
+        QCOMPARE(bytes.size(), 34);
+        // Keep valid, small INFO geometry but no encoded image chunks.
+        bytes[24] = 0;
+        bytes[25] = 81;
+        bytes[26] = 0;
+        bytes[27] = 57;
+        const QString path = dir.filePath(QStringLiteral("info-only.djvu"));
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write(bytes), bytes.size());
+        file.close();
+
+        DjVuDocument decoder;
+        QString error;
+        QVERIFY2(decoder.open(path, &error), qPrintable(error));
+        QCOMPARE(decoder.pageSize(0, &error), nativeSize(0));
+        QVERIFY(error.isEmpty());
+        QVERIFY(decoder.render(0, nativeSize(0), &error).isNull());
+        QVERIFY(error.contains(path));
+        QVERIFY(error.contains(QStringLiteral("page 1")));
+
+        const auto prepared = DocumentModel::prepareDjVu(path);
+        QVERIFY2(prepared.error.isEmpty(), qPrintable(prepared.error));
+        QVERIFY(prepared.document);
+        QCOMPARE(prepared.pages.size(), 1);
+        QCOMPARE(prepared.warnings, QStringList{error});
+        QCOMPARE(prepared.pages[0].sourceError, error);
+        QCOMPARE(prepared.pages[0].pixelSize, nativeSize(0));
+        compareWhite(prepared.pages[0].thumb);
+        DocumentModel model;
+        model.appendPreparedDjVu(prepared);
+        QVERIFY(prepared.document->open(fixture("quadrants.djvu")));
+        const QImage image = model.fullImage(0, &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(image.size(), nativeSize(0));
+        compareWhite(image);
+        QCOMPARE(model.page(0).sourceError, prepared.warnings.first());
+    }
+
     void modelAppendFailureIsAtomic()
     {
-        const QString broken = fixture("bad-second-page.djvu");
-        // damagedLaterPage proves this fails after decoding a valid first page.
         QString error;
         DocumentModel model;
-        QVERIFY(!model.appendDjVu(broken, &error));
-        QVERIFY(!error.isEmpty());
-        QVERIFY(error.contains(broken));
-        QVERIFY(model.isEmpty());
         QVERIFY(model.appendDjVu(fixture("rotated.djvu")));
         model.page(0).recognized = true;
         const DocumentPage before = model.page(0);
@@ -339,7 +479,12 @@ private slots:
         const qint64 thumbKey = model.thumbnail(0).cacheKey();
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
-        for (const QString& path : {broken, dir.filePath(QStringLiteral("missing.djvu"))}) {
+        const QString malformed = dir.filePath(QStringLiteral("malformed.djvu"));
+        QFile file(malformed);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QVERIFY(file.write("Not a DjVu document") > 0);
+        file.close();
+        for (const QString& path : {malformed, dir.filePath(QStringLiteral("missing.djvu"))}) {
             for (bool dispatch : {false, true}) {
                 error.clear();
                 QVERIFY(!(dispatch ? model.appendFile(path, &error) : model.appendDjVu(path, &error)));
@@ -359,6 +504,171 @@ private slots:
         QVERIFY(error.isEmpty());
         QCOMPARE(model.pageCount(), 4);
         compareQuadrants(model.fullImage(3), colors(2));
+    }
+
+    void prepareAsyncKeepsGuiResponsive()
+    {
+        DocumentModel model;
+        QVERIFY(model.appendDjVu(fixture("rotated.djvu")));
+        model.page(0).recognized = true;
+        const qint64 thumbKey = model.thumbnail(0).cacheKey();
+        const qint64 imageKey = model.fullImage(0).cacheKey();
+        const QString path = fixture("multipage.djvu");
+        struct Gate {
+            QSemaphore started;
+            QSemaphore prepare;
+            QSemaphore decoded;
+            QSemaphore finish;
+        };
+        const auto gate = std::make_shared<Gate>();
+        DocumentModel::PreparedDjVu prepared;
+        {
+            // Neither the worker nor its result depends on this QObject owner.
+            QObject owner;
+            QFutureWatcher<DocumentModel::PreparedDjVu> watcher(&owner);
+            QThread* const guiThread = QThread::currentThread();
+            bool delivered = false;
+            bool deliveredOnGui = false;
+            connect(&watcher, &QFutureWatcher<DocumentModel::PreparedDjVu>::finished,
+                    &owner, [&] {
+                deliveredOnGui = QThread::currentThread() == guiThread;
+                prepared = watcher.result();
+                delivered = true;
+            });
+            int beforeDecode = 0;
+            int afterDecode = 0;
+            QTimer heartbeat;
+            connect(&heartbeat, &QTimer::timeout, &owner, [&] {
+                if (gate->started.available() && beforeDecode < 3) {
+                    if (++beforeDecode == 3)
+                        gate->prepare.release();
+                }
+                if (gate->decoded.available() && afterDecode < 3) {
+                    if (++afterDecode == 3)
+                        gate->finish.release();
+                }
+            });
+            heartbeat.start(1);
+            watcher.setFuture(QtConcurrent::run([path, gate, guiThread] {
+                gate->started.release();
+                if (QThread::currentThread() == guiThread || !gate->prepare.tryAcquire(1, 5000)) {
+                    DocumentModel::PreparedDjVu failed;
+                    failed.error = QStringLiteral("Worker gate timed out");
+                    return failed;
+                }
+                auto result = DocumentModel::prepareDjVu(path);
+                // Keep the job outstanding until the GUI has also ticked after decoding.
+                gate->decoded.release();
+                if (!gate->finish.tryAcquire(1, 5000)) {
+                    DocumentModel::PreparedDjVu failed;
+                    failed.error = QStringLiteral("GUI heartbeat timed out");
+                    return failed;
+                }
+                return result;
+            }));
+            QTRY_VERIFY_WITH_TIMEOUT(delivered, 15000);
+            QVERIFY(deliveredOnGui);
+            QCOMPARE(beforeDecode, 3);
+            QCOMPARE(afterDecode, 3);
+            QVERIFY2(prepared.error.isEmpty(), qPrintable(prepared.error));
+        }
+        // Watcher, future and owner are gone; preparation has not mutated the model.
+        QCOMPARE(model.pageCount(), 1);
+        QVERIFY(model.page(0).recognized);
+        QCOMPARE(model.thumbnail(0).cacheKey(), thumbKey);
+        QCOMPARE(model.fullImage(0).cacheKey(), imageKey);
+        QVERIFY(prepared.document);
+        QVERIFY(prepared.warnings.isEmpty());
+        QCOMPARE(prepared.pages.size(), 3);
+        for (int i = 0; i < 3; ++i) {
+            const auto& page = prepared.pages[i];
+            QCOMPARE(page.sourcePath, path);
+            QCOMPARE(page.sourceType, DocumentSource::DjVu);
+            QCOMPARE(page.sourcePageIndex, i);
+            QCOMPARE(page.pixelSize, nativeSize(i));
+            QVERIFY(page.sourceError.isEmpty());
+            QVERIFY(page.image.isNull());
+            QVERIFY(!page.recognized);
+            QVERIFY(page.thumb.width() <= 220);
+            QVERIFY(page.thumb.height() <= 300);
+            compareQuadrants(page.thumb, colors(i));
+        }
+        model.appendPreparedDjVu(prepared);
+        prepared = {};
+        QCOMPARE(model.pageCount(), 4);
+        for (int i = 0; i < 3; ++i)
+            compareQuadrants(model.fullImage(i + 1), colors(i));
+    }
+
+    void preparedDecoderLifetimeAndRepeat()
+    {
+        const QString path = fixture("multipage.djvu");
+        auto prepared = DocumentModel::prepareDjVu(path);
+        QVERIFY2(prepared.error.isEmpty(), qPrintable(prepared.error));
+        std::weak_ptr<DjVuDocument> original = prepared.document;
+        {
+            DocumentModel discarded;
+            discarded.appendPreparedDjVu(prepared);
+            discarded.clear();
+            QVERIFY(!original.expired());
+            discarded.appendPreparedDjVu(prepared);
+        }
+        // A prepared value also outlives a model that previously committed it.
+        compareQuadrants(prepared.document->render(1, nativeSize(1)), colors(1));
+        DocumentModel model;
+        model.appendPreparedDjVu(prepared);
+        prepared = {};
+        QVERIFY(!original.expired());
+        {
+            auto repeated = DocumentModel::prepareDjVu(path);
+            QVERIFY2(repeated.error.isEmpty(), qPrintable(repeated.error));
+            QVERIFY(original.lock() != repeated.document);
+            model.appendPreparedDjVu(repeated);
+            QVERIFY(!original.expired()); // A duplicate must not replace the old decoder.
+        }
+        QVERIFY(model.appendDjVu(path)); // Synchronous API shares the same commit path.
+        QVERIFY(!original.expired());
+        QCOMPARE(model.pageCount(), 9);
+        for (int i = 0; i < 9; ++i)
+            compareQuadrants(model.fullImage(i), colors(i % 3));
+        model.clear();
+        QVERIFY(original.expired());
+    }
+
+    void preparedErrorsAreAtomic()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString malformed = dir.filePath(QStringLiteral("malformed.djvu"));
+        QFile file(malformed);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QVERIFY(file.write("Not a DjVu document") > 0);
+        file.close();
+        const QString empty = dir.filePath(QStringLiteral("empty.djvu"));
+        QFile emptyFile(empty);
+        QVERIFY(emptyFile.open(QIODevice::WriteOnly));
+        emptyFile.close();
+        DocumentModel model;
+        QVERIFY(model.appendDjVu(fixture("rotated.djvu")));
+        model.page(0).recognized = true;
+        const qint64 thumbKey = model.thumbnail(0).cacheKey();
+        const qint64 imageKey = model.fullImage(0).cacheKey();
+        for (const QString& path : {malformed, empty,
+                                   dir.filePath(QStringLiteral("missing.djvu")), dir.path()}) {
+            const auto prepared = DocumentModel::prepareDjVu(path);
+            QVERIFY(!prepared.error.isEmpty());
+            QVERIFY(prepared.error.contains(path));
+            QVERIFY(prepared.pages.isEmpty());
+            QVERIFY(prepared.warnings.isEmpty());
+            QVERIFY(!prepared.document);
+            model.appendPreparedDjVu(prepared);
+            QCOMPARE(model.pageCount(), 1);
+            QVERIFY(model.page(0).recognized);
+            QCOMPARE(model.thumbnail(0).cacheKey(), thumbKey);
+            QCOMPARE(model.fullImage(0).cacheKey(), imageKey);
+        }
+        model.appendPreparedDjVu({});
+        QCOMPARE(model.pageCount(), 1);
     }
 
     void fileDispatch_data()
@@ -407,7 +717,10 @@ private slots:
         QString error;
         QVERIFY2(model.appendFile(raster, &error), qPrintable(error));
         QVERIFY2(model.appendFile(pdf, &error), qPrintable(error));
-        QVERIFY2(model.appendFile(fixture("multipage.djvu"), &error), qPrintable(error));
+        const auto prepared = DocumentModel::prepareDjVu(fixture("multipage.djvu"));
+        QVERIFY2(prepared.error.isEmpty(), qPrintable(prepared.error));
+        QCOMPARE(model.pageCount(), 3);
+        model.appendPreparedDjVu(prepared);
         QCOMPARE(model.pageCount(), 6);
         QCOMPARE(model.page(0).sourceType, DocumentSource::Image);
         QCOMPARE(model.page(0).sourcePageIndex, -1);
@@ -435,6 +748,12 @@ private slots:
         compareQuadrants(model.fullImage(2), {Qt::cyan, Qt::cyan, Qt::cyan, Qt::cyan});
         compareQuadrants(model.fullImage(3), colors(0));
         compareQuadrants(model.fullImage(4), colors(2));
+        model.appendPreparedDjVu(prepared);
+        QCOMPARE(model.pageCount(), 8);
+        for (int i = 0; i < 3; ++i)
+            compareQuadrants(model.fullImage(i + 5), colors(i));
+        QCOMPARE(model.fullImage(1), source);
+        compareQuadrants(model.fullImage(2), {Qt::cyan, Qt::cyan, Qt::cyan, Qt::cyan});
     }
 };
 

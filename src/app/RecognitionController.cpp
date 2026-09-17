@@ -14,12 +14,14 @@ RecognitionController::RecognitionController(SettingsStore &settings,
                                              RuntimeController &runtime,
                                              RequestProfileStore &requestProfiles,
                                              ImageProvider imageProvider,
-                                             QObject *parent)
+                                             QObject *parent,
+                                             std::function<bool(int)> skipPage)
     : QObject(parent)
     , m_settings(settings)
     , m_runtime(runtime)
     , m_requestProfiles(requestProfiles)
     , m_imageProvider(imageProvider)
+    , m_skipPage(std::move(skipPage))
 {
     connect(&m_watcher, &QFutureWatcher<OcrResult>::finished, this,
             &RecognitionController::onRecognitionFinished);
@@ -53,6 +55,7 @@ void RecognitionController::startAll(int totalPages)
 
 void RecognitionController::resolveModel()
 {
+    m_skippedPages = 0;
     const QString recipeId = m_settings.modelRecipeId();
     if (m_model && m_modelId == recipeId)
         return;
@@ -92,6 +95,18 @@ void RecognitionController::ensureConnectionReady()
 
 void RecognitionController::recognizePage(int index)
 {
+    while (index >= 0 && index < m_totalPages && m_skipPage && m_skipPage(index)) {
+        ++m_skippedPages;
+        if (!m_recognizeAll) {
+            emit statusRequested(tr("Page %1 is a blank replacement for an unreadable page; recognition skipped.")
+                                     .arg(index + 1));
+            finishRun();
+            return;
+        }
+        ++index;
+    }
+    if (index == m_totalPages && m_skippedPages > 0)
+        emit statusRequested(tr("Done. Skipped %1 unreadable page(s).").arg(m_skippedPages));
     if (index < 0 || index >= m_totalPages) {
         finishRun();
         return;
@@ -171,7 +186,9 @@ void RecognitionController::onRecognitionFinished()
         }
     }
 
-    emit statusRequested(tr("Done."));
+    emit statusRequested(m_skippedPages > 0
+                             ? tr("Done. Skipped %1 unreadable page(s).").arg(m_skippedPages)
+                             : tr("Done."));
     finishRun();
 }
 
