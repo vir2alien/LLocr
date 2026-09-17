@@ -23,14 +23,6 @@
 #include "app/RequestProfileStore.h"
 #include "models/OcrModelFactory.h"
 
-namespace {
-
-bool isPdfPath(const QString& path)
-{
-    return QFileInfo(path).suffix().toLower() == QStringLiteral("pdf");
-}
-
-}  // namespace
 
 namespace llocr {
 
@@ -239,24 +231,29 @@ void AppController::openFiles(const QVariantList& fileUrls)
     int addedFiles = 0;
     int addedPages = 0;
     int skipped = 0;
+    QString firstError;
 
     for (const QString& path : paths) {
+        QString fileError;
         const int pagesBefore = m_document.pageCount();
         const bool ok = [&]() {
             QWriteLocker locker(&m_documentLock);
-            return isPdfPath(path) ? m_document.appendPdf(path)
-                                   : m_document.appendImage(path);
+            return m_document.appendFile(path, &fileError);
         }();
         if (ok) {
             ++addedFiles;
             addedPages += m_document.pageCount() - pagesBefore;
         } else {
             ++skipped;
+            if (firstError.isEmpty())
+                firstError = fileError;
         }
     }
 
     if (addedPages == 0) {
-        if (wasEmpty)
+        if (!firstError.isEmpty())
+            setStatus(firstError);
+        else if (wasEmpty)
             setStatus(tr("No supported files selected."));
         else
             setStatus(tr("None of the selected files could be added."));

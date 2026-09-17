@@ -14,6 +14,7 @@ the licenses that govern it. Each component's full license text is kept in the
 | KaTeX          | LaTeX rendering in the preview          | MIT         | [`licenses/KaTeX-LICENSE.txt`](licenses/KaTeX-LICENSE.txt) |
 | DOMPurify      | HTML sanitization in the preview        | Apache-2.0 OR MPL-2.0 | [`licenses/DOMPurify-LICENSE.txt`](licenses/DOMPurify-LICENSE.txt) |
 | zlib           | ZIP/gzip decompression + CRC-32 in the runtime installer (`ArchiveExtractor`) | zlib License | [`licenses/zlib-LICENSE.txt`](licenses/zlib-LICENSE.txt) |
+| DjVuLibre      | DjVu document decoding through `ddjvuapi` | GPL-2.0-or-later | [`licenses/DjVuLibre-COPYING`](licenses/DjVuLibre-COPYING) |
 
 ---
 
@@ -106,3 +107,37 @@ the licenses that govern it. Each component's full license text is kept in the
   is used. It is **not** bundled into the LLocr source tree.
 - **Copyright:** Copyright (C) 1995-2026 Jean-loup Gailly and Mark Adler.
 - **License text:** [`licenses/zlib-LICENSE.txt`](licenses/zlib-LICENSE.txt)
+
+---
+
+## DjVuLibre
+
+- **Project:** DjVuLibre (https://djvu.sourceforge.net/),
+  [upstream source](https://github.com/DjVuLibre/djvulibre).
+- **License:** GNU General Public License **version 2 or any later version**
+  (`GPL-2.0-or-later`), not GPL-2.0-only. The public
+  [`libdjvu/ddjvuapi.h`](https://github.com/DjVuLibre/djvulibre/blob/master/libdjvu/ddjvuapi.h)
+  explicitly grants the later-version option. This permits use under GPLv3
+  in the combined LLocr application; LLocr remains GPLv3.
+- **Usage:** Required native decoding dependency of `DjVuDocument`, used by
+  `DocumentModel` for DjVu input. Linked through `DjVuLibre::DjVuLibre`;
+  library source/binaries are not bundled in this repository or downloaded
+  by LLocr's CMake configuration.
+- **Acquisition:** Unix development packages expose `ddjvuapi.pc`; Windows
+  uses a separately supplied MSVC x64 DLL plus its `.lib` import library.
+  No vcpkg port is assumed: the checked `djvulibre` and `libdjvu` port paths
+  returned 404. See [build instructions](docs/06-dev-setup.md#djvulibre-required).
+- **Copyright notices in the public API header:** Copyright (c) 2002 Leon
+  Bottou and Yann Le Cun; Copyright (c) 2001 AT&T; derived from the DjVu
+  Reference Library, Copyright (c) 1999–2001 LizardTech, Inc. Other source
+  files carry additional contributor notices; retain the notices from the
+  exact version distributed.
+- **License text:** [`licenses/DjVuLibre-COPYING`](licenses/DjVuLibre-COPYING),
+  from upstream `COPYING` (GPLv2 text; the later-version grant is in the
+  source headers). LLocr's GPLv3 text is in [`LICENSE`](LICENSE).
+- **Distribution:** Shipping a DLL does not avoid GPL obligations. Include
+  the applicable license/copyright notices and fulfill the corresponding
+  source obligations for the exact distributed library, including patches
+  and build scripts. Also inventory and comply with licenses for any bundled
+  transitive libraries (e.g. JPEG); Qt deployment tools alone do not complete
+  native-library deployment or license compliance.

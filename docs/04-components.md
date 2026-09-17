@@ -89,13 +89,28 @@ Three options handled by `UiController` (a QML singleton), selected in
   boxes (used after a box is removed, to keep `image://ocr/crop/<N>` indices
   consistent).
 
-## 4.5 Image and PDF loading
+## 4.5 Image, PDF and DjVu loading
 - Images: `QImage` (single or multiple via `loadImages` / `appendImage`). ✅
 - PDF: rendered page-by-page via **Qt PDF (`QPdfDocument`)** at ~150 DPI. ✅
+- DjVu dependency: **DjVuLibre** via its public C decoding API (`ddjvuapi`),
+  wrapped by `src/app/DjVuDocument.h/.cpp` and used by `DocumentModel`.
+  The decoder is a **required link-time dependency**, not an external `ddjvu`
+  process or a Qt image plugin. QML does not access the library directly.
+  CMake links `DjVuLibre::DjVuLibre` into every target compiling
+  `DocumentModel.cpp`: `llocr`, `test_document_model`, and
+  `test_djvu_document` (the latter compiles both document sources).
+  See ADR 65 and [dependency setup](06-dev-setup.md#djvulibre-required).
+  `.djvu` and `.djv` files share the image/PDF opening and drag-and-drop path.
+  Native scan resolution is retained up to 40 megapixels and 16384 pixels per
+  side. Orientation is preserved; full-size images are rendered lazily through
+  the existing four-image cache. Decoder waits are bounded to 30 seconds per
+  operation. Import generates thumbnails synchronously, like PDF, so large
+  documents can still delay the UI. A failed page rejects the whole DjVu import
+  instead of silently adding a blank page.
 - Multi-page documents → page-by-page processing, with a **"Recognize all"**
   batch run and a page-thumbnail strip. ✅
 - Pages can be **deleted** (`removePage`) and **drag-reordered** (`movePage`);
-  PDF pages and images can be appended to an open document. ✅
+  PDF/DjVu pages and images can be appended to an open document. ✅
 
 ## 4.6 Box rendering & image-block editing
 - Overlay bboxes on top of the preview via a QML `Repeater` bound to

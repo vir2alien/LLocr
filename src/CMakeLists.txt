@@ -38,6 +38,8 @@ qt_add_executable(llocr
 
     app/DocumentModel.h
     app/DocumentModel.cpp
+    app/DjVuDocument.h
+    app/DjVuDocument.cpp
     app/Exporter.h
     app/Exporter.cpp
     app/ExportRenderer.h
@@ -122,6 +124,13 @@ qt_add_executable(llocr
 )
 
 if(WIN32)
+    add_custom_command(TARGET llocr POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "$<TARGET_FILE:DjVuLibre::DjVuLibre>"
+            "$<TARGET_FILE_DIR:llocr>"
+        COMMENT "Copying DjVuLibre DLL beside llocr.exe"
+        VERBATIM
+    )
     target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
 elseif(APPLE)
     target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
@@ -247,6 +256,7 @@ target_link_libraries(llocr PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Pdf
+    DjVuLibre::DjVuLibre
     Qt6::WebEngineCore
     Qt6::WebEngineQuick
     ZLIB::ZLIB

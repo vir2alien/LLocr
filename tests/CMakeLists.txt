@@ -84,12 +84,34 @@ target_link_libraries(test_document_model PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Pdf
+    DjVuLibre::DjVuLibre
 )
 
 target_sources(test_document_model PRIVATE
     ${CMAKE_SOURCE_DIR}/src/app/DocumentModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.h
+    ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.cpp
 )
 add_test(NAME test_document_model COMMAND test_document_model)
+
+qt_add_executable(test_djvu_document test_djvu_document.cpp)
+
+target_include_directories(test_djvu_document PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_djvu_document PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Pdf
+    DjVuLibre::DjVuLibre
+)
+
+target_sources(test_djvu_document PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app/DocumentModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.h
+    ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.cpp
+)
+add_test(NAME test_djvu_document COMMAND test_djvu_document)
 
 qt_add_executable(test_settings_store test_settings_store.cpp)
 

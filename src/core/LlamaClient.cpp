@@ -7,6 +7,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPromise>
+#include <QCoreApplication>
 #include <QTimer>
 
 namespace llocr {
@@ -36,16 +37,26 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
 
     auto *timer = new QTimer(reply);
     timer->setSingleShot(true);
-    QObject::connect(timer, &QTimer::timeout, reply, [reply]() { reply->abort(); });
+    QObject::connect(timer, &QTimer::timeout, reply, [reply]() {
+        reply->setProperty("llocrTimedOut", true);
+        reply->abort();
+    });
     timer->start(timeoutMs);
 
-    QObject::connect(reply, &QNetworkReply::finished, reply, [reply, promise]() mutable {
+    QObject::connect(reply, &QNetworkReply::finished, reply, [reply, promise, timeoutMs]() mutable {
         HttpResponse response;
         if (reply->error() != QNetworkReply::NoError) {
-            QString error = reply->errorString();
-            const QString serverError = extractServerError(reply->readAll());
-            if (!serverError.isEmpty())
-                error += QStringLiteral("\nServer: ") + serverError;
+            QString error;
+            if (reply->error() == QNetworkReply::OperationCanceledError
+                && reply->property("llocrTimedOut").toBool()) {
+                error = QCoreApplication::translate("LlamaClient",
+                            "Request timed out after %1 ms").arg(timeoutMs);
+            } else {
+                error = reply->errorString();
+                const QString serverError = extractServerError(reply->readAll());
+                if (!serverError.isEmpty())
+                    error += QStringLiteral("\nServer: ") + serverError;
+            }
             response.error = error;
         } else {
             response.success = true;

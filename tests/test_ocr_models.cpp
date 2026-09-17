@@ -6,6 +6,8 @@
 #include <QJsonObject>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QNetworkReply>
+#include <QTimer>
 
 #include "core/ConnectionConfig.h"
 #include "core/OcrRequest.h"
@@ -21,6 +23,7 @@ class RecordingServer : public QObject
 public:
     QByteArray body;
     bool gotRequest = false;
+    bool holdResponse = false;
 
     bool start()
     {
@@ -56,6 +59,8 @@ private:
             return;
         body = raw.mid(headerEnd + 4, contentLength);
         gotRequest = true;
+        if (holdResponse)
+            return;
 
         const QByteArray replyBody =
             "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"ok\"}}]}";
@@ -199,6 +204,57 @@ private slots:
                  future.result().errorMessage.toUtf8().constData());
         QVERIFY(server.gotRequest);
         QCOMPARE(future.result().text, QStringLiteral("ok"));
+    }
+
+    void qtAbortOnDeadlineReportsCancellation() {
+        RecordingServer server;
+        server.holdResponse = true;
+        QVERIFY(server.start());
+        QNetworkAccessManager network;
+        QNetworkRequest request(QUrl(QStringLiteral("http://127.0.0.1:%1/").arg(server.port())));
+        QNetworkReply *reply = network.post(request, QByteArray("{}"));
+        QTRY_VERIFY_WITH_TIMEOUT(server.gotRequest, 5000);
+        QTimer::singleShot(50, reply, &QNetworkReply::abort);
+        QTRY_VERIFY_WITH_TIMEOUT(reply->isFinished(), 5000);
+        QCOMPARE(reply->error(), QNetworkReply::OperationCanceledError);
+        reply->deleteLater();
+    }
+
+    void requestTimeoutIsNotReportedAsCancellation() {
+        RecordingServer server;
+        server.holdResponse = true;
+        QVERIFY(server.start());
+        LlamaClient client;
+        const auto url = LlamaClient::endpointUrl(
+            QStringLiteral("http://127.0.0.1:%1").arg(server.port()));
+        const auto future = client.postJson(url, "{}", {}, 200);
+        QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 5000);
+        QVERIFY(server.gotRequest);
+        QVERIFY(!future.result().success);
+        QVERIFY2(future.result().error.contains(QStringLiteral("timed out")),
+                 qPrintable(future.result().error));
+        QVERIFY(future.result().error.contains(QStringLiteral("200")));
+
+        // A timeout must not leak into the next request on the same client.
+        server.holdResponse = false;
+        const auto next = client.postJson(url, "{}", {}, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(next.isFinished(), 10000);
+        QVERIFY2(next.result().success, qPrintable(next.result().error));
+    }
+
+    void manualAbortIsNotReportedAsTimeout() {
+        RecordingServer server;
+        server.holdResponse = true;
+        QVERIFY(server.start());
+        LlamaClient client;
+        const auto future = client.postJson(LlamaClient::endpointUrl(
+            QStringLiteral("http://127.0.0.1:%1").arg(server.port())), "{}", {}, 10000);
+        QTRY_VERIFY_WITH_TIMEOUT(server.gotRequest, 5000);
+        client.abort();
+        QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 5000);
+        QVERIFY(!future.result().success);
+        QVERIFY(!future.result().error.isEmpty());
+        QVERIFY(!future.result().error.contains(QStringLiteral("timed out")));
     }
 
     void recognizeFailsCleanlyOnNullImage() {

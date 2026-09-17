@@ -11,13 +11,18 @@ class QPdfDocument;
 
 namespace llocr {
 
+class DjVuDocument;
+
+enum class DocumentSource { Image, Pdf, DjVu };
+
 struct DocumentPage {
     QImage thumb;
     QImage image;
     OcrResult result;
     bool recognized = false;
     QString sourcePath;
-    int pdfIndex = -1;
+    DocumentSource sourceType = DocumentSource::Image;
+    int sourcePageIndex = -1;
     QSize pixelSize;
 };
 
@@ -26,11 +31,14 @@ class DocumentModel
 public:
     DocumentModel() = default;
     ~DocumentModel();
+    Q_DISABLE_COPY_MOVE(DocumentModel)
 
     bool loadImage(const QString& path);
 
     bool appendImage(const QString& path);
     bool appendPdf(const QString& path);
+    bool appendDjVu(const QString& path, QString* error = nullptr);
+    bool appendFile(const QString& path, QString* error = nullptr);
 
     bool removePage(int index);
     bool movePage(int from, int to);
@@ -57,6 +65,7 @@ private:
 private:
     QList<DocumentPage> m_pages;
     QHash<QString, QPdfDocument*> m_pdfs;
+    QHash<QString, DjVuDocument*> m_djvus;
     QList<int> m_fullCache;
 };
 

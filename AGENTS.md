@@ -13,6 +13,11 @@
   - **Application:** Qt6 + C++ + QML, built with CMake (vcpkg declared in the
     `dev` preset, not used in the active build).
   - **PDF input:** Qt PDF module (`QPdfDocument`) — see ADR #7.
+  - **DjVu input:** required DjVuLibre C API (`DjVuDocument`), `.djvu` / `.djv`;
+    see ADR 65 and `docs/06-dev-setup.md`. Windows needs an MSVC x64 build
+    (`DJVULIBRE_ROOT`) and the matching DjVuLibre DLL alongside the executable
+    or on PATH; do not assume a vcpkg port exists. `test_djvu_document` covers
+    decoding, orientation, errors and integration with `DocumentModel`.
   - **RAG service:** a separate local Python service (FastAPI + vector DB),
     communicating over HTTP. To be implemented at a later stage.
   

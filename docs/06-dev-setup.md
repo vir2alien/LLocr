@@ -33,6 +33,8 @@
   and **Qt LinguistTools** modules), a C++ compiler. **On Windows the compiler must be MSVC 2022 64-bit
   (kit “Desktop Qt 6.10.3 MSVC2022 64bit”); the MinGW Qt build does not ship
   the Qt WebEngine module** (see ADR 54). On macOS/Linux Clang/GCC work too.
+- **DjVuLibre development headers and native library** — required for DjVu
+  input, including builds with `LLOCR_BUILD_TESTS=OFF` (see below).
 - Pandoc — for DOCX/PDF export (external dependency, optionally bundled).
 - Python 3.x — only for the RAG service (later stage).
 - **Local runtime & models need none of the above**: llama.cpp downloads
@@ -40,12 +42,185 @@
   (zlib) and the HTTP client are all embedded in the app — no external
   Python and no extra native tools required.
 
+## DjVuLibre (required)
+
+DjVu input uses the **DjVuLibre C decoding API**, not a command-line converter.
+Install the dependency before regenerating an existing LLocr build tree.
+LLocr CMake does **not** fetch, clone, build or install DjVuLibre, and does not
+silently disable DjVu when the dependency is absent (ADR 65).
+
+### macOS and Linux
+
+Use your system's maintained development package. Examples:
+
+```sh
+# macOS / Homebrew
+brew install djvulibre pkg-config
+
+# Debian / Ubuntu
+sudo apt install libdjvulibre-dev pkg-config
+
+# Check the actual module name (not "djvulibre" or "libdjvu")
+pkg-config --modversion ddjvuapi
+pkg-config --cflags --libs ddjvuapi
+```
+
+On Unix, root CMake first tries `pkg_check_modules(... IMPORTED_TARGET
+ ddjvuapi)` and exposes it as `DjVuLibre::DjVuLibre`. A custom prefix can be
+made visible through `PKG_CONFIG_PATH` (the directory containing
+`ddjvuapi.pc`). Alternatively set `DJVULIBRE_ROOT` or the explicit paths below
+to bypass pkg-config. Keep the architecture consistent with Qt (notably
+arm64 vs x86_64 Homebrew on macOS).
+
+For a separate source build, upstream documents `./configure`, `make`,
+`make install` for release archives; Git checkouts use `./autogen.sh` instead
+of `./configure` and require Autotools. Set `--prefix` to a local dependency
+installation directory and expose that installation to LLocr afterwards.
+JPEG supports the uncommon JPEG-encoded DjVu files; TIFF is used by some
+upstream utilities. Follow the prerequisites for the exact upstream release.
+Prefer shared-library builds; the raw-library fallback does not infer static
+archive dependencies or Windows static-link API definitions.
+
+### Windows: prepare a native MSVC x64 dependency
+
+**Do not run `vcpkg install djvulibre` or assume a `libdjvu` port.** On
+2026-09-17 both the `djvulibre/portfile.cmake` URL reported for this task and
+the fetched `libdjvu/portfile.cmake` / `libdjvu/vcpkg.json` paths under
+`microsoft/vcpkg/master/ports` returned 404. vcpkg remains the documented
+source of zlib, not a verified DjVuLibre installation route.
+
+Use a trusted, matching MSVC x64 development build or prepare one separately
+from [upstream DjVuLibre](https://github.com/DjVuLibre/djvulibre):
+
+1. Select and record the upstream release/commit you build. Read its `README`
+   Windows section, `win32/djvulibre/dirs.props`, and the prerequisite README
+   files under `win32/`. The solution expects separate JPEG/zlib/TIFF source
+   trees; an existing vcpkg zlib installation does not automatically populate
+   those trees. The `libdjvulibre` project itself references `libjpeg`.
+2. Open `win32/djvulibre/djvulibre.sln` in Visual Studio 2022. The upstream
+   files inspected here define **only Debug/Release Win32**, with an explicit
+   `MachineX86` linker setting. Retarget the toolset/SDK and create genuine
+   **x64** configurations for the library and its dependency projects;
+   update architecture-specific linker settings and inherited property
+   sheets as needed. Merely selecting the x64 command prompt is insufficient.
+3. Build the `libdjvulibre` **DLL** and its import library for Release (`/MD`)
+   and, preferably, Debug (`/MDd`). Upstream uses the `libdjvulibre` basename
+   for both configurations, in separate output directories. Retargeting this
+   legacy solution with MSVC 2022 has **not been build-verified here**; these
+   are preparation requirements, not a tested one-command upstream build.
+4. Provide the headers and actual `.lib` paths to LLocr as below. A DLL alone
+   is not a development package. Do not use a 32-bit or MinGW `.a` library
+   with this application's MSVC x64 Qt kit.
+
+### CMake discovery and overrides
+
+The following cache variables are understood on every platform:
+
+| Variable | Meaning |
+| --- | --- |
+| `DJVULIBRE_ROOT` | Optional dependency prefix; also bypasses Unix pkg-config |
+| `DJVULIBRE_INCLUDE_DIR` | Directory **containing** `libdjvu/ddjvuapi.h`, not the `libdjvu` directory itself; the upstream source root is valid |
+| `DJVULIBRE_LIBRARY_RELEASE` | Full Release library path (`.lib` import library on Windows) |
+| `DJVULIBRE_LIBRARY_DEBUG` | Full Debug library path, in a separate directory if the filename is identical |
+| `DJVULIBRE_DLL_RELEASE` / `DJVULIBRE_DLL_DEBUG` | Windows DLL matching the corresponding import library; override if automatic discovery fails |
+
+Fallback discovery searches for `djvulibre` / `libdjvulibre` in `lib`,
+`lib64`, `Release`, or `lib/Release`; Debug discovery looks under
+`debug/lib`, `Debug`, or `lib/Debug` in the supplied root/prefixes and also
+accepts a `d` suffix. For nonstandard layouts use the explicit variables.
+Both configurations are preserved when present; RelWithDebInfo and MinSizeRel
+use Release. If only one library is found it is used for all configurations
+and CMake prints that choice. Supplying both matching builds is preferable.
+Cached paths must be updated/cleared when switching dependency installations.
+
+Example **staged layout** (create it from your own x64 build; these files
+are not installed by LLocr or assumed to exist):
+
+```text
+C:/deps/djvulibre/include/libdjvu/ddjvuapi.h
+C:/deps/djvulibre/lib/libdjvulibre.lib
+C:/deps/djvulibre/debug/lib/libdjvulibre.lib
+C:/deps/djvulibre/bin/libdjvulibre.dll
+C:/deps/djvulibre/debug/bin/libdjvulibre.dll
+```
+
+With that layout, add `-DDJVULIBRE_ROOT=C:/deps/djvulibre` in Qt Creator's
+CMake arguments and regenerate the existing tree. To specify each file
+instead (from the repository root, after staging the files):
+
+```bat
+cmake -S . -B build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug ^
+  -DDJVULIBRE_INCLUDE_DIR=C:/deps/djvulibre/include ^
+  -DDJVULIBRE_LIBRARY_RELEASE=C:/deps/djvulibre/lib/libdjvulibre.lib ^
+  -DDJVULIBRE_LIBRARY_DEBUG=C:/deps/djvulibre/debug/lib/libdjvulibre.lib
+```
+
+### Runtime deployment and validation
+
+On Windows, building `llocr` copies the matching DjVuLibre DLL beside the
+executable after linking (`copy_if_different`). Debug uses the Debug DLL;
+Release/RelWithDebInfo/MinSizeRel use Release, with the same single-library
+fallback as linking. DLL discovery checks the import-library directory and
+nearby `bin` directories, plus `DJVULIBRE_ROOT` layouts `bin/Debug`,
+`bin/Release`, `debug/bin`, `bin`, `Debug` and `Release`. Override
+`DJVULIBRE_DLL_DEBUG` / `DJVULIBRE_DLL_RELEASE` for other layouts. A missing
+DLL is a configure error, not a silently omitted copy.
+
+Qt DLLs and any additional dynamic dependencies of DjVuLibre still need to
+be deployed or available on `PATH`. Tests built without building `llocr`
+still need the DjVuLibre DLL on `PATH` or beside their executable. With the
+example staged layout, for a Debug build use:
+
+```bat
+set PATH=C:\deps\djvulibre\debug\bin;C:\Qt\6.10.3\msvc2022_64\bin;%PATH%
+```
+
+Use `C:\deps\djvulibre\bin` for Release (also for Debug if using only a Release
+library). Do not mix Debug/Release DLLs with the same basename on `PATH`.
+For packaged macOS/Linux builds, include the shared library and its runtime
+closure and fix install names/RPATH as needed; do not assume `windeployqt` or
+`macdeployqt` alone packages DjVuLibre. Include the notices/license and meet
+GPL corresponding-source obligations for the exact shipped version and any
+patches; see `THIRD_PARTY_NOTICES.md`.
+
+After dependency preparation, regenerate the existing build, then build
+`llocr`, `test_document_model`,
+and `test_djvu_document`. For example, in the MSVC environment:
+
+```bat
+cmake --build build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug --target llocr test_document_model test_djvu_document
+ctest --test-dir build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug -R "^test_(djvu_document|document_model)$" --output-on-failure
+```
+
+Validated on this Windows machine with MSVC x64, Qt 6.10.3 and DjVuLibre
+3.5.30: `llocr` builds and all 27 CTest targets pass, including 29 DjVu
+checks. The local dependency prefix is `build/deps/djvulibre-msvc-x64`
+(headers in `include`, import libraries in `lib/Debug` and `lib/Release`,
+DLLs in `bin/Debug` and `bin/Release`). The Debug DLL was copied beside
+`build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug/bin/llocr.exe`. Local build
+recipes/provenance are in `build/deps/DJVULIBRE-HANDOFF.md` (untracked build
+artifacts, not supplied by a fresh checkout). This dependency build uses a
+local CMake wrapper, not the legacy upstream Visual Studio solution.
+macOS/Linux and Release application builds still require validation.
+
+Verified dependency references:
+- [Upstream build README](https://github.com/DjVuLibre/djvulibre/blob/master/README)
+- [pkg-config template](https://github.com/DjVuLibre/djvulibre/blob/master/libdjvu/ddjvuapi.pc.in)
+- [Public API and license grant](https://github.com/DjVuLibre/djvulibre/blob/master/libdjvu/ddjvuapi.h)
+- [MSVC library project](https://github.com/DjVuLibre/djvulibre/blob/master/win32/djvulibre/libdjvulibre/libdjvulibre.vcxproj)
+- [Debian development package](https://packages.debian.org/stable/libdjvulibre-dev)
+
 ## Windows build (MSVC 2022 64-bit)
 Qt ships separate Windows binaries for each toolchain. LLocr uses **Qt
 WebEngine** (Markdown preview), and the module is only provided for the
 **MSVC 2022 64-bit** package — there is no MinGW build of it. The Qt packages
 live under the same version folder: `C:/Qt/6.10.3/msvc2022_64` (has
 WebEngine) and `C:/Qt/6.10.3/mingw_64` (does **not** — Qt WebEngine is absent).
+
+Prepare **DjVuLibre** first as described above, and keep its matching DLL
+on `PATH` for the build/test commands below. These commands reuse the cached
+`DJVULIBRE_*` arguments; a from-scratch configure also needs those arguments
+(or a dependency prefix on `CMAKE_PREFIX_PATH`).
 
 ZLIB (ZIP/gzip decompression in `ArchiveExtractor`) is resolved by
 `find_package(ZLIB REQUIRED)`; on Windows the vcpkg toolchain provides it
@@ -113,9 +288,11 @@ ctest --test-dir build              # all unit tests (base + runtime suite)
 # run the app:
 ./build/bin/llocr                   # (exact binary name per platform)
 ```
-Unit tests are registered in `tests/CMakeLists.txt` (4 base + 14 runtime =
-18 ctest targets, plus the `mock_llama_server` helper binary; no test touches
-the real network).
+Unit tests are registered in `tests/CMakeLists.txt`, including
+`test_document_model` and `test_djvu_document` (both compile `DocumentModel`
+and `DjVuDocument` and link DjVuLibre), plus the runtime suite and the
+`mock_llama_server` helper binary. Use `ctest --test-dir build -N` for the
+current target list.
 
 ## Data directories (managed runtime & models)
 The managed runtime, models, cache and logs live under the platform app-data
@@ -176,7 +353,7 @@ LLocr/
 │   │                 #   InstallTransaction, ModelCatalog, ModelPreset,
 │   │                 #   ModelPresetCatalog, ModelRegistry, ModelInstaller,
 │   │                 #   RuntimeInstaller, ModelMemoryEstimator, SingleInstanceGuard
-│   └── app/          # AppController, RecognitionController, DocumentModel,
+│   └── app/          # AppController, RecognitionController, DocumentModel, DjVuDocument,
 │                     #   PageListModel, BoxListModel, PageEditStore,
 │                     #   OcrImageProvider, SettingsStore, UiController,
 │                     #   I18n, Exporter, PageIndex.h
@@ -193,7 +370,7 @@ LLocr/
 │   │                  #   hicolor/** (Linux) + llocr.rc (Win) + llocr.desktop.in
 │   └── i18n/          # llocr_ru.ts (compiled/embedded by qt_add_translations)
 ├── rag-service/      # Python service (later stage) — empty for now
-├── tests/            # base + runtime suites (18 ctest targets; mock_llama_server helper)
+├── tests/            # document/DjVu + base + runtime suites; mock_llama_server helper
 ├── docs/
 └── AGENTS.md
 ```

@@ -1,6 +1,10 @@
 #include "app/DocumentModel.h"
+#include "app/DjVuDocument.h"
 
+#include <QCoreApplication>
+#include <QFileInfo>
 #include <QImageReader>
+#include <memory>
 
 #include <QPdfDocument>
 #include <QPdfDocumentRenderOptions>
@@ -35,7 +39,7 @@ QSize pdfPixelSize(const QSizeF& pointSize)
 
 DocumentModel::~DocumentModel()
 {
-    qDeleteAll(m_pdfs);
+    clear();
 }
 
 bool DocumentModel::loadImage(const QString& path)
@@ -48,7 +52,7 @@ bool DocumentModel::appendImage(const QString& path)
 {
     DocumentPage page;
     page.sourcePath = path;
-    page.pdfIndex = -1;
+    page.sourceType = DocumentSource::Image;
 
     QImageReader reader(path);
     reader.setAutoTransform(true);
@@ -78,7 +82,8 @@ bool DocumentModel::appendPdf(const QString& path)
 
         DocumentPage page;
         page.sourcePath = path;
-        page.pdfIndex = i;
+        page.sourceType = DocumentSource::Pdf;
+        page.sourcePageIndex = i;
         page.pixelSize = pixelSize;
 
         QPdfDocumentRenderOptions options;
@@ -93,6 +98,54 @@ bool DocumentModel::appendPdf(const QString& path)
 
         m_pages.append(page);
     }
+    return true;
+}
+
+bool DocumentModel::appendFile(const QString& path, QString* error)
+{
+    if (error)
+        error->clear();
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    if (suffix == QStringLiteral("djvu") || suffix == QStringLiteral("djv"))
+        return appendDjVu(path, error);
+    const bool ok = suffix == QStringLiteral("pdf") ? appendPdf(path) : appendImage(path);
+    if (!ok && error)
+        *error = QCoreApplication::translate("DocumentModel", "Failed to open %1.").arg(path);
+    return ok;
+}
+
+bool DocumentModel::appendDjVu(const QString& path, QString* error)
+{
+    if (error)
+        error->clear();
+    const QString key = QFileInfo(path).absoluteFilePath();
+    std::unique_ptr<DjVuDocument> pending;
+    DjVuDocument* document = m_djvus.value(key, nullptr);
+    if (!document) {
+        pending = std::make_unique<DjVuDocument>();
+        if (!pending->open(key, error))
+            return false;
+        document = pending.get();
+    }
+    QList<DocumentPage> pages;
+    for (int i = 0; i < document->pageCount(); ++i) {
+        DocumentPage page;
+        page.sourcePath = key;
+        page.sourceType = DocumentSource::DjVu;
+        page.sourcePageIndex = i;
+        page.pixelSize = document->pageSize(i, error);
+        if (page.pixelSize.isEmpty())
+            return false;
+        page.thumb = document->render(i, fitWithin(page.pixelSize,
+                                     QSize(kThumbMaxWidth, kThumbMaxHeight)), error);
+        if (page.thumb.isNull())
+            return false;
+        pages.append(page);
+    }
+    // Do not expose partial documents when a later page fails to decode.
+    if (pending)
+        m_djvus.insert(key, pending.release());
+    m_pages.append(pages);
     return true;
 }
 
@@ -120,6 +173,8 @@ void DocumentModel::clear()
     m_fullCache.clear();
     qDeleteAll(m_pdfs);
     m_pdfs.clear();
+    qDeleteAll(m_djvus);
+    m_djvus.clear();
 }
 
 bool DocumentModel::isValidIndex(int index) const
@@ -154,7 +209,17 @@ bool DocumentModel::decodeSource(DocumentPage& page, QString *error)
 
 QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
 {
-    if (page.pdfIndex >= 0) {
+    if (page.sourceType == DocumentSource::DjVu) {
+        DjVuDocument* document = m_djvus.value(page.sourcePath, nullptr);
+        if (!document) {
+            if (error)
+                *error = QCoreApplication::translate("DocumentModel", "DjVu document is not open: %1")
+                             .arg(page.sourcePath);
+            return {};
+        }
+        return document->render(page.sourcePageIndex, page.pixelSize, error);
+    }
+    if (page.sourceType == DocumentSource::Pdf) {
         QPdfDocument* pdf = pdfFor(page.sourcePath);
         if (!pdf) {
             if (error)
@@ -163,7 +228,7 @@ QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
             return QImage();
         }
         QPdfDocumentRenderOptions options;
-        QImage image = pdf->render(page.pdfIndex, page.pixelSize, options);
+        QImage image = pdf->render(page.sourcePageIndex, page.pixelSize, options);
         if (image.isNull()) {
             image = QImage(page.pixelSize.isEmpty() ? QSize(800, 1000) : page.pixelSize,
                            QImage::Format_ARGB32);

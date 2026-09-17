@@ -212,7 +212,11 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
   runs sequentially through pages, and emits `rawResultReady` per page.
 - **DocumentModel** — holds the loaded pages (`DocumentPage`: image +
   per-page `OcrResult` + `recognized` flag); loads single/multiple images
-  (`QImage`) and PDFs (`QPdfDocument`), and supports append/remove/reorder.
+  (`QImage`), PDFs (`QPdfDocument`) and DjVu (`DjVuDocument` / DjVuLibre),
+  and supports append/remove/reorder. `DocumentSource` and `sourcePageIndex`
+  identify the source independently of the current display order. DjVu errors
+  propagate through `appendFile()` / `fullImage()`; the OCR pipeline remains
+  format-independent.
 - **PageListModel** — feeds the left thumbnail strip: page index, recognized
   flag, edited flag, duplicate flag, current-page highlight. Deliberately
   carries **no** boxes.

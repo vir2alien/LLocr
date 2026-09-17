@@ -121,10 +121,10 @@ ApplicationWindow {
 
     FileDialog {
         id: fileDialog
-        title: qsTr("Open images or PDF")
+        title: qsTr("Open images, PDF or DjVu")
         fileMode: FileDialog.OpenFiles
         nameFilters: [
-            qsTr("Documents (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf)"),
+            qsTr("Documents (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf *.djvu *.djv)"),
             qsTr("All files (*)")
         ]
         onAccepted: Controller.openFiles(selectedFiles)

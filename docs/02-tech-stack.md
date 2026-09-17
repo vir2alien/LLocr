@@ -6,10 +6,11 @@
   | Language      | C++                             | ✅ used | Developer's core skill, performance                  |
   | GUI           | Qt6 + QML                       | ✅ used | Cross-platform, convenient declarative UI for panels |
   | Build         | CMake                           | ✅ used | Standard for cross-platform C++                      |
-  | C++ packages  | vcpkg (configured, not currently used) | 🟡 | Declared in the `dev` preset, but the active build/ does **not** use it (Qt is external; see `06-dev-setup.md`) |
+  | C++ packages  | vcpkg for Windows zlib; system/Homebrew or separately built DjVuLibre | 🟡 | Qt is external; DjVuLibre is required and is not automatically downloaded (see `06-dev-setup.md`) |
   | HTTP          | QNetworkAccessManager           | ✅ used | Requests to the LLM API (async via QFuture/QPromise) |
   | Images        | QImage                          | ✅ used | Loading/displaying                                   |
   | PDF           | **Qt PDF (`QPdfDocument`)**     | ✅ used | Ships with Qt6; no extra native dep (see ADR #7)     |
+  | DjVu input    | **DjVuLibre (`ddjvuapi`)** through `DjVuDocument` | Required dependency | Native page decoding; `DjVuLibre::DjVuLibre` CMake target, GPL-2.0-or-later compatible with LLocr's GPLv3 (ADR 65) |
   | Box rendering | QML `Repeater` over a list model| ✅ used | Overlay bboxes on the preview (normalized rects); image blocks are movable / resizable / deletable |
   | Export        | Direct writer (TXT/MD) + **preview-pipeline render** for HTML/PDF (`ExportRenderer`, headless WebEngine) + Pandoc for DOCX | ✅ done | HTML/PDF match the Markdown preview (marked + KaTeX); built-in `QPdfWriter` fallback |
   | i18n          | Qt Linguist (`qsTr`/`tr` + `.ts`) | ✅ done | Runtime retranslate; language persisted in `SettingsStore` (`ui/language`) |

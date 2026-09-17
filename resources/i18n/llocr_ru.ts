@@ -2,6 +2,59 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="ru" sourcelanguage="en">
 <context>
+    <name>LlamaClient</name>
+    <message>
+        <source>Request timed out after %1 ms</source>
+        <translation>Превышено время ожидания запроса (%1 мс)</translation>
+    </message>
+</context>
+<context>
+    <name>DjVuDocument</name>
+    <message>
+        <source>DjVu decoding timed out.</source>
+        <translation>Превышено время ожидания декодирования DjVu.</translation>
+    </message>
+    <message>
+        <source>DjVu decoding failed.</source>
+        <translation>Не удалось декодировать DjVu.</translation>
+    </message>
+    <message>
+        <source>Failed to open DjVu %1: %2</source>
+        <translation>Не удалось открыть DjVu %1: %2</translation>
+    </message>
+    <message>
+        <source>Failed to read DjVu %1, page %2: %3</source>
+        <translation>Не удалось прочитать DjVu %1, страницу %2: %3</translation>
+    </message>
+    <message>
+        <source>File does not exist or is not readable.</source>
+        <translation>Файл не существует или недоступен для чтения.</translation>
+    </message>
+    <message>
+        <source>Invalid DjVu page index.</source>
+        <translation>Недопустимый номер страницы DjVu.</translation>
+    </message>
+    <message>
+        <source>Invalid DjVu page or render size.</source>
+        <translation>Недопустимая страница DjVu или размер изображения.</translation>
+    </message>
+    <message>
+        <source>Unable to allocate the DjVu image buffer.</source>
+        <translation>Не удалось выделить память для изображения DjVu.</translation>
+    </message>
+</context>
+<context>
+    <name>DocumentModel</name>
+    <message>
+        <source>Failed to open %1.</source>
+        <translation>Не удалось открыть %1.</translation>
+    </message>
+    <message>
+        <source>DjVu document is not open: %1</source>
+        <translation>Документ DjVu не открыт: %1</translation>
+    </message>
+</context>
+<context>
     <name>ExportDialog</name>
     <message>
         <location filename="../qml/ExportDialog.qml" line="12"/>
@@ -345,13 +398,13 @@
     </message>
     <message>
         <location filename="../qml/Main.qml" line="124"/>
-        <source>Open images or PDF</source>
-        <translation>Открыть изображения или PDF</translation>
+        <source>Open images, PDF or DjVu</source>
+        <translation>Открыть изображения, PDF или DjVu</translation>
     </message>
     <message>
         <location filename="../qml/Main.qml" line="127"/>
-        <source>Documents (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf)</source>
-        <translation>Документы (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf)</translation>
+        <source>Documents (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf *.djvu *.djv)</source>
+        <translation>Документы (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.pdf *.djvu *.djv)</translation>
     </message>
     <message>
         <location filename="../qml/Main.qml" line="128"/>
