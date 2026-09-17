@@ -14,6 +14,10 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName)) },
     { kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId)) },
     { kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId)) },
+    { kSplitPages, "splitPages", QVariant(kDefaultSplitPages) },
+    { kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers) },
+    { kPdfLandscape, "pdfLandscape", QVariant(kDefaultPdfLandscape) },
+    { kPdfMarginMm, "pdfMarginMm", QVariant(kDefaultPdfMarginMm) },
     { kConnectionMode, "connectionMode", QVariant(QString::fromUtf8(kModeExternal)) },
     { kSetupVersion, "setupVersion", QVariant(0) },  // 0 = re-run first-run wizard
     { kSetupDismissed, "setupDismissed", QVariant(false) },
@@ -172,6 +176,59 @@ void SettingsStore::setParserId(const QString &parserName)
         return;
     m_settings.setValue(kParserId, parserName);
     emit parserIdChanged();
+}
+
+bool SettingsStore::splitPages() const
+{
+    return m_settings.value(kSplitPages, kDefaultSplitPages).toBool();
+}
+
+void SettingsStore::setSplitPages(bool on)
+{
+    if (splitPages() == on)
+        return;
+    m_settings.setValue(kSplitPages, on);
+    emit splitPagesChanged();
+}
+
+bool SettingsStore::keepPageNumbers() const
+{
+    return m_settings.value(kKeepPageNumbers, kDefaultKeepPageNumbers).toBool();
+}
+
+void SettingsStore::setKeepPageNumbers(bool on)
+{
+    if (keepPageNumbers() == on)
+        return;
+    m_settings.setValue(kKeepPageNumbers, on);
+    emit keepPageNumbersChanged();
+}
+
+bool SettingsStore::pdfLandscape() const
+{
+    return m_settings.value(kPdfLandscape, kDefaultPdfLandscape).toBool();
+}
+
+void SettingsStore::setPdfLandscape(bool on)
+{
+    if (pdfLandscape() == on)
+        return;
+    m_settings.setValue(kPdfLandscape, on);
+    emit pdfLandscapeChanged();
+}
+
+int SettingsStore::pdfMarginMm() const
+{
+    return m_settings.value(kPdfMarginMm, kDefaultPdfMarginMm).toInt();
+}
+
+void SettingsStore::setPdfMarginMm(int mm)
+{
+    mm = qBound(0, mm, kMaxPdfMarginMm);
+    if (pdfMarginMm() == mm)
+        return;
+    m_settings.setValue(kPdfMarginMm, mm);
+    emit pdfMarginMmChanged();
 }
 
 int SettingsStore::themeMode() const

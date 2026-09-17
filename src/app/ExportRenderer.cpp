@@ -1,5 +1,7 @@
 #include "app/ExportRenderer.h"
 
+#include "app/Exporter.h"
+
 #include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -49,27 +51,28 @@ ExportRenderer::ExportRenderer(QObject *parent)
 
 ExportRenderer::~ExportRenderer() = default;
 
-void ExportRenderer::render(Output output, const QList<PageInput> &pages,
-                            const QString &styleSheet, const QString &outputPath,
-                            const ResultCallback &callback)
+void ExportRenderer::render(const Request &request, const ResultCallback &callback)
 {
     if (m_busy) {
         if (callback)
             callback(false, {}, tr("The export renderer is busy."));
         return;
     }
-    if (pages.isEmpty()) {
+    if (request.pages.isEmpty()) {
         if (callback)
             callback(false, {}, QCoreApplication::translate("Exporter", "Nothing to export."));
         return;
     }
 
     m_busy = true;
-    m_output = output;
-    m_pages = pages;
+    m_output = request.output;
+    m_pages = request.pages;
     m_nextPage = 0;
-    m_styleSheet = styleSheet;
-    m_outputPath = outputPath;
+    m_styleSheet = request.styleSheet;
+    m_splitPages = request.splitPages;
+    m_pageLayout = request.pageLayout.isValid()
+                       ? request.pageLayout : Exporter::defaultPdfLayout();
+    m_outputPath = request.outputPath;
     m_callback = std::move(callback);
     m_printing = false;
 
@@ -108,8 +111,10 @@ void ExportRenderer::ensurePage()
 
 void ExportRenderer::startRun()
 {
-    runJs(QStringLiteral("typeof window.beginExport === 'function' && window.beginExport(%1)")
-              .arg(jsonString(m_styleSheet)),
+    runJs(QStringLiteral("typeof window.beginExport === 'function'"
+                        " && window.beginExport(%1, %2)")
+              .arg(jsonString(m_styleSheet), m_splitPages ? QStringLiteral("true")
+                                                          : QStringLiteral("false")),
           [this](const QVariant &ok) {
         if (!m_busy)
             return;
@@ -210,9 +215,7 @@ void ExportRenderer::startPdfPrint()
             fail(tr("PDF printing failed."));
     }, Qt::SingleShotConnection);
 
-    const QPageLayout layout(QPageSize(QPageSize::A4), QPageLayout::Portrait,
-                             QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
-    m_page->printToPdf(m_outputPath, layout);
+    m_page->printToPdf(m_outputPath, m_pageLayout);
 }
 
 void ExportRenderer::runJs(const QString &script,

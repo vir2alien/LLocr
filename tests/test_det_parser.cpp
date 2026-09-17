@@ -48,6 +48,37 @@ private slots:
         QVERIFY(md.contains(QStringLiteral("*3*")));                  // page number in italics
     }
 
+    // Settings → Output → "Keep page numbers" off: page_number tokens are
+    // ignored entirely — no text block and no overlay box.
+    void dropsPageNumbersWhenDisabled() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\n)"
+            R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3\n)"
+            R"(<|det|>text [112, 132, 884, 309]<|/det|>Body paragraph\n)");
+
+        DetTokensParser parser;
+        parser.setKeepPageNumbers(false);
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+        const QString md = page.text;
+        QVERIFY(!md.contains(QStringLiteral("*3*")));
+        QVERIFY(md.contains(QStringLiteral("## 1. Introduction")));
+        QVERIFY(md.contains(QStringLiteral("Body paragraph")));
+
+        // rebuildPageText honours the flag for pages that still carry a
+        // page_number box (e.g. recognized before the setting was changed).
+        OcrPage withNumber = page;
+        BoundingBox numberBox;
+        numberBox.label = QStringLiteral("page_number");
+        numberBox.text = QStringLiteral("3");
+        withNumber.boxes.append(numberBox);
+        QVERIFY(rebuildPageText(withNumber).contains(QStringLiteral("*3*")));
+        QVERIFY(!rebuildPageText(withNumber, false).contains(QStringLiteral("*3*")));
+    }
+
     // Escaped newlines and doubled backslashes are decoded inside token content:
     // `\n` becomes a real newline and `\\(` becomes `\(`, which then converts
     // to inline math `$...$`.

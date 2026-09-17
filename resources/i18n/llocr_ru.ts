@@ -42,72 +42,72 @@
 <context>
     <name>Exporter</name>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="261"/>
-        <location filename="../../src/app/ExportRenderer.cpp" line="64"/>
+        <location filename="../../src/app/Exporter.cpp" line="303"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="63"/>
         <source>Nothing to export.</source>
         <translation>Экспортировать нечего.</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="264"/>
+        <location filename="../../src/app/Exporter.cpp" line="306"/>
         <source>No output path.</source>
         <translation>Не указан путь для сохранения.</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="298"/>
+        <location filename="../../src/app/Exporter.cpp" line="341"/>
         <source>DOCX export requires Pandoc, which was not found on PATH. Install it from pandoc.org, or export to Markdown/HTML instead.</source>
         <translation>Для экспорта в DOCX требуется Pandoc, который не найден в PATH. Установите с pandoc.org или экспортируйте в Markdown/HTML.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="627"/>
-        <location filename="../../src/app/Exporter.cpp" line="311"/>
+        <location filename="../../src/app/AppController.cpp" line="657"/>
+        <location filename="../../src/app/Exporter.cpp" line="354"/>
         <source>Exported PDF using the built-in writer (%1).</source>
         <translation>PDF экспортирован встроенным модулем (%1).</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="641"/>
+        <location filename="../../src/app/AppController.cpp" line="671"/>
         <source>Exported HTML using the basic writer (%1).</source>
         <translation>HTML экспортирован упрощённым модулем (%1).</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="365"/>
+        <location filename="../../src/app/Exporter.cpp" line="410"/>
         <source>Cannot create a temporary directory for images.</source>
         <translation>Не удалось создать временную папку для изображений.</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="426"/>
+        <location filename="../../src/app/Exporter.cpp" line="472"/>
         <source>Cannot write file: %1</source>
         <translation>Не удалось записать файл: %1</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="622"/>
-        <location filename="../../src/app/Exporter.cpp" line="432"/>
-        <location filename="../../src/app/Exporter.cpp" line="469"/>
-        <location filename="../../src/app/Exporter.cpp" line="520"/>
+        <location filename="../../src/app/AppController.cpp" line="651"/>
+        <location filename="../../src/app/Exporter.cpp" line="478"/>
+        <location filename="../../src/app/Exporter.cpp" line="515"/>
+        <location filename="../../src/app/Exporter.cpp" line="573"/>
         <source>Exported to %1</source>
         <translation>Экспортировано: %1</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="441"/>
+        <location filename="../../src/app/Exporter.cpp" line="487"/>
         <source>Pandoc not found.</source>
         <translation>Pandoc не найден.</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="452"/>
+        <location filename="../../src/app/Exporter.cpp" line="498"/>
         <source>Failed to start Pandoc.</source>
         <translation>Не удалось запустить Pandoc.</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="459"/>
+        <location filename="../../src/app/Exporter.cpp" line="505"/>
         <source>Pandoc timed out.</source>
         <translation>Превышено время ожидания Pandoc.</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="465"/>
+        <location filename="../../src/app/Exporter.cpp" line="511"/>
         <source>Pandoc failed (exit %1).</source>
         <translation>Pandoc завершился с ошибкой (код выхода %1).</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="518"/>
+        <location filename="../../src/app/Exporter.cpp" line="571"/>
         <source>Failed to write PDF: %1</source>
         <translation>Не удалось записать PDF: %1</translation>
     </message>
@@ -577,6 +577,64 @@
         <location filename="../../src/models/OcrModel.cpp" line="103"/>
         <source>Failed to encode the page image</source>
         <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>OutputTab</name>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="50"/>
+        <source>Output parser</source>
+        <translation>Парсер вывода</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="63"/>
+        <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
+        <translation>«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="72"/>
+        <source>Split pages</source>
+        <translation>Разбивать на страницы</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="78"/>
+        <source>When off, exported pages are joined without the “Page 1”, “Page 2” … headings.</source>
+        <translation>Когда выключено, страницы объединяются без заголовков «Page 1», «Page 2» и т.д.</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="85"/>
+        <source>Keep page numbers</source>
+        <translation>Оставлять номера страниц</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="91"/>
+        <source>When off, page_number blocks from the model are ignored during recognition. Applies to newly recognized pages.</source>
+        <translation>Когда выключено, блоки page_number игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="98"/>
+        <source>PDF export</source>
+        <translation>Экспорт в PDF</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="107"/>
+        <source>Orientation</source>
+        <translation>Ориентация</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="113"/>
+        <source>Portrait</source>
+        <translation>Книжная</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="113"/>
+        <source>Landscape</source>
+        <translation>Альбомная</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog/OutputTab.qml" line="122"/>
+        <source>Margins (mm)</source>
+        <translation>Поля (мм)</translation>
     </message>
 </context>
 <context>
@@ -1634,22 +1692,20 @@
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="145"/>
         <source>Output parser</source>
-        <translation>Парсер вывода</translation>
+        <translation type="vanished">Парсер вывода</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="160"/>
         <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
-        <translation>«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
+        <translation type="vanished">«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="185"/>
+        <location filename="../qml/SettingsDialog.qml" line="161"/>
         <source>Select llama-server binary</source>
         <translation>Выберите бинарник llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="187"/>
+        <location filename="../qml/SettingsDialog.qml" line="163"/>
         <source>Executables (*)</source>
         <translation>Исполняемые файлы (*)</translation>
     </message>
@@ -2221,99 +2277,99 @@
 <context>
     <name>llocr::AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="231"/>
+        <location filename="../../src/app/AppController.cpp" line="234"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="257"/>
+        <location filename="../../src/app/AppController.cpp" line="260"/>
         <source>No supported files selected.</source>
         <translation>Не выбрано ни одного поддерживаемого файла</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="259"/>
+        <location filename="../../src/app/AppController.cpp" line="262"/>
         <source>None of the selected files could be added.</source>
         <translation>Ни один из выбранных файлов не удалось добавить</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="271"/>
+        <location filename="../../src/app/AppController.cpp" line="274"/>
         <source>Added %1 file(s), %2 page(s); %3 file(s) skipped.</source>
         <translation>Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="274"/>
+        <location filename="../../src/app/AppController.cpp" line="277"/>
         <source>Added %1 file(s), %2 page(s).</source>
         <translation>Добавлено файлов: %1, страниц: %2</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="298"/>
-        <location filename="../../src/app/AppController.cpp" line="316"/>
+        <location filename="../../src/app/AppController.cpp" line="301"/>
+        <location filename="../../src/app/AppController.cpp" line="319"/>
         <source>Page %1 deleted.</source>
         <translation>Страница %1 удалена</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="344"/>
+        <location filename="../../src/app/AppController.cpp" line="347"/>
         <source>Moved page %1 to position %2.</source>
         <translation>Страница %1 перемещена на позицию %2.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="355"/>
-        <location filename="../../src/app/AppController.cpp" line="367"/>
+        <location filename="../../src/app/AppController.cpp" line="358"/>
+        <location filename="../../src/app/AppController.cpp" line="370"/>
         <source>Set a model name in Settings first.</source>
         <translation>Сначала укажите название модели в настройках.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="526"/>
+        <location filename="../../src/app/AppController.cpp" line="535"/>
         <source>No output path.</source>
         <translation>Не указан путь для сохранения.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="537"/>
+        <location filename="../../src/app/AppController.cpp" line="546"/>
         <source>Nothing to export for the selected pages (no recognized pages in that selection).</source>
         <translation>Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="531"/>
+        <location filename="../../src/app/AppController.cpp" line="540"/>
         <source>An export is already in progress.</source>
         <translation>Экспорт уже выполняется.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="553"/>
+        <location filename="../../src/app/AppController.cpp" line="565"/>
         <source>Exporting…</source>
         <translation>Экспорт…</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="56"/>
+        <location filename="../../src/app/AppController.cpp" line="59"/>
         <source>Exporting… (%1/%2)</source>
         <translation>Экспорт… (%1/%2)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="610"/>
+        <location filename="../../src/app/AppController.cpp" line="628"/>
         <source>%1 (%2 page(s)).</source>
         <translation>%1 (%2 стр.).</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="650"/>
+        <location filename="../../src/app/AppController.cpp" line="680"/>
         <source>Markdown (*.md)</source>
         <translation>Markdown (*.md)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="650"/>
+        <location filename="../../src/app/AppController.cpp" line="680"/>
         <source>Plain text (*.txt)</source>
         <translation>Обычный текст (*.txt)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="650"/>
+        <location filename="../../src/app/AppController.cpp" line="680"/>
         <source>HTML (*.html)</source>
         <translation>HTML (*.html)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="652"/>
+        <location filename="../../src/app/AppController.cpp" line="682"/>
         <source>Word document (*.docx)</source>
         <translation>Документ Word (*.docx)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="653"/>
+        <location filename="../../src/app/AppController.cpp" line="683"/>
         <source>PDF (*.pdf)</source>
         <translation>PDF (*.pdf)</translation>
     </message>
@@ -2321,30 +2377,30 @@
 <context>
     <name>llocr::ExportRenderer</name>
     <message>
-        <location filename="../../src/app/ExportRenderer.cpp" line="47"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="48"/>
         <source>Export rendering timed out.</source>
         <translation>Превышено время ожидания рендеринга экспорта.</translation>
     </message>
     <message>
-        <location filename="../../src/app/ExportRenderer.cpp" line="59"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="58"/>
         <source>The export renderer is busy.</source>
         <translation>Модуль рендеринга экспорта занят.</translation>
     </message>
     <message>
-        <location filename="../../src/app/ExportRenderer.cpp" line="93"/>
-        <location filename="../../src/app/ExportRenderer.cpp" line="118"/>
-        <location filename="../../src/app/ExportRenderer.cpp" line="144"/>
-        <location filename="../../src/app/ExportRenderer.cpp" line="161"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="95"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="122"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="148"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="165"/>
         <source>Cannot load the export page.</source>
         <translation>Не удалось загрузить страницу экспорта.</translation>
     </message>
     <message>
-        <location filename="../../src/app/ExportRenderer.cpp" line="99"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="101"/>
         <source>The export renderer process terminated.</source>
         <translation>Процесс рендеринга экспорта аварийно завершился.</translation>
     </message>
     <message>
-        <location filename="../../src/app/ExportRenderer.cpp" line="212"/>
+        <location filename="../../src/app/ExportRenderer.cpp" line="215"/>
         <source>PDF printing failed.</source>
         <translation>Не удалось напечатать PDF.</translation>
     </message>

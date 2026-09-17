@@ -13,6 +13,8 @@
 #include <QTextStream>
 #include <QUrl>
 
+#include <QMarginsF>
+#include <QPageLayout>
 #include <QPageSize>
 #include <QPdfWriter>
 #include <QTextDocument>
@@ -85,7 +87,7 @@ bool Exporter::isPandocAvailable()
     return !pandocExecutable().isEmpty();
 }
 
-QString Exporter::buildMarkdown(const QList<Page>& pages)
+QString Exporter::buildMarkdown(const QList<Page>& pages, bool splitPages)
 {
     QString out;
     bool first = true;
@@ -93,19 +95,21 @@ QString Exporter::buildMarkdown(const QList<Page>& pages)
         if (!first)
             out += QStringLiteral("\n\n");
         first = false;
-        out += QStringLiteral("## Page %1\n\n").arg(page.number);
+        if (splitPages)
+            out += QStringLiteral("## Page %1\n\n").arg(page.number);
         out += page.text.trimmed();
         out += QChar('\n');
     }
     return out;
 }
 
-QString Exporter::buildPlainText(const QList<Page>& pages)
+QString Exporter::buildPlainText(const QList<Page>& pages, bool splitPages)
 {
     const QRegularExpression re = imageRefRegex();
     QString out;
     for (const Page& page : pages) {
-        out += QStringLiteral("===== Page %1 =====\n").arg(page.number);
+        if (splitPages)
+            out += QStringLiteral("===== Page %1 =====\n").arg(page.number);
         QString text = page.text.trimmed();
         text.remove(re);
         out += text;
@@ -165,11 +169,14 @@ static QString htmlFromMarkdown(const QString& markdown)
     return out;
 }
 
-QString Exporter::buildHtml(const QList<Page>& pages)
+QString Exporter::buildHtml(const QList<Page>& pages, bool splitPages)
 {
     QString body;
     for (const Page& page : pages) {
-        body += QStringLiteral("<section>\n<h2>Page %1</h2>\n<pre>").arg(page.number);
+        body += QStringLiteral("<section>\n");
+        if (splitPages)
+            body += QStringLiteral("<h2>Page %1</h2>\n").arg(page.number);
+        body += QStringLiteral("<pre>");
         body += htmlFromMarkdown(page.text);
         body += QStringLiteral("</pre>\n</section>\n");
     }
@@ -247,9 +254,9 @@ QString Exporter::katexCssForExport()
     return out;
 }
 
-QString Exporter::exportStyleSheet()
+QString Exporter::exportStyleSheet(bool splitPages)
 {
-    return QStringLiteral(
+    QString css = QStringLiteral(
         "body{margin:0;padding:24px 28px;background:#fff;color:#1a1a1a;"
         "font-family:-apple-system,\"Segoe UI\",Roboto,sans-serif;"
         "font-size:11pt;line-height:1.5;word-wrap:break-word;}"
@@ -265,12 +272,14 @@ QString Exporter::exportStyleSheet()
         "img{max-width:100%;height:auto;}"
         ".katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0;}"
         "@media print{"
-        "body{padding:0;}"
-        ".export-page{break-before:page;}"
-        ".export-page:first-child{break-before:auto;}"
-        "h2{break-after:avoid;}"
-        "pre,table,blockquote,.katex-display{break-inside:avoid;}"
-        "}");
+        "body{padding:0;}");
+    if (splitPages)
+        css += QStringLiteral(".export-page{break-before:page;}"
+                              ".export-page:first-child{break-before:auto;}");
+    css += QStringLiteral("h2{break-after:avoid;}"
+                          "pre,table,blockquote,.katex-display{break-inside:avoid;}"
+                          "}");
+    return css;
 }
 
 QString Exporter::assembleHtmlDocument(const QStringList& pageSections)
@@ -287,7 +296,8 @@ QString Exporter::assembleHtmlDocument(const QStringList& pageSections)
 }
 
 Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString& filePath,
-                                        const CropProvider& crop) const
+                                        const CropProvider& crop,
+                                        const ExportOptions& options) const
 {
     if (pages.isEmpty())
         return Result::fail(QCoreApplication::translate("Exporter", "Nothing to export."));
@@ -300,16 +310,17 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
     const QString mediaDir = info.absolutePath() + QLatin1Char('/')
                            + info.completeBaseName() + QStringLiteral("_media");
     const QString mediaPrefix = info.completeBaseName() + QStringLiteral("_media/");
+    const bool splitPages = options.splitPages;
 
     switch (format) {
     case Format::Markdown: {
         const QString md = crop
-            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix)
-            : buildMarkdown(pages);
+            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, splitPages)
+            : buildMarkdown(pages, splitPages);
         return writeTextFile(filePath, md);
     }
     case Format::PlainText:
-        return writeTextFile(filePath, buildPlainText(pages));
+        return writeTextFile(filePath, buildPlainText(pages, splitPages));
 
     case Format::Html: {
         QList<Page> rendered = pages;
@@ -322,7 +333,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
                 rendered[i].text = r.processedMarkdown;
             }
         }
-        return writeTextFile(filePath, buildHtml(rendered));
+        return writeTextFile(filePath, buildHtml(rendered, splitPages));
     }
 
     case Format::Docx: {
@@ -338,20 +349,21 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
             const Result r = exportViaPandoc(pages, filePath, crop, {});
             if (r.success)
                 return r;
-            const Result fb = writePdfFallback(pages, filePath, crop);
+            const Result fb = writePdfFallback(pages, filePath, crop,
+                                               defaultPdfLayout(), splitPages);
             if (fb.success)
                 return Result::ok(QCoreApplication::translate("Exporter",
                     "Exported PDF using the built-in writer (%1).").arg(r.message));
             return fb;
         }
-        return writePdfFallback(pages, filePath, crop);
+        return writePdfFallback(pages, filePath, crop, defaultPdfLayout(), splitPages);
     }
 
     case Format::Unknown:
     default: {
         const QString md = crop
-            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix)
-            : buildMarkdown(pages);
+            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, splitPages)
+            : buildMarkdown(pages, splitPages);
         return writeTextFile(filePath, md);
     }
     }
@@ -360,7 +372,8 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
 QString Exporter::buildMarkdownResolved(const QList<Page>& pages,
                                         const CropProvider& crop,
                                         const QString& mediaDir,
-                                        const QString& referencePrefix) const
+                                        const QString& referencePrefix,
+                                        bool splitPages) const
 {
     QString out;
     bool first = true;
@@ -369,7 +382,8 @@ QString Exporter::buildMarkdownResolved(const QList<Page>& pages,
         if (!first)
             out += QStringLiteral("\n\n");
         first = false;
-        out += QStringLiteral("## Page %1\n\n").arg(page.number);
+        if (splitPages)
+            out += QStringLiteral("## Page %1\n\n").arg(page.number);
 
         QString text = page.text.trimmed();
         const ResolvedImages r = resolveImageReferences(
@@ -396,7 +410,8 @@ Exporter::Result Exporter::exportViaPandoc(const QList<Page>& pages,
         if (!tmp.isValid())
             return Result::fail(QCoreApplication::translate("Exporter",
                 "Cannot create a temporary directory for images."));
-        markdown = buildMarkdownResolved(pages, crop, tmp.path(), QString());
+        markdown = buildMarkdownResolved(pages, crop, tmp.path(), QString(),
+                                         true);
         extra << QStringLiteral("--resource-path=%1").arg(tmp.path());
     } else {
         markdown = buildMarkdown(pages);
@@ -501,11 +516,18 @@ Exporter::Result Exporter::runPandoc(const QString& markdown,
     return Result::ok(QCoreApplication::translate("Exporter", "Exported to %1").arg(QFileInfo(outputPath).fileName()));
 }
 
+QPageLayout Exporter::defaultPdfLayout()
+{
+    return QPageLayout(QPageSize(QPageSize::A4), QPageLayout::Portrait,
+                       QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
+}
+
 Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QString& path,
-                                            const CropProvider& crop)
+                                            const CropProvider& crop,
+                                            const QPageLayout& layout, bool splitPages)
 {
     QPdfWriter writer(path);
-    writer.setPageSize(QPageSize(QPageSize::A4));
+    writer.setPageLayout(layout);
     writer.setResolution(300);
 
     QTextDocument doc;
@@ -542,7 +564,7 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
         }
     }
 
-    doc.setHtml(buildHtml(rendered));
+    doc.setHtml(buildHtml(rendered, splitPages));
     doc.print(&writer);
 
     QFileInfo info(path);

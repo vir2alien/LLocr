@@ -25,6 +25,7 @@ class ExportRendererTest : public QObject
 
 private slots:
     void rendersHtmlWithHeadingsTablesAndMath();
+    void rendersHtmlWithoutPageHeadingsWhenSplitOff();
     void printsPdfFile();
 };
 
@@ -52,13 +53,16 @@ void ExportRendererTest::rendersHtmlWithHeadingsTablesAndMath()
     bool finished = false;
     bool ok = false;
     QString html;
-    renderer.render(ExportRenderer::Output::Html,
-                    { { 1, md } }, Exporter::exportStyleSheet(), QString(),
+    ExportRenderer::Request request;
+    request.output = ExportRenderer::Output::Html;
+    request.pages = { { 1, md } };
+    request.styleSheet = Exporter::exportStyleSheet();
+    renderer.render(request,
                     [&](bool success, const QString &result, const QString &) {
-                        ok = success;
-                        html = result;
-                        finished = true;
-                    });
+        ok = success;
+        html = result;
+        finished = true;
+    });
     QVERIFY(renderer.isBusy());
     spinUntil([&]() { return finished; });
 
@@ -68,9 +72,38 @@ void ExportRendererTest::rendersHtmlWithHeadingsTablesAndMath()
     QVERIFY(html.contains(QStringLiteral("<h1")));
     QVERIFY(html.contains(QStringLiteral("<table")));
     QVERIFY(html.contains(QStringLiteral("export-page")));
+    QVERIFY(html.contains(QStringLiteral("Page 1")));
     // KaTeX rendered the formula.
     QVERIFY(html.contains(QStringLiteral("katex")));
     QVERIFY(html.contains(QStringLiteral("E=mc")));
+}
+
+void ExportRendererTest::rendersHtmlWithoutPageHeadingsWhenSplitOff()
+{
+    ExportRenderer renderer;
+    QVERIFY(!renderer.isBusy());
+
+    bool finished = false;
+    bool ok = false;
+    QString html;
+    ExportRenderer::Request request;
+    request.output = ExportRenderer::Output::Html;
+    request.pages = { { 1, QStringLiteral("body text") } };
+    request.styleSheet = Exporter::exportStyleSheet(false);
+    request.splitPages = false;
+    renderer.render(request,
+                    [&](bool success, const QString &result, const QString &) {
+        ok = success;
+        html = result;
+        finished = true;
+    });
+    spinUntil([&]() { return finished; });
+
+    QVERIFY2(ok, qPrintable(html));
+    QVERIFY(html.contains(QStringLiteral("body text")));
+    QVERIFY(!html.contains(QStringLiteral("Page 1")));
+    // No forced page break per section when the document is not split.
+    QVERIFY(!request.styleSheet.contains(QStringLiteral("break-before:page")));
 }
 
 void ExportRendererTest::printsPdfFile()
@@ -83,14 +116,18 @@ void ExportRendererTest::printsPdfFile()
     bool finished = false;
     bool ok = false;
     QString error;
-    renderer.render(ExportRenderer::Output::Pdf,
-                    { { 1, QStringLiteral("hello **world**") } },
-                    Exporter::exportStyleSheet(), path,
+    ExportRenderer::Request request;
+    request.output = ExportRenderer::Output::Pdf;
+    request.pages = { { 1, QStringLiteral("hello **world**") } };
+    request.styleSheet = Exporter::exportStyleSheet();
+    request.outputPath = path;
+    request.pageLayout = Exporter::defaultPdfLayout();
+    renderer.render(request,
                     [&](bool success, const QString &, const QString &err) {
-                        ok = success;
-                        error = err;
-                        finished = true;
-                    });
+        ok = success;
+        error = err;
+        finished = true;
+    });
     spinUntil([&]() { return finished; });
 
     QVERIFY2(ok, qPrintable(error));

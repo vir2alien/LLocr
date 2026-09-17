@@ -30,7 +30,13 @@ All configuration lives in the **Settings dialog**, grouped into tabs:
 | Request    | OCR model adapter combobox (`unlimited-ocr`; `model/recipeId`) + the  |
 |            | request profile table (ADR 56); one **profile per OCR model**, keyed  |
 |            | by the model id; switching the model switches the profile (ADR 59)    |
-| Output     | output parser (`raw` / `det_tokens`; default `det_tokens`)           |
+| Output     | output parser (`raw` / `det_tokens`; default `det_tokens`); **split    |
+|            | pages** (`output/splitPages`, default on — “## Page N” / “Page N”      |
+|            | labels in every export format); **keep page numbers**                  |
+|            | (`output/keepPageNumbers`, default on — when off the parser drops      |
+|            | `page_number` blocks during recognition); PDF export: orientation      |
+|            | (`export/pdfLandscape`) and margins in mm (`export/pdfMarginMm`,       |
+|            | 0–50, default 15)                                                      |
 | Runtime    | connection (base URL, API key, timeout — External sub-tab), managed   |
 |            | `llama-server` path + probe, Start/Stop/Restart, Show log, stage-D    |
 |            | installer (release/backend, download+install, updates, cleanup);      |

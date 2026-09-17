@@ -69,11 +69,8 @@ Dialog {
             uiTab.loadValues(); break;
         case SettingsDialog.TabsEnum.RequestTabNum:
             requestTab.loadValues(); break;
-        case SettingsDialog.TabsEnum.OutputTabNum: {
-            var idx = parserBox.model.indexOf(Settings.parserId)
-            parserBox.currentIndex = idx >= 0 ? idx : 0
-            break;
-        }
+        case SettingsDialog.TabsEnum.OutputTabNum:
+            outputTab.loadValues(); break;
         case SettingsDialog.TabsEnum.RuntimeTabNum:
             Runtime.refreshSingleInstanceLock()
             runtimeTab.loadValues(); break;
@@ -104,10 +101,10 @@ Dialog {
     onAccepted: {
         uiTab.saveValues();
         requestTab.saveValues();
+        outputTab.saveValues();
         runtimeTab.saveValues();
         launchTab.saveValues();
 
-        Settings.parserId = parserBox.currentText;
         const draftId = RequestProfiles.draftProfileId
         if (draftId.length > 0)
             Settings.modelRecipeId = draftId
@@ -139,29 +136,8 @@ Dialog {
                 id: requestTab
             }
 
-            ColumnLayout {
-                spacing: 4
-                LLOLabel {
-                    text: qsTr("Output parser")
-                }
-                ComboBox {
-                    id: parserBox
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    model: Controller.parserNames
-                }
-
-                Item { implicitHeight: 6 }
-
-                LLOLabel {
-                    Layout.fillWidth: true
-                    font.pointSize: Theme.captionSize
-                    color: Theme.textMuted
-                    text: qsTr("‘raw’ keeps the model text as-is. ‘det_tokens’ extracts "
-                               + "positioned fragments (bounding boxes) for the overlay.")
-                }
-
-                Item { Layout.fillHeight: true }
+            OutputTab {
+                id: outputTab
             }
 
             RuntimeTab {

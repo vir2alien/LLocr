@@ -2,6 +2,7 @@
 
 #include <QImage>
 #include <QObject>
+#include <QPageLayout>
 #include <QReadWriteLock>
 #include <QUrl>
 #include <QVariant>
@@ -135,9 +136,11 @@ private:
     QString effectiveText(int index) const;
 
     void finishExport(const Exporter::Result& result, int pageCount);
+    QPageLayout pdfPageLayout() const;
     Exporter::Result finalizeRenderedExport(
         Exporter::Format format, const QString& path,
         const QList<Exporter::Page>& pages, const Exporter::CropProvider& crop,
+        const Exporter::ExportOptions& options, const QPageLayout& pdfLayout,
         bool renderOk, const QString& renderedHtml, const QString& renderError) const;
 
 private:

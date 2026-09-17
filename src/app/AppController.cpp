@@ -8,6 +8,9 @@
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QHash>
+#include <QMarginsF>
+#include <QPageLayout>
+#include <QPageSize>
 #include <QReadWriteLock>
 #include <QRegularExpression>
 #include <QStringView>
@@ -378,6 +381,8 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
 
     OcrResult parsed = rawResult;
     if (auto parser = ParserFactory::create(m_settings.parserId())) {
+        if (auto det = dynamic_cast<DetTokensParser *>(parser.get()))
+            det->setKeepPageNumbers(m_settings.keepPageNumbers());
         parsed = parser->parse(rawResult.text);
     }
 
@@ -477,7 +482,9 @@ void AppController::onBoxRemoved(int boxIndex)
     boxes.removeAt(boxIndex);
     ++m_cropRevision;
 
-    m_editStore.replace(m_currentPage, rebuildPageText(page.result.pages[0]));
+    m_editStore.replace(m_currentPage,
+                        rebuildPageText(page.result.pages[0],
+                                        m_settings.keepPageNumbers()));
     m_pageModel.setEdited(m_currentPage, true);
 
     emit boxesChanged();
@@ -548,6 +555,9 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
         return crops.value({pageNumber, boxIndex});
     };
 
+    const Exporter::ExportOptions options{ m_settings.splitPages() };
+    const QPageLayout pdfLayout = pdfPageLayout();
+
     m_exporting = true;
     emit exportingChanged();
     setStatus(tr("Exporting…"));
@@ -570,17 +580,25 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
             return embedded;
         })
             .then(this,
-                  [this, pages, path, format, cropProvider](
+                  [this, pages, path, format, cropProvider, options, pdfLayout](
                       QList<ExportRenderer::PageInput> embedded) {
                 const ExportRenderer::Output output =
                     format == Exporter::Format::Pdf ? ExportRenderer::Output::Pdf
                                                     : ExportRenderer::Output::Html;
+                ExportRenderer::Request request;
+                request.output = output;
+                request.pages = embedded;
+                request.styleSheet = Exporter::exportStyleSheet(options.splitPages);
+                request.outputPath = path;
+                request.splitPages = options.splitPages;
+                request.pageLayout = pdfLayout;
                 m_exportRenderer.render(
-                    output, embedded, Exporter::exportStyleSheet(), path,
-                    [this, pages, path, format, cropProvider](
+                    request,
+                    [this, pages, path, format, cropProvider, options, pdfLayout](
                         bool ok, const QString& html, const QString& error) {
                         const Exporter::Result result = finalizeRenderedExport(
-                            format, path, pages, cropProvider, ok, html, error);
+                            format, path, pages, cropProvider, options, pdfLayout,
+                            ok, html, error);
                         finishExport(result, pages.size());
                     });
             });
@@ -588,8 +606,8 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
     }
 
     QtConcurrent::run(
-        [exporter = m_exporter, pages, path, cropProvider]() {
-            return exporter.exportToFile(pages, path, cropProvider);
+        [exporter = m_exporter, pages, path, cropProvider, options]() {
+            return exporter.exportToFile(pages, path, cropProvider, options);
         })
         .then(this, [this, pageCount = pages.size()](const Exporter::Result& result) {
             finishExport(result, pageCount);
@@ -606,9 +624,20 @@ void AppController::finishExport(const Exporter::Result& result, int pageCount)
                   : result.message);
 }
 
+QPageLayout AppController::pdfPageLayout() const
+{
+    const int marginMm = qBound(0, m_settings.pdfMarginMm(), 50);
+    return QPageLayout(QPageSize(QPageSize::A4),
+                       m_settings.pdfLandscape() ? QPageLayout::Landscape
+                                                 : QPageLayout::Portrait,
+                       QMarginsF(marginMm, marginMm, marginMm, marginMm),
+                       QPageLayout::Millimeter);
+}
+
 Exporter::Result AppController::finalizeRenderedExport(
     Exporter::Format format, const QString& path, const QList<Exporter::Page>& pages,
-    const Exporter::CropProvider& crop, bool renderOk, const QString& renderedHtml,
+    const Exporter::CropProvider& crop, const Exporter::ExportOptions& options,
+    const QPageLayout& pdfLayout, bool renderOk, const QString& renderedHtml,
     const QString& renderError) const
 {
     if (format == Exporter::Format::Pdf) {
@@ -616,7 +645,9 @@ Exporter::Result AppController::finalizeRenderedExport(
             return Exporter::Result::ok(
                 QCoreApplication::translate("Exporter", "Exported to %1")
                     .arg(QFileInfo(path).fileName()));
-        const Exporter::Result fb = Exporter::writePdfFallback(pages, path, crop);
+        const Exporter::Result fb =
+            Exporter::writePdfFallback(pages, path, crop, pdfLayout,
+                                       options.splitPages);
         if (fb.success)
             return Exporter::Result::ok(
                 QCoreApplication::translate(
@@ -629,8 +660,7 @@ Exporter::Result AppController::finalizeRenderedExport(
         return Exporter::writeTextFile(
             path, Exporter::assembleHtmlDocument({ renderedHtml }));
 
-    // Rendering failed — degrade to the old escaped-text writer.
-    const Exporter::Result fb = m_exporter.exportToFile(pages, path, crop);
+    const Exporter::Result fb = m_exporter.exportToFile(pages, path, crop, options);
     if (fb.success)
         return Exporter::Result::ok(
             QCoreApplication::translate(

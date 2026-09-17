@@ -42,6 +42,7 @@ private slots:
     void assembleHtmlDocumentIsSelfContained();
     void exportStyleSheetHasPrintRules();
     void pandocDetectionConsistent();
+    void splitPagesOffOmitsPageLabels();
 };
 
 void ExporterTest::suffixMapping_data()
@@ -332,6 +333,40 @@ void ExporterTest::pandocDetectionConsistent()
     const QFileInfo info(exe);
     QVERIFY2(info.isFile(), qPrintable(exe));
     QVERIFY(info.exists());
+}
+
+void ExporterTest::splitPagesOffOmitsPageLabels()
+{
+    const QList<Exporter::Page> pages = {
+        { 1, "first" },
+        { 2, "second" },
+    };
+
+    // Markdown: joined without the "## Page N" headings.
+    const QString md = Exporter::buildMarkdown(pages, false);
+    QVERIFY(!md.contains("## Page"));
+    QVERIFY(md.contains("first"));
+    QVERIFY(md.contains("second"));
+
+    // Plain text: joined without the "===== Page N =====" separators.
+    const QString txt = Exporter::buildPlainText(pages, false);
+    QVERIFY(!txt.contains("===== Page"));
+    QVERIFY(txt.contains("first"));
+    QVERIFY(txt.contains("second"));
+
+    // Basic HTML: no "<h2>Page N</h2>" headings.
+    const QString html = Exporter::buildHtml(pages, false);
+    QVERIFY(!html.contains("<h2>Page"));
+    QVERIFY(html.contains("first"));
+
+    // Splitting stays the default for every writer.
+    QVERIFY(Exporter::buildMarkdown(pages).contains("## Page 1"));
+    QVERIFY(Exporter::buildPlainText(pages).contains("===== Page 1 ====="));
+    QVERIFY(Exporter::buildHtml(pages).contains("<h2>Page 1</h2>"));
+
+    // The stylesheet only forces a page break per section while splitting.
+    QVERIFY(Exporter::exportStyleSheet(true).contains("break-before:page"));
+    QVERIFY(!Exporter::exportStyleSheet(false).contains("break-before:page"));
 }
 
 QTEST_MAIN(ExporterTest)

@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <QList>
+#include <QPageLayout>
 #include <QPair>
 
 class QTimer;
@@ -26,13 +27,20 @@ public:
     using ResultCallback =
         std::function<void(bool success, const QString &html, const QString &error)>;
 
+    struct Request {
+        Output output = Output::Html;
+        QList<PageInput> pages;
+        QString styleSheet;
+        QString outputPath;
+        bool splitPages = true;
+        QPageLayout pageLayout;
+    };
+
     explicit ExportRenderer(QObject *parent = nullptr);
     ~ExportRenderer() override;
 
     bool isBusy() const { return m_busy; }
-    void render(Output output, const QList<PageInput> &pages,
-                const QString &styleSheet, const QString &outputPath,
-                const ResultCallback &callback);
+    void render(const Request &request, const ResultCallback &callback);
 
 signals:
     void progress(int pagesDone, int pagesTotal);
@@ -62,6 +70,8 @@ private:
     QList<PageInput> m_pages;
     int m_nextPage = 0;
     QString m_styleSheet;
+    bool m_splitPages = true;
+    QPageLayout m_pageLayout;
     QString m_outputPath;
     ResultCallback m_callback;
 

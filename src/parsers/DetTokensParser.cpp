@@ -248,11 +248,13 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info)
 
 } // namespace
 
-QString rebuildPageText(const OcrPage& page)
+QString rebuildPageText(const OcrPage& page, bool keepPageNumbers)
 {
     QStringList blocks;
     for (int i = 0; i < page.boxes.size(); ++i) {
         const BoundingBox& box = page.boxes.at(i);
+        if (!keepPageNumbers && box.label == QLatin1String("page_number"))
+            continue;
         BlockStyleInfo style = blockStyleForLabel(box.label);
         if (style.style == BlockStyle::ImagePlaceholder)
             style.imageIndex = i;
@@ -331,6 +333,8 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
     for (int i = 0; i < tokens.size(); ++i) {
         const Token &t = tokens.at(i);
+        if (!m_keepPageNumbers && t.label == QLatin1String("page_number"))
+            continue;
         const int spanEnd = (i + 1 < tokens.size())
                                 ? tokens.at(i + 1).tokenStart
                                 : rawText.size();

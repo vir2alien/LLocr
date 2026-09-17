@@ -40,6 +40,10 @@ private slots:
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
+        QCOMPARE(store.splitPages(), true);
+        QCOMPARE(store.keepPageNumbers(), true);
+        QCOMPARE(store.pdfLandscape(), false);
+        QCOMPARE(store.pdfMarginMm(), 15);
     }
 
     void resetToDefaults()
@@ -72,6 +76,31 @@ private slots:
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
+    }
+
+    void outputExportKeysRoundTrip()
+    {
+        SettingsStore store;
+        store.setSplitPages(false);
+        store.setKeepPageNumbers(false);
+        store.setPdfLandscape(true);
+        store.setPdfMarginMm(25);
+        QCOMPARE(store.splitPages(), false);
+        QCOMPARE(store.keepPageNumbers(), false);
+        QCOMPARE(store.pdfLandscape(), true);
+        QCOMPARE(store.pdfMarginMm(), 25);
+
+        // The margin is clamped to the sane range.
+        store.setPdfMarginMm(500);
+        QCOMPARE(store.pdfMarginMm(), 50);
+        store.setPdfMarginMm(-3);
+        QCOMPARE(store.pdfMarginMm(), 0);
+
+        store.resetToDefaults();
+        QCOMPARE(store.splitPages(), true);
+        QCOMPARE(store.keepPageNumbers(), true);
+        QCOMPARE(store.pdfLandscape(), false);
+        QCOMPARE(store.pdfMarginMm(), 15);
     }
 
     void newRuntimeDefaults()

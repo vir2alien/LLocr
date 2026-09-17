@@ -18,6 +18,10 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
     Q_PROPERTY(QString modelRecipeId READ modelRecipeId WRITE setModelRecipeId NOTIFY modelRecipeIdChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
+    Q_PROPERTY(bool splitPages READ splitPages WRITE setSplitPages NOTIFY splitPagesChanged)
+    Q_PROPERTY(bool keepPageNumbers READ keepPageNumbers WRITE setKeepPageNumbers NOTIFY keepPageNumbersChanged)
+    Q_PROPERTY(bool pdfLandscape READ pdfLandscape WRITE setPdfLandscape NOTIFY pdfLandscapeChanged)
+    Q_PROPERTY(int pdfMarginMm READ pdfMarginMm WRITE setPdfMarginMm NOTIFY pdfMarginMmChanged)
     Q_PROPERTY(int themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
     Q_PROPERTY(int windowX READ windowX WRITE setWindowX NOTIFY windowXChanged)
@@ -87,6 +91,15 @@ public:
 
     QString parserId() const;
     void setParserId(const QString &parserName);
+
+    bool splitPages() const;
+    void setSplitPages(bool on);
+    bool keepPageNumbers() const;
+    void setKeepPageNumbers(bool on);
+    bool pdfLandscape() const;
+    void setPdfLandscape(bool on);
+    int pdfMarginMm() const;
+    void setPdfMarginMm(int mm);
 
     int themeMode() const;
     void setThemeMode(int mode);
@@ -164,6 +177,10 @@ signals:
     void modelNameChanged();
     void modelRecipeIdChanged();
     void parserIdChanged();
+    void splitPagesChanged();
+    void keepPageNumbersChanged();
+    void pdfLandscapeChanged();
+    void pdfMarginMmChanged();
     void themeModeChanged();
     void languageChanged();
     void windowXChanged();
@@ -206,6 +223,11 @@ public:
     static constexpr const char *kDefaultModelName = "Unlimited-OCR";
     static constexpr const char *kDefaultModelRecipeId = "unlimited-ocr";
     static constexpr const char *kDefaultParserId = "det_tokens";
+    static constexpr bool kDefaultSplitPages = true;
+    static constexpr bool kDefaultKeepPageNumbers = true;
+    static constexpr bool kDefaultPdfLandscape = false;
+    static constexpr int kDefaultPdfMarginMm = 15;
+    static constexpr int kMaxPdfMarginMm = 50;
     static constexpr int kDefaultThemeMode = 0;  // System
     static constexpr const char *kDefaultLanguage = "system";
     static constexpr const char *kDefaultModelAlias = "llocr-local";
@@ -225,6 +247,12 @@ private:
     static constexpr const char *kModelName = "model/name";
     static constexpr const char *kModelRecipeId = "model/recipeId";
     static constexpr const char *kParserId = "parser/id";
+
+    // Output / export
+    static constexpr const char *kSplitPages = "output/splitPages";
+    static constexpr const char *kKeepPageNumbers = "output/keepPageNumbers";
+    static constexpr const char *kPdfLandscape = "export/pdfLandscape";
+    static constexpr const char *kPdfMarginMm = "export/pdfMarginMm";
 
     static constexpr const char *kThemeMode = "ui/theme";
     static constexpr const char *kLanguage = "ui/language";
