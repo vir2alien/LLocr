@@ -22,7 +22,7 @@ function renderMarkdownInto(md, el) {
   });
 }
 
-window.beginExport = function (css, includeHeadings) {
+window.beginExport = function (css, splitPages) {
   var root = document.getElementById("export-root");
   root.innerHTML = "";
   var st = document.getElementById("export-style");
@@ -34,20 +34,22 @@ window.beginExport = function (css, includeHeadings) {
   // The stylesheet comes from the C++ side (Exporter::exportStyleSheet) so the
   // in-page rendering (PDF) and the standalone HTML file share one source.
   st.textContent = css || "";
-  window.__includePageHeadings = includeHeadings !== false;
+  window.__splitPages = splitPages !== false;
   window.__fontsSettled = false;
   return true;
 };
 
 window.appendExportPage = function (pageNumber, md) {
   var root = document.getElementById("export-root");
+  // No "Page N" labels: pages are separated by a rule in the HTML file. The
+  // rule is hidden in print CSS, where a PDF gets real page breaks instead.
+  if (window.__splitPages !== false && root.childNodes.length > 0) {
+    var hr = document.createElement("hr");
+    hr.className = "page-separator";
+    root.appendChild(hr);
+  }
   var section = document.createElement("section");
   section.className = "export-page";
-  if (window.__includePageHeadings !== false) {
-    var h = document.createElement("h2");
-    h.textContent = "Page " + pageNumber;
-    section.appendChild(h);
-  }
   var body = document.createElement("div");
   body.className = "export-page-body";
   section.appendChild(body);

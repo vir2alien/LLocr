@@ -71,11 +71,14 @@ public:
 private:
     static QRegularExpression imageRefRegex();
 
+    static QString joinPages(const QList<Page>& pages, const QString& pageBreak);
+
     QString buildMarkdownResolved(const QList<Page>& pages, const CropProvider& crop,
                                   const QString& mediaDir, const QString& referencePrefix,
-                                  bool splitPages) const;
+                                  const QString& pageBreak) const;
     Result exportViaPandoc(const QList<Page>& pages, const QString& filePath,
-                           const CropProvider& crop, const QStringList& extraArgs) const;
+                           const CropProvider& crop, const QStringList& extraArgs,
+                           bool splitPages) const;
 
     static Result runPandoc(const QString& markdown,
                             const QString& outputPath,

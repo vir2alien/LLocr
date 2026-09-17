@@ -75,21 +75,31 @@ void ExporterTest::markdownHasPageHeadings()
         { 2, "Second page body" },
     };
     const QString md = Exporter::buildMarkdown(pages);
-    QVERIFY(md.contains("## Page 1"));
-    QVERIFY(md.contains("## Page 2"));
+    // Pages are separated by a horizontal rule, with no "Page N" labels.
+    QVERIFY(!md.contains("Page"));
+    QVERIFY(md.contains("\n---\n"));
     QVERIFY(md.contains("First page body"));
     QVERIFY(md.contains("Second page body"));
-    // Page 1 heading must come before page 2 heading.
-    QVERIFY(md.indexOf("## Page 1") < md.indexOf("## Page 2"));
+    // Page 1 body must come before the rule, page 2 body after it.
+    QVERIFY(md.indexOf("First page body") < md.indexOf("\n---\n"));
+    QVERIFY(md.indexOf("\n---\n") < md.indexOf("Second page body"));
 }
 
 void ExporterTest::plainTextHasSeparators()
 {
     const QList<Exporter::Page> pages = { { 1, "hello" } };
     const QString txt = Exporter::buildPlainText(pages);
-    QVERIFY(txt.contains("===== Page 1 ====="));
+    // A single page exports as-is: no separators and no page labels.
+    QVERIFY(!txt.contains("Page"));
     QVERIFY(txt.contains("hello"));
     QVERIFY(!txt.contains("## Page"));  // no Markdown syntax leaked in
+
+    // Several pages get a plain dash rule between them (no "Page N" labels).
+    const QString multi = Exporter::buildPlainText({ { 1, "one" }, { 2, "two" } });
+    QVERIFY(!multi.contains("Page"));
+    QVERIFY(multi.contains("--------"));
+    QVERIFY(multi.indexOf("one") < multi.indexOf("--------"));
+    QVERIFY(multi.indexOf("--------") < multi.indexOf("two"));
 }
 
 void ExporterTest::htmlEscapesAngleBrackets()
@@ -123,7 +133,6 @@ void ExporterTest::exportMarkdownFileRoundTrips()
     QFile f(path);
     QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString written = QString::fromUtf8(f.readAll());
-    QVERIFY(written.contains("## Page 1"));
     QVERIFY(written.contains("content here"));
 }
 
@@ -140,7 +149,7 @@ void ExporterTest::unknownSuffixFallsBackToMarkdown()
 
     QFile f(path);
     QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
-    QVERIFY(QString::fromUtf8(f.readAll()).contains("## Page 1"));
+    QVERIFY(QString::fromUtf8(f.readAll()).contains("body"));
 }
 
 void ExporterTest::emptyPagesFail()
@@ -342,27 +351,31 @@ void ExporterTest::splitPagesOffOmitsPageLabels()
         { 2, "second" },
     };
 
-    // Markdown: joined without the "## Page N" headings.
-    const QString md = Exporter::buildMarkdown(pages, false);
-    QVERIFY(!md.contains("## Page"));
+    // Split ON (default): pages are separated by a markdown rule…
+    const QString md = Exporter::buildMarkdown(pages);
+    QVERIFY(!md.contains("Page"));
+    QVERIFY(md.contains("\n---\n"));
     QVERIFY(md.contains("first"));
     QVERIFY(md.contains("second"));
 
-    // Plain text: joined without the "===== Page N =====" separators.
-    const QString txt = Exporter::buildPlainText(pages, false);
-    QVERIFY(!txt.contains("===== Page"));
-    QVERIFY(txt.contains("first"));
-    QVERIFY(txt.contains("second"));
+    // …a plain dash rule for TXT…
+    const QString txt = Exporter::buildPlainText(pages);
+    QVERIFY(!txt.contains("Page"));
+    QVERIFY(txt.contains("--------"));
 
-    // Basic HTML: no "<h2>Page N</h2>" headings.
-    const QString html = Exporter::buildHtml(pages, false);
+    // …and an <hr> for the basic HTML writer.
+    const QString html = Exporter::buildHtml(pages);
     QVERIFY(!html.contains("<h2>Page"));
+    QVERIFY(html.contains("<hr>"));
     QVERIFY(html.contains("first"));
 
-    // Splitting stays the default for every writer.
-    QVERIFY(Exporter::buildMarkdown(pages).contains("## Page 1"));
-    QVERIFY(Exporter::buildPlainText(pages).contains("===== Page 1 ====="));
-    QVERIFY(Exporter::buildHtml(pages).contains("<h2>Page 1</h2>"));
+    // Split OFF: pages flow continuously without any separators.
+    const QString mdJoined = Exporter::buildMarkdown(pages, false);
+    QVERIFY(!mdJoined.contains("---"));
+    QVERIFY(mdJoined.contains("first"));
+    QVERIFY(mdJoined.contains("second"));
+    QVERIFY(!Exporter::buildPlainText(pages, false).contains("--------"));
+    QVERIFY(!Exporter::buildHtml(pages, false).contains("<hr>"));
 
     // The stylesheet only forces a page break per section while splitting.
     QVERIFY(Exporter::exportStyleSheet(true).contains("break-before:page"));

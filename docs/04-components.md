@@ -145,14 +145,19 @@ i.e. the user's edit when present, else the raw recognition.
 | -------- | ------------------------------------------------ | ------ |
 | TXT      | directly (page separators)                       | ✅     |
 | Markdown | directly (`## Page N`) — the internal source     | ✅     |
-| HTML     | **preview-pipeline render** (`ExportRenderer`): marked + DOMPurify + KaTeX in a headless `QWebEnginePage`, self-contained file (styles + KaTeX fonts inlined); fallback — escaped-text writer | ✅ |
-| DOCX     | via **Pandoc** (Markdown on stdin → .docx, native Word equations) | ✅     |
-| PDF      | **preview-pipeline render** (`ExportRenderer` + `QWebEnginePage::printToPdf`, A4); fallback — built-in `QPdfWriter` + `QTextDocument` | ✅ |
+| HTML     | **preview-pipeline render** (`ExportRenderer`): marked + DOMPurify + KaTeX in a headless `QWebEnginePage`, self-contained file (styles + KaTeX fonts inlined); pages separated by a horizontal rule; fallback — escaped-text writer | ✅ |
+| DOCX     | via **Pandoc** (Markdown on stdin → .docx, native Word equations); each source page starts on a new page (raw OpenXML page break) | ✅     |
+| PDF      | **preview-pipeline render** (`ExportRenderer` + `QWebEnginePage::printToPdf`); each source page starts on a new page; fallback — built-in `QPdfWriter` + `QTextDocument` | ✅ |
 
 - The HTML/PDF render path reuses the preview bundle (`qrc:/preview/export.html`:
   marked + DOMPurify + KaTeX), so the export matches the Markdown preview 1:1
   (real headings, tables, code blocks, math). Pandoc is **not** needed for PDF
   anymore (the old Pandoc→LaTeX path is gone); it stays for DOCX only (ADR 63).
+- **Split pages** (`output/splitPages`, default on): pages are separated
+  without any "Page N" labels — a horizontal rule (`---`) between pages in
+  Markdown, a dash line in TXT, `<hr>` in HTML; PDF and DOCX start each source
+  page on a new physical page (print CSS `break-before:page` / raw OpenXML
+  page break). Split off → pages flow continuously without separators (ADR 64).
 - The render runs on the **UI thread** (`ExportRenderer`, off-screen
   `QWebEnginePage`); the heavy crop→PNG/base64 encoding and file writing stay
   on worker threads. Progress is surfaced in the status line

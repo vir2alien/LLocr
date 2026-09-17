@@ -60,6 +60,27 @@ QString locatePandoc()
 
 }  // namespace
 
+namespace {
+
+QString markdownPageRule()
+{
+    return QStringLiteral("\n\n---\n\n");
+}
+
+QString openXmlPageBreak()
+{
+    return QStringLiteral("\n\n```{=openxml}\n"
+                          "<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>\n"
+                          "```\n\n");
+}
+
+QString plainTextPageRule()
+{
+    return QStringLiteral("\n----------------------------------------\n\n");
+}
+
+}  // namespace
+
 Exporter::Format Exporter::formatForSuffix(const QString& suffix)
 {
     const QString s = suffix.toLower();
@@ -87,29 +108,34 @@ bool Exporter::isPandocAvailable()
     return !pandocExecutable().isEmpty();
 }
 
-QString Exporter::buildMarkdown(const QList<Page>& pages, bool splitPages)
+QString Exporter::joinPages(const QList<Page>& pages, const QString& pageBreak)
 {
     QString out;
     bool first = true;
     for (const Page& page : pages) {
         if (!first)
-            out += QStringLiteral("\n\n");
+            out += pageBreak.isEmpty() ? QStringLiteral("\n\n") : pageBreak;
         first = false;
-        if (splitPages)
-            out += QStringLiteral("## Page %1\n\n").arg(page.number);
         out += page.text.trimmed();
         out += QChar('\n');
     }
     return out;
 }
 
+QString Exporter::buildMarkdown(const QList<Page>& pages, bool splitPages)
+{
+    return joinPages(pages, splitPages ? markdownPageRule() : QString());
+}
+
 QString Exporter::buildPlainText(const QList<Page>& pages, bool splitPages)
 {
     const QRegularExpression re = imageRefRegex();
     QString out;
+    bool first = true;
     for (const Page& page : pages) {
-        if (splitPages)
-            out += QStringLiteral("===== Page %1 =====\n").arg(page.number);
+        if (!first)
+            out += splitPages ? plainTextPageRule() : QStringLiteral("\n");
+        first = false;
         QString text = page.text.trimmed();
         text.remove(re);
         out += text;
@@ -172,11 +198,12 @@ static QString htmlFromMarkdown(const QString& markdown)
 QString Exporter::buildHtml(const QList<Page>& pages, bool splitPages)
 {
     QString body;
+    bool first = true;
     for (const Page& page : pages) {
-        body += QStringLiteral("<section>\n");
-        if (splitPages)
-            body += QStringLiteral("<h2>Page %1</h2>\n").arg(page.number);
-        body += QStringLiteral("<pre>");
+        if (!first && splitPages)
+            body += QStringLiteral("<hr>\n");
+        first = false;
+        body += QStringLiteral("<section>\n<pre>");
         body += htmlFromMarkdown(page.text);
         body += QStringLiteral("</pre>\n</section>\n");
     }
@@ -271,8 +298,10 @@ QString Exporter::exportStyleSheet(bool splitPages)
         "border-left:3px solid #ccc;color:#666;}"
         "img{max-width:100%;height:auto;}"
         ".katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0;}"
+        ".page-separator{border:none;border-top:1px solid #ccc;margin:28px 0;}"
         "@media print{"
-        "body{padding:0;}");
+        "body{padding:0;}"
+        ".page-separator{display:none;}");
     if (splitPages)
         css += QStringLiteral(".export-page{break-before:page;}"
                               ".export-page:first-child{break-before:auto;}");
@@ -315,7 +344,8 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
     switch (format) {
     case Format::Markdown: {
         const QString md = crop
-            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, splitPages)
+            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix,
+                                    splitPages ? markdownPageRule() : QString())
             : buildMarkdown(pages, splitPages);
         return writeTextFile(filePath, md);
     }
@@ -341,12 +371,12 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
             return Result::fail(QCoreApplication::translate("Exporter",
                 "DOCX export requires Pandoc, which was not found on PATH. "
                 "Install it from pandoc.org, or export to Markdown/HTML instead."));
-        return exportViaPandoc(pages, filePath, crop, {});
+        return exportViaPandoc(pages, filePath, crop, {}, splitPages);
     }
 
     case Format::Pdf: {
         if (isPandocAvailable()) {
-            const Result r = exportViaPandoc(pages, filePath, crop, {});
+            const Result r = exportViaPandoc(pages, filePath, crop, {}, splitPages);
             if (r.success)
                 return r;
             const Result fb = writePdfFallback(pages, filePath, crop,
@@ -362,7 +392,8 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
     case Format::Unknown:
     default: {
         const QString md = crop
-            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, splitPages)
+            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix,
+                                    splitPages ? markdownPageRule() : QString())
             : buildMarkdown(pages, splitPages);
         return writeTextFile(filePath, md);
     }
@@ -373,17 +404,15 @@ QString Exporter::buildMarkdownResolved(const QList<Page>& pages,
                                         const CropProvider& crop,
                                         const QString& mediaDir,
                                         const QString& referencePrefix,
-                                        bool splitPages) const
+                                        const QString& pageBreak) const
 {
     QString out;
     bool first = true;
     for (int i = 0; i < pages.size(); ++i) {
         const Page& page = pages.at(i);
         if (!first)
-            out += QStringLiteral("\n\n");
+            out += pageBreak.isEmpty() ? QStringLiteral("\n\n") : pageBreak;
         first = false;
-        if (splitPages)
-            out += QStringLiteral("## Page %1\n\n").arg(page.number);
 
         QString text = page.text.trimmed();
         const ResolvedImages r = resolveImageReferences(
@@ -400,10 +429,13 @@ QString Exporter::buildMarkdownResolved(const QList<Page>& pages,
 Exporter::Result Exporter::exportViaPandoc(const QList<Page>& pages,
                                            const QString& filePath,
                                            const CropProvider& crop,
-                                           const QStringList& extraArgs) const
+                                           const QStringList& extraArgs,
+                                           bool splitPages) const
 {
     QString markdown;
     QStringList extra = extraArgs;
+
+    const QString pageBreak = splitPages ? openXmlPageBreak() : QString();
 
     QTemporaryDir tmp;
     if (crop) {
@@ -411,10 +443,10 @@ Exporter::Result Exporter::exportViaPandoc(const QList<Page>& pages,
             return Result::fail(QCoreApplication::translate("Exporter",
                 "Cannot create a temporary directory for images."));
         markdown = buildMarkdownResolved(pages, crop, tmp.path(), QString(),
-                                         true);
+                                         pageBreak);
         extra << QStringLiteral("--resource-path=%1").arg(tmp.path());
     } else {
-        markdown = buildMarkdown(pages);
+        markdown = joinPages(pages, pageBreak);
     }
 
     return runPandoc(markdown, filePath, extra);

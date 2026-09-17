@@ -55,7 +55,7 @@ void ExportRendererTest::rendersHtmlWithHeadingsTablesAndMath()
     QString html;
     ExportRenderer::Request request;
     request.output = ExportRenderer::Output::Html;
-    request.pages = { { 1, md } };
+    request.pages = { { 1, md }, { 2, QStringLiteral("second page body") } };
     request.styleSheet = Exporter::exportStyleSheet();
     renderer.render(request,
                     [&](bool success, const QString &result, const QString &) {
@@ -68,11 +68,15 @@ void ExportRendererTest::rendersHtmlWithHeadingsTablesAndMath()
 
     QVERIFY2(ok, qPrintable(html));
     QVERIFY(!renderer.isBusy());
-    // Real markdown structure, not escaped <pre> text.
+    // Real markdown structure, not escaped <pre> text. Pages are separated by
+    // a rule element — no "Page N" labels.
     QVERIFY(html.contains(QStringLiteral("<h1")));
     QVERIFY(html.contains(QStringLiteral("<table")));
     QVERIFY(html.contains(QStringLiteral("export-page")));
-    QVERIFY(html.contains(QStringLiteral("Page 1")));
+    QVERIFY(html.contains(QStringLiteral("page-separator")));
+    QVERIFY(html.contains(QStringLiteral("second page body")));
+    QVERIFY(!html.contains(QStringLiteral("Page 1")));
+    QVERIFY(!html.contains(QStringLiteral("Page 2")));
     // KaTeX rendered the formula.
     QVERIFY(html.contains(QStringLiteral("katex")));
     QVERIFY(html.contains(QStringLiteral("E=mc")));
@@ -102,7 +106,8 @@ void ExportRendererTest::rendersHtmlWithoutPageHeadingsWhenSplitOff()
     QVERIFY2(ok, qPrintable(html));
     QVERIFY(html.contains(QStringLiteral("body text")));
     QVERIFY(!html.contains(QStringLiteral("Page 1")));
-    // No forced page break per section when the document is not split.
+    // Split off: no rule elements and no forced page breaks.
+    QVERIFY(!html.contains(QStringLiteral("page-separator")));
     QVERIFY(!request.styleSheet.contains(QStringLiteral("break-before:page")));
 }
 
