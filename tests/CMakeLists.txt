@@ -41,6 +41,8 @@ target_sources(test_ocr_models PRIVATE
     ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/GeneralPurposeModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/QwenGeneralModel.cpp
     ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
 )
@@ -84,16 +86,24 @@ target_link_libraries(test_document_model PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Pdf
-    DjVuLibre::DjVuLibre
 )
 
 target_sources(test_document_model PRIVATE
     ${CMAKE_SOURCE_DIR}/src/app/DocumentModel.cpp
-    ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.h
-    ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.cpp
 )
+if(LLOCR_DJVU_AVAILABLE)
+    target_sources(test_document_model PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.h
+        ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.cpp
+    )
+    target_link_libraries(test_document_model PRIVATE DjVuLibre::DjVuLibre)
+    target_compile_definitions(test_document_model PRIVATE LLOCR_HAVE_DJVU)
+endif()
 add_test(NAME test_document_model COMMAND test_document_model)
 
+# The DjVu suite exercises the real decoder end-to-end; it is built only when
+# DjVuLibre was found (ADR 69).
+if(LLOCR_DJVU_AVAILABLE)
 qt_add_executable(test_djvu_document test_djvu_document.cpp)
 
 target_include_directories(test_djvu_document PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -112,11 +122,15 @@ target_sources(test_djvu_document PRIVATE
     ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.h
     ${CMAKE_SOURCE_DIR}/src/app/DjVuDocument.cpp
 )
+target_compile_definitions(test_djvu_document PRIVATE LLOCR_HAVE_DJVU)
 add_test(NAME test_djvu_document COMMAND test_djvu_document)
+endif()
 
 # Exercise the real AppController and its app/runtime dependencies, without the
 # GUI entry point, QML/resources generated for llocr, or a dependency on llocr's
 # build. Resolve relative sources against the declaring target, not tests/.
+# The test's fixtures and flows are DjVu-driven, so it also requires DjVuLibre.
+if(LLOCR_DJVU_AVAILABLE)
 qt_add_executable(test_app_import test_app_import.cpp)
 get_target_property(app_import_sources llocr SOURCES)
 get_target_property(app_import_source_dir llocr SOURCE_DIR)
@@ -144,6 +158,7 @@ target_link_libraries(test_app_import PRIVATE
     DjVuLibre::DjVuLibre
     ZLIB::ZLIB
 )
+target_compile_definitions(test_app_import PRIVATE LLOCR_HAVE_DJVU)
 qt_add_resources(test_app_import "app_import_profiles"
     PREFIX "/profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
@@ -164,6 +179,7 @@ set_tests_properties(test_app_import PROPERTIES
     TIMEOUT 90
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
 )
+endif()
 
 qt_add_executable(test_settings_store test_settings_store.cpp)
 

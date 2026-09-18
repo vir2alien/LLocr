@@ -74,6 +74,18 @@ void BoxListModel::updateBoxRect(int index, qreal x, qreal y, qreal width, qreal
     emit dataChanged(mi, mi, {XRole, YRole, WidthRole, HeightRole});
 }
 
+void BoxListModel::updateBoxText(int index, const QString &text)
+{
+    if (index < 0 || index >= m_boxes.size())
+        return;
+    BoundingBox &box = m_boxes[index];
+    if (box.text == text)
+        return;
+    box.text = text;
+    const QModelIndex mi = createIndex(index, 0);
+    emit dataChanged(mi, mi, {TextRole});
+}
+
 void BoxListModel::removeBox(int index)
 {
     if (index < 0 || index >= m_boxes.size())

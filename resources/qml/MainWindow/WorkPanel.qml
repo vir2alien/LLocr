@@ -119,6 +119,136 @@ Rectangle {
                 sourceComponent: previewComponent
             }
         }
+
+        // --- Bottom: selected-block verification panel ---
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: checkColumn.implicitHeight
+                + 2 * Theme.spacingSmall
+            visible: Controller.selectedBoxIndex >= 0 && Controller.hasResult
+            color: Theme.surface
+            border.color: Theme.divider
+            border.width: 1
+
+            ColumnLayout {
+                id: checkColumn
+                anchors.fill: parent
+                anchors.margins: Theme.spacingSmall
+                spacing: Theme.spacingSmall
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.spacing
+                    LLOLabel {
+                        text: qsTr("Check block")
+                        font.bold: true
+                        color: Theme.textPrimary
+                    }
+                    LLOLabel {
+                        text: Controller.selectedBlockLabel
+                        color: Theme.textMuted
+                        elide: Text.ElideRight
+                    }
+                    Item { Layout.fillWidth: true }
+                    LLOButton {
+                        text: "\u2715"
+                        implicitWidth: 24
+                        implicitHeight: 22
+                        onClicked: Controller.selectedBoxIndex = -1
+                    }
+                }
+
+                LLOLabel {
+                    text: qsTr("Recognized text:")
+                    color: Theme.textMuted
+                }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 64
+                    contentWidth: availableWidth
+                    TextArea {
+                        readOnly: true
+                        wrapMode: TextArea.Wrap
+                        selectByMouse: true
+                        color: Theme.textSecondary
+                        background: null
+                        text: Controller.selectedBlockText
+                    }
+                }
+
+                LLOLabel {
+                    text: qsTr("Check prompt:")
+                    color: Theme.textMuted
+                }
+                TextArea {
+                    id: checkPrompt
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 56
+                    wrapMode: TextArea.Wrap
+                    color: Theme.textPrimary
+                    placeholderTextColor: Theme.textMuted
+                    placeholderText: qsTr("e.g. Fix recognition errors in the text. Return only the corrected text.")
+                    text: qsTr("Check the text against the image and fix any errors. Return only the corrected text.")
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.spacing
+                    LLOButton {
+                        text: qsTr("Check")
+                        enabled: !Controller.checkBusy
+                                && checkPrompt.text.trim().length > 0
+                        onClicked: Controller.checkSelectedBlock(checkPrompt.text)
+                    }
+                    BusyIndicator {
+                        visible: Controller.checkBusy
+                        implicitWidth: 20
+                        implicitHeight: 20
+                        running: Controller.checkBusy
+                    }
+                    Item { Layout.fillWidth: true }
+                    LLOButton {
+                        text: qsTr("Apply fix")
+                        visible: Controller.checkSucceeded
+                        enabled: Controller.checkSucceeded
+                        onClicked: Controller.applyCheckedText()
+                    }
+                }
+
+                LLOLabel {
+                    id: checkErrorLabel
+                    visible: Controller.checkErrorMessage.length > 0
+                    text: Controller.checkErrorMessage
+                    color: Theme.error
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: checkErrorLabel.visible
+                                          ? Math.max(0, Math.min(Math.ceil(contentHeight), 96))
+                                          : 0
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 64
+                    visible: Controller.checkResultText.length > 0
+                    contentWidth: availableWidth
+                    TextArea {
+                        readOnly: true
+                        wrapMode: TextArea.Wrap
+                        selectByMouse: true
+                        color: Theme.textPrimary
+                        background: null
+                        text: Controller.checkResultText
+                    }
+                }
+
+                LLOLabel {
+                    visible: Controller.checkApplied
+                    text: qsTr("Fix applied to the page text.")
+                    color: Theme.textMuted
+                }
+            }
+        }
     }
 
     Component {

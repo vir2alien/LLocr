@@ -33,8 +33,9 @@
   and **Qt LinguistTools** modules), a C++ compiler. **On Windows the compiler must be MSVC 2022 64-bit
   (kit “Desktop Qt 6.10.3 MSVC2022 64bit”); the MinGW Qt build does not ship
   the Qt WebEngine module** (see ADR 54). On macOS/Linux Clang/GCC work too.
-- **DjVuLibre development headers and native library** — required for DjVu
-  input, including builds with `LLOCR_BUILD_TESTS=OFF` (see below).
+- **DjVuLibre development headers and native library** — optional; enables
+  DjVu input. Without it the build succeeds and opening `.djvu` files reports
+  an actionable error at runtime (ADR 69; see below).
 - Pandoc — for DOCX/PDF export (external dependency, optionally bundled).
 - Python 3.x — only for the RAG service (later stage).
 - **Local runtime & models need none of the above**: llama.cpp downloads
@@ -42,12 +43,16 @@
   (zlib) and the HTTP client are all embedded in the app — no external
   Python and no extra native tools required.
 
-## DjVuLibre (required)
+## DjVuLibre (optional, enables DjVu input)
 
 DjVu input uses the **DjVuLibre C decoding API**, not a command-line converter.
-Install the dependency before regenerating an existing LLocr build tree.
-LLocr CMake does **not** fetch, clone, build or install DjVuLibre, and does not
-silently disable DjVu when the dependency is absent (ADR 65).
+LLocr CMake does **not** fetch, clone, build or install DjVuLibre. When the
+dependency is absent (or incompletely configured), CMake prints a **warning**
+and builds **without** DjVu support: `DjVuDocument.cpp` and the DjVu paths of
+`DocumentModel` are compiled out, `test_djvu_document` and `test_app_import`
+are skipped, and opening a `.djvu` file in the app reports an error advising
+how to enable support (ADR 69; the ADR 65 hard requirement is superseded).
+Pass `-DLLOCR_WITH_DJVU=OFF` to skip the discovery and the warning explicitly.
 
 ### macOS and Linux
 
@@ -118,6 +123,7 @@ The following cache variables are understood on every platform:
 
 | Variable | Meaning |
 | --- | --- |
+| `LLOCR_WITH_DJVU` | Build option (default `ON`): look for DjVuLibre and enable DjVu input; automatic degradation with a warning when the dependency is absent. `OFF` skips discovery entirely |
 | `DJVULIBRE_ROOT` | Optional dependency prefix; also bypasses Unix pkg-config |
 | `DJVULIBRE_INCLUDE_DIR` | Directory **containing** `libdjvu/ddjvuapi.h`, not the `libdjvu` directory itself; the upstream source root is valid |
 | `DJVULIBRE_LIBRARY_RELEASE` | Full Release library path (`.lib` import library on Windows) |
@@ -164,7 +170,8 @@ fallback as linking. DLL discovery checks the import-library directory and
 nearby `bin` directories, plus `DJVULIBRE_ROOT` layouts `bin/Debug`,
 `bin/Release`, `debug/bin`, `bin`, `Debug` and `Release`. Override
 `DJVULIBRE_DLL_DEBUG` / `DJVULIBRE_DLL_RELEASE` for other layouts. A missing
-DLL is a configure error, not a silently omitted copy.
+DLL disables DjVu input support with a warning (the DLL copy step is then
+omitted); it is no longer a configure error (ADR 69).
 
 Qt DLLs and any additional dynamic dependencies of DjVuLibre still need to
 be deployed or available on `PATH`. Tests built without building `llocr`
@@ -185,7 +192,9 @@ patches; see `THIRD_PARTY_NOTICES.md`.
 
 After dependency preparation, regenerate the existing build, then build
 `llocr`, `test_document_model`,
-and `test_djvu_document`. For example, in the MSVC environment:
+and `test_djvu_document`. The DjVu-dependent targets (`test_djvu_document`,
+`test_app_import`) only exist when DjVu support is enabled. For example, in
+the MSVC environment:
 
 ```bat
 cmake --build build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug --target llocr test_document_model test_djvu_document

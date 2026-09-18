@@ -1,5 +1,7 @@
 #include "app/DocumentModel.h"
+#ifdef LLOCR_HAVE_DJVU
 #include "app/DjVuDocument.h"
+#endif
 
 #include <QCoreApplication>
 #include <QFileInfo>
@@ -120,6 +122,7 @@ bool DocumentModel::appendFile(const QString& path, QString* error)
 DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString& path)
 {
     PreparedDjVu prepared;
+#ifdef LLOCR_HAVE_DJVU
     try {
         const QString key = QFileInfo(path).absoluteFilePath();
         auto document = std::make_shared<DjVuDocument>();
@@ -174,18 +177,28 @@ DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString& path)
                              .arg(path);
     }
     // Only the success path publishes pages or a decoder, even after a late failure.
+#else
+    Q_UNUSED(path);
+    prepared.error = QCoreApplication::translate("DocumentModel",
+        "DjVu support is not available in this build. Install DjVuLibre and rebuild "
+        "LLocr (see docs/06-dev-setup.md), or convert the document to PDF.");
+#endif
     return prepared;
 }
 
 void DocumentModel::appendPreparedDjVu(const PreparedDjVu& prepared)
 {
-    if (!prepared.error.isEmpty() || prepared.pages.isEmpty() || !prepared.document)
+    if (!prepared.error.isEmpty() || prepared.pages.isEmpty())
+        return;
+#ifdef LLOCR_HAVE_DJVU
+    if (!prepared.document)
         return;
     const QString& key = prepared.pages.first().sourcePath;
-    m_pages.reserve(m_pages.size() + prepared.pages.size());
     // Existing pages must keep their decoder, even if the same source is imported again.
     if (!m_djvus.contains(key))
         m_djvus.insert(key, prepared.document);
+#endif
+    m_pages.reserve(m_pages.size() + prepared.pages.size());
     m_pages.append(prepared.pages);
 }
 
@@ -224,7 +237,9 @@ void DocumentModel::clear()
     m_fullCache.clear();
     qDeleteAll(m_pdfs);
     m_pdfs.clear();
+#ifdef LLOCR_HAVE_DJVU
     m_djvus.clear();
+#endif
 }
 
 bool DocumentModel::isValidIndex(int index) const
@@ -269,6 +284,7 @@ QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
         placeholder.fill(Qt::white);
         return placeholder;
     }
+#ifdef LLOCR_HAVE_DJVU
     if (page.sourceType == DocumentSource::DjVu) {
         const auto document = m_djvus.value(page.sourcePath);
         if (!document) {
@@ -279,6 +295,7 @@ QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
         }
         return document->render(page.sourcePageIndex, page.pixelSize, error);
     }
+#endif
     if (page.sourceType == DocumentSource::Pdf) {
         QPdfDocument* pdf = pdfFor(page.sourcePath);
         if (!pdf) {

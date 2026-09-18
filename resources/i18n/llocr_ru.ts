@@ -2342,6 +2342,76 @@
         <source>Preview</source>
         <translation>Предпросмотр</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Check block</source>
+        <translation>Проверка блока</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Recognized text:</source>
+        <translation>Распознанный текст:</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Check prompt:</source>
+        <translation>Промпт проверки:</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>e.g. Fix recognition errors in the text. Return only the corrected text.</source>
+        <translation>Например: исправь ошибки распознавания в тексте. Верни только исправленный текст.</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Check the text against the image and fix any errors. Return only the corrected text.</source>
+        <translation>Проверь текст по изображению и исправь все ошибки. Верни только исправленный текст.</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Check</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Apply fix</source>
+        <translation>Применить исправление</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Fix applied to the page text.</source>
+        <translation>Исправление применено к тексту страницы.</translation>
+    </message>
+</context>
+<context>
+    <name>GeneralPurposeModel</name>
+    <message>
+        <source>Invalid JSON response</source>
+        <translation>Некорректный ответ JSON</translation>
+    </message>
+    <message>
+        <source>No choices in response</source>
+        <translation>В ответе нет вариантов</translation>
+    </message>
+    <message>
+        <source>Failed to encode the block image</source>
+        <translation>Не удалось закодировать изображение блока</translation>
+    </message>
+    <message>
+        <source>The model returned no corrected text, only end-of-sentence markers. Check that the selected model can process images.</source>
+        <translation>Модель не вернула исправленный текст — только маркеры конца предложения. Проверьте, что выбранная модель умеет работать с изображениями.</translation>
+    </message>
+</context>
+<context>
+    <name>llocr::CheckController</name>
+    <message>
+        <source>No response</source>
+        <translation>Нет ответа</translation>
+    </message>
+    <message>
+        <source>Connection is not configured.</source>
+        <translation>Подключение не настроено.</translation>
+    </message>
 </context>
 <context>
     <name>llocr::AppController</name>

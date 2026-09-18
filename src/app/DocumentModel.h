@@ -12,7 +12,9 @@ class QPdfDocument;
 
 namespace llocr {
 
+#ifdef LLOCR_HAVE_DJVU
 class DjVuDocument;
+#endif
 
 enum class DocumentSource { Image, Pdf, DjVu };
 
@@ -33,7 +35,9 @@ class DocumentModel
 public:
     struct PreparedDjVu {
         QList<DocumentPage> pages;
+#ifdef LLOCR_HAVE_DJVU
         std::shared_ptr<DjVuDocument> document;
+#endif
         QString error;
         QStringList warnings;
     };
@@ -80,7 +84,9 @@ private:
 private:
     QList<DocumentPage> m_pages;
     QHash<QString, QPdfDocument*> m_pdfs;
+#ifdef LLOCR_HAVE_DJVU
     QHash<QString, std::shared_ptr<DjVuDocument>> m_djvus;
+#endif
     QList<int> m_fullCache;
 };
 

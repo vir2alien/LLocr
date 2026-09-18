@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "app/BoxListModel.h"
+#include "app/CheckController.h"
 #include "app/DocumentModel.h"
 #include "app/Exporter.h"
 #include "app/ExportRenderer.h"
@@ -41,6 +42,16 @@ class AppController : public QObject
 
     Q_PROPERTY(bool currentPageEditable READ currentPageEditable NOTIFY resultChanged)
     Q_PROPERTY(bool currentPageEdited READ currentPageEdited NOTIFY editStateChanged)
+
+    Q_PROPERTY(int selectedBoxIndex READ selectedBoxIndex WRITE setSelectedBoxIndex NOTIFY selectedBoxChanged)
+    Q_PROPERTY(QString selectedBlockText READ selectedBlockText NOTIFY selectedBoxChanged)
+    Q_PROPERTY(QString selectedBlockLabel READ selectedBlockLabel NOTIFY selectedBoxChanged)
+
+    Q_PROPERTY(bool checkBusy READ checkBusy NOTIFY checkStateChanged)
+    Q_PROPERTY(bool checkSucceeded READ checkSucceeded NOTIFY checkStateChanged)
+    Q_PROPERTY(QString checkResultText READ checkResultText NOTIFY checkStateChanged)
+    Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
+    Q_PROPERTY(bool checkApplied READ checkApplied NOTIFY checkStateChanged)
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters CONSTANT)
 
@@ -84,6 +95,17 @@ public:
     bool currentPageEditable() const;
     bool currentPageEdited() const;
 
+    int selectedBoxIndex() const { return m_selectedBox; }
+    QString selectedBlockText() const;
+    QString selectedBlockLabel() const;
+    void setSelectedBoxIndex(int index);
+
+    bool checkBusy() const { return m_check.busy(); }
+    bool checkSucceeded() const { return m_checkApplied ? false : m_checkSucceeded; }
+    QString checkResultText() const { return m_checkResultText; }
+    QString checkErrorMessage() const { return m_checkError; }
+    bool checkApplied() const { return m_checkApplied; }
+
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
     QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
 
@@ -109,6 +131,9 @@ signals:
     void configChanged();
     void boxesChanged();
 
+    void selectedBoxChanged();
+    void checkStateChanged();
+
     void editStateChanged();
 
 public slots:
@@ -125,6 +150,8 @@ public slots:
                                       qreal width, qreal height);
     Q_INVOKABLE void onBoxRemoved(int boxIndex);
     Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown);
+    Q_INVOKABLE void checkSelectedBlock(const QString &prompt);
+    Q_INVOKABLE void applyCheckedText();
 
 private:
     enum ExportScope : int {
@@ -161,6 +188,7 @@ private:
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
     RecognitionController m_recognition;
+    CheckController m_check;
     Exporter m_exporter;
     ExportRenderer m_exportRenderer;
     bool m_exporting = false;
@@ -176,6 +204,12 @@ private:
     mutable QString m_previewCacheResult;
     PageEditStore m_editStore;
     mutable QReadWriteLock m_documentLock;
+
+    int m_selectedBox = -1;
+    bool m_checkSucceeded = false;
+    bool m_checkApplied = false;
+    QString m_checkResultText;
+    QString m_checkError;
 };
 
 }  // namespace llocr

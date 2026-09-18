@@ -52,8 +52,17 @@ find_package(ZLIB REQUIRED)
 # Enable Qt6 policies for modern CMake integration (qt_add_executable, etc.).
 qt_standard_project_setup(REQUIRES 6.10)
 
-# DjVu is required; dependency acquisition is deliberately outside this build.
+# DjVu input support is optional (ADR 69): without DjVuLibre the app builds and
+# works, and opening a .djvu file reports an actionable error at runtime.
+# Dependency acquisition is deliberately outside this build.
+option(LLOCR_WITH_DJVU "Enable DjVu input support (requires DjVuLibre)" ON)
 set(DJVULIBRE_ROOT "" CACHE PATH "DjVuLibre installation prefix (or source tree with built libraries)")
+
+set(LLOCR_DJVU_AVAILABLE OFF)
+
+if(NOT LLOCR_WITH_DJVU)
+    message(STATUS "DjVu input support disabled by LLOCR_WITH_DJVU=OFF")
+else()
 
 # Avoid picking up a Unix/MSYS pkg-config library in an MSVC build. Explicit
 # paths also take precedence over pkg-config for custom Unix installations.
@@ -67,6 +76,8 @@ endif()
 
 if(TARGET PkgConfig::DJVULIBRE)
     add_library(DjVuLibre::DjVuLibre ALIAS PkgConfig::DJVULIBRE)
+    set(LLOCR_DJVU_AVAILABLE ON)
+    message(STATUS "DjVu input support enabled (DjVuLibre via pkg-config)")
 else()
     find_path(DJVULIBRE_INCLUDE_DIR
         NAMES libdjvu/ddjvuapi.h
@@ -87,33 +98,43 @@ else()
         NO_DEFAULT_PATH
     )
 
+    set(djvu_setup_ok ON)
     if(NOT DJVULIBRE_INCLUDE_DIR OR
             NOT EXISTS "${DJVULIBRE_INCLUDE_DIR}/libdjvu/ddjvuapi.h" OR
             (NOT DJVULIBRE_LIBRARY_RELEASE AND NOT DJVULIBRE_LIBRARY_DEBUG))
-        message(FATAL_ERROR
-            "DjVuLibre is required for DjVu input. Install its development package "
-            "(Unix: pkg-config module ddjvuapi), or set DJVULIBRE_ROOT / "
-            "DJVULIBRE_INCLUDE_DIR and DJVULIBRE_LIBRARY_RELEASE / "
-            "DJVULIBRE_LIBRARY_DEBUG to a matching native build. Windows needs "
-            "MSVC x64 DLL import libraries, not MinGW or Win32 binaries. "
-            "No dependency is downloaded automatically. See docs/06-dev-setup.md."
+        set(djvu_setup_ok OFF)
+        message(WARNING
+            "DjVuLibre was not found - building WITHOUT DjVu input support; "
+            "opening .djvu files will report an error at runtime. To enable it, "
+            "install the development package (Unix: pkg-config module ddjvuapi), "
+            "or set DJVULIBRE_ROOT / DJVULIBRE_INCLUDE_DIR and "
+            "DJVULIBRE_LIBRARY_RELEASE / DJVULIBRE_LIBRARY_DEBUG to a matching "
+            "native build (Windows needs MSVC x64 DLL import libraries, not "
+            "MinGW or Win32 binaries). No dependency is downloaded automatically. "
+            "See docs/06-dev-setup.md. Pass -DLLOCR_WITH_DJVU=OFF to silence "
+            "this warning."
         )
-    endif()
-
-    if(WIN32)
-        add_library(DjVuLibre::DjVuLibre SHARED IMPORTED)
+    elseif((DJVULIBRE_LIBRARY_RELEASE AND NOT EXISTS "${DJVULIBRE_LIBRARY_RELEASE}") OR
+            (DJVULIBRE_LIBRARY_DEBUG AND NOT EXISTS "${DJVULIBRE_LIBRARY_DEBUG}"))
+        set(djvu_setup_ok OFF)
+        message(WARNING
+            "The explicitly configured DjVuLibre library does not exist "
+            "(DJVULIBRE_LIBRARY_RELEASE=${DJVULIBRE_LIBRARY_RELEASE}, "
+            "DJVULIBRE_LIBRARY_DEBUG=${DJVULIBRE_LIBRARY_DEBUG}) - building "
+            "WITHOUT DjVu input support. Check the paths and reconfigure."
+        )
     else()
-        add_library(DjVuLibre::DjVuLibre UNKNOWN IMPORTED)
-    endif()
-    set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${DJVULIBRE_INCLUDE_DIR}"
-    )
-    foreach(config RELEASE DEBUG)
-        if(DJVULIBRE_LIBRARY_${config})
-            if(NOT EXISTS "${DJVULIBRE_LIBRARY_${config}}")
-                message(FATAL_ERROR
-                    "DJVULIBRE_LIBRARY_${config} does not exist: ${DJVULIBRE_LIBRARY_${config}}"
-                )
+        if(WIN32)
+            add_library(DjVuLibre::DjVuLibre SHARED IMPORTED)
+        else()
+            add_library(DjVuLibre::DjVuLibre UNKNOWN IMPORTED)
+        endif()
+        set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${DJVULIBRE_INCLUDE_DIR}"
+        )
+        foreach(config RELEASE DEBUG)
+            if(NOT DJVULIBRE_LIBRARY_${config})
+                continue()
             endif()
             set_property(TARGET DjVuLibre::DjVuLibre APPEND PROPERTY
                 IMPORTED_CONFIGURATIONS ${config}
@@ -134,11 +155,13 @@ else()
                     NO_DEFAULT_PATH
                 )
                 if(NOT DJVULIBRE_DLL_${config} OR NOT EXISTS "${DJVULIBRE_DLL_${config}}")
-                    message(FATAL_ERROR
-                        "DjVuLibre ${config} DLL not found. Set DJVULIBRE_DLL_${config} "
-                        "to the DLL matching DJVULIBRE_LIBRARY_${config}; "
-                        "it is copied beside llocr.exe after linking."
+                    set(djvu_setup_ok OFF)
+                    message(WARNING
+                        "DjVuLibre ${config} DLL not found - building WITHOUT "
+                        "DjVu input support. Set DJVULIBRE_DLL_${config} to the "
+                        "DLL matching DJVULIBRE_LIBRARY_${config}."
                     )
+                    break()
                 endif()
                 set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
                     IMPORTED_IMPLIB_${config} "${DJVULIBRE_LIBRARY_${config}}"
@@ -149,34 +172,40 @@ else()
                     IMPORTED_LOCATION_${config} "${DJVULIBRE_LIBRARY_${config}}"
                 )
             endif()
+        endforeach()
+        if(djvu_setup_ok)
+            if(DJVULIBRE_LIBRARY_RELEASE)
+                set(djvulibre_default_config RELEASE)
+            else()
+                set(djvulibre_default_config DEBUG)
+            endif()
+            if(WIN32)
+                set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
+                    IMPORTED_IMPLIB "${DJVULIBRE_LIBRARY_${djvulibre_default_config}}"
+                    IMPORTED_LOCATION "${DJVULIBRE_DLL_${djvulibre_default_config}}"
+                )
+            else()
+                set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
+                    IMPORTED_LOCATION "${DJVULIBRE_LIBRARY_${djvulibre_default_config}}"
+                )
+            endif()
+            set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
+                MAP_IMPORTED_CONFIG_RELWITHDEBINFO "${djvulibre_default_config}"
+                MAP_IMPORTED_CONFIG_MINSIZEREL "${djvulibre_default_config}"
+            )
+            if(NOT DJVULIBRE_LIBRARY_RELEASE OR NOT DJVULIBRE_LIBRARY_DEBUG)
+                set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
+                    MAP_IMPORTED_CONFIG_RELEASE "${djvulibre_default_config}"
+                    MAP_IMPORTED_CONFIG_DEBUG "${djvulibre_default_config}"
+                )
+                message(STATUS "DjVuLibre: only ${djvulibre_default_config} found; using it for all configurations")
+            endif()
+            set(LLOCR_DJVU_AVAILABLE ON)
+            message(STATUS "DjVu input support enabled (DjVuLibre found)")
         endif()
-    endforeach()
-    if(DJVULIBRE_LIBRARY_RELEASE)
-        set(djvulibre_default_config RELEASE)
-    else()
-        set(djvulibre_default_config DEBUG)
     endif()
-    if(WIN32)
-        set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
-            IMPORTED_IMPLIB "${DJVULIBRE_LIBRARY_${djvulibre_default_config}}"
-            IMPORTED_LOCATION "${DJVULIBRE_DLL_${djvulibre_default_config}}"
-        )
-    else()
-        set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
-            IMPORTED_LOCATION "${DJVULIBRE_LIBRARY_${djvulibre_default_config}}"
-        )
-    endif()
-    set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
-        MAP_IMPORTED_CONFIG_RELWITHDEBINFO "${djvulibre_default_config}"
-        MAP_IMPORTED_CONFIG_MINSIZEREL "${djvulibre_default_config}"
-    )
-    if(NOT DJVULIBRE_LIBRARY_RELEASE OR NOT DJVULIBRE_LIBRARY_DEBUG)
-        set_target_properties(DjVuLibre::DjVuLibre PROPERTIES
-            MAP_IMPORTED_CONFIG_RELEASE "${djvulibre_default_config}"
-            MAP_IMPORTED_CONFIG_DEBUG "${djvulibre_default_config}"
-        )
-        message(STATUS "DjVuLibre: only ${djvulibre_default_config} found; using it for all configurations")
-    endif()
+endif()
+
 endif()
 
 # --- Subdirectories ----------------------------------------------------------

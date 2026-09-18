@@ -39,6 +39,7 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
                         QReadLocker locker(&m_documentLock);
                         return m_document.isValidIndex(index) && !m_document.page(index).sourceError.isEmpty();
                     })
+    , m_check(runtime, nullptr)
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
@@ -48,6 +49,19 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
             [this](const QString& message) { setStatus(message); });
     connect(&m_recognition, &RecognitionController::rawResultReady, this,
             &AppController::applyRawResult);
+
+    connect(&m_check, &CheckController::checkFinished, this,
+            [this](bool success, const QString &text, const QString &errorMessage) {
+                m_checkSucceeded = success;
+                m_checkApplied = false;
+                m_checkResultText = text;
+                m_checkError = errorMessage;
+                emit checkStateChanged();
+            });
+    connect(&m_check, &CheckController::busyChanged, this,
+            [this]() { emit checkStateChanged(); });
+    connect(&m_check, &CheckController::statusRequested, this,
+            [this](const QString &message) { setStatus(message); });
 
     connect(&m_boxModel, &BoxListModel::boxRemoved, this, &AppController::onBoxRemoved);
 
@@ -122,7 +136,8 @@ bool AppController::hasResult() const
 
 bool AppController::canRecognize() const
 {
-    if (m_document.isEmpty() || m_recognition.busy() || m_importing)
+    if (m_document.isEmpty() || m_recognition.busy() || m_importing
+        || m_check.busy())
         return false;
     return m_runtime.canRecognize(true);
 }
@@ -220,6 +235,7 @@ void AppController::updateBoxesForCurrent()
         m_boxModel.setFromResult(m_document.page(m_currentPage).result);
     else
         m_boxModel.setBoxes({});
+    setSelectedBoxIndex(-1);
 }
 
 struct AppController::ImportState {
@@ -551,6 +567,103 @@ void AppController::onBoxRemoved(int boxIndex)
     emit editStateChanged();
 }
 
+QString AppController::selectedBlockText() const
+{
+    if (m_selectedBox < 0 || !m_document.isValidIndex(m_currentPage))
+        return QString();
+    const DocumentPage &page = m_document.page(m_currentPage);
+    if (!page.recognized || page.result.pages.isEmpty())
+        return QString();
+    const QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+    if (m_selectedBox >= boxes.size())
+        return QString();
+    return boxes.at(m_selectedBox).text;
+}
+
+QString AppController::selectedBlockLabel() const
+{
+    if (m_selectedBox < 0 || !m_document.isValidIndex(m_currentPage))
+        return QString();
+    const DocumentPage &page = m_document.page(m_currentPage);
+    if (!page.recognized || page.result.pages.isEmpty())
+        return QString();
+    const QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+    if (m_selectedBox >= boxes.size())
+        return QString();
+    return boxes.at(m_selectedBox).label;
+}
+
+void AppController::setSelectedBoxIndex(int index)
+{
+    int clamped = index;
+    if (!m_document.isValidIndex(m_currentPage)
+        || !m_document.page(m_currentPage).recognized) {
+        clamped = -1;
+    } else if (index != -1) {
+        const int size = m_document.page(m_currentPage).result.pages.isEmpty()
+                             ? 0
+                             : m_document.page(m_currentPage).result.pages[0].boxes.size();
+        if (index < 0 || index >= size)
+            clamped = -1;
+    }
+    if (m_selectedBox == clamped)
+        return;
+    m_selectedBox = clamped;
+    emit selectedBoxChanged();
+}
+
+void AppController::checkSelectedBlock(const QString &prompt)
+{
+    if (m_recognition.busy() || m_check.busy())
+        return;
+    if (!m_document.isValidIndex(m_currentPage)
+        || !m_document.page(m_currentPage).recognized
+        || m_selectedBox < 0)
+        return;
+
+    const QImage crop = croppedImage(m_currentPage, m_selectedBox);
+    const QString text = selectedBlockText();
+    if (crop.isNull() || text.isEmpty())
+        return;
+
+    m_checkSucceeded = false;
+    m_checkApplied = false;
+    m_checkResultText.clear();
+    m_checkError.clear();
+    emit checkStateChanged();
+
+    m_check.checkBlock(crop, text, prompt);
+}
+
+void AppController::applyCheckedText()
+{
+    if (!m_checkSucceeded || m_checkApplied
+        || !m_document.isValidIndex(m_currentPage)
+        || m_selectedBox < 0)
+        return;
+    DocumentPage &page = m_document.page(m_currentPage);
+    if (!page.recognized || page.result.pages.isEmpty())
+        return;
+    QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+    if (m_selectedBox >= boxes.size())
+        return;
+
+    boxes[m_selectedBox].text = m_checkResultText;
+    ++m_cropRevision;
+
+    m_editStore.replace(m_currentPage,
+                        rebuildPageText(page.result.pages[0],
+                                        m_settings.keepPageNumbers()));
+    m_pageModel.setEdited(m_currentPage, true);
+    m_boxModel.updateBoxText(m_selectedBox, m_checkResultText);
+
+    m_checkApplied = true;
+
+    emit boxesChanged();
+    emit resultChanged();
+    emit editStateChanged();
+    emit checkStateChanged();
+}
 
 QList<Exporter::Page> AppController::collectPages(int scope, int fromPage, int toPage) const
 {

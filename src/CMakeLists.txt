@@ -5,6 +5,8 @@ qt_add_executable(llocr
 
     core/OcrResult.h
     core/OcrRequest.h
+    core/CheckRequest.h
+    core/CheckResult.h
     core/ConnectionConfig.h
     core/LlamaClient.h
     core/LlamaClient.cpp
@@ -21,6 +23,10 @@ qt_add_executable(llocr
     models/UnlimitedOcrModel.cpp
     models/OcrModelFactory.h
     models/OcrModelFactory.cpp
+    models/GeneralPurposeModel.h
+    models/GeneralPurposeModel.cpp
+    models/QwenGeneralModel.h
+    models/QwenGeneralModel.cpp
 
     # parsers
     parsers/IOutputParser.h
@@ -38,8 +44,6 @@ qt_add_executable(llocr
 
     app/DocumentModel.h
     app/DocumentModel.cpp
-    app/DjVuDocument.h
-    app/DjVuDocument.cpp
     app/Exporter.h
     app/Exporter.cpp
     app/ExportRenderer.h
@@ -59,6 +63,8 @@ qt_add_executable(llocr
     app/PageIndex.h
     app/RecognitionController.h
     app/RecognitionController.cpp
+    app/CheckController.h
+    app/CheckController.cpp
     app/RequestParametersModel.h
     app/RequestParametersModel.cpp
     app/RequestProfileStore.h
@@ -124,13 +130,15 @@ qt_add_executable(llocr
 )
 
 if(WIN32)
-    add_custom_command(TARGET llocr POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-            "$<TARGET_FILE:DjVuLibre::DjVuLibre>"
-            "$<TARGET_FILE_DIR:llocr>"
-        COMMENT "Copying DjVuLibre DLL beside llocr.exe"
-        VERBATIM
-    )
+    if(LLOCR_DJVU_AVAILABLE)
+        add_custom_command(TARGET llocr POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "$<TARGET_FILE:DjVuLibre::DjVuLibre>"
+                "$<TARGET_FILE_DIR:llocr>"
+            COMMENT "Copying DjVuLibre DLL beside llocr.exe"
+            VERBATIM
+        )
+    endif()
     target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
 elseif(APPLE)
     target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
@@ -247,6 +255,15 @@ endif()
 
 target_include_directories(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
+# DjVu input support is compiled only when DjVuLibre was found (ADR 69).
+# Without it the app builds and opening .djvu files reports a clear error.
+if(LLOCR_DJVU_AVAILABLE)
+    target_sources(llocr PRIVATE
+        app/DjVuDocument.h
+        app/DjVuDocument.cpp
+    )
+endif()
+
 target_link_libraries(llocr PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -256,11 +273,15 @@ target_link_libraries(llocr PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Pdf
-    DjVuLibre::DjVuLibre
     Qt6::WebEngineCore
     Qt6::WebEngineQuick
     ZLIB::ZLIB
 )
+
+if(LLOCR_DJVU_AVAILABLE)
+    target_link_libraries(llocr PRIVATE DjVuLibre::DjVuLibre)
+    target_compile_definitions(llocr PRIVATE LLOCR_HAVE_DJVU)
+endif()
 
 target_compile_definitions(llocr PRIVATE
     PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"

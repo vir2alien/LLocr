@@ -20,25 +20,16 @@ Image {
         height: previewImage.paintedHeight
         anchors.centerIn: parent
 
-        property int selectedBoxIndex: -1
-
-        Connections {
-            target: Controller
-            function onPageChanged() { imageArea.selectedBoxIndex = -1 }
-            function onDocumentChanged() { imageArea.selectedBoxIndex = -1 }
-            function onResultChanged() { imageArea.selectedBoxIndex = -1 }
-        }
-
         MouseArea {
             anchors.fill: parent
-            onClicked: imageArea.selectedBoxIndex = -1
+            onClicked: Controller.selectedBoxIndex = -1
         }
 
         Keys.onDeletePressed: (event) => {
-            if (imageArea.selectedBoxIndex >= 0
-                    && Controller.boxModel.isImageBox(imageArea.selectedBoxIndex)) {
-                Controller.boxModel.removeBox(imageArea.selectedBoxIndex)
-                imageArea.selectedBoxIndex = -1
+            if (Controller.selectedBoxIndex >= 0
+                    && Controller.boxModel.isImageBox(Controller.selectedBoxIndex)) {
+                Controller.boxModel.removeBox(Controller.selectedBoxIndex)
+                Controller.selectedBoxIndex = -1
                 event.accepted = true
             }
         }
@@ -56,10 +47,12 @@ Image {
                 required property string boxLabel
 
                 property bool isImage: boxLabel === "image" || boxLabel === "chart"
+                property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
 
                 color: isImage ? Theme.overlayImageFill : "transparent"
-                border.color: isImage ? Theme.overlayImageOuter : Theme.overlayTextOuter
-                border.width: 1
+                border.color: isSelected ? Theme.accent
+                                         : (isImage ? Theme.overlayImageOuter : Theme.overlayTextOuter)
+                border.width: isSelected ? 2 : 1
                 x: boxX * imageArea.width
                 y: boxY * imageArea.height
                 width: boxWidth * imageArea.width
@@ -71,7 +64,8 @@ Image {
                     anchors.fill: parent
                     anchors.margins: 1
                     color: "transparent"
-                    border.color: isImage ? Theme.overlayImageInner : Theme.overlayTextInner
+                    border.color: isSelected ? Theme.accent
+                                             : (isImage ? Theme.overlayImageInner : Theme.overlayTextInner)
                     border.width: 1
                 }
 
@@ -90,6 +84,19 @@ Image {
                     }
                 }
 
+                // --- Selection: any recognized block can be picked for verification ---
+                MouseArea {
+                    anchors.fill: parent
+                    visible: !boxDelegate.isImage
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton
+                    onClicked: {
+                        Controller.selectedBoxIndex = boxDelegate.index
+                        imageArea.forceActiveFocus()
+                    }
+                }
+
+                // --- Image blocks: drag & boundary editing (existing behavior) ---
                 MouseArea {
                     anchors.fill: parent
                     visible: boxDelegate.isImage
@@ -102,7 +109,7 @@ Image {
                     property real origY: 0
 
                     onPressed: (mouse) => {
-                        imageArea.selectedBoxIndex = boxDelegate.index
+                        Controller.selectedBoxIndex = boxDelegate.index
                         imageArea.forceActiveFocus()
                         origX = boxDelegate.boxX
                         origY = boxDelegate.boxY
@@ -133,7 +140,7 @@ Image {
                     font.pointSize: Theme.captionSize
                     onClicked: {
                         Controller.boxModel.removeBox(boxDelegate.index)
-                        imageArea.selectedBoxIndex = -1
+                        Controller.selectedBoxIndex = -1
                     }
                 }
 
@@ -177,7 +184,7 @@ Image {
                         color: Theme.surfaceAlt
                         border.color: Theme.overlayImageOuter
                         border.width: 1
-                        visible: imageArea.selectedBoxIndex === boxDelegate.index
+                        visible: Controller.selectedBoxIndex === boxDelegate.index
                                  && boxDelegate.isImage
 
                         x: {
