@@ -3054,6 +3054,22 @@
         <source>Stopped</source>
         <translation>Остановлен</translation>
     </message>
+    <message>
+        <source>Switching to the check model…</source>
+        <translation>Переключение на модель проверки…</translation>
+    </message>
+    <message>
+        <source>Switching to the OCR model…</source>
+        <translation>Переключение на OCR-модель…</translation>
+    </message>
+    <message>
+        <source>Check model is not selected — pick a model in Settings → Check model</source>
+        <translation>Модель проверки не выбрана — выберите её в Settings → Модель проверки</translation>
+    </message>
+    <message>
+        <source>Check model file not found: %1 — re-select the model in Settings → Check model</source>
+        <translation>Файл модели проверки не найден: %1 — выберите модель заново в Settings → Модель проверки</translation>
+    </message>
 </context>
 <context>
     <name>llocr::RuntimeInstaller</name>

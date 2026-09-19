@@ -122,6 +122,117 @@ private slots:
         QVERIFY(empty.modelId.isEmpty());
     }
 
+    // Model per task (ADR 74): when the live managed server carries another
+    // role's model, the resolve stops it and restarts it with the requested
+    // role's configuration.
+    void managedCheckRoleSwitchesServer()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile ocrModel(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        QVERIFY(ocrModel.open(QIODevice::WriteOnly));
+        ocrModel.write("ocr");
+        ocrModel.close();
+        QFile checkModel(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
+        QVERIFY(checkModel.open(QIODevice::WriteOnly));
+        checkModel.write("check");
+        checkModel.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir),
+                                         LaunchProfileStore::Role::Check);
+        RuntimeController runtime(store, launchProfiles, &checkProfiles);
+
+        // Start with the OCR model.
+        int first = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
+        QTRY_VERIFY_WITH_TIMEOUT(first == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+
+        QList<int> states;
+        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() {
+            states.append(int(runtime.state()));
+        });
+
+        // The check resolve must restart the server for the check model.
+        int done = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady(ConnectionRole::Check,
+                                      [&](const ResolvedConnection &c) { resolved = c; ++done; });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+        QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
+        QVERIFY(!resolved.baseUrl.isEmpty());
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)),
+                 "expected the server to be stopped for the role switch");
+
+        // Back to recognition: switches to the OCR model again.
+        states.clear();
+        int done2 = 0;
+        ResolvedConnection resolved2;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) { resolved2 = c; ++done2; });
+        QTRY_VERIFY_WITH_TIMEOUT(done2 == 1, 15000);
+        QVERIFY2(resolved2.error.isEmpty(), qPrintable(resolved2.error));
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)),
+                 "expected a restart switching back to the OCR model");
+
+        runtime.stopServer();
+    }
+
+    // A check resolve without a selected (or existing) check model fails with
+    // an actionable message naming the check model, and the server is left
+    // untouched.
+    void managedCheckRoleRefusedWithoutModel()
+    {
+        QTemporaryDir dir;
+        QFile ocrModel(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(ocrModel.open(QIODevice::WriteOnly));
+        ocrModel.write("x");
+        ocrModel.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir),
+                                         LaunchProfileStore::Role::Check);
+        RuntimeController runtime(store, launchProfiles, &checkProfiles);
+
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady(ConnectionRole::Check,
+                                      [&](const ResolvedConnection &c) { resolved = c; });
+        QVERIFY2(resolved.error.contains(QStringLiteral("Check model"), Qt::CaseInsensitive),
+                 qPrintable(resolved.error));
+        QVERIFY(resolved.baseUrl.isEmpty());
+        QVERIFY(runtime.state() != RuntimeState::Starting);
+        QVERIFY(runtime.state() != RuntimeState::Ready);
+
+        // A stale check-model path is named in the error.
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("gone.gguf")));
+        ResolvedConnection resolved2;
+        runtime.ensureConnectionReady(ConnectionRole::Check,
+                                      [&](const ResolvedConnection &c) { resolved2 = c; });
+        QVERIFY2(resolved2.error.contains(QStringLiteral("gone.gguf")),
+                 qPrintable(resolved2.error));
+    }
+
     void managedStartsAndResolvesAlias()
     {
         QTemporaryDir dir;

@@ -31,10 +31,12 @@ constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
 
 RuntimeController::RuntimeController(SettingsStore &settings,
                                      LaunchProfileStore &launchProfiles,
+                                     LaunchProfileStore *checkLaunchProfiles,
                                      QObject *parent)
     : QObject(parent)
     , m_settings(settings)
     , m_launchProfiles(launchProfiles)
+    , m_checkLaunchProfiles(checkLaunchProfiles ? checkLaunchProfiles : &launchProfiles)
 {
     recomputeConfigValid();
     connect(&m_settings, &SettingsStore::serverPathChanged, this,
@@ -131,20 +133,54 @@ ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings
     return settings.mode();
 }
 
-QString RuntimeController::configNotReadyMessage() const
+QString RuntimeController::roleModelPath(ConnectionRole role) const
+{
+    return role == ConnectionRole::Check
+               ? m_settings.checkLaunchModelPath().trimmed()
+               : m_settings.launchModelPath().trimmed();
+}
+
+QString RuntimeController::roleMmprojPath(ConnectionRole role) const
+{
+    return role == ConnectionRole::Check
+               ? m_settings.checkLaunchMmprojPath().trimmed()
+               : m_settings.launchMmprojPath().trimmed();
+}
+
+bool RuntimeController::serverRunsRole(ConnectionRole role) const
+{
+    const QString want = roleModelPath(role);
+    if (want.isEmpty())
+        return true;  // ADR 61: the live server is the source of truth
+    return m_startedModelPath == want && m_startedMmprojPath == roleMmprojPath(role);
+}
+
+QString RuntimeController::roleConfigError(ConnectionRole role) const
 {
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty())
         return tr("Managed server is not configured");
     if (!QFileInfo(program).isFile())
         return tr("File not found: %1").arg(program);
+    if (modeFromSettings(m_settings) != ConnectionMode::Managed)
+        return QString();
 
-    const QString model = m_settings.launchModelPath().trimmed();
+    const QString model = roleModelPath(role);
+    if (role == ConnectionRole::Check) {
+        if (model.isEmpty())
+            return tr("Check model is not selected — pick a model in Settings → Check model");
+        if (!QFileInfo(model).isFile())
+            return tr("Check model file not found: %1 — re-select the model in "
+                      "Settings → Check model").arg(model);
+        return QString();
+    }
     if (model.isEmpty())
         return tr("Model is not selected — pick a model in Settings → Models "
                   "or in the Setup wizard");
-    return tr("Model file not found: %1 — re-select the model in Settings → Models")
-               .arg(model);
+    if (!QFileInfo(model).isFile())
+        return tr("Model file not found: %1 — re-select the model in Settings → Models")
+                   .arg(model);
+    return QString();
 }
 
 bool RuntimeController::canRecognize(bool documentLoaded) const
@@ -216,14 +252,21 @@ void RuntimeController::ensureConnectionReady(
 
     const bool serverLive = m_state == RuntimeState::Ready
                          || m_state == RuntimeState::Starting;
-    if (!m_configValid && !serverLive) {
-        failNow(configNotReadyMessage());
-        return;
-    }
+    // The single managed instance serves one model at a time: when the live
+    // server carries another role's model, it is stopped and restarted with
+    // the requested role's configuration (ADR 74).
+    const bool switchNeeded = serverLive && !serverRunsRole(role);
 
-    if (m_state != RuntimeState::Ready && m_state != RuntimeState::Starting
-        && m_state != RuntimeState::Stopping) {
-        if (!m_settings.autoStart() && !m_settings.startOnDemand()) {
+    if (!serverLive || switchNeeded) {
+        // A start (fresh, or after a switch) will be needed — the role's
+        // configuration must be valid (ADR 61 gate, per role).
+        const QString roleError = roleConfigError(role);
+        if (!roleError.isEmpty()) {
+            failNow(roleError);
+            return;
+        }
+        if (!serverLive && m_state != RuntimeState::Stopping
+            && !m_settings.autoStart() && !m_settings.startOnDemand()) {
             failNow(tr("Server is not set to start automatically. "
                        "Start it from the main window or Settings → Runtime."));
             return;
@@ -231,7 +274,13 @@ void RuntimeController::ensureConnectionReady(
     }
 
     m_resolveInProgress = true;
+    m_resolveRole = role;
     m_resolveCallbacks.push_back({context, context != nullptr, onResolved});
+
+    if (switchNeeded) {
+        beginRoleSwitch();
+        return;
+    }
     beginManagedResolve();
 }
 
@@ -244,16 +293,21 @@ void RuntimeController::beginManagedResolve()
     case RuntimeState::Starting:
     case RuntimeState::Stopping:
         break;
-    case RuntimeState::NotConfigured:
-        if (!m_configValid) {
-            failResolve(configNotReadyMessage());
+    case RuntimeState::NotConfigured: {
+        // configValid tracks the OCR configuration; the gate here is per role
+        // (a Check resolve may legitimately start from NotConfigured when only
+        // the OCR model is missing).
+        const QString roleError = roleConfigError(m_resolveRole);
+        if (!roleError.isEmpty()) {
+            failResolve(roleError);
             break;
         }
         Q_FALLTHROUGH();
+    }
     case RuntimeState::Stopped:
     case RuntimeState::Failed: {
         setBusyState(AppBusyState::StartingRuntime);
-        const QString err = startServer();
+        const QString err = startServer(m_resolveRole);
         if (!err.isEmpty()) {
             setBusyState(AppBusyState::Idle);
             failResolve(err);
@@ -265,6 +319,7 @@ void RuntimeController::beginManagedResolve()
 
 void RuntimeController::completeResolve(ResolvedConnection conn)
 {
+    m_switching = false;
     if (!m_resolveInProgress)
         return;
     m_resolveInProgress = false;
@@ -287,6 +342,7 @@ void RuntimeController::failResolve(const QString &message)
 void RuntimeController::onServerStateForResolve()
 {
     if (!m_resolveInProgress) {
+        m_switching = false;
         if (m_state == RuntimeState::Ready || m_state == RuntimeState::Stopped
             || m_state == RuntimeState::Failed)
             setBusyState(AppBusyState::Idle);
@@ -295,13 +351,41 @@ void RuntimeController::onServerStateForResolve()
     if (m_state == RuntimeState::Ready) {
         fetchManagedModels();
     } else if (m_state == RuntimeState::Failed) {
+        if (m_switching) {
+            // The stop-for-switch ended in a failure — retry the start with
+            // the requested role's configuration.
+            m_switching = false;
+            beginManagedResolve();
+            return;
+        }
         setBusyState(AppBusyState::Idle);
         failResolve(describeServerFailure());
     } else if (m_state == RuntimeState::Stopping
                || m_state == RuntimeState::Stopped) {
+        if (m_switching) {
+            if (m_state == RuntimeState::Stopped) {
+                // The old model is unloaded: start the server with the
+                // requested role's configuration (m_resolveRole).
+                m_switching = false;
+                beginManagedResolve();
+            }
+            return;  // Stopping: wait until the stop completes
+        }
         setBusyState(AppBusyState::Idle);
         failResolve(tr("Server stopped"));
     }
+}
+
+void RuntimeController::beginRoleSwitch()
+{
+    m_switching = true;
+    setBusyState(AppBusyState::StartingRuntime);
+    setLoadProgressPercent(-1);
+    setStatusMessage(m_resolveRole == ConnectionRole::Check
+                         ? tr("Switching to the check model…")
+                         : tr("Switching to the OCR model…"));
+    if (m_server)
+        m_server->stop();  // Stopped → onServerStateForResolve → beginManagedResolve
 }
 
 ResolvedConnection RuntimeController::buildManagedConnection() const
@@ -416,6 +500,11 @@ QString RuntimeController::translateServerLine(const QString &line)
 
 QString RuntimeController::startServer()
 {
+    return startServer(ConnectionRole::Ocr);
+}
+
+QString RuntimeController::startServer(ConnectionRole role)
+{
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty())
         return tr("No server binary selected");
@@ -431,15 +520,10 @@ QString RuntimeController::startServer()
         return tr("Server is already running");
 
     if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
-        const QString model = m_settings.launchModelPath().trimmed();
-        if (model.isEmpty() || !QFileInfo(model).isFile()) {
-            const QString msg = model.isEmpty()
-                ? tr("Model is not selected — pick a model in Settings → Models "
-                     "or in the Setup wizard")
-                : tr("Model file not found: %1 — re-select the model in "
-                     "Settings → Models").arg(model);
-            setStatusMessage(msg);
-            return msg;
+        const QString roleError = roleConfigError(role);
+        if (!roleError.isEmpty()) {
+            setStatusMessage(roleError);
+            return roleError;
         }
     }
 
@@ -453,8 +537,10 @@ QString RuntimeController::startServer()
 
     paths.ensureDirectories();
 
-    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings,
-                                                              m_launchProfiles);
+    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(
+        m_settings,
+        role == ConnectionRole::Check ? *m_checkLaunchProfiles : m_launchProfiles,
+        role);
     cfg.program = program;
     QStringList args = cfg.toArguments(probe.capabilities);
 
@@ -504,6 +590,8 @@ QString RuntimeController::startServer()
         return fail;
     }
     setState(RuntimeState::Starting);
+    m_startedModelPath = cfg.modelPath.trimmed();
+    m_startedMmprojPath = cfg.mmprojPath.trimmed();
     setStatusMessage(QObject::tr("Starting server…"));
     return QString();
 }

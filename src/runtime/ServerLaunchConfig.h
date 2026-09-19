@@ -4,6 +4,7 @@
 #include <QStringList>
 
 #include "core/LaunchProfile.h"
+#include "runtime/ResolvedConnection.h"
 
 namespace llocr {
 
@@ -16,7 +17,8 @@ class ServerLaunchConfig
 public:
     ServerLaunchConfig() = default;
     static ServerLaunchConfig fromSettings(const SettingsStore &settings,
-                                           const LaunchProfileStore &launchProfiles);
+                                           const LaunchProfileStore &launchProfiles,
+                                           ConnectionRole role = ConnectionRole::Ocr);
     QStringList toArguments(const ServerCapabilities &caps) const;
     QString toDisplayCommand(const ServerCapabilities &caps) const;
 

@@ -10,11 +10,19 @@
 namespace llocr {
 
 ServerLaunchConfig ServerLaunchConfig::fromSettings(
-    const SettingsStore &s, const LaunchProfileStore &launchProfiles)
+    const SettingsStore &s, const LaunchProfileStore &launchProfiles,
+    ConnectionRole role)
 {
     ServerLaunchConfig cfg;
-    cfg.modelPath = s.launchModelPath();
-    cfg.mmprojPath = s.launchMmprojPath();
+    if (role == ConnectionRole::Check) {
+        cfg.modelPath = s.checkLaunchModelPath();
+        cfg.mmprojPath = s.checkLaunchMmprojPath();
+    } else {
+        cfg.modelPath = s.launchModelPath();
+        cfg.mmprojPath = s.launchMmprojPath();
+    }
+    // One server instance serves both roles one at a time, so the alias is
+    // shared (per-role model names only exist for external servers).
     cfg.modelAlias = s.launchModelAlias();
     cfg.host = s.launchHost();
     cfg.port = s.launchPort();

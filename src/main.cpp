@@ -112,7 +112,8 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfilesValidate",
                                  &launchProfilesValidate);
 
-    llocr::RuntimeController runtimeController(settingsStore, launchProfilesOcr);
+    llocr::RuntimeController runtimeController(settingsStore, launchProfilesOcr,
+                                               &launchProfilesValidate);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
 
     llocr::RuntimeLog runtimeLog(settingsStore);
