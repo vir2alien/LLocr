@@ -1601,42 +1601,52 @@
 <context>
     <name>RuntimeTabExternal</name>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="28"/>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="30"/>
         <source>Endpoint base URL</source>
         <translation>Базовый URL конечной точки</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="39"/>
-        <source>Model name</source>
-        <translation>Название модели</translation>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="41"/>
+        <source>Model name (OCR)</source>
+        <translation>Название модели OCR</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="47"/>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="48"/>
         <source>e.g. Unlimited-OCR, or the id your server exposes</source>
         <translation>например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="52"/>
-        <source>Optional model alias</source>
-        <translation>Опциональное имя модели</translation>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="52"/>
+        <source>Model name (validator)</source>
+        <translation>Название модели валидатора</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="58"/>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="59"/>
+        <source>e.g. qwen3.5-4b, or the id your server exposes</source>
+        <translation>например, qwen3.5-4b или id, который предоставляет ваш сервер</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="64"/>
+        <source>Optional model alias; can be left empty for a single-model server</source>
+        <translation>Опциональное имя модели; для сервера с одной моделью можно оставить пустым</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="70"/>
         <source>API key (optional)</source>
         <translation>API-ключ (необязательно)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="73"/>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="85"/>
         <source>Show</source>
         <translation>Показать</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="81"/>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="93"/>
         <source>Request timeout (ms)</source>
         <translation>Время ожидания запроса (мс)</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog/RuntimeTabExternal.qml" line="98"/>
+        <location filename="../qml/Settings/RuntimeTabExternal.qml" line="110"/>
         <source>Note: the API key is stored locally in plaintext. Avoid using production keys.</source>
         <translation>Примечание: API-ключ хранится локально в открытом виде. Не используйте рабочие ключи.</translation>
     </message>

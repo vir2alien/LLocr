@@ -48,7 +48,8 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
 
     setBusy(true);
 
-    m_runtime.ensureConnectionReady(this, [this, image, recognizedText, prompt](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, ConnectionRole::Check,
+                                    [this, image, recognizedText, prompt](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
         if (conn.baseUrl.isEmpty()) {

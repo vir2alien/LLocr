@@ -159,12 +159,14 @@ bool RuntimeController::canRecognize(bool documentLoaded) const
            && (m_settings.autoStart() || m_settings.startOnDemand());
 }
 
-ResolvedConnection RuntimeController::resolveExternal() const
+ResolvedConnection RuntimeController::resolveExternal(ConnectionRole role) const
 {
     ResolvedConnection conn;
     conn.baseUrl = m_settings.baseUrl();
     conn.apiKey = m_settings.apiKey();
-    conn.modelId = m_settings.modelName();
+    conn.modelId = role == ConnectionRole::Check
+                       ? m_settings.checkModelName()
+                       : m_settings.modelName();
     conn.timeoutMs = m_settings.connectionTimeoutMs();
     return conn;
 }
@@ -172,14 +174,27 @@ ResolvedConnection RuntimeController::resolveExternal() const
 void RuntimeController::ensureConnectionReady(
     const std::function<void(const ResolvedConnection &)> &onResolved)
 {
-    ensureConnectionReady(nullptr, onResolved);
+    ensureConnectionReady(nullptr, ConnectionRole::Ocr, onResolved);
 }
 
 void RuntimeController::ensureConnectionReady(
     QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved)
 {
+    ensureConnectionReady(context, ConnectionRole::Ocr, onResolved);
+}
+
+void RuntimeController::ensureConnectionReady(
+    ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved)
+{
+    ensureConnectionReady(nullptr, role, onResolved);
+}
+
+void RuntimeController::ensureConnectionReady(
+    QObject *context, ConnectionRole role,
+    const std::function<void(const ResolvedConnection &)> &onResolved)
+{
     if (modeFromSettings(m_settings) == ConnectionMode::External) {
-        onResolved(resolveExternal());
+        onResolved(resolveExternal(role));
         return;
     }
 

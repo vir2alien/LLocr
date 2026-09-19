@@ -88,6 +88,40 @@ private slots:
         QVERIFY(conn.error.isEmpty());
     }
 
+    void externalCheckRoleUsesCheckModelName()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setConnectionMode(QStringLiteral("external"));
+        settings.setBaseUrl(QStringLiteral("http://custom.example:9000"));
+        settings.setModelName(QStringLiteral("ocr-model"));
+        settings.setCheckModelName(QStringLiteral("check-model"));
+
+        RuntimeController runtime(settings, launchProfiles);
+        ResolvedConnection ocr, check;
+        runtime.ensureConnectionReady(ConnectionRole::Ocr,
+                                      [&](const ResolvedConnection &c) { ocr = c; });
+        runtime.ensureConnectionReady(ConnectionRole::Check,
+                                      [&](const ResolvedConnection &c) { check = c; });
+        QCOMPARE(ocr.modelId, QStringLiteral("ocr-model"));
+        QCOMPARE(check.modelId, QStringLiteral("check-model"));
+        // Same endpoint for both roles; only the model id differs.
+        QCOMPARE(check.baseUrl, ocr.baseUrl);
+        QCOMPARE(check.apiKey, ocr.apiKey);
+        QCOMPARE(check.timeoutMs, ocr.timeoutMs);
+
+        // An empty check/modelName is sent as-is: single-model servers (e.g.
+        // llama-server) ignore the model field entirely, and a multi-model
+        // OpenAI-compatible server returns its own "model not found" error,
+        // which is surfaced verbatim (§7.5). No silent fallback to the OCR name.
+        settings.setCheckModelName(QString());
+        ResolvedConnection empty;
+        runtime.ensureConnectionReady(ConnectionRole::Check,
+                                      [&](const ResolvedConnection &c) { empty = c; });
+        QVERIFY(empty.modelId.isEmpty());
+    }
+
     void managedStartsAndResolvesAlias()
     {
         QTemporaryDir dir;

@@ -75,6 +75,10 @@ public:
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(QObject *context,
                                const std::function<void(const ResolvedConnection &)> &onResolved);
+    void ensureConnectionReady(ConnectionRole role,
+                               const std::function<void(const ResolvedConnection &)> &onResolved);
+    void ensureConnectionReady(QObject *context, ConnectionRole role,
+                               const std::function<void(const ResolvedConnection &)> &onResolved);
     void cancelPendingStart();
     void setSingleInstanceHeld(bool held);
     void bindSingleInstanceGuard(SingleInstanceGuard *guard);
@@ -103,7 +107,7 @@ private:
     void recomputeConfigValid();
     QString configNotReadyMessage() const;
 
-    ResolvedConnection resolveExternal() const;
+    ResolvedConnection resolveExternal(ConnectionRole role = ConnectionRole::Ocr) const;
     ResolvedConnection buildManagedConnection() const;
 
     void beginManagedResolve();

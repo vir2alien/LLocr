@@ -37,6 +37,7 @@ private slots:
         QCOMPARE(store.apiKey(), QStringLiteral(""));
         QCOMPARE(store.connectionTimeoutMs(), 120000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
+        QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
@@ -54,6 +55,7 @@ private slots:
         store.setApiKey(QStringLiteral("secret-token"));
         store.setConnectionTimeoutMs(5000);
         store.setModelName(QStringLiteral("custom-model"));
+        store.setCheckModelName(QStringLiteral("check-model"));
         store.setParserId(QStringLiteral("raw"));
         store.setThemeMode(1);
         store.setLanguage(QStringLiteral("ru"));
@@ -73,6 +75,7 @@ private slots:
         QCOMPARE(store.apiKey(), QStringLiteral(""));
         QCOMPARE(store.connectionTimeoutMs(), 120000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
+        QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));

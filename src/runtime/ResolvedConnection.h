@@ -4,13 +4,19 @@
 
 namespace llocr {
 
+// Which task a resolved connection is for. It only matters in `External` mode,
+// where one server may host several models: recognition uses `model/name`,
+// text verification uses `check/modelName`. The managed server serves a single
+// loaded model, so both roles resolve to the same alias.
+enum class ConnectionRole { Ocr, Check };
+
 // Result of resolving a usable connection from the current mode. In `External`
 // this is derived immediately from SettingsStore; in `Managed` the controller
 // starts the server, waits for /health, and computes baseUrl/modelId itself.
 struct ResolvedConnection {
     QString baseUrl;    // http://127.0.0.1:<port> or the external URL
     QString apiKey;     // from settings (External) or empty (Managed)
-    QString modelId;    // alias (Managed) or model/name (External)
+    QString modelId;    // alias (Managed) or model/name / check/modelName (External, per ConnectionRole)
     int timeoutMs = 0;
 
     // When baseUrl is empty the resolve failed. This carries a human-readable

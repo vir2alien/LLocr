@@ -11,14 +11,16 @@ ColumnLayout {
     spacing: 4
 
     function loadValues() {
-        modelNameField.text  = Settings.modelName
+        ocrModelNameField.text = Settings.modelName
+        checkModelNameField.text = Settings.checkModelName
         baseUrlField.text = Settings.baseUrl
         apiKeyField.text  = Settings.apiKey
         timeoutField.text = Settings.connectionTimeoutMs.toString()
     }
 
     function saveValues() {
-        Settings.modelName = modelNameField.text;
+        Settings.modelName = ocrModelNameField.text;
+        Settings.checkModelName = checkModelNameField.text;
         Settings.baseUrl = baseUrlField.text;
         Settings.apiKey = apiKeyField.text;
         Settings.connectionTimeoutMs = parseInt(timeoutField.text) || 120000;
@@ -36,20 +38,30 @@ ColumnLayout {
     }
 
     LLOLabel {
-        text: qsTr("Model name")
+        text: qsTr("Model name (OCR)")
     }
     TextField {
-        id: modelNameField
+        id: ocrModelNameField
         Layout.fillWidth: true
         implicitHeight: Theme.controlHeight
         selectByMouse: true
-        readOnly: Settings.connectionMode === "managed"
         placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
+    }
+
+    LLOLabel {
+        text: qsTr("Model name (validator)")
+    }
+    TextField {
+        id: checkModelNameField
+        Layout.fillWidth: true
+        implicitHeight: Theme.controlHeight
+        selectByMouse: true
+        placeholderText: qsTr("e.g. qwen3.5-4b, or the id your server exposes")
     }
     LLOLabel {
         font.pointSize: Theme.captionSize
         color: Theme.textMuted
-        text: qsTr("Optional model alias")
+        text: qsTr("Optional model alias; can be left empty for a single-model server")
     }
 
     Item { implicitHeight: 4 }

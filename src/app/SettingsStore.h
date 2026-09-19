@@ -57,12 +57,14 @@ class SettingsStore : public QObject
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
 
     // Verification (check) model: its own model/mmproj locations, request and
-    // launch profile ids. The single server instance is (re)launched per task
-    // with the model the task needs.
+    // launch profile ids, and the model name used against an external server
+    // (which may host several models). The single managed server instance is
+    // (re)launched per task with the model the task needs.
     Q_PROPERTY(QString checkLaunchModelPath READ checkLaunchModelPath WRITE setCheckLaunchModelPath NOTIFY checkLaunchModelPathChanged)
     Q_PROPERTY(QString checkLaunchMmprojPath READ checkLaunchMmprojPath WRITE setCheckLaunchMmprojPath NOTIFY checkLaunchMmprojPathChanged)
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
     Q_PROPERTY(QString checkLaunchProfileId READ checkLaunchProfileId WRITE setCheckLaunchProfileId NOTIFY checkLaunchProfileIdChanged)
+    Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
 
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
 
@@ -183,6 +185,8 @@ public:
     void setCheckRequestProfileId(const QString &id);
     QString checkLaunchProfileId() const;
     void setCheckLaunchProfileId(const QString &id);
+    QString checkModelName() const;
+    void setCheckModelName(const QString &name);
 
     QString hfToken() const;
     void setHfToken(const QString &token);
@@ -232,6 +236,7 @@ signals:
     void checkLaunchMmprojPathChanged();
     void checkRequestProfileIdChanged();
     void checkLaunchProfileIdChanged();
+    void checkModelNameChanged();
     void hfTokenChanged();
 
 public:
@@ -316,6 +321,7 @@ private:
     static constexpr const char *kCheckLaunchMmprojPath = "check/mmprojPath";
     static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
     static constexpr const char *kCheckLaunchProfileId = "check/launchProfileId";
+    static constexpr const char *kCheckModelName = "check/modelName";
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";
