@@ -90,13 +90,29 @@ int main(int argc, char* argv[]) {
     llocr::I18n i18n(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);
 
-    llocr::RequestProfileStore requestProfiles(settingsStore);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfiles", &requestProfiles);
+    llocr::RequestProfileStore requestProfilesOcr(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesOcr",
+                                 &requestProfilesOcr);
 
-    llocr::LaunchProfileStore launchProfiles(settingsStore);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", &launchProfiles);
+    llocr::RequestProfileStore requestProfilesValidate(
+        settingsStore,
+        QString::fromUtf8(":/profiles/requestValidate.json"),
+        llocr::RequestProfileStore::Role::Check);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesValidate",
+                                 &requestProfilesValidate);
 
-    llocr::RuntimeController runtimeController(settingsStore, launchProfiles);
+    llocr::LaunchProfileStore launchProfilesOcr(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfilesOcr",
+                                 &launchProfilesOcr);
+
+    llocr::LaunchProfileStore launchProfilesValidate(
+        settingsStore,
+        QString::fromUtf8(":/profiles/serverLaunchValidate.json"),
+        llocr::LaunchProfileStore::Role::Check);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfilesValidate",
+                                 &launchProfilesValidate);
+
+    llocr::RuntimeController runtimeController(settingsStore, launchProfilesOcr);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
 
     llocr::RuntimeLog runtimeLog(settingsStore);
@@ -104,14 +120,14 @@ int main(int argc, char* argv[]) {
     runtimeController.setLogTarget(&runtimeLog);
 
     llocr::SelfTestController selfTestController(settingsStore, runtimeController,
-                                                 requestProfiles);
+                                                 requestProfilesOcr);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);
 
     llocr::RuntimeInstaller runtimeInstaller(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
 
     llocr::ModelInstaller modelInstaller(settingsStore, runtimeController,
-                                         launchProfiles);
+                                         launchProfilesOcr);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
 
     llocr::RuntimePaths runtimePaths(settingsStore.runtimeRootDir(),
@@ -130,7 +146,7 @@ int main(int argc, char* argv[]) {
                             runtimeInstaller, modelInstaller);
 
     llocr::AppController appController(settingsStore, runtimeController,
-                                       requestProfiles);
+                                       requestProfilesOcr, requestProfilesValidate);
     llocr::UiController uiController(settingsStore);
 
     QQmlApplicationEngine engine;

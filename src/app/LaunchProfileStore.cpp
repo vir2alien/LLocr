@@ -16,9 +16,11 @@ namespace llocr {
 
 LaunchProfileStore::LaunchProfileStore(SettingsStore &settings,
                                        const QString &builtInPath,
+                                       Role role,
                                        QObject *parent)
     : QObject(parent)
     , m_settings(settings)
+    , m_role(role)
     , m_model(new LaunchParametersModel(this))
 {
     QString error;
@@ -47,10 +49,13 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings,
 
 QString LaunchProfileStore::userPath() const
 {
+    const QString fileName = m_role == Role::Check
+                                 ? QStringLiteral("serverLaunchValidate.json")
+                                 : QStringLiteral("serverLaunch.json");
     return QDir(RuntimePaths(m_settings.runtimeRootDir(),
                              m_settings.runtimeModelsDir())
                     .profilesDir())
-        .filePath(QStringLiteral("serverLaunch.json"));
+        .filePath(fileName);
 }
 
 bool LaunchProfileStore::hasUserProfile() const
@@ -163,7 +168,9 @@ bool LaunchProfileStore::presetMatches(const LaunchProfile &preset,
 
 QString LaunchProfileStore::activeProfileId() const
 {
-    const QString stored = m_settings.launchProfileId();
+    const QString stored = m_role == Role::Check
+                               ? m_settings.checkLaunchProfileId()
+                               : m_settings.launchProfileId();
     const PlatformInfo platform = ReleaseCatalog::detectPlatform();
     QString backend = m_settings.runtimeBackend();
     if (backend.isEmpty())
@@ -186,6 +193,14 @@ QString LaunchProfileStore::activeProfileId() const
 void LaunchProfileStore::ensureProfileResolved()
 {
     const QString resolved = activeProfileId();
+    if (m_role == Role::Check) {
+        if (resolved != m_settings.checkLaunchProfileId()) {
+            m_settings.setCheckLaunchProfileId(resolved);
+            emit activeProfileChanged();
+            emit profileChanged();
+        }
+        return;
+    }
     if (resolved != m_settings.launchProfileId()) {
         m_settings.setLaunchProfileId(resolved);
         emit activeProfileChanged();
@@ -277,7 +292,13 @@ void LaunchProfileStore::saveDraft()
         changed = true;
     }
 
-    if (m_settings.launchProfileId() != m_draftProfileId) {
+    if (m_role == Role::Check) {
+        if (m_settings.checkLaunchProfileId() != m_draftProfileId) {
+            m_settings.setCheckLaunchProfileId(m_draftProfileId);
+            changed = true;
+            emit activeProfileChanged();
+        }
+    } else if (m_settings.launchProfileId() != m_draftProfileId) {
         m_settings.setLaunchProfileId(m_draftProfileId);
         changed = true;
         emit activeProfileChanged();
@@ -298,7 +319,10 @@ void LaunchProfileStore::resetToDefaults()
 {
     m_userProfiles.remove(m_draftProfileId);
     persistUserProfiles();
-    m_settings.setLaunchProfileId(QString());
+    if (m_role == Role::Check)
+        m_settings.setCheckLaunchProfileId(QString());
+    else
+        m_settings.setLaunchProfileId(QString());
     ensureProfileResolved();
     reloadDraft();
     emit profileChanged();

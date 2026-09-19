@@ -9,33 +9,6 @@
     </message>
 </context>
 <context>
-    <name>CheckRequestTab</name>
-    <message>
-        <source>Parameters of the request sent to the verification model. Applied on Save.</source>
-        <translation>Параметры запроса к модели проверки. Применяются по кнопке «Сохранить».</translation>
-    </message>
-    <message>
-        <source>Temperature</source>
-        <translation>Температура</translation>
-    </message>
-    <message>
-        <source>0 = deterministic greedy decoding — recommended for verification.</source>
-        <translation>0 = детерминированный жадный декодинг — рекомендуется для проверки.</translation>
-    </message>
-    <message>
-        <source>Max tokens</source>
-        <translation>Максимум токенов</translation>
-    </message>
-    <message>
-        <source>Upper bound on the generated answer length.</source>
-        <translation>Верхняя граница длины генерируемого ответа.</translation>
-    </message>
-    <message>
-        <source>Stream tokens (ignored — the check expects one complete response)</source>
-        <translation>Потоковая передача токенов (игнорируется — проверка ожидает один полный ответ)</translation>
-    </message>
-</context>
-<context>
     <name>DjVuDocument</name>
     <message>
         <source>DjVu decoding timed out.</source>

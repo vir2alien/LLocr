@@ -27,8 +27,11 @@ Item {
         function onStateChanged() {
             if (ModelInstaller.state === ModelInstaller.ReadyToDownload && pickDialog.visible) {
                 const idx = preparedIndex
-                if (idx >= 0 && idx < ModelInstaller.presetCount)
-                    pickDialog.license = ModelInstaller.presetInfo(idx).license
+                const count = root.role === "check" ? ModelInstaller.presetCountCheck
+                                                    : ModelInstaller.presetCount
+                if (idx >= 0 && idx < count)
+                    pickDialog.license = ModelInstaller.presetInfo(idx,
+                                                root.role === "check").license
                 else
                     pickDialog.license = ""
             }
@@ -203,6 +206,7 @@ Item {
                 id: presetList
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(presetList.count, 3) * 36
+                checkRole: root.role === "check"
                 onInstallClicked: (index) => {
                     ModelInstaller.preparePreset(index, root.role === "check")
                     preparedIndex = index
@@ -301,7 +305,7 @@ Item {
                 }
                 LLOButton {
                     text: qsTr("Restore defaults")
-                    onClicked: ModelInstaller.resetUserCatalog()
+                    onClicked: ModelInstaller.resetUserCatalog(root.role === "check")
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -392,7 +396,8 @@ Item {
         title: qsTr("Import preset catalog")
         nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*)")]
         onAccepted: {
-            const err = ModelInstaller.importCatalog(Runtime.localPath(selectedFile))
+            const err = ModelInstaller.importCatalog(Runtime.localPath(selectedFile),
+                                                     root.role === "check")
             if (err.length) statusMsg.text = err
         }
     }
@@ -403,7 +408,8 @@ Item {
         nameFilters: [qsTr("JSON files (*.json)")]
         fileMode: FileDialog.SaveFile
         onAccepted: {
-            const err = ModelInstaller.exportCatalog(Runtime.localPath(selectedFile))
+            const err = ModelInstaller.exportCatalog(Runtime.localPath(selectedFile),
+                                                     root.role === "check")
             if (err.length) statusMsg.text = err
         }
     }

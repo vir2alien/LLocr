@@ -29,7 +29,9 @@
 namespace llocr {
 
 AppController::AppController(SettingsStore &settings, RuntimeController &runtime,
-                             RequestProfileStore &requestProfiles, QObject *parent)
+                             RequestProfileStore &requestProfiles,
+                             RequestProfileStore &checkRequestProfiles,
+                             QObject *parent)
     : m_settings(settings)
     , m_runtime(runtime)
     , m_recognition(
@@ -39,7 +41,7 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
                         QReadLocker locker(&m_documentLock);
                         return m_document.isValidIndex(index) && !m_document.page(index).sourceError.isEmpty();
                     })
-    , m_check(settings, runtime, nullptr)
+    , m_check(checkRequestProfiles, runtime, nullptr)
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {

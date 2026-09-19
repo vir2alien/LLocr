@@ -261,14 +261,25 @@ void ModelInstaller::reloadPresets()
 
 void ModelInstaller::reloadPresetsInternal()
 {
-    QString err;
     const RuntimePaths paths(m_settings.runtimeRootDir(),
                              m_settings.runtimeModelsDir());
-    const QString userPath =
-        QDir(paths.modelsDir()).filePath(QStringLiteral("catalog.json"));
-    m_presets = ModelPresetCatalog::load(userPath, err);
+    const QString modelsDir = paths.modelsDir();
+
+    QString err;
+    m_presets = ModelPresetCatalog::load(
+        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath),
+        QDir(modelsDir).filePath(QStringLiteral("catalog.json")), err);
     if (!err.isEmpty())
         setStatusMessage(err);
+
+    QString validateErr;
+    m_presetsValidate = ModelPresetCatalog::load(
+        QLatin1String(ModelPresetCatalog::kBuiltInValidatePath),
+        QDir(modelsDir).filePath(QStringLiteral("catalogValidate.json")),
+        validateErr);
+    if (!validateErr.isEmpty())
+        setStatusMessage(validateErr);
+
     emit presetsChanged();
 }
 
@@ -361,11 +372,12 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
     return QString();
 }
 
-QString ModelInstaller::activatePreset(int index)
+QString ModelInstaller::activatePreset(int index, bool forCheck)
 {
-    if (index < 0 || index >= m_presets.size())
+    const QList<ModelPreset> &list = forCheck ? m_presetsValidate : m_presets;
+    if (index < 0 || index >= list.size())
         return tr("Invalid model selection");
-    const ModelPreset &p = m_presets.at(index);
+    const ModelPreset &p = list.at(index);
     const QString modelLeaf = ModelCatalog::leafName(p.model);
     for (int i = 0; i < m_installed.size(); ++i) {
         const ModelEntry &e = m_installed.at(i);
@@ -373,7 +385,7 @@ QString ModelInstaller::activatePreset(int index)
             continue;
         if (!e.modelPath.isEmpty()
             && ModelCatalog::leafName(e.modelPath) == modelLeaf)
-            return setActiveModel(i);
+            return setActiveModel(i, forCheck);
     }
     return tr("The preset is not installed");
 }
@@ -478,12 +490,13 @@ bool ModelInstaller::isPresetInstalled(const ModelPreset &p) const
     return false;
 }
 
-QVariantMap ModelInstaller::presetInfo(int index) const
+QVariantMap ModelInstaller::presetInfo(int index, bool forCheck) const
 {
+    const QList<ModelPreset> &list = forCheck ? m_presetsValidate : m_presets;
     QVariantMap out;
-    if (index < 0 || index >= m_presets.size())
+    if (index < 0 || index >= list.size())
         return out;
-    const ModelPreset &p = m_presets.at(index);
+    const ModelPreset &p = list.at(index);
     out.insert(QStringLiteral("id"), p.id);
     out.insert(QStringLiteral("title"), p.title);
     out.insert(QStringLiteral("repo"), p.repo);
@@ -499,13 +512,14 @@ void ModelInstaller::preparePreset(int index, bool forCheck)
 {
     if (m_busy)
         return;
-    if (index < 0 || index >= m_presets.size()) {
+    const QList<ModelPreset> &list = forCheck ? m_presetsValidate : m_presets;
+    if (index < 0 || index >= list.size()) {
         setStatusMessage(tr("No preset selected"));
         setState(State::Error);
         return;
     }
     m_pendingForCheck = forCheck;
-    beginPrepare(m_presets.at(index));
+    beginPrepare(list.at(index));
 }
 
 void ModelInstaller::beginPrepare(const ModelPreset &preset)
@@ -912,7 +926,7 @@ void ModelInstaller::cancelInstall()
     setState(State::Idle);
 }
 
-QString ModelInstaller::importCatalog(const QString &path)
+QString ModelInstaller::importCatalog(const QString &path, bool forCheck)
 {
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly))
@@ -938,16 +952,22 @@ QString ModelInstaller::importCatalog(const QString &path)
     QString loadErr;
     const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
                                     m_settings.runtimeModelsDir());
-    const QString userPath =
-        QDir(currentPaths.modelsDir()).filePath(QStringLiteral("catalog.json"));
-    QList<ModelPreset> userCatalog = ModelPresetCatalog::load(userPath, loadErr);
+    const QString userPath = QDir(currentPaths.modelsDir())
+                                 .filePath(forCheck ? QStringLiteral("catalogValidate.json")
+                                                    : QStringLiteral("catalog.json"));
+    QList<ModelPreset> userCatalog = ModelPresetCatalog::load(
+        QLatin1String(forCheck ? ModelPresetCatalog::kBuiltInValidatePath
+                               : ModelPresetCatalog::kBuiltInOcrPath),
+        userPath, loadErr);
     for (const ModelPreset &p : incoming) {
         userCatalog.removeIf([&](const ModelPreset &x) { return x.id == p.id; });
         userCatalog.append(p);
     }
     // Drop entries that merely restate a built-in preset (same id and content).
     const QList<ModelPreset> builtIn = ModelPresetCatalog::load(
-        ModelPresetCatalog::kBuiltInPath, loadErr);
+        QLatin1String(forCheck ? ModelPresetCatalog::kBuiltInValidatePath
+                               : ModelPresetCatalog::kBuiltInOcrPath),
+        QString(), loadErr);
     userCatalog.removeIf([&](const ModelPreset &u) {
         return std::any_of(builtIn.cbegin(), builtIn.cend(),
                            [&](const ModelPreset &b) {
@@ -960,21 +980,22 @@ QString ModelInstaller::importCatalog(const QString &path)
     return QString();
 }
 
-QString ModelInstaller::exportCatalog(const QString &path)
+QString ModelInstaller::exportCatalog(const QString &path, bool forCheck)
 {
     QString err;
-    if (!ModelPresetCatalog::save(path, m_presets, err))
+    if (!ModelPresetCatalog::save(path, forCheck ? m_presetsValidate : m_presets, err))
         return err;
     return QString();
 }
 
-QString ModelInstaller::resetUserCatalog()
+QString ModelInstaller::resetUserCatalog(bool forCheck)
 {
     QString err;
     const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
                                     m_settings.runtimeModelsDir());
-    const QString userPath =
-        QDir(currentPaths.modelsDir()).filePath(QStringLiteral("catalog.json"));
+    const QString userPath = QDir(currentPaths.modelsDir())
+                                 .filePath(forCheck ? QStringLiteral("catalogValidate.json")
+                                                    : QStringLiteral("catalog.json"));
     if (!ModelPresetCatalog::resetUserCatalog(userPath, err))
         return err;
     reloadPresetsInternal();

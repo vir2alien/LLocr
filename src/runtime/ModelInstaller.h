@@ -32,6 +32,7 @@ class ModelInstaller : public QObject
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
 
     Q_PROPERTY(int presetCount READ presetCount NOTIFY presetsChanged)
+    Q_PROPERTY(int presetCountCheck READ presetCountCheck NOTIFY presetsChanged)
 
     Q_PROPERTY(int searchCount READ searchCount NOTIFY searchChanged)
     Q_PROPERTY(bool searchActive READ searchActive NOTIFY searchChanged)
@@ -65,6 +66,7 @@ public:
     QString statusMessage() const { return m_statusMessage; }
     int installedCount() const { return m_installed.size(); }
     int presetCount() const { return m_presets.size(); }
+    int presetCountCheck() const { return m_presetsValidate.size(); }
     int searchCount() const { return m_searchResults.size(); }
     bool searchActive() const { return m_searchActive; }
     QString searchQuery() const { return m_searchQuery; }
@@ -81,8 +83,8 @@ public:
     Q_INVOKABLE void refreshInstalled();
     Q_INVOKABLE void rescanRegistry();
 
-    Q_INVOKABLE QVariantMap presetInfo(int index) const;
-    Q_INVOKABLE QString activatePreset(int index);
+    Q_INVOKABLE QVariantMap presetInfo(int index, bool forCheck = false) const;
+    Q_INVOKABLE QString activatePreset(int index, bool forCheck = false);
     Q_INVOKABLE void preparePreset(int index, bool forCheck = false);
     Q_INVOKABLE void installPrepared();
     Q_INVOKABLE void installRemote(int index, bool forCheck = false);
@@ -92,9 +94,9 @@ public:
 
     Q_INVOKABLE void cancelInstall();
 
-    Q_INVOKABLE QString importCatalog(const QString &path);
-    Q_INVOKABLE QString exportCatalog(const QString &path);
-    Q_INVOKABLE QString resetUserCatalog();
+    Q_INVOKABLE QString importCatalog(const QString &path, bool forCheck = false);
+    Q_INVOKABLE QString exportCatalog(const QString &path, bool forCheck = false);
+    Q_INVOKABLE QString resetUserCatalog(bool forCheck = false);
 
     Q_INVOKABLE QString hfToken() const;
     Q_INVOKABLE void setHfToken(const QString &token);
@@ -147,6 +149,7 @@ private:
     QString m_statusMessage;
 
     QList<ModelPreset> m_presets;
+    QList<ModelPreset> m_presetsValidate;
     QList<ModelEntry> m_installed;
 
     QList<HfModelSummary> m_searchResults;

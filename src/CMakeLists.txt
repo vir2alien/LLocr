@@ -181,7 +181,6 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/Settings/RuntimeTabExternal.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Settings/RuntimeTabInternal.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Settings/LocationTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/CheckRequestTab.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOButton.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOLabel.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/RuntimeBuildsList.qml"
@@ -199,19 +198,16 @@ qt_add_resources(llocr "app_conf"
         "${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
 )
 
-qt_add_resources(llocr "app_models"
-    PREFIX "/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/models"
-    FILES
-        "${CMAKE_SOURCE_DIR}/resources/models/default-presets.json"
-)
-
 qt_add_resources(llocr "app_profiles"
     PREFIX "/profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
-        "${CMAKE_SOURCE_DIR}/resources/profiles/request.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/requestOcr.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/requestValidate.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchOcr.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchValidate.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsValidate.json"
 )
 
 file(GLOB_RECURSE PREVIEW_FILES

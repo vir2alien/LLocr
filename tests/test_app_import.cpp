@@ -163,6 +163,7 @@ private:
     std::unique_ptr<SettingsStore> m_settings;
     std::unique_ptr<LaunchProfileStore> m_launchProfiles;
     std::unique_ptr<RequestProfileStore> m_requestProfiles;
+    std::unique_ptr<RequestProfileStore> m_checkRequestProfiles;
     std::unique_ptr<RuntimeController> m_runtime;
     std::unique_ptr<AppController> m_controller;
     QString m_raster;
@@ -184,8 +185,11 @@ private slots:
         m_settings->setBaseUrl(QUrl::fromLocalFile(m_dir.filePath(QStringLiteral("no-server"))).toString());
         m_launchProfiles = std::make_unique<LaunchProfileStore>(*m_settings);
         m_requestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
+        m_checkRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
-        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime,
+                                                       *m_requestProfiles,
+                                                       *m_checkRequestProfiles);
 
         m_multipage = fixture("multipage.djvu");
         QVERIFY(!m_multipage.isEmpty());
@@ -568,7 +572,9 @@ private slots:
         QCOMPARE(observations.importingStates, QList<bool>({true}));
         QVERIFY(observations.committedCounts.isEmpty());
         QVERIFY(!observations.wrongThread.load());
-        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime,
+                                                       *m_requestProfiles,
+                                                       *m_checkRequestProfiles);
         m_controller->openFiles({QUrl::fromLocalFile(m_multipage)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
         QCOMPARE(m_controller->pageCount(), 3);

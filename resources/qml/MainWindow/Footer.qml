@@ -100,7 +100,7 @@ Item {
     }
 
     Connections {
-        target: LaunchProfiles
+        target: LaunchProfilesOcr
         function onProfileChanged() { root.markLaunchDirty() }
     }
 

@@ -1,0 +1,28 @@
+{
+    "schemaVersion": 2,
+    "profiles": [
+        {
+            "id": "qwen3.5-4b",
+            "parameters": [
+                {
+                    "order": 1,
+                    "name": "temperature",
+                    "value": 0.0,
+                    "description": "Sampling randomness; 0 = deterministic greedy decoding."
+                },
+                {
+                    "order": 2,
+                    "name": "max_tokens",
+                    "value": 8192,
+                    "description": "Maximum tokens the model may generate for one request."
+                },
+                {
+                    "order": 3,
+                    "name": "stream",
+                    "value": false,
+                    "description": "Stream tokens as they arrive; false gives the parser one complete response."
+                }
+            ]
+        }
+    ]
+}

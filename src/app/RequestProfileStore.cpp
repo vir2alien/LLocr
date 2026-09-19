@@ -21,9 +21,11 @@ constexpr int kSchemaVersion = 2;
 
 RequestProfileStore::RequestProfileStore(SettingsStore &settings,
                                          const QString &builtInPath,
+                                         Role role,
                                          QObject *parent)
     : QObject(parent)
     , m_settings(settings)
+    , m_role(role)
     , m_model(new RequestParametersModel(this))
 {
     QString error;
@@ -55,10 +57,12 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings,
 
 QString RequestProfileStore::userPath() const
 {
+    const QString fileName = m_role == Role::Check ? QStringLiteral("requestValidate.json")
+                                                   : QStringLiteral("request.json");
     return QDir(RuntimePaths(m_settings.runtimeRootDir(),
                              m_settings.runtimeModelsDir())
                     .profilesDir())
-        .filePath(QStringLiteral("request.json"));
+        .filePath(fileName);
 }
 
 bool RequestProfileStore::hasUserProfile() const
@@ -143,7 +147,9 @@ const RequestProfile *RequestProfileStore::findBuiltIn(const QString &id) const
 
 QString RequestProfileStore::activeProfileId() const
 {
-    const QString id = m_settings.modelRecipeId();
+    const QString id = m_role == Role::Check
+                           ? m_settings.checkRequestProfileId()
+                           : m_settings.modelRecipeId();
     if (findBuiltIn(id) || m_userProfiles.contains(id))
         return id;
     if (!m_profiles.isEmpty())

@@ -35,7 +35,7 @@ struct LaunchProfile
     QString backend;     // "cuda" | "metal" | "vulkan" | "cpu" | "" (any)
     QString description;
     QList<LaunchParameter> parameters;
-    static constexpr const char *kBuiltInPath = ":/profiles/serverLaunch.json";
+    static constexpr const char *kBuiltInPath = ":/profiles/serverLaunchOcr.json";
 
     static const QStringList &reservedArgNames();
     static QList<LaunchProfile> parseFile(const QJsonObject &root, QString &error);

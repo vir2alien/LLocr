@@ -20,9 +20,14 @@ class RequestProfileStore : public QObject
     Q_PROPERTY(QString draftProfileId READ draftProfileId NOTIFY draftProfileChanged)
 
 public:
+    // The role picks the user-override file and the settings key that stores
+    // the active profile id; the built-in profile file is chosen by the caller.
+    enum class Role { Ocr, Check };
+
     explicit RequestProfileStore(SettingsStore &settings,
                                  const QString &builtInPath =
                                      QString::fromUtf8(RequestProfile::kBuiltInPath),
+                                 Role role = Role::Ocr,
                                  QObject *parent = nullptr);
 
     QAbstractListModel *draftModel() const { return m_model; }
@@ -54,6 +59,7 @@ private:
 
 private:
     SettingsStore &m_settings;
+    Role m_role;
     QList<RequestProfile> m_profiles;
     QHash<QString, RequestProfile> m_userProfiles;
     QString m_draftProfileId;

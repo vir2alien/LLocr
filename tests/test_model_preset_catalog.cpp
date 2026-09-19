@@ -26,7 +26,8 @@ void TestModelPresetCatalog::builtInCatalogParses()
     // load() with an empty user path exercises just the built-in resource,
     // which must always be present and parse cleanly.
     QString err;
-    const QList<ModelPreset> presets = ModelPresetCatalog::load(QString(), err);
+    const QList<ModelPreset> presets = ModelPresetCatalog::load(
+        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), QString(), err);
     QVERIFY2(err.isEmpty(), qPrintable(err));
     QVERIFY(presets.size() >= 2);  // the two shipped presets
 
@@ -73,7 +74,8 @@ void TestModelPresetCatalog::mergeByUserPrecedence()
     QVERIFY(ModelPresetCatalog::save(userPath, user, err));
     QVERIFY(err.isEmpty());
 
-    const QList<ModelPreset> merged = ModelPresetCatalog::load(userPath, err);
+    const QList<ModelPreset> merged = ModelPresetCatalog::load(
+        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
     QVERIFY(err.isEmpty());
 
     // The overridden id now carries the user's title/repo.
@@ -142,7 +144,8 @@ void TestModelPresetCatalog::saveThenReset()
     QVERIFY(QFile::exists(userPath));
 
     // The file round-trips: load() reads the two sources and returns `one`.
-    const QList<ModelPreset> loaded = ModelPresetCatalog::load(userPath, err);
+    const QList<ModelPreset> loaded = ModelPresetCatalog::load(
+        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
     QVERIFY(err.isEmpty());
     bool sawSaved = false;
     for (const ModelPreset &pp : loaded)
@@ -155,7 +158,8 @@ void TestModelPresetCatalog::saveThenReset()
     QVERIFY(!QFile::exists(userPath));
     err.clear();
     // After reset the user catalog is gone: load() only yields built-ins.
-    const QList<ModelPreset> afterReset = ModelPresetCatalog::load(userPath, err);
+    const QList<ModelPreset> afterReset = ModelPresetCatalog::load(
+        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
     QVERIFY(err.isEmpty());
     bool hasOne = false;
     for (const ModelPreset &pp : afterReset)

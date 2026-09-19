@@ -10,20 +10,23 @@ ListView {
     id: root
 
     property int rowHeight: 36
+    // false = the recognition (OCR) preset catalog, true = the verification
+    // (check) one.
+    property bool checkRole: false
 
     signal installClicked(int index)
 
     visible: count > 0
     clip: true
-    model: ModelInstaller.presetCount
+    model: checkRole ? ModelInstaller.presetCountCheck : ModelInstaller.presetCount
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
     delegate: Rectangle {
         id: presetRoot
         required property int index
-        property var pInfo: ModelInstaller.presetInfo(index)
+        property var pInfo: ModelInstaller.presetInfo(index, root.checkRole)
         function refreshPresetInfo() {
-            pInfo = ModelInstaller.presetInfo(index)
+            pInfo = ModelInstaller.presetInfo(index, root.checkRole)
         }
         Connections {
             target: ModelInstaller
@@ -67,7 +70,7 @@ ListView {
                 enabled: !ModelInstaller.busy
                 onClicked: {
                     if (presetRoot.pInfo.installed) {
-                        ModelInstaller.activatePreset(presetRoot.index)
+                        ModelInstaller.activatePreset(presetRoot.index, root.checkRole)
                         return
                     }
                     root.installClicked(presetRoot.index)

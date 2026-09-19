@@ -42,9 +42,8 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kLaunchPort, "launchPort", QVariant(kDefaultPort) },
     { kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString()) },
     { kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString()) },
-    { kCheckTemperature, "checkTemperature", QVariant(kDefaultCheckTemperature) },
-    { kCheckMaxTokens, "checkMaxTokens", QVariant(kDefaultCheckMaxTokens) },
-    { kCheckStream, "checkStream", QVariant(kDefaultCheckStream) },
+    { kCheckRequestProfileId, "checkRequestProfileId", QVariant(QString()) },
+    { kCheckLaunchProfileId, "checkLaunchProfileId", QVariant(QString()) },
     { kHfToken, "hfToken", QVariant(QString()) },
     { kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString()) },
 };
@@ -667,43 +666,30 @@ void SettingsStore::setCheckLaunchMmprojPath(const QString &path)
     emit checkLaunchMmprojPathChanged();
 }
 
-double SettingsStore::checkTemperature() const
+QString SettingsStore::checkRequestProfileId() const
 {
-    return m_settings.value(kCheckTemperature, kDefaultCheckTemperature).toDouble();
+    return m_settings.value(kCheckRequestProfileId).toString();
 }
 
-void SettingsStore::setCheckTemperature(double value)
+void SettingsStore::setCheckRequestProfileId(const QString &id)
 {
-    if (checkTemperature() == value)
+    if (checkRequestProfileId() == id)
         return;
-    m_settings.setValue(kCheckTemperature, value);
-    emit checkParametersChanged();
+    m_settings.setValue(kCheckRequestProfileId, id);
+    emit checkRequestProfileIdChanged();
 }
 
-int SettingsStore::checkMaxTokens() const
+QString SettingsStore::checkLaunchProfileId() const
 {
-    return m_settings.value(kCheckMaxTokens, kDefaultCheckMaxTokens).toInt();
+    return m_settings.value(kCheckLaunchProfileId).toString();
 }
 
-void SettingsStore::setCheckMaxTokens(int tokens)
+void SettingsStore::setCheckLaunchProfileId(const QString &id)
 {
-    if (checkMaxTokens() == tokens)
+    if (checkLaunchProfileId() == id)
         return;
-    m_settings.setValue(kCheckMaxTokens, tokens);
-    emit checkParametersChanged();
-}
-
-bool SettingsStore::checkStream() const
-{
-    return m_settings.value(kCheckStream, kDefaultCheckStream).toBool();
-}
-
-void SettingsStore::setCheckStream(bool on)
-{
-    if (checkStream() == on)
-        return;
-    m_settings.setValue(kCheckStream, on);
-    emit checkParametersChanged();
+    m_settings.setValue(kCheckLaunchProfileId, id);
+    emit checkLaunchProfileIdChanged();
 }
 
 QString SettingsStore::launchProfileId() const

@@ -27,7 +27,7 @@ Item {
         function onLaunchModelPathChanged() { refreshEstimate() }
     }
     Connections {
-        target: LaunchProfiles
+        target: LaunchProfilesOcr
         function onProfileChanged() { refreshEstimate() }
     }
     onVisibleChanged: {

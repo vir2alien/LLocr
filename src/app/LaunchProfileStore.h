@@ -22,9 +22,14 @@ class LaunchProfileStore : public QObject
     Q_PROPERTY(QStringList presetNames READ presetNames CONSTANT)
 
 public:
+    // The role picks the user-override file and the settings key that stores
+    // the active profile id; the built-in profile file is chosen by the caller.
+    enum class Role { Ocr, Check };
+
     explicit LaunchProfileStore(SettingsStore &settings,
                                 const QString &builtInPath =
                                     QString::fromUtf8(LaunchProfile::kBuiltInPath),
+                                Role role = Role::Ocr,
                                 QObject *parent = nullptr);
 
     QAbstractListModel *draftModel() const { return m_model; }
@@ -61,6 +66,7 @@ private:
 
 private:
     SettingsStore &m_settings;
+    Role m_role;
     QList<LaunchProfile> m_presets;
     QHash<QString, LaunchProfile> m_userProfiles;  // by preset id
     QString m_draftProfileId;

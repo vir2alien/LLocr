@@ -2,16 +2,16 @@
 
 #include <QFutureWatcher>
 
-#include "app/SettingsStore.h"
+#include "app/RequestProfileStore.h"
 #include "models/QwenGeneralModel.h"
 
 namespace llocr {
 
-CheckController::CheckController(SettingsStore &settings,
+CheckController::CheckController(RequestProfileStore &requestProfiles,
                                  RuntimeController &runtime,
                                  QObject *parent)
     : QObject(parent)
-    , m_settings(settings)
+    , m_requestProfiles(requestProfiles)
     , m_runtime(runtime)
     , m_model(std::make_unique<QwenGeneralModel>())
 {
@@ -26,19 +26,9 @@ CheckController::CheckController(SettingsStore &settings,
 
 QList<RequestParameter> CheckController::requestParameters() const
 {
-    // The check request parameters live in Settings (check-model window,
-    // Request tab).
-    return {
-        { QStringLiteral("temperature"), 0, RequestValueKind::Number,
-          m_settings.checkTemperature(),
-          QStringLiteral("Sampling temperature") },
-        { QStringLiteral("max_tokens"), 1, RequestValueKind::Number,
-          QVariant::fromValue(m_settings.checkMaxTokens()),
-          QStringLiteral("Maximum tokens to generate") },
-        { QStringLiteral("stream"), 2, RequestValueKind::Boolean,
-          m_settings.checkStream(),
-          QStringLiteral("Stream tokens as they arrive") },
-    };
+    // The check request parameters live in the validate request profile
+    // (Settings → Check model → Request).
+    return m_requestProfiles.activeProfile().parameters;
 }
 
 ConnectionConfig CheckController::buildConfig(const ResolvedConnection &conn) const

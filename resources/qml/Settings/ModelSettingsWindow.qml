@@ -9,8 +9,8 @@ import "../Common"
 
 ApplicationWindow {
     id: window
-    // "ocr" for the recognition model; "check" will be used by the
-    // verification-model window once its settings land.
+    // "ocr" fills the recognition-model settings, "check" the verification
+    // model's; the tab contents (Location/Launch/Request) follow the role.
     property string role: "ocr"
 
     title: role === "check" ? qsTr("Check model settings")
@@ -44,10 +44,7 @@ ApplicationWindow {
                 text: qsTr("Restore defaults")
                 onClicked: {
                     launchTab.resetValues()
-                    if (window.checkRole)
-                        checkRequestTab.resetValues()
-                    else
-                        requestTab.resetValues()
+                    requestTab.resetValues()
                 }
             }
             Item { Layout.fillWidth: true }
@@ -56,14 +53,15 @@ ApplicationWindow {
                 text: qsTr("Save")
                 onClicked: {
                     launchTab.saveValues()
-                    if (window.checkRole)
-                        checkRequestTab.saveValues()
-                    else
-                        requestTab.saveValues()
+                    requestTab.saveValues()
                     if (!window.checkRole) {
-                        const draftId = RequestProfiles.draftProfileId
+                        const draftId = RequestProfilesOcr.draftProfileId
                         if (draftId.length > 0)
                             Settings.modelRecipeId = draftId
+                    } else {
+                        const draftId = RequestProfilesValidate.draftProfileId
+                        if (draftId.length > 0)
+                            Settings.checkRequestProfileId = draftId
                     }
                     Settings.forceSave()
                     window.close()
@@ -73,10 +71,7 @@ ApplicationWindow {
                 text: qsTr("Cancel")
                 onClicked: {
                     launchTab.loadValues()
-                    if (window.checkRole)
-                        checkRequestTab.loadValues()
-                    else
-                        requestTab.loadValues()
+                    requestTab.loadValues()
                     window.close()
                 }
             }
@@ -85,10 +80,7 @@ ApplicationWindow {
 
     function loadValues() {
         launchTab.loadValues()
-        if (checkRole)
-            checkRequestTab.loadValues()
-        else
-            requestTab.loadValues()
+        requestTab.loadValues()
     }
 
     onVisibleChanged: {
@@ -161,22 +153,15 @@ ApplicationWindow {
 
             LaunchTab {
                 id: launchTab
+                checkRole: window.checkRole
             }
 
-            // Request settings are role-specific: the OCR model uses the
-            // parameter-profile table, the check model — simple fields.
-            Item {
-                RequestTab {
-                    id: requestTab
-                    anchors.fill: parent
-                    visible: !window.checkRole
-                }
-
-                CheckRequestTab {
-                    id: checkRequestTab
-                    anchors.fill: parent
-                    visible: window.checkRole
-                }
+            // Both roles use the parameter-profile table; the tab binds to the
+            // role's request profile store.
+            RequestTab {
+                id: requestTab
+                anchors.fill: parent
+                checkRole: window.checkRole
             }
         }
     }

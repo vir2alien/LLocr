@@ -69,6 +69,7 @@ class AppController : public QObject
 public:
     explicit AppController(SettingsStore &settings, RuntimeController &runtime,
                            RequestProfileStore &requestProfiles,
+                           RequestProfileStore &checkRequestProfiles,
                            QObject *parent = nullptr);
 
     bool busy() const { return m_recognition.busy(); }

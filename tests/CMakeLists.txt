@@ -163,8 +163,10 @@ qt_add_resources(test_app_import "app_import_profiles"
     PREFIX "/profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
-        "${CMAKE_SOURCE_DIR}/resources/profiles/request.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/requestOcr.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/requestValidate.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchOcr.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchValidate.json"
 )
 if(WIN32)
     add_custom_command(TARGET test_app_import POST_BUILD
@@ -614,13 +616,15 @@ add_test(NAME test_model_registry COMMAND test_model_registry)
 # ---- Stage E: model installer (removeModel / multi-quant) ----------------
 qt_add_executable(test_model_installer test_model_installer.cpp)
 
-# The built-in preset catalog is a Qt resource; register it under the same
-# :/models/ prefix so ModelInstaller::reloadPresetsInternal resolves it.
+# The built-in preset catalogs are Qt resources; register them under the
+# same :/profiles/ prefix so ModelInstaller::reloadPresetsInternal resolves
+# them.
 qt_add_resources(test_model_installer "model_installer_preset_res"
-    PREFIX "/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/models"
+    PREFIX "/profiles"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
-        "${CMAKE_SOURCE_DIR}/resources/models/default-presets.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsValidate.json"
 )
 
 target_include_directories(test_model_installer PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -676,12 +680,13 @@ add_test(NAME test_model_installer COMMAND test_model_installer)
 qt_add_executable(test_model_preset_catalog test_model_preset_catalog.cpp)
 
 # The shipped built-in preset catalog is a Qt resource; register it under the
-# same :/models/ prefix so ModelPresetCatalog::kBuiltInPath resolves in-test.
+# same :/profiles/ prefix so ModelPresetCatalog::kBuiltInOcrPath resolves
+# in-test.
 qt_add_resources(test_model_preset_catalog "preset_res"
-    PREFIX "/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/models"
+    PREFIX "/profiles"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
-        "${CMAKE_SOURCE_DIR}/resources/models/default-presets.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
 )
 
 target_include_directories(test_model_preset_catalog PRIVATE ${CMAKE_SOURCE_DIR}/src)

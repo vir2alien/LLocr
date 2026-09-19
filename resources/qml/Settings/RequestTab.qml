@@ -10,20 +10,29 @@ import "../Common"
 Item {
     id: root
 
+    // false = the recognition (OCR) request profile, true = the verification
+    // (check) request profile.
+    property bool checkRole: false
+
+    readonly property var profiles: checkRole ? RequestProfilesValidate
+                                              : RequestProfilesOcr
+
     function loadValues() {
-        var midx = modelBox.model.indexOf(Controller.modelIdToName(Settings.modelRecipeId))
-        modelBox.currentIndex = midx >= 0 ? midx : 0
-        RequestProfiles.reloadDraft()
+        if (!checkRole) {
+            var midx = modelBox.model.indexOf(Controller.modelIdToName(Settings.modelRecipeId))
+            modelBox.currentIndex = midx >= 0 ? midx : 0
+        }
+        root.profiles.reloadDraft()
     }
 
     function saveValues() {
-        RequestProfiles.saveDraft()
+        root.profiles.saveDraft()
     }
 
     // Restore defaults: loads the default profile into the draft (uncommitted
     // until Save).
     function resetValues() {
-        RequestProfiles.loadDefaultDraft()
+        root.profiles.loadDefaultDraft()
     }
 
     // Column proportions shared by the header and the delegates.
@@ -37,16 +46,18 @@ Item {
         Item { implicitHeight: 4 }
 
         LLOLabel {
+            visible: !root.checkRole
             text: qsTr("OCR model")
         }
 
         ComboBox {
             id: modelBox
+            visible: !root.checkRole
             Layout.fillWidth: true
             implicitHeight: Theme.controlHeight
             model: Controller.modelNames
             onActivated: {
-                RequestProfiles.selectDraftProfile(
+                root.profiles.selectDraftProfile(
                             Controller.modelNameToId(modelBox.currentText))
             }
         }
@@ -100,7 +111,7 @@ Item {
             Layout.fillHeight: true
             clip: true
             spacing: Theme.spacingSmall
-            model: RequestProfiles.draftModel
+            model: root.profiles.draftModel
 
             delegate: Item {
                 id: paramRow
@@ -137,7 +148,7 @@ Item {
                     onEditingFinished: {
                         if (text === paramRow.valueText)
                             return
-                        if (!RequestProfiles.setDraftValue(paramRow.index, text))
+                        if (!root.profiles.setDraftValue(paramRow.index, text))
                             text = Qt.binding(() => paramRow.valueText)
                     }
                 }

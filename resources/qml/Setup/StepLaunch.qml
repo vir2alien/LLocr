@@ -55,7 +55,7 @@ Item {
         function onLaunchModelAliasChanged() { root.commandPreview = Runtime.launchCommandPreview() }
     }
     Connections {
-        target: LaunchProfiles
+        target: LaunchProfilesOcr
         function onProfileChanged() { refreshAll() }
         function onActiveProfileChanged() { syncPresetModel() }
     }
@@ -70,9 +70,9 @@ Item {
     // broken by the user's own combobox interaction.
     function syncPresetModel() {
         presetListModel.clear()
-        for (let i = 0; i < LaunchProfiles.presetIds.length; ++i)
-            presetListModel.append({ name: LaunchProfiles.presetNames[i] })
-        const idx = LaunchProfiles.presetIds.indexOf(LaunchProfiles.activeProfileId)
+        for (let i = 0; i < LaunchProfilesOcr.presetIds.length; ++i)
+            presetListModel.append({ name: LaunchProfilesOcr.presetNames[i] })
+        const idx = LaunchProfilesOcr.presetIds.indexOf(LaunchProfilesOcr.activeProfileId)
         profileBox.currentIndex = idx >= 0 ? idx : 0
     }
 
@@ -121,8 +121,8 @@ Item {
                 implicitHeight: Theme.controlHeight
                 textRole: "name"
                 model: ListModel { id: presetListModel }
-                onActivated: LaunchProfiles.selectDraftProfile(
-                                 LaunchProfiles.presetIds[currentIndex])
+                onActivated: LaunchProfilesOcr.selectDraftProfile(
+                                 LaunchProfilesOcr.presetIds[currentIndex])
             }
         }
 

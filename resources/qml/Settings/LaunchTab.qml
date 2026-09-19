@@ -10,16 +10,23 @@ import "../Common"
 Item {
     id: root
 
+    // false = the recognition (OCR) launch profile, true = the verification
+    // (check) launch profile.
+    property bool checkRole: false
+
+    readonly property var profiles: checkRole ? LaunchProfilesValidate
+                                              : LaunchProfilesOcr
+
     function loadValues() {
-        LaunchProfiles.reloadDraft()
+        root.profiles.reloadDraft()
     }
 
     function saveValues() {
-        LaunchProfiles.saveDraft()
+        root.profiles.saveDraft()
     }
 
     function resetValues() {
-        LaunchProfiles.loadDefaultDraft()
+        root.profiles.loadDefaultDraft()
     }
 
     readonly property real nameWidth: 0.24
@@ -30,14 +37,14 @@ Item {
 
     function syncPresetModel() {
         presetListModel.clear()
-        for (let i = 0; i < LaunchProfiles.presetIds.length; ++i)
-            presetListModel.append({ name: LaunchProfiles.presetNames[i] })
-        const idx = LaunchProfiles.presetIds.indexOf(LaunchProfiles.draftProfileId)
+        for (let i = 0; i < root.profiles.presetIds.length; ++i)
+            presetListModel.append({ name: root.profiles.presetNames[i] })
+        const idx = root.profiles.presetIds.indexOf(root.profiles.draftProfileId)
         profileBox.currentIndex = idx >= 0 ? idx : 0
     }
 
     Connections {
-        target: LaunchProfiles
+        target: root.profiles
         function onDraftProfileChanged() { syncPresetModel() }
         function onActiveProfileChanged() { syncPresetModel() }
     }
@@ -61,8 +68,8 @@ Item {
                 implicitHeight: Theme.controlHeight
                 textRole: "name"
                 model: ListModel { id: presetListModel }
-                onActivated: LaunchProfiles.selectDraftProfile(
-                                 LaunchProfiles.presetIds[currentIndex])
+                onActivated: root.profiles.selectDraftProfile(
+                                 root.profiles.presetIds[currentIndex])
             }
             LLOButton {
                 text: qsTr("Restore profile")
@@ -106,7 +113,7 @@ Item {
             Layout.fillHeight: true
             clip: true
             spacing: Theme.spacingSmall
-            model: LaunchProfiles.draftModel
+            model: root.profiles.draftModel
 
             delegate: Item {
                 id: paramRow
@@ -144,7 +151,7 @@ Item {
                     onEditingFinished: {
                         if (text === paramRow.valueText)
                             return
-                        if (!LaunchProfiles.setDraftValue(paramRow.index, text))
+                        if (!root.profiles.setDraftValue(paramRow.index, text))
                             text = Qt.binding(() => paramRow.valueText)
                     }
                 }
@@ -170,7 +177,7 @@ Item {
                     flat: true
                     text: "\u2715"
                     font.pointSize: Theme.captionSize
-                    onClicked: LaunchProfiles.removeDraftRow(paramRow.index)
+                    onClicked: root.profiles.removeDraftRow(paramRow.index)
                 }
             }
         }
@@ -196,7 +203,7 @@ Item {
             LLOButton {
                 text: qsTr("Add")
                 onClicked: {
-                    if (LaunchProfiles.appendDraftParameter(newParamName.text,
+                    if (root.profiles.appendDraftParameter(newParamName.text,
                                                             newParamValue.text)) {
                         newParamName.text = ""
                         newParamValue.text = ""

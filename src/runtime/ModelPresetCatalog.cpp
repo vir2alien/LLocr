@@ -73,13 +73,14 @@ QJsonArray ModelPresetCatalog::toArray(const QList<ModelPreset> &presets)
     return arr;
 }
 
-QList<ModelPreset> ModelPresetCatalog::load(const QString &userCatalogPath,
+QList<ModelPreset> ModelPresetCatalog::load(const QString &builtInPath,
+                                            const QString &userCatalogPath,
                                             QString &error)
 {
     QList<ModelPreset> out;
 
     QString builtinErr;
-    QList<ModelPreset> builtIn = readFile(QLatin1String(kBuiltInPath),
+    QList<ModelPreset> builtIn = readFile(builtInPath,
                                            QObject::tr("built-in preset catalog"),
                                            builtinErr, /*missingIsOk=*/false);
     if (builtIn.isEmpty() && !builtinErr.isEmpty()) {
