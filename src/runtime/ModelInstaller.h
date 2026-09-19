@@ -38,6 +38,7 @@ class ModelInstaller : public QObject
     Q_PROPERTY(QString searchQuery READ searchQuery WRITE setSearchQuery NOTIFY searchChanged)
 
     Q_PROPERTY(QString activeTitle READ activeTitle NOTIFY installedChanged)
+    Q_PROPERTY(QString checkActiveTitle READ checkActiveTitle NOTIFY installedChanged)
 
 public:
     enum State {
@@ -69,10 +70,11 @@ public:
     QString searchQuery() const { return m_searchQuery; }
     void setSearchQuery(const QString &q);
     QString activeTitle() const;
+    QString checkActiveTitle() const;
 
     Q_INVOKABLE void reloadPresets();
-    Q_INVOKABLE QVariantMap installedInfo(int index) const;
-    Q_INVOKABLE QString setActiveModel(int index);
+    Q_INVOKABLE QVariantMap installedInfo(int index, bool forCheck = false) const;
+    Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);
     Q_INVOKABLE QString removeModel(int index);
     Q_INVOKABLE QString openModelFolder(int index);
 
@@ -81,9 +83,9 @@ public:
 
     Q_INVOKABLE QVariantMap presetInfo(int index) const;
     Q_INVOKABLE QString activatePreset(int index);
-    Q_INVOKABLE void preparePreset(int index);
+    Q_INVOKABLE void preparePreset(int index, bool forCheck = false);
     Q_INVOKABLE void installPrepared();
-    Q_INVOKABLE void installRemote(int index);
+    Q_INVOKABLE void installRemote(int index, bool forCheck = false);
 
     Q_INVOKABLE void startSearch();
     Q_INVOKABLE QVariantMap searchResult(int index) const;
@@ -152,6 +154,7 @@ private:
     bool m_searchActive = false;
 
     Pending m_pending;
+    bool m_pendingForCheck = false;  // install auto-activates the check model
     int m_prepareGeneration = 0;
 
     DownloadGroup *m_group = nullptr;

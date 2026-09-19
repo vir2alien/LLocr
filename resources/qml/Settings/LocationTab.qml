@@ -11,6 +11,16 @@ import "../Common"
 Item {
     id: root
     property int preparedIndex: -1
+    // "ocr" fills the recognition-model paths; "check" fills the verification
+    // model paths. The lists and the install flow follow the role.
+    property string role: "ocr"
+
+    readonly property string modelPathText: role === "check"
+        ? Settings.checkLaunchModelPath : Settings.launchModelPath
+    readonly property string mmprojPathText: role === "check"
+        ? Settings.checkLaunchMmprojPath : Settings.launchMmprojPath
+    readonly property string activeTitleText: role === "check"
+        ? ModelInstaller.checkActiveTitle : ModelInstaller.activeTitle
 
     Connections {
         target: ModelInstaller
@@ -47,9 +57,12 @@ Item {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: qsTr("These paths are used when the managed llama-server "
-                           + "is launched. Activating a downloaded model fills "
-                           + "them automatically.")
+                text: root.role === "check"
+                      ? qsTr("These paths select the model for text verification. "
+                             + "Activating a downloaded model fills them automatically.")
+                      : qsTr("These paths are used when the managed llama-server "
+                             + "is launched. Activating a downloaded model fills "
+                             + "them automatically.")
             }
 
             LLOLabel {
@@ -64,8 +77,13 @@ Item {
                     implicitHeight: Theme.controlHeight
                     selectByMouse: true
                     placeholderText: qsTr("path to the .gguf model file")
-                    text: Settings.launchModelPath
-                    onEditingFinished: Settings.launchModelPath = text.trim()
+                    text: root.modelPathText
+                    onEditingFinished: {
+                        if (root.role === "check")
+                            Settings.checkLaunchModelPath = text.trim()
+                        else
+                            Settings.launchModelPath = text.trim()
+                    }
                 }
                 LLOButton {
                     text: qsTr("Browse…")
@@ -85,8 +103,13 @@ Item {
                     implicitHeight: Theme.controlHeight
                     selectByMouse: true
                     placeholderText: qsTr("optional mmproj file for vision models")
-                    text: Settings.launchMmprojPath
-                    onEditingFinished: Settings.launchMmprojPath = text.trim()
+                    text: root.mmprojPathText
+                    onEditingFinished: {
+                        if (root.role === "check")
+                            Settings.checkLaunchMmprojPath = text.trim()
+                        else
+                            Settings.launchMmprojPath = text.trim()
+                    }
                 }
                 LLOButton {
                     text: qsTr("Browse…")
@@ -98,23 +121,26 @@ Item {
             // when the current path belongs to a model installed via the app.
             LLOLabel {
                 Layout.fillWidth: true
-                visible: ModelInstaller.activeTitle.length > 0
+                visible: root.activeTitleText.length > 0
                 elide: Text.ElideMiddle
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
                 color: Theme.textSecondary
-                text: qsTr("Activated: %1").arg(ModelInstaller.activeTitle)
+                text: qsTr("Activated: %1").arg(root.activeTitleText)
             }
             LLOLabel {
                 Layout.fillWidth: true
-                visible: Settings.launchModelPath.length > 0
-                         && ModelInstaller.activeTitle.length === 0
+                visible: root.modelPathText.length > 0
+                         && root.activeTitleText.length === 0
                 elide: Text.ElideMiddle
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: qsTr("A model outside the app registry — used as-is for "
-                           + "the managed launch.")
+                text: root.role === "check"
+                      ? qsTr("A model outside the app registry — used for "
+                             + "text verification.")
+                      : qsTr("A model outside the app registry — used as-is for "
+                             + "the managed launch.")
             }
 
             Rectangle {
@@ -149,6 +175,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(ModelInstaller.installedCount, 3) * 40
                 managementActions: true
+                checkRole: root.role === "check"
                 onActionError: (msg) => statusMsg.text = msg
             }//ListView
 
@@ -177,7 +204,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(presetList.count, 3) * 36
                 onInstallClicked: (index) => {
-                    ModelInstaller.preparePreset(index)
+                    ModelInstaller.preparePreset(index, root.role === "check")
                     preparedIndex = index
                     pickDialog.open()
                 }
@@ -228,7 +255,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(searchList.count, 3) * 32
                 onInstallClicked: (index) => {
-                    ModelInstaller.installRemote(index)
+                    ModelInstaller.installRemote(index, root.role === "check")
                     preparedIndex = -1
                     pickDialog.open()
                 }
@@ -337,7 +364,13 @@ Item {
         title: qsTr("Select a model file")
         fileMode: FileDialog.OpenFile
         nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
-        onAccepted: Settings.launchModelPath = Runtime.localPath(selectedFile)
+        onAccepted: {
+            const path = Runtime.localPath(selectedFile)
+            if (root.role === "check")
+                Settings.checkLaunchModelPath = path
+            else
+                Settings.launchModelPath = path
+        }
     }
 
     FileDialog {
@@ -345,7 +378,13 @@ Item {
         title: qsTr("Select an mmproj file")
         fileMode: FileDialog.OpenFile
         nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
-        onAccepted: Settings.launchMmprojPath = Runtime.localPath(selectedFile)
+        onAccepted: {
+            const path = Runtime.localPath(selectedFile)
+            if (root.role === "check")
+                Settings.checkLaunchMmprojPath = path
+            else
+                Settings.launchMmprojPath = path
+        }
     }
 
     FileDialog {

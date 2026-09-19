@@ -43,6 +43,7 @@ ApplicationWindow {
         onOpenOutputSettingsRequested: outputSettingsWindow.show()
         onOpenRuntimeSettingsRequested: runtimeSettingsWindow.show()
         onOpenOcrModelSettingsRequested: ocrModelSettingsWindow.show()
+        onOpenCheckModelSettingsRequested: checkModelSettingsWindow.show()
     }
 
     SplitView {
@@ -175,6 +176,11 @@ ApplicationWindow {
     ModelSettingsWindow {
         id: ocrModelSettingsWindow
         role: "ocr"
+    }
+
+    ModelSettingsWindow {
+        id: checkModelSettingsWindow
+        role: "check"
     }
 
     ExportDialog {

@@ -39,7 +39,7 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
                         QReadLocker locker(&m_documentLock);
                         return m_document.isValidIndex(index) && !m_document.page(index).sourceError.isEmpty();
                     })
-    , m_check(runtime, nullptr)
+    , m_check(settings, runtime, nullptr)
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {

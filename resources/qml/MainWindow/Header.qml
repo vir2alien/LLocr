@@ -17,6 +17,7 @@ ToolBar {
     signal openOutputSettingsRequested()
     signal openRuntimeSettingsRequested()
     signal openOcrModelSettingsRequested()
+    signal openCheckModelSettingsRequested()
 
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
@@ -128,6 +129,10 @@ ToolBar {
         MenuItem {
             text: qsTr("OCR model")
             onTriggered: headerRoot.openOcrModelSettingsRequested()
+        }
+        MenuItem {
+            text: qsTr("Check model")
+            onTriggered: headerRoot.openCheckModelSettingsRequested()
         }
     }
 } // ToolBar

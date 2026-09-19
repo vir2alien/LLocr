@@ -26,6 +26,8 @@ ApplicationWindow {
         border.width: 1
     }
 
+    readonly property bool checkRole: role === "check"
+
     footer: ToolBar {
         background: Rectangle {
             color: Theme.surface
@@ -41,8 +43,11 @@ ApplicationWindow {
             LLOButton {
                 text: qsTr("Restore defaults")
                 onClicked: {
-                    requestTab.resetValues()
                     launchTab.resetValues()
+                    if (window.checkRole)
+                        checkRequestTab.resetValues()
+                    else
+                        requestTab.resetValues()
                 }
             }
             Item { Layout.fillWidth: true }
@@ -51,10 +56,15 @@ ApplicationWindow {
                 text: qsTr("Save")
                 onClicked: {
                     launchTab.saveValues()
-                    requestTab.saveValues()
-                    const draftId = RequestProfiles.draftProfileId
-                    if (draftId.length > 0)
-                        Settings.modelRecipeId = draftId
+                    if (window.checkRole)
+                        checkRequestTab.saveValues()
+                    else
+                        requestTab.saveValues()
+                    if (!window.checkRole) {
+                        const draftId = RequestProfiles.draftProfileId
+                        if (draftId.length > 0)
+                            Settings.modelRecipeId = draftId
+                    }
                     Settings.forceSave()
                     window.close()
                 }
@@ -63,7 +73,10 @@ ApplicationWindow {
                 text: qsTr("Cancel")
                 onClicked: {
                     launchTab.loadValues()
-                    requestTab.loadValues()
+                    if (window.checkRole)
+                        checkRequestTab.loadValues()
+                    else
+                        requestTab.loadValues()
                     window.close()
                 }
             }
@@ -72,7 +85,10 @@ ApplicationWindow {
 
     function loadValues() {
         launchTab.loadValues()
-        requestTab.loadValues()
+        if (checkRole)
+            checkRequestTab.loadValues()
+        else
+            requestTab.loadValues()
     }
 
     onVisibleChanged: {
@@ -140,14 +156,27 @@ ApplicationWindow {
 
             LocationTab {
                 id: locationTab
+                role: window.role
             }
 
             LaunchTab {
                 id: launchTab
             }
 
-            RequestTab {
-                id: requestTab
+            // Request settings are role-specific: the OCR model uses the
+            // parameter-profile table, the check model — simple fields.
+            Item {
+                RequestTab {
+                    id: requestTab
+                    anchors.fill: parent
+                    visible: !window.checkRole
+                }
+
+                CheckRequestTab {
+                    id: checkRequestTab
+                    anchors.fill: parent
+                    visible: window.checkRole
+                }
             }
         }
     }

@@ -9,6 +9,33 @@
     </message>
 </context>
 <context>
+    <name>CheckRequestTab</name>
+    <message>
+        <source>Parameters of the request sent to the verification model. Applied on Save.</source>
+        <translation>Параметры запроса к модели проверки. Применяются по кнопке «Сохранить».</translation>
+    </message>
+    <message>
+        <source>Temperature</source>
+        <translation>Температура</translation>
+    </message>
+    <message>
+        <source>0 = deterministic greedy decoding — recommended for verification.</source>
+        <translation>0 = детерминированный жадный декодинг — рекомендуется для проверки.</translation>
+    </message>
+    <message>
+        <source>Max tokens</source>
+        <translation>Максимум токенов</translation>
+    </message>
+    <message>
+        <source>Upper bound on the generated answer length.</source>
+        <translation>Верхняя граница длины генерируемого ответа.</translation>
+    </message>
+    <message>
+        <source>Stream tokens (ignored — the check expects one complete response)</source>
+        <translation>Потоковая передача токенов (игнорируется — проверка ожидает один полный ответ)</translation>
+    </message>
+</context>
+<context>
     <name>DjVuDocument</name>
     <message>
         <source>DjVu decoding timed out.</source>
@@ -346,6 +373,11 @@
         <source>OCR model</source>
         <translation>Модель OCR</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow/Header.qml"/>
+        <source>Check model</source>
+        <translation>Модель проверки</translation>
+    </message>
 </context>
 <context>
     <name>HfSearchList</name>
@@ -550,6 +582,10 @@
         <translation>Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
     </message>
     <message>
+        <source>These paths select the model for text verification. Activating a downloaded model fills them automatically.</source>
+        <translation>Эти пути выбирают модель для проверки текста. Активация скачанной через приложение модели заполняет их автоматически.</translation>
+    </message>
+    <message>
         <source>Path to the main model</source>
         <translation>Путь до основной модели</translation>
     </message>
@@ -576,6 +612,10 @@
     <message>
         <source>A model outside the app registry — used as-is for the managed launch.</source>
         <translation>Модель вне реестра приложения — используется как есть при запуске.</translation>
+    </message>
+    <message>
+        <source>A model outside the app registry — used for text verification.</source>
+        <translation>Модель вне реестра приложения — используется для проверки текста.</translation>
     </message>
     <message>
         <source>Select a model file</source>

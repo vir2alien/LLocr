@@ -244,6 +244,16 @@ QString ModelInstaller::activeTitle() const
     return QString();
 }
 
+QString ModelInstaller::checkActiveTitle() const
+{
+    const QString active = m_settings.checkLaunchModelPath();
+    for (const ModelEntry &e : m_installed) {
+        if (!e.modelPath.isEmpty() && e.modelPath == active)
+            return e.title;
+    }
+    return QString();
+}
+
 void ModelInstaller::reloadPresets()
 {
     reloadPresetsInternal();
@@ -284,7 +294,7 @@ void ModelInstaller::rescanRegistry()
     refreshInstalled();
 }
 
-QVariantMap ModelInstaller::installedInfo(int index) const
+QVariantMap ModelInstaller::installedInfo(int index, bool forCheck) const
 {
     QVariantMap out;
     if (index < 0 || index >= m_installed.size())
@@ -310,19 +320,32 @@ QVariantMap ModelInstaller::installedInfo(int index) const
                                                 : QStringLiteral("external"));
     out.insert(QStringLiteral("license"), e.license);
     out.insert(QStringLiteral("repo"), e.repo);
+    const QString activePath = forCheck ? m_settings.checkLaunchModelPath()
+                                        : m_settings.launchModelPath();
     out.insert(QStringLiteral("active"),
-               !e.modelPath.isEmpty() && e.modelPath == m_settings.launchModelPath());
+               !e.modelPath.isEmpty() && e.modelPath == activePath);
     out.insert(QStringLiteral("parts"), e.parts.size());
     return out;
 }
 
-QString ModelInstaller::setActiveModel(int index)
+QString ModelInstaller::setActiveModel(int index, bool forCheck)
 {
     if (index < 0 || index >= m_installed.size())
         return tr("Invalid model selection");
     const ModelEntry &e = m_installed.at(index);
     if (e.modelPath.isEmpty())
         return tr("This model has no model file selected");
+
+    if (forCheck) {
+        // The verification model only takes the file locations: parser, prompt
+        // and the launch-profile context size belong to the OCR role.
+        m_settings.setCheckLaunchModelPath(e.modelPath);
+        if (!e.mmprojPath.isEmpty())
+            m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
+        m_settings.forceSave();
+        emit installedChanged();
+        return QString();
+    }
 
     m_settings.setLaunchModelPath(e.modelPath);
     if (!e.mmprojPath.isEmpty())
@@ -472,7 +495,7 @@ QVariantMap ModelInstaller::presetInfo(int index) const
     return out;
 }
 
-void ModelInstaller::preparePreset(int index)
+void ModelInstaller::preparePreset(int index, bool forCheck)
 {
     if (m_busy)
         return;
@@ -481,6 +504,7 @@ void ModelInstaller::preparePreset(int index)
         setState(State::Error);
         return;
     }
+    m_pendingForCheck = forCheck;
     beginPrepare(m_presets.at(index));
 }
 
@@ -772,16 +796,24 @@ void ModelInstaller::completeInstall()
     }
     m_installed = updated;
 
-    m_settings.setLaunchModelPath(e.modelPath);
-    if (!e.mmprojPath.isEmpty())
-        m_settings.setLaunchMmprojPath(e.mmprojPath);
-    if (!m_pending.presetId.isEmpty())
-        m_settings.setLaunchPresetId(m_pending.presetId);
-    if (!e.parser.isEmpty())
-        m_settings.setParserId(e.parser);
-    if (e.ctxSize > 0)
-        m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
-                                                e.ctxSize);
+    if (m_pendingForCheck) {
+        // Installed from the check-model window: activate as the verification
+        // model, leaving the OCR launch settings untouched.
+        m_settings.setCheckLaunchModelPath(e.modelPath);
+        if (!e.mmprojPath.isEmpty())
+            m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
+    } else {
+        m_settings.setLaunchModelPath(e.modelPath);
+        if (!e.mmprojPath.isEmpty())
+            m_settings.setLaunchMmprojPath(e.mmprojPath);
+        if (!m_pending.presetId.isEmpty())
+            m_settings.setLaunchPresetId(m_pending.presetId);
+        if (!e.parser.isEmpty())
+            m_settings.setParserId(e.parser);
+        if (e.ctxSize > 0)
+            m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
+                                                    e.ctxSize);
+    }
     m_settings.forceSave();
 
     setBusy(false);
@@ -852,7 +884,7 @@ QVariantMap ModelInstaller::searchResult(int index) const
     return out;
 }
 
-void ModelInstaller::installRemote(int index)
+void ModelInstaller::installRemote(int index, bool forCheck)
 {
     if (m_busy)
         return;
@@ -867,6 +899,7 @@ void ModelInstaller::installRemote(int index)
     p.title = s.title.isEmpty() ? s.id : s.title;
     p.repo = s.id;
     p.license = s.license;
+    m_pendingForCheck = forCheck;
     beginPrepare(p);
 }
 

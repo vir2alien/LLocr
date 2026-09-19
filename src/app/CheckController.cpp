@@ -2,13 +2,16 @@
 
 #include <QFutureWatcher>
 
+#include "app/SettingsStore.h"
 #include "models/QwenGeneralModel.h"
 
 namespace llocr {
 
-CheckController::CheckController(RuntimeController &runtime,
+CheckController::CheckController(SettingsStore &settings,
+                                 RuntimeController &runtime,
                                  QObject *parent)
     : QObject(parent)
+    , m_settings(settings)
     , m_runtime(runtime)
     , m_model(std::make_unique<QwenGeneralModel>())
 {
@@ -21,17 +24,19 @@ CheckController::CheckController(RuntimeController &runtime,
     });
 }
 
-QList<RequestParameter> CheckController::defaultParameters()
+QList<RequestParameter> CheckController::requestParameters() const
 {
-    // Hardcoded for the MVP; the Settings UI for these comes in a later stage.
-    // Mirrors the working OCR profile (temperature 0 + explicit non-streaming);
-    // llama.cpp defaults cover the rest.
+    // The check request parameters live in Settings (check-model window,
+    // Request tab).
     return {
-        { QStringLiteral("temperature"), 0, RequestValueKind::Number, 0.0,
+        { QStringLiteral("temperature"), 0, RequestValueKind::Number,
+          m_settings.checkTemperature(),
           QStringLiteral("Sampling temperature") },
-        { QStringLiteral("max_tokens"), 1, RequestValueKind::Number, 2048.0,
+        { QStringLiteral("max_tokens"), 1, RequestValueKind::Number,
+          QVariant::fromValue(m_settings.checkMaxTokens()),
           QStringLiteral("Maximum tokens to generate") },
-        { QStringLiteral("stream"), 2, RequestValueKind::Boolean, false,
+        { QStringLiteral("stream"), 2, RequestValueKind::Boolean,
+          m_settings.checkStream(),
           QStringLiteral("Stream tokens as they arrive") },
     };
 }
@@ -70,7 +75,7 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
         request.recognizedText = recognizedText;
         request.prompt = prompt;
         request.modelId = conn.modelId;
-        request.parameters = defaultParameters();
+        request.parameters = requestParameters();
 
         m_watcher.setFuture(m_model->check(request, buildConfig(conn)));
     });

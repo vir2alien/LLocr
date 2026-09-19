@@ -56,6 +56,15 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
 
+    // Verification (check) model: its own model/mmproj locations and request
+    // parameters. The single server instance is (re)launched per task with the
+    // model the task needs.
+    Q_PROPERTY(QString checkLaunchModelPath READ checkLaunchModelPath WRITE setCheckLaunchModelPath NOTIFY checkLaunchModelPathChanged)
+    Q_PROPERTY(QString checkLaunchMmprojPath READ checkLaunchMmprojPath WRITE setCheckLaunchMmprojPath NOTIFY checkLaunchMmprojPathChanged)
+    Q_PROPERTY(double checkTemperature READ checkTemperature WRITE setCheckTemperature NOTIFY checkParametersChanged)
+    Q_PROPERTY(int checkMaxTokens READ checkMaxTokens WRITE setCheckMaxTokens NOTIFY checkParametersChanged)
+    Q_PROPERTY(bool checkStream READ checkStream WRITE setCheckStream NOTIFY checkParametersChanged)
+
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
 
 public:
@@ -167,6 +176,20 @@ public:
     QString launchProfileId() const;
     void setLaunchProfileId(const QString &id);
 
+    QString checkLaunchModelPath() const;
+    void setCheckLaunchModelPath(const QString &path);
+    QString checkLaunchMmprojPath() const;
+    void setCheckLaunchMmprojPath(const QString &path);
+    double checkTemperature() const;
+    void setCheckTemperature(double value);
+    int checkMaxTokens() const;
+    void setCheckMaxTokens(int tokens);
+    bool checkStream() const;
+    void setCheckStream(bool on);
+    static constexpr double kDefaultCheckTemperature = 0.0;
+    static constexpr int kDefaultCheckMaxTokens = 2048;
+    static constexpr bool kDefaultCheckStream = false;
+
     QString hfToken() const;
     void setHfToken(const QString &token);
 
@@ -211,6 +234,9 @@ signals:
     void launchModelAliasChanged();
     void launchHostChanged();
     void launchPortChanged();
+    void checkLaunchModelPathChanged();
+    void checkLaunchMmprojPathChanged();
+    void checkParametersChanged();
     void hfTokenChanged();
 
 public:
@@ -289,6 +315,13 @@ private:
     static constexpr const char *kLaunchModelAlias = "launch/modelAlias";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
+
+    // Verification (check) model
+    static constexpr const char *kCheckLaunchModelPath = "check/modelPath";
+    static constexpr const char *kCheckLaunchMmprojPath = "check/mmprojPath";
+    static constexpr const char *kCheckTemperature = "check/temperature";
+    static constexpr const char *kCheckMaxTokens = "check/maxTokens";
+    static constexpr const char *kCheckStream = "check/stream";
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";

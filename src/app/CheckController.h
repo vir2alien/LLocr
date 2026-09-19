@@ -16,16 +16,19 @@
 
 namespace llocr {
 
+class SettingsStore;
+
 // Orchestrates one text-verification request: resolves the runtime connection
 // (External or Managed), builds a CheckRequest from the block crop + recognized
 // text + user prompt, sends it through the general-purpose model and emits the
-// outcome. Request parameters are hardcoded for now (Settings UI comes later).
+// outcome. Request parameters come from the check-model settings.
 class CheckController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit CheckController(RuntimeController &runtime,
+    explicit CheckController(SettingsStore &settings,
+                             RuntimeController &runtime,
                              QObject *parent = nullptr);
 
     bool busy() const { return m_busy; }
@@ -38,10 +41,11 @@ signals:
     void statusRequested(const QString &message);
 
 private:
-    static QList<RequestParameter> defaultParameters();
+    QList<RequestParameter> requestParameters() const;
     ConnectionConfig buildConfig(const ResolvedConnection &conn) const;
     void setBusy(bool busy);
 
+    SettingsStore &m_settings;
     RuntimeController &m_runtime;
     std::unique_ptr<GeneralPurposeModel> m_model;
     QFutureWatcher<CheckResult> m_watcher;
