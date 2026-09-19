@@ -7,18 +7,9 @@ import QtQuick.Layouts
 import LLocr
 import "../Common"
 
+// Interface settings apply immediately on change (no Save step).
 ColumnLayout {
     spacing: 4
-
-    function loadValues() {
-        languageBox.syncFromSettings()
-        themeBox.syncFromSettings()
-    }
-
-    function saveValues() {
-        Settings.language = ["system", "en", "ru"][languageBox.currentIndex];
-        UiController.mode = [UiController.System, UiController.Light, UiController.Dark][themeBox.currentIndex];
-    }
 
     LLOLabel {
         text: qsTr("Language")
@@ -34,6 +25,10 @@ ColumnLayout {
         }
         onModelChanged: syncFromSettings()
         Component.onCompleted: syncFromSettings()
+        onActivated: (idx) => {
+            Settings.language = ["system", "en", "ru"][idx]
+            I18n.setLanguage(Settings.language)
+        }
         Connections {
             target: Settings
             function onLanguageChanged() { languageBox.syncFromSettings() }
@@ -57,6 +52,10 @@ ColumnLayout {
         }
         onModelChanged: syncFromSettings()
         Component.onCompleted: syncFromSettings()
+        onActivated: (idx) => {
+            UiController.mode = [UiController.System, UiController.Light,
+                                 UiController.Dark][idx]
+        }
         Connections {
             target: Settings
             function onThemeModeChanged() { themeBox.syncFromSettings() }

@@ -13,7 +13,10 @@ ToolBar {
 
     signal openFileRequested()
     signal exportRequested(bool multiPage)
-    signal settingsRequested()
+    signal openUiSettingsRequested()
+    signal openOutputSettingsRequested()
+    signal openRuntimeSettingsRequested()
+    signal openOcrModelSettingsRequested()
 
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
@@ -101,8 +104,30 @@ ToolBar {
         Item { Layout.fillWidth: true }
 
         ToolButton {
-            text: qsTr("Settings...")
-            onClicked: headerRoot.settingsRequested()
+            id: settingsButton
+            text: qsTr("Settings")
+            onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
+        }
+    }
+
+    Menu {
+        id: settingsMenu
+
+        MenuItem {
+            text: qsTr("Interface")
+            onTriggered: headerRoot.openUiSettingsRequested()
+        }
+        MenuItem {
+            text: qsTr("Output")
+            onTriggered: headerRoot.openOutputSettingsRequested()
+        }
+        MenuItem {
+            text: qsTr("Runtime")
+            onTriggered: headerRoot.openRuntimeSettingsRequested()
+        }
+        MenuItem {
+            text: qsTr("OCR model")
+            onTriggered: headerRoot.openOcrModelSettingsRequested()
         }
     }
 } // ToolBar

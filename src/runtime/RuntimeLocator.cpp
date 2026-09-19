@@ -134,31 +134,6 @@ QString RuntimeLocator::probeSummary(const ProbeResult &r)
                : QObject::tr("Valid llama-server %1").arg(build);
 }
 
-QString RuntimeLocator::autoDiscover(int timeoutMs)
-{
-    const QString pathCandidate =
-        QStandardPaths::findExecutable(QStringLiteral("llama-server"));
-    if (!pathCandidate.isEmpty() && probe(pathCandidate, timeoutMs).ok)
-        return pathCandidate;
-
-    QStringList roots;
-#ifdef Q_OS_WIN
-    const QString localApp = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    roots << QDir(localApp).filePath(QStringLiteral("llama.cpp"));
-#else
-    roots << QStringLiteral("/usr/local/bin") << QStringLiteral("/opt/homebrew/bin")
-          << QStringLiteral("/opt/local/bin");
-#endif
-
-    for (const QString &root : std::as_const(roots)) {
-        const QString candidate =
-            QDir(root).filePath(QStringLiteral("llama-server"));
-        if (QFileInfo::exists(candidate) && probe(candidate, timeoutMs).ok)
-            return candidate;
-    }
-    return QString();
-}
-
 namespace {
 
 struct ProbeKey {

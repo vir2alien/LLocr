@@ -7,7 +7,6 @@ import QtQuick.Layouts
 import LLocr
 
 import "../Common"
-import ".."
 
 Item {
     id: root
@@ -19,8 +18,6 @@ Item {
     property var logWindow: null
 
     readonly property bool serverActive: Runtime.state === Runtime.Starting || Runtime.state === Runtime.Ready
-
-    signal openSettingsRequested(int tab)
 
     function requestRestart() {
         if (Controller.busy) {
@@ -230,12 +227,8 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (Settings.connectionMode === "managed"
-                                && Runtime.state === Runtime.NotConfigured) {
-                            root.openSettingsRequested(SettingsDialog.TabsEnum.RuntimeTabNum)
-                        } else if (root.logWindow) {
+                        if (root.logWindow)
                             root.logWindow.show()
-                        }
                     }
 
                     ToolTip {
@@ -277,11 +270,12 @@ Item {
         id: restartConfirmDialog
         parent: Overlay.overlay
         modal: true
+        width: 420
         title: qsTr("Restart server?")
         standardButtons: Dialog.Cancel | Dialog.Ok
 
         LLOLabel {
-            width: 340
+            width: parent.width
             color: Theme.textPrimary
             text: qsTr("Recognition is in progress. Restarting the server will "
                        + "interrupt the current job. Continue?")
@@ -294,11 +288,12 @@ Item {
         id: stopConfirmDialog
         parent: Overlay.overlay
         modal: true
+        width: 420
         title: qsTr("Stop server?")
         standardButtons: Dialog.Cancel | Dialog.Ok
 
         LLOLabel {
-            width: 340
+            width: parent.width
             color: Theme.textPrimary
             text: qsTr("Recognition is in progress. Stopping the server will "
                        + "interrupt the current job. Continue?")

@@ -9,6 +9,7 @@ import LLocr
 
 import "Common"
 import "MainWindow"
+import "Settings"
 
 ApplicationWindow {
     id: mainWindow
@@ -38,7 +39,10 @@ ApplicationWindow {
                 exportDialog.open()
             }
         }
-        onSettingsRequested: settingsDialog.open()
+        onOpenUiSettingsRequested: uiSettingsWindow.show()
+        onOpenOutputSettingsRequested: outputSettingsWindow.show()
+        onOpenRuntimeSettingsRequested: runtimeSettingsWindow.show()
+        onOpenOcrModelSettingsRequested: ocrModelSettingsWindow.show()
     }
 
     SplitView {
@@ -148,18 +152,29 @@ ApplicationWindow {
 
     footer: Footer {
         logWindow: serverLogWindow
-        onOpenSettingsRequested: (tab) => {
-            settingsDialog.open()
-            settingsDialog.selectTab(tab)
-        }
     }
 
     ServerLogWindow {
         id: serverLogWindow
     }
 
-    SettingsDialog {
-        id: settingsDialog
+    UiSettingsWindow {
+        id: uiSettingsWindow
+    }
+
+    OutputSettingsWindow {
+        id: outputSettingsWindow
+    }
+
+    RuntimeSettingsWindow {
+        id: runtimeSettingsWindow
+        setupWizardRef: setupWizard
+        logWindowRef: serverLogWindow
+    }
+
+    ModelSettingsWindow {
+        id: ocrModelSettingsWindow
+        role: "ocr"
     }
 
     ExportDialog {
@@ -175,10 +190,7 @@ ApplicationWindow {
     SetupWizard {
         id: setupWizard
 
-        onOpenConnectionSettings: {
-            settingsDialog.open()
-            settingsDialog.selectTab(SettingsDialog.TabsEnum.RuntimeTabNum)
-        }
+        onOpenConnectionSettings: runtimeSettingsWindow.show()
     }
 
     Timer {
@@ -191,8 +203,6 @@ ApplicationWindow {
         }
     }
     Component.onCompleted: {
-        settingsDialog.setupWizardRef = setupWizard
-        settingsDialog.logWindowRef = serverLogWindow
         setupTrigger.start()
     }
 }

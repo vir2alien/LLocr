@@ -545,15 +545,6 @@ QString RuntimeController::probeRuntimePath(const QString &path)
     return summary;
 }
 
-QString RuntimeController::autoDiscoverPath()
-{
-    const QString found = RuntimeLocator::autoDiscover(kProbeTimeoutMs);
-    if (!found.isEmpty())
-        setStatusMessage(RuntimeLocator::probeSummary(RuntimeLocator::probe(found, kProbeTimeoutMs)));
-    else
-        setStatusMessage(QObject::tr("No llama-server binary found automatically"));
-    return found;
-}
 
 QString RuntimeController::launchCommandPreview()
 {

@@ -84,7 +84,6 @@ public:
     Q_INVOKABLE void stopServer();
     Q_INVOKABLE void restartServer();
     Q_INVOKABLE QString probeRuntimePath(const QString &path);
-    Q_INVOKABLE QString autoDiscoverPath();
     Q_INVOKABLE QString launchCommandPreview();
     void shutdownSync();
 

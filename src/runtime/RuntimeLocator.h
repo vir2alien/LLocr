@@ -26,7 +26,6 @@ public:
     static bool cachedProbe(const QString &binaryPath, const QString &cacheDir,
                             ProbeResult &out);
     static QString probeSummary(const ProbeResult &r);
-    static QString autoDiscover(int timeoutMs = 5000);
 
 private:
     static QString runProbe(const QString &binaryPath, QStringList args,

@@ -322,9 +322,29 @@
         <translation>Экспорт…</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="103"/>
-        <source>Settings...</source>
-        <translation>Настройки…</translation>
+        <location filename="../qml/MainWindow/Header.qml"/>
+        <source>Settings</source>
+        <translation>Настройки</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Header.qml"/>
+        <source>Interface</source>
+        <translation>Интерфейс</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Header.qml"/>
+        <source>Output</source>
+        <translation>Вывод</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Header.qml"/>
+        <source>Runtime</source>
+        <translation>Рантайм</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Header.qml"/>
+        <source>OCR model</source>
+        <translation>Модель OCR</translation>
     </message>
 </context>
 <context>
@@ -485,9 +505,91 @@
     </message>
 </context>
 <context>
-    <name>ModelsTab</name>
+    <name>ModelSettingsWindow</name>
     <message>
-        <location filename="../qml/SettingsDialog/ModelsTab.qml" line="45"/>
+        <source>OCR model settings</source>
+        <translation>Настройки модели OCR</translation>
+    </message>
+    <message>
+        <source>Check model settings</source>
+        <translation>Настройки модели проверки</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>Расположение</translation>
+    </message>
+    <message>
+        <source>Launch</source>
+        <translation>Запуск</translation>
+    </message>
+    <message>
+        <source>Request</source>
+        <translation>Запрос</translation>
+    </message>
+    <message>
+        <source>Restore defaults</source>
+        <translation>Вернуть настройки по умолчанию</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+</context>
+<context>
+    <name>LocationTab</name>
+    <message>
+        <source>Model location</source>
+        <translation>Расположение модели</translation>
+    </message>
+    <message>
+        <source>These paths are used when the managed llama-server is launched. Activating a downloaded model fills them automatically.</source>
+        <translation>Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
+    </message>
+    <message>
+        <source>Path to the main model</source>
+        <translation>Путь до основной модели</translation>
+    </message>
+    <message>
+        <source>Path to the multimodal module (mmproj)</source>
+        <translation>Путь до мультимодального модуля (mmproj)</translation>
+    </message>
+    <message>
+        <source>Browse…</source>
+        <translation>Обзор…</translation>
+    </message>
+    <message>
+        <source>path to the .gguf model file</source>
+        <translation>путь до файла модели .gguf</translation>
+    </message>
+    <message>
+        <source>optional mmproj file for vision models</source>
+        <translation>необязательный mmproj-файл для визуальных моделей</translation>
+    </message>
+    <message>
+        <source>Activated: %1</source>
+        <translation>Активирована: %1</translation>
+    </message>
+    <message>
+        <source>A model outside the app registry — used as-is for the managed launch.</source>
+        <translation>Модель вне реестра приложения — используется как есть при запуске.</translation>
+    </message>
+    <message>
+        <source>Select a model file</source>
+        <translation>Выберите файл модели</translation>
+    </message>
+    <message>
+        <source>Select an mmproj file</source>
+        <translation>Выберите файл mmproj</translation>
+    </message>
+    <message>
+        <source>GGUF models (*.gguf)</source>
+        <translation>GGUF-модели (*.gguf)</translation>
+    </message>
+    <message>
         <source>Models are stored locally and launched by the managed runtime.</source>
         <translation>Модели хранятся локально и запускаются управляемым рантаймом.</translation>
     </message>
@@ -646,6 +748,21 @@
         <location filename="../../src/models/OcrModel.cpp" line="103"/>
         <source>Failed to encode the page image</source>
         <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>OutputSettingsWindow</name>
+    <message>
+        <source>Output settings</source>
+        <translation>Настройки вывода</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>
@@ -1423,6 +1540,21 @@
         <location filename="../qml/Common/RuntimeBuildsList.qml" line="68"/>
         <source>Activate</source>
         <translation type="unfinished">Активировать</translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeSettingsWindow</name>
+    <message>
+        <source>Runtime settings</source>
+        <translation>Настройки рантайма</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>
@@ -2284,6 +2416,17 @@
         <location filename="../qml/MainWindow/ThumbPanel.qml" line="15"/>
         <source>No pages</source>
         <translation>Нет страниц</translation>
+    </message>
+</context>
+<context>
+    <name>UiSettingsWindow</name>
+    <message>
+        <source>Interface settings</source>
+        <translation>Настройки интерфейса</translation>
+    </message>
+    <message>
+        <source>Restore defaults</source>
+        <translation>Вернуть настройки по умолчанию</translation>
     </message>
 </context>
 <context>

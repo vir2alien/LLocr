@@ -82,12 +82,6 @@ ScrollView {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            LLOButton {
-                text: qsTr("Auto-detect")
-                onClicked: {
-                    Settings.serverPath = Runtime.autoDiscoverPath()
-                }
-            }
             LLOLabel {
                 id: probeStatusLabel
                 Layout.fillWidth: true

@@ -37,6 +37,93 @@ Item {
             width: parent.width
             spacing: 6
 
+            // --- Model / mmproj paths (used by the managed launch) ---
+            LLOLabel {
+                text: qsTr("Model location")
+                color: Theme.textPrimary
+                font.bold: true
+            }
+            LLOLabel {
+                Layout.fillWidth: true
+                font.pointSize: Theme.captionSize
+                color: Theme.textMuted
+                text: qsTr("These paths are used when the managed llama-server "
+                           + "is launched. Activating a downloaded model fills "
+                           + "them automatically.")
+            }
+
+            LLOLabel {
+                text: qsTr("Path to the main model")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    id: modelPathField
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    selectByMouse: true
+                    placeholderText: qsTr("path to the .gguf model file")
+                    text: Settings.launchModelPath
+                    onEditingFinished: Settings.launchModelPath = text.trim()
+                }
+                LLOButton {
+                    text: qsTr("Browse…")
+                    onClicked: modelPicker.open()
+                }
+            }
+
+            LLOLabel {
+                text: qsTr("Path to the multimodal module (mmproj)")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    id: mmprojPathField
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    selectByMouse: true
+                    placeholderText: qsTr("optional mmproj file for vision models")
+                    text: Settings.launchMmprojPath
+                    onEditingFinished: Settings.launchMmprojPath = text.trim()
+                }
+                LLOButton {
+                    text: qsTr("Browse…")
+                    onClicked: mmprojPicker.open()
+                }
+            }
+
+            // Mirrors the runtime tab's "Installed: bXXXX (CUDA)" caption: shows
+            // when the current path belongs to a model installed via the app.
+            LLOLabel {
+                Layout.fillWidth: true
+                visible: ModelInstaller.activeTitle.length > 0
+                elide: Text.ElideMiddle
+                wrapMode: Text.NoWrap
+                font.pointSize: Theme.captionSize
+                color: Theme.textSecondary
+                text: qsTr("Activated: %1").arg(ModelInstaller.activeTitle)
+            }
+            LLOLabel {
+                Layout.fillWidth: true
+                visible: Settings.launchModelPath.length > 0
+                         && ModelInstaller.activeTitle.length === 0
+                elide: Text.ElideMiddle
+                wrapMode: Text.NoWrap
+                font.pointSize: Theme.captionSize
+                color: Theme.textMuted
+                text: qsTr("A model outside the app registry — used as-is for "
+                           + "the managed launch.")
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                Layout.preferredHeight: 1
+                color: Theme.divider
+            }
+
             InstallerStatusLabel {
                 isError: ModelInstaller.state === ModelInstaller.Error
                 busy: ModelInstaller.busy
@@ -243,6 +330,22 @@ Item {
         onAccepted: {
             ModelInstaller.installPrepared()
         }
+    }
+
+    FileDialog {
+        id: modelPicker
+        title: qsTr("Select a model file")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
+        onAccepted: Settings.launchModelPath = Runtime.localPath(selectedFile)
+    }
+
+    FileDialog {
+        id: mmprojPicker
+        title: qsTr("Select an mmproj file")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
+        onAccepted: Settings.launchMmprojPath = Runtime.localPath(selectedFile)
     }
 
     FileDialog {
