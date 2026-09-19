@@ -34,6 +34,10 @@ ApplicationWindow {
             spacing: Theme.spacingSmall
 
             LLOButton {
+                text: qsTr("Restore defaults")
+                onClicked: Settings.resetOutputDefaults()
+            }
+            LLOButton {
                 text: qsTr("Save")
                 onClicked: {
                     outputTab.saveValues()

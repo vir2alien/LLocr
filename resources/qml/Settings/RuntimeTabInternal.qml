@@ -16,6 +16,13 @@ ScrollView {
     property var backendOptions: []
     property var releaseOptions: []
 
+    function loadValues() {
+        // Re-assigning (not only the initial binding) — the user's editing
+        // breaks the text binding, so a reset/reopen must restore the value.
+        serverPathField.text = Settings.serverPath
+        buildInstallOptions()
+    }
+
     function buildInstallOptions() {
         RuntimeInstaller.rescanInstalledBuilds()
         var b = []

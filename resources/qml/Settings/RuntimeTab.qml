@@ -21,7 +21,7 @@ ColumnLayout {
 
     function loadValues() {
         rtExternal.loadValues();
-        rtInternal.buildInstallOptions();
+        rtInternal.loadValues();
     }
 
     function saveValues() {

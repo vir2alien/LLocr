@@ -20,50 +20,79 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   and the request-body parameters — one **request profile per OCR model**
   (DRY params, temperature, max tokens; ADR 59). The recognition **prompt**
   comes from the selected model adapter's `promptVariants()` (ADR 58).
+- **Text verification (check model)** ✅ (`CheckController` +
+  `GeneralPurposeModel`/`QwenGeneralModel`, ADR 68/74): a small
+  general-purpose model verifies a selected recognized block — the request
+  carries the block crop, the recognized text and the user prompt, with the
+  validate request profile's parameters; the answer can replace the original
+  text (Apply fix). It uses the same resolved connection (role-aware model
+  name per ADR 73) and the single managed instance is re-loaded per task
+  (ADR 74).
 
 ## 4.2 Settings
-All configuration lives in the **Settings dialog**, grouped into tabs:
+Settings are split into **separate non-modal windows** opened from the Header
+menu (ADR 70): **Interface**, **Output**, **Runtime**, **OCR model** and
+**Check model**. Interface settings apply immediately; the other windows commit
+on **Save** and discard on **Cancel**. **Interface**, **Output** and **Runtime**
+windows carry a scoped **«Restore defaults»** (ADR 75) that writes the matching
+rows of the table-driven `kDefaults` registry through the property setters; the
+model windows have per-tab resets instead (profile restore in Launch/Request).
 
-| Tab        | Fields                                                              |
-| ---------- | ------------------------------------------------------------------- |
-| UI         | language (System / English / Русский), theme (System / Light / Dark) |
-| Request    | OCR model adapter combobox (`unlimited-ocr`; `model/recipeId`) + the  |
-|            | request profile table (ADR 56); one **profile per OCR model**, keyed  |
-|            | by the model id; switching the model switches the profile (ADR 59)    |
-| Output     | output parser (`raw` / `det_tokens`; default `det_tokens`); **split    |
-|            | pages** (`output/splitPages`, default on — “## Page N” / “Page N”      |
-|            | labels in every export format); **keep page numbers**                  |
-|            | (`output/keepPageNumbers`, default on — when off the parser drops      |
-|            | `page_number` blocks during recognition); PDF export: orientation      |
-|            | (`export/pdfLandscape`) and margins in mm (`export/pdfMarginMm`,       |
-|            | 0–50, default 15)                                                      |
-| Runtime    | connection (base URL, API key, timeout — External sub-tab), managed   |
-|            | `llama-server` path + probe, Start/Stop/Restart, Show log, stage-D    |
-|            | installer (release/backend, download+install, updates, cleanup);      |
-|            | “Launch setup wizard…”                                               |
-| Launch     | llama-server launch-parameter presets + table (ADR 57)               |
-| Models     | installed models table (activate/remove), preset catalog, HF search  |
-|            | + install, HF token, catalog import/export (see 4.17)                |
+| Window      | Fields                                                              |
+| ----------- | ------------------------------------------------------------------- |
+| Interface   | language (System / English / Русский), theme (System / Light / Dark); applies immediately, scoped «Restore defaults» |
+| Output      | output parser (`raw` / `det_tokens`; default `det_tokens`); **split   |
+|             | pages** (`output/splitPages`, default on — `---` rule in MD, dash     |
+|             | line in TXT, `<hr>` in HTML, page break in PDF/DOCX — no “Page N”     |
+|             | headings, ADR 64); **keep page numbers** (`output/keepPageNumbers`,   |
+|             | default on — off drops `page_number` blocks at parse time); PDF       |
+|             | export: orientation (`export/pdfLandscape`), margins in mm            |
+|             | (`export/pdfMarginMm`, 0–50, default 15); «Restore defaults»         |
+| Runtime     | connection mode (`External` / `Managed`, applies immediately);        |
+|             | External: endpoint base URL, **model name (OCR)** and **model name    |
+|             | (validator)** for multi-model servers (ADR 73), API key, request      |
+|             | timeout; Managed: `llama-server` path + probe, Start/Stop/Restart,    |
+|             | Show log, installer (release/backend, download+install, updates,      |
+|             | cleanup); «Launch setup wizard…»; «Restore defaults»                  |
+| OCR model   | tabs **Location** (model + mmproj paths, installed models, preset     |
+|             | catalog, HF search), **Launch** (launch-parameter profile, ADR 57),   |
+|             | **Request** (OCR model adapter `model/recipeId` + the request         |
+|             | profile, ADR 56/59)                                                   |
+| Check model | the same tab set for the verification model (ADR 71): its own         |
+|             | `check/modelPath` + `check/mmprojPath`, the validate launch profile   |
+|             | and the validate request profile; installs started here activate as   |
+|             | the check model without touching OCR settings                         |
+
+The single managed llama-server instance serves both roles one at a time:
+`RuntimeController` (re)loads the model per task (ADR 74). Parallel roles are
+only possible against external servers, which get per-role model names
+(ADR 73). Model presets live in per-role catalogs (`defaultLlmPresetsOcr` /
+`defaultLlmPresetsValidate`, ADR 72; see 4.17).
 
 Persistence is handled by `SettingsStore` (`QSettings`, grouped keys
-`provider/*`, `model/*`, `output/*`, `runtime/*`, `launch/*`, `hf/*`). UI state
-(theme, language, window geometry) is persisted under `ui/*`.
+`provider/*`, `model/*`, `parser/id`, `output/*`, `export/*`, `runtime/*`,
+`launch/*`, `check/*`, `hf/*`). UI state (theme, language, window geometry) is
+persisted under `ui/*`. The resettable keys are registered in the table-driven
+`kDefaults` array (ADR 50); `resetToDefaults()` resets the full table, the
+per-window scoped resets use the same rows (ADR 75).
 
 > The recognition **mode** (`External` / `Managed`) is chosen by the first-run
-> wizard; existing profiles stay `External` (ADR 26/31). The **Launch** tab
-> edits the llama-server launch-parameter profiles; the first-run wizard's
-> **Launch** step (port, ctx-size, n-gpu-layers, `autoStart`, command preview
-> + self-test) covers the same profile on a clean setup.
+> wizard; existing profiles stay `External` (ADR 26/31). The **Launch** tab in
+> the model windows edits the llama-server launch-parameter profiles; the
+> first-run wizard's **Launch** step (port, ctx-size, n-gpu-layers,
+> `autoStart`, command preview + self-test) covers the same profile on a clean
+> setup.
 
-> **Not in the dialog yet:** the bbox coordinate range is hardcoded in
+> **Not in the settings yet:** the bbox coordinate range is hardcoded in
 > `DetTokensParser` (`kBboxCoordinateRange = 1000`). The recognition prompt is
 > owned by the selected **OCR model adapter** (`promptVariants()`, ADR 58) and
-> is not editable in the dialog; the `parser`/`prompt` fields of model presets
-> are stored metadata only.
+> is not editable; the `parser`/`prompt` fields of model presets are stored
+> metadata only. The check-request parameters live in the validate request
+> profile (Settings → Check model → Request).
 
 ## 4.3 Themes
 Three options handled by `UiController` (a QML singleton), selected in
-**Settings → UI**:
+**Settings → Interface**:
 - `System`(follows the system theme)
 - `Light`
 - `Dark`
@@ -256,7 +285,7 @@ local `QTcpServer` and fixtures in `tests/data/`.
 - UI strings use `qsTr`/`tr`; a Russian translation lives in
   `resources/i18n/llocr_ru.ts` and is compiled/embedded via
   `qt_add_translations` (Qt LinguistTools). ✅
-- Language is selected in **Settings → UI** (System / English / Русский),
+- Language is selected in **Settings → Interface** (System / English / Русский),
   persisted via `SettingsStore` (`ui/language`), and applied at runtime by the
   `I18n` class — it installs app/Qt translators and emits `languageApplied`,
   which `main.cpp` connects to `QQmlApplicationEngine::retranslate()`. ✅
@@ -303,8 +332,10 @@ local **`llama-server`** process (stages A/B, D of `docs/09-local-runtime-plan.m
   `docs/09-local-runtime-plan.md`. ✅
 
 ## 4.17 Models and catalog (Hugging Face)
-Model management lives in **Settings → Models** via the `ModelInstaller`
-singleton (stage E).
+Model management lives in the **OCR model / Check model settings windows**
+(via the role-aware `ModelInstaller` singleton, stage E): the installed-models
+table, the preset catalog and the HF search are part of the **Location** tab
+(see 4.2).
 
 - **`ModelCatalog`** — Hugging Face tree API with `Link: rel=next` pagination,
   **commit-SHA pinning** (the tree and every download use the pinned `sha`, so
@@ -360,8 +391,9 @@ Once the runtime is wired, the main window surfaces its state:
   | `Failed`   | red    | startup/probe failed (§7.5 message)         |
   | External   | grey   | mode is External (no managed server)       |
 
-  Clicking the badge opens the shared **`ServerLogWindow`**; if runtime isn't
-  configured it opens Settings → Runtime instead (H.1 empty state). ✅
+  Clicking the badge opens the shared **`ServerLogWindow`**. (The former
+  "opens Settings → Runtime" empty-state shortcut was removed with the settings
+  rework — ADR 70; the wizard and Settings cover the unconfigured case.) ✅
 - **`Footer.qml` Start/Stop toggle** — next to the indicator, visible only in
   Managed mode. When the config is valid (`configValid`: binary + model exist)
   it starts the managed llama-server with the selected model — the same
@@ -382,4 +414,5 @@ Once the runtime is wired, the main window surfaces its state:
   «Launch settings changed — restart required» with a **Restart** button. ✅
 - **Error surfacing** — `Failed` messages follow the §7.5 matrix. ✅
 - **Settings → Runtime** carries Start/Stop/Restart, probe status, Show log,
-  and the stage-D installer; **Models** carries the model table/presets/HF. ✅
+  and the stage-D installer; the model windows (OCR/Check) carry the model
+  table/presets/HF (Location tab). ✅

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include <QObject>
 #include <QSettings>
 #include <QString>
@@ -73,6 +75,10 @@ public:
 
     Q_INVOKABLE void forceSave();
     Q_INVOKABLE void resetToDefaults();
+    // Per-window scoped resets (ADR 75): they write the matching rows of the
+    // kDefaults table through the property setters (NOTIFY preserved).
+    Q_INVOKABLE void resetOutputDefaults();
+    Q_INVOKABLE void resetRuntimeDefaults();
     Q_INVOKABLE bool contains(const QString &key) const;
 
     struct SettingDefault
@@ -265,6 +271,9 @@ private:
     static QSettings makeSettings();
     QSettings m_settings = makeSettings();
     static const SettingDefault kDefaults[];
+
+    // Writes the default value for every kDefaults row whose key matches.
+    void resetGroup(const std::function<bool(const QString &)> &matches);
 
     static constexpr const char *kBaseUrl = "provider/baseUrl";
     static constexpr const char *kApiKey = "provider/apiKey";

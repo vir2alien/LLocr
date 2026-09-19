@@ -40,6 +40,13 @@ ApplicationWindow {
             spacing: Theme.spacingSmall
 
             LLOButton {
+                text: qsTr("Restore defaults")
+                onClicked: {
+                    Settings.resetRuntimeDefaults()
+                    rtTab.loadValues()
+                }
+            }
+            LLOButton {
                 text: qsTr("Save")
                 onClicked: {
                     rtTab.saveValues()

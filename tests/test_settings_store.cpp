@@ -81,6 +81,57 @@ private slots:
         QCOMPARE(store.language(), QStringLiteral("system"));
     }
 
+    // Scoped resets (ADR 75): only the window's own group returns to
+    // defaults; everything else stays as the user configured it.
+    void resetOutputGroup()
+    {
+        SettingsStore store;
+        store.setParserId(QStringLiteral("raw"));
+        store.setSplitPages(false);
+        store.setKeepPageNumbers(false);
+        store.setPdfLandscape(true);
+        store.setPdfMarginMm(40);
+        store.setBaseUrl(QStringLiteral("http://custom:1"));
+        store.setLanguage(QStringLiteral("ru"));
+
+        store.resetOutputDefaults();
+
+        QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
+        QCOMPARE(store.splitPages(), true);
+        QCOMPARE(store.keepPageNumbers(), true);
+        QCOMPARE(store.pdfLandscape(), false);
+        QCOMPARE(store.pdfMarginMm(), 15);
+        // Outside the group — untouched.
+        QCOMPARE(store.baseUrl(), QStringLiteral("http://custom:1"));
+        QCOMPARE(store.language(), QStringLiteral("ru"));
+    }
+
+    void resetRuntimeGroup()
+    {
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setBaseUrl(QStringLiteral("http://custom:9000"));
+        store.setApiKey(QStringLiteral("k"));
+        store.setConnectionTimeoutMs(5000);
+        store.setModelName(QStringLiteral("ocr-model"));
+        store.setCheckModelName(QStringLiteral("check-model"));
+        store.setServerPath(QStringLiteral("/opt/llama-server"));
+        store.setThemeMode(1);
+
+        store.resetRuntimeDefaults();
+
+        QCOMPARE(store.connectionMode(), QStringLiteral("external"));
+        QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
+        QCOMPARE(store.apiKey(), QString());
+        QCOMPARE(store.connectionTimeoutMs(), 120000);
+        QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
+        QCOMPARE(store.checkModelName(), QString());
+        QCOMPARE(store.serverPath(), QString());
+        // Outside the group — untouched.
+        QCOMPARE(store.themeMode(), 1);
+        QCOMPARE(store.language(), QStringLiteral("system"));
+    }
+
     void outputExportKeysRoundTrip()
     {
         SettingsStore store;

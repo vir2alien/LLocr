@@ -95,6 +95,49 @@ void SettingsStore::resetToDefaults()
     }
 }
 
+void SettingsStore::resetGroup(const std::function<bool(const QString &)> &matches)
+{
+    const QMetaObject *mo = metaObject();
+    for (const SettingDefault &entry : kDefaults) {
+        if (!matches(QString::fromUtf8(entry.key)))
+            continue;
+        const QMetaProperty prop = mo->property(mo->indexOfProperty(entry.property));
+        if (!prop.isValid() || !prop.write(this, entry.defaultValue)) {
+            qWarning("SettingsStore: resetGroup() cannot write property %s",
+                     entry.property);
+        }
+    }
+    forceSave();
+}
+
+// Scope of Settings → Output (ADR 75): the fields the Output window edits.
+void SettingsStore::resetOutputDefaults()
+{
+    resetGroup([](const QString &key) {
+        return key == QLatin1String("parser/id")
+            || key.startsWith(QLatin1String("output/"))
+            || key.startsWith(QLatin1String("export/"));
+    });
+}
+
+// Scope of Settings → Runtime: connection mode, the external endpoint fields
+// (incl. the per-role model names, ADR 73) and the managed llama-server path.
+// The storage dirs, autostart flags and setup-version stay untouched — they
+// are edited elsewhere (wizard / model windows) and resetting them here would
+// silently discard a working runtime.
+void SettingsStore::resetRuntimeDefaults()
+{
+    resetGroup([](const QString &key) {
+        return key == QLatin1String("provider/mode")
+            || key == QLatin1String("provider/baseUrl")
+            || key == QLatin1String("provider/apiKey")
+            || key == QLatin1String("provider/timeoutMs")
+            || key == QLatin1String("model/name")
+            || key == QLatin1String("check/modelName")
+            || key == QLatin1String("runtime/serverPath");
+    });
+}
+
 const SettingsStore::SettingDefault *SettingsStore::defaults()
 {
     return kDefaults;

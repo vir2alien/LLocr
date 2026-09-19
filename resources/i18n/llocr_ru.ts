@@ -770,6 +770,10 @@
         <translation>Настройки вывода</translation>
     </message>
     <message>
+        <source>Restore defaults</source>
+        <translation>Вернуть настройки по умолчанию</translation>
+    </message>
+    <message>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
@@ -1560,6 +1564,10 @@
     <message>
         <source>Runtime settings</source>
         <translation>Настройки рантайма</translation>
+    </message>
+    <message>
+        <source>Restore defaults</source>
+        <translation>Вернуть настройки по умолчанию</translation>
     </message>
     <message>
         <source>Save</source>
