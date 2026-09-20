@@ -46,6 +46,9 @@
      `QSettings`), not hardcoded.
   4. Build system — **CMake** (not qmake).
   5. When decisions change — update `07-glossary.md`.
+  6. UI text sizes — use `Theme.*Size` / `Theme.*` fonts from
+     `resources/qml/Theme.qml`; never hardcode `font.pointSize` in QML. They
+     carry the macOS point-size compensation (ADR 77).
   
   ## Build & test (fastest path)
   
