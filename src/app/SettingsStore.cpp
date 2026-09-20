@@ -85,9 +85,6 @@ void SettingsStore::forceSave()
 
 void SettingsStore::resetToDefaults()
 {
-    // Same write path as the scoped resets (the full-table predicate), so the
-    // metaobject logic exists exactly once; the extra forceSave() is a no-op
-    // for tests that call it.
     resetGroup([](const QString &) { return true; });
 }
 
@@ -106,7 +103,6 @@ void SettingsStore::resetGroup(const std::function<bool(const QString &)> &match
     forceSave();
 }
 
-// Scope of Settings → Output (ADR 75): the fields the Output window edits.
 void SettingsStore::resetOutputDefaults()
 {
     resetGroup([](const QString &key) {
@@ -116,11 +112,6 @@ void SettingsStore::resetOutputDefaults()
     });
 }
 
-// Scope of Settings → Runtime: connection mode, the external endpoint fields
-// (incl. the per-role model names, ADR 73) and the managed llama-server path.
-// The storage dirs, autostart flags and setup-version stay untouched — they
-// are edited elsewhere (wizard / model windows) and resetting them here would
-// silently discard a working runtime.
 void SettingsStore::resetRuntimeDefaults()
 {
     resetGroup([](const QString &key) {

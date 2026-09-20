@@ -11,8 +11,7 @@ ListView {
 
     property int rowHeight: 40
     property bool managementActions: false
-    // false = the recognition (OCR) role, true = the verification (check) role.
-    property bool checkRole: false
+    property bool isVerifyModelRole: false
 
     signal actionError(string message)
 
@@ -31,9 +30,9 @@ ListView {
     delegate: Rectangle {
         id: installedRow
         required property int index
-        property var info: ModelInstaller.installedInfo(index, root.checkRole)
+        property var info: ModelInstaller.installedInfo(index, root.isVerifyModelRole)
         function refreshInfo() {
-            info = ModelInstaller.installedInfo(index, root.checkRole)
+            info = ModelInstaller.installedInfo(index, root.isVerifyModelRole)
         }
         Connections {
             target: ModelInstaller
@@ -81,7 +80,7 @@ ListView {
             LLOButton {
                 text: installedRow.info.active ? qsTr("Active") : qsTr("Activate")
                 enabled: !installedRow.info.active && !ModelInstaller.busy
-                onClicked: ModelInstaller.setActiveModel(installedRow.index, root.checkRole)
+                onClicked: ModelInstaller.setActiveModel(installedRow.index, root.isVerifyModelRole)
             }
             LLOButton {
                 visible: root.managementActions
@@ -102,6 +101,6 @@ ListView {
                         root.actionError(err)
                 }
             }
-        }
-    }
+        }//RowLayout
+    }//delegate
 }

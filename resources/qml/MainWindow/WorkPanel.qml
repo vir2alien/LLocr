@@ -197,8 +197,6 @@ Rectangle {
                     spacing: Theme.spacing
                     LLOButton {
                         text: qsTr("Check")
-                        // Recognition owns the connection/server too; a click
-                        // during a run is silently refused in C++.
                         enabled: !Controller.checkBusy && !Controller.busy
                                 && checkPrompt.text.trim().length > 0
                         onClicked: Controller.checkSelectedBlock(checkPrompt.text)
@@ -250,9 +248,9 @@ Rectangle {
                     text: qsTr("Fix applied to the page text.")
                     color: Theme.textMuted
                 }
-            }
-        }
-    }
+            }//ColumnLayout
+        }//Rectangle
+    }//ColumnLayout
 
     Component {
         id: previewComponent

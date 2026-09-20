@@ -8,9 +8,6 @@
 
 namespace llocr {
 
-// Request for the text-verification (check) flow. Unlike OCR, the request
-// carries the previously recognized text together with the block image and
-// a user-provided instruction for the general-purpose (checking) model.
 struct CheckRequest {
     QImage image;                    ///< Crop of the selected block being verified.
     QString recognizedText;          ///< Text previously recognized by the OCR model.

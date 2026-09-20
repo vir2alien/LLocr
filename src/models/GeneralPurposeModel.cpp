@@ -18,11 +18,6 @@ namespace llocr {
 
 namespace {
 
-// llama.cpp does not treat the Qwen end-of-sentence token as a stop, so the
-// models emit it as literal text (see ADR 18 - the OCR parser strips the
-// same markers, shared via core/ServiceMarkers.h). Also drop
-// <think>...</think> blocks: thinking models can end their turn inside the
-// reasoning block, leaving only control markers in content.
 QString stripControlTokens(const QString &text)
 {
     static const QRegularExpression thinkBlock(
@@ -31,8 +26,6 @@ QString stripControlTokens(const QString &text)
     QString out = stripServiceTokens(text);
     out.remove(thinkBlock);
 
-    // An unclosed <think> means the answer never started; keep what
-    // precedes it.
     const int thinkStart = out.indexOf(QStringLiteral("<think>"));
     if (thinkStart >= 0)
         out.truncate(thinkStart);
@@ -66,9 +59,6 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request,
     QJsonObject imageUrl{{QStringLiteral("url"), imageDataUrl}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")},
                           {QStringLiteral("image_url"), imageUrl}};
-    // Single text part with the instruction followed by the labelled text to
-    // verify — the same image+text shape the OCR request uses (several separate
-    // text parts confuse some chat templates).
     const QString textPartText = request.prompt
         + QStringLiteral("\n\nRecognized text to verify:\n")
         + request.recognizedText;
@@ -85,9 +75,6 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request,
         {QStringLiteral("messages"), QJsonArray{message}}
     };
 
-    // Qwen3-family thinking models may spend the whole turn inside <think> and
-    // return no answer; ask the template to disable thinking (ignored by
-    // templates/servers that do not know the kwarg).
     root.insert(QStringLiteral("chat_template_kwargs"),
                 QJsonObject{{QStringLiteral("enable_thinking"), false}});
 

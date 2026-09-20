@@ -109,7 +109,7 @@ ToolBar {
             text: qsTr("Settings")
             onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
         }
-    }
+    }//RowLayout
 
     Menu {
         id: settingsMenu

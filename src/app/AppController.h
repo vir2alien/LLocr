@@ -212,9 +212,6 @@ private:
     bool m_checkApplied = false;
     QString m_checkResultText;
     QString m_checkError;
-    // Where the current check result belongs. The result is applied only when
-    // the page/box it was computed for is still the selected one, so a
-    // mid-check selection change can never retarget "Apply fix".
     int m_checkPage = -1;
     int m_checkBox = -1;
 };

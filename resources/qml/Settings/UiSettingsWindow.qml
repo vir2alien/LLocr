@@ -21,8 +21,6 @@ ApplicationWindow {
         border.width: 1
     }
 
-    // Interface settings apply immediately, so there is no Save/Cancel pair;
-    // the footer only offers a scoped reset.
     footer: ToolBar {
         background: Rectangle {
             color: Theme.surface

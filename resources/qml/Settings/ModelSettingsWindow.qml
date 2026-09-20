@@ -9,9 +9,9 @@ import "../Common"
 
 ApplicationWindow {
     id: window
-    // "ocr" fills the recognition-model settings, "check" the verification
-    // model's; the tab contents (Location/Launch/Request) follow the role.
     property string role: "ocr"
+
+    readonly property bool isVerifyModelRole: role === "check"
 
     title: role === "check" ? qsTr("Check model settings")
                             : qsTr("OCR model settings")
@@ -25,8 +25,6 @@ ApplicationWindow {
         border.color: Theme.border
         border.width: 1
     }
-
-    readonly property bool checkRole: role === "check"
 
     footer: ToolBar {
         background: Rectangle {
@@ -58,7 +56,7 @@ ApplicationWindow {
                     // commit the draft id as the active one for the role.
                     const draftId = requestTab.profiles.draftProfileId
                     if (draftId.length > 0) {
-                        if (window.checkRole)
+                        if (window.isVerifyModelRole)
                             Settings.checkRequestProfileId = draftId
                         else
                             Settings.modelRecipeId = draftId
@@ -76,7 +74,7 @@ ApplicationWindow {
                 }
             }
         }
-    }
+    }//footer
 
     function loadValues() {
         launchTab.loadValues()
@@ -86,12 +84,20 @@ ApplicationWindow {
     onVisibleChanged: {
         if (visible) {
             window.loadValues()
-            // The old tab bar refreshed the Location lists on every entry;
-            // keep that behavior for window (re)opens — index changes do not
-            // fire when the tab is already active.
             ModelInstaller.refreshInstalled()
             ModelInstaller.reloadPresets()
             ModelInstaller.rescanRegistry()
+        }
+    }
+
+    Connections {
+        target: tabBar
+        function onCurrentIndexChanged() {
+            if (tabBar.currentIndex === 0) {
+                ModelInstaller.refreshInstalled()
+                ModelInstaller.reloadPresets()
+                ModelInstaller.rescanRegistry()
+            }
         }
     }
 
@@ -146,7 +152,7 @@ ApplicationWindow {
             CustomTabButton { text: qsTr("Location") }
             CustomTabButton { text: qsTr("Launch") }
             CustomTabButton { text: qsTr("Request") }
-        }
+        }//TabBar
 
         StackLayout {
             Layout.fillWidth: true
@@ -155,33 +161,18 @@ ApplicationWindow {
 
             LocationTab {
                 id: locationTab
-                checkRole: window.checkRole
+                isVerifyModelRole: window.isVerifyModelRole
             }
 
             LaunchTab {
                 id: launchTab
-                checkRole: window.checkRole
+                checkRole: window.isVerifyModelRole
             }
 
-            // Both roles use the parameter-profile table; the tab binds to the
-            // role's request profile store.
             RequestTab {
                 id: requestTab
-                checkRole: window.checkRole
+                checkRole: window.isVerifyModelRole
             }
         }
-    }
-
-    // Refresh the model lists when the Location tab (with the installed-model
-    // / preset / search lists) becomes active.
-    Connections {
-        target: tabBar
-        function onCurrentIndexChanged() {
-            if (tabBar.currentIndex === 0) {
-                ModelInstaller.refreshInstalled()
-                ModelInstaller.reloadPresets()
-                ModelInstaller.rescanRegistry()
-            }
-        }
-    }
+    }//ColumnLayout
 }

@@ -11,12 +11,9 @@ namespace llocr {
 class ModelPresetCatalog
 {
 public:
-    // The download (preset) catalogs live beside the other profiles; one per
-    // model role.
     static constexpr const char *kBuiltInOcrPath = ":/profiles/defaultLlmPresetsOcr.json";
     static constexpr const char *kBuiltInValidatePath = ":/profiles/defaultLlmPresetsValidate.json";
 
-    // Empty userCatalogPath skips the user catalog (missingIsOk applies).
     static QList<ModelPreset> load(const QString &builtInPath,
                                    const QString &userCatalogPath, QString &error);
     static QList<ModelPreset> parse(const QJsonArray &arr, QString &error);

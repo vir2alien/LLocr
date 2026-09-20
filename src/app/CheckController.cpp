@@ -26,8 +26,6 @@ CheckController::CheckController(RequestProfileStore &requestProfiles,
 
 QList<RequestParameter> CheckController::requestParameters() const
 {
-    // The check request parameters live in the validate request profile
-    // (Settings → Check model → Request).
     return m_requestProfiles.activeProfile().parameters;
 }
 
@@ -56,7 +54,6 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
             const QString message = conn.error.isEmpty()
                 ? tr("Connection is not configured.")
                 : conn.error;
-            // Both channels: the status bar and the check panel's error label.
             emit statusRequested(message);
             emit checkFinished(false, QString(), message);
             setBusy(false);

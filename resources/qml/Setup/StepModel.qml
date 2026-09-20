@@ -34,9 +34,6 @@ Item {
         if (!visible)
             return
         refreshEstimate()
-        // Re-read the registry so models installed before a settings reset
-        // (index.json survives on disk) show up for activation without a
-        // re-download. load() rebuilds the index only when missing/corrupt.
         ModelInstaller.refreshInstalled()
         ModelInstaller.reloadPresets()
     }
@@ -221,7 +218,7 @@ Item {
         }//Frame
 
         Item { Layout.fillHeight: true }
-    }
+    }//ColumnLayout
 
     Dialog {
         id: prepareDialog
@@ -247,8 +244,6 @@ Item {
                 font.pointSize: Theme.captionSize
                 color: Theme.accent
                 visible: prepareDialog.license.length > 0
-                // The license field may be a URL or a short name; render a real
-                // link only when it is one.
                 text: {
                     var lic = prepareDialog.license
                     if (/^https?:\/\//.test(lic))

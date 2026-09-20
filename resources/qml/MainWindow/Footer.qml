@@ -97,8 +97,6 @@ Item {
         function onLaunchPresetIdChanged() { root.markLaunchDirty() }
         function onLaunchProfileIdChanged() { root.markLaunchDirty() }
         function onServerPathChanged() { root.markLaunchDirty() }
-        // The check role is launched with its own paths/profile (ADR 72/74);
-        // its changes are equally launch-relevant.
         function onCheckLaunchModelPathChanged() { root.markLaunchDirty() }
         function onCheckLaunchMmprojPathChanged() { root.markLaunchDirty() }
         function onCheckLaunchProfileIdChanged() { root.markLaunchDirty() }

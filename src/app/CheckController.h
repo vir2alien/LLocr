@@ -18,10 +18,6 @@ namespace llocr {
 
 class RequestProfileStore;
 
-// Orchestrates one text-verification request: resolves the runtime connection
-// (External or Managed), builds a CheckRequest from the block crop + recognized
-// text + user prompt + the validate request profile parameters, sends it
-// through the general-purpose model and emits the outcome.
 class CheckController : public QObject
 {
     Q_OBJECT

@@ -52,31 +52,18 @@ QtObject {
     readonly property int controlRadius: 3
 
     // --- Text pt sizes ---
-
-    // Qt converts a point size to pixels with the screen's *base* logical DPI:
-    // 72 on macOS, 96 on Windows/X11 (QCocoaScreen::logicalBaseDpi in Qt). One
-    // point is therefore 1 px on macOS but 1.33 px on Windows, while the metrics
-    // above (controlHeight, spacing, radii) and the window sizes in QML are in
-    // pixels and identical on every platform. The same point size thus comes out
-    // a third smaller on macOS relative to the controls around it, which makes
-    // captions and button labels look too small there. The sizes below are tuned
-    // on Windows; compensate on macOS only, so Windows/Linux rendering stays
-    // exactly as it is.
     readonly property real platformTextScale: Qt.platform.os === "osx" ? 4 / 3 : 1
-    // Single multiplier applied to every design size below; a user text-size
-    // preference (UiController.textScale, not exposed in the UI yet) would
-    // multiply the platform compensation here.
     readonly property real textScale: platformTextScale
     readonly property int iconSize: 9 * textScale
-    readonly property real captionSize: 8 * textScale //бейджи, счётчики, технические подписи
-    readonly property real footnoteSize: 9 * textScale //сноски, подсказки, вторичные подписи
-    readonly property real bodySmallSize: 10 * textScale //компактный основной текст, таблицы, плотные формы
-    readonly property real bodySize: 11 * textScale //основной текст для десктопа
-    readonly property real subtitleSize: 13 * textScale //подзаголовки, вторые строки списков
-    readonly property real titleSize: 16 * textScale //h3, заголовки карточек, диалогов, блоков
-    readonly property real h2Size: 19 * textScale //cекционные заголовки
-    readonly property real h1Size: 23 * textScale //главный заголовок экрана
-    readonly property real displaySize: 30 * textScale //крупные цифры, пустые состояния, акцентные числа
+    readonly property real captionSize: 8 * textScale
+    readonly property real footnoteSize: 9 * textScale
+    readonly property real bodySmallSize: 10 * textScale
+    readonly property real bodySize: 11 * textScale
+    readonly property real subtitleSize: 13 * textScale
+    readonly property real titleSize: 16 * textScale
+    readonly property real h2Size: 19 * textScale
+    readonly property real h1Size: 23 * textScale
+    readonly property real displaySize: 30 * textScale
     // --- Font Colors ---
     readonly property color captionColor: textMuted
     readonly property color footnoteColor: textMuted

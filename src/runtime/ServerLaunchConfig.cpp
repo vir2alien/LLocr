@@ -21,8 +21,6 @@ ServerLaunchConfig ServerLaunchConfig::fromSettings(
         cfg.modelPath = s.launchModelPath();
         cfg.mmprojPath = s.launchMmprojPath();
     }
-    // One server instance serves both roles one at a time, so the alias is
-    // shared (per-role model names only exist for external servers).
     cfg.modelAlias = s.launchModelAlias();
     cfg.host = s.launchHost();
     cfg.port = s.launchPort();
@@ -94,7 +92,6 @@ QStringList ServerLaunchConfig::toArguments(const ServerCapabilities &caps) cons
             args.append(QString::number(p.value.toDouble()));
         else if (p.kind == LaunchValueKind::Text)
             args.append(p.value.toString());
-        // Flag: bare token, no value.
     }
 
     return args;

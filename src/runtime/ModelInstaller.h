@@ -75,11 +75,6 @@ public:
     QString checkActiveTitle() const;
 
     Q_INVOKABLE void reloadPresets();
-    // Role-aware invokables take a bool (QML passes the tab's checkRole
-    // directly). C++-side code prefers ConnectionRole (RuntimeController); the
-    // two vocabularies map 1:1 (false=Ocr, true=Check) — see ADR 71/72 and the
-    // glossary's Check/Validate note. Renaming these to an enum would break
-    // the QML call sites for no functional gain.
     Q_INVOKABLE QVariantMap installedInfo(int index, bool forCheck = false) const;
     Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);
     Q_INVOKABLE QString removeModel(int index);

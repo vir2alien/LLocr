@@ -39,9 +39,6 @@ RuntimeController::RuntimeController(SettingsStore &settings,
     , m_checkLaunchProfiles(checkLaunchProfiles ? checkLaunchProfiles : &launchProfiles)
 {
     if (!checkLaunchProfiles) {
-        // Tests construct the controller without the validate store; a silent
-        // OCR-profile fallback in the real wiring would read the wrong launch
-        // parameters for the check role, so surface it.
         qWarning("RuntimeController: no check launch profile store wired - "
                  "the check role falls back to the OCR launch profiles");
     }
@@ -259,14 +256,9 @@ void RuntimeController::ensureConnectionReady(
 
     const bool serverLive = m_state == RuntimeState::Ready
                          || m_state == RuntimeState::Starting;
-    // The single managed instance serves one model at a time: when the live
-    // server carries another role's model, it is stopped and restarted with
-    // the requested role's configuration (ADR 74).
     const bool switchNeeded = serverLive && !serverRunsRole(role);
 
     if (!serverLive || switchNeeded) {
-        // A start (fresh, or after a switch) will be needed — the role's
-        // configuration must be valid (ADR 61 gate, per role).
         const QString roleError = roleConfigError(role);
         if (!roleError.isEmpty()) {
             failNow(roleError);
@@ -301,9 +293,6 @@ void RuntimeController::beginManagedResolve()
     case RuntimeState::Stopping:
         break;
     case RuntimeState::NotConfigured: {
-        // configValid tracks the OCR configuration; the gate here is per role
-        // (a Check resolve may legitimately start from NotConfigured when only
-        // the OCR model is missing).
         const QString roleError = roleConfigError(m_resolveRole);
         if (!roleError.isEmpty()) {
             failResolve(roleError);
@@ -359,8 +348,6 @@ void RuntimeController::onServerStateForResolve()
         fetchManagedModels();
     } else if (m_state == RuntimeState::Failed) {
         if (m_switching) {
-            // The stop-for-switch ended in a failure — retry the start with
-            // the requested role's configuration.
             m_switching = false;
             beginManagedResolve();
             return;
@@ -371,12 +358,10 @@ void RuntimeController::onServerStateForResolve()
                || m_state == RuntimeState::Stopped) {
         if (m_switching) {
             if (m_state == RuntimeState::Stopped) {
-                // The old model is unloaded: start the server with the
-                // requested role's configuration (m_resolveRole).
                 m_switching = false;
                 beginManagedResolve();
             }
-            return;  // Stopping: wait until the stop completes
+            return;
         }
         setBusyState(AppBusyState::Idle);
         failResolve(tr("Server stopped"));
@@ -392,10 +377,6 @@ void RuntimeController::beginRoleSwitch()
                          ? tr("Switching to the check model…")
                          : tr("Switching to the OCR model…"));
     if (!m_server) {
-        // Defensive: switchNeeded implies a live server implies m_server, so
-        // this branch is unreachable today; without it a broken invariant
-        // would stall the resolve pipeline forever (no state change to
-        // restart from).
         m_switching = false;
         beginManagedResolve();
         return;

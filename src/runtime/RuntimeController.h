@@ -34,10 +34,6 @@ class RuntimeController : public QObject
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
 
 public:
-    // checkLaunchProfiles: the validate-role store (the single managed server
-    // is launched with the role's profile, ADR 72/74). Optional only for test
-    // constructions; nullptr falls back to the OCR store with a qWarning so a
-    // forgotten wiring in the app cannot pass silently.
     explicit RuntimeController(SettingsStore &settings,
                                LaunchProfileStore &launchProfiles,
                                LaunchProfileStore *checkLaunchProfiles = nullptr,
@@ -113,12 +109,7 @@ private:
 
     QString roleModelPath(ConnectionRole role) const;
     QString roleMmprojPath(ConnectionRole role) const;
-    // True when the running server already carries the role's model; an empty
-    // recorded model path keeps ADR 61 (a live server is the source of truth
-    // when no model is recorded — settings-reset recovery).
     bool serverRunsRole(ConnectionRole role) const;
-    // Actionable message when a start with the role's configuration would be
-    // needed (serverPath + the role's model file); empty when valid.
     QString roleConfigError(ConnectionRole role) const;
     void beginRoleSwitch();
 
@@ -153,8 +144,6 @@ private:
     SingleInstanceGuard *m_instanceGuard = nullptr;
     SettingsStore &m_settings;
     LaunchProfileStore &m_launchProfiles;
-    // Validate-role launch profiles; never null (falls back to the OCR store,
-    // which keeps test constructions with two arguments valid).
     LaunchProfileStore *m_checkLaunchProfiles = nullptr;
     struct PendingResolve {
         QPointer<QObject> context;
@@ -162,16 +151,11 @@ private:
         std::function<void(const ResolvedConnection &)> onResolved;
     };
     std::vector<PendingResolve> m_resolveCallbacks;
-    // Role of the in-flight resolve (the first caller wins; queued callbacks
-    // share it). Managed mode (re)loads the model per task.
     ConnectionRole m_resolveRole = ConnectionRole::Ocr;
-    // A stop-for-role-switch is in progress; the resolve restarts the server
-    // with the new role's configuration when it reaches Stopped.
     bool m_switching = false;
     bool m_resolveInProgress = false;
     QNetworkAccessManager *m_modelsNet = nullptr;
     QString m_modelsBaseUrl;
-    // Model/mmproj the current (or last) server process was launched with.
     QString m_startedModelPath;
     QString m_startedMmprojPath;
     RuntimeState m_state = RuntimeState::NotConfigured;

@@ -58,10 +58,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
 
-    // Verification (check) model: its own model/mmproj locations, request and
-    // launch profile ids, and the model name used against an external server
-    // (which may host several models). The single managed server instance is
-    // (re)launched per task with the model the task needs.
     Q_PROPERTY(QString checkLaunchModelPath READ checkLaunchModelPath WRITE setCheckLaunchModelPath NOTIFY checkLaunchModelPathChanged)
     Q_PROPERTY(QString checkLaunchMmprojPath READ checkLaunchMmprojPath WRITE setCheckLaunchMmprojPath NOTIFY checkLaunchMmprojPathChanged)
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
@@ -75,8 +71,6 @@ public:
 
     Q_INVOKABLE void forceSave();
     Q_INVOKABLE void resetToDefaults();
-    // Per-window scoped resets (ADR 75): they write the matching rows of the
-    // kDefaults table through the property setters (NOTIFY preserved).
     Q_INVOKABLE void resetOutputDefaults();
     Q_INVOKABLE void resetRuntimeDefaults();
     Q_INVOKABLE bool contains(const QString &key) const;
@@ -272,7 +266,6 @@ private:
     QSettings m_settings = makeSettings();
     static const SettingDefault kDefaults[];
 
-    // Writes the default value for every kDefaults row whose key matches.
     void resetGroup(const std::function<bool(const QString &)> &matches);
 
     static constexpr const char *kBaseUrl = "provider/baseUrl";

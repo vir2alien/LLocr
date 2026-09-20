@@ -42,10 +42,7 @@ public:
         QStringList warnings;
     };
 
-    // Preparation owns an independent decoder and may run without a live model.
     static PreparedDjVu prepareDjVu(const QString& path);
-    // Call on the owner thread under the same lock as other model mutations.
-    // Shared decoder access must remain serialized after committing.
     void appendPreparedDjVu(const PreparedDjVu& prepared);
 
     DocumentModel() = default;

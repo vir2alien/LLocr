@@ -55,9 +55,6 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
     connect(&m_check, &CheckController::checkFinished, this,
             [this](bool success, const QString &text, const QString &errorMessage) {
                 if (m_currentPage != m_checkPage || m_selectedBox != m_checkBox) {
-                    // The result belongs to a block that is no longer selected
-                    // (the selection moved on while the check was in flight) —
-                    // drop it instead of offering it for another block.
                     m_checkSucceeded = false;
                     m_checkApplied = false;
                     m_checkResultText.clear();
@@ -313,7 +310,6 @@ void AppController::importNextFile(const std::shared_ptr<ImportState>& state)
             state->warnings.append(prepared.warnings);
             recordImportedFile(state, pagesBefore, prepared.error);
         });
-        // Neither the controller nor its live document/lock is accessed by the worker.
         watcher->setFuture(QtConcurrent::run([path]() {
             return DocumentModel::prepareDjVu(path);
         }));
@@ -345,7 +341,6 @@ void AppController::recordImportedFile(const std::shared_ptr<ImportState>& state
         if (state->firstError.isEmpty())
             state->firstError = error;
     }
-    // Yield between files, avoid recursive synchronous imports for mixed selections.
     QTimer::singleShot(0, this, [this, state]() { importNextFile(state); });
 }
 
@@ -577,8 +572,6 @@ void AppController::onBoxRemoved(int boxIndex)
                                         m_settings.keepPageNumbers()));
     m_pageModel.setEdited(m_currentPage, true);
 
-    // The surviving rows shifted: keep the selection pointing at the same
-    // block instead of silently moving it to a neighbour.
     if (m_selectedBox == boxIndex)
         setSelectedBoxIndex(-1);
     else if (m_selectedBox > boxIndex)
@@ -589,8 +582,6 @@ void AppController::onBoxRemoved(int boxIndex)
     emit editStateChanged();
 }
 
-// The selected box of the current page, or nullptr when there is no valid
-// selection (no page / not recognized / index out of range).
 const BoundingBox *AppController::selectedBox() const
 {
     if (m_selectedBox < 0 || !m_document.isValidIndex(m_currentPage))
@@ -634,8 +625,6 @@ void AppController::setSelectedBoxIndex(int index)
     m_selectedBox = clamped;
     emit selectedBoxChanged();
 
-    // A completed check (and its error) belongs to the previously selected
-    // block; keep the panel from offering it for the new one.
     if (m_checkSucceeded || m_checkApplied || !m_checkResultText.isEmpty()
         || !m_checkError.isEmpty()) {
         m_checkSucceeded = false;
@@ -657,8 +646,6 @@ void AppController::checkSelectedBlock(const QString &prompt)
         || m_selectedBox < 0)
         return;
 
-    // Cheap, lock-free reads first: an image-block selection has no text and
-    // must not pay for the full-page render that croppedImage() may trigger.
     const QString text = selectedBlockText();
     if (text.isEmpty())
         return;
@@ -684,16 +671,11 @@ void AppController::applyCheckedText()
         || !m_document.isValidIndex(m_currentPage)
         || m_selectedBox < 0)
         return;
-    // Defense in depth: the result may only be applied to the block it was
-    // computed for (setSelectedBoxIndex already resets the state).
     if (m_currentPage != m_checkPage || m_selectedBox != m_checkBox)
         return;
 
     QString rebuilt;
     {
-        // The recognition worker reads pages under a read lock; the write
-        // below must be excluded the same way. Signals stay outside the lock
-        // (non-recursive lock + synchronous QML bindings would deadlock).
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(m_currentPage);
         if (!page.recognized || page.result.pages.isEmpty())
@@ -717,8 +699,6 @@ void AppController::applyCheckedText()
     emit boxesChanged();
     emit resultChanged();
     emit editStateChanged();
-    // The selected box's text changed — refresh the check panel's
-    // "Recognized text" binding, which is NOTIFY'd by selectedBoxChanged only.
     emit selectedBoxChanged();
     emit checkStateChanged();
 }

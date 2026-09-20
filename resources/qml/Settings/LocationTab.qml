@@ -11,38 +11,31 @@ import "../Common"
 Item {
     id: root
     property int preparedIndex: -1
-    // true fills the verification-model paths; false the recognition-model
-    // ones. The lists and the install flow follow the role.
-    property bool checkRole: false
+    property bool isVerifyModelRole: false
 
-    readonly property string modelPathText: checkRole
+    readonly property string modelPathText: isVerifyModelRole
         ? Settings.checkLaunchModelPath : Settings.launchModelPath
-    readonly property string mmprojPathText: checkRole
+    readonly property string mmprojPathText: isVerifyModelRole
         ? Settings.checkLaunchMmprojPath : Settings.launchMmprojPath
-    readonly property string activeTitleText: checkRole
+    readonly property string activeTitleText: isVerifyModelRole
         ? ModelInstaller.checkActiveTitle : ModelInstaller.activeTitle
 
-    // The path fields carry one-shot initial bindings: user editing (and the
-    // imperative refresh below) breaks them, so external writers — model
-    // activation, file pickers, the installer — must reach the fields
-    // explicitly. The focus guard keeps mid-typing input from being
-    // overridden.
     Connections {
         target: Settings
         function onLaunchModelPathChanged() {
-            if (!root.checkRole && !modelPathField.activeFocus)
+            if (!root.isVerifyModelRole && !modelPathField.activeFocus)
                 modelPathField.text = Settings.launchModelPath
         }
         function onCheckLaunchModelPathChanged() {
-            if (root.checkRole && !modelPathField.activeFocus)
+            if (root.isVerifyModelRole && !modelPathField.activeFocus)
                 modelPathField.text = Settings.checkLaunchModelPath
         }
         function onLaunchMmprojPathChanged() {
-            if (!root.checkRole && !mmprojPathField.activeFocus)
+            if (!root.isVerifyModelRole && !mmprojPathField.activeFocus)
                 mmprojPathField.text = Settings.launchMmprojPath
         }
         function onCheckLaunchMmprojPathChanged() {
-            if (root.checkRole && !mmprojPathField.activeFocus)
+            if (root.isVerifyModelRole && !mmprojPathField.activeFocus)
                 mmprojPathField.text = Settings.checkLaunchMmprojPath
         }
     }
@@ -52,11 +45,11 @@ Item {
         function onStateChanged() {
             if (ModelInstaller.state === ModelInstaller.ReadyToDownload && pickDialog.visible) {
                 const idx = preparedIndex
-                const count = root.checkRole ? ModelInstaller.checkPresetCount
+                const count = root.isVerifyModelRole ? ModelInstaller.checkPresetCount
                                                     : ModelInstaller.presetCount
                 if (idx >= 0 && idx < count)
                     pickDialog.license = ModelInstaller.presetInfo(idx,
-                                                root.checkRole).license
+                                                root.isVerifyModelRole).license
                 else
                     pickDialog.license = ""
             }
@@ -75,7 +68,6 @@ Item {
             width: parent.width
             spacing: 6
 
-            // --- Model / mmproj paths (used by the managed launch) ---
             LLOLabel {
                 text: qsTr("Model location")
                 color: Theme.textPrimary
@@ -85,7 +77,7 @@ Item {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: root.checkRole
+                text: root.isVerifyModelRole
                       ? qsTr("These paths select the model for text verification. "
                              + "Activating a downloaded model fills them automatically.")
                       : qsTr("These paths are used when the managed llama-server "
@@ -107,7 +99,7 @@ Item {
                     placeholderText: qsTr("path to the .gguf model file")
                     text: root.modelPathText
                     onEditingFinished: {
-                        if (root.checkRole)
+                        if (root.isVerifyModelRole)
                             Settings.checkLaunchModelPath = text.trim()
                         else
                             Settings.launchModelPath = text.trim()
@@ -133,7 +125,7 @@ Item {
                     placeholderText: qsTr("optional mmproj file for vision models")
                     text: root.mmprojPathText
                     onEditingFinished: {
-                        if (root.checkRole)
+                        if (root.isVerifyModelRole)
                             Settings.checkLaunchMmprojPath = text.trim()
                         else
                             Settings.launchMmprojPath = text.trim()
@@ -145,8 +137,6 @@ Item {
                 }
             }
 
-            // Mirrors the runtime tab's "Installed: bXXXX (CUDA)" caption: shows
-            // when the current path belongs to a model installed via the app.
             LLOLabel {
                 Layout.fillWidth: true
                 visible: root.activeTitleText.length > 0
@@ -164,7 +154,7 @@ Item {
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: root.checkRole
+                text: root.isVerifyModelRole
                       ? qsTr("A model outside the app registry — used for "
                              + "text verification.")
                       : qsTr("A model outside the app registry — used as-is for "
@@ -203,7 +193,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(ModelInstaller.installedCount, 3) * 40
                 managementActions: true
-                checkRole: root.checkRole
+                isVerifyModelRole: root.isVerifyModelRole
                 onActionError: (msg) => statusMsg.text = msg
             }//ListView
 
@@ -231,9 +221,9 @@ Item {
                 id: presetList
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(presetList.count, 3) * 36
-                checkRole: root.checkRole
+                isVerifyModelRole: root.isVerifyModelRole
                 onInstallClicked: (index) => {
-                    ModelInstaller.preparePreset(index, root.checkRole)
+                    ModelInstaller.preparePreset(index, root.isVerifyModelRole)
                     preparedIndex = index
                     pickDialog.open()
                 }
@@ -284,7 +274,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(searchList.count, 3) * 32
                 onInstallClicked: (index) => {
-                    ModelInstaller.installRemote(index, root.checkRole)
+                    ModelInstaller.installRemote(index, root.isVerifyModelRole)
                     preparedIndex = -1
                     pickDialog.open()
                 }
@@ -330,7 +320,7 @@ Item {
                 }
                 LLOButton {
                     text: qsTr("Restore defaults")
-                    onClicked: ModelInstaller.resetUserCatalog(root.checkRole)
+                    onClicked: ModelInstaller.resetUserCatalog(root.isVerifyModelRole)
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -395,7 +385,7 @@ Item {
         nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
         onAccepted: {
             const path = Runtime.localPath(selectedFile)
-            if (root.checkRole)
+            if (root.isVerifyModelRole)
                 Settings.checkLaunchModelPath = path
             else
                 Settings.launchModelPath = path
@@ -409,7 +399,7 @@ Item {
         nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
         onAccepted: {
             const path = Runtime.localPath(selectedFile)
-            if (root.checkRole)
+            if (root.isVerifyModelRole)
                 Settings.checkLaunchMmprojPath = path
             else
                 Settings.launchMmprojPath = path
@@ -422,7 +412,7 @@ Item {
         nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*)")]
         onAccepted: {
             const err = ModelInstaller.importCatalog(Runtime.localPath(selectedFile),
-                                                     root.checkRole)
+                                                     root.isVerifyModelRole)
             if (err.length) statusMsg.text = err
         }
     }
@@ -434,7 +424,7 @@ Item {
         fileMode: FileDialog.SaveFile
         onAccepted: {
             const err = ModelInstaller.exportCatalog(Runtime.localPath(selectedFile),
-                                                     root.checkRole)
+                                                     root.isVerifyModelRole)
             if (err.length) statusMsg.text = err
         }
     }

@@ -32,7 +32,6 @@ Item {
             hasMemoryWarning = false
             return
         }
-        // The context size comes from the active launch profile.
         var m = Runtime.estimateModelMemory(Settings.launchModelPath)
         root.modelBytes = m.modelBytes
         root.kvBytes = m.kvCacheBytes
@@ -45,6 +44,14 @@ Item {
     function refreshAll() {
         refreshEstimate()
         commandPreview = Runtime.launchCommandPreview()
+    }
+
+    function syncPresetModel() {
+        presetListModel.clear()
+        for (let i = 0; i < LaunchProfilesOcr.presetIds.length; ++i)
+            presetListModel.append({ name: LaunchProfilesOcr.presetNames[i] })
+        const idx = LaunchProfilesOcr.presetIds.indexOf(LaunchProfilesOcr.activeProfileId)
+        profileBox.currentIndex = idx >= 0 ? idx : 0
     }
 
     Connections {
@@ -64,16 +71,6 @@ Item {
             return
         refreshAll()
         syncPresetModel()
-    }
-
-    // currentIndex is assigned imperatively: a declarative binding would be
-    // broken by the user's own combobox interaction.
-    function syncPresetModel() {
-        presetListModel.clear()
-        for (let i = 0; i < LaunchProfilesOcr.presetIds.length; ++i)
-            presetListModel.append({ name: LaunchProfilesOcr.presetNames[i] })
-        const idx = LaunchProfilesOcr.presetIds.indexOf(LaunchProfilesOcr.activeProfileId)
-        profileBox.currentIndex = idx >= 0 ? idx : 0
     }
 
     ColumnLayout {
@@ -124,7 +121,7 @@ Item {
                 onActivated: LaunchProfilesOcr.selectDraftProfile(
                                  LaunchProfilesOcr.presetIds[currentIndex])
             }
-        }
+        }//GridLayout
 
         RowLayout {
             Layout.fillWidth: true
@@ -174,7 +171,7 @@ Item {
                     text: qsTr("Reduce --ctx-size or --n-gpu-layers, or use a smaller model.")
                 }
             }
-        }
+        }//Rectangle
 
         LLOLabel {
             Layout.fillWidth: true
@@ -242,5 +239,5 @@ Item {
         }
 
         Item { Layout.fillHeight: true }
-    }
+    }//ColumnLayout
 }
