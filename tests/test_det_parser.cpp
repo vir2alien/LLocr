@@ -79,13 +79,13 @@ private slots:
         QVERIFY(!rebuildPageText(withNumber, false).contains(QStringLiteral("*3*")));
     }
 
-    // Escaped newlines and doubled backslashes are decoded inside token content:
-    // `\n` becomes a real newline and `\\(` becomes `\(`, which then converts
-    // to inline math `$...$`.
-    void unescapesWrappedContent() {
+    // Wrapped content decodes ONLY the stream's own \n line separator. LaTeX
+    // math is emitted with real single backslashes (\( ... \)), so the command
+    // survives verbatim and inline math converts to $...$.
+    void keepsSingleBackslashLatexInWrappedContent() {
         const QString raw = QStringLiteral(
-            R"(<|det|>text [112, 132, 884, 309]<|/det|>line one\nline two  \\( m + n \\)\n)"
-            R"(<|det|>text [113, 780, 884, 860]<|/det|>see  \\( [10, 30, 33, 34] \\)\n)");
+            R"(<|det|>text [112, 132, 884, 309]<|/det|>line one\nline two  \( m + n \)\n)"
+            R"(<|det|>text [113, 780, 884, 860]<|/det|>see  \( [10, 30, 33, 34] \)\n)");
 
         DetTokensParser parser;
         const OcrResult r = parser.parse(raw);
@@ -93,12 +93,35 @@ private slots:
 
         const OcrPage& page = r.pages.first();
         QCOMPARE(page.boxes.size(), 2);
-        // \n -> real newline; \\( -> \( inside the box text.
+        // \n -> real newline; LaTeX backslashes are preserved, not decoded.
         QCOMPARE(page.boxes.at(0).text, QStringLiteral("line one\nline two  \\( m + n \\)"));
 
         const QString md = page.text;
         QVERIFY(md.contains(QStringLiteral("$m + n$")));
         QVERIFY(md.contains(QStringLiteral("$[10, 30, 33, 34]$")));
+    }
+
+    // Regression: the formula stream must not be re-unescaped after JSON
+    // decoding. A wrapped equation with single-backslash LaTeX (\frac, \top,
+    // \right, \tag) previously degraded to form feed / tab / carriage return.
+    void keepsFormulaLatexIntact() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>equation [295, 564, 884, 579]<|/det|>\alpha_ {t j} = \frac {\exp \left(\frac {\mathbf {q} _ {t} ^ {\top} \mathbf {k}}{\sqrt {d _ {k}}}\right)}{\sum_ {i \in \mathcal {N} (t)} \exp \left(\frac {\mathbf {q} _ {t} ^ {\top} \mathbf {k} _ {i}}{\sqrt {d _ {k}}}\right)}, \quad j \in \mathcal {N} (t), \tag {3}\n)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        const QString text = page.boxes.at(0).text;
+        QVERIFY(text.contains(QStringLiteral("\\frac")));
+        QVERIFY(text.contains(QStringLiteral("\\top")));
+        QVERIFY(text.contains(QStringLiteral("\\right")));
+        QVERIFY(text.contains(QStringLiteral("\\tag {3}")));
+        QVERIFY(!text.contains(QLatin1Char('\t')));   // \tag must not become TAB+"ag"
+        QVERIFY(!text.contains(QLatin1Char('\f')));   // \frac must not become FF+"rac"
+        QVERIFY(!text.contains(QLatin1Char('\r')));   // \right must not become CR+"ight"
     }
 
     // The model appends a trailing <|end_of_sentence|> marker after the last
@@ -372,7 +395,7 @@ private slots:
     // Table with inline math and escaped pipe characters inside cells.
     void parsesTableWithMathAndPipes() {
         const QString raw = QStringLiteral(
-            R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td>Formula</td><td>Notes</td></tr><tr><td>\\( a | b \\)</td><td>A | B</td></tr></table>
+            R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td>Formula</td><td>Notes</td></tr><tr><td>\( a | b \)</td><td>A | B</td></tr></table>
 )");
 
         DetTokensParser parser;
@@ -525,9 +548,9 @@ private slots:
         const QString raw = QStringLiteral(
             R"(<|det|>text [112, 738, 883, 786]<|/det|>Original text block.\n)"
             R"(<|det|>text [112, 838, 884, 903]<|/det|>Garbled duplicate of original.\n)"
-            R"(<|det|>equation [437, 795, 885, 827]<|/det|>\\[\\mathbf{o}_t = \\sum \\alpha_{tj} \\mathbf{v}_j\\]\n)"
+            R"(<|det|>equation [437, 795, 885, 827]<|/det|>\[\mathbf{o}_t = \sum \alpha_{tj} \mathbf{v}_j\]\n)"
             R"(<|det|>text [112, 838, 884, 903]<|/det|>Correct continuation text.\n)"
-            R"(<|det|>equation [437, 794, 885, 829]<|/det|>\\[\\mathbf{o}_t = \\sum \\alpha_{tj} \\mathbf{v}_j. \\tag{4}\\]\n)");
+            R"(<|det|>equation [437, 794, 885, 829]<|/det|>\[\mathbf{o}_t = \sum \alpha_{tj} \mathbf{v}_j. \tag{4}\]\n)");
 
         DetTokensParser parser;
         const OcrResult r = parser.parse(raw);

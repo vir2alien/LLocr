@@ -37,22 +37,13 @@ QString unescapeModelText(const QString &text)
     const QChar backslash = QLatin1Char('\\');
     for (int i = 0; i < text.size(); ++i) {
         const QChar c = text.at(i);
-        if (c != backslash || i + 1 >= text.size()) {
-            out.append(c);
+        if (c == backslash && i + 1 < text.size()
+            && text.at(i + 1) == QLatin1Char('n')) {
+            out.append(QLatin1Char('\n'));
+            ++i;
             continue;
         }
-        const QChar n = text.at(i + 1);
-        switch (n.unicode()) {
-        case 'n':  out.append(QLatin1Char('\n')); ++i; break;
-        case 't':  out.append(QLatin1Char('\t')); ++i; break;
-        case 'r':  out.append(QLatin1Char('\r')); ++i; break;
-        case 'b':  out.append(QLatin1Char('\b')); ++i; break;
-        case 'f':  out.append(QLatin1Char('\f')); ++i; break;
-        case '/':  out.append(QLatin1Char('/'));  ++i; break;
-        case '"':  out.append(QLatin1Char('"'));  ++i; break;
-        case '\\': out.append(QLatin1Char('\\')); ++i; break;
-        default:   out.append(c); break; // unknown escape -> keep as-is
-        }
+        out.append(c);
     }
     return out;
 }
@@ -305,7 +296,7 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
     {
         QString preamble = rawText.left(tokens.first().tokenStart);
-        if (wrapped)   // decode JSON escapes only for the model's wrapped stream
+        if (wrapped)   // decode the model's \n line separator (nothing else)
             preamble = unescapeModelText(preamble);
         preamble = stripServiceTokens(preamble).trimmed();
         if (!preamble.isEmpty()) {
