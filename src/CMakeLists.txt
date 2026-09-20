@@ -241,6 +241,17 @@ if(WIN32)
 endif()
 
 # --- macOS: .icns for the application bundle -----------------------------------
+# A self-contained .app bundle is the reliable way to ship on macOS: Qt
+# frameworks and plugins are copied into the bundle and their install names
+# rewritten to @executable_path (via qt_generate_deploy_app_script, hardened
+# runtime enabled). A bundle does NOT depend on DYLD_* environment variables,
+# so it is immune to the Homebrew QtCore mix-up that breaks a dev-run launched
+# from Qt Creator (see the DYLD_FRAMEWORK_PATH guard in CMakeLists.txt and
+# scripts/run-macos.sh). Build a bundle with:
+#   cmake -S . -B build/bundle -DLLOCR_MACOS_APP_BUNDLE=ON ...
+#   cmake --build build/bundle
+#   cmake --install build/bundle --prefix build/bundle/install
+#   open build/bundle/install/llocr.app
 option(LLOCR_MACOS_APP_BUNDLE "Build llocr as a macOS .app bundle" OFF)
 if(APPLE)
     set(MACOSX_BUNDLE_ICON_FILE llocr.icns)
@@ -250,6 +261,19 @@ if(APPLE)
     if(LLOCR_MACOS_APP_BUNDLE)
         set_target_properties(llocr PROPERTIES MACOSX_BUNDLE TRUE)
         target_sources(llocr PRIVATE ${app_icon_macos})
+
+        # Stage the .app bundle and deploy Qt runtime dependencies into it
+        # (Qt frameworks, plugins incl. Qt WebEngine, translations).
+        install(TARGETS llocr
+            BUNDLE DESTINATION .
+        )
+        qt_generate_deploy_app_script(
+            TARGET llocr
+            OUTPUT_SCRIPT deploy_llocr_script
+            NO_UNSUPPORTED_PLATFORM_ERROR
+            DEPLOY_TOOL_OPTIONS -hardened-runtime
+        )
+        install(SCRIPT "${deploy_llocr_script}")
     endif()
 endif()
 
@@ -291,3 +315,35 @@ qt_add_translations(llocr
     TS_FILES
         "${CMAKE_SOURCE_DIR}/resources/i18n/llocr_ru.ts"
 )
+
+# --- macOS dev-build launcher -------------------------------------------------
+# Qt Creator's run step translates its internal _QTC_DYLD_FRAMEWORK_PATH into
+# DYLD_FRAMEWORK_PATH for the launched process; that value may list /opt/homebrew
+# lib BEFORE the installed Qt's dirs (Homebrew Qt). Because dyld searches
+# DYLD_FRAMEWORK_PATH first for any ".framework" name, the app can mix Qt
+# versions and die at startup ("Symbol not found: ... QtPrivate_6_10_3"). No
+# binary-side change can beat that variable, so for DEV builds we ship a small
+# launcher script (the build output "llocr" is a wrapper; the real binary is
+# "llocr.real" beside it) that re-execs the binary with a clean environment.
+# The .app bundle does NOT need this: macdeployqt copies the frameworks into the
+# bundle and rewrites install names (@executable_path) + hardened runtime strips
+# DYLD_*, so we skip the wrapper in bundle mode.
+if(APPLE AND NOT LLOCR_MACOS_APP_BUNDLE)
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/scripts/llocr-launcher.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/llocr-launcher.sh"
+        @ONLY
+    )
+    add_custom_command(TARGET llocr POST_BUILD
+        COMMENT "Wrapping llocr in the macOS DYLD_*-clean launcher"
+        # 1) keep the freshly linked real binary as llocr.real (the linker just
+        #    rewrote $<TARGET_FILE:llocr>, so this always captures the real file)
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:llocr>" "$<TARGET_FILE:llocr>.real"
+        # 2) replace the build output with the launcher script
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_BINARY_DIR}/llocr-launcher.sh" "$<TARGET_FILE:llocr>"
+        COMMAND chmod +x "$<TARGET_FILE:llocr>"
+        VERBATIM
+    )
+endif()

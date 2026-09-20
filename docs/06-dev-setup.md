@@ -12,7 +12,7 @@
 
 > **Build note:** the `dev` preset targets vcpkg + Ninja, but that is not the
 > setup in use. The active `build/` is configured with **Unix Makefiles**
-> against an **external Qt 6.10.3** (`CMAKE_PREFIX_PATH=/Users/gladskih/Qt/6.10.3/macos`);
+> against an **external Qt 6.10.3** (`CMAKE_PREFIX_PATH=~/Qt/6.10.3/macos`);
 > `VCPKG_ROOT` is unset and vcpkg does not participate in the build. Do not try
 > to re-configure from the preset — reuse the existing `build/`.
 >
@@ -20,6 +20,34 @@
 > the vcpkg toolchain (`C:/vcpkg`, triplet `x64-windows`), which provides
 > **ZLIB** for `find_package(ZLIB REQUIRED)` — see the Windows build section
 > below and `THIRD_PARTY_NOTICES.md`.
+>
+> **macOS: keep one Qt version in the process.** Qt 6 embeds its version into
+> private symbols (`QtPrivate_6_10_3` …); if a process ends up with Qt
+> frameworks from two different installs it dies at startup with
+> `Symbol not found: __ZN14QObjectPrivateC2E16QtPrivate_<ver>`. Trigger: the
+> launch env's `DYLD_FRAMEWORK_PATH` lists `/opt/homebrew/lib` (Homebrew Qt,
+> `QtCore.framework` → `Cellar/qtbase/<ver>`) BEFORE the installed Qt's dirs.
+> dyld searches that variable **first** for any name containing `.framework` —
+> it beats `LC_RPATH` and even absolute references (verified), so no
+> binary-side rewrite can help. Qt Creator injects it via `disclaim`, which
+> translates its internal `_QTC_DYLD_FRAMEWORK_PATH`/`_QTC_DYLD_LIBRARY_PATH`
+> (visible in the run env) into `DYLD_*` for the launched process.
+>   1. **Dev-build launcher (this repo, automatic):** `src/CMakeLists.txt` adds a
+>      POST_BUILD step (non-bundle macOS) that turns the build output `bin/llocr`
+>      into a wrapper script: it re-execs the real binary (`bin/llocr.real`,
+>      kept beside it) with `env -u DYLD_FRAMEWORK_PATH -u DYLD_LIBRARY_PATH`.
+>      dyld of that child then resolves Qt 6.10.3 via the binary's `LC_RPATH`,
+>      so Run from Qt Creator just works. Re-created on every build.
+>   2. **Terminal**: `scripts/run-macos.sh` does the same (`env -u …`). The app
+>      prints the actually-loaded QtCore at startup (`runtime Qt: <ver> <libs
+>      path>`), so any mixing regression is visible instantly.
+>   3. **Release**: hardened `.app` bundle (`-DLLOCR_MACOS_APP_BUNDLE=ON` +
+>      `cmake --install`); macdeployqt copies the frameworks into the bundle
+>      (install names rewritten) and the hardened runtime strips `DYLD_*`.
+>   Setting `DYLD_FRAMEWORK_PATH` in Qt Creator project/kit env does NOT help:
+>   Creator manages the `_QTC_*` variables itself and ignores the plain name.
+>   CMake also fails the configure step if Qt6 modules resolve from different
+>   installs (defense-in-depth).
 
 ## Distribution — ⬜ not started
 | OS      | Format             | Tool                            |

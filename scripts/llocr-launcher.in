@@ -1,0 +1,19 @@
+#!/bin/sh
+# llocr dev-build launcher (macOS only) — generated into the build bin dir.
+#
+# Why: Qt Creator launches the app via "disclaim", which translates its own
+# _QTC_DYLD_FRAMEWORK_PATH/_QTC_DYLD_LIBRARY_PATH into DYLD_* for the child.
+# That computed value can contain /opt/homebrew/lib (Homebrew Qt) BEFORE the
+# installed Qt's dirs. For any library whose name contains ".framework" dyld
+# searches DYLD_FRAMEWORK_PATH FIRST — it beats the binary's LC_RPATH and even
+# absolute references — so the process mixes Qt 6.10.3 (QtPositioning) with
+# Homebrew QtCore 6.11.1 and dies at startup with:
+#   Symbol not found: __ZN14QObjectPrivateC2E16QtPrivate_6_10_3
+# A plain exec cannot remove DYLD_* (dyld applies it to the new process), so
+# this wrapper RE-EXECUTES the real binary as a child with a clean environment:
+# dyld of that child then resolves Qt 6.10.3 via the binary's own LC_RPATH.
+#
+# The real binary is kept next to this script as "llocr.real" (CMake re-creates
+# this wrapper after each build via a POST_BUILD step).
+BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec /usr/bin/env -u DYLD_FRAMEWORK_PATH -u DYLD_LIBRARY_PATH "$BIN_DIR/llocr.real" "$@"

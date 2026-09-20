@@ -1,5 +1,6 @@
 #include <QGuiApplication>
 #include <QIcon>
+#include <QLibraryInfo>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QtWebEngineQuick/qtwebenginequickglobal.h>
@@ -78,6 +79,16 @@ void setupQmlEngine(QQmlApplicationEngine& engine,
 }  // namespace
 
 int main(int argc, char* argv[]) {
+    // Diagnostic: qVersion() reports the version of the QtCore that was actually
+    // loaded into this process (not the one we compiled against), and
+    // LibrariesPath shows where it came from. If a dyld search-path override
+    // (e.g. DYLD_FRAMEWORK_PATH=/opt/homebrew/lib from Homebrew Qt) ever pulls in
+    // a QtCore from a different install/version than the other Qt frameworks,
+    // this line exposes it immediately - the result would be a startup crash
+    // "Symbol not found: __ZN14QObjectPrivateC2E16QtPrivate_<version>".
+    qInfo() << "runtime Qt:" << qVersion()
+            << QLibraryInfo::path(QLibraryInfo::LibrariesPath);
+
     QtWebEngineQuick::initialize();
     QGuiApplication app(argc, argv);
 

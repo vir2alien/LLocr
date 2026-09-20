@@ -46,7 +46,60 @@ find_package(Qt6 6.10 REQUIRED COMPONENTS
     LinguistTools
     WebEngineQuick
 )
+
+# Guard: all resolved Qt6 modules must come from ONE Qt installation. Mixing
+# module dirs from different installs (e.g. some modules from Homebrew qtbase
+# and the rest from the Qt online installer) produces an app that crashes at
+# startup with "Symbol not found ... QtPrivate_<version>" because Qt 6 embeds
+# its version into private symbols on purpose. Detect the mix here, at
+# configure time, instead of at runtime.
+if(Qt6_FOUND)
+    set(_qt6_required_prefixes "")
+    foreach(_qt6_comp Core Gui Network Concurrent Qml Quick QuickControls2 Pdf
+                    Test LinguistTools WebEngineQuick)
+        if(DEFINED Qt6${_qt6_comp}_DIR)
+            # <Qt6Dir> is <prefix>/lib/cmake/Qt6<Comp>; the install prefix is 3
+            # levels up. REALPATH defends against symlinked prefixes
+            # (e.g. /opt/homebrew/opt/qtbase -> .../Cellar/qtbase/<ver>).
+            get_filename_component(_qt6_mod_prefix "${Qt6${_qt6_comp}_DIR}/../../.." ABSOLUTE)
+            get_filename_component(_qt6_mod_prefix "${_qt6_mod_prefix}" REALPATH)
+            if(NOT _qt6_required_prefixes)
+                set(_qt6_required_prefixes "${_qt6_mod_prefix}")
+            elseif(NOT "${_qt6_mod_prefix}" STREQUAL "${_qt6_required_prefixes}")
+                message(FATAL_ERROR
+                    "Qt6 modules resolved from different installations:\n"
+                    "  reference: ${_qt6_required_prefixes}\n"
+                    "  ${_qt6_comp}: ${_qt6_mod_prefix}\n"
+                    "All Qt6 modules must come from the same Qt install (e.g. set "
+                    "CMAKE_PREFIX_PATH to a single Qt directory). Mixing Qt "
+                    "versions/modules causes an immediate crash at startup "
+                    "(Symbol not found: __ZN14QObjectPrivateC2E16QtPrivate_*).")
+            endif()
+        endif()
+    endforeach()
+    unset(_qt6_required_prefixes)
+    unset(_qt6_comp)
+    unset(_qt6_mod_prefix)
+endif()
+
 find_package(ZLIB REQUIRED)
+
+if(APPLE AND TARGET ZLIB::ZLIB)
+    # Xcode 26+ relocates libc++ into <SDK>/usr/include/c++/v1 and requires it to
+    # be searched BEFORE the C headers in <SDK>/usr/include. find_package(ZLIB)
+    # resolves the SDK's system zlib and records <SDK>/usr/include as the target's
+    # interface include dir, which CMake injects as -isystem far ahead of libc++ -
+    # breaking every compilation inside Qt/libc++ with the SDK's own error:
+    # "should contain the C++ Standard Library headers before any C Standard
+    # Library". The system zlib needs no extra include dir: zlib.h is found via
+    # the default sysroot search order, after c++/v1. (macOS only.)
+    get_target_property(ZLIB_INCLUDE_DIRS ZLIB::ZLIB INTERFACE_INCLUDE_DIRECTORIES)
+    if(ZLIB_INCLUDE_DIRS)
+        list(FILTER ZLIB_INCLUDE_DIRS EXCLUDE REGEX "/usr/include$")
+        set_target_properties(ZLIB::ZLIB PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIRS}")
+    endif()
+endif()
 
 
 # Enable Qt6 policies for modern CMake integration (qt_add_executable, etc.).

@@ -50,7 +50,7 @@ build the application as a macOS bundle with the `LLOCR_MACOS_APP_BUNDLE` option
 
 ```sh
 cmake -S . -B build-bundle -G "Unix Makefiles" \
-  -DCMAKE_PREFIX_PATH=/Users/gladskih/Qt/6.10.3/macos \
+  -DCMAKE_PREFIX_PATH=~/Qt/6.10.3/macos \
   -DLLOCR_MACOS_APP_BUNDLE=ON
 cmake --build build-bundle -j 8
 ```

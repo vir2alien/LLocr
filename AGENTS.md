@@ -53,7 +53,7 @@
   directory — do **not** try to re-configure from scratch. The `dev` preset in
   `CMakePresets.json` uses Ninja, but Ninja is **not** installed here; the
   existing `build/` is already configured with **Unix Makefiles** and points to
-  Qt at `/Users/gladskih/Qt/6.10.3/macos`. `VCPKG_ROOT` is **not** set as a shell
+  Qt at `~/Qt/6.10.3/macos`. `VCPKG_ROOT` is **not** set as a shell
   variable, and vcpkg does **not** participate in the build.
   
   ```sh
@@ -66,7 +66,7 @@
   
   ```sh
   cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug \
-    -DCMAKE_PREFIX_PATH=/Users/gladskih/Qt/6.10.3/macos
+    -DCMAKE_PREFIX_PATH=~/Qt/6.10.3/macos
   ```
   
   **On Windows** use the MSVC 2022 64-bit Qt package
