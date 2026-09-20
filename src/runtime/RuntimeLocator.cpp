@@ -6,7 +6,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
-#include <QStandardPaths>
 #include <QStringList>
 
 #include "runtime/RuntimeLocator.h"

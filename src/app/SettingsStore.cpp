@@ -85,14 +85,10 @@ void SettingsStore::forceSave()
 
 void SettingsStore::resetToDefaults()
 {
-    const QMetaObject *mo = metaObject();
-    for (const SettingDefault &entry : kDefaults) {
-        const QMetaProperty prop = mo->property(mo->indexOfProperty(entry.property));
-        if (!prop.isValid() || !prop.write(this, entry.defaultValue)) {
-            qWarning("SettingsStore: resetToDefaults() cannot write property %s",
-                     entry.property);
-        }
-    }
+    // Same write path as the scoped resets (the full-table predicate), so the
+    // metaobject logic exists exactly once; the extra forceSave() is a no-op
+    // for tests that call it.
+    resetGroup([](const QString &) { return true; });
 }
 
 void SettingsStore::resetGroup(const std::function<bool(const QString &)> &matches)

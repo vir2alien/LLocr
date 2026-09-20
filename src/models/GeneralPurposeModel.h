@@ -2,6 +2,7 @@
 
 #include <QByteArray>
 #include <QFuture>
+#include <QImage>
 #include <QList>
 #include <QString>
 
@@ -31,6 +32,11 @@ public:
 
     QFuture<CheckResult> check(const CheckRequest &request,
                                const ConnectionConfig &config);
+    // Aborts the request of the last check() call. Single-flight contract:
+    // only one check() may be in flight at a time (enforced by
+    // CheckController::busy), and completion handlers run on the caller
+    // thread, so no cross-thread synchronization is needed. There is no
+    // check-cancel UI yet; abort() is reserved for it.
     void abort();
 
 protected:
@@ -42,6 +48,8 @@ private:
     static QString encodeImageDataUrl(const QImage &image, const QString &format, int quality = -1);
 
 private:
+    // The client of the last check() call — kept alive so abort() can reach
+    // it; it carries one QNetworkAccessManager, released on the next check().
     std::shared_ptr<LlamaClient> m_activeClient;
 };
 

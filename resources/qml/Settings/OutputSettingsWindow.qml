@@ -35,7 +35,12 @@ ApplicationWindow {
 
             LLOButton {
                 text: qsTr("Restore defaults")
-                onClicked: Settings.resetOutputDefaults()
+                // Guarded setters skip the NOTIFY when a value already equals
+                // the default, so re-read the controls explicitly.
+                onClicked: {
+                    Settings.resetOutputDefaults()
+                    outputTab.loadValues()
+                }
             }
             LLOButton {
                 text: qsTr("Save")

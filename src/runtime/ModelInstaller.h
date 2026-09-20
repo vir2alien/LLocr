@@ -32,7 +32,7 @@ class ModelInstaller : public QObject
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
 
     Q_PROPERTY(int presetCount READ presetCount NOTIFY presetsChanged)
-    Q_PROPERTY(int presetCountCheck READ presetCountCheck NOTIFY presetsChanged)
+    Q_PROPERTY(int checkPresetCount READ checkPresetCount NOTIFY presetsChanged)
 
     Q_PROPERTY(int searchCount READ searchCount NOTIFY searchChanged)
     Q_PROPERTY(bool searchActive READ searchActive NOTIFY searchChanged)
@@ -66,7 +66,7 @@ public:
     QString statusMessage() const { return m_statusMessage; }
     int installedCount() const { return m_installed.size(); }
     int presetCount() const { return m_presets.size(); }
-    int presetCountCheck() const { return m_presetsValidate.size(); }
+    int checkPresetCount() const { return m_presetsValidate.size(); }
     int searchCount() const { return m_searchResults.size(); }
     bool searchActive() const { return m_searchActive; }
     QString searchQuery() const { return m_searchQuery; }
@@ -75,6 +75,11 @@ public:
     QString checkActiveTitle() const;
 
     Q_INVOKABLE void reloadPresets();
+    // Role-aware invokables take a bool (QML passes the tab's checkRole
+    // directly). C++-side code prefers ConnectionRole (RuntimeController); the
+    // two vocabularies map 1:1 (false=Ocr, true=Check) — see ADR 71/72 and the
+    // glossary's Check/Validate note. Renaming these to an enum would break
+    // the QML call sites for no functional gain.
     Q_INVOKABLE QVariantMap installedInfo(int index, bool forCheck = false) const;
     Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);
     Q_INVOKABLE QString removeModel(int index);

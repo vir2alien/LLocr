@@ -17,7 +17,7 @@ ApplicationWindow {
     property var setupWizardRef: null
     property var logWindowRef: null
 
-    property bool canManage: !Runtime.lockedOut
+    readonly property bool canManage: !Runtime.lockedOut
                              && Settings.serverPath.trim().length > 0
 
     background: Rectangle {
@@ -73,7 +73,6 @@ ApplicationWindow {
     }
 
     ScrollView {
-        id: scroll
         anchors.fill: parent
         anchors.margins: 12
         contentWidth: availableWidth
@@ -86,6 +85,7 @@ ApplicationWindow {
             width: parent.width
             setupWizardRef: window.setupWizardRef
             logWindowRef: window.logWindowRef
+            canManage: window.canManage
         }
     }
 }

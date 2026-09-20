@@ -93,17 +93,17 @@ private slots:
         QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
         model.updateBoxText(0, QStringLiteral("after"));
 
-        QCOMPARE(spy.count(), 1);
+        QCOMPARE(spy.size(), 1);
         QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(),
                  QStringLiteral("after"));
 
         // Same-value update must not emit anything.
         model.updateBoxText(0, QStringLiteral("after"));
-        QCOMPARE(spy.count(), 1);
+        QCOMPARE(spy.size(), 1);
 
         // Out-of-range update must not emit or crash.
         model.updateBoxText(7, QStringLiteral("x"));
-        QCOMPARE(spy.count(), 1);
+        QCOMPARE(spy.size(), 1);
     }
 
     void removeBoxRemovesRowAndReports()

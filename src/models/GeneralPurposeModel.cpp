@@ -1,7 +1,5 @@
 #include "models/GeneralPurposeModel.h"
 
-#include <memory>
-
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QFutureWatcher>
@@ -9,31 +7,32 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPromise>
-#include <QRegularExpression>
 #include <QtConcurrent/QtConcurrentRun>
 
+#include "core/ServiceMarkers.h"
+
 #include <algorithm>
+#include <memory>
 
 namespace llocr {
 
 namespace {
 
 // llama.cpp does not treat the Qwen end-of-sentence token as a stop, so the
-// models emit it as literal text (see ADR 18 — the OCR parser strips the same
-// markers). Also drop <think>…</think> blocks: thinking models can end their
-// turn inside the reasoning block, leaving only control markers in content.
+// models emit it as literal text (see ADR 18 - the OCR parser strips the
+// same markers, shared via core/ServiceMarkers.h). Also drop
+// <think>...</think> blocks: thinking models can end their turn inside the
+// reasoning block, leaving only control markers in content.
 QString stripControlTokens(const QString &text)
 {
-    static const QRegularExpression angleTokens(
-        QStringLiteral(R"(<(?:\||\x{FF5C})[^>]*>)"));
     static const QRegularExpression thinkBlock(
         QStringLiteral(R"(<think>[\s\S]*?</think>\s*)"));
 
-    QString out = text;
+    QString out = stripServiceTokens(text);
     out.remove(thinkBlock);
-    out.remove(angleTokens);
 
-    // An unclosed <think> means the answer never started; keep what precedes it.
+    // An unclosed <think> means the answer never started; keep what
+    // precedes it.
     const int thinkStart = out.indexOf(QStringLiteral("<think>"));
     if (thinkStart >= 0)
         out.truncate(thinkStart);

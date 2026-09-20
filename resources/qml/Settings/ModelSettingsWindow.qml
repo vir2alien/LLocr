@@ -54,14 +54,14 @@ ApplicationWindow {
                 onClicked: {
                     launchTab.saveValues()
                     requestTab.saveValues()
-                    if (!window.checkRole) {
-                        const draftId = RequestProfilesOcr.draftProfileId
-                        if (draftId.length > 0)
-                            Settings.modelRecipeId = draftId
-                    } else {
-                        const draftId = RequestProfilesValidate.draftProfileId
-                        if (draftId.length > 0)
+                    // RequestTab already resolves the role's profile store;
+                    // commit the draft id as the active one for the role.
+                    const draftId = requestTab.profiles.draftProfileId
+                    if (draftId.length > 0) {
+                        if (window.checkRole)
                             Settings.checkRequestProfileId = draftId
+                        else
+                            Settings.modelRecipeId = draftId
                     }
                     Settings.forceSave()
                     window.close()
@@ -84,8 +84,15 @@ ApplicationWindow {
     }
 
     onVisibleChanged: {
-        if (visible)
+        if (visible) {
             window.loadValues()
+            // The old tab bar refreshed the Location lists on every entry;
+            // keep that behavior for window (re)opens — index changes do not
+            // fire when the tab is already active.
+            ModelInstaller.refreshInstalled()
+            ModelInstaller.reloadPresets()
+            ModelInstaller.rescanRegistry()
+        }
     }
 
     ColumnLayout {
@@ -148,7 +155,7 @@ ApplicationWindow {
 
             LocationTab {
                 id: locationTab
-                role: window.role
+                checkRole: window.checkRole
             }
 
             LaunchTab {
@@ -160,7 +167,6 @@ ApplicationWindow {
             // role's request profile store.
             RequestTab {
                 id: requestTab
-                anchors.fill: parent
                 checkRole: window.checkRole
             }
         }

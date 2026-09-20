@@ -18,7 +18,7 @@ ListView {
 
     visible: count > 0
     clip: true
-    model: checkRole ? ModelInstaller.presetCountCheck : ModelInstaller.presetCount
+    model: checkRole ? ModelInstaller.checkPresetCount : ModelInstaller.presetCount
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
     delegate: Rectangle {

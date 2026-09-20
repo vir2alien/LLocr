@@ -1540,6 +1540,10 @@
         <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
         <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
     </message>
+    <message>
+        <source>Advanced request parameters sent to llama.cpp alongside the check prompt; see the llama.cpp server documentation</source>
+        <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом проверки; см. документацию llama-server</translation>
+    </message>
 </context>
 <context>
     <name>RuntimeBuildsList</name>
@@ -1675,6 +1679,14 @@
         <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="77"/>
         <source>Browse…</source>
         <translation>Обзор…</translation>
+    </message>
+    <message>
+        <source>Select llama-server binary</source>
+        <translation>Выбрать бинарник llama-server</translation>
+    </message>
+    <message>
+        <source>Executables (*)</source>
+        <translation>Исполняемые файлы (*)</translation>
     </message>
     <message>
         <location filename="../qml/SettingsDialog/RuntimeTabInternal.qml" line="86"/>

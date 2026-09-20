@@ -10,6 +10,7 @@ qt_add_executable(llocr
     core/ConnectionConfig.h
     core/LlamaClient.h
     core/LlamaClient.cpp
+    core/ServiceMarkers.h
     core/RequestProfile.h
     core/RequestProfile.cpp
     core/LaunchProfile.h

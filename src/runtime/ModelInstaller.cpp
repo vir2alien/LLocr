@@ -395,8 +395,12 @@ QString ModelInstaller::removeModel(int index)
     if (index < 0 || index >= m_installed.size())
         return tr("Invalid model selection");
     const ModelEntry &e = m_installed.at(index);
+    // The model is active when either role uses it (single registry, per-role
+    // activation): deleting the active check model would break the next
+    // verification task.
     const bool active = !e.modelPath.isEmpty()
-                        && e.modelPath == m_settings.launchModelPath();
+                        && (e.modelPath == m_settings.launchModelPath()
+                            || e.modelPath == m_settings.checkLaunchModelPath());
     const bool ready = m_runtime.state() == RuntimeState::Ready;
     const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
                                     m_settings.runtimeModelsDir());

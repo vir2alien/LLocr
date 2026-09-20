@@ -1,6 +1,8 @@
 #include "parsers/DetTokensParser.h"
 #include "parsers/BlockStyle.h"
 
+#include "core/ServiceMarkers.h"
+
 #include <QRegularExpression>
 #include <QStringList>
 
@@ -52,15 +54,6 @@ QString unescapeModelText(const QString &text)
         default:   out.append(c); break; // unknown escape -> keep as-is
         }
     }
-    return out;
-}
-
-QString stripServiceTokens(const QString &text)
-{
-    static const QRegularExpression re(
-        QStringLiteral(R"(<(?:\||\x{FF5C})[^>]*>)"));
-    QString out = text;
-    out.remove(re);
     return out;
 }
 

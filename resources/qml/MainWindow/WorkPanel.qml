@@ -167,6 +167,7 @@ Rectangle {
                     Layout.preferredHeight: 64
                     contentWidth: availableWidth
                     TextArea {
+                        width: parent.width
                         readOnly: true
                         wrapMode: TextArea.Wrap
                         selectByMouse: true
@@ -196,7 +197,9 @@ Rectangle {
                     spacing: Theme.spacing
                     LLOButton {
                         text: qsTr("Check")
-                        enabled: !Controller.checkBusy
+                        // Recognition owns the connection/server too; a click
+                        // during a run is silently refused in C++.
+                        enabled: !Controller.checkBusy && !Controller.busy
                                 && checkPrompt.text.trim().length > 0
                         onClicked: Controller.checkSelectedBlock(checkPrompt.text)
                     }
@@ -210,19 +213,18 @@ Rectangle {
                     LLOButton {
                         text: qsTr("Apply fix")
                         visible: Controller.checkSucceeded
-                        enabled: Controller.checkSucceeded
+                        enabled: Controller.checkSucceeded && !Controller.busy
                         onClicked: Controller.applyCheckedText()
                     }
                 }
 
                 LLOLabel {
-                    id: checkErrorLabel
                     visible: Controller.checkErrorMessage.length > 0
                     text: Controller.checkErrorMessage
                     color: Theme.error
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    Layout.preferredHeight: checkErrorLabel.visible
+                    Layout.preferredHeight: visible
                                           ? Math.max(0, Math.min(Math.ceil(contentHeight), 96))
                                           : 0
                 }
@@ -233,6 +235,7 @@ Rectangle {
                     visible: Controller.checkResultText.length > 0
                     contentWidth: availableWidth
                     TextArea {
+                        width: parent.width
                         readOnly: true
                         wrapMode: TextArea.Wrap
                         selectByMouse: true

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import LLocr
@@ -12,6 +13,10 @@ ScrollView {
     contentHeight: formLayout.implicitHeight
 
     property var logWindowRef: null
+    // Whether the managed-runtime actions (Start/Stop/Restart) are allowed;
+    // passed down from the owning window instead of relying on the
+    // instantiation-context lookup.
+    property bool canManage: false
 
     property var backendOptions: []
     property var releaseOptions: []
@@ -21,6 +26,17 @@ ScrollView {
         // breaks the text binding, so a reset/reopen must restore the value.
         serverPathField.text = Settings.serverPath
         buildInstallOptions()
+    }
+
+    // The initial text binding is one-shot; external writers (install,
+    // activate, restore defaults) must reach the field too. The focus guard
+    // keeps mid-typing user input from being overridden.
+    Connections {
+        target: Settings
+        function onServerPathChanged() {
+            if (!serverPathField.activeFocus)
+                serverPathField.text = Settings.serverPath
+        }
     }
 
     function buildInstallOptions() {
@@ -341,4 +357,16 @@ ScrollView {
             }
         }
     }//ColumnLayout
+
+    FileDialog {
+        id: serverPicker
+        title: qsTr("Select llama-server binary")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Executables (*)")]
+        onAccepted: {
+            const path = Runtime.localPath(selectedFile)
+            Settings.serverPath = path
+            Runtime.probeRuntimePath(path)
+        }
+    }
 }

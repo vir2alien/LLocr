@@ -11,27 +11,52 @@ import "../Common"
 Item {
     id: root
     property int preparedIndex: -1
-    // "ocr" fills the recognition-model paths; "check" fills the verification
-    // model paths. The lists and the install flow follow the role.
-    property string role: "ocr"
+    // true fills the verification-model paths; false the recognition-model
+    // ones. The lists and the install flow follow the role.
+    property bool checkRole: false
 
-    readonly property string modelPathText: role === "check"
+    readonly property string modelPathText: checkRole
         ? Settings.checkLaunchModelPath : Settings.launchModelPath
-    readonly property string mmprojPathText: role === "check"
+    readonly property string mmprojPathText: checkRole
         ? Settings.checkLaunchMmprojPath : Settings.launchMmprojPath
-    readonly property string activeTitleText: role === "check"
+    readonly property string activeTitleText: checkRole
         ? ModelInstaller.checkActiveTitle : ModelInstaller.activeTitle
+
+    // The path fields carry one-shot initial bindings: user editing (and the
+    // imperative refresh below) breaks them, so external writers — model
+    // activation, file pickers, the installer — must reach the fields
+    // explicitly. The focus guard keeps mid-typing input from being
+    // overridden.
+    Connections {
+        target: Settings
+        function onLaunchModelPathChanged() {
+            if (!root.checkRole && !modelPathField.activeFocus)
+                modelPathField.text = Settings.launchModelPath
+        }
+        function onCheckLaunchModelPathChanged() {
+            if (root.checkRole && !modelPathField.activeFocus)
+                modelPathField.text = Settings.checkLaunchModelPath
+        }
+        function onLaunchMmprojPathChanged() {
+            if (!root.checkRole && !mmprojPathField.activeFocus)
+                mmprojPathField.text = Settings.launchMmprojPath
+        }
+        function onCheckLaunchMmprojPathChanged() {
+            if (root.checkRole && !mmprojPathField.activeFocus)
+                mmprojPathField.text = Settings.checkLaunchMmprojPath
+        }
+    }
 
     Connections {
         target: ModelInstaller
         function onStateChanged() {
             if (ModelInstaller.state === ModelInstaller.ReadyToDownload && pickDialog.visible) {
                 const idx = preparedIndex
-                const count = root.role === "check" ? ModelInstaller.presetCountCheck
+                const count = root.checkRole ? ModelInstaller.checkPresetCount
                                                     : ModelInstaller.presetCount
                 if (idx >= 0 && idx < count)
                     pickDialog.license = ModelInstaller.presetInfo(idx,
-                                                root.role === "check").license
+                                                root.checkRole).license
                 else
                     pickDialog.license = ""
             }
@@ -60,7 +85,7 @@ Item {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: root.role === "check"
+                text: root.checkRole
                       ? qsTr("These paths select the model for text verification. "
                              + "Activating a downloaded model fills them automatically.")
                       : qsTr("These paths are used when the managed llama-server "
@@ -82,7 +107,7 @@ Item {
                     placeholderText: qsTr("path to the .gguf model file")
                     text: root.modelPathText
                     onEditingFinished: {
-                        if (root.role === "check")
+                        if (root.checkRole)
                             Settings.checkLaunchModelPath = text.trim()
                         else
                             Settings.launchModelPath = text.trim()
@@ -108,7 +133,7 @@ Item {
                     placeholderText: qsTr("optional mmproj file for vision models")
                     text: root.mmprojPathText
                     onEditingFinished: {
-                        if (root.role === "check")
+                        if (root.checkRole)
                             Settings.checkLaunchMmprojPath = text.trim()
                         else
                             Settings.launchMmprojPath = text.trim()
@@ -139,7 +164,7 @@ Item {
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: root.role === "check"
+                text: root.checkRole
                       ? qsTr("A model outside the app registry — used for "
                              + "text verification.")
                       : qsTr("A model outside the app registry — used as-is for "
@@ -178,7 +203,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(ModelInstaller.installedCount, 3) * 40
                 managementActions: true
-                checkRole: root.role === "check"
+                checkRole: root.checkRole
                 onActionError: (msg) => statusMsg.text = msg
             }//ListView
 
@@ -206,9 +231,9 @@ Item {
                 id: presetList
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(presetList.count, 3) * 36
-                checkRole: root.role === "check"
+                checkRole: root.checkRole
                 onInstallClicked: (index) => {
-                    ModelInstaller.preparePreset(index, root.role === "check")
+                    ModelInstaller.preparePreset(index, root.checkRole)
                     preparedIndex = index
                     pickDialog.open()
                 }
@@ -259,7 +284,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(searchList.count, 3) * 32
                 onInstallClicked: (index) => {
-                    ModelInstaller.installRemote(index, root.role === "check")
+                    ModelInstaller.installRemote(index, root.checkRole)
                     preparedIndex = -1
                     pickDialog.open()
                 }
@@ -305,7 +330,7 @@ Item {
                 }
                 LLOButton {
                     text: qsTr("Restore defaults")
-                    onClicked: ModelInstaller.resetUserCatalog(root.role === "check")
+                    onClicked: ModelInstaller.resetUserCatalog(root.checkRole)
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -370,7 +395,7 @@ Item {
         nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
         onAccepted: {
             const path = Runtime.localPath(selectedFile)
-            if (root.role === "check")
+            if (root.checkRole)
                 Settings.checkLaunchModelPath = path
             else
                 Settings.launchModelPath = path
@@ -384,7 +409,7 @@ Item {
         nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
         onAccepted: {
             const path = Runtime.localPath(selectedFile)
-            if (root.role === "check")
+            if (root.checkRole)
                 Settings.checkLaunchMmprojPath = path
             else
                 Settings.launchMmprojPath = path
@@ -397,7 +422,7 @@ Item {
         nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*)")]
         onAccepted: {
             const err = ModelInstaller.importCatalog(Runtime.localPath(selectedFile),
-                                                     root.role === "check")
+                                                     root.checkRole)
             if (err.length) statusMsg.text = err
         }
     }
@@ -409,7 +434,7 @@ Item {
         fileMode: FileDialog.SaveFile
         onAccepted: {
             const err = ModelInstaller.exportCatalog(Runtime.localPath(selectedFile),
-                                                     root.role === "check")
+                                                     root.checkRole)
             if (err.length) statusMsg.text = err
         }
     }

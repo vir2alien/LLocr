@@ -173,6 +173,7 @@ private:
     void updateBoxesForCurrent();
     QList<Exporter::Page> collectPages(int scope, int fromPage, int toPage) const;
     QString effectiveText(int index) const;
+    const BoundingBox *selectedBox() const;
 
     void finishExport(const Exporter::Result& result, int pageCount);
     QPageLayout pdfPageLayout() const;
@@ -211,6 +212,11 @@ private:
     bool m_checkApplied = false;
     QString m_checkResultText;
     QString m_checkError;
+    // Where the current check result belongs. The result is applied only when
+    // the page/box it was computed for is still the selected one, so a
+    // mid-check selection change can never retarget "Apply fix".
+    int m_checkPage = -1;
+    int m_checkBox = -1;
 };
 
 }  // namespace llocr

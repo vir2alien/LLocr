@@ -34,6 +34,10 @@ class RuntimeController : public QObject
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
 
 public:
+    // checkLaunchProfiles: the validate-role store (the single managed server
+    // is launched with the role's profile, ADR 72/74). Optional only for test
+    // constructions; nullptr falls back to the OCR store with a qWarning so a
+    // forgotten wiring in the app cannot pass silently.
     explicit RuntimeController(SettingsStore &settings,
                                LaunchProfileStore &launchProfiles,
                                LaunchProfileStore *checkLaunchProfiles = nullptr,

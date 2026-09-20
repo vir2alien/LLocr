@@ -16,7 +16,7 @@ struct CheckRequest {
     QString recognizedText;          ///< Text previously recognized by the OCR model.
     QString prompt;                  ///< User-provided instruction for the checking model.
     QString modelId;                 ///< Model to route the request to (from the connection).
-    QList<RequestParameter> parameters;  ///< Sampling parameters (hardcoded for now).
+    QList<RequestParameter> parameters;  ///< Sampling parameters from the validate request profile.
 };
 
 }  // namespace llocr

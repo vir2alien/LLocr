@@ -160,9 +160,10 @@ A dedicated `src/runtime/` layer sits between the backend and the OS:
   view (`RuntimeLog` singleton) were extracted into their own QML singletons
   (review 3.4).
 - **RuntimeLocator** — probe (`--version`/`--help`, tolerant version parse),
-  `autoDiscover()`, `probeCached()` (LRU, H.7). **ServerCapabilities** — build
+  `probeCached()` (LRU, H.7). **ServerCapabilities** — build
   allowlist + `--help` parse (ADR 41). **ServerLaunchConfig** — argv builder +
-  `toDisplayCommand()` (secrets never shown).
+  `toDisplayCommand()` (secrets never shown); role-aware `fromSettings()`
+  (ADR 72/74).
 - **LlamaServerProcess** — `QProcess` argv-only, ring-buffer log (2000 lines) +
   rotating file log (5 MB × 3), health polling, crash → auto-restart ≤3×/5 min,
   stop via terminate→kill. **ProcessGuard** — platform no-orphan binding

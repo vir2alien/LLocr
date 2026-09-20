@@ -53,10 +53,12 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
         if (!m_busy)
             return;  // stopped while resolving
         if (conn.baseUrl.isEmpty()) {
-            emit statusRequested(conn.error.isEmpty()
-                                     ? tr("Connection is not configured.")
-                                     : conn.error);
-            emit checkFinished(false, QString(), conn.error);
+            const QString message = conn.error.isEmpty()
+                ? tr("Connection is not configured.")
+                : conn.error;
+            // Both channels: the status bar and the check panel's error label.
+            emit statusRequested(message);
+            emit checkFinished(false, QString(), message);
             setBusy(false);
             return;
         }

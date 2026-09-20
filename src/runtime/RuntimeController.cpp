@@ -38,6 +38,13 @@ RuntimeController::RuntimeController(SettingsStore &settings,
     , m_launchProfiles(launchProfiles)
     , m_checkLaunchProfiles(checkLaunchProfiles ? checkLaunchProfiles : &launchProfiles)
 {
+    if (!checkLaunchProfiles) {
+        // Tests construct the controller without the validate store; a silent
+        // OCR-profile fallback in the real wiring would read the wrong launch
+        // parameters for the check role, so surface it.
+        qWarning("RuntimeController: no check launch profile store wired - "
+                 "the check role falls back to the OCR launch profiles");
+    }
     recomputeConfigValid();
     connect(&m_settings, &SettingsStore::serverPathChanged, this,
             &RuntimeController::recomputeConfigValid);
@@ -384,8 +391,16 @@ void RuntimeController::beginRoleSwitch()
     setStatusMessage(m_resolveRole == ConnectionRole::Check
                          ? tr("Switching to the check model…")
                          : tr("Switching to the OCR model…"));
-    if (m_server)
-        m_server->stop();  // Stopped → onServerStateForResolve → beginManagedResolve
+    if (!m_server) {
+        // Defensive: switchNeeded implies a live server implies m_server, so
+        // this branch is unreachable today; without it a broken invariant
+        // would stall the resolve pipeline forever (no state change to
+        // restart from).
+        m_switching = false;
+        beginManagedResolve();
+        return;
+    }
+    m_server->stop();  // Stopped → onServerStateForResolve → beginManagedResolve
 }
 
 ResolvedConnection RuntimeController::buildManagedConnection() const

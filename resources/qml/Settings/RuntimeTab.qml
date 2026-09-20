@@ -14,6 +14,10 @@ ColumnLayout {
 
     property var setupWizardRef: null
     property var logWindowRef: null
+    // Whether the managed-runtime actions (Start/Stop/Restart) are allowed —
+    // passed down from the owning window instead of relying on the
+    // instantiation-context lookup.
+    property bool canManage: false
 
     Layout.maximumHeight: Number.POSITIVE_INFINITY
 
@@ -88,6 +92,7 @@ ColumnLayout {
     RuntimeTabInternal {
         id: rtInternal
         logWindowRef: runtimeLayout.logWindowRef
+        canManage: runtimeLayout.canManage
         visible: connectionMode === 1
         Layout.fillWidth: true
         Layout.fillHeight: true

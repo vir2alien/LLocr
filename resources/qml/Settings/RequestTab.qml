@@ -170,7 +170,9 @@ Item {
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
             color: Theme.textMuted
-            text: qsTr("Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation")
+            text: checkRole
+                ? qsTr("Advanced request parameters sent to llama.cpp alongside the check prompt; see the llama.cpp server documentation")
+                : qsTr("Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation")
         }
     }
 }

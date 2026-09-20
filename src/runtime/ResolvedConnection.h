@@ -8,7 +8,7 @@ namespace llocr {
 // where one server may host several models: recognition uses `model/name`,
 // text verification uses `check/modelName`. The managed server serves a single
 // loaded model, so both roles resolve to the same alias.
-enum class ConnectionRole { Ocr, Check };
+enum class ConnectionRole { Ocr, Check, };
 
 // Result of resolving a usable connection from the current mode. In `External`
 // this is derived immediately from SettingsStore; in `Managed` the controller
