@@ -23,7 +23,7 @@ Rectangle {
         color: Theme.textMuted
     }
 
-    VerificationPanel {
+    BlockEditPanel {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom

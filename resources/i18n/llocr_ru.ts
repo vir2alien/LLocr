@@ -2,6 +2,34 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="ru" sourcelanguage="en">
 <context>
+    <name>BlockEditPanel</name>
+    <message>
+        <location filename="../qml/MainWindow/BlockEditPanel.qml" line="37"/>
+        <source>Block %1</source>
+        <translation>Блок %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/BlockEditPanel.qml" line="87"/>
+        <source>Corrected by the verifier:</source>
+        <translation>Исправлено верификатором:</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/BlockEditPanel.qml" line="114"/>
+        <source>Verify</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/BlockEditPanel.qml" line="120"/>
+        <source>Revert correction</source>
+        <translation>Отменить исправление</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/BlockEditPanel.qml" line="126"/>
+        <source>Delete block</source>
+        <translation>Удалить блок</translation>
+    </message>
+</context>
+<context>
     <name>DjVuDocument</name>
     <message>
         <location filename="../../src/app/DjVuDocument.cpp" line="58"/>
@@ -137,13 +165,13 @@
         <translation>Для экспорта в DOCX требуется Pandoc, который не найден в PATH. Установите с pandoc.org или экспортируйте в Markdown/HTML.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1050"/>
+        <location filename="../../src/app/AppController.cpp" line="1099"/>
         <location filename="../../src/app/Exporter.cpp" line="385"/>
         <source>Exported PDF using the built-in writer (%1).</source>
         <translation>PDF экспортирован встроенным модулем (%1).</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1063"/>
+        <location filename="../../src/app/AppController.cpp" line="1112"/>
         <source>Exported HTML using the basic writer (%1).</source>
         <translation>HTML экспортирован упрощённым модулем (%1).</translation>
     </message>
@@ -158,7 +186,7 @@
         <translation>Не удалось записать файл: %1</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1043"/>
+        <location filename="../../src/app/AppController.cpp" line="1092"/>
         <location filename="../../src/app/Exporter.cpp" line="511"/>
         <location filename="../../src/app/Exporter.cpp" line="548"/>
         <location filename="../../src/app/Exporter.cpp" line="606"/>
@@ -2652,39 +2680,48 @@
 <context>
     <name>VerificationPanel</name>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="33"/>
         <source>Check block</source>
-        <translation>Проверка блока</translation>
+        <translation type="vanished">Проверка блока</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="45"/>
         <source>OK</source>
-        <translation>ОК</translation>
+        <translation type="vanished">ОК</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="46"/>
         <source>Fixed</source>
-        <translation>Исправлено</translation>
+        <translation type="vanished">Исправлено</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="47"/>
         <source>Review</source>
-        <translation>Проверка</translation>
+        <translation type="vanished">Проверка</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="63"/>
         <source>Recognized text:</source>
-        <translation>Распознанный текст:</translation>
+        <translation type="vanished">Распознанный текст:</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="84"/>
+        <source>Block %1</source>
+        <translation type="vanished">Блок %1</translation>
+    </message>
+    <message>
         <source>Corrected by the verifier:</source>
-        <translation>Исправлено верификатором:</translation>
+        <translation type="vanished">Исправлено верификатором:</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="107"/>
+        <source>Verify</source>
+        <translation type="vanished">Проверить</translation>
+    </message>
+    <message>
+        <source>Revert correction</source>
+        <translation type="vanished">Отменить исправление</translation>
+    </message>
+    <message>
+        <source>Delete block</source>
+        <translation type="vanished">Удалить блок</translation>
+    </message>
+    <message>
         <source>Verify block</source>
-        <translation>Проверить блок</translation>
+        <translation type="vanished">Проверить блок</translation>
     </message>
     <message>
         <source>%1 / %2</source>
@@ -2903,22 +2940,22 @@
         <translation>Сначала укажите название модели в настройках.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="930"/>
+        <location filename="../../src/app/AppController.cpp" line="979"/>
         <source>No output path.</source>
         <translation>Не указан путь для сохранения.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="941"/>
+        <location filename="../../src/app/AppController.cpp" line="990"/>
         <source>Nothing to export for the selected pages (no recognized pages in that selection).</source>
         <translation>Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="935"/>
+        <location filename="../../src/app/AppController.cpp" line="984"/>
         <source>An export is already in progress.</source>
         <translation>Экспорт уже выполняется.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="960"/>
+        <location filename="../../src/app/AppController.cpp" line="1009"/>
         <source>Exporting…</source>
         <translation>Экспорт…</translation>
     </message>
@@ -2928,32 +2965,32 @@
         <translation>Экспорт… (%1/%2)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1020"/>
+        <location filename="../../src/app/AppController.cpp" line="1069"/>
         <source>%1 (%2 page(s)).</source>
         <translation>%1 (%2 стр.).</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1072"/>
+        <location filename="../../src/app/AppController.cpp" line="1121"/>
         <source>Markdown (*.md)</source>
         <translation>Markdown (*.md)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1072"/>
+        <location filename="../../src/app/AppController.cpp" line="1121"/>
         <source>Plain text (*.txt)</source>
         <translation>Обычный текст (*.txt)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1072"/>
+        <location filename="../../src/app/AppController.cpp" line="1121"/>
         <source>HTML (*.html)</source>
         <translation>HTML (*.html)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1074"/>
+        <location filename="../../src/app/AppController.cpp" line="1123"/>
         <source>Word document (*.docx)</source>
         <translation>Документ Word (*.docx)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1075"/>
+        <location filename="../../src/app/AppController.cpp" line="1124"/>
         <source>PDF (*.pdf)</source>
         <translation>PDF (*.pdf)</translation>
     </message>

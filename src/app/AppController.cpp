@@ -647,6 +647,55 @@ void AppController::checkSelectedBlock()
     }
 }
 
+void AppController::revertBlockCorrection()
+{
+    if (m_selectedBox < 0 || !m_document.isValidIndex(m_currentPage))
+        return;
+
+    bool textChanged = false;
+    {
+        QWriteLocker locker(&m_documentLock);
+        DocumentPage &page = m_document.page(m_currentPage);
+        if (!page.recognized || page.result.pages.isEmpty())
+            return;
+        QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+        if (m_selectedBox >= boxes.size())
+            return;
+
+        BoundingBox &box = boxes[m_selectedBox];
+        if (box.checkStatus == BoxCheckStatus::NotChecked
+            && box.correctedText.isEmpty()) {
+            return;
+        }
+        box.checkStatus = BoxCheckStatus::NotChecked;
+        box.correctedText.clear();
+
+        const QString rebuilt = rebuildPageText(page.result.pages[0],
+                                                m_settings.keepPageNumbers(),
+                                                m_settings.tablesAsHtml());
+        if (rebuilt == page.result.text) {
+            m_editStore.revert(m_currentPage);
+            m_pageModel.setEdited(m_currentPage, false);
+        } else {
+            m_editStore.replace(m_currentPage, rebuilt);
+            m_pageModel.setEdited(m_currentPage, true);
+        }
+        ++m_cropRevision;
+        textChanged = true;
+    }
+
+    m_boxModel.updateBoxCheck(m_selectedBox,
+                              static_cast<int>(BoxCheckStatus::NotChecked),
+                              QString());
+    emit selectedBoxChanged();
+    emit checkStateChanged();
+    if (textChanged) {
+        emit resultChanged();
+        emit editStateChanged();
+    }
+    emit boxesChanged();
+}
+
 void AppController::checkEnabledBlocksOnPage()
 {
     if (!m_document.isValidIndex(m_currentPage))

@@ -164,6 +164,7 @@ public slots:
     Q_INVOKABLE void onBoxRemoved(int boxIndex);
     Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown);
     Q_INVOKABLE void checkSelectedBlock();
+    Q_INVOKABLE void revertBlockCorrection();
     Q_INVOKABLE void checkEnabledBlocksOnPage();
     Q_INVOKABLE void checkAllEnabledBlocks(bool onlyUnchecked = false);
     Q_INVOKABLE void stopCheck();
