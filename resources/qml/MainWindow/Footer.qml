@@ -170,6 +170,17 @@ Item {
             color: Theme.error
         }
 
+        LLOLabel {//Check error
+            Layout.fillWidth: true
+            Layout.leftMargin: Theme.spacing * 2
+            Layout.rightMargin: Theme.spacing * 2
+            visible: Controller.checkErrorMessage.length > 0
+            text: Controller.checkErrorMessage
+            textFormat: Text.PlainText
+            wrapMode: Text.Wrap
+            color: Theme.error
+        }
+
         Rectangle {//Toolbar row
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.controlHeight + 8
@@ -189,20 +200,37 @@ Item {
                 anchors.rightMargin: Theme.spacing * 2
                 spacing: Theme.spacingSmall
 
-                LLOLabel {
+                LLOLabel {//Recognition status
                     text: Controller.statusMessage
                     textFormat: Text.PlainText
                     color: Theme.textMuted
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
-                    Layout.fillWidth: true
                 }
+                LLOLabel {//Check status
+                    visible: Controller.checkRunning || Controller.checkFinished
+                    text: Controller.checkRunning
+                          ? qsTr("Check %1 / %2").arg(Controller.checkProgressDone)
+                                                   .arg(Controller.checkProgressTotal)
+                          : qsTr("Check finished")
+                    color: Theme.textMuted
+                    elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
+                }
+                Item { Layout.fillWidth: true }
                 BusyIndicator {
                     running: Controller.busy || Controller.importing
+                                                 || Controller.checkBusy
                                                  || Runtime.busyState === Runtime.StartingRuntime
                     visible: running
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
+                }
+                LLOButton {
+                    visible: Controller.checkBusy
+                    enabled: Controller.checkBusy
+                    text: qsTr("Stop")
+                    onClicked: Controller.stopCheck()
                 }
                 LLOButton {
                     id: runtimeToggleButton

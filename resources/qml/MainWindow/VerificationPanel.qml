@@ -16,8 +16,7 @@ Rectangle {
     border.width: 1
 
     implicitHeight: checkColumn.implicitHeight + 2 * Theme.spacingSmall
-    visible: (Controller.selectedBoxIndex >= 0 || Controller.checkRunning)
-             && Controller.hasResult
+    visible: Controller.selectedBoxIndex >= 0 && Controller.hasResult
 
     ColumnLayout {
         id: checkColumn
@@ -109,37 +108,7 @@ Rectangle {
                 enabled: !Controller.checkBusy && !Controller.busy
                 onClicked: Controller.checkSelectedBlock()
             }
-            BusyIndicator {
-                visible: Controller.checkBusy
-                implicitWidth: 20
-                implicitHeight: 20
-                running: Controller.checkBusy
-            }
-            LLOLabel {
-                visible: Controller.checkRunning
-                text: qsTr("%1 / %2").arg(Controller.checkProgressDone)
-                                          .arg(Controller.checkProgressTotal)
-                color: Theme.textMuted
-                font.pointSize: Theme.captionSize
-            }
             Item { Layout.fillWidth: true }
-            LLOButton {
-                text: qsTr("Stop")
-                visible: Controller.checkBusy
-                enabled: Controller.checkBusy
-                onClicked: Controller.stopCheck()
-            }
-        }
-
-        LLOLabel {
-            visible: Controller.checkErrorMessage.length > 0
-            text: Controller.checkErrorMessage
-            color: Theme.error
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            Layout.preferredHeight: visible
-                                  ? Math.max(0, Math.min(Math.ceil(contentHeight), 96))
-                                  : 0
         }
     }
 }

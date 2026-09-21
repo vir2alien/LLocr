@@ -265,7 +265,7 @@ private slots:
         QCOMPARE(busySpy.count(), 2);
         QCOMPARE(statusSpy.count(), 1);
         QCOMPARE(statusSpy.first().first().toString(),
-                 QStringLiteral("Done. Skipped 3 unreadable page(s)."));
+                 QStringLiteral("Recognition finished. Skipped 3 unreadable page(s)."));
     }
 
     void mixedQueuePreservesOrderAndGuiSignals()

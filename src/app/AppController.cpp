@@ -751,6 +751,7 @@ void AppController::startVerifyQueue(const QList<VerifyTask> &tasks)
         return;
 
     m_checkError.clear();
+    m_checkFinished = false;
     m_verifyQueue = tasks;
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
@@ -814,6 +815,7 @@ void AppController::finishVerifyQueue()
     m_verifyQueue.clear();
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
+    m_checkFinished = true;
     emit checkStateChanged();
 }
 

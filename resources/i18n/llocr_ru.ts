@@ -137,13 +137,13 @@
         <translation>Для экспорта в DOCX требуется Pandoc, который не найден в PATH. Установите с pandoc.org или экспортируйте в Markdown/HTML.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1048"/>
+        <location filename="../../src/app/AppController.cpp" line="1050"/>
         <location filename="../../src/app/Exporter.cpp" line="385"/>
         <source>Exported PDF using the built-in writer (%1).</source>
         <translation>PDF экспортирован встроенным модулем (%1).</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1061"/>
+        <location filename="../../src/app/AppController.cpp" line="1063"/>
         <source>Exported HTML using the basic writer (%1).</source>
         <translation>HTML экспортирован упрощённым модулем (%1).</translation>
     </message>
@@ -158,7 +158,7 @@
         <translation>Не удалось записать файл: %1</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1041"/>
+        <location filename="../../src/app/AppController.cpp" line="1043"/>
         <location filename="../../src/app/Exporter.cpp" line="511"/>
         <location filename="../../src/app/Exporter.cpp" line="548"/>
         <location filename="../../src/app/Exporter.cpp" line="606"/>
@@ -214,17 +214,17 @@
         <translation>Скрыть</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="211"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="239"/>
         <source>Stop server</source>
         <translation>Остановить сервер</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="211"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="239"/>
         <source>Start server</source>
         <translation>Запустить сервер</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="244"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="272"/>
         <source>Server log — click to open. %1</source>
         <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
     </message>
@@ -289,22 +289,37 @@
         <translation>Рантайм: неизвестно</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="282"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="213"/>
+        <source>Check %1 / %2</source>
+        <translation>Проверка %1 / %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="215"/>
+        <source>Check finished</source>
+        <translation>Проверка закончена</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="232"/>
+        <source>Stop</source>
+        <translation>Стоп</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Footer.qml" line="310"/>
         <source>Restart server?</source>
         <translation>Перезапустить сервер?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="288"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="316"/>
         <source>Recognition is in progress. Restarting the server will interrupt the current job. Continue?</source>
         <translation>Идёт распознавание. Перезапуск сервера прервёт текущий процесс. Продолжить?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="300"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="328"/>
         <source>Stop server?</source>
         <translation>Остановить сервер?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="306"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="334"/>
         <source>Recognition is in progress. Stopping the server will interrupt the current job. Continue?</source>
         <translation>Идёт распознавание. Остановка сервера прервёт текущий процесс. Продолжить?</translation>
     </message>
@@ -2637,49 +2652,47 @@
 <context>
     <name>VerificationPanel</name>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="34"/>
+        <location filename="../qml/MainWindow/VerificationPanel.qml" line="33"/>
         <source>Check block</source>
         <translation>Проверка блока</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="46"/>
+        <location filename="../qml/MainWindow/VerificationPanel.qml" line="45"/>
         <source>OK</source>
         <translation>ОК</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="47"/>
+        <location filename="../qml/MainWindow/VerificationPanel.qml" line="46"/>
         <source>Fixed</source>
         <translation>Исправлено</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="48"/>
+        <location filename="../qml/MainWindow/VerificationPanel.qml" line="47"/>
         <source>Review</source>
         <translation>Проверка</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="64"/>
+        <location filename="../qml/MainWindow/VerificationPanel.qml" line="63"/>
         <source>Recognized text:</source>
         <translation>Распознанный текст:</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="85"/>
+        <location filename="../qml/MainWindow/VerificationPanel.qml" line="84"/>
         <source>Corrected by the verifier:</source>
         <translation>Исправлено верификатором:</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="108"/>
+        <location filename="../qml/MainWindow/VerificationPanel.qml" line="107"/>
         <source>Verify block</source>
         <translation>Проверить блок</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="120"/>
         <source>%1 / %2</source>
-        <translation>%1 / %2</translation>
+        <translation type="vanished">%1 / %2</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow/VerificationPanel.qml" line="127"/>
         <source>Stop</source>
-        <translation>Стоп</translation>
+        <translation type="vanished">Стоп</translation>
     </message>
 </context>
 <context>
@@ -2890,22 +2903,22 @@
         <translation>Сначала укажите название модели в настройках.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="928"/>
+        <location filename="../../src/app/AppController.cpp" line="930"/>
         <source>No output path.</source>
         <translation>Не указан путь для сохранения.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="939"/>
+        <location filename="../../src/app/AppController.cpp" line="941"/>
         <source>Nothing to export for the selected pages (no recognized pages in that selection).</source>
         <translation>Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="933"/>
+        <location filename="../../src/app/AppController.cpp" line="935"/>
         <source>An export is already in progress.</source>
         <translation>Экспорт уже выполняется.</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="958"/>
+        <location filename="../../src/app/AppController.cpp" line="960"/>
         <source>Exporting…</source>
         <translation>Экспорт…</translation>
     </message>
@@ -2915,32 +2928,32 @@
         <translation>Экспорт… (%1/%2)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1018"/>
+        <location filename="../../src/app/AppController.cpp" line="1020"/>
         <source>%1 (%2 page(s)).</source>
         <translation>%1 (%2 стр.).</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1070"/>
+        <location filename="../../src/app/AppController.cpp" line="1072"/>
         <source>Markdown (*.md)</source>
         <translation>Markdown (*.md)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1070"/>
+        <location filename="../../src/app/AppController.cpp" line="1072"/>
         <source>Plain text (*.txt)</source>
         <translation>Обычный текст (*.txt)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1070"/>
+        <location filename="../../src/app/AppController.cpp" line="1072"/>
         <source>HTML (*.html)</source>
         <translation>HTML (*.html)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1072"/>
+        <location filename="../../src/app/AppController.cpp" line="1074"/>
         <source>Word document (*.docx)</source>
         <translation>Документ Word (*.docx)</translation>
     </message>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="1073"/>
+        <location filename="../../src/app/AppController.cpp" line="1075"/>
         <source>PDF (*.pdf)</source>
         <translation>PDF (*.pdf)</translation>
     </message>
@@ -3151,10 +3164,8 @@
         <translation>Страница %1 — пустая замена нечитаемой страницы; распознавание пропущено.</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="109"/>
-        <location filename="../../src/app/RecognitionController.cpp" line="190"/>
         <source>Done. Skipped %1 unreadable page(s).</source>
-        <translation>Готово. Пропущено нечитаемых страниц: %1.</translation>
+        <translation type="vanished">Готово. Пропущено нечитаемых страниц: %1.</translation>
     </message>
     <message>
         <location filename="../../src/app/RecognitionController.cpp" line="82"/>
@@ -3187,6 +3198,17 @@
         <translation>Остановлено на странице %1.</translation>
     </message>
     <message>
+        <location filename="../../src/app/RecognitionController.cpp" line="109"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="190"/>
+        <source>Recognition finished. Skipped %1 unreadable page(s).</source>
+        <translation>Распознавание закончено. Пропущено нечитаемых страниц: %1.</translation>
+    </message>
+    <message>
+        <location filename="../../src/app/RecognitionController.cpp" line="191"/>
+        <source>Recognition finished.</source>
+        <translation>Распознавание закончено.</translation>
+    </message>
+    <message>
         <location filename="../../src/app/RecognitionController.cpp" line="121"/>
         <location filename="../../src/app/RecognitionController.cpp" line="167"/>
         <source>Error on page %1: %2</source>
@@ -3198,9 +3220,8 @@
         <translation>Остановлено после страницы %1.</translation>
     </message>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="191"/>
         <source>Done.</source>
-        <translation>Готово.</translation>
+        <translation type="vanished">Готово.</translation>
     </message>
     <message>
         <location filename="../../src/app/RecognitionController.cpp" line="203"/>

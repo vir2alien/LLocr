@@ -52,6 +52,7 @@ class AppController : public QObject
 
     Q_PROPERTY(bool checkBusy READ checkBusy NOTIFY checkStateChanged)
     Q_PROPERTY(bool checkRunning READ checkRunning NOTIFY checkStateChanged)
+    Q_PROPERTY(bool checkFinished READ checkFinished NOTIFY checkStateChanged)
     Q_PROPERTY(int checkProgressDone READ checkProgressDone NOTIFY checkStateChanged)
     Q_PROPERTY(int checkProgressTotal READ checkProgressTotal NOTIFY checkStateChanged)
     Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
@@ -111,6 +112,7 @@ public:
 
     bool checkBusy() const { return m_check.busy() || m_verifyQueueActive; }
     bool checkRunning() const { return m_verifyQueueActive; }
+    bool checkFinished() const { return m_checkFinished; }
     int checkProgressDone() const { return m_verifyDone; }
     int checkProgressTotal() const { return m_verifyTotal; }
     QString checkErrorMessage() const { return m_checkError; }
@@ -238,6 +240,7 @@ private:
     int m_verifyPage = -1;
     int m_verifyBoxIndex = -1;
     bool m_verifyQueueActive = false;
+    bool m_checkFinished = false;
     int m_verifyTotal = 0;
     int m_verifyDone = 0;
     bool m_recognitionStopped = false;

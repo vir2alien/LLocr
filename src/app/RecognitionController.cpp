@@ -106,7 +106,7 @@ void RecognitionController::recognizePage(int index)
         ++index;
     }
     if (index == m_totalPages && m_skippedPages > 0)
-        emit statusRequested(tr("Done. Skipped %1 unreadable page(s).").arg(m_skippedPages));
+        emit statusRequested(tr("Recognition finished. Skipped %1 unreadable page(s).").arg(m_skippedPages));
     if (index < 0 || index >= m_totalPages) {
         finishRun();
         return;
@@ -187,8 +187,8 @@ void RecognitionController::onRecognitionFinished()
     }
 
     emit statusRequested(m_skippedPages > 0
-                             ? tr("Done. Skipped %1 unreadable page(s).").arg(m_skippedPages)
-                             : tr("Done."));
+                             ? tr("Recognition finished. Skipped %1 unreadable page(s).").arg(m_skippedPages)
+                             : tr("Recognition finished."));
     finishRun();
 }
 
