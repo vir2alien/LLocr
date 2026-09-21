@@ -21,12 +21,12 @@ namespace {
 QString stripControlTokens(const QString &text)
 {
     static const QRegularExpression thinkBlock(
-        QStringLiteral(R"(<think>[\s\S]*?</think>\s*)"));
+        QStringLiteral(R"( thinking[\s\S]*? response\s*)"));
 
     QString out = stripServiceTokens(text);
     out.remove(thinkBlock);
 
-    const int thinkStart = out.indexOf(QStringLiteral("<think>"));
+    const int thinkStart = out.indexOf(QStringLiteral(" thinking"));
     if (thinkStart >= 0)
         out.truncate(thinkStart);
 
@@ -56,23 +56,34 @@ QString GeneralPurposeModel::encodeImageDataUrl(const QImage &image, const QStri
 QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request,
                                                  const QString &imageDataUrl)
 {
+    // The verifier protocol: the model must answer with exactly one of
+    //   OK
+    //   FIX\n<the complete corrected block>
+    //   REVIEW
+    // The system message carries the shared contract; the user message lists
+    // the type prompt, the block image and the OCR candidate to verify.
+
     QJsonObject imageUrl{{QStringLiteral("url"), imageDataUrl}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")},
                           {QStringLiteral("image_url"), imageUrl}};
-    const QString textPartText = request.prompt
-        + QStringLiteral("\n\nRecognized text to verify:\n")
-        + request.recognizedText;
-    QJsonObject textPart{{QStringLiteral("type"), QStringLiteral("text")},
-                         {QStringLiteral("text"), textPartText}};
+    QJsonObject typePromptPart{{QStringLiteral("type"), QStringLiteral("text")},
+                               {QStringLiteral("text"), request.typePrompt}};
+    QJsonObject ocrPart{
+        {QStringLiteral("type"), QStringLiteral("text")},
+        {QStringLiteral("text"),
+         QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>")
+             .arg(request.recognizedText)}};
 
-    QJsonArray content{imagePart, textPart};
+    QJsonArray content{typePromptPart, imagePart, ocrPart};
 
-    QJsonObject message{{QStringLiteral("role"), QStringLiteral("user")},
-                        {QStringLiteral("content"), content}};
+    QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")},
+                              {QStringLiteral("content"), request.systemPrompt}};
+    QJsonObject userMessage{{QStringLiteral("role"), QStringLiteral("user")},
+                            {QStringLiteral("content"), content}};
 
     QJsonObject root{
         {QStringLiteral("model"), request.modelId},
-        {QStringLiteral("messages"), QJsonArray{message}}
+        {QStringLiteral("messages"), QJsonArray{systemMessage, userMessage}}
     };
 
     root.insert(QStringLiteral("chat_template_kwargs"),
@@ -112,10 +123,42 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
             "The model returned no corrected text, only end-of-sentence markers. "
             "Check that the selected model can process images."));
 
-    CheckResult result;
-    result.success = true;
-    result.text = content;
-    return result;
+    // --- Verifier protocol: OK / FIX\n<block> / REVIEW ---
+    const QString trimmed = content.trimmed();
+    const QString upper = trimmed.toUpper();
+
+    if (upper.startsWith(QStringLiteral("OK"))) {
+        CheckResult ok;
+        ok.status = CheckStatus::Ok;
+        // Recognition is already correct — do not touch the original text.
+        return ok;
+    }
+
+    if (upper.startsWith(QStringLiteral("REVIEW"))) {
+        CheckResult review;
+        review.status = CheckStatus::Review;
+        return review;
+    }
+
+    if (upper.startsWith(QStringLiteral("FIX"))) {
+        QString fixed = trimmed.mid(3).trimmed();
+        // Accept both "FIX: ..." and "FIX\n..." spellings.
+        if (fixed.startsWith(QLatin1Char(':')))
+            fixed = fixed.mid(1).trimmed();
+        if (fixed.isEmpty())
+            return CheckResult::makeError(QCoreApplication::translate(
+                "GeneralPurposeModel",
+                "The model returned FIX without the corrected text."));
+        CheckResult fix;
+        fix.status = CheckStatus::Fixed;
+        fix.text = fixed;
+        return fix;
+    }
+
+    return CheckResult::makeError(QCoreApplication::translate(
+        "GeneralPurposeModel",
+        "Unexpected verifier response\u2014expected OK, FIX or REVIEW. Received: %1")
+        .arg(content.left(120)));
 }
 
 QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request,
@@ -160,6 +203,7 @@ QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request,
         const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("png"));
         if (dataUrl.isEmpty())
             return QByteArray();
+        qDebug() << buildRequestBody(request, "IMG_DATA");
         return buildRequestBody(request, dataUrl);
     }));
 

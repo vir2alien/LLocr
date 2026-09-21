@@ -45,6 +45,7 @@ Image {
                 required property real boxHeight
                 required property string boxText
                 required property string boxLabel
+                required property int boxCheckStatus
 
                 property bool isImage: boxLabel === "image" || boxLabel === "chart"
                 property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
@@ -70,6 +71,7 @@ Image {
                 }
 
                 Rectangle {
+                    id: labelChip
                     visible: boxLabel.length > 0
                     color: isImage ? Theme.overlayImageOuter : Theme.overlayTextOuter
                     radius: 2
@@ -82,6 +84,18 @@ Image {
                         font.pointSize: Theme.captionSize
                         color: isImage ? Theme.overlayImageInner : Theme.overlayTextInner
                     }
+                }
+
+                Text {
+                    visible: boxCheckStatus !== 0
+                    text: "\u2713"
+                    font.pointSize: Theme.bodySmallSize
+                    font.bold: true
+                    color: boxCheckStatus === 1 ? Theme.success
+                         : boxCheckStatus === 2 ? Theme.warning
+                         : Theme.error
+                    x: labelChip.x + labelChip.width + 3
+                    y: labelChip.y
                 }
 
                 // --- Selection: any recognized block can be picked for verification ---

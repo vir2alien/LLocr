@@ -26,6 +26,29 @@ target_sources(test_det_parser PRIVATE
 )
 add_test(NAME test_det_parser COMMAND test_det_parser)
 
+qt_add_executable(test_verification_prompts test_verification_prompts.cpp)
+
+target_include_directories(test_verification_prompts PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_verification_prompts PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+)
+
+target_sources(test_verification_prompts PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app/VerificationPromptStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+)
+qt_add_resources(test_verification_prompts "verify_prompts_resources"
+    PREFIX "/profiles"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
+)
+add_test(NAME test_verification_prompts COMMAND test_verification_prompts)
+
 qt_add_executable(test_ocr_models test_ocr_models.cpp)
 
 target_include_directories(test_ocr_models PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -165,6 +188,7 @@ qt_add_resources(test_app_import "app_import_profiles"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/profiles/requestOcr.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/requestValidate.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchOcr.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchValidate.json"
 )

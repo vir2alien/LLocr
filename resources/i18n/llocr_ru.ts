@@ -338,6 +338,16 @@
     </message>
     <message>
         <location filename="../qml/MainWindow/Header.qml"/>
+        <source>Verification</source>
+        <translation>Проверка</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Header.qml"/>
+        <source>Check page</source>
+        <translation>Проверить страницу</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Header.qml"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
@@ -780,6 +790,78 @@
     <message>
         <source>Cancel</source>
         <translation>Отмена</translation>
+    </message>
+</context>
+<context>
+    <name>VerificationSettingsWindow</name>
+    <message>
+        <source>Verification settings</source>
+        <translation>Настройки проверки</translation>
+    </message>
+    <message>
+        <source>Blocks</source>
+        <translation>Блоки</translation>
+    </message>
+    <message>
+        <source>System prompt</source>
+        <translation>Системный промпт</translation>
+    </message>
+    <message>
+        <source>Block prompts</source>
+        <translation>Промпты блоков</translation>
+    </message>
+    <message>
+        <source>Restore defaults</source>
+        <translation>Вернуть настройки по умолчанию</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+</context>
+<context>
+    <name>VerificationBlocksTab</name>
+    <message>
+        <source>Blocks whose type is checked below are verified automatically when verification runs. Unchecked types are skipped.</source>
+        <translation>Блоки, тип которых отмечен ниже, проверяются автоматически при запуске проверки. Неотмеченные типы пропускаются.</translation>
+    </message>
+    <message>
+        <source>Blocks without OCR text (image, chart) are always skipped.</source>
+        <translation>Блоки без OCR-текста (изображение, диаграмма) всегда пропускаются.</translation>
+    </message>
+</context>
+<context>
+    <name>VerificationSystemTab</name>
+    <message>
+        <source>The system prompt sets the verification protocol. The verifier model answers with one of: OK — the block is correct; FIX followed by a newline and the complete corrected block; or REVIEW — the block is unreadable.</source>
+        <translation>Системный промпт задаёт протокол проверки. Модель-верификатор отвечает одним из: OK — блок верен; FIX, за которым на новой строке полный исправленный блок; или REVIEW — блок нечитаем.</translation>
+    </message>
+    <message>
+        <source>System prompt for the verification model</source>
+        <translation>Системный промпт для модели проверки</translation>
+    </message>
+</context>
+<context>
+    <name>VerificationPromptsTab</name>
+    <message>
+        <source>Prompt for “%1” blocks</source>
+        <translation>Промпт для блоков «%1»</translation>
+    </message>
+    <message>
+        <source>Select a block type</source>
+        <translation>Выберите тип блока</translation>
+    </message>
+    <message>
+        <source>Ask the verifier to check this kind of block against the image and answer with OK, FIX followed by the corrected block, or REVIEW.</source>
+        <translation>Попросите верификатор проверить блок этого типа по изображению и ответить OK, FIX с исправленным блоком или REVIEW.</translation>
+    </message>
+    <message>
+        <source>Prompt for the selected block type</source>
+        <translation>Промпт для выбранного типа блока</translation>
     </message>
 </context>
 <context>
@@ -2540,13 +2622,43 @@
     </message>
     <message>
         <location filename="../qml/MainWindow/WorkPanel.qml"/>
-        <source>Check prompt:</source>
-        <translation>Промпт проверки:</translation>
+        <source>OK</source>
+        <translation>ОК</translation>
     </message>
     <message>
         <location filename="../qml/MainWindow/WorkPanel.qml"/>
-        <source>e.g. Fix recognition errors in the text. Return only the corrected text.</source>
-        <translation>Например: исправь ошибки распознавания в тексте. Верни только исправленный текст.</translation>
+        <source>Fixed</source>
+        <translation>Исправлено</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Review</source>
+        <translation>Проверка</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Corrected by the verifier:</source>
+        <translation>Исправлено верификатором:</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Verify block</source>
+        <translation>Проверить блок</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Check page</source>
+        <translation>Проверить страницу</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>%1 / %2</source>
+        <translation>%1 / %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml"/>
+        <source>Stop</source>
+        <translation>Стоп</translation>
     </message>
     <message>
         <location filename="../qml/MainWindow/WorkPanel.qml"/>
@@ -2563,11 +2675,6 @@
         <source>Apply fix</source>
         <translation>Применить исправление</translation>
     </message>
-    <message>
-        <location filename="../qml/MainWindow/WorkPanel.qml"/>
-        <source>Fix applied to the page text.</source>
-        <translation>Исправление применено к тексту страницы.</translation>
-    </message>
 </context>
 <context>
     <name>GeneralPurposeModel</name>
@@ -2582,6 +2689,18 @@
     <message>
         <source>Failed to encode the block image</source>
         <translation>Не удалось закодировать изображение блока</translation>
+    </message>
+    <message>
+        <source>The model returned no corrected text, only end-of-sentence markers. Check that the selected model can process images.</source>
+        <translation>Модель не вернула исправленный текст — только маркеры конца предложения. Убедитесь, что выбранная модель умеет обрабатывать изображения.</translation>
+    </message>
+    <message>
+        <source>Unexpected verifier response—expected OK, FIX or REVIEW. Received: %1</source>
+        <translation>Неожиданный ответ верификатора — ожидалось OK, FIX или REVIEW. Получено: %1</translation>
+    </message>
+    <message>
+        <source>The model returned FIX without the corrected text.</source>
+        <translation>Модель вернула FIX без исправленного текста.</translation>
     </message>
     <message>
         <source>The model returned no corrected text, only end-of-sentence markers. Check that the selected model can process images.</source>

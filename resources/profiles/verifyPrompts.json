@@ -1,0 +1,114 @@
+{
+    "schemaVersion": 1,
+    "systemPrompt": "You are an OCR post-processing assistant. You receive an image crop of a document block and the OCR candidate that was recognized from it. Compare the candidate against the visible text in the image and answer with exactly one of three tokens:\n- OK — the recognized text fully matches the image; no correction is needed.\n- FIX\\n<corrected block> — the recognized text has errors; after FIX write the complete corrected block on the following line(s), nothing else.\n- REVIEW — the image is unreadable, garbled or cannot be reliably verified.\nDo not explain, comment, or format your answer in any other way.",
+    "blocks": [
+        {
+            "type": "text",
+            "name": "Text",
+            "enabled": true,
+            "prompt": "Verify the recognized plain text against the image. Correct any character, word, punctuation or spacing errors."
+        },
+        {
+            "type": "title",
+            "name": "Title",
+            "enabled": true,
+            "prompt": "Verify the recognized heading/title against the image. Correct letter case, punctuation and wording."
+        },
+        {
+            "type": "table",
+            "name": "Table",
+            "enabled": true,
+            "prompt": "Verify the recognized table content against the image. Preserve the table structure; correct cell text, separators and alignment."
+        },
+        {
+            "type": "equation",
+            "name": "Equation",
+            "enabled": true,
+            "prompt": "Verify the recognized formula/equation against the image. Correct symbols, subscripts and superscripts while keeping the LaTeX/markdown notation."
+        },
+        {
+            "type": "formula",
+            "name": "Formula",
+            "enabled": true,
+            "prompt": "Verify the recognized formula/equation against the image. Correct symbols, subscripts and superscripts while keeping the LaTeX/markdown notation."
+        },
+        {
+            "type": "image_caption",
+            "name": "Image caption",
+            "enabled": true,
+            "prompt": "Verify the recognized figure caption against the image. Correct wording and punctuation."
+        },
+        {
+            "type": "table_caption",
+            "name": "Table caption",
+            "enabled": true,
+            "prompt": "Verify the recognized table caption against the image. Correct wording and punctuation."
+        },
+        {
+            "type": "figure_footnote",
+            "name": "Figure footnote",
+            "enabled": true,
+            "prompt": "Verify the recognized figure footnote against the image. Correct wording and punctuation."
+        },
+        {
+            "type": "table_footnote",
+            "name": "Table footnote",
+            "enabled": true,
+            "prompt": "Verify the recognized table footnote against the image. Correct wording and punctuation."
+        },
+        {
+            "type": "ref_text",
+            "name": "Reference text",
+            "enabled": true,
+            "prompt": "Verify the recognized bibliography/reference entry against the image. Correct author names, years, titles and punctuation."
+        },
+        {
+            "type": "reference",
+            "name": "Reference",
+            "enabled": true,
+            "prompt": "Verify the recognized reference entry against the image. Correct author names, years, titles and punctuation."
+        },
+        {
+            "type": "list",
+            "name": "List",
+            "enabled": true,
+            "prompt": "Verify the recognized list against the image. Keep the list structure and correct item text, markers and indentation."
+        },
+        {
+            "type": "code",
+            "name": "Code",
+            "enabled": true,
+            "prompt": "Verify the recognized code block against the image. Correct identifiers, strings and punctuation without changing the code structure."
+        },
+        {
+            "type": "abstract",
+            "name": "Abstract",
+            "enabled": true,
+            "prompt": "Verify the recognized abstract against the image. Correct wording and punctuation."
+        },
+        {
+            "type": "header",
+            "name": "Header",
+            "enabled": false,
+            "prompt": "Verify the recognized running header against the image. Correct wording."
+        },
+        {
+            "type": "footer",
+            "name": "Footer",
+            "enabled": false,
+            "prompt": "Verify the recognized running footer against the image. Correct wording."
+        },
+        {
+            "type": "page_number",
+            "name": "Page number",
+            "enabled": false,
+            "prompt": "Verify the recognized page number against the image. Correct the digits."
+        },
+        {
+            "type": "seal",
+            "name": "Seal",
+            "enabled": false,
+            "prompt": "Verify the recognized seal/stamp text against the image. Correct wording if readable, otherwise REVIEW."
+        }
+    ]
+}

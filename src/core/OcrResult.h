@@ -6,8 +6,17 @@
 
 namespace llocr {
 
+enum class BoxCheckStatus : int {
+    NotChecked = 0,  ///< Verification has not run for this block yet.
+    Ok = 1,          ///< Verification passed — the recognized text is correct.
+    Fixed = 2,       ///< The verifier returned a FIX; correctedText holds the result.
+    Review = 3,      ///< The verifier returned REVIEW — the block is unreadable.
+};
+
 struct BoundingBox {
     QString text;             ///< Recognized text of this fragment.
+    QString correctedText;    ///< Verified text (when checkStatus == Fixed); kept separate from text.
+    BoxCheckStatus checkStatus = BoxCheckStatus::NotChecked;
     QString label;            ///< Block type reported by the model (title, text, table...).
     QRectF rect;              ///< Normalized rectangle: x, y, width, height in [0, 1].
     double confidence = 0.0;  ///< Optional model confidence, if provided.

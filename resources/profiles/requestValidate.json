@@ -2,7 +2,7 @@
     "schemaVersion": 2,
     "profiles": [
         {
-            "id": "qwen3.5-4b",
+            "id": "ocr-verifier",
             "parameters": [
                 {
                     "order": 1,
@@ -12,15 +12,39 @@
                 },
                 {
                     "order": 2,
-                    "name": "max_tokens",
-                    "value": 8192,
-                    "description": "Maximum tokens the model may generate for one request."
+                    "name": "repeat_penalty",
+                    "value": 1.0,
+                    "description": "Penalty for repeating tokens; 1.0 disables it."
                 },
                 {
                     "order": 3,
+                    "name": "presence_penalty",
+                    "value": 0.0,
+                    "description": "Penalty for tokens already present in the prompt; 0 disables it."
+                },
+                {
+                    "order": 4,
+                    "name": "frequency_penalty",
+                    "value": 0.0,
+                    "description": "Penalty proportional to token frequency; 0 disables it."
+                },
+                {
+                    "order": 5,
+                    "name": "max_tokens",
+                    "value": 512,
+                    "description": "Maximum tokens the verifier may generate for one block."
+                },
+                {
+                    "order": 6,
                     "name": "stream",
                     "value": false,
                     "description": "Stream tokens as they arrive; false gives the parser one complete response."
+                },
+                {
+                    "order": 7,
+                    "name": "cache_prompt",
+                    "value": true,
+                    "description": "Cache the prompt (image embeddings, system message) between blocks."
                 }
             ]
         }

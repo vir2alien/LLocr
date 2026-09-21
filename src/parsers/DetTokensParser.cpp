@@ -242,9 +242,12 @@ QString rebuildPageText(const OcrPage& page, bool keepPageNumbers)
         BlockStyleInfo style = blockStyleForLabel(box.label);
         if (style.style == BlockStyle::ImagePlaceholder)
             style.imageIndex = i;
-        if (box.text.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
+        // A verified FIX replaces the recognized text in the output; if the
+        // block has no correction the recognized text is used as-is.
+        const QString text = box.correctedText.isEmpty() ? box.text : box.correctedText;
+        if (text.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
             continue;
-        blocks << applyStyle(box.text, style);
+        blocks << applyStyle(text, style);
     }
     return blocks.join(QStringLiteral("\n\n"));
 }

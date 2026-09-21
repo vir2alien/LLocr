@@ -29,6 +29,8 @@ QVariant BoxListModel::data(const QModelIndex& index, int role) const
         case HeightRole: return box.rect.height();
         case TextRole:   return box.text;
         case LabelRole:  return box.label;
+        case CheckStatusRole: return static_cast<int>(box.checkStatus);
+        case CorrectedRole:   return box.correctedText;
         default:         return {};
     }
 }
@@ -42,6 +44,8 @@ QHash<int, QByteArray> BoxListModel::roleNames() const
         {HeightRole, "boxHeight"},
         {TextRole,   "boxText"},
         {LabelRole,  "boxLabel"},
+        {CheckStatusRole, "boxCheckStatus"},
+        {CorrectedRole,   "boxCorrectedText"},
     };
     return roles;
 }
@@ -84,6 +88,20 @@ void BoxListModel::updateBoxText(int index, const QString &text)
     box.text = text;
     const QModelIndex mi = createIndex(index, 0);
     emit dataChanged(mi, mi, {TextRole});
+}
+
+void BoxListModel::updateBoxCheck(int index, int status, const QString &correctedText)
+{
+    if (index < 0 || index >= m_boxes.size())
+        return;
+    BoundingBox &box = m_boxes[index];
+    const BoxCheckStatus next = static_cast<BoxCheckStatus>(status);
+    if (box.checkStatus == next && box.correctedText == correctedText)
+        return;
+    box.checkStatus = next;
+    box.correctedText = correctedText;
+    const QModelIndex mi = createIndex(index, 0);
+    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole});
 }
 
 void BoxListModel::removeBox(int index)

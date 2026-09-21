@@ -15,6 +15,7 @@ ToolBar {
     signal exportRequested(bool multiPage)
     signal openUiSettingsRequested()
     signal openOutputSettingsRequested()
+    signal openVerificationSettingsRequested()
     signal openRuntimeSettingsRequested()
     signal openOcrModelSettingsRequested()
     signal openCheckModelSettingsRequested()
@@ -63,6 +64,13 @@ ToolBar {
             text: qsTr("Stop")
             enabled: Controller.busy
             onClicked: Controller.stop()
+        }
+
+        ToolButton {
+            text: qsTr("Check page")
+            enabled: Controller.hasImage && !Controller.busy
+                     && Controller.pageVerificationSupported
+            onClicked: Controller.checkEnabledBlocksOnPage()
         }
 
         ToolSeparator { visible: Controller.pageCount > 1 }
@@ -121,6 +129,10 @@ ToolBar {
         MenuItem {
             text: qsTr("Output")
             onTriggered: headerRoot.openOutputSettingsRequested()
+        }
+        MenuItem {
+            text: qsTr("Verification")
+            onTriggered: headerRoot.openVerificationSettingsRequested()
         }
         MenuItem {
             text: qsTr("Runtime")

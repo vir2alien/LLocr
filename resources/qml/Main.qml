@@ -41,6 +41,7 @@ ApplicationWindow {
         }
         onOpenUiSettingsRequested: uiSettingsWindow.show()
         onOpenOutputSettingsRequested: outputSettingsWindow.show()
+        onOpenVerificationSettingsRequested: verificationSettingsWindow.show()
         onOpenRuntimeSettingsRequested: runtimeSettingsWindow.show()
         onOpenOcrModelSettingsRequested: ocrModelSettingsWindow.show()
         onOpenCheckModelSettingsRequested: checkModelSettingsWindow.show()
@@ -165,6 +166,10 @@ ApplicationWindow {
 
     OutputSettingsWindow {
         id: outputSettingsWindow
+    }
+
+    VerificationSettingsWindow {
+        id: verificationSettingsWindow
     }
 
     RuntimeSettingsWindow {

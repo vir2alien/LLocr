@@ -19,9 +19,15 @@ CheckController::CheckController(RequestProfileStore &requestProfiles,
         const CheckResult result = m_watcher.future().resultCount() > 0
                                        ? m_watcher.result()
                                        : CheckResult::makeError(tr("No response"));
-        emit checkFinished(result.success, result.text, result.errorMessage);
+        emit checkFinished(result);
         setBusy(false);
     });
+}
+
+void CheckController::stop()
+{
+    if (m_model)
+        m_model->abort();
 }
 
 QList<RequestParameter> CheckController::requestParameters() const
@@ -39,7 +45,7 @@ ConnectionConfig CheckController::buildConfig(const ResolvedConnection &conn) co
 }
 
 void CheckController::checkBlock(const QImage &image, const QString &recognizedText,
-                                 const QString &prompt)
+                                 const QString &systemPrompt, const QString &typePrompt)
 {
     if (m_busy || image.isNull())
         return;
@@ -47,7 +53,7 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
     setBusy(true);
 
     m_runtime.ensureConnectionReady(this, ConnectionRole::Check,
-                                    [this, image, recognizedText, prompt](const ResolvedConnection &conn) {
+                                    [this, image, recognizedText, systemPrompt, typePrompt](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
         if (conn.baseUrl.isEmpty()) {
@@ -55,7 +61,7 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
                 ? tr("Connection is not configured.")
                 : conn.error;
             emit statusRequested(message);
-            emit checkFinished(false, QString(), message);
+            emit checkFinished(CheckResult::makeError(message));
             setBusy(false);
             return;
         }
@@ -63,7 +69,8 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
         CheckRequest request;
         request.image = image;
         request.recognizedText = recognizedText;
-        request.prompt = prompt;
+        request.systemPrompt = systemPrompt;
+        request.typePrompt = typePrompt;
         request.modelId = conn.modelId;
         request.parameters = requestParameters();
 

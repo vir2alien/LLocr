@@ -312,11 +312,17 @@ private slots:
         request.image = QImage(4, 4, QImage::Format_ARGB32);
         request.image.fill(Qt::gray);
         request.recognizedText = QStringLiteral("hello wor1d");
-        request.prompt = QStringLiteral("Fix errors in this text.");
-        request.modelId = QStringLiteral("qwen3.5-4b");
+        request.systemPrompt = QStringLiteral("You are an OCR verifier. Answer OK, FIX, or REVIEW.");
+        request.typePrompt = QStringLiteral("Verify the text block.");
+        request.modelId = QStringLiteral("ocr-verifier");
         request.parameters = {
             { QStringLiteral("temperature"), 0, RequestValueKind::Number, 0.0, QString() },
-            { QStringLiteral("max_tokens"), 1, RequestValueKind::Number, 512.0, QString() },
+            { QStringLiteral("repeat_penalty"), 1, RequestValueKind::Number, 1.0, QString() },
+            { QStringLiteral("presence_penalty"), 2, RequestValueKind::Number, 0.0, QString() },
+            { QStringLiteral("frequency_penalty"), 3, RequestValueKind::Number, 0.0, QString() },
+            { QStringLiteral("max_tokens"), 4, RequestValueKind::Number, 512.0, QString() },
+            { QStringLiteral("stream"), 5, RequestValueKind::Boolean, false, QString() },
+            { QStringLiteral("cache_prompt"), 6, RequestValueKind::Boolean, true, QString() },
         };
 
         const QByteArray body = model.build(request, QStringLiteral("data:image/png;base64,AAAA"));
@@ -324,75 +330,120 @@ private slots:
         QVERIFY(doc.isObject());
 
         const QJsonObject root = doc.object();
-        QCOMPARE(root.value(QStringLiteral("model")).toString(), QStringLiteral("qwen3.5-4b"));
+        QCOMPARE(root.value(QStringLiteral("model")).toString(), QStringLiteral("ocr-verifier"));
         QCOMPARE(root.value(QStringLiteral("temperature")).toDouble(), 0.0);
+        QCOMPARE(root.value(QStringLiteral("repeat_penalty")).toDouble(), 1.0);
+        QCOMPARE(root.value(QStringLiteral("presence_penalty")).toDouble(), 0.0);
+        QCOMPARE(root.value(QStringLiteral("frequency_penalty")).toDouble(), 0.0);
         QCOMPARE(root.value(QStringLiteral("max_tokens")).toDouble(), 512.0);
+        QCOMPARE(root.value(QStringLiteral("stream")).toBool(), false);
+        QCOMPARE(root.value(QStringLiteral("cache_prompt")).toBool(), true);
 
         // Thinking must be disabled so Qwen3-family models answer directly.
         QCOMPARE(root.value(QStringLiteral("chat_template_kwargs")).toObject()
                      .value(QStringLiteral("enable_thinking")).toBool(), false);
 
-        // Image + a single text part (multiple text parts confuse some templates).
-        const QJsonArray content = root.value(QStringLiteral("messages")).toArray()
-                                      .at(0).toObject()
+        // System message carries the shared protocol contract.
+        const QJsonArray messages = root.value(QStringLiteral("messages")).toArray();
+        QCOMPARE(messages.size(), 2);
+        const QJsonObject systemMessage = messages.at(0).toObject();
+        QCOMPARE(systemMessage.value(QStringLiteral("role")).toString(), QStringLiteral("system"));
+        QVERIFY(systemMessage.value(QStringLiteral("content")).toString()
+                    .startsWith(QStringLiteral("You are an OCR verifier.")));
+
+        // User message: type prompt, then image, then the OCR candidate.
+        const QJsonArray content = messages.at(1).toObject()
                                       .value(QStringLiteral("content")).toArray();
-        QCOMPARE(content.size(), 2);
+        QCOMPARE(content.size(), 3);
 
         QStringList textParts;
+        QString imageUrl;
         for (const QJsonValue &part : content) {
             const QJsonObject obj = part.toObject();
             const QString type = obj.value(QStringLiteral("type")).toString();
             if (type == QStringLiteral("text"))
                 textParts.append(obj.value(QStringLiteral("text")).toString());
             else if (type == QStringLiteral("image_url"))
-                QCOMPARE(obj.value(QStringLiteral("image_url")).toObject()
-                             .value(QStringLiteral("url")).toString(),
-                         QStringLiteral("data:image/png;base64,AAAA"));
+                imageUrl = obj.value(QStringLiteral("image_url")).toObject()
+                                 .value(QStringLiteral("url")).toString();
         }
-        QCOMPARE(textParts.size(), 1);
-        QVERIFY(textParts.at(0).startsWith(QStringLiteral("Fix errors in this text.")));
-        QVERIFY(textParts.at(0).contains(QStringLiteral("Recognized text to verify:")));
-        QVERIFY(textParts.at(0).contains(QStringLiteral("hello wor1d")));
+        QCOMPARE(textParts.size(), 2);
+        QCOMPARE(textParts.at(0), QStringLiteral("Verify the text block."));
+        QVERIFY(textParts.at(1).startsWith(QStringLiteral("OCR candidate:\n<ocr_candidate>\n")));
+        QVERIFY(textParts.at(1).endsWith(QStringLiteral("\n</ocr_candidate>")));
+        QVERIFY(textParts.at(1).contains(QStringLiteral("hello wor1d")));
+        QCOMPARE(imageUrl, QStringLiteral("data:image/png;base64,AAAA"));
     }
 
     void checkResponseParsing() {
         ExposedGeneralPurposeModel model;
 
+        // OK — the recognized block is correct, no correction is needed.
         const CheckResult ok = model.parse(
             "{\"choices\":[{\"message\":{\"role\":\"assistant\","
-            "\"content\":\"corrected text\"}}]}");
-        QVERIFY(ok.success);
-        QCOMPARE(ok.text, QStringLiteral("corrected text"));
+            "\"content\":\"OK\"}}]}");
+        QCOMPARE(ok.status, CheckStatus::Ok);
+        QVERIFY(ok.text.isEmpty());
 
-        // Trailing end-of-sentence markers (ASCII and full-width variants) must
-        // be stripped — llama.cpp emits them as literal text (ADR 18 parity).
-        const CheckResult withMarker = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":"
-            "\"corrected\\n<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
-        QVERIFY(withMarker.success);
-        QCOMPARE(withMarker.text, QStringLiteral("corrected"));
+        // Trailing whitespace / punctuation must not confuse the detector.
+        const CheckResult okPunct = model.parse(
+            "{\"choices\":[{\"message\":{\"content\":\"  OK  \"}}]}");
+        QCOMPARE(okPunct.status, CheckStatus::Ok);
 
-        // A think block must be dropped; only the final answer remains.
-        const CheckResult withThink = model.parse(
+        // FIX — the corrected block follows the marker.
+        const CheckResult fix = model.parse(
             "{\"choices\":[{\"message\":{\"content\":"
-            "\"<think>reasoning</think>\\nfixed text\"}}]}");
-        QVERIFY(withThink.success);
-        QCOMPARE(withThink.text, QStringLiteral("fixed text"));
+            "\"FIX\\nhello world\"}}]}");
+        QCOMPARE(fix.status, CheckStatus::Fixed);
+        QCOMPARE(fix.text, QStringLiteral("hello world"));
+
+        // "FIX: <block>" spelling is accepted too.
+        const CheckResult fixColon = model.parse(
+            "{\"choices\":[{\"message\":{\"content\":\"FIX: hello world\"}}]}");
+        QCOMPARE(fixColon.status, CheckStatus::Fixed);
+        QCOMPARE(fixColon.text, QStringLiteral("hello world"));
+
+        // REVIEW — the block is unreadable.
+        const CheckResult review = model.parse(
+            "{\"choices\":[{\"message\":{\"content\":\"REVIEW\"}}]}");
+        QCOMPARE(review.status, CheckStatus::Review);
+        QVERIFY(review.text.isEmpty());
 
         // Marker-only output (thinking model that never answered) is an error,
         // not an empty "success" that would wipe the block text.
         const CheckResult markerOnly = model.parse(
             "{\"choices\":[{\"message\":{\"content\":"
             "\"<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
-        QVERIFY(!markerOnly.success);
+        QCOMPARE(markerOnly.status, CheckStatus::Failed);
         QVERIFY(!markerOnly.errorMessage.isEmpty());
 
+        // A think block must be dropped; only the final answer remains.
+        const CheckResult withThink = model.parse(
+            "{\"choices\":[{\"message\":{\"content\":"
+            "\" thinkingreasoning response\\nFIX\\nfixed text\"}}]}");
+        QVERIFY2(withThink.status == CheckStatus::Fixed,
+                 withThink.errorMessage.toUtf8().constData());
+        QCOMPARE(withThink.text, QStringLiteral("fixed text"));
+
+        // Trailing end-of-sentence markers must be stripped (ADR 18 parity).
+        const CheckResult fixMarker = model.parse(
+            "{\"choices\":[{\"message\":{\"content\":"
+            "\"FIX\\ncorrected\\n<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
+        QCOMPARE(fixMarker.status, CheckStatus::Fixed);
+        QCOMPARE(fixMarker.text, QStringLiteral("corrected"));
+
+        // Unexpected answers are failures, not silent successes.
+        const CheckResult unexpected = model.parse(
+            "{\"choices\":[{\"message\":{\"content\":\"The text is fine.\"}}]}");
+        QCOMPARE(unexpected.status, CheckStatus::Failed);
+        QVERIFY(!unexpected.errorMessage.isEmpty());
+
         const CheckResult emptyChoices = model.parse("{\"choices\":[]}");
-        QVERIFY(!emptyChoices.success);
+        QCOMPARE(emptyChoices.status, CheckStatus::Failed);
         QVERIFY(!emptyChoices.errorMessage.isEmpty());
 
         const CheckResult notJson = model.parse("not json");
-        QVERIFY(!notJson.success);
+        QCOMPARE(notJson.status, CheckStatus::Failed);
         QVERIFY(!notJson.errorMessage.isEmpty());
     }
 
@@ -406,8 +457,9 @@ private slots:
         CheckRequest request;
         request.image = image;
         request.recognizedText = QStringLiteral("hello wor1d");
-        request.prompt = QStringLiteral("Fix errors.");
-        request.modelId = QStringLiteral("qwen3.5-4b");
+        request.systemPrompt = QStringLiteral("System");
+        request.typePrompt = QStringLiteral("Verify.");
+        request.modelId = QStringLiteral("ocr-verifier");
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
@@ -417,8 +469,9 @@ private slots:
         QFuture<CheckResult> future = model->check(request, config);
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(server.gotRequest);
-        QVERIFY2(future.result().success, future.result().errorMessage.toUtf8().constData());
-        QCOMPARE(future.result().text, QStringLiteral("ok"));
+        QVERIFY2(future.result().status != CheckStatus::Failed,
+                 future.result().errorMessage.toUtf8().constData());
+        QCOMPARE(future.result().status, CheckStatus::Ok);
     }
 };
 

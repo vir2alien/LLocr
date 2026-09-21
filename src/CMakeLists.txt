@@ -70,6 +70,8 @@ qt_add_executable(llocr
     app/RequestParametersModel.cpp
     app/RequestProfileStore.h
     app/RequestProfileStore.cpp
+    app/VerificationPromptStore.h
+    app/VerificationPromptStore.cpp
     app/LaunchParametersModel.h
     app/LaunchParametersModel.cpp
     app/LaunchProfileStore.h
@@ -170,6 +172,10 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/WorkPanel.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/MarkdownPreview.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/Footer.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/VerificationSettingsWindow.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/VerificationBlocksTab.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/VerificationSystemTab.qml"
+        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/VerificationPromptsTab.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Settings/UiSettingsWindow.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Settings/OutputSettingsWindow.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Settings/RuntimeSettingsWindow.qml"
@@ -205,6 +211,7 @@ qt_add_resources(llocr "app_profiles"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/profiles/requestOcr.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/requestValidate.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchOcr.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchValidate.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"

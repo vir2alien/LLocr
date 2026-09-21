@@ -31,9 +31,11 @@ namespace llocr {
 AppController::AppController(SettingsStore &settings, RuntimeController &runtime,
                              RequestProfileStore &requestProfiles,
                              RequestProfileStore &checkRequestProfiles,
+                             VerificationPromptStore &verification,
                              QObject *parent)
     : m_settings(settings)
     , m_runtime(runtime)
+    , m_verification(verification)
     , m_recognition(
           settings, runtime, requestProfiles,
           [this](int index, QString &error) { return pageImage(index, &error); },
@@ -53,22 +55,11 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
             &AppController::applyRawResult);
 
     connect(&m_check, &CheckController::checkFinished, this,
-            [this](bool success, const QString &text, const QString &errorMessage) {
-                if (m_currentPage != m_checkPage || m_selectedBox != m_checkBox) {
-                    m_checkSucceeded = false;
-                    m_checkApplied = false;
-                    m_checkResultText.clear();
-                    m_checkError.clear();
-                    m_checkPage = -1;
-                    m_checkBox = -1;
-                    emit checkStateChanged();
-                    return;
-                }
-                m_checkSucceeded = success;
-                m_checkApplied = false;
-                m_checkResultText = text;
-                m_checkError = errorMessage;
+            [this](const CheckResult &result) {
+                applyCheckResultToBox(m_verifyBoxIndex, result);
+                ++m_verifyDone;
                 emit checkStateChanged();
+                QTimer::singleShot(0, this, [this]() { startNextVerify(); });
             });
     connect(&m_check, &CheckController::busyChanged, this,
             [this]() { emit checkStateChanged(); });
@@ -233,6 +224,15 @@ void AppController::setCurrentPage(int index)
 {
     if (!m_document.isValidIndex(index) || index == m_currentPage)
         return;
+
+    if (m_verifyQueueActive) {
+        m_verifyQueue.clear();
+        m_verifyQueueActive = false;
+        m_verifyBoxIndex = -1;
+        if (m_check.busy())
+            m_check.stop();
+        emit checkStateChanged();
+    }
 
     m_currentPage = index;
     m_pageModel.setCurrent(index);
@@ -607,6 +607,18 @@ QString AppController::selectedBlockLabel() const
     return box ? box->label : QString();
 }
 
+int AppController::selectedBlockCheckStatus() const
+{
+    const BoundingBox *box = selectedBox();
+    return box ? static_cast<int>(box->checkStatus) : 0;
+}
+
+QString AppController::selectedBlockCorrected() const
+{
+    const BoundingBox *box = selectedBox();
+    return box ? box->correctedText : QString();
+}
+
 void AppController::setSelectedBoxIndex(int index)
 {
     int clamped = index;
@@ -624,83 +636,189 @@ void AppController::setSelectedBoxIndex(int index)
         return;
     m_selectedBox = clamped;
     emit selectedBoxChanged();
+}
 
-    if (m_checkSucceeded || m_checkApplied || !m_checkResultText.isEmpty()
-        || !m_checkError.isEmpty()) {
-        m_checkSucceeded = false;
-        m_checkApplied = false;
-        m_checkResultText.clear();
-        m_checkError.clear();
-        m_checkPage = -1;
-        m_checkBox = -1;
-        emit checkStateChanged();
+void AppController::checkSelectedBlock()
+{
+    if (m_selectedBox < 0)
+        return;
+    if (m_document.isValidIndex(m_currentPage)
+        && m_document.page(m_currentPage).recognized) {
+        startVerifyQueue({m_selectedBox});
     }
 }
 
-void AppController::checkSelectedBlock(const QString &prompt)
+void AppController::checkEnabledBlocksOnPage()
 {
-    if (m_recognition.busy() || m_check.busy())
-        return;
     if (!m_document.isValidIndex(m_currentPage)
         || !m_document.page(m_currentPage).recognized
-        || m_selectedBox < 0)
+        || m_document.page(m_currentPage).result.pages.isEmpty())
         return;
 
-    const QString text = selectedBlockText();
-    if (text.isEmpty())
-        return;
-    const QImage crop = croppedImage(m_currentPage, m_selectedBox);
-    if (crop.isNull())
-        return;
-
-    m_checkSucceeded = false;
-    m_checkApplied = false;
-    m_checkResultText.clear();
-    m_checkError.clear();
-    m_checkPage = m_currentPage;
-    m_checkBox = m_selectedBox;
-    emit checkStateChanged();
-
-    m_check.checkBlock(crop, text, prompt);
+    const OcrPage &page = m_document.page(m_currentPage).result.pages.first();
+    QList<int> candidates;
+    for (int i = 0; i < page.boxes.size(); ++i) {
+        const BoundingBox &box = page.boxes.at(i);
+        if (!m_verification.isTypeEnabled(box.label))
+            continue;
+        if (box.text.isEmpty())
+            continue;
+        candidates.append(i);
+    }
+    startVerifyQueue(candidates);
 }
 
-void AppController::applyCheckedText()
+void AppController::stopCheck()
 {
-    if (!m_checkSucceeded || m_checkApplied
-        || m_recognition.busy()  // never mutate the document under a running OCR job
-        || !m_document.isValidIndex(m_currentPage)
-        || m_selectedBox < 0)
-        return;
-    if (m_currentPage != m_checkPage || m_selectedBox != m_checkBox)
+    m_verifyQueue.clear();
+    if (m_verifyQueueActive) {
+        m_verifyQueueActive = false;
+        m_verifyBoxIndex = -1;
+        emit checkStateChanged();
+    }
+    if (m_check.busy())
+        m_check.stop();
+}
+
+bool AppController::pageVerificationSupported() const
+{
+    if (!m_document.isValidIndex(m_currentPage)
+        || !m_document.page(m_currentPage).recognized
+        || m_document.page(m_currentPage).result.pages.isEmpty())
+        return false;
+    if (m_recognition.busy())
+        return false;
+    const OcrPage &page = m_document.page(m_currentPage).result.pages.first();
+    for (const BoundingBox &box : std::as_const(page.boxes)) {
+        if (m_verification.isTypeEnabled(box.label) && !box.text.isEmpty())
+            return true;
+    }
+    return false;
+}
+
+void AppController::startVerifyQueue(const QList<int> &boxIndices)
+{
+    if (m_recognition.busy() || m_check.busy() || m_verifyQueueActive)
         return;
 
-    QString rebuilt;
+    m_checkError.clear();
+    m_verifyQueue = boxIndices;
+    m_verifyBoxIndex = -1;
+    m_verifyTotal = boxIndices.size();
+    m_verifyDone = 0;
+    m_verifyQueueActive = true;
+    emit checkStateChanged();
+
+    QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+}
+
+void AppController::startNextVerify()
+{
+    if (!m_verifyQueueActive)
+        return;
+
+    // A page switch (or stop) invalidates the queue mid-run.
+    if (m_verifyQueue.isEmpty()) {
+        finishVerifyQueue();
+        return;
+    }
+
+    m_verifyBoxIndex = m_verifyQueue.takeFirst();
+    const DocumentPage &docPage = m_document.page(m_currentPage);
+    if (!docPage.recognized || docPage.result.pages.isEmpty()) {
+        finishVerifyQueue();
+        return;
+    }
+    const QString text = docPage.result.pages.first()
+                             .boxes.at(m_verifyBoxIndex).text;
+    const QImage crop = croppedImage(m_currentPage, m_verifyBoxIndex);
+    if (crop.isNull()) {
+        ++m_verifyDone;
+        emit checkStateChanged();
+        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+        return;
+    }
+
+    const BoundingBox &box = docPage.result.pages.first()
+                                 .boxes.at(m_verifyBoxIndex);
+    m_check.checkBlock(crop, text,
+                       m_verification.systemPrompt(),
+                       m_verification.promptForType(box.label));
+}
+
+void AppController::finishVerifyQueue()
+{
+    if (!m_verifyQueueActive)
+        return;
+    m_verifyQueueActive = false;
+    m_verifyQueue.clear();
+    m_verifyBoxIndex = -1;
+    emit checkStateChanged();
+}
+
+void AppController::applyCheckResultToBox(int boxIndex, const CheckResult &result)
+{
+    if (!m_document.isValidIndex(m_currentPage))
+        return;
+
+    QString error;
+    BoxCheckStatus status = BoxCheckStatus::NotChecked;
+    QString corrected;
+    bool textChanged = false;
     {
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(m_currentPage);
         if (!page.recognized || page.result.pages.isEmpty())
             return;
         QList<BoundingBox> &boxes = page.result.pages[0].boxes;
-        if (m_selectedBox >= boxes.size())
+        if (boxIndex < 0 || boxIndex >= boxes.size())
             return;
 
-        boxes[m_selectedBox].text = m_checkResultText;
+        BoundingBox &box = boxes[boxIndex];
+        switch (result.status) {
+        case CheckStatus::Ok:
+            box.checkStatus = BoxCheckStatus::Ok;
+            box.correctedText.clear();
+            break;
+        case CheckStatus::Fixed:
+            box.checkStatus = BoxCheckStatus::Fixed;
+            box.correctedText = result.text;
+            break;
+        case CheckStatus::Review:
+            box.checkStatus = BoxCheckStatus::Review;
+            box.correctedText.clear();
+            break;
+        case CheckStatus::Failed:
+            error = result.errorMessage;
+            break;
+        }
+        status = box.checkStatus;
+        corrected = box.correctedText;
+
+        if (box.checkStatus == BoxCheckStatus::Fixed) {
+            // The corrected text flows into the page output; keep the
+            // recognized text intact so the user can diff/revert.
+            m_editStore.replace(m_currentPage,
+                                rebuildPageText(page.result.pages[0],
+                                                m_settings.keepPageNumbers()));
+            m_pageModel.setEdited(m_currentPage, true);
+            textChanged = true;
+        }
         ++m_cropRevision;
-        rebuilt = rebuildPageText(page.result.pages[0],
-                                  m_settings.keepPageNumbers());
     }
 
-    m_editStore.replace(m_currentPage, rebuilt);
-    m_pageModel.setEdited(m_currentPage, true);
-    m_boxModel.updateBoxText(m_selectedBox, m_checkResultText);
+    m_boxModel.updateBoxCheck(boxIndex, static_cast<int>(status), corrected);
 
-    m_checkApplied = true;
+    if (!error.isEmpty())
+        m_checkError = error;
 
+    if (m_selectedBox == boxIndex)
+        emit selectedBoxChanged();
+    if (textChanged) {
+        emit resultChanged();
+        emit editStateChanged();
+    }
     emit boxesChanged();
-    emit resultChanged();
-    emit editStateChanged();
-    emit selectedBoxChanged();
-    emit checkStateChanged();
 }
 
 QList<Exporter::Page> AppController::collectPages(int scope, int fromPage, int toPage) const

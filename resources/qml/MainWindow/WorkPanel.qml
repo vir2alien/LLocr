@@ -120,12 +120,13 @@ Rectangle {
             }
         }
 
-        // --- Bottom: selected-block verification panel ---
+        // --- Bottom: block verification panel ---
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: checkColumn.implicitHeight
                 + 2 * Theme.spacingSmall
-            visible: Controller.selectedBoxIndex >= 0 && Controller.hasResult
+            visible: (Controller.selectedBoxIndex >= 0 || Controller.checkRunning)
+                     && Controller.hasResult
             color: Theme.surface
             border.color: Theme.divider
             border.width: 1
@@ -148,6 +149,17 @@ Rectangle {
                         text: Controller.selectedBlockLabel
                         color: Theme.textMuted
                         elide: Text.ElideRight
+                    }
+                    // Status marker: green OK, yellow fixed, red review.
+                    LLOLabel {
+                        visible: Controller.selectedBlockCheckStatus !== 0
+                        text: Controller.selectedBlockCheckStatus === 1 ? qsTr("OK")
+                            : Controller.selectedBlockCheckStatus === 2 ? qsTr("Fixed")
+                            : qsTr("Review")
+                        color: Controller.selectedBlockCheckStatus === 1 ? Theme.success
+                            : Controller.selectedBlockCheckStatus === 2 ? Theme.warning
+                            : Theme.error
+                        font.bold: true
                     }
                     Item { Layout.fillWidth: true }
                     LLOButton {
@@ -177,29 +189,41 @@ Rectangle {
                     }
                 }
 
+                // Corrected (FIX) result, kept separate from the recognized text.
                 LLOLabel {
-                    text: qsTr("Check prompt:")
+                    visible: Controller.selectedBlockCheckStatus === 2
+                    text: qsTr("Corrected by the verifier:")
                     color: Theme.textMuted
                 }
-                TextArea {
-                    id: checkPrompt
+                ScrollView {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 56
-                    wrapMode: TextArea.Wrap
-                    color: Theme.textPrimary
-                    placeholderTextColor: Theme.textMuted
-                    placeholderText: qsTr("e.g. Fix recognition errors in the text. Return only the corrected text.")
-                    text: qsTr("Check the text against the image and fix any errors. Return only the corrected text.")
+                    Layout.preferredHeight: 64
+                    visible: Controller.selectedBlockCheckStatus === 2
+                    contentWidth: availableWidth
+                    TextArea {
+                        width: parent.width
+                        readOnly: true
+                        wrapMode: TextArea.Wrap
+                        selectByMouse: true
+                        color: Theme.textPrimary
+                        background: null
+                        text: Controller.selectedBlockCorrected
+                    }
                 }
 
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing
                     LLOButton {
-                        text: qsTr("Check")
+                        text: qsTr("Verify block")
                         enabled: !Controller.checkBusy && !Controller.busy
-                                && checkPrompt.text.trim().length > 0
-                        onClicked: Controller.checkSelectedBlock(checkPrompt.text)
+                        onClicked: Controller.checkSelectedBlock()
+                    }
+                    LLOButton {
+                        text: qsTr("Check page")
+                        enabled: !Controller.checkBusy && !Controller.busy
+                                 && Controller.pageVerificationSupported
+                        onClicked: Controller.checkEnabledBlocksOnPage()
                     }
                     BusyIndicator {
                         visible: Controller.checkBusy
@@ -207,12 +231,19 @@ Rectangle {
                         implicitHeight: 20
                         running: Controller.checkBusy
                     }
+                    LLOLabel {
+                        visible: Controller.checkRunning
+                        text: qsTr("%1 / %2").arg(Controller.checkProgressDone)
+                                                  .arg(Controller.checkProgressTotal)
+                        color: Theme.textMuted
+                        font.pointSize: Theme.captionSize
+                    }
                     Item { Layout.fillWidth: true }
                     LLOButton {
-                        text: qsTr("Apply fix")
-                        visible: Controller.checkSucceeded
-                        enabled: Controller.checkSucceeded && !Controller.busy
-                        onClicked: Controller.applyCheckedText()
+                        text: qsTr("Stop")
+                        visible: Controller.checkBusy
+                        enabled: Controller.checkBusy
+                        onClicked: Controller.stopCheck()
                     }
                 }
 
@@ -225,28 +256,6 @@ Rectangle {
                     Layout.preferredHeight: visible
                                           ? Math.max(0, Math.min(Math.ceil(contentHeight), 96))
                                           : 0
-                }
-
-                ScrollView {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 64
-                    visible: Controller.checkResultText.length > 0
-                    contentWidth: availableWidth
-                    TextArea {
-                        width: parent.width
-                        readOnly: true
-                        wrapMode: TextArea.Wrap
-                        selectByMouse: true
-                        color: Theme.textPrimary
-                        background: null
-                        text: Controller.checkResultText
-                    }
-                }
-
-                LLOLabel {
-                    visible: Controller.checkApplied
-                    text: qsTr("Fix applied to the page text.")
-                    color: Theme.textMuted
                 }
             }//ColumnLayout
         }//Rectangle

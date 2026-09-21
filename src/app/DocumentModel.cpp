@@ -18,7 +18,7 @@ namespace llocr {
 
 namespace {
 
-constexpr double kDpi = 150.0;
+constexpr double kDpi = 300.0;
 constexpr int kFullCacheLimit = 4;
 constexpr int kThumbMaxWidth = 220;
 constexpr int kThumbMaxHeight = 300;

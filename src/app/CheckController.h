@@ -29,11 +29,12 @@ public:
 
     bool busy() const { return m_busy; }
     void checkBlock(const QImage &image, const QString &recognizedText,
-                    const QString &prompt);
+                    const QString &systemPrompt, const QString &typePrompt);
+    void stop();
 
 signals:
     void busyChanged();
-    void checkFinished(bool success, const QString &text, const QString &errorMessage);
+    void checkFinished(const CheckResult &result);
     void statusRequested(const QString &message);
 
 private:

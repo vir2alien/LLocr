@@ -17,6 +17,7 @@
 #include "app/PageEditStore.h"
 #include "app/RecognitionController.h"
 #include "app/SettingsStore.h"
+#include "app/VerificationPromptStore.h"
 #include "core/OcrResult.h"
 #include "runtime/RuntimeController.h"
 
@@ -46,12 +47,15 @@ class AppController : public QObject
     Q_PROPERTY(int selectedBoxIndex READ selectedBoxIndex WRITE setSelectedBoxIndex NOTIFY selectedBoxChanged)
     Q_PROPERTY(QString selectedBlockText READ selectedBlockText NOTIFY selectedBoxChanged)
     Q_PROPERTY(QString selectedBlockLabel READ selectedBlockLabel NOTIFY selectedBoxChanged)
+    Q_PROPERTY(int selectedBlockCheckStatus READ selectedBlockCheckStatus NOTIFY selectedBoxChanged)
+    Q_PROPERTY(QString selectedBlockCorrected READ selectedBlockCorrected NOTIFY selectedBoxChanged)
 
     Q_PROPERTY(bool checkBusy READ checkBusy NOTIFY checkStateChanged)
-    Q_PROPERTY(bool checkSucceeded READ checkSucceeded NOTIFY checkStateChanged)
-    Q_PROPERTY(QString checkResultText READ checkResultText NOTIFY checkStateChanged)
+    Q_PROPERTY(bool checkRunning READ checkRunning NOTIFY checkStateChanged)
+    Q_PROPERTY(int checkProgressDone READ checkProgressDone NOTIFY checkStateChanged)
+    Q_PROPERTY(int checkProgressTotal READ checkProgressTotal NOTIFY checkStateChanged)
     Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
-    Q_PROPERTY(bool checkApplied READ checkApplied NOTIFY checkStateChanged)
+    Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY checkStateChanged)
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters CONSTANT)
 
@@ -70,6 +74,7 @@ public:
     explicit AppController(SettingsStore &settings, RuntimeController &runtime,
                            RequestProfileStore &requestProfiles,
                            RequestProfileStore &checkRequestProfiles,
+                           VerificationPromptStore &verification,
                            QObject *parent = nullptr);
 
     bool busy() const { return m_recognition.busy(); }
@@ -99,13 +104,16 @@ public:
     int selectedBoxIndex() const { return m_selectedBox; }
     QString selectedBlockText() const;
     QString selectedBlockLabel() const;
+    int selectedBlockCheckStatus() const;
+    QString selectedBlockCorrected() const;
     void setSelectedBoxIndex(int index);
 
-    bool checkBusy() const { return m_check.busy(); }
-    bool checkSucceeded() const { return m_checkApplied ? false : m_checkSucceeded; }
-    QString checkResultText() const { return m_checkResultText; }
+    bool checkBusy() const { return m_check.busy() || m_verifyQueueActive; }
+    bool checkRunning() const { return m_verifyQueueActive; }
+    int checkProgressDone() const { return m_verifyDone; }
+    int checkProgressTotal() const { return m_verifyTotal; }
     QString checkErrorMessage() const { return m_checkError; }
-    bool checkApplied() const { return m_checkApplied; }
+    bool pageVerificationSupported() const;
 
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
     QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
@@ -151,8 +159,9 @@ public slots:
                                       qreal width, qreal height);
     Q_INVOKABLE void onBoxRemoved(int boxIndex);
     Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown);
-    Q_INVOKABLE void checkSelectedBlock(const QString &prompt);
-    Q_INVOKABLE void applyCheckedText();
+    Q_INVOKABLE void checkSelectedBlock();
+    Q_INVOKABLE void checkEnabledBlocksOnPage();
+    Q_INVOKABLE void stopCheck();
 
 private:
     enum ExportScope : int {
@@ -183,9 +192,15 @@ private:
         const Exporter::ExportOptions& options, const QPageLayout& pdfLayout,
         bool renderOk, const QString& renderedHtml, const QString& renderError) const;
 
+    void startVerifyQueue(const QList<int> &boxIndices);
+    void startNextVerify();
+    void finishVerifyQueue();
+    void applyCheckResultToBox(int boxIndex, const CheckResult &result);
+
 private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
+    VerificationPromptStore &m_verification;
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
@@ -208,12 +223,14 @@ private:
     mutable QReadWriteLock m_documentLock;
 
     int m_selectedBox = -1;
-    bool m_checkSucceeded = false;
-    bool m_checkApplied = false;
-    QString m_checkResultText;
     QString m_checkError;
-    int m_checkPage = -1;
-    int m_checkBox = -1;
+
+    // Batch verification queue (current page, serial per-block requests).
+    QList<int> m_verifyQueue;
+    int m_verifyBoxIndex = -1;
+    bool m_verifyQueueActive = false;
+    int m_verifyTotal = 0;
+    int m_verifyDone = 0;
 };
 
 }  // namespace llocr

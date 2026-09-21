@@ -12,6 +12,7 @@
 #include "app/RequestProfileStore.h"
 #include "app/SettingsStore.h"
 #include "app/UiController.h"
+#include "app/VerificationPromptStore.h"
 #include "runtime/InstallTransaction.h"
 #include "runtime/ModelInstaller.h"
 #include "runtime/RuntimeController.h"
@@ -105,6 +106,10 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesValidate",
                                  &requestProfilesValidate);
 
+    llocr::VerificationPromptStore verificationPrompts(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "Verification",
+                                 &verificationPrompts);
+
     llocr::LaunchProfileStore launchProfilesOcr(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfilesOcr",
                                  &launchProfilesOcr);
@@ -151,7 +156,8 @@ int main(int argc, char* argv[]) {
                             runtimeInstaller, modelInstaller);
 
     llocr::AppController appController(settingsStore, runtimeController,
-                                       requestProfilesOcr, requestProfilesValidate);
+                                       requestProfilesOcr, requestProfilesValidate,
+                                       verificationPrompts);
     llocr::UiController uiController(settingsStore);
 
     QQmlApplicationEngine engine;
