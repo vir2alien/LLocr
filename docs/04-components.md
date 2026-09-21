@@ -45,8 +45,10 @@ model windows have per-tab resets instead (profile restore in Launch/Request).
 |             | pages** (`output/splitPages`, default on — `---` rule in MD, dash     |
 |             | line in TXT, `<hr>` in HTML, page break in PDF/DOCX — no “Page N”     |
 |             | headings, ADR 64); **keep page numbers** (`output/keepPageNumbers`,   |
-|             | default on — off drops `page_number` blocks at parse time); PDF       |
-|             | export: orientation (`export/pdfLandscape`), margins in mm            |
+|             | default on — off drops `page_number` blocks at parse time); **keep    |
+|             | tables as HTML** (`output/tablesAsHtml`, default off — on passes the  |
+|             | model's `<table>` block through verbatim instead of a pipe table, ADR |
+|             | 19); PDF export: orientation (`export/pdfLandscape`), margins in mm   |
 |             | (`export/pdfMarginMm`, 0–50, default 15); «Restore defaults»         |
 | Runtime     | connection mode (`External` / `Managed`, applies immediately);        |
 |             | External: endpoint base URL, **model name (OCR)** and **model name    |
@@ -113,7 +115,8 @@ Three options handled by `UiController` (a QML singleton), selected in
 - Block styles: `DetTokensParser` maps model labels to `BlockStyle`
   (`BlockStyle.h`) — `title` → heading, `image`/`chart` → image placeholder,
   `image_caption`/`table_caption`/`table_footnote`/`page_number` → italic,
-  `equation` → equation, `table` → GFM pipe table, `ref_text` → plain text.
+  `equation` → equation, `table` → GFM pipe table (`output/tablesAsHtml`
+  keeps the model's `<table>` HTML instead, ADR 19), `ref_text` → plain text.
   The free function `rebuildPageText()` regenerates the page Markdown from the
   boxes (used after a box is removed, to keep `image://ocr/crop/<N>` indices
   consistent).

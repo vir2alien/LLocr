@@ -22,6 +22,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(bool splitPages READ splitPages WRITE setSplitPages NOTIFY splitPagesChanged)
     Q_PROPERTY(bool keepPageNumbers READ keepPageNumbers WRITE setKeepPageNumbers NOTIFY keepPageNumbersChanged)
+    Q_PROPERTY(bool tablesAsHtml READ tablesAsHtml WRITE setTablesAsHtml NOTIFY tablesAsHtmlChanged)
     Q_PROPERTY(bool pdfLandscape READ pdfLandscape WRITE setPdfLandscape NOTIFY pdfLandscapeChanged)
     Q_PROPERTY(int pdfMarginMm READ pdfMarginMm WRITE setPdfMarginMm NOTIFY pdfMarginMmChanged)
     Q_PROPERTY(int themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
@@ -106,6 +107,8 @@ public:
     void setSplitPages(bool on);
     bool keepPageNumbers() const;
     void setKeepPageNumbers(bool on);
+    bool tablesAsHtml() const;
+    void setTablesAsHtml(bool on);
     bool pdfLandscape() const;
     void setPdfLandscape(bool on);
     int pdfMarginMm() const;
@@ -200,6 +203,7 @@ signals:
     void parserIdChanged();
     void splitPagesChanged();
     void keepPageNumbersChanged();
+    void tablesAsHtmlChanged();
     void pdfLandscapeChanged();
     void pdfMarginMmChanged();
     void themeModeChanged();
@@ -251,6 +255,7 @@ public:
     static constexpr const char *kDefaultParserId = "det_tokens";
     static constexpr bool kDefaultSplitPages = true;
     static constexpr bool kDefaultKeepPageNumbers = true;
+    static constexpr bool kDefaultTablesAsHtml = false;
     static constexpr bool kDefaultPdfLandscape = false;
     static constexpr int kDefaultPdfMarginMm = 15;
     static constexpr int kMaxPdfMarginMm = 50;
@@ -279,6 +284,7 @@ private:
     // Output / export
     static constexpr const char *kSplitPages = "output/splitPages";
     static constexpr const char *kKeepPageNumbers = "output/keepPageNumbers";
+    static constexpr const char *kTablesAsHtml = "output/tablesAsHtml";
     static constexpr const char *kPdfLandscape = "export/pdfLandscape";
     static constexpr const char *kPdfMarginMm = "export/pdfMarginMm";
 

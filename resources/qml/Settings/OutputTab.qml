@@ -23,6 +23,7 @@ ColumnLayout {
         syncParser()
         splitPagesCheck.checked = Settings.splitPages
         pageNumbersCheck.checked = Settings.keepPageNumbers
+        tablesAsHtmlCheck.checked = Settings.tablesAsHtml
         orientationBox.currentIndex = Settings.pdfLandscape ? 1 : 0
         marginSpin.value = Settings.pdfMarginMm
     }
@@ -31,6 +32,7 @@ ColumnLayout {
         Settings.parserId = root.parserModel[parserBox.currentIndex]
         Settings.splitPages = splitPagesCheck.checked
         Settings.keepPageNumbers = pageNumbersCheck.checked
+        Settings.tablesAsHtml = tablesAsHtmlCheck.checked
         Settings.pdfLandscape = orientationBox.currentIndex === 1
         Settings.pdfMarginMm = marginSpin.value
     }
@@ -42,6 +44,7 @@ ColumnLayout {
         function onParserIdChanged() { root.syncParser() }
         function onSplitPagesChanged() { splitPagesCheck.checked = Settings.splitPages }
         function onKeepPageNumbersChanged() { pageNumbersCheck.checked = Settings.keepPageNumbers }
+        function onTablesAsHtmlChanged() { tablesAsHtmlCheck.checked = Settings.tablesAsHtml }
         function onPdfLandscapeChanged() { orientationBox.currentIndex = Settings.pdfLandscape ? 1 : 0 }
         function onPdfMarginMmChanged() { marginSpin.value = Settings.pdfMarginMm }
     }
@@ -90,6 +93,20 @@ ColumnLayout {
         color: Theme.textMuted
         text: qsTr("When off, page_number blocks from the model are ignored "
                    + "during recognition. Applies to newly recognized pages.")
+    }
+
+    CheckBox {
+        id: tablesAsHtmlCheck
+        font.pointSize: Theme.captionSize
+        text: qsTr("Keep tables as HTML")
+    }
+    LLOLabel {
+        Layout.fillWidth: true
+        font.pointSize: Theme.captionSize
+        color: Theme.textMuted
+        text: qsTr("When on, recognized tables are kept as the model's <table> "
+                   + "HTML instead of being converted to a Markdown pipe table. "
+                   + "Most Markdown editors render this.")
     }
 
     Item { implicitHeight: 6 }

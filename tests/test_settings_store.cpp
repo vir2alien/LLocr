@@ -137,10 +137,12 @@ private slots:
         SettingsStore store;
         store.setSplitPages(false);
         store.setKeepPageNumbers(false);
+        store.setTablesAsHtml(true);
         store.setPdfLandscape(true);
         store.setPdfMarginMm(25);
         QCOMPARE(store.splitPages(), false);
         QCOMPARE(store.keepPageNumbers(), false);
+        QCOMPARE(store.tablesAsHtml(), true);
         QCOMPARE(store.pdfLandscape(), true);
         QCOMPARE(store.pdfMarginMm(), 25);
 
@@ -153,6 +155,7 @@ private slots:
         store.resetToDefaults();
         QCOMPARE(store.splitPages(), true);
         QCOMPARE(store.keepPageNumbers(), true);
+        QCOMPARE(store.tablesAsHtml(), false);
         QCOMPARE(store.pdfLandscape(), false);
         QCOMPARE(store.pdfMarginMm(), 15);
     }

@@ -897,6 +897,14 @@
         <translation>Когда выключено, блоки page_number игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
     </message>
     <message>
+        <source>Keep tables as HTML</source>
+        <translation>Сохранять таблицы в HTML формате</translation>
+    </message>
+    <message>
+        <source>When on, recognized tables are kept as the model&apos;s &lt;table&gt; HTML instead of being converted to a Markdown pipe table. Most Markdown editors render this.</source>
+        <translation>Когда включено, распознанные таблицы сохраняются как HTML-разметка &lt;table&gt; модели, а не преобразуются в Markdown-таблицу. Большинство редакторов Markdown это поддерживают.</translation>
+    </message>
+    <message>
         <location filename="../qml/SettingsDialog/OutputTab.qml" line="98"/>
         <source>PDF export</source>
         <translation>Экспорт в PDF</translation>

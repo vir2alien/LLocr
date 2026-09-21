@@ -16,6 +16,7 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId)) },
     { kSplitPages, "splitPages", QVariant(kDefaultSplitPages) },
     { kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers) },
+    { kTablesAsHtml, "tablesAsHtml", QVariant(kDefaultTablesAsHtml) },
     { kPdfLandscape, "pdfLandscape", QVariant(kDefaultPdfLandscape) },
     { kPdfMarginMm, "pdfMarginMm", QVariant(kDefaultPdfMarginMm) },
     { kConnectionMode, "connectionMode", QVariant(QString::fromUtf8(kModeExternal)) },
@@ -237,6 +238,19 @@ void SettingsStore::setKeepPageNumbers(bool on)
         return;
     m_settings.setValue(kKeepPageNumbers, on);
     emit keepPageNumbersChanged();
+}
+
+bool SettingsStore::tablesAsHtml() const
+{
+    return m_settings.value(kTablesAsHtml, kDefaultTablesAsHtml).toBool();
+}
+
+void SettingsStore::setTablesAsHtml(bool on)
+{
+    if (tablesAsHtml() == on)
+        return;
+    m_settings.setValue(kTablesAsHtml, on);
+    emit tablesAsHtmlChanged();
 }
 
 bool SettingsStore::pdfLandscape() const

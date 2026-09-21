@@ -363,9 +363,10 @@ private slots:
         // Header + separator row + data rows as a pipe table.
         QVERIFY(md.contains(QStringLiteral("| Model | Edit ↓ | PPT |")));
         QVERIFY(md.contains(QStringLiteral("| --- | --- | --- |")));
-        // rowspan cell is reproduced on both data rows so columns line up.
+        // A rowspan value is written once (top-left cell); the continuation
+        // row keeps the covered column empty so columns still line up.
         QVERIFY(md.contains(QStringLiteral("| DS-OCR | Text | 0.052 |")));
-        QVERIFY(md.contains(QStringLiteral("| DS-OCR | R-order | 0.052 |")));
+        QVERIFY(md.contains(QStringLiteral("|  | R-order | 0.052 |")));
         // The raw HTML must not leak into the result.
         QVERIFY(!md.contains(QStringLiteral("<table")));
         QVERIFY(!md.contains(QStringLiteral("<tr")));
@@ -385,11 +386,61 @@ private slots:
         QVERIFY(r.success);
 
         const QString md = r.pages.first().text;
-        // colspan=2 repeats the value across two columns (GFM has no colspan
-        // natively), keeping the grid aligned with the 3-column data row.
-        QVERIFY(md.contains(QStringLiteral("| A | A | B |")));
+        // A colspan value is written once (leftmost cell); the covered columns
+        // stay empty, keeping the grid aligned with the 3-column data row.
+        QVERIFY(md.contains(QStringLiteral("| A |  | B |")));
         QVERIFY(md.contains(QStringLiteral("| 1 | 2 | 3 |")));
         QVERIFY(!md.contains(QStringLiteral("<td")));
+    }
+
+    // Real-world table shape: a full-width section-header row (colspan), a
+    // rowspan model column with a delta sub-row, and a second section header
+    // whose colspan only covers the columns left free by the active rowspan.
+    void parsesTableWithSectionHeaders() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td>Model</td><td>Size</td><td>Overall ↑</td><td>Read-order ↓</td></tr><tr><td colspan="4">End-to-end Model (v1.5)</td></tr><tr><td>OCRFlux [3]</td><td>3B</td><td>74.82</td><td>0.202</td></tr><tr><td rowspan="3">Unlimited-OCR</td><td rowspan="3">3B-A0.5B</td><td>93.23</td><td>0.045</td></tr><tr><td>↑ 6.22</td><td>↓ 0.041</td></tr><tr><td colspan="2">End-to-end Model (v1.6)</td></tr><tr><td>HunyuanOCR [29]</td><td>1B</td><td>89.95</td><td>0.171</td></tr></table>
+)");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("| Model | Size | Overall ↑ | Read-order ↓ |")));
+        // Full-width section header: text in the first column, rest empty
+        // (not repeated across every column).
+        QVERIFY(md.contains(QStringLiteral("| End-to-end Model (v1.5) |  |  |  |")));
+        // Rowspan value appears once; the delta sub-row leaves it blank.
+        QVERIFY(md.contains(QStringLiteral("| Unlimited-OCR | 3B-A0.5B | 93.23 | 0.045 |")));
+        QVERIFY(md.contains(QStringLiteral("|  |  | ↑ 6.22 | ↓ 0.041 |")));
+        // The second section header starts at the first column despite the
+        // still-active rowspan, rather than being shifted under it.
+        QVERIFY(md.contains(QStringLiteral("| End-to-end Model (v1.6) |  |  |  |")));
+        QVERIFY(!md.contains(QStringLiteral("<table")));
+        QVERIFY(!md.contains(QStringLiteral("<td")));
+    }
+
+    // With "keep tables as HTML" the model's <table> block is passed through
+    // verbatim instead of being flattened into a GFM pipe table.
+    void keepsTableAsHtmlWhenEnabled() {
+        const QString raw = QStringLiteral(
+            R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td colspan="2">A</td><td>B</td></tr><tr><td>1</td><td>2</td><td>3</td></tr></table>
+)");
+
+        DetTokensParser parser;
+        parser.setTablesAsHtml(true);
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("<table>")));
+        QVERIFY(md.contains(QStringLiteral("colspan=\"2\"")));
+        QVERIFY(!md.contains(QStringLiteral("| --- |")));
+
+        // rebuildPageText() honours the flag too; the default still flattens.
+        QVERIFY(rebuildPageText(r.pages.first(), true, true)
+                    .contains(QStringLiteral("<table>")));
+        QVERIFY(rebuildPageText(r.pages.first()).contains(QStringLiteral("| --- |")));
     }
 
     // Table with inline math and escaped pipe characters inside cells.

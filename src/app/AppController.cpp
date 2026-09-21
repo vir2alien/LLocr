@@ -466,8 +466,10 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
 
     OcrResult parsed = rawResult;
     if (auto parser = ParserFactory::create(m_settings.parserId())) {
-        if (auto det = dynamic_cast<DetTokensParser *>(parser.get()))
+        if (auto det = dynamic_cast<DetTokensParser *>(parser.get())) {
             det->setKeepPageNumbers(m_settings.keepPageNumbers());
+            det->setTablesAsHtml(m_settings.tablesAsHtml());
+        }
         parsed = parser->parse(rawResult.text);
     }
 
@@ -569,7 +571,8 @@ void AppController::onBoxRemoved(int boxIndex)
 
     m_editStore.replace(m_currentPage,
                         rebuildPageText(page.result.pages[0],
-                                        m_settings.keepPageNumbers()));
+                                        m_settings.keepPageNumbers(),
+                                        m_settings.tablesAsHtml()));
     m_pageModel.setEdited(m_currentPage, true);
 
     if (m_selectedBox == boxIndex)
@@ -800,7 +803,8 @@ void AppController::applyCheckResultToBox(int boxIndex, const CheckResult &resul
             // recognized text intact so the user can diff/revert.
             m_editStore.replace(m_currentPage,
                                 rebuildPageText(page.result.pages[0],
-                                                m_settings.keepPageNumbers()));
+                                                m_settings.keepPageNumbers(),
+                                                m_settings.tablesAsHtml()));
             m_pageModel.setEdited(m_currentPage, true);
             textChanged = true;
         }

@@ -104,11 +104,14 @@ QString escapeTableCell(QString cell)
     return cell;
 }
 
-QString formatTable(const QString &text)
+QString formatTable(const QString &text, bool tablesAsHtml)
 {
     const QString trimmed = text.trimmed();
     if (!trimmed.contains(QStringLiteral("<table")))
         return convertMath(trimmed);
+
+    if (tablesAsHtml)
+        return trimmed;
 
     static const QRegularExpression rowRe(
         QStringLiteral(R"(<tr\b[^>]*>([\s\S]*?)</\s*tr\s*>)"),
@@ -120,69 +123,100 @@ QString formatTable(const QString &text)
         QStringLiteral(R"(\b(rowspan|colspan)\s*=\s*["']?(\d+)["']?)"),
         QRegularExpression::CaseInsensitiveOption);
 
-    QVector<QVector<QString>> grid;
-    grid.reserve(16);
+    struct Cell {
+        QString content;   // already escaped for a pipe-table cell
+        int rowspan = 1;
+        int colspan = 1;
+    };
 
-    QRegularExpressionMatchIterator rows = rowRe.globalMatch(trimmed);
-    int gridRow = 0;
-    bool anyRows = false;
+    QVector<QVector<Cell>> rows;
+    QRegularExpressionMatchIterator rowIt = rowRe.globalMatch(trimmed);
+    while (rowIt.hasNext()) {
+        const QRegularExpressionMatch row = rowIt.next();
+        QVector<Cell> cells;
 
-    while (rows.hasNext()) {
-        const QRegularExpressionMatch row = rows.next();
-        const QString rowBody = row.captured(1);
-        anyRows = true;
+        QRegularExpressionMatchIterator cellIt = cellRe.globalMatch(row.captured(1));
+        while (cellIt.hasNext()) {
+            const QRegularExpressionMatch cm = cellIt.next();
+            Cell cell;
+            const QString content = stripServiceTokens(cm.captured(3)).trimmed();
 
-        QRegularExpressionMatchIterator cells = cellRe.globalMatch(rowBody);
-        int gridCol = 0;
-        bool rowHasCells = false;
-
-        while (cells.hasNext()) {
-            const QRegularExpressionMatch cell = cells.next();
-            const QString attrs = cell.captured(2);
-            QString content = cell.captured(3);
-            content = stripServiceTokens(content).trimmed();
-
-            int rowspan = 1, colspan = 1;
-            QRegularExpressionMatchIterator attrsIt = attrRe.globalMatch(attrs);
+            QRegularExpressionMatchIterator attrsIt = attrRe.globalMatch(cm.captured(2));
             while (attrsIt.hasNext()) {
                 const QRegularExpressionMatch am = attrsIt.next();
-                const int v = am.captured(2).toInt();
+                const int v = std::max(1, am.captured(2).toInt());
                 if (am.captured(1) == QLatin1String("rowspan"))
-                    rowspan = v;
+                    cell.rowspan = v;
                 else
-                    colspan = v;
+                    cell.colspan = v;
             }
-            rowspan = std::max(1, rowspan);
-            colspan = std::max(1, colspan);
-
-            while (gridRow < grid.size() && gridCol < grid.at(gridRow).size()
-                   && !grid.at(gridRow).at(gridCol).isEmpty())
-                ++gridCol;
-
-            const QString escaped = escapeTableCell(content);
-            for (int r = 0; r < rowspan; ++r) {
-                if (gridRow + r >= grid.size())
-                    grid.resize(gridRow + r + 1);
-                if (grid.at(gridRow + r).size() <= gridCol + colspan - 1)
-                    grid[gridRow + r].resize(gridCol + colspan);
-                for (int c = 0; c < colspan; ++c)
-                    grid[gridRow + r][gridCol + c] = escaped;
-            }
-
-            rowHasCells = true;
-            ++gridCol;
+            cell.content = escapeTableCell(content);
+            cells.append(cell);
         }
 
-        if (rowHasCells)
-            ++gridRow;
+        if (!cells.isEmpty())
+            rows.append(cells);
     }
 
-    if (!anyRows || grid.isEmpty())
+    if (rows.isEmpty())
         return convertMath(trimmed);
 
-    int cols = 0;
-    for (const auto &row : std::as_const(grid))
-        cols = std::max(cols, static_cast<int>(row.size()));
+    int cols = 1;
+    for (const QVector<Cell> &row : std::as_const(rows)) {
+        int width = 0;
+        for (const Cell &cell : row)
+            width += cell.colspan;
+        cols = std::max(cols, width);
+    }
+
+    QVector<QVector<QString>> grid;
+    QVector<QVector<bool>> occupied;
+
+    auto ensureCell = [&](int r, int c) {
+        if (r >= grid.size()) {
+            grid.resize(r + 1);
+            occupied.resize(r + 1);
+        }
+        if (c >= grid.at(r).size()) {
+            grid[r].resize(c + 1);
+            occupied[r].resize(c + 1);
+        }
+    };
+
+    for (int r = 0; r < rows.size(); ++r) {
+        ensureCell(r, cols - 1);
+
+        const QVector<Cell> &row = rows.at(r);
+        const bool sectionHeader = row.size() == 1 && row.first().colspan > 1;
+
+        int col = 0;
+        for (const Cell &cell : row) {
+            int colspan = cell.colspan;
+            if (sectionHeader) {
+                col = 0;
+                colspan = cols;
+            } else {
+                while (col < cols && occupied.at(r).at(col))
+                    ++col;
+                colspan = std::min(colspan, cols - col);
+            }
+            if (colspan < 1)
+                break;
+
+            for (int dr = 0; dr < cell.rowspan; ++dr) {
+                ensureCell(r + dr, col + colspan - 1);
+                for (int dc = 0; dc < colspan; ++dc) {
+                    const int rr = r + dr;
+                    const int cc = col + dc;
+                    if (occupied.at(rr).at(cc) && !sectionHeader)
+                        continue;
+                    occupied[rr][cc] = true;
+                    grid[rr][cc] = (dr == 0 && dc == 0) ? cell.content : QString();
+                }
+            }
+            col += colspan;
+        }
+    }
 
     QString out;
     auto writeRow = [&](const QVector<QString> &row) {
@@ -207,7 +241,7 @@ QString formatTable(const QString &text)
     return out.trimmed();
 }
 
-QString applyStyle(const QString &text, const BlockStyleInfo &info)
+QString applyStyle(const QString &text, const BlockStyleInfo &info, bool tablesAsHtml)
 {
     switch (info.style) {
     case BlockStyle::ImagePlaceholder: {
@@ -219,7 +253,7 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info)
     case BlockStyle::Equation:
         return formatEquation(text);
     case BlockStyle::Table:
-        return formatTable(text);
+        return formatTable(text, tablesAsHtml);
     case BlockStyle::Heading: {
         const int level = info.headingLevel > 0 ? info.headingLevel : headingLevelFor(text);
         return QString(level, QLatin1Char('#')) + QLatin1Char(' ') + text;
@@ -232,7 +266,7 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info)
 
 } // namespace
 
-QString rebuildPageText(const OcrPage& page, bool keepPageNumbers)
+QString rebuildPageText(const OcrPage& page, bool keepPageNumbers, bool tablesAsHtml)
 {
     QStringList blocks;
     for (int i = 0; i < page.boxes.size(); ++i) {
@@ -247,7 +281,7 @@ QString rebuildPageText(const OcrPage& page, bool keepPageNumbers)
         const QString text = box.correctedText.isEmpty() ? box.text : box.correctedText;
         if (text.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
             continue;
-        blocks << applyStyle(text, style);
+        blocks << applyStyle(text, style, tablesAsHtml);
     }
     return blocks.join(QStringLiteral("\n\n"));
 }
@@ -360,7 +394,7 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
             if (style.style == BlockStyle::ImagePlaceholder)
                 style.imageIndex = dupIndex;
             if (!boxText.isEmpty() || style.style == BlockStyle::ImagePlaceholder)
-                blocks[dupIndex] = applyStyle(boxText, style);
+                blocks[dupIndex] = applyStyle(boxText, style, m_tablesAsHtml);
             continue;
         }
 
@@ -371,12 +405,12 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         BlockStyleInfo style = blockStyleForLabel(t.label);
         if (style.style == BlockStyle::ImagePlaceholder) {
             style.imageIndex = boxIndex;
-            blocks << applyStyle(boxText, style);
+            blocks << applyStyle(boxText, style, m_tablesAsHtml);
             continue;
         }
         if (boxText.isEmpty())
             continue;
-        blocks << applyStyle(boxText, style);
+        blocks << applyStyle(boxText, style, m_tablesAsHtml);
     }
 
     page.text = blocks.join(QStringLiteral("\n\n"));
