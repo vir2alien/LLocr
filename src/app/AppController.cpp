@@ -47,6 +47,8 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
+        if (!m_recognition.busy() && !m_recognitionStopped && m_settings.autoCheck())
+            QTimer::singleShot(0, this, [this]() { checkAllEnabledBlocks(true); });
         emit busyChanged();
     });
     connect(&m_recognition, &RecognitionController::statusRequested, this,
@@ -56,7 +58,7 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
 
     connect(&m_check, &CheckController::checkFinished, this,
             [this](const CheckResult &result) {
-                applyCheckResultToBox(m_verifyBoxIndex, result);
+                applyCheckResultToBox(m_verifyPage, m_verifyBoxIndex, result);
                 ++m_verifyDone;
                 emit checkStateChanged();
                 QTimer::singleShot(0, this, [this]() { startNextVerify(); });
@@ -224,15 +226,6 @@ void AppController::setCurrentPage(int index)
 {
     if (!m_document.isValidIndex(index) || index == m_currentPage)
         return;
-
-    if (m_verifyQueueActive) {
-        m_verifyQueue.clear();
-        m_verifyQueueActive = false;
-        m_verifyBoxIndex = -1;
-        if (m_check.busy())
-            m_check.stop();
-        emit checkStateChanged();
-    }
 
     m_currentPage = index;
     m_pageModel.setCurrent(index);
@@ -445,6 +438,7 @@ void AppController::recognizeCurrent()
     }
 
     m_recognition.startCurrent(m_currentPage, m_document.pageCount());
+    m_recognitionStopped = false;
 }
 
 void AppController::recognizeAll()
@@ -457,6 +451,7 @@ void AppController::recognizeAll()
     }
 
     m_recognition.startAll(m_document.pageCount());
+    m_recognitionStopped = false;
 }
 
 void AppController::applyRawResult(int index, const OcrResult& rawResult)
@@ -500,6 +495,7 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
 
 void AppController::stop()
 {
+    m_recognitionStopped = true;
     m_recognition.stop();
 }
 
@@ -647,28 +643,58 @@ void AppController::checkSelectedBlock()
         return;
     if (m_document.isValidIndex(m_currentPage)
         && m_document.page(m_currentPage).recognized) {
-        startVerifyQueue({m_selectedBox});
+        startVerifyQueue({{m_currentPage, m_selectedBox}});
     }
 }
 
 void AppController::checkEnabledBlocksOnPage()
 {
-    if (!m_document.isValidIndex(m_currentPage)
-        || !m_document.page(m_currentPage).recognized
-        || m_document.page(m_currentPage).result.pages.isEmpty())
+    if (!m_document.isValidIndex(m_currentPage))
         return;
 
-    const OcrPage &page = m_document.page(m_currentPage).result.pages.first();
     QList<int> candidates;
+    collectEnabledBoxes(m_currentPage, candidates, false);
+
+    QList<VerifyTask> tasks;
+    for (const int box : std::as_const(candidates))
+        tasks.append({m_currentPage, box});
+    startVerifyQueue(tasks);
+}
+
+void AppController::checkAllEnabledBlocks(bool onlyUnchecked)
+{
+    if (m_recognition.busy() || m_check.busy() || m_verifyQueueActive)
+        return;
+
+    QList<VerifyTask> tasks;
+    for (int p = 0; p < m_document.pageCount(); ++p) {
+        QList<int> candidates;
+        collectEnabledBoxes(p, candidates, onlyUnchecked);
+        for (const int box : std::as_const(candidates))
+            tasks.append({p, box});
+    }
+    startVerifyQueue(tasks);
+}
+
+void AppController::collectEnabledBoxes(int pageIndex, QList<int> &out,
+                                        bool onlyUnchecked)
+{
+    if (!m_document.isValidIndex(pageIndex))
+        return;
+    const DocumentPage &docPage = m_document.page(pageIndex);
+    if (!docPage.recognized || docPage.result.pages.isEmpty())
+        return;
+    const OcrPage &page = docPage.result.pages.first();
     for (int i = 0; i < page.boxes.size(); ++i) {
         const BoundingBox &box = page.boxes.at(i);
         if (!m_verification.isTypeEnabled(box.label))
             continue;
         if (box.text.isEmpty())
             continue;
-        candidates.append(i);
+        if (onlyUnchecked && box.checkStatus != BoxCheckStatus::NotChecked)
+            continue;
+        out.append(i);
     }
-    startVerifyQueue(candidates);
 }
 
 void AppController::stopCheck()
@@ -676,6 +702,7 @@ void AppController::stopCheck()
     m_verifyQueue.clear();
     if (m_verifyQueueActive) {
         m_verifyQueueActive = false;
+        m_verifyPage = -1;
         m_verifyBoxIndex = -1;
         emit checkStateChanged();
     }
@@ -699,15 +726,35 @@ bool AppController::pageVerificationSupported() const
     return false;
 }
 
-void AppController::startVerifyQueue(const QList<int> &boxIndices)
+bool AppController::allPageVerificationSupported() const
+{
+    if (m_recognition.busy())
+        return false;
+    for (int p = 0; p < m_document.pageCount(); ++p) {
+        const DocumentPage &docPage = m_document.page(p);
+        if (!docPage.recognized || docPage.result.pages.isEmpty())
+            continue;
+        const OcrPage &page = docPage.result.pages.first();
+        for (const BoundingBox &box : std::as_const(page.boxes)) {
+            if (m_verification.isTypeEnabled(box.label) && !box.text.isEmpty())
+                return true;
+        }
+    }
+    return false;
+}
+
+void AppController::startVerifyQueue(const QList<VerifyTask> &tasks)
 {
     if (m_recognition.busy() || m_check.busy() || m_verifyQueueActive)
         return;
+    if (tasks.isEmpty())
+        return;
 
     m_checkError.clear();
-    m_verifyQueue = boxIndices;
+    m_verifyQueue = tasks;
+    m_verifyPage = -1;
     m_verifyBoxIndex = -1;
-    m_verifyTotal = boxIndices.size();
+    m_verifyTotal = tasks.size();
     m_verifyDone = 0;
     m_verifyQueueActive = true;
     emit checkStateChanged();
@@ -720,21 +767,32 @@ void AppController::startNextVerify()
     if (!m_verifyQueueActive)
         return;
 
-    // A page switch (or stop) invalidates the queue mid-run.
+    // A stop (or an explicit page-switch cancel) ends the run; otherwise the
+    // queue is drained serially, even while the user browses pages.
     if (m_verifyQueue.isEmpty()) {
         finishVerifyQueue();
         return;
     }
 
-    m_verifyBoxIndex = m_verifyQueue.takeFirst();
-    const DocumentPage &docPage = m_document.page(m_currentPage);
+    const VerifyTask task = m_verifyQueue.takeFirst();
+    m_verifyPage = task.page;
+    m_verifyBoxIndex = task.box;
+    const DocumentPage &docPage = m_document.page(m_verifyPage);
     if (!docPage.recognized || docPage.result.pages.isEmpty()) {
-        finishVerifyQueue();
+        ++m_verifyDone;
+        emit checkStateChanged();
+        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
         return;
     }
-    const QString text = docPage.result.pages.first()
-                             .boxes.at(m_verifyBoxIndex).text;
-    const QImage crop = croppedImage(m_currentPage, m_verifyBoxIndex);
+    const QList<BoundingBox> &boxes = docPage.result.pages.first().boxes;
+    if (m_verifyBoxIndex < 0 || m_verifyBoxIndex >= boxes.size()) {
+        ++m_verifyDone;
+        emit checkStateChanged();
+        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+        return;
+    }
+    const QString text = boxes.at(m_verifyBoxIndex).text;
+    const QImage crop = croppedImage(m_verifyPage, m_verifyBoxIndex);
     if (crop.isNull()) {
         ++m_verifyDone;
         emit checkStateChanged();
@@ -742,8 +800,7 @@ void AppController::startNextVerify()
         return;
     }
 
-    const BoundingBox &box = docPage.result.pages.first()
-                                 .boxes.at(m_verifyBoxIndex);
+    const BoundingBox &box = boxes.at(m_verifyBoxIndex);
     m_check.checkBlock(crop, text,
                        m_verification.systemPrompt(),
                        m_verification.promptForType(box.label));
@@ -755,13 +812,15 @@ void AppController::finishVerifyQueue()
         return;
     m_verifyQueueActive = false;
     m_verifyQueue.clear();
+    m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     emit checkStateChanged();
 }
 
-void AppController::applyCheckResultToBox(int boxIndex, const CheckResult &result)
+void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
+                                          const CheckResult &result)
 {
-    if (!m_document.isValidIndex(m_currentPage))
+    if (!m_document.isValidIndex(pageIndex))
         return;
 
     QString error;
@@ -770,7 +829,7 @@ void AppController::applyCheckResultToBox(int boxIndex, const CheckResult &resul
     bool textChanged = false;
     {
         QWriteLocker locker(&m_documentLock);
-        DocumentPage &page = m_document.page(m_currentPage);
+        DocumentPage &page = m_document.page(pageIndex);
         if (!page.recognized || page.result.pages.isEmpty())
             return;
         QList<BoundingBox> &boxes = page.result.pages[0].boxes;
@@ -801,28 +860,30 @@ void AppController::applyCheckResultToBox(int boxIndex, const CheckResult &resul
         if (box.checkStatus == BoxCheckStatus::Fixed) {
             // The corrected text flows into the page output; keep the
             // recognized text intact so the user can diff/revert.
-            m_editStore.replace(m_currentPage,
+            m_editStore.replace(pageIndex,
                                 rebuildPageText(page.result.pages[0],
                                                 m_settings.keepPageNumbers(),
                                                 m_settings.tablesAsHtml()));
-            m_pageModel.setEdited(m_currentPage, true);
+            m_pageModel.setEdited(pageIndex, true);
             textChanged = true;
         }
         ++m_cropRevision;
     }
 
-    m_boxModel.updateBoxCheck(boxIndex, static_cast<int>(status), corrected);
-
     if (!error.isEmpty())
         m_checkError = error;
 
-    if (m_selectedBox == boxIndex)
+    const bool onCurrentPage = pageIndex == m_currentPage;
+    if (onCurrentPage)
+        m_boxModel.updateBoxCheck(boxIndex, static_cast<int>(status), corrected);
+    if (onCurrentPage && m_selectedBox == boxIndex)
         emit selectedBoxChanged();
     if (textChanged) {
         emit resultChanged();
         emit editStateChanged();
     }
-    emit boxesChanged();
+    if (onCurrentPage)
+        emit boxesChanged();
 }
 
 QList<Exporter::Page> AppController::collectPages(int scope, int fromPage, int toPage) const

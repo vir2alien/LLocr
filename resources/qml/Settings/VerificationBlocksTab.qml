@@ -10,9 +10,35 @@ import "../Common"
 Item {
     id: root
 
+    function loadValues() {
+        autoCheckBox.checked = Settings.autoCheck
+    }
+
+    function saveValues() {
+        Settings.autoCheck = autoCheckBox.checked
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: Theme.spacingSmall
+
+        CheckBox {
+            id: autoCheckBox
+            Layout.fillWidth: true
+            font.pointSize: Theme.captionSize
+            text: qsTr("Check automatically")
+        }
+        LLOLabel {
+            Layout.fillWidth: true
+            font.pointSize: Theme.captionSize
+            color: Theme.textMuted
+            wrapMode: Text.WordWrap
+            text: qsTr("When on, verification starts automatically as soon as "
+                       + "recognition finishes. The managed runtime switches its "
+                       + "loaded model from OCR to the check model; an external "
+                       + "runtime just starts checking. Already checked blocks "
+                       + "are skipped — only newly recognized blocks are verified.")
+        }
 
         LLOLabel {
             Layout.fillWidth: true
@@ -30,6 +56,7 @@ Item {
             clip: true
             spacing: Theme.spacingSmall
             model: Verification.blockModel
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
             delegate: Item {
                 id: blockRow

@@ -63,10 +63,12 @@ ApplicationWindow {
         // Reload the draft from the store (built-in + user overrides).
         Verification.loadValues()
         systemTab.loadValues()
+        blocksTab.loadValues()
     }
 
     function saveAll() {
         systemTab.saveValues()
+        blocksTab.saveValues()
     }
 
     onVisibleChanged: {

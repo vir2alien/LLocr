@@ -39,6 +39,8 @@ private slots:
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
+        QCOMPARE(store.checkModelName(), QString());
+        QCOMPARE(store.autoCheck(), false);
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
         QCOMPARE(store.splitPages(), true);
@@ -77,6 +79,8 @@ private slots:
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
+        QCOMPARE(store.checkModelName(), QString());
+        QCOMPARE(store.autoCheck(), false);
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
     }
@@ -179,7 +183,20 @@ private slots:
         QCOMPARE(store.launchHost(), QStringLiteral("127.0.0.1"));
         QCOMPARE(store.launchPort(), 0);
         QCOMPARE(store.launchProfileId(), QStringLiteral(""));
+        QCOMPARE(store.autoCheck(), false);
         QCOMPARE(store.hfToken(), QStringLiteral(""));
+    }
+
+    void autoCheckRoundTrip()
+    {
+        SettingsStore store;
+        QCOMPARE(store.autoCheck(), false);
+        store.setAutoCheck(true);
+        QCOMPARE(store.autoCheck(), true);
+        store.setAutoCheck(true);   // no-op, no signal spam
+        QCOMPARE(store.autoCheck(), true);
+        store.setAutoCheck(false);
+        QCOMPARE(store.autoCheck(), false);
     }
 
     void migrationConfiguredProfileKeepsExternal()

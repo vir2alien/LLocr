@@ -46,6 +46,7 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kCheckRequestProfileId, "checkRequestProfileId", QVariant(QString()) },
     { kCheckLaunchProfileId, "checkLaunchProfileId", QVariant(QString()) },
     { kCheckModelName, "checkModelName", QVariant(QString()) },
+    { kAutoCheck, "autoCheck", QVariant(false) },
     { kHfToken, "hfToken", QVariant(QString()) },
     { kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString()) },
 };
@@ -748,6 +749,19 @@ void SettingsStore::setCheckModelName(const QString &name)
         return;
     m_settings.setValue(kCheckModelName, name);
     emit checkModelNameChanged();
+}
+
+bool SettingsStore::autoCheck() const
+{
+    return m_settings.value(kAutoCheck, false).toBool();
+}
+
+void SettingsStore::setAutoCheck(bool on)
+{
+    if (autoCheck() == on)
+        return;
+    m_settings.setValue(kAutoCheck, on);
+    emit autoCheckChanged();
 }
 
 QString SettingsStore::launchProfileId() const

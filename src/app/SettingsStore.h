@@ -64,6 +64,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
     Q_PROPERTY(QString checkLaunchProfileId READ checkLaunchProfileId WRITE setCheckLaunchProfileId NOTIFY checkLaunchProfileIdChanged)
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
+    Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
 
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
 
@@ -190,6 +191,8 @@ public:
     void setCheckLaunchProfileId(const QString &id);
     QString checkModelName() const;
     void setCheckModelName(const QString &name);
+    bool autoCheck() const;
+    void setAutoCheck(bool on);
 
     QString hfToken() const;
     void setHfToken(const QString &token);
@@ -241,6 +244,7 @@ signals:
     void checkRequestProfileIdChanged();
     void checkLaunchProfileIdChanged();
     void checkModelNameChanged();
+    void autoCheckChanged();
     void hfTokenChanged();
 
 public:
@@ -330,6 +334,7 @@ private:
     static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
     static constexpr const char *kCheckLaunchProfileId = "check/launchProfileId";
     static constexpr const char *kCheckModelName = "check/modelName";
+    static constexpr const char *kAutoCheck = "check/autoCheck";
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";

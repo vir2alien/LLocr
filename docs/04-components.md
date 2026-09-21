@@ -21,13 +21,22 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   (DRY params, temperature, max tokens; ADR 59). The recognition **prompt**
   comes from the selected model adapter's `promptVariants()` (ADR 58).
 - **Text verification (check model)** ✅ (`CheckController` +
-  `GeneralPurposeModel`/`QwenGeneralModel`, ADR 68/74): a small
-  general-purpose model verifies a selected recognized block — the request
-  carries the block crop, the recognized text and the user prompt, with the
-  validate request profile's parameters; the answer can replace the original
-  text (Apply fix). It uses the same resolved connection (role-aware model
-  name per ADR 73) and the single managed instance is re-loaded per task
-  (ADR 74).
+  `GeneralPurposeModel`/`QwenGeneralModel`, ADR 68/74/78/79): a small
+  general-purpose model verifies a recognized block — the request carries the
+  block crop, the recognized text, the type prompt and the protocol contract
+  (`OK`/`FIX`/`REVIEW`), with the validate request profile's parameters. It
+  uses the same resolved connection (role-aware model name per ADR 73) and the
+  single managed instance is re-loaded per task (ADR 74). Checking runs on the
+  current page (`checkEnabledBlocksOnPage`), across all recognized pages
+  («Проверить всё», `checkAllEnabledBlocks`), or automatically after a
+  recognition run when `check/autoCheck` is on (Config: Settings → Проверка →
+  Blocks) — the automatic run passes `onlyUnchecked`, so blocks that were
+  already verified (`checkStatus != NotChecked`) are skipped and a re-
+  recognition only verifies the newly recognized blocks. In Managed mode the
+  server switches from the OCR to the check model automatically (ADR 74), in
+  External mode the check just starts (ADR 79).
+  The queue survives page switches (parity with recognition), so a batch check
+  keeps running while the user browses (ADR 79).
 
 ## 4.2 Settings
 Settings are split into **separate non-modal windows** opened from the Header

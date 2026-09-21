@@ -348,6 +348,11 @@
     </message>
     <message>
         <location filename="../qml/MainWindow/Header.qml"/>
+        <source>Check all</source>
+        <translation>Проверить всё</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow/Header.qml"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
@@ -825,6 +830,14 @@
 </context>
 <context>
     <name>VerificationBlocksTab</name>
+    <message>
+        <source>Check automatically</source>
+        <translation>Проверять автоматически</translation>
+    </message>
+    <message>
+        <source>When on, verification starts automatically as soon as recognition finishes. The managed runtime switches its loaded model from OCR to the check model; an external runtime just starts checking. Already checked blocks are skipped — only newly recognized blocks are verified.</source>
+        <translation>Когда включено, проверка запускается автоматически сразу после завершения распознавания. Управляемый рантайм сам переключает загруженную модель с OCR на модель проверки; при внешнем рантайме проверка просто стартует. Уже проверенные блоки пропускаются — проверяются только вновь распознанные.</translation>
+    </message>
     <message>
         <source>Blocks whose type is checked below are verified automatically when verification runs. Unchecked types are skipped.</source>
         <translation>Блоки, тип которых отмечен ниже, проверяются автоматически при запуске проверки. Неотмеченные типы пропускаются.</translation>

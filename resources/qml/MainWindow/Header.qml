@@ -72,6 +72,12 @@ ToolBar {
                      && Controller.pageVerificationSupported
             onClicked: Controller.checkEnabledBlocksOnPage()
         }
+        ToolButton {
+            text: qsTr("Check all")
+            enabled: Controller.hasImage && !Controller.busy
+                     && Controller.allPageVerificationSupported
+            onClicked: Controller.checkAllEnabledBlocks()
+        }
 
         ToolSeparator { visible: Controller.pageCount > 1 }
 

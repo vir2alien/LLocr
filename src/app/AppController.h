@@ -56,6 +56,7 @@ class AppController : public QObject
     Q_PROPERTY(int checkProgressTotal READ checkProgressTotal NOTIFY checkStateChanged)
     Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
     Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY checkStateChanged)
+    Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY checkStateChanged)
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters CONSTANT)
 
@@ -114,6 +115,7 @@ public:
     int checkProgressTotal() const { return m_verifyTotal; }
     QString checkErrorMessage() const { return m_checkError; }
     bool pageVerificationSupported() const;
+    bool allPageVerificationSupported() const;
 
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
     QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
@@ -161,6 +163,7 @@ public slots:
     Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown);
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void checkEnabledBlocksOnPage();
+    Q_INVOKABLE void checkAllEnabledBlocks(bool onlyUnchecked = false);
     Q_INVOKABLE void stopCheck();
 
 private:
@@ -192,10 +195,16 @@ private:
         const Exporter::ExportOptions& options, const QPageLayout& pdfLayout,
         bool renderOk, const QString& renderedHtml, const QString& renderError) const;
 
-    void startVerifyQueue(const QList<int> &boxIndices);
+    struct VerifyTask {
+        int page;
+        int box;
+    };
+
+    void startVerifyQueue(const QList<VerifyTask> &tasks);
     void startNextVerify();
     void finishVerifyQueue();
-    void applyCheckResultToBox(int boxIndex, const CheckResult &result);
+    void applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result);
+    void collectEnabledBoxes(int pageIndex, QList<int> &out, bool onlyUnchecked);
 
 private:
     SettingsStore &m_settings;
@@ -225,12 +234,13 @@ private:
     int m_selectedBox = -1;
     QString m_checkError;
 
-    // Batch verification queue (current page, serial per-block requests).
-    QList<int> m_verifyQueue;
+    QList<VerifyTask> m_verifyQueue;
+    int m_verifyPage = -1;
     int m_verifyBoxIndex = -1;
     bool m_verifyQueueActive = false;
     int m_verifyTotal = 0;
     int m_verifyDone = 0;
+    bool m_recognitionStopped = false;
 };
 
 }  // namespace llocr

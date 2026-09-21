@@ -31,7 +31,7 @@
                 {
                     "order": 5,
                     "name": "max_tokens",
-                    "value": 512,
+                    "value": 8192,
                     "description": "Maximum tokens the verifier may generate for one block."
                 },
                 {
