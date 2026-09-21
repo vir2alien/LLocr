@@ -22,4 +22,10 @@ Rectangle {
         text: qsTr("Open an image or PDF to begin")
         color: Theme.textMuted
     }
+
+    VerificationPanel {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+    }
 }
