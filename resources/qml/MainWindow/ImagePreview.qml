@@ -77,25 +77,27 @@ Image {
                     radius: 2
                     height: labelText.height + 2
                     width: labelText.width + 6
+                           + (statusDot.visible ? statusDot.width + 3 : 0)
                     Text {
                         id: labelText
-                        anchors.centerIn: parent
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: 3
                         text: boxLabel
                         font.pointSize: Theme.captionSize
                         color: isImage ? Theme.overlayImageInner : Theme.overlayTextInner
                     }
-                }
-
-                Text {
-                    visible: boxCheckStatus !== 0
-                    text: "\u2713"
-                    font.pointSize: Theme.bodySmallSize
-                    font.bold: true
-                    color: boxCheckStatus === 1 ? Theme.success
-                         : boxCheckStatus === 2 ? Theme.warning
-                         : Theme.error
-                    x: labelChip.x + labelChip.width + 3
-                    y: labelChip.y
+                    Rectangle {
+                        id: statusDot
+                        visible: boxCheckStatus !== 0
+                        x: labelText.x + labelText.width + 3
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 8
+                        height: 8
+                        radius: 4
+                        color: boxCheckStatus === 1 ? Theme.success
+                             : boxCheckStatus === 2 ? Theme.warning
+                             : Theme.error
+                    }
                 }
 
                 // --- Selection: any recognized block can be picked for verification ---
