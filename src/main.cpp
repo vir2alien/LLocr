@@ -70,6 +70,8 @@ void setupQmlEngine(QQmlApplicationEngine& engine,
                     llocr::UiController& uiController) {
     qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/qml/Theme.qml")),
                              "LLocr", 1, 0, "Theme");
+    qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/qml/Common/BlockNames.qml")),
+                             "LLocr", 1, 0, "BlockNames");
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Controller", &appController);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "UiController", &uiController);
 

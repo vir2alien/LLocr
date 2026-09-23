@@ -126,7 +126,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            CheckBox {
+            LLOCheckBox {
                 id: autoStartBox
                 text: qsTr("Start the server when the app launches")
                 font.pointSize: Theme.captionSize
@@ -136,7 +136,7 @@ Item {
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
-                color: Theme.textMuted
+                color: Theme.helpColor
                 text: qsTr("Full parameter table: Settings → Launch. "
                            + "Loading the model at startup uses several GB "
                            + "of RAM/VRAM even when idle — off by default.")

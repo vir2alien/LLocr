@@ -62,14 +62,14 @@ ColumnLayout {
     LLOLabel {
         Layout.fillWidth: true
         font.pointSize: Theme.captionSize
-        color: Theme.textMuted
+        color: Theme.helpColor
         text: qsTr("‘raw’ keeps the model text as-is. ‘det_tokens’ extracts "
                    + "positioned fragments (bounding boxes) for the overlay.")
     }
 
     Item { implicitHeight: 6 }
 
-    CheckBox {
+    LLOCheckBox {
         id: splitPagesCheck
         font.pointSize: Theme.captionSize
         text: qsTr("Split pages")
@@ -77,12 +77,12 @@ ColumnLayout {
     LLOLabel {
         Layout.fillWidth: true
         font.pointSize: Theme.captionSize
-        color: Theme.textMuted
+        color: Theme.helpColor
         text: qsTr("When off, exported pages are joined without the "
                    + "“Page 1”, “Page 2” … headings.")
     }
 
-    CheckBox {
+    LLOCheckBox {
         id: pageNumbersCheck
         font.pointSize: Theme.captionSize
         text: qsTr("Keep page numbers")
@@ -90,12 +90,12 @@ ColumnLayout {
     LLOLabel {
         Layout.fillWidth: true
         font.pointSize: Theme.captionSize
-        color: Theme.textMuted
+        color: Theme.helpColor
         text: qsTr("When off, page_number blocks from the model are ignored "
                    + "during recognition. Applies to newly recognized pages.")
     }
 
-    CheckBox {
+    LLOCheckBox {
         id: tablesAsHtmlCheck
         font.pointSize: Theme.captionSize
         text: qsTr("Keep tables as HTML")
@@ -103,7 +103,7 @@ ColumnLayout {
     LLOLabel {
         Layout.fillWidth: true
         font.pointSize: Theme.captionSize
-        color: Theme.textMuted
+        color: Theme.helpColor
         text: qsTr("When on, recognized tables are kept as the model's <table> "
                    + "HTML instead of being converted to a Markdown pipe table. "
                    + "Most Markdown editors render this.")

@@ -60,7 +60,7 @@ ColumnLayout {
     }
     LLOLabel {
         font.pointSize: Theme.captionSize
-        color: Theme.textMuted
+        color: Theme.helpColor
         text: qsTr("Optional model alias; can be left empty for a single-model server")
     }
 
@@ -80,7 +80,7 @@ ColumnLayout {
             echoMode: revealKey.checked ? TextInput.Normal
                                         : TextInput.Password
         }
-        CheckBox {
+        LLOCheckBox {
             id: revealKey
             text: qsTr("Show")
             font.pointSize: Theme.captionSize
@@ -106,7 +106,7 @@ ColumnLayout {
     LLOLabel {
         Layout.fillWidth: true
         font.pointSize: Theme.captionSize
-        color: Theme.textMuted
+        color: Theme.helpColor
         text: qsTr("Note: the API key is stored locally in plaintext. "
                    + "Avoid using production keys.")
     }

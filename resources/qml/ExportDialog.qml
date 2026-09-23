@@ -14,7 +14,6 @@ Dialog {
     anchors.centerIn: parent
     width: 360
     implicitHeight: 250
-    standardButtons: Dialog.Ok | Dialog.Cancel
 
     signal exportRequested(int scope, int fromPage, int toPage)
 
@@ -37,14 +36,39 @@ Dialog {
         }
     }
 
-    footer: DialogButtonBox {
-        background: Rectangle {
-            color: "transparent"
+    footer: Rectangle {
+        implicitHeight: footerRow.implicitHeight + 2 * Theme.spacingLarge
+        color: Theme.surface
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 1
+            color: Theme.divider
         }
-        alignment: Qt.AlignRight
-        standardButtons: exportOptionsDialog.standardButtons
-        spacing: 6
-        padding: 10
+
+        RowLayout {
+            id: footerRow
+            anchors.fill: parent
+            anchors.leftMargin: Theme.paddingWindow
+            anchors.rightMargin: Theme.paddingWindow
+            anchors.topMargin: Theme.spacingLarge
+            anchors.bottomMargin: Theme.spacingLarge
+            spacing: Theme.spacing
+
+            Item { Layout.fillWidth: true }
+
+            LLOButton {
+                text: qsTr("Cancel")
+                onClicked: exportOptionsDialog.reject()
+            }
+            LLOButton {
+                emphasis: true
+                text: qsTr("Export")
+                onClicked: exportOptionsDialog.accept()
+            }
+        }
     }
 
     onAboutToShow: {

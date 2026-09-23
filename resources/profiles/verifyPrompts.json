@@ -5,108 +5,126 @@
         {
             "type": "text",
             "name": "Text",
+            "group": "content",
             "enabled": true,
             "prompt": "Block type: text.\nOutput format after FIX: plain text.\n\nCheck characters, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and paragraph structure.\nCorrect OCR errors, not the author's wording.\nDo not reflow lines or normalize typography when the candidate is equivalent."
         },
         {
             "type": "title",
             "name": "Title",
+            "group": "content",
             "enabled": true,
             "prompt": "Block type: title or heading.\nOutput format after FIX: plain text.\n\nCheck letters, numbers, capitalization, punctuation, and reading order.\nPreserve the original language, spelling, and heading level.\nCorrect OCR errors, not the author's wording.\nDo not merge, split, or reorder words when the candidate is equivalent."
         },
         {
             "type": "table",
             "name": "Table",
+            "group": "content",
             "enabled": true,
             "prompt": "Block type: table.\nOutput format after FIX: HTML table with LaTeX inside cells where needed.\n\nCompare cells by their row and column positions.\nCheck every number, decimal point, sign, arrow, label, and superscript.\nCheck row order, column order, empty cells, rowspan, and colspan.\nSection headings spanning the table must cover its full column width.\nDo not calculate, round, reorder, fill blank cells, or infer missing values.\nPreserve existing HTML and cell formatting unless they are incorrect."
         },
         {
             "type": "equation",
             "name": "Equation",
+            "group": "content",
             "enabled": true,
             "prompt": "Block type: mathematical formula.\nOutput format after FIX: LaTeX.\n\nCheck every symbol, subscript, superscript, fraction, radical,\noperator, bracket, accent, and equation number against the image.\nPreserve visible bold/upright distinctions.\nPreserve existing delimiters and valid equivalent LaTeX commands.\nDo not simplify expressions or replace them with familiar formulas.\nDo not change spacing or LaTeX style unless needed to fix an error."
         },
         {
             "type": "formula",
             "name": "Formula",
+            "group": "content",
             "enabled": true,
             "prompt": "Block type: mathematical formula.\nOutput format after FIX: LaTeX.\n\nCheck every symbol, subscript, superscript, fraction, radical,\noperator, bracket, accent, and equation number against the image.\nPreserve visible bold/upright distinctions.\nPreserve existing delimiters and valid equivalent LaTeX commands.\nDo not simplify expressions or replace them with familiar formulas.\nDo not change spacing or LaTeX style unless needed to fix an error."
         },
         {
-            "type": "image_caption",
-            "name": "Image caption",
-            "enabled": true,
-            "prompt": "Block type: figure caption.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and caption structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, summarize, or complete the caption."
-        },
-        {
-            "type": "table_caption",
-            "name": "Table caption",
-            "enabled": true,
-            "prompt": "Block type: table caption.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and caption structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, summarize, or complete the caption."
-        },
-        {
-            "type": "figure_footnote",
-            "name": "Figure footnote",
-            "enabled": true,
-            "prompt": "Block type: figure footnote.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and footnote structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, expand, or complete the footnote."
-        },
-        {
-            "type": "table_footnote",
-            "name": "Table footnote",
-            "enabled": true,
-            "prompt": "Block type: table footnote.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and footnote structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, expand, or complete the footnote."
-        },
-        {
-            "type": "ref_text",
-            "name": "Reference text",
-            "enabled": true,
-            "prompt": "Block type: bibliography or reference entry.\nOutput format after FIX: plain text.\n\nCheck author names, years, titles, volume, issue, pages, and punctuation.\nPreserve the original language, spelling, and reference structure.\nCorrect OCR errors, not the author's citation data.\nDo not reorder, reformat, or complete the entry."
-        },
-        {
-            "type": "reference",
-            "name": "Reference",
-            "enabled": true,
-            "prompt": "Block type: bibliography or reference entry.\nOutput format after FIX: plain text.\n\nCheck author names, years, titles, volume, issue, pages, and punctuation.\nPreserve the original language, spelling, and reference structure.\nCorrect OCR errors, not the author's citation data.\nDo not reorder, reformat, or complete the entry."
-        },
-        {
             "type": "list",
             "name": "List",
+            "group": "content",
             "enabled": true,
             "prompt": "Block type: list.\nOutput format after FIX: plain text with the original markers and indentation.\n\nCheck item text, markers, indentation, punctuation, and reading order.\nPreserve the original language, spelling, and list structure.\nCorrect OCR errors, not the author's wording.\nDo not reorder, merge, or split items when the candidate is equivalent."
         },
         {
             "type": "code",
             "name": "Code",
+            "group": "content",
             "enabled": true,
             "prompt": "Block type: source code.\nOutput format after FIX: plain text preserving the code layout.\n\nCheck identifiers, keywords, strings, numbers, punctuation, and indentation.\nPreserve the code structure, line breaks, and visible formatting.\nCorrect OCR errors, not the author's code.\nDo not fix, reformat, or complete the code."
         },
         {
             "type": "abstract",
             "name": "Abstract",
+            "group": "content",
             "enabled": true,
             "prompt": "Block type: abstract or summary.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and paragraph structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, summarize, or reflow the text."
         },
         {
+            "type": "image_caption",
+            "name": "Image caption",
+            "group": "captions",
+            "enabled": true,
+            "prompt": "Block type: figure caption.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and caption structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, summarize, or complete the caption."
+        },
+        {
+            "type": "table_caption",
+            "name": "Table caption",
+            "group": "captions",
+            "enabled": true,
+            "prompt": "Block type: table caption.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and caption structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, summarize, or complete the caption."
+        },
+        {
+            "type": "figure_footnote",
+            "name": "Figure footnote",
+            "group": "captions",
+            "enabled": true,
+            "prompt": "Block type: figure footnote.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and footnote structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, expand, or complete the footnote."
+        },
+        {
+            "type": "table_footnote",
+            "name": "Table footnote",
+            "group": "captions",
+            "enabled": true,
+            "prompt": "Block type: table footnote.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, capitalization, and reading order.\nPreserve the original language, spelling, and footnote structure.\nCorrect OCR errors, not the author's wording.\nDo not rewrite, expand, or complete the footnote."
+        },
+        {
+            "type": "ref_text",
+            "name": "Reference text",
+            "group": "captions",
+            "enabled": true,
+            "prompt": "Block type: bibliography or reference entry.\nOutput format after FIX: plain text.\n\nCheck author names, years, titles, volume, issue, pages, and punctuation.\nPreserve the original language, spelling, and reference structure.\nCorrect OCR errors, not the author's citation data.\nDo not reorder, reformat, or complete the entry."
+        },
+        {
+            "type": "reference",
+            "name": "Reference",
+            "group": "captions",
+            "enabled": true,
+            "prompt": "Block type: bibliography or reference entry.\nOutput format after FIX: plain text.\n\nCheck author names, years, titles, volume, issue, pages, and punctuation.\nPreserve the original language, spelling, and reference structure.\nCorrect OCR errors, not the author's citation data.\nDo not reorder, reformat, or complete the entry."
+        },
+        {
             "type": "header",
             "name": "Header",
+            "group": "service",
             "enabled": false,
             "prompt": "Block type: running header.\nOutput format after FIX: plain text.\n\nCheck letters, numbers, punctuation, and capitalization.\nPreserve the original language and spelling.\nCorrect OCR errors, not the author's wording."
         },
         {
             "type": "footer",
             "name": "Footer",
+            "group": "service",
             "enabled": false,
             "prompt": "Block type: running footer.\nOutput format after FIX: plain text.\n\nCheck letters, numbers, punctuation, and capitalization.\nPreserve the original language and spelling.\nCorrect OCR errors, not the author's wording."
         },
         {
             "type": "page_number",
             "name": "Page number",
+            "group": "service",
             "enabled": false,
             "prompt": "Block type: page number.\nOutput format after FIX: plain text.\n\nCheck every digit, sign, and punctuation mark against the image.\nPreserve the numbering style: digits, roman numerals, or letters.\nDo not infer or complete ambiguous digits."
         },
         {
             "type": "seal",
             "name": "Seal",
+            "group": "service",
             "enabled": false,
             "prompt": "Block type: seal or stamp text.\nOutput format after FIX: plain text.\n\nCheck words, numbers, punctuation, and reading order where readable.\nPreserve the original language and spelling.\nCorrect OCR errors, not the author's wording.\nUse REVIEW when the seal text is partially unreadable, cropped, or ambiguous."
         }

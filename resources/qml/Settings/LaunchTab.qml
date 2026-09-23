@@ -216,7 +216,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
-            color: Theme.textMuted
+            color: Theme.helpColor
             text: qsTr("llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings")
         }
     }

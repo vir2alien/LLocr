@@ -21,16 +21,25 @@ ApplicationWindow {
         border.width: 1
     }
 
-    header: ToolBar {
-        background: Rectangle {
-            color: Theme.surface
-            border.color: Theme.border
-            border.width: 1
+    header: Rectangle {
+        implicitHeight: headerRow.implicitHeight + 2 * 10
+        color: Theme.surface
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: Theme.divider
         }
+
         RowLayout {
+            id: headerRow
             anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
+            anchors.leftMargin: Theme.paddingWindow
+            anchors.rightMargin: Theme.paddingWindow
+            anchors.topMargin: 10
+            anchors.bottomMargin: 10
             spacing: Theme.spacingSmall
 
             LLOLabel {
@@ -56,16 +65,25 @@ ApplicationWindow {
         }
     }
 
-    footer: ToolBar {
-        background: Rectangle {
-            color: Theme.surface
-            border.color: Theme.border
-            border.width: 1
+    footer: Rectangle {
+        implicitHeight: footerRow.implicitHeight + 2 * Theme.spacingLarge
+        color: Theme.surface
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 1
+            color: Theme.divider
         }
+
         RowLayout {
+            id: footerRow
             anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
+            anchors.leftMargin: Theme.paddingWindow
+            anchors.rightMargin: Theme.paddingWindow
+            anchors.topMargin: Theme.spacingLarge
+            anchors.bottomMargin: Theme.spacingLarge
             spacing: Theme.spacingSmall
 
             LLOButton {

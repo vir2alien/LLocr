@@ -159,7 +159,7 @@ ScrollView {
         LLOLabel {
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
-            color: Theme.textMuted
+            color: Theme.helpColor
             text: qsTr("Managed mode uses this binary to run a local llama-server. "
                        + "Recognition in External mode is unaffected.")
         }

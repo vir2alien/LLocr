@@ -175,7 +175,7 @@ Item {
                         LLOLabel {
                             Layout.fillWidth: true
                             font.pointSize: Theme.captionSize
-                            color: Theme.textMuted
+                            color: Theme.helpColor
                             visible: !ModelInstaller.searchActive
                                      && ModelInstaller.searchCount === 0
                             text: qsTr("Results appear here. Models install into the managed "
@@ -208,7 +208,7 @@ Item {
                         LLOLabel {
                             Layout.fillWidth: true
                             font.pointSize: Theme.captionSize
-                            color: Theme.textMuted
+                            color: Theme.helpColor
                             text: qsTr("The local model is not managed: its license is your "
                                        + "responsibility, and it is not verified by the catalog.")
                         }

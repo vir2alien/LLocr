@@ -21,19 +21,29 @@ ApplicationWindow {
         border.width: 1
     }
 
-    footer: ToolBar {
-        background: Rectangle {
-            color: Theme.surface
-            border.color: Theme.border
-            border.width: 1
+    footer: Rectangle {
+        implicitHeight: footerRow.implicitHeight + 2 * Theme.spacingLarge
+        color: Theme.surface
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 1
+            color: Theme.divider
         }
+
         RowLayout {
+            id: footerRow
             anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
-            spacing: Theme.spacingSmall
+            anchors.leftMargin: Theme.paddingWindow
+            anchors.rightMargin: Theme.paddingWindow
+            anchors.topMargin: Theme.spacingLarge
+            anchors.bottomMargin: Theme.spacingLarge
+            spacing: Theme.spacing
 
             LLOButton {
+                subtle: true
                 text: qsTr("Restore defaults")
                 onClicked: {
                     Settings.language = "system"
@@ -47,6 +57,6 @@ ApplicationWindow {
 
     UITab {
         anchors.fill: parent
-        anchors.margins: 12
+        anchors.margins: Theme.paddingWindow
     }
 }

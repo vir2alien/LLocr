@@ -76,7 +76,7 @@ Item {
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
-                color: Theme.textMuted
+                color: Theme.helpColor
                 text: root.isVerifyModelRole
                       ? qsTr("These paths select the model for text verification. "
                              + "Activating a downloaded model fills them automatically.")
@@ -283,7 +283,7 @@ Item {
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
-                color: Theme.textMuted
+                color: Theme.helpColor
                 visible: !ModelInstaller.searchActive
                          && ModelInstaller.searchCount === 0
                 text: qsTr("Results appear here. Models install into the managed "

@@ -33,6 +33,9 @@ QtObject {
     readonly property color warningBg: dark ? "#3a2f12" : "#fdf3d7"
     readonly property color nothing: "#8a8a8a"
 
+    // --- Help text ---
+    readonly property color helpColor: textSecondary
+
     // --- Overlay (bounding boxes on the image preview) ---
     readonly property color overlayOuter: overlayTextOuter
     readonly property color overlayInner: overlayTextInner
@@ -46,6 +49,9 @@ QtObject {
     readonly property int spacingSmall: 4
     readonly property int spacing: 8
     readonly property int spacingLarge: 16
+    readonly property int spacingXLarge: 24
+    readonly property int paddingWindow: 24
+    readonly property int rowHeightLarge: 36
     readonly property int radius: 4
     readonly property int dialogRadius: 6
     readonly property int controlHeight: 28

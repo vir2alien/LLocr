@@ -132,7 +132,7 @@ Item {
                 LLOLabel {
                     Layout.fillWidth: true
                     font.pointSize: Theme.captionSize
-                    color: Theme.textMuted
+                    color: Theme.helpColor
                     text: qsTr("On Windows, a freshly downloaded binary can be flagged by "
                                + "SmartScreen or antivirus; if launch fails, pick the file "
                                + "manually below.")

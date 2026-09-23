@@ -42,6 +42,7 @@ QVariant VerificationBlocksModel::data(const QModelIndex &index, int role) const
     switch (role) {
     case TypeRole:    return block.type;
     case NameRole:    return block.name;
+    case GroupRole:   return block.group;
     case EnabledRole: return block.enabled;
     case PromptRole:  return block.prompt;
     default:          return QVariant();
@@ -53,6 +54,7 @@ QHash<int, QByteArray> VerificationBlocksModel::roleNames() const
     static const QHash<int, QByteArray> roles = {
         { TypeRole,    "type" },
         { NameRole,    "name" },
+        { GroupRole,   "group" },
         { EnabledRole, "enabled" },
         { PromptRole,  "prompt" },
     };
@@ -64,6 +66,8 @@ void VerificationBlocksModel::resetFrom(const QList<VerificationBlock> &blocks)
     beginResetModel();
     m_blocks = blocks;
     endResetModel();
+    ++m_revision;
+    emit countsChanged();
 }
 
 void VerificationBlocksModel::setEnabled(int row, bool on)
@@ -72,6 +76,34 @@ void VerificationBlocksModel::setEnabled(int row, bool on)
         return;
     m_blocks[row].enabled = on;
     emit dataChanged(index(row), index(row), {EnabledRole});
+    ++m_revision;
+    emit countsChanged();
+}
+
+void VerificationBlocksModel::setAllEnabled(bool on)
+{
+    bool changed = false;
+    for (int i = 0; i < m_blocks.size(); ++i) {
+        if (m_blocks[i].enabled == on)
+            continue;
+        m_blocks[i].enabled = on;
+        changed = true;
+    }
+    if (!changed || m_blocks.isEmpty())
+        return;
+    emit dataChanged(index(0), index(m_blocks.size() - 1), {EnabledRole});
+    ++m_revision;
+    emit countsChanged();
+}
+
+int VerificationBlocksModel::enabledCount() const
+{
+    int count = 0;
+    for (const VerificationBlock &block : m_blocks) {
+        if (block.enabled)
+            ++count;
+    }
+    return count;
 }
 
 void VerificationBlocksModel::setPrompt(int row, const QString &text)
@@ -80,6 +112,8 @@ void VerificationBlocksModel::setPrompt(int row, const QString &text)
         return;
     m_blocks[row].prompt = text;
     emit dataChanged(index(row), index(row), {PromptRole});
+    ++m_revision;
+    emit countsChanged();
 }
 
 QString VerificationBlocksModel::typeAt(int row) const
@@ -180,6 +214,8 @@ bool VerificationPromptStore::isTypeEnabled(const QString &type) const
 
 void VerificationPromptStore::loadBuiltIn()
 {
+    m_originalPrompts.clear();
+
     QFile builtIn(QString::fromUtf8(kBuiltInPath));
     if (!builtIn.open(QIODevice::ReadOnly)) {
         qWarning("VerificationPromptStore: cannot open built-in prompts %s: %s",
@@ -198,6 +234,7 @@ void VerificationPromptStore::loadBuiltIn()
 
     const QJsonObject root = doc.object();
     m_systemPrompt = root.value(QStringLiteral("systemPrompt")).toString();
+    m_originalSystemPrompt = m_systemPrompt;
 
     QList<VerificationBlock> blocks;
     const QJsonArray array = root.value(QStringLiteral("blocks")).toArray();
@@ -206,12 +243,23 @@ void VerificationPromptStore::loadBuiltIn()
         VerificationBlock block;
         block.type = obj.value(QStringLiteral("type")).toString();
         block.name = obj.value(QStringLiteral("name")).toString();
+        block.group = obj.value(QStringLiteral("group")).toString(
+            QStringLiteral("content"));
         block.enabled = obj.value(QStringLiteral("enabled")).toBool(true);
         block.prompt = obj.value(QStringLiteral("prompt")).toString();
-        if (!block.type.isEmpty())
+        if (!block.type.isEmpty()) {
+            m_originalPrompts.insert(block.type, block.prompt);
             blocks.append(block);
+        }
     }
     m_blocks = blocks;
+}
+
+QString VerificationPromptStore::originalPromptAt(int row) const
+{
+    if (row < 0 || row >= m_blocks.size())
+        return QString();
+    return m_originalPrompts.value(m_blocks.at(row).type);
 }
 
 void VerificationPromptStore::loadUser()
@@ -268,8 +316,6 @@ void VerificationPromptStore::loadValues()
 
 void VerificationPromptStore::save()
 {
-    // Compute the set of blocks that differ from the built-in defaults; keep
-    // the user file tiny and merge-friendly, exactly like the other stores.
     const QString builtInPath = QString::fromUtf8(kBuiltInPath);
     QList<VerificationBlock> builtIn;
     QString builtInSystem;

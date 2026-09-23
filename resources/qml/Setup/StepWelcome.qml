@@ -82,7 +82,7 @@ Item {
                     LLOLabel {
                         Layout.fillWidth: true
                         font.pointSize: Theme.captionSize
-                        color: Theme.textMuted
+                        color: Theme.helpColor
                         text: choiceCard.index === 0
                               ? qsTr("LLM OCR downloads and runs llama.cpp locally. "
                                      + "Everything stays on this machine.")

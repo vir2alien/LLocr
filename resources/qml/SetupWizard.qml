@@ -60,27 +60,51 @@ Dialog {
         StepDone { id: stepDone }
     }
 
-    footer: DialogButtonBox {
-        LLOButton {
-            text: qsTr("Skip")
-            visible: wizard.current === 0
-            onClicked: wizard.dismissWizard()
+    footer: Rectangle {
+        implicitHeight: footerRow.implicitHeight + 2 * Theme.spacingLarge
+        color: Theme.surface
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 1
+            color: Theme.divider
         }
-        LLOButton {
-            text: qsTr("Back")
-            visible: wizard.current > 0 && wizard.current < wizard.lastStep
-            onClicked: wizard.current = Math.max(0, wizard.current - 1)
-        }
-        LLOButton {
-            text: wizard.current === wizard.lastStep ? qsTr("Finish") : qsTr("Next")
-            enabled: wizard.canProceed
-            onClicked: {
-                if (wizard.current === wizard.lastStep) {
-                    wizard.completed = true
-                    stepDone.markDone()
-                    wizard.accept()
-                } else {
-                    wizard.current += 1
+
+        RowLayout {
+            id: footerRow
+            anchors.fill: parent
+            anchors.leftMargin: Theme.paddingWindow
+            anchors.rightMargin: Theme.paddingWindow
+            anchors.topMargin: Theme.spacingLarge
+            anchors.bottomMargin: Theme.spacingLarge
+            spacing: Theme.spacing
+
+            LLOButton {
+                text: qsTr("Skip")
+                subtle: true
+                visible: wizard.current === 0
+                onClicked: wizard.dismissWizard()
+            }
+            Item { Layout.fillWidth: true }
+            LLOButton {
+                text: qsTr("Back")
+                visible: wizard.current > 0 && wizard.current < wizard.lastStep
+                onClicked: wizard.current = Math.max(0, wizard.current - 1)
+            }
+            LLOButton {
+                text: wizard.current === wizard.lastStep ? qsTr("Finish") : qsTr("Next")
+                emphasis: true
+                enabled: wizard.canProceed
+                onClicked: {
+                    if (wizard.current === wizard.lastStep) {
+                        wizard.completed = true
+                        stepDone.markDone()
+                        wizard.accept()
+                    } else {
+                        wizard.current += 1
+                    }
                 }
             }
         }

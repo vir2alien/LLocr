@@ -14,20 +14,23 @@ class SettingsStore;
 struct VerificationBlock {
     QString type;        ///< Canonical block label (text, title, table, ...).
     QString name;        ///< Human-readable name for the UI.
+    QString group;       ///< UI grouping: content / captions / service.
     bool enabled = true; ///< Whether this block type is auto-verified.
     QString prompt;      ///< Type-specific instruction used by the verifier.
 };
 
-// Rolling list model for the blocks tab: one row per block type, roles expose
-// the type name, its display name, the enabled checkbox and the prompt.
 class VerificationBlocksModel : public QAbstractListModel
 {
     Q_OBJECT
+    Q_PROPERTY(int enabledCount READ enabledCount NOTIFY countsChanged)
+    Q_PROPERTY(int totalCount READ totalCount NOTIFY countsChanged)
+    Q_PROPERTY(int revision READ revision NOTIFY countsChanged)
 
 public:
     enum Roles {
         TypeRole = Qt::UserRole + 1,
         NameRole,
+        GroupRole,
         EnabledRole,
         PromptRole,
     };
@@ -40,23 +43,27 @@ public:
 
     void resetFrom(const QList<VerificationBlock> &blocks);
     Q_INVOKABLE void setEnabled(int row, bool on);
+    Q_INVOKABLE void setAllEnabled(bool on);
     Q_INVOKABLE void setPrompt(int row, const QString &text);
     const QList<VerificationBlock> &blocks() const { return m_blocks; }
+
+    int enabledCount() const;
+    int totalCount() const { return m_blocks.size(); }
+    int revision() const { return m_revision; }
 
     Q_INVOKABLE QString typeAt(int row) const;
     Q_INVOKABLE QString nameAt(int row) const;
     Q_INVOKABLE bool enabledAt(int row) const;
     Q_INVOKABLE QString promptAt(int row) const;
 
+signals:
+    void countsChanged();
+
 private:
     QList<VerificationBlock> m_blocks;
+    int m_revision = 0;
 };
 
-// Holds the verification prompts: a built-in default set shipped as a resource
-// (:/profiles/verifyPrompts.json) plus an optional user override stored in the
-// profiles directory (verifyPrompts.json). The user file only contains the
-// entries that differ from the built-in defaults, mirroring the request/launch
-// profile stores. Exposed to QML as the "Verification" singleton.
 class VerificationPromptStore : public QObject
 {
     Q_OBJECT
@@ -71,7 +78,6 @@ public:
 
     QAbstractListModel *blockModel() const { return m_model; }
 
-    // Effective (merged) config:
     QStringList blockTypes() const;
     QString promptForType(const QString &type) const;
     bool isTypeEnabled(const QString &type) const;
@@ -79,6 +85,8 @@ public:
     Q_INVOKABLE void loadValues();      // re-read built-in + user file (discard edits)
     Q_INVOKABLE void save();            // persist user overrides
     Q_INVOKABLE void resetToDefaults(); // drop user file, re-read built-in
+    Q_INVOKABLE QString originalPromptAt(int row) const;
+    Q_INVOKABLE QString originalSystemPrompt() const { return m_originalSystemPrompt; }
 
 signals:
     void systemPromptChanged();
@@ -95,7 +103,9 @@ private:
 
     SettingsStore &m_settings;
     QString m_systemPrompt;
+    QString m_originalSystemPrompt;
     QList<VerificationBlock> m_blocks;
+    QHash<QString, QString> m_originalPrompts;
     VerificationBlocksModel *m_model;
 };
 

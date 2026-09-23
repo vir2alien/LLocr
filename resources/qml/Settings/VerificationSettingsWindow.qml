@@ -10,9 +10,12 @@ import "../Common"
 ApplicationWindow {
     id: window
     title: qsTr("Verification settings")
-    width: 680
-    height: 560
+    width: 720
+    height: 620
     modality: Qt.NonModal
+
+    property bool unsavedChanges: false
+    property bool forceClose: false
 
     background: Rectangle {
         color: Theme.surface
@@ -21,43 +24,57 @@ ApplicationWindow {
         border.width: 1
     }
 
-    footer: ToolBar {
-        background: Rectangle {
-            color: Theme.surface
-            border.color: Theme.border
-            border.width: 1
+    footer: Rectangle {
+        implicitHeight: footerRow.implicitHeight + 2 * Theme.spacingLarge
+        color: Theme.surface
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 1
+            color: Theme.divider
         }
+
         RowLayout {
+            id: footerRow
             anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
-            spacing: Theme.spacingSmall
+            anchors.leftMargin: Theme.paddingWindow
+            anchors.rightMargin: Theme.paddingWindow
+            anchors.topMargin: Theme.spacingLarge
+            anchors.bottomMargin: Theme.spacingLarge
+            spacing: Theme.spacing
 
             LLOButton {
-                text: qsTr("Restore defaults")
+                subtle: true
+                text: qsTr("Reset all settings")
                 onClicked: {
                     Verification.resetToDefaults()
                     loadAll()
+                    window.unsavedChanges = false
                 }
             }
             Item { Layout.fillWidth: true }
             LLOButton {
-                text: qsTr("Save")
+                text: qsTr("Cancel")
                 onClicked: {
-                    saveAll()
-                    Verification.save()
+                    Verification.loadValues()
+                    window.unsavedChanges = false
                     window.close()
                 }
             }
             LLOButton {
-                text: qsTr("Cancel")
+                emphasis: true
+                text: qsTr("Save")
                 onClicked: {
-                    Verification.loadValues()
+                    saveAll()
+                    Verification.save()
+                    window.unsavedChanges = false
                     window.close()
                 }
             }
-        }
-    }
+        }//RowLayout
+    }//footer
 
     function loadAll() {
         // Reload the draft from the store (built-in + user overrides).
@@ -76,15 +93,50 @@ ApplicationWindow {
             window.loadAll()
     }
 
+    onClosing: (close) => {
+        if (window.unsavedChanges && !window.forceClose) {
+            close.accepted = false
+            closeConfirmDialog.open()
+        }
+    }
+
+    Connections {
+        target: Verification.blockModel
+        function onDataChanged() { window.unsavedChanges = true }
+    }
+
+    Dialog {
+        id: closeConfirmDialog
+        parent: Overlay.overlay
+        modal: true
+        anchors.centerIn: parent
+        width: 420
+        title: qsTr("Discard changes?")
+        standardButtons: Dialog.Yes | Dialog.No
+
+        LLOLabel {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            color: Theme.textPrimary
+            text: qsTr("There are unsaved changes. Close without saving?")
+        }
+
+        onAccepted: {
+            window.unsavedChanges = false
+            window.forceClose = true
+            window.close()
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 8
+        anchors.margins: Theme.paddingWindow
+        spacing: Theme.spacing
 
         TabBar {
             id: tabBar
             Layout.fillWidth: true
-            implicitHeight: 28
+            implicitHeight: 32
 
             background: Rectangle {
                 color: "transparent"
@@ -99,32 +151,33 @@ ApplicationWindow {
 
             component CustomTabButton: TabButton {
                 id: tabBtn
-                implicitHeight: 28
-                padding: 4
+                implicitHeight: 32
+                padding: 12
+
+                background: Rectangle { color: "transparent" }
+
                 contentItem: Text {
                     text: tabBtn.text
-                    font.pointSize: Theme.captionSize
+                    font.pointSize: Theme.bodySmallSize
+                    font.bold: tabBtn.checked
                     color: tabBtn.checked ? Theme.textPrimary : Theme.textSecondary
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideNone
                 }
-                background: Rectangle {
-                    color: tabBtn.checked ? Theme.surface : Theme.surfaceSunken
-                    border.color: Theme.divider
-                    border.width: 1
-                    Rectangle {
-                        visible: tabBtn.checked
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        height: 1
-                        color: Theme.surface
-                    }
+
+                indicator: Rectangle {
+                    visible: tabBtn.checked
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 2
+                    radius: 1
+                    color: Theme.accent
                 }
             }
 
-            CustomTabButton { text: qsTr("Blocks") }
+            CustomTabButton { text: qsTr("Block checking") }
             CustomTabButton { text: qsTr("System prompt") }
             CustomTabButton { text: qsTr("Block prompts") }
         }//TabBar
@@ -136,14 +189,17 @@ ApplicationWindow {
 
             VerificationBlocksTab {
                 id: blocksTab
+                onEdited: window.unsavedChanges = true
             }
 
             VerificationSystemTab {
                 id: systemTab
+                onEdited: window.unsavedChanges = true
             }
 
             VerificationPromptsTab {
                 id: promptsTab
+                onEdited: window.unsavedChanges = true
             }
         }
     }//ColumnLayout

@@ -45,7 +45,7 @@ ColumnLayout {
         LLOLabel {
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
-            color: Theme.textMuted
+            color: Theme.helpColor
             text: qsTr("Walks you through installing a runtime and a "
                        + "model, then configures the launch.")
         }

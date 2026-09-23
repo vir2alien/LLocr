@@ -30,6 +30,124 @@
     </message>
 </context>
 <context>
+    <name>BlockNames</name>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="9"/>
+        <source>Text</source>
+        <translation>Текст</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="10"/>
+        <source>Headings</source>
+        <translation>Заголовки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="11"/>
+        <source>Tables</source>
+        <translation>Таблицы</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="12"/>
+        <source>Equations</source>
+        <translation>Уравнения</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="13"/>
+        <source>Formulas</source>
+        <translation>Формулы</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="14"/>
+        <source>Lists</source>
+        <translation>Списки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="15"/>
+        <source>Code</source>
+        <translation>Код</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="16"/>
+        <source>Abstracts</source>
+        <translation>Аннотации</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="17"/>
+        <source>Image captions</source>
+        <translation>Подписи к изображениям</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="18"/>
+        <source>Table captions</source>
+        <translation>Подписи к таблицам</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="19"/>
+        <source>Figure footnotes</source>
+        <translation>Сноски к изображениям</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="20"/>
+        <source>Table footnotes</source>
+        <translation>Сноски к таблицам</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="21"/>
+        <source>Reference texts</source>
+        <translation>Текст ссылок</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="22"/>
+        <source>References</source>
+        <translation>Ссылки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="23"/>
+        <source>Running headers</source>
+        <translation>Верхние колонтитулы</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="24"/>
+        <source>Running footers</source>
+        <translation>Нижние колонтитулы</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="25"/>
+        <source>Page numbers</source>
+        <translation>Номера страниц</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="26"/>
+        <source>Seals and stamps</source>
+        <translation>Печати и штампы</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="31"/>
+        <source>numbered display equations</source>
+        <translation>выключные уравнения с номером</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="32"/>
+        <source>isolated formulas (LaTeX)</source>
+        <translation>изолированные формулы (LaTeX)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="45"/>
+        <source>Main content</source>
+        <translation>Основное содержимое</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="47"/>
+        <source>Captions, footnotes and references</source>
+        <translation>Подписи, сноски и ссылки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Common/BlockNames.qml" line="49"/>
+        <source>Service</source>
+        <translation>Служебные</translation>
+    </message>
+</context>
+<context>
     <name>DjVuDocument</name>
     <message>
         <location filename="../../src/app/DjVuDocument.cpp" line="58"/>
@@ -116,32 +234,42 @@
         <translation>Экспорт — страницы</translation>
     </message>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="135"/>
+        <location filename="../qml/ExportDialog.qml" line="63"/>
+        <source>Cancel</source>
+        <translation type="unfinished">Отмена</translation>
+    </message>
+    <message>
+        <location filename="../qml/ExportDialog.qml" line="68"/>
+        <source>Export</source>
+        <translation>Экспортировать</translation>
+    </message>
+    <message>
+        <location filename="../qml/ExportDialog.qml" line="159"/>
         <source>All recognized pages</source>
         <translation>Все распознанные страницы</translation>
     </message>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="142"/>
+        <location filename="../qml/ExportDialog.qml" line="166"/>
         <source>Current page (%1)</source>
         <translation>Текущая страница (%1)</translation>
     </message>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="148"/>
+        <location filename="../qml/ExportDialog.qml" line="172"/>
         <source>Page range</source>
         <translation>Диапазон страниц</translation>
     </message>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="160"/>
+        <location filename="../qml/ExportDialog.qml" line="184"/>
         <source>from</source>
         <translation>от</translation>
     </message>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="169"/>
+        <location filename="../qml/ExportDialog.qml" line="193"/>
         <source>to</source>
         <translation>до</translation>
     </message>
     <message>
-        <location filename="../qml/ExportDialog.qml" line="185"/>
+        <location filename="../qml/ExportDialog.qml" line="209"/>
         <source>Only recognized pages inside the selection are exported.</source>
         <translation>Экспортируются только распознанные страницы в выбранном диапазоне.</translation>
     </message>
@@ -856,32 +984,32 @@
         <translation>Настройки модели проверки</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="152"/>
+        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="164"/>
         <source>Location</source>
         <translation>Расположение</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="153"/>
+        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="165"/>
         <source>Launch</source>
         <translation>Запуск</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="154"/>
+        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="166"/>
         <source>Request</source>
         <translation>Запрос</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="42"/>
+        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="52"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="51"/>
+        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="70"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="69"/>
+        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="61"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -912,17 +1040,17 @@
         <translation>Настройки вывода</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/OutputSettingsWindow.qml" line="37"/>
+        <location filename="../qml/Settings/OutputSettingsWindow.qml" line="47"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/OutputSettingsWindow.qml" line="46"/>
+        <location filename="../qml/Settings/OutputSettingsWindow.qml" line="65"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/OutputSettingsWindow.qml" line="54"/>
+        <location filename="../qml/Settings/OutputSettingsWindow.qml" line="57"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -1726,17 +1854,17 @@
         <translation>Настройки рантайма</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/RuntimeSettingsWindow.qml" line="43"/>
+        <location filename="../qml/Settings/RuntimeSettingsWindow.qml" line="53"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/RuntimeSettingsWindow.qml" line="50"/>
+        <location filename="../qml/Settings/RuntimeSettingsWindow.qml" line="69"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/RuntimeSettingsWindow.qml" line="58"/>
+        <location filename="../qml/Settings/RuntimeSettingsWindow.qml" line="61"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -2047,37 +2175,37 @@
     <name>ServerLogWindow</name>
     <message>
         <location filename="../qml/ServerLogWindow.qml" line="12"/>
-        <location filename="../qml/ServerLogWindow.qml" line="37"/>
+        <location filename="../qml/ServerLogWindow.qml" line="46"/>
         <source>llama-server log</source>
         <translation>Журнал llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="117"/>
+        <location filename="../qml/ServerLogWindow.qml" line="135"/>
         <source>No log output yet.</source>
         <translation>Вывода журнала пока нет.</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="72"/>
+        <location filename="../qml/ServerLogWindow.qml" line="90"/>
         <source>Copy log</source>
         <translation>Скопировать журнал</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="76"/>
+        <location filename="../qml/ServerLogWindow.qml" line="94"/>
         <source>Open directory</source>
         <translation>Открыть папку</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="80"/>
+        <location filename="../qml/ServerLogWindow.qml" line="98"/>
         <source>Clear view</source>
         <translation>Очистить вид</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="85"/>
+        <location filename="../qml/ServerLogWindow.qml" line="103"/>
         <source>%1 line(s)</source>
         <translation>%1 строка(и)</translation>
     </message>
     <message>
-        <location filename="../qml/ServerLogWindow.qml" line="53"/>
+        <location filename="../qml/ServerLogWindow.qml" line="62"/>
         <source>live</source>
         <translation>вживую</translation>
     </message>
@@ -2113,22 +2241,22 @@
         <translation>Настройка</translation>
     </message>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="65"/>
+        <location filename="../qml/SetupWizard.qml" line="85"/>
         <source>Skip</source>
         <translation>Пропустить</translation>
     </message>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="70"/>
+        <location filename="../qml/SetupWizard.qml" line="92"/>
         <source>Back</source>
         <translation>Назад</translation>
     </message>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="75"/>
+        <location filename="../qml/SetupWizard.qml" line="97"/>
         <source>Finish</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="75"/>
+        <location filename="../qml/SetupWizard.qml" line="97"/>
         <source>Next</source>
         <translation>Далее</translation>
     </message>
@@ -2649,7 +2777,7 @@
         <translation>Настройки интерфейса</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/UiSettingsWindow.qml" line="37"/>
+        <location filename="../qml/Settings/UiSettingsWindow.qml" line="47"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
@@ -2657,24 +2785,160 @@
 <context>
     <name>VerificationBlocksTab</name>
     <message>
-        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="29"/>
         <source>Check automatically</source>
-        <translation>Проверять автоматически</translation>
+        <translation type="vanished">Проверять автоматически</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="36"/>
         <source>When on, verification starts automatically as soon as recognition finishes. The managed runtime switches its loaded model from OCR to the check model; an external runtime just starts checking. Already checked blocks are skipped — only newly recognized blocks are verified.</source>
-        <translation>Когда включено, проверка запускается автоматически сразу после завершения распознавания. Управляемый рантайм сам переключает загруженную модель с OCR на модель проверки; при внешнем рантайме проверка просто стартует. Уже проверенные блоки пропускаются — проверяются только вновь распознанные.</translation>
+        <translation type="vanished">Когда включено, проверка запускается автоматически сразу после завершения распознавания. Управляемый рантайм сам переключает загруженную модель с OCR на модель проверки; при внешнем рантайме проверка просто стартует. Уже проверенные блоки пропускаются — проверяются только вновь распознанные.</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="48"/>
         <source>Blocks whose type is checked below are verified automatically when verification runs. Unchecked types are skipped.</source>
-        <translation>Блоки, тип которых отмечен ниже, проверяются автоматически при запуске проверки. Неотмеченные типы пропускаются.</translation>
+        <translation type="vanished">Блоки, тип которых отмечен ниже, проверяются автоматически при запуске проверки. Неотмеченные типы пропускаются.</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="112"/>
         <source>Blocks without OCR text (image, chart) are always skipped.</source>
-        <translation>Блоки без OCR-текста (изображение, диаграмма) всегда пропускаются.</translation>
+        <translation type="vanished">Блоки без OCR-текста (изображение, диаграмма) всегда пропускаются.</translation>
+    </message>
+    <message>
+        <source>Text</source>
+        <translation type="vanished">Текст</translation>
+    </message>
+    <message>
+        <source>Headings</source>
+        <translation type="vanished">Заголовки</translation>
+    </message>
+    <message>
+        <source>Tables</source>
+        <translation type="vanished">Таблицы</translation>
+    </message>
+    <message>
+        <source>Equations</source>
+        <translation type="vanished">Уравнения</translation>
+    </message>
+    <message>
+        <source>Formulas</source>
+        <translation type="vanished">Формулы</translation>
+    </message>
+    <message>
+        <source>Lists</source>
+        <translation type="vanished">Списки</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation type="vanished">Код</translation>
+    </message>
+    <message>
+        <source>Abstracts</source>
+        <translation type="vanished">Аннотации</translation>
+    </message>
+    <message>
+        <source>Image captions</source>
+        <translation type="vanished">Подписи к изображениям</translation>
+    </message>
+    <message>
+        <source>Table captions</source>
+        <translation type="vanished">Подписи к таблицам</translation>
+    </message>
+    <message>
+        <source>Figure footnotes</source>
+        <translation type="vanished">Сноски к изображениям</translation>
+    </message>
+    <message>
+        <source>Table footnotes</source>
+        <translation type="vanished">Сноски к таблицам</translation>
+    </message>
+    <message>
+        <source>Reference texts</source>
+        <translation type="vanished">Текст ссылок</translation>
+    </message>
+    <message>
+        <source>References</source>
+        <translation type="vanished">Ссылки</translation>
+    </message>
+    <message>
+        <source>Running headers</source>
+        <translation type="vanished">Верхние колонтитулы</translation>
+    </message>
+    <message>
+        <source>Running footers</source>
+        <translation type="vanished">Нижние колонтитулы</translation>
+    </message>
+    <message>
+        <source>Page numbers</source>
+        <translation type="vanished">Номера страниц</translation>
+    </message>
+    <message>
+        <source>Seals and stamps</source>
+        <translation type="vanished">Печати и штампы</translation>
+    </message>
+    <message>
+        <source>numbered display equations</source>
+        <translation type="vanished">выключные уравнения с номером</translation>
+    </message>
+    <message>
+        <source>isolated formulas (LaTeX)</source>
+        <translation type="vanished">изолированные формулы (LaTeX)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="108"/>
+        <source>Automatic checking</source>
+        <translation>Автоматическая проверка</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="118"/>
+        <source>Runs after recognition. Already checked blocks are skipped.</source>
+        <translation>Запускается после распознавания. Уже проверенные блоки пропускаются.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="134"/>
+        <source>How checking works</source>
+        <translation>Как работает проверка</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="146"/>
+        <source>When on, verification starts automatically as soon as recognition finishes. The managed runtime switches its loaded model from OCR to the check model; an external runtime just starts checking.</source>
+        <translation>Когда включено, проверка запускается автоматически сразу после распознавания. Управляемый рантайм переключает загруженную модель с OCR на модель проверки; внешний рантайм просто начинает проверку.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="159"/>
+        <source>Block types to check</source>
+        <translation>Типы блоков для проверки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="167"/>
+        <source>Selected %1 of %2</source>
+        <translation>Выбрано %1 из %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="176"/>
+        <source>Select all</source>
+        <translation>Выбрать все</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="193"/>
+        <source>Deselect all</source>
+        <translation>Снять выбор</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="230"/>
+        <source>Main content</source>
+        <translation>Основное содержимое</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="255"/>
+        <source>Captions, footnotes and references</source>
+        <translation>Подписи, сноски и ссылки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="280"/>
+        <source>Service</source>
+        <translation>Служебные</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="302"/>
+        <source>Blocks without OCR text are not checked.</source>
+        <translation>Блоки без OCR-текста не проверяются.</translation>
     </message>
 </context>
 <context>
@@ -2735,22 +2999,80 @@
 <context>
     <name>VerificationPromptsTab</name>
     <message>
-        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="104"/>
         <source>Prompt for “%1” blocks</source>
-        <translation>Промпт для блоков «%1»</translation>
+        <translation type="vanished">Промпт для блоков «%1»</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="109"/>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="189"/>
+        <source>Prompt differs from the built-in one</source>
+        <translation>Промпт отличается от исходного</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="208"/>
         <source>Select a block type</source>
         <translation>Выберите тип блока</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="121"/>
-        <source>Ask the verifier to check this kind of block against the image and answer with OK, FIX followed by the corrected block, or REVIEW.</source>
-        <translation>Попросите верификатор проверить блок этого типа по изображению и ответить OK, FIX с исправленным блоком или REVIEW.</translation>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="224"/>
+        <source>Unsaved changes</source>
+        <translation>Есть несохранённые изменения</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="135"/>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="225"/>
+        <source>Customized</source>
+        <translation>Пользовательский</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="225"/>
+        <source>Original</source>
+        <translation>Исходный</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="238"/>
+        <source>Selected for checking</source>
+        <translation>Выбран для проверки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="239"/>
+        <source>Not selected for checking</source>
+        <translation>Не выбран для проверки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="277"/>
+        <source>Answer format: OK / FIX / REVIEW</source>
+        <translation>Формат ответа: OK / FIX / REVIEW</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="288"/>
+        <source>OK — the block matches the image. FIX — the block was corrected: on the next line output the complete corrected block, it replaces the original. REVIEW — the block is unreadable, cropped or ambiguous.</source>
+        <translation>OK — блок соответствует изображению. FIX — блок был исправлен: на следующей строке выведите полностью исправленный блок, он заменяет исходный. REVIEW — блок нечитаем, обрезан или неоднозначен.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="301"/>
+        <source>Prompt</source>
+        <translation>Промпт</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="308"/>
+        <source>Restore original prompt</source>
+        <translation>Восстановить исходный промпт</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="354"/>
+        <source>Restore original prompt?</source>
+        <translation>Восстановить исходный промпт?</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="360"/>
+        <source>The customized prompt for this block type will be replaced by the built-in one. The change is applied to the window draft and is stored only after Save.</source>
+        <translation>Пользовательский промпт для этого типа блока будет заменён встроенным. Изменение попадёт в черновик окна и сохранится только после «Сохранить».</translation>
+    </message>
+    <message>
+        <source>Ask the verifier to check this kind of block against the image and answer with OK, FIX followed by the corrected block, or REVIEW.</source>
+        <translation type="vanished">Попросите верификатор проверить блок этого типа по изображению и ответить OK, FIX с исправленным блоком или REVIEW.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationPromptsTab.qml" line="337"/>
         <source>Prompt for the selected block type</source>
         <translation>Промпт для выбранного типа блока</translation>
     </message>
@@ -2763,32 +3085,50 @@
         <translation>Настройки проверки</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="127"/>
         <source>Blocks</source>
-        <translation>Блоки</translation>
+        <translation type="vanished">Блоки</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="128"/>
+        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="50"/>
+        <source>Reset all settings</source>
+        <translation>Сбросить все настройки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="114"/>
+        <source>Discard changes?</source>
+        <translation>Закрыть без сохранения?</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="121"/>
+        <source>There are unsaved changes. Close without saving?</source>
+        <translation>Есть несохранённые изменения. Закрыть без сохранения?</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="180"/>
+        <source>Block checking</source>
+        <translation>Проверка блоков</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="181"/>
         <source>System prompt</source>
         <translation>Системный промпт</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="129"/>
+        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="182"/>
         <source>Block prompts</source>
         <translation>Промпты блоков</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="37"/>
         <source>Restore defaults</source>
-        <translation>Вернуть настройки по умолчанию</translation>
+        <translation type="vanished">Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="45"/>
+        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="68"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="53"/>
+        <location filename="../qml/Settings/VerificationSettingsWindow.qml" line="59"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -2796,14 +3136,39 @@
 <context>
     <name>VerificationSystemTab</name>
     <message>
-        <location filename="../qml/Settings/VerificationSystemTab.qml" line="30"/>
+        <location filename="../qml/Settings/VerificationSystemTab.qml" line="44"/>
         <source>The system prompt sets the verification protocol. The verifier model answers with one of: OK — the block is correct; FIX followed by a newline and the complete corrected block; or REVIEW — the block is unreadable.</source>
         <translation>Системный промпт задаёт протокол проверки. Модель-верификатор отвечает одним из: OK — блок верен; FIX, за которым на новой строке полный исправленный блок; или REVIEW — блок нечитаем.</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/VerificationSystemTab.qml" line="44"/>
+        <location filename="../qml/Settings/VerificationSystemTab.qml" line="50"/>
+        <source>Customized</source>
+        <translation type="unfinished">Пользовательский</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSystemTab.qml" line="50"/>
+        <source>Original</source>
+        <translation type="unfinished">Исходный</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSystemTab.qml" line="56"/>
+        <source>Restore original prompt</source>
+        <translation>Восстановить исходный промпт</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSystemTab.qml" line="83"/>
         <source>System prompt for the verification model</source>
         <translation>Системный промпт для модели проверки</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSystemTab.qml" line="97"/>
+        <source>Restore original system prompt?</source>
+        <translation>Восстановить исходный системный промпт?</translation>
+    </message>
+    <message>
+        <location filename="../qml/Settings/VerificationSystemTab.qml" line="103"/>
+        <source>The customized system prompt will be replaced by the built-in one. The change is applied to the window draft and is stored only after Save.</source>
+        <translation>Пользовательский системный промпт будет заменён встроенным. Изменение попадёт в черновик окна и сохранится только после «Сохранить».</translation>
     </message>
 </context>
 <context>
