@@ -4,9 +4,6 @@
 #include <QFileInfo>
 #include <QCryptographicHash>
 #include <QDesktopServices>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonParseError>
 #include <QNetworkAccessManager>
 #include <QRegularExpression>
 
@@ -217,21 +214,9 @@ void ModelInstaller::retranslate()
     case State::ReadyToDownload:
         setStatusMessage(tr("Ready: %1 (%2)").arg(m_pending.title, m_pending.repo));
         break;
-    case State::Fetching:
-        if (m_searchActive)
-            setStatusMessage(tr("Searching Hugging Face …"));
-        break;
     default:
         break;
     }
-}
-
-void ModelInstaller::setSearchQuery(const QString &q)
-{
-    if (m_searchQuery == q)
-        return;
-    m_searchQuery = q;
-    emit searchChanged();
 }
 
 QString ModelInstaller::activeTitle() const
@@ -906,87 +891,6 @@ void ModelInstaller::completeInstall()
     setState(State::Idle);
 }
 
-void ModelInstaller::startSearch()
-{
-    if (m_busy)
-        return;
-    if (m_searchQuery.trimmed().isEmpty()) {
-        setStatusMessage(tr("Enter a search query"));
-        setState(State::Error);
-        return;
-    }
-    const QString q = m_searchQuery.trimmed();
-    const QString token = m_settings.hfToken();
-    m_searchActive = true;
-    m_searchResults.clear();
-    setBusy(true);
-    setState(State::Fetching);
-    setStatusMessage(tr("Searching Hugging Face …"));
-    emit searchChanged();
-
-    QFuture<QPair<QList<HfModelSummary>, QString>> future =
-        QtConcurrent::run([q, token]() -> QPair<QList<HfModelSummary>, QString> {
-            QNetworkAccessManager nam;
-            QString error;
-            QByteArray auth;
-            if (!token.isEmpty())
-                auth = QStringLiteral("Bearer %1").arg(token).toUtf8();
-            const QList<HfModelSummary> res = ModelCatalog::search(&nam, q, error,
-                                                                   30, auth);
-            return {res, error};
-        });
-
-    future.then(this, [this](const QPair<QList<HfModelSummary>, QString> &res) {
-        m_searchActive = false;
-        setBusy(false);
-        if (res.first.isEmpty() && !res.second.isEmpty()) {
-            setStatusMessage(res.second);
-            setState(State::Error);
-            emit searchChanged();
-            return;
-        }
-        m_searchResults = res.first;
-        setStatusMessage(res.first.isEmpty()
-                             ? tr("No models found")
-                             : tr("%1 model(s) found").arg(res.first.size()));
-        setState(State::Idle);
-        emit searchChanged();
-    });
-}
-
-QVariantMap ModelInstaller::searchResult(int index) const
-{
-    QVariantMap out;
-    if (index < 0 || index >= m_searchResults.size())
-        return out;
-    const HfModelSummary &s = m_searchResults.at(index);
-    out.insert(QStringLiteral("id"), s.id);
-    out.insert(QStringLiteral("title"), s.title.isEmpty() ? s.id : s.title);
-    out.insert(QStringLiteral("license"), s.license);
-    out.insert(QStringLiteral("downloads"), QVariant::fromValue(s.downloads));
-    out.insert(QStringLiteral("gated"), s.gated);
-    return out;
-}
-
-void ModelInstaller::installRemote(int index, bool forCheck)
-{
-    if (m_busy)
-        return;
-    if (index < 0 || index >= m_searchResults.size()) {
-        setStatusMessage(tr("Invalid search selection"));
-        setState(State::Error);
-        return;
-    }
-    const HfModelSummary &s = m_searchResults.at(index);
-    ModelPreset p;
-    p.id = QStringLiteral("search-%1").arg(s.id);
-    p.title = s.title.isEmpty() ? s.id : s.title;
-    p.repo = s.id;
-    p.license = s.license;
-    m_pendingForCheck = forCheck;
-    beginPrepare(p);
-}
-
 void ModelInstaller::cancelInstall()
 {
     ++m_prepareGeneration;
@@ -994,92 +898,6 @@ void ModelInstaller::cancelInstall()
     setBusy(false);
     setStatusMessage(tr("Download canceled"));
     setState(State::Idle);
-}
-
-QString ModelInstaller::importCatalog(const QString &path, bool forCheck)
-{
-    QFile f(path);
-    if (!f.open(QIODevice::ReadOnly))
-        return tr("Unable to open catalog: %1").arg(f.errorString());
-    QJsonParseError perr;
-    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
-    if (perr.error != QJsonParseError::NoError)
-        return tr("Catalog is not valid JSON: %1").arg(perr.errorString());
-
-    QJsonArray arr;
-    if (doc.isArray())
-        arr = doc.array();
-    else if (doc.isObject())
-        arr = doc.object().value(QStringLiteral("models")).toArray();
-    else
-        return tr("Unexpected catalog shape");
-
-    QString err;
-    const QList<ModelPreset> incoming = ModelPresetCatalog::parse(arr, err);
-    if (incoming.isEmpty())
-        return err.isEmpty() ? tr("No valid presets in file") : err;
-
-    QString loadErr;
-    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
-                                    m_settings.runtimeModelsDir());
-    const QString userPath = QDir(currentPaths.modelsDir())
-                                 .filePath(forCheck ? QStringLiteral("catalogValidate.json")
-                                                    : QStringLiteral("catalog.json"));
-    QList<ModelPreset> userCatalog = ModelPresetCatalog::load(
-        QLatin1String(forCheck ? ModelPresetCatalog::kBuiltInValidatePath
-                               : ModelPresetCatalog::kBuiltInOcrPath),
-        userPath, loadErr);
-    for (const ModelPreset &p : incoming) {
-        userCatalog.removeIf([&](const ModelPreset &x) { return x.id == p.id; });
-        userCatalog.append(p);
-    }
-    // Drop entries that merely restate a built-in preset (same id and content).
-    const QList<ModelPreset> builtIn = ModelPresetCatalog::load(
-        QLatin1String(forCheck ? ModelPresetCatalog::kBuiltInValidatePath
-                               : ModelPresetCatalog::kBuiltInOcrPath),
-        QString(), loadErr);
-    userCatalog.removeIf([&](const ModelPreset &u) {
-        return std::any_of(builtIn.cbegin(), builtIn.cend(),
-                           [&](const ModelPreset &b) {
-                               return b.id == u.id && b.toJson() == u.toJson();
-                           });
-    });
-    if (!ModelPresetCatalog::save(userPath, userCatalog, err))
-        return err;
-    reloadPresetsInternal();
-    return QString();
-}
-
-QString ModelInstaller::exportCatalog(const QString &path, bool forCheck)
-{
-    QString err;
-    if (!ModelPresetCatalog::save(path, forCheck ? m_presetsValidate : m_presets, err))
-        return err;
-    return QString();
-}
-
-QString ModelInstaller::resetUserCatalog(bool forCheck)
-{
-    QString err;
-    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
-                                    m_settings.runtimeModelsDir());
-    const QString userPath = QDir(currentPaths.modelsDir())
-                                 .filePath(forCheck ? QStringLiteral("catalogValidate.json")
-                                                    : QStringLiteral("catalog.json"));
-    if (!ModelPresetCatalog::resetUserCatalog(userPath, err))
-        return err;
-    reloadPresetsInternal();
-    return QString();
-}
-
-QString ModelInstaller::hfToken() const
-{
-    return m_settings.hfToken();
-}
-
-void ModelInstaller::setHfToken(const QString &token)
-{
-    m_settings.setHfToken(token);
 }
 
 }  // namespace llocr

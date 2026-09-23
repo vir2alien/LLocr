@@ -20,16 +20,6 @@ struct HfFile {
     QString type;       // "file" | "directory" | "lfs" | ...
 };
 
-struct HfModelSummary {
-    QString id;         // "org/repo"
-    QString title;      // human title ("repoName")
-    qint64 downloads = 0;
-    qint64 likes = 0;
-    QString license;    // SPDX id when present, else a URL, else empty
-    bool gated = false; // true when the "gated" flag is set — show license link
-    QString tags;       // comma-joined tags (e.g. "gguf,vision") for the UI
-};
-
 enum class ModelFileKind {
     NotModel,   // not a .gguf
     Model,      // main vision model (or one part of a multi-file split)
@@ -43,7 +33,6 @@ public:
     static constexpr int kMaxRedirects = 5;
 
     static QList<HfFile> parseTreeJson(const QJsonArray &items, QString &error);
-    static QList<HfModelSummary> parseSearchJson(const QJsonArray &items);
     static QUrl nextPageUrl(const QByteArray &linkHeader);
     static QString leafName(const QString &path);
     static QStringList allGguf(const QStringList &names);
@@ -70,12 +59,6 @@ public:
                                    const QByteArray &authorization = {},
                                    int timeoutMs = kRequestTimeoutMs,
                                    const QUrl &baseUrl = QUrl());
-
-    static QList<HfModelSummary> search(QNetworkAccessManager *nam,
-                                       const QString &query, QString &error,
-                                       int limit = 30,
-                                       const QByteArray &authorization = {},
-                                       int timeoutMs = kRequestTimeoutMs);
 };
 
 }  // namespace llocr

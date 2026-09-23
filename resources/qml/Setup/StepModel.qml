@@ -54,7 +54,7 @@ Item {
         LLOLabel {
             Layout.fillWidth: true
             text: qsTr("Vision-capable GGUF models work with the managed server. Pick a "
-                       + "preset, find one on Hugging Face, or point at a local file.")
+                       + "preset or point at a local file.")
         }
 
         InstallerStatusLabel {
@@ -113,7 +113,6 @@ Item {
                     id: modelTabBar
                     Layout.fillWidth: true
                     TabButton { text: qsTr("Presets") }
-                    TabButton { text: qsTr("Hugging Face") }
                     TabButton { text: qsTr("Local file") }
                 }
 
@@ -137,49 +136,6 @@ Item {
                                 ModelInstaller.preparePreset(index)
                                 prepareDialog.open()
                             }
-                        }
-                    }//ColumnLayout
-
-                    ColumnLayout {//Hugging Face search
-                        spacing: 6
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-                            TextField {
-                                id: searchField
-                                Layout.fillWidth: true
-                                implicitHeight: Theme.controlHeight
-                                placeholderText: qsTr("e.g. vision gguf")
-                                text: ModelInstaller.searchQuery
-                                onEditingFinished: ModelInstaller.searchQuery = text.trim()
-                            }
-                            LLOButton {
-                                text: qsTr("Search")
-                                onClicked: {
-                                    ModelInstaller.searchQuery = searchField.text.trim()
-                                    ModelInstaller.startSearch()
-                                }
-                            }
-                        }
-                        HfSearchList {
-                            id: searchList
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            rowHeight: 30
-                            onInstallClicked: (index) => {
-                                prepareDialog.pendingIndex = -1
-                                ModelInstaller.installRemote(index)
-                                prepareDialog.open()
-                            }
-                        }
-                        LLOLabel {
-                            Layout.fillWidth: true
-                            font.pointSize: Theme.captionSize
-                            color: Theme.helpColor
-                            visible: !ModelInstaller.searchActive
-                                     && ModelInstaller.searchCount === 0
-                            text: qsTr("Results appear here. Models install into the managed "
-                                       + "models directory.")
                         }
                     }//ColumnLayout
 

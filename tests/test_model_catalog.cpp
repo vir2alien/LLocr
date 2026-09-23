@@ -173,7 +173,6 @@ private slots:
     void encodesPaths();
     void resolvesUrl();
     void parsesPaginationLink();
-    void parsesSearch();
     void filtersGguf();
     void fetchesHeadSha();
     void fetchesPagedTree();
@@ -276,28 +275,6 @@ void TestModelCatalog::parsesPaginationLink()
     QVERIFY(ModelCatalog::nextPageUrl(
                 QByteArray("<https://x/>; rel=\"prev\""))
                 .isEmpty());
-}
-
-void TestModelCatalog::parsesSearch()
-{
-    QJsonArray arr;
-    QJsonObject o;
-    o.insert(QStringLiteral("id"), QStringLiteral("org/repo"));
-    o.insert(QStringLiteral("title"), QStringLiteral("Repo"));
-    o.insert(QStringLiteral("downloads"), 123456);
-    o.insert(QStringLiteral("likes"), 7);
-    o.insert(QStringLiteral("license"), QStringLiteral("apache-2.0"));
-    o.insert(QStringLiteral("gated"), true);
-    QJsonArray tags{QStringLiteral("gguf"), QStringLiteral("vision")};
-    o.insert(QStringLiteral("tags"), tags);
-    arr.append(o);
-
-    const QList<HfModelSummary> results = ModelCatalog::parseSearchJson(arr);
-    QCOMPARE(results.size(), 1);
-    QCOMPARE(results.at(0).id, QStringLiteral("org/repo"));
-    QCOMPARE(results.at(0).downloads, qint64(123456));
-    QVERIFY(results.at(0).gated);
-    QVERIFY(results.at(0).tags.contains(QStringLiteral("vision")));
 }
 
 void TestModelCatalog::filtersGguf()

@@ -38,10 +38,6 @@ class ModelInstaller : public QObject
     Q_PROPERTY(int presetCount READ presetCount NOTIFY presetsChanged)
     Q_PROPERTY(int checkPresetCount READ checkPresetCount NOTIFY presetsChanged)
 
-    Q_PROPERTY(int searchCount READ searchCount NOTIFY searchChanged)
-    Q_PROPERTY(bool searchActive READ searchActive NOTIFY searchChanged)
-    Q_PROPERTY(QString searchQuery READ searchQuery WRITE setSearchQuery NOTIFY searchChanged)
-
     Q_PROPERTY(QString activeTitle READ activeTitle NOTIFY installedChanged)
     Q_PROPERTY(QString checkActiveTitle READ checkActiveTitle NOTIFY installedChanged)
 
@@ -73,10 +69,6 @@ public:
     int checkInstalledCount() const { return roleInstalledCount(true); }
     int presetCount() const { return m_presets.size(); }
     int checkPresetCount() const { return m_presetsValidate.size(); }
-    int searchCount() const { return m_searchResults.size(); }
-    bool searchActive() const { return m_searchActive; }
-    QString searchQuery() const { return m_searchQuery; }
-    void setSearchQuery(const QString &q);
     QString activeTitle() const;
     QString checkActiveTitle() const;
 
@@ -98,19 +90,8 @@ public:
     Q_INVOKABLE QString activatePreset(int index, bool forCheck = false);
     Q_INVOKABLE void preparePreset(int index, bool forCheck = false);
     Q_INVOKABLE void installPrepared();
-    Q_INVOKABLE void installRemote(int index, bool forCheck = false);
-
-    Q_INVOKABLE void startSearch();
-    Q_INVOKABLE QVariantMap searchResult(int index) const;
 
     Q_INVOKABLE void cancelInstall();
-
-    Q_INVOKABLE QString importCatalog(const QString &path, bool forCheck = false);
-    Q_INVOKABLE QString exportCatalog(const QString &path, bool forCheck = false);
-    Q_INVOKABLE QString resetUserCatalog(bool forCheck = false);
-
-    Q_INVOKABLE QString hfToken() const;
-    Q_INVOKABLE void setHfToken(const QString &token);
 
 private:
     struct Pending {
@@ -164,10 +145,6 @@ private:
     QList<ModelPreset> m_presetsValidate;
     QList<ModelEntry> m_installed;
 
-    QList<HfModelSummary> m_searchResults;
-    QString m_searchQuery;
-    bool m_searchActive = false;
-
     Pending m_pending;
     bool m_pendingForCheck = false;  // install auto-activates the check model
     int m_prepareGeneration = 0;
@@ -181,7 +158,6 @@ signals:
     void statusMessageChanged();
     void installedChanged();
     void presetsChanged();
-    void searchChanged();
 };
 
 }  // namespace llocr

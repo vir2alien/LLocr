@@ -239,92 +239,6 @@ Item {
                 text: qsTr("No presets available")
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.divider
-            }
-
-            LLOLabel {
-                text: qsTr("Search Hugging Face")
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                TextField {
-                    id: searchField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    placeholderText: qsTr("e.g. vision gguf")
-                    text: ModelInstaller.searchQuery
-                    onEditingFinished: ModelInstaller.searchQuery = text.trim()
-                }
-                LLOButton {
-                    text: qsTr("Search")
-                    onClicked: {
-                        ModelInstaller.searchQuery = searchField.text.trim()
-                        ModelInstaller.startSearch()
-                    }
-                }
-            }
-
-            HfSearchList {
-                id: searchList
-                Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(searchList.count, 3) * 32
-                onInstallClicked: (index) => {
-                    ModelInstaller.installRemote(index, root.isVerifyModelRole)
-                    preparedIndex = -1
-                    pickDialog.open()
-                }
-            }
-
-            LLOLabel {
-                Layout.fillWidth: true
-                font.pointSize: Theme.captionSize
-                color: Theme.helpColor
-                visible: !ModelInstaller.searchActive
-                         && ModelInstaller.searchCount === 0
-                text: qsTr("Results appear here. Models install into the managed "
-                           + "models directory.")
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                LLOLabel {
-                    text: qsTr("HF token (optional)")
-                }
-                TextField {
-                    id: tokenField
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    echoMode: TextInput.Password
-                    placeholderText: qsTr("read-only token for gated repos")
-                    text: ModelInstaller.hfToken()
-                    onEditingFinished: ModelInstaller.setHfToken(text.trim())
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                LLOButton {
-                    text: qsTr("Import catalog…")
-                    onClicked: importDialog.open()
-                }
-                LLOButton {
-                    text: qsTr("Export catalog…")
-                    onClicked: exportDialog.open()
-                }
-                LLOButton {
-                    text: qsTr("Restore defaults")
-                    onClicked: ModelInstaller.resetUserCatalog(root.isVerifyModelRole)
-                }
-                Item { Layout.fillWidth: true }
-            }
-
             LLOLabel {
                 id: statusMsg
                 Layout.fillWidth: true
@@ -406,26 +320,4 @@ Item {
         }
     }
 
-    FileDialog {
-        id: importDialog
-        title: qsTr("Import preset catalog")
-        nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*)")]
-        onAccepted: {
-            const err = ModelInstaller.importCatalog(Runtime.localPath(selectedFile),
-                                                     root.isVerifyModelRole)
-            if (err.length) statusMsg.text = err
-        }
-    }
-
-    FileDialog {
-        id: exportDialog
-        title: qsTr("Export preset catalog")
-        nameFilters: [qsTr("JSON files (*.json)")]
-        fileMode: FileDialog.SaveFile
-        onAccepted: {
-            const err = ModelInstaller.exportCatalog(Runtime.localPath(selectedFile),
-                                                     root.isVerifyModelRole)
-            if (err.length) statusMsg.text = err
-        }
-    }
 }

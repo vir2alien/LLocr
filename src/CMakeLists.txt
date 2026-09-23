@@ -196,7 +196,6 @@ qt_add_resources(llocr "app_resources"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/RuntimeBuildsList.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/ModelInstalledList.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/ModelPresetList.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/HfSearchList.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/InstallerProgressRow.qml"
         "${CMAKE_SOURCE_DIR}/resources/qml/Common/InstallerStatusLabel.qml"
 )

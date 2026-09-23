@@ -7,7 +7,6 @@
 #include <QNetworkRequest>
 #include <QRegularExpression>
 #include <QTimer>
-#include <QUrlQuery>
 
 #include "runtime/ModelCatalog.h"
 
@@ -148,36 +147,6 @@ QList<HfFile> ModelCatalog::parseTreeJson(const QJsonArray &items, QString &erro
     }
     if (out.isEmpty() && !items.isEmpty())
         error = QObject::tr("The Hugging Face tree response contained no files");
-    return out;
-}
-
-QList<HfModelSummary> ModelCatalog::parseSearchJson(const QJsonArray &items)
-{
-    QList<HfModelSummary> out;
-    for (const QJsonValue &v : items) {
-        if (!v.isObject())
-            continue;
-        const QJsonObject o = v.toObject();
-        HfModelSummary s;
-        s.id = o.value(QStringLiteral("id")).toString();
-        if (s.id.isEmpty())
-            continue;
-        s.title = o.value(QStringLiteral("title")).toString();
-        const QJsonValue dl = o.value(QStringLiteral("downloads"));
-        if (dl.isDouble())
-            s.downloads = static_cast<qint64>(dl.toDouble(0));
-        const QJsonValue likes = o.value(QStringLiteral("likes"));
-        if (likes.isDouble())
-            s.likes = static_cast<qint64>(likes.toDouble(0));
-        s.license = o.value(QStringLiteral("license")).toString();
-        s.gated = o.value(QStringLiteral("gated")).toBool();
-        const QJsonArray tags = o.value(QStringLiteral("tags")).toArray();
-        QStringList ts;
-        for (const QJsonValue &t : tags)
-            ts << t.toString();
-        s.tags = ts.join(QLatin1Char(','));
-        out.append(std::move(s));
-    }
     return out;
 }
 
@@ -339,34 +308,6 @@ QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString 
         pageUrl = next.toString();
     }
     return all;
-}
-
-QList<HfModelSummary> ModelCatalog::search(QNetworkAccessManager *nam,
-                                           const QString &query, QString &error,
-                                           int limit, const QByteArray &authorization,
-                                           int timeoutMs)
-{
-    QUrlQuery q;
-    q.addQueryItem(QStringLiteral("search"), query);
-    q.addQueryItem(QStringLiteral("filter"), QStringLiteral("gguf"));
-    q.addQueryItem(QStringLiteral("limit"), QString::number(limit));
-    q.addQueryItem(QStringLiteral("sort"), QStringLiteral("downloads"));
-
-    QUrl url(QStringLiteral("https://huggingface.co/api/models"));
-    url.setQuery(q);
-
-    const GetResult res = pullGet(nam, url, authorization, timeoutMs);
-    if (res.status != 200) {
-        error = QObject::tr("Hugging Face search returned HTTP %1").arg(res.status);
-        return QList<HfModelSummary>();
-    }
-    QJsonParseError perr;
-    const QJsonDocument doc = QJsonDocument::fromJson(res.body, &perr);
-    if (perr.error != QJsonParseError::NoError || !doc.isArray()) {
-        error = QObject::tr("Malformed search response from Hugging Face");
-        return QList<HfModelSummary>();
-    }
-    return parseSearchJson(doc.array());
 }
 
 }  // namespace llocr
