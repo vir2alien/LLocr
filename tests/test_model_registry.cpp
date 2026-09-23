@@ -47,6 +47,7 @@ private slots:
     void scansMultiQuantAsSeparateEntries();
     void rebuildsOnCorruptIndex();
     void atomicWriteRoundtrip();
+    void persistsRoles();
     void persistsExplicitDefaultCtxSize();
     void recoversFromTruncatedIndex();
     void assertsRegistryLock();
@@ -133,6 +134,48 @@ void TestModelRegistry::rebuildsOnCorruptIndex()
     QVERIFY(rebuilt);
     QVERIFY(!err.isEmpty());   // "corrupt; rescanning"
     QCOMPARE(entries.size(), 1);  // recovered from disk
+}
+
+// The role tags ("ocr" / "check") recorded at install time survive a
+// save/load roundtrip — the role-filtered installed lists rely on them.
+void TestModelRegistry::persistsRoles()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    ModelEntry e;
+    e.id = QStringLiteral("org__repo");
+    e.title = QStringLiteral("Repo");
+    e.dir = makeRepoDir(dir.path(), QStringLiteral("org__repo"));
+    e.modelPath = QDir(e.dir).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+    e.origin = ModelOrigin::Managed;
+    e.roles = {QStringLiteral("ocr"), QStringLiteral("check")};
+
+    QString err;
+    QVERIFY(ModelRegistry::save(dir.path(), {e}, err));
+    QVERIFY(err.isEmpty());
+
+    bool rebuilt = false;
+    const QList<ModelEntry> loaded = ModelRegistry::load(dir.path(), rebuilt, err);
+    QVERIFY(!rebuilt);
+    QCOMPARE(loaded.size(), 1);
+    QCOMPARE(loaded.at(0).roles,
+             QStringList({QStringLiteral("ocr"), QStringLiteral("check")}));
+
+    // A legacy entry without roles stays empty (visible in both lists).
+    ModelEntry legacy;
+    legacy.id = QStringLiteral("legacy");
+    legacy.dir = e.dir;
+    legacy.modelPath = QDir(e.dir).filePath(QStringLiteral("old-Q4_K_M.gguf"));
+    QVERIFY2(ModelRegistry::save(dir.path(), {e, legacy}, err), qPrintable(err));
+    const QList<ModelEntry> reloaded = ModelRegistry::load(dir.path(), rebuilt, err);
+    QCOMPARE(reloaded.size(), 2);
+    for (const ModelEntry &x : reloaded) {
+        if (x.id == QStringLiteral("legacy"))
+            QVERIFY(x.roles.isEmpty());
+        else
+            QCOMPARE(x.roles,
+                     QStringList({QStringLiteral("ocr"), QStringLiteral("check")}));
+    }
 }
 
 void TestModelRegistry::atomicWriteRoundtrip()

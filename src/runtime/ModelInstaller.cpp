@@ -336,7 +336,59 @@ QVariantMap ModelInstaller::installedInfo(int index, bool forCheck) const
     out.insert(QStringLiteral("active"),
                !e.modelPath.isEmpty() && e.modelPath == activePath);
     out.insert(QStringLiteral("parts"), e.parts.size());
+    out.insert(QStringLiteral("index"), index);
     return out;
+}
+
+int ModelInstaller::roleInstalledCount(bool forCheck) const
+{
+    int n = 0;
+    for (const ModelEntry &e : m_installed) {
+        if (matchesRole(e, forCheck))
+            ++n;
+    }
+    return n;
+}
+
+QVariantMap ModelInstaller::roleInstalledInfo(int index, bool forCheck) const
+{
+    int n = -1;
+    for (int i = 0; i < m_installed.size(); ++i) {
+        if (!matchesRole(m_installed.at(i), forCheck))
+            continue;
+        if (++n == index)
+            return installedInfo(i, forCheck);
+    }
+    return QVariantMap();
+}
+
+bool ModelInstaller::matchesRole(const ModelEntry &e, bool forCheck) const
+{
+    const bool ocrActive = !e.modelPath.isEmpty()
+                           && e.modelPath == m_settings.launchModelPath();
+    const bool checkActive = !e.modelPath.isEmpty()
+                             && e.modelPath == m_settings.checkLaunchModelPath();
+
+    // The role's active model is always listed, whatever its recorded roles.
+    if (forCheck ? checkActive : ocrActive)
+        return true;
+
+    if (!e.roles.isEmpty())
+        return e.roles.contains(forCheck ? QStringLiteral("check")
+                                         : QStringLiteral("ocr"));
+
+    // Legacy registry entry (written before roles existed). When it is active
+    // for the OTHER role only, keep it out of this list: the role the model is
+    // actually used in beats metadata (parser/prompt are also recorded for
+    // models installed from the validate catalog, so they prove nothing).
+    if (checkActive)
+        return false;
+
+    // Never-activated legacy entry: infer from the file layout — a model with
+    // a vision projector (mmproj) belongs to the OCR list, a plain text model
+    // to the validator list.
+    const bool vision = !e.mmprojPath.isEmpty();
+    return forCheck ? !vision : vision;
 }
 
 QString ModelInstaller::setActiveModel(int index, bool forCheck)
@@ -792,6 +844,20 @@ void ModelInstaller::completeInstall()
     e.ctxSize = m_pending.ctxSize;
     e.ctxSizeSet = m_pending.ctxSize > 0;
     e.addedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+
+    // Record the role this install was started from; a re-install from the
+    // other window keeps the roles the replaced entry already had.
+    for (const ModelEntry &x : std::as_const(m_installed)) {
+        if (x.id != e.id)
+            continue;
+        for (const QString &r : x.roles)
+            if (!e.roles.contains(r))
+                e.roles.append(r);
+    }
+    const QString installRole =
+        m_pendingForCheck ? QStringLiteral("check") : QStringLiteral("ocr");
+    if (!e.roles.contains(installRole))
+        e.roles.append(installRole);
 
     qint64 total = 0;
     for (const QString &path : std::as_const(m_pending.modelNames))

@@ -86,6 +86,9 @@ ModelEntry entryFromJson(const QJsonObject &o)
     }
     e.addedAt = o.value(QStringLiteral("addedAt")).toString();
     e.repoId = o.value(QStringLiteral("repoId")).toString();
+    const QJsonArray roles = o.value(QStringLiteral("roles")).toArray();
+    for (const QJsonValue &v : roles)
+        e.roles << v.toString();
     const QJsonArray parts = o.value(QStringLiteral("parts")).toArray();
     for (const QJsonValue &v : parts)
         e.parts << v.toString();
@@ -132,6 +135,12 @@ QJsonObject entryToJson(const ModelEntry &e)
         for (const QString &p : e.parts)
             arr.append(p);
         o.insert(QStringLiteral("parts"), arr);
+    }
+    if (!e.roles.isEmpty()) {
+        QJsonArray arr;
+        for (const QString &r : e.roles)
+            arr.append(r);
+        o.insert(QStringLiteral("roles"), arr);
     }
     return o;
 }

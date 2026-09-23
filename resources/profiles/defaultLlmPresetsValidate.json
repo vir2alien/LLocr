@@ -5,23 +5,23 @@
     {
       "id": "qwen3.5-4b-q8_0",
       "title": "Qwen3.5-4B (Q8_0)",
-      "repo": "unsloth/Qwen3.5-4B-GGUF",
+      "repo": "unsloth/Qwen3.5-4B-MTP-GGUF",
       "model": "Qwen3.5-4B-Q8_0.gguf",
       "mmproj": "mmproj-F16.gguf",
       "ctxSize": 8192,
       "approxVramGb": 6.5,
-      "license": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF",
+      "license": "https://huggingface.co/unsloth/Qwen3.5-4B-MTP-GGUF",
       "sha256": {}
     },
     {
-      "id": "qwen3.5-4b-q4_k_xl.gguf",
+      "id": "qwen3.5-4b-q4_k_xl",
       "title": "Qwen3.5-4B (Q4_K_XL)",
-      "repo": "unsloth/Qwen3.5-4B-GGUF",
+      "repo": "unsloth/Qwen3.5-4B-MTP-GGUF",
       "model": "Qwen3.5-4B-UD-Q4_K_XL.gguf",
       "mmproj": "mmproj-F16.gguf",
       "ctxSize": 8192,
       "approxVramGb": 6.5,
-      "license": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF",
+      "license": "https://huggingface.co/unsloth/Qwen3.5-4B-MTP-GGUF",
       "sha256": {}
     }
   ]

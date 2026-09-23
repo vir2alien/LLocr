@@ -24,15 +24,16 @@ ListView {
 
     visible: count > 0
     clip: true
-    model: ModelInstaller.installedCount
+    model: root.isVerifyModelRole ? ModelInstaller.checkInstalledCount
+                                  : ModelInstaller.ocrInstalledCount
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
     delegate: Rectangle {
         id: installedRow
         required property int index
-        property var info: ModelInstaller.installedInfo(index, root.isVerifyModelRole)
+        property var info: ModelInstaller.roleInstalledInfo(index, root.isVerifyModelRole)
         function refreshInfo() {
-            info = ModelInstaller.installedInfo(index, root.isVerifyModelRole)
+            info = ModelInstaller.roleInstalledInfo(index, root.isVerifyModelRole)
         }
         Connections {
             target: ModelInstaller
@@ -80,14 +81,21 @@ ListView {
             LLOButton {
                 text: installedRow.info.active ? qsTr("Active") : qsTr("Activate")
                 enabled: !installedRow.info.active && !ModelInstaller.busy
-                onClicked: ModelInstaller.setActiveModel(installedRow.index, root.isVerifyModelRole)
+                onClicked: {
+                    const i = installedRow.info.index
+                    if (i !== undefined)
+                        ModelInstaller.setActiveModel(i, root.isVerifyModelRole)
+                }
             }
             LLOButton {
                 visible: root.managementActions
                 text: qsTr("Remove")
                 enabled: installedRow.info.origin === "managed"
                 onClicked: {
-                    const err = ModelInstaller.removeModel(installedRow.index)
+                    const i = installedRow.info.index
+                    if (i === undefined)
+                        return
+                    const err = ModelInstaller.removeModel(i)
                     if (err.length)
                         root.actionError(err)
                 }
@@ -96,7 +104,10 @@ ListView {
                 visible: root.managementActions
                 text: qsTr("Open folder")
                 onClicked: {
-                    const err = ModelInstaller.openModelFolder(installedRow.index)
+                    const i = installedRow.info.index
+                    if (i === undefined)
+                        return
+                    const err = ModelInstaller.openModelFolder(i)
                     if (err.length)
                         root.actionError(err)
                 }

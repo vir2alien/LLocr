@@ -30,6 +30,10 @@ class ModelInstaller : public QObject
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
 
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
+    // Role-filtered counts as properties so QML bindings re-evaluate on
+    // installedChanged (a Q_INVOKABLE call is not tracked by the engine).
+    Q_PROPERTY(int ocrInstalledCount READ ocrInstalledCount NOTIFY installedChanged)
+    Q_PROPERTY(int checkInstalledCount READ checkInstalledCount NOTIFY installedChanged)
 
     Q_PROPERTY(int presetCount READ presetCount NOTIFY presetsChanged)
     Q_PROPERTY(int checkPresetCount READ checkPresetCount NOTIFY presetsChanged)
@@ -65,6 +69,8 @@ public:
     double progress() const { return m_progress; }
     QString statusMessage() const { return m_statusMessage; }
     int installedCount() const { return m_installed.size(); }
+    int ocrInstalledCount() const { return roleInstalledCount(false); }
+    int checkInstalledCount() const { return roleInstalledCount(true); }
     int presetCount() const { return m_presets.size(); }
     int checkPresetCount() const { return m_presetsValidate.size(); }
     int searchCount() const { return m_searchResults.size(); }
@@ -76,6 +82,11 @@ public:
 
     Q_INVOKABLE void reloadPresets();
     Q_INVOKABLE QVariantMap installedInfo(int index, bool forCheck = false) const;
+    // Role-filtered views over the installed list: `index` addresses the
+    // sublist of models matching the role, not the full registry. The info
+    // map carries the full-list `index` for the action invokables.
+    Q_INVOKABLE int roleInstalledCount(bool forCheck) const;
+    Q_INVOKABLE QVariantMap roleInstalledInfo(int index, bool forCheck) const;
     Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);
     Q_INVOKABLE QString removeModel(int index);
     Q_INVOKABLE QString openModelFolder(int index);
@@ -127,6 +138,7 @@ private:
     void reloadPresetsInternal();
 
     bool isPresetInstalled(const ModelPreset &p) const;
+    bool matchesRole(const ModelEntry &e, bool forCheck) const;
     void beginPrepare(const ModelPreset &preset);
     void onPrepareDone(const Pending &p, const QString &err);
 

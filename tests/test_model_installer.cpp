@@ -317,6 +317,98 @@ private slots:
         QVERIFY(mi.removeModel(q8Idx).isEmpty());
         QVERIFY(!mi.presetInfo(q8Preset).value(QStringLiteral("installed")).toBool());
     }
+
+    // The installed-model lists are role-filtered: a vision model goes to the
+    // OCR window, a plain text model to the validator window; the role's
+    // active model is always listed regardless of its recorded roles, and the
+    // filtered index maps back to the full registry index for the actions.
+    // Regression: parser/prompt are also recorded for models installed from
+    // the validate catalog, so only mmproj proves an OCR model; and a legacy
+    // entry active as the verifier must stay out of the OCR list.
+    void installedListFilteredByRole()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        SettingsStore &settings = s->settings;
+        const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("org__repo"));
+        QVERIFY(QDir().mkpath(sub));
+
+        const QString ocrPath = writeGguf(sub, QStringLiteral("ocr-Q4_K_M.gguf"));
+        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-ocr-F16.gguf"));
+        const QString textPath = writeGguf(sub, QStringLiteral("chat-Q4_K_M.gguf"));
+        const QString verifierPath = writeGguf(sub, QStringLiteral("verify-Q4_K_M.gguf"));
+        QVERIFY(!ocrPath.isEmpty() && !mmproj.isEmpty() && !textPath.isEmpty()
+                && !verifierPath.isEmpty());
+
+        ModelEntry ocr;
+        ocr.id = QStringLiteral("org__repo_ocr");
+        ocr.title = QStringLiteral("org__repo");
+        ocr.repo = QStringLiteral("org/repo");
+        ocr.dir = sub;
+        ocr.modelPath = ocrPath;
+        ocr.mmprojPath = mmproj;
+        ocr.origin = ModelOrigin::Managed;
+        ocr.quantization = QStringLiteral("Q4_K_M");
+        ocr.byteSize = 1024;
+
+        // A text model installed from the validate catalog: parser/prompt are
+        // recorded (ADR 72 — both catalogs ship OCR data), roles are not.
+        ModelEntry text = ocr;
+        text.id = QStringLiteral("org__repo_chat");
+        text.modelPath = textPath;
+        text.mmprojPath.clear();
+        text.quantization = QStringLiteral("chat");
+        text.parser = QStringLiteral("det_tokens");
+        text.prompt = QStringLiteral("document parsing.");
+
+        // A vision-capable model used as the verifier (legacy, no roles).
+        ModelEntry verifier = ocr;
+        verifier.id = QStringLiteral("org__repo_verify");
+        verifier.modelPath = verifierPath;
+        verifier.quantization = QStringLiteral("verify");
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {ocr, text, verifier}, err),
+                 qPrintable(err));
+        settings.setCheckLaunchModelPath(verifierPath);
+
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
+                                              *s->launchProfiles));
+        ModelInstaller &mi = *s->installer;
+
+        // OCR list: only the mmproj model — the verifier (active as the check
+        // model) and the parser-carrying text model stay out of it.
+        QCOMPARE(mi.roleInstalledCount(false), 1);
+        QCOMPARE(mi.roleInstalledInfo(0, false)
+                     .value(QStringLiteral("path")).toString(), ocrPath);
+        QCOMPARE(mi.roleInstalledInfo(-1, false).isEmpty(), true);
+        QCOMPARE(mi.roleInstalledInfo(5, false).isEmpty(), true);
+
+        // Check list: the text model plus the active verifier.
+        QCOMPARE(mi.roleInstalledCount(true), 2);
+        QCOMPARE(mi.roleInstalledInfo(0, true)
+                     .value(QStringLiteral("path")).toString(), textPath);
+        QCOMPARE(mi.roleInstalledInfo(1, true)
+                     .value(QStringLiteral("path")).toString(), verifierPath);
+
+        // Filtered indexes map back to the full registry index.
+        QCOMPARE(mi.roleInstalledInfo(0, false)
+                     .value(QStringLiteral("index")).toInt(), 0);
+        QCOMPARE(mi.roleInstalledInfo(0, true)
+                     .value(QStringLiteral("index")).toInt(), 1);
+        QCOMPARE(mi.roleInstalledInfo(1, true)
+                     .value(QStringLiteral("index")).toInt(), 2);
+
+        // The role's active model is always listed: the text model becomes the
+        // active OCR model and must appear in the OCR list too.
+        settings.setLaunchModelPath(textPath);
+        QCOMPARE(mi.roleInstalledCount(false), 2);
+        QCOMPARE(mi.roleInstalledInfo(1, false)
+                     .value(QStringLiteral("path")).toString(), textPath);
+        QCOMPARE(mi.roleInstalledCount(true), 2);
+    }
 };
 
 QTEST_MAIN(TestModelInstaller)

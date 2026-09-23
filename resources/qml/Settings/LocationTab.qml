@@ -191,7 +191,7 @@ Item {
             ModelInstalledList {
                 id: installedList
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(ModelInstaller.installedCount, 3) * 40
+                Layout.preferredHeight: Math.min(installedList.count, 3) * 40
                 managementActions: true
                 isVerifyModelRole: root.isVerifyModelRole
                 onActionError: (msg) => statusMsg.text = msg

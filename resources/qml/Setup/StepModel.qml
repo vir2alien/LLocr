@@ -68,7 +68,7 @@ Item {
         }
 
         LLOLabel {
-            visible: ModelInstaller.installedCount > 0
+            visible: installedList.count > 0
             text: qsTr("Installed models")
             color: Theme.textPrimary
         }
@@ -76,7 +76,7 @@ Item {
         ModelInstalledList {
             id: installedList
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(ModelInstaller.installedCount, 3) * 34
+            Layout.preferredHeight: Math.min(installedList.count, 3) * 34
             rowHeight: 34
         }
 

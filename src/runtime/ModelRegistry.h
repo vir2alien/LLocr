@@ -31,6 +31,7 @@ struct ModelEntry {
     bool ctxSizeSet = false;
     QString addedAt;     // ISO timestamp
     QString repoId;
+    QStringList roles;   // "ocr" / "check"; empty = legacy entry (shown in both)
 };
 
 class ModelRegistry
