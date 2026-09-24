@@ -200,6 +200,11 @@ bool RequestProfileStore::setDraftValue(int row, const QString &text)
     return m_model->setValue(row, text);
 }
 
+bool RequestProfileStore::appendDraftRow(const QString &name, const QString &text)
+{
+    return m_model->appendRow(name, text);
+}
+
 void RequestProfileStore::saveDraft()
 {
     if (m_draftProfileId.isEmpty())

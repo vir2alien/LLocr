@@ -45,28 +45,25 @@ Item {
 
         Item { implicitHeight: 4 }
 
-        LLOLabel {
-            visible: !root.checkRole
-            text: qsTr("OCR model")
-        }
-
-        ComboBox {
-            id: modelBox
-            visible: !root.checkRole
-            Layout.fillWidth: true
-            implicitHeight: Theme.controlHeight
-            model: Controller.modelNames
-            onActivated: {
-                root.profiles.selectDraftProfile(
-                            Controller.modelNameToId(modelBox.currentText))
-            }
-        }
-
-        Item { implicitHeight: 6 }
-
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacing
+
+            LLOLabel {
+                text: qsTr("Profile")
+            }
+
+            ComboBox {
+                id: modelBox
+                visible: !root.checkRole
+                Layout.preferredWidth: root.width * 0.4
+                implicitHeight: Theme.controlHeight
+                model: Controller.modelNames
+                onActivated: {
+                    root.profiles.selectDraftProfile(
+                                Controller.modelNameToId(modelBox.currentText))
+                }
+            }
 
             LLOButton {
                 text: qsTr("Restore profile")
@@ -164,6 +161,37 @@ Item {
                     text: paramRow.description
                 }
             }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacing
+
+            TextField {
+                id: newParamName
+                Layout.preferredWidth: root.width * root.nameWidth
+                implicitHeight: Theme.controlHeight
+                selectByMouse: true
+                placeholderText: qsTr("New parameter name")
+            }
+            TextField {
+                id: newParamValue
+                Layout.preferredWidth: root.width * root.valueWidth
+                implicitHeight: Theme.controlHeight
+                selectByMouse: true
+                placeholderText: qsTr("value")
+            }
+            LLOButton {
+                text: qsTr("Add")
+                onClicked: {
+                    if (root.profiles.appendDraftRow(newParamName.text,
+                                                     newParamValue.text)) {
+                        newParamName.text = ""
+                        newParamValue.text = ""
+                    }
+                }
+            }
+            Item { Layout.fillWidth: true }
         }
 
         LLOLabel {

@@ -119,6 +119,7 @@ private:
     void reloadPresetsInternal();
 
     bool isPresetInstalled(const ModelPreset &p) const;
+    QString presetInstalledModelPath(const ModelPreset &p) const;
     bool matchesRole(const ModelEntry &e, bool forCheck) const;
     void beginPrepare(const ModelPreset &preset);
     void onPrepareDone(const Pending &p, const QString &err);

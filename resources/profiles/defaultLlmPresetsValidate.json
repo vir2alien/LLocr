@@ -9,7 +9,6 @@
       "model": "Qwen3.5-4B-Q8_0.gguf",
       "mmproj": "mmproj-F16.gguf",
       "ctxSize": 8192,
-      "approxVramGb": 6.5,
       "license": "https://huggingface.co/unsloth/Qwen3.5-4B-MTP-GGUF",
       "sha256": {}
     },
@@ -20,7 +19,6 @@
       "model": "Qwen3.5-4B-UD-Q4_K_XL.gguf",
       "mmproj": "mmproj-F16.gguf",
       "ctxSize": 8192,
-      "approxVramGb": 6.5,
       "license": "https://huggingface.co/unsloth/Qwen3.5-4B-MTP-GGUF",
       "sha256": {}
     }

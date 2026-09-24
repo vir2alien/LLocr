@@ -15,7 +15,6 @@ ModelPreset ModelPreset::fromJson(const QJsonObject &o)
     p.prompt = o.value(QStringLiteral("prompt")).toString();
     p.ctxSize = o.value(QStringLiteral("ctxSize")).toInt(8192);
     p.minBuild = o.value(QStringLiteral("minBuild")).toString();
-    p.approxVramGb = o.value(QStringLiteral("approxVramGb")).toDouble(0.0);
     p.license = o.value(QStringLiteral("license")).toString();
 
     const QJsonObject sha = o.value(QStringLiteral("sha256")).toObject();
@@ -46,8 +45,6 @@ QJsonObject ModelPreset::toJson() const
         o.insert(QStringLiteral("ctxSize"), ctxSize);
     if (!minBuild.isEmpty())
         o.insert(QStringLiteral("minBuild"), minBuild);
-    if (approxVramGb > 0.0)
-        o.insert(QStringLiteral("approxVramGb"), approxVramGb);
     if (!license.isEmpty())
         o.insert(QStringLiteral("license"), license);
     QJsonObject sha;

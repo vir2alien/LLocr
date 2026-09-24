@@ -17,7 +17,6 @@ struct ModelPreset {
     QString prompt;      // e.g. "document parsing."
     int ctxSize = 8192;
     QString minBuild;    // minimum llama.cpp build tag, e.g. "b4000"
-    double approxVramGb = 0.0;
     QString license;     // URL or short license name
     QHash<QString, QString> sha256;
 

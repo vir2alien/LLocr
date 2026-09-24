@@ -58,15 +58,10 @@ ListView {
                 color: Theme.textMuted
                 text: presetRoot.pInfo.repo
             }
-            LLOLabel {
-                font.pointSize: Theme.captionSize
-                color: Theme.textMuted
-                text: presetRoot.pInfo.approxVramGb > 0
-                      ? qsTr("~%1 GiB VRAM").arg(presetRoot.pInfo.approxVramGb) : ""
-            }
             LLOButton {
-                text: presetRoot.pInfo.installed ? qsTr("Activate") : qsTr("Install")
-                enabled: !ModelInstaller.busy
+                text: presetRoot.pInfo.active ? qsTr("Active")
+                      : presetRoot.pInfo.installed ? qsTr("Activate") : qsTr("Install")
+                enabled: !presetRoot.pInfo.active && !ModelInstaller.busy
                 onClicked: {
                     if (presetRoot.pInfo.installed) {
                         ModelInstaller.activatePreset(presetRoot.index, root.isVerifyModelRole)

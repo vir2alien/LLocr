@@ -520,15 +520,7 @@ QString ModelInstaller::openModelFolder(int index)
 
 bool ModelInstaller::isPresetInstalled(const ModelPreset &p) const
 {
-    const QString modelLeaf = ModelCatalog::leafName(p.model);
-    for (const ModelEntry &e : std::as_const(m_installed)) {
-        if (e.repo != p.repo)
-            continue;
-        if (!e.modelPath.isEmpty()
-            && ModelCatalog::leafName(e.modelPath) == modelLeaf)
-            return true;
-    }
-    return false;
+    return !presetInstalledModelPath(p).isEmpty();
 }
 
 QVariantMap ModelInstaller::presetInfo(int index, bool forCheck) const
@@ -544,9 +536,27 @@ QVariantMap ModelInstaller::presetInfo(int index, bool forCheck) const
     out.insert(QStringLiteral("license"), p.license);
     out.insert(QStringLiteral("ctxSize"), p.ctxSize);
     out.insert(QStringLiteral("minBuild"), p.minBuild);
-    out.insert(QStringLiteral("approxVramGb"), p.approxVramGb);
     out.insert(QStringLiteral("installed"), isPresetInstalled(p));
+    // "Active" = the role's current model path is the model this preset
+    // points at (its installed entry's model file matches the preset).
+    const QString targetPath = presetInstalledModelPath(p);
+    out.insert(QStringLiteral("active"),
+               forCheck ? targetPath == m_settings.checkLaunchModelPath()
+                        : targetPath == m_settings.launchModelPath());
     return out;
+}
+
+QString ModelInstaller::presetInstalledModelPath(const ModelPreset &p) const
+{
+    const QString modelLeaf = ModelCatalog::leafName(p.model);
+    for (const ModelEntry &e : std::as_const(m_installed)) {
+        if (e.repo != p.repo)
+            continue;
+        if (!e.modelPath.isEmpty()
+            && ModelCatalog::leafName(e.modelPath) == modelLeaf)
+            return e.modelPath;
+    }
+    return QString();
 }
 
 void ModelInstaller::preparePreset(int index, bool forCheck)

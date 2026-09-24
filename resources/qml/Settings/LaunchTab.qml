@@ -13,6 +13,10 @@ Item {
     // false = the recognition (OCR) launch profile, true = the verification
     // (check) launch profile.
     property bool checkRole: false
+    // Opened via the "Configure runtime" button in External mode.
+    property var runtimeSettingsRef: null
+
+    readonly property bool externalMode: Settings.connectionMode === "external"
 
     readonly property var profiles: checkRole ? LaunchProfilesValidate
                                               : LaunchProfilesOcr
@@ -51,6 +55,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
+        visible: !root.externalMode
         spacing: Theme.spacingSmall
 
         Item { implicitHeight: 4 }
@@ -219,5 +224,31 @@ Item {
             color: Theme.helpColor
             text: qsTr("llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings")
         }
+    }
+
+    // External server: launch settings belong to the managed runtime only.
+    // spacing 6 matches the LocationTab external pane.
+    ColumnLayout {
+        anchors.fill: parent
+        visible: root.externalMode
+        spacing: 6
+
+        LLOLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.helpColor
+            text: qsTr("The model is managed by the external server. Location and download settings are not available in this mode.")
+        }
+
+        LLOButton {
+            text: qsTr("Configure runtime…")
+            onClicked: {
+                if (root.runtimeSettingsRef)
+                    root.runtimeSettingsRef.show()
+            }
+        }
+
+        Item { Layout.fillHeight: true }
     }
 }

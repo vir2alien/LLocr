@@ -39,6 +39,8 @@ public:
     Q_INVOKABLE void reloadDraft();
     Q_INVOKABLE void selectDraftProfile(const QString &id);
     Q_INVOKABLE bool setDraftValue(int row, const QString &text);
+    // Appends a custom parameter to the draft (uncommitted until saveDraft).
+    Q_INVOKABLE bool appendDraftRow(const QString &name, const QString &text);
     Q_INVOKABLE void saveDraft();
     Q_INVOKABLE void loadDefaultDraft();
     Q_INVOKABLE void resetToDefaults();

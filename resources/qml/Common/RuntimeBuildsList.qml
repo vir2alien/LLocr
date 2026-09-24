@@ -74,6 +74,11 @@ ListView {
                     RuntimeInstaller.activateBuild(buildRow.index)
                 }
             }
+            LLOButton {
+                visible: buildRow.info.binaryFound
+                text: qsTr("Open folder")
+                onClicked: RuntimeInstaller.openBuildFolder(buildRow.index)
+            }
         }
     }
 }

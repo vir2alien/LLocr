@@ -579,6 +579,19 @@ QVariantMap RuntimeInstaller::installedBuildInfo(int index) const
     return map;
 }
 
+QString RuntimeInstaller::openBuildFolder(int index)
+{
+    if (index < 0 || index >= m_installedBuilds.size())
+        return tr("No such build");
+    const InstalledBuildInfo &b = m_installedBuilds.at(index);
+    if (b.serverPath.isEmpty())
+        return tr("The build directory contains no llama-server binary");
+    const QString dir = QFileInfo(b.serverPath).absolutePath();
+    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(dir)))
+        return tr("Unable to open %1").arg(dir);
+    return QString();
+}
+
 QString RuntimeInstaller::activateBuild(int index)
 {
     if (m_busy)

@@ -107,7 +107,6 @@ void TestModelPresetCatalog::importToJsonRoundTrips()
     p.prompt = QStringLiteral("document parsing.");
     p.ctxSize = 4096;
     p.minBuild = QStringLiteral("b4000");
-    p.approxVramGb = 3.5;
     p.license = QStringLiteral("apache-2.0");
     p.sha256.insert(QStringLiteral("model-q4_k_m.gguf"),
                     QStringLiteral("abcdef"));

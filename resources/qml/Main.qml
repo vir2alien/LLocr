@@ -181,11 +181,13 @@ ApplicationWindow {
     ModelSettingsWindow {
         id: ocrModelSettingsWindow
         role: "ocr"
+        runtimeSettingsRef: runtimeSettingsWindow
     }
 
     ModelSettingsWindow {
         id: checkModelSettingsWindow
         role: "check"
+        runtimeSettingsRef: runtimeSettingsWindow
     }
 
     ExportDialog {

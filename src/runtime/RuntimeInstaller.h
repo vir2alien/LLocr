@@ -76,6 +76,9 @@ public:
     Q_INVOKABLE void rescanInstalledBuilds();
     Q_INVOKABLE QVariantMap installedBuildInfo(int index) const;
     Q_INVOKABLE QString activateBuild(int index);
+    // Opens the install directory of the build in the system file manager;
+    // returns an empty string on success or a localized error message.
+    Q_INVOKABLE QString openBuildFolder(int index);
     Q_INVOKABLE static QString backendDisplayName(const QString &backend);
 
     Q_INVOKABLE QString updateBuild() const;

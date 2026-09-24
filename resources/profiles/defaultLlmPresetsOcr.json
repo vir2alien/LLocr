@@ -13,7 +13,6 @@
       "prompt": "document parsing.",
       "ctxSize": 8192,
       "minBuild": "b4000",
-      "approxVramGb": 6.5,
       "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
       "sha256": {}
     },
@@ -28,7 +27,6 @@
       "prompt": "document parsing.",
       "ctxSize": 8192,
       "minBuild": "b4000",
-      "approxVramGb": 6.5,
       "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
       "sha256": {}
     }

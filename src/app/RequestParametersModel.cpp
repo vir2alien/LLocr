@@ -74,4 +74,40 @@ bool RequestParametersModel::setValue(int row, const QString &text)
     return true;
 }
 
+bool RequestParametersModel::appendRow(const QString &name, const QString &text)
+{
+    const QString trimmedName = name.trimmed();
+    if (trimmedName.isEmpty())
+        return false;
+    for (const RequestParameter &p : m_parameters) {
+        if (p.name == trimmedName)
+            return false;
+    }
+
+    // Infer the value kind from the text: number, then boolean, else string.
+    RequestValueKind kind = RequestValueKind::String;
+    QVariant parsed;
+    if (RequestProfile::textToValue(text, RequestValueKind::Number, parsed))
+        kind = RequestValueKind::Number;
+    else if (RequestProfile::textToValue(text, RequestValueKind::Boolean, parsed))
+        kind = RequestValueKind::Boolean;
+    else if (!RequestProfile::textToValue(text, kind, parsed))
+        return false;
+
+    int maxOrder = 0;
+    for (const RequestParameter &p : m_parameters)
+        maxOrder = qMax(maxOrder, p.order);
+
+    RequestParameter p;
+    p.name = trimmedName;
+    p.kind = kind;
+    p.value = parsed;
+    p.order = maxOrder + 1;
+
+    beginInsertRows(QModelIndex(), m_parameters.size(), m_parameters.size());
+    m_parameters.append(p);
+    endInsertRows();
+    return true;
+}
+
 }  // namespace llocr

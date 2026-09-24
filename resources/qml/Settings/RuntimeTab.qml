@@ -62,12 +62,23 @@ ColumnLayout {
         textRole: "text"
         model: [
             { value: "external", text: qsTr("External server") },
-            { value: "managed", text: qsTr("Managed local server") }
+            { value: "managed", text: qsTr("Managed local server (Specify llama.cpp binary)") },
+            { value: "managed-download", text: qsTr("Managed local server (Download llama.cpp via app)") }
         ]
         function syncMode() {
-            currentIndex = Settings.connectionMode === "managed" ? 1 : 0
+            if (Settings.connectionMode === "managed")
+                currentIndex = Settings.serverPathIsManaged ? 2 : 1
+            else
+                currentIndex = 0
         }
-        onActivated: (idx) => Settings.connectionMode = model[idx].value
+        onActivated: (idx) => {
+            if (idx === 0) {
+                Settings.connectionMode = "external"
+            } else {
+                Settings.connectionMode = "managed"
+                Settings.serverPathIsManaged = (idx === 2)
+            }
+        }
         onModelChanged: syncMode()
         Component.onCompleted: syncMode()
         Connections {
@@ -91,9 +102,8 @@ ColumnLayout {
 
     RuntimeTabInternal {
         id: rtInternal
-        logWindowRef: runtimeLayout.logWindowRef
-        canManage: runtimeLayout.canManage
-        visible: connectionMode === 1
+        downloadMode: connectionMode === 2
+        visible: connectionMode !== 0
         Layout.fillWidth: true
         Layout.fillHeight: true
     }

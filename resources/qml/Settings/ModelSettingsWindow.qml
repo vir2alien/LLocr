@@ -19,6 +19,10 @@ ApplicationWindow {
     height: 680
     modality: Qt.NonModal
 
+    // Runtime settings window reference — the Model tab's "Configure runtime"
+    // button opens it when the connection mode is External.
+    property var runtimeSettingsRef: null
+
     background: Rectangle {
         color: Theme.surface
         radius: Theme.dialogRadius
@@ -161,7 +165,7 @@ ApplicationWindow {
                 }
             }
 
-            CustomTabButton { text: qsTr("Location") }
+            CustomTabButton { text: qsTr("Model") }
             CustomTabButton { text: qsTr("Launch") }
             CustomTabButton { text: qsTr("Request") }
         }//TabBar
@@ -174,11 +178,13 @@ ApplicationWindow {
             LocationTab {
                 id: locationTab
                 isVerifyModelRole: window.isVerifyModelRole
+                runtimeSettingsRef: window.runtimeSettingsRef
             }
 
             LaunchTab {
                 id: launchTab
                 checkRole: window.isVerifyModelRole
+                runtimeSettingsRef: window.runtimeSettingsRef
             }
 
             RequestTab {

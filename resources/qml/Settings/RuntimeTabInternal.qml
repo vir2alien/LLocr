@@ -9,14 +9,13 @@ import LLocr
 import "../Common"
 
 ScrollView {
+    id: root
     contentWidth: availableWidth
     contentHeight: formLayout.implicitHeight
 
-    property var logWindowRef: null
-    // Whether the managed-runtime actions (Start/Stop/Restart) are allowed;
-    // passed down from the owning window instead of relying on the
-    // instantiation-context lookup.
-    property bool canManage: false
+    // true = "Download llama.cpp via app" variant (install UI only);
+    // false = "Specify llama.cpp binary" variant (binary path only).
+    property bool downloadMode: false
 
     property var backendOptions: []
     property var releaseOptions: []
@@ -81,10 +80,14 @@ ScrollView {
         id: formLayout
         width: parent.width
         spacing: 4
+
+        // --- Variant 1: user-specified llama-server binary ----------------
         LLOLabel {
+            visible: !root.downloadMode
             text: qsTr("llama-server binary")
         }
         RowLayout {
+            visible: !root.downloadMode
             Layout.fillWidth: true
             spacing: 6
             TextField {
@@ -102,82 +105,33 @@ ScrollView {
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            LLOLabel {
-                id: probeStatusLabel
-                Layout.fillWidth: true
-                text: Runtime.statusMessage.length
-                      ? Runtime.statusMessage
-                      : (Settings.serverPath.length
-                         ? qsTr("Not probed yet")
-                         : qsTr("No server binary selected"))
-                elide: Text.ElideMiddle
-                wrapMode: Text.NoWrap
-                font.pointSize: Theme.captionSize
-                color: Settings.serverPath.length && !Runtime.lockedOut
-                       ? Theme.textSecondary : Theme.textMuted
-            }
-        }
-
-        Item { implicitHeight: 4 }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            LLOButton {
-                text: qsTr("Check")
-                onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
-            }
-            LLOButton {
-                text: qsTr("Start")
-                enabled: canManage && Runtime.state !== Runtime.Starting && Runtime.state !== Runtime.Ready
-                onClicked: Runtime.startServer()
-            }
-            LLOButton {
-                text: qsTr("Stop")
-                enabled: canManage && (Runtime.state === Runtime.Starting || Runtime.state === Runtime.Ready)
-                onClicked: Runtime.stopServer()
-            }
-            LLOButton {
-                text: qsTr("Restart")
-                enabled: canManage && Runtime.state === Runtime.Ready
-                onClicked: Runtime.restartServer()
-            }
-            Item { Layout.fillWidth: true }
-        }
-
-        LLOButton {
-            text: qsTr("Show log")
-            onClicked: {
-                if (logWindowRef)
-                    logWindowRef.show()
-            }
-        }
-
+        // Probe result (the check runs when a binary is picked).
         LLOLabel {
+            id: probeStatusLabel
+            visible: !root.downloadMode
             Layout.fillWidth: true
+            text: Runtime.statusMessage.length
+                  ? Runtime.statusMessage
+                  : (Settings.serverPath.length
+                     ? qsTr("Not probed yet")
+                     : qsTr("No server binary selected"))
+            elide: Text.ElideMiddle
+            wrapMode: Text.NoWrap
             font.pointSize: Theme.captionSize
-            color: Theme.helpColor
-            text: qsTr("Managed mode uses this binary to run a local llama-server. "
-                       + "Recognition in External mode is unaffected.")
+            color: Settings.serverPath.length && !Runtime.lockedOut
+                   ? Theme.textSecondary : Theme.textMuted
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.topMargin: 6
-            Layout.preferredHeight: 1
-            color: Theme.divider
-        }
-
+        // --- Variant 2: download llama.cpp via the app --------------------
         LLOLabel {
+            visible: root.downloadMode
             text: qsTr("Install llama.cpp")
             color: Theme.textPrimary
             font.bold: true
         }
 
         LLOLabel {
+            visible: root.downloadMode
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
             color: Theme.textMuted
@@ -189,13 +143,13 @@ ScrollView {
         }
 
         LLOLabel {
-            visible: RuntimeInstaller.installedBuildCount > 0
+            visible: root.downloadMode && RuntimeInstaller.installedBuildCount > 0
             text: qsTr("Installed builds")
         }
 
         RuntimeBuildsList {
             id: buildsList
-            visible: RuntimeInstaller.installedBuildCount > 0
+            visible: root.downloadMode && RuntimeInstaller.installedBuildCount > 0
             Layout.fillWidth: true
             // Not capped and not interactive: the surrounding ScrollView
             // scrolls the whole tab, so a long list just grows (a nested
@@ -206,7 +160,7 @@ ScrollView {
 
         Rectangle {
             Layout.fillWidth: true
-            visible: RuntimeInstaller.hasUpdate
+            visible: root.downloadMode && RuntimeInstaller.hasUpdate
             implicitHeight: updatePlaque.implicitHeight + 2 * 8
             color: Theme.warningBg
             border.color: Theme.warning
@@ -258,6 +212,7 @@ ScrollView {
         }
 
         LLOLabel {
+            visible: root.downloadMode
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
             color: Theme.textMuted
@@ -267,6 +222,7 @@ ScrollView {
         }
 
         GridLayout {
+            visible: root.downloadMode
             Layout.fillWidth: true
             columns: 2
             rowSpacing: 4
@@ -308,6 +264,7 @@ ScrollView {
         }
 
         InstallerStatusLabel {
+            visible: root.downloadMode
             id: installStatusLabel
             isError: RuntimeInstaller.state === RuntimeInstaller.Error
             busy: RuntimeInstaller.busy
@@ -320,13 +277,14 @@ ScrollView {
             id: installProgress
             Layout.fillWidth: true
             Layout.preferredHeight: 12
-            visible: RuntimeInstaller.busy
+            visible: root.downloadMode && RuntimeInstaller.busy
             from: 0
             to: 1
             value: RuntimeInstaller.progress
         }
 
         RowLayout {
+            visible: root.downloadMode
             Layout.fillWidth: true
             spacing: 6
             LLOButton {
