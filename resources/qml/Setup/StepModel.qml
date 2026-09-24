@@ -11,31 +11,43 @@ import "../Common"
 Item {
     id: root
 
-    property bool complete: Settings.launchModelPath.trim().length > 0
+    // false = download models via the preset catalog, true = pick local files.
+    property bool downloadMode: true
+    property int preparedIndex: -1
+    property bool preparedForCheck: false
 
-    property real estTotal: 0
-    property real estRam: 0
-    function gib(bytes) { return bytes / (1024 * 1024 * 1024) }
-    function refreshEstimate() {
-        if (!Settings.launchModelPath.trim().length) { estTotal = 0; estRam = 0; return }
-        var m = Runtime.estimateModelMemory(Settings.launchModelPath)
-        root.estTotal = m.totalBytes
-        root.estRam = m.systemRamBytes
-    }
-    Connections {
-        target: Settings
-        function onLaunchModelPathChanged() { refreshEstimate() }
-    }
-    Connections {
-        target: LaunchProfilesOcr
-        function onProfileChanged() { refreshEstimate() }
-    }
+    readonly property bool downloadComplete: Settings.launchModelPath.trim().length > 0
+    readonly property bool pathComplete: Settings.launchModelPath.trim().length > 0
+    property bool complete: downloadMode ? downloadComplete : pathComplete
+
     onVisibleChanged: {
         if (!visible)
             return
-        refreshEstimate()
         ModelInstaller.refreshInstalled()
         ModelInstaller.reloadPresets()
+        ModelInstaller.rescanRegistry()
+    }
+
+    Component.onCompleted: {
+        ModelInstaller.refreshInstalled()
+        ModelInstaller.reloadPresets()
+        ModelInstaller.rescanRegistry()
+    }
+
+    Connections {
+        target: ModelInstaller
+        function onStateChanged() {
+            if (ModelInstaller.state !== ModelInstaller.ReadyToDownload
+                    || !pickDialog.visible)
+                return
+            const count = root.preparedForCheck ? ModelInstaller.checkPresetCount
+                                                : ModelInstaller.presetCount
+            if (root.preparedIndex >= 0 && root.preparedIndex < count)
+                pickDialog.license = ModelInstaller.presetInfo(
+                            root.preparedIndex, root.preparedForCheck).license
+            else
+                pickDialog.license = ""
+        }
     }
 
     ColumnLayout {
@@ -45,139 +57,241 @@ Item {
 
         LLOLabel {
             Layout.fillWidth: true
-            text: qsTr("Model")
+            text: qsTr("Models")
             font.pointSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
         }
 
-        LLOLabel {
+        RowLayout {
             Layout.fillWidth: true
-            text: qsTr("Vision-capable GGUF models work with the managed server. Pick a "
-                       + "preset or point at a local file.")
+            spacing: 12
+
+            RadioButton {
+                id: downloadRadio
+                text: qsTr("Download models")
+                checked: true
+                onToggled: root.downloadMode = true
+            }
+            RadioButton {
+                id: pathRadio
+                text: qsTr("Specify model files")
+                onToggled: root.downloadMode = false
+            }
+            Item { Layout.fillWidth: true }
         }
 
-        InstallerStatusLabel {
-            isError: ModelInstaller.state === ModelInstaller.Error
-            busy: ModelInstaller.busy
-            statusText: ModelInstaller.statusMessage.length
-                  ? ModelInstaller.statusMessage
-                  : (root.complete
-                     ? qsTr("Model selected: %1").arg(Settings.launchModelPath)
-                     : qsTr("No model selected yet."))
-        }
-
-        LLOLabel {
-            visible: installedList.count > 0
-            text: qsTr("Installed models")
-            color: Theme.textPrimary
-        }
-
-        ModelInstalledList {
-            id: installedList
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(installedList.count, 3) * 34
-            rowHeight: 34
-        }
-
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: Theme.textMuted
-            visible: root.complete && root.estTotal > 0
-            text: qsTr("Estimated footprint: ~%1 GiB (model + context) on %2 GiB RAM")
-                .arg(root.gib(root.estTotal).toFixed(1))
-                .arg(root.gib(root.estRam).toFixed(1))
-        }
-
-        InstallerProgressRow {
-            Layout.fillWidth: true
-            Layout.fillHeight: false
-            busy: ModelInstaller.busy
-            progress: ModelInstaller.progress
-            cancelVisible: ModelInstaller.state === ModelInstaller.Downloading
-            onCancelClicked: ModelInstaller.cancelInstall()
-        }
-
-        Frame {
+        // --- Download models: OCR / check tabs ----------------------------
+        ColumnLayout {
+            visible: root.downloadMode
             Layout.fillWidth: true
             Layout.fillHeight: true
-            padding: 6
-            clip: true
+            spacing: 6
 
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: 6
+            TabBar {
+                id: modelTabBar
+                Layout.fillWidth: true
+                TabButton { text: qsTr("OCR model") }
+                TabButton { text: qsTr("Check model") }
+            }
 
-                TabBar {
-                    id: modelTabBar
-                    Layout.fillWidth: true
-                    TabButton { text: qsTr("Presets") }
-                    TabButton { text: qsTr("Local file") }
-                }
+            StackLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                currentIndex: modelTabBar.currentIndex
 
-                StackLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    currentIndex: modelTabBar.currentIndex
+                Repeater {
+                    model: 2
 
-                    ColumnLayout {//Presets
-                        spacing: 6
-                        LLOLabel {
-                            text: qsTr("Start from a preset")
-                        }
-                        ModelPresetList {
-                            id: presetList
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            rowHeight: 34
-                            onInstallClicked: (index) => {
-                                prepareDialog.pendingIndex = index
-                                ModelInstaller.preparePreset(index)
-                                prepareDialog.open()
-                            }
-                        }
-                    }//ColumnLayout
+                    delegate: ScrollView {
+                        id: rolePane
+                        required property int index
+                        readonly property bool forCheck: index === 1
 
-                    ColumnLayout {//Local file
-                        spacing: 8
-                        RowLayout {
-                            Layout.fillWidth: true
+                        contentWidth: availableWidth
+                        contentHeight: paneLayout.implicitHeight
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        clip: true
+
+                        ColumnLayout {
+                            id: paneLayout
+                            width: rolePane.width
                             spacing: 6
-                            TextField {
-                                id: localPathField
+
+                            InstallerStatusLabel {
+                                isError: ModelInstaller.state === ModelInstaller.Error
+                                busy: ModelInstaller.busy
+                                statusText: ModelInstaller.statusMessage.length
+                                      ? ModelInstaller.statusMessage
+                                      : qsTr("Pick a preset to download, or activate "
+                                             + "an installed model.")
+                            }
+
+                            InstallerProgressRow {
                                 Layout.fillWidth: true
-                                implicitHeight: Theme.controlHeight
-                                placeholderText: qsTr("path to a .gguf model")
-                                text: Settings.launchModelPath
+                                busy: ModelInstaller.busy
+                                progress: ModelInstaller.progress
+                                cancelVisible: ModelInstaller.state === ModelInstaller.Downloading
+                                onCancelClicked: ModelInstaller.cancelInstall()
                             }
-                            LLOButton {
-                                text: qsTr("Browse…")
-                                onClicked: modelPicker.open()
+
+                            LLOLabel {
+                                visible: installedList.count === 0
+                                text: qsTr("No models installed")
+                                color: Theme.textPrimary
+                            }
+
+                            ModelInstalledList {
+                                id: installedList
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.min(installedList.count, 3) * 34
+                                rowHeight: 34
+                                managementActions: true
+                                isVerifyModelRole: rolePane.forCheck
+                                onActionError: (msg) => statusLabel.text = msg
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.topMargin: 6
+                                Layout.preferredHeight: 1
+                                color: Theme.divider
+                            }
+
+                            LLOLabel {
+                                text: qsTr("Preset catalog")
+                            }
+
+                            ModelPresetList {
+                                id: presetList
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.min(presetList.count, 3) * 36
+                                rowHeight: 36
+                                isVerifyModelRole: rolePane.forCheck
+                                onInstallClicked: (index) => {
+                                    ModelInstaller.preparePreset(index, rolePane.forCheck)
+                                    root.preparedIndex = index
+                                    root.preparedForCheck = rolePane.forCheck
+                                    pickDialog.open()
+                                }
+                            }
+
+                            LLOLabel {
+                                id: statusLabel
+                                Layout.fillWidth: true
+                                visible: text.length > 0
+                                color: Theme.textSecondary
+                                font.pointSize: Theme.captionSize
+                                elide: Text.ElideRight
+                                wrapMode: Text.NoWrap
                             }
                         }
-                        LLOButton {
-                            text: qsTr("Use this file")
-                            enabled: localPathField.text.trim().length > 0
-                            onClicked: Settings.launchModelPath = localPathField.text.trim()
-                        }
-                        LLOLabel {
-                            Layout.fillWidth: true
-                            font.pointSize: Theme.captionSize
-                            color: Theme.helpColor
-                            text: qsTr("The local model is not managed: its license is your "
-                                       + "responsibility, and it is not verified by the catalog.")
-                        }
-                    }//ColumnLayout
+                    }
+                }
+            }//StackLayout
+        }//ColumnLayout
+
+        // --- Specify model files: all paths in one view -------------------
+        ColumnLayout {
+            visible: !root.downloadMode
+            Layout.fillWidth: true
+            spacing: 6
+
+            LLOLabel {
+                text: qsTr("Path to the OCR model")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    selectByMouse: true
+                    placeholderText: qsTr("path to the .gguf model file")
+                    text: Settings.launchModelPath
+                    onEditingFinished: Settings.launchModelPath = text.trim()
+                }
+                LLOButton {
+                    text: qsTr("Browse…")
+                    onClicked: { picker.target = 0; picker.open() }
                 }
             }
-        }//Frame
+
+            LLOLabel {
+                text: qsTr("OCR multimodal module (mmproj)")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    selectByMouse: true
+                    placeholderText: qsTr("optional mmproj file for vision models")
+                    text: Settings.launchMmprojPath
+                    onEditingFinished: Settings.launchMmprojPath = text.trim()
+                }
+                LLOButton {
+                    text: qsTr("Browse…")
+                    onClicked: { picker.target = 1; picker.open() }
+                }
+            }
+
+            LLOLabel {
+                text: qsTr("Path to the check model")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    selectByMouse: true
+                    placeholderText: qsTr("optional small general-purpose model")
+                    text: Settings.checkLaunchModelPath
+                    onEditingFinished: Settings.checkLaunchModelPath = text.trim()
+                }
+                LLOButton {
+                    text: qsTr("Browse…")
+                    onClicked: { picker.target = 2; picker.open() }
+                }
+            }
+
+            LLOLabel {
+                text: qsTr("Check multimodal module (mmproj)")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    selectByMouse: true
+                    placeholderText: qsTr("optional mmproj file for vision models")
+                    text: Settings.checkLaunchMmprojPath
+                    onEditingFinished: Settings.checkLaunchMmprojPath = text.trim()
+                }
+                LLOButton {
+                    text: qsTr("Browse…")
+                    onClicked: { picker.target = 3; picker.open() }
+                }
+            }
+
+            LLOLabel {
+                Layout.fillWidth: true
+                font.pointSize: Theme.captionSize
+                color: Theme.helpColor
+                text: qsTr("The check model is optional — text verification can be "
+                           + "configured later in Settings.")
+            }
+        }
 
         Item { Layout.fillHeight: true }
     }//ColumnLayout
 
     Dialog {
-        id: prepareDialog
+        id: pickDialog
         modal: true
         anchors.centerIn: parent
         width: 420
@@ -185,23 +299,24 @@ Item {
         standardButtons: Dialog.Ok | Dialog.Cancel
 
         property string license: ""
-        property int pendingIndex: -1
 
         ColumnLayout {
+            width: parent.width
             spacing: 6
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
-                text: qsTr("Review the license before installing. Downloading starts "
-                           + "after confirmation.")
+                color: Theme.textSecondary
+                text: qsTr("Downloading starts after confirmation. The model license "
+                           + "applies — review it before installing.")
             }
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
                 color: Theme.accent
-                visible: prepareDialog.license.length > 0
+                visible: pickDialog.license.length > 0
                 text: {
-                    var lic = prepareDialog.license
+                    var lic = pickDialog.license
                     if (/^https?:\/\//.test(lic))
                         return qsTr("License: %1")
                             .arg("<a href=\"" + lic + "\">License</a>")
@@ -210,25 +325,28 @@ Item {
                 onLinkActivated: (link) => Qt.openUrlExternally(link)
             }
         }
-        onOpened: {
-            if (prepareDialog.pendingIndex >= 0
-                && prepareDialog.pendingIndex < ModelInstaller.presetCount) {
-                prepareDialog.license =
-                    ModelInstaller.presetInfo(prepareDialog.pendingIndex).license || ""
-            } else {
-                prepareDialog.license = ""
-            }
+
+        onAccepted: {
+            ModelInstaller.installPrepared()
         }
-        onAccepted: ModelInstaller.installPrepared()
-    }//Dialog
+    }
 
     FileDialog {
-        id: modelPicker
-        title: qsTr("Select a GGUF model")
+        id: picker
+        property int target: 0
+        title: qsTr("Select a model file")
+        fileMode: FileDialog.OpenFile
         nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
         onAccepted: {
             const path = Runtime.localPath(selectedFile)
-            Settings.launchModelPath = path
+            if (picker.target === 0)
+                Settings.launchModelPath = path
+            else if (picker.target === 1)
+                Settings.launchMmprojPath = path
+            else if (picker.target === 2)
+                Settings.checkLaunchModelPath = path
+            else
+                Settings.checkLaunchMmprojPath = path
         }
     }
 }

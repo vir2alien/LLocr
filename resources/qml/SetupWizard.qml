@@ -19,16 +19,31 @@ Dialog {
 
     property int current: 0
     property bool completed: false
-    property list<Item> steps: [stepWelcome, stepRuntime, stepModel, stepLaunch, stepDone]
+    // Step list depends on the mode chosen on step 2 (the model step is
+    // skipped for the external-server mode).
+    property list<Item> steps: []
     readonly property int lastStep: steps.length - 1
-    readonly property Item currentStep: steps[current]
+    readonly property Item currentStep: steps.length ? steps[current] : null
     readonly property bool canProceed: currentStep && currentStep.complete
 
-    signal openConnectionSettings()
+    function rebuildSteps() {
+        const choice = stepWelcome.choice
+        if (choice === 2)
+            // External server: no model and no managed-launch steps.
+            steps = [stepIntro, stepWelcome, stepExternal, stepOutput, stepDone]
+        else if (choice === 1)
+            steps = [stepIntro, stepWelcome, stepBinary, stepModel, stepOutput,
+                     stepLaunch, stepDone]
+        else
+            steps = [stepIntro, stepWelcome, stepRuntime, stepModel, stepOutput,
+                     stepLaunch, stepDone]
+    }
 
     function startWizard() {
-        wizard.current = 0
         wizard.completed = false
+        stepWelcome.choice = -1
+        rebuildSteps()
+        wizard.current = 0
         Settings.setupDismissed = false
         RuntimeInstaller.rescanInstalledBuilds()
         wizard.open()
@@ -41,23 +56,57 @@ Dialog {
         wizard.close()
     }
 
-    StackLayout {
-        id: stackLayout
-        anchors.fill: parent
-        currentIndex: wizard.current
+    Component.onCompleted: rebuildSteps()
 
+    Item {
+        anchors.fill: parent
+
+        // Each step fills the area; exactly one (steps[current]) is visible.
+        StepIntro {
+            id: stepIntro
+            anchors.fill: parent
+            visible: wizard.currentStep === stepIntro
+        }
         StepWelcome {
             id: stepWelcome
-            onExternalChosen: {
-                wizard.completed = true
-                wizard.close()
-                wizard.openConnectionSettings()
-            }
+            anchors.fill: parent
+            visible: wizard.currentStep === stepWelcome
         }
-        StepRuntime { id: stepRuntime }
-        StepModel { id: stepModel }
-        StepLaunch { id: stepLaunch }
-        StepDone { id: stepDone }
+        StepRuntime {
+            id: stepRuntime
+            anchors.fill: parent
+            visible: wizard.currentStep === stepRuntime
+        }
+        StepBinary {
+            id: stepBinary
+            anchors.fill: parent
+            visible: wizard.currentStep === stepBinary
+        }
+        StepExternal {
+            id: stepExternal
+            anchors.fill: parent
+            visible: wizard.currentStep === stepExternal
+        }
+        StepModel {
+            id: stepModel
+            anchors.fill: parent
+            visible: wizard.currentStep === stepModel
+        }
+        StepOutput {
+            id: stepOutput
+            anchors.fill: parent
+            visible: wizard.currentStep === stepOutput
+        }
+        StepLaunch {
+            id: stepLaunch
+            anchors.fill: parent
+            visible: wizard.currentStep === stepLaunch
+        }
+        StepDone {
+            id: stepDone
+            anchors.fill: parent
+            visible: wizard.currentStep === stepDone
+        }
     }
 
     footer: Rectangle {
@@ -81,6 +130,12 @@ Dialog {
             anchors.bottomMargin: Theme.spacingLarge
             spacing: Theme.spacing
 
+            LLOLabel {
+                text: qsTr("Step %1 of %2").arg(wizard.current + 1)
+                                             .arg(wizard.steps.length)
+                font.pointSize: Theme.captionSize
+                color: Theme.textSecondary
+            }
             LLOButton {
                 text: qsTr("Skip")
                 subtle: true
@@ -103,6 +158,9 @@ Dialog {
                         stepDone.markDone()
                         wizard.accept()
                     } else {
+                        // The step list may change after the mode is picked
+                        // (step 2) — rebuild before moving on.
+                        wizard.rebuildSteps()
                         wizard.current += 1
                     }
                 }

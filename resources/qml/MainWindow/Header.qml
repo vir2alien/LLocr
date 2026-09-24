@@ -13,6 +13,7 @@ ToolBar {
 
     signal openFileRequested()
     signal exportRequested(bool multiPage)
+    signal setupWizardRequested()
     signal openUiSettingsRequested()
     signal openOutputSettingsRequested()
     signal openVerificationSettingsRequested()
@@ -128,6 +129,10 @@ ToolBar {
     Menu {
         id: settingsMenu
 
+        MenuItem {
+            text: qsTr("Setup wizard")
+            onTriggered: headerRoot.setupWizardRequested()
+        }
         MenuItem {
             text: qsTr("Interface")
             onTriggered: headerRoot.openUiSettingsRequested()

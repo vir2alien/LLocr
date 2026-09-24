@@ -1,0 +1,48 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+import LLocr
+import "../Common"
+import "../Settings"
+
+Item {
+    id: root
+
+    property bool complete: rtExternal.baseUrlText.trim().length > 0
+
+    onVisibleChanged: {
+        if (visible)
+            rtExternal.loadValues()
+        else
+            rtExternal.saveValues()
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 20
+        spacing: 12
+
+        LLOLabel {
+            Layout.fillWidth: true
+            text: qsTr("External server")
+            font.pointSize: Theme.bodySize
+            color: Theme.textPrimary
+            font.bold: true
+        }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            text: qsTr("Configure the connection to your OpenAI-compatible server.")
+        }
+
+        RuntimeTabExternal {
+            id: rtExternal
+            Layout.fillWidth: true
+        }
+
+        Item { Layout.fillHeight: true }
+    }
+}

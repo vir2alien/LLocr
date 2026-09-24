@@ -39,6 +39,7 @@ ApplicationWindow {
                 exportDialog.open()
             }
         }
+        onSetupWizardRequested: setupWizard.startWizard()
         onOpenUiSettingsRequested: uiSettingsWindow.show()
         onOpenOutputSettingsRequested: outputSettingsWindow.show()
         onOpenVerificationSettingsRequested: verificationSettingsWindow.show()
@@ -174,8 +175,6 @@ ApplicationWindow {
 
     RuntimeSettingsWindow {
         id: runtimeSettingsWindow
-        setupWizardRef: setupWizard
-        logWindowRef: serverLogWindow
     }
 
     ModelSettingsWindow {
@@ -202,8 +201,6 @@ ApplicationWindow {
 
     SetupWizard {
         id: setupWizard
-
-        onOpenConnectionSettings: runtimeSettingsWindow.show()
     }
 
     Timer {

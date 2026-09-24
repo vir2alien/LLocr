@@ -14,12 +14,6 @@ ApplicationWindow {
     height: 680
     modality: Qt.NonModal
 
-    property var setupWizardRef: null
-    property var logWindowRef: null
-
-    readonly property bool canManage: !Runtime.lockedOut
-                             && Settings.serverPath.trim().length > 0
-
     background: Rectangle {
         color: Theme.surface
         radius: Theme.dialogRadius
@@ -94,9 +88,6 @@ ApplicationWindow {
         RuntimeTab {
             id: rtTab
             width: parent.width
-            setupWizardRef: window.setupWizardRef
-            logWindowRef: window.logWindowRef
-            canManage: window.canManage
         }
     }
 }

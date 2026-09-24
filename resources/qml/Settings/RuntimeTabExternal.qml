@@ -8,7 +8,11 @@ import LLocr
 import "../Common"
 
 ColumnLayout {
+    id: extRoot
+
     spacing: 4
+
+    readonly property alias baseUrlText: baseUrlField.text
 
     function loadValues() {
         ocrModelNameField.text = Settings.modelName

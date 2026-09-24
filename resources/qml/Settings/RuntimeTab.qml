@@ -12,13 +12,6 @@ ColumnLayout {
     clip: true
     spacing: 4
 
-    property var setupWizardRef: null
-    property var logWindowRef: null
-    // Whether the managed-runtime actions (Start/Stop/Restart) are allowed —
-    // passed down from the owning window instead of relying on the
-    // instantiation-context lookup.
-    property bool canManage: false
-
     Layout.maximumHeight: Number.POSITIVE_INFINITY
 
     readonly property int connectionMode: connectionModeBox.currentIndex
@@ -30,25 +23,6 @@ ColumnLayout {
 
     function saveValues() {
         rtExternal.saveValues();
-    }
-
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: 6
-        LLOButton {
-            text: qsTr("Launch setup wizard…")
-            onClicked: {
-                if (runtimeLayout.setupWizardRef)
-                    runtimeLayout.setupWizardRef.startWizard()
-            }
-        }
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: Theme.helpColor
-            text: qsTr("Walks you through installing a runtime and a "
-                       + "model, then configures the launch.")
-        }
     }
 
     LLOLabel {

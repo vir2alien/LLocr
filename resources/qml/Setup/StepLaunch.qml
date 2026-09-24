@@ -80,7 +80,7 @@ Item {
 
         LLOLabel {
             Layout.fillWidth: true
-            text: qsTr("Launch")
+            text: qsTr("Check and launch")
             font.pointSize: Theme.bodySize
             color: Theme.textPrimary
             font.bold: true
