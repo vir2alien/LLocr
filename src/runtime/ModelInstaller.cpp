@@ -224,7 +224,6 @@ bool ModelInstaller::matchesRole(const ModelEntry &e, bool forCheck) const
     const bool checkActive = !e.modelPath.isEmpty()
                              && e.modelPath == m_settings.checkLaunchModelPath();
 
-    // The role's active model is always listed, whatever its recorded roles.
     if (forCheck ? checkActive : ocrActive)
         return true;
 
@@ -232,16 +231,9 @@ bool ModelInstaller::matchesRole(const ModelEntry &e, bool forCheck) const
         return e.roles.contains(forCheck ? QStringLiteral("check")
                                          : QStringLiteral("ocr"));
 
-    // Legacy registry entry (written before roles existed). When it is active
-    // for the OTHER role only, keep it out of this list: the role the model is
-    // actually used in beats metadata (parser/prompt are also recorded for
-    // models installed from the validate catalog, so they prove nothing).
     if (checkActive)
         return false;
 
-    // Never-activated legacy entry: infer from the file layout — a model with
-    // a vision projector (mmproj) belongs to the OCR list, a plain text model
-    // to the validator list.
     const bool vision = !e.mmprojPath.isEmpty();
     return forCheck ? !vision : vision;
 }
@@ -255,8 +247,6 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
         return tr("This model has no model file selected");
 
     if (forCheck) {
-        // The verification model only takes the file locations: parser, prompt
-        // and the launch-profile context size belong to the OCR role.
         m_settings.setCheckLaunchModelPath(e.modelPath);
         if (!e.mmprojPath.isEmpty())
             m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
@@ -270,7 +260,6 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
         m_settings.setLaunchMmprojPath(e.mmprojPath);
     if (!e.parser.isEmpty())
         m_settings.setParserId(e.parser);
-    // The context size lives in the active launch profile now.
     if (e.ctxSize > 0)
         m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
                                                 e.ctxSize);
@@ -302,9 +291,6 @@ QString ModelInstaller::removeModel(int index)
     if (index < 0 || index >= m_installed.size())
         return tr("Invalid model selection");
     const ModelEntry &e = m_installed.at(index);
-    // The model is active when either role uses it (single registry, per-role
-    // activation): deleting the active check model would break the next
-    // verification task.
     const bool active = !e.modelPath.isEmpty()
                         && (e.modelPath == m_settings.launchModelPath()
                             || e.modelPath == m_settings.checkLaunchModelPath());
@@ -408,8 +394,6 @@ QVariantMap ModelInstaller::presetInfo(int index, bool forCheck) const
     out.insert(QStringLiteral("ctxSize"), p.ctxSize);
     out.insert(QStringLiteral("minBuild"), p.minBuild);
     out.insert(QStringLiteral("installed"), isPresetInstalled(p));
-    // "Active" = the role's current model path is the model this preset
-    // points at (its installed entry's model file matches the preset).
     const QString targetPath = presetInstalledModelPath(p);
     out.insert(QStringLiteral("active"),
                forCheck ? targetPath == m_settings.checkLaunchModelPath()

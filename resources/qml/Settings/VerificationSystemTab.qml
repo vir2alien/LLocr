@@ -79,8 +79,6 @@ Item {
                     placeholderTextColor: Theme.textMuted
                     placeholderText: qsTr("System prompt for the verification model")
                     font.pointSize: Theme.bodySmallSize
-                    // editingFinished fires on focus loss even without edits;
-                    // mark the window dirty only when the text really differs.
                     onEditingFinished: {
                         if (systemArea.text !== Verification.systemPrompt)
                             root.edited()

@@ -5,7 +5,6 @@
 namespace llocr {
 
 namespace {
-// Must match VerificationBlocksModel::GroupRole.
 constexpr int kGroupRole = Qt::UserRole + 3;
 }  // namespace
 

@@ -173,8 +173,6 @@ void LlamaServerProcess::armHealthPolling()
                 return;
             m_healthInFlight = true;
             QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/health")));
-            // Bound each probe so a hung reply cannot suppress further polls
-            // until the whole startup timeout fires.
             req.setTransferTimeout(500);
             QNetworkReply *reply = m_net->get(req);
             connect(reply, &QNetworkReply::finished, this,

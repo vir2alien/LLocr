@@ -28,8 +28,6 @@ class ModelInstaller : public QObject
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
 
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
-    // Role-filtered counts as properties so QML bindings re-evaluate on
-    // installedChanged (a Q_INVOKABLE call is not tracked by the engine).
     Q_PROPERTY(int ocrInstalledCount READ ocrInstalledCount NOTIFY installedChanged)
     Q_PROPERTY(int checkInstalledCount READ checkInstalledCount NOTIFY installedChanged)
 
@@ -72,9 +70,6 @@ public:
 
     Q_INVOKABLE void reloadPresets();
     Q_INVOKABLE QVariantMap installedInfo(int index, bool forCheck = false) const;
-    // Role-filtered views over the installed list: `index` addresses the
-    // sublist of models matching the role, not the full registry. The info
-    // map carries the full-list `index` for the action invokables.
     Q_INVOKABLE int roleInstalledCount(bool forCheck) const;
     Q_INVOKABLE QVariantMap roleInstalledInfo(int index, bool forCheck) const;
     Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);

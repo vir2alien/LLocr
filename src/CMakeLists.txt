@@ -77,6 +77,10 @@ qt_add_executable(llocr
     app/RequestProfileStore.cpp
     app/VerificationPromptStore.h
     app/VerificationPromptStore.cpp
+    app/VerificationQueueController.h
+    app/VerificationQueueController.cpp
+    app/ExportController.h
+    app/ExportController.cpp
     app/LaunchParametersModel.h
     app/LaunchParametersModel.cpp
     app/LaunchProfileStore.h

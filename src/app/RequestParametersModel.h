@@ -30,8 +30,6 @@ public:
 
     void resetFrom(const QList<RequestParameter> &parameters);
     bool setValue(int row, const QString &text);
-    // Appends a custom parameter; the value kind is inferred from the text
-    // (number, then boolean, else string). Fails on an empty or duplicate name.
     bool appendRow(const QString &name, const QString &text);
 
 private:

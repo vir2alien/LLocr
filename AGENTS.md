@@ -269,5 +269,10 @@
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
     (update-check opt-in) done; **H.4 closed** (watchdog-helper not shipped),
-    **H.5 deferred** (secrets keychain). Next: the remaining roadmap items
-    (see `docs/09-local-runtime-plan.md`).
+    **H.5 deferred** (secrets keychain). Done after that: the **code-review
+    fixes** and the **refactoring plan** (`docs/refactoring-plan/README.md`)
+    — all stages complete, incl. `ProfileStorage`,
+    `BlockGroupFilterModel`, `ModelInstallTransaction` (ADR 84/85/82) and the
+    `AppController` split into `VerificationQueueController` +
+    `ExportController` (ADR 86; the QML API is unchanged). Next: the
+    remaining roadmap items (see `docs/09-local-runtime-plan.md`).

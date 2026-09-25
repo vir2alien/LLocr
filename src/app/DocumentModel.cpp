@@ -35,7 +35,6 @@ QSize fitWithin(const QSize& size, const QSize& bounds)
 
 QSize pdfPixelSize(const QSizeF& pointSize)
 {
-    // 1/72 inch units -> pixels at ~150 DPI for a good OCR/quality trade-off.
     return QSize(qRound(pointSize.width() / 72.0 * kDpi),
                  qRound(pointSize.height() / 72.0 * kDpi));
 }
@@ -167,7 +166,6 @@ DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString& path)
             prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1.")
                                  .arg(path);
     } catch (const std::bad_alloc&) {
-        // A literal avoids allocating again while reporting an allocation failure.
         prepared.error = QStringLiteral("Not enough memory to prepare DjVu document.");
     } catch (const std::exception& exception) {
         prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1: %2")
@@ -176,7 +174,6 @@ DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString& path)
         prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1.")
                              .arg(path);
     }
-    // Only the success path publishes pages or a decoder, even after a late failure.
 #else
     Q_UNUSED(path);
     prepared.error = QCoreApplication::translate("DocumentModel",
@@ -194,7 +191,6 @@ void DocumentModel::appendPreparedDjVu(const PreparedDjVu& prepared)
     if (!prepared.document)
         return;
     const QString& key = prepared.pages.first().sourcePath;
-    // Existing pages must keep their decoder, even if the same source is imported again.
     if (!m_djvus.contains(key))
         m_djvus.insert(key, prepared.document);
 #endif
@@ -244,9 +240,6 @@ void DocumentModel::clear()
 #endif
 }
 
-// Drop the open PDF/DjVu document once its last referencing page is gone:
-// batch imports would otherwise keep every source document (file handle +
-// render cache) alive until the whole document is closed.
 void DocumentModel::evictUnusedSourceDocuments(const QString& path)
 {
     if (path.isEmpty())

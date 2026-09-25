@@ -562,8 +562,6 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
                                             const CropProvider& crop,
                                             const QPageLayout& layout, bool splitPages)
 {
-    // A stale file from a previous export must not survive a failed write:
-    // otherwise a silent QPdfWriter open failure looks like success.
     QFile::remove(path);
 
     QPdfWriter writer(path);

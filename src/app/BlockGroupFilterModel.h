@@ -5,8 +5,6 @@
 
 namespace llocr {
 
-// Filters a VerificationBlocksModel (or compatible model exposing a "group"
-// role) down to a single UI group: content / captions / service.
 class BlockGroupFilterModel : public QSortFilterProxyModel
 {
     Q_OBJECT

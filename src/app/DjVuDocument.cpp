@@ -58,7 +58,6 @@ bool DjVuDocument::waitForJob(ddjvu_job_s* job)
             m_error = tr("DjVu decoding timed out.");
             return false;
         }
-        // message_wait has no timeout. Poll without re-entering the GUI event loop.
         QThread::msleep(5);
     }
     drainMessages();
@@ -140,9 +139,7 @@ QSize DjVuDocument::pageSize(int index, QString* error)
         reportError(error, index);
         return {};
     }
-    // ddjvu_document_get_pageinfo already applies the INFO orientation.
     QSize size(info.width, info.height);
-    // Keep native scan resolution for OCR, bounded for very large scanned sheets.
     if (size.width() > kMaxRenderSide || size.height() > kMaxRenderSide)
         size.scale(kMaxRenderSide, kMaxRenderSide, Qt::KeepAspectRatio);
     if (qint64(size.width()) * size.height() > kMaxRenderPixels) {

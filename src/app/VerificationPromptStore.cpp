@@ -23,8 +23,6 @@ constexpr const char kBuiltInPath[] = ":/profiles/verifyPrompts.json";
 constexpr const char kUserFileName[] = "verifyPrompts.json";
 }  // namespace
 
-// ---------------------------------------------------------------- model ----
-
 VerificationBlocksModel::VerificationBlocksModel(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -146,8 +144,6 @@ int VerificationBlocksModel::rowOfType(const QString &type) const
     }
     return -1;
 }
-
-// ------------------------------------------------------------- store -------
 
 VerificationPromptStore::VerificationPromptStore(SettingsStore &settings,
                                                  QObject *parent)

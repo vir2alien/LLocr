@@ -11,7 +11,6 @@ import "../Common"
 Item {
     id: root
 
-    // false = download models via the preset catalog, true = pick local files.
     property bool downloadMode: true
     property int preparedIndex: -1
     property bool preparedForCheck: false
@@ -81,7 +80,6 @@ Item {
             Item { Layout.fillWidth: true }
         }
 
-        // --- Download models: OCR / check tabs ----------------------------
         ColumnLayout {
             visible: root.downloadMode
             Layout.fillWidth: true
@@ -191,7 +189,6 @@ Item {
             }//StackLayout
         }//ColumnLayout
 
-        // --- Specify model files: all paths in one view -------------------
         ColumnLayout {
             visible: !root.downloadMode
             Layout.fillWidth: true

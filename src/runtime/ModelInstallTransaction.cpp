@@ -122,8 +122,6 @@ void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree,
     QString largestGroup;
     qint64 groupBest = -1;
     for (auto it = groups.constBegin(); it != groups.constEnd(); ++it) {
-        // Ties break by key so the pick does not depend on QHash's per-process
-        // seed (a re-download of the same repo keeps the same quant).
         if (it.value().second > groupBest
             || (it.value().second == groupBest && it.key() < largestGroup)) {
             groupBest = it.value().second;
@@ -282,7 +280,7 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
             p.dir = QDir(modelsDir).filePath(repoDirName(repo));
             p.mmprojRel = mmprojRel;
             p.modelNames = modelNames;
-            p.fileSha256 = preset.sha256;  // 4.8: pin per-file digests
+            p.fileSha256 = preset.sha256;
             p.files = tree;
             return {std::move(p), QString()};
         });
@@ -491,8 +489,6 @@ void ModelInstallTransaction::completeInstall()
     e.ctxSizeSet = m_pending.ctxSize > 0;
     e.addedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
-    // Record the role this install was started from; a re-install from the
-    // other window keeps the roles the replaced entry already had.
     for (const ModelEntry &x : std::as_const(m_installed)) {
         if (x.id != e.id)
             continue;
@@ -527,8 +523,6 @@ void ModelInstallTransaction::completeInstall()
     m_installed = updated;
 
     if (m_pendingForCheck) {
-        // Installed from the check-model window: activate as the verification
-        // model, leaving the OCR launch settings untouched.
         m_settings.setCheckLaunchModelPath(e.modelPath);
         if (!e.mmprojPath.isEmpty())
             m_settings.setCheckLaunchMmprojPath(e.mmprojPath);

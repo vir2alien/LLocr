@@ -2,22 +2,22 @@
 
 #include <QImage>
 #include <QObject>
-#include <QPageLayout>
 #include <QReadWriteLock>
 #include <QUrl>
 #include <QVariant>
 #include <memory>
 
 #include "app/BoxListModel.h"
-#include "app/CheckController.h"
 #include "app/DocumentModel.h"
 #include "app/Exporter.h"
-#include "app/ExportRenderer.h"
 #include "app/PageListModel.h"
 #include "app/PageEditStore.h"
 #include "app/RecognitionController.h"
 #include "app/SettingsStore.h"
 #include "app/VerificationPromptStore.h"
+#include "app/VerificationQueueController.h"
+#include "app/ExportController.h"
+#include "core/CheckResult.h"
 #include "core/OcrResult.h"
 #include "runtime/RuntimeController.h"
 
@@ -80,7 +80,7 @@ public:
                            QObject *parent = nullptr);
 
     bool busy() const { return m_recognition.busy(); }
-    bool exporting() const { return m_exporting; }
+    bool exporting() const { return m_export.exporting(); }
     bool importing() const { return m_importing; }
     QString resultText() const;
     QString statusMessage() const { return m_statusMessage; }
@@ -110,12 +110,12 @@ public:
     QString selectedBlockCorrected() const;
     void setSelectedBoxIndex(int index);
 
-    bool checkBusy() const { return m_check.busy() || m_verifyQueueActive; }
-    bool checkRunning() const { return m_verifyQueueActive; }
-    bool checkFinished() const { return m_checkFinished; }
-    int checkProgressDone() const { return m_verifyDone; }
-    int checkProgressTotal() const { return m_verifyTotal; }
-    QString checkErrorMessage() const { return m_checkError; }
+    bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive(); }
+    bool checkRunning() const { return m_verify.queueActive(); }
+    bool checkFinished() const { return m_verify.finished(); }
+    int checkProgressDone() const { return m_verify.progressDone(); }
+    int checkProgressTotal() const { return m_verify.progressTotal(); }
+    QString checkErrorMessage() const { return m_verify.errorMessage(); }
     bool pageVerificationSupported() const;
     bool allPageVerificationSupported() const;
 
@@ -170,12 +170,6 @@ public slots:
     Q_INVOKABLE void stopCheck();
 
 private:
-    enum ExportScope : int {
-        ExportAll = 0,
-        ExportCurrent = 1,
-        ExportRange = 2,
-    };
-
     struct ImportState;
     void importNextFile(const std::shared_ptr<ImportState>& state);
     void recordImportedFile(const std::shared_ptr<ImportState>& state,
@@ -186,41 +180,19 @@ private:
     void notifyPageChanged();
     void applyRawResult(int index, const OcrResult& rawResult);
     void updateBoxesForCurrent();
-    QList<Exporter::Page> collectPages(int scope, int fromPage, int toPage) const;
     QString effectiveText(int index) const;
     const BoundingBox *selectedBox() const;
 
-    void finishExport(const Exporter::Result& result, int pageCount);
-    QPageLayout pdfPageLayout() const;
-    Exporter::Result finalizeRenderedExport(
-        Exporter::Format format, const QString& path,
-        const QList<Exporter::Page>& pages, const Exporter::CropProvider& crop,
-        const Exporter::ExportOptions& options, const QPageLayout& pdfLayout,
-        bool renderOk, const QString& renderedHtml, const QString& renderError) const;
-
-    struct VerifyTask {
-        int page;
-        int box;
-    };
-
-    void startVerifyQueue(const QList<VerifyTask> &tasks);
-    void startNextVerify();
-    void finishVerifyQueue();
     void applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result);
-    void collectEnabledBoxes(int pageIndex, QList<int> &out, bool onlyUnchecked);
 
 private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
-    VerificationPromptStore &m_verification;
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
     RecognitionController m_recognition;
-    CheckController m_check;
-    Exporter m_exporter;
-    ExportRenderer m_exportRenderer;
-    bool m_exporting = false;
+    VerificationQueueController m_verify;
     bool m_importing = false;
     int m_currentPage = 0;
     QString m_statusMessage;
@@ -232,18 +204,10 @@ private:
     mutable QString m_previewCacheText;
     mutable QString m_previewCacheResult;
     PageEditStore m_editStore;
+    ExportController m_export;
     mutable QReadWriteLock m_documentLock;
 
     int m_selectedBox = -1;
-    QString m_checkError;
-
-    QList<VerifyTask> m_verifyQueue;
-    int m_verifyPage = -1;
-    int m_verifyBoxIndex = -1;
-    bool m_verifyQueueActive = false;
-    bool m_checkFinished = false;
-    int m_verifyTotal = 0;
-    int m_verifyDone = 0;
     bool m_recognitionStopped = false;
 };
 

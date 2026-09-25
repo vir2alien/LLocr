@@ -18,18 +18,11 @@ class DownloadManager;
 class LaunchProfileStore;
 class SettingsStore;
 
-// The prepare → download → finalize pipeline for Hugging Face preset installs,
-// extracted from ModelInstaller (which stays the QML façade: presets, registry
-// and role-filtered views). The transaction owns the DownloadManager/Group,
-// the pending install plan and the prepare generation gate; the façade mirrors
-// its state/busy/progress/status via the signals below.
 class ModelInstallTransaction : public QObject
 {
     Q_OBJECT
 
 public:
-    // Mirrors ModelInstaller::State (same values); the façade maps it onto
-    // its own Q_ENUM for QML.
     enum State { Idle = 0, Fetching = 1, ReadyToDownload = 2, Downloading = 3, Error = 4 };
     Q_ENUM(State)
 
@@ -47,8 +40,6 @@ public:
     QString pendingTitle() const { return m_pending.title; }
     QString pendingRepo() const { return m_pending.repo; }
 
-    // The registry snapshot the transaction merges into (role merge on
-    // re-install, mmproj-reuse check). The façade keeps it in sync.
     const QList<ModelEntry> &installed() const { return m_installed; }
     void setInstalled(const QList<ModelEntry> &installed) { m_installed = installed; }
 
@@ -57,7 +48,6 @@ public:
     void cancel();
     void retranslate();
 
-    // Pure file-selection logic, exposed for tests.
     static QString repoDirName(const QString &repo);
     static void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
                                  const QString &preferMmproj, QStringList *modelPaths,
@@ -68,8 +58,7 @@ signals:
     void busyChanged(bool busy);
     void progressChanged(double progress);
     void statusMessageChanged(const QString &message);
-    // Emitted after the registry was saved with the new install merged.
-    void installedListReplaced(const QList<ModelEntry> &installed);
+    void installedListReplaced(const QList<llocr::ModelEntry> &installed);
     void installFinished();
 
 private:

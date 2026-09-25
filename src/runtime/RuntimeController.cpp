@@ -156,7 +156,7 @@ bool RuntimeController::serverRunsRole(ConnectionRole role) const
 {
     const QString want = roleModelPath(role);
     if (want.isEmpty())
-        return true;  // ADR 61: the live server is the source of truth
+        return true;
     return m_startedModelPath == want && m_startedMmprojPath == roleMmprojPath(role);
 }
 
@@ -452,7 +452,7 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
         }
     }
     if (modelId.isEmpty())
-        modelId = data.first().toObject().value(QStringLiteral("id")).toString();  // §4.2 fallback
+        modelId = data.first().toObject().value(QStringLiteral("id")).toString();
 
     ResolvedConnection conn = buildManagedConnection();
     conn.modelId = modelId;
@@ -579,7 +579,7 @@ QString RuntimeController::startServer(ConnectionRole role)
         m_logTarget->setServer(m_server);
 
     setBusyState(AppBusyState::StartingRuntime);
-    setLoadProgressPercent(-1);   // §H.7: no stale percent across starts
+    setLoadProgressPercent(-1);
     const QString err = m_server->start();
     if (!err.isEmpty()) {
         setBusyState(AppBusyState::Idle);

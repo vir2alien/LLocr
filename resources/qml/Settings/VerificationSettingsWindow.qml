@@ -77,7 +77,6 @@ ApplicationWindow {
     }//footer
 
     function loadAll() {
-        // Reload the draft from the store (built-in + user overrides).
         Verification.loadValues()
         systemTab.loadValues()
         blocksTab.loadValues()

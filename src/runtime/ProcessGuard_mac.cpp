@@ -1,10 +1,3 @@
-// macOS best-effort no-orphan. There is no PDEATHSIG analog; the plan (§5.4)
-// therefore guards only on:
-//   - graceful exit / SIGTERM / SIGINT: child is stopped explicitly;
-//   - SIGKILL of the GUI: child MAY survive — detected on next start via
-//     owner.json (PID + name + port) and offered for termination, never
-//     silently killed (ADR 30).
-// A full kqueue/NOTE_EXIT watchdog helper is deferred to Stage H.
 #include <QCoreApplication>
 #include <QProcess>
 
@@ -20,7 +13,7 @@ void ProcessGuard::install(QProcess &)
 
 void ProcessGuard::attachParent(QProcess &)
 {
-    // No strong attach available; see §5.4.
+    // No strong attach available;
 }
 
 qint64 ProcessGuard::currentPid()

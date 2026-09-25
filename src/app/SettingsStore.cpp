@@ -79,9 +79,6 @@ void SettingsStore::applyStartupMigration()
         m_settings.setValue(kSetupVersion, looksConfigured ? kCurrentSetupVersion : 0);
     }
 
-    // Self-heal: external mode with an empty endpoint but a stashed
-    // last-external URL restores the URL. Repairs profiles whose baseUrl was
-    // wiped (see the wizard-step initialization bug fixed alongside).
     if (m_settings.value(kConnectionMode).toString()
             == QString::fromUtf8(kModeExternal)
         && m_settings.contains(kBaseUrl)

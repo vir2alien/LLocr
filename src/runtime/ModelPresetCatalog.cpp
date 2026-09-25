@@ -38,8 +38,6 @@ QList<ModelPreset> readFile(const QString &path, const QString &fileDesc,
     QJsonArray arr;
     if (doc.isObject()) {
         const QJsonObject root = doc.object();
-        // Reject catalogs written by a newer schema instead of parsing them
-        // with silent field-level fallbacks.
         if (root.contains(QLatin1String(kUserSchemaKey))) {
             const int version = root.value(QLatin1String(kUserSchemaKey)).toInt(-1);
             if (version > kUserSchemaVersion) {

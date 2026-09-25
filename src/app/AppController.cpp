@@ -35,7 +35,6 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
                              QObject *parent)
     : m_settings(settings)
     , m_runtime(runtime)
-    , m_verification(verification)
     , m_recognition(
           settings, runtime, requestProfiles,
           [this](int index, QString &error) { return pageImage(index, &error); },
@@ -43,7 +42,20 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
                         QReadLocker locker(&m_documentLock);
                         return m_document.isValidIndex(index) && !m_document.page(index).sourceError.isEmpty();
                     })
-    , m_check(checkRequestProfiles, runtime, nullptr)
+    , m_verify(
+          {m_document, verification, checkRequestProfiles, runtime,
+           [this](int pageIndex, int boxIndex) {
+               return croppedImage(pageIndex, boxIndex);
+           },
+           [this]() { return m_recognition.busy(); }},
+          this)
+    , m_export(
+          {m_document, m_editStore, m_settings,
+           [this](int pageIndex, int boxIndex) {
+               return croppedImage(pageIndex, boxIndex);
+           },
+           [this]() { return m_importing; }},
+          this)
     , QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
@@ -56,25 +68,17 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
     connect(&m_recognition, &RecognitionController::rawResultReady, this,
             &AppController::applyRawResult);
 
-    connect(&m_check, &CheckController::checkFinished, this,
-            [this](const CheckResult &result) {
-                applyCheckResultToBox(m_verifyPage, m_verifyBoxIndex, result);
-                ++m_verifyDone;
-                emit checkStateChanged();
-                QTimer::singleShot(0, this, [this]() { startNextVerify(); });
-            });
-    connect(&m_check, &CheckController::busyChanged, this,
-            [this]() { emit checkStateChanged(); });
-    connect(&m_check, &CheckController::statusRequested, this,
+    connect(&m_verify, &VerificationQueueController::stateChanged, this,
+            &AppController::checkStateChanged);
+    connect(&m_verify, &VerificationQueueController::statusRequested, this,
             [this](const QString &message) { setStatus(message); });
+    connect(&m_verify, &VerificationQueueController::blockChecked, this,
+            &AppController::applyCheckResultToBox);
 
-    connect(&m_boxModel, &BoxListModel::boxRemoved, this, &AppController::onBoxRemoved);
-
-    connect(&m_exportRenderer, &ExportRenderer::progress, this,
-            [this](int pagesDone, int pagesTotal) {
-        if (m_exporting)
-            setStatus(tr("Exporting… (%1/%2)").arg(pagesDone).arg(pagesTotal));
-    });
+    connect(&m_export, &ExportController::exportingChanged, this,
+            &AppController::exportingChanged);
+    connect(&m_export, &ExportController::statusRequested, this,
+            [this](const QString &message) { setStatus(message); });
 
     connect(this, &AppController::pageChanged, this, [this]() {
         ++m_imageRevision;
@@ -142,7 +146,7 @@ bool AppController::hasResult() const
 bool AppController::canRecognize() const
 {
     if (m_document.isEmpty() || m_recognition.busy() || m_importing
-        || m_check.busy())
+        || m_verify.checkBusy())
         return false;
     return m_runtime.canRecognize(true);
 }
@@ -255,7 +259,7 @@ struct AppController::ImportState {
 
 void AppController::openFiles(const QVariantList& fileUrls)
 {
-    if (m_recognition.busy() || m_importing || m_exporting)
+    if (m_recognition.busy() || m_importing || m_export.exporting())
         return;
 
     QStringList paths;
@@ -641,10 +645,7 @@ void AppController::checkSelectedBlock()
 {
     if (m_selectedBox < 0)
         return;
-    if (m_document.isValidIndex(m_currentPage)
-        && m_document.page(m_currentPage).recognized) {
-        startVerifyQueue({{m_currentPage, m_selectedBox}});
-    }
+    m_verify.checkBlock(m_currentPage, m_selectedBox);
 }
 
 void AppController::revertBlockCorrection()
@@ -698,174 +699,27 @@ void AppController::revertBlockCorrection()
 
 void AppController::checkEnabledBlocksOnPage()
 {
-    if (!m_document.isValidIndex(m_currentPage))
-        return;
-
-    QList<int> candidates;
-    collectEnabledBoxes(m_currentPage, candidates, false);
-
-    QList<VerifyTask> tasks;
-    for (const int box : std::as_const(candidates))
-        tasks.append({m_currentPage, box});
-    startVerifyQueue(tasks);
+    m_verify.checkPageEnabledBlocks(m_currentPage);
 }
 
 void AppController::checkAllEnabledBlocks(bool onlyUnchecked)
 {
-    if (m_recognition.busy() || m_check.busy() || m_verifyQueueActive)
-        return;
-
-    QList<VerifyTask> tasks;
-    for (int p = 0; p < m_document.pageCount(); ++p) {
-        QList<int> candidates;
-        collectEnabledBoxes(p, candidates, onlyUnchecked);
-        for (const int box : std::as_const(candidates))
-            tasks.append({p, box});
-    }
-    startVerifyQueue(tasks);
-}
-
-void AppController::collectEnabledBoxes(int pageIndex, QList<int> &out,
-                                        bool onlyUnchecked)
-{
-    if (!m_document.isValidIndex(pageIndex))
-        return;
-    const DocumentPage &docPage = m_document.page(pageIndex);
-    if (!docPage.recognized || docPage.result.pages.isEmpty())
-        return;
-    const OcrPage &page = docPage.result.pages.first();
-    for (int i = 0; i < page.boxes.size(); ++i) {
-        const BoundingBox &box = page.boxes.at(i);
-        if (!m_verification.isTypeEnabled(box.label))
-            continue;
-        if (box.text.isEmpty())
-            continue;
-        if (onlyUnchecked && box.checkStatus != BoxCheckStatus::NotChecked)
-            continue;
-        out.append(i);
-    }
+    m_verify.checkAllEnabledBlocks(onlyUnchecked);
 }
 
 void AppController::stopCheck()
 {
-    m_verifyQueue.clear();
-    if (m_verifyQueueActive) {
-        m_verifyQueueActive = false;
-        m_verifyPage = -1;
-        m_verifyBoxIndex = -1;
-        emit checkStateChanged();
-    }
-    if (m_check.busy())
-        m_check.stop();
+    m_verify.stop();
 }
 
 bool AppController::pageVerificationSupported() const
 {
-    if (!m_document.isValidIndex(m_currentPage)
-        || !m_document.page(m_currentPage).recognized
-        || m_document.page(m_currentPage).result.pages.isEmpty())
-        return false;
-    if (m_recognition.busy())
-        return false;
-    const OcrPage &page = m_document.page(m_currentPage).result.pages.first();
-    for (const BoundingBox &box : std::as_const(page.boxes)) {
-        if (m_verification.isTypeEnabled(box.label) && !box.text.isEmpty())
-            return true;
-    }
-    return false;
+    return m_verify.pageVerificationSupported(m_currentPage);
 }
 
 bool AppController::allPageVerificationSupported() const
 {
-    if (m_recognition.busy())
-        return false;
-    for (int p = 0; p < m_document.pageCount(); ++p) {
-        const DocumentPage &docPage = m_document.page(p);
-        if (!docPage.recognized || docPage.result.pages.isEmpty())
-            continue;
-        const OcrPage &page = docPage.result.pages.first();
-        for (const BoundingBox &box : std::as_const(page.boxes)) {
-            if (m_verification.isTypeEnabled(box.label) && !box.text.isEmpty())
-                return true;
-        }
-    }
-    return false;
-}
-
-void AppController::startVerifyQueue(const QList<VerifyTask> &tasks)
-{
-    if (m_recognition.busy() || m_check.busy() || m_verifyQueueActive)
-        return;
-    if (tasks.isEmpty())
-        return;
-
-    m_checkError.clear();
-    m_checkFinished = false;
-    m_verifyQueue = tasks;
-    m_verifyPage = -1;
-    m_verifyBoxIndex = -1;
-    m_verifyTotal = tasks.size();
-    m_verifyDone = 0;
-    m_verifyQueueActive = true;
-    emit checkStateChanged();
-
-    QTimer::singleShot(0, this, [this]() { startNextVerify(); });
-}
-
-void AppController::startNextVerify()
-{
-    if (!m_verifyQueueActive)
-        return;
-
-    // A stop (or an explicit page-switch cancel) ends the run; otherwise the
-    // queue is drained serially, even while the user browses pages.
-    if (m_verifyQueue.isEmpty()) {
-        finishVerifyQueue();
-        return;
-    }
-
-    const VerifyTask task = m_verifyQueue.takeFirst();
-    m_verifyPage = task.page;
-    m_verifyBoxIndex = task.box;
-    const DocumentPage &docPage = m_document.page(m_verifyPage);
-    if (!docPage.recognized || docPage.result.pages.isEmpty()) {
-        ++m_verifyDone;
-        emit checkStateChanged();
-        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
-        return;
-    }
-    const QList<BoundingBox> &boxes = docPage.result.pages.first().boxes;
-    if (m_verifyBoxIndex < 0 || m_verifyBoxIndex >= boxes.size()) {
-        ++m_verifyDone;
-        emit checkStateChanged();
-        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
-        return;
-    }
-    const QString text = boxes.at(m_verifyBoxIndex).text;
-    const QImage crop = croppedImage(m_verifyPage, m_verifyBoxIndex);
-    if (crop.isNull()) {
-        ++m_verifyDone;
-        emit checkStateChanged();
-        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
-        return;
-    }
-
-    const BoundingBox &box = boxes.at(m_verifyBoxIndex);
-    m_check.checkBlock(crop, text,
-                       m_verification.systemPrompt(),
-                       m_verification.promptForType(box.label));
-}
-
-void AppController::finishVerifyQueue()
-{
-    if (!m_verifyQueueActive)
-        return;
-    m_verifyQueueActive = false;
-    m_verifyQueue.clear();
-    m_verifyPage = -1;
-    m_verifyBoxIndex = -1;
-    m_checkFinished = true;
-    emit checkStateChanged();
+    return m_verify.allPageVerificationSupported();
 }
 
 void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
@@ -874,7 +728,6 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
     if (!m_document.isValidIndex(pageIndex))
         return;
 
-    QString error;
     BoxCheckStatus status = BoxCheckStatus::NotChecked;
     QString corrected;
     bool textChanged = false;
@@ -902,15 +755,12 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
             box.correctedText.clear();
             break;
         case CheckStatus::Failed:
-            error = result.errorMessage;
             break;
         }
         status = box.checkStatus;
         corrected = box.correctedText;
 
         if (box.checkStatus == BoxCheckStatus::Fixed) {
-            // The corrected text flows into the page output; keep the
-            // recognized text intact so the user can diff/revert.
             m_editStore.replace(pageIndex,
                                 rebuildPageText(page.result.pages[0],
                                                 m_settings.keepPageNumbers(),
@@ -920,9 +770,6 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
         }
         ++m_cropRevision;
     }
-
-    if (!error.isEmpty())
-        m_checkError = error;
 
     const bool onCurrentPage = pageIndex == m_currentPage;
     if (onCurrentPage)
@@ -937,182 +784,9 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
         emit boxesChanged();
 }
 
-QList<Exporter::Page> AppController::collectPages(int scope, int fromPage, int toPage) const
-{
-    int lo = 0;
-    int hi = m_document.pageCount() - 1;
-
-    switch (scope) {
-    case ExportCurrent:
-        lo = hi = m_currentPage;
-        break;
-    case ExportRange:
-        lo = fromPage - 1;
-        hi = toPage - 1;
-        if (lo > hi)
-            std::swap(lo, hi);
-        lo = (std::max)(0, lo);
-        hi = (std::min)(m_document.pageCount() - 1, hi);
-        break;
-    case ExportAll:
-        break;
-    }
-
-    QList<Exporter::Page> pages;
-    for (int i = lo; i <= hi; ++i) {
-        if (!m_document.isValidIndex(i) || !m_document.page(i).recognized)
-            continue;
-        Exporter::Page p;
-        p.number = i + 1;
-        p.text = effectiveText(i);
-        pages.append(p);
-    }
-    return pages;
-}
-
 bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, int toPage)
 {
-    if (m_importing)
-        return false;
-    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
-    if (path.isEmpty()) {
-        setStatus(tr("No output path."));
-        return false;
-    }
-
-    if (m_exporting) {
-        setStatus(tr("An export is already in progress."));
-        return false;
-    }
-
-    const QList<Exporter::Page> pages = collectPages(scope, fromPage, toPage);
-    if (pages.isEmpty()) {
-        setStatus(tr("Nothing to export for the selected pages "
-                     "(no recognized pages in that selection)."));
-        return false;
-    }
-
-    QHash<QPair<int, int>, QImage> crops;
-    const QList<QPair<int, int>> refs = Exporter::referencedCrops(pages);
-    for (const auto& ref : refs)
-        crops.insert(ref, croppedImage(ref.first - 1, ref.second));
-
-    const Exporter::CropProvider cropProvider = [crops](int pageNumber, int boxIndex) {
-        return crops.value({pageNumber, boxIndex});
-    };
-
-    const Exporter::ExportOptions options{ m_settings.splitPages() };
-    const QPageLayout pdfLayout = pdfPageLayout();
-
-    m_exporting = true;
-    emit exportingChanged();
-    setStatus(tr("Exporting…"));
-
-    const Exporter::Format format =
-        Exporter::formatForSuffix(QFileInfo(path).suffix());
-
-    if (format == Exporter::Format::Html || format == Exporter::Format::Pdf) {
-        QtConcurrent::run([pages, cropProvider]() {
-            QList<ExportRenderer::PageInput> embedded;
-            embedded.reserve(pages.size());
-            for (const Exporter::Page& page : pages) {
-                embedded.append(
-                    { page.number, Exporter::embedImagesAsDataUrls(
-                                       page.text,
-                                       [&page, cropProvider](int boxIndex) {
-                                           return cropProvider(page.number, boxIndex);
-                                       }) });
-            }
-            return embedded;
-        })
-            .then(this,
-                  [this, pages, path, format, cropProvider, options, pdfLayout](
-                      QList<ExportRenderer::PageInput> embedded) {
-                const ExportRenderer::Output output =
-                    format == Exporter::Format::Pdf ? ExportRenderer::Output::Pdf
-                                                    : ExportRenderer::Output::Html;
-                ExportRenderer::Request request;
-                request.output = output;
-                request.pages = embedded;
-                request.styleSheet = Exporter::exportStyleSheet(options.splitPages);
-                request.outputPath = path;
-                request.splitPages = options.splitPages;
-                request.pageLayout = pdfLayout;
-                m_exportRenderer.render(
-                    request,
-                    [this, pages, path, format, cropProvider, options, pdfLayout](
-                        bool ok, const QString& html, const QString& error) {
-                        const Exporter::Result result = finalizeRenderedExport(
-                            format, path, pages, cropProvider, options, pdfLayout,
-                            ok, html, error);
-                        finishExport(result, pages.size());
-                    });
-            });
-        return true;
-    }
-
-    QtConcurrent::run(
-        [exporter = m_exporter, pages, path, cropProvider, options]() {
-            return exporter.exportToFile(pages, path, cropProvider, options);
-        })
-        .then(this, [this, pageCount = pages.size()](const Exporter::Result& result) {
-            finishExport(result, pageCount);
-        });
-    return true;
-}
-
-void AppController::finishExport(const Exporter::Result& result, int pageCount)
-{
-    m_exporting = false;
-    emit exportingChanged();
-    setStatus(result.success
-                  ? tr("%1 (%2 page(s)).").arg(result.message).arg(pageCount)
-                  : result.message);
-}
-
-QPageLayout AppController::pdfPageLayout() const
-{
-    const int marginMm = qBound(0, m_settings.pdfMarginMm(), 50);
-    return QPageLayout(QPageSize(QPageSize::A4),
-                       m_settings.pdfLandscape() ? QPageLayout::Landscape
-                                                 : QPageLayout::Portrait,
-                       QMarginsF(marginMm, marginMm, marginMm, marginMm),
-                       QPageLayout::Millimeter);
-}
-
-Exporter::Result AppController::finalizeRenderedExport(
-    Exporter::Format format, const QString& path, const QList<Exporter::Page>& pages,
-    const Exporter::CropProvider& crop, const Exporter::ExportOptions& options,
-    const QPageLayout& pdfLayout, bool renderOk, const QString& renderedHtml,
-    const QString& renderError) const
-{
-    if (format == Exporter::Format::Pdf) {
-        if (renderOk)
-            return Exporter::Result::ok(
-                QCoreApplication::translate("Exporter", "Exported to %1")
-                    .arg(QFileInfo(path).fileName()));
-        const Exporter::Result fb =
-            Exporter::writePdfFallback(pages, path, crop, pdfLayout,
-                                       options.splitPages);
-        if (fb.success)
-            return Exporter::Result::ok(
-                QCoreApplication::translate(
-                    "Exporter", "Exported PDF using the built-in writer (%1).")
-                    .arg(renderError));
-        return fb;
-    }
-
-    if (renderOk)
-        return Exporter::writeTextFile(
-            path, Exporter::assembleHtmlDocument({ renderedHtml }));
-
-    const Exporter::Result fb = m_exporter.exportToFile(pages, path, crop, options);
-    if (fb.success)
-        return Exporter::Result::ok(
-            QCoreApplication::translate(
-                "Exporter", "Exported HTML using the basic writer (%1).")
-                .arg(renderError));
-    return fb;
+    return m_export.exportPages(fileUrl, scope, m_currentPage, fromPage, toPage);
 }
 
 QStringList AppController::exportNameFilters() const

@@ -84,7 +84,6 @@ bool RequestParametersModel::appendRow(const QString &name, const QString &text)
             return false;
     }
 
-    // Infer the value kind from the text: number, then boolean, else string.
     RequestValueKind kind = RequestValueKind::String;
     QVariant parsed;
     if (RequestProfile::textToValue(text, RequestValueKind::Number, parsed))

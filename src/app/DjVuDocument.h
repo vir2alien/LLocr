@@ -10,7 +10,6 @@ struct ddjvu_job_s;
 
 namespace llocr {
 
-// Calls are serialized by DocumentModel's owner, like the PDF renderer.
 class DjVuDocument final
 {
     Q_DECLARE_TR_FUNCTIONS(DjVuDocument)

@@ -33,7 +33,6 @@ ModelOrigin originFromString(const QString &s)
                                          : ModelOrigin::External;
 }
 
-// True when `path` (an absolute canonical path) is inside `dir` (canonical).
 bool isSubpathOf(const QString &path, const QString &dir)
 {
     if (dir.isEmpty())

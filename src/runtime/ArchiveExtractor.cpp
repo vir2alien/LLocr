@@ -397,7 +397,6 @@ qint64 parseOctalField(const QByteArray &field)
     return ok ? v : -1;
 }
 
-// Reads a NUL- or space-terminated ASCII string from a fixed-size field.
 QString fieldString(const QByteArray &field)
 {
     int len = 0;
@@ -421,7 +420,6 @@ PaxValues parsePaxRecords(const QByteArray &data)
             break;
         const QString line = QString::fromLatin1(data.constData() + pos, nl - pos);
         pos = nl + 1;
-        // "<len> key=value"
         const int sp = line.indexOf(QLatin1Char(' '));
         if (sp <= 0)
             continue;
@@ -488,7 +486,6 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
             return result;
         }
         if (stream.avail_in == 0 && zres == Z_BUF_ERROR) {
-            // not enough input to make progress
             inflateEnd(&stream);
             result.error = QStringLiteral("truncated gzip stream");
             return result;

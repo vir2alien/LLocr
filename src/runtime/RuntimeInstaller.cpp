@@ -318,7 +318,6 @@ void RuntimeInstaller::startDownloadAndInstall()
         setState(State::Error);
         return;
     }
-    // §H.6: refuse when another instance is mid-install.
     QString lockError;
     if (!acquireInstallLock(lockError)) {
         setStatusMessage(lockError);

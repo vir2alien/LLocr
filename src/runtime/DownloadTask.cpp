@@ -110,7 +110,6 @@ QString sanitizeFileName(const QString &name)
     if (out.isEmpty())
         out = QStringLiteral("download");
 
-    // Windows reserved device names (case-insensitive, any extension).
     static const QStringList reserved = {QStringLiteral("CON"), QStringLiteral("PRN"),
                                          QStringLiteral("AUX"), QStringLiteral("NUL"),
                                          QStringLiteral("COM1"), QStringLiteral("COM2"),
@@ -189,7 +188,6 @@ void DownloadTask::start()
         return;
     }
 
-    // Inspect an existing partial download.
     m_resumeBytes = 0;
     m_resumeEtag.clear();
     m_resumeLastModified.clear();
@@ -200,11 +198,9 @@ void DownloadTask::start()
         readMeta();
     }
 
-    // download (the stale .part is truncated on the 200 path).
     m_resumeRequested = m_resumeBytes > 0 && hasResumeValidator();
     m_ifRangeValue = m_resumeRequested ? ifRangeValue() : QString();
 
-    // Pre-start free-space check (only when the remaining size is known).
     if (m_resumeExpectedTotal > 0 && m_resumeExpectedTotal > m_resumeBytes) {
         const qint64 remaining = m_resumeExpectedTotal - m_resumeBytes;
         if (m_freeBytesQuery(m_targetDir) < remaining) {
@@ -214,7 +210,6 @@ void DownloadTask::start()
         }
     }
 
-    // Position the hash over the bytes already on disk; stream the rest.
     m_hash.reset();
     if (m_resumeRequested) {
         m_receivedBytes = m_resumeBytes;
@@ -308,7 +303,6 @@ void DownloadTask::onMetadata(QNetworkReply *reply)
     if (redirect.isValid())
         return;  // handled in onFinished via handleRedirect()
 
-    // Capture validators for the resume metadata before anything else.
     const QString etag = QString::fromLatin1(reply->rawHeader("ETag"));
     const QString lastModified = QString::fromLatin1(reply->rawHeader("Last-Modified"));
 
@@ -331,8 +325,6 @@ void DownloadTask::onMetadata(QNetworkReply *reply)
         m_resumeLastModified = lastModified;
         openForAppend();
     } else if (status == 200) {
-        // Whole representation: either a fresh download or the server ignored
-        // Range / the validator no longer matched — restart from scratch.
         const qint64 contentLength =
             reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
         m_totalBytes = contentLength > 0 ? contentLength : -1;
@@ -348,7 +340,6 @@ void DownloadTask::onMetadata(QNetworkReply *reply)
         return;
     }
 
-    // Post-header free-space check once the remaining size is known.
     if (m_totalBytes > 0 && m_receivedBytes < m_totalBytes) {
         if (m_freeBytesQuery(m_targetDir) < (m_totalBytes - m_receivedBytes)) {
             fail(QObject::tr("Not enough free space on the target volume"));

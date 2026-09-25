@@ -101,7 +101,6 @@ GetResult pullGet(QNetworkAccessManager *nam, const QUrl &start,
                 return res;
             }
             reply->deleteLater();
-            // §7.3: only https may be followed; drop auth when host changes.
             if (next.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive)
                 != 0) {
                 GetResult res;

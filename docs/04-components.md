@@ -35,6 +35,10 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   recognition only verifies the newly recognized blocks. In Managed mode the
   server switches from the OCR to the check model automatically (ADR 74), in
   External mode the check just starts (ADR 79).
+  The serial check queue (task list, progress, stop) lives in
+  **`VerificationQueueController`** which owns `CheckController` and publishes
+  results to `AppController` via `blockChecked` (ADR 86) — `AppController`'s
+  `check*` API to QML is unchanged.
   The queue survives page switches (parity with recognition), so a batch check
   keeps running while the user browses (ADR 79).
   The Blocks tab list is backed by group-filtered proxy models
@@ -216,7 +220,10 @@ Three options handled by `UiController` (a QML singleton), selected in
   caret (important during "recognize all" while editing).
 
 ## 4.10 Export
-Implemented by the **`Exporter`** component. **Markdown is the single internal
+Implemented by the **`Exporter`** component, orchestrated by
+**`ExportController`** (owns `Exporter` + `ExportRenderer` and the whole
+export flow; `AppController::exportPages` is a forwarder, ADR 86).
+**Markdown is the single internal
 source of truth** (ADR #5/#10). Export uses the **effective** text per page —
 i.e. the user's edit when present, else the raw recognition.
 

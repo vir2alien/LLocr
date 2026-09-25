@@ -11,6 +11,8 @@
 │                C++ Backend (ViewModel)                   │
 │  AppController — state, signals/slots, orchestration     │
 │  RecognitionController — run loop, stop/abort            │
+│  VerificationQueueController — LLM-check queue           │
+│  ExportController — export pipeline                      │
 │  DocumentModel · PageListModel · BoxListModel            │
 │  PageEditStore — per-page edits                          │
 │  OcrImageProvider (QQuickImageProvider) · SettingsStore  │
@@ -201,10 +203,26 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
   `imageRevision`, `docRevision`, `currentPageEditable`, `currentPageEdited`,
   `exportNameFilters`, `canRecognize`, `parserNames`, `prompt`, and the
   `pageModel` / `boxModel` list models to QML. Owns page lifecycle
-  (open/append/remove/reorder), per-page edits, image-block editing, and
-  **export**. Delegates the recognition run loop to `RecognitionController`.
-  All connection/model/parser settings live in `SettingsStore` (exposed to QML
+  (open/append/remove/reorder), per-page edits and image-block editing.
+  Delegates the recognition run loop to `RecognitionController`, the LLM
+  verification queue to `VerificationQueueController` (ADR 86) and the export
+  pipeline to `ExportController` (ADR 86) — its own methods are forwarders and
+  signal relays with the QML API unchanged. Applies check results to the
+  document (`applyCheckResultToBox` under the document lock). All
+  connection/model/parser settings live in `SettingsStore` (exposed to QML
   as the `Settings` singleton), not on the controller.
+- **VerificationQueueController** — owns the serial verification (LLM check)
+  queue: task list (`{page, box}`), progress, stop, and the owned
+  `CheckController`; candidate boxes are collected from the enabled block
+  types in `VerificationPromptStore`. Read-only document access via injected
+  references; per-result mutations stay in `AppController` (signal
+  `blockChecked`). Progress/error state is relayed to `AppController`'s
+  `check*` properties (ADR 86).
+- **ExportController** — owns the export pipeline: page collection, the
+  pandoc/built-in writer paths and the rendered HTML/PDF flow with writer
+  fallbacks; owns `Exporter` and `ExportRenderer`. Crop images and the
+  importing flag come in as injected providers; `exportingChanged`/status are
+  relayed by `AppController` (ADR 86).
 - **RecognitionController** — owns the recognition run loop (single page /
   "recognize all"), the **stop** flag, and the active `OcrModel` instance
   (resolved via `OcrModelFactory` from `model/recipeId` at run start).

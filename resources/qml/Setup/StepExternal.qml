@@ -12,11 +12,6 @@ Item {
     id: root
 
     property bool complete: rtExternal.baseUrlText.trim().length > 0
-
-    // Guards the hide path: the wizard instantiates every step eagerly, so
-    // the initial `visible: false` binding evaluation fires onVisibleChanged
-    // before loadValues() ever ran — saving then would wipe the persisted
-    // external settings with empty fields.
     property bool valuesLoaded: false
 
     onVisibleChanged: {

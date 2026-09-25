@@ -96,7 +96,6 @@ QHash<QString, QString> ReleaseCatalog::parseSha256Table(const QString &body)
         QString name = m.captured(2).trimmed();
         if (name.isEmpty())
             continue;
-        // Keep only the file token, ignoring any trailing hash sum column.
         name = name.section(QLatin1Char(' '), 0, 0);
         out.insert(normalizedLower(name), digest);
     }
