@@ -283,6 +283,14 @@ void VerificationPromptStore::loadUser()
     }
 
     const QJsonObject root = doc.object();
+    if (root.contains(QStringLiteral("schemaVersion"))) {
+        const int version = root.value(QStringLiteral("schemaVersion")).toInt(-1);
+        if (version > kSchemaVersion) {
+            qWarning("VerificationPromptStore: user prompts %s use unsupported "
+                     "schema version %d (supported: %d); applying what can be parsed",
+                     qUtf8Printable(userPath()), version, kSchemaVersion);
+        }
+    }
     if (root.contains(QStringLiteral("systemPrompt")))
         m_systemPrompt = root.value(QStringLiteral("systemPrompt")).toString();
 
@@ -291,8 +299,14 @@ void VerificationPromptStore::loadUser()
         const QJsonObject obj = value.toObject();
         const QString type = obj.value(QStringLiteral("type")).toString();
         VerificationBlock *block = findBlock(type);
-        if (!block)
+        if (!block) {
+            if (!type.isEmpty()) {
+                qWarning("VerificationPromptStore: user prompts reference unknown "
+                         "block type '%s'; entry ignored",
+                         qUtf8Printable(type));
+            }
             continue;
+        }
         if (obj.contains(QStringLiteral("enabled")))
             block->enabled = obj.value(QStringLiteral("enabled")).toBool(true);
         if (obj.contains(QStringLiteral("prompt")))

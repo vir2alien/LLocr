@@ -389,8 +389,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
         return writePdfFallback(pages, filePath, crop, defaultPdfLayout(), splitPages);
     }
 
-    case Format::Unknown:
-    default: {
+    case Format::Unknown: {
         const QString md = crop
             ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix,
                                     splitPages ? markdownPageRule() : QString())
@@ -507,7 +506,12 @@ Exporter::Result Exporter::writeTextFile(const QString& path, const QString& con
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
     out << content;
+    out.flush();
     file.close();
+    if (file.error() != QFileDevice::NoError) {
+        return Result::fail(QCoreApplication::translate("Exporter", "Cannot write file: %1 (%2)")
+                                .arg(path, file.errorString()));
+    }
     return Result::ok(QCoreApplication::translate("Exporter", "Exported to %1").arg(QFileInfo(path).fileName()));
 }
 
@@ -558,6 +562,10 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
                                             const CropProvider& crop,
                                             const QPageLayout& layout, bool splitPages)
 {
+    // A stale file from a previous export must not survive a failed write:
+    // otherwise a silent QPdfWriter open failure looks like success.
+    QFile::remove(path);
+
     QPdfWriter writer(path);
     writer.setPageLayout(layout);
     writer.setResolution(300);

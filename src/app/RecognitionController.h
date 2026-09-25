@@ -65,7 +65,6 @@ private:
     int m_skippedPages = 0;
 
     ResolvedConnection m_connection;
-    bool m_connectionReady = false;
 
     std::unique_ptr<OcrModel> m_model;
     QString m_modelId;

@@ -214,7 +214,9 @@ void ModelInstaller::retranslate()
     case State::ReadyToDownload:
         setStatusMessage(tr("Ready: %1 (%2)").arg(m_pending.title, m_pending.repo));
         break;
-    default:
+    case State::Idle:
+    case State::Fetching:
+    case State::Error:
         break;
     }
 }

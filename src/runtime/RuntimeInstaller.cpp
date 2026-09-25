@@ -28,9 +28,10 @@ QStringList backendsForPlatform(const PlatformInfo &info)
         return {QStringLiteral("cpu"), QStringLiteral("cuda"), QStringLiteral("vulkan")};
     case PlatformOs::macOS:
         return {QStringLiteral("metal"), QStringLiteral("cpu")};
-    default:
+    case PlatformOs::Linux:
         return {QStringLiteral("cpu"), QStringLiteral("vulkan"), QStringLiteral("cuda")};
     }
+    return {QStringLiteral("cpu"), QStringLiteral("vulkan"), QStringLiteral("cuda")};
 }
 
 QString osLabel(const PlatformInfo &info)
@@ -40,9 +41,10 @@ QString osLabel(const PlatformInfo &info)
         return RuntimeInstaller::tr("Windows");
     case PlatformOs::macOS:
         return RuntimeInstaller::tr("macOS");
-    default:
+    case PlatformOs::Linux:
         return RuntimeInstaller::tr("Linux");
     }
+    return RuntimeInstaller::tr("Linux");
 }
 
 bool backendMatches(const QString &assetBackend, const QString &requested)
@@ -159,7 +161,10 @@ void RuntimeInstaller::retranslate()
     case State::Installing:
         setStatusMessage(tr("Installing %1 …").arg(backendDisplayName(m_pendingBackend)));
         break;
-    default:
+    case State::Idle:
+    case State::Ready:
+    case State::Installed:
+    case State::Error:
         break;
     }
 }

@@ -217,8 +217,10 @@ bool DocumentModel::removePage(int index)
 {
     if (!isValidIndex(index))
         return false;
+    const QString sourcePath = m_pages.at(index).sourcePath;
     m_pages.removeAt(index);
     m_fullCache.clear();
+    evictUnusedSourceDocuments(sourcePath);
     return true;
 }
 
@@ -239,6 +241,26 @@ void DocumentModel::clear()
     m_pdfs.clear();
 #ifdef LLOCR_HAVE_DJVU
     m_djvus.clear();
+#endif
+}
+
+// Drop the open PDF/DjVu document once its last referencing page is gone:
+// batch imports would otherwise keep every source document (file handle +
+// render cache) alive until the whole document is closed.
+void DocumentModel::evictUnusedSourceDocuments(const QString& path)
+{
+    if (path.isEmpty())
+        return;
+    for (const DocumentPage& page : m_pages) {
+        if (page.sourcePath == path)
+            return;
+    }
+    if (QPdfDocument* pdf = m_pdfs.take(path)) {
+        delete pdf;
+        return;
+    }
+#ifdef LLOCR_HAVE_DJVU
+    m_djvus.remove(path);
 #endif
 }
 

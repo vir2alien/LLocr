@@ -233,6 +233,8 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
 
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const QByteArray payload = reply->readAll();
+    const QString transportError =
+        reply->error() != QNetworkReply::NoError ? reply->errorString() : QString();
     reply->deleteLater();
 
     if (status == 403) {
@@ -250,7 +252,9 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
         return QList<ReleaseInfo>();
     }
     if (status != 200) {
-        error = QObject::tr("GitHub API returned HTTP %1").arg(status);
+        error = status > 0
+            ? QObject::tr("GitHub API returned HTTP %1").arg(status)
+            : QObject::tr("GitHub request failed: %1").arg(transportError);
         resetCache(cacheDir);
         return QList<ReleaseInfo>();
     }

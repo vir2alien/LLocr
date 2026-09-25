@@ -14,7 +14,7 @@ enum class RequestValueKind
     Number,     // QVariant(double)
     Boolean,    // QVariant(bool)
     String,     // QVariant(QString)
-    StringList  // QVariant(QStringList) — JSON array of strings
+    StringList, // QVariant(QStringList) — JSON array of strings
 };
 
 struct RequestParameter

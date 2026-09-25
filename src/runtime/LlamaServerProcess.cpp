@@ -1,3 +1,4 @@
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -171,8 +172,11 @@ void LlamaServerProcess::armHealthPolling()
             if (m_healthInFlight)
                 return;
             m_healthInFlight = true;
-            QNetworkReply *reply =
-                m_net->get(QNetworkRequest(QUrl(m_healthUrl + QStringLiteral("/health"))));
+            QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/health")));
+            // Bound each probe so a hung reply cannot suppress further polls
+            // until the whole startup timeout fires.
+            req.setTransferTimeout(500);
+            QNetworkReply *reply = m_net->get(req);
             connect(reply, &QNetworkReply::finished, this,
                     [this, reply]() { onHealthReply(reply); });
         });
@@ -203,21 +207,31 @@ void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
 
 void LlamaServerProcess::tryModelsFallback()
 {
-    QNetworkReply *reply =
-        m_net->get(QNetworkRequest(QUrl(m_healthUrl + QStringLiteral("/v1/models"))));
+    QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/v1/models")));
+    req.setTransferTimeout(3000);
+    QNetworkReply *reply = m_net->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
         if (m_state != RuntimeState::Starting)
             return;
         const int code =
             reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        if (code >= 200 && code < 300 && doc.object().contains(QStringLiteral("data"))) {
-            m_healthTimer->stop();
-            m_healthReached = true;
-            setState(RuntimeState::Ready);
-            setStatus(QStringLiteral("Ready"));
+        if (reply->error() != QNetworkReply::NoError ||
+            (code < 200 || code >= 300)) {
+            qWarning() << "/v1/models fallback failed:" << reply->errorString();
+            return;
         }
+        QJsonParseError perr;
+        const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &perr);
+        if (perr.error != QJsonParseError::NoError || !doc.isObject() ||
+            !doc.object().contains(QStringLiteral("data"))) {
+            qWarning() << "/v1/models fallback returned a malformed body";
+            return;
+        }
+        m_healthTimer->stop();
+        m_healthReached = true;
+        setState(RuntimeState::Ready);
+        setStatus(QStringLiteral("Ready"));
     });
 }
 
@@ -338,8 +352,6 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
     if (m_stopRequested) {
         setState(RuntimeState::Stopped);
         setStatus(QObject::tr("Stopped"));
-        if (m_opts.stopOnExit)
-            clearOwnerJson();
         return;
     }
 
@@ -388,8 +400,7 @@ void LlamaServerProcess::stop(unsigned graceMs)
     if (m_process.state() == QProcess::NotRunning) {
         setState(RuntimeState::Stopped);
         setStatus(QObject::tr("Stopped"));
-        if (m_opts.stopOnExit)
-            clearOwnerJson();
+        clearOwnerJson();
         return;
     }
     setState(RuntimeState::Stopping);
@@ -445,7 +456,9 @@ void LlamaServerProcess::retranslate()
     case RuntimeState::Stopped:
         setStatus(QObject::tr("Stopped"));
         break;
-    default:
+    case RuntimeState::NotConfigured:
+    case RuntimeState::Ready:
+    case RuntimeState::Failed:
         break;
     }
 }

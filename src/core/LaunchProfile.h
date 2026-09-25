@@ -12,7 +12,7 @@ enum class LaunchValueKind
 {
     Number,  // QVariant(double) — emitted as a decimal string
     Text,    // QVariant(QString)
-    Flag     // no value — bare `--name` token
+    Flag,    // no value — bare `--name` token
 };
 
 struct LaunchParameter

@@ -168,6 +168,5 @@ Dialog {
         }
     }
 
-    onRejected: wizard.dismissWizard()
     onClosed: wizard.dismissWizard()
 }

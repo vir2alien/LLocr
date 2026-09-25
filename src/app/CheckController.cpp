@@ -16,6 +16,11 @@ CheckController::CheckController(RequestProfileStore &requestProfiles,
     , m_model(std::make_unique<QwenGeneralModel>())
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
+        if (m_stopRequested) {
+            emit statusRequested(tr("Check stopped."));
+            setBusy(false);
+            return;
+        }
         const CheckResult result = m_watcher.future().resultCount() > 0
                                        ? m_watcher.result()
                                        : CheckResult::makeError(tr("No response"));
@@ -26,8 +31,13 @@ CheckController::CheckController(RequestProfileStore &requestProfiles,
 
 void CheckController::stop()
 {
+    if (!m_busy)
+        return;
+    m_stopRequested = true;
     if (m_model)
         m_model->abort();
+    m_runtime.cancelPendingStart();
+    emit statusRequested(tr("Stopping\u2026"));
 }
 
 QList<RequestParameter> CheckController::requestParameters() const
@@ -51,11 +61,17 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
         return;
 
     setBusy(true);
+    m_stopRequested = false;
 
     m_runtime.ensureConnectionReady(this, ConnectionRole::Check,
                                     [this, image, recognizedText, systemPrompt, typePrompt](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
+        if (m_stopRequested) {
+            emit statusRequested(tr("Stopped before check started."));
+            setBusy(false);
+            return;
+        }
         if (conn.baseUrl.isEmpty()) {
             const QString message = conn.error.isEmpty()
                 ? tr("Connection is not configured.")

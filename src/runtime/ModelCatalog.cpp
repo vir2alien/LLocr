@@ -38,6 +38,7 @@ struct GetResult {
     int status = -1;
     QByteArray body;
     QByteArray linkHeader;
+    QString error;  // transport-level failure description (status <= 0)
 };
 
 QNetworkReply *issueGet(QNetworkAccessManager *nam, const QUrl &url,
@@ -81,8 +82,11 @@ GetResult pullGet(QNetworkAccessManager *nam, const QUrl &start,
         QNetworkReply *reply = issueGet(nam, url, auth);
         if (!reply)
             return GetResult{};
-        if (!waitForReply(reply, timeoutMs))
-            return GetResult{};
+        if (!waitForReply(reply, timeoutMs)) {
+            GetResult res;
+            res.error = QObject::tr("request timed out");
+            return res;
+        }
         const int status =
             reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status >= 300 && status < 400) {
@@ -90,13 +94,21 @@ GetResult pullGet(QNetworkAccessManager *nam, const QUrl &start,
                 reply->attribute(QNetworkRequest::RedirectionTargetAttribute)
                     .toUrl();
             const QUrl next = target.isValid() ? url.resolved(target) : QUrl();
+            if (!next.isValid()) {
+                GetResult res;
+                res.error = reply->errorString();
+                reply->deleteLater();
+                return res;
+            }
             reply->deleteLater();
-            if (!next.isValid())
-                return GetResult{};
             // §7.3: only https may be followed; drop auth when host changes.
             if (next.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive)
-                != 0)
-                return GetResult{};
+                != 0) {
+                GetResult res;
+                res.error = QObject::tr("insecure redirect to %1 blocked")
+                                .arg(next.toString(QUrl::FullyEncoded));
+                return res;
+            }
             if (next.host() != url.host())
                 auth = QByteArray();
             url = next;
@@ -107,6 +119,8 @@ GetResult pullGet(QNetworkAccessManager *nam, const QUrl &start,
         res.status = status;
         res.body = reply->readAll();
         res.linkHeader = reply->rawHeader(QByteArrayLiteral("Link"));
+        if (reply->error() != QNetworkReply::NoError)
+            res.error = reply->errorString();
         reply->deleteLater();
         return res;
     }
@@ -251,9 +265,11 @@ QString ModelCatalog::fetchHeadSha(QNetworkAccessManager *nam, const QString &re
     const QUrl url(origin + QStringLiteral("/api/models/%1").arg(encodePath(repo)));
     const GetResult res = pullGet(nam, url, authorization, timeoutMs);
     if (res.status != 200) {
-        error = QObject::tr("Hugging Face API returned HTTP %1 for %2")
-                    .arg(res.status)
-                    .arg(repo);
+        error = res.status > 0
+            ? QObject::tr("Hugging Face API returned HTTP %1 for %2")
+                  .arg(res.status).arg(repo)
+            : QObject::tr("Hugging Face request failed for %1: %2")
+                  .arg(repo, res.error);
         return QString();
     }
     QJsonParseError perr;
@@ -288,9 +304,11 @@ QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString 
     while (guard-- > 0) {
         const GetResult res = pullGet(nam, QUrl(pageUrl), authorization, timeoutMs);
         if (res.status != 200) {
-            error = QObject::tr("Hugging Face API returned HTTP %1 for tree of %2")
-                        .arg(res.status)
-                        .arg(repo);
+            error = res.status > 0
+                ? QObject::tr("Hugging Face API returned HTTP %1 for tree of %2")
+                      .arg(res.status).arg(repo)
+                : QObject::tr("Hugging Face request failed for tree of %1: %2")
+                      .arg(repo, res.error);
             return QList<HfFile>();
         }
         QJsonParseError perr;

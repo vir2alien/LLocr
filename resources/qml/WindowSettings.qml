@@ -10,6 +10,10 @@ Item
 {
     property Window window
 
+    // Suppress save-timer arming while saved geometry is being restored at
+    // startup, so it doesn't overwrite the "never positioned" sentinel.
+    property bool _restoring: true
+
     Component.onCompleted:
     {
         if (Settings.windowWidth && Settings.windowHeight)
@@ -22,16 +26,17 @@ Item
             window.height = Settings.windowHeight;
             window.visibility = Settings.windowState;
         }
+        _restoring = false
     }
 
     Connections
     {
         target: window
-        function onXChanged(x) { saveSettingsTimer.restart() }
-        function onYChanged(y) { saveSettingsTimer.restart() }
-        function onWidthChanged() { saveSettingsTimer.restart() }
-        function onHeightChanged() { saveSettingsTimer.restart() }
-        function onVisibilityChanged() { saveSettingsTimer.restart() }
+        function onXChanged(x) { if (_restoring) return; saveSettingsTimer.restart() }
+        function onYChanged(y) { if (_restoring) return; saveSettingsTimer.restart() }
+        function onWidthChanged() { if (_restoring) return; saveSettingsTimer.restart() }
+        function onHeightChanged() { if (_restoring) return; saveSettingsTimer.restart() }
+        function onVisibilityChanged() { if (_restoring) return; saveSettingsTimer.restart() }
     }
 
     Timer

@@ -24,7 +24,8 @@ QString OcrModel::encodeImageDataUrl(const QImage &image, const QString &format,
 
     QByteArray raw;
     QBuffer buffer(&raw);
-    buffer.open(QIODevice::WriteOnly);
+    if (!buffer.open(QIODevice::WriteOnly))
+        return QString();
     if (!image.save(&buffer, fmt.toUpper().toLatin1().constData(), quality))
         return QString();
     buffer.close();

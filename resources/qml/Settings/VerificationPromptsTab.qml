@@ -130,6 +130,7 @@ Item {
                 required property string type
                 required property string name
                 required property bool enabled
+                required property string prompt
 
                 width: typeList.width
                 implicitHeight: Math.max(Theme.rowHeightLarge,
@@ -166,8 +167,7 @@ Item {
                     width: 6
                     height: 6
                     radius: 3
-                    visible: Verification.blockModel.promptAt(typeRow.index)
-                             !== Verification.originalPromptAt(typeRow.index)
+                    visible: typeRow.prompt !== Verification.originalPromptAt(typeRow.index)
                     color: Theme.warning
                 }
 

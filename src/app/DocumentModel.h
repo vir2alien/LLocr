@@ -76,6 +76,7 @@ private:
     QImage renderFull(const DocumentPage& page, QString *error = nullptr);
     void ensureFullImage(int index, QString *error = nullptr);
     void evictFullImages();
+    void evictUnusedSourceDocuments(const QString& path);
     QPdfDocument* pdfFor(const QString& path);
 
 private:

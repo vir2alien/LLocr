@@ -47,6 +47,7 @@ private:
     std::unique_ptr<GeneralPurposeModel> m_model;
     QFutureWatcher<CheckResult> m_watcher;
     bool m_busy = false;
+    bool m_stopRequested = false;
 };
 
 }  // namespace llocr

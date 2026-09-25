@@ -73,7 +73,6 @@ QString RecognitionController::promptText() const
 
 void RecognitionController::ensureConnectionReady()
 {
-    m_connectionReady = false;
     m_runtime.ensureConnectionReady(this, [this](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
@@ -88,7 +87,6 @@ void RecognitionController::ensureConnectionReady()
             return;
         }
         m_connection = conn;
-        m_connectionReady = true;
         recognizePage(m_startIndex);
     });
 }
@@ -207,7 +205,6 @@ void RecognitionController::finishRun()
 {
     m_recognizingIndex = -1;
     m_recognizeAll = false;
-    m_connectionReady = false;
     setBusy(false);
 }
 

@@ -8,4 +8,5 @@ import LLocr
 Label {
     color: Theme.textSecondary
     wrapMode: Text.Wrap
+    textFormat: Text.PlainText
 }

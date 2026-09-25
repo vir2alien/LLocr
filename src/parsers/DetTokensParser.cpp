@@ -259,7 +259,6 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info, bool tablesA
         return QString(level, QLatin1Char('#')) + QLatin1Char(' ') + text;
     }
     case BlockStyle::PlainText:
-    default:
         return convertMath(text);
     }
 }

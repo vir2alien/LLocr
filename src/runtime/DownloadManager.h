@@ -27,7 +27,6 @@ public:
     Q_ENUM(Role)
 
     explicit DownloadManager(QObject *parent = nullptr);
-    void extracted();
     ~DownloadManager() override;
 
     int enqueue(const DownloadTask::Request &request);

@@ -2,6 +2,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonParseError>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -426,7 +427,14 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
         return;
     }
 
-    const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
+        setBusyState(AppBusyState::Idle);
+        failResolve(tr("Server returned a malformed /v1/models response: %1")
+                        .arg(perr.errorString()));
+        return;
+    }
     const QJsonArray data = doc.object().value(QStringLiteral("data")).toArray();
     if (data.isEmpty()) {
         setBusyState(AppBusyState::Idle);

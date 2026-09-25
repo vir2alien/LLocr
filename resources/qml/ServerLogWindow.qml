@@ -14,6 +14,15 @@ ApplicationWindow {
     height: 420
     modality: Qt.NonModal
 
+    function logText() {
+        return RuntimeLog.serverLog || qsTr("No log output yet.")
+    }
+
+    onVisibleChanged: {
+        if (visible)
+            logArea.text = logText()
+    }
+
     background: Rectangle {
         color: Theme.surface
         radius: Theme.dialogRadius
@@ -132,11 +141,11 @@ ApplicationWindow {
 
         TextArea.flickable: TextArea {
             id: logArea
-            text: root.visible ? (RuntimeLog.serverLog || qsTr("No log output yet.")) : ""
             readOnly: true
             wrapMode: TextEdit.NoWrap
             font.family: "monospace"
             font.pointSize: Theme.captionSize
+            font.preferShaping: false
             color: Theme.textPrimary
             selectByMouse: true
 
@@ -154,13 +163,21 @@ ApplicationWindow {
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
     }
 
+    Connections {
+        target: RuntimeLog
+        function onServerLogChanged() {
+            if (root.visible)
+                logArea.text = root.logText()
+        }
+    }
+
     Timer {
         id: liveFlash
         interval: 500
         repeat: false
         onTriggered: {
-            liveDot.color = Theme.textMuted
-            liveDot.opacity = 0.5
+            liveDot.color = Qt.binding(function() { return Theme.textMuted; })
+            liveDot.opacity = Qt.binding(function() { return 0.5; })
         }
     }
 }

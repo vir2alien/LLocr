@@ -327,6 +327,7 @@ Item {
                 font.pointSize: Theme.captionSize
                 color: Theme.accent
                 visible: pickDialog.license.length > 0
+                textFormat: Text.RichText
                 text: {
                     var lic = pickDialog.license
                     if (/^https?:\/\//.test(lic))

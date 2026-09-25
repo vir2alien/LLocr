@@ -37,7 +37,18 @@ QList<ModelPreset> readFile(const QString &path, const QString &fileDesc,
     }
     QJsonArray arr;
     if (doc.isObject()) {
-        arr = doc.object().value(QLatin1String(kModelsKey)).toArray();
+        const QJsonObject root = doc.object();
+        // Reject catalogs written by a newer schema instead of parsing them
+        // with silent field-level fallbacks.
+        if (root.contains(QLatin1String(kUserSchemaKey))) {
+            const int version = root.value(QLatin1String(kUserSchemaKey)).toInt(-1);
+            if (version > kUserSchemaVersion) {
+                error = QObject::tr("%1 uses an unsupported schema version (%2; supported: %3)")
+                            .arg(fileDesc).arg(version).arg(kUserSchemaVersion);
+                return QList<ModelPreset>();
+            }
+        }
+        arr = root.value(QLatin1String(kModelsKey)).toArray();
     } else if (doc.isArray()) {
         arr = doc.array();
     } else {
