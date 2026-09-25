@@ -3,11 +3,10 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
-#include <QSaveFile>
+#include <QJsonObject>
 
+#include "app/ProfileStorage.h"
 #include "app/SettingsStore.h"
 #include "runtime/ReleaseCatalog.h"
 #include "runtime/RuntimePaths.h"
@@ -66,22 +65,18 @@ bool LaunchProfileStore::hasUserProfile() const
 void LaunchProfileStore::reloadUserProfiles()
 {
     m_userProfiles.clear();
-    QFile userFile(userPath());
-    if (!userFile.exists())
+    if (!QFile::exists(userPath()))
         return;
     QString error;
-    QJsonParseError parseError{};
+    bool ok = false;
+    const QJsonDocument doc = ProfileStorage::readJson(userPath(), &ok, &error);
     QList<LaunchProfile> parsedProfiles;
-    if (userFile.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(userFile.readAll(),
-                                                          &parseError);
-        if (parseError.error != QJsonParseError::NoError || !doc.isObject())
-            error = parseError.errorString();
-        else
-            parsedProfiles = LaunchProfile::parseFile(doc.object(), error);
-    } else {
-        error = userFile.errorString();
-    }
+    if (ok && doc.isObject())
+        parsedProfiles = LaunchProfile::parseFile(doc.object(), error);
+    else if (!ok)
+        error = QStringLiteral("cannot read the file");
+    else if (!doc.isObject())
+        error = QStringLiteral("not a JSON object");
     if (!error.isEmpty())
         qWarning("LaunchProfileStore: cannot load user profiles %s: %s "
                  "(falling back to the built-in presets)",
@@ -103,15 +98,13 @@ void LaunchProfileStore::reloadUserProfiles()
 void LaunchProfileStore::persistUserProfiles()
 {
     if (m_userProfiles.isEmpty()) {
-        QFile file(userPath());
-        if (file.exists() && !file.remove())
+        QString error;
+        if (!ProfileStorage::removeFileIfExists(userPath(), &error))
             qWarning("LaunchProfileStore: cannot remove user profiles %s: %s",
-                     qUtf8Printable(userPath()),
-                     qUtf8Printable(file.errorString()));
+                     qUtf8Printable(userPath()), qUtf8Printable(error));
         return;
     }
 
-    QDir().mkpath(QFileInfo(userPath()).absolutePath());
     QJsonObject root;
     root.insert(QStringLiteral("schemaVersion"), 1);
     QJsonArray profiles;
@@ -119,18 +112,10 @@ void LaunchProfileStore::persistUserProfiles()
         profiles.append(p.toJson());
     root.insert(QStringLiteral("profiles"), profiles);
 
-    QSaveFile file(userPath());
-    if (!file.open(QIODevice::WriteOnly)) {
+    QString error;
+    if (!ProfileStorage::writeJsonAtomic(userPath(), root, &error))
         qWarning("LaunchProfileStore: cannot write user profiles %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
-        return;
-    }
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-    if (!file.commit()) {
-        qWarning("LaunchProfileStore: cannot commit user profiles %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
-        return;
-    }
+                 qUtf8Printable(userPath()), qUtf8Printable(error));
 }
 
 QStringList LaunchProfileStore::presetIds() const

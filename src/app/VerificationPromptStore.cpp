@@ -11,6 +11,7 @@
 #include <QSaveFile>
 
 #include "app/BlockGroupFilterModel.h"
+#include "app/ProfileStorage.h"
 #include "app/SettingsStore.h"
 #include "runtime/RuntimePaths.h"
 
@@ -410,14 +411,13 @@ void VerificationPromptStore::save()
     }
 
     if (!systemChanged && changedBlocks.isEmpty()) {
-        QFile file(userPath());
-        if (file.exists() && !file.remove())
+        QString error;
+        if (!ProfileStorage::removeFileIfExists(userPath(), &error))
             qWarning("VerificationPromptStore: cannot remove user prompts %s: %s",
-                     qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
+                     qUtf8Printable(userPath()), qUtf8Printable(error));
         return;
     }
 
-    QDir().mkpath(QFileInfo(userPath()).absolutePath());
     QJsonObject root;
     root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
     if (systemChanged)
@@ -425,26 +425,18 @@ void VerificationPromptStore::save()
     if (!changedBlocks.isEmpty())
         root.insert(QStringLiteral("blocks"), changedBlocks);
 
-    QSaveFile file(userPath());
-    if (!file.open(QIODevice::WriteOnly)) {
+    QString error;
+    if (!ProfileStorage::writeJsonAtomic(userPath(), root, &error))
         qWarning("VerificationPromptStore: cannot write user prompts %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
-        return;
-    }
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-    if (!file.commit()) {
-        qWarning("VerificationPromptStore: cannot commit user prompts %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
-        return;
-    }
+                 qUtf8Printable(userPath()), qUtf8Printable(error));
 }
 
 void VerificationPromptStore::resetToDefaults()
 {
-    QFile file(userPath());
-    if (file.exists() && !file.remove())
+    QString error;
+    if (!ProfileStorage::removeFileIfExists(userPath(), &error))
         qWarning("VerificationPromptStore: cannot remove user prompts %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
+                 qUtf8Printable(userPath()), qUtf8Printable(error));
     loadValues();
 }
 

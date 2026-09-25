@@ -65,6 +65,8 @@ qt_add_executable(llocr
     app/PageEditStore.h
     app/PageEditStore.cpp
     app/PageIndex.h
+    app/ProfileStorage.h
+    app/ProfileStorage.cpp
     app/RecognitionController.h
     app/RecognitionController.cpp
     app/CheckController.h

@@ -2,12 +2,10 @@
 
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QJsonObject>
-#include <QSaveFile>
 
+#include "app/ProfileStorage.h"
 #include "app/SettingsStore.h"
 #include "runtime/RuntimePaths.h"
 
@@ -73,21 +71,18 @@ bool RequestProfileStore::hasUserProfile() const
 void RequestProfileStore::reloadUserProfiles()
 {
     m_userProfiles.clear();
-    QFile userFile(userPath());
-    if (!userFile.exists())
+    if (!QFile::exists(userPath()))
         return;
     QString error;
+    bool ok = false;
+    const QJsonDocument doc = ProfileStorage::readJson(userPath(), &ok, &error);
     QList<RequestProfile> parsedProfiles;
-    if (userFile.open(QIODevice::ReadOnly)) {
-        QJsonParseError parseError{};
-        const QJsonDocument doc = QJsonDocument::fromJson(userFile.readAll(),
-                                                          &parseError);
-        if (parseError.error != QJsonParseError::NoError || !doc.isObject())
-            error = parseError.errorString();
-        else
-            parsedProfiles = RequestProfile::profilesFromJson(doc.object(), error);
-    } else {
-        error = userFile.errorString();
+    if (ok && doc.isObject()) {
+        parsedProfiles = RequestProfile::profilesFromJson(doc.object(), error);
+    } else if (!ok) {
+        error = QStringLiteral("cannot read the file");
+    } else if (!doc.isObject()) {
+        error = QStringLiteral("not a JSON object");
     }
     if (!error.isEmpty())
         qWarning("RequestProfileStore: cannot load user profiles %s: %s "
@@ -105,15 +100,13 @@ void RequestProfileStore::reloadUserProfiles()
 void RequestProfileStore::persistUserProfiles()
 {
     if (m_userProfiles.isEmpty()) {
-        QFile file(userPath());
-        if (file.exists() && !file.remove())
+        QString error;
+        if (!ProfileStorage::removeFileIfExists(userPath(), &error))
             qWarning("RequestProfileStore: cannot remove user profiles %s: %s",
-                     qUtf8Printable(userPath()),
-                     qUtf8Printable(file.errorString()));
+                     qUtf8Printable(userPath()), qUtf8Printable(error));
         return;
     }
 
-    QDir().mkpath(QFileInfo(userPath()).absolutePath());
     QJsonObject root;
     root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
     QJsonArray profiles;
@@ -121,18 +114,10 @@ void RequestProfileStore::persistUserProfiles()
         profiles.append(profile.toJson());
     root.insert(QStringLiteral("profiles"), profiles);
 
-    QSaveFile file(userPath());
-    if (!file.open(QIODevice::WriteOnly)) {
+    QString error;
+    if (!ProfileStorage::writeJsonAtomic(userPath(), root, &error))
         qWarning("RequestProfileStore: cannot write user profiles %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
-        return;
-    }
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-    if (!file.commit()) {
-        qWarning("RequestProfileStore: cannot commit user profiles %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(file.errorString()));
-        return;
-    }
+                 qUtf8Printable(userPath()), qUtf8Printable(error));
 }
 
 const RequestProfile *RequestProfileStore::findBuiltIn(const QString &id) const
