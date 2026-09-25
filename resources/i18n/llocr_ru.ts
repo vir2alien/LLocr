@@ -3814,66 +3814,14 @@
         <translation>Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="427"/>
-        <source>The preset is not installed</source>
-        <translation>Пресет не установлен</translation>
-    </message>
-    <message>
         <location filename="../../src/runtime/ModelInstaller.cpp" line="568"/>
         <source>No preset selected</source>
         <translation>Пресет не выбран</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="580"/>
-        <source>Looking up %1 …</source>
-        <translation>Поиск %1 …</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="215"/>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="657"/>
-        <source>Ready: %1 (%2)</source>
-        <translation>Готово: %1 (%2)</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="666"/>
-        <source>Nothing prepared to install</source>
-        <translation>Ничего не подготовлено к установке</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="212"/>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="682"/>
-        <source>Downloading %1 …</source>
-        <translation>Скачивание %1 …</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="694"/>
-        <source>Repository contains identically named files in different subdirectories; cannot install</source>
-        <translation>В репозитории есть файлы с одинаковыми именами в разных подкаталогах; установка невозможна</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="784"/>
-        <source>Download failed — check your connection and try again</source>
-        <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="802"/>
-        <source>Unable to read downloaded file %1</source>
-        <translation>Не удалось прочитать скачанный файл %1</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="808"/>
-        <source>File %1 is not a valid GGUF (missing magic)</source>
-        <translation>Файл %1 не является корректным GGUF (отсутствует сигнатура)</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="871"/>
-        <source>Model downloaded, but the registry could not be saved: %1</source>
-        <translation>Модель загружена, но реестр не удалось сохранить: %1</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="899"/>
-        <source>Installed %1</source>
-        <translation>Установлено %1</translation>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="427"/>
+        <source>The preset is not installed</source>
+        <translation>Пресет не установлен</translation>
     </message>
     <message>
         <source>Enter a search query</source>
@@ -3896,11 +3844,6 @@
         <translation type="vanished">Некорректный выбор результата поиска</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="909"/>
-        <source>Download canceled</source>
-        <translation>Скачивание отменено</translation>
-    </message>
-    <message>
         <source>Unable to open catalog: %1</source>
         <translation type="vanished">Не удалось открыть каталог: %1</translation>
     </message>
@@ -3915,6 +3858,66 @@
     <message>
         <source>No valid presets in file</source>
         <translation type="vanished">В файле нет корректных пресетов</translation>
+    </message>
+</context>
+<context>
+    <name>llocr::ModelInstallTransaction</name>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="230"/>
+        <source>Looking up %1 …</source>
+        <translation>Поиск %1 …</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="252"/>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="279"/>
+        <source>Ready: %1 (%2)</source>
+        <translation>Готово: %1 (%2)</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="265"/>
+        <source>Nothing prepared to install</source>
+        <translation>Ничего не подготовлено к установке</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="276"/>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="288"/>
+        <source>Downloading %1 …</source>
+        <translation>Скачивание %1 …</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="300"/>
+        <source>Repository contains identically named files in different subdirectories; cannot install</source>
+        <translation>В репозитории есть файлы с одинаковыми именами в разных подкаталогах; установка невозможна</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="348"/>
+        <source>Download failed — check your connection and try again</source>
+        <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="360"/>
+        <source>Unable to read downloaded file %1</source>
+        <translation>Не удалось прочитать скачанный файл %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="366"/>
+        <source>File %1 is not a valid GGUF (missing magic)</source>
+        <translation>Файл %1 не является корректным GGUF (отсутствует сигнатура)</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="429"/>
+        <source>Model downloaded, but the registry could not be saved: %1</source>
+        <translation>Модель загружена, но реестр не удалось сохранить: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="451"/>
+        <source>Installed %1</source>
+        <translation>Установлено %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="458"/>
+        <source>Download canceled</source>
+        <translation>Скачивание отменено</translation>
     </message>
 </context>
 <context>

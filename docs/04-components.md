@@ -43,7 +43,10 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   list components (`Common/ModelInstalledList`, `ModelPresetList`,
   `RuntimeBuildsList`) expose `implicitHeight` (cap via `maxVisibleRows`,
   `<= 0` = uncapped) so consumers bind heights instead of re-deriving row
-  counts (ADR 82).
+  counts (ADR 82). The HF preset install pipeline lives in
+  `ModelInstallTransaction` (prepare → download → finalize, ADR 85);
+  `ModelInstaller` stays the QML façade over presets, the registry and
+  role-filtered views.
 
 ## 4.2 Settings
 Settings are split into **separate non-modal windows** opened from the Header

@@ -12,9 +12,7 @@
 
 namespace llocr {
 
-class DownloadGroup;
-class DownloadManager;
-class LaunchProfileStore;
+class ModelInstallTransaction;
 class RuntimeController;
 class SettingsStore;
 
@@ -94,23 +92,6 @@ public:
     Q_INVOKABLE void cancelInstall();
 
 private:
-    struct Pending {
-        QString repo;
-        QString revision;
-        QString title;
-        QString license;
-        QString parser;
-        QString prompt;
-        int ctxSize = 0;
-        QString presetId;
-        QString dir;              // <modelsDir>/<org>__<repo>
-        QString modelPath;        // absolute first part after install
-        QString mmprojRel;        // repo-relative projector path, or empty
-        QStringList modelNames;   // repo-relative model file paths (all parts)
-        QHash<QString, QString> fileSha256;  // preset-pinned digest per file name (lowercased)
-        QList<HfFile> files;      // full candidate file list for the repo
-    };
-
     void setState(State next);
     void setBusy(bool busy);
     void setProgress(double p);
@@ -121,21 +102,11 @@ private:
     bool isPresetInstalled(const ModelPreset &p) const;
     QString presetInstalledModelPath(const ModelPreset &p) const;
     bool matchesRole(const ModelEntry &e, bool forCheck) const;
-    void beginPrepare(const ModelPreset &preset);
-    void onPrepareDone(const Pending &p, const QString &err);
-
-    void beginDownload();
-    void enqueueFile(const QString &repoPath, const QString &repo,
-                     const QString &commitSha);
-    QString expectedShaFor(const QString &repoPath) const;
-    bool mmprojAlreadyOnDisk() const;
-    void maybeFinishDownloads();
-    void completeInstall();
 
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
     LaunchProfileStore &m_launchProfiles;
-    DownloadManager *m_downloads = nullptr;
+    ModelInstallTransaction *m_transaction = nullptr;
 
     State m_state = State::Idle;
     bool m_busy = false;
@@ -145,12 +116,6 @@ private:
     QList<ModelPreset> m_presets;
     QList<ModelPreset> m_presetsValidate;
     QList<ModelEntry> m_installed;
-
-    Pending m_pending;
-    bool m_pendingForCheck = false;  // install auto-activates the check model
-    int m_prepareGeneration = 0;
-
-    DownloadGroup *m_group = nullptr;
 
 signals:
     void stateChanged();

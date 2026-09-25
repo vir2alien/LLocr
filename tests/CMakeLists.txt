@@ -686,6 +686,7 @@ target_link_libraries(test_model_installer PRIVATE
 
 target_sources(test_model_installer PRIVATE
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelInstaller.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelInstallTransaction.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/DownloadGroup.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelRegistry.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/ModelCatalog.cpp
@@ -722,6 +723,36 @@ else()
     target_sources(test_model_installer PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
 endif()
 add_test(NAME test_model_installer COMMAND test_model_installer)
+
+# ---- Stage 4 refactoring: model install transaction ---------------------
+qt_add_executable(test_model_install_transaction test_model_install_transaction.cpp)
+
+target_include_directories(test_model_install_transaction PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_model_install_transaction PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+    Qt6::Concurrent
+)
+
+target_sources(test_model_install_transaction PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelInstallTransaction.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelPreset.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ModelRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadGroup.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/DownloadTask.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchProfileStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/LaunchParametersModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/ProfileStorage.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/ReleaseCatalog.cpp
+)
+add_test(NAME test_model_install_transaction COMMAND test_model_install_transaction)
 
 # ---- Stage E: model preset catalog -------------------------------------
 qt_add_executable(test_model_preset_catalog test_model_preset_catalog.cpp)

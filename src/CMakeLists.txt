@@ -127,6 +127,8 @@ qt_add_executable(llocr
     runtime/ModelPreset.cpp
     runtime/ModelCatalog.h
     runtime/ModelCatalog.cpp
+    runtime/ModelInstallTransaction.h
+    runtime/ModelInstallTransaction.cpp
     runtime/ModelPresetCatalog.h
     runtime/ModelPresetCatalog.cpp
     runtime/ModelRegistry.h
