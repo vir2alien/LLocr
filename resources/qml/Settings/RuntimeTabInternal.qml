@@ -154,7 +154,8 @@ ScrollView {
             // Not capped and not interactive: the surrounding ScrollView
             // scrolls the whole tab, so a long list just grows (a nested
             // interactive Flickable would trap the wheel).
-            Layout.preferredHeight: RuntimeInstaller.installedBuildCount * 36
+            Layout.preferredHeight: buildsList.implicitHeight
+            maxVisibleRows: -1
             scrollable: false
         }
 

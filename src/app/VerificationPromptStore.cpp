@@ -10,6 +10,7 @@
 #include <QJsonParseError>
 #include <QSaveFile>
 
+#include "app/BlockGroupFilterModel.h"
 #include "app/SettingsStore.h"
 #include "runtime/RuntimePaths.h"
 
@@ -136,6 +137,15 @@ QString VerificationBlocksModel::promptAt(int row) const
     return row >= 0 && row < m_blocks.size() ? m_blocks.at(row).prompt : QString();
 }
 
+int VerificationBlocksModel::rowOfType(const QString &type) const
+{
+    for (int i = 0; i < m_blocks.size(); ++i) {
+        if (m_blocks.at(i).type == type)
+            return i;
+    }
+    return -1;
+}
+
 // ------------------------------------------------------------- store -------
 
 VerificationPromptStore::VerificationPromptStore(SettingsStore &settings,
@@ -143,7 +153,17 @@ VerificationPromptStore::VerificationPromptStore(SettingsStore &settings,
     : QObject(parent)
     , m_settings(settings)
     , m_model(new VerificationBlocksModel(this))
+    , m_contentModel(new BlockGroupFilterModel(this))
+    , m_captionsModel(new BlockGroupFilterModel(this))
+    , m_serviceModel(new BlockGroupFilterModel(this))
 {
+    m_contentModel->setSourceModel(m_model);
+    m_contentModel->setGroup(QStringLiteral("content"));
+    m_captionsModel->setSourceModel(m_model);
+    m_captionsModel->setGroup(QStringLiteral("captions"));
+    m_serviceModel->setSourceModel(m_model);
+    m_serviceModel->setGroup(QStringLiteral("service"));
+
     loadBuiltIn();
     loadUser();
     rebuildModel();
@@ -155,6 +175,21 @@ QString VerificationPromptStore::userPath() const
                              m_settings.runtimeModelsDir())
                     .profilesDir())
         .filePath(QString::fromUtf8(kUserFileName));
+}
+
+QAbstractItemModel *VerificationPromptStore::blockModelContent() const
+{
+    return m_contentModel;
+}
+
+QAbstractItemModel *VerificationPromptStore::blockModelCaptions() const
+{
+    return m_captionsModel;
+}
+
+QAbstractItemModel *VerificationPromptStore::blockModelService() const
+{
+    return m_serviceModel;
 }
 
 void VerificationPromptStore::setSystemPrompt(const QString &text)

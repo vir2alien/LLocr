@@ -38,6 +38,7 @@ target_link_libraries(test_verification_prompts PRIVATE
 
 target_sources(test_verification_prompts PRIVATE
     ${CMAKE_SOURCE_DIR}/src/app/VerificationPromptStore.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/BlockGroupFilterModel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/SettingsStore.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/RuntimePaths.cpp
 )

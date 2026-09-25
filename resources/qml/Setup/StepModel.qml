@@ -145,7 +145,7 @@ Item {
                             ModelInstalledList {
                                 id: installedList
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Math.min(installedList.count, 3) * 34
+                                Layout.preferredHeight: installedList.implicitHeight
                                 rowHeight: 34
                                 managementActions: true
                                 isVerifyModelRole: rolePane.forCheck
@@ -166,8 +166,7 @@ Item {
                             ModelPresetList {
                                 id: presetList
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Math.min(presetList.count, 3) * 36
-                                rowHeight: 36
+                                Layout.preferredHeight: presetList.implicitHeight
                                 isVerifyModelRole: rolePane.forCheck
                                 onInstallClicked: (index) => {
                                     ModelInstaller.preparePreset(index, rolePane.forCheck)

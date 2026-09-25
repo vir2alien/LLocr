@@ -239,7 +239,7 @@ Item {
                     ModelInstalledList {
                         id: installedList
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Math.min(installedList.count, 3) * 40
+                        Layout.preferredHeight: installedList.implicitHeight
                         managementActions: true
                         isVerifyModelRole: root.isVerifyModelRole
                         onActionError: (msg) => statusMsg.text = msg
@@ -269,7 +269,7 @@ Item {
                     ModelPresetList {
                         id: presetList
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Math.min(presetList.count, 3) * 36
+                        Layout.preferredHeight: presetList.implicitHeight
                         isVerifyModelRole: root.isVerifyModelRole
                         onInstallClicked: (index) => {
                             ModelInstaller.preparePreset(index, root.isVerifyModelRole)

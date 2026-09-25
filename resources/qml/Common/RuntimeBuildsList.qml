@@ -10,10 +10,16 @@ ListView {
     id: root
 
     property int rowHeight: 36
+    // Height of the embedded (non-scrolling) list. Consumers bind
+    // Layout.preferredHeight to implicitHeight; maxVisibleRows <= 0 = uncapped.
+    property int maxVisibleRows: 3
     property bool scrollable: true
 
     visible: count > 0
     clip: true
+    implicitHeight: count <= 0
+                    ? 0
+                    : (maxVisibleRows > 0 ? Math.min(count, maxVisibleRows) : count) * rowHeight
     model: RuntimeInstaller.installedBuildCount
     interactive: root.scrollable
     ScrollBar.vertical: ScrollBar { policy: root.scrollable ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }

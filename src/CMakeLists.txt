@@ -43,6 +43,9 @@ qt_add_executable(llocr
     app/AppController.h
     app/AppController.cpp
 
+    app/BlockGroupFilterModel.h
+    app/BlockGroupFilterModel.cpp
+
     app/DocumentModel.h
     app/DocumentModel.cpp
     app/Exporter.h

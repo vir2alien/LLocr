@@ -97,7 +97,7 @@ Item {
                 RuntimeBuildsList {
                     id: wizardBuildsList
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.min(RuntimeInstaller.installedBuildCount, 3) * 34
+                    Layout.preferredHeight: wizardBuildsList.implicitHeight
                     rowHeight: 34
                 }
 

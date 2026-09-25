@@ -37,6 +37,13 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   External mode the check just starts (ADR 79).
   The queue survives page switches (parity with recognition), so a batch check
   keeps running while the user browses (ADR 79).
+  The Blocks tab list is backed by group-filtered proxy models
+  (`BlockGroupFilterModel` over the shared `VerificationBlocksModel`, exposed
+  as `Verification.blockModelContent/Captions/Service`, ADR 82); the embedded
+  list components (`Common/ModelInstalledList`, `ModelPresetList`,
+  `RuntimeBuildsList`) expose `implicitHeight` (cap via `maxVisibleRows`,
+  `<= 0` = uncapped) so consumers bind heights instead of re-deriving row
+  counts (ADR 82).
 
 ## 4.2 Settings
 Settings are split into **separate non-modal windows** opened from the Header

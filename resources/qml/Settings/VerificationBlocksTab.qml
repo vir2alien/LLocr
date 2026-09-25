@@ -28,10 +28,11 @@ Item {
     component BlockTypeRow: Item {
         id: typeRow
 
-        required property int index
+        // Note: the Repeater model is a group-filtered proxy, so there is no
+        // `required property int index` here — the source-model row is
+        // resolved from the unique `type` (see the TapHandler below).
         required property string type
         required property string name
-        required property string group
         required property bool enabled
 
         Layout.fillWidth: true
@@ -91,8 +92,14 @@ Item {
 
         HoverHandler { id: rowHover }
         TapHandler {
-            onTapped: Verification.blockModel.setEnabled(typeRow.index,
-                                                         !typeRow.enabled)
+            onTapped: {
+                // The Repeater model is a group-filtered proxy, so `index`
+                // addresses the proxy; resolve the source-model row by the
+                // unique block type instead.
+                const sourceRow = Verification.blockModel.rowOfType(typeRow.type)
+                if (sourceRow >= 0)
+                    Verification.blockModel.setEnabled(sourceRow, !typeRow.enabled)
+            }
         }
 
         ToolTip.visible: rowHover.hovered && typeRow.type.length > 0
@@ -237,10 +244,8 @@ Item {
                         elide: Text.ElideRight
                     }
                     Repeater {
-                        model: Verification.blockModel
-                        delegate: BlockTypeRow {
-                            visible: group === "content"
-                        }
+                        model: Verification.blockModelContent
+                        delegate: BlockTypeRow {}
                     }
                 }
 
@@ -262,10 +267,8 @@ Item {
                         elide: Text.ElideRight
                     }
                     Repeater {
-                        model: Verification.blockModel
-                        delegate: BlockTypeRow {
-                            visible: group === "captions"
-                        }
+                        model: Verification.blockModelCaptions
+                        delegate: BlockTypeRow {}
                     }
                 }
 
@@ -287,10 +290,8 @@ Item {
                         elide: Text.ElideRight
                     }
                     Repeater {
-                        model: Verification.blockModel
-                        delegate: BlockTypeRow {
-                            visible: group === "service"
-                        }
+                        model: Verification.blockModelService
+                        delegate: BlockTypeRow {}
                     }
                 }
             }

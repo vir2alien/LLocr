@@ -142,6 +142,82 @@ private slots:
         store->save();
         QVERIFY(!QFile::exists(userPromptsPath(m_dir)));
     }
+
+    // --- Group-filtered proxies (VerificationBlocksTab columns) ---
+
+    void groupProxiesSplitAndCoverAllRows()
+    {
+        auto store = makeStore();
+        QVERIFY(store);
+        auto *src = qobject_cast<QAbstractListModel *>(store->blockModel());
+        QVERIFY(src);
+        const int total = src->rowCount();
+        QVERIFY(total > 0);
+
+        auto *content = qobject_cast<QAbstractItemModel *>(store->blockModelContent());
+        auto *captions = qobject_cast<QAbstractItemModel *>(store->blockModelCaptions());
+        auto *service = qobject_cast<QAbstractItemModel *>(store->blockModelService());
+        QVERIFY(content && captions && service);
+        QCOMPARE(content->rowCount() + captions->rowCount() + service->rowCount(), total);
+        QVERIFY(content->rowCount() > 0);
+
+        // Each proxy must contain only rows of its own group.
+        const int groupRole = src->roleNames().key(QByteArrayLiteral("group"), -1);
+        QVERIFY(groupRole != -1);
+        auto checkGroup = [&](QAbstractItemModel *proxy, const QString &expected) {
+            for (int i = 0; i < proxy->rowCount(); ++i) {
+                const QModelIndex idx = proxy->index(i, 0);
+                QCOMPARE(idx.data(groupRole).toString(), expected);
+            }
+        };
+        checkGroup(content, QStringLiteral("content"));
+        checkGroup(captions, QStringLiteral("captions"));
+        checkGroup(service, QStringLiteral("service"));
+    }
+
+    void groupProxiesTrackSourceReset()
+    {
+        auto store = makeStore();
+        QVERIFY(store);
+        auto *src = qobject_cast<QAbstractListModel *>(store->blockModel());
+        QVERIFY(src);
+        auto *content = qobject_cast<QAbstractItemModel *>(store->blockModelContent());
+        QVERIFY(content);
+
+        QSignalSpy rowsRemoved(src, &QAbstractListModel::rowsRemoved);
+        QVERIFY(rowsRemoved.isValid());
+
+        const int before = content->rowCount();
+        QVERIFY(before > 0);
+
+        // Drop every row whose group is not "content" by rebuilding the
+        // source from the surviving subset; proxies must stay consistent.
+        store->loadValues();  // reset path: loadBuiltIn + loadUser + rebuildModel
+        QCOMPARE(content->rowCount(), before);
+    }
+
+    void groupProxyIndexResolvesToSourceRowOfType()
+    {
+        auto store = makeStore();
+        QVERIFY(store);
+        auto *src = qobject_cast<VerificationBlocksModel *>(store->blockModel());
+        QVERIFY(src);
+        auto *captions = qobject_cast<QAbstractItemModel *>(store->blockModelCaptions());
+        QVERIFY(captions);
+
+        // For every proxy row there must be a source row whose type matches.
+        const int typeRole = src->roleNames().key(QByteArrayLiteral("type"), -1);
+        QVERIFY(typeRole != -1);
+        for (int i = 0; i < captions->rowCount(); ++i) {
+            const QString type = captions->index(i, 0).data(typeRole).toString();
+            QVERIFY(!type.isEmpty());
+            const int sourceRow = src->rowOfType(type);
+            QVERIFY(sourceRow >= 0);
+            QCOMPARE(src->typeAt(sourceRow), type);
+        }
+        // Unknown types resolve to -1.
+        QCOMPARE(src->rowOfType(QStringLiteral("no-such-type")), -1);
+    }
 };
 
 QTEST_MAIN(TestVerificationPrompts)

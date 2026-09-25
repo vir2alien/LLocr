@@ -13,11 +13,20 @@ Item {
 
     property bool complete: rtExternal.baseUrlText.trim().length > 0
 
+    // Guards the hide path: the wizard instantiates every step eagerly, so
+    // the initial `visible: false` binding evaluation fires onVisibleChanged
+    // before loadValues() ever ran — saving then would wipe the persisted
+    // external settings with empty fields.
+    property bool valuesLoaded: false
+
     onVisibleChanged: {
-        if (visible)
+        if (visible) {
             rtExternal.loadValues()
-        else
+            valuesLoaded = true
+        } else if (valuesLoaded) {
+            valuesLoaded = false
             rtExternal.saveValues()
+        }
     }
 
     ColumnLayout {

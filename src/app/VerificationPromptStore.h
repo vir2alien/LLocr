@@ -10,6 +10,7 @@
 namespace llocr {
 
 class SettingsStore;
+class BlockGroupFilterModel;
 
 struct VerificationBlock {
     QString type;        ///< Canonical block label (text, title, table, ...).
@@ -55,6 +56,10 @@ public:
     Q_INVOKABLE QString nameAt(int row) const;
     Q_INVOKABLE bool enabledAt(int row) const;
     Q_INVOKABLE QString promptAt(int row) const;
+    // Source-model row for a block type; -1 when unknown. Needed because
+    // Q_INVOKABLEs do not pass through QSortFilterProxyModel, while the UI
+    // works with group-filtered views.
+    Q_INVOKABLE int rowOfType(const QString &type) const;
 
 signals:
     void countsChanged();
@@ -69,6 +74,12 @@ class VerificationPromptStore : public QObject
     Q_OBJECT
     Q_PROPERTY(QString systemPrompt READ systemPrompt WRITE setSystemPrompt NOTIFY systemPromptChanged)
     Q_PROPERTY(QObject* blockModel READ blockModel CONSTANT)
+    // Group-filtered views over blockModel for the three-column UI
+    // (content / captions / service). CONSTANT is safe: the source model
+    // lives as long as the store.
+    Q_PROPERTY(QAbstractItemModel* blockModelContent READ blockModelContent CONSTANT)
+    Q_PROPERTY(QAbstractItemModel* blockModelCaptions READ blockModelCaptions CONSTANT)
+    Q_PROPERTY(QAbstractItemModel* blockModelService READ blockModelService CONSTANT)
 
 public:
     explicit VerificationPromptStore(SettingsStore &settings, QObject *parent = nullptr);
@@ -77,6 +88,9 @@ public:
     void setSystemPrompt(const QString &text);
 
     QAbstractListModel *blockModel() const { return m_model; }
+    QAbstractItemModel *blockModelContent() const;
+    QAbstractItemModel *blockModelCaptions() const;
+    QAbstractItemModel *blockModelService() const;
 
     QStringList blockTypes() const;
     QString promptForType(const QString &type) const;
@@ -107,6 +121,9 @@ private:
     QList<VerificationBlock> m_blocks;
     QHash<QString, QString> m_originalPrompts;
     VerificationBlocksModel *m_model;
+    BlockGroupFilterModel *m_contentModel;
+    BlockGroupFilterModel *m_captionsModel;
+    BlockGroupFilterModel *m_serviceModel;
 };
 
 }  // namespace llocr

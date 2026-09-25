@@ -136,6 +136,38 @@ private slots:
         QCOMPARE(store.language(), QStringLiteral("system"));
     }
 
+    void startupMigrationRestoresWipedExternalEndpoint()
+    {
+        // Simulate a profile wiped by the wizard-step initialization bug:
+        // external mode, empty endpoint, stashed last-external URL.
+        {
+            QSettings settings;
+            settings.setValue("provider/mode", QStringLiteral("external"));
+            settings.setValue("provider/baseUrl", QString());
+            settings.setValue("provider/lastExternalBaseUrl",
+                              QStringLiteral("http://127.0.0.1:8080"));
+            settings.setValue("runtime/setupVersion", 1);
+        }
+
+        SettingsStore store;
+        QCOMPARE(store.baseUrl(), QStringLiteral("http://127.0.0.1:8080"));
+    }
+
+    void startupMigrationLeavesNonEmptyEndpointAlone()
+    {
+        {
+            QSettings settings;
+            settings.setValue("provider/mode", QStringLiteral("external"));
+            settings.setValue("provider/baseUrl", QStringLiteral("http://mine:9000"));
+            settings.setValue("provider/lastExternalBaseUrl",
+                              QStringLiteral("http://127.0.0.1:8080"));
+            settings.setValue("runtime/setupVersion", 1);
+        }
+
+        SettingsStore store;
+        QCOMPARE(store.baseUrl(), QStringLiteral("http://mine:9000"));
+    }
+
     void outputExportKeysRoundTrip()
     {
         SettingsStore store;
