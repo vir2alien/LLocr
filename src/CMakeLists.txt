@@ -1,8 +1,29 @@
-qt_add_executable(llocr
-    main.cpp
+# ==== Layers (ADR 94/95) ======================================================
+#
+# The code is split into targets that mirror the layer diagram in
+# docs/03-architecture.md, so a layer can only reach the ones it links:
+#
+#   llocr_core     value types, request/response, transport
+#        |
+#   llocr_config   settings + profile stores + RuntimePaths   (below runtime!)
+#        |          \
+#   llocr_models   OCR/general model adapters        llocr_parsers  output parsers
+#        |          \        /
+#   llocr_runtime  managed runtime: server process, downloads, installs
+#        |
+#   llocr_app      document, view models, controllers
+#        |
+#   llocr          the executable: main.cpp + resources + the QML module
+#
+# The include root stays ${CMAKE_SOURCE_DIR}/src, so headers keep their
+# "app/…", "runtime/…" spelling; what a layer may *use* is now decided by the
+# link graph instead of by convention. Moving the settings stores into their own
+# layer is what breaks the old app <-> runtime cycle (runtime needs
+# SettingsStore/LaunchProfileStore/RequestProfileStore, and the stores need
+# RuntimePaths).
 
-    # core
-
+# ---- llocr_core --------------------------------------------------------------
+qt_add_library(llocr_core STATIC
     core/OcrResult.h
     core/OcrRequest.h
     core/CheckRequest.h
@@ -16,8 +37,36 @@ qt_add_executable(llocr
     core/LaunchProfile.h
     core/LaunchProfile.cpp
     core/ValueParsing.h
+)
+target_include_directories(llocr_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(llocr_core PUBLIC Qt6::Core Qt6::Network)
 
-    # models
+# ---- llocr_config ------------------------------------------------------------
+# Settings and profile persistence, deliberately below llocr_runtime: the runtime
+# reads the settings, the settings do not read the runtime (RuntimePaths is a path
+# helper and lives here).
+#
+# LaunchProfileStore is NOT here: it drafts through LaunchParametersModel (a QML
+# list model) and asks ReleaseCatalog::detectPlatform() for the active preset, so
+# it belongs to llocr_runtime next to those. RequestProfileStore has no such
+# dependency and stays.
+qt_add_library(llocr_config STATIC
+    app/ProfileStorage.h
+    app/ProfileStorage.cpp
+    app/SettingsStore.h
+    app/SettingsStore.cpp
+    app/RequestParametersModel.h
+    app/RequestParametersModel.cpp
+    app/RequestProfileStore.h
+    app/RequestProfileStore.cpp
+    runtime/RuntimePaths.h
+    runtime/RuntimePaths.cpp
+)
+target_include_directories(llocr_config PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(llocr_config PUBLIC llocr_core Qt6::Core Qt6::Gui)
+
+# ---- llocr_models ------------------------------------------------------------
+qt_add_library(llocr_models STATIC
     models/OcrModel.h
     models/OcrModel.cpp
     models/UnlimitedOcrModel.h
@@ -30,8 +79,12 @@ qt_add_executable(llocr
     models/GeneralPurposeModel.cpp
     models/QwenGeneralModel.h
     models/QwenGeneralModel.cpp
+)
+target_include_directories(llocr_models PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(llocr_models PUBLIC llocr_core Qt6::Core Qt6::Gui)
 
-    # parsers
+# ---- llocr_parsers -----------------------------------------------------------
+qt_add_library(llocr_parsers STATIC
     parsers/IOutputParser.h
     parsers/ParserOptions.h
     parsers/BlockStyle.h
@@ -48,62 +101,15 @@ qt_add_executable(llocr
     parsers/Lfm25VlDrift.cpp
     parsers/ParserFactory.h
     parsers/ParserFactory.cpp
+)
+target_include_directories(llocr_parsers PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(llocr_parsers PUBLIC llocr_core Qt6::Core)
 
-    # app
-    app/AppController.h
-    app/AppController.cpp
-
-    app/BlockGroupFilterModel.h
-    app/BlockGroupFilterModel.cpp
-
-    app/DocumentModel.h
-    app/DocumentModel.cpp
-    app/Exporter.h
-    app/Exporter.cpp
-    app/ExportRenderer.h
-    app/ExportRenderer.cpp
-    app/I18n.h
-    app/I18n.cpp
-    app/OcrImageProvider.h
-    app/OcrImageProvider.cpp
-    app/BoxListModel.h
-    app/BoxListModel.cpp
-    app/SettingsStore.h
-    app/SettingsStore.cpp
-    app/PageListModel.h
-    app/PageListModel.cpp
-    app/PageEditStore.h
-    app/PageEditStore.cpp
-    app/PageIndex.h
-    app/ProfileStorage.h
-    app/ProfileStorage.cpp
-    app/RecognitionController.h
-    app/RecognitionController.cpp
-    app/CheckController.h
-    app/CheckController.cpp
-    app/RequestParametersModel.h
-    app/RequestParametersModel.cpp
-    app/RequestProfileStore.h
-    app/RequestProfileStore.cpp
-    app/VerificationPromptStore.h
-    app/VerificationPromptStore.cpp
-    app/VerificationQueueController.h
-    app/VerificationQueueController.cpp
-    app/ExportController.h
-    app/ExportController.cpp
-    app/LaunchParametersModel.h
-    app/LaunchParametersModel.cpp
-    app/LaunchProfileStore.h
-    app/LaunchProfileStore.cpp
-    app/UiController.h
-    app/UiController.cpp
-
-    # runtime
+# ---- llocr_runtime -----------------------------------------------------------
+qt_add_library(llocr_runtime STATIC
     runtime/ConnectionMode.h
     runtime/ResolvedConnection.h
     runtime/RuntimeState.h
-    runtime/RuntimePaths.h
-    runtime/RuntimePaths.cpp
     runtime/ServerCapabilities.h
     runtime/ServerCapabilities.cpp
     runtime/ServerLaunchConfig.h
@@ -151,10 +157,110 @@ qt_add_executable(llocr
     runtime/ModelInstaller.cpp
     runtime/ModelMemoryEstimator.h
     runtime/ModelMemoryEstimator.cpp
+    app/LaunchProfileStore.h
+    app/LaunchProfileStore.cpp
+    app/LaunchParametersModel.h
+    app/LaunchParametersModel.cpp
+)
+target_include_directories(llocr_runtime PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(llocr_runtime
+    # Qt6::Qml is PUBLIC: SelfTestController.h / ModelInstaller.h include
+    # <QQmlEngine>, so consumers need the include path (ADR 94).
+    PUBLIC llocr_config llocr_core llocr_models Qt6::Qml
+    PRIVATE Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent ZLIB::ZLIB
 )
 
+# One ProcessGuard implementation per platform; the other two are stubs, so the
+# class always has a definition.
 if(WIN32)
-    if(LLOCR_DJVU_AVAILABLE)
+    target_sources(llocr_runtime PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
+elseif(APPLE)
+    target_sources(llocr_runtime PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
+else()
+    target_sources(llocr_runtime PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
+endif()
+
+# ---- llocr_app ---------------------------------------------------------------
+qt_add_library(llocr_app STATIC
+    app/AppController.h
+    app/AppController.cpp
+    app/BlockGroupFilterModel.h
+    app/BlockGroupFilterModel.cpp
+    app/DocumentModel.h
+    app/DocumentModel.cpp
+    app/Exporter.h
+    app/Exporter.cpp
+    app/ExportRenderer.h
+    app/ExportRenderer.cpp
+    app/I18n.h
+    app/I18n.cpp
+    app/OcrImageProvider.h
+    app/OcrImageProvider.cpp
+    app/BoxListModel.h
+    app/BoxListModel.cpp
+    app/PageListModel.h
+    app/PageListModel.cpp
+    app/PageEditStore.h
+    app/PageEditStore.cpp
+    app/PageIndex.h
+    app/RecognitionController.h
+    app/RecognitionController.cpp
+    app/CheckController.h
+    app/CheckController.cpp
+    app/VerificationPromptStore.h
+    app/VerificationPromptStore.cpp
+    app/VerificationQueueController.h
+    app/VerificationQueueController.cpp
+    app/ExportController.h
+    app/ExportController.cpp
+    app/UiController.h
+    app/UiController.cpp
+)
+target_include_directories(llocr_app PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(llocr_app
+    # Qt6::Qml is PUBLIC for the same reason as in llocr_runtime (UiController.h).
+    PUBLIC llocr_runtime llocr_config llocr_core llocr_models llocr_parsers Qt6::Qml
+    PRIVATE Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent Qt6::Pdf
+            Qt6::WebEngineCore ZLIB::ZLIB
+)
+
+# DjVu input support is compiled only when DjVuLibre was found (ADR 69).
+# Without it the app builds and opening .djvu files reports a clear error.
+# Only the *implementation* is conditional: DocumentModel.h includes
+# DjVuDocument.h unconditionally (it only forward-declares the ddjvu_* structs),
+# so the class layout does not depend on the dependency (ADR 95).
+if(LLOCR_DJVU_AVAILABLE)
+    target_sources(llocr_app PRIVATE
+        app/DjVuDocument.h
+        app/DjVuDocument.cpp
+    )
+    target_link_libraries(llocr_app PRIVATE DjVuLibre::DjVuLibre)
+    target_compile_definitions(llocr_app PUBLIC LLOCR_HAVE_DJVU)
+endif()
+
+# ---- llocr (the executable) --------------------------------------------------
+qt_add_executable(llocr
+    main.cpp
+)
+
+target_link_libraries(llocr PRIVATE
+    llocr_app
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Network
+    Qt6::Concurrent
+    Qt6::Qml
+    Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::Pdf
+    Qt6::WebEngineCore
+    Qt6::WebEngineQuick
+    ZLIB::ZLIB
+)
+
+if(LLOCR_DJVU_AVAILABLE)
+    target_link_libraries(llocr PRIVATE DjVuLibre::DjVuLibre)
+    if(WIN32)
         add_custom_command(TARGET llocr POST_BUILD
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different
                 "$<TARGET_FILE:DjVuLibre::DjVuLibre>"
@@ -163,11 +269,6 @@ if(WIN32)
             VERBATIM
         )
     endif()
-    target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
-elseif(APPLE)
-    target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
-else()
-    target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
 endif()
 
 # The QML tree is a real module (stage 0.2, ADR 100): the file list is
@@ -303,34 +404,6 @@ if(APPLE)
 endif()
 
 target_include_directories(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src)
-
-# DjVu input support is compiled only when DjVuLibre was found (ADR 69).
-# Without it the app builds and opening .djvu files reports a clear error.
-if(LLOCR_DJVU_AVAILABLE)
-    target_sources(llocr PRIVATE
-        app/DjVuDocument.h
-        app/DjVuDocument.cpp
-    )
-endif()
-
-target_link_libraries(llocr PRIVATE
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Network
-    Qt6::Concurrent
-    Qt6::Qml
-    Qt6::Quick
-    Qt6::QuickControls2
-    Qt6::Pdf
-    Qt6::WebEngineCore
-    Qt6::WebEngineQuick
-    ZLIB::ZLIB
-)
-
-if(LLOCR_DJVU_AVAILABLE)
-    target_link_libraries(llocr PRIVATE DjVuLibre::DjVuLibre)
-    target_compile_definitions(llocr PRIVATE LLOCR_HAVE_DJVU)
-endif()
 
 target_compile_definitions(llocr PRIVATE
     PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"

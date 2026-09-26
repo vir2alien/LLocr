@@ -88,8 +88,14 @@
     `main.cpp`; the `QML_ELEMENT`/`QML_SINGLETON` macros were removed from the
     five classes that carried them (they would make `qmltyperegistrar` emit a
     default-constructor call for classes that have none) and come back with the
-    `create()` factories in the layering stage. See `.qmllint.ini` for what the
-    lint gates.
+    `create()` factories. See `.qmllint.ini` for what the lint gates.
+  * The C++ code is split into **layer targets** (ADR 106): `llocr_core` →
+    `llocr_config` → {`llocr_models`, `llocr_parsers`} → `llocr_runtime` →
+    `llocr_app` → `llocr`. A layer can only use what it links, and the 31 tests
+    link the same targets — never a hand-listed copy of the sources. Note
+    `LaunchProfileStore` lives in `llocr_runtime` (it needs the release
+    catalog and a QML list model), while `RequestProfileStore` is in
+    `llocr_config`.
   
   If a clean (from-scratch) configure is needed, do it manually (not via preset):
   

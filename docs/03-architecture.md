@@ -2,39 +2,37 @@
 
 ## Layers
 ```
+   llocr (executable: main.cpp + resources + the QML module)
+     │
+   llocr_app            AppController · Recognition/Export/Verification
+     │                  controllers · DocumentModel · models (page/box)
+     │                  ProfileStorage is below, in llocr_config
+   llocr_runtime        RuntimeController · RuntimeInstaller · ModelInstaller
+     │                  ModelInstallTransaction · LlamaServerProcess ·
+     │                  DownloadTask/Manager/Group · ArchiveExtractor ·
+     │                  InstallTransaction · ReleaseCatalog · ModelCatalog ·
+     │                  ModelRegistry · ModelPresetCatalog · ProcessGuard ·
+     │                  SingleInstanceGuard · LaunchProfileStore
+     │           ┌──────┴───────┐
+   llocr_models      llocr_parsers
+   OcrModel adapters  IOutputParser · det_tokens/raw · BlockStyle
+     │           └──────┬───────┘
+   llocr_config       SettingsStore · RequestProfileStore · ProfileStorage ·
+     │                RequestParametersModel · RuntimePaths
+   llocr_core         OcrResult/OcrRequest/ConnectionConfig · LlamaClient ·
+                      RequestProfile · LaunchProfile · ValueParsing
+```
+The C++ layers are **CMake targets** (ADR 106), not a convention: a layer can
+only use the ones it links. The QML UI sits on top of the `llocr` executable and
+reaches the C++ services through the singletons `main.cpp` registers:
+
+```
 ┌──────────────────────────────────────────────────────────┐
 │                     QML UI (View)                        │
-│  Main.qml · Settings/*SettingsWindow.qml (5 windows) ·      │
-│  ExportDialog · ServerLogWindow · SetupWizard + Setup/*      │
-│  MainWindow/* (Header, ThumbPanel, ImagePanel,               │
-│  WorkPanel, MarkdownPreview, Footer) · WindowSettings        │
-├──────────────────────────────────────────────────────────┤
-│                C++ Backend (ViewModel)                   │
-│  AppController — state, signals/slots, orchestration     │
-│  RecognitionController — run loop, stop/abort            │
-│  VerificationQueueController — LLM-check queue           │
-│  ExportController — export pipeline                      │
-│  DocumentModel · PageListModel · BoxListModel            │
-│  PageEditStore — per-page edits                          │
-│  OcrImageProvider (QQuickImageProvider) · SettingsStore  │
-│  UiController (theme) · I18n (language/retranslate)      │
-├──────────────┬──────────────┬────────────┬───────────────┤
-│  OCR models  │  Image/PDF   │  Parsers   │  Exporter     │
-│  OcrModel    │  Loader      │ IOutputParser │ (TXT/MD/HTML)│
-│  Unlimited…  │ DocumentModel│ raw/det    │ DOCX/PDF      │
-│  LlamaClient │              │            │               │
-├──────────────┴──────┬───────┴────┬───────┴───────────────┤
-│   Managed Runtime (local llama.cpp)   │   internal infra  │
-│   RuntimeController — facade + resolve│   DownloadTask    │
-│   RuntimeLocator · RuntimePaths       │   DownloadManager │
-│   ServerCapabilities· ServerLaunchConfig│  ArchiveExtractor│
-│   LlamaServerProcess · ProcessGuard   │   InstallTransaction│
-│   SingleInstanceGuard                 │   ReleaseCatalog  │
-│   RuntimeInstaller (stage D install)  │   ModelCatalog    │
-│   ModelInstaller · ModelRegistry      │   ModelPresetCatalog│
-│   ModelMemoryEstimator (H.2)          │   ResolvedConnection│
-├────────────────────────────────────────┴──────────────────┤
-│        RAG Service (external HTTP service) — later        │
+│  Main.qml · Settings/*SettingsWindow.qml (5 windows) ·   │
+│  ExportDialog · ServerLogWindow · SetupWizard + Setup/*   │
+│  MainWindow/* (Header, ThumbPanel, ImagePanel,            │
+│  WorkPanel, MarkdownPreview, Footer) · WindowSettings     │
 └──────────────────────────────────────────────────────────┘
 ```
 
