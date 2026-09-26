@@ -97,6 +97,8 @@ public:
     static ConnectionMode modeFromSettings(const SettingsStore &settings);
 
 private:
+    struct PendingResolve;
+
     int stateInt() const { return static_cast<int>(m_state); }
     int busyStateInt() const { return static_cast<int>(m_busyState); }
 
@@ -117,8 +119,11 @@ private:
     ResolvedConnection buildManagedConnection() const;
 
     void beginManagedResolve();
+    void startResolveForRole(ConnectionRole role);
     void completeResolve(ResolvedConnection conn);
     void failResolve(const QString &message);
+    void deliverCallbacks(const std::vector<PendingResolve> &callbacks,
+                          const ResolvedConnection &conn);
     void onServerStateForResolve();
     void cancelPendingRestart();
 
@@ -148,9 +153,17 @@ private:
     struct PendingResolve {
         QPointer<QObject> context;
         bool guarded = false;
+        ConnectionRole role = ConnectionRole::Ocr;
         std::function<void(const ResolvedConnection &)> onResolved;
     };
+    // Callbacks of the resolve that is in flight — all of them asked for the
+    // same role, so one connection serves them all.
     std::vector<PendingResolve> m_resolveCallbacks;
+    // Requests for the *other* role that arrived while a resolve was in flight.
+    // The single managed server serves one role at a time (ADR 74), so joining
+    // the in-flight batch would silently answer with the wrong model; they wait
+    // here for their own dispatch (a role switch when the server is live).
+    std::vector<PendingResolve> m_deferredResolves;
     ConnectionRole m_resolveRole = ConnectionRole::Ocr;
     bool m_switching = false;
     bool m_resolveInProgress = false;

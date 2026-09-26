@@ -190,6 +190,76 @@ private slots:
         runtime.stopServer();
     }
 
+    // Regression: a Check request that arrives while an Ocr resolve is still in
+    // flight must not be answered with the in-flight (OCR) connection — the
+    // single managed server serves one role at a time, so the check request has
+    // to get its own dispatch, including the role switch.
+    void crossRoleRequestDuringResolveIsNotAnsweredWithTheWrongRole()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile ocrModel(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        QVERIFY(ocrModel.open(QIODevice::WriteOnly));
+        ocrModel.write("ocr");
+        ocrModel.close();
+        QFile checkModel(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
+        QVERIFY(checkModel.open(QIODevice::WriteOnly));
+        checkModel.write("check");
+        checkModel.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir),
+                                         LaunchProfileStore::Role::Check);
+        RuntimeController runtime(store, launchProfiles, &checkProfiles);
+
+        QStringList events;
+        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() {
+            if (runtime.state() == RuntimeState::Stopped)
+                events.append(QStringLiteral("stopped"));
+        });
+
+        ResolvedConnection ocrConn;
+        ResolvedConnection checkConn;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            ocrConn = c;
+            events.append(QStringLiteral("ocr"));
+        });
+        // Issued while the first resolve is still in flight.
+        runtime.ensureConnectionReady(ConnectionRole::Check,
+                                      [&](const ResolvedConnection &c) {
+                                          checkConn = c;
+                                          events.append(QStringLiteral("check"));
+                                      });
+
+        QTRY_VERIFY_WITH_TIMEOUT(events.contains(QStringLiteral("check")), 20000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(ocrConn.error.isEmpty(), qPrintable(ocrConn.error));
+        QVERIFY2(checkConn.error.isEmpty(), qPrintable(checkConn.error));
+        QVERIFY(!ocrConn.baseUrl.isEmpty());
+        QVERIFY(!checkConn.baseUrl.isEmpty());
+
+        // The OCR request is answered first, and only then does the server switch
+        // for the check role.
+        QCOMPARE(events.indexOf(QStringLiteral("ocr")), 0);
+        QVERIFY2(events.indexOf(QStringLiteral("stopped"))
+                     > events.indexOf(QStringLiteral("ocr")),
+                 qPrintable(events.join(QLatin1Char(','))));
+        QVERIFY2(events.indexOf(QStringLiteral("check")) > events.indexOf(QStringLiteral("stopped")),
+                 qPrintable(events.join(QLatin1Char(','))));
+
+        runtime.stopServer();
+    }
+
     // A check resolve without a selected (or existing) check model fails with
     // an actionable message naming the check model, and the server is left
     // untouched.

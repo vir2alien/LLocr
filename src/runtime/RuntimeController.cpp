@@ -9,6 +9,9 @@
 #include <QUrl>
 #include <QVariantMap>
 
+#include <algorithm>
+#include <utility>
+
 #include "app/SettingsStore.h"
 #include "app/LaunchProfileStore.h"
 #include "core/LaunchProfile.h"
@@ -239,19 +242,31 @@ void RuntimeController::ensureConnectionReady(
         return;
     }
 
+    PendingResolve pending;
+    pending.context = context;
+    pending.guarded = context != nullptr;
+    pending.role = role;
+    pending.onResolved = onResolved;
+
     if (m_resolveInProgress) {
-        m_resolveCallbacks.push_back({context, context != nullptr, onResolved});
+        // The in-flight resolve produces a connection for m_resolveRole only.
+        auto &queue = role == m_resolveRole ? m_resolveCallbacks : m_deferredResolves;
+        queue.push_back(std::move(pending));
         return;
     }
 
-    auto failNow = [onResolved](const QString &message) {
-        ResolvedConnection fail;
-        fail.error = message;
-        onResolved(fail);
-    };
+    m_resolveCallbacks.push_back(std::move(pending));
+    startResolveForRole(role);
+}
+
+// Drives the resolve for the batch currently held in m_resolveCallbacks.
+void RuntimeController::startResolveForRole(ConnectionRole role)
+{
+    m_resolveInProgress = true;
+    m_resolveRole = role;
 
     if (m_lockedOut) {
-        failNow(tr("Another LLocr instance is already running"));
+        failResolve(tr("Another LLocr instance is already running"));
         return;
     }
 
@@ -262,20 +277,16 @@ void RuntimeController::ensureConnectionReady(
     if (!serverLive || switchNeeded) {
         const QString roleError = roleConfigError(role);
         if (!roleError.isEmpty()) {
-            failNow(roleError);
+            failResolve(roleError);
             return;
         }
         if (!serverLive && m_state != RuntimeState::Stopping
             && !m_settings.autoStart() && !m_settings.startOnDemand()) {
-            failNow(tr("Server is not set to start automatically. "
-                       "Start it from the main window or Settings → Runtime."));
+            failResolve(tr("Server is not set to start automatically. "
+                           "Start it from the main window or Settings → Runtime."));
             return;
         }
     }
-
-    m_resolveInProgress = true;
-    m_resolveRole = role;
-    m_resolveCallbacks.push_back({context, context != nullptr, onResolved});
 
     if (switchNeeded) {
         beginRoleSwitch();
@@ -314,6 +325,16 @@ void RuntimeController::beginManagedResolve()
     }  // switch (m_state)
 }
 
+void RuntimeController::deliverCallbacks(const std::vector<PendingResolve> &callbacks,
+                                         const ResolvedConnection &conn)
+{
+    for (const auto &cb : callbacks) {
+        if (cb.guarded && cb.context.isNull())
+            continue;
+        cb.onResolved(conn);
+    }
+}
+
 void RuntimeController::completeResolve(ResolvedConnection conn)
 {
     m_switching = false;
@@ -322,11 +343,26 @@ void RuntimeController::completeResolve(ResolvedConnection conn)
     m_resolveInProgress = false;
     const auto callbacks = std::move(m_resolveCallbacks);
     m_resolveCallbacks.clear();
-    for (const auto &cb : callbacks) {
-        if (cb.guarded && cb.context.isNull())
-            continue;
-        cb.onResolved(conn);
+    deliverCallbacks(callbacks, conn);
+
+    // A callback may itself have asked for a connection; that resolve is now in
+    // flight and must not be clobbered. The queued other-role requests then
+    // simply wait for its completion.
+    if (m_resolveInProgress || m_deferredResolves.empty())
+        return;
+
+    // Promote the oldest deferred batch (one role) and give it its own dispatch.
+    const ConnectionRole nextRole = m_deferredResolves.front().role;
+    for (const auto &cb : std::as_const(m_deferredResolves)) {
+        if (cb.role == nextRole)
+            m_resolveCallbacks.push_back(cb);
     }
+    m_deferredResolves.erase(
+        std::remove_if(m_deferredResolves.begin(), m_deferredResolves.end(),
+                       [nextRole](const PendingResolve &cb) { return cb.role == nextRole; }),
+        m_deferredResolves.end());
+
+    startResolveForRole(nextRole);
 }
 
 void RuntimeController::failResolve(const QString &message)
@@ -705,15 +741,28 @@ void RuntimeController::cancelPendingStart()
 {
     if (modeFromSettings(m_settings) != ConnectionMode::Managed)
         return;
-    if (!m_resolveInProgress)
+    if (!m_resolveInProgress && m_deferredResolves.empty())
         return;
 
     setBusyState(AppBusyState::Idle);
-    failResolve(tr("Server start cancelled"));
-    if (m_server && m_server->state() == RuntimeState::Starting) {
-        m_server->stop();
-        setLoadProgressPercent(-1);
+    const QString message = tr("Server start cancelled");
+
+    // Drop the queued other-role requests first: a cancel must not let them
+    // start (or switch to) the server right after the user pressed Stop.
+    const auto deferred = std::move(m_deferredResolves);
+    m_deferredResolves.clear();
+
+    if (m_resolveInProgress) {
+        failResolve(message);
+        if (m_server && m_server->state() == RuntimeState::Starting) {
+            m_server->stop();
+            setLoadProgressPercent(-1);
+        }
     }
+
+    ResolvedConnection fail;
+    fail.error = message;
+    deliverCallbacks(deferred, fail);
     setStatusMessage(tr("Stopped"));
 }
 
