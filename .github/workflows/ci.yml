@@ -1,0 +1,104 @@
+# Continuous verification for LLocr (stage 0.1, ADR 100).
+#
+# The local equivalent is `scripts/check.sh`; keep the two in sync — CI runs
+# the script, so a green run locally means a green run here.
+#
+# The project builds against a **custom Qt 6.10.3** (docs/06-dev-setup.md), not
+# an official installer build, so the Qt provisioning step below is still a
+# TODO. Everything after it is verified locally; switch the triggers from
+# workflow_dispatch to push/pull_request once the Qt artifact is wired in.
+#
+#   TODO(provision-qt): replace the QT_PREFIX_* values with the real Qt 6.10.3
+#   location for each runner (archive URL, internal mirror, or a self-hosted
+#   image). It must provide QtCore, QtGui, QtQml, QtQuick, QtQuickControls2,
+#   QtPdf, QtWebEngineQuick, QtConcurrent and QtTest.
+#   The Windows runner additionally needs the MSVC 2022 toolchain and ZLIB via
+#   vcpkg (triplet x64-windows) — see the Windows section of
+#   docs/06-dev-setup.md. DjVu is optional: the suite now builds and runs
+#   without it (ADR 99), so Linux/macOS can skip DjVuLibre entirely.
+
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-14
+            qt_prefix: ${{ github.workspace }}/Qt/6.10.3/macos
+          - name: Linux
+            os: ubuntu-24.04
+            qt_prefix: ${{ github.workspace }}/Qt/6.10.3/gcc_64
+          - name: Windows
+            os: windows-2022
+            qt_prefix: C:/Qt/6.10.3/msvc2022_64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO(provision-qt): install Qt 6.10.3 into ${{ matrix.qt_prefix }}.
+      - name: Show the Qt prefix in use
+        shell: bash
+        run: echo "QT_PREFIX=${{ matrix.qt_prefix }}"
+
+      - name: Toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev clang-format
+
+      - name: Toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+
+      - name: Configure, build, test, format check
+        shell: bash
+        env:
+          BUILD_DIR: ${{ github.workspace }}/build-ci
+          BUILD_TYPE: Debug
+        run: |
+          set -euo pipefail
+          export QT_PREFIX='${{ matrix.qt_prefix }}'
+          # Reuses an existing tree and skips what it cannot run; the format
+          # check is a hard gate here because clang-format is installed above.
+          scripts/check.sh --configure
+
+      - name: QML lint
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # qmllint from the Qt the project builds against — another one on PATH
+          # has different .qmllint.ini keys. .qmllint.ini is resolved relative to
+          # the analysed files, so run from the repository root.
+          QMLLINT="${{ matrix.qt_prefix }}/bin/qmllint"
+          [ -x "$QMLLINT" ] || QMLLINT="$(command -v qmllint || true)"
+          if [ -z "$QMLLINT" ]; then
+            echo "qmllint not available on this runner — skipped" >&2
+            exit 0
+          fi
+          find resources/qml -name '*.qml' | sort > /tmp/llocr-qml-files.txt
+          xargs "$QMLLINT" --max-warnings 0 -I build-ci/src < /tmp/llocr-qml-files.txt
