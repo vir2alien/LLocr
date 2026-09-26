@@ -1,5 +1,7 @@
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -9,6 +11,7 @@
 #include <QStorageInfo>
 #include <QTextStream>
 #include <QUrl>
+#include <QtConcurrent/QtConcurrentRun>
 
 #include <utility>
 
@@ -213,7 +216,11 @@ void DownloadTask::start()
     m_hash.reset();
     if (m_resumeRequested) {
         m_receivedBytes = m_resumeBytes;
-        hashExistingPart();
+        // The prefix was downloaded in an earlier session and sha256 cannot be
+        // seeded from a precomputed digest, so the resumed file is hashed as a
+        // whole when it completes — on a worker (ADR 105). The start no longer
+        // re-reads the multi-GB .part on the GUI thread.
+        m_hashFileOnDisk = true;
     } else {
         m_receivedBytes = 0;
     }
@@ -280,20 +287,6 @@ QString DownloadTask::ifRangeValue() const
     return QString();
 }
 
-void DownloadTask::hashExistingPart()
-{
-    QFile existing(m_partPath);
-    if (!existing.open(QIODevice::ReadOnly))
-        return;  // best-effort; the caller already failed safe on write errors
-    const qint64 chunkSize = 64 * 1024;
-    while (!existing.atEnd()) {
-        const QByteArray chunk = existing.read(chunkSize);
-        if (!chunk.isEmpty())
-            m_hash.addData(chunk);
-    }
-    existing.close();
-}
-
 void DownloadTask::onMetadata(QNetworkReply *reply)
 {
     if (m_reply != reply || m_state != State::Running)
@@ -330,6 +323,7 @@ void DownloadTask::onMetadata(QNetworkReply *reply)
         m_totalBytes = contentLength > 0 ? contentLength : -1;
         m_receivedBytes = 0;
         m_resumeRequested = false;
+        m_hashFileOnDisk = false;   // the server sends the whole file: stream it
         m_resumeEtag = etag;
         m_resumeLastModified = lastModified;
         m_hash.reset();
@@ -377,6 +371,7 @@ void DownloadTask::restartFresh(QNetworkReply *reply)
 {
     closeFile();
     m_resumeRequested = false;
+    m_hashFileOnDisk = false;
     m_ifRangeValue.clear();
     m_receivedBytes = 0;
     m_totalBytes = -1;
@@ -513,14 +508,69 @@ bool DownloadTask::isAllowedUrl(const QUrl &url) const
            || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
 }
 
+// sha256 of a whole file, chunked so a multi-GB model does not land in memory.
+static QByteArray sha256File(const QString &path, bool *ok)
+{
+    if (ok)
+        *ok = false;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    QByteArray buffer(1024 * 1024, Qt::Uninitialized);
+    while (true) {
+        const qint64 n = file.read(buffer.data(), buffer.size());
+        if (n < 0)
+            return {};
+        if (n == 0)
+            break;
+        hash.addData(QByteArrayView(buffer.constData(), static_cast<int>(n)));
+    }
+    file.close();
+    if (ok)
+        *ok = true;
+    return hash.result().toHex();
+}
+
 void DownloadTask::verifySha256()
 {
-    const QByteArray digest = m_hash.result().toHex();
     const QString expected = m_request.sha256.trimmed().toLower();
-    if (!expected.isEmpty() && QString::fromLatin1(digest) != expected) {
+    if (!expected.isEmpty() && m_hashFileOnDisk) {
+        // Resumed download: hash the finished .part on a worker (ADR 105).
+        const QString partPath = m_partPath;
+        auto *watcher = new QFutureWatcher<QPair<QByteArray, bool>>(this);
+        connect(watcher, &QFutureWatcher<QPair<QByteArray, bool>>::finished, this,
+                [this, watcher, expected, partPath]() {
+            const auto result = watcher->result();
+            watcher->deleteLater();
+            if (m_partPath != partPath || m_state != State::Verifying)
+                return;  // cancelled or restarted meanwhile
+            if (!result.second) {
+                finishVerification(false, QObject::tr("Unable to read %1").arg(m_fileName));
+                return;
+            }
+            finishVerification(QString::fromLatin1(result.first) == expected);
+        });
+        watcher->setFuture(QtConcurrent::run([partPath]() {
+            bool ok = false;
+            const QByteArray digest = sha256File(partPath, &ok);
+            return qMakePair(digest, ok);
+        }));
+        return;
+    }
+
+    finishVerification(expected.isEmpty()
+                       || QString::fromLatin1(m_hash.result().toHex()) == expected);
+}
+
+void DownloadTask::finishVerification(bool ok, const QString &readError)
+{
+    if (!ok) {
         QFile::remove(m_partPath);
         QFile::remove(m_metaPath);
-        m_error = QObject::tr("Checksum mismatch for %1").arg(m_fileName);
+        m_error = readError.isEmpty()
+            ? QObject::tr("Checksum mismatch for %1").arg(m_fileName)
+            : readError;
         setState(State::Failed);
         emit downloadFinished(false);
         return;

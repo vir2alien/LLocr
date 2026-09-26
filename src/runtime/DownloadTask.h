@@ -101,7 +101,9 @@ private:
 
     bool hasResumeValidator() const;
     QString ifRangeValue() const;
-    void hashExistingPart();
+    // Shared tail of verifySha256(): compares the digest (or reports a read
+    // failure), removes a mismatching .part and renames it into place.
+    void finishVerification(bool ok, const QString &readError = QString());
 
 private:
     Request m_request;
@@ -114,6 +116,9 @@ private:
     QString m_metaPath;
 
     State m_state = State::Queued;
+    // Resumed download: sha256 is computed over the finished .part on a worker
+    // instead of seeding the streaming hash with the prefix (ADR 105).
+    bool m_hashFileOnDisk = false;
     QString m_error;
 
     qint64 m_totalBytes = -1;    // -1 = unknown

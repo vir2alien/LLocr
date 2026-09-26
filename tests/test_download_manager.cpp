@@ -244,6 +244,9 @@ private slots:
     void sanitizeFileNameBasics();
     void simpleDownload();
     void resumeFromSeededPartial();
+    // The digest of a resumed download is computed over the finished .part, not
+    // over the freshly downloaded tail — a corrupted prefix must still fail.
+    void resumeWithCorruptedPrefixFailsChecksum();
     void changedValidatorForcesFullRedownload();
     void incorrectContentRangeRestartsFresh();
     void badSha256RemovesFile();
@@ -320,6 +323,41 @@ void TestDownloadManager::resumeFromSeededPartial()
     QCOMPARE(server.requests.first().range, QStringLiteral("bytes=3000-"));
     QCOMPARE(server.requests.first().ifRange, kEtagV1);
     QCOMPARE(readFile(QDir(dir.path()).filePath("model.bin")), data);
+}
+
+void TestDownloadManager::resumeWithCorruptedPrefixFailsChecksum()
+{
+    QTemporaryDir dir;
+    TestServer server;
+    const QByteArray data = pattern(8192);
+    server.content = data;
+    server.etag = kEtagV1;
+    server.honorRanges = true;
+    QVERIFY(server.start());
+
+    // Seed a .part whose first bytes are wrong: the resume validator is valid
+    // and the tail arrives intact, so only a digest over the whole file catches
+    // it (the freshly downloaded part alone would hash correctly).
+    const int split = 3000;
+    QVERIFY(seedPartial(dir.path(), "model.bin", data, split, kEtagV1));
+    {
+        QFile part(QDir(dir.path()).filePath(QStringLiteral("model.bin.part")));
+        QVERIFY(part.open(QIODevice::ReadWrite));
+        QVERIFY(part.seek(0));
+        part.write(QByteArray("XX"));
+        part.close();
+    }
+
+    DownloadManager mgr;
+    mgr.setAllowLoopbackHttp(true);
+    const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin",
+                                         sha256Hex(data)));
+    DownloadTask *task = mgr.taskAt(row);
+    QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 5000);
+    QVERIFY(!task->error().isEmpty());
+    // The mismatching partial is removed, exactly like a fresh download.
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath(QStringLiteral("model.bin.part"))));
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath(QStringLiteral("model.bin"))));
 }
 
 void TestDownloadManager::changedValidatorForcesFullRedownload()

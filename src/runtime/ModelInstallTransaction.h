@@ -87,10 +87,16 @@ private:
     void beginPrepare(const ModelPreset &preset);
     void onPrepareDone(const InstallPlan &p, const QString &err);
     void beginDownload();
+    // Enqueues the model files, and the projector unless it is already on disk
+    // (the check is a multi-GB hash and therefore runs on a worker).
+    void enqueueModelFiles(bool mmprojOnDisk);
     void enqueueFile(const QString &repoPath, const QString &repo,
                      const QString &commitSha);
     QString expectedShaFor(const QString &repoPath) const;
-    bool mmprojAlreadyOnDisk() const;
+    // Free function so the worker task captures values, not `this`.
+    static bool mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel,
+                                    const QString &expected, const QString &revision,
+                                    const QList<ModelEntry> &installed);
     void maybeFinishDownloads();
     void completeInstall();
 

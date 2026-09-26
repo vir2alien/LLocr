@@ -332,6 +332,36 @@ void ModelInstallTransaction::beginDownload()
 
     m_group->begin();
 
+    // Whether the projector is already on disk means hashing a multi-GB file
+    // (ADR 105), so the decision runs on a worker and the files are enqueued
+    // from its callback. Everything the check needs is captured by value: the
+    // transaction may be destroyed while the hash is in flight.
+    if (m_pending.mmprojRel.isEmpty()) {
+        enqueueModelFiles(false);
+        return;
+    }
+    const QString dir = m_pending.dir;
+    const QString mmprojRel = m_pending.mmprojRel;
+    const QString expected = expectedShaFor(mmprojRel);
+    const QString revision = m_pending.revision;
+    const QList<ModelEntry> installed = m_installed;
+    auto *watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, dir, mmprojRel, expected, revision, installed]() {
+        const bool onDisk = watcher->result();
+        watcher->deleteLater();
+        if (m_state != State::Downloading)
+            return;  // cancelled meanwhile
+        enqueueModelFiles(onDisk);
+    });
+    watcher->setFuture(QtConcurrent::run(
+        [dir, mmprojRel, expected, revision, installed]() {
+            return mmprojAlreadyOnDisk(dir, mmprojRel, expected, revision, installed);
+        }));
+}
+
+void ModelInstallTransaction::enqueueModelFiles(bool mmprojOnDisk)
+{
     QSet<QString> leaves;
     for (const QString &path : std::as_const(m_pending.modelNames))
         leaves.insert(ModelCatalog::leafName(path));
@@ -353,8 +383,7 @@ void ModelInstallTransaction::beginDownload()
         if (m_state != State::Downloading)
             return;
     }
-    if (m_state == State::Downloading && !m_pending.mmprojRel.isEmpty()
-        && !mmprojAlreadyOnDisk())
+    if (m_state == State::Downloading && !m_pending.mmprojRel.isEmpty() && !mmprojOnDisk)
         enqueueFile(m_pending.mmprojRel, repo, rev);
 }
 
@@ -391,22 +420,23 @@ QString ModelInstallTransaction::expectedShaFor(const QString &repoPath) const
     return QString();
 }
 
-bool ModelInstallTransaction::mmprojAlreadyOnDisk() const
+bool ModelInstallTransaction::mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel,
+                                                   const QString &expected,
+                                                   const QString &revision,
+                                                   const QList<ModelEntry> &installed)
 {
-    const QString target = QDir(m_pending.dir)
-                               .filePath(ModelCatalog::leafName(m_pending.mmprojRel));
+    const QString target = QDir(dir).filePath(ModelCatalog::leafName(mmprojRel));
     const QFileInfo fi(target);
     if (!fi.exists() || fi.size() <= 0)
         return false;
 
-    if (!m_pending.revision.isEmpty()) {
-        for (const ModelEntry &x : std::as_const(m_installed)) {
-            if (x.revision == m_pending.revision && x.mmprojPath == target)
+    if (!revision.isEmpty()) {
+        for (const ModelEntry &x : std::as_const(installed)) {
+            if (x.revision == revision && x.mmprojPath == target)
                 return true;
         }
     }
 
-    const QString expected = expectedShaFor(m_pending.mmprojRel);
     if (expected.isEmpty())
         return false;
 
