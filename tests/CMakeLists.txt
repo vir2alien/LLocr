@@ -187,8 +187,11 @@ endif()
 # Exercise the real AppController and its app/runtime dependencies, without the
 # GUI entry point, QML/resources generated for llocr, or a dependency on llocr's
 # build. Resolve relative sources against the declaring target, not tests/.
-# The test's fixtures and flows are DjVu-driven, so it also requires DjVuLibre.
-if(LLOCR_DJVU_AVAILABLE)
+#
+# Built unconditionally (ADR 99): the import/recognition/export flows run on
+# generated PDF + raster fixtures, so the ViewModel layer keeps its coverage in
+# a build without DjVuLibre. Only the DjVu-specific case (blank replacement
+# pages + import warnings) is compiled in when the optional codec is present.
 qt_add_executable(test_app_import test_app_import.cpp)
 get_target_property(app_import_sources llocr SOURCES)
 get_target_property(app_import_source_dir llocr SOURCE_DIR)
@@ -213,10 +216,12 @@ target_link_libraries(test_app_import PRIVATE
     Qt6::Qml
     Qt6::Pdf
     Qt6::WebEngineCore
-    DjVuLibre::DjVuLibre
     ZLIB::ZLIB
 )
-target_compile_definitions(test_app_import PRIVATE LLOCR_HAVE_DJVU)
+if(LLOCR_DJVU_AVAILABLE)
+    target_link_libraries(test_app_import PRIVATE DjVuLibre::DjVuLibre)
+    target_compile_definitions(test_app_import PRIVATE LLOCR_HAVE_DJVU)
+endif()
 qt_add_resources(test_app_import "app_import_profiles"
     PREFIX "/profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
@@ -227,7 +232,7 @@ qt_add_resources(test_app_import "app_import_profiles"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchOcr.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchValidate.json"
 )
-if(WIN32)
+if(WIN32 AND LLOCR_DJVU_AVAILABLE)
     add_custom_command(TARGET test_app_import POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
             "$<TARGET_FILE:DjVuLibre::DjVuLibre>"
@@ -236,11 +241,6 @@ if(WIN32)
     )
 endif()
 add_test(NAME test_app_import COMMAND test_app_import)
-set_tests_properties(test_app_import PROPERTIES
-    TIMEOUT 90
-    ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
-)
-endif()
 
 qt_add_executable(test_settings_store test_settings_store.cpp)
 
@@ -839,3 +839,40 @@ else()
     target_sources(test_install_lock PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
 endif()
 add_test(NAME test_install_lock COMMAND test_install_lock)
+
+# ---- Stage 0.3: default test properties (ADR 99) ---------------------------
+#
+# Until now only test_app_import had a TIMEOUT and a headless platform, so a
+# single hung waitForStarted() blocked `ctest` forever on every other target —
+# including the three that spawn real processes. Applied here as directory-level
+# defaults instead of 31 copies of set_tests_properties; a test that needs more
+# can still raise its own TIMEOUT / ENVIRONMENT below (an explicit entry wins,
+# because the loop only appends a platform that is not set yet).
+get_property(_llocr_all_tests DIRECTORY PROPERTY TESTS)
+foreach(_llocr_test IN LISTS _llocr_all_tests)
+    get_property(_llocr_timeout TEST ${_llocr_test} PROPERTY TIMEOUT)
+    if(NOT _llocr_timeout)
+        set_tests_properties(${_llocr_test} PROPERTIES TIMEOUT 300)
+    endif()
+    get_property(_llocr_env TEST ${_llocr_test} PROPERTY ENVIRONMENT)
+    if(_llocr_test STREQUAL "test_export_renderer")
+        # WebEngine needs a real render stack: keep the native platform plugin
+        # and disable the GPU/sandbox instead.
+        if(NOT "${_llocr_env}" MATCHES "QTWEBENGINE_CHROMIUM_FLAGS")
+            list(APPEND _llocr_env
+                 "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --no-sandbox")
+            set_tests_properties(${_llocr_test} PROPERTIES ENVIRONMENT "${_llocr_env}")
+        endif()
+    else()
+        list(FIND _llocr_env "QT_QPA_PLATFORM=offscreen" _llocr_has_offscreen)
+        if(_llocr_has_offscreen EQUAL -1)
+            list(APPEND _llocr_env "QT_QPA_PLATFORM=offscreen")
+            set_tests_properties(${_llocr_test} PROPERTIES ENVIRONMENT "${_llocr_env}")
+        endif()
+    endif()
+endforeach()
+unset(_llocr_all_tests)
+unset(_llocr_test)
+unset(_llocr_timeout)
+unset(_llocr_env)
+unset(_llocr_has_offscreen)
