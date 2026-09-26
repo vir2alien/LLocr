@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QObject>
 
 #include "runtime/DownloadTask.h"
@@ -30,6 +31,9 @@ private:
 
 private:
     DownloadManager *m_manager = nullptr;
+    /// The tasks this group enqueued — progress is summed over them, so a second
+    /// install is not diluted by the first one's (ADR 107).
+    QList<DownloadTask *> m_tasks;
     int m_count = 0;
     int m_done = 0;
     bool m_failed = false;

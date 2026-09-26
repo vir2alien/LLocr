@@ -158,6 +158,37 @@ Item {
             }
         }//Rectangle
 
+        // A llama-server from a previous run kept the model (and the VRAM)
+        // loaded: offer to get rid of it instead of silently starting a second
+        // one (ADR 107). Never killed without a click.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: orphanBanner.implicitHeight + 12
+            visible: Runtime.orphanDetected
+            color: Theme.surfaceAlt
+            border.color: Theme.warning
+            border.width: 1
+
+            RowLayout {
+                id: orphanBanner
+                anchors.fill: parent
+                anchors.leftMargin: Theme.spacing * 2
+                anchors.rightMargin: Theme.spacing
+                spacing: Theme.spacing
+
+                LLOLabel {
+                    Layout.fillWidth: true
+                    color: Theme.textPrimary
+                    text: Runtime.orphanInfo
+                    wrapMode: Text.Wrap
+                }
+                LLOButton {
+                    text: qsTr("Stop it")
+                    onClicked: Runtime.terminateOrphan()
+                }
+            }
+        }//Rectangle
+
         LLOLabel {
             Layout.fillWidth: true
             Layout.leftMargin: Theme.spacing * 2

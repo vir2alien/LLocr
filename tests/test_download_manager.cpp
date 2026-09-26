@@ -11,6 +11,7 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "runtime/DownloadGroup.h"
 #include "runtime/DownloadManager.h"
 #include "runtime/DownloadTask.h"
 
@@ -255,6 +256,10 @@ private slots:
     void insufficientSpaceFails();
     void parallelLimitRespectsTwoSlots();
     void refusesInsecureUrlByDefault();
+    // A group's progress must be its own, not the manager's aggregate: the
+    // manager is shared and keeps terminal tasks, so a second install used to be
+    // diluted by the first one's leftovers and the bar stalled below 100 %.
+    void groupProgressIsPerGroupNotTheManagerAggregate();
 };
 
 void TestDownloadManager::sanitizeFileNameBasics()
@@ -523,6 +528,43 @@ void TestDownloadManager::parallelLimitRespectsTwoSlots()
     QCOMPARE(count(DownloadTask::State::Running), 2);
     QCOMPARE(count(DownloadTask::State::Queued), 2);
     mgr.cancelAll(true);
+}
+
+// A second install must not be diluted by the first one's finished downloads:
+// the progress bar is the group's, so it reaches 100 % on its own.
+void TestDownloadManager::groupProgressIsPerGroupNotTheManagerAggregate()
+{
+    QTemporaryDir dir;
+    TestServer server;
+    const QByteArray data = pattern(4096);
+    server.content = data;
+    QVERIFY(server.start());
+
+    DownloadManager mgr;
+    mgr.setAllowLoopbackHttp(true);
+    DownloadGroup firstGroup(&mgr);
+    DownloadGroup secondGroup(&mgr);
+
+    // First "install": a single 4 KB file, finished before the second starts.
+    firstGroup.begin();
+    firstGroup.enqueue(makeReq(server.url("first.bin"), dir.path(), "first.bin"));
+    QTRY_COMPARE_WITH_TIMEOUT(int(mgr.taskAt(0)->state()),
+                              int(DownloadTask::State::Completed), 5000);
+    QVERIFY(firstGroup.progress() > 0.99);
+    QVERIFY(!firstGroup.failed());
+
+    // Second "install": its progress starts from zero, not from the manager's
+    // total of both files.
+    secondGroup.begin();
+    QVERIFY2(secondGroup.progress() == 0.0,
+             "a new group must start at zero progress");
+    secondGroup.enqueue(makeReq(server.url("second.bin"), dir.path(), "second.bin"));
+    QTRY_COMPARE_WITH_TIMEOUT(int(mgr.taskAt(1)->state()),
+                              int(DownloadTask::State::Completed), 5000);
+    QVERIFY2(secondGroup.progress() > 0.99,
+             qPrintable(QStringLiteral("second group progress: %1")
+                            .arg(secondGroup.progress())));
+    QVERIFY(!secondGroup.failed());
 }
 
 void TestDownloadManager::refusesInsecureUrlByDefault()

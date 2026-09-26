@@ -23,7 +23,9 @@
 #include "runtime/RuntimeLocator.h"
 #include "runtime/RuntimeLog.h"
 #include "runtime/RuntimePaths.h"
+#include "runtime/ProcessGuard.h"
 #include "runtime/ServerCapabilities.h"
+#include "runtime/ServerOwner.h"
 #include "runtime/ServerLaunchConfig.h"
 #include "runtime/SingleInstanceGuard.h"
 
@@ -55,6 +57,56 @@ RuntimeController::RuntimeController(SettingsStore &settings,
             &RuntimeController::recomputeConfigValid);
     connect(&m_settings, &SettingsStore::launchModelPathChanged, this,
             &RuntimeController::recomputeConfigValid);
+    connect(&m_settings, &SettingsStore::runtimeRootDirChanged, this,
+            &RuntimeController::scanForOrphanedServer);
+    connect(&m_settings, &SettingsStore::runtimeModelsDirChanged, this,
+            &RuntimeController::scanForOrphanedServer);
+    scanForOrphanedServer();
+}
+
+QString RuntimeController::orphanInfo() const
+{
+    if (!m_orphan.isValid())
+        return {};
+    return tr("A llama-server from a previous LLocr run is still running "
+              "(pid %1, port %2).")
+        .arg(m_orphan.pid)
+        .arg(m_orphan.port);
+}
+
+void RuntimeController::scanForOrphanedServer()
+{
+    // Always re-read: the scan is a small file read plus a liveness probe, and
+    // the record can appear or expire between two calls (the user may also have
+    // killed the process). The signal fires only when the verdict changes.
+    const RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    const QString ownerPath = QDir(paths.runtimeDir()).filePath(QStringLiteral("owner.json"));
+    m_orphanJsonPath = ownerPath;
+
+    ServerOwnerRecord found;
+    const bool orphan = ServerOwner::findOrphan(ownerPath, &found);
+    if (orphan == m_orphan.isValid() && (!orphan || found.pid == m_orphan.pid))
+        return;
+
+    m_orphan = orphan ? found : ServerOwnerRecord{};
+    emit orphanChanged();
+    if (orphan)
+        qWarning().noquote() << orphanInfo();
+}
+
+QString RuntimeController::terminateOrphan()
+{
+    if (!m_orphan.isValid())
+        return tr("No orphaned server to terminate");
+    // Re-validate: the pid may have exited or been recycled since the scan.
+    if (!ServerOwner::isOrphan(m_orphan))
+        return tr("The orphaned server is already gone");
+    if (!ProcessGuard::terminateProcess(m_orphan.pid))
+        return tr("Unable to terminate the process (pid %1)").arg(m_orphan.pid);
+    ServerOwner::clear(m_orphanJsonPath);
+    m_orphan = ServerOwnerRecord{};
+    emit orphanChanged();
+    return {};
 }
 
 void RuntimeController::setSingleInstanceHeld(bool held)

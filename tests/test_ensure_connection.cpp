@@ -1,6 +1,9 @@
 #include <QDir>
 #include <QDateTime>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QProcess>
 #include <QSaveFile>
 #include <QSettings>
 #include <QTemporaryDir>
@@ -10,6 +13,7 @@
 #include "app/RequestProfileStore.h"
 #include "app/SettingsStore.h"
 #include "runtime/RuntimeController.h"
+#include "runtime/RuntimePaths.h"
 #include "runtime/RuntimeState.h"
 #include "runtime/SelfTestController.h"
 #include "testsettings.h"
@@ -309,6 +313,81 @@ private slots:
     // The probe spawns the binary and waits for it — up to two minutes on a
     // cold cache. It must not run on the GUI thread: a timer has to keep firing
     // while the resolve is in flight, or the window is frozen (ADR 105).
+    // The llama-server owner record is finally read back: a server left running
+    // by a previous LLocr run must be detected (ADR 107) and terminable, while
+    // a dead pid or a recycled one must be left alone.
+    void orphanedServerIsDetectedAndCanBeTerminated()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        const RuntimePaths paths(store.runtimeRootDir(), store.runtimeModelsDir());
+        paths.ensureDirectories();
+        const QString ownerPath =
+            QDir(paths.runtimeDir()).filePath(QStringLiteral("owner.json"));
+        QVERIFY(!QFileInfo(ownerPath).absolutePath().isEmpty());
+
+        const auto writeRecord = [&ownerPath](qint64 pid, qint64 parentPid, int port,
+                                              const QString &program) {
+            QJsonObject object;
+            object.insert(QStringLiteral("pid"), double(pid));
+            object.insert(QStringLiteral("parentPid"), double(parentPid));
+            object.insert(QStringLiteral("port"), port);
+            object.insert(QStringLiteral("program"), program);
+            QFile file(ownerPath);
+            if (!file.open(QIODevice::WriteOnly))
+                return false;
+            file.write(QJsonDocument(object).toJson(QJsonDocument::Compact));
+            file.close();
+            return true;
+        };
+        const QString mock =
+            QFileInfo(QString::fromUtf8(LLOCR_MOCK_SERVER)).absoluteFilePath();
+
+        // No record at all: nothing to report.
+        RuntimeController runtime(store, launchProfiles);
+        QVERIFY(!runtime.orphanDetected());
+        QVERIFY(runtime.orphanInfo().isEmpty());
+
+        // A record for a dead pid, and one naming ourselves: neither is an
+        // orphan. Each check is a fresh controller, i.e. the next app start.
+        QVERIFY(writeRecord(999999, 999998, 18080, mock));
+        RuntimeController deadRecord(store, launchProfiles);
+        QVERIFY2(!deadRecord.orphanDetected(), "a dead pid is not an orphan");
+
+        QVERIFY(writeRecord(QCoreApplication::applicationPid(), 1, 18081, mock));
+        RuntimeController ownRecord(store, launchProfiles);
+        QVERIFY2(!ownRecord.orphanDetected(), "our own server is not an orphan");
+
+        // A live foreign process whose image matches the record: an orphan.
+        QProcess server;
+        server.start(mock, {QStringLiteral("--port"), QStringLiteral("0"),
+                            QStringLiteral("--never-healthy")});
+        QVERIFY(server.waitForStarted(10000));
+        QVERIFY(writeRecord(server.processId(), 999998, 18082,
+                            QFileInfo(server.program()).absoluteFilePath()));
+
+        RuntimeController runtime2(store, launchProfiles);
+        QVERIFY2(runtime2.orphanDetected(),
+                 "a live llama-server from a previous run must be reported");
+        QVERIFY(runtime2.orphanInfo().contains(QString::number(server.processId())));
+
+        // And the user can get rid of it.
+        const QString result = runtime2.terminateOrphan();
+        QVERIFY2(result.isEmpty(), qPrintable(result));
+        QVERIFY(!runtime2.orphanDetected());
+        QVERIFY(server.waitForFinished(10000));
+        QVERIFY(!QFile::exists(ownerPath));
+    }
+
     void managedStartKeepsTheEventLoopRunning()
     {
         QTemporaryDir dir;

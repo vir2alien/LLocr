@@ -119,6 +119,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/LlamaServerProcess.h
     runtime/LlamaServerProcess.cpp
     runtime/ProcessGuard.h
+    runtime/ServerOwner.h
+    runtime/ServerOwner.cpp
     runtime/DownloadTask.h
     runtime/DownloadTask.cpp
     runtime/DownloadManager.h

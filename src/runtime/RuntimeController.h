@@ -12,6 +12,7 @@
 #include "runtime/ConnectionMode.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeLocator.h"
+#include "runtime/ServerOwner.h"
 
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -33,6 +34,10 @@ class RuntimeController : public QObject
     Q_PROPERTY(int loadProgressPercent READ loadProgressPercent NOTIFY loadProgressChanged)
     Q_PROPERTY(bool configValid READ configValid NOTIFY configValidChanged)
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
+    // A llama-server left running by a previous LLocr run (ADR 107). The record
+    // is offered to the user, never killed without a click.
+    Q_PROPERTY(bool orphanDetected READ orphanDetected NOTIFY orphanChanged)
+    Q_PROPERTY(QString orphanInfo READ orphanInfo NOTIFY orphanChanged)
 
 public:
     explicit RuntimeController(SettingsStore &settings,
@@ -67,6 +72,12 @@ public:
     bool configValid() const { return m_configValid; }
     bool lockedOut() const { return m_lockedOut; }
 
+    bool orphanDetected() const { return m_orphan.isValid(); }
+    QString orphanInfo() const;
+    /// Terminates the detected orphan (after re-validating it) and drops the
+    /// record. Returns an empty string on success, a user-facing reason otherwise.
+    Q_INVOKABLE QString terminateOrphan();
+
     Q_INVOKABLE static QString localPath(const QUrl &url)
     {
         return url.isLocalFile() ? url.toLocalFile() : url.toString();
@@ -86,6 +97,9 @@ public:
     void bindSingleInstanceGuard(SingleInstanceGuard *guard);
     Q_INVOKABLE void refreshSingleInstanceLock();
     void setLogTarget(RuntimeLog *log);
+    // Re-reads <rootDir>/owner.json. Called at construction; the paths follow
+    // the current settings, so a moved runtime directory is re-scanned.
+    void scanForOrphanedServer();
     Q_INVOKABLE QString startServer();
     Q_INVOKABLE void stopServer();
     Q_INVOKABLE void restartServer();
@@ -144,6 +158,7 @@ signals:
     void loadProgressChanged();
     void configValidChanged();
     void lockedOutChanged();
+    void orphanChanged();
 
 private:
     class LlamaServerProcess *m_server = nullptr;
@@ -180,6 +195,8 @@ private:
     int m_loadProgressPercent = -1;
     bool m_configValid = false;
     bool m_lockedOut = false;
+    ServerOwnerRecord m_orphan;
+    QString m_orphanJsonPath;
     // Bumped for every started probe; a result whose generation is stale
     // (cancelled, or superseded by a newer probe) is dropped (ADR 105).
     quint64 m_startGeneration = 0;

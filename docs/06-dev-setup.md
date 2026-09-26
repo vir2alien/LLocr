@@ -387,9 +387,9 @@ Notes:
   model-index writes by `models/.registry.lock` (ADR 46), so a 2nd instance can
   install runtime/models while the 1st uses External.
 - `owner.json` (written by `ProcessGuard` on macOS) records the managed server
-  PID/port so an orphaned server can be detected at next start (ADR 30).
-  *Pending:* the record is written and cleared but **not read back yet** — see
-  D1 in `docs/architecture-plan/README.md` (stage 5).
+  PID/port so an orphaned server can be detected at next start (ADR 30, ADR 107).
+  It is read back at startup: the footer offers «Stop it» when the recorded
+  process is still running and its image matches — never killed automatically.
 - Environment variables: none are required. The app follows the platform proxy
   settings (`QNetworkProxyFactory::useSystemConfiguration()`) for downloads.
   One **opt-in** debug switch exists: `LLOCR_RAW_DEBUG=1` makes the OCR model
