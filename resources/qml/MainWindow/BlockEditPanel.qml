@@ -126,7 +126,7 @@ Rectangle {
                 text: qsTr("Delete block")
                 enabled: !Controller.checkBusy && !Controller.busy
                          && Controller.selectedBoxIndex >= 0
-                onClicked: Controller.boxModel.removeBox(Controller.selectedBoxIndex)
+                onClicked: Controller.removeBlock(Controller.selectedBoxIndex)
             }
             Item { Layout.fillWidth: true }
         }

@@ -106,7 +106,7 @@ private slots:
         QCOMPARE(spy.size(), 1);
     }
 
-    void removeBoxRemovesRowAndReports()
+    void removeBoxRemovesRow()
     {
         BoxListModel model;
         QAbstractItemModelTester tester(&model,
@@ -118,13 +118,10 @@ private slots:
             makeBox(QStringLiteral("chart"), QRectF(0, 0, 0.3, 0.3)),
         });
 
-        QSignalSpy removedSpy(&model, &BoxListModel::boxRemoved);
         QSignalSpy removeSpy(&model, &QAbstractItemModel::rowsRemoved);
 
         model.removeBox(1);
 
-        QCOMPARE(removedSpy.count(), 1);
-        QCOMPARE(removedSpy.at(0).at(0).toInt(), 1);
         QCOMPARE(removeSpy.count(), 1);
         QCOMPARE(model.rowCount(), 2);
         QCOMPARE(model.data(model.index(1), BoxListModel::LabelRole).toString(),
@@ -134,7 +131,18 @@ private slots:
         // Out-of-range removal is a no-op.
         model.removeBox(5);
         QCOMPARE(model.rowCount(), 2);
-        QCOMPARE(removedSpy.count(), 1);
+        QCOMPARE(removeSpy.count(), 1);
+    }
+
+    // The view model must not be a QML-callable mutation point: it mirrors the
+    // document, which AppController owns. removeBox() stays deliberately silent
+    // (no boxRemoved signal) so a controller-driven removal cannot re-enter.
+    void removeBoxIsNotQmlCallable()
+    {
+        const QMetaObject *mo = &BoxListModel::staticMetaObject;
+        QVERIFY(mo->indexOfMethod("removeBox(Q_ARG(int,int)") < 0);
+        QVERIFY(mo->indexOfMethod("removeBox(int)") < 0);
+        QCOMPARE(mo->indexOfSignal("boxRemoved(int)"), -1);
     }
 
     void setFromResultTakesFirstPage()

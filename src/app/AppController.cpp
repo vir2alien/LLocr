@@ -595,19 +595,23 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y,
     emit imageChanged();
 }
 
-void AppController::onBoxRemoved(int boxIndex)
+bool AppController::removeBlock(int boxIndex)
 {
+    if (m_recognition.busy() || m_importing)
+        return false;
     if (!m_document.isValidIndex(m_currentPage))
-        return;
+        return false;
     DocumentPage& page = m_document.page(m_currentPage);
     if (!page.recognized || page.result.pages.isEmpty())
-        return;
+        return false;
     QList<BoundingBox>& boxes = page.result.pages[0].boxes;
     if (boxIndex < 0 || boxIndex >= boxes.size())
-        return;
+        return false;
 
+    // The document is the source of truth; the view model follows it.
     boxes.removeAt(boxIndex);
     ++m_cropRevision;
+    m_boxModel.removeBox(boxIndex);
 
     m_editStore.replace(m_currentPage, rebuildPageText(page.result.pages[0]));
     m_pageModel.setEdited(m_currentPage, true);
@@ -620,6 +624,7 @@ void AppController::onBoxRemoved(int boxIndex)
     emit boxesChanged();
     emit resultChanged();
     emit editStateChanged();
+    return true;
 }
 
 const BoundingBox *AppController::selectedBox() const

@@ -3,10 +3,13 @@
 #include <QAbstractItemModelTester>
 #include <QFile>
 #include <QGuiApplication>
+#include <QHostAddress>
 #include <QMetaProperty>
 #include <QRegularExpression>
 #include <QPointer>
 #include <QSemaphore>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QThreadPool>
@@ -16,6 +19,7 @@
 
 #include "testsettings.h"
 #include "app/AppController.h"
+#include "app/BoxListModel.h"
 #include "app/LaunchProfileStore.h"
 #include "app/RecognitionController.h"
 #include "app/RequestProfileStore.h"
@@ -153,6 +157,65 @@ public:
     QList<int> committedCounts;
 };
 } // namespace
+
+// Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
+// fixed det-token reply, so the real recognition pipeline produces real boxes.
+// Used to drive the AppController-level block-removal contract end to end.
+class DetTokenChatServer : public QObject
+{
+public:
+    explicit DetTokenChatServer(QObject *parent = nullptr)
+        : QObject(parent)
+    {
+        connect(&m_server, &QTcpServer::newConnection, this,
+                &DetTokenChatServer::onNewConnection);
+    }
+
+    bool start() { return m_server.listen(QHostAddress::LocalHost, 0); }
+
+    QString baseUrl() const
+    {
+        return QStringLiteral("http://127.0.0.1:%1").arg(m_server.serverPort());
+    }
+
+private:
+    void onNewConnection()
+    {
+        while (QTcpSocket *socket = m_server.nextPendingConnection()) {
+            connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
+                m_buffers[socket] += socket->readAll();
+                if (!m_buffers[socket].contains("\r\n\r\n"))
+                    return;
+                socket->write(reply());
+                socket->flush();
+                socket->disconnectFromHost();
+                m_buffers.remove(socket);
+            });
+            connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
+        }
+    }
+
+    QByteArray reply() const
+    {
+        // The wrapped <|det|>…<|/det|> stream the current models emit; the model
+        // streams newlines as the two characters `\n`.
+        static const QString content = QStringLiteral(
+            "<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
+            "<|det|>text [112, 132, 884, 309]<|/det|>Second block text");
+        const QByteArray body = QJsonDocument(QJsonObject{
+            {"id", "cmpl-test"},
+            {"object", "chat.completion"},
+            {"choices", QJsonArray{QJsonObject{
+                {"index", 0},
+                {"message", QJsonObject{{"role", "assistant"}, {"content", content}}}}}},
+        }).toJson(QJsonDocument::Compact);
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "
+               + QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+    }
+
+    QTcpServer m_server;
+    QHash<QTcpSocket *, QByteArray> m_buffers;
+};
 
 class TestAppImport : public QObject
 {
@@ -489,6 +552,60 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QCOMPARE(controller.pageCount(), 5);
+    }
+
+    // Regression: the document is the source of truth for blocks. Deleting a
+    // block through AppController must mutate the page (so the rebuilt text and
+    // the export lose it) and mirror the row into the view model. Deleting it
+    // through the view model alone used to leave the document, the export and the
+    // verification queue untouched, and the box came back on the next page switch.
+    void blockRemovalUpdatesDocumentAndView()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        // Recognition is refused while an import is still running.
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+        const QString before = m_controller->resultText();
+        QVERIFY(before.contains(QStringLiteral("1. Introduction")));
+        QVERIFY(before.contains(QStringLiteral("Second block text")));
+
+        m_controller->setSelectedBoxIndex(1);
+        QVERIFY(m_controller->removeBlock(1));
+
+        // Selection is cleared, the row is gone, and the text lost the block.
+        QCOMPARE(m_controller->selectedBoxIndex(), -1);
+        QCOMPARE(boxes->rowCount(), 1);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::LabelRole).toString(),
+                 QStringLiteral("title"));
+        const QString after = m_controller->resultText();
+        QVERIFY(after.contains(QStringLiteral("1. Introduction")));
+        QVERIFY(!after.contains(QStringLiteral("Second block text")));
+        QVERIFY(m_controller->currentPageEdited());
+
+        // A refused removal must change nothing.
+        QVERIFY(!m_controller->removeBlock(7));
+        QVERIFY(!m_controller->removeBlock(-1));
+        QCOMPARE(boxes->rowCount(), 1);
+        QCOMPARE(m_controller->resultText(), after);
+
+        // The remaining block is still deletable and leaves an empty page.
+        QVERIFY(m_controller->removeBlock(0));
+        QCOMPARE(boxes->rowCount(), 0);
+        QVERIFY(!m_controller->resultText().contains(QStringLiteral("Introduction")));
     }
 
     void failedImportsClearStateAndAllowRetry_data()

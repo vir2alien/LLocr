@@ -168,7 +168,9 @@ public slots:
     Q_INVOKABLE void revertCurrentPageEdits();
     Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y,
                                       qreal width, qreal height);
-    Q_INVOKABLE void onBoxRemoved(int boxIndex);
+    // The single entry point for deleting a block: mutates the document, then
+    // mirrors the change into the box model, the edit store and the selection.
+    Q_INVOKABLE bool removeBlock(int boxIndex);
     Q_INVOKABLE QString resolveImagesForPreview(const QString& markdown);
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();

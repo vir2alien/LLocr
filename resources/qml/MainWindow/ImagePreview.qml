@@ -26,10 +26,10 @@ Image {
         }
 
         Keys.onDeletePressed: (event) => {
-            if (Controller.selectedBoxIndex >= 0
-                    && Controller.boxModel.isImageBox(Controller.selectedBoxIndex)) {
-                Controller.boxModel.removeBox(Controller.selectedBoxIndex)
-                Controller.selectedBoxIndex = -1
+            const index = Controller.selectedBoxIndex
+            if (index >= 0 && Controller.boxModel.isImageBox(index)
+                    && Controller.removeBlock(index)) {
+                // removeBlock() clears the selection itself
                 event.accepted = true
             }
         }
@@ -154,10 +154,7 @@ Image {
                     anchors.right: parent.right
                     anchors.margins: 1
                     font.pointSize: Theme.captionSize
-                    onClicked: {
-                        Controller.boxModel.removeBox(boxDelegate.index)
-                        Controller.selectedBoxIndex = -1
-                    }
+                    onClicked: Controller.removeBlock(boxDelegate.index)
                 }
 
                 // --- Image-block boundary editing (resize handles) ---

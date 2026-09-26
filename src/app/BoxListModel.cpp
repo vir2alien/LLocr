@@ -111,7 +111,6 @@ void BoxListModel::removeBox(int index)
     beginRemoveRows({}, index, index);
     m_boxes.removeAt(index);
     endRemoveRows();
-    emit boxRemoved(index);
 }
 
 bool BoxListModel::isImageBox(int index) const
