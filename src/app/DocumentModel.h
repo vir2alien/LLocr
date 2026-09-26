@@ -6,15 +6,12 @@
 #include <QString>
 #include <QStringList>
 #include <memory>
+#include "app/DjVuDocument.h"
 #include "core/OcrResult.h"
 
 class QPdfDocument;
 
 namespace llocr {
-
-#ifdef LLOCR_HAVE_DJVU
-class DjVuDocument;
-#endif
 
 enum class DocumentSource { Image, Pdf, DjVu };
 
@@ -34,11 +31,14 @@ struct DocumentPage {
 class DocumentModel
 {
 public:
+    // DjVuDocument.h is header-only w.r.t. the DjVuLibre C API (it forward
+    // declares the ddjvu_* structs), so the DjVu members below are declared
+    // unconditionally: LLOCR_HAVE_DJVU changes only which implementation the
+    // .cpp compiles, never the class layout. A build-time #ifdef in this header
+    // would give every translation unit a different DocumentModel.
     struct PreparedDjVu {
         QList<DocumentPage> pages;
-#ifdef LLOCR_HAVE_DJVU
         std::shared_ptr<DjVuDocument> document;
-#endif
         QString error;
         QStringList warnings;
     };
@@ -83,9 +83,7 @@ private:
 private:
     QList<DocumentPage> m_pages;
     QHash<QString, QPdfDocument*> m_pdfs;
-#ifdef LLOCR_HAVE_DJVU
     QHash<QString, std::shared_ptr<DjVuDocument>> m_djvus;
-#endif
     QList<int> m_fullCache;
 };
 

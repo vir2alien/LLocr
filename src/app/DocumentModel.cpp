@@ -1,7 +1,4 @@
 #include "app/DocumentModel.h"
-#ifdef LLOCR_HAVE_DJVU
-#include "app/DjVuDocument.h"
-#endif
 
 #include <QCoreApplication>
 #include <QFileInfo>
@@ -187,13 +184,13 @@ void DocumentModel::appendPreparedDjVu(const PreparedDjVu& prepared)
 {
     if (!prepared.error.isEmpty() || prepared.pages.isEmpty())
         return;
-#ifdef LLOCR_HAVE_DJVU
+    // Without DjVu support prepareDjVu() always reports an error, so nothing
+    // reaches this point and the document handle is never needed.
     if (!prepared.document)
         return;
     const QString& key = prepared.pages.first().sourcePath;
     if (!m_djvus.contains(key))
         m_djvus.insert(key, prepared.document);
-#endif
     m_pages.reserve(m_pages.size() + prepared.pages.size());
     m_pages.append(prepared.pages);
 }
@@ -235,9 +232,7 @@ void DocumentModel::clear()
     m_fullCache.clear();
     qDeleteAll(m_pdfs);
     m_pdfs.clear();
-#ifdef LLOCR_HAVE_DJVU
     m_djvus.clear();
-#endif
 }
 
 void DocumentModel::evictUnusedSourceDocuments(const QString& path)
@@ -252,9 +247,7 @@ void DocumentModel::evictUnusedSourceDocuments(const QString& path)
         delete pdf;
         return;
     }
-#ifdef LLOCR_HAVE_DJVU
     m_djvus.remove(path);
-#endif
 }
 
 bool DocumentModel::isValidIndex(int index) const
