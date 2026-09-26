@@ -49,7 +49,7 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
            [this]() { return m_recognition.busy(); }},
           this)
     , m_export(
-          {m_document, m_editStore, m_settings,
+          {m_document, m_settings,
            [this](int pageIndex, int boxIndex) {
                return croppedImage(pageIndex, boxIndex);
            },
@@ -143,6 +143,21 @@ QString AppController::rebuildPageText(const OcrPage &page) const
     return parser ? parser->rebuildText(page) : page.text;
 }
 
+void AppController::setPageText(int index, const QString &text)
+{
+    if (!m_document.isValidIndex(index))
+        return;
+    OcrResult &result = m_document.page(index).result;
+    if (!result.pages.isEmpty())
+        result.pages[0].text = text;
+    result.text = text;
+}
+
+QString AppController::pageText(int index) const
+{
+    return m_document.isValidIndex(index) ? m_document.page(index).result.text : QString();
+}
+
 QStringList AppController::modelNames() const
 {
     QStringList names;
@@ -184,11 +199,6 @@ bool AppController::canRecognize() const
     return m_runtime.canRecognize(true);
 }
 
-QString AppController::effectiveText(int index) const
-{
-    return m_editStore.effectiveText(m_document, index);
-}
-
 QString AppController::currentPageWarning() const
 {
     QReadLocker locker(&m_documentLock);
@@ -205,7 +215,7 @@ QString AppController::parseWarning() const
 
 QString AppController::resultText() const
 {
-    return effectiveText(m_currentPage);
+    return pageText(m_currentPage);
 }
 
 bool AppController::currentPageEditable() const
@@ -522,7 +532,7 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
     if (hadDups)
         m_pageModel.setHasDuplicates(index, true);
 
-    const bool droppedEdit = m_editStore.revert(index);
+    const bool droppedEdit = m_editStore.reset(index, parsed.text);
     if (droppedEdit)
         m_pageModel.setEdited(index, false);
 
@@ -549,30 +559,33 @@ void AppController::setCurrentPageText(const QString& text)
         return;
 
     const int index = m_currentPage;
-    const QString original = m_document.page(index).result.text;
+    // Compare against what the page shows *now*: after a structural edit
+    // (removed block, applied fix) the recognized text is no longer what the
+    // page contains, and comparing against it made the editor discard the
+    // structural edit as soon as the user typed it back (ADR 102).
+    if (text == pageText(index))
+        return;
 
-    switch (m_editStore.setText(index, original, text)) {
-    case PageEditStore::Change::NowEdited:
+    setPageText(index, text);
+    if (!m_editStore.isEdited(index)) {
+        m_editStore.setEdited(index, true);
         m_pageModel.setEdited(index, true);
-        emit editStateChanged();
-        break;
-    case PageEditStore::Change::NowClean:
-        m_pageModel.setEdited(index, false);
-        emit editStateChanged();
-        break;
-    case PageEditStore::Change::None:
-        break;
     }
+    emit resultChanged();
+    emit editStateChanged();
 }
 
 void AppController::revertCurrentPageEdits()
 {
     const int index = m_currentPage;
-    if (m_editStore.revert(index)) {
-        m_pageModel.setEdited(index, false);
-        emit resultChanged();
-        emit editStateChanged();
-    }
+    if (!m_editStore.isEdited(index))
+        return;
+    const QString original = m_editStore.baseline(index);
+    m_editStore.revert(index);
+    setPageText(index, original);
+    m_pageModel.setEdited(index, false);
+    emit resultChanged();
+    emit editStateChanged();
 }
 
 void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y,
@@ -613,8 +626,11 @@ bool AppController::removeBlock(int boxIndex)
     ++m_cropRevision;
     m_boxModel.removeBox(boxIndex);
 
-    m_editStore.replace(m_currentPage, rebuildPageText(page.result.pages[0]));
-    m_pageModel.setEdited(m_currentPage, true);
+    setPageText(m_currentPage, rebuildPageText(page.result.pages[0]));
+    if (!m_editStore.isEdited(m_currentPage)) {
+        m_editStore.setEdited(m_currentPage, true);
+        m_pageModel.setEdited(m_currentPage, true);
+    }
 
     if (m_selectedBox == boxIndex)
         setSelectedBoxIndex(-1);
@@ -714,11 +730,14 @@ void AppController::revertBlockCorrection()
         box.correctedText.clear();
 
         const QString rebuilt = rebuildPageText(page.result.pages[0]);
-        if (rebuilt == page.result.text) {
+        if (rebuilt == m_editStore.baseline(m_currentPage)) {
+            // Back to the recognized text: the page is no longer edited.
+            setPageText(m_currentPage, rebuilt);
             m_editStore.revert(m_currentPage);
             m_pageModel.setEdited(m_currentPage, false);
         } else {
-            m_editStore.replace(m_currentPage, rebuilt);
+            setPageText(m_currentPage, rebuilt);
+            m_editStore.setEdited(m_currentPage, true);
             m_pageModel.setEdited(m_currentPage, true);
         }
         ++m_cropRevision;
@@ -801,9 +820,11 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
         corrected = box.correctedText;
 
         if (box.checkStatus == BoxCheckStatus::Fixed) {
-            m_editStore.replace(pageIndex,
-                                rebuildPageText(page.result.pages[0]));
-            m_pageModel.setEdited(pageIndex, true);
+            setPageText(pageIndex, rebuildPageText(page.result.pages[0]));
+            if (!m_editStore.isEdited(pageIndex)) {
+                m_editStore.setEdited(pageIndex, true);
+                m_pageModel.setEdited(pageIndex, true);
+            }
             textChanged = true;
         }
         ++m_cropRevision;

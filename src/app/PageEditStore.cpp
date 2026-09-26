@@ -4,70 +4,52 @@
 
 namespace llocr {
 
-QString PageEditStore::effectiveText(const DocumentModel& doc, int index) const
+bool PageEditStore::reset(int index, const QString &recognizedText)
 {
-    if (!doc.isValidIndex(index))
-        return {};
-    const DocumentPage& page = doc.page(index);
-    if (!page.recognized)
-        return {};
-    const auto it = m_edits.constFind(index);
-    if (it != m_edits.constEnd())
-        return it.value();
-    return page.result.text;
+    m_baselines.insert(index, recognizedText);
+    return m_edited.remove(index);
 }
 
-PageEditStore::Change PageEditStore::setText(int index, const QString& original, const QString& text)
+QString PageEditStore::baseline(int index) const
 {
-    if (text == original) {
-        if (m_edits.remove(index))
-            return Change::NowClean;
-        return Change::None;
-    }
-    const bool wasEdited = m_edits.contains(index);
-    m_edits.insert(index, text);
-    return wasEdited ? Change::None : Change::NowEdited;
-}
-
-void PageEditStore::replace(int index, const QString& text)
-{
-    m_edits.insert(index, text);
+    return m_baselines.value(index);
 }
 
 bool PageEditStore::revert(int index)
 {
-    return m_edits.remove(index);
-}
-
-void PageEditStore::clear()
-{
-    m_edits.clear();
+    m_baselines.remove(index);
+    return m_edited.remove(index);
 }
 
 bool PageEditStore::isEdited(int index) const
 {
-    return m_edits.contains(index);
+    return m_edited.value(index, false);
+}
+
+void PageEditStore::setEdited(int index, bool edited)
+{
+    if (edited)
+        m_edited.insert(index, true);
+    else
+        m_edited.remove(index);
+}
+
+void PageEditStore::clear()
+{
+    m_baselines.clear();
+    m_edited.clear();
 }
 
 void PageEditStore::remapAfterRemove(int removedIndex)
 {
-    QHash<int, QString> shifted;
-    shifted.reserve(m_edits.size());
-    for (auto it = m_edits.constBegin(); it != m_edits.constEnd(); ++it) {
-        if (it.key() == removedIndex)
-            continue;
-        shifted.insert(it.key() > removedIndex ? it.key() - 1 : it.key(), it.value());
-    }
-    m_edits = shifted;
+    m_baselines = remapHashAfterRemove(m_baselines, removedIndex);
+    m_edited = remapHashAfterRemove(m_edited, removedIndex);
 }
 
 void PageEditStore::remapAfterMove(int from, int to)
 {
-    QHash<int, QString> shifted;
-    shifted.reserve(m_edits.size());
-    for (auto it = m_edits.constBegin(); it != m_edits.constEnd(); ++it)
-        shifted.insert(remapIndexAfterMove(it.key(), from, to), it.value());
-    m_edits = shifted;
+    m_baselines = remapHashAfterMove(m_baselines, from, to);
+    m_edited = remapHashAfterMove(m_edited, from, to);
 }
 
 }  // namespace llocr

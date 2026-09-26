@@ -54,7 +54,8 @@ QList<Exporter::Page> ExportController::collectPages(int scope, int currentPage,
             continue;
         Exporter::Page p;
         p.number = i + 1;
-        p.text = m_deps.editStore.effectiveText(m_deps.document, i);
+        // The page owns its text (ADR 102) — edits are already applied to it.
+        p.text = m_deps.document.page(i).result.text;
         pages.append(p);
     }
     return pages;

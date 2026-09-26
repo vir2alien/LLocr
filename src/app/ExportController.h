@@ -9,7 +9,6 @@
 #include "app/DocumentModel.h"
 #include "app/Exporter.h"
 #include "app/ExportRenderer.h"
-#include "app/PageEditStore.h"
 #include "app/SettingsStore.h"
 
 namespace llocr {
@@ -24,7 +23,6 @@ class ExportController : public QObject
 public:
     struct Deps {
         DocumentModel &document;
-        PageEditStore &editStore;
         SettingsStore &settings;
         // 0-based page index + box index -> cropped image.
         std::function<QImage(int pageIndex, int boxIndex)> cropProvider;

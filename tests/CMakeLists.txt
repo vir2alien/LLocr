@@ -120,6 +120,23 @@ target_sources(test_pagemodel PRIVATE
 )
 add_test(NAME test_pagemodel COMMAND test_pagemodel)
 
+# Per-page edit bookkeeping: the revert baseline and the "edited" marker. The
+# current text lives on the page itself (ADR 102), so this store is pure state.
+qt_add_executable(test_page_edit_store test_page_edit_store.cpp)
+
+target_include_directories(test_page_edit_store PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(test_page_edit_store PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+)
+
+target_sources(test_page_edit_store PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app/PageEditStore.cpp
+)
+add_test(NAME test_page_edit_store COMMAND test_page_edit_store)
+
 qt_add_executable(test_box_model test_box_model.cpp)
 
 target_include_directories(test_box_model PRIVATE ${CMAKE_SOURCE_DIR}/src)

@@ -31,6 +31,13 @@ class AppController : public QObject
 {
     Q_OBJECT
 
+    // The document is GUI-thread resident; m_documentLock serialises the two
+    // deliberate crossings of that rule (ADR 104): the export pipeline resolves
+    // block crops from a worker thread, and the image provider may render a page.
+    // Every access to m_document outside this class should go through an
+    // accessor that takes the lock — a partial application of it is what makes
+    // the contract unenforceable.
+
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(bool importing READ importing NOTIFY importingChanged)
     Q_PROPERTY(QString resultText READ resultText NOTIFY resultChanged)
@@ -193,9 +200,12 @@ private:
     QString effectiveParserId() const;
     ParserOptions parserOptions() const;
     std::unique_ptr<IOutputParser> makeParser() const;
+    // The single writer for a page's text: keeps result.text and
+    // result.pages[0].text in step, so the two can never diverge (ADR 102).
+    void setPageText(int index, const QString& text);
+    QString pageText(int index) const;
     QString rebuildPageText(const OcrPage &page) const;
     void updateBoxesForCurrent();
-    QString effectiveText(int index) const;
     const BoundingBox *selectedBox() const;
 
     void applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result);

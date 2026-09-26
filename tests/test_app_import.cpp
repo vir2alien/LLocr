@@ -751,6 +751,59 @@ private slots:
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("Introduction")));
     }
 
+    // Regression (ADR 102): the page owns its text, so re-typing what the page
+    // shows cannot discard a structural edit. With the old two-place model the
+    // comparison was made against the parse-time text, so typing the visible
+    // text back deleted the edit-store entry — resurrecting the removed block
+    // and losing the verified correction.
+    void typingTheVisibleTextBackKeepsStructuralEdits()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY(m_controller->hasResult());
+
+        QVERIFY(m_controller->removeBlock(1));
+        const QString afterRemoval = m_controller->resultText();
+        QVERIFY(!afterRemoval.contains(QStringLiteral("Second block text")));
+        QVERIFY(m_controller->currentPageEdited());
+
+        // Typing the very same text back is a no-op, not a revert.
+        m_controller->setCurrentPageText(afterRemoval);
+        QCOMPARE(m_controller->resultText(), afterRemoval);
+        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(!m_controller->resultText().contains(QStringLiteral("Second block text")));
+
+        // A real user edit goes through and is reverted back to the recognized
+        // text. Revert means "what the OCR produced", so the removed block comes
+        // back — that is the explicit undo, unlike typing the visible text.
+        m_controller->setCurrentPageText(QStringLiteral("typed by hand"));
+        QCOMPARE(m_controller->resultText(), QStringLiteral("typed by hand"));
+        QVERIFY(m_controller->currentPageEdited());
+
+        m_controller->revertCurrentPageEdits();
+        QVERIFY(!m_controller->currentPageEdited());
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("1. Introduction")));
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("Second block text")));
+
+        // The structural edit is still reproducible afterwards: the text edits
+        // and the revert did not touch the boxes, so the remaining block can be
+        // deleted again (only the removed one is gone).
+        QCOMPARE(qobject_cast<QAbstractItemModel *>(m_controller->boxModel())->rowCount(), 1);
+        QVERIFY2(m_controller->removeBlock(0),
+                 qPrintable(QStringLiteral("pages=%2 hasResult=%3")
+                                .arg(m_controller->pageCount())
+                                .arg(m_controller->hasResult())));
+        QVERIFY(!m_controller->resultText().contains(QStringLiteral("1. Introduction")));
+    }
+
     void failedImportsClearStateAndAllowRetry_data()
     {
         QTest::addColumn<QString>("kind");
