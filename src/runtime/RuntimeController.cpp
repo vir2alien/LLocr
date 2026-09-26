@@ -632,7 +632,7 @@ QString RuntimeController::startServer(ConnectionRole role)
     setState(RuntimeState::Starting);
     m_startedModelPath = cfg.modelPath.trimmed();
     m_startedMmprojPath = cfg.mmprojPath.trimmed();
-    setStatusMessage(QObject::tr("Starting server…"));
+    setStatusMessage(tr("Starting server…"));
     return QString();
 }
 
@@ -659,7 +659,7 @@ void RuntimeController::restartServer()
 {
     if (m_server && m_server->state() != RuntimeState::Stopped) {
         setBusyState(AppBusyState::StoppingRuntime);
-        setStatusMessage(QObject::tr("Stopping…"));
+        setStatusMessage(tr("Stopping…"));
         cancelPendingRestart();
         m_restartConn = connect(
             m_server, &LlamaServerProcess::stateChanged, this,

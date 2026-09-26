@@ -367,8 +367,15 @@ Notes:
   install runtime/models while the 1st uses External.
 - `owner.json` (written by `ProcessGuard` on macOS) records the managed server
   PID/port so an orphaned server can be detected at next start (ADR 30).
+  *Pending:* the record is written and cleared but **not read back yet** — see
+  D1 in `docs/architecture-plan/README.md` (stage 5).
 - Environment variables: none are required. The app follows the platform proxy
   settings (`QNetworkProxyFactory::useSystemConfiguration()`) for downloads.
+  One **opt-in** debug switch exists: `LLOCR_RAW_DEBUG=1` makes the OCR model
+  write every request body and every raw model reply verbatim into
+  `<AppLocalDataDir>/raw-debug/` (one file per request, no rotation). The
+  request body contains the full base64 page image, so leave it off unless a
+  parse has to be diagnosed (ADR 94).
 
 ## Repository structure (current)
 ```

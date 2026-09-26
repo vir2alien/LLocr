@@ -1387,7 +1387,6 @@
     <message>
         <location filename="../../src/runtime/LlamaServerProcess.cpp" line="407"/>
         <location filename="../../src/runtime/LlamaServerProcess.cpp" line="454"/>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="626"/>
         <source>Stopping…</source>
         <translation>Остановка…</translation>
     </message>
@@ -1495,11 +1494,6 @@
     <message>
         <source>Another instance is already running</source>
         <translation type="vanished">Другой экземпляр уже запущен</translation>
-    </message>
-    <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="599"/>
-        <source>Starting server…</source>
-        <translation>Запуск сервера…</translation>
     </message>
     <message>
         <source>No llama-server binary found automatically</source>
@@ -4105,6 +4099,16 @@
         <location filename="../../src/runtime/RuntimeController.cpp" line="254"/>
         <source>Another LLocr instance is already running</source>
         <translation>Уже запущен другой экземпляр LLocr</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="633"/>
+        <source>Starting server…</source>
+        <translation>Запуск сервера…</translation>
+    </message>
+    <message>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="660"/>
+        <source>Stopping…</source>
+        <translation>Остановка…</translation>
     </message>
     <message>
         <location filename="../../src/runtime/RuntimeController.cpp" line="167"/>

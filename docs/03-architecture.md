@@ -4,9 +4,10 @@
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                     QML UI (View)                        │
-│  Main.qml · SettingsDialog.qml (tabbed) · ExportDialog   │
-│  MainWindow/* (Header, ThumbPanel, ImagePanel,           │
-│  WorkPanel, MarkdownPreview, Footer) · WindowSettings    │
+│  Main.qml · Settings/*SettingsWindow.qml (5 windows) ·      │
+│  ExportDialog · ServerLogWindow · SetupWizard + Setup/*      │
+│  MainWindow/* (Header, ThumbPanel, ImagePanel,               │
+│  WorkPanel, MarkdownPreview, Footer) · WindowSettings        │
 ├──────────────────────────────────────────────────────────┤
 │                C++ Backend (ViewModel)                   │
 │  AppController — state, signals/slots, orchestration     │
@@ -254,7 +255,8 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
   flag, edited flag, duplicate flag, current-page highlight. Deliberately
   carries **no** boxes.
 - **BoxListModel** — normalized bbox rectangles for the current page's overlay;
-  exposes `updateBoxRect` / `removeBox` / `isImageBox` for image-block editing.
+  exposes `updateBoxRect` / `isImageBox` for image-block editing. Row removal is
+  driven by `AppController::removeBlock` (ADR 92), not by QML.
 - **PageEditStore** — per-page user edits keyed by page index; computes the
   "effective" text (edit overrides recognition), handles revert and remapping
   after page removal/reordering.

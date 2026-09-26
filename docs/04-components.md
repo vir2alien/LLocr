@@ -34,13 +34,13 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   already verified (`checkStatus != NotChecked`) are skipped and a re-
   recognition only verifies the newly recognized blocks. In Managed mode the
   server switches from the OCR to the check model automatically (ADR 74), in
-  External mode the check just starts (ADR 79).
+  External mode the check just starts (ADR 91).
   The serial check queue (task list, progress, stop) lives in
   **`VerificationQueueController`** which owns `CheckController` and publishes
   results to `AppController` via `blockChecked` (ADR 86) — `AppController`'s
   `check*` API to QML is unchanged.
   The queue survives page switches (parity with recognition), so a batch check
-  keeps running while the user browses (ADR 79).
+  keeps running while the user browses (ADR 91).
   The Blocks tab list is backed by group-filtered proxy models
   (`BlockGroupFilterModel` over the shared `VerificationBlocksModel`, exposed
   as `Verification.blockModelContent/Captions/Service`, ADR 82); the embedded
@@ -207,9 +207,10 @@ Three options handled by `UiController` (a QML singleton), selected in
   `BoxListModel` (normalized rectangles). ✅ (populated when `det_tokens` is used).
 - Image/chart blocks (`label` = `image` / `chart`) are **editable**: they can
   be moved, resized (8 resize handles), and deleted directly on the preview.
-  Deletion/geometry changes are pushed through `BoxListModel::removeBox` /
-  `updateBoxRect` and reflected back into the page Markdown via
-  `IOutputParser::rebuildText`. ✅
+  Deletion/geometry changes are pushed through
+  `AppController::removeBlock` / `onBoxRectChanged` — the document is mutated
+  first, the box model only mirrors it (ADR 92) — and reflected back into the
+  page Markdown via `IOutputParser::rebuildText`. ✅
 
 ## 4.7 Page navigation & thumbnails
 - Left strip of page thumbnails (`PageListModel` + `OcrImageProvider`

@@ -35,6 +35,10 @@
   | `docs/06-dev-setup.md`    | Tooling, build, CI/CD, distribution        |
   | `docs/07-glossary.md`     | Terms and adopted decisions                |
   | `docs/08-app-icon.md`     | Cross-platform application icon            |
+  | `docs/09-local-runtime-plan.md` | Managed runtime: llama.cpp + model install |
+  | `docs/architecture-plan/README.md` | Architectural review (Sep 2026) and the   |
+  |                           | remediation plan (stages 0–7)              |
+  | `docs/TODO.md`            | Short backlog of open items                 |
   | `docs/UnlimitedOCR.md`    | Reference: the Unlimited-OCR model (baidu) |
   
   ## Rules for the agent
@@ -288,7 +292,7 @@
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
     (update-check opt-in) done; **H.4 closed** (watchdog-helper not shipped),
     **H.5 deferred** (secrets keychain). Done after that: the **code-review
-    fixes** and the **refactoring plan** (`docs/refactoring-plan/README.md`)
+    fixes** and the **refactoring plan** (rounds 1–5, recorded in ADR 82–88)
     — all stages complete, incl. `ProfileStorage`,
     `BlockGroupFilterModel`, `ModelInstallTransaction` (ADR 84/85/82) and the
     `AppController` split into `VerificationQueueController` +
