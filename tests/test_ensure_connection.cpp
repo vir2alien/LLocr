@@ -1,4 +1,5 @@
 #include <QDir>
+#include <QDateTime>
 #include <QFile>
 #include <QSaveFile>
 #include <QSettings>
@@ -12,6 +13,8 @@
 #include "runtime/RuntimeState.h"
 #include "runtime/SelfTestController.h"
 #include "testsettings.h"
+
+#include <algorithm>
 
 using namespace llocr;
 
@@ -301,6 +304,86 @@ private slots:
                                       [&](const ResolvedConnection &c) { resolved2 = c; });
         QVERIFY2(resolved2.error.contains(QStringLiteral("gone.gguf")),
                  qPrintable(resolved2.error));
+    }
+
+    // The probe spawns the binary and waits for it — up to two minutes on a
+    // cold cache. It must not run on the GUI thread: a timer has to keep firing
+    // while the resolve is in flight, or the window is frozen (ADR 105).
+    void managedStartKeepsTheEventLoopRunning()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        // Make the probe deterministically slow (the mock delays its --version
+        // answer), so a probe running on the GUI thread would freeze the loop
+        // for the whole delay. The binary is copied to a unique path first:
+        // ServerCapabilities caches per path, so probing the shared mock would be
+        // a cache hit and no binary would be spawned at all. The assertion is on
+        // the *longest gap* between timer ticks, not on the tick count — the rest
+        // of the start is asynchronous and would keep the loop busy, so a count
+        // would pass even with a blocking probe.
+        const QString mock = QFileInfo(QString::fromUtf8(LLOCR_MOCK_SERVER)).absoluteFilePath();
+        const QString serverCopy = QDir(dir.path()).filePath(QStringLiteral("llama-server-copy"));
+        QVERIFY(QFile::copy(mock, serverCopy));
+        store.setServerPath(serverCopy);
+
+        constexpr int kVersionDelayMs = 800;
+        ::qputenv("LLOCR_MOCK_VERSION_DELAY_MS", QByteArray::number(kVersionDelayMs));
+
+        int ticks = 0;
+        qint64 maxGapMs = 0;
+        qint64 lastTick = 0;
+        QTimer heartbeat;
+        connect(&heartbeat, &QTimer::timeout, this, [&] {
+            const qint64 now = QDateTime::currentMSecsSinceEpoch();
+            if (lastTick > 0)
+                maxGapMs = std::max(maxGapMs, now - lastTick);
+            lastTick = now;
+            ++ticks;
+        });
+        heartbeat.start(5);
+        // Let the timer establish a baseline tick before the resolve, otherwise
+        // there is no "previous tick" to measure a gap against and a block at
+        // the very beginning of the start would go unnoticed.
+        QTest::qWait(60);
+        lastTick = QDateTime::currentMSecsSinceEpoch();
+        maxGapMs = 0;
+
+        int finished = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved = c;
+            ++finished;
+        });
+
+        QTRY_VERIFY_WITH_TIMEOUT(finished == 1, 20000);
+        ::qunsetenv("LLOCR_MOCK_VERSION_DELAY_MS");
+        QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(ticks > 0, "the timer never fired");
+        // A probe on the GUI thread blocks the loop for the whole delay; the
+        // health poll ticks every 250 ms, so anything near the delay is a block.
+        QVERIFY2(maxGapMs < kVersionDelayMs / 2,
+                 qPrintable(QStringLiteral("longest gap between timer ticks: %1 ms "
+                                          "(probe delay was %2 ms, %3 ticks total)")
+                                .arg(maxGapMs).arg(kVersionDelayMs).arg(ticks)));
+
+        runtime.stopServer();
     }
 
     void managedStartsAndResolvesAlias()

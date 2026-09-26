@@ -11,6 +11,7 @@
 
 #include "runtime/ConnectionMode.h"
 #include "runtime/ResolvedConnection.h"
+#include "runtime/RuntimeLocator.h"
 
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -131,6 +132,8 @@ private:
     void onModelsReply(QNetworkReply *reply);
 
     QString startServer(ConnectionRole role);
+    void finishStartServer(ConnectionRole role, const QString &program,
+                           const ProbeResult &probe);
     QString describeServerFailure() const;
     static QString translateServerLine(const QString &line);
 
@@ -177,6 +180,9 @@ private:
     int m_loadProgressPercent = -1;
     bool m_configValid = false;
     bool m_lockedOut = false;
+    // Bumped for every started probe; a result whose generation is stale
+    // (cancelled, or superseded by a newer probe) is dropped (ADR 105).
+    quint64 m_startGeneration = 0;
 };
 
 }  // namespace llocr

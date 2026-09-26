@@ -12,6 +12,10 @@
 //   --crash-on-health   exit(1) the first time /health is served
 //   --crash-after MS    exit(1) after MS of uptime
 //   --hello N           print N "llama_model_loader: loading" lines at startup
+//
+// Environment:
+//   LLOCR_MOCK_MARKER            append one "invoke" line per spawn
+//   LLOCR_MOCK_VERSION_DELAY_MS  delay the --version/--help answer by N ms
 
 #include <QCoreApplication>
 #include <QFile>
@@ -76,6 +80,12 @@ int main(int argc, char* argv[]) {
     }
 
     // The probe runs `--version` / `--help`; keep them quick and truthful.
+    // LLOCR_MOCK_VERSION_DELAY_MS makes the probe deterministically slow, which
+    // is how the tests prove that a probe does not block the caller's event
+    // loop (ADR 105) instead of relying on a fast machine.
+    const int versionDelayMs = qEnvironmentVariableIntValue("LLOCR_MOCK_VERSION_DELAY_MS");
+    if (versionDelayMs > 0)
+        QThread::msleep(static_cast<unsigned long>(versionDelayMs));
     bool ranVersionBreak = false;
     for (int i = 0; i < argc; ++i) {
         const QString a = QString::fromLocal8Bit(argv[i]);

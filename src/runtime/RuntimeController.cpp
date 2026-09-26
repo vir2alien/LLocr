@@ -1,5 +1,6 @@
 #include <QDir>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonParseError>
@@ -8,6 +9,7 @@
 #include <QNetworkRequest>
 #include <QUrl>
 #include <QVariantMap>
+#include <QtConcurrent/QtConcurrentRun>
 
 #include <algorithm>
 #include <utility>
@@ -567,14 +569,47 @@ QString RuntimeController::startServer(ConnectionRole role)
         }
     }
 
+    // The probe spawns the binary and waits for it: on a cold cache that is up
+    // to two minutes (ADR 105), so it runs on a worker and continues in the
+    // callback — the GUI event loop keeps running meanwhile. A generation
+    // counter drops the result of a probe that was cancelled or superseded.
     RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
-    const ProbeResult probe =
-        RuntimeLocator::probeCached(program, paths.cacheDir(), kProbeTimeoutMs);
+    paths.ensureDirectories();
+    const quint64 generation = ++m_startGeneration;
+    const QString cacheDir = paths.cacheDir();
+    setStatusMessage(tr("Probing %1…").arg(fi.fileName()));
+
+    auto *watcher = new QFutureWatcher<ProbeResult>(this);
+    connect(watcher, &QFutureWatcher<ProbeResult>::finished, this,
+            [this, watcher, role, program, generation]() {
+        const ProbeResult probe = watcher->result();
+        watcher->deleteLater();
+        if (generation != m_startGeneration)
+            return;  // cancelled or superseded by a newer start
+        finishStartServer(role, program, probe);
+    });
+    watcher->setFuture(QtConcurrent::run([program, cacheDir]() {
+        return RuntimeLocator::probeCached(program, cacheDir, kProbeTimeoutMs);
+    }));
+    return QString();
+}
+
+void RuntimeController::finishStartServer(ConnectionRole role, const QString &program,
+                                          const ProbeResult &probe)
+{
     if (!probe.ok) {
         setStatusMessage(probe.error);
-        return probe.error;
+        // A resolve that is waiting for this start must fail with it; a start
+        // requested from the UI (Start/Restart button) only reports it.
+        if (m_resolveInProgress) {
+            setBusyState(AppBusyState::Idle);
+            failResolve(probe.error);
+        }
+        return;
     }
 
+    const QFileInfo fi(program);
+    RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
     paths.ensureDirectories();
 
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(
@@ -621,19 +656,22 @@ QString RuntimeController::startServer(ConnectionRole role)
         setBusyState(AppBusyState::Idle);
         setState(RuntimeState::Failed);
         setStatusMessage(err);
-        return err;
+        if (m_resolveInProgress)
+            failResolve(err);
+        return;
     }
     if (m_server->state() == RuntimeState::Failed) {
         setBusyState(AppBusyState::Idle);
         const QString fail = describeServerFailure();
         setStatusMessage(fail);
-        return fail;
+        if (m_resolveInProgress)
+            failResolve(fail);
+        return;
     }
     setState(RuntimeState::Starting);
     m_startedModelPath = cfg.modelPath.trimmed();
     m_startedMmprojPath = cfg.mmprojPath.trimmed();
     setStatusMessage(tr("Starting server…"));
-    return QString();
 }
 
 void RuntimeController::stopServer()
@@ -682,10 +720,30 @@ void RuntimeController::restartServer()
 
 QString RuntimeController::probeRuntimePath(const QString &path)
 {
-    const ProbeResult r = RuntimeLocator::probe(path, kProbeTimeoutMs);
-    const QString summary = RuntimeLocator::probeSummary(r);
-    setStatusMessage(summary);
-    return summary;
+    // Same reasoning as startServer(): the probe waits for a child process and
+    // must not block the GUI thread. The summary lands in statusMessage when
+    // the probe finishes; the QML call sites ignore the return value.
+    const QString program = path.trimmed();
+    if (program.isEmpty()) {
+        const QString empty = QObject::tr("No server binary selected");
+        setStatusMessage(empty);
+        return empty;
+    }
+    const quint64 generation = ++m_startGeneration;
+    setStatusMessage(tr("Probing %1…").arg(QFileInfo(program).fileName()));
+    auto *watcher = new QFutureWatcher<ProbeResult>(this);
+    connect(watcher, &QFutureWatcher<ProbeResult>::finished, this,
+            [this, watcher, program, generation]() {
+        const ProbeResult probe = watcher->result();
+        watcher->deleteLater();
+        if (generation != m_startGeneration)
+            return;
+        setStatusMessage(RuntimeLocator::probeSummary(probe));
+    });
+    watcher->setFuture(QtConcurrent::run([program]() {
+        return RuntimeLocator::probe(program, kProbeTimeoutMs);
+    }));
+    return QString();
 }
 
 
@@ -745,6 +803,8 @@ void RuntimeController::cancelPendingStart()
         return;
 
     setBusyState(AppBusyState::Idle);
+    // Invalidate an in-flight probe: it must not start the server after a Stop.
+    ++m_startGeneration;
     const QString message = tr("Server start cancelled");
 
     // Drop the queued other-role requests first: a cancel must not let them
