@@ -4,9 +4,13 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkAccessManager>
 #include <QStringList>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QUrl>
 
 #include "runtime/ReleaseCatalog.h"
 
@@ -106,6 +110,41 @@ private slots:
     void cacheIsFreshWithinTtl();
     void buildFromTag();
     void detectPlatformMatchesHost();
+    void staleCacheSurvivesFailedFetch();
+
+private:
+    // Answers every request with one canned status line, so the fetch paths can
+    // be exercised without touching the real GitHub API.
+    class StatusServer : public QObject
+    {
+    public:
+        bool start(const QByteArray &statusLine)
+        {
+            m_status = statusLine;
+            connect(&m_server, &QTcpServer::newConnection, this, [this]() {
+                while (QTcpSocket *socket = m_server.nextPendingConnection()) {
+                    connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
+                        if (!socket->readAll().contains("\r\n\r\n"))
+                            return;
+                        socket->write(m_status);
+                        socket->flush();
+                        socket->disconnectFromHost();
+                    });
+                    connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
+                }
+            });
+            return m_server.listen(QHostAddress::LocalHost, 0);
+        }
+
+        QString url() const
+        {
+            return QStringLiteral("http://127.0.0.1:%1/releases").arg(m_server.serverPort());
+        }
+
+    private:
+        QByteArray m_status;
+        QTcpServer m_server;
+    };
 };
 
 void TestReleaseCatalog::parsesKnownLayout()
@@ -249,6 +288,51 @@ void TestReleaseCatalog::cacheIsFreshWithinTtl()
     QCOMPARE(list.size(), 2);
     QCOMPARE(cachedBuild, qint64(10594));
     QVERIFY(!when.isNull());
+}
+
+// Regression: a transport failure, a rate limit or an unexpected body must not
+// destroy the cached release list — it is the only offline fallback, and a
+// transient network problem previously wiped it, leaving the installer with
+// "no releases available" on the next offline start.
+void TestReleaseCatalog::staleCacheSurvivesFailedFetch()
+{
+    const QList<QByteArray> failures = {
+        QByteArrayLiteral("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n"
+                          "Connection: close\r\n\r\n"),
+        QByteArrayLiteral("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n"
+                          "Connection: close\r\n\r\n"),
+        QByteArrayLiteral("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+                          "Content-Length: 7\r\nConnection: close\r\n\r\nnot-json"),
+    };
+
+    for (const QByteArray &status : failures) {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString cacheFile = QDir(dir.path()).filePath(QStringLiteral("releases.json"));
+        QFile f(cacheFile);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(releasesJson());
+        f.close();
+        // Age the cache past the TTL so the fetch is actually attempted
+        // (setFileTime needs an open file).
+        QVERIFY(f.open(QIODevice::ReadWrite));
+        QVERIFY(f.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-8 * 3600),
+                              QFileDevice::FileModificationTime));
+        f.close();
+
+        StatusServer server;
+        QVERIFY(server.start(status));
+        QNetworkAccessManager nam;
+        QString error;
+        const QList<ReleaseInfo> list = ReleaseCatalog::fetchReleasesLocal(
+            &nam, dir.path(), error, 5000, server.url());
+
+        QVERIFY2(!error.isEmpty(), "the failure must still be reported");
+        QCOMPARE(list.size(), 2);
+        QCOMPARE(list.first().build, qint64(10594));
+        QVERIFY2(QFile::exists(cacheFile),
+                 "a failed fetch must not drop the cached release list");
+    }
 }
 
 void TestReleaseCatalog::buildFromTag()

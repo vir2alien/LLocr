@@ -12,6 +12,7 @@
 #include <QNetworkRequest>
 #include <QSaveFile>
 #include <QSysInfo>
+#include <QTimer>
 #include <QUrl>
 
 #include "runtime/ReleaseCatalog.h"
@@ -146,6 +147,33 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items,
     return releases;
 }
 
+QList<ReleaseInfo> ReleaseCatalog::readCacheFile(const QString &cacheDir, QString &error,
+                                                qint64 *cachedBuild)
+{
+    const QString path = QDir(cacheDir).filePath(QStringLiteral("releases.json"));
+    if (!QFileInfo::exists(path)) {
+        error = QObject::tr("No cached releases yet");
+        return QList<ReleaseInfo>();
+    }
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) {
+        error = QObject::tr("Unable to read cached releases");
+        return QList<ReleaseInfo>();
+    }
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isArray()) {
+        error = QObject::tr("Cached releases are malformed");
+        return QList<ReleaseInfo>();
+    }
+    const QJsonArray arr = doc.array();
+    if (cachedBuild && !arr.isEmpty()) {
+        *cachedBuild = extractBuildNumberFromTag(
+            arr.first().toObject().value(QStringLiteral("tag_name")).toString());
+    }
+    return parseReleasesJson(arr, error);
+}
+
 QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir,
                                              QDateTime &cachedAt,
                                              qint64 &cachedBuild,
@@ -165,37 +193,12 @@ QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir,
         return QList<ReleaseInfo>();
     }
     isFresh = true;
-    QFile f(path);
-    if (!f.open(QIODevice::ReadOnly)) {
-        error = QObject::tr("Unable to read cached releases");
-        return QList<ReleaseInfo>();
-    }
-    QJsonParseError perr;
-    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
-    if (perr.error != QJsonParseError::NoError || !doc.isArray()) {
-        error = QObject::tr("Cached releases are malformed");
-        return QList<ReleaseInfo>();
-    }
-    const QJsonArray arr = doc.array();
-    if (!arr.isEmpty()) {
-        const QJsonObject first = arr.first().toObject();
-        cachedBuild = extractBuildNumberFromTag(
-            first.value(QStringLiteral("tag_name")).toString());
-    }
-    return parseReleasesJson(arr, error);
-}
-
-void ReleaseCatalog::resetCache(const QString &cacheDir)
-{
-    const QString path = QDir(cacheDir).filePath(QStringLiteral("releases.json"));
-    QFile f(path);
-    if (f.exists())
-        f.remove();
+    return readCacheFile(cacheDir, error, &cachedBuild);
 }
 
 QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam,
                                                       QString cacheDir, QString &error,
-                                                      int timeoutMs)
+                                                      int timeoutMs, const QString &apiUrl)
 {
     QList<ReleaseInfo> fromCache;
     QDateTime cachedAt;
@@ -205,13 +208,18 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     fromCache = loadCache(cacheDir, cachedAt, cachedBuild, isFresh, cacheErr);
     if (isFresh)
         return fromCache;
+    // Age alone does not invalidate the list: keep the last known good one as
+    // the offline fallback for a failed fetch.
+    if (fromCache.isEmpty())
+        fromCache = readCacheFile(cacheDir, cacheErr, &cachedBuild);
 
     if (!nam) {
         error = QObject::tr("No network client available");
         return QList<ReleaseInfo>();
     }
 
-    QNetworkRequest request((QUrl(QLatin1String(kApiUrl))));
+    QNetworkRequest request(
+        QUrl(apiUrl.isEmpty() ? QLatin1String(kApiUrl) : apiUrl));
     request.setRawHeader(QByteArrayLiteral("Accept"),
                          QByteArrayLiteral("application/vnd.github+json"));
     request.setHeader(QNetworkRequest::UserAgentHeader,
@@ -221,25 +229,42 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     QNetworkReply *reply = nam->get(request);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    // setTransferTimeout() bounds the transfer, but the nested loop must never
+    // outlive it: a stalled connect would otherwise hang the installer.
+    bool timedOut = false;
+    QTimer guard;
+    guard.setSingleShot(true);
+    QObject::connect(&guard, &QTimer::timeout, &loop, [&]() {
+        timedOut = true;
+        loop.quit();
+    });
+    guard.start(timeoutMs + 5000);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::OperationCanceledError) {
+    // A transport failure, a rate limit or an unexpected body must NOT drop the
+    // cached list: it is the only offline fallback, and the cache is replaced
+    // exclusively by a successfully parsed list (see the QSaveFile below). Fall
+    // back to the stale list instead of reporting "no releases available".
+    const auto failWithCache = [&fromCache](const QString &message) {
+        return fromCache.isEmpty() ? QList<ReleaseInfo>() : fromCache;
+    };
+
+    if (timedOut || reply->error() == QNetworkReply::OperationCanceledError) {
         reply->deleteLater();
         error = QObject::tr("Timed out fetching release list");
-        resetCache(cacheDir);
-        return QList<ReleaseInfo>();
+        return failWithCache(error);
     }
 
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const QByteArray payload = reply->readAll();
     const QString transportError =
         reply->error() != QNetworkReply::NoError ? reply->errorString() : QString();
+    // Read before deleteLater(): a queued delete must not be reached first.
+    const qint64 resetEpoch =
+        reply->rawHeader(QByteArrayLiteral("X-RateLimit-Reset")).toLongLong();
     reply->deleteLater();
 
     if (status == 403) {
-        const QByteArray resetRaw =
-            reply->rawHeader(QByteArrayLiteral("X-RateLimit-Reset"));
-        qint64 resetEpoch = resetRaw.toLongLong();
         QString when = QObject::tr("soon");
         if (resetEpoch > 0) {
             when = QDateTime::fromSecsSinceEpoch(resetEpoch)
@@ -247,23 +272,20 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
                        .toString(Qt::ISODate);
         }
         error = QObject::tr("GitHub rate limit reached; retry around %1").arg(when);
-        resetCache(cacheDir);
-        return QList<ReleaseInfo>();
+        return failWithCache(error);
     }
     if (status != 200) {
         error = status > 0
             ? QObject::tr("GitHub API returned HTTP %1").arg(status)
             : QObject::tr("GitHub request failed: %1").arg(transportError);
-        resetCache(cacheDir);
-        return QList<ReleaseInfo>();
+        return failWithCache(error);
     }
 
     QJsonParseError perr;
     const QJsonDocument doc = QJsonDocument::fromJson(payload, &perr);
     if (perr.error != QJsonParseError::NoError || !doc.isArray()) {
         error = QObject::tr("Malformed release list from GitHub");
-        resetCache(cacheDir);
-        return QList<ReleaseInfo>();
+        return failWithCache(error);
     }
     const QList<ReleaseInfo> parsed = parseReleasesJson(doc.array(), error);
     if (parsed.isEmpty() && error.isEmpty())

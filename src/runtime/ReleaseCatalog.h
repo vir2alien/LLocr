@@ -36,16 +36,21 @@ public:
     static ReleaseAsset parseAssetName(const QString &fileName,
                                        const QString &downloadUrl, qint64 size);
     static QHash<QString, QString> parseSha256Table(const QString &body);
+    // Reads and parses releases.json regardless of its age. loadCache() adds the
+    // TTL gate; fetchReleasesLocal() uses this to keep serving the last known
+    // good list when the network fails.
+    static QList<ReleaseInfo> readCacheFile(const QString &cacheDir, QString &error,
+                                            qint64 *cachedBuild = nullptr);
     static QList<ReleaseInfo> loadCache(const QString &cacheDir,
                                         QDateTime &cachedAt,
                                         qint64 &cachedBuild,
                                         bool &isFresh,
                                         QString &error);
-    static void resetCache(const QString &cacheDir);
     static QList<ReleaseInfo> fetchReleasesLocal(QNetworkAccessManager *nam,
                                                  QString cacheDir,
                                                  QString &error,
-                                                 int timeoutMs = kRequestTimeoutMs);
+                                                 int timeoutMs = kRequestTimeoutMs,
+                                                 const QString &apiUrl = QString());
 };
 
 int extractBuildNumberFromTag(const QString &tagName);
