@@ -89,8 +89,12 @@ Implementations:
   (`parseResponse`, virtual). Async via `QPromise`; per-request timeout;
   **`abort()`** so the UI Stop button can cancel an in-flight request.
 - `UnlimitedOcrModel` — one prompt variant ("document parsing."), parser
-  `det_tokens`. Adding another LLM = one new subclass + one line in
-  `OcrModelFactory`.
+  `det_tokens`.
+- `Lfm25VlModel` — id `lfm25-vl-3b` (LiquidAI/LFM2.5-VL-3B): the model card's
+  layout-annotation prompt, parser `det_tokens` (the parser additionally
+  accepts the model's optional `image_index=<n>` token prefix and converts its
+  OTSL tables — ADR 87). Adding another LLM = one new subclass + one line in
+  `OcrModelFactory` + a same-id built-in request profile (ADR 59).
 - `LlamaClient` (`core/LlamaClient.h`) — thin transport: joins the
   `/v1/chat/completions` URL, POSTs JSON with Bearer auth/timeout/`abort()`, and
   extracts the server's error message.

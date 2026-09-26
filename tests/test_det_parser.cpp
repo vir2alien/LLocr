@@ -211,6 +211,253 @@ private slots:
         QCOMPARE(last.text, QStringLiteral("ПЕЧАТИ\nИ ШТАМПЫ"));
     }
 
+    // LFM2.5-VL layout annotation: bare tokens prefixed with "image_index=<n>".
+    // The prefix must be consumed (not leak into the text), and the next
+    // header's prefix must not stick to the previous block's content.
+    void parsesLfm25LayoutAnnotation() {
+        const QString raw = QStringLiteral(
+            "image_index=0 title [115, 101, 273, 117]\n"
+            "Заголовок\n"
+            "\n"
+            "image_index=0 text [112, 132, 884, 309]\n"
+            "Обычный текст\n"
+            "\n"
+            "image_index=0 page_number [493, 924, 506, 935]\n"
+            "3");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+        const OcrPage& page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("title"));
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("Заголовок"));
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("text"));
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("Обычный текст"));
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("page_number"));
+        QCOMPARE(page.boxes.at(2).text, QStringLiteral("3"));
+
+        const QString md = page.text;
+        QVERIFY(md.contains("## Заголовок"));
+        QVERIFY(md.contains("Обычный текст"));
+        QVERIFY(!md.contains("image_index"));
+    }
+
+    // LFM2.5-VL serializes tables in OTSL (TableFormer vocabulary): <fcel>
+    // opens a cell, <lcel>/<ucel>/<xcel> are cells covered by a span (rendered
+    // empty — the value is written once, ADR 19), <nl> ends a row.
+    void parsesOtslTableIntoMarkdown() {
+        const QString raw = QStringLiteral(
+            "<|det|>table [0, 0, 500, 200]<|/det|>"
+            "<fcel>Вид энергоресурсов<fcel>Годы<fcel>1990<nl>"
+            "<fcel>Нефть, млн. т<fcel>в мире<fcel>3179,7<nl>"
+            "<fcel>Россия<lcel><fcel>518<nl>");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains("| Вид энергоресурсов | Годы | 1990 |"));
+        QVERIFY(md.contains("| --- | --- | --- |"));
+        QVERIFY(md.contains("| Нефть, млн. т | в мире | 3179,7 |"));
+        QVERIFY(md.contains("| Россия |  | 518 |"));
+        QVERIFY(!md.contains("<fcel>"));
+        QVERIFY(!md.contains("<lcel>"));
+        QVERIFY(!md.contains("<nl>"));
+    }
+
+    // With «Tables as HTML» on (ADR 64) the OTSL spans become real
+    // rowspan/colspan attributes — the parity with the Unlimited-OCR model's
+    // verbatim <table> output.
+    void parsesOtslTableIntoHtmlWhenEnabled() {
+        const QString raw = QStringLiteral(
+            "<|det|>table [0, 0, 500, 200]<|/det|>"
+            "<fcel>Регион<fcel>1990<fcel>1995<nl>"
+            "<fcel>Мир<fcel>100<lcel><nl>"
+            "<fcel>Россия<ucel><fcel>50<nl>");
+
+        DetTokensParser parser;
+        parser.setTablesAsHtml(true);
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const QString md = r.pages.first().text;
+        QVERIFY(md.startsWith(QStringLiteral("<table>")));
+        QVERIFY(md.contains(QStringLiteral("<th>Регион</th>")));
+        // «100» covers the 1990+1995 columns (lcel) and both «Мир» rows
+        // (the ucel in the Россия row).
+        QVERIFY(md.contains(QStringLiteral("<td colspan=\"2\" rowspan=\"2\">100</td>")));
+        QVERIFY(md.contains(QStringLiteral("<td>Россия</td>")));
+        QVERIFY(md.contains(QStringLiteral("</table>")));
+        QVERIFY(!md.contains("<fcel>"));
+        QVERIFY(!md.contains("<nl>"));
+    }
+
+    // LFM2.5-VL formula artifacts: a formula truncated without the closing
+    // "\)" still becomes inline math, and the "~" spacing artifact inside
+    // \mathrm{...} is dropped (only within math spans).
+    void cleansFormulaArtifactsInOtslCells() {
+        const QString raw = QStringLiteral(
+            "<|det|>table [0, 0, 500, 200]<|/det|>"
+            "<fcel>\\( \\mathrm{~r}_{O_{2}} = 0,211 ;<nl>"
+            "<fcel>\\( \\mathrm{~r}_{N_{2}} = 0,789 \\) .<nl>");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("$ \\mathrm{ r}_{O_{2}} = 0,211 ;$")));
+        QVERIFY(md.contains(QStringLiteral("$\\mathrm{ r}_{N_{2}} = 0,789$ .")));
+        QVERIFY(!md.contains(QStringLiteral("\\(")));
+    }
+
+    // The model can emit OTSL rows under a non-table token (a formula under
+    // text/equation): the tags must be stripped there as well — and a
+    // single-column fragment becomes plain lines, not a 1-col pipe table.
+    void cleansOtslTagsInNonTableBlocks() {
+        const QString raw = QStringLiteral(
+            "text [10, 10, 400, 100]\\( \\mathrm{~r}_{O_{2}} = 0,211 ;<nl>"
+            "\\( \\mathrm{~r}_{N_{2}} = 0,789 \\) .<nl>");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const QString md = r.pages.first().text;
+        QVERIFY(!md.contains("<fcel>"));
+        QVERIFY(!md.contains("<nl>"));
+        QVERIFY(md.contains(QStringLiteral("$ \\mathrm{ r}_{O_{2}} = 0,211 ;$")));
+        QVERIFY(md.contains(QStringLiteral("$\\mathrm{ r}_{N_{2}} = 0,789$ .")));
+        QVERIFY(!md.contains(QStringLiteral("|")));
+    }
+
+    // The layout annotation is experimental (model card): the model sometimes
+    // drifts into the XML-ish "image_index=<n> <label>name</label>" shape —
+    // with or without a bbox, wrapped in <content>/<figure>/<image> tags and
+    // elision lines. Those regions must still tokenize and no service text
+    // may leak into the output.
+    void parsesXmlDriftAnnotation() {
+        const QString raw = QStringLiteral(
+            "image_index=0 <label>image</label>\n"
+            "<content>\n<figure>\n<image>\n<\n...\n</image>\n</figure>\n</content>\n\n"
+            "image_index=0 <label>image_caption</label> [117, 289, 885, 380]\n"
+            "<content>Figure 2 | Inspired by humans copying books.</content>\n\n"
+            "image_index=0 <label>title</label> [114, 402, 282, 420]\n"
+            "<content>3. Methodology</content>");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const auto &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("image"));
+        QVERIFY(page.boxes.at(0).text.isEmpty());
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("image_caption"));
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("title"));
+
+        const QString md = page.text;
+        QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
+        QVERIFY(md.contains(QStringLiteral("*Figure 2 | Inspired by humans copying books.*")));
+        QVERIFY(md.contains(QStringLiteral("## 3. Methodology")));
+        QVERIFY(!md.contains("<label>"));
+        QVERIFY(!md.contains("<content>"));
+        QVERIFY(!md.contains("<figure>"));
+        QVERIFY(!md.contains("<image>"));
+        QVERIFY(!md.contains("image_index="));
+    }
+
+    // Bare <label> headers without a bbox must not be deduped against each
+    // other (they all share the zero rect) — every region stays in the output.
+    void xmlDriftTokensWithoutBboxAreNotDeduped() {
+        const QString raw = QStringLiteral(
+            "image_index=0 <label>title</label>\n<content>First</content>\n\n"
+            "image_index=0 <label>title</label>\n<content>Second</content>");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const auto &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+        QVERIFY(page.text.contains(QStringLiteral("First")));
+        QVERIFY(page.text.contains(QStringLiteral("Second")));
+    }
+
+    // The model often nests inline \(…\) inside the display \[…\] equation
+    // wrapper — the redundant delimiters must be stripped (bare parens and
+    // \left( kept), both in equation blocks and in text with $$…$$ math.
+    void stripsNestedInlineDelimsInDisplayMath() {
+        DetTokensParser parser;
+        const QString raw = QStringLiteral(
+            "equation [10, 10, 400, 100]\\[\n\\(N(t) = \\mathcal{P} \\cup D_{n}(t),\\)\n\\]");
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("$$\nN(t) = \\mathcal{P} \\cup D_{n}(t),\n$$")));
+        QVERIFY(!md.contains(QStringLiteral("\\(")));
+
+        // Same nesting inside a text block.
+        const OcrResult r2 = parser.parse(QStringLiteral(
+            "text [10, 10, 400, 200]Intro:\\[\n\\(x \\in S\\),\n\\]"));
+        QVERIFY(r2.success);
+        const QString md2 = r2.pages.first().text;
+        QVERIFY(md2.contains(QStringLiteral("$$\nx \\in S,\n$$")));
+        QVERIFY(!md2.contains(QStringLiteral("\\(")));
+    }
+
+    // Table-caption drift (real-world LFM2.5-VL output): the caption sits in
+    // <label>…</label> and the OTSL rows in <content>…</content>, with cells
+    // separated by CLOSING </fcel> tags and rows by plain newlines.
+    void parsesTableCaptionDrift() {
+        const QString raw = QStringLiteral(
+            "image_index=0 <label>Table 3 | Performance of long-horizon OCR. Distinct-n is the higher the better.</label>\n"
+            "<content>\n"
+            "<fcel>Metric</fcel>Pages</fcel>2</fcel>5</fcel>\n"
+            "<fcel>Distinct-20</fcel>99.76%</fcel>99.78%</fcel>97.49%</fcel>\n"
+            "</content>\n\n"
+            "image_index=0 title [114, 383, 338, 401]\n"
+            "6. Efficiency Analysis");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const auto &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("table_caption"));
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("table"));
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("title"));
+
+        const QString md = page.text;
+        QVERIFY(md.contains(QStringLiteral("*Table 3 | Performance of long-horizon OCR. Distinct-n is the higher the better.*")));
+        QVERIFY(md.contains(QStringLiteral("| Metric | Pages | 2 | 5 |")));
+        QVERIFY(md.contains(QStringLiteral("| Distinct-20 | 99.76% | 99.78% | 97.49% |")));
+        QVERIFY(!md.contains("</fcel>"));
+        QVERIFY(!md.contains("<content>"));
+        QVERIFY(!md.contains("image_index="));
+    }
+
+    // The image placeholder must not inherit the model's multi-line figure
+    // text as its alt — only the first meaningful line survives.
+    void imageAltUsesSingleLine() {
+        const QString raw = QStringLiteral(
+            "image [10, 10, 400, 200]! Vanilla Attention\n! R-SWA\n! Reference");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QVERIFY(r.pages.first().text.contains(
+            QStringLiteral("![Vanilla Attention](image://ocr/crop/0)")));
+        QVERIFY(!r.pages.first().text.contains(QStringLiteral("R-SWA")));
+    }
+
             // Text with no structured tokens falls back to raw text, still succeeds.
     void fallsBackWhenNoTokens() {
         DetTokensParser parser;

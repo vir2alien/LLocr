@@ -53,6 +53,41 @@
                     "description": "Stream tokens as they arrive; false gives the parser one complete response."
                 }
             ]
+        },
+        {
+            "id": "lfm25-vl-3b",
+            "parameters": [
+                {
+                    "order": 1,
+                    "name": "temperature",
+                    "value": 0.2,
+                    "description": "Sampling randomness; LiquidAI recommends 0.2 with top_k 50 for LFM2.5-VL."
+                },
+                {
+                    "order": 2,
+                    "name": "top_k",
+                    "value": 50,
+                    "description": "Sample only from the 50 most likely tokens (LiquidAI recommendation)."
+                },
+                {
+                    "order": 3,
+                    "name": "repeat_penalty",
+                    "value": 1.0,
+                    "description": "Repetition penalty; 1.0 disables it (LiquidAI recommendation)."
+                },
+                {
+                    "order": 4,
+                    "name": "max_tokens",
+                    "value": 8192,
+                    "description": "Maximum tokens the model may generate for one page."
+                },
+                {
+                    "order": 5,
+                    "name": "stream",
+                    "value": false,
+                    "description": "Stream tokens as they arrive; false gives the parser one complete response."
+                }
+            ]
         }
     ]
 }

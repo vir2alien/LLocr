@@ -1,10 +1,14 @@
 #include "parsers/DetTokensParser.h"
 #include "parsers/BlockStyle.h"
+#include "parsers/DetTokenFormat.h"
+#include "parsers/Lfm25VlDrift.h"
+#include "parsers/OtslTable.h"
 
 #include "core/ServiceMarkers.h"
 
 #include <QRegularExpression>
 #include <QStringList>
+#include <QVector>
 
 #include <algorithm>
 
@@ -22,91 +26,32 @@ const QRegularExpression &wrappedTokenRegex()
     return re;
 }
 
-// Legacy fallback: a bare  label [x1, y1, x2, y2]  token without wrappers.
+// Bare token: [image_index=<n>] label [x1, y1, x2, y2]  (no wrappers).
+// The optional "image_index=<n>" header prefix is emitted by LFM2.5-VL
+// (layout annotation format); Unlimited-OCR emits the bare token only.
+// The layout annotation is experimental (model card) and the model
+// sometimes drifts into an XML-ish shape — "image_index=<n> <label>name</label>",
+// with the bbox optional — which the second (?|...) branch matches too
+// (branch reset keeps the capture numbers aligned; absent bbox coordinates
+// come out as null captures and yield a zero rect).
 const QRegularExpression &tokenStartRegex()
 {
-    static const QRegularExpression re(
-        QStringLiteral(R"(([A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\])"));
+    static const QRegularExpression re(QStringLiteral(
+        "(?|"
+        "(?:image_index=\\d+\\s+)?([A-Za-z_][A-Za-z0-9_]*)\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\]"
+        "|"
+        "image_index=\\d+\\s+<label>([A-Za-z_][A-Za-z0-9_]*)</label>(?:\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\])?"
+        ")"));
     return re;
-}
-
-QString unescapeModelText(const QString &text)
-{
-    QString out;
-    out.reserve(text.size());
-    const QChar backslash = QLatin1Char('\\');
-    for (int i = 0; i < text.size(); ++i) {
-        const QChar c = text.at(i);
-        if (c == backslash && i + 1 < text.size()
-            && text.at(i + 1) == QLatin1Char('n')) {
-            out.append(QLatin1Char('\n'));
-            ++i;
-            continue;
-        }
-        out.append(c);
-    }
-    return out;
-}
-
-// LaTeX math to Markdown
-QString convertMath(const QString &text)
-{
-    static const QRegularExpression inlineRe(
-        QStringLiteral(R"(\\\(\s*(.*?)\s*\\\))"),
-        QRegularExpression::DotMatchesEverythingOption);
-    static const QRegularExpression displayRe(
-        QStringLiteral(R"(\\\[\s*(.*?)\s*\\\])"),
-        QRegularExpression::DotMatchesEverythingOption);
-
-    QString out = text;
-    out.replace(displayRe, QStringLiteral("\n\n$$\n\\1\n$$\n\n"));
-    out.replace(inlineRe, QStringLiteral("$\\1$"));
-    return out;
-}
-
-// Display (block) math -> clean Markdown block.
-QString formatEquation(const QString &text)
-{
-    static const QRegularExpression wrapperRe(
-        QStringLiteral(R"(^\s*\\\[\s*([\s\S]*?)\s*\\\]\s*$)"));
-
-    QString body = text.trimmed();
-    const QRegularExpressionMatch m = wrapperRe.match(body);
-    if (m.hasMatch())
-        body = m.captured(1).trimmed();
-
-    return QStringLiteral("$$\n%1\n$$").arg(body.trimmed());
-}
-
-// Title to heading level
-int headingLevelFor(const QString &title)
-{
-    static const QRegularExpression re(QStringLiteral(R"(^\s*(\d+\s*\.\s*)+)"));
-    const QRegularExpressionMatch m = re.match(title);
-    if (!m.hasMatch())
-        return 2;
-
-    int groups = 0;
-    for (int i = 0; i < m.capturedLength(0); ++i) {
-        if (m.captured(0).at(i) == QLatin1Char('.'))
-            ++groups;
-    }
-    return std::clamp(groups + 1, 1, 5);
-}
-
-QString escapeTableCell(QString cell)
-{
-    cell = convertMath(cell);
-    static const QRegularExpression unescapedPipeRe(QStringLiteral(R"((?<!\\)\|)"));
-    cell.replace(unescapedPipeRe, QStringLiteral(R"(\|)"));
-    cell.replace(QLatin1Char('\n'), QLatin1Char(' '));
-    cell = cell.trimmed();
-    return cell;
 }
 
 QString formatTable(const QString &text, bool tablesAsHtml)
 {
     const QString trimmed = text.trimmed();
+    // OTSL first: a drifted LFM2.5-VL table can carry a stray </table>
+    // wrapper, and real HTML tables never contain fcel tokens.
+    if (containsOtslTable(trimmed))
+        return formatOtslTable(trimmed, tablesAsHtml);
     if (!trimmed.contains(QStringLiteral("<table")))
         return convertMath(trimmed);
 
@@ -243,13 +188,36 @@ QString formatTable(const QString &text, bool tablesAsHtml)
 
 QString applyStyle(const QString &text, const BlockStyleInfo &info, bool tablesAsHtml)
 {
+    // LFM2.5-VL can leak OTSL rows into non-table blocks (a formula under a
+    // text/equation token, a table fragment after it): convert them wherever
+    // the tags appear, not only in Table blocks.
+    if (info.style != BlockStyle::ImagePlaceholder
+        && !text.contains(QStringLiteral("<table"))
+        && containsOtslTable(text)) {
+        return formatOtslTable(text, tablesAsHtml);
+    }
+
     switch (info.style) {
     case BlockStyle::ImagePlaceholder: {
-        const QString alt = text.trimmed().isEmpty() ? QStringLiteral("Image") : text.trimmed();
+        // The model's figure text (e.g. OCR-ed figure labels) is not a useful
+        // alt text — keep only the first meaningful line.
+        QString alt = text.section(QLatin1Char('\n'), 0, 0);
+        while (alt.startsWith(QLatin1Char('!')) || alt.startsWith(QLatin1Char('*'))
+               || alt.startsWith(QLatin1Char('-')) || alt.startsWith(QLatin1Char(' ')))
+            alt = alt.mid(1).trimmed();
+        for (const QChar ch : {QLatin1Char('['), QLatin1Char(']'), QLatin1Char('('),
+                               QLatin1Char(')'), QLatin1Char('!')})
+            alt.remove(ch);
+        alt = alt.trimmed();
+        if (alt.size() > 60)
+            alt = alt.left(60).trimmed();
+        if (alt.isEmpty())
+            alt = QStringLiteral("Image");
         return QStringLiteral("![%1](image://ocr/crop/%2)").arg(alt).arg(info.imageIndex);
     }
     case BlockStyle::Italic:
-        return QLatin1Char('*') + text + QLatin1Char('*');
+        // Captions carry math too (\(n\) etc.) — convert like plain text.
+        return QLatin1Char('*') + convertMath(text) + QLatin1Char('*');
     case BlockStyle::Equation:
         return formatEquation(text);
     case BlockStyle::Table:
@@ -297,14 +265,16 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
     struct Token {
         QString label;
         int x1, y1, x2, y2;
+        bool hasBbox;    // false for the XML-drift token without coordinates
         int textStart;   // offset right after the closing ']'
         int tokenStart;  // offset of the label itself
     };
     QList<Token> tokens;
 
     const bool wrapped = rawText.contains(QStringLiteral("<|det|>"));
+    const QString text = wrapped ? rawText : normalizeDriftRegions(rawText);
     const QRegularExpression &re = wrapped ? wrappedTokenRegex() : tokenStartRegex();
-    QRegularExpressionMatchIterator it = re.globalMatch(rawText);
+    QRegularExpressionMatchIterator it = re.globalMatch(text);
 
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
@@ -314,6 +284,7 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         t.y1          = m.captured(3).toInt();
         t.x2          = m.captured(4).toInt();
         t.y2          = m.captured(5).toInt();
+        t.hasBbox     = !m.captured(2).isNull();
         t.textStart   = m.capturedEnd(0);
         t.tokenStart  = m.capturedStart(0);
         tokens.append(t);
@@ -321,7 +292,7 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
     if (tokens.isEmpty()) {
         page.text =
-            stripServiceTokens(wrapped ? unescapeModelText(rawText) : rawText).trimmed();
+            stripServiceTokens(wrapped ? unescapeModelText(rawText) : text).trimmed();
         result.text = page.text;
         result.pages.append(page);
         result.success = true;
@@ -331,7 +302,7 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
     result.success = true;
 
     {
-        QString preamble = rawText.left(tokens.first().tokenStart);
+        QString preamble = text.left(tokens.first().tokenStart);
         if (wrapped)   // decode the model's \n line separator (nothing else)
             preamble = unescapeModelText(preamble);
         preamble = stripServiceTokens(preamble).trimmed();
@@ -340,7 +311,9 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
             untagged.label = QStringLiteral("text");
             untagged.text  = preamble;
             page.boxes.append(untagged);
-            blocks << convertMath(preamble);
+            blocks << (containsOtslTable(preamble)
+                           ? formatOtslTable(preamble, m_tablesAsHtml)
+                           : convertMath(preamble));
         }
     }
 
@@ -357,8 +330,8 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
             continue;
         const int spanEnd = (i + 1 < tokens.size())
                                 ? tokens.at(i + 1).tokenStart
-                                : rawText.size();
-        QString boxText = rawText.mid(t.textStart, spanEnd - t.textStart);
+                                : text.size();
+        QString boxText = text.mid(t.textStart, spanEnd - t.textStart);
         if (wrapped)
             boxText = unescapeModelText(boxText);
         boxText = stripServiceTokens(boxText).trimmed();
@@ -374,7 +347,10 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         box.rect  = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
 
         int dupIndex = -1;
-        for (int j = 0; j < rawCoords.size(); ++j) {
+        // Tokens without a bbox (XML-drift header only) all share the zero
+        // rect — they must never be deduped against each other or against a
+        // real region near the page origin.
+        for (int j = 0; t.hasBbox && j < rawCoords.size(); ++j) {
             const RawCoords &rc = rawCoords.at(j);
             if (qAbs(rc.x1 - t.x1) <= 10 && qAbs(rc.y1 - t.y1) <= 10
                 && qAbs(rc.x2 - t.x2) <= 10 && qAbs(rc.y2 - t.y2) <= 10) {
@@ -399,7 +375,8 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
         const int boxIndex = page.boxes.size();
         page.boxes.append(box);
-        rawCoords.append({ t.x1, t.y1, t.x2, t.y2 });
+        if (t.hasBbox)
+            rawCoords.append({ t.x1, t.y1, t.x2, t.y2 });
 
         BlockStyleInfo style = blockStyleForLabel(t.label);
         if (style.style == BlockStyle::ImagePlaceholder) {

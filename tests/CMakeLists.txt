@@ -21,6 +21,9 @@ target_link_libraries(test_det_parser PRIVATE
 
 target_sources(test_det_parser PRIVATE
     ${CMAKE_SOURCE_DIR}/src/parsers/DetTokensParser.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/DetTokenFormat.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/OtslTable.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/Lfm25VlDrift.cpp
     ${CMAKE_SOURCE_DIR}/src/parsers/RawParser.cpp
     ${CMAKE_SOURCE_DIR}/src/parsers/ParserFactory.cpp
 )
@@ -79,6 +82,7 @@ target_link_libraries(test_ocr_models PRIVATE
 target_sources(test_ocr_models PRIVATE
     ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/Lfm25VlModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/models/GeneralPurposeModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/QwenGeneralModel.cpp
@@ -329,6 +333,7 @@ target_sources(test_runtime_lifetime PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
     ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/Lfm25VlModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp
@@ -517,6 +522,7 @@ target_sources(test_ensure_connection PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
     ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/Lfm25VlModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/app/RequestParametersModel.cpp
@@ -706,6 +712,7 @@ target_sources(test_model_installer PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
     ${CMAKE_SOURCE_DIR}/src/models/OcrModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/UnlimitedOcrModel.cpp
+    ${CMAKE_SOURCE_DIR}/src/models/Lfm25VlModel.cpp
     ${CMAKE_SOURCE_DIR}/src/models/OcrModelFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
     ${CMAKE_SOURCE_DIR}/src/core/LaunchProfile.cpp

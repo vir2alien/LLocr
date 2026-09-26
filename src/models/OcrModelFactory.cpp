@@ -2,18 +2,22 @@
 
 #include <QDebug>
 
+#include "models/Lfm25VlModel.h"
 #include "models/UnlimitedOcrModel.h"
 
 namespace llocr {
 
 static const QStringList kModelIds = {
     QStringLiteral("unlimited-ocr"),
+    QStringLiteral("lfm25-vl-3b"),
 };
 
 std::unique_ptr<OcrModel> OcrModelFactory::create(const QString &modelId)
 {
     if (modelId == QStringLiteral("unlimited-ocr"))
         return std::make_unique<UnlimitedOcrModel>();
+    if (modelId == QStringLiteral("lfm25-vl-3b"))
+        return std::make_unique<Lfm25VlModel>();
     qWarning() << "OcrModelFactory: unknown model id" << modelId
                << "— falling back to the default model";
     return std::make_unique<UnlimitedOcrModel>();

@@ -14,6 +14,7 @@
 #include "core/ConnectionConfig.h"
 #include "core/OcrRequest.h"
 #include "models/GeneralPurposeModel.h"
+#include "models/Lfm25VlModel.h"
 #include "models/OcrModelFactory.h"
 #include "models/QwenGeneralModel.h"
 #include "models/UnlimitedOcrModel.h"
@@ -107,10 +108,15 @@ private slots:
     void factoryDefaultAndRegistry() {
         QCOMPARE(OcrModelFactory::defaultId(), QStringLiteral("unlimited-ocr"));
         QVERIFY(OcrModelFactory::registeredIds().contains(QStringLiteral("unlimited-ocr")));
+        QVERIFY(OcrModelFactory::registeredIds().contains(QStringLiteral("lfm25-vl-3b")));
 
         const auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
         QVERIFY(model != nullptr);
         QCOMPARE(model->id(), QStringLiteral("unlimited-ocr"));
+
+        const auto lfm = OcrModelFactory::create(QStringLiteral("lfm25-vl-3b"));
+        QVERIFY(lfm != nullptr);
+        QCOMPARE(lfm->id(), QStringLiteral("lfm25-vl-3b"));
     }
 
     void unknownIdFallsBackToDefault() {
@@ -136,6 +142,23 @@ private slots:
         const QList<OcrPromptVariant> variants = model.promptVariants();
         QCOMPARE(variants.size(), 1);
         QCOMPARE(variants.first().text, QStringLiteral("document parsing."));
+        QVERIFY(!variants.first().id.isEmpty());
+        QVERIFY(!variants.first().title.isEmpty());
+    }
+
+    void lfm25ModelContract() {
+        Lfm25VlModel model;
+
+        QCOMPARE(model.id(), QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(model.displayName(), QStringLiteral("LFM2.5-VL-3B"));
+        QCOMPARE(model.defaultParserId(), QStringLiteral("det_tokens"));
+
+        const QList<OcrPromptVariant> variants = model.promptVariants();
+        QCOMPARE(variants.size(), 1);
+        // The prompt must describe the layout-annotation contract the parser
+        // consumes: the image_index header and the [0, 1000] coordinate range.
+        QVERIFY(variants.first().text.contains(QStringLiteral("image_index=<n>")));
+        QVERIFY(variants.first().text.contains(QStringLiteral("[0, 1000]")));
         QVERIFY(!variants.first().id.isEmpty());
         QVERIFY(!variants.first().title.isEmpty());
     }

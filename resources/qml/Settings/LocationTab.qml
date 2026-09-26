@@ -12,7 +12,6 @@ Item {
     id: root
     property int preparedIndex: -1
     property bool isVerifyModelRole: false
-    // Opened via the "Configure runtime" button in External mode.
     property var runtimeSettingsRef: null
 
     readonly property bool externalMode: Settings.connectionMode === "external"
@@ -61,6 +60,7 @@ Item {
     }
 
     ScrollView {
+        id: modelsScroll
         anchors.fill: parent
         contentWidth: availableWidth
         contentHeight: modelsLayout.implicitHeight
@@ -76,6 +76,7 @@ Item {
             ColumnLayout {
                 visible: root.externalMode
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
                 spacing: 6
 
                 LLOLabel {
@@ -101,6 +102,7 @@ Item {
             ColumnLayout {
                 visible: !root.externalMode
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
                 spacing: 6
 
                 ComboBox {
@@ -112,7 +114,15 @@ Item {
                         { text: qsTr("Specify model files") },
                         { text: qsTr("Download model") }
                     ]
-                    currentIndex: 0
+                    currentIndex: root.isVerifyModelRole
+                        ? (Settings.checkLaunchSourceDownload ? 1 : 0)
+                        : (Settings.launchSourceDownload ? 1 : 0)
+                    onActivated: (index) => {
+                        if (root.isVerifyModelRole)
+                            Settings.checkLaunchSourceDownload = (index === 1)
+                        else
+                            Settings.launchSourceDownload = (index === 1)
+                    }
                 }
 
                 // -- Specify model files -------------------------------
@@ -269,7 +279,14 @@ Item {
                     ModelPresetList {
                         id: presetList
                         Layout.fillWidth: true
-                        Layout.preferredHeight: presetList.implicitHeight
+                        Layout.preferredHeight: Math.max(
+                            presetList.implicitHeight,
+                            modelsScroll.height - presetList.y
+                                - modelsLayout.spacing
+                                - (noPresetsLabel.visible
+                                       ? noPresetsLabel.height + modelsLayout.spacing : 0)
+                                - (statusMsg.visible
+                                       ? statusMsg.height + modelsLayout.spacing : 0))
                         isVerifyModelRole: root.isVerifyModelRole
                         onInstallClicked: (index) => {
                             ModelInstaller.preparePreset(index, root.isVerifyModelRole)
@@ -279,6 +296,7 @@ Item {
                     }//ListView
 
                     LLOLabel {
+                        id: noPresetsLabel
                         visible: presetList.count === 0
                         Layout.fillWidth: true
                         elide: Text.ElideMiddle

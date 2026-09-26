@@ -58,9 +58,13 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString launchModelAlias READ launchModelAlias WRITE setLaunchModelAlias NOTIFY launchModelAliasChanged)
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
+    // The Model tab's source combo ("specify files" vs "download") — a view
+    // mode, persisted so it survives an app restart.
+    Q_PROPERTY(bool launchSourceDownload READ launchSourceDownload WRITE setLaunchSourceDownload NOTIFY launchSourceDownloadChanged)
 
     Q_PROPERTY(QString checkLaunchModelPath READ checkLaunchModelPath WRITE setCheckLaunchModelPath NOTIFY checkLaunchModelPathChanged)
     Q_PROPERTY(QString checkLaunchMmprojPath READ checkLaunchMmprojPath WRITE setCheckLaunchMmprojPath NOTIFY checkLaunchMmprojPathChanged)
+    Q_PROPERTY(bool checkLaunchSourceDownload READ checkLaunchSourceDownload WRITE setCheckLaunchSourceDownload NOTIFY checkLaunchSourceDownloadChanged)
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
     Q_PROPERTY(QString checkLaunchProfileId READ checkLaunchProfileId WRITE setCheckLaunchProfileId NOTIFY checkLaunchProfileIdChanged)
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
@@ -185,6 +189,10 @@ public:
     void setCheckLaunchModelPath(const QString &path);
     QString checkLaunchMmprojPath() const;
     void setCheckLaunchMmprojPath(const QString &path);
+    bool checkLaunchSourceDownload() const;
+    void setCheckLaunchSourceDownload(bool on);
+    bool launchSourceDownload() const;
+    void setLaunchSourceDownload(bool on);
     QString checkRequestProfileId() const;
     void setCheckRequestProfileId(const QString &id);
     QString checkLaunchProfileId() const;
@@ -241,6 +249,8 @@ signals:
     void launchPortChanged();
     void checkLaunchModelPathChanged();
     void checkLaunchMmprojPathChanged();
+    void checkLaunchSourceDownloadChanged();
+    void launchSourceDownloadChanged();
     void checkRequestProfileIdChanged();
     void checkLaunchProfileIdChanged();
     void checkModelNameChanged();
@@ -327,6 +337,7 @@ private:
     static constexpr const char *kLaunchModelAlias = "launch/modelAlias";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
+    static constexpr const char *kLaunchSourceDownload = "launch/sourceDownload";
 
     // Verification (check) model
     static constexpr const char *kCheckLaunchModelPath = "check/modelPath";
@@ -334,6 +345,7 @@ private:
     static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
     static constexpr const char *kCheckLaunchProfileId = "check/launchProfileId";
     static constexpr const char *kCheckModelName = "check/modelName";
+    static constexpr const char *kCheckLaunchSourceDownload = "check/sourceDownload";
     static constexpr const char *kAutoCheck = "check/autoCheck";
 
     // Hugging Face

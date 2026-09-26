@@ -2,18 +2,101 @@
 
 #include <memory>
 
+#include <QAtomicInteger>
 #include <QBuffer>
 #include <QCoreApplication>
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
 #include <QFutureWatcher>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPromise>
+#include <QStandardPaths>
 #include <QtConcurrent/QtConcurrentRun>
 
 #include <algorithm>
 
 namespace llocr {
+
+namespace {
+
+// Raw-response debug dump: every model reply is stored verbatim, so a broken
+// parse can be diffed against what the model actually emitted. Enabled by
+// default (LLOCR_RAW_DEBUG=0 turns it off); always off in the test binaries.
+// Files land in <AppDataDir>/raw-debug/ — one file per request.
+bool rawDebugEnabled()
+{
+    static const bool enabled = [] {
+        if (qEnvironmentVariableIsSet("LLOCR_RAW_DEBUG"))
+            return qEnvironmentVariable("LLOCR_RAW_DEBUG") != QLatin1String("0");
+        return !QCoreApplication::applicationName().startsWith(
+            QLatin1String("test"));
+    }();
+    return enabled;
+}
+
+QDir rawDebugDir()
+{
+    const QDir dir(QStandardPaths::writableLocation(
+                       QStandardPaths::AppLocalDataLocation)
+                   + QStringLiteral("/raw-debug"));
+    dir.mkpath(QStringLiteral("."));
+    return dir;
+}
+
+void dumpRawRequest(const QByteArray &requestBody)
+{
+    if (!rawDebugEnabled())
+        return;
+
+    static QAtomicInt sequence;
+    const int n = sequence.fetchAndAddRelaxed(1) + 1;
+
+    const QString base = QStringLiteral("raw-%1-%2-request")
+                             .arg(QDateTime::currentDateTime().toString(
+                                 QStringLiteral("yyyyMMdd-HHmmss")))
+                             .arg(n, 4, 10, QLatin1Char('0'));
+    QFile file(rawDebugDir().filePath(base + QStringLiteral(".json")));
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning() << "[raw-debug] cannot write" << file.fileName();
+        return;
+    }
+    file.write(requestBody);
+    qInfo().noquote() << "[raw-debug] request saved:" << file.fileName();
+}
+
+void dumpRawResponse(const QByteArray &responseData, const QString &content,
+                     bool parsed)
+{
+    if (!rawDebugEnabled())
+        return;
+
+    static QAtomicInt sequence;
+    const int n = sequence.fetchAndAddRelaxed(1) + 1;
+
+    const QDir dir(QStandardPaths::writableLocation(
+                       QStandardPaths::AppLocalDataLocation)
+                   + QStringLiteral("/raw-debug"));
+
+    const QString base = QStringLiteral("raw-%1-%2")
+                             .arg(QDateTime::currentDateTime().toString(
+                                 QStringLiteral("yyyyMMdd-HHmmss")))
+                             .arg(n, 4, 10, QLatin1Char('0'));
+    // Parsed replies store the verbatim model text; anything the JSON layer
+    // could not read stores the full envelope for diagnosis.
+    QFile file(dir.filePath(base + (parsed ? QStringLiteral(".txt")
+                                           : QStringLiteral(".invalid.json"))));
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning() << "[raw-debug] cannot write" << file.fileName();
+        return;
+    }
+    file.write(parsed ? content.toUtf8() : responseData);
+    qInfo().noquote() << "[raw-debug] model response saved:" << file.fileName();
+}
+
+} // namespace
 
 QString OcrModel::encodeImageDataUrl(const QImage &image, const QString &format, int quality)
 {
@@ -65,16 +148,21 @@ OcrResult OcrModel::parseResponse(const QByteArray &responseData)
 {
     QJsonParseError parseError{};
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        dumpRawResponse(responseData, QString(), false);
         return OcrResult::makeError(QCoreApplication::translate("OcrModel", "Invalid JSON response"));
+    }
 
     const QJsonObject root = doc.object();
     const QJsonArray choices = root.value(QStringLiteral("choices")).toArray();
-    if (choices.isEmpty())
+    if (choices.isEmpty()) {
+        dumpRawResponse(responseData, QString(), false);
         return OcrResult::makeError(QCoreApplication::translate("OcrModel", "No choices in response"));
+    }
 
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
     const QString content = message.value(QStringLiteral("content")).toString();
+    dumpRawResponse(responseData, content, true);
 
     OcrResult result;
     result.success = true;
@@ -111,7 +199,8 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
                          }
                          auto *watcher = new QFutureWatcher<HttpResponse>();
                          QObject::connect(watcher, &QFutureWatcher<HttpResponse>::finished, watcher,
-                                          [client, promise, watcher]() {
+                                          [client, promise, watcher, body]() {
+                                              dumpRawRequest(body);
                                               const HttpResponse response =
                                                   watcher->future().resultCount() > 0 ? watcher->result() : HttpResponse{};
                                               if (response.success)

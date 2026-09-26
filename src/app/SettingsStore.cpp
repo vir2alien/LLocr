@@ -41,8 +41,10 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kLaunchModelAlias, "launchModelAlias", QVariant(QString::fromUtf8(kDefaultModelAlias)) },
     { kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost)) },
     { kLaunchPort, "launchPort", QVariant(kDefaultPort) },
+    { kLaunchSourceDownload, "launchSourceDownload", QVariant(false) },
     { kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString()) },
     { kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString()) },
+    { kCheckLaunchSourceDownload, "checkLaunchSourceDownload", QVariant(false) },
     { kCheckRequestProfileId, "checkRequestProfileId", QVariant(QString()) },
     { kCheckLaunchProfileId, "checkLaunchProfileId", QVariant(QString()) },
     { kCheckModelName, "checkModelName", QVariant(QString()) },
@@ -695,6 +697,19 @@ void SettingsStore::setLaunchPort(int port)
     emit launchPortChanged();
 }
 
+bool SettingsStore::launchSourceDownload() const
+{
+    return m_settings.value(kLaunchSourceDownload, false).toBool();
+}
+
+void SettingsStore::setLaunchSourceDownload(bool on)
+{
+    if (launchSourceDownload() == on)
+        return;
+    m_settings.setValue(kLaunchSourceDownload, on);
+    emit launchSourceDownloadChanged();
+}
+
 QString SettingsStore::checkLaunchModelPath() const
 {
     return m_settings.value(kCheckLaunchModelPath).toString();
@@ -719,6 +734,19 @@ void SettingsStore::setCheckLaunchMmprojPath(const QString &path)
         return;
     m_settings.setValue(kCheckLaunchMmprojPath, path);
     emit checkLaunchMmprojPathChanged();
+}
+
+bool SettingsStore::checkLaunchSourceDownload() const
+{
+    return m_settings.value(kCheckLaunchSourceDownload, false).toBool();
+}
+
+void SettingsStore::setCheckLaunchSourceDownload(bool on)
+{
+    if (checkLaunchSourceDownload() == on)
+        return;
+    m_settings.setValue(kCheckLaunchSourceDownload, on);
+    emit checkLaunchSourceDownloadChanged();
 }
 
 QString SettingsStore::checkRequestProfileId() const

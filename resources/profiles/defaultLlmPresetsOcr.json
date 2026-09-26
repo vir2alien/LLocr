@@ -29,6 +29,34 @@
       "minBuild": "b4000",
       "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
       "sha256": {}
+    },
+    {
+      "id": "lfm25-vl-3b-q4_k_m",
+      "title": "LFM2.5-VL-3B (Q4_K_M)",
+      "repo": "LiquidAI/LFM2.5-VL-3B-GGUF",
+      "revision": "",
+      "model": "LFM2.5-VL-3B-Q4_K_M.gguf",
+      "mmproj": "mmproj-LFM2.5-VL-3B-F16.gguf",
+      "parser": "det_tokens",
+      "prompt": "layout-annotation",
+      "ctxSize": 8192,
+      "minBuild": "b8000",
+      "license": "https://huggingface.co/LiquidAI/LFM2.5-VL-3B-GGUF",
+      "sha256": {}
+    },
+    {
+      "id": "lfm25-vl-3b-q8_0",
+      "title": "LFM2.5-VL-3B (Q8_0)",
+      "repo": "LiquidAI/LFM2.5-VL-3B-GGUF",
+      "revision": "",
+      "model": "LFM2.5-VL-3B-Q8_0.gguf",
+      "mmproj": "mmproj-LFM2.5-VL-3B-F16.gguf",
+      "parser": "det_tokens",
+      "prompt": "layout-annotation",
+      "ctxSize": 8192,
+      "minBuild": "b8000",
+      "license": "https://huggingface.co/LiquidAI/LFM2.5-VL-3B-GGUF",
+      "sha256": {}
     }
   ]
 }

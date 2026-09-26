@@ -22,6 +22,8 @@ qt_add_executable(llocr
     models/OcrModel.cpp
     models/UnlimitedOcrModel.h
     models/UnlimitedOcrModel.cpp
+    models/Lfm25VlModel.h
+    models/Lfm25VlModel.cpp
     models/OcrModelFactory.h
     models/OcrModelFactory.cpp
     models/GeneralPurposeModel.h
@@ -36,6 +38,12 @@ qt_add_executable(llocr
     parsers/RawParser.cpp
     parsers/DetTokensParser.h
     parsers/DetTokensParser.cpp
+    parsers/DetTokenFormat.h
+    parsers/DetTokenFormat.cpp
+    parsers/OtslTable.h
+    parsers/OtslTable.cpp
+    parsers/Lfm25VlDrift.h
+    parsers/Lfm25VlDrift.cpp
     parsers/ParserFactory.h
     parsers/ParserFactory.cpp
 
