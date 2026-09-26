@@ -13,6 +13,8 @@ class QJsonObject;
 
 namespace llocr {
 
+class InstalledState;
+
 class DownloadGroup;
 class DownloadManager;
 class LaunchProfileStore;
@@ -28,6 +30,7 @@ public:
 
     explicit ModelInstallTransaction(SettingsStore &settings,
                                      LaunchProfileStore &launchProfiles,
+                                     InstalledState &state,
                                      QObject *parent = nullptr);
     ~ModelInstallTransaction() override;
 
@@ -102,6 +105,7 @@ private:
 
     SettingsStore &m_settings;
     LaunchProfileStore &m_launchProfiles;
+    InstalledState &m_installState;
     DownloadManager *m_downloads = nullptr;
     DownloadGroup *m_group = nullptr;
 

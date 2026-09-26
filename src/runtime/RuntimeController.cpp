@@ -22,6 +22,7 @@
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeLocator.h"
 #include "runtime/RuntimeLog.h"
+#include "runtime/InstalledState.h"
 #include "runtime/RuntimePaths.h"
 #include "runtime/HttpClient.h"
 #include "runtime/ProcessGuard.h"
@@ -41,9 +42,11 @@ constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
 RuntimeController::RuntimeController(SettingsStore &settings,
                                      LaunchProfileStore &launchProfiles,
                                      LaunchProfileStore *checkLaunchProfiles,
+                                     InstalledState *state,
                                      QObject *parent)
     : QObject(parent)
     , m_settings(settings)
+    , m_installedState(state)
     , m_launchProfiles(launchProfiles)
     , m_checkLaunchProfiles(checkLaunchProfiles ? checkLaunchProfiles : &launchProfiles)
 {
@@ -80,7 +83,7 @@ void RuntimeController::scanForOrphanedServer()
     // Always re-read: the scan is a small file read plus a liveness probe, and
     // the record can appear or expire between two calls (the user may also have
     // killed the process). The signal fires only when the verdict changes.
-    const RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    const RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     const QString ownerPath = QDir(paths.runtimeDir()).filePath(QStringLiteral("owner.json"));
     m_orphanJsonPath = ownerPath;
 
@@ -108,6 +111,11 @@ QString RuntimeController::terminateOrphan()
     m_orphan = ServerOwnerRecord{};
     emit orphanChanged();
     return {};
+}
+
+RuntimePaths RuntimeController::currentPaths() const
+{
+    return RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
 }
 
 void RuntimeController::setSingleInstanceHeld(bool held)
@@ -630,7 +638,7 @@ QString RuntimeController::startServer(ConnectionRole role)
     // to two minutes (ADR 105), so it runs on a worker and continues in the
     // callback — the GUI event loop keeps running meanwhile. A generation
     // counter drops the result of a probe that was cancelled or superseded.
-    RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     paths.ensureDirectories();
     const quint64 generation = ++m_startGeneration;
     const QString cacheDir = paths.cacheDir();
@@ -666,7 +674,7 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
     }
 
     const QFileInfo fi(program);
-    RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     paths.ensureDirectories();
 
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(
@@ -811,7 +819,7 @@ QString RuntimeController::launchCommandPreview()
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty())
         return QString();
-    RuntimePaths paths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    const RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     ProbeResult probe;
     RuntimeLocator::cachedProbe(program, paths.cacheDir(), probe);
     ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings,

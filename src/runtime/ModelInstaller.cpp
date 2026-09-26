@@ -18,12 +18,14 @@
 namespace llocr {
 
 ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime,
-                               LaunchProfileStore &launchProfiles, QObject *parent)
+                               LaunchProfileStore &launchProfiles, InstalledState &state,
+                               QObject *parent)
     : QObject(parent)
     , m_settings(settings)
+    , m_installState(state)
     , m_runtime(runtime)
     , m_launchProfiles(launchProfiles)
-    , m_transaction(new ModelInstallTransaction(settings, launchProfiles, this))
+    , m_transaction(new ModelInstallTransaction(settings, launchProfiles, m_installState, this))
 {
     connect(m_transaction, &ModelInstallTransaction::stateChanged, this,
             [this](int state) { setState(static_cast<State>(state)); });
@@ -114,9 +116,7 @@ void ModelInstaller::reloadPresets()
 
 void ModelInstaller::reloadPresetsInternal()
 {
-    const RuntimePaths paths(m_settings.runtimeRootDir(),
-                             m_settings.runtimeModelsDir());
-    const QString modelsDir = paths.modelsDir();
+    const QString modelsDir = m_installState.paths().modelsDir();
 
     QString err;
     m_presets = ModelPresetCatalog::load(
@@ -140,9 +140,7 @@ void ModelInstaller::refreshInstalled()
 {
     QString err;
     bool rebuilt = false;
-    const RuntimePaths paths(m_settings.runtimeRootDir(),
-                             m_settings.runtimeModelsDir());
-    m_installed = ModelRegistry::load(paths.modelsDir(), rebuilt, err);
+    m_installed = ModelRegistry::load(m_installState.paths().modelsDir(), rebuilt, err);
     if (!err.isEmpty() && !rebuilt)
         setStatusMessage(err);
     m_transaction->setInstalled(m_installed);
@@ -152,10 +150,9 @@ void ModelInstaller::refreshInstalled()
 void ModelInstaller::rescanRegistry()
 {
     QString err;
-    const RuntimePaths paths(m_settings.runtimeRootDir(),
-                             m_settings.runtimeModelsDir());
-    m_installed = ModelRegistry::scanModelsDir(paths.modelsDir());
-    ModelRegistry::save(paths.modelsDir(), m_installed, err);
+    const QString modelsDir = m_installState.paths().modelsDir();
+    m_installed = ModelRegistry::scanModelsDir(modelsDir);
+    ModelRegistry::save(modelsDir, m_installed, err);
     m_transaction->setInstalled(m_installed);
     refreshInstalled();
 }
@@ -296,8 +293,7 @@ QString ModelInstaller::removeModel(int index)
                         && (e.modelPath == m_settings.launchModelPath()
                             || e.modelPath == m_settings.checkLaunchModelPath());
     const bool ready = m_runtime.state() == RuntimeState::Ready;
-    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
-                                    m_settings.runtimeModelsDir());
+    const RuntimePaths currentPaths = m_installState.paths();
     const QString guard =
         ModelRegistry::removalError(e, currentPaths.modelsDir(), active, ready);
     if (!guard.isEmpty())

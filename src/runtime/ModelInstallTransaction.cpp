@@ -16,6 +16,8 @@
 #include "runtime/DownloadGroup.h"
 #include "runtime/DownloadManager.h"
 #include "runtime/ModelInstallTransaction.h"
+
+#include "runtime/InstalledState.h"
 #include "runtime/RuntimePaths.h"
 
 namespace llocr {
@@ -140,9 +142,11 @@ void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree,
 
 ModelInstallTransaction::ModelInstallTransaction(SettingsStore &settings,
                                                  LaunchProfileStore &launchProfiles,
+                                                 InstalledState &state,
                                                  QObject *parent)
     : QObject(parent)
     , m_settings(settings)
+    , m_installState(state)
     , m_launchProfiles(launchProfiles)
     , m_downloads(new DownloadManager(this))
 {
@@ -234,9 +238,7 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
     const QString preferMmproj = preset.mmproj;
 
     const QString token = m_settings.hfToken();
-    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
-                                    m_settings.runtimeModelsDir());
-    const QString modelsDir = currentPaths.modelsDir();
+    const QString modelsDir = m_installState.paths().modelsDir();
 
     QFuture<QPair<InstallPlan, QString>> future =
         QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, token,
@@ -321,9 +323,7 @@ void ModelInstallTransaction::installPrepared()
 
 void ModelInstallTransaction::beginDownload()
 {
-    const RuntimePaths currentPaths(m_settings.runtimeRootDir(),
-                                    m_settings.runtimeModelsDir());
-    currentPaths.ensureDirectories();
+    m_installState.ensureDirectories();
     QDir().mkpath(m_pending.dir);
     setState(State::Downloading);
     setBusy(true);

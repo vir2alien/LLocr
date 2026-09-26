@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "runtime/ConnectionMode.h"
+#include "runtime/RuntimePaths.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeLocator.h"
 #include "runtime/ServerOwner.h"
@@ -20,6 +21,7 @@ class QNetworkReply;
 namespace llocr {
 
 class SettingsStore;
+class InstalledState;
 class LaunchProfileStore;
 class RuntimeLog;
 class SingleInstanceGuard;
@@ -43,6 +45,7 @@ public:
     explicit RuntimeController(SettingsStore &settings,
                                LaunchProfileStore &launchProfiles,
                                LaunchProfileStore *checkLaunchProfiles = nullptr,
+                               InstalledState *state = nullptr,
                                QObject *parent = nullptr);
 
     enum class AppBusyState {
@@ -117,6 +120,7 @@ private:
     int stateInt() const { return static_cast<int>(m_state); }
     int busyStateInt() const { return static_cast<int>(m_busyState); }
 
+    RuntimePaths currentPaths() const;
     void setState(RuntimeState next);
     void setBusyState(AppBusyState next);
     void setStatusMessage(const QString &msg);
@@ -166,6 +170,9 @@ private:
     RuntimeLog *m_logTarget = nullptr;
     SingleInstanceGuard *m_instanceGuard = nullptr;
     SettingsStore &m_settings;
+    // Optional: when not wired, paths are derived from the settings on demand
+    // (ADR 109). With it, the install lock and the caches are shared.
+    InstalledState *m_installedState = nullptr;
     LaunchProfileStore &m_launchProfiles;
     LaunchProfileStore *m_checkLaunchProfiles = nullptr;
     struct PendingResolve {

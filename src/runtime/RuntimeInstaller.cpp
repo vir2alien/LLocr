@@ -58,11 +58,11 @@ bool backendMatches(const QString &assetBackend, const QString &requested)
 
 }  // namespace
 
-RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, QObject *parent)
+RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state,
+                                   QObject *parent)
     : QObject(parent)
     , m_settings(settings)
-    , m_paths(settings.runtimeRootDir(), settings.runtimeModelsDir())
-    , m_installLock(m_paths.installLockPath())
+    , m_installState(state)
     , m_downloads(new DownloadManager(this))
     , m_group(new DownloadGroup(m_downloads, this))
 {
@@ -88,8 +88,14 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, QObject *parent)
     connect(m_group, &DownloadGroup::allFinished, this, [this](bool) {
         maybeFinishDownloads();
     });
+    // A moved runtime directory invalidates the installed-builds list (and the
+    // update hint) — rescan instead of keeping what the old tree contained.
+    connect(&m_installState, &InstalledState::pathsChanged, this, [this]() {
+        rescanInstalledBuilds();
+        recomputeHasUpdate();
+    });
 
-    m_paths.ensureDirectories();
+    m_installState.ensureDirectories();
     rescanInstalledBuilds();
 }
 
@@ -238,7 +244,7 @@ void RuntimeInstaller::startCatalogFetch()
     setBusy(true);
     setStatusMessage(tr("Checking for updates…"));
 
-    const QString cacheDir = m_paths.cacheDir();
+    const QString cacheDir = m_installState.paths().cacheDir();
     auto future = QtConcurrent::run([cacheDir]() -> QPair<QList<ReleaseInfo>, QString> {
         QNetworkAccessManager nam;
         QString error;
@@ -348,13 +354,13 @@ void RuntimeInstaller::beginInstall(const QString &backend)
 
 void RuntimeInstaller::beginDownloads()
 {
-    m_paths.ensureDirectories();
+    m_installState.ensureDirectories();
     setState(State::Downloading);
     setBusy(true);
     setProgress(0.0);
     setStatusMessage(tr("Downloading %1 …").arg(m_pendingMain.fileName));
 
-    const QString targetDir = m_paths.runtimeDir();
+    const QString targetDir = m_installState.paths().runtimeDir();
     QDir().mkpath(targetDir);
 
     m_group->begin();
@@ -392,7 +398,7 @@ bool RuntimeInstaller::acquireInstallLock(QString &error)
 {
     if (m_installLockHeld)
         return true;
-    if (!m_installLock.tryLock(0)) {
+    if (!m_installState.installLock().tryLock(0)) {
         error = tr("Another LLocr instance is installing a runtime right now; "
                    "try again in a moment.");
         return false;
@@ -405,7 +411,7 @@ void RuntimeInstaller::releaseInstallLock()
 {
     if (!m_installLockHeld)
         return;
-    m_installLock.unlock();
+    m_installState.installLock().unlock();
     m_installLockHeld = false;
 }
 
@@ -413,14 +419,15 @@ void RuntimeInstaller::runInstallAsync()
 {
     setStatusMessage(tr("Installing %1 …").arg(backendDisplayName(m_pendingBackend)));
 
-    const QString mainZip = QDir(m_paths.runtimeDir()).filePath(m_pendingMain.fileName);
+    const RuntimePaths currentPaths = m_installState.paths();
+    const QString mainZip = QDir(currentPaths.runtimeDir()).filePath(m_pendingMain.fileName);
     const QString cudartZip = m_pendingHasCudart
-                                  ? QDir(m_paths.runtimeDir()).filePath(m_pendingCudart.fileName)
+                                  ? QDir(currentPaths.runtimeDir()).filePath(m_pendingCudart.fileName)
                                   : QString();
     const ReleaseAsset mainAsset = m_pendingMain;
     const bool hasCudart = m_pendingHasCudart;
-    const QString installDir = m_paths.runtimeDir();
-    const RuntimePaths paths = m_paths;
+    const QString installDir = currentPaths.runtimeDir();
+    const RuntimePaths paths = currentPaths;
 
     QFuture<QPair<InstallOutput, QString>> future =
         QtConcurrent::run([mainZip, mainAsset, paths]() -> QPair<InstallOutput, QString> {
@@ -439,12 +446,12 @@ void RuntimeInstaller::runInstallAsync()
                 warning = tr("CUDA runtime extraction warning: %1").arg(ex.error);
         }
         return {out, warning};
-    }).then(this, [this](const QPair<InstallOutput, QString> &res) {
+    }).then(this, [this, currentPaths](const QPair<InstallOutput, QString> &res) {
         const InstallOutput out = res.first;
         const QString warning = res.second;
-        m_downloadedMainZip = QDir(m_paths.runtimeDir()).filePath(m_pendingMain.fileName);
+        m_downloadedMainZip = QDir(currentPaths.runtimeDir()).filePath(m_pendingMain.fileName);
         m_downloadedCudartZip = m_pendingHasCudart
-                                    ? QDir(m_paths.runtimeDir()).filePath(m_pendingCudart.fileName)
+                                    ? QDir(currentPaths.runtimeDir()).filePath(m_pendingCudart.fileName)
                                     : QString();
         onInstallFinished(out, warning);
     });
@@ -530,7 +537,7 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
         const QString prefix =
             QStringLiteral("llama.cpp-%1-%2").arg(installedBuild(), installedBackend());
         const QStringList dirs =
-            QDir(m_paths.runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+            QDir(m_installState.paths().runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
         for (const QString &name : dirs) {
             if (name.startsWith(prefix)) {
                 keepTag = name;
@@ -539,7 +546,7 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
         }
     }
 
-    const QString summary = InstallTransaction::cleanupUnusedBuilds(m_paths, keepTag);
+    const QString summary = InstallTransaction::cleanupUnusedBuilds(m_installState.paths(), keepTag);
     setStatusMessage(summary);
     rescanInstalledBuilds();
     releaseInstallLock();
@@ -553,10 +560,10 @@ QString RuntimeInstaller::normalizedPath(const QString &path)
 
 void RuntimeInstaller::rescanInstalledBuilds()
 {
-    const RuntimePaths paths(m_settings.runtimeRootDir(),
-                             m_settings.runtimeModelsDir());
+    // The same paths everything else uses — a moved runtime directory used to
+    // make the scan look in the new tree while installs kept the old one.
     const QList<InstalledBuildInfo> builds =
-        InstallTransaction::scanInstalledBuilds(paths);
+        InstallTransaction::scanInstalledBuilds(m_installState.paths());
     if (builds == m_installedBuilds)
         return;
     m_installedBuilds = builds;

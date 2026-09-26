@@ -6,12 +6,14 @@
 #include <QString>
 
 #include "runtime/ModelCatalog.h"
+#include "runtime/InstalledState.h"
 #include "runtime/ModelPreset.h"
 #include "runtime/ModelRegistry.h"
 #include "runtime/RuntimePaths.h"
 
 namespace llocr {
 
+class InstalledState;
 class ModelInstallTransaction;
 class RuntimeController;
 class SettingsStore;
@@ -48,7 +50,7 @@ public:
     Q_ENUM(State)
 
     explicit ModelInstaller(SettingsStore &settings, RuntimeController &runtime,
-                            LaunchProfileStore &launchProfiles,
+                            LaunchProfileStore &launchProfiles, InstalledState &state,
                             QObject *parent = nullptr);
     ~ModelInstaller() override;
 
@@ -99,6 +101,8 @@ private:
     bool matchesRole(const ModelEntry &e, bool forCheck) const;
 
     SettingsStore &m_settings;
+    // Runtime/models paths and the install lock, always current (ADR 109).
+    InstalledState &m_installState;
     RuntimeController &m_runtime;
     LaunchProfileStore &m_launchProfiles;
     ModelInstallTransaction *m_transaction = nullptr;

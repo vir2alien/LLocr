@@ -10,7 +10,8 @@
 #include <QVariant>
 
 #include "runtime/InstallTransaction.h"
-#include "runtime/ReleaseAsset.h"
+#include "runtime/ReleaseCatalog.h"
+#include "runtime/InstalledState.h"
 #include "runtime/RuntimePaths.h"
 
 namespace llocr {
@@ -60,7 +61,8 @@ public:
     };
     Q_ENUM(State)
 
-    explicit RuntimeInstaller(SettingsStore &settings, QObject *parent = nullptr);
+    explicit RuntimeInstaller(SettingsStore &settings, InstalledState &state,
+                              QObject *parent = nullptr);
     ~RuntimeInstaller() override;
 
     void shutdown();
@@ -139,7 +141,9 @@ signals:
 
 private:
     SettingsStore &m_settings;
-    RuntimePaths m_paths;
+    // Paths and the install lock come from InstalledState, which follows the
+    // settings instead of freezing them at construction (ADR 109).
+    InstalledState &m_installState;
 
     State m_state = State::Idle;
     bool m_busy = false;
@@ -167,7 +171,6 @@ private:
 
     DownloadManager *m_downloads = nullptr;
     DownloadGroup *m_group = nullptr;
-    ::QLockFile m_installLock{ QStringLiteral("/") };
     bool m_installLockHeld = false;
 };
 

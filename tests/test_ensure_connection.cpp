@@ -12,6 +12,7 @@
 #include "app/LaunchProfileStore.h"
 #include "app/RequestProfileStore.h"
 #include "app/SettingsStore.h"
+#include "runtime/InstalledState.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimePaths.h"
 #include "runtime/RuntimeState.h"
@@ -386,6 +387,41 @@ private slots:
         QVERIFY(!runtime2.orphanDetected());
         QVERIFY(server.waitForFinished(10000));
         QVERIFY(!QFile::exists(ownerPath));
+    }
+
+    // A moved runtime directory must take everything with it: the paths, and the
+    // install lock. RuntimeInstaller used to freeze both in its constructor
+    // while rescanInstalledBuilds() already looked in the new tree (ADR 109).
+    void movingTheRuntimeDirectoryMovesTheInstallLock()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime-a")));
+        settings.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        InstalledState installed(settings);
+
+        const QString lockA = installed.paths().installLockPath();
+        installed.ensureDirectories();  // the lock file needs its directory
+        QCOMPARE(installed.installLock().fileName(), lockA);
+        QVERIFY(installed.installLock().tryLock(0));
+        QVERIFY(installed.installLock().isLocked());
+        installed.installLock().unlock();
+
+        settings.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime-b")));
+        QSignalSpy changed(&installed, &InstalledState::pathsChanged);
+        installed.installLock();  // a request through the state refreshes it
+
+        const QString lockB = installed.paths().installLockPath();
+        QVERIFY(lockB != lockA);
+        installed.ensureDirectories();
+        QCOMPARE(installed.installLock().fileName(), lockB);
+        QVERIFY(installed.installLock().tryLock(0));
+        installed.installLock().unlock();
+        // The old directory is a different path entirely, so the old lock file
+        // cannot be mistaken for the new one.
+        QVERIFY(!installed.paths().installLockPath().contains(QStringLiteral("runtime-a")));
     }
 
     void managedStartKeepsTheEventLoopRunning()

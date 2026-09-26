@@ -14,6 +14,7 @@
 #include "app/UiController.h"
 #include "app/VerificationPromptStore.h"
 #include "runtime/InstallTransaction.h"
+#include "runtime/InstalledState.h"
 #include "runtime/ModelInstaller.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeInstaller.h"
@@ -122,8 +123,13 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfilesValidate",
                                  &launchProfilesValidate);
 
+    // One object answers "where is the runtime, and where is its lock" for the
+    // whole app, so nothing can freeze the paths at construction (ADR 109).
+    llocr::InstalledState installedState(settingsStore);
+
     llocr::RuntimeController runtimeController(settingsStore, launchProfilesOcr,
-                                               &launchProfilesValidate);
+                                               &launchProfilesValidate,
+                                               &installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
 
     llocr::RuntimeLog runtimeLog(settingsStore);
@@ -134,11 +140,11 @@ int main(int argc, char* argv[]) {
                                                  requestProfilesOcr);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);
 
-    llocr::RuntimeInstaller runtimeInstaller(settingsStore);
+    llocr::RuntimeInstaller runtimeInstaller(settingsStore, installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
 
     llocr::ModelInstaller modelInstaller(settingsStore, runtimeController,
-                                         launchProfilesOcr);
+                                         launchProfilesOcr, installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
 
     llocr::RuntimePaths runtimePaths(settingsStore.runtimeRootDir(),

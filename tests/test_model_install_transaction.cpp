@@ -5,6 +5,7 @@
 #include "app/LaunchProfileStore.h"
 #include "app/SettingsStore.h"
 #include "runtime/ModelCatalog.h"
+#include "runtime/InstalledState.h"
 #include "runtime/ModelInstallTransaction.h"
 #include "runtime/ModelPreset.h"
 #include "testsettings.h"
@@ -163,7 +164,8 @@ private slots:
         }
         LaunchProfileStore launchProfiles(settings, presetsPath);
 
-        ModelInstallTransaction tx(settings, launchProfiles);
+        InstalledState installed(settings);
+        ModelInstallTransaction tx(settings, launchProfiles, installed);
         QCOMPARE(tx.state(), ModelInstallTransaction::State::Idle);
         QVERIFY(!tx.busy());
 

@@ -7,6 +7,7 @@
 
 #include "app/LaunchProfileStore.h"
 #include "app/SettingsStore.h"
+#include "runtime/InstalledState.h"
 #include "runtime/ModelInstaller.h"
 #include "runtime/ModelRegistry.h"
 #include "runtime/RuntimeController.h"
@@ -50,6 +51,7 @@ private:
         // dirs in their constructors.
         QScopedPointer<LaunchProfileStore> launchProfiles;
         QScopedPointer<RuntimeController> runtime;
+        QScopedPointer<InstalledState> installed;
         QScopedPointer<ModelInstaller> installer;
     };
 
@@ -65,7 +67,9 @@ private:
                     "{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
         }
         s.launchProfiles.reset(new LaunchProfileStore(s.settings, presetsPath));
-        s.runtime.reset(new RuntimeController(s.settings, *s.launchProfiles));
+        s.installed.reset(new InstalledState(s.settings));
+        s.runtime.reset(new RuntimeController(s.settings, *s.launchProfiles, nullptr,
+                                              s.installed.data()));
     }
 
     static void pointAtTempDir(SettingsStore &settings, const QString &root)
@@ -117,7 +121,7 @@ private:
 
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
-                                              *s->launchProfiles));
+                                              *s->launchProfiles, *s->installed));
         return s;
     }
 
@@ -243,7 +247,8 @@ private slots:
         }
         LaunchProfileStore launchProfiles(settings, presetsPath);
         RuntimeController runtime(settings, launchProfiles);
-        ModelInstaller installer(settings, runtime, launchProfiles);
+        InstalledState installed(settings);
+        ModelInstaller installer(settings, runtime, launchProfiles, installed);
         const int idx = indexOfQuant(installer, q4.quantization);
         QVERIFY(idx >= 0);
         QVERIFY(installer.removeModel(idx).isEmpty());
@@ -290,7 +295,7 @@ private slots:
 
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
-                                              *s->launchProfiles));
+                                              *s->launchProfiles, *s->installed));
         ModelInstaller &mi = *s->installer;
 
         auto findPreset = [&](const QString &presetId) {
@@ -375,7 +380,7 @@ private slots:
 
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
-                                              *s->launchProfiles));
+                                              *s->launchProfiles, *s->installed));
         ModelInstaller &mi = *s->installer;
 
         // OCR list: only the mmproj model — the verifier (active as the check

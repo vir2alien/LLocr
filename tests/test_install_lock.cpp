@@ -7,6 +7,7 @@
 #include <QtTest>
 
 #include "app/SettingsStore.h"
+#include "runtime/InstalledState.h"
 #include "runtime/RuntimeInstaller.h"
 #include "runtime/RuntimePaths.h"
 #include "testsettings.h"
@@ -87,7 +88,8 @@ private slots:
         QTemporaryDir root;
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
-        RuntimeInstaller installer(settings);
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
 
         // An active build must exist, otherwise cleanup is refused by the
         // no-active-build guard instead of taking the lock at all.
@@ -134,7 +136,8 @@ private slots:
         QTemporaryDir root;
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
-        RuntimeInstaller installer(settings);
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
 
         makeBuild(root.path(), QStringLiteral("llama.cpp-b100-cpu-win-x64"));
         makeBuild(root.path(), QStringLiteral("llama.cpp-b101-cuda-cu12-win-x64"));
@@ -207,7 +210,8 @@ private slots:
         QTemporaryDir root;
         SettingsStore settings;
         pointAtTempDir(settings, root.path());   // installedBuild left empty
-        RuntimeInstaller installer(settings);
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
 
         makeBuild(root.path(), QStringLiteral("llama.cpp-b100-cpu-win-x64"));
         installer.rescanInstalledBuilds();
