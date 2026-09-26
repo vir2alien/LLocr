@@ -258,8 +258,9 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
     m_settings.setLaunchModelPath(e.modelPath);
     if (!e.mmprojPath.isEmpty())
         m_settings.setLaunchMmprojPath(e.mmprojPath);
-    if (!e.parser.isEmpty())
-        m_settings.setParserId(e.parser);
+    // The parser is not touched here: under "Automatic (model default)" the
+    // model adapter owns it (ADR 88), and a catalog-supplied parser would
+    // silently override an explicit choice made in Settings → Output.
     if (e.ctxSize > 0)
         m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
                                                 e.ctxSize);

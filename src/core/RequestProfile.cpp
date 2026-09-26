@@ -15,8 +15,6 @@ namespace llocr {
 
 namespace {
 
-constexpr int kSchemaVersion = 2;
-constexpr const char *kSchemaKey = "schemaVersion";
 constexpr const char *kProfilesKey = "profiles";
 constexpr const char *kIdKey = "id";
 constexpr const char *kParametersKey = "parameters";

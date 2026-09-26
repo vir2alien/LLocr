@@ -15,7 +15,8 @@ class ParserFactory {
 public:
     // Settings → Output value meaning "use the parser the selected OCR model
     // adapter declares" (OcrModel::defaultParserId()). Resolved by
-    // AppController::effectiveParserId(); never reaches create().
+    // AppController::effectiveParserId(); create() rejects it, because a parser
+    // chosen behind the user's back is exactly the mismatch ADR 88 removed.
     static const QString kAutoId;
 
     // "auto" followed by every real parser id, in Settings order.

@@ -965,15 +965,20 @@ private slots:
         }
     }
 
-    // "auto" is offered first in Settings but never reaches create() as a real
-    // parser: an unresolvable id degrades to 'raw', never to a crash.
-    void autoIdIsSelectableAndFallsBack() {
+    // "auto" is offered first in Settings but is not a parser: it is resolved
+    // against the model adapter before create() (ADR 88). Reaching the factory
+    // with it means a caller skipped that resolution, and the factory refuses
+    // instead of silently answering with 'raw'.
+    void autoIdIsSelectableButNeverCreatesAParser() {
         QCOMPARE(ParserFactory::selectableIds().first(), ParserFactory::kAutoId);
         QCOMPARE(ParserFactory::selectableIds().size(),
                  ParserFactory::selectableDisplayNames().size());
-        const auto parser = ParserFactory::create(ParserFactory::kAutoId);
-        QVERIFY(parser);
-        QCOMPARE(parser->id(), QStringLiteral("raw"));
+        QVERIFY(!ParserFactory::create(ParserFactory::kAutoId));
+
+        // An unregistered id still degrades to 'raw' rather than crashing.
+        const auto fallback = ParserFactory::create(QStringLiteral("no-such-parser"));
+        QVERIFY(fallback);
+        QCOMPARE(fallback->id(), QStringLiteral("raw"));
     }
 
     // --- Label map (resources/profiles/labels.json, ADR 88) ------------------
