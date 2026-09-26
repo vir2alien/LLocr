@@ -1,5 +1,8 @@
 #include "models/GeneralPurposeModel.h"
 
+#include "models/ChatExchange.h"
+#include "models/ImageDataUrl.h"
+
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QFutureWatcher>
@@ -35,27 +38,8 @@ QString stripControlTokens(const QString &text)
 
 }  // namespace
 
-QString GeneralPurposeModel::encodeImageDataUrl(const QImage &image, const QString &format, int quality)
-{
-    if (image.isNull())
-        return QString();
-
-    const QString fmt = format.isEmpty() ? QStringLiteral("png") : format.toLower();
-
-    QByteArray raw;
-    QBuffer buffer(&raw);
-    if (!buffer.open(QIODevice::WriteOnly))
-        return QString();
-    if (!image.save(&buffer, fmt.toUpper().toLatin1().constData(), quality))
-        return QString();
-    buffer.close();
-
-    return QStringLiteral("data:image/%1;base64,%2")
-        .arg(fmt, QString::fromLatin1(raw.toBase64()));
-}
-
 QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request,
-                                                 const QString &imageDataUrl)
+                                                 const QByteArray &imageDataUrl)
 {
     // The verifier protocol: the model must answer with exactly one of
     //   OK
@@ -64,7 +48,7 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request,
     // The system message carries the shared contract; the user message lists
     // the type prompt, the block image and the OCR candidate to verify.
 
-    QJsonObject imageUrl{{QStringLiteral("url"), imageDataUrl}};
+    QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")},
                           {QStringLiteral("image_url"), imageUrl}};
     QJsonObject typePromptPart{{QStringLiteral("type"), QStringLiteral("text")},
@@ -165,49 +149,17 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
 QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request,
                                                 const ConnectionConfig &config)
 {
-    auto promise = std::make_shared<QPromise<CheckResult>>();
-    promise->start();
-    QFuture<CheckResult> future = promise->future();
     auto client = std::make_shared<LlamaClient>();
     m_activeClient = client;
 
-    auto *encodeWatcher = new QFutureWatcher<QByteArray>();
-    QObject::connect(encodeWatcher, &QFutureWatcher<QByteArray>::finished, encodeWatcher,
-                     [promise, encodeWatcher, client, config]() {
-                         encodeWatcher->deleteLater();
-                         const QByteArray body = encodeWatcher->future().resultCount() > 0
-                                                     ? encodeWatcher->result()
-                                                     : QByteArray();
-                         if (body.isEmpty()) {
-                             promise->addResult(CheckResult::makeError(
-                                 QCoreApplication::translate("GeneralPurposeModel",
-                                     "Failed to encode the block image")));
-                             promise->finish();
-                             return;
-                         }
-                         auto *watcher = new QFutureWatcher<HttpResponse>();
-                         QObject::connect(watcher, &QFutureWatcher<HttpResponse>::finished, watcher,
-                                          [client, promise, watcher]() {
-                                              const HttpResponse response =
-                                                  watcher->future().resultCount() > 0 ? watcher->result() : HttpResponse{};
-                                              if (response.success)
-                                                  promise->addResult(parseResponse(response.body));
-                                              else
-                                                  promise->addResult(CheckResult::makeError(response.error));
-                                              promise->finish();
-                                              watcher->deleteLater();
-                                          });
-                         watcher->setFuture(client->postJson(LlamaClient::endpointUrl(config.baseUrl), body,
-                                                             config.apiKey, config.timeoutMs));
-                     });
-    encodeWatcher->setFuture(QtConcurrent::run([request]() {
-        const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("png"));
-        if (dataUrl.isEmpty())
-            return QByteArray();
-        return buildRequestBody(request, dataUrl);
-    }));
-
-    return future;
+    return runChatExchange<CheckResult>(
+        [request]() {
+            return buildRequestBody(request, encodeImageDataUrl(request.image));
+        },
+        config, client,
+        [](const QByteArray &body) { return parseResponse(body); },
+        QCoreApplication::translate("GeneralPurposeModel",
+                                    "Failed to encode the block image"));
 }
 
 void GeneralPurposeModel::abort()

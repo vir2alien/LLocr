@@ -33,7 +33,7 @@ public:
     QString id() const override { return QStringLiteral("test-general"); }
     QString displayName() const override { return QStringLiteral("Test general"); }
 
-    QByteArray build(const CheckRequest &request, const QString &imageDataUrl)
+    QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl)
     {
         return buildRequestBody(request, imageDataUrl);
     }
@@ -399,7 +399,7 @@ private slots:
             { QStringLiteral("cache_prompt"), 6, RequestValueKind::Boolean, true, QString() },
         };
 
-        const QByteArray body = model.build(request, QStringLiteral("data:image/png;base64,AAAA"));
+        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
         const QJsonDocument doc = QJsonDocument::fromJson(body);
         QVERIFY(doc.isObject());
 

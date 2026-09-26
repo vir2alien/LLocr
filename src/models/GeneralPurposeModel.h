@@ -31,12 +31,11 @@ public:
     void abort();
 
 protected:
+    // Static for the same reason as OcrModel: check() must complete even after
+    // the adapter is destroyed (ADR 111).
     static QByteArray buildRequestBody(const CheckRequest &request,
-                                       const QString &imageDataUrl);
+                                       const QByteArray &imageDataUrl);
     static CheckResult parseResponse(const QByteArray &responseData);
-
-private:
-    static QString encodeImageDataUrl(const QImage &image, const QString &format, int quality = -1);
 
 private:
     std::shared_ptr<LlamaClient> m_activeClient;

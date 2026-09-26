@@ -37,12 +37,14 @@ public:
     void abort();
 
 protected:
+    // Deliberately static, not virtual: recognize() must complete even after the
+    // adapter is destroyed (shutdown with a request in flight), so nothing in the
+    // reply path may depend on `this`. A new wire shape is added by overriding
+    // recognize() in the subclass, or by introducing a sibling adapter that
+    // reuses runChatExchange (ADR 111).
     static QByteArray buildRequestBody(const OcrRequest &request,
-                                       const QString &imageDataUrl);
+                                       const QByteArray &imageDataUrl);
     static OcrResult parseResponse(const QByteArray &responseData);
-
-private:
-    static QString encodeImageDataUrl(const QImage &image, const QString &format, int quality = -1);
 
 private:
     std::shared_ptr<LlamaClient> m_activeClient;
