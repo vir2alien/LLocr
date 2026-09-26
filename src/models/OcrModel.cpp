@@ -23,17 +23,15 @@ namespace llocr {
 namespace {
 
 // Raw-response debug dump: every model reply is stored verbatim, so a broken
-// parse can be diffed against what the model actually emitted. Enabled by
-// default (LLOCR_RAW_DEBUG=0 turns it off); always off in the test binaries.
-// Files land in <AppDataDir>/raw-debug/ — one file per request.
+// parse can be diffed against what the model actually emitted. Opt-in only —
+// set LLOCR_RAW_DEBUG=1 (any value except 0) before starting the app — because
+// the request dump contains the full base64 page image and the files are never
+// rotated. Files land in <AppDataDir>/raw-debug/ — one file per request.
 bool rawDebugEnabled()
 {
-    static const bool enabled = [] {
-        if (qEnvironmentVariableIsSet("LLOCR_RAW_DEBUG"))
-            return qEnvironmentVariable("LLOCR_RAW_DEBUG") != QLatin1String("0");
-        return !QCoreApplication::applicationName().startsWith(
-            QLatin1String("test"));
-    }();
+    static const bool enabled =
+        qEnvironmentVariableIsSet("LLOCR_RAW_DEBUG")
+        && qEnvironmentVariable("LLOCR_RAW_DEBUG") != QLatin1String("0");
     return enabled;
 }
 
@@ -198,9 +196,11 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
                              return;
                          }
                          auto *watcher = new QFutureWatcher<HttpResponse>();
+                         // Dumped before the post, not from the response handler,
+                         // so an aborted request is recorded too.
+                         dumpRawRequest(body);
                          QObject::connect(watcher, &QFutureWatcher<HttpResponse>::finished, watcher,
                                           [client, promise, watcher, body]() {
-                                              dumpRawRequest(body);
                                               const HttpResponse response =
                                                   watcher->future().resultCount() > 0 ? watcher->result() : HttpResponse{};
                                               if (response.success)

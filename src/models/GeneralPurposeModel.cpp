@@ -204,7 +204,6 @@ QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request,
         const QString dataUrl = encodeImageDataUrl(request.image, QStringLiteral("png"));
         if (dataUrl.isEmpty())
             return QByteArray();
-        qDebug() << buildRequestBody(request, "IMG_DATA");
         return buildRequestBody(request, dataUrl);
     }));
 

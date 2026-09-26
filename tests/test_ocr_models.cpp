@@ -4,6 +4,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QDir>
+#include <QStandardPaths>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QNetworkReply>
@@ -118,6 +120,38 @@ private slots:
         const auto lfm = OcrModelFactory::create(QStringLiteral("lfm25-vl-3b"));
         QVERIFY(lfm != nullptr);
         QCOMPARE(lfm->id(), QStringLiteral("lfm25-vl-3b"));
+    }
+
+    // The raw-response dump (which includes the full base64 page image) is
+    // opt-in via LLOCR_RAW_DEBUG — a normal recognition run must not write it.
+    void rawDebugDumpIsOptIn() {
+        QStandardPaths::setTestModeEnabled(true);
+        const QString dumpDir = QDir(QStandardPaths::writableLocation(
+                                        QStandardPaths::AppLocalDataLocation))
+                                    .filePath(QStringLiteral("raw-debug"));
+        QDir(dumpDir).removeRecursively();
+        QVERIFY(!QDir(dumpDir).exists());
+
+        RecordingServer server;
+        QVERIFY(server.start());
+        ConnectionConfig config;
+        config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
+        config.timeoutMs = 10000;
+
+        OcrRequest request;
+        QImage image(8, 8, QImage::Format_RGB32);
+        image.fill(Qt::white);
+        request.image = image;
+        request.prompt = QStringLiteral("document parsing.");
+
+        auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        QVERIFY(model != nullptr);
+        QFuture<OcrResult> future = model->recognize(request, config);
+        QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
+        QCOMPARE(future.result().text, QStringLiteral("ok"));
+
+        QVERIFY2(!QDir(dumpDir).exists(),
+                 "the raw-debug dump must not be written unless LLOCR_RAW_DEBUG is set");
     }
 
     void unknownIdFallsBackToDefault() {
