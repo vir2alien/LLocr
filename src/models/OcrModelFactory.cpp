@@ -46,7 +46,10 @@ QString OcrModelFactory::idForDisplayName(const QString &displayName)
         if (model->displayName() == displayName)
             return id;
     }
-    return defaultId();
+    // No silent substitution: an unknown display name yields an empty id, so a
+    // caller cannot end up "selecting" the default model by accident (ADR 110).
+    // The UI works on ids (OcrModelListModel) and no longer needs this at all.
+    return QString();
 }
 
 } // namespace llocr

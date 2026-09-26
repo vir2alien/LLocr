@@ -18,9 +18,9 @@ Item {
                                               : RequestProfilesOcr
 
     function loadValues() {
-        if (!checkRole) {
-            var midx = modelBox.model.indexOf(Controller.modelIdToName(Settings.modelRecipeId))
-            modelBox.currentIndex = midx >= 0 ? midx : 0
+        if (!root.checkRole) {
+            const row = Controller.ocrModels.rowOfId(Settings.modelRecipeId)
+            modelBox.currentIndex = row >= 0 ? row : 0
         }
         root.profiles.reloadDraft()
     }
@@ -58,11 +58,13 @@ Item {
                 visible: !root.checkRole
                 Layout.preferredWidth: root.width * 0.4
                 implicitHeight: Theme.controlHeight
-                model: Controller.modelNames
-                onActivated: {
-                    root.profiles.selectDraftProfile(
-                                Controller.modelNameToId(modelBox.currentText))
-                }
+                // id + display name straight from the adapter list (ADR 110):
+                // no round-trip through the display name, so the row can never
+                // show a different model than the one recognition uses.
+                model: Controller.ocrModels
+                textRole: "displayName"
+                valueRole: "modelId"
+                onActivated: root.profiles.selectDraftProfile(modelBox.currentValue)
             }
 
             LLOButton {

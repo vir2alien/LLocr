@@ -13,6 +13,10 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs) },
     { kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName)) },
     { kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId)) },
+    // Same default as the model id it used to be: the profile follows the model
+    // until somebody chooses otherwise (ADR 110).
+    { kRequestProfileId, "requestProfileId",
+      QVariant(QString::fromUtf8(kDefaultModelRecipeId)) },
     { kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId)) },
     { kSplitPages, "splitPages", QVariant(kDefaultSplitPages) },
     { kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers) },
@@ -88,6 +92,16 @@ void SettingsStore::applyStartupMigration()
         const QString saved = m_settings.value(kLastExternalBaseUrl).toString();
         if (!saved.isEmpty())
             m_settings.setValue(kBaseUrl, saved);
+    }
+
+    // The OCR request profile used to live in model/recipeId, which also names
+    // the model adapter. Adopt it into its own key once, so the two stop moving
+    // together (ADR 110). Read through the getter: the raw value is absent on a
+    // profile that never chose a model, and the getter supplies the default.
+    if (!m_settings.contains(kRequestProfileId)) {
+        const QString legacy = modelRecipeId();
+        if (!legacy.isEmpty())
+            m_settings.setValue(kRequestProfileId, legacy);
     }
 }
 
@@ -203,6 +217,20 @@ void SettingsStore::setModelName(const QString &modelName)
 QString SettingsStore::modelRecipeId() const
 {
     return m_settings.value(kModelRecipeId, QString::fromUtf8(kDefaultModelRecipeId)).toString();
+}
+
+QString SettingsStore::requestProfileId() const
+{
+    return m_settings.value(kRequestProfileId,
+                            QString::fromUtf8(kDefaultModelRecipeId)).toString();
+}
+
+void SettingsStore::setRequestProfileId(const QString &id)
+{
+    if (requestProfileId() == id)
+        return;
+    m_settings.setValue(kRequestProfileId, id);
+    emit requestProfileIdChanged();
 }
 
 void SettingsStore::setModelRecipeId(const QString &recipeId)

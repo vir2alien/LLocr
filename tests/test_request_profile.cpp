@@ -415,6 +415,9 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        // QSettings is process-wide here, so a previous test's choice would leak.
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
         RequestProfileStore store(settings, defaultsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
@@ -427,14 +430,18 @@ private slots:
 
         // Draft edits do not touch the persisted profile.
         QVERIFY(store.setDraftValue(0, "0.1"));
-        QCOMPARE(findParameter(store.activeProfile(), "alpha")->value.toDouble(),
-                 0.8);
+        const RequestProfile draftView = store.activeProfile();
+        const RequestParameter *alpha = findParameter(draftView, "alpha");
+        QVERIFY(alpha);
+        QCOMPARE(alpha->value.toDouble(), 0.8);
 
         // Save commits the draft and creates the user profile.
         store.saveDraft();
         QVERIFY(store.hasUserProfile());
-        QCOMPARE(findParameter(store.activeProfile(), "alpha")->value.toDouble(),
-                 0.1);
+        const RequestProfile savedView = store.activeProfile();
+        const RequestParameter *savedAlpha = findParameter(savedView, "alpha");
+        QVERIFY(savedAlpha);
+        QCOMPARE(savedAlpha->value.toDouble(), 0.1);
 
         // The user file is a profiles array keyed by the profile id.
         QFile userFile(QDir(dir.path()).filePath(
@@ -450,17 +457,23 @@ private slots:
 
         // A fresh store reads the saved values back.
         RequestProfileStore store2(settings, defaultsPath);
-        QCOMPARE(findParameter(store2.activeProfile(), "alpha")->value.toDouble(),
-                 0.1);
+        const RequestProfile reread = store2.activeProfile();
+        const RequestParameter *rereadAlpha = findParameter(reread, "alpha");
+        QVERIFY(rereadAlpha);
+        QCOMPARE(rereadAlpha->value.toDouble(), 0.1);
 
         // Saving defaults removes the user profile again.
         store2.loadDefaultDraft();
-        QCOMPARE(findParameter(store2.activeProfile(), "alpha")->value.toDouble(),
-                 0.1);  // active is untouched by draft edits
+        const RequestProfile afterLoadView = store2.activeProfile();
+        const RequestParameter *afterLoad = findParameter(afterLoadView, "alpha");
+        QVERIFY(afterLoad);
+        QCOMPARE(afterLoad->value.toDouble(), 0.1);  // active is untouched by draft edits
         store2.saveDraft();
         QVERIFY(!store2.hasUserProfile());
-        QCOMPARE(findParameter(store2.activeProfile(), "alpha")->value.toDouble(),
-                 0.8);
+        const RequestProfile defaultsView = store2.activeProfile();
+        const RequestParameter *defaultsAlpha = findParameter(defaultsView, "alpha");
+        QVERIFY(defaultsAlpha);
+        QCOMPARE(defaultsAlpha->value.toDouble(), 0.8);
         QVERIFY(store2.activeProfile() == parseBuiltInDefaults());
     }
 
@@ -473,6 +486,9 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        // QSettings is process-wide here, so a previous test's choice would leak.
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
         QVERIFY(QDir().mkpath(QDir(dir.path()).filePath("profiles")));
         QFile userFile(QDir(dir.path()).filePath("profiles/request.json"));
@@ -488,10 +504,13 @@ private slots:
         RequestProfileStore store(settings, defaultsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
-        QCOMPARE(findParameter(store.activeProfile(), "alpha")->value.toDouble(),
-                 0.1);
-        QCOMPARE(findParameter(store.activeProfile(), "beta")->value.toDouble(),
-                 35.0);
+        const RequestProfile savedView = store.activeProfile();
+        const RequestParameter *savedAlpha = findParameter(savedView, "alpha");
+        QVERIFY(savedAlpha);
+        QCOMPARE(savedAlpha->value.toDouble(), 0.1);
+        const RequestParameter *savedBeta = findParameter(savedView, "beta");
+        QVERIFY(savedBeta);
+        QCOMPARE(savedBeta->value.toDouble(), 35.0);
 
         // Saving the defaults for the edited profile removes the migrated copy.
         store.loadDefaultDraft();
@@ -499,7 +518,10 @@ private slots:
         QVERIFY(!store.hasUserProfile());
     }
 
-    void activeProfileFollowsModelRecipe()
+    // The OCR role's sampling profile has an id of its own (ADR 110): it used to
+    // be the model's id, so switching the model silently replaced the profile
+    // and a combo could show a different model than recognition used.
+    void activeProfileIsIndependentOfTheModel()
     {
         QTemporaryDir dir;
         const QString defaultsPath =
@@ -508,21 +530,35 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        // QSettings is process-wide here, so a previous test's choice would leak.
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("unlimited-ocr"));
+        // The startup migration adopted the legacy model id as the profile id.
+        QCOMPARE(settings.requestProfileId(), QStringLiteral("unlimited-ocr"));
 
         RequestProfileStore store(settings, defaultsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 2);
 
+        // A different model does not change the sampling profile.
         settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
+        QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(store.activeProfile().parameters.size(), 2);
+
+        // Choosing a profile does not change the model.
+        settings.setRequestProfileId(QStringLiteral("deepseek-ocr"));
         QCOMPARE(store.activeProfileId(), QStringLiteral("deepseek-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 1);
-        QCOMPARE(findParameter(store.activeProfile(), "gamma")->value.toDouble(),
-                 1.0);
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("deepseek-ocr"));
+        const RequestProfile deepseek = store.activeProfile();
+        const RequestParameter *gamma = findParameter(deepseek, "gamma");
+        QVERIFY(gamma);
+        QCOMPARE(gamma->value.toDouble(), 1.0);
 
-        // Unknown model id: the first built-in profile wins.
-        settings.setModelRecipeId(QStringLiteral("unknown-model"));
+        // An unknown profile id falls back to the first built-in.
+        settings.setRequestProfileId(QStringLiteral("unknown-profile"));
         QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
     }
 
@@ -535,6 +571,9 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        // QSettings is process-wide here, so a previous test's choice would leak.
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
         RequestProfileStore store(settings, defaultsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
@@ -554,17 +593,26 @@ private slots:
         // Edits are committed for the edited profile only.
         QVERIFY(store.setDraftValue(0, "2"));
         store.saveDraft();
-        QVERIFY(!findParameter(store.activeProfile(), "gamma"));
+        const RequestProfile afterSave = store.activeProfile();
+        QVERIFY(!findParameter(afterSave, "gamma"));
         QCOMPARE(store.draftModel()->rowCount(), 1);
 
+        // Switching the model no longer rewrites the profile (ADR 110) — the
+        // profile id is its own setting.
         settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
-        QCOMPARE(findParameter(store.activeProfile(), "gamma")->value.toDouble(),
-                 2.0);
+        QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
+        settings.setRequestProfileId(QStringLiteral("deepseek-ocr"));
+        const RequestProfile editedProfile = store.activeProfile();
+        const RequestParameter *edited = findParameter(editedProfile, "gamma");
+        QVERIFY(edited);
+        QCOMPARE(edited->value.toDouble(), 2.0);
 
         // Reset drops only the edited profile's user copy.
         store.resetToDefaults();
-        QCOMPARE(findParameter(store.activeProfile(), "gamma")->value.toDouble(),
-                 1.0);
+        const RequestProfile resetProfile = store.activeProfile();
+        const RequestParameter *reset = findParameter(resetProfile, "gamma");
+        QVERIFY(reset);
+        QCOMPARE(reset->value.toDouble(), 1.0);
         QVERIFY(!store.hasUserProfile());
     }
 
@@ -577,6 +625,9 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        // QSettings is process-wide here, so a previous test's choice would leak.
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
         const QString userPath = QDir(dir.path())
                                      .filePath(QStringLiteral("profiles/request.json"));

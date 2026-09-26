@@ -75,14 +75,18 @@ ApplicationWindow {
                 onClicked: {
                     launchTab.saveValues()
                     requestTab.saveValues()
-                    // RequestTab already resolves the role's profile store;
-                    // commit the draft id as the active one for the role.
+                    // RequestTab resolves the role's profile store; commit the
+                    // draft as the active profile. The OCR role now keeps its
+                    // profile id apart from the model id (ADR 110), the check
+                    // role already did.
                     const draftId = requestTab.profiles.draftProfileId
                     if (draftId.length > 0) {
                         if (window.isVerifyModelRole)
                             Settings.checkRequestProfileId = draftId
-                        else
+                        else {
                             Settings.modelRecipeId = draftId
+                            Settings.requestProfileId = draftId
+                        }
                     }
                     Settings.forceSave()
                     window.close()

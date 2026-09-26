@@ -132,9 +132,14 @@ const RequestProfile *RequestProfileStore::findBuiltIn(const QString &id) const
 
 QString RequestProfileStore::activeProfileId() const
 {
+    // The check role always had its own key; the OCR role now does too, so the
+    // sampling profile is chosen independently of the model adapter (ADR 110).
+    // An empty value keeps the historical behaviour: follow the model.
     const QString id = m_role == Role::Check
                            ? m_settings.checkRequestProfileId()
-                           : m_settings.modelRecipeId();
+                           : m_settings.requestProfileId().isEmpty()
+                                 ? m_settings.modelRecipeId()
+                                 : m_settings.requestProfileId();
     if (findBuiltIn(id) || m_userProfiles.contains(id))
         return id;
     if (!m_profiles.isEmpty())

@@ -75,6 +75,8 @@ qt_add_library(llocr_models STATIC
     models/Lfm25VlModel.cpp
     models/OcrModelFactory.h
     models/OcrModelFactory.cpp
+    models/OcrModelListModel.h
+    models/OcrModelListModel.cpp
     models/GeneralPurposeModel.h
     models/GeneralPurposeModel.cpp
     models/QwenGeneralModel.h

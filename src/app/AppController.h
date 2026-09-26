@@ -7,6 +7,7 @@
 #include <QVariant>
 #include <memory>
 
+#include "models/OcrModelListModel.h"
 #include "app/BoxListModel.h"
 #include "app/DocumentModel.h"
 #include "app/Exporter.h"
@@ -75,7 +76,9 @@ class AppController : public QObject
     Q_PROPERTY(QObject* pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject* boxModel READ boxModel CONSTANT)
 
-    Q_PROPERTY(QStringList modelNames READ modelNames CONSTANT)
+    // The OCR model adapters as id + display name (ADR 110): the UI picks by id,
+    // so an unknown name can no longer be silently replaced by the default.
+    Q_PROPERTY(QObject* ocrModels READ ocrModels CONSTANT)
 
     Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY configChanged)
 
@@ -108,9 +111,7 @@ public:
     bool canRecognize() const;
     QStringList parserNames() const;
     QStringList parserLabels() const;
-    QStringList modelNames() const;
-    Q_INVOKABLE QString modelIdToName(const QString &modelId) const;
-    Q_INVOKABLE QString modelNameToId(const QString &modelName) const;
+    QObject *ocrModels() const;
 
     QStringList exportNameFilters() const;
 
@@ -213,6 +214,7 @@ private:
 private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
+    OcrModelListModel m_ocrModels;
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;

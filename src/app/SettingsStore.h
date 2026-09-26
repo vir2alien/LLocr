@@ -19,6 +19,10 @@ class SettingsStore : public QObject
     Q_PROPERTY(int connectionTimeoutMs READ connectionTimeoutMs WRITE setConnectionTimeoutMs NOTIFY connectionTimeoutMsChanged)
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
     Q_PROPERTY(QString modelRecipeId READ modelRecipeId WRITE setModelRecipeId NOTIFY modelRecipeIdChanged)
+    // The sampling profile of the OCR role. Separate from modelRecipeId on
+    // purpose: the model decides the parser, the profile decides the sampling
+    // (ADR 110). Empty means "follow the model", as it always did.
+    Q_PROPERTY(QString requestProfileId READ requestProfileId WRITE setRequestProfileId NOTIFY requestProfileIdChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(bool splitPages READ splitPages WRITE setSplitPages NOTIFY splitPagesChanged)
     Q_PROPERTY(bool keepPageNumbers READ keepPageNumbers WRITE setKeepPageNumbers NOTIFY keepPageNumbersChanged)
@@ -104,6 +108,9 @@ public:
 
     QString modelRecipeId() const;
     void setModelRecipeId(const QString &recipeId);
+
+    QString requestProfileId() const;
+    void setRequestProfileId(const QString &id);
 
     QString parserId() const;
     void setParserId(const QString &parserName);
@@ -211,6 +218,7 @@ signals:
     void connectionTimeoutMsChanged();
     void modelNameChanged();
     void modelRecipeIdChanged();
+    void requestProfileIdChanged();
     void parserIdChanged();
     void splitPagesChanged();
     void keepPageNumbersChanged();
@@ -294,6 +302,7 @@ private:
 
     static constexpr const char *kModelName = "model/name";
     static constexpr const char *kModelRecipeId = "model/recipeId";
+    static constexpr const char *kRequestProfileId = "model/requestProfileId";
     static constexpr const char *kParserId = "parser/id";
 
     // Output / export

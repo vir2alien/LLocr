@@ -158,23 +158,9 @@ QString AppController::pageText(int index) const
     return m_document.isValidIndex(index) ? m_document.page(index).result.text : QString();
 }
 
-QStringList AppController::modelNames() const
+QObject *AppController::ocrModels() const
 {
-    QStringList names;
-    const QStringList ids = OcrModelFactory::registeredIds();
-    for (const QString &id : ids)
-        names.append(OcrModelFactory::displayNameForId(id));
-    return names;
-}
-
-QString AppController::modelIdToName(const QString &modelId) const
-{
-    return OcrModelFactory::displayNameForId(modelId);
-}
-
-QString AppController::modelNameToId(const QString &modelName) const
-{
-    return OcrModelFactory::idForDisplayName(modelName);
+    return const_cast<OcrModelListModel *>(&m_ocrModels);
 }
 
 bool AppController::hasImage() const
