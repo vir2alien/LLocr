@@ -28,6 +28,19 @@ struct DocumentPage {
     QString parseNote;   ///< Non-fatal parser diagnostic for the last recognition.
 };
 
+// The in-memory document: the page list, the per-page images and the OCR
+// results. GUI-thread resident (ADR 104).
+//
+// Threading contract: the *page list and the results* may only be touched from
+// the GUI thread. Two places cross that line and both are deliberate:
+//   * the export pipeline resolves block crops from a worker thread, holding
+//     AppController's document lock for the duration, so a render triggered by
+//     the GUI thread cannot pull a half-written image cache out from under it;
+//   * DjVuDocument/QPdfDocument are read (never written) while a page is
+//     rendered, which currently happens on the calling thread.
+// The lock is therefore only as good as its call sites — keep every access to
+// m_pages/m_pdfs/m_djvus inside AppController (or another owner) rather than
+// handing the model out.
 class DocumentModel
 {
 public:
