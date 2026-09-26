@@ -5,6 +5,9 @@
 #include <QGuiApplication>
 #include <QHostAddress>
 #include <QMetaProperty>
+#include <QPageSize>
+#include <QPainter>
+#include <QPdfWriter>
 #include <QRegularExpression>
 #include <QPointer>
 #include <QSemaphore>
@@ -51,6 +54,54 @@ QSize nativeSize(int page)
     if (page == 2)
         return {63, 45};
     return {81, 57};
+}
+
+// A generated three-page PDF replaces the DjVu fixture wherever the point is
+// the import pipeline, not the DjVu decoder: three pages, four colour
+// quadrants each, one page size per page. The DjVu cases stay as the
+// format-specific coverage.
+constexpr double kPdfDpi = 300.0;  // must match DocumentModel's render DPI
+
+QSize pdfPixelSize(const QSize &points)
+{
+    return {qRound(points.width() / 72.0 * kPdfDpi),
+            qRound(points.height() / 72.0 * kPdfDpi)};
+}
+
+bool writeTestPdf(const QString &path)
+{
+    // The page layout must be set *before* the page it applies to is started:
+    // QPdfWriter ignores a layout change once painting of that page began.
+    const auto layoutFor = [](int page) {
+        // Zero margins so the painter's origin is the page corner and the
+        // rendered quadrants land where they are painted.
+        return QPageLayout(QPageSize(QSizeF(nativeSize(page)), QPageSize::Point),
+                           QPageLayout::Portrait, QMarginsF(0, 0, 0, 0), QPageLayout::Point);
+    };
+
+    QPdfWriter writer(path);
+    writer.setResolution(72);  // device units == PDF points
+    writer.setPageLayout(layoutFor(0));
+    QPainter painter;
+    if (!painter.begin(&writer))
+        return false;
+    for (int page = 0; page < 3; ++page) {
+        if (page > 0) {
+            writer.setPageLayout(layoutFor(page));
+            writer.newPage();
+        }
+        const QSizeF points(nativeSize(page));
+        painter.fillRect(QRectF(0, 0, points.width(), points.height()), Qt::white);
+        const QList<QColor> pageColors = colors(page);
+        for (int i = 0; i < 4; ++i) {
+            painter.fillRect(QRectF((i % 2) * points.width() / 2,
+                                    (i / 2) * points.height() / 2,
+                                    points.width() / 2, points.height() / 2),
+                             pageColors.at(i));
+        }
+    }
+    painter.end();
+    return true;
 }
 
 void compareQuadrants(const QImage &image, const QList<QColor> &expected)
@@ -232,8 +283,10 @@ private:
     std::unique_ptr<RuntimeController> m_runtime;
     std::unique_ptr<AppController> m_controller;
     QString m_raster;
-    QString m_malformed;
+    QString m_pdf;
+    QString m_broken;
     QString m_multipage;
+    QString m_malformed;
 
 private slots:
     void init()
@@ -258,17 +311,30 @@ private slots:
                                                        *m_checkRequestProfiles,
                                                        *m_verification);
 
-        m_multipage = fixture("multipage.djvu");
-        QVERIFY(!m_multipage.isEmpty());
+        // Fixtures that exist in every build: a raster, a generated multi-page
+        // PDF and an unreadable file. The import pipeline coverage must not
+        // depend on an optional codec being installed (ADR 99).
         m_raster = m_dir.filePath(QStringLiteral("raster.png"));
         QImage raster(39, 27, QImage::Format_RGB32);
         raster.fill(Qt::yellow);
         QVERIFY(raster.save(m_raster));
+        m_pdf = m_dir.filePath(QStringLiteral("multipage.pdf"));
+        QVERIFY2(writeTestPdf(m_pdf), "cannot write the test PDF fixture");
+        m_broken = m_dir.filePath(QStringLiteral("broken.png"));
+        QFile broken(m_broken);
+        QVERIFY(broken.open(QIODevice::WriteOnly));
+        const QByteArray brokenBytes("Not an image\n");
+        QCOMPARE(broken.write(brokenBytes), brokenBytes.size());
+
+#ifdef LLOCR_HAVE_DJVU
+        m_multipage = fixture("multipage.djvu");
+        QVERIFY(!m_multipage.isEmpty());
         m_malformed = m_dir.filePath(QStringLiteral("malformed.djvu"));
         QFile malformed(m_malformed);
         QVERIFY(malformed.open(QIODevice::WriteOnly));
         const QByteArray bytes("Not a DjVu document\n");
         QCOMPARE(malformed.write(bytes), bytes.size());
+#endif
     }
 
     void cleanup()
@@ -331,6 +397,77 @@ private slots:
                  QStringLiteral("Recognition finished. Skipped 3 unreadable page(s)."));
     }
 
+    // Mixed multi-file import on the *synchronous* path: images and PDFs are
+    // appended on the GUI thread (only DjVu is decoded on a worker,
+    // AppController::importNextFile), so this case needs no fixture codec and
+    // runs in every build.
+    void mixedImportCommitsFilesInOrder()
+    {
+        auto &controller = *m_controller;
+        auto *model = qobject_cast<PageListModel *>(controller.pageModel());
+        QVERIFY(model);
+        QAbstractItemModelTester modelTester(model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        ImportSignals observations(controller);
+        QSignalSpy insertedSpy(model, &QAbstractItemModel::rowsInserted);
+        QSignalSpy busySpy(&controller, &AppController::busyChanged);
+
+        // raster (1 page), PDF (3), unreadable file, PDF (3) again
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf),
+                              QUrl::fromLocalFile(m_broken), QUrl::fromLocalFile(m_pdf)});
+        QVERIFY(controller.importing());
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        QCOMPARE(observations.importingStates, QList<bool>({true, false}));
+        QCOMPARE(observations.committedCounts, QList<int>({1, 4, 7}));
+        QVERIFY(!observations.wrongThread.load());
+        QCOMPARE(busySpy.count(), 0);
+        QCOMPARE(insertedSpy.count(), 3);
+        for (int i = 0; i < insertedSpy.count(); ++i) {
+            QCOMPARE(insertedSpy.at(i).at(1).toInt(), i == 0 ? 0 : (i == 1 ? 1 : 4));
+            QCOMPARE(insertedSpy.at(i).at(2).toInt(), i == 0 ? 0 : (i == 1 ? 3 : 6));
+        }
+        QCOMPARE(controller.pageCount(), 7);
+        QCOMPARE(model->rowCount(), 7);
+        QCOMPARE(controller.currentPage(), 0);
+        QVERIFY(controller.hasImage());
+        QVERIFY(!controller.hasResult());
+        QVERIFY(controller.canRecognize());
+        QCOMPARE(controller.statusMessage(),
+                 QStringLiteral("Added 3 file(s), 7 page(s); 1 file(s) skipped."));
+        for (int row = 0; row < 7; ++row) {
+            const QModelIndex index = model->index(row, 0);
+            QCOMPARE(model->data(index, PageListModel::PageIndexRole).toInt(), row);
+            QCOMPARE(model->data(index, PageListModel::CurrentRole).toBool(), row == 0);
+            QVERIFY(!model->data(index, PageListModel::RecognizedRole).toBool());
+            QVERIFY(!model->data(index, PageListModel::EditedRole).toBool());
+        }
+        // Revisit the pages after the full-image cache evicted some of them.
+        for (int row : {0, 1, 2, 3, 4, 5, 6, 1, 5, 0}) {
+            QString error;
+            const QImage image = controller.pageImage(row, &error);
+            QVERIFY2(!image.isNull(), qPrintable(error));
+            QVERIFY(error.isEmpty());
+            const QList<QColor> expected =
+                row == 0 ? QList<QColor>(4, Qt::yellow) : colors((row - 1) % 3);
+            QCOMPARE(image.size(),
+                     row == 0 ? QSize(39, 27) : pdfPixelSize(nativeSize((row - 1) % 3)));
+            compareQuadrants(image, expected);
+            compareQuadrants(controller.pageThumbnail(row), expected);
+        }
+        controller.setCurrentPage(5);
+        QCOMPARE(controller.currentPage(), 5);
+        compareQuadrants(controller.currentImage(), colors(1));
+
+        const QString output = m_dir.filePath(QStringLiteral("unrecognized.txt"));
+        QVERIFY(!controller.exportPages(QUrl::fromLocalFile(output), 0));
+        QVERIFY(!controller.exporting());
+        QVERIFY(!QFile::exists(output));
+    }
+
+#ifdef LLOCR_HAVE_DJVU
+    // The following cases exercise the *asynchronous* import path, which today
+    // only DjVu takes (a worker decodes and prepares the document). They need
+    // the optional codec, so they are compiled in only with it.
     void mixedQueuePreservesOrderAndGuiSignals()
     {
         auto &controller = *m_controller;
@@ -408,6 +545,10 @@ private slots:
         QVERIFY(!QFile::exists(output));
     }
 
+    // DjVu-specific: a page the decoder cannot read becomes a blank replacement
+    // and the import reports per-page warnings. Requires the optional codec, so
+    // it is the one case that only exists in a DjVu-enabled build.
+#ifdef LLOCR_HAVE_DJVU
     void damagedPagesImportWithWarningsAndKeepQueueOrder()
     {
         auto &controller = *m_controller;
@@ -505,6 +646,7 @@ private slots:
         QCOMPARE(controller.statusMessage(), QStringLiteral("Added 1 file(s), 3 page(s)."));
         QVERIFY(controller.currentPageWarning().isEmpty());
     }
+#endif // LLOCR_HAVE_DJVU
 
     void importingGuardsMutatingActions()
     {
@@ -553,6 +695,7 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QCOMPARE(controller.pageCount(), 5);
     }
+#endif // LLOCR_HAVE_DJVU (asynchronous import path)
 
     // Regression: the document is the source of truth for blocks. Deleting a
     // block through AppController must mutate the page (so the rebuilt text and
@@ -611,16 +754,16 @@ private slots:
     void failedImportsClearStateAndAllowRetry_data()
     {
         QTest::addColumn<QString>("kind");
-        QTest::newRow("malformed") << QStringLiteral("malformed");
+        QTest::newRow("unreadable") << QStringLiteral("unreadable");
         QTest::newRow("missing") << QStringLiteral("missing");
-
     }
 
     void failedImportsClearStateAndAllowRetry()
     {
         QFETCH(QString, kind);
-        const QString path = kind == QStringLiteral("malformed") ? m_malformed
-            : m_dir.filePath(QStringLiteral("missing.djvu"));
+        const QString path = kind == QStringLiteral("unreadable")
+            ? m_broken
+            : m_dir.filePath(QStringLiteral("missing.pdf"));
         QVERIFY(!path.isEmpty());
         auto &controller = *m_controller;
         ImportSignals observations(controller);
@@ -637,7 +780,7 @@ private slots:
         QVERIFY(!controller.busy());
         QVERIFY2(controller.statusMessage().contains(path), qPrintable(controller.statusMessage()));
 
-        controller.openFiles({QUrl::fromLocalFile(m_multipage)});
+        controller.openFiles({QUrl::fromLocalFile(m_pdf)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QCOMPARE(controller.pageCount(), 3);
         QCOMPARE(observations.importingStates, QList<bool>({true, false, true, false}));
@@ -662,6 +805,7 @@ private slots:
             compareQuadrants(controller.pageImage(row), colors(row));
     }
 
+#ifdef LLOCR_HAVE_DJVU
     void destructionWithOutstandingImport_data()
     {
         QTest::addColumn<bool>("holdWorker");
@@ -702,6 +846,7 @@ private slots:
         QCOMPARE(m_controller->pageCount(), 3);
         compareQuadrants(m_controller->pageImage(1), colors(1));
     }
+#endif // LLOCR_HAVE_DJVU (asynchronous import path)
 };
 
 int main(int argc, char *argv[])
