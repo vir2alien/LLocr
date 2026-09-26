@@ -5,16 +5,37 @@
 | ---------------- | ------------------------------------------- | ------ |
 | Build system     | CMake                                       | ✅ used |
 | Version control  | Git + GitHub/GitLab                         | ✅ used |
-| CI/CD            | GitHub Actions (builds for Win/macOS/Linux) | ⬜ todo |
+| CI/CD            | GitHub Actions (`.github/workflows/ci.yml`) — **pending the Qt 6.10.3 artifact**; the same sequence runs locally via `scripts/check.sh` | 🟡 |
 | C++ dependencies | vcpkg — **Windows only**, provides ZLIB (`x64-windows`); not used on the macOS build | 🟡 |
 | Formatting       | clang-format                                          | ✅ used |
 | Tests            | Qt Test (unit tests in `tests/`)                      | ✅ done |
 
-> **Build note:** the `dev` preset targets vcpkg + Ninja, but that is not the
-> setup in use. The active `build/` is configured with **Unix Makefiles**
-> against an **external Qt 6.10.3** (`CMAKE_PREFIX_PATH=~/Qt/6.10.3/macos`);
-> `VCPKG_ROOT` is unset and vcpkg does not participate in the build. Do not try
-> to re-configure from the preset — reuse the existing `build/`.
+> **Build note:** reuse the existing `build/` (Unix Makefiles,
+> `CMAKE_PREFIX_PATH=~/Qt/6.10.3/macos`); `VCPKG_ROOT` is unset and vcpkg does
+> not participate in the macOS build. `scripts/check.sh` wraps the whole
+> verification (configure → build → `ctest` → clang-format → `qmllint`) and is
+> what CI runs. The Qt **6.10.3** the project builds against is a custom
+> build, not an official installer build — the CI workflow therefore still has
+> its Qt provisioning step marked `TODO(provision-qt)` and must not be switched
+> to `push`/`pull_request` triggers until that artifact is wired in.
+>
+> **QML is a real module** (`qt_add_qml_module` in `src/CMakeLists.txt`,
+> ADR 101): the file list is globbed with `CONFIGURE_DEPENDS` (no more 49-line
+> manual list), the files are compiled by `qmlcachegen` and addressed as
+> `qrc:/qt/qml/LLocr/…`. The two QML singletons (`Theme`, `BlockNames`) need
+> `QT_QML_SINGLETON_TYPE` set in CMake *and* `pragma Singleton` in the file —
+> without the property the generated `qmldir` lists them as ordinary component
+> types and every `Theme.accent` reads `undefined` at runtime. `BlockNames` lives
+> in the module root rather than in `Common/` because `qmllint` resolves a
+> singleton through the nearest `qmldir` and the generated `Common/qmldir` does
+> not declare it.
+>
+> **The C++ singletons are still registered by hand** in `main.cpp`
+> (`qmlRegisterSingletonInstance`): making them module types needs `create()`
+> factories (and the objects outlive the engine), which arrives with the
+> layering work in stage 4 of `docs/architecture-plan/README.md`. Consequently
+> `qmllint` cannot see them, and `.qmllint.ini` documents which warning
+> categories are unreliable because of it (`UnusedImports`).
 >
 > **On Windows** vcpkg **does** participate: the Qt Creator MSVC2022 kit sets
 > the vcpkg toolchain (`C:/vcpkg`, triplet `x64-windows`), which provides

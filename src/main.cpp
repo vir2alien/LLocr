@@ -68,10 +68,9 @@ void connectShutdownHandlers(QGuiApplication& app,
 void setupQmlEngine(QQmlApplicationEngine& engine,
                     llocr::AppController& appController,
                     llocr::UiController& uiController) {
-    qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/qml/Theme.qml")),
-                             "LLocr", 1, 0, "Theme");
-    qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/qml/Common/BlockNames.qml")),
-                             "LLocr", 1, 0, "BlockNames");
+    // The LLocr QML module is built by qt_add_qml_module (src/CMakeLists.txt);
+    // its two QML singletons live inside the module, so only the C++ services
+    // are registered here.
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Controller", &appController);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "UiController", &uiController);
 
@@ -182,7 +181,7 @@ int main(int argc, char* argv[]) {
         &engine, &QQmlApplicationEngine::objectCreationFailed,
         &app, []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
 
-    engine.load(QUrl(QStringLiteral("qrc:/qml/Main.qml")));
+    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/LLocr/Main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;
 

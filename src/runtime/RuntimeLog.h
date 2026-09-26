@@ -14,8 +14,8 @@ class SettingsStore;
 class RuntimeLog : public QObject
 {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
+    // See UiController.h: registered by hand in main.cpp until the module
+    // singletons get their create() factories (stage 4).
 
     Q_PROPERTY(QString serverLog READ serverLog NOTIFY serverLogChanged)
 

@@ -170,59 +170,49 @@ else()
     target_sources(llocr PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
 endif()
 
-qt_add_resources(llocr "app_resources"
-    PREFIX "/"
-    BASE "${CMAKE_SOURCE_DIR}/resources"
-    FILES
-        "${CMAKE_SOURCE_DIR}/resources/qml/Main.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/WindowSettings.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/ServerLogWindow.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/ExportDialog.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Theme.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/BlockNames.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/SetupWizard.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepIntro.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepWelcome.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepRuntime.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepBinary.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepExternal.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepModel.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepOutput.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepLaunch.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Setup/StepDone.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/Header.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ThumbDelegate.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ThumbPanel.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ImagePanel.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/ImagePreview.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/BlockEditPanel.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/WorkPanel.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/MarkdownPreview.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/MainWindow/Footer.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/VerificationSettingsWindow.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/VerificationBlocksTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/VerificationSystemTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/VerificationPromptsTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/UiSettingsWindow.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/OutputSettingsWindow.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/RuntimeSettingsWindow.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/ModelSettingsWindow.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/UITab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/OutputTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/RequestTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/LaunchTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/RuntimeTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/RuntimeTabExternal.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/RuntimeTabInternal.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Settings/LocationTab.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOButton.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOCheckBox.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/LLOLabel.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/RuntimeBuildsList.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/ModelInstalledList.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/ModelPresetList.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/InstallerProgressRow.qml"
-        "${CMAKE_SOURCE_DIR}/resources/qml/Common/InstallerStatusLabel.qml"
+# The QML tree is a real module (stage 0.2, ADR 100): the file list is
+# globbed, so a new .qml file no longer has to be added by hand, and
+# qmllint/qmlcachegen can resolve the module. Files land as
+# qrc:/qt/qml/LLocr/… (main.cpp loads that URL; the old hand-maintained
+# resource list put them at qrc:/qml/…). The C++ singletons are still
+# registered by hand in main.cpp (qmlRegisterSingletonInstance) — making them
+# module types needs the create() factories from the layering work in stage 4;
+# the QML API is unchanged either way.
+#
+# The module must be declared in the directory that owns the target: the
+# qmltyperegistrar tooling target reads the target's autogen rules, which are
+# only visible in that directory scope. CONFIGURE_DEPENDS re-globs on
+# add/remove, so the list is no longer maintained by hand (49 lines before).
+file(GLOB_RECURSE LLOCR_QML_FILES CONFIGURE_DEPENDS
+     "${CMAKE_SOURCE_DIR}/resources/qml/*.qml")
+list(FILTER LLOCR_QML_FILES EXCLUDE REGEX "/scratch/")  # scratch: not shipped
+
+# qt_add_qml_module resolves every QML file to an absolute path and then needs
+# QT_RESOURCE_ALIAS to derive its path inside the module. The alias is relative
+# to resources/qml, so the module keeps the subdirectory layout (MainWindow/,
+# Settings/, Common/, Setup/).
+foreach(_qml IN LISTS LLOCR_QML_FILES)
+    file(RELATIVE_PATH _alias "${CMAKE_SOURCE_DIR}/resources/qml" "${_qml}")
+    set_source_files_properties("${_qml}" PROPERTIES QT_RESOURCE_ALIAS "${_alias}")
+endforeach()
+
+# The two QML singletons must be marked as such for the build system too:
+# without QT_QML_SINGLETON_TYPE the generated qmldir lists them as ordinary
+# component types, and `Theme.accent` then reads a property off the *type*
+# (undefined) instead of off the singleton instance. `pragma Singleton` in the
+# file is what the engine sees; this property is what qmldir/qmllint see.
+# BlockNames lives in the module root, not in Common/, because qmllint resolves
+# a singleton through the *nearest* qmldir and Common/qmldir (generated per
+# directory) does not declare it.
+foreach(_singleton Theme.qml BlockNames.qml)
+    set_source_files_properties("${CMAKE_SOURCE_DIR}/resources/qml/${_singleton}"
+        PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+endforeach()
+
+qt_add_qml_module(llocr
+    URI LLocr
+    VERSION 1.0
+    QML_FILES ${LLOCR_QML_FILES}
 )
 
 qt_add_resources(llocr "app_conf"

@@ -23,8 +23,11 @@ Dialog {
     // skipped for the external-server mode).
     property list<Item> steps: []
     readonly property int lastStep: steps.length - 1
-    readonly property Item currentStep: steps.length ? steps[current] : null
-    readonly property bool canProceed: currentStep && currentStep.complete
+    // `var`, not Item: the steps are heterogeneous components that each declare
+    // their own `complete`, which the static Item type cannot express. The only
+    // other use is an identity comparison, which a var keeps working.
+    readonly property var currentStep: steps.length ? steps[current] : null
+    readonly property var canProceed: !!(currentStep && currentStep.complete)
 
     function rebuildSteps() {
         const choice = stepWelcome.choice

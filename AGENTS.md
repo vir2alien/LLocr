@@ -55,19 +55,41 @@
      carry the macOS point-size compensation (ADR 77).
   
   ## Build & test (fastest path)
-  
+
+  One command runs the whole verification (configure if needed → build →
+  `ctest` → clang-format → `qmllint`); it is exactly what CI runs, and it is the
+  fastest way to be sure the tree is green (ADR 100):
+
+  ```sh
+  scripts/check.sh                 # reuse the configured build/ tree
+  scripts/check.sh --configure     # re-configure it first
+  ```
+
   Tell future agents to compile/run tests by reusing the ready-made `build/`
   directory — do **not** try to re-configure from scratch. The `dev` preset in
-  `CMakePresets.json` uses Ninja, but Ninja is **not** installed here; the
-  existing `build/` is already configured with **Unix Makefiles** and points to
-  Qt at `~/Qt/6.10.3/macos`. `VCPKG_ROOT` is **not** set as a shell
-  variable, and vcpkg does **not** participate in the build.
-  
+  `CMakePresets.json` matches that tree (**Unix Makefiles**, Qt at
+  `~/Qt/6.10.3/macos`); Ninja and vcpkg are **not** used. `VCPKG_ROOT` is **not**
+  set as a shell variable, and vcpkg does **not** participate in the macOS build.
+
   ```sh
   # from the repo root:
   cmake --build build -j 8   # build llocr + tests
   ctest --test-dir build      # run unit tests
   ```
+
+  Two things to know before touching the build:
+
+  * Every test has a `TIMEOUT` and a headless platform by default, applied
+    directory-wide at the end of `tests/CMakeLists.txt` (ADR 99) — a hung
+    `waitForStarted()` fails the run instead of blocking `ctest` forever.
+  * The QML tree is a real module (`qt_add_qml_module`, ADR 101): new `.qml`
+    files are globbed, `qmlcachegen` runs, and the files live at
+    `qrc:/qt/qml/LLocr/…`. The C++ singletons are still registered by hand in
+    `main.cpp`; the `QML_ELEMENT`/`QML_SINGLETON` macros were removed from the
+    five classes that carried them (they would make `qmltyperegistrar` emit a
+    default-constructor call for classes that have none) and come back with the
+    `create()` factories in the layering stage. See `.qmllint.ini` for what the
+    lint gates.
   
   If a clean (from-scratch) configure is needed, do it manually (not via preset):
   

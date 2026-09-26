@@ -22,8 +22,8 @@ class SettingsStore;
 class RuntimeInstaller : public QObject
 {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
+    // See UiController.h: registered by hand in main.cpp until the module
+    // singletons get their create() factories (stage 4).
 
     Q_PROPERTY(int state READ stateInt NOTIFY stateChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)

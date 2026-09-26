@@ -21,8 +21,8 @@ class RequestProfileStore;
 class SelfTestController : public QObject
 {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
+    // See UiController.h: registered by hand in main.cpp until the module
+    // singletons get their create() factories (stage 4).
 
     Q_PROPERTY(bool selftestRunning READ selftestRunning NOTIFY selftestFinished)
     Q_PROPERTY(bool selftestOk READ selftestOk NOTIFY selftestFinished)

@@ -32,117 +32,117 @@
 <context>
     <name>BlockNames</name>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="7"/>
+        <location filename="../qml/BlockNames.qml" line="7"/>
         <source>Text</source>
         <translation>Текст</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="8"/>
+        <location filename="../qml/BlockNames.qml" line="8"/>
         <source>Headings</source>
         <translation>Заголовки</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="9"/>
+        <location filename="../qml/BlockNames.qml" line="9"/>
         <source>Tables</source>
         <translation>Таблицы</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="10"/>
+        <location filename="../qml/BlockNames.qml" line="10"/>
         <source>Equations</source>
         <translation>Уравнения</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="11"/>
+        <location filename="../qml/BlockNames.qml" line="11"/>
         <source>Formulas</source>
         <translation>Формулы</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="12"/>
+        <location filename="../qml/BlockNames.qml" line="12"/>
         <source>Lists</source>
         <translation>Списки</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="13"/>
+        <location filename="../qml/BlockNames.qml" line="13"/>
         <source>Code</source>
         <translation>Код</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="14"/>
+        <location filename="../qml/BlockNames.qml" line="14"/>
         <source>Abstracts</source>
         <translation>Аннотации</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="15"/>
+        <location filename="../qml/BlockNames.qml" line="15"/>
         <source>Image captions</source>
         <translation>Подписи к изображениям</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="16"/>
+        <location filename="../qml/BlockNames.qml" line="16"/>
         <source>Table captions</source>
         <translation>Подписи к таблицам</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="17"/>
+        <location filename="../qml/BlockNames.qml" line="17"/>
         <source>Figure footnotes</source>
         <translation>Сноски к изображениям</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="18"/>
+        <location filename="../qml/BlockNames.qml" line="18"/>
         <source>Table footnotes</source>
         <translation>Сноски к таблицам</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="19"/>
+        <location filename="../qml/BlockNames.qml" line="19"/>
         <source>Reference texts</source>
         <translation>Текст ссылок</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="20"/>
+        <location filename="../qml/BlockNames.qml" line="20"/>
         <source>References</source>
         <translation>Ссылки</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="21"/>
+        <location filename="../qml/BlockNames.qml" line="21"/>
         <source>Running headers</source>
         <translation>Верхние колонтитулы</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="22"/>
+        <location filename="../qml/BlockNames.qml" line="22"/>
         <source>Running footers</source>
         <translation>Нижние колонтитулы</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="23"/>
+        <location filename="../qml/BlockNames.qml" line="23"/>
         <source>Page numbers</source>
         <translation>Номера страниц</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="24"/>
+        <location filename="../qml/BlockNames.qml" line="24"/>
         <source>Seals and stamps</source>
         <translation>Печати и штампы</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="28"/>
+        <location filename="../qml/BlockNames.qml" line="28"/>
         <source>numbered display equations</source>
         <translation>выключные уравнения с номером</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="29"/>
+        <location filename="../qml/BlockNames.qml" line="29"/>
         <source>isolated formulas (LaTeX)</source>
         <translation>изолированные формулы (LaTeX)</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="42"/>
+        <location filename="../qml/BlockNames.qml" line="42"/>
         <source>Main content</source>
         <translation>Основное содержимое</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="44"/>
+        <location filename="../qml/BlockNames.qml" line="44"/>
         <source>Captions, footnotes and references</source>
         <translation>Подписи, сноски и ссылки</translation>
     </message>
     <message>
-        <location filename="../qml/Common/BlockNames.qml" line="46"/>
+        <location filename="../qml/BlockNames.qml" line="46"/>
         <source>Service</source>
         <translation>Служебные</translation>
     </message>
