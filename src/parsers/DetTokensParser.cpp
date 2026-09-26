@@ -21,6 +21,11 @@ namespace {
 // something short (e.g. "OK") — not a parse failure, so no diagnostic.
 constexpr int kDiagnosticMinLength = 32;
 
+// Duplicate-region tolerance: 1 % of the page in normalized coordinates (the
+// same 10 units in the usual 0–1000 space), so a model emitting another scale
+// is handled too.
+constexpr double kDuplicateTolerance = 0.01;
+
 // Regex helpers
 
 // <|det|>label [x1, y1, x2, y2]<|/det|>
@@ -265,7 +270,6 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
     OcrResult result;
     OcrPage page;
-    QStringList blocks;
 
     struct Token {
         QString label;
@@ -324,21 +328,12 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
             BoundingBox untagged;
             untagged.label = QStringLiteral("text");
             untagged.text  = preamble;
+            untagged.positioned = false;  // the model placed nothing
             page.boxes.append(untagged);
-            blocks << (containsOtslTable(preamble)
-                           ? formatOtslTable(preamble, m_options.tablesAsHtml)
-                           : convertMath(preamble));
         }
     }
 
     const double range = m_options.bboxRange > 0 ? m_options.bboxRange : 1000;
-
-    // Duplicate-region tolerance: 1 % of the coordinate range (10 units in the
-    // usual 0–1000 space), so a model emitting another scale is handled too.
-    const double dedupTolerance = range * 0.01;
-
-    struct RawCoords { int x1, y1, x2, y2; };
-    QList<RawCoords> rawCoords;
 
     for (int i = 0; i < tokens.size(); ++i) {
         const Token &t = tokens.at(i);
@@ -361,53 +356,42 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         box.label = t.label;
         box.text  = boxText;
         box.rect  = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
+        box.positioned = t.hasBbox;
 
+        // Duplicate-region replacement: the model emitted the same region twice
+        // (a page repeated on facing pages), so the later, better-attributed
+        // block replaces the earlier one. The search runs over page.boxes — the
+        // single list of fragments — and skips unpositioned ones, which all
+        // share the zero rect and must never match each other or a real region
+        // near the page origin.
         int dupIndex = -1;
-        // Tokens without a bbox (XML-drift header only) all share the zero
-        // rect — they must never be deduped against each other or against a
-        // real region near the page origin.
-        for (int j = 0; t.hasBbox && j < rawCoords.size(); ++j) {
-            const RawCoords &rc = rawCoords.at(j);
-            if (qAbs(rc.x1 - t.x1) <= dedupTolerance
-                && qAbs(rc.y1 - t.y1) <= dedupTolerance
-                && qAbs(rc.x2 - t.x2) <= dedupTolerance
-                && qAbs(rc.y2 - t.y2) <= dedupTolerance) {
-                dupIndex = j;
-                break;
+        if (t.hasBbox) {
+            for (int j = 0; j < page.boxes.size(); ++j) {
+                const QRectF &other = page.boxes.at(j).rect;
+                if (!page.boxes.at(j).positioned)
+                    continue;
+                if (qAbs(other.x() - nx1) <= kDuplicateTolerance
+                    && qAbs(other.y() - ny1) <= kDuplicateTolerance
+                    && qAbs(other.width() - (nx2 - nx1)) <= kDuplicateTolerance
+                    && qAbs(other.height() - (ny2 - ny1)) <= kDuplicateTolerance) {
+                    dupIndex = j;
+                    break;
+                }
             }
         }
 
         if (dupIndex >= 0) {
             page.hasDuplicates = true;
-
             page.boxes[dupIndex] = box;
-            rawCoords[dupIndex] = { t.x1, t.y1, t.x2, t.y2 };
-
-            BlockStyleInfo style = blockStyleForLabel(t.label, m_options.modelId);
-            if (style.style == BlockStyle::ImagePlaceholder)
-                style.imageIndex = dupIndex;
-            if (!boxText.isEmpty() || style.style == BlockStyle::ImagePlaceholder)
-                blocks[dupIndex] = applyStyle(boxText, style, m_options);
             continue;
         }
 
-        const int boxIndex = page.boxes.size();
         page.boxes.append(box);
-        if (t.hasBbox)
-            rawCoords.append({ t.x1, t.y1, t.x2, t.y2 });
-
-        BlockStyleInfo style = blockStyleForLabel(t.label, m_options.modelId);
-        if (style.style == BlockStyle::ImagePlaceholder) {
-            style.imageIndex = boxIndex;
-            blocks << applyStyle(boxText, style, m_options);
-            continue;
-        }
-        if (boxText.isEmpty())
-            continue;
-        blocks << applyStyle(boxText, style, m_options);
     }
 
-    page.text = blocks.join(QStringLiteral("\n\n"));
+    // The page text is rendered from the boxes by the same code rebuildText()
+    // uses, so the overlay, the Markdown and the crop indices cannot drift apart.
+    page.text = rebuildText(page);
     result.text = page.text;
     result.pages.append(page);
     return result;

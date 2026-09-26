@@ -21,6 +21,10 @@ struct BoundingBox {
     QString label;            ///< Block type reported by the model (title, text, table...).
     QRectF rect;              ///< Normalized rectangle: x, y, width, height in [0, 1].
     double confidence = 0.0;  ///< Optional model confidence, if provided.
+    /// False when the model did not place this fragment (an XML-drift header
+    /// without coordinates, an untagged preamble): its rect is (0,0,0,0) and it
+    /// must never take part in duplicate-region detection.
+    bool positioned = true;
 };
 
 struct OcrPage {

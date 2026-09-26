@@ -450,6 +450,99 @@ private slots:
         QVERIFY(!md.contains("image_index="));
     }
 
+    // A duplicate region must replace the *positioned* block it duplicates, not
+    // an unpositioned fragment that happens to sit earlier in the list. Both
+    // drift tokens and the untagged preamble are unpositioned (rect 0,0,0,0);
+    // the old raw-coordinate index space counted only bbox tokens, so it wrote
+    // the replacement into the wrong box and lost the fragment.
+    void duplicateRegionReplacesThePositionedBlockNotAnUnpositionedOne() {
+        const QString raw = QStringLiteral(
+            "image_index=0 <label>title</label>\n<content>Drift header</content>\n\n"
+            "text [10, 10, 200, 200]\nFirst\n\n"
+            "text [10, 10, 200, 200]\nSecond");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const auto &page = r.pages.first();
+        QVERIFY(page.hasDuplicates);
+        QCOMPARE(page.boxes.size(), 2);
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("Drift header"));
+        QVERIFY(!page.boxes.at(0).positioned);
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("Second"));
+        // The text follows the boxes.
+        QCOMPARE(page.text, parser.rebuildText(page));
+        QVERIFY(page.text.contains(QStringLiteral("Drift header")));
+        QVERIFY(!page.text.contains(QStringLiteral("First")));
+        QVERIFY(page.text.contains(QStringLiteral("Second")));
+    }
+
+    // The same, with an untagged preamble in front of the duplicated region.
+    void duplicateRegionAfterPreambleKeepsThePreamble() {
+        const QString raw = QStringLiteral(
+            "Preamble line\n"
+            "text [10, 10, 200, 200]\nFirst\n"
+            "text [10, 10, 200, 200]\nSecond");
+
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const auto &page = r.pages.first();
+        QVERIFY(page.hasDuplicates);
+        QCOMPARE(page.boxes.size(), 2);
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("Preamble line"));
+        QVERIFY(!page.boxes.at(0).positioned);
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("Second"));
+        QCOMPARE(page.text, parser.rebuildText(page));
+        QVERIFY(page.text.startsWith(QStringLiteral("Preamble line")));
+    }
+
+    // The page text is a pure function of the boxes: parsing produces exactly
+    // what rebuildText() renders, whatever the reply shape. This is the property
+    // the parallel block list used to break.
+    void pageTextAlwaysEqualsRebuiltText() {
+        const QList<QString> samples = {
+            // wrapped stream with a page number
+            QStringLiteral(
+                R"(<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\n)"
+                R"(<|det|>text [112, 132, 884, 309]<|/det|>Body\n)"
+                R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3)"),
+            // bare tokens with an untagged preamble and an image block
+            QStringLiteral(
+                "Lead in\n"
+                "title [92, 109, 890, 165]Heading\n"
+                "image [132, 118, 862, 269]\n! caption\n"
+                "text [10, 10, 200, 200]Tail"),
+            // XML drift: unpositioned headers, no coordinates at all
+            QStringLiteral(
+                "image_index=0 <label>title</label>\n<content>First</content>\n\n"
+                "image_index=0 <label>title</label>\n<content>Second</content>"),
+            // a block with empty content between two real ones
+            QStringLiteral(
+                "text [10, 10, 200, 200]First\n"
+                "text [210, 10, 400, 200]\n"
+                "text [410, 10, 600, 200]Third"),
+            // a duplicated region
+            QStringLiteral(
+                "text [10, 10, 200, 200]First\n"
+                "text [10, 10, 200, 200]Second"),
+        };
+
+        DetTokensParser parser;
+        for (const QString &raw : samples) {
+            const OcrResult r = parser.parse(raw);
+            QVERIFY(r.success);
+            QCOMPARE(r.pages.size(), 1);
+            const OcrPage &page = r.pages.first();
+            QVERIFY2(page.text == parser.rebuildText(page),
+                     qPrintable(QStringLiteral("text/rebuild mismatch for:\n%1\ntext: %2")
+                                    .arg(raw, page.text)));
+            QCOMPARE(r.text, page.text);
+        }
+    }
+
     // The image placeholder must not inherit the model's multi-line figure
     // text as its alt — only the first meaningful line survives.
     void imageAltUsesSingleLine() {
