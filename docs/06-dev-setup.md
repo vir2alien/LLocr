@@ -380,10 +380,11 @@ LLocr/
 │   │                 #   LlamaClient, RequestProfile, LaunchProfile
 │   ├── models/       # OcrModel (abstract adapter), UnlimitedOcrModel,
 │   │                 #   Lfm25VlModel, OcrModelFactory
-│   ├── parsers/      # IOutputParser, RawParser, DetTokensParser,
-│   │                 #   DetTokenFormat (shared text helpers), OtslTable
-│   │                 #   (LFM2.5-VL tables), Lfm25VlDrift (annotation drift),
-│   │                 #   ParserFactory, BlockStyle
+│   ├── parsers/      # IOutputParser, ParserOptions, RawParser,
+│   │                 #   DetTokensParser, DetTokenFormat (shared text
+│   │                 #   helpers), OtslTable (LFM2.5-VL tables), Lfm25VlDrift
+│   │                 #   (annotation drift), ParserFactory, BlockStyleMap
+│   │                 #   (label → style, from profiles/labels.json)
 │   ├── runtime/      # ConnectionMode, ResolvedConnection, RuntimeState,
 │   │                 #   RuntimeController, RuntimePaths, RuntimeLocator,
 │   │                 #   ServerCapabilities, ServerLaunchConfig,

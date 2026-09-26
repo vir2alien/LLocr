@@ -6,6 +6,7 @@
 
 #include "core/ServiceMarkers.h"
 
+#include <QCoreApplication>
 #include <QRegularExpression>
 #include <QStringList>
 #include <QVector>
@@ -15,6 +16,10 @@
 namespace llocr {
 
 namespace {
+
+// A reply shorter than this that yields no tokens is a model answering
+// something short (e.g. "OK") — not a parse failure, so no diagnostic.
+constexpr int kDiagnosticMinLength = 32;
 
 // Regex helpers
 
@@ -186,7 +191,7 @@ QString formatTable(const QString &text, bool tablesAsHtml)
     return out.trimmed();
 }
 
-QString applyStyle(const QString &text, const BlockStyleInfo &info, bool tablesAsHtml)
+QString applyStyle(const QString &text, const BlockStyleInfo &info, const ParserOptions &options)
 {
     // LFM2.5-VL can leak OTSL rows into non-table blocks (a formula under a
     // text/equation token, a table fragment after it): convert them wherever
@@ -194,7 +199,7 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info, bool tablesA
     if (info.style != BlockStyle::ImagePlaceholder
         && !text.contains(QStringLiteral("<table"))
         && containsOtslTable(text)) {
-        return formatOtslTable(text, tablesAsHtml);
+        return formatOtslTable(text, options.tablesAsHtml);
     }
 
     switch (info.style) {
@@ -221,7 +226,7 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info, bool tablesA
     case BlockStyle::Equation:
         return formatEquation(text);
     case BlockStyle::Table:
-        return formatTable(text, tablesAsHtml);
+        return formatTable(text, options.tablesAsHtml);
     case BlockStyle::Heading: {
         const int level = info.headingLevel > 0 ? info.headingLevel : headingLevelFor(text);
         return QString(level, QLatin1Char('#')) + QLatin1Char(' ') + text;
@@ -233,14 +238,14 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info, bool tablesA
 
 } // namespace
 
-QString rebuildPageText(const OcrPage& page, bool keepPageNumbers, bool tablesAsHtml)
+QString DetTokensParser::rebuildText(const OcrPage &page) const
 {
     QStringList blocks;
     for (int i = 0; i < page.boxes.size(); ++i) {
-        const BoundingBox& box = page.boxes.at(i);
-        if (!keepPageNumbers && box.label == QLatin1String("page_number"))
+        const BoundingBox &box = page.boxes.at(i);
+        if (!m_options.keepPageNumbers && box.label == QLatin1String("page_number"))
             continue;
-        BlockStyleInfo style = blockStyleForLabel(box.label);
+        BlockStyleInfo style = blockStyleForLabel(box.label, m_options.modelId);
         if (style.style == BlockStyle::ImagePlaceholder)
             style.imageIndex = i;
         // A verified FIX replaces the recognized text in the output; if the
@@ -248,7 +253,7 @@ QString rebuildPageText(const OcrPage& page, bool keepPageNumbers, bool tablesAs
         const QString text = box.correctedText.isEmpty() ? box.text : box.correctedText;
         if (text.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
             continue;
-        blocks << applyStyle(text, style, tablesAsHtml);
+        blocks << applyStyle(text, style, m_options);
     }
     return blocks.join(QStringLiteral("\n\n"));
 }
@@ -296,6 +301,15 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         result.text = page.text;
         result.pages.append(page);
         result.success = true;
+        // A det-token reply always carries at least one header, so an empty
+        // match means the model/parser pair is wrong (or the model drifted into
+        // an unsupported shape). The page is still usable as plain text, but the
+        // user gets told why the overlay is empty.
+        if (page.text.length() > kDiagnosticMinLength)
+            result.notes.append(QCoreApplication::translate(
+                "DetTokensParser",
+                "No layout tokens found in the model reply — the text was kept as "
+                "one block. Check that the OCR model and the output parser match."));
         return result;
     }
 
@@ -312,21 +326,23 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
             untagged.text  = preamble;
             page.boxes.append(untagged);
             blocks << (containsOtslTable(preamble)
-                           ? formatOtslTable(preamble, m_tablesAsHtml)
+                           ? formatOtslTable(preamble, m_options.tablesAsHtml)
                            : convertMath(preamble));
         }
     }
 
-    const double range = kBboxCoordinateRange;
+    const double range = m_options.bboxRange > 0 ? m_options.bboxRange : 1000;
 
-    constexpr double kDedupTolerance = 10.0 / kBboxCoordinateRange;
+    // Duplicate-region tolerance: 1 % of the coordinate range (10 units in the
+    // usual 0–1000 space), so a model emitting another scale is handled too.
+    const double dedupTolerance = range * 0.01;
 
     struct RawCoords { int x1, y1, x2, y2; };
     QList<RawCoords> rawCoords;
 
     for (int i = 0; i < tokens.size(); ++i) {
         const Token &t = tokens.at(i);
-        if (!m_keepPageNumbers && t.label == QLatin1String("page_number"))
+        if (!m_options.keepPageNumbers && t.label == QLatin1String("page_number"))
             continue;
         const int spanEnd = (i + 1 < tokens.size())
                                 ? tokens.at(i + 1).tokenStart
@@ -352,8 +368,10 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         // real region near the page origin.
         for (int j = 0; t.hasBbox && j < rawCoords.size(); ++j) {
             const RawCoords &rc = rawCoords.at(j);
-            if (qAbs(rc.x1 - t.x1) <= 10 && qAbs(rc.y1 - t.y1) <= 10
-                && qAbs(rc.x2 - t.x2) <= 10 && qAbs(rc.y2 - t.y2) <= 10) {
+            if (qAbs(rc.x1 - t.x1) <= dedupTolerance
+                && qAbs(rc.y1 - t.y1) <= dedupTolerance
+                && qAbs(rc.x2 - t.x2) <= dedupTolerance
+                && qAbs(rc.y2 - t.y2) <= dedupTolerance) {
                 dupIndex = j;
                 break;
             }
@@ -365,11 +383,11 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
             page.boxes[dupIndex] = box;
             rawCoords[dupIndex] = { t.x1, t.y1, t.x2, t.y2 };
 
-            BlockStyleInfo style = blockStyleForLabel(t.label);
+            BlockStyleInfo style = blockStyleForLabel(t.label, m_options.modelId);
             if (style.style == BlockStyle::ImagePlaceholder)
                 style.imageIndex = dupIndex;
             if (!boxText.isEmpty() || style.style == BlockStyle::ImagePlaceholder)
-                blocks[dupIndex] = applyStyle(boxText, style, m_tablesAsHtml);
+                blocks[dupIndex] = applyStyle(boxText, style, m_options);
             continue;
         }
 
@@ -378,15 +396,15 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         if (t.hasBbox)
             rawCoords.append({ t.x1, t.y1, t.x2, t.y2 });
 
-        BlockStyleInfo style = blockStyleForLabel(t.label);
+        BlockStyleInfo style = blockStyleForLabel(t.label, m_options.modelId);
         if (style.style == BlockStyle::ImagePlaceholder) {
             style.imageIndex = boxIndex;
-            blocks << applyStyle(boxText, style, m_tablesAsHtml);
+            blocks << applyStyle(boxText, style, m_options);
             continue;
         }
         if (boxText.isEmpty())
             continue;
-        blocks << applyStyle(boxText, style, m_tablesAsHtml);
+        blocks << applyStyle(boxText, style, m_options);
     }
 
     page.text = blocks.join(QStringLiteral("\n\n"));
@@ -398,6 +416,11 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 QString DetTokensParser::id() const
 {
     return QStringLiteral("det_tokens");
+}
+
+QString DetTokensParser::displayName() const
+{
+    return QCoreApplication::translate("DetTokensParser", "Layout tokens (with boxes)");
 }
 
 } // namespace llocr

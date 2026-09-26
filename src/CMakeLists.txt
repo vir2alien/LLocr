@@ -33,7 +33,9 @@ qt_add_executable(llocr
 
     # parsers
     parsers/IOutputParser.h
+    parsers/ParserOptions.h
     parsers/BlockStyle.h
+    parsers/BlockStyle.cpp
     parsers/RawParser.h
     parsers/RawParser.cpp
     parsers/DetTokensParser.h
@@ -241,6 +243,7 @@ qt_add_resources(llocr "app_profiles"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchValidate.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsValidate.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )
 
 file(GLOB_RECURSE PREVIEW_FILES

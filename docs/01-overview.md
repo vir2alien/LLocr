@@ -41,7 +41,7 @@ LLocr provides a convenient interface to:
 3. They load one or more images or a PDF.                        ✅ done (multi-image + PDF)
 4. They start recognition.                                       ✅ done (single page + "recognize all")
 5. They see the recognized text (+ bounding boxes if the parser
-   is `det_tokens`).                                             ✅ done (text panel + bbox overlay)
+   is a layout-token one).                                       ✅ done (text panel + bbox overlay)
 6. They save the result in the desired format.                   ✅ (TXT/MD/HTML; DOCX via Pandoc; PDF)
 
 ## Local runtime & models (managed mode)
@@ -79,7 +79,7 @@ The window uses a **toolbar + three-pane** layout.
   Clicking a thumbnail jumps to that page (works even while recognition is
   running). No boxes are drawn here.
 - **Center pane** — full preview of the current page with **bounding-box
-  overlay** when the `det_tokens` parser is selected. Image/chart blocks can be
+  overlay** when a layout-token parser is active. Image/chart blocks can be
   **moved, resized, or deleted** directly on the preview.
 - **Right pane** — recognized text of the current page, **editable** once the
   page has been recognized, with a **Preview** switch that renders the text as
@@ -96,7 +96,7 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
   parameters** (multiplier, base, allowed length, penalty last-N). In
   `Managed` mode the model id / alias is computed by the runtime, not typed.
 - **Output** — OCR model adapter (`unlimited-ocr`; `model/recipeId`) and output
-  parser (`raw` / `det_tokens`; default `det_tokens`).
+  parser (`Automatic` / `raw` / `det_tokens`; default `auto`, ADR 88).
 - **Runtime** — managed `llama-server` binary path + probe, Start/Stop/Restart,
   **Show log**, and the **stage-D installer** (release + backend pickers,
   «Download and install» with progress, «Installed: bXXXX (CUDA)», «Check for
@@ -106,9 +106,11 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
 
 > The recognition **prompt** is owned by the selected **OCR model adapter**
 > (`OcrModel::promptVariants()`; for Unlimited-OCR it is a single fixed variant
-> "document parsing.", ADR 58) and is not editable in the dialog. The bbox
-> coordinate range is hardcoded (`DetTokensParser::kBboxCoordinateRange = 1000`),
-> not exposed as a setting.
+> "document parsing.", ADR 58) and is not editable in the dialog. The output
+> **parser defaults to the one the model adapter declares**
+> (`OcrModel::defaultParserId()`), so switching models cannot leave a
+> mismatched parser behind; the bbox coordinate range is a parser option
+> (`ParserOptions::bboxRange`, default 1000), not a setting.
 >
 > **Secrets:** the API key and HF token are stored **in plaintext** in
 > `QSettings` (existing behavior) with an explicit UI warning; they are never

@@ -18,6 +18,7 @@
 #include "models/OcrModelFactory.h"
 #include "models/QwenGeneralModel.h"
 #include "models/UnlimitedOcrModel.h"
+#include "parsers/ParserFactory.h"
 
 using namespace llocr;
 
@@ -130,6 +131,22 @@ private slots:
         const QString name = OcrModelFactory::displayNameForId(id);
         QVERIFY(!name.isEmpty());
         QCOMPARE(OcrModelFactory::idForDisplayName(name), id);
+    }
+
+    // ADR 88: Settings → Output defaults to "auto", i.e. the model adapter
+    // owns the parser choice. Every registered model must therefore declare a
+    // parser id that ParserFactory can actually build — a new adapter shipping
+    // with a typo would otherwise only fail at recognition time.
+    void everyModelDeclaresARegisteredParser() {
+        const QStringList parsers = ParserFactory::registeredIds();
+        for (const QString &modelId : OcrModelFactory::registeredIds()) {
+            const QString parserId =
+                OcrModelFactory::create(modelId)->defaultParserId();
+            QVERIFY2(!parserId.isEmpty(), qPrintable(modelId));
+            QVERIFY2(parsers.contains(parserId),
+                     qPrintable(QStringLiteral("model %1 declares unregistered parser %2")
+                                    .arg(modelId, parserId)));
+        }
     }
 
     void unlimitedModelContract() {

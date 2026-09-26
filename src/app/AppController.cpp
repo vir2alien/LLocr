@@ -19,7 +19,6 @@
 #include <QtConcurrent/QtConcurrentRun>
 #include <QVariant>
 
-#include "parsers/DetTokensParser.h"
 #include "parsers/ParserFactory.h"
 
 #include "app/RequestProfileStore.h"
@@ -107,7 +106,41 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
 
 QStringList AppController::parserNames() const
 {
-    return ParserFactory::registeredIds();
+    return ParserFactory::selectableIds();
+}
+
+QStringList AppController::parserLabels() const
+{
+    return ParserFactory::selectableDisplayNames();
+}
+
+QString AppController::effectiveParserId() const
+{
+    const QString configured = m_settings.parserId();
+    if (!configured.isEmpty() && configured != ParserFactory::kAutoId)
+        return configured;
+    // "auto": the model adapter owns the parser choice (OcrModel::defaultParserId).
+    return OcrModelFactory::create(m_settings.modelRecipeId())->defaultParserId();
+}
+
+ParserOptions AppController::parserOptions() const
+{
+    ParserOptions options;
+    options.modelId = m_settings.modelRecipeId();
+    options.keepPageNumbers = m_settings.keepPageNumbers();
+    options.tablesAsHtml = m_settings.tablesAsHtml();
+    return options;
+}
+
+std::unique_ptr<IOutputParser> AppController::makeParser() const
+{
+    return ParserFactory::create(effectiveParserId(), parserOptions());
+}
+
+QString AppController::rebuildPageText(const OcrPage &page) const
+{
+    const auto parser = makeParser();
+    return parser ? parser->rebuildText(page) : page.text;
 }
 
 QStringList AppController::modelNames() const
@@ -160,6 +193,13 @@ QString AppController::currentPageWarning() const
 {
     QReadLocker locker(&m_documentLock);
     return m_document.isValidIndex(m_currentPage) ? m_document.page(m_currentPage).sourceError
+                                                 : QString();
+}
+
+QString AppController::parseWarning() const
+{
+    QReadLocker locker(&m_documentLock);
+    return m_document.isValidIndex(m_currentPage) ? m_document.page(m_currentPage).parseNote
                                                  : QString();
 }
 
@@ -464,17 +504,17 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
         return;
 
     OcrResult parsed = rawResult;
-    if (auto parser = ParserFactory::create(m_settings.parserId())) {
-        if (auto det = dynamic_cast<DetTokensParser *>(parser.get())) {
-            det->setKeepPageNumbers(m_settings.keepPageNumbers());
-            det->setTablesAsHtml(m_settings.tablesAsHtml());
-        }
+    if (auto parser = makeParser())
         parsed = parser->parse(rawResult.text);
-    }
 
     DocumentPage& page = m_document.page(index);
     page.result = parsed;
     page.recognized = true;
+    // Parser diagnostics (e.g. "no layout tokens found") stay on the page as a
+    // non-blocking warning — the status line is overwritten by the run summary.
+    page.parseNote = parsed.success && !parsed.notes.isEmpty()
+                         ? parsed.notes.join(QLatin1String(" "))
+                         : QString();
 
     m_pageModel.setRecognized(index, true);
 
@@ -569,10 +609,7 @@ void AppController::onBoxRemoved(int boxIndex)
     boxes.removeAt(boxIndex);
     ++m_cropRevision;
 
-    m_editStore.replace(m_currentPage,
-                        rebuildPageText(page.result.pages[0],
-                                        m_settings.keepPageNumbers(),
-                                        m_settings.tablesAsHtml()));
+    m_editStore.replace(m_currentPage, rebuildPageText(page.result.pages[0]));
     m_pageModel.setEdited(m_currentPage, true);
 
     if (m_selectedBox == boxIndex)
@@ -671,9 +708,7 @@ void AppController::revertBlockCorrection()
         box.checkStatus = BoxCheckStatus::NotChecked;
         box.correctedText.clear();
 
-        const QString rebuilt = rebuildPageText(page.result.pages[0],
-                                                m_settings.keepPageNumbers(),
-                                                m_settings.tablesAsHtml());
+        const QString rebuilt = rebuildPageText(page.result.pages[0]);
         if (rebuilt == page.result.text) {
             m_editStore.revert(m_currentPage);
             m_pageModel.setEdited(m_currentPage, false);
@@ -762,9 +797,7 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
 
         if (box.checkStatus == BoxCheckStatus::Fixed) {
             m_editStore.replace(pageIndex,
-                                rebuildPageText(page.result.pages[0],
-                                                m_settings.keepPageNumbers(),
-                                                m_settings.tablesAsHtml()));
+                                rebuildPageText(page.result.pages[0]));
             m_pageModel.setEdited(pageIndex, true);
             textChanged = true;
         }

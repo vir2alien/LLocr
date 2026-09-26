@@ -94,7 +94,9 @@ Implementations:
   layout-annotation prompt, parser `det_tokens` (the parser additionally
   accepts the model's optional `image_index=<n>` token prefix and converts its
   OTSL tables — ADR 87). Adding another LLM = one new subclass + one line in
-  `OcrModelFactory` + a same-id built-in request profile (ADR 59).
+  `OcrModelFactory` + a same-id built-in request profile (ADR 59). The
+  adapter's `defaultParserId()` is what Settings → Output uses in its
+  «Automatic (model default)» mode (ADR 88).
 - `LlamaClient` (`core/LlamaClient.h`) — thin transport: joins the
   `/v1/chat/completions` URL, POSTs JSON with Bearer auth/timeout/`abort()`, and
   extracts the server's error message.
@@ -149,7 +151,11 @@ store.
   **prompt** comes from the selected adapter's `promptVariants()` — the
   authority moved from `AppController`/presets to the model adapter (ADR 58).
 - `parserId` selects the response-parsing strategy via `ParserFactory`
-  (`raw` | `det_tokens`; default `det_tokens`).
+  (`auto` | `raw` | `det_tokens`; default **`auto`**, which resolves to the
+  selected model's `defaultParserId()` — ADR 88). The parser is configured
+  through `ParserOptions` (`keepPageNumbers`, `tablesAsHtml`, `bboxRange`,
+  `modelId`) and `IOutputParser::rebuildText()` re-renders a page's Markdown
+  after its structured fragments change.
 - In `Managed` mode the *connection* is **computed**, not configured: the
   managed server's `baseUrl` (loopback + chosen port), `modelId` (the `--alias`)
   come from `ensureConnectionReady()` (ADR 32). `model/name` is not overwritten.
@@ -285,8 +291,8 @@ UI (file selection)
         → ResolvedConnection → ConnectionConfig + OcrRequest
       → DocumentModel (decode image / render PDF page → QImage)
       → OcrModel.recognize() → LlamaClient.postJson()  [async, cancellable]
-      → OutputParser (from settings: raw / det_tokens)
-    → OcrResult (text + optional normalized boxes)
+      → OutputParser (from settings: auto / raw / det_tokens)
+    → OcrResult (text + optional normalized boxes + parse notes)
   → AppController (applyRawResult → per-page OcrResult + PageEditStore)
 → UI: text panel + bbox overlay + thumbnail "recognized" marker
      + Exporter (on request)

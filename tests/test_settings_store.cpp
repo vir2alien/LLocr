@@ -38,7 +38,8 @@ private slots:
         QCOMPARE(store.connectionTimeoutMs(), 120000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.checkModelName(), QString());
-        QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
+        // "auto" — the OCR model adapter declares its parser (ADR 88).
+        QCOMPARE(store.parserId(), QStringLiteral("auto"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.autoCheck(), false);
         QCOMPARE(store.themeMode(), 0);
@@ -78,7 +79,8 @@ private slots:
         QCOMPARE(store.connectionTimeoutMs(), 120000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.checkModelName(), QString());
-        QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
+        // "auto" — the OCR model adapter declares its parser (ADR 88).
+        QCOMPARE(store.parserId(), QStringLiteral("auto"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.autoCheck(), false);
         QCOMPARE(store.themeMode(), 0);
@@ -100,7 +102,8 @@ private slots:
 
         store.resetOutputDefaults();
 
-        QCOMPARE(store.parserId(), QStringLiteral("det_tokens"));
+        // "auto" — the OCR model adapter declares its parser (ADR 88).
+        QCOMPARE(store.parserId(), QStringLiteral("auto"));
         QCOMPARE(store.splitPages(), true);
         QCOMPARE(store.keepPageNumbers(), true);
         QCOMPARE(store.pdfLandscape(), false);

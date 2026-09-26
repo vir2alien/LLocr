@@ -170,6 +170,17 @@ Item {
             color: Theme.error
         }
 
+        LLOLabel {//Parser diagnostic
+            Layout.fillWidth: true
+            Layout.leftMargin: Theme.spacing * 2
+            Layout.rightMargin: Theme.spacing * 2
+            visible: Controller.parseWarning.length > 0
+            text: Controller.parseWarning
+            textFormat: Text.PlainText
+            wrapMode: Text.Wrap
+            color: Theme.warning
+        }
+
         LLOLabel {//Check error
             Layout.fillWidth: true
             Layout.leftMargin: Theme.spacing * 2

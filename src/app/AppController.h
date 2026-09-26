@@ -19,6 +19,8 @@
 #include "app/ExportController.h"
 #include "core/CheckResult.h"
 #include "core/OcrResult.h"
+#include "parsers/IOutputParser.h"
+#include "parsers/ParserOptions.h"
 #include "runtime/RuntimeController.h"
 
 namespace llocr {
@@ -71,6 +73,9 @@ class AppController : public QObject
     Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY configChanged)
 
     Q_PROPERTY(QStringList parserNames READ parserNames CONSTANT)
+    Q_PROPERTY(QStringList parserLabels READ parserLabels CONSTANT)
+
+    Q_PROPERTY(QString parseWarning READ parseWarning NOTIFY resultChanged)
 
 public:
     explicit AppController(SettingsStore &settings, RuntimeController &runtime,
@@ -85,6 +90,7 @@ public:
     QString resultText() const;
     QString statusMessage() const { return m_statusMessage; }
     QString currentPageWarning() const;
+    QString parseWarning() const;
     bool hasImage() const;
     bool hasResult() const;
     int pageCount() const { return m_document.pageCount(); }
@@ -94,6 +100,7 @@ public:
 
     bool canRecognize() const;
     QStringList parserNames() const;
+    QStringList parserLabels() const;
     QStringList modelNames() const;
     Q_INVOKABLE QString modelIdToName(const QString &modelId) const;
     Q_INVOKABLE QString modelNameToId(const QString &modelName) const;
@@ -179,6 +186,12 @@ private:
     void notifyDocumentChanged();
     void notifyPageChanged();
     void applyRawResult(int index, const OcrResult& rawResult);
+    // Resolves Settings → Output "Automatic (model default)" against the
+    // selected OCR model adapter and builds the configured parser.
+    QString effectiveParserId() const;
+    ParserOptions parserOptions() const;
+    std::unique_ptr<IOutputParser> makeParser() const;
+    QString rebuildPageText(const OcrPage &page) const;
     void updateBoxesForCurrent();
     QString effectiveText(int index) const;
     const BoundingBox *selectedBox() const;

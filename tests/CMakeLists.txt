@@ -19,11 +19,19 @@ target_link_libraries(test_det_parser PRIVATE
     Qt6::Core
 )
 
+qt_add_resources(test_det_parser "det_parser_labels_res"
+    PREFIX "/profiles"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
+)
+
 target_sources(test_det_parser PRIVATE
     ${CMAKE_SOURCE_DIR}/src/parsers/DetTokensParser.cpp
     ${CMAKE_SOURCE_DIR}/src/parsers/DetTokenFormat.cpp
     ${CMAKE_SOURCE_DIR}/src/parsers/OtslTable.cpp
     ${CMAKE_SOURCE_DIR}/src/parsers/Lfm25VlDrift.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/BlockStyle.cpp
     ${CMAKE_SOURCE_DIR}/src/parsers/RawParser.cpp
     ${CMAKE_SOURCE_DIR}/src/parsers/ParserFactory.cpp
 )
@@ -88,6 +96,13 @@ target_sources(test_ocr_models PRIVATE
     ${CMAKE_SOURCE_DIR}/src/models/QwenGeneralModel.cpp
     ${CMAKE_SOURCE_DIR}/src/core/LlamaClient.cpp
     ${CMAKE_SOURCE_DIR}/src/core/RequestProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/ParserFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/DetTokensParser.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/DetTokenFormat.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/OtslTable.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/Lfm25VlDrift.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/BlockStyle.cpp
+    ${CMAKE_SOURCE_DIR}/src/parsers/RawParser.cpp
 )
 add_test(NAME test_ocr_models COMMAND test_ocr_models)
 

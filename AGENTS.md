@@ -168,8 +168,9 @@
     (keychain).
   - Also done: PDF input, batch/multi-page processing, HTML/DOCX/PDF export,
     editable text panel, page reordering, image-block editing, Markdown
-    preview, i18n. Unit tests: four base targets + fourteen local-runtime
-    targets under `tests/`.
+    preview, i18n. Unit tests: four base targets + fifteen local-runtime
+    targets under `tests/` (the OCR-model suite `test_ocr_models` guards the
+    model ↔ parser link).
   - Local-runtime plan progress:
     - **A** (skeleton, `ConnectionMode`, resolver, settings groups,
       `SingleInstanceGuard`) ✅
@@ -217,6 +218,23 @@
       wizard's Model step lists installed models with Activate (and an
       installed preset's Install button becomes Activate), refusals name the
       recorded model path.
+      ADR 88 (**output parsers are now per-model and data-driven**): parser
+      options moved out of the app layer into `ParserOptions`
+      (`keepPageNumbers`/`tablesAsHtml`/`bboxRange`/`modelId`, passed to
+      `ParserFactory::create`), so `AppController` no longer `dynamic_cast`es a
+      concrete parser; `rebuildText(page)` + `displayName()` joined
+      `IOutputParser` (the free `rebuildPageText()` is gone — `RawParser`
+      returns the page text, closing a latent empty-page rebuild);
+      `parser/id` now defaults to **`auto`** and resolves through
+      `OcrModel::defaultParserId()` (no more dead code, no mismatched parser
+      after a model switch — guarded by
+      `test_ocr_models::everyModelDeclaresARegisteredParser`); the label →
+      block-style map moved to `resources/profiles/labels.json` +
+      `BlockStyleMap` (per-model overrides, compiled-in fallback); and a
+      reply with no layout tokens now produces an `OcrResult::notes` entry
+      surfaced as `Controller.parseWarning` in the footer instead of a silent
+      "successful" blob. The stage-4 pipeline split is recorded as deferred
+      (ADR 89) — do it when a model with a non-det-token reply shape lands.
     - **F** ✅ — first-run wizard: `SetupWizard.qml` + `Setup/Step{Welcome,
       Runtime,Model,Launch,Done}.qml`, trigger per §4.4 (Timer in Main.qml, no
       network probes), per-step gating; External path sets `setupVersion = 1`;
@@ -274,5 +292,8 @@
     — all stages complete, incl. `ProfileStorage`,
     `BlockGroupFilterModel`, `ModelInstallTransaction` (ADR 84/85/82) and the
     `AppController` split into `VerificationQueueController` +
-    `ExportController` (ADR 86; the QML API is unchanged). Next: the
+    `ExportController` (ADR 86; the QML API is unchanged) and **round 5 — the
+    output-parser layer** (`ParserOptions`, `IOutputParser::rebuildText`, the
+    `auto` parser id, the data-driven label map and parse diagnostics, ADR 88;
+    its stage-4 pipeline split is deferred as ADR 89). Next: the
     remaining roadmap items (see `docs/09-local-runtime-plan.md`).

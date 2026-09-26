@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "_comment": "Label → Markdown block styling for the det-token parsers. 'default' applies to every model; 'overrides' is keyed by OCR model adapter id (src/models/*) and wins where it names a label. Styles: text | heading | image | italic | equation | table. A heading may pin its level with {\"style\": \"heading\", \"level\": 2}. Unmapped labels render as plain text. Changing a mapping here needs no rebuild; a malformed or missing file falls back to the table compiled into src/parsers/BlockStyle.cpp.",
+  "default": {
+    "title": "heading",
+    "text": "text",
+    "image": "image",
+    "chart": "image",
+    "image_caption": "italic",
+    "table_caption": "italic",
+    "table_footnote": "italic",
+    "page_number": "italic",
+    "equation": "equation",
+    "table": "table",
+    "ref_text": "text"
+  },
+  "overrides": {
+    "lfm25-vl-3b": {
+      "image_block": "image",
+      "image_footnote": "italic",
+      "code_caption": "italic",
+      "page_header": "text",
+      "page_footer": "text",
+      "page_footnote": "text",
+      "formula_number": "text",
+      "list": "text",
+      "code": "text",
+      "algorithm": "text",
+      "aside_text": "text",
+      "phonetic": "text"
+    }
+  }
+}

@@ -1,7 +1,16 @@
 #include <QtTest>
 
 #include "core/OcrResult.h"
+#include "parsers/BlockStyle.h"
 #include "parsers/DetTokensParser.h"
+#include "parsers/ParserFactory.h"
+#include "parsers/ParserOptions.h"
+#include "parsers/RawParser.h"
+
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
 
 using namespace llocr;
 
@@ -56,8 +65,7 @@ private slots:
             R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3\n)"
             R"(<|det|>text [112, 132, 884, 309]<|/det|>Body paragraph\n)");
 
-        DetTokensParser parser;
-        parser.setKeepPageNumbers(false);
+        DetTokensParser parser(ParserOptions{false, false});
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -68,15 +76,15 @@ private slots:
         QVERIFY(md.contains(QStringLiteral("## 1. Introduction")));
         QVERIFY(md.contains(QStringLiteral("Body paragraph")));
 
-        // rebuildPageText honours the flag for pages that still carry a
+        // rebuildText honours the flag for pages that still carry a
         // page_number box (e.g. recognized before the setting was changed).
         OcrPage withNumber = page;
         BoundingBox numberBox;
         numberBox.label = QStringLiteral("page_number");
         numberBox.text = QStringLiteral("3");
         withNumber.boxes.append(numberBox);
-        QVERIFY(rebuildPageText(withNumber).contains(QStringLiteral("*3*")));
-        QVERIFY(!rebuildPageText(withNumber, false).contains(QStringLiteral("*3*")));
+        QVERIFY(DetTokensParser().rebuildText(withNumber).contains(QStringLiteral("*3*")));
+        QVERIFY(!parser.rebuildText(withNumber).contains(QStringLiteral("*3*")));
     }
 
     // Wrapped content decodes ONLY the stream's own \n line separator. LaTeX
@@ -279,8 +287,7 @@ private slots:
             "<fcel>Мир<fcel>100<lcel><nl>"
             "<fcel>Россия<ucel><fcel>50<nl>");
 
-        DetTokensParser parser;
-        parser.setTablesAsHtml(true);
+        DetTokensParser parser(ParserOptions{true, true});
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -674,8 +681,7 @@ private slots:
             R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td colspan="2">A</td><td>B</td></tr><tr><td>1</td><td>2</td><td>3</td></tr></table>
 )");
 
-        DetTokensParser parser;
-        parser.setTablesAsHtml(true);
+        DetTokensParser parser(ParserOptions{true, true});
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -684,10 +690,10 @@ private slots:
         QVERIFY(md.contains(QStringLiteral("colspan=\"2\"")));
         QVERIFY(!md.contains(QStringLiteral("| --- |")));
 
-        // rebuildPageText() honours the flag too; the default still flattens.
-        QVERIFY(rebuildPageText(r.pages.first(), true, true)
-                    .contains(QStringLiteral("<table>")));
-        QVERIFY(rebuildPageText(r.pages.first()).contains(QStringLiteral("| --- |")));
+        // rebuildText() honours the flag too; the default still flattens.
+        QVERIFY(parser.rebuildText(r.pages.first()).contains(QStringLiteral("<table>")));
+        QVERIFY(DetTokensParser().rebuildText(r.pages.first())
+                    .contains(QStringLiteral("| --- |")));
     }
 
     // Table with inline math and escaped pipe characters inside cells.
@@ -767,7 +773,7 @@ private slots:
         QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
     }
 
-    // After a box is removed, rebuildPageText must re-index the image URLs so
+    // After a box is removed, rebuildText must re-index the image URLs so
     // they keep pointing at the right boxes.
     void rebuildTextShiftsImageIndices() {
         const QString raw = QStringLiteral(
@@ -785,7 +791,7 @@ private slots:
 
         // Drop the first image and regenerate the text from the remaining boxes.
         page.boxes.removeAt(0);
-        const QString rebuilt = rebuildPageText(page);
+        const QString rebuilt = parser.rebuildText(page);
 
         QVERIFY(rebuilt.contains(QStringLiteral("Body")));
         // The remaining image now sits at index 1.
@@ -874,10 +880,190 @@ private slots:
         // hasDuplicates must be true.
         QVERIFY(page.hasDuplicates);
 
-        // Markdown output must not contain the garbled text.
+        // The Markdown output must not contain the garbled text.
         const QString md = page.text;
         QVERIFY(!md.contains(QStringLiteral("Garbled duplicate")));
         QVERIFY(md.contains(QStringLiteral("Correct continuation")));
+    }
+
+    // --- Parser options (ADR 88) ---------------------------------------------
+
+    // A reply with no layout tokens still parses (the text is kept as one
+    // block) but records a diagnostic — this is what the footer shows when a
+    // model/parser pair does not match.
+    void reportsNoTokensAsDiagnostic() {
+        const QString raw = QStringLiteral(
+            "Sure! Here is the text of the page you asked for, transcribed "
+            "in plain paragraphs without any layout markup at all.");
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+        QVERIFY(r.pages.first().text.contains(QStringLiteral("plain paragraphs")));
+        QCOMPARE(r.notes.size(), 1);
+        QVERIFY(r.notes.first().contains(QStringLiteral("No layout tokens")));
+    }
+
+    // A short non-layout answer ("OK") is not a parse failure, so no noise.
+    void shortReplyWithoutTokensIsSilent() {
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(QStringLiteral("OK"));
+        QVERIFY(r.success);
+        QVERIFY(r.notes.isEmpty());
+    }
+
+    // A well-formed reply produces no diagnostics.
+    void tokenizedReplyHasNoNotes() {
+        DetTokensParser parser;
+        const OcrResult r = parser.parse(
+            QStringLiteral("text [10, 10, 400, 100]A paragraph of recognized text.\n"));
+        QVERIFY(r.success);
+        QVERIFY(r.notes.isEmpty());
+    }
+
+    // bboxRange is the model's coordinate scale: 0-10000 coordinates must
+    // normalize into the same [0, 1] rects as the usual 0-1000 space.
+    void honorsBboxRange() {
+        const QString raw = QStringLiteral(
+            "text [100, 200, 4000, 3000]Wide scale body text.\n");
+
+        ParserOptions wide;
+        wide.bboxRange = 10000;
+        const OcrResult r = DetTokensParser(wide).parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QVERIFY(qFuzzyCompare(page.boxes.first().rect.x(), 0.01));
+        QVERIFY(qFuzzyCompare(page.boxes.first().rect.y(), 0.02));
+        QVERIFY(qFuzzyCompare(page.boxes.first().rect.width(), 0.39));
+        QVERIFY(qFuzzyCompare(page.boxes.first().rect.height(), 0.28));
+    }
+
+    // rebuildText is the parser's own contract: the raw parser has no
+    // fragments, so it must return the page text rather than an empty string.
+    void rawParserRebuildsToPageText() {
+        const RawParser parser;
+        OcrPage page;
+        page.text = QStringLiteral("just text");
+        QCOMPARE(parser.rebuildText(page), QStringLiteral("just text"));
+        QCOMPARE(parser.displayName(), QStringLiteral("Raw text"));
+    }
+
+    // Every registered model id must resolve to a parser that exists —
+    // catches a new adapter shipping with a parser id nobody registered.
+    void registeredParsersAreCreatable() {
+        const QStringList ids = ParserFactory::registeredIds();
+        QVERIFY(ids.contains(QStringLiteral("det_tokens")));
+        QVERIFY(ids.contains(QStringLiteral("raw")));
+        for (const QString &id : ids) {
+            const auto parser = ParserFactory::create(id);
+            QVERIFY(parser);
+            QCOMPARE(parser->id(), id);
+            QVERIFY(!parser->displayName().isEmpty());
+        }
+    }
+
+    // "auto" is offered first in Settings but never reaches create() as a real
+    // parser: an unresolvable id degrades to 'raw', never to a crash.
+    void autoIdIsSelectableAndFallsBack() {
+        QCOMPARE(ParserFactory::selectableIds().first(), ParserFactory::kAutoId);
+        QCOMPARE(ParserFactory::selectableIds().size(),
+                 ParserFactory::selectableDisplayNames().size());
+        const auto parser = ParserFactory::create(ParserFactory::kAutoId);
+        QVERIFY(parser);
+        QCOMPARE(parser->id(), QStringLiteral("raw"));
+    }
+
+    // --- Label map (resources/profiles/labels.json, ADR 88) ------------------
+
+    // The unit-test binary carries no resource bundle, so the compiled-in
+    // fallback table must behave like the shipped one for the shared labels.
+    void builtInLabelMapStylesSharedLabels() {
+        QCOMPARE(blockStyleForLabel(QStringLiteral("title")).style, BlockStyle::Heading);
+        QCOMPARE(blockStyleForLabel(QStringLiteral("table")).style, BlockStyle::Table);
+        QCOMPARE(blockStyleForLabel(QStringLiteral("equation")).style, BlockStyle::Equation);
+        QCOMPARE(blockStyleForLabel(QStringLiteral("image")).style,
+                 BlockStyle::ImagePlaceholder);
+        QCOMPARE(blockStyleForLabel(QStringLiteral("page_caption")).style,
+                 BlockStyle::PlainText);
+    }
+
+    // A JSON document overrides the built-in table, per model id.
+    void jsonOverridesApplyPerModel() {
+        BlockStyleMap map;
+        QJsonObject root;
+        QJsonObject defaults;
+        defaults.insert(QStringLiteral("title"), QStringLiteral("text"));
+        defaults.insert(QStringLiteral("image"), QStringLiteral("image"));
+        defaults.insert(QStringLiteral("image_block"), QStringLiteral("image"));
+        root.insert(QStringLiteral("default"), defaults);
+        QJsonObject overrides;
+        QJsonObject lfm;
+        lfm.insert(QStringLiteral("image_block"), QStringLiteral("text"));
+        lfm.insert(QStringLiteral("code_caption"), QStringLiteral("italic"));
+        overrides.insert(QStringLiteral("lfm25-vl-3b"), lfm);
+        root.insert(QStringLiteral("overrides"), overrides);
+        map.applyJson(root);
+
+        // The default table replaced the built-in one...
+        QCOMPARE(map.styleForLabel(QStringLiteral("title")).style, BlockStyle::PlainText);
+        QCOMPARE(map.styleForLabel(QStringLiteral("image_block")).style,
+                 BlockStyle::ImagePlaceholder);
+        // ...and the model override wins for the named model only.
+        QCOMPARE(map.styleForLabel(QStringLiteral("image_block"), QStringLiteral("lfm25-vl-3b")).style,
+                 BlockStyle::PlainText);
+        QCOMPARE(map.styleForLabel(QStringLiteral("code_caption"), QStringLiteral("lfm25-vl-3b")).style,
+                 BlockStyle::Italic);
+        // A label the override does not name still falls through to the default.
+        QCOMPARE(map.styleForLabel(QStringLiteral("image"), QStringLiteral("lfm25-vl-3b")).style,
+                 BlockStyle::ImagePlaceholder);
+    }
+
+    // The shipped labels.json must parse and must cover the vocabulary the
+    // LFM2.5-VL prompt advertises.
+    void shippedLabelMapCoversLfmVocabulary() {
+        QFile file(QStringLiteral(":/profiles/labels.json"));
+        if (!file.open(QIODevice::ReadOnly))
+            QSKIP("labels.json resource not linked into this test binary");
+        QJsonParseError error{};
+        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
+        QCOMPARE(error.error, QJsonParseError::NoError);
+        QVERIFY(doc.isObject());
+
+        BlockStyleMap map;
+        map.applyJson(doc.object());
+
+        // Every label the LFM2.5-VL prompt advertises must be named explicitly
+        // (defaults or overrides) — a typo must not degrade it to plain text.
+        const QJsonObject defaults = doc.object().value(QStringLiteral("default")).toObject();
+        const QJsonObject lfm = doc.object().value(QStringLiteral("overrides")).toObject()
+                                    .value(QStringLiteral("lfm25-vl-3b")).toObject();
+        const QStringList lfmLabels{
+            QStringLiteral("text"),      QStringLiteral("title"),     QStringLiteral("list"),
+            QStringLiteral("table"),     QStringLiteral("table_caption"),
+            QStringLiteral("table_footnote"), QStringLiteral("image"),
+            QStringLiteral("image_block"), QStringLiteral("image_caption"),
+            QStringLiteral("image_footnote"), QStringLiteral("chart"),
+            QStringLiteral("equation"),  QStringLiteral("formula_number"),
+            QStringLiteral("code"),      QStringLiteral("code_caption"),
+            QStringLiteral("algorithm"), QStringLiteral("aside_text"),
+            QStringLiteral("ref_text"),  QStringLiteral("phonetic"),
+            QStringLiteral("page_header"), QStringLiteral("page_footer"),
+            QStringLiteral("page_number"), QStringLiteral("page_footnote")};
+        for (const QString &label : lfmLabels) {
+            const bool named = defaults.contains(label) || lfm.contains(label);
+            QVERIFY2(named, qPrintable(QStringLiteral("unmapped label: %1").arg(label)));
+        }
+
+        // The labels that must NOT degrade to plain text.
+        QCOMPARE(map.styleForLabel(QStringLiteral("image_block"), QStringLiteral("lfm25-vl-3b")).style,
+                 BlockStyle::ImagePlaceholder);
+        QCOMPARE(map.styleForLabel(QStringLiteral("code_caption"), QStringLiteral("lfm25-vl-3b")).style,
+                 BlockStyle::Italic);
+        QCOMPARE(map.styleForLabel(QStringLiteral("table"), QStringLiteral("lfm25-vl-3b")).style,
+                 BlockStyle::Table);
     }
 
 };

@@ -12,10 +12,25 @@ ColumnLayout {
 
     spacing: 4
 
-    property var parserModel: Controller.parserNames
+    // {id, label} pairs so the combo shows translated names while
+    // Settings.parserId keeps storing the stable id.
+    property var parserModel: {
+        var ids = Controller.parserNames;
+        var labels = Controller.parserLabels;
+        var out = [];
+        for (var i = 0; i < ids.length; i++)
+            out.push({ id: ids[i], label: labels[i] });
+        return out;
+    }
 
     function syncParser() {
-        var idx = root.parserModel.indexOf(Settings.parserId)
+        var idx = -1;
+        for (var i = 0; i < root.parserModel.length; i++) {
+            if (root.parserModel[i].id === Settings.parserId) {
+                idx = i;
+                break;
+            }
+        }
         parserBox.currentIndex = idx >= 0 ? idx : 0
     }
 
@@ -29,7 +44,7 @@ ColumnLayout {
     }
 
     function saveValues() {
-        Settings.parserId = root.parserModel[parserBox.currentIndex]
+        Settings.parserId = root.parserModel[parserBox.currentIndex].id
         Settings.splitPages = splitPagesCheck.checked
         Settings.keepPageNumbers = pageNumbersCheck.checked
         Settings.tablesAsHtml = tablesAsHtmlCheck.checked
@@ -57,14 +72,16 @@ ColumnLayout {
         Layout.fillWidth: true
         implicitHeight: Theme.controlHeight
         model: root.parserModel
+        textRole: "label"
     }
 
     LLOLabel {
         Layout.fillWidth: true
         font.pointSize: Theme.captionSize
         color: Theme.helpColor
-        text: qsTr("‘raw’ keeps the model text as-is. ‘det_tokens’ extracts "
-                   + "positioned fragments (bounding boxes) for the overlay.")
+        text: qsTr("“Automatic” uses the parser the selected OCR model expects. "
+                   + "“Raw text” keeps the model reply as-is; “Layout tokens” "
+                   + "extracts positioned fragments (bounding boxes) for the overlay.")
     }
 
     Item { implicitHeight: 6 }

@@ -2,6 +2,7 @@
 
 #include <QList>
 #include <QString>
+#include <QStringList>
 #include <QRectF>
 
 namespace llocr {
@@ -33,6 +34,8 @@ struct OcrResult {
     QString text;            ///< Flat text of all pages (joined).
     QList<OcrPage> pages;    ///< Structured per-page result.
     QString errorMessage;    ///< Human-readable error when success == false.
+    QStringList notes;       ///< Non-fatal parser diagnostics (page kept, but
+                             ///< something looked off — e.g. no layout tokens).
 
     static OcrResult makeError(const QString& message) {
         OcrResult result;

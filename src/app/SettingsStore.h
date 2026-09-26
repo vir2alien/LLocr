@@ -266,7 +266,8 @@ public:
     static constexpr int kDefaultTimeoutMs = 120000;
     static constexpr const char *kDefaultModelName = "Unlimited-OCR";
     static constexpr const char *kDefaultModelRecipeId = "unlimited-ocr";
-    static constexpr const char *kDefaultParserId = "det_tokens";
+    // "auto" — the OCR model adapter declares its parser (OcrModel::defaultParserId).
+    static constexpr const char *kDefaultParserId = "auto";
     static constexpr bool kDefaultSplitPages = true;
     static constexpr bool kDefaultKeepPageNumbers = true;
     static constexpr bool kDefaultTablesAsHtml = false;

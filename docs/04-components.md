@@ -64,7 +64,8 @@ model windows have per-tab resets instead (profile restore in Launch/Request).
 | Window      | Fields                                                              |
 | ----------- | ------------------------------------------------------------------- |
 | Interface   | language (System / English / Русский), theme (System / Light / Dark); applies immediately, scoped «Restore defaults» |
-| Output      | output parser (`raw` / `det_tokens`; default `det_tokens`); **split   |
+| Output      | output parser (`auto` / `raw` / `det_tokens`; default `auto` — the  |
+|             | selected model's `defaultParserId()`, ADR 88); **split   |
 |             | pages** (`output/splitPages`, default on — `---` rule in MD, dash     |
 |             | line in TXT, `<hr>` in HTML, page break in PDF/DOCX — no “Page N”     |
 |             | headings, ADR 64); **keep page numbers** (`output/keepPageNumbers`,   |
@@ -108,12 +109,12 @@ per-window scoped resets use the same rows (ADR 75).
 > `autoStart`, command preview + self-test) covers the same profile on a clean
 > setup.
 
-> **Not in the settings yet:** the bbox coordinate range is hardcoded in
-> `DetTokensParser` (`kBboxCoordinateRange = 1000`). The recognition prompt is
-> owned by the selected **OCR model adapter** (`promptVariants()`, ADR 58) and
-> is not editable; the `parser`/`prompt` fields of model presets are stored
-> metadata only. The check-request parameters live in the validate request
-> profile (Settings → Check model → Request).
+> **Not in the settings yet:** the recognition prompt is owned by the selected
+> **OCR model adapter** (`promptVariants()`, ADR 58) and is not editable; the
+> `parser`/`prompt` fields of model presets are stored metadata only. The bbox
+> coordinate range is a parser option (`ParserOptions::bboxRange`, 1000 by
+> default, ADR 88), not a setting. The check-request parameters live in the
+> validate request profile (Settings → Check model → Request).
 
 ## 4.3 Themes
 Three options handled by `UiController` (a QML singleton), selected in
@@ -123,26 +124,47 @@ Three options handled by `UiController` (a QML singleton), selected in
 - `Dark`
 
 ## 4.4 Output parsers
-- `det_tokens` ✅ — **default**. `DetTokensParser` extracts text + coordinates
-  from the model's `<|det|> label [x1,y1,x2,y2] <|/det|> text` stream (content
-  is JSON-escaped and unescaped by the parser; model control tokens such as
-  `<|end_of_sentence|>` — incl. full-width-pipe variants — are stripped).
-  Legacy bare `label [x1,y1,x2,y2] text` lines are still accepted. Input is
-  one page per request, so no page splitting happens here. Coordinates are in
-  the 0–1000 range and normalized to [0,1] (`kBboxCoordinateRange`).
+- `det_tokens` ✅ — the layout-token parser (`DetTokensParser`). It extracts
+  text + coordinates from the model's `<|det|> label [x1,y1,x2,y2] <|/det|> text`
+  stream (content is JSON-escaped and unescaped by the parser; model control
+  tokens such as `<|end_of_sentence|>` — incl. full-width-pipe variants — are
+  stripped). Legacy bare `label [x1,y1,x2,y2] text` lines are still accepted,
+  as is the LFM2.5-VL `image_index=<n> <label>…</label>` annotation and its
+  OTSL tables (ADR 87). Input is one page per request, so no page splitting
+  happens here. Coordinates are normalized to [0,1] by `ParserOptions::bboxRange`
+  (1000 by default, i.e. the usual 0–1000 model space).
 - `raw` ✅ — text as-is (`RawParser`).
-- Created via `ParserFactory` (`registeredIds()` → `raw`, `det_tokens`); the
-  active parser is chosen in **Settings → Output**
-  (`AppController::parserNames` lists the options). Easy to add new ones —
-  extend `ParserFactory` and the `parserNames` list.
-- Block styles: `DetTokensParser` maps model labels to `BlockStyle`
-  (`BlockStyle.h`) — `title` → heading, `image`/`chart` → image placeholder,
+- `auto` ✅ — **default** (`parser/id = auto`, ADR 88). Not a parser: it
+  resolves to the selected model's `OcrModel::defaultParserId()` in
+  `AppController::effectiveParserId()`, so switching the OCR model can never
+  leave a mismatched parser behind. Both supported models declare
+  `det_tokens`, and `test_ocr_models::everyModelDeclaresARegisteredParser`
+  guards the link at build time.
+- Created and configured via `ParserFactory::create(id, ParserOptions)`;
+  `selectableIds()` / `selectableDisplayNames()` feed **Settings → Output**
+  (`AppController::parserNames` / `parserLabels`, one-to-one; the combo shows
+  the translated label, the setting stores the id). To add a parser: implement
+  `IOutputParser` (`parse`, `rebuildText`, `id`, `displayName`), register it in
+  `ParserFactory::registeredIds()` and its `create()` branch — nothing in the
+  app layer needs to change.
+- Block styles: the label → `BlockStyle` mapping is **data**, in
+  `resources/profiles/labels.json` (`default` + per-model `overrides` keyed by
+  model id), read by `BlockStyleMap` (`parsers/BlockStyle.{h,cpp}`) with the
+  pre-existing table compiled in as a fallback — `title` → heading,
+  `image`/`chart`/`image_block` → image placeholder,
   `image_caption`/`table_caption`/`table_footnote`/`page_number` → italic,
   `equation` → equation, `table` → GFM pipe table (`output/tablesAsHtml`
   keeps the model's `<table>` HTML instead, ADR 19), `ref_text` → plain text.
-  The free function `rebuildPageText()` regenerates the page Markdown from the
-  boxes (used after a box is removed, to keep `image://ocr/crop/<N>` indices
-  consistent).
+  A model's own label vocabulary is a JSON edit, not a C++ change.
+- `IOutputParser::rebuildText()` regenerates the page Markdown from the boxes
+  (used after a box is removed / a verified FIX / a resize, to keep
+  `image://ocr/crop/<N>` indices consistent). It is part of the parser contract
+  rather than a det-parser-specific free function, so `AppController` no longer
+  depends on a concrete parser (ADR 88).
+- **Diagnostics:** a reply that yields no layout tokens is still kept (as one
+  `text` block) but is recorded in `OcrResult::notes` and surfaced per page as
+  `Controller.parseWarning` in the footer — the "model and parser don't match"
+  case used to look like a successful, if ugly, recognition (ADR 88).
 
 ## 4.5 Image, PDF and DjVu loading
 - Images: `QImage` (single or multiple via `loadImages` / `appendImage`). ✅
@@ -187,7 +209,7 @@ Three options handled by `UiController` (a QML singleton), selected in
   be moved, resized (8 resize handles), and deleted directly on the preview.
   Deletion/geometry changes are pushed through `BoxListModel::removeBox` /
   `updateBoxRect` and reflected back into the page Markdown via
-  `rebuildPageText`. ✅
+  `IOutputParser::rebuildText`. ✅
 
 ## 4.7 Page navigation & thumbnails
 - Left strip of page thumbnails (`PageListModel` + `OcrImageProvider`
@@ -277,6 +299,11 @@ Unit tests live under `tests/` (Qt Test) and are all registered in
 
 Base suite (stages 1–3):
 - `test_det_parser`, `test_pagemodel`, `test_settings_store`, `test_exporter`.
+
+OCR-model suite (ADR 58/59/87/88):
+- `test_ocr_models` — adapter contracts, factory registration, and
+  `everyModelDeclaresARegisteredParser` (each model id must resolve to a
+  parser the factory can build, so `parser/id = auto` can never be a dead end).
 
 Local-runtime suite (stages A–H):
 

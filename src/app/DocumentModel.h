@@ -28,6 +28,7 @@ struct DocumentPage {
     int sourcePageIndex = -1;
     QSize pixelSize;
     QString sourceError;
+    QString parseNote;   ///< Non-fatal parser diagnostic for the last recognition.
 };
 
 class DocumentModel

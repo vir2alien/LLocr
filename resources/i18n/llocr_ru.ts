@@ -148,6 +148,19 @@
     </message>
 </context>
 <context>
+    <name>DetTokensParser</name>
+    <message>
+        <location filename="../../src/parsers/DetTokensParser.cpp" line="30"/>
+        <source>Layout tokens (with boxes)</source>
+        <translation>Токены разметки (с рамками)</translation>
+    </message>
+    <message>
+        <location filename="../../src/parsers/DetTokensParser.cpp" line="306"/>
+        <source>No layout tokens found in the model reply — the text was kept as one block. Check that the OCR model and the output parser match.</source>
+        <translation>В ответе модели не найдено токенов разметки — текст сохранён одним блоком. Проверьте, что модель OCR и парсер вывода совпадают.</translation>
+    </message>
+</context>
+<context>
     <name>DjVuDocument</name>
     <message>
         <location filename="../../src/app/DjVuDocument.cpp" line="58"/>
@@ -1095,9 +1108,9 @@
         <translation>Парсер вывода</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/OutputTab.qml" line="66"/>
-        <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
-        <translation>«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
+        <location filename="../qml/Settings/OutputTab.qml" line="73"/>
+        <source>“Automatic” uses the parser the selected OCR model expects. “Raw text” keeps the model reply as-is; “Layout tokens” extracts positioned fragments (bounding boxes) for the overlay.</source>
+        <translation>«Автоматически» использует парсер, ожидаемый выбранной моделью OCR. «Текст как есть» сохраняет ответ модели без изменений; «Токены разметки» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
     </message>
     <message>
         <location filename="../qml/Settings/OutputTab.qml" line="75"/>
@@ -1153,6 +1166,14 @@
         <location filename="../qml/Settings/OutputTab.qml" line="139"/>
         <source>Margins (mm)</source>
         <translation>Поля (мм)</translation>
+    </message>
+</context>
+<context>
+    <name>ParserFactory</name>
+    <message>
+        <location filename="../../src/parsers/ParserFactory.cpp" line="34"/>
+        <source>Automatic (model default)</source>
+        <translation>Автоматически (по модели)</translation>
     </message>
 </context>
 <context>
@@ -1808,6 +1829,14 @@
         <location filename="../../src/core/LaunchProfile.cpp" line="164"/>
         <source>Launch profile %1 has a duplicate parameter: %2</source>
         <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>RawParser</name>
+    <message>
+        <location filename="../../src/parsers/RawParser.cpp" line="25"/>
+        <source>Raw text</source>
+        <translation>Текст как есть</translation>
     </message>
 </context>
 <context>

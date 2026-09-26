@@ -1,32 +1,49 @@
 #include "parsers/ParserFactory.h"
 
+#include <QCoreApplication>
 #include <QDebug>
 
 #include "parsers/DetTokensParser.h"
+#include "parsers/ParserOptions.h"
 #include "parsers/RawParser.h"
 
 namespace llocr {
 
-static const QStringList kParserIds = {
-    QStringLiteral("raw"),
-    QStringLiteral("det_tokens"),
-};
+const QString ParserFactory::kAutoId = QStringLiteral("auto");
 
 QStringList ParserFactory::registeredIds()
 {
-    return kParserIds;
+    return {QStringLiteral("raw"), QStringLiteral("det_tokens")};
 }
 
-std::unique_ptr<IOutputParser> ParserFactory::create(const QString& parserId) {
-    if (parserId == QStringLiteral("det_tokens")) {
-        return std::make_unique<DetTokensParser>();
+QStringList ParserFactory::selectableIds()
+{
+    return QStringList{kAutoId} + registeredIds();
+}
+
+QStringList ParserFactory::selectableDisplayNames()
+{
+    QStringList names;
+    names.append(QCoreApplication::translate("ParserFactory", "Automatic (model default)"));
+    for (const QString &id : registeredIds()) {
+        const auto parser = create(id);
+        names.append(parser ? parser->displayName() : id);
     }
-    if (parserId == QStringLiteral("raw")) {
-        return std::make_unique<RawParser>();
-    }
-    qWarning() << "ParserFactory: unknown parser id" << parserId
-               << "— falling back to 'raw'";
-    return std::make_unique<RawParser>();
+    return names;
+}
+
+std::unique_ptr<IOutputParser> ParserFactory::create(const QString &parserId,
+                                                    const ParserOptions &options)
+{
+    if (parserId == QLatin1String("det_tokens"))
+        return std::make_unique<DetTokensParser>(options);
+    if (parserId == QLatin1String("raw"))
+        return std::make_unique<RawParser>(options);
+
+    if (parserId != kAutoId)
+        qWarning() << "ParserFactory: unknown parser id" << parserId
+                   << "— falling back to 'raw'";
+    return std::make_unique<RawParser>(options);
 }
 
 } // namespace llocr
