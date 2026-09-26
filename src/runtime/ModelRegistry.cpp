@@ -231,7 +231,58 @@ bool ModelRegistry::save(const QString &modelsDir, const QList<ModelEntry> &entr
         error = QObject::tr("Model registry is locked by another LLocr instance");
         return false;
     }
+    return writeIndex(modelsDir, entries, error);
+}
 
+bool ModelRegistry::update(const QString &modelsDir,
+                           const std::function<QList<ModelEntry>(QList<ModelEntry> &)> &mutate,
+                           QString &error)
+{
+    QDir().mkpath(modelsDir);
+
+    QLockFile lock(lockPathFor(modelsDir));
+    lock.setStaleLockTime(30 * 1000);
+    if (!lock.tryLock(5000)) {
+        error = QObject::tr("Model registry is locked by another LLocr instance");
+        return false;
+    }
+
+    // Read under the same lock that guards the write, so a second instance
+    // installing a model cannot have its entry dropped by a first-writer-wins
+    // save built from an unlocked snapshot.
+    QList<ModelEntry> entries = readIndex(modelsDir, error);
+    error.clear();
+    return writeIndex(modelsDir, mutate(entries), error);
+}
+
+QList<ModelEntry> ModelRegistry::readIndex(const QString &modelsDir, QString &error)
+{
+    QList<ModelEntry> out;
+    QFile f(indexPathFor(modelsDir));
+    if (!f.open(QIODevice::ReadOnly)) {
+        error = QObject::tr("Unable to read model registry: %1").arg(f.errorString());
+        return out;
+    }
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
+        error = QObject::tr("Model index is corrupt");
+        return out;
+    }
+    const QJsonArray arr = doc.object().value(QLatin1String(kModelsKey)).toArray();
+    for (const QJsonValue &v : arr) {
+        if (!v.isObject())
+            continue;
+        ModelEntry e = entryFromJson(v.toObject());
+        if (!e.modelPath.isEmpty() || !e.dir.isEmpty())
+            out.append(std::move(e));
+    }
+    return out;
+}
+
+bool ModelRegistry::writeIndex(const QString &modelsDir, const QList<ModelEntry> &entries,
+                               QString &error)
+{
     QJsonObject root;
     root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
     QJsonArray arr;

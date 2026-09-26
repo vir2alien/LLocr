@@ -4,6 +4,8 @@
 #include <QString>
 #include <QStringList>
 
+#include <functional>
+
 namespace llocr {
 
 enum class ModelOrigin {
@@ -45,6 +47,23 @@ public:
 
     static bool save(const QString &modelsDir, const QList<ModelEntry> &entries,
                      QString &error);
+
+    // Read-modify-write under the registry lock. Every writer must go through
+    // this instead of load()+save(): save() only guards the write, so a list
+    // built from an unlocked snapshot silently drops a concurrent instance's
+    // entry. `mutate` receives the entries as read under the lock and returns
+    // the list to persist.
+    static bool update(const QString &modelsDir,
+                       const std::function<QList<ModelEntry>(QList<ModelEntry> &)> &mutate,
+                       QString &error);
+
+private:
+    // Both assume the registry lock is already held by the caller.
+    static QList<ModelEntry> readIndex(const QString &modelsDir, QString &error);
+    static bool writeIndex(const QString &modelsDir, const QList<ModelEntry> &entries,
+                           QString &error);
+
+public:
 
     static QList<ModelEntry> scanModelsDir(const QString &modelsDir);
 

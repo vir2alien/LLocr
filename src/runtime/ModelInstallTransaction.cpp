@@ -508,12 +508,19 @@ void ModelInstallTransaction::completeInstall()
         total += QFileInfo(localPath(m_pending.mmprojRel)).size();
     e.byteSize = total;
 
-    QList<ModelEntry> updated = m_installed;
-    updated.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
-    updated.append(e);
-    QString saveErr;
     const QString pendingModelsDir = QFileInfo(m_pending.dir).absolutePath();
-    if (!ModelRegistry::save(pendingModelsDir, updated, saveErr)) {
+    QString saveErr;
+    QList<ModelEntry> updated;
+    // Atomic read-modify-write: a second instance installing its own model must
+    // not have its entry dropped by a first-writer-wins save.
+    const bool saved = ModelRegistry::update(pendingModelsDir,
+        [&updated, &e](QList<ModelEntry> &entries) {
+            entries.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
+            entries.append(e);
+            updated = entries;
+            return entries;
+        }, saveErr);
+    if (!saved) {
         setBusy(false);
         setStatusMessage(tr("Model downloaded, but the registry could not be "
                             "saved: %1").arg(saveErr));

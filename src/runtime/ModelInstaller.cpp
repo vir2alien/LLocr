@@ -345,10 +345,15 @@ QString ModelInstaller::removeModel(int index)
             return tr("Unable to remove model directory: %1").arg(e.dir);
     }
 
-    QList<ModelEntry> updated = m_installed;
-    updated.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
     QString saveErr;
-    if (!ModelRegistry::save(currentPaths.modelsDir(), updated, saveErr)) {
+    QList<ModelEntry> updated;
+    // Atomic read-modify-write (see ModelRegistry::update).
+    if (!ModelRegistry::update(currentPaths.modelsDir(),
+            [&updated, &e](QList<ModelEntry> &entries) {
+                entries.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
+                updated = entries;
+                return entries;
+            }, saveErr)) {
         refreshInstalled();
         return tr("Model files removed, but the registry could not be saved: %1")
                    .arg(saveErr);
