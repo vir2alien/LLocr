@@ -108,6 +108,8 @@ target_link_libraries(llocr_parsers PUBLIC llocr_core Qt6::Core)
 # ---- llocr_runtime -----------------------------------------------------------
 qt_add_library(llocr_runtime STATIC
     runtime/ConnectionMode.h
+    runtime/HttpClient.h
+    runtime/HttpClient.cpp
     runtime/ResolvedConnection.h
     runtime/RuntimeState.h
     runtime/ServerCapabilities.h

@@ -17,6 +17,8 @@
 
 #include "runtime/ReleaseCatalog.h"
 
+#include "runtime/HttpClient.h"
+
 namespace llocr {
 
 namespace {
@@ -218,28 +220,17 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
         return QList<ReleaseInfo>();
     }
 
-    QNetworkRequest request(
-        QUrl(apiUrl.isEmpty() ? QLatin1String(kApiUrl) : apiUrl));
-    request.setRawHeader(QByteArrayLiteral("Accept"),
-                         QByteArrayLiteral("application/vnd.github+json"));
-    request.setHeader(QNetworkRequest::UserAgentHeader,
-                      QStringLiteral("LLocr/0.2.0").toUtf8());
-    request.setTransferTimeout(timeoutMs);
-
-    QNetworkReply *reply = nam->get(request);
-    QEventLoop loop;
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    // setTransferTimeout() bounds the transfer, but the nested loop must never
-    // outlive it: a stalled connect would otherwise hang the installer.
-    bool timedOut = false;
-    QTimer guard;
-    guard.setSingleShot(true);
-    QObject::connect(&guard, &QTimer::timeout, &loop, [&]() {
-        timedOut = true;
-        loop.quit();
-    });
-    guard.start(timeoutMs + 5000);
-    loop.exec();
+    // One HTTP policy for the whole runtime layer: transfer timeout, watchdog,
+    // manual redirects with the Authorization dropped on a host change (ADR 108).
+    HttpClient::Options options;
+    options.timeoutMs = timeoutMs;
+    options.headers = {
+        {"Accept", "application/vnd.github+json"},
+    };
+    const HttpClient::Response response = HttpClient::get(
+        nam, QUrl(apiUrl.isEmpty() ? QLatin1String(kApiUrl) : apiUrl), options);
+    const QByteArray payload = response.body;
+    const int status = response.status;
 
     // A transport failure, a rate limit or an unexpected body must NOT drop the
     // cached list: it is the only offline fallback, and the cache is replaced
@@ -249,20 +240,19 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
         return fromCache.isEmpty() ? QList<ReleaseInfo>() : fromCache;
     };
 
-    if (timedOut || reply->error() == QNetworkReply::OperationCanceledError) {
-        reply->deleteLater();
+    if (response.timedOut) {
         error = QObject::tr("Timed out fetching release list");
         return failWithCache(error);
     }
 
-    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    const QByteArray payload = reply->readAll();
-    const QString transportError =
-        reply->error() != QNetworkReply::NoError ? reply->errorString() : QString();
-    // Read before deleteLater(): a queued delete must not be reached first.
-    const qint64 resetEpoch =
-        reply->rawHeader(QByteArrayLiteral("X-RateLimit-Reset")).toLongLong();
-    reply->deleteLater();
+    // The rate-limit hint travels in the final reply's headers.
+    qint64 resetEpoch = 0;
+    for (const auto &header : response.headers) {
+        if (header.first.compare(QByteArrayLiteral("X-RateLimit-Reset"),
+                                 Qt::CaseInsensitive) == 0)
+            resetEpoch = header.second.toLongLong();
+    }
+    const QString transportError = response.error;
 
     if (status == 403) {
         QString when = QObject::tr("soon");

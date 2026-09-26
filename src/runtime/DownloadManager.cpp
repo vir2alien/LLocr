@@ -1,9 +1,9 @@
 #include <QNetworkAccessManager>
-#include <QNetworkProxyFactory>
 #include <QStorageInfo>
 
 #include "runtime/DownloadManager.h"
 #include "runtime/DownloadTask.h"
+#include "runtime/HttpClient.h"
 
 namespace llocr {
 
@@ -18,7 +18,11 @@ DownloadManager::DownloadManager(QObject *parent)
           return QStorageInfo(dirPath).bytesAvailable();
       })
 {
-    QNetworkProxyFactory::setUseSystemConfiguration(true);
+    // The system proxy used to be enabled here, as a constructor side effect:
+    // any build that never constructed a DownloadManager silently ignored the
+    // user's proxy settings. HttpClient applies it from the request itself
+    // (ADR 108).
+    HttpClient::applyProcessDefaults();
 }
 
 DownloadManager::~DownloadManager()

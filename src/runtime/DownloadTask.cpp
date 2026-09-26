@@ -23,6 +23,7 @@
 #endif
 
 #include "runtime/DownloadTask.h"
+#include "runtime/HttpClient.h"
 
 namespace llocr {
 
@@ -251,19 +252,19 @@ void DownloadTask::issueRequest()
         return;
     }
 
-    QNetworkRequest req(m_effectiveUrl);
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                     QNetworkRequest::ManualRedirectPolicy);
-    req.setTransferTimeout(30000);
-    if (!m_authorization.isEmpty())
-        req.setRawHeader("Authorization", m_authorization.toUtf8());
+    // The shared HTTP policy (ADR 108): transfer timeout, manual redirects, and
+    // the Authorization header dropped by handleRedirect() when the host changes.
+    HttpClient::Options httpOptions;
+    httpOptions.timeoutMs = 30000;
+    httpOptions.authorization = m_authorization.toUtf8();
     if (m_resumeRequested && m_receivedBytes > 0 && !m_ifRangeValue.isEmpty()) {
-        req.setRawHeader("Range", QStringLiteral("bytes=%1-").arg(m_receivedBytes).toUtf8());
-        req.setRawHeader("If-Range", m_ifRangeValue.toUtf8());
+        httpOptions.headers = {
+            {"Range", QStringLiteral("bytes=%1-").arg(m_receivedBytes).toUtf8()},
+            {"If-Range", m_ifRangeValue.toUtf8()},
+        };
     }
-
     m_fileOpen = false;
-    m_reply = m_nam->get(req);
+    m_reply = m_nam->get(HttpClient::makeRequest(m_effectiveUrl, httpOptions));
     connect(m_reply, &QNetworkReply::metaDataChanged, this,
             [this, reply = m_reply]() { onMetadata(reply); });
     connect(m_reply, &QNetworkReply::readyRead, this,

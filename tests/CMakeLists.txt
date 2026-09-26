@@ -238,6 +238,15 @@ qt_add_resources(test_export_renderer "export_renderer_preview_res"
 )
 add_test(NAME test_export_renderer COMMAND test_export_renderer)
 
+# ---- Shared HTTP policy (ADR 108) -----------------------------------------
+qt_add_executable(test_http_client test_http_client.cpp)
+
+target_link_libraries(test_http_client PRIVATE
+    Qt6::Test
+    llocr_runtime
+)
+add_test(NAME test_http_client COMMAND test_http_client)
+
 # ---- Stage B: capabilities -------------------------------------------------
 qt_add_executable(test_capabilities test_capabilities.cpp)
 

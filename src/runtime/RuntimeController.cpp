@@ -23,6 +23,7 @@
 #include "runtime/RuntimeLocator.h"
 #include "runtime/RuntimeLog.h"
 #include "runtime/RuntimePaths.h"
+#include "runtime/HttpClient.h"
 #include "runtime/ProcessGuard.h"
 #include "runtime/ServerCapabilities.h"
 #include "runtime/ServerOwner.h"
@@ -498,8 +499,12 @@ void RuntimeController::fetchManagedModels()
     if (!m_modelsNet)
         m_modelsNet = new QNetworkAccessManager(this);
 
-    QNetworkRequest req(QUrl(m_modelsBaseUrl + QStringLiteral("/v1/models")));
-    req.setTransferTimeout(kModelsRequestTimeoutMs);
+    // Shared HTTP policy (ADR 108): transfer timeout, manual redirects, and the
+    // system proxy applied from the request itself.
+    HttpClient::Options options;
+    options.timeoutMs = kModelsRequestTimeoutMs;
+    QNetworkRequest req = HttpClient::makeRequest(
+        QUrl(m_modelsBaseUrl + QStringLiteral("/v1/models")), options);
     QNetworkReply *reply = m_modelsNet->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onModelsReply(reply); });
 }

@@ -10,6 +10,8 @@
 
 #include "runtime/ModelCatalog.h"
 
+#include "runtime/HttpClient.h"
+
 namespace llocr {
 
 namespace {
@@ -41,89 +43,26 @@ struct GetResult {
     QString error;  // transport-level failure description (status <= 0)
 };
 
-QNetworkReply *issueGet(QNetworkAccessManager *nam, const QUrl &url,
-                        const QByteArray &authorization)
-{
-    QNetworkRequest req(url);
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                     QNetworkRequest::ManualRedirectPolicy);
-    if (!authorization.isEmpty())
-        req.setRawHeader("Authorization", authorization);
-    return nam->get(req);
-}
-
-bool waitForReply(QNetworkReply *reply, int timeoutMs)
-{
-    bool timedOut = false;
-    QTimer timer;
-    timer.setSingleShot(true);
-    QEventLoop loop;
-    QObject::connect(&timer, &QTimer::timeout, &loop, [&]() {
-        timedOut = true;
-        reply->abort();
-    });
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    timer.start(timeoutMs);
-    loop.exec();
-    timer.stop();
-    if (timedOut) {
-        reply->deleteLater();
-        return false;
-    }
-    return true;
-}
-
-GetResult pullGet(QNetworkAccessManager *nam, const QUrl &start,
+// One shared HTTP policy: timeout, manual redirects, Authorization dropped on a
+// host change (ADR 108). The former local implementation of the redirect loop
+// is now HttpClient::get.
+GetResult pullGet(QNetworkAccessManager *nam, const QUrl &url,
                   const QByteArray &authorization, int timeoutMs)
 {
-    QUrl url = start;
-    QByteArray auth = authorization;
-    for (int hop = 0; hop <= ModelCatalog::kMaxRedirects; ++hop) {
-        QNetworkReply *reply = issueGet(nam, url, auth);
-        if (!reply)
-            return GetResult{};
-        if (!waitForReply(reply, timeoutMs)) {
-            GetResult res;
-            res.error = QObject::tr("request timed out");
-            return res;
-        }
-        const int status =
-            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (status >= 300 && status < 400) {
-            const QUrl target =
-                reply->attribute(QNetworkRequest::RedirectionTargetAttribute)
-                    .toUrl();
-            const QUrl next = target.isValid() ? url.resolved(target) : QUrl();
-            if (!next.isValid()) {
-                GetResult res;
-                res.error = reply->errorString();
-                reply->deleteLater();
-                return res;
-            }
-            reply->deleteLater();
-            if (next.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive)
-                != 0) {
-                GetResult res;
-                res.error = QObject::tr("insecure redirect to %1 blocked")
-                                .arg(next.toString(QUrl::FullyEncoded));
-                return res;
-            }
-            if (next.host() != url.host())
-                auth = QByteArray();
-            url = next;
-            continue;
-        }
-
-        GetResult res;
-        res.status = status;
-        res.body = reply->readAll();
-        res.linkHeader = reply->rawHeader(QByteArrayLiteral("Link"));
-        if (reply->error() != QNetworkReply::NoError)
-            res.error = reply->errorString();
-        reply->deleteLater();
-        return res;
+    HttpClient::Options options;
+    options.authorization = authorization;
+    options.timeoutMs = timeoutMs;
+    const HttpClient::Response response =
+        HttpClient::get(nam, url, options, ModelCatalog::kMaxRedirects);
+    GetResult result;
+    result.status = response.status > 0 ? response.status : -1;
+    result.body = response.body;
+    result.error = response.timedOut ? QObject::tr("request timed out") : response.error;
+    for (const auto &header : response.headers) {
+        if (header.first.compare(QByteArrayLiteral("Link"), Qt::CaseInsensitive) == 0)
+            result.linkHeader = header.second;
     }
-    return GetResult{};
+    return result;
 }
 
 }  // namespace
