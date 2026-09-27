@@ -55,7 +55,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(int startupTimeoutMs READ startupTimeoutMs WRITE setStartupTimeoutMs NOTIFY startupTimeoutMsChanged)
     Q_PROPERTY(bool allowNonLoopback READ allowNonLoopback WRITE setAllowNonLoopback NOTIFY allowNonLoopbackChanged)
 
-    Q_PROPERTY(QString launchPresetId READ launchPresetId WRITE setLaunchPresetId NOTIFY launchPresetIdChanged)
     Q_PROPERTY(QString launchProfileId READ launchProfileId WRITE setLaunchProfileId NOTIFY launchProfileIdChanged)
     Q_PROPERTY(QString launchModelPath READ launchModelPath WRITE setLaunchModelPath NOTIFY launchModelPathChanged)
     Q_PROPERTY(QString launchMmprojPath READ launchMmprojPath WRITE setLaunchMmprojPath NOTIFY launchMmprojPathChanged)
@@ -177,8 +176,6 @@ public:
     bool allowNonLoopback() const;
     void setAllowNonLoopback(bool on);
 
-    QString launchPresetId() const;
-    void setLaunchPresetId(const QString &id);
     QString launchModelPath() const;
     void setLaunchModelPath(const QString &path);
     QString launchMmprojPath() const;
@@ -248,7 +245,6 @@ signals:
     void autoRestartChanged();
     void startupTimeoutMsChanged();
     void allowNonLoopbackChanged();
-    void launchPresetIdChanged();
     void launchProfileIdChanged();
     void launchModelPathChanged();
     void launchMmprojPathChanged();
@@ -340,7 +336,6 @@ private:
     static constexpr const char *kAllowNonLoopback = "runtime/allowNonLoopback";
 
     // Launch
-    static constexpr const char *kLaunchPresetId = "launch/presetId";
     static constexpr const char *kLaunchProfileId = "launch/profileId";
     static constexpr const char *kLaunchModelPath = "launch/modelPath";
     static constexpr const char *kLaunchMmprojPath = "launch/mmprojPath";

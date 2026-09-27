@@ -12,6 +12,8 @@ class QAbstractListModel;
 namespace llocr {
 
 class SettingsStore;
+template <typename T>
+class ProfileStore;
 
 class RequestProfileStore : public QObject
 {
@@ -49,18 +51,10 @@ signals:
     void draftProfileChanged();
 
 private:
-    QString userPath() const;
-    void reloadUserProfiles();
-    void persistUserProfiles();
-    const RequestProfile *findBuiltIn(const QString &id) const;
-    RequestProfile mergedProfile(const QString &id) const;
-    void loadDraftRows();
-
-private:
     SettingsStore &m_settings;
     Role m_role;
-    QList<RequestProfile> m_profiles;
-    QHash<QString, RequestProfile> m_userProfiles;
+    // The built-in list, the user overrides and their merge (ADR 117).
+    ProfileStore<RequestProfile> *m_profiles;
     QString m_draftProfileId;
     RequestParametersModel *m_model;
 };

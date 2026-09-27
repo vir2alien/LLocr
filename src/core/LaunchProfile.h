@@ -39,11 +39,29 @@ struct LaunchProfile
 
     static const QStringList &reservedArgNames();
     static QList<LaunchProfile> parseFile(const QJsonObject &root, QString &error);
+    /// The built-in catalog and the user overrides file have the same shape, so
+    /// both are read through this name (ADR 117).
+    static QList<LaunchProfile> profilesFromJson(const QJsonObject &root, QString &error)
+    {
+        return parseFile(root, error);
+    }
+    /// Built-in defaults with the user's copy laid over them: the user's
+    /// parameters win by name, the built-in keeps the descriptive fields.
+    static LaunchProfile merge(const LaunchProfile &defaults,
+                               const LaunchProfile &user);
 
     QJsonObject toJson() const;
     const LaunchParameter *find(const QString &name) const;
     bool parametersEqual(const LaunchProfile &other) const;
+    bool operator==(const LaunchProfile &other) const;
+    bool operator!=(const LaunchProfile &other) const { return !(*this == other); }
     void sortByOrder();
+
+private:
+    /// Parses one profile object; shared by the built-in catalog and the user
+    /// overrides file, which have the same per-profile shape (ADR 117).
+    static bool profileFromJson(const QJsonObject &obj, LaunchProfile &profile,
+                                QString &error);
 };
 
 }  // namespace llocr

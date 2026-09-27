@@ -1,20 +1,15 @@
 #include "app/RequestProfileStore.h"
 
 #include <QDir>
-#include <QFile>
-#include <QJsonArray>
-#include <QJsonObject>
 
-#include "app/ProfileStorage.h"
+#include "app/ProfileStore.h"
 #include "app/SettingsStore.h"
 #include "runtime/RuntimePaths.h"
 
 namespace llocr {
 
 namespace {
-
 constexpr int kSchemaVersion = 2;
-
 }  // namespace
 
 RequestProfileStore::RequestProfileStore(SettingsStore &settings,
@@ -24,110 +19,36 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings,
     : QObject(parent)
     , m_settings(settings)
     , m_role(role)
+    , m_profiles(new ProfileStore<RequestProfile>(
+          builtInPath,
+          role == Role::Check ? QStringLiteral("requestValidate.json")
+                              : QStringLiteral("request.json"),
+          kSchemaVersion, QStringLiteral("RequestProfileStore"),
+          // A legacy profile file may carry no id: the entry belongs to the
+          // default model adapter (ADR 110).
+          QString::fromUtf8(SettingsStore::kDefaultModelRecipeId)))
     , m_model(new RequestParametersModel(this))
 {
-    QString error;
-    QFile builtIn(builtInPath);
-    if (builtIn.open(QIODevice::ReadOnly)) {
-        QJsonParseError parseError{};
-        const QJsonDocument doc = QJsonDocument::fromJson(builtIn.readAll(),
-                                                          &parseError);
-        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-            error = parseError.errorString();
-        } else {
-            m_profiles = RequestProfile::profilesFromJson(doc.object(), error);
-        }
-    } else {
-        error = builtIn.errorString();
-    }
-    if (!error.isEmpty())
-        qWarning("RequestProfileStore: cannot load built-in profiles %s: %s",
-                 qUtf8Printable(builtInPath), qUtf8Printable(error));
-
-    for (RequestProfile &profile : m_profiles) {
+    m_profiles->setUserPath(
+        QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir())
+                 .profilesDir())
+            .filePath(role == Role::Check ? QStringLiteral("requestValidate.json")
+                                          : QStringLiteral("request.json")));
+    // A built-in profile without an id belongs to the default model adapter too.
+    const QString fallback = QString::fromUtf8(SettingsStore::kDefaultModelRecipeId);
+    for (RequestProfile &profile : m_profiles->mutableBuiltIn()) {
         if (profile.id.isEmpty())
-            profile.id = QString::fromUtf8(SettingsStore::kDefaultModelRecipeId);
+            profile.id = fallback;
     }
-
-    reloadUserProfiles();
+    // The user path depends on the settings, so the copy is loaded here rather
+    // than in the ProfileStore constructor (ADR 117).
+    m_profiles->reloadUserProfiles();
     reloadDraft();
-}
-
-QString RequestProfileStore::userPath() const
-{
-    const QString fileName = m_role == Role::Check ? QStringLiteral("requestValidate.json")
-                                                   : QStringLiteral("request.json");
-    return QDir(RuntimePaths(m_settings.runtimeRootDir(),
-                             m_settings.runtimeModelsDir())
-                    .profilesDir())
-        .filePath(fileName);
 }
 
 bool RequestProfileStore::hasUserProfile() const
 {
-    return QFile::exists(userPath());
-}
-
-void RequestProfileStore::reloadUserProfiles()
-{
-    m_userProfiles.clear();
-    if (!QFile::exists(userPath()))
-        return;
-    QString error;
-    bool ok = false;
-    const QJsonDocument doc = ProfileStorage::readJson(userPath(), &ok, &error);
-    QList<RequestProfile> parsedProfiles;
-    if (ok && doc.isObject()) {
-        parsedProfiles = RequestProfile::profilesFromJson(doc.object(), error);
-    } else if (!ok) {
-        error = QStringLiteral("cannot read the file");
-    } else if (!doc.isObject()) {
-        error = QStringLiteral("not a JSON object");
-    }
-    if (!error.isEmpty())
-        qWarning("RequestProfileStore: cannot load user profiles %s: %s "
-                 "(falling back to the built-in profiles)",
-                 qUtf8Printable(userPath()), qUtf8Printable(error));
-
-    for (const RequestProfile &profile : std::as_const(parsedProfiles)) {
-        RequestProfile copy = profile;
-        if (copy.id.isEmpty())
-            copy.id = QString::fromUtf8(SettingsStore::kDefaultModelRecipeId);
-        m_userProfiles.insert(copy.id, copy);
-    }
-}
-
-void RequestProfileStore::persistUserProfiles()
-{
-    if (m_userProfiles.isEmpty()) {
-        QString error;
-        if (!ProfileStorage::removeFileIfExists(userPath(), &error))
-            qWarning("RequestProfileStore: cannot remove user profiles %s: %s",
-                     qUtf8Printable(userPath()), qUtf8Printable(error));
-        return;
-    }
-
-    QJsonObject root;
-    root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
-    QJsonArray profiles;
-    for (const RequestProfile &profile : std::as_const(m_userProfiles))
-        profiles.append(profile.toJson());
-    root.insert(QStringLiteral("profiles"), profiles);
-
-    QString error;
-    if (!ProfileStorage::writeJsonAtomic(userPath(), root, &error))
-        qWarning("RequestProfileStore: cannot write user profiles %s: %s",
-                 qUtf8Printable(userPath()), qUtf8Printable(error));
-}
-
-const RequestProfile *RequestProfileStore::findBuiltIn(const QString &id) const
-{
-    for (const RequestProfile &profile : std::as_const(m_profiles)) {
-        if (profile.id == id) {
-            return &profile;
-        }
-    }
-    return nullptr;
+    return m_profiles->hasUserProfile();
 }
 
 QString RequestProfileStore::activeProfileId() const
@@ -140,37 +61,22 @@ QString RequestProfileStore::activeProfileId() const
                            : m_settings.requestProfileId().isEmpty()
                                  ? m_settings.modelRecipeId()
                                  : m_settings.requestProfileId();
-    if (findBuiltIn(id) || m_userProfiles.contains(id))
+    if (m_profiles->isKnown(id))
         return id;
-    if (!m_profiles.isEmpty())
-        return m_profiles.constFirst().id;
+    if (!m_profiles->builtIn().isEmpty())
+        return m_profiles->builtIn().constFirst().id;
     return id;
-}
-
-RequestProfile RequestProfileStore::mergedProfile(const QString &id) const
-{
-    static const RequestProfile kEmpty;
-    const RequestProfile *builtIn = findBuiltIn(id);
-    if (!builtIn && !m_userProfiles.contains(id))
-        return kEmpty;
-    return RequestProfile::merge(builtIn ? *builtIn : kEmpty,
-                                 m_userProfiles.value(id, kEmpty));
 }
 
 RequestProfile RequestProfileStore::activeProfile() const
 {
-    return mergedProfile(activeProfileId());
-}
-
-void RequestProfileStore::loadDraftRows()
-{
-    m_model->resetFrom(mergedProfile(m_draftProfileId).parameters);
+    return m_profiles->merged(activeProfileId());
 }
 
 void RequestProfileStore::reloadDraft()
 {
     m_draftProfileId = activeProfileId();
-    loadDraftRows();
+    m_model->resetFrom(m_profiles->merged(m_draftProfileId).parameters);
     emit draftProfileChanged();
 }
 
@@ -178,10 +84,10 @@ void RequestProfileStore::selectDraftProfile(const QString &id)
 {
     if (id == m_draftProfileId)
         return;
-    if (!findBuiltIn(id) && !m_userProfiles.contains(id))
+    if (!m_profiles->isKnown(id))
         return;
     m_draftProfileId = id;
-    loadDraftRows();
+    m_model->resetFrom(m_profiles->merged(id).parameters);
     emit draftProfileChanged();
 }
 
@@ -205,36 +111,23 @@ void RequestProfileStore::saveDraft()
     draft.parameters = m_model->parameters();
     draft.sortByOrder();
 
-    bool changed = false;
-    const RequestProfile *builtIn = findBuiltIn(m_draftProfileId);
-    if (builtIn && draft == *builtIn) {
-        if (m_userProfiles.contains(m_draftProfileId)) {
-            m_userProfiles.remove(m_draftProfileId);
-            persistUserProfiles();
-            changed = true;
-        }
-    } else {
-        m_userProfiles.insert(m_draftProfileId, draft);
-        persistUserProfiles();
-        changed = true;
-    }
-
-    if (changed)
-        emit profileChanged();
+    if (!m_profiles->putUserProfile(draft))
+        return;
+    emit profileChanged();
 }
 
 void RequestProfileStore::loadDefaultDraft()
 {
-    const RequestProfile *builtIn = findBuiltIn(m_draftProfileId);
-    m_model->resetFrom(builtIn ? builtIn->parameters
-                               : QList<RequestParameter>());
+    if (const RequestProfile *builtIn = m_profiles->findBuiltIn(m_draftProfileId))
+        m_model->resetFrom(builtIn->parameters);
+    else
+        m_model->resetFrom(QList<RequestParameter>());
 }
 
 void RequestProfileStore::resetToDefaults()
 {
-    if (m_userProfiles.remove(m_draftProfileId))
-        persistUserProfiles();
-    loadDraftRows();
+    m_profiles->removeUserProfile(m_draftProfileId);
+    reloadDraft();
     emit profileChanged();
 }
 

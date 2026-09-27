@@ -38,7 +38,6 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     { kAutoRestart, "autoRestart", QVariant(true) },
     { kStartupTimeoutMs, "startupTimeoutMs", QVariant(kDefaultStartupTimeoutMs) },
     { kAllowNonLoopback, "allowNonLoopback", QVariant(false) },
-    { kLaunchPresetId, "launchPresetId", QVariant(QString()) },
     { kLaunchProfileId, "launchProfileId", QVariant(QString()) },
     { kLaunchModelPath, "launchModelPath", QVariant(QString()) },
     { kLaunchMmprojPath, "launchMmprojPath", QVariant(QString()) },
@@ -103,6 +102,11 @@ void SettingsStore::applyStartupMigration()
         if (!legacy.isEmpty())
             m_settings.setValue(kRequestProfileId, legacy);
     }
+
+    // `launch/presetId` was written by the preset installer and read by nobody:
+    // the active launch profile is `launch/profileId` (ADR 117). Drop the key
+    // so an old profile does not keep a value that no longer means anything.
+    m_settings.remove(QString::fromUtf8("launch/presetId"));
 }
 
 void SettingsStore::forceSave()
@@ -647,17 +651,12 @@ void SettingsStore::setAllowNonLoopback(bool on)
     emit allowNonLoopbackChanged();
 }
 
-QString SettingsStore::launchPresetId() const
+void SettingsStore::setLaunchProfileId(const QString &id)
 {
-    return m_settings.value(kLaunchPresetId).toString();
-}
-
-void SettingsStore::setLaunchPresetId(const QString &id)
-{
-    if (launchPresetId() == id)
+    if (launchProfileId() == id)
         return;
-    m_settings.setValue(kLaunchPresetId, id);
-    emit launchPresetIdChanged();
+    m_settings.setValue(kLaunchProfileId, id);
+    emit launchProfileIdChanged();
 }
 
 QString SettingsStore::launchModelPath() const
@@ -832,14 +831,6 @@ void SettingsStore::setAutoCheck(bool on)
 QString SettingsStore::launchProfileId() const
 {
     return m_settings.value(kLaunchProfileId).toString();
-}
-
-void SettingsStore::setLaunchProfileId(const QString &id)
-{
-    if (launchProfileId() == id)
-        return;
-    m_settings.setValue(kLaunchProfileId, id);
-    emit launchProfileIdChanged();
 }
 
 QString SettingsStore::hfToken() const

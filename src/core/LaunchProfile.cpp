@@ -48,6 +48,31 @@ bool LaunchProfile::parametersEqual(const LaunchProfile &other) const
     return a.parameters == b.parameters;
 }
 
+bool LaunchProfile::operator==(const LaunchProfile &other) const
+{
+    return id == other.id && name == other.name && os == other.os
+           && backend == other.backend && description == other.description
+           && parametersEqual(other);
+}
+
+LaunchProfile LaunchProfile::merge(const LaunchProfile &defaults,
+                                   const LaunchProfile &user)
+{
+    // The launch store's user copy *replaces* the parameter set — that is what
+    // makes «remove this row» work — while the descriptive fields stay the
+    // built-in's: they describe the preset, and an override file has no
+    // business changing them. (The request store merges parameter-wise; the two
+    // stores genuinely differ here, which is why the policy lives on the type.)
+    LaunchProfile out = user;
+    out.id = defaults.id.isEmpty() ? user.id : defaults.id;
+    out.name = defaults.name.isEmpty() ? user.name : defaults.name;
+    out.os = defaults.os;
+    out.backend = defaults.backend;
+    out.description = defaults.description;
+    out.sortByOrder();
+    return out;
+}
+
 void LaunchProfile::sortByOrder()
 {
     std::stable_sort(parameters.begin(), parameters.end(),
@@ -139,37 +164,46 @@ QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root,
         seen.insert(id);
 
         LaunchProfile profile;
-        profile.id = id;
-        profile.name = obj.value(QLatin1String(kNameKey)).toString();
-        if (profile.name.isEmpty())
-            profile.name = id;
-        profile.os = obj.value(QLatin1String(kOsKey)).toString();
-        profile.backend = obj.value(QLatin1String(kBackendKey)).toString();
-        profile.description = obj.value(QLatin1String(kDescriptionKey)).toString();
-
-        int fallbackOrder = 1;
-        QSet<QString> paramNames;
-        for (const QJsonValue &pv : obj.value(QLatin1String("parameters")).toArray()) {
-            if (!pv.isObject()) {
-                error = QObject::tr("Launch profile parameter is not an object");
-                return QList<LaunchProfile>();
-            }
-            LaunchParameter parameter;
-            if (!parseParameter(pv.toObject(), fallbackOrder, parameter, error))
-                return QList<LaunchProfile>();
-            fallbackOrder = parameter.order + 1;
-            if (paramNames.contains(parameter.name)) {
-                error = QObject::tr("Launch profile %1 has a duplicate parameter: %2")
-                            .arg(id, parameter.name);
-                return QList<LaunchProfile>();
-            }
-            paramNames.insert(parameter.name);
-            profile.parameters.append(parameter);
-        }
-        profile.sortByOrder();
+        if (!profileFromJson(obj, profile, error))
+            return QList<LaunchProfile>();
         out.append(profile);
     }
     return out;
+}
+
+bool LaunchProfile::profileFromJson(const QJsonObject &obj, LaunchProfile &profile,
+                                    QString &error)
+{
+    profile = LaunchProfile();
+    profile.id = obj.value(QLatin1String(kIdKey)).toString();
+    profile.name = obj.value(QLatin1String(kNameKey)).toString();
+    if (profile.name.isEmpty())
+        profile.name = profile.id;
+    profile.os = obj.value(QLatin1String(kOsKey)).toString();
+    profile.backend = obj.value(QLatin1String(kBackendKey)).toString();
+    profile.description = obj.value(QLatin1String(kDescriptionKey)).toString();
+
+    int fallbackOrder = 1;
+    QSet<QString> paramNames;
+    for (const QJsonValue &pv : obj.value(QLatin1String("parameters")).toArray()) {
+        if (!pv.isObject()) {
+            error = QObject::tr("Launch profile parameter is not an object");
+            return false;
+        }
+        LaunchParameter parameter;
+        if (!parseParameter(pv.toObject(), fallbackOrder, parameter, error))
+            return false;
+        fallbackOrder = parameter.order + 1;
+        if (paramNames.contains(parameter.name)) {
+            error = QObject::tr("Launch profile %1 has a duplicate parameter: %2")
+                        .arg(profile.id, parameter.name);
+            return false;
+        }
+        paramNames.insert(parameter.name);
+        profile.parameters.append(parameter);
+    }
+    profile.sortByOrder();
+    return true;
 }
 
 QJsonObject LaunchProfile::toJson() const

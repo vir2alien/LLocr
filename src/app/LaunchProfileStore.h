@@ -5,12 +5,15 @@
 #include <QString>
 
 #include "app/LaunchParametersModel.h"
+#include "core/LaunchProfile.h"
 
 class QAbstractListModel;
 
 namespace llocr {
 
 class SettingsStore;
+template <typename T>
+class ProfileStore;
 
 class LaunchProfileStore : public QObject
 {
@@ -25,10 +28,10 @@ public:
     enum class Role { Ocr, Check, };
 
     explicit LaunchProfileStore(SettingsStore &settings,
-                                const QString &builtInPath =
-                                    QString::fromUtf8(LaunchProfile::kBuiltInPath),
-                                Role role = Role::Ocr,
-                                QObject *parent = nullptr);
+                                 const QString &builtInPath =
+                                     QString::fromUtf8(LaunchProfile::kBuiltInPath),
+                                 Role role = Role::Ocr,
+                                 QObject *parent = nullptr);
 
     QAbstractListModel *draftModel() const { return m_model; }
     QString draftProfileId() const { return m_draftProfileId; }
@@ -54,19 +57,17 @@ signals:
     void activeProfileChanged();
 
 private:
-    QString userPath() const;
-    void reloadUserProfiles();
-    void persistUserProfiles();
+    static constexpr int kSchemaVersion = 1;
+
     const LaunchProfile *findPreset(const QString &id) const;
     void ensureProfileResolved();
     bool presetMatches(const LaunchProfile &preset, const QString &backend,
                        const QString &osTag) const;
 
-private:
     SettingsStore &m_settings;
     Role m_role;
-    QList<LaunchProfile> m_presets;
-    QHash<QString, LaunchProfile> m_userProfiles;  // by preset id
+    // The built-in list, the user overrides and their merge (ADR 117).
+    ProfileStore<LaunchProfile> *m_profiles;
     QString m_draftProfileId;
     LaunchParametersModel *m_model;
 };

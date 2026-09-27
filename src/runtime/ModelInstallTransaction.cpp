@@ -633,8 +633,6 @@ void ModelInstallTransaction::completeInstall()
         m_settings.setLaunchModelPath(e.modelPath);
         if (!e.mmprojPath.isEmpty())
             m_settings.setLaunchMmprojPath(e.mmprojPath);
-        if (!m_pending.presetId.isEmpty())
-            m_settings.setLaunchPresetId(m_pending.presetId);
         if (!e.parser.isEmpty())
             m_settings.setParserId(e.parser);
         if (e.ctxSize > 0)
