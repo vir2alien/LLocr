@@ -16,7 +16,6 @@ namespace llocr {
 enum class DocumentSource { Image, Pdf, DjVu };
 
 struct DocumentPage {
-    QImage thumb;
     QImage image;
     OcrResult result;
     bool recognized = false;
@@ -53,6 +52,7 @@ public:
 
     static QImage renderDetached(const RenderRequest &request, QString *error = nullptr);
     RenderRequest renderRequestFor(int index) const;
+    RenderRequest thumbnailRequestFor(int index) const;
 
     DocumentModel() = default;
     ~DocumentModel();
@@ -78,7 +78,8 @@ public:
     bool isValidIndex(int index) const;
 
     QImage fullImage(int index, QString *error = nullptr);
-    const QImage &thumbnail(int index) const;
+
+    static QSize thumbnailSizeFor(const QSize &pixelSize);
 
 private:
     static QImage decodeSourceCopy(const DocumentPage &page, QString *error = nullptr);

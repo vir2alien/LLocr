@@ -5,6 +5,7 @@
 #include <memory>
 #include <QElapsedTimer>
 #include <QFileInfo>
+#include <QMutex>
 #include <QThread>
 
 namespace llocr {
@@ -27,6 +28,7 @@ DjVuDocument::~DjVuDocument()
 
 void DjVuDocument::close()
 {
+    QMutexLocker locker(&m_mutex);
     if (m_document) {
         ddjvu_job_stop(ddjvu_document_job(m_document));
         ddjvu_document_release(m_document);
@@ -80,6 +82,7 @@ void DjVuDocument::reportError(QString *error, int index) const
 bool DjVuDocument::open(const QString &path, QString *error)
 {
     close();
+    QMutexLocker locker(&m_mutex);
     m_path = path;
     m_error.clear();
     if (error)
@@ -106,11 +109,13 @@ bool DjVuDocument::open(const QString &path, QString *error)
 
 int DjVuDocument::pageCount() const
 {
+    QMutexLocker locker(&m_mutex);
     return m_document ? ddjvu_document_get_pagenum(m_document) : 0;
 }
 
 QSize DjVuDocument::pageSize(int index, QString *error)
 {
+    QMutexLocker locker(&m_mutex);
     if (error)
         error->clear();
     m_error.clear();
@@ -149,6 +154,7 @@ QSize DjVuDocument::pageSize(int index, QString *error)
 
 QImage DjVuDocument::render(int index, const QSize &size, QString *error)
 {
+    QMutexLocker locker(&m_mutex);
     if (error)
         error->clear();
     m_error.clear();

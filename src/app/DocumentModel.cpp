@@ -62,11 +62,6 @@ bool DocumentModel::appendImage(const QString &path)
         return false;
     page.pixelSize = full;
 
-    QImageReader thumbReader(path);
-    thumbReader.setAutoTransform(true);
-    thumbReader.setScaledSize(fitWithin(full, QSize(kThumbMaxWidth, kThumbMaxHeight)));
-    page.thumb = thumbReader.read();
-
     m_pages.append(page);
     return true;
 }
@@ -78,23 +73,13 @@ bool DocumentModel::appendPdf(const QString &path)
         return false;
 
     const int count = pdf->pageCount();
+    m_pages.reserve(m_pages.size() + count);
     for (int i = 0; i < count; ++i) {
-        const QSize pixelSize = pdfPixelSize(pdf->pagePointSize(i));
-
         DocumentPage page;
         page.sourcePath = path;
         page.sourceType = DocumentSource::Pdf;
         page.sourcePageIndex = i;
-        page.pixelSize = pixelSize;
-
-        QPdfDocumentRenderOptions options;
-        QImage image = pdf->render(i, fitWithin(pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)), options);
-        if (image.isNull()) {
-            image = QImage(fitWithin(pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)), QImage::Format_ARGB32);
-            image.fill(Qt::white);
-        }
-        page.thumb = image;
-
+        page.pixelSize = pdfPixelSize(pdf->pagePointSize(i));
         m_pages.append(page);
     }
     return true;
@@ -131,19 +116,12 @@ DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString &path)
                 page.sourcePageIndex = i;
                 QString pageError;
                 page.pixelSize = document->pageSize(i, &pageError);
-                if (!page.pixelSize.isEmpty())
-                    page.thumb = document->render(i, fitWithin(page.pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)), &pageError);
-                if (page.thumb.isNull()) {
+                if (page.pixelSize.isEmpty()) {
                     if (pageError.isEmpty())
                         pageError = QCoreApplication::translate("DocumentModel", "Failed to read DjVu %1, page %2.").arg(path).arg(i + 1);
                     page.sourceError = pageError;
                     prepared.warnings.append(pageError);
-                    if (page.pixelSize.isEmpty())
-                        page.pixelSize = QSize(800, 1000);
-                    page.thumb = QImage(fitWithin(page.pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)), QImage::Format_RGB32);
-                    if (page.thumb.isNull())
-                        throw std::bad_alloc();
-                    page.thumb.fill(Qt::white);
+                    page.pixelSize = QSize(800, 1000);
                 }
                 pages.append(page);
             }
@@ -302,6 +280,14 @@ DocumentModel::RenderRequest DocumentModel::renderRequestFor(int index) const
     return request;
 }
 
+DocumentModel::RenderRequest DocumentModel::thumbnailRequestFor(int index) const
+{
+    RenderRequest request = renderRequestFor(index);
+    if (isValidIndex(index))
+        request.page.pixelSize = thumbnailSizeFor(m_pages[index].pixelSize);
+    return request;
+}
+
 QImage DocumentModel::renderDetached(const RenderRequest &request, QString *error)
 {
     const DocumentPage &page = request.page;
@@ -416,12 +402,9 @@ QImage DocumentModel::fullImage(int index, QString *error)
     return m_pages[index].image;
 }
 
-const QImage &DocumentModel::thumbnail(int index) const
+QSize DocumentModel::thumbnailSizeFor(const QSize &pixelSize)
 {
-    static const QImage null;
-    if (!isValidIndex(index))
-        return null;
-    return m_pages[index].thumb;
+    return fitWithin(pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight));
 }
 
 }  // namespace llocr

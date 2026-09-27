@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QImage>
 #include <QList>
+#include <QMutex>
 #include <QObject>
 #include <QReadWriteLock>
 #include <QUrl>
@@ -240,6 +241,11 @@ private:
     qint64 m_previewCacheBytes = 0;
     int m_previewRendering = -1;      ///< page index a worker is busy with, -1 = idle
     quint64 m_previewGeneration = 0;  ///< bumped when the document changes
+
+    mutable QMutex m_thumbnailMutex;
+    mutable QHash<int, QImage> m_thumbnailCache;
+    mutable QList<int> m_thumbnailOrder;
+    mutable qint64 m_thumbnailBytes = 0;
 
     void cachePreview(int index, const QImage &image);
     void evictPreviewCache();

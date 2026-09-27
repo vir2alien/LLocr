@@ -61,6 +61,21 @@ QSize nativeSize(int page)
         return {63, 45};
     return {81, 57};
 }
+
+QImage thumbnailOf(const DocumentPage &page, const std::shared_ptr<DjVuDocument> &djvu = {})
+{
+    DocumentModel::RenderRequest request;
+    request.page = page;
+    request.page.image = QImage();
+    request.page.pixelSize = DocumentModel::thumbnailSizeFor(page.pixelSize);
+    request.djvu = djvu;
+    return DocumentModel::renderDetached(request);
+}
+
+QImage thumbnailOf(const DocumentModel &model, int index)
+{
+    return DocumentModel::renderDetached(model.thumbnailRequestFor(index));
+}
 }  // namespace
 
 class TestDjVuDocument : public QObject
@@ -273,10 +288,11 @@ private slots:
             QVERIFY(page.sourceError.isEmpty());
             QVERIFY(page.image.isNull());
             QVERIFY(!page.recognized);
-            QVERIFY(!page.thumb.isNull());
-            QVERIFY(page.thumb.width() <= 220);
-            QVERIFY(page.thumb.height() <= 300);
-            compareQuadrants(model.thumbnail(i), colors(i));
+            const QImage thumb = thumbnailOf(model, i);
+            QVERIFY(!thumb.isNull());
+            QVERIFY(thumb.width() <= 220);
+            QVERIFY(thumb.height() <= 300);
+            compareQuadrants(thumb, colors(i));
         }
         const QImage first = model.fullImage(0, &error);
         QCOMPARE(first.size(), nativeSize(0));
@@ -292,7 +308,7 @@ private slots:
         for (int i = 1; i <= 4; ++i)
             compareQuadrants(model.fullImage(i, &error), colors(i % 3));
         QVERIFY(model.page(0).image.isNull());
-        QVERIFY(!model.thumbnail(0).isNull());
+        QVERIFY(!thumbnailOf(model, 0).isNull());
         QVERIFY(model.page(5).image.isNull());
         compareQuadrants(model.fullImage(0, &error), colors(0));
         QVERIFY(error.isEmpty());
@@ -327,7 +343,7 @@ private slots:
         QCOMPARE(model.pageCount(), 2);
         model.clear();
         QVERIFY(model.isEmpty());
-        QVERIFY(model.thumbnail(0).isNull());
+        QVERIFY(thumbnailOf(model, 0).isNull());
         QVERIFY(model.appendDjVu(fixture("quadrants.djvu")));
         QCOMPARE(model.pageCount(), 1);
         QCOMPARE(model.page(0).sourcePageIndex, 0);
@@ -358,12 +374,13 @@ private slots:
             QVERIFY(!page.recognized);
             QCOMPARE(page.sourceError, i == 1 ? originalError : QString());
             QCOMPARE(page.pixelSize, i == 1 ? QSize(800, 1000) : nativeSize(i));
-            QVERIFY(page.thumb.width() <= 220);
-            QVERIFY(page.thumb.height() <= 300);
+            const QImage thumb = thumbnailOf(page, prepared.document);
+            QVERIFY(thumb.width() <= 220);
+            QVERIFY(thumb.height() <= 300);
             if (i == 1)
-                compareWhite(page.thumb);
+                compareWhite(thumb);
             else
-                compareQuadrants(page.thumb, colors(i));
+                compareQuadrants(thumb, colors(i));
         }
 
         DocumentModel model;
@@ -384,7 +401,7 @@ private slots:
             QVERIFY(!model.fullImage(row).isNull());
         QVERIFY(model.page(1).image.isNull());  // The placeholder was evicted too.
         QCOMPARE(model.page(1).sourceError, originalError);
-        compareWhite(model.thumbnail(1));
+        compareWhite(thumbnailOf(model, 1));
 
         // Make decoder retries observable after eviction, without timing checks.
         QVERIFY(prepared.document->open(fixture("multipage.djvu")));
@@ -401,7 +418,7 @@ private slots:
         QVERIFY(model.page(1).sourceError.isEmpty());
         QCOMPARE(model.page(0).sourceError, originalError);
         compareWhite(model.fullImage(0));
-        compareWhite(model.thumbnail(0));
+        compareWhite(thumbnailOf(model, 0));
         QVERIFY(model.removePage(0));
         for (int i = 0; i < model.pageCount(); ++i)
             QVERIFY(model.page(i).sourceError.isEmpty());
@@ -451,18 +468,20 @@ private slots:
         QVERIFY2(prepared.error.isEmpty(), qPrintable(prepared.error));
         QVERIFY(prepared.document);
         QCOMPARE(prepared.pages.size(), 1);
-        QCOMPARE(prepared.warnings, QStringList{error});
-        QCOMPARE(prepared.pages[0].sourceError, error);
+        QVERIFY(prepared.warnings.isEmpty());
         QCOMPARE(prepared.pages[0].pixelSize, nativeSize(0));
-        compareWhite(prepared.pages[0].thumb);
+        QCOMPARE(prepared.pages[0].sourcePageIndex, 0);
+        QCOMPARE(prepared.pages[0].sourceType, DocumentSource::DjVu);
+        QVERIFY(prepared.pages[0].sourceError.isEmpty());
+        QVERIFY(thumbnailOf(prepared.pages[0], prepared.document).isNull());
+
         DocumentModel model;
         model.appendPreparedDjVu(prepared);
-        QVERIFY(prepared.document->open(fixture("quadrants.djvu")));
-        const QImage image = model.fullImage(0, &error);
-        QVERIFY(error.isEmpty());
-        QCOMPARE(image.size(), nativeSize(0));
-        compareWhite(image);
-        QCOMPARE(model.page(0).sourceError, prepared.warnings.first());
+        QCOMPARE(model.pageCount(), 1);
+        QCOMPARE(model.page(0).pixelSize, nativeSize(0));
+        QCOMPARE(model.page(0).sourcePageIndex, 0);
+        QCOMPARE(model.page(0).sourceType, DocumentSource::DjVu);
+        QVERIFY(model.page(0).sourceError.isEmpty());
     }
 
     void modelAppendFailureIsAtomic()
@@ -473,7 +492,8 @@ private slots:
         model.page(0).recognized = true;
         const DocumentPage before = model.page(0);
         const QImage cached = model.fullImage(0);
-        const qint64 thumbKey = model.thumbnail(0).cacheKey();
+        const QImage thumb = thumbnailOf(model, 0);
+        QVERIFY(!thumb.isNull());
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         const QString malformed = dir.filePath(QStringLiteral("malformed.djvu"));
@@ -493,7 +513,7 @@ private slots:
                 QCOMPARE(model.page(0).sourcePageIndex, before.sourcePageIndex);
                 QCOMPARE(model.page(0).pixelSize, before.pixelSize);
                 QVERIFY(model.page(0).recognized);
-                QCOMPARE(model.thumbnail(0).cacheKey(), thumbKey);
+                QCOMPARE(thumbnailOf(model, 0), thumb);
                 QCOMPARE(model.fullImage(0).cacheKey(), cached.cacheKey());
             }
         }
@@ -508,7 +528,7 @@ private slots:
         DocumentModel model;
         QVERIFY(model.appendDjVu(fixture("rotated.djvu")));
         model.page(0).recognized = true;
-        const qint64 thumbKey = model.thumbnail(0).cacheKey();
+        const QImage thumb = thumbnailOf(model, 0);
         const qint64 imageKey = model.fullImage(0).cacheKey();
         const QString path = fixture("multipage.djvu");
         struct Gate {
@@ -571,7 +591,7 @@ private slots:
         // Watcher, future and owner are gone; preparation has not mutated the model.
         QCOMPARE(model.pageCount(), 1);
         QVERIFY(model.page(0).recognized);
-        QCOMPARE(model.thumbnail(0).cacheKey(), thumbKey);
+        QCOMPARE(thumbnailOf(model, 0), thumb);
         QCOMPARE(model.fullImage(0).cacheKey(), imageKey);
         QVERIFY(prepared.document);
         QVERIFY(prepared.warnings.isEmpty());
@@ -585,9 +605,10 @@ private slots:
             QVERIFY(page.sourceError.isEmpty());
             QVERIFY(page.image.isNull());
             QVERIFY(!page.recognized);
-            QVERIFY(page.thumb.width() <= 220);
-            QVERIFY(page.thumb.height() <= 300);
-            compareQuadrants(page.thumb, colors(i));
+            const QImage thumb = thumbnailOf(page, prepared.document);
+            QVERIFY(thumb.width() <= 220);
+            QVERIFY(thumb.height() <= 300);
+            compareQuadrants(thumb, colors(i));
         }
         model.appendPreparedDjVu(prepared);
         prepared = {};
@@ -647,7 +668,7 @@ private slots:
         DocumentModel model;
         QVERIFY(model.appendDjVu(fixture("rotated.djvu")));
         model.page(0).recognized = true;
-        const qint64 thumbKey = model.thumbnail(0).cacheKey();
+        const QImage thumb = thumbnailOf(model, 0);
         const qint64 imageKey = model.fullImage(0).cacheKey();
         for (const QString &path : {malformed, empty, dir.filePath(QStringLiteral("missing.djvu")), dir.path()}) {
             const auto prepared = DocumentModel::prepareDjVu(path);
@@ -659,7 +680,7 @@ private slots:
             model.appendPreparedDjVu(prepared);
             QCOMPARE(model.pageCount(), 1);
             QVERIFY(model.page(0).recognized);
-            QCOMPARE(model.thumbnail(0).cacheKey(), thumbKey);
+            QCOMPARE(thumbnailOf(model, 0), thumb);
             QCOMPARE(model.fullImage(0).cacheKey(), imageKey);
         }
         model.appendPreparedDjVu({});

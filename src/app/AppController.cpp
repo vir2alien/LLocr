@@ -10,6 +10,7 @@
 #include <QFutureWatcher>
 #include <QHash>
 #include <QMarginsF>
+#include <QMutex>
 #include <QPageLayout>
 #include <QPageSize>
 #include <QReadWriteLock>
@@ -29,6 +30,7 @@ namespace llocr {
 namespace {
 
 constexpr qint64 kPreviewCacheBudgetBytes = 64ll * 1024 * 1024;
+constexpr qint64 kThumbnailCacheBudgetBytes = 48ll * 1024 * 1024;
 
 }  // namespace
 
@@ -203,8 +205,49 @@ QImage AppController::pageImage(int index, QString *error)
 
 QImage AppController::pageThumbnail(int index) const
 {
-    QReadLocker locker(&m_documentLock);
-    return m_document.thumbnail(index);
+    {
+        QMutexLocker locker(&m_thumbnailMutex);
+        const auto it = m_thumbnailCache.constFind(index);
+        if (it != m_thumbnailCache.constEnd()) {
+            m_thumbnailOrder.removeAll(index);
+            m_thumbnailOrder.prepend(index);
+            return it.value();
+        }
+    }
+
+    DocumentModel::RenderRequest request;
+    {
+        QReadLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(index))
+            return {};
+        request = m_document.thumbnailRequestFor(index);
+    }
+
+    QImage image = DocumentModel::renderDetached(request);
+    if (image.isNull()) {
+        QImage placeholder(DocumentModel::thumbnailSizeFor(request.page.pixelSize), QImage::Format_RGB32);
+        if (placeholder.isNull())
+            return {};
+        placeholder.fill(Qt::white);
+        image = placeholder;
+    }
+
+    QMutexLocker locker(&m_thumbnailMutex);
+    const auto existing = m_thumbnailCache.constFind(index);
+    if (existing != m_thumbnailCache.constEnd())
+        m_thumbnailBytes -= existing->sizeInBytes();
+    m_thumbnailCache.insert(index, image);
+    m_thumbnailBytes += image.sizeInBytes();
+    m_thumbnailOrder.removeAll(index);
+    m_thumbnailOrder.prepend(index);
+    while (m_thumbnailOrder.size() > 1 && m_thumbnailBytes > kThumbnailCacheBudgetBytes) {
+        const auto victim = m_thumbnailCache.find(m_thumbnailOrder.takeLast());
+        if (victim == m_thumbnailCache.end())
+            continue;
+        m_thumbnailBytes -= victim->sizeInBytes();
+        m_thumbnailCache.erase(victim);
+    }
+    return image;
 }
 
 bool AppController::previewRendering(int index) const
@@ -927,6 +970,12 @@ void AppController::notifyDocumentChanged()
     ++m_previewGeneration;
     clearPreviewCache();
     m_previewRendering = -1;
+    {
+        QMutexLocker locker(&m_thumbnailMutex);
+        m_thumbnailCache.clear();
+        m_thumbnailOrder.clear();
+        m_thumbnailBytes = 0;
+    }
     emit documentChanged();
     emit pageChanged();
     emit imageChanged();

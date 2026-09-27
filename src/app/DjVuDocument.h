@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QImage>
+#include <QMutex>
 #include <QString>
 
 struct ddjvu_context_s;
@@ -30,6 +31,7 @@ private:
     bool waitForJob(ddjvu_job_s *job);
     void reportError(QString *error, int index = -1) const;
 
+    mutable QRecursiveMutex m_mutex;
     ddjvu_context_s *m_context = nullptr;
     ddjvu_document_s *m_document = nullptr;
     QString m_path;
