@@ -160,12 +160,19 @@ ModelInstallTransaction::ModelInstallTransaction(SettingsStore &settings,
 
 ModelInstallTransaction::~ModelInstallTransaction()
 {
+    // An uncommitted staging directory goes away with the transaction, and the
+    // shared install lock is released so a second instance is not locked out
+    // forever (ADR 112).
+    m_staging.reset();
+    releaseInstallLock();
     if (m_downloads)
         m_downloads->cancelAll(true);
 }
 
 void ModelInstallTransaction::shutdown()
 {
+    m_staging.reset();
+    releaseInstallLock();
     if (m_downloads)
         m_downloads->cancelAll(true);
 }
@@ -324,7 +331,37 @@ void ModelInstallTransaction::installPrepared()
 void ModelInstallTransaction::beginDownload()
 {
     m_installState.ensureDirectories();
-    QDir().mkpath(m_pending.dir);
+
+    // The install now behaves like the runtime one (ADR 112): it takes the
+    // install lock and writes into a staging directory that is published by an
+    // atomic rename. Before this, a cancelled or failed install left a
+    // half-populated <modelsDir>/<org>__<repo> that the next scan adopted as a
+    // valid model, and a second instance could install into the same directory.
+    const RuntimePaths paths = m_installState.paths();
+    m_staging.reset();
+    m_staging = std::make_unique<StagedInstall>(
+        StagedInstall::stagingPathFor(paths.stagingDir(),
+                                      QStringLiteral("model-%1").arg(repoDirName(m_pending.repo))),
+        m_pending.dir);
+    if (!m_staging->isValid()) {
+        setBusy(false);
+        setStatusMessage(m_staging->error());
+        setState(State::Error);
+        return;
+    }
+    if (!m_lockHeld) {
+        if (!m_installState.installLock().tryLock(0)) {
+            setBusy(false);
+            setStatusMessage(tr("Another LLocr instance is installing a model right "
+                                "now; try again in a moment."));
+            setState(State::Error);
+            m_staging.reset();
+            return;
+        }
+        m_lockHeld = true;
+    }
+    m_installDir = m_staging->stagingPath();
+
     setState(State::Downloading);
     setBusy(true);
     setProgress(0.0);
@@ -340,7 +377,7 @@ void ModelInstallTransaction::beginDownload()
         enqueueModelFiles(false);
         return;
     }
-    const QString dir = m_pending.dir;
+    const QString dir = m_installDir;
     const QString mmprojRel = m_pending.mmprojRel;
     const QString expected = expectedShaFor(mmprojRel);
     const QString revision = m_pending.revision;
@@ -399,7 +436,7 @@ void ModelInstallTransaction::enqueueFile(const QString &repoPath, const QString
 
     DownloadTask::Request req;
     req.url = url;
-    req.targetDir = m_pending.dir;
+    req.targetDir = m_installDir;  // the staging directory; published on commit
     req.fileName = leaf;
     req.sha256 = expectedShaFor(repoPath);
     req.authorization = auth;
@@ -454,6 +491,14 @@ bool ModelInstallTransaction::mmprojAlreadyOnDisk(const QString &dir, const QStr
     return QString::fromLatin1(hash.result().toHex()) == expected.toLower();
 }
 
+void ModelInstallTransaction::releaseInstallLock()
+{
+    if (!m_lockHeld)
+        return;
+    m_lockHeld = false;
+    m_installState.installLock().unlock();
+}
+
 void ModelInstallTransaction::maybeFinishDownloads()
 {
     if (m_state != State::Downloading)
@@ -462,6 +507,7 @@ void ModelInstallTransaction::maybeFinishDownloads()
         setBusy(false);
         setStatusMessage(tr("Download failed — check your connection and try again"));
         setState(State::Error);
+        releaseInstallLock();
         return;
     }
     completeInstall();
@@ -469,7 +515,12 @@ void ModelInstallTransaction::maybeFinishDownloads()
 
 void ModelInstallTransaction::completeInstall()
 {
+    // Paths point at the staging directory until the swap below.
     auto localPath = [this](const QString &repoPath) {
+        return QDir(m_installDir).filePath(ModelCatalog::leafName(repoPath));
+    };
+    // ... and at the published directory afterwards.
+    auto installedPath = [this](const QString &repoPath) {
         return QDir(m_pending.dir).filePath(ModelCatalog::leafName(repoPath));
     };
 
@@ -503,13 +554,13 @@ void ModelInstallTransaction::completeInstall()
     e.revision = m_pending.revision;
     e.dir = m_pending.dir;
     e.origin = ModelOrigin::Managed;
-    e.modelPath = primary;
+    e.modelPath = installedPath(m_pending.modelNames.first());
     for (const QString &path : std::as_const(m_pending.modelNames)) {
         if (path != m_pending.modelNames.first())
-            e.parts.append(localPath(path));
+            e.parts.append(installedPath(path));
     }
     if (!m_pending.mmprojRel.isEmpty())
-        e.mmprojPath = localPath(m_pending.mmprojRel);
+        e.mmprojPath = installedPath(m_pending.mmprojRel);
     e.quantization = ModelCatalog::quantizationFromName(
         ModelCatalog::leafName(m_pending.modelNames.first()));
     e.license = m_pending.license;
@@ -537,6 +588,21 @@ void ModelInstallTransaction::completeInstall()
     if (!m_pending.mmprojRel.isEmpty())
         total += QFileInfo(localPath(m_pending.mmprojRel)).size();
     e.byteSize = total;
+
+    // Publish: the staging directory becomes the model directory in one rename
+    // (ADR 112). Until this point nothing in <modelsDir> has changed, so a
+    // failure above leaves the previous model — or no model — untouched.
+    if (m_staging) {
+        QString commitError;
+        if (!m_staging->commit(&commitError)) {
+            setBusy(false);
+            setStatusMessage(commitError);
+            setState(State::Error);
+            releaseInstallLock();
+            return;
+        }
+        m_staging.reset();
+    }
 
     const QString pendingModelsDir = QFileInfo(m_pending.dir).absolutePath();
     QString saveErr;
@@ -588,6 +654,10 @@ void ModelInstallTransaction::cancel()
 {
     ++m_prepareGeneration;
     m_downloads->cancelAll(true);
+    // Cancelling must not leave a staging directory that the next scan could
+    // mistake for an installed model (ADR 112).
+    m_staging.reset();
+    releaseInstallLock();
     setBusy(false);
     setStatusMessage(tr("Download canceled"));
     setState(State::Idle);

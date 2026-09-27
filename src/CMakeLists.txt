@@ -116,6 +116,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/HttpClient.cpp
     runtime/InstalledState.h
     runtime/InstalledState.cpp
+    runtime/StagedInstall.h
+    runtime/StagedInstall.cpp
     runtime/ResolvedConnection.h
     runtime/RuntimeState.h
     runtime/ServerCapabilities.h

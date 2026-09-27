@@ -5,9 +5,12 @@
 #include <QString>
 #include <QStringList>
 
+#include <memory>
+
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelPreset.h"
 #include "runtime/ModelRegistry.h"
+#include "runtime/StagedInstall.h"
 
 class QJsonObject;
 
@@ -102,6 +105,9 @@ private:
                                     const QList<ModelEntry> &installed);
     void maybeFinishDownloads();
     void completeInstall();
+    // Releases the shared install lock (ADR 112): the model install takes the
+    // same lock the runtime install uses, for its whole duration.
+    void releaseInstallLock();
 
     SettingsStore &m_settings;
     LaunchProfileStore &m_launchProfiles;
@@ -115,6 +121,11 @@ private:
     QString m_statusMessage;
 
     InstallPlan m_pending;
+    // Where the download lands: a staging directory published by an atomic
+    // rename in completeInstall() (ADR 112). Empty before the first download.
+    QString m_installDir;
+    std::unique_ptr<StagedInstall> m_staging;
+    bool m_lockHeld = false;
     bool m_pendingForCheck = false;  // install auto-activates the check model
     int m_prepareGeneration = 0;
     QList<ModelEntry> m_installed;

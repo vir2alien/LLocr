@@ -8,6 +8,7 @@
 #include "runtime/InstalledState.h"
 #include "runtime/ModelInstallTransaction.h"
 #include "runtime/ModelPreset.h"
+#include "runtime/StagedInstall.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -147,6 +148,37 @@ private slots:
         QCOMPARE(models.first(), QStringLiteral("d/model.gguf"));
         // No preference: the first projector in tree order wins.
         QCOMPARE(mmproj, QStringLiteral("d/mmproj-b.gguf"));
+    }
+
+    // ADR 112: a model install publishes by atomic rename, so a failed or
+    // cancelled install cannot leave a half-populated <org>__<repo> in
+    // <modelsDir> for the next scan to adopt. The transaction must also give the
+    // shared install lock back when it is cancelled.
+    void cancelledInstallLeavesNoModelDirectoryAndReleasesTheLock()
+    {
+        SettingsStore settings;
+        settings.setRuntimeRootDir(m_dir.filePath(QStringLiteral("runtime")));
+        settings.setRuntimeModelsDir(m_dir.filePath(QStringLiteral("models")));
+        const QString presetsPath =
+            QDir(m_dir.path()).filePath(QStringLiteral("launch-presets.json"));
+        {
+            QFile f(presetsPath);
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write(QByteArrayLiteral("{ \"schemaVersion\": 1, \"profiles\": [] }"));
+        }
+        LaunchProfileStore launchProfiles(settings, presetsPath);
+        InstalledState installed(settings);
+
+        const RuntimePaths paths(settings.runtimeRootDir(), settings.runtimeModelsDir());
+        paths.ensureDirectories();
+
+        ModelInstallTransaction tx(settings, launchProfiles, installed);
+        tx.cancel();
+
+        // Nothing appeared in <modelsDir>, and the lock is free again.
+        QVERIFY(ModelRegistry::scanModelsDir(paths.modelsDir()).isEmpty());
+        QVERIFY(installed.installLock().tryLock(0));
+        installed.installLock().unlock();
     }
 
     void cancelAndShutdownAreSafeWhenIdle()

@@ -10,6 +10,8 @@
 
 #include "runtime/ArchiveExtractor.h"
 #include "runtime/InstallTransaction.h"
+
+#include "runtime/StagedInstall.h"
 #include "runtime/RuntimeLocator.h"
 #include "runtime/ServerCapabilities.h"
 
@@ -100,37 +102,34 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
     }
 
     const QString uuid = QUuid::createUuid().toString();
-    const QString stagingPath = QDir(paths.stagingDir()).filePath(uuid);
-    if (!QDir().mkpath(stagingPath)) {
-        out.error = QObject::tr("Unable to create the staging directory");
+    StagedInstall staged(StagedInstall::stagingPathFor(paths.stagingDir(), uuid),
+                         QString());  // the final tag is only known after the probe
+    if (!staged.isValid()) {
+        out.error = staged.error();
         return out;
     }
 
-    const ExtractResult ex = ArchiveExtractor::extractArchive(archivePath, stagingPath);
+    const ExtractResult ex = ArchiveExtractor::extractArchive(archivePath, staged.stagingPath());
     if (!ex.error.isEmpty()) {
         out.error = ex.error;
-        QDir(stagingPath).removeRecursively();
         return out;
     }
     if (out.warning.isEmpty())
         out.warning = ex.warning;
 
-    const QString serverAbs = locateServer(stagingPath);
+    const QString serverAbs = locateServer(staged.stagingPath());
     if (serverAbs.isEmpty()) {
         out.error = QObject::tr("No llama-server binary found in the release archive");
-        QDir(stagingPath).removeRecursively();
         return out;
     }
     const ProbeResult probe = probeInstalledBinary(serverAbs);
     if (!probe.ok) {
         out.error = QObject::tr("Installed server failed the probe: %1").arg(probe.error);
-        QDir(stagingPath).removeRecursively();
         return out;
     }
     if (probe.capabilities.belowMinimum) {
         out.error = QObject::tr("This release is below the minimum supported build (%1)")
                         .arg(QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
-        QDir(stagingPath).removeRecursively();
         return out;
     }
     QString build = probe.capabilities.build;
@@ -146,29 +145,14 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
                                           : asset.backend,
                                       asset.os, asset.arch);
     const QString finalDir = paths.installDir(finalTag);
-    QString backupDir;
-    if (QFileInfo::exists(finalDir)) {
-        backupDir = finalDir + QStringLiteral(".old-") + uuid;
-        if (!QDir().rename(finalDir, backupDir)) {
-            out.error = QObject::tr("Unable to move the existing install aside");
-            QDir(stagingPath).removeRecursively();
-            return out;
-        }
-    }
-    if (!QDir().rename(stagingPath, finalDir)) {
-        out.error = QObject::tr("Atomic rename of the install into place failed");
-        if (!backupDir.isEmpty())
-            QDir().rename(backupDir, finalDir);
-        QDir(stagingPath).removeRecursively();
+    staged.setFinalPath(finalDir);
+    if (!staged.commit(&out.error))
         return out;
-    }
-    if (!backupDir.isEmpty())
-        QDir(backupDir).removeRecursively();
 
     out.ok = true;
     out.build = build;
     out.tag = finalTag;
-    const QString relServer = QDir(stagingPath).relativeFilePath(serverAbs);
+    const QString relServer = QDir(staged.stagingPath()).relativeFilePath(serverAbs);
     out.serverPath = QDir(finalDir).filePath(relServer);
 
     if (commit)
@@ -176,12 +160,15 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
     return out;
 }
 
-void InstallTransaction::cleanupStaging(RuntimePaths paths)
+void InstallTransaction::cleanupStaging(RuntimePaths paths, bool keepModelStaging)
 {
     const QStringList names =
         QDir(paths.stagingDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-    for (const QString &name : names)
+    for (const QString &name : names) {
+        if (keepModelStaging && name.startsWith(QLatin1String("model-")))
+            continue;
         QDir(QDir(paths.stagingDir()).filePath(name)).removeRecursively();
+    }
 }
 
 QString InstallTransaction::cleanupUnusedBuilds(RuntimePaths paths,

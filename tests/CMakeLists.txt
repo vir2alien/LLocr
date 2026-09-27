@@ -331,6 +331,15 @@ target_link_libraries(test_archive_extractor PRIVATE
 )
 add_test(NAME test_archive_extractor COMMAND test_archive_extractor)
 
+# ---- Publish-by-rename shared by both install transactions (ADR 112) -------
+qt_add_executable(test_staged_install test_staged_install.cpp)
+
+target_link_libraries(test_staged_install PRIVATE
+    Qt6::Test
+    llocr_runtime
+)
+add_test(NAME test_staged_install COMMAND test_staged_install)
+
 # ---- Stage D: install transaction ----------------------------------------
 qt_add_executable(test_install_transaction test_install_transaction.cpp)
 

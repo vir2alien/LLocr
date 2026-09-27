@@ -39,7 +39,11 @@ public:
 
     static InstallOutput start(const QString &archivePath, const ReleaseAsset &asset,
                                RuntimePaths paths, CommitFn commit = CommitFn());
-    static void cleanupStaging(RuntimePaths paths);
+    // Removes abandoned staging directories. Model staging (`model-…`) is kept
+    // by default: it lives outside <modelsDir>, so a scan can never mistake it
+    // for an installed model, and keeping it lets a multi-GB download resume
+    // after a crash (ADR 112).
+    static void cleanupStaging(RuntimePaths paths, bool keepModelStaging = true);
     static QString cleanupUnusedBuilds(RuntimePaths paths, const QString &keepTag);
     static QList<InstalledBuildInfo> scanInstalledBuilds(const RuntimePaths &paths);
 };
