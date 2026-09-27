@@ -395,6 +395,49 @@ private slots:
         QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Recognition finished. Skipped 3 unreadable page(s)."));
     }
 
+    // Cancelling a batch: the files already committed stay, the rest are not
+    // opened, and the queue finishes normally (importing goes false) so the UI
+    // is not left stuck in "importing".
+    void importCanBeCancelled()
+    {
+        auto &controller = *m_controller;
+        QSignalSpy progressSpy(&controller, &AppController::importProgressChanged);
+
+        // Ten copies of the same PDF: enough that the timer-driven chain can be
+        // cut in the middle.
+        QVariantList files;
+        for (int i = 0; i < 10; ++i)
+            files << QUrl::fromLocalFile(m_pdf);
+
+        controller.openFiles(files);
+        QVERIFY(controller.importing());
+        QCOMPARE(controller.importProgressTotal(), 10);
+        // The first raster/PDF is appended inline, so the counter may already
+        // have ticked by the time openFiles returns; it must not have run away.
+        QVERIFY(controller.importProgressDone() < 10);
+
+        // Cancel from inside the chain, once at least one file has landed.
+        int doneAtCancel = 0;
+        connect(&controller, &AppController::importProgressChanged, this, [&] {
+            if (controller.importProgressDone() >= 3 && controller.importing()) {
+                controller.cancelImport();
+                doneAtCancel = controller.importProgressDone();
+            }
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        QVERIFY(doneAtCancel >= 3);
+        QVERIFY(doneAtCancel < 10);
+
+        // Everything committed before the cancel is kept, and nothing after.
+        QCOMPARE(controller.pageCount(), doneAtCancel * 3);
+        QCOMPARE(controller.importProgressDone(), 10);  // the bar completes, it does not hang
+        QVERIFY(controller.statusMessage().contains(QStringLiteral("Import stopped")));
+
+        // Cancelling when nothing is running is a no-op.
+        controller.cancelImport();
+        QVERIFY(!controller.importing());
+    }
+
     // Mixed multi-file import on the *synchronous* path: images and PDFs are
     // appended on the GUI thread (only DjVu is decoded on a worker,
     // AppController::importNextFile), so this case needs no fixture codec and
@@ -644,6 +687,56 @@ private slots:
         QCOMPARE(controller.pageCount(), 7);
         QCOMPARE(controller.statusMessage(), QStringLiteral("Added 1 file(s), 3 page(s)."));
         QVERIFY(controller.currentPageWarning().isEmpty());
+    }
+
+    // Since thumbnails became lazy the import no longer decodes anything, so a
+    // page that renders blank is only discovered when it is shown. The user must
+    // still hear about it, exactly once, however often the strip repaints.
+    void unrenderablePageIsReportedOnce()
+    {
+        // A DjVu whose INFO chunk is valid but which carries no encoded image
+        // chunks: the page dictionary reads fine, the render does not.
+        const QString infoOnly = m_dir.filePath(QStringLiteral("info-only.djvu"));
+        QFile source(fixture("wide-info.djvu"));
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        QByteArray bytes = source.readAll();
+        QVERIFY(bytes.size() > 27);
+        bytes[24] = 0;
+        bytes[25] = 81;
+        bytes[26] = 0;
+        bytes[27] = 57;
+        QFile out(infoOnly);
+        QVERIFY(out.open(QIODevice::WriteOnly));
+        QCOMPARE(out.write(bytes), bytes.size());
+        out.close();
+
+        auto &controller = *m_controller;
+        m_problems->clear();
+        controller.openFiles({QUrl::fromLocalFile(infoOnly)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        QCOMPARE(controller.pageCount(), 1);
+        // The import itself has nothing to report: it never decoded the page.
+        QCOMPARE(m_problems->count(), 0);
+
+        // Asking for the thumbnail triggers the render, the failure, and the
+        // queued report on the GUI thread.
+        QImage thumb = controller.pageThumbnail(0);
+        QTRY_VERIFY_WITH_TIMEOUT(m_problems->count() == 1, 5000);
+        const QString first = m_problems->logText();
+        QVERIFY2(first.contains(QStringLiteral("could not be rendered")), qPrintable(first));
+        QVERIFY2(first.contains(QStringLiteral("Page 1")), qPrintable(first));
+
+        // Repaints must not multiply the entry.
+        for (int i = 0; i < 5; ++i) {
+            thumb = controller.pageThumbnail(0);
+            QVERIFY(!thumb.isNull());
+        }
+        QTest::qWait(50);
+        QCOMPARE(m_problems->count(), 1);
+
+        // The strip still gets a usable placeholder rather than a hole.
+        QVERIFY(!thumb.isNull());
+        compareWhite(thumb);
     }
 #endif  // LLOCR_HAVE_DJVU
 

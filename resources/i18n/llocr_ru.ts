@@ -38,6 +38,14 @@
         <translation>Внимание: %1 стр. заменено пустыми страницами — см. журнал проблем.</translation>
     </message>
     <message>
+        <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
+        <translation>Импорт остановлен: открыто файлов %1 из %2, страниц: %3.</translation>
+    </message>
+    <message>
+        <source>Page %1 could not be rendered and is shown blank — see the problem log.</source>
+        <translation>Страницу %1 не удалось отрисовать, показана пустой — см. журнал проблем.</translation>
+    </message>
+    <message>
         <location line="+37"/>
         <location line="+18"/>
         <source>Page %1 deleted.</source>
@@ -512,6 +520,10 @@
         <location filename="../qml/MainWindow/Footer.qml" line="+27"/>
         <source>Blank replacement — this page could not be decoded. %1</source>
         <translation>Пустая страница вместо повреждённой — не удалось декодировать оригинал. %1</translation>
+    </message>
+    <message>
+        <source>Opening %1 / %2</source>
+        <translation>Открытие %1 / %2</translation>
     </message>
     <message>
         <location line="+105"/>

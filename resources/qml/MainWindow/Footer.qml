@@ -274,6 +274,14 @@ Item {
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
                 }
+                LLOLabel {//Import progress
+                    visible: Controller.importing
+                    text: qsTr("Opening %1 / %2").arg(Controller.importProgressDone)
+                                                .arg(Controller.importProgressTotal)
+                    color: Theme.textMuted
+                    elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
+                }
                 Item { Layout.fillWidth: true }
                 BusyIndicator {
                     running: Controller.busy || Controller.importing
@@ -288,6 +296,12 @@ Item {
                     enabled: Controller.checkBusy
                     text: qsTr("Stop")
                     onClicked: Controller.stopCheck()
+                }
+                LLOButton {
+                    visible: Controller.importing
+                    enabled: Controller.importing
+                    text: qsTr("Stop")
+                    onClicked: Controller.cancelImport()
                 }
                 LLOButton {
                     id: runtimeToggleButton

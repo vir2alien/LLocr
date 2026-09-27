@@ -7,6 +7,7 @@
 #include <QMutex>
 #include <QObject>
 #include <QReadWriteLock>
+#include <QSet>
 #include <QUrl>
 #include <QVariant>
 
@@ -39,6 +40,8 @@ class AppController : public QObject
 
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(bool importing READ importing NOTIFY importingChanged)
+    Q_PROPERTY(int importProgressDone READ importProgressDone NOTIFY importProgressChanged)
+    Q_PROPERTY(int importProgressTotal READ importProgressTotal NOTIFY importProgressChanged)
     Q_PROPERTY(QString resultText READ resultText NOTIFY resultChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusChanged)
     Q_PROPERTY(QString currentPageWarning READ currentPageWarning NOTIFY pageChanged)
@@ -90,10 +93,13 @@ public:
                            RequestProfileStore &checkRequestProfiles,
                            VerificationPromptStore &verification,
                            QObject *parent = nullptr);
+    ~AppController() override;
 
     bool busy() const { return m_recognition.busy(); }
     bool exporting() const { return m_export.exporting(); }
     bool importing() const { return m_importing; }
+    int importProgressDone() const { return m_importDone; }
+    int importProgressTotal() const { return m_importTotal; }
     QString resultText() const;
     QString statusMessage() const { return m_statusMessage.text(); }
     QString currentPageWarning() const;
@@ -141,7 +147,7 @@ public:
 
     QImage currentImage();
     QImage pageImage(int index, QString *error = nullptr);
-    QImage pageThumbnail(int index) const;
+    QImage pageThumbnail(int index);
     QImage previewImage(int index);
     Q_INVOKABLE bool previewRendering(int index) const;
 
@@ -150,6 +156,7 @@ public:
 signals:
     void busyChanged();
     void importingChanged();
+    void importProgressChanged();
     void exportingChanged();
     void resultChanged();
     void statusChanged();
@@ -187,6 +194,7 @@ public slots:
     Q_INVOKABLE void checkEnabledBlocksOnPage();
     Q_INVOKABLE void checkAllEnabledBlocks(bool onlyUnchecked = false);
     Q_INVOKABLE void stopCheck();
+    Q_INVOKABLE void cancelImport();
 
 private:
     struct ImportState;
@@ -219,6 +227,9 @@ private:
     RecognitionController m_recognition;
     VerificationQueueController m_verify;
     bool m_importing = false;
+    int m_importDone = 0;
+    int m_importTotal = 0;
+    std::shared_ptr<ImportState> m_import;
     int m_currentPage = 0;
     int m_imageRevision = 0;
     int m_docRevision = 0;
@@ -242,10 +253,11 @@ private:
     int m_previewRendering = -1;      ///< page index a worker is busy with, -1 = idle
     quint64 m_previewGeneration = 0;  ///< bumped when the document changes
 
-    mutable QMutex m_thumbnailMutex;
-    mutable QHash<int, QImage> m_thumbnailCache;
-    mutable QList<int> m_thumbnailOrder;
-    mutable qint64 m_thumbnailBytes = 0;
+    QMutex m_thumbnailMutex;
+    QHash<int, QImage> m_thumbnailCache;
+    QList<int> m_thumbnailOrder;
+    qint64 m_thumbnailBytes = 0;
+    QSet<QString> m_reportedUnrenderablePages;
 
     void cachePreview(int index, const QImage &image);
     void evictPreviewCache();

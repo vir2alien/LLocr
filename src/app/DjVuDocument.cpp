@@ -14,6 +14,8 @@ constexpr qint64 kDecodeTimeoutMs = 30000;
 constexpr qint64 kMaxRenderPixels = 16000000;
 constexpr int kMaxRenderSide = 16384;
 
+constexpr unsigned long kDecodedCacheBytes = 32ul * 1024 * 1024;
+
 struct PageDeleter {
     void operator()(ddjvu_page_t *page) const { ddjvu_page_release(page); }
 };
@@ -95,7 +97,7 @@ bool DjVuDocument::open(const QString &path, QString *error)
     }
     m_context = ddjvu_context_create("LLocr");
     if (m_context) {
-        ddjvu_cache_set_size(m_context, 32ul * 1024 * 1024);
+        ddjvu_cache_set_size(m_context, kDecodedCacheBytes);
         const QByteArray filename = file.absoluteFilePath().toUtf8();
         m_document = ddjvu_document_create_by_filename_utf8(m_context, filename.constData(), 1);
     }

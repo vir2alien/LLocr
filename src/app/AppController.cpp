@@ -85,6 +85,8 @@ AppController::AppController(
     connect(&m_runtime, &RuntimeController::configValidChanged, this, [this]() { emit configChanged(); });
 }
 
+AppController::~AppController() = default;
+
 QStringList AppController::parserNames() const
 {
     return ParserFactory::selectableIds();
@@ -100,7 +102,6 @@ QString AppController::effectiveParserId() const
     const QString configured = m_settings.parserId();
     if (!configured.isEmpty() && configured != ParserFactory::kAutoId)
         return configured;
-    // "auto": the model adapter owns the parser choice (OcrModel::defaultParserId).
     return OcrModelFactory::create(m_settings.modelRecipeId())->defaultParserId();
 }
 
@@ -203,7 +204,7 @@ QImage AppController::pageImage(int index, QString *error)
     return m_document.fullImage(index, error);
 }
 
-QImage AppController::pageThumbnail(int index) const
+QImage AppController::pageThumbnail(int index)
 {
     {
         QMutexLocker locker(&m_thumbnailMutex);
@@ -230,6 +231,16 @@ QImage AppController::pageThumbnail(int index) const
             return {};
         placeholder.fill(Qt::white);
         image = placeholder;
+        const QString key = request.page.sourcePath + QLatin1Char('#') + QString::number(index);
+        QMetaObject::invokeMethod(
+            this,
+            [this, index, key]() {
+                if (m_reportedUnrenderablePages.contains(key))
+                    return;
+                m_reportedUnrenderablePages.insert(key);
+                reportProblem(StatusMessage::translate("AppController", "Page %1 could not be rendered and is shown blank — see the problem log.").arg(index + 1), ProblemLog::Warning);
+            },
+            Qt::QueuedConnection);
     }
 
     QMutexLocker locker(&m_thumbnailMutex);
@@ -385,6 +396,7 @@ struct AppController::ImportState {
     int addedFiles = 0;
     int addedPages = 0;
     int skipped = 0;
+    bool cancelled = false;
     QString firstError;
     QStringList warnings;
 };
@@ -409,15 +421,25 @@ void AppController::openFiles(const QVariantList &fileUrls)
 
     auto state = std::make_shared<ImportState>();
     state->paths = std::move(paths);
+    m_import = state;
+    m_importDone = 0;
+    m_importTotal = state->paths.size();
     m_importing = true;
     emit importingChanged();
+    emit importProgressChanged();
     emit configChanged();
     importNextFile(state);
 }
 
+void AppController::cancelImport()
+{
+    if (m_import)
+        m_import->cancelled = true;
+}
+
 void AppController::importNextFile(const std::shared_ptr<ImportState> &state)
 {
-    if (state->next >= state->paths.size()) {
+    if (state->cancelled || state->next >= state->paths.size()) {
         finishImport(*state);
         return;
     }
@@ -464,6 +486,8 @@ void AppController::recordImportedFile(const std::shared_ptr<ImportState> &state
         if (state->firstError.isEmpty())
             state->firstError = error;
     }
+    ++m_importDone;
+    emit importProgressChanged();
     QTimer::singleShot(0, this, [this, state]() { importNextFile(state); });
 }
 
@@ -476,6 +500,9 @@ void AppController::finishImport(const ImportState &state)
         summary = StatusMessage::translate("AppController", "Added %1 file(s), %2 page(s); %3 file(s) skipped.").arg(state.addedFiles).arg(state.addedPages).arg(state.skipped);
     } else {
         summary = StatusMessage::translate("AppController", "Added %1 file(s), %2 page(s).").arg(state.addedFiles).arg(state.addedPages);
+    }
+    if (state.cancelled && state.addedPages > 0) {
+        summary = StatusMessage::translate("AppController", "Import stopped: %1 of %2 file(s) opened, %3 page(s).").arg(state.addedFiles).arg(m_importTotal).arg(state.addedPages);
     }
     for (const QString &warning : state.warnings)
         reportProblem(StatusMessage::literal(warning));
@@ -492,7 +519,10 @@ void AppController::finishImport(const ImportState &state)
         setStatus(summary);
     }
     m_importing = false;
+    m_import = nullptr;
+    m_importDone = m_importTotal;
     emit importingChanged();
+    emit importProgressChanged();
     emit configChanged();
     if (state.addedPages > 0) {
         updateBoxesForCurrent();
@@ -976,6 +1006,7 @@ void AppController::notifyDocumentChanged()
         m_thumbnailOrder.clear();
         m_thumbnailBytes = 0;
     }
+    m_reportedUnrenderablePages.clear();
     emit documentChanged();
     emit pageChanged();
     emit imageChanged();
