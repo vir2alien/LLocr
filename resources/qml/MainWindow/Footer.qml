@@ -13,7 +13,6 @@ Item {
     implicitHeight: column.implicitHeight
     width: parent ? parent.width : 0
 
-    property bool launchDirty: false
     property bool bannerDismissed: false
     property var logWindow: null
 
@@ -29,7 +28,6 @@ Item {
 
     function doRestart() {
         Runtime.restartServer()
-        root.launchDirty = false
         root.bannerDismissed = false
     }
 
@@ -83,42 +81,11 @@ Item {
         }
     }
 
-    function markLaunchDirty() {
-        root.launchDirty = true
-    }
-
-    Connections {
-        target: Settings
-        function onLaunchPortChanged() { root.markLaunchDirty() }
-        function onLaunchModelAliasChanged() { root.markLaunchDirty() }
-        function onLaunchHostChanged() { root.markLaunchDirty() }
-        function onLaunchModelPathChanged() { root.markLaunchDirty() }
-        function onLaunchMmprojPathChanged() { root.markLaunchDirty() }
-        function onLaunchPresetIdChanged() { root.markLaunchDirty() }
-        function onLaunchProfileIdChanged() { root.markLaunchDirty() }
-        function onServerPathChanged() { root.markLaunchDirty() }
-        function onCheckLaunchModelPathChanged() { root.markLaunchDirty() }
-        function onCheckLaunchMmprojPathChanged() { root.markLaunchDirty() }
-        function onCheckLaunchProfileIdChanged() { root.markLaunchDirty() }
-    }
-
-    Connections {
-        target: LaunchProfilesOcr
-        function onProfileChanged() { root.markLaunchDirty() }
-    }
-
-    Connections {
-        target: LaunchProfilesValidate
-        function onProfileChanged() { root.markLaunchDirty() }
-    }
-
-    Connections {
-        target: Runtime
-        function onStateChanged() {
-            if (Runtime.state === Runtime.Ready)
-                root.launchDirty = false
-        }
-    }
+    // The rule itself lives in C++ (Runtime.launchConfigDirty): the live server's
+    // launch configuration is compared with the one the settings now produce, so
+    // a setting added there cannot be forgotten here (ADR 113). QML keeps only the
+    // presentational state — whether the user hid the banner for this session.
+    readonly property bool launchDirty: Runtime.launchConfigDirty
 
     ColumnLayout {
         id: column

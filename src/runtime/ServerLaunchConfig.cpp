@@ -28,6 +28,13 @@ ServerLaunchConfig ServerLaunchConfig::fromSettings(
     return cfg;
 }
 
+bool ServerLaunchConfig::operator==(const ServerLaunchConfig &other) const
+{
+    return program == other.program && modelPath == other.modelPath
+           && mmprojPath == other.mmprojPath && modelAlias == other.modelAlias
+           && host == other.host && port == other.port && parameters == other.parameters;
+}
+
 namespace {
 
 QString displayEscape(const QString &token)

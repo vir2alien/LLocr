@@ -11,7 +11,9 @@ import "../Common"
 Item {
     id: root
 
-    property bool complete: Settings.serverPath.trim().length > 0
+    // A path that is set but missing on disk is not a usable runtime; the gate
+    // is C++'s so the wizard and the footer agree (ADR 113).
+    property bool complete: Runtime.serverPathValid
 
     onVisibleChanged: {
         if (visible)
@@ -178,7 +180,7 @@ Item {
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
-                color: Settings.serverPath.length ? Theme.textSecondary : Theme.textMuted
+                color: Runtime.serverPathValid ? Theme.textSecondary : Theme.textMuted
                 text: Settings.serverPath.trim().length
                       ? Runtime.statusMessage
                       : qsTr("No binary selected yet.")

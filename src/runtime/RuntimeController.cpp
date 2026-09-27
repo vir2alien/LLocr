@@ -4,6 +4,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonParseError>
+#include <QMetaMethod>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -37,6 +38,51 @@ namespace {
 constexpr int kModelsRequestTimeoutMs = 10000;  // /v1/models query
 constexpr int kProbeTimeoutMs = 120000;         // RuntimeLocator::probeCached (cold Metal cache)
 constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
+// A managed model is allowed to plan for 90 % of system RAM; above that the
+// estimate is a warning in the wizard, not an error.
+constexpr double kMemoryBudgetFactor = 0.9;
+
+// Connects every `…Changed` signal of `source` to `slot` on `receiver`.
+//
+// The restart banner used to name eleven Settings signals by hand in QML, so
+// every new launch setting had to be remembered there. Walking the meta-object
+// instead makes the subscription a property of the store: SettingsStore already
+// emits one notify signal per property, and this picks up the ones added later
+// (ADR 113). Cost is one connection per property — a few dozen.
+void connectEveryChangeSignal(QObject *source, QObject *receiver, const char *slot)
+{
+    // A typo in the slot name would otherwise fail silently, so it is resolved
+    // against the meta-object once, up front.
+    const QString slotName = QString::fromLatin1(slot);
+    const QMetaObject *receiverMeta = receiver->metaObject();
+    QMetaMethod target;
+    for (int i = 0; i < receiverMeta->methodCount(); ++i) {
+        const QMetaMethod candidate = receiverMeta->method(i);
+        if (candidate.methodType() == QMetaMethod::Slot
+            && slotName == QLatin1String(candidate.name())) {
+            target = candidate;
+            break;
+        }
+    }
+    if (!target.isValid()) {
+        qWarning("connectEveryChangeSignal: %s has no slot %s",
+                 qUtf8Printable(QString::fromLatin1(source->metaObject()->className())),
+                 slot);
+        return;
+    }
+
+    const QMetaObject *meta = source->metaObject();
+    for (int i = 0; i < meta->methodCount(); ++i) {
+        const QMetaMethod method = meta->method(i);
+        if (method.methodType() != QMetaMethod::Signal)
+            continue;
+        if (method.parameterCount() != 0)
+            continue;
+        if (!QLatin1String(method.name()).endsWith(QLatin1String("Changed")))
+            continue;
+        QObject::connect(source, method, receiver, target);
+    }
+}
 }  // namespace
 
 RuntimeController::RuntimeController(SettingsStore &settings,
@@ -55,16 +101,18 @@ RuntimeController::RuntimeController(SettingsStore &settings,
                  "the check role falls back to the OCR launch profiles");
     }
     recomputeConfigValid();
-    connect(&m_settings, &SettingsStore::serverPathChanged, this,
-            &RuntimeController::recomputeConfigValid);
-    connect(&m_settings, &SettingsStore::connectionModeChanged, this,
-            &RuntimeController::recomputeConfigValid);
-    connect(&m_settings, &SettingsStore::launchModelPathChanged, this,
-            &RuntimeController::recomputeConfigValid);
+    recomputeLaunchConfigDirty();
+    connectEveryChangeSignal(&m_settings, this, "recomputeConfigValid");
+    connectEveryChangeSignal(&m_settings, this, "recomputeLaunchConfigDirty");
     connect(&m_settings, &SettingsStore::runtimeRootDirChanged, this,
             &RuntimeController::scanForOrphanedServer);
     connect(&m_settings, &SettingsStore::runtimeModelsDirChanged, this,
             &RuntimeController::scanForOrphanedServer);
+    // A saved launch profile is a launch-setting change like any other.
+    connect(&m_launchProfiles, &LaunchProfileStore::profileChanged, this,
+            &RuntimeController::recomputeLaunchConfigDirty);
+    connect(m_checkLaunchProfiles, &LaunchProfileStore::profileChanged, this,
+            &RuntimeController::recomputeLaunchConfigDirty);
     scanForOrphanedServer();
 }
 
@@ -150,6 +198,15 @@ void RuntimeController::setState(RuntimeState next)
     if (m_state == next)
         return;
     m_state = next;
+    // Nothing is running, so there is nothing to restart: the next start picks
+    // the current settings up by definition.
+    if (next != RuntimeState::Starting && next != RuntimeState::Ready) {
+        m_hasStartedConfig = false;
+        if (m_launchConfigDirty) {
+            m_launchConfigDirty = false;
+            emit launchConfigDirtyChanged();
+        }
+    }
     emit stateChanged();
 }
 
@@ -179,24 +236,44 @@ void RuntimeController::setLoadProgressPercent(int pct)
 
 void RuntimeController::recomputeConfigValid()
 {
-    bool valid = !m_settings.serverPath().trimmed().isEmpty();
-    if (valid && !QFileInfo(m_settings.serverPath()).isFile())
-        valid = false;
+    const QString program = m_settings.serverPath().trimmed();
+    // A configured path is not a working one: the wizard used to advance on a
+    // non-empty string and the start then failed with «File not found».
+    const bool serverOk = !program.isEmpty() && QFileInfo(program).isFile();
+    const QString model = m_settings.launchModelPath().trimmed();
+    const bool modelOk = !model.isEmpty() && QFileInfo(model).isFile();
 
-    if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
-        const QString model = m_settings.launchModelPath().trimmed();
-        if (model.isEmpty() || !QFileInfo(model).isFile())
-            valid = false;
-    }
+    const bool valid = serverOk
+        && (modeFromSettings(m_settings) == ConnectionMode::External || modelOk);
 
-    if (valid != m_configValid) {
-        m_configValid = valid;
+    const bool changed = valid != m_configValid || serverOk != m_serverPathValid
+                         || modelOk != m_modelPathValid;
+    m_configValid = valid;
+    m_serverPathValid = serverOk;
+    m_modelPathValid = modelOk;
+    if (changed)
         emit configValidChanged();
-    }
     if (valid && m_state == RuntimeState::NotConfigured)
         setState(RuntimeState::Stopped);
     else if (!valid && m_state == RuntimeState::Stopped)
         setState(RuntimeState::NotConfigured);
+}
+
+void RuntimeController::recomputeLaunchConfigDirty()
+{
+    // Compare the configuration the live server was started with against the one
+    // the current settings produce — the same object that becomes the process
+    // arguments, so the two can never disagree about what "changed" means.
+    ServerLaunchConfig current = ServerLaunchConfig::fromSettings(
+        m_settings, m_startedRole == ConnectionRole::Check ? *m_checkLaunchProfiles
+                                                           : m_launchProfiles,
+        m_startedRole);
+    current.program = m_settings.serverPath().trimmed();
+    const bool dirty = m_hasStartedConfig && current != m_startedConfig;
+    if (dirty == m_launchConfigDirty)
+        return;
+    m_launchConfigDirty = dirty;
+    emit launchConfigDirtyChanged();
 }
 
 ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings)
@@ -223,7 +300,8 @@ bool RuntimeController::serverRunsRole(ConnectionRole role) const
     const QString want = roleModelPath(role);
     if (want.isEmpty())
         return true;
-    return m_startedModelPath == want && m_startedMmprojPath == roleMmprojPath(role);
+    return m_startedConfig.modelPath.trimmed() == want
+           && m_startedConfig.mmprojPath.trimmed() == roleMmprojPath(role);
 }
 
 QString RuntimeController::roleConfigError(ConnectionRole role) const
@@ -734,8 +812,11 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
         return;
     }
     setState(RuntimeState::Starting);
-    m_startedModelPath = cfg.modelPath.trimmed();
-    m_startedMmprojPath = cfg.mmprojPath.trimmed();
+    m_startedConfig = cfg;
+    m_startedConfig.program = program;
+    m_startedRole = role;
+    m_hasStartedConfig = true;
+    recomputeLaunchConfigDirty();
     setStatusMessage(tr("Starting server…"));
 }
 
@@ -857,6 +938,12 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath)
     out.insert(QStringLiteral("nLayer"), e.nLayer);
     out.insert(QStringLiteral("nKvHead"), e.nKvHead);
     out.insert(QStringLiteral("headDim"), e.headDim);
+    // The wizard used to compare the estimate against system RAM in QML with a
+    // 0.9 factor; the threshold is a memory policy, so it lives next to the
+    // estimate that produces the numbers (ADR 113).
+    out.insert(QStringLiteral("overBudget"),
+               e.valid && e.systemRamBytes > 0
+                   && e.totalBytes > static_cast<qint64>(e.systemRamBytes * kMemoryBudgetFactor));
     return out;
 }
 

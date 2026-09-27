@@ -30,6 +30,12 @@ public:
     int port = 0;           // 0 = auto-pick (no --port passed / caller allocates)
 
     QList<LaunchParameter> parameters;
+
+    // Value equality: the restart banner compares the configuration a running
+    // server was started with against the current one (ADR 113), so a launch
+    // setting that changes the arguments can never be missed.
+    bool operator==(const ServerLaunchConfig &other) const;
+    bool operator!=(const ServerLaunchConfig &other) const { return !(*this == other); }
 };
 
 }  // namespace llocr

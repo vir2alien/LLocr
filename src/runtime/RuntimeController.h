@@ -13,6 +13,7 @@
 #include "runtime/RuntimePaths.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeLocator.h"
+#include "runtime/ServerLaunchConfig.h"
 #include "runtime/ServerOwner.h"
 
 class QNetworkAccessManager;
@@ -34,8 +35,19 @@ class RuntimeController : public QObject
     Q_PROPERTY(int busyState READ busyStateInt NOTIFY busyStateChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(int loadProgressPercent READ loadProgressPercent NOTIFY loadProgressChanged)
+    // The three settings gates the UI used to re-derive in QML. `configValid` is
+    // the whole managed configuration; the two parts are exposed separately
+    // because the wizard asks about them one step at a time.
     Q_PROPERTY(bool configValid READ configValid NOTIFY configValidChanged)
+    Q_PROPERTY(bool serverPathValid READ serverPathValid NOTIFY configValidChanged)
+    Q_PROPERTY(bool modelPathValid READ modelPathValid NOTIFY configValidChanged)
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
+    // "The running server was started with a configuration that differs from the
+    // one the current settings produce" — the restart banner's single rule. The
+    // comparison is made against the real launch config, so a setting that
+    // ServerLaunchConfig does not read cannot raise a false banner, and one that
+    // it does read cannot be forgotten (ADR 113).
+    Q_PROPERTY(bool launchConfigDirty READ launchConfigDirty NOTIFY launchConfigDirtyChanged)
     // A llama-server left running by a previous LLocr run (ADR 107). The record
     // is offered to the user, never killed without a click.
     Q_PROPERTY(bool orphanDetected READ orphanDetected NOTIFY orphanChanged)
@@ -73,7 +85,10 @@ public:
     QString statusMessage() const { return m_statusMessage; }
     int loadProgressPercent() const { return m_loadProgressPercent; }
     bool configValid() const { return m_configValid; }
+    bool serverPathValid() const { return m_serverPathValid; }
+    bool modelPathValid() const { return m_modelPathValid; }
     bool lockedOut() const { return m_lockedOut; }
+    bool launchConfigDirty() const { return m_launchConfigDirty; }
 
     bool orphanDetected() const { return m_orphan.isValid(); }
     QString orphanInfo() const;
@@ -126,8 +141,13 @@ private:
     void setStatusMessage(const QString &msg);
     void setLoadProgressPercent(int pct);
 
+private slots:
+    // Connected to *every* `…Changed` signal of SettingsStore (see the
+    // constructor), so a new setting cannot be added without being considered.
     void recomputeConfigValid();
+    void recomputeLaunchConfigDirty();
 
+private:
     QString roleModelPath(ConnectionRole role) const;
     QString roleMmprojPath(ConnectionRole role) const;
     bool serverRunsRole(ConnectionRole role) const;
@@ -161,6 +181,7 @@ signals:
     void statusMessageChanged();
     void loadProgressChanged();
     void configValidChanged();
+    void launchConfigDirtyChanged();
     void lockedOutChanged();
     void orphanChanged();
 
@@ -194,13 +215,19 @@ private:
     bool m_resolveInProgress = false;
     QNetworkAccessManager *m_modelsNet = nullptr;
     QString m_modelsBaseUrl;
-    QString m_startedModelPath;
-    QString m_startedMmprojPath;
+    // The configuration the live server was actually started with, and the role
+    // it serves (ADR 74: one server, one role at a time).
+    ServerLaunchConfig m_startedConfig;
+    ConnectionRole m_startedRole = ConnectionRole::Ocr;
+    bool m_hasStartedConfig = false;
     RuntimeState m_state = RuntimeState::NotConfigured;
     AppBusyState m_busyState = AppBusyState::Idle;
     QString m_statusMessage;
     int m_loadProgressPercent = -1;
     bool m_configValid = false;
+    bool m_serverPathValid = false;
+    bool m_modelPathValid = false;
+    bool m_launchConfigDirty = false;
     bool m_lockedOut = false;
     ServerOwnerRecord m_orphan;
     QString m_orphanJsonPath;

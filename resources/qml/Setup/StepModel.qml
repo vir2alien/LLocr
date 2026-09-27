@@ -15,8 +15,10 @@ Item {
     property int preparedIndex: -1
     property bool preparedForCheck: false
 
-    readonly property bool downloadComplete: Settings.launchModelPath.trim().length > 0
-    readonly property bool pathComplete: Settings.launchModelPath.trim().length > 0
+    // A path that is set but missing on disk is not a model; the gate is C++'s
+    // so the wizard and the runtime agree (ADR 113).
+    readonly property bool downloadComplete: Runtime.modelPathValid
+    readonly property bool pathComplete: Runtime.modelPathValid
     property bool complete: downloadMode ? downloadComplete : pathComplete
 
     onVisibleChanged: {

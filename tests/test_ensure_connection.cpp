@@ -45,6 +45,22 @@ QString writeTestLaunchCatalog(const QTemporaryDir &dir)
     return path;
 }
 
+// Same, but the active preset carries a launch parameter, so a test can change
+// the effective launch configuration without touching a setting directly.
+QString writeTestLaunchCatalogWithParameter(const QTemporaryDir &dir)
+{
+    const QString path = QDir(dir.path()).filePath(QStringLiteral("launch-presets.json"));
+    QSaveFile f(path);
+    if (f.open(QIODevice::WriteOnly)) {
+        f.write(QByteArrayLiteral("{ \"schemaVersion\": 1, \"profiles\": ["
+                                  "{ \"id\": \"test\", \"parameters\": ["
+                                  "{ \"order\": 1, \"name\": \"ctx-size\", \"value\": 8192 }"
+                                  "] }] }"));
+        f.commit();
+    }
+    return path;
+}
+
 }  // namespace
 
 // Stage G-core acceptance: ensureConnectionReady() for External and Managed
@@ -836,6 +852,106 @@ private slots:
         });
         QVERIFY2(resolved.error.contains(QStringLiteral("gone.gguf")),
                  qPrintable(resolved.error));
+    }
+
+    // The wizard gates used to be `Settings.serverPath.trim().length > 0`, so a
+    // path that no longer exists advanced the step and the start then failed with
+    // «File not found». The gates are now C++'s and mean "usable" (ADR 113).
+    void configGatesRequireTheFilesToExist()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString modelPath = dir.filePath(QStringLiteral("m.gguf"));
+        QFile model(modelPath);
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(modelPath);
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+        QVERIFY(runtime.serverPathValid());
+        QVERIFY(runtime.modelPathValid());
+        QVERIFY(runtime.configValid());
+
+        // Set but missing: not a valid configuration, however non-empty the string.
+        const QString absent = dir.filePath(QStringLiteral("not-here.gguf"));
+        store.setLaunchModelPath(absent);
+        QVERIFY(!store.launchModelPath().isEmpty());
+        QVERIFY(!runtime.modelPathValid());
+        QVERIFY(!runtime.configValid());
+        // The binary gate is independent — the model step asks about it alone.
+        QVERIFY(runtime.serverPathValid());
+
+        store.setLaunchModelPath(modelPath);
+        QVERIFY(runtime.configValid());
+        store.setServerPath(absent);
+        QVERIFY(!runtime.serverPathValid());
+        QVERIFY(!runtime.configValid());
+    }
+
+    // The restart banner used to be raised by a hand-written list of eleven
+    // Settings signals in QML. It is now the comparison of the configuration the
+    // live server was started with against the one the settings produce — so a
+    // setting nobody remembered to list still raises it, and an unrelated one
+    // does not (ADR 113).
+    void launchConfigDirtyFollowsTheRealLaunchConfiguration()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalogWithParameter(dir));
+        RuntimeController runtime(store, launchProfiles);
+        // Nothing is running, so there is nothing to restart.
+        QVERIFY(!runtime.launchConfigDirty());
+
+        int finished = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++finished; });
+        QTRY_VERIFY_WITH_TIMEOUT(finished == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        // Just started with these settings — nothing to restart yet.
+        QVERIFY(!runtime.launchConfigDirty());
+
+        // A setting the launch configuration does not read must stay quiet: the
+        // old signal list would have raised a banner for a window-geometry change.
+        store.setWindowWidth(store.windowWidth() + 40);
+        QVERIFY(!runtime.launchConfigDirty());
+
+        // A launch parameter the old list did not cover: a saved user profile.
+        launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"), 4096);
+        QVERIFY(runtime.launchConfigDirty());
+
+        runtime.stopServer();
+        QTRY_COMPARE(runtime.state(), RuntimeState::Stopped);
+        // A stopped server has no stale configuration to restart.
+        QVERIFY(!runtime.launchConfigDirty());
+
+        // …and a fresh start adopts the current settings, clearing it again.
+        int restarted = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++restarted; });
+        QTRY_VERIFY_WITH_TIMEOUT(restarted == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY(!runtime.launchConfigDirty());
+        runtime.stopServer();
     }
 };
 
