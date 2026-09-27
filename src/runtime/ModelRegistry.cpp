@@ -12,6 +12,7 @@
 
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelRegistry.h"
+#include "runtime/InstalledReconcile.h"
 
 namespace llocr {
 
@@ -159,65 +160,67 @@ QString ModelRegistry::lockPathFor(const QString &modelsDir)
 QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
                                       QString &error)
 {
-    rebuilt = false;
-    const QString path = indexPathFor(modelsDir);
-    QFile f(path);
-    if (!f.exists()) {
-        rebuilt = true;
-        const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
-        QString saveErr;
-        save(modelsDir, scanned, saveErr);
-        return scanned;
-    }
-    if (!f.open(QIODevice::ReadOnly)) {
-        error = QObject::tr("Unable to read model registry: %1").arg(f.errorString());
-        rebuilt = true;
-        const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
-        QString saveErr;
-        save(modelsDir, scanned, saveErr);
-        return scanned;
-    }
-    QJsonParseError perr;
-    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
-    if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
-        error = QObject::tr("Model index is corrupt; rescanning models directory");
-        rebuilt = true;
-        const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
-        QString saveErr;
-        save(modelsDir, scanned, saveErr);
-        return scanned;
-    }
-    if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1)
-        != kSchemaVersion) {
-        error = QObject::tr("Model index version mismatch; rescanning");
-        rebuilt = true;
-        const QList<ModelEntry> scanned = scanModelsDir(modelsDir);
-        QString saveErr;
-        save(modelsDir, scanned, saveErr);
-        return scanned;
-    }
-    const QJsonArray arr =
-        doc.object().value(QLatin1String(kModelsKey)).toArray();
-    QList<ModelEntry> out;
-    for (const QJsonValue &v : arr) {
-        if (!v.isObject())
-            continue;
-        ModelEntry e = entryFromJson(v.toObject());
-        if (!e.modelPath.isEmpty() || !e.dir.isEmpty())
-            out.append(std::move(e));
-    }
+    return load(modelsDir, rebuilt, error, nullptr, ReconcileSelections());
+}
 
-    for (const ModelEntry &s : scanModelsDir(modelsDir)) {
-        if (s.modelPath.isEmpty())
-            continue;
-        const bool present = std::any_of(
-            out.cbegin(), out.cend(), [&](const ModelEntry &x) {
-                return !x.modelPath.isEmpty() && x.modelPath == s.modelPath;
-            });
-        if (!present)
-            out.append(s);
+QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
+                                      QString &error, ReconcileResult *report,
+                                      const ReconcileSelections &selections)
+{
+    rebuilt = false;
+    // One path for every way the index can be unusable: a missing, unreadable,
+    // corrupt or version-mismatched file is simply an empty index, and the
+    // reconciliation fills it from the scan. The four near-identical rescan
+    // branches this replaces each had to remember to do the same thing.
+    QList<ModelEntry> index;
+    QFile f(indexPathFor(modelsDir));
+    const bool indexExists = f.exists();
+    if (indexExists) {
+        if (!f.open(QIODevice::ReadOnly)) {
+            error = QObject::tr("Unable to read model registry: %1").arg(f.errorString());
+        } else {
+            QJsonParseError perr;
+            const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
+            if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
+                error = QObject::tr("Model index is corrupt; rescanning models directory");
+            } else if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1)
+                       != kSchemaVersion) {
+                error = QObject::tr("Model index version mismatch; rescanning");
+            } else {
+                const QJsonArray arr =
+                    doc.object().value(QLatin1String(kModelsKey)).toArray();
+                for (const QJsonValue &v : arr) {
+                    if (!v.isObject())
+                        continue;
+                    ModelEntry e = entryFromJson(v.toObject());
+                    if (!e.modelPath.isEmpty() || !e.dir.isEmpty())
+                        index.append(std::move(e));
+                }
+            }
+        }
     }
-    return out;
+    rebuilt = !indexExists || !error.isEmpty();
+
+    ReconcileInput input;
+    input.index = index;
+    // A models directory that is not there is *unknown*, not empty: a removable
+    // drive that is not mounted must not be reported as "every model deleted".
+    input.diskAvailable = QFileInfo(modelsDir).isDir();
+    input.disk = input.diskAvailable ? scanModelsDir(modelsDir) : QList<ModelEntry>();
+    input.selectedModelPath = selections.modelPath;
+    input.selectedCheckModelPath = selections.checkModelPath;
+    input.selectedServerPath = selections.serverPath;
+    input.selectedServerExists = selections.serverExists;
+
+    const ReconcileResult result = reconcileInstalled(input);
+    if (report)
+        *report = result;
+    if (result.indexChanged && input.diskAvailable) {
+        QString saveErr;
+        if (!save(modelsDir, result.models, saveErr) && error.isEmpty())
+            error = saveErr;
+    }
+    return result.models;
 }
 
 bool ModelRegistry::save(const QString &modelsDir, const QList<ModelEntry> &entries,

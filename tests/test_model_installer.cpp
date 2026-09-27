@@ -144,13 +144,15 @@ private:
                            InstalledModelsModel::PathRole).toString();
     }
 
+    // The *installer's* index, not the row: the list models are filtered per
+    // role, and removeModel()/setActiveModel() address the registry list.
     static int indexOfQuant(ModelInstaller &installer, const QString &quant)
     {
-        auto *model = ocrModels(installer);
+        auto *model = qobject_cast<InstalledModelsModel *>(ocrModels(installer));
         for (int i = 0; i < model->rowCount(); ++i) {
             if (model->data(model->index(i, 0),
                             InstalledModelsModel::QuantizationRole).toString() == quant)
-                return i;
+                return model->sourceIndex(i);
         }
         return -1;
     }
@@ -498,6 +500,55 @@ private slots:
         QVERIFY(installer.setActiveModel(0).isEmpty());
         QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(),
                  true);
+    }
+
+    // A model that is selected but no longer on disk is *reported*, not silently
+    // dropped: the file may live outside the models directory, and the user has
+    // to decide what to do about it (ADR 116).
+    void aSelectedModelThatVanishedIsReported()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("org__repo"));
+        QVERIFY(QDir().mkpath(sub));
+        const QString modelPath = writeGguf(sub, QStringLiteral("ocr-Q4_K_M.gguf"));
+        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-ocr-F16.gguf"));
+        QVERIFY(!modelPath.isEmpty() && !mmproj.isEmpty());
+
+        ModelEntry entry;
+        entry.id = QStringLiteral("org__repo");
+        entry.repo = QStringLiteral("org/repo");
+        entry.dir = sub;
+        entry.modelPath = modelPath;
+        entry.mmprojPath = mmproj;
+        entry.origin = ModelOrigin::Managed;
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {entry}, err), qPrintable(err));
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        // Both model selections are set explicitly: the tests share one
+        // QSettings process-wide, so an inherited check-model path would be
+        // reported as stale before the test even starts.
+        settings.setCheckLaunchModelPath(QString());
+        settings.setLaunchModelPath(modelPath);
+        LaunchProfileStore launchProfiles(settings);
+        InstalledState installed(settings);
+        RuntimeController runtime(settings, launchProfiles);
+        ModelInstaller installer(settings, runtime, launchProfiles, installed);
+        QVERIFY2(!installer.statusMessage().contains(QStringLiteral("no longer")),
+                 qPrintable(installer.statusMessage()));
+
+        // The user deletes the model directory.
+        QVERIFY(QDir(sub).removeRecursively());
+        installer.refreshInstalled();
+
+        QCOMPARE(installer.installedCount(), 0);
+        QVERIFY2(installer.statusMessage().contains(QStringLiteral("no longer")),
+                 qPrintable(installer.statusMessage()));
+        QVERIFY2(installer.statusMessage().contains(QStringLiteral("ocr-Q4_K_M.gguf")),
+                 qPrintable(installer.statusMessage()));
     }
 };
 

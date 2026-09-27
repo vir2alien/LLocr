@@ -14,6 +14,8 @@
 
 namespace llocr {
 
+struct ReconcileResult;
+
 class InstalledState;
 class ModelInstallTransaction;
 class RuntimeController;
@@ -106,6 +108,8 @@ private:
 
     bool isPresetInstalled(const ModelPreset &p) const;
     QString presetInstalledModelPath(const ModelPreset &p) const;
+    /// Surfaces a selected model whose files are gone (ADR 116).
+    void reportStaleSelections(const ReconcileResult &report);
     /// Pushes the current list into both per-role models.
     void publishInstalled();
 

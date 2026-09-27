@@ -11,6 +11,7 @@
 #include "app/SettingsStore.h"
 #include "runtime/ModelInstallTransaction.h"
 #include "runtime/ModelInstaller.h"
+#include "runtime/InstalledReconcile.h"
 #include "runtime/ModelPresetCatalog.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimePaths.h"
@@ -165,17 +166,41 @@ void ModelInstaller::refreshInstalled()
 {
     QString err;
     bool rebuilt = false;
-    m_installed = ModelRegistry::load(m_installState.paths().modelsDir(), rebuilt, err);
+    ReconcileResult report;
+    ReconcileSelections selections;
+    selections.modelPath = m_settings.launchModelPath();
+    selections.checkModelPath = m_settings.checkLaunchModelPath();
+    selections.serverPath = m_settings.serverPath();
+    selections.serverExists = QFileInfo::exists(m_settings.serverPath());
+    m_installed = ModelRegistry::load(m_installState.paths().modelsDir(), rebuilt, err,
+                                      &report, selections);
     if (!err.isEmpty() && !rebuilt)
         setStatusMessage(err);
+    reportStaleSelections(report);
     m_transaction->setInstalled(m_installed);
     publishInstalled();
+}
+
+void ModelInstaller::reportStaleSelections(const ReconcileResult &report)
+{
+    if (report.diskUnavailable)
+        return;  // no filesystem opinion — nothing to accuse anyone of
+    for (const QString &path : report.staleModelSelections) {
+        setStatusMessage(tr("The selected model is no longer on disk: %1 — "
+                            "pick another one in Settings → Models.")
+                             .arg(QFileInfo(path).fileName()));
+        return;
+    }
 }
 
 void ModelInstaller::rescanRegistry()
 {
     QString err;
     const QString modelsDir = m_installState.paths().modelsDir();
+    // An explicit rescan is a *reset*: whatever the index claimed, the disk is
+    // the whole truth. The curated fields the index carried (roles, prompt,
+    // parser, a pinned revision) cannot be recovered from a scan, which is why
+    // this is a deliberate user action and not the startup path.
     m_installed = ModelRegistry::scanModelsDir(modelsDir);
     ModelRegistry::save(modelsDir, m_installed, err);
     m_transaction->setInstalled(m_installed);

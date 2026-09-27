@@ -8,6 +8,9 @@
 
 namespace llocr {
 
+struct ReconcileResult;
+struct ReconcileSelections;
+
 enum class ModelOrigin {
     External,  // a user-provided GGUF somewhere outside modelsDir
     Managed,   // downloaded by LLocr into modelsDir/<org>__<repo>
@@ -61,6 +64,12 @@ public:
 
     static QList<ModelEntry> load(const QString &modelsDir, bool &rebuilt,
                                   QString &error);
+    /// As `load`, and also reports what the reconciliation decided (ADR 116).
+    /// `selections` carries the pointers the settings hold, so the report can
+    /// name the ones that no longer resolve.
+    static QList<ModelEntry> load(const QString &modelsDir, bool &rebuilt,
+                                  QString &error, ReconcileResult *report,
+                                  const ReconcileSelections &selections);
 
     static bool save(const QString &modelsDir, const QList<ModelEntry> &entries,
                      QString &error);
