@@ -240,6 +240,8 @@ qt_add_library(llocr_app STATIC
     app/ExportController.cpp
     app/UiController.h
     app/UiController.cpp
+    app/PdfDocument.h
+    app/PdfDocument.cpp
 )
 target_include_directories(llocr_app PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_app

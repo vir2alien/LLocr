@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/DjVuDocument.h"
+#include "app/PdfDocument.h"
 #include "core/OcrResult.h"
 #include <memory>
 #include <QHash>
@@ -8,8 +9,6 @@
 #include <QList>
 #include <QString>
 #include <QStringList>
-
-class QPdfDocument;
 
 namespace llocr {
 
@@ -48,6 +47,7 @@ public:
     struct RenderRequest {
         DocumentPage page;  ///< a copy, image field unused
         std::shared_ptr<DjVuDocument> djvu;
+        std::shared_ptr<PdfDocument> pdf;
     };
 
     static QImage renderDetached(const RenderRequest &request, QString *error = nullptr);
@@ -87,11 +87,17 @@ private:
     void ensureFullImage(int index, QString *error = nullptr);
     void evictFullImages();
     void evictUnusedSourceDocuments(const QString &path);
-    QPdfDocument *pdfFor(const QString &path);
+    std::shared_ptr<PdfDocument> pdfFor(const QString &path);
+    void retirePdf(const QString &path);
+    void drainRetiredPdfs();
 
 private:
+    static constexpr int kResidentPdfLimit = 2;
+
     QList<DocumentPage> m_pages;
-    QHash<QString, QPdfDocument *> m_pdfs;
+    QHash<QString, std::shared_ptr<PdfDocument>> m_pdfs;
+    QList<QString> m_pdfOrder;
+    QList<std::shared_ptr<PdfDocument>> m_retiredPdfs;
     QHash<QString, std::shared_ptr<DjVuDocument>> m_djvus;
     QList<int> m_fullCache;
 };

@@ -8,9 +8,6 @@
 #include <QImageReader>
 #include <utility>
 
-#include <QPdfDocument>
-#include <QPdfDocumentRenderOptions>
-
 namespace llocr {
 
 namespace {
@@ -68,7 +65,7 @@ bool DocumentModel::appendImage(const QString &path)
 
 bool DocumentModel::appendPdf(const QString &path)
 {
-    QPdfDocument *pdf = pdfFor(path);
+    const std::shared_ptr<PdfDocument> pdf = pdfFor(path);
     if (!pdf || pdf->pageCount() <= 0)
         return false;
 
@@ -197,8 +194,10 @@ void DocumentModel::clear()
 {
     m_pages.clear();
     m_fullCache.clear();
-    qDeleteAll(m_pdfs);
-    m_pdfs.clear();
+    for (const QString &path : m_pdfOrder)
+        retirePdf(path);
+    m_pdfOrder.clear();
+    drainRetiredPdfs();
     m_djvus.clear();
 }
 
@@ -210,11 +209,34 @@ void DocumentModel::evictUnusedSourceDocuments(const QString &path)
         if (page.sourcePath == path)
             return;
     }
-    if (QPdfDocument *pdf = m_pdfs.take(path)) {
-        delete pdf;
+    if (m_pdfs.contains(path)) {
+        retirePdf(path);
+        drainRetiredPdfs();
         return;
     }
     m_djvus.remove(path);
+}
+
+// A render worker may still hold the handle it borrowed from a RenderRequest, so
+// dropping the map entry is not enough to promise a GUI-thread destruction: the
+// worker could become the last owner. Park the handle and release it later,
+// only once nobody else references it.
+void DocumentModel::retirePdf(const QString &path)
+{
+    const std::shared_ptr<PdfDocument> handle = m_pdfs.take(path);
+    m_pdfOrder.removeAll(path);
+    if (handle)
+        m_retiredPdfs.append(handle);
+}
+
+void DocumentModel::drainRetiredPdfs()
+{
+    for (auto it = m_retiredPdfs.begin(); it != m_retiredPdfs.end();) {
+        if (it->use_count() == 1)
+            it = m_retiredPdfs.erase(it);
+        else
+            ++it;
+    }
 }
 
 bool DocumentModel::isValidIndex(int index) const
@@ -246,14 +268,13 @@ QImage DocumentModel::renderFull(const DocumentPage &page, QString *error)
     }
 #endif
     if (page.sourceType == DocumentSource::Pdf) {
-        QPdfDocument *pdf = pdfFor(page.sourcePath);
+        const std::shared_ptr<PdfDocument> pdf = pdfFor(page.sourcePath);
         if (!pdf) {
             if (error)
                 *error = QStringLiteral("Failed to open %1 as a PDF document").arg(page.sourcePath);
             return QImage();
         }
-        QPdfDocumentRenderOptions options;
-        QImage image = pdf->render(page.sourcePageIndex, page.pixelSize, options);
+        QImage image = pdf->render(page.sourcePageIndex, page.pixelSize);
         if (image.isNull()) {
             image = QImage(page.pixelSize.isEmpty() ? QSize(800, 1000) : page.pixelSize, QImage::Format_ARGB32);
             image.fill(Qt::white);
@@ -277,6 +298,8 @@ DocumentModel::RenderRequest DocumentModel::renderRequestFor(int index) const
     request.page.image = QImage();
     if (source.sourceType == DocumentSource::DjVu)
         request.djvu = m_djvus.value(source.sourcePath);
+    else if (source.sourceType == DocumentSource::Pdf)
+        request.pdf = m_pdfs.value(source.sourcePath);
     return request;
 }
 
@@ -316,16 +339,19 @@ QImage DocumentModel::renderDetached(const RenderRequest &request, QString *erro
     }
 #endif
     if (page.sourceType == DocumentSource::Pdf) {
-        QPdfDocument pdf;
-        const QPdfDocument::Error err = pdf.load(page.sourcePath);
-        if (err != QPdfDocument::Error::None) {
-            if (error) {
-                *error = QStringLiteral("Failed to open %1 as a PDF document").arg(page.sourcePath);
+        // The request carries the already-parsed handle when the model has one
+        // resident; a hand-built request (or a file evicted by the LRU) falls
+        // back to a private parse, which is the behaviour this path had before.
+        std::shared_ptr<PdfDocument> pdf = request.pdf;
+        if (!pdf) {
+            pdf = std::make_shared<PdfDocument>();
+            if (!pdf->open(page.sourcePath)) {
+                if (error)
+                    *error = QStringLiteral("Failed to open %1 as a PDF document").arg(page.sourcePath);
+                return QImage();
             }
-            return QImage();
         }
-        QPdfDocumentRenderOptions options;
-        QImage image = pdf.render(page.sourcePageIndex, page.pixelSize, options);
+        QImage image = pdf->render(page.sourcePageIndex, page.pixelSize);
         if (image.isNull()) {
             image = QImage(page.pixelSize.isEmpty() ? QSize(800, 1000) : page.pixelSize, QImage::Format_ARGB32);
             image.fill(Qt::white);
@@ -375,17 +401,25 @@ void DocumentModel::evictFullImages()
     }
 }
 
-QPdfDocument *DocumentModel::pdfFor(const QString &path)
+std::shared_ptr<PdfDocument> DocumentModel::pdfFor(const QString &path)
 {
-    QPdfDocument *pdf = m_pdfs.value(path, nullptr);
-    if (pdf)
-        return pdf;
-    pdf = new QPdfDocument();
-    if (pdf->load(path) != QPdfDocument::Error::None) {
-        delete pdf;
-        return nullptr;
+    drainRetiredPdfs();
+    const std::shared_ptr<PdfDocument> resident = m_pdfs.value(path);
+    if (resident) {
+        m_pdfOrder.removeAll(path);
+        m_pdfOrder.prepend(path);
+        return resident;
     }
+    auto pdf = std::make_shared<PdfDocument>();
+    if (!pdf->open(path))
+        return nullptr;
     m_pdfs.insert(path, pdf);
+    m_pdfOrder.prepend(path);
+    while (m_pdfOrder.size() > kResidentPdfLimit) {
+        const QString evicted = m_pdfOrder.takeLast();
+        if (evicted != path)
+            retirePdf(evicted);
+    }
     return pdf;
 }
 
