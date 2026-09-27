@@ -502,6 +502,50 @@ private slots:
                  true);
     }
 
+    // The highlight is *derived* from the settings, so activating a model
+    // changes no entry and — when both models are visible in this role — not
+    // even the row set. The view still has to be told, or the list keeps showing
+    // the previous model as active until the window is rebuilt.
+    void activatingAModelRepaintsTheHighlight()
+    {
+        std::unique_ptr<Setup> s = makeMultiQuantSetup();
+        QVERIFY(s != nullptr);
+
+        // Both selections set explicitly: the tests share one QSettings
+        // process-wide, so an inherited value would decide the initial highlight.
+        s->settings.setCheckLaunchModelPath(QString());
+        s->settings.setLaunchModelPath(
+            QDir(QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("org__repo")))
+                .filePath(QStringLiteral("model-Q4_K_M.gguf")));
+
+        auto *models = qobject_cast<InstalledModelsModel *>(ocrModels(*s->installer));
+        QVERIFY(models != nullptr);
+        QCOMPARE(models->rowCount(), 2);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(),
+                 true);
+        QCOMPARE(models->data(models->index(1, 0), InstalledModelsModel::ActiveRole).toBool(),
+                 false);
+
+        QSignalSpy changed(models, &QAbstractItemModel::dataChanged);
+
+        const int idx = indexOfQuant(*s->installer, QStringLiteral("Q8_0"));
+        QVERIFY(idx >= 0);
+        QVERIFY(s->installer->setActiveModel(idx).isEmpty());
+
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(),
+                 false);
+        QCOMPARE(models->data(models->index(1, 0), InstalledModelsModel::ActiveRole).toBool(),
+                 true);
+
+        QVERIFY2(changed.count() > 0, "the list was not told to re-read the highlight");
+        bool sawActiveRole = false;
+        for (const QList<QVariant> &call : changed) {
+            if (call.at(2).toList().contains(InstalledModelsModel::ActiveRole))
+                sawActiveRole = true;
+        }
+        QVERIFY2(sawActiveRole, "dataChanged carried no ActiveRole");
+    }
+
     // A model that is selected but no longer on disk is *reported*, not silently
     // dropped: the file may live outside the models directory, and the user has
     // to decide what to do about it (ADR 116).

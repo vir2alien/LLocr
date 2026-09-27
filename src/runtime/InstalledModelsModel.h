@@ -46,10 +46,10 @@ public:
     Q_INVOKABLE int sourceIndex(int row) const;
     Q_INVOKABLE int rowForSourceIndex(int sourceIndex) const;
 
+    /// The active model is derived from the settings, so re-publishing the
+    /// entries (what the owner does on a launch-path change) re-evaluates both
+    /// the highlight and the role split, which depends on it.
     void setEntries(const QList<ModelEntry> &entries);
-    /// The active model is derived from the settings; a launch-path change
-    /// re-evaluates the highlight — and the role split, which depends on it.
-    void settingsChanged();
 
     /// Whether a model belongs to a role. Shared with the installer so the list
     /// and the installer's own filtering can never disagree.

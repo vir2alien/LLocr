@@ -89,20 +89,25 @@ void InstalledModelsModel::setEntries(const QList<ModelEntry> &entries)
         if (matches(entries.at(i)))
             rows.append(i);
     }
-    if (rows == m_rows && entries == m_entries)
+    if (rows != m_rows) {
+        beginResetModel();
+        m_entries = entries;
+        m_rows = rows;
+        endResetModel();
+        emit countChanged();
         return;
-    beginResetModel();
+    }
+    // Same rows, so no reset — but the rows are still allowed to have changed:
+    // `active` is derived from the settings, so activating a model alters it
+    // while the entries stay byte-identical. Returning early here (as an
+    // "entries == m_entries" check did) left the list showing the previously
+    // active model until the view was rebuilt from scratch.
     m_entries = entries;
-    m_rows = rows;
-    endResetModel();
-    emit countChanged();
-}
-
-void InstalledModelsModel::settingsChanged()
-{
-    // The role filter itself can change (activating a model moves it between
-    // the recognition and the check list), so this is a rebuild, not a repaint.
-    setEntries(m_entries);
+    if (m_rows.isEmpty())
+        return;
+    emit dataChanged(index(0, 0), index(m_rows.size() - 1, 0),
+                     { TitleRole, PathRole, MmprojPathRole, SizeRole, QuantizationRole,
+                       OriginRole, LicenseRole, RepoRole, ActiveRole, PartsRole });
 }
 
 bool InstalledModelsModel::matches(const ModelEntry &entry) const
