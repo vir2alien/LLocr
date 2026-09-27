@@ -4,7 +4,7 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+311"/>
+        <location filename="../../src/app/AppController.cpp" line="+366"/>
         <source>No files selected.</source>
         <translation type="unfinished">Не выбрано ни одного файла</translation>
     </message>
@@ -338,6 +338,7 @@
     </message>
     <message>
         <location line="+124"/>
+        <location line="+64"/>
         <source>DjVu document is not open: %1</source>
         <translation>Документ DjVu не открыт: %1</translation>
     </message>
@@ -766,6 +767,14 @@
     </message>
 </context>
 <context>
+    <name>ImagePreview</name>
+    <message>
+        <location filename="../qml/MainWindow/ImagePreview.qml" line="+24"/>
+        <source>Rendering page…</source>
+        <translation>Рендер страницы…</translation>
+    </message>
+</context>
+<context>
     <name>InstallerProgressRow</name>
     <message>
         <location filename="../qml/Common/InstallerProgressRow.qml" line="+30"/>
@@ -1101,7 +1110,7 @@
 <context>
     <name>ModelInstalledList</name>
     <message>
-        <location filename="../qml/Common/ModelInstalledList.qml" line="+85"/>
+        <location filename="../qml/Common/ModelInstalledList.qml" line="+87"/>
         <source>managed</source>
         <translation>управляемая</translation>
     </message>
@@ -1726,23 +1735,23 @@
         <translation>Не удалось создать папку: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelRegistry.cpp" line="+173"/>
-        <location line="+90"/>
+        <location filename="../../src/runtime/ModelRegistry.cpp" line="+180"/>
+        <location line="+86"/>
         <source>Unable to read model registry: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-80"/>
+        <location line="-81"/>
         <source>Model index is corrupt; rescanning models directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+3"/>
         <source>Model index version mismatch; rescanning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+46"/>
         <location line="+15"/>
         <source>Model registry is locked by another LLocr instance</source>
         <translation>Реестр моделей заблокирован другим экземпляром LLocr</translation>
@@ -1943,7 +1952,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/LaunchProfile.cpp" line="+74"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+99"/>
         <source>Launch profile parameter has an empty name</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1973,7 +1982,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+30"/>
         <source>Launch profile parameter is not an object</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2148,7 +2157,7 @@
 <context>
     <name>RuntimeBuildsList</name>
     <message>
-        <location filename="../qml/Common/RuntimeBuildsList.qml" line="+71"/>
+        <location filename="../qml/Common/RuntimeBuildsList.qml" line="+68"/>
         <source>%1 — binary missing</source>
         <translation>%1 — бинарник отсутствует</translation>
     </message>
@@ -4124,7 +4133,7 @@
         <translation>Модель загружена, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+24"/>
         <source>Installed %1</source>
         <translation>Установлено %1</translation>
     </message>
@@ -4137,7 +4146,7 @@
 <context>
     <name>llocr::ModelInstaller</name>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="+241"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="+213"/>
         <location line="+32"/>
         <location line="+17"/>
         <location line="+77"/>
@@ -4175,7 +4184,12 @@
         <translation>Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="+70"/>
+        <location line="-138"/>
+        <source>The selected model is no longer on disk: %1 — pick another one in Settings → Models.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+208"/>
         <source>No preset selected</source>
         <translation>Пресет не выбран</translation>
     </message>
@@ -4475,15 +4489,15 @@
         <translation>Linux</translation>
     </message>
     <message>
-        <location line="+35"/>
-        <location line="+80"/>
+        <location line="+36"/>
+        <location line="+84"/>
         <location line="+199"/>
         <source>Downloading %1 …</source>
         <translation>Скачивание %1 …</translation>
     </message>
     <message>
-        <location line="-277"/>
-        <location line="+80"/>
+        <location line="-281"/>
+        <location line="+84"/>
         <source>runtime</source>
         <translation>среда</translation>
     </message>
@@ -4555,7 +4569,7 @@
         <translation>Нет активной сборки рантайма — очистка удалила бы все установленные сборки. Сначала установите или активируйте сборку.</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+63"/>
         <source>Unable to open %1</source>
         <translation>Не удалось открыть %1</translation>
     </message>

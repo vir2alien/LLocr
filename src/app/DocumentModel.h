@@ -59,6 +59,23 @@ public:
     static PreparedDjVu prepareDjVu(const QString& path);
     void appendPreparedDjVu(const PreparedDjVu& prepared);
 
+    /// Everything a detached render needs, by value: a worker must not read the
+    /// model (ADR 104). The DjVu handle is a shared_ptr the import path already
+    /// hands across threads; a PDF gets its *own* QPdfDocument in the worker,
+    /// because the one the model owns is GUI-thread state.
+    struct RenderRequest {
+        DocumentPage page;                          ///< a copy, image field unused
+        std::shared_ptr<DjVuDocument> djvu;         ///< for a DjVu page
+    };
+
+    /// Renders one page without touching any DocumentModel state, so it can run
+    /// on a worker while the GUI thread stays responsive (ADR 118).
+    static QImage renderDetached(const RenderRequest& request, QString* error = nullptr);
+
+    /// Builds a request for `index` from the model. GUI thread only; the result
+    /// is self-contained and can be rendered anywhere.
+    RenderRequest renderRequestFor(int index) const;
+
     DocumentModel() = default;
     ~DocumentModel();
     Q_DISABLE_COPY_MOVE(DocumentModel)
@@ -87,6 +104,8 @@ public:
 
 private:
     bool decodeSource(DocumentPage& page, QString *error = nullptr);
+    /// Decodes a raster page without touching the model; the worker path.
+    static QImage decodeSourceCopy(const DocumentPage& page, QString *error = nullptr);
     QImage renderFull(const DocumentPage& page, QString *error = nullptr);
     void ensureFullImage(int index, QString *error = nullptr);
     void evictFullImages();

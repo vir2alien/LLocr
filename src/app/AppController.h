@@ -149,6 +149,14 @@ public:
     QImage pageImage(int index, QString *error = nullptr);
     QImage pageThumbnail(int index) const;
 
+    /// The preview render (ADR 118). Returns what is already cached and starts a
+    /// worker render when there is nothing yet, so the image provider never
+    /// blocks the GUI thread on a page render. `pageImageReady` fires when the
+    /// result lands; until then the caller shows the thumbnail.
+    QImage previewImage(int index);
+    /// True while a preview render for `index` is in flight.
+    Q_INVOKABLE bool previewRendering(int index) const;
+
     QImage croppedImage(int pageIndex, int boxIndex);
 
 signals:
@@ -164,6 +172,8 @@ signals:
     void docRevisionChanged();
     void configChanged();
     void boxesChanged();
+    /// A worker finished rendering a page for the preview (ADR 118).
+    void pageImageReady(int index);
 
     void selectedBoxChanged();
     void checkStateChanged();
@@ -244,6 +254,13 @@ private:
 
     int m_selectedBox = -1;
     bool m_recognitionStopped = false;
+
+    // Preview render cache (ADR 118). Only the image provider goes through it;
+    // recognition and export still use the synchronous pageImage(), which runs
+    // off the GUI thread already.
+    QHash<int, QImage> m_previewCache;
+    int m_previewRendering = -1;   ///< page index a worker is busy with, -1 = idle
+    quint64 m_previewGeneration = 0;  ///< bumped when the document changes
 };
 
 }  // namespace llocr

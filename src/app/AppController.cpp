@@ -232,6 +232,61 @@ QImage AppController::pageThumbnail(int index) const
     return m_document.thumbnail(index);
 }
 
+bool AppController::previewRendering(int index) const
+{
+    return m_previewRendering == index;
+}
+
+QImage AppController::previewImage(int index)
+{
+    DocumentModel::RenderRequest request;
+    bool cached = false;
+    {
+        QReadLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(index))
+            return {};
+        const auto it = m_previewCache.constFind(index);
+        if (it != m_previewCache.constEnd()) {
+            cached = true;
+        } else {
+            request = m_document.renderRequestFor(index);
+        }
+    }
+    if (cached)
+        return m_previewCache.value(index);
+
+    // Nothing cached: start a render on a worker and let the caller show the
+    // thumbnail meanwhile. Only one is in flight — a second page switch drops
+    // the older request by generation rather than queueing another render.
+    if (m_previewRendering == index)
+        return {};
+    m_previewRendering = index;
+    const quint64 generation = m_previewGeneration;
+
+    auto *watcher = new QFutureWatcher<QImage>(this);
+    connect(watcher, &QFutureWatcher<QImage>::finished, this,
+            [this, watcher, index, generation]() {
+                const QImage rendered = watcher->result();
+                watcher->deleteLater();
+                // The document (or the selected page) moved on while the worker
+                // ran: the result belongs to a state nobody is looking at.
+                if (generation != m_previewGeneration)
+                    return;
+                if (m_previewRendering == index)
+                    m_previewRendering = -1;
+                if (rendered.isNull())
+                    return;
+                m_previewCache.insert(index, rendered);
+                emit pageImageReady(index);
+                ++m_imageRevision;
+                emit imageRevisionChanged();
+            });
+    watcher->setFuture(QtConcurrent::run([request]() {
+        return DocumentModel::renderDetached(request);
+    }));
+    return {};
+}
+
 QImage AppController::croppedImage(int pageIndex, int boxIndex)
 {
     QWriteLocker locker(&m_documentLock);
@@ -874,6 +929,10 @@ void AppController::retranslate()
 
 void AppController::notifyDocumentChanged()
 {
+    // A rendered page is only valid for the document it was rendered from.
+    ++m_previewGeneration;
+    m_previewCache.clear();
+    m_previewRendering = -1;
     emit documentChanged();
     emit pageChanged();
     emit imageChanged();

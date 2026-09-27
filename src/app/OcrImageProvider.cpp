@@ -41,7 +41,14 @@ QImage OcrImageProvider::requestImage(const QString& id, QSize* size,
                 image = m_controller->croppedImage(m_controller->currentPage(), boxIndex);
         }
     } else {
-        image = m_controller->currentImage();
+        // The preview render is asynchronous (ADR 118): while the worker is
+        // busy this returns the thumbnail, so a DjVu page that takes seconds to
+        // decode no longer freezes the window. Controller::imageRevision is
+        // bumped when the full image lands, and the `?…` cache key makes QML ask
+        // again.
+        image = m_controller->previewImage(m_controller->currentPage());
+        if (image.isNull())
+            image = m_controller->pageThumbnail(m_controller->currentPage());
     }
 
     if (image.isNull())

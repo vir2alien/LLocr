@@ -5,6 +5,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import LLocr
+import "../Common"
 
 Image {
     id: previewImage
@@ -13,6 +14,24 @@ Image {
             ? "image://ocr/current?" + Controller.imageRevision
             : ""
     cache: false
+
+    // The page render is asynchronous (ADR 118): until the worker delivers the
+    // full image the provider serves the thumbnail, so say so rather than let
+    // the user read a soft image as the final one.
+    LLOLabel {
+        anchors.centerIn: parent
+        visible: Controller.previewRendering(Controller.currentPage)
+        text: qsTr("Rendering page…")
+        font.pointSize: Theme.captionSize
+        color: Theme.textMuted
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.radius
+            border.color: Theme.border
+            border.width: 1
+        }
+        padding: 6
+    }
 
     Item {
         id: imageArea

@@ -324,9 +324,98 @@ QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
 
     DocumentPage decoded;
     decoded.sourcePath = page.sourcePath;
-    if (!decodeSource(decoded, error))
-        return QImage();
-    return decoded.image;
+    return decodeSourceCopy(decoded, error);
+}
+
+DocumentModel::RenderRequest DocumentModel::renderRequestFor(int index) const
+{
+    RenderRequest request;
+    if (!isValidIndex(index))
+        return request;
+    const DocumentPage &source = m_pages[index];
+    // The cached full image is not part of the request: the worker produces it.
+    request.page = source;
+    request.page.image = QImage();
+    if (source.sourceType == DocumentSource::DjVu)
+        request.djvu = m_djvus.value(source.sourcePath);
+    return request;
+}
+
+QImage DocumentModel::renderDetached(const RenderRequest& request, QString *error)
+{
+    const DocumentPage &page = request.page;
+    if (error)
+        error->clear();
+
+    if (!page.sourceError.isEmpty()) {
+        QImage placeholder(page.pixelSize, QImage::Format_RGB32);
+        if (placeholder.isNull()) {
+            if (error)
+                *error = page.sourceError;
+            return {};
+        }
+        placeholder.fill(Qt::white);
+        return placeholder;
+    }
+#ifdef LLOCR_HAVE_DJVU
+    if (page.sourceType == DocumentSource::DjVu) {
+        if (!request.djvu) {
+            if (error) {
+                *error = QCoreApplication::translate(
+                             "DocumentModel", "DjVu document is not open: %1")
+                             .arg(page.sourcePath);
+            }
+            return {};
+        }
+        return request.djvu->render(page.sourcePageIndex, page.pixelSize, error);
+    }
+#endif
+    if (page.sourceType == DocumentSource::Pdf) {
+        // A private handle: the model's QPdfDocument is GUI-thread state and
+        // QPdfDocument is not safe to share across threads.
+        QPdfDocument pdf;
+        const QPdfDocument::Error err = pdf.load(page.sourcePath);
+        if (err != QPdfDocument::Error::None) {
+            if (error) {
+                *error = QStringLiteral("Failed to open %1 as a PDF document")
+                             .arg(page.sourcePath);
+            }
+            return QImage();
+        }
+        QPdfDocumentRenderOptions options;
+        QImage image = pdf.render(page.sourcePageIndex, page.pixelSize, options);
+        if (image.isNull()) {
+            image = QImage(page.pixelSize.isEmpty() ? QSize(800, 1000) : page.pixelSize,
+                           QImage::Format_ARGB32);
+            image.fill(Qt::white);
+        }
+        return image;
+    }
+
+    return decodeSourceCopy(page, error);
+}
+
+QImage DocumentModel::decodeSourceCopy(const DocumentPage& page, QString *error)
+{
+    QImageReader reader(page.sourcePath);
+    reader.setAutoTransform(true);
+    reader.setAllocationLimit(0);
+    QImage image = reader.read();
+    if (image.isNull()) {
+        if (error) {
+            *error = QStringLiteral("Failed to read %1: %2")
+                         .arg(page.sourcePath,
+                              reader.errorString().isEmpty()
+                                  ? QStringLiteral("unknown error")
+                                  : reader.errorString());
+        }
+        return {};
+    }
+    if (image.format() != QImage::Format_RGB32
+        && image.format() != QImage::Format_ARGB32) {
+        image = image.convertToFormat(QImage::Format_ARGB32);
+    }
+    return image;
 }
 
 void DocumentModel::ensureFullImage(int index, QString *error)

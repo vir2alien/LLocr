@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include <QAbstractItemModelTester>
+#include <QDateTime>
 #include <QFile>
 #include <QGuiApplication>
 #include <QHostAddress>
@@ -741,6 +742,79 @@ private slots:
                  QStringLiteral("Markdown RU (*.md)"));
 
         QCoreApplication::removeTranslator(&translator);
+    }
+
+    // The preview render must not block the GUI thread (ADR 118): a DjVu page can
+    // take seconds to decode, and the image provider used to do it inline, which
+    // froze the window. previewImage() answers with what it has (or nothing) and
+    // renders on a worker; pageImageReady then bumps imageRevision.
+    void previewRenderKeepsTheEventLoopRunning()
+    {
+        auto &controller = *m_controller;
+        // A big page, so decoding is long enough to measure.
+        const QString bigPath = m_dir.filePath(QStringLiteral("big.png"));
+        QImage big(3000, 4000, QImage::Format_RGB32);
+        big.fill(Qt::white);
+        QVERIFY(big.save(bigPath));
+
+        controller.openFiles({QUrl::fromLocalFile(bigPath)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        QCOMPARE(controller.pageCount(), 1);
+
+        // Baseline tick so the first interval is measured, like the probe test.
+        QTimer heartbeat;
+        int ticks = 0;
+        qint64 maxGapMs = 0;
+        qint64 lastTick = QDateTime::currentMSecsSinceEpoch();
+        connect(&heartbeat, &QTimer::timeout, this, [&] {
+            const qint64 now = QDateTime::currentMSecsSinceEpoch();
+            maxGapMs = std::max(maxGapMs, now - lastTick);
+            lastTick = now;
+            ++ticks;
+        });
+        heartbeat.start(5);
+        QTest::qWait(60);
+        lastTick = QDateTime::currentMSecsSinceEpoch();
+        maxGapMs = 0;
+
+        QSignalSpy readySpy(&controller, &AppController::pageImageReady);
+        // The first call cannot have a full image yet — that is the point.
+        QVERIFY(controller.previewImage(0).isNull());
+        QVERIFY(controller.previewRendering(0));
+
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.previewRendering(0), 20000);
+        QVERIFY2(readySpy.count() >= 1, "the worker never published a page image");
+        const QImage rendered = controller.previewImage(0);
+        QVERIFY(!rendered.isNull());
+        QCOMPARE(rendered.size(), QSize(3000, 4000));
+        // A second call is answered from the cache, without a worker.
+        QVERIFY(!controller.previewRendering(0));
+        QCOMPARE(controller.previewImage(0).size(), QSize(3000, 4000));
+
+        QVERIFY2(ticks > 0, "the timer never fired");
+        QVERIFY2(maxGapMs < 500,
+                 qPrintable(QStringLiteral("longest gap between timer ticks: %1 ms "
+                                          "while rendering a page (%2 ticks total)")
+                                .arg(maxGapMs).arg(ticks)));
+    }
+
+    // A rendered page belongs to the document it was rendered from: switching
+    // away and back must not resurrect a stale image.
+    void previewRenderIsDroppedWhenTheDocumentChanges()
+    {
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        QVERIFY(controller.previewImage(0).isNull());
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.previewRendering(0), 20000);
+        QVERIFY(!controller.previewImage(0).isNull());
+
+        // A second document is appended; the cache must not answer for it.
+        controller.openFiles({QUrl::fromLocalFile(m_pdf)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        QVERIFY(controller.pageCount() > 1);
+        QVERIFY2(controller.previewImage(0).isNull(),
+                 "a page image from the previous document was still served");
     }
 
     // Regression: the document is the source of truth for blocks. Deleting a
