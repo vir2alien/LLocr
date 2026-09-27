@@ -10,6 +10,7 @@
 #include <QVariant>
 
 #include "runtime/InstallTransaction.h"
+#include "runtime/InstalledBuildsModel.h"
 #include "runtime/ReleaseCatalog.h"
 #include "runtime/InstalledState.h"
 #include "runtime/RuntimePaths.h"
@@ -45,6 +46,11 @@ class RuntimeInstaller : public QObject
 
     Q_PROPERTY(int installedBuildCount READ installedBuildCount NOTIFY installedBuildsChanged)
 
+    // The installed builds as a real list model with named roles, so the QML
+    // delegate no longer indexes a QVariantMap by string key and re-fetches its
+    // row on every change signal (ADR 115).
+    Q_PROPERTY(QObject *installedBuilds READ installedBuilds CONSTANT)
+
     Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(bool canInstall READ canInstall NOTIFY stateChanged)
@@ -76,7 +82,6 @@ public:
     Q_INVOKABLE QString cleanupUnusedBuilds();
 
     Q_INVOKABLE void rescanInstalledBuilds();
-    Q_INVOKABLE QVariantMap installedBuildInfo(int index) const;
     Q_INVOKABLE QString activateBuild(int index);
     Q_INVOKABLE QString openBuildFolder(int index);
     Q_INVOKABLE static QString backendDisplayName(const QString &backend);
@@ -98,7 +103,8 @@ public:
     QString installedBuild() const;
     QString installedBackend() const;
     bool hasUpdate() const { return m_hasUpdate; }
-    int installedBuildCount() const { return m_installedBuilds.size(); }
+    int installedBuildCount() const { return m_installedBuilds->rowCount(); }
+    QObject *installedBuilds() const;
     double progress() const { return m_progress; }
     QString statusMessage() const { return m_statusMessage; }
     bool canInstall() const;
@@ -160,7 +166,7 @@ private:
     int m_selectedRelease = 0;
     bool m_hasUpdate = false;
     QDateTime m_lastCatalogAt;
-    QList<InstalledBuildInfo> m_installedBuilds;
+    InstalledBuildsModel *m_installedBuilds = nullptr;
 
     QString m_pendingBackend;
     ReleaseAsset m_pendingMain;

@@ -20,28 +20,25 @@ ListView {
     implicitHeight: count <= 0
                     ? 0
                     : (maxVisibleRows > 0 ? Math.min(count, maxVisibleRows) : count) * rowHeight
-    model: RuntimeInstaller.installedBuildCount
+    model: RuntimeInstaller.installedBuilds
     interactive: root.scrollable
     ScrollBar.vertical: ScrollBar { policy: root.scrollable ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
 
     delegate: Rectangle {
         id: buildRow
         required property int index
-        property var info: RuntimeInstaller.installedBuildInfo(index)
-        function refreshInfo() {
-            info = RuntimeInstaller.installedBuildInfo(index)
-        }
-        Connections {
-            target: RuntimeInstaller
-            function onInstalledBuildsChanged() { buildRow.refreshInfo() }
-            function onInstalledChanged() { buildRow.refreshInfo() }
-        }
+        required property string tag
+        required property string build
+        required property string backendDisplay
+        required property string serverPath
+        required property bool binaryFound
+        required property bool active
 
         width: root.width
         height: root.rowHeight
-        color: info.active ? Theme.surfaceSunken : "transparent"
-        border.color: info.active ? Theme.accent : "transparent"
-        border.width: info.active ? 1 : 0
+        color: active ? Theme.surfaceSunken : "transparent"
+        border.color: active ? Theme.accent : "transparent"
+        border.width: active ? 1 : 0
         radius: Theme.radius
 
         RowLayout {
@@ -56,7 +53,7 @@ ListView {
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
                 color: Theme.textPrimary
-                text: buildRow.info.build.length ? buildRow.info.build : buildRow.info.tag
+                text: buildRow.build.length ? buildRow.build : buildRow.tag
             }
             LLOLabel {
                 Layout.fillWidth: true
@@ -64,16 +61,16 @@ ListView {
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: buildRow.info.binaryFound
-                      ? (buildRow.info.backendDisplay.length
-                         ? buildRow.info.backendDisplay
-                         : buildRow.info.tag)
-                      : qsTr("%1 — binary missing").arg(buildRow.info.tag)
+                text: buildRow.binaryFound
+                      ? (buildRow.backendDisplay.length
+                         ? buildRow.backendDisplay
+                         : buildRow.tag)
+                      : qsTr("%1 — binary missing").arg(buildRow.tag)
             }
             LLOButton {
-                text: buildRow.info.active ? qsTr("Active") : qsTr("Activate")
-                enabled: !buildRow.info.active && !RuntimeInstaller.busy
-                         && Runtime.state !== Runtime.Starting && buildRow.info.binaryFound
+                text: buildRow.active ? qsTr("Active") : qsTr("Activate")
+                enabled: !buildRow.active && !RuntimeInstaller.busy
+                         && Runtime.state !== Runtime.Starting && buildRow.binaryFound
                 onClicked: {
                     if (Runtime.state === Runtime.Ready)
                         Runtime.stopServer()
@@ -81,7 +78,7 @@ ListView {
                 }
             }
             LLOButton {
-                visible: buildRow.info.binaryFound
+                visible: buildRow.binaryFound
                 text: qsTr("Open folder")
                 onClicked: RuntimeInstaller.openBuildFolder(buildRow.index)
             }

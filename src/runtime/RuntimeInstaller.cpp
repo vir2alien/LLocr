@@ -65,6 +65,7 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &stat
     , m_installState(state)
     , m_downloads(new DownloadManager(this))
     , m_group(new DownloadGroup(m_downloads, this))
+    , m_installedBuilds(new InstalledBuildsModel(settings, this))
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
     m_platformLabel = QStringLiteral("%1 %2").arg(osLabel(info), info.arch);
@@ -88,6 +89,10 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &stat
     connect(m_group, &DownloadGroup::allFinished, this, [this](bool) {
         maybeFinishDownloads();
     });
+    // Which build is the active one is a settings value, so the list re-evaluates
+    // it rather than keeping a stale highlight (ADR 115).
+    connect(&m_settings, &SettingsStore::serverPathChanged,
+            m_installedBuilds, &InstalledBuildsModel::settingsChanged);
     // A moved runtime directory invalidates the installed-builds list (and the
     // update hint) — rescan instead of keeping what the old tree contained.
     connect(&m_installState, &InstalledState::pathsChanged, this, [this]() {
@@ -562,39 +567,22 @@ void RuntimeInstaller::rescanInstalledBuilds()
 {
     // The same paths everything else uses — a moved runtime directory used to
     // make the scan look in the new tree while installs kept the old one.
-    const QList<InstalledBuildInfo> builds =
-        InstallTransaction::scanInstalledBuilds(m_installState.paths());
-    if (builds == m_installedBuilds)
-        return;
-    m_installedBuilds = builds;
+    m_installedBuilds->setBuilds(
+        InstallTransaction::scanInstalledBuilds(m_installState.paths()));
     emit installedBuildsChanged();
 }
 
-QVariantMap RuntimeInstaller::installedBuildInfo(int index) const
+QObject *RuntimeInstaller::installedBuilds() const
 {
-    QVariantMap map;
-    if (index < 0 || index >= m_installedBuilds.size())
-        return map;
-    const InstalledBuildInfo &b = m_installedBuilds.at(index);
-    map.insert(QStringLiteral("tag"), b.tag);
-    map.insert(QStringLiteral("build"), b.build);
-    map.insert(QStringLiteral("backend"), b.backend);
-    map.insert(QStringLiteral("backendDisplay"),
-               b.backend.isEmpty() ? QString() : backendDisplayName(b.backend));
-    map.insert(QStringLiteral("serverPath"), b.serverPath);
-    map.insert(QStringLiteral("binaryFound"), !b.serverPath.isEmpty());
-    map.insert(QStringLiteral("active"),
-               !b.serverPath.isEmpty() && !m_settings.serverPath().isEmpty()
-               && normalizedPath(b.serverPath)
-                      == normalizedPath(m_settings.serverPath()));
-    return map;
+    return m_installedBuilds;
 }
 
 QString RuntimeInstaller::openBuildFolder(int index)
 {
-    if (index < 0 || index >= m_installedBuilds.size())
+    const QList<InstalledBuildInfo> &builds = m_installedBuilds->builds();
+    if (index < 0 || index >= builds.size())
         return tr("No such build");
-    const InstalledBuildInfo &b = m_installedBuilds.at(index);
+    const InstalledBuildInfo &b = builds.at(index);
     if (b.serverPath.isEmpty())
         return tr("The build directory contains no llama-server binary");
     const QString dir = QFileInfo(b.serverPath).absolutePath();
@@ -607,9 +595,9 @@ QString RuntimeInstaller::activateBuild(int index)
 {
     if (m_busy)
         return tr("An install is in progress");
-    if (index < 0 || index >= m_installedBuilds.size())
+    if (index < 0 || index >= m_installedBuilds->rowCount())
         return tr("No such build");
-    const InstalledBuildInfo &b = m_installedBuilds.at(index);
+    const InstalledBuildInfo &b = m_installedBuilds->builds().at(index);
     if (b.serverPath.isEmpty())
         return tr("The build directory contains no llama-server binary");
 

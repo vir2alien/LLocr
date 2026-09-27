@@ -34,6 +34,23 @@ struct ModelEntry {
     QString addedAt;     // ISO timestamp
     QString repoId;
     QStringList roles;   // "ocr" / "check"; empty = legacy entry (shown in both)
+
+    // Value equality, so a re-scan that finds the same models does not reset the
+    // list model and make every delegate re-read its row (ADR 115).
+    bool operator==(const ModelEntry &other) const
+    {
+        return id == other.id && title == other.title && repo == other.repo
+               && revision == other.revision && modelPath == other.modelPath
+               && parts == other.parts && mmprojPath == other.mmprojPath
+               && dir == other.dir && origin == other.origin
+               && byteSize == other.byteSize && quantization == other.quantization
+               && license == other.license && sha256 == other.sha256
+               && parser == other.parser && prompt == other.prompt
+               && ctxSize == other.ctxSize && ctxSizeSet == other.ctxSizeSet
+               && addedAt == other.addedAt && repoId == other.repoId
+               && roles == other.roles;
+    }
+    bool operator!=(const ModelEntry &other) const { return !(*this == other); }
 };
 
 class ModelRegistry

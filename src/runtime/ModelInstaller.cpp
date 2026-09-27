@@ -26,6 +26,8 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     , m_runtime(runtime)
     , m_launchProfiles(launchProfiles)
     , m_transaction(new ModelInstallTransaction(settings, launchProfiles, m_installState, this))
+    , m_ocrModels(new InstalledModelsModel(settings, false, this))
+    , m_checkModels(new InstalledModelsModel(settings, true, this))
 {
     connect(m_transaction, &ModelInstallTransaction::stateChanged, this,
             [this](int state) { setState(static_cast<State>(state)); });
@@ -38,11 +40,34 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     connect(m_transaction, &ModelInstallTransaction::installedListReplaced, this,
             [this](const QList<ModelEntry> &installed) {
                 m_installed = installed;
-                emit installedChanged();
+                publishInstalled();
             });
+    // The active model lives in the settings, so the lists follow it: the
+    // highlight *and* which list a model belongs to (ADR 115).
+    connect(&m_settings, &SettingsStore::launchModelPathChanged, this,
+            &ModelInstaller::publishInstalled);
+    connect(&m_settings, &SettingsStore::checkLaunchModelPathChanged, this,
+            &ModelInstaller::publishInstalled);
 
     reloadPresetsInternal();
     refreshInstalled();
+}
+
+QObject *ModelInstaller::installedModels() const
+{
+    return m_ocrModels;
+}
+
+QObject *ModelInstaller::checkInstalledModels() const
+{
+    return m_checkModels;
+}
+
+void ModelInstaller::publishInstalled()
+{
+    m_ocrModels->setEntries(m_installed);
+    m_checkModels->setEntries(m_installed);
+    emit installedChanged();
 }
 
 ModelInstaller::~ModelInstaller() = default;
@@ -144,7 +169,7 @@ void ModelInstaller::refreshInstalled()
     if (!err.isEmpty() && !rebuilt)
         setStatusMessage(err);
     m_transaction->setInstalled(m_installed);
-    emit installedChanged();
+    publishInstalled();
 }
 
 void ModelInstaller::rescanRegistry()
@@ -155,84 +180,6 @@ void ModelInstaller::rescanRegistry()
     ModelRegistry::save(modelsDir, m_installed, err);
     m_transaction->setInstalled(m_installed);
     refreshInstalled();
-}
-
-QVariantMap ModelInstaller::installedInfo(int index, bool forCheck) const
-{
-    QVariantMap out;
-    if (index < 0 || index >= m_installed.size())
-        return out;
-    const ModelEntry &e = m_installed.at(index);
-
-    QString display = QFileInfo(e.modelPath).completeBaseName();
-    const QString q = e.quantization.trimmed();
-    if (!q.isEmpty() && display.endsWith(QLatin1Char('-') + q))
-        display.chop(q.size() + 1);
-    if (display.isEmpty())
-        display = e.title.isEmpty() ? e.repo : e.title;
-    if (!q.isEmpty())
-        display += QLatin1Char(' ') + q;
-
-    out.insert(QStringLiteral("title"), display);
-    out.insert(QStringLiteral("path"), e.modelPath);
-    out.insert(QStringLiteral("mmprojPath"), e.mmprojPath);
-    out.insert(QStringLiteral("size"), QVariant::fromValue(e.byteSize));
-    out.insert(QStringLiteral("quantization"), e.quantization);
-    out.insert(QStringLiteral("origin"),
-               e.origin == ModelOrigin::Managed ? QStringLiteral("managed")
-                                                : QStringLiteral("external"));
-    out.insert(QStringLiteral("license"), e.license);
-    out.insert(QStringLiteral("repo"), e.repo);
-    const QString activePath = forCheck ? m_settings.checkLaunchModelPath()
-                                        : m_settings.launchModelPath();
-    out.insert(QStringLiteral("active"),
-               !e.modelPath.isEmpty() && e.modelPath == activePath);
-    out.insert(QStringLiteral("parts"), e.parts.size());
-    out.insert(QStringLiteral("index"), index);
-    return out;
-}
-
-int ModelInstaller::roleInstalledCount(bool forCheck) const
-{
-    int n = 0;
-    for (const ModelEntry &e : m_installed) {
-        if (matchesRole(e, forCheck))
-            ++n;
-    }
-    return n;
-}
-
-QVariantMap ModelInstaller::roleInstalledInfo(int index, bool forCheck) const
-{
-    int n = -1;
-    for (int i = 0; i < m_installed.size(); ++i) {
-        if (!matchesRole(m_installed.at(i), forCheck))
-            continue;
-        if (++n == index)
-            return installedInfo(i, forCheck);
-    }
-    return QVariantMap();
-}
-
-bool ModelInstaller::matchesRole(const ModelEntry &e, bool forCheck) const
-{
-    const bool ocrActive = !e.modelPath.isEmpty()
-                           && e.modelPath == m_settings.launchModelPath();
-    const bool checkActive = !e.modelPath.isEmpty()
-                             && e.modelPath == m_settings.checkLaunchModelPath();
-
-    if (forCheck ? checkActive : ocrActive)
-        return true;
-
-    if (!e.roles.isEmpty())
-        return e.roles.contains(forCheck ? QStringLiteral("check")
-                                         : QStringLiteral("ocr"));
-
-    if (checkActive)
-        return false;
-
-    const bool vision = !e.mmprojPath.isEmpty();
-    return forCheck ? !vision : vision;
 }
 
 QString ModelInstaller::setActiveModel(int index, bool forCheck)
@@ -248,7 +195,7 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
         if (!e.mmprojPath.isEmpty())
             m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
         m_settings.forceSave();
-        emit installedChanged();
+        publishInstalled();
         return QString();
     }
 
@@ -262,7 +209,7 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
         m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
                                                 e.ctxSize);
     m_settings.forceSave();
-    emit installedChanged();
+    publishInstalled();
     return QString();
 }
 
@@ -357,7 +304,7 @@ QString ModelInstaller::removeModel(int index)
     }
     m_installed = updated;
     m_transaction->setInstalled(m_installed);
-    emit installedChanged();
+    publishInstalled();
     return QString();
 }
 

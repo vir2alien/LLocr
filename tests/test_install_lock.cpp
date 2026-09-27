@@ -7,6 +7,7 @@
 #include <QtTest>
 
 #include "app/SettingsStore.h"
+#include "runtime/InstalledBuildsModel.h"
 #include "runtime/InstalledState.h"
 #include "runtime/RuntimeInstaller.h"
 #include "runtime/RuntimePaths.h"
@@ -62,11 +63,25 @@ private:
         QVERIFY(f.write("stub", 4) == 4);
     }
 
+    // The installed builds are a real list model now (ADR 115); the helpers
+    // read it the same way the QML delegates do.
+    static QAbstractItemModel *buildsOf(RuntimeInstaller &installer)
+    {
+        return qobject_cast<QAbstractItemModel *>(installer.installedBuilds());
+    }
+
+    static QVariant buildData(RuntimeInstaller &installer, int row, int role)
+    {
+        auto *model = buildsOf(installer);
+        return model->data(model->index(row, 0), role);
+    }
+
     static int findBuild(RuntimeInstaller &installer, const QString &tag)
     {
-        for (int i = 0; i < installer.installedBuildCount(); ++i) {
-            if (installer.installedBuildInfo(i).value(QStringLiteral("tag")).toString()
-                    == tag)
+        auto *model = buildsOf(installer);
+        for (int i = 0; i < model->rowCount(); ++i) {
+            if (model->data(model->index(i, 0), InstalledBuildsModel::TagRole)
+                    .toString() == tag)
                 return i;
         }
         return -1;
@@ -153,20 +168,23 @@ private slots:
 
         // Newest build first (b101), backend parsed from the tag including the
         // hyphenated "cuda-cu12" token.
-        const QVariantMap newest = installer.installedBuildInfo(0);
-        QCOMPARE(newest.value("build").toString(), QStringLiteral("b101"));
-        QCOMPARE(newest.value("backend").toString(), QStringLiteral("cuda-cu12"));
-        QCOMPARE(newest.value("active").toBool(), false);
-        QVERIFY(!newest.value("serverPath").toString().isEmpty());
+        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::BuildRole).toString(),
+                 QStringLiteral("b101"));
+        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::BackendRole).toString(),
+                 QStringLiteral("cuda-cu12"));
+        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::ActiveRole).toBool(), false);
+        const QString newestPath =
+            buildData(installer, 0, InstalledBuildsModel::ServerPathRole).toString();
+        QVERIFY(!newestPath.isEmpty());
 
         // Activate it: the settings now point at the scanned binary.
         QVERIFY(installer.activateBuild(0).isEmpty());
-        QCOMPARE(settings.serverPath(),
-                 newest.value("serverPath").toString());
+        QCOMPARE(settings.serverPath(), newestPath);
         QCOMPARE(settings.installedBuild(), QStringLiteral("b101"));
         QCOMPARE(settings.runtimeBackend(), QStringLiteral("cuda-cu12"));
         QVERIFY(settings.serverPathIsManaged());
-        QCOMPARE(installer.installedBuildInfo(0).value("active").toBool(), true);
+        // The active highlight follows the settings, not a stored flag.
+        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::ActiveRole).toBool(), true);
 
         // Other rows are not active, activating one switches cleanly.
         const int oldIdx = findBuild(installer,
@@ -175,8 +193,8 @@ private slots:
         QVERIFY(installer.activateBuild(oldIdx).isEmpty());
         QCOMPARE(settings.installedBuild(), QStringLiteral("b100"));
         QCOMPARE(settings.runtimeBackend(), QStringLiteral("cpu"));
-        QCOMPARE(installer.installedBuildInfo(0).value("active").toBool(), false);
-        QCOMPARE(installer.installedBuildInfo(oldIdx).value("active").toBool(), true);
+        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::ActiveRole).toBool(), false);
+        QCOMPARE(buildData(installer, oldIdx, InstalledBuildsModel::ActiveRole).toBool(), true);
 
         // A build whose directory lost its binary cannot be activated.
         QDir(QDir(makePaths(root.path()).runtimeDir())
@@ -190,8 +208,8 @@ private slots:
         const int missingIdx = findBuild(installer,
                                          QStringLiteral("llama.cpp-b99-cpu-win-x64"));
         QVERIFY(missingIdx >= 0);
-        QCOMPARE(installer.installedBuildInfo(missingIdx)
-                     .value("binaryFound").toBool(), false);
+        QCOMPARE(buildData(installer, missingIdx,
+                           InstalledBuildsModel::BinaryFoundRole).toBool(), false);
         const QString serverPathBefore = settings.serverPath();
         QVERIFY(!installer.activateBuild(missingIdx).isEmpty());
         QCOMPARE(settings.serverPath(), serverPathBefore);

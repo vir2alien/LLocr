@@ -30,27 +30,29 @@ ListView {
     implicitHeight: count <= 0
                     ? 0
                     : (maxVisibleRows > 0 ? Math.min(count, maxVisibleRows) : count) * rowHeight
-    model: root.isVerifyModelRole ? ModelInstaller.checkInstalledCount
-                                  : ModelInstaller.ocrInstalledCount
+    model: root.isVerifyModelRole ? ModelInstaller.checkInstalledModels
+                                  : ModelInstaller.installedModels
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
     delegate: Rectangle {
         id: installedRow
         required property int index
-        property var info: ModelInstaller.roleInstalledInfo(index, root.isVerifyModelRole)
-        function refreshInfo() {
-            info = ModelInstaller.roleInstalledInfo(index, root.isVerifyModelRole)
-        }
-        Connections {
-            target: ModelInstaller
-            function onInstalledChanged() { installedRow.refreshInfo() }
-        }
+        required property string title
+        required property string path
+        required property string mmprojPath
+        required property var size
+        required property string quantization
+        required property string origin
+        required property string license
+        required property string repo
+        required property bool active
+        required property int parts
 
         width: root.width
         height: root.rowHeight
-        color: info.active ? Theme.surfaceSunken : "transparent"
-        border.color: info.active ? Theme.accent : "transparent"
-        border.width: info.active ? 1 : 0
+        color: active ? Theme.surfaceSunken : "transparent"
+        border.color: active ? Theme.accent : "transparent"
+        border.width: active ? 1 : 0
         radius: Theme.radius
 
         RowLayout {
@@ -65,7 +67,7 @@ ListView {
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
                 color: Theme.textPrimary
-                text: installedRow.info.title
+                text: installedRow.title
             }
             LLOLabel {
                 visible: root.managementActions
@@ -74,32 +76,32 @@ ListView {
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
                 color: Theme.textMuted
-                text: root.fmtBytes(installedRow.info.size)
+                text: root.fmtBytes(installedRow.size)
             }
             LLOLabel {
                 Layout.preferredWidth: 80
                 elide: Text.ElideMiddle
                 wrapMode: Text.NoWrap
                 font.pointSize: Theme.captionSize
-                color: installedRow.info.origin === "managed" ? Theme.textSecondary : Theme.textMuted
-                text: installedRow.info.origin === "managed" ? qsTr("managed") : qsTr("external")
+                color: installedRow.origin === "managed" ? Theme.textSecondary : Theme.textMuted
+                text: installedRow.origin === "managed" ? qsTr("managed") : qsTr("external")
             }
             LLOButton {
-                text: installedRow.info.active ? qsTr("Active") : qsTr("Activate")
-                enabled: !installedRow.info.active && !ModelInstaller.busy
+                text: installedRow.active ? qsTr("Active") : qsTr("Activate")
+                enabled: !installedRow.active && !ModelInstaller.busy
                 onClicked: {
-                    const i = installedRow.info.index
-                    if (i !== undefined)
+                    const i = model.sourceIndex(installedRow.index)
+                    if (i !== undefined && i >= 0)
                         ModelInstaller.setActiveModel(i, root.isVerifyModelRole)
                 }
             }
             LLOButton {
                 visible: root.managementActions
                 text: qsTr("Remove")
-                enabled: installedRow.info.origin === "managed"
+                enabled: installedRow.origin === "managed"
                 onClicked: {
-                    const i = installedRow.info.index
-                    if (i === undefined)
+                    const i = model.sourceIndex(installedRow.index)
+                    if (i === undefined || i < 0)
                         return
                     const err = ModelInstaller.removeModel(i)
                     if (err.length)
@@ -110,8 +112,8 @@ ListView {
                 visible: root.managementActions
                 text: qsTr("Open folder")
                 onClicked: {
-                    const i = installedRow.info.index
-                    if (i === undefined)
+                    const i = model.sourceIndex(installedRow.index)
+                    if (i === undefined || i < 0)
                         return
                     const err = ModelInstaller.openModelFolder(i)
                     if (err.length)

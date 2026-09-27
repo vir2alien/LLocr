@@ -7,6 +7,7 @@
 
 #include "app/LaunchProfileStore.h"
 #include "app/SettingsStore.h"
+#include "runtime/InstalledModelsModel.h"
 #include "runtime/InstalledState.h"
 #include "runtime/ModelInstaller.h"
 #include "runtime/ModelRegistry.h"
@@ -125,12 +126,30 @@ private:
         return s;
     }
 
+    // The list models replace the stringly-typed QVariantMap (ADR 115); the
+    // helpers read a role through the same rows QML binds to.
+    static QAbstractItemModel *ocrModels(ModelInstaller &installer)
+    {
+        return qobject_cast<QAbstractItemModel *>(installer.installedModels());
+    }
+
+    static QAbstractItemModel *checkModels(ModelInstaller &installer)
+    {
+        return qobject_cast<QAbstractItemModel *>(installer.checkInstalledModels());
+    }
+
+    static QString pathAt(QAbstractItemModel *model, int row)
+    {
+        return model->data(model->index(row, 0),
+                           InstalledModelsModel::PathRole).toString();
+    }
+
     static int indexOfQuant(ModelInstaller &installer, const QString &quant)
     {
-        for (int i = 0; i < installer.installedCount(); ++i) {
-            if (installer.installedInfo(i)
-                    .value(QStringLiteral("quantization"))
-                    .toString() == quant)
+        auto *model = ocrModels(installer);
+        for (int i = 0; i < model->rowCount(); ++i) {
+            if (model->data(model->index(i, 0),
+                            InstalledModelsModel::QuantizationRole).toString() == quant)
                 return i;
         }
         return -1;
@@ -385,34 +404,100 @@ private slots:
 
         // OCR list: only the mmproj model — the verifier (active as the check
         // model) and the parser-carrying text model stay out of it.
-        QCOMPARE(mi.roleInstalledCount(false), 1);
-        QCOMPARE(mi.roleInstalledInfo(0, false)
-                     .value(QStringLiteral("path")).toString(), ocrPath);
-        QCOMPARE(mi.roleInstalledInfo(-1, false).isEmpty(), true);
-        QCOMPARE(mi.roleInstalledInfo(5, false).isEmpty(), true);
+        auto *ocrList = ocrModels(mi);
+        auto *checkList = checkModels(mi);
+        QVERIFY(ocrList);
+        QVERIFY(checkList);
+        QCOMPARE(ocrList->rowCount(), 1);
+        QCOMPARE(pathAt(ocrList, 0), ocrPath);
+        QCOMPARE(pathAt(ocrList, -1), QString());
+        QCOMPARE(pathAt(ocrList, 5), QString());
 
         // Check list: the text model plus the active verifier.
-        QCOMPARE(mi.roleInstalledCount(true), 2);
-        QCOMPARE(mi.roleInstalledInfo(0, true)
-                     .value(QStringLiteral("path")).toString(), textPath);
-        QCOMPARE(mi.roleInstalledInfo(1, true)
-                     .value(QStringLiteral("path")).toString(), verifierPath);
+        QCOMPARE(checkList->rowCount(), 2);
+        QCOMPARE(pathAt(checkList, 0), textPath);
+        QCOMPARE(pathAt(checkList, 1), verifierPath);
 
-        // Filtered indexes map back to the full registry index.
-        QCOMPARE(mi.roleInstalledInfo(0, false)
-                     .value(QStringLiteral("index")).toInt(), 0);
-        QCOMPARE(mi.roleInstalledInfo(0, true)
-                     .value(QStringLiteral("index")).toInt(), 1);
-        QCOMPARE(mi.roleInstalledInfo(1, true)
-                     .value(QStringLiteral("index")).toInt(), 2);
+        // A row maps back to the installer's own list, for the calls the UI
+        // drives by row (activate / remove / open folder).
+        QCOMPARE(qobject_cast<InstalledModelsModel *>(ocrList)->sourceIndex(0), 0);
+        QCOMPARE(qobject_cast<InstalledModelsModel *>(checkList)->sourceIndex(0), 1);
+        QCOMPARE(qobject_cast<InstalledModelsModel *>(checkList)->sourceIndex(1), 2);
 
         // The role's active model is always listed: the text model becomes the
         // active OCR model and must appear in the OCR list too.
         settings.setLaunchModelPath(textPath);
-        QCOMPARE(mi.roleInstalledCount(false), 2);
-        QCOMPARE(mi.roleInstalledInfo(1, false)
-                     .value(QStringLiteral("path")).toString(), textPath);
-        QCOMPARE(mi.roleInstalledCount(true), 2);
+        QCOMPARE(ocrList->rowCount(), 2);
+        QCOMPARE(pathAt(ocrList, 1), textPath);
+        QCOMPARE(checkList->rowCount(), 2);
+    }
+
+    // A list model with named roles: a QML delegate that misspells a role name
+    // gets an empty cell at runtime instead of a compile error (ADR 115). The
+    // rows must carry the values the delegate binds, and the model must not
+    // reset when nothing changed.
+    void installedModelsExposeNamedRoles()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("org__repo"));
+        QVERIFY(QDir().mkpath(sub));
+        const QString modelPath = writeGguf(sub, QStringLiteral("ocr-Q4_K_M.gguf"));
+        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-ocr-F16.gguf"));
+        QVERIFY(!modelPath.isEmpty() && !mmproj.isEmpty());
+
+        ModelEntry entry;
+        entry.id = QStringLiteral("org__repo");
+        entry.title = QStringLiteral("org/repo");
+        entry.repo = QStringLiteral("org/repo");
+        entry.dir = sub;
+        entry.modelPath = modelPath;
+        entry.mmprojPath = mmproj;
+        entry.origin = ModelOrigin::Managed;
+        entry.quantization = QStringLiteral("Q4_K_M");
+        entry.byteSize = 4096;
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {entry}, err), qPrintable(err));
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        LaunchProfileStore launchProfiles(settings);
+        InstalledState installed(settings);
+        RuntimeController runtime(settings, launchProfiles);
+        ModelInstaller installer(settings, runtime, launchProfiles, installed);
+
+        auto *models = qobject_cast<InstalledModelsModel *>(installer.installedModels());
+        QVERIFY(models);
+        QCOMPARE(models->rowCount(), 1);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::PathRole).toString(),
+                 modelPath);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::MmprojPathRole).toString(),
+                 mmproj);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::OriginRole).toString(),
+                 QStringLiteral("managed"));
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::LicenseRole).toString(),
+                 QString());
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::TitleRole).toString(),
+                 QStringLiteral("ocr Q4_K_M"));
+        // A row outside the model has no data, rather than reading row 0.
+        QVERIFY(!models->data(models->index(7, 0), InstalledModelsModel::PathRole).isValid());
+
+        // The roles the delegate binds are the ones the model declares.
+        const QHash<int, QByteArray> names = models->roleNames();
+        QCOMPARE(names.value(InstalledModelsModel::PathRole), QByteArray("path"));
+        QCOMPARE(names.value(InstalledModelsModel::ActiveRole), QByteArray("active"));
+
+        // A rescan that finds the same models must not reset the model.
+        QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
+        installer.refreshInstalled();
+        QCOMPARE(resetSpy.count(), 0);
+        QCOMPARE(models->rowCount(), 1);
+
+        // Activating the model re-reads the highlight from the settings.
+        QVERIFY(installer.setActiveModel(0).isEmpty());
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(),
+                 true);
     }
 };
 

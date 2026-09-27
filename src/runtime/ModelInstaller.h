@@ -6,6 +6,7 @@
 #include <QString>
 
 #include "runtime/ModelCatalog.h"
+#include "runtime/InstalledModelsModel.h"
 #include "runtime/InstalledState.h"
 #include "runtime/ModelPreset.h"
 #include "runtime/ModelRegistry.h"
@@ -32,6 +33,12 @@ class ModelInstaller : public QObject
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
     Q_PROPERTY(int ocrInstalledCount READ ocrInstalledCount NOTIFY installedChanged)
     Q_PROPERTY(int checkInstalledCount READ checkInstalledCount NOTIFY installedChanged)
+
+    // Real list models with named roles, one per role (ADR 115). The UI used to
+    // index a QVariantMap by string key from QML, where a typo showed up as an
+    // empty cell rather than as an error.
+    Q_PROPERTY(QObject *installedModels READ installedModels CONSTANT)
+    Q_PROPERTY(QObject *checkInstalledModels READ checkInstalledModels CONSTANT)
 
     Q_PROPERTY(int presetCount READ presetCount NOTIFY presetsChanged)
     Q_PROPERTY(int checkPresetCount READ checkPresetCount NOTIFY presetsChanged)
@@ -63,17 +70,18 @@ public:
     double progress() const { return m_progress; }
     QString statusMessage() const { return m_statusMessage; }
     int installedCount() const { return m_installed.size(); }
-    int ocrInstalledCount() const { return roleInstalledCount(false); }
-    int checkInstalledCount() const { return roleInstalledCount(true); }
+    int ocrInstalledCount() const { return m_ocrModels->rowCount(); }
+    int checkInstalledCount() const { return m_checkModels->rowCount(); }
+    QObject *installedModels() const;
+    QObject *checkInstalledModels() const;
     int presetCount() const { return m_presets.size(); }
     int checkPresetCount() const { return m_presetsValidate.size(); }
     QString activeTitle() const;
     QString checkActiveTitle() const;
 
     Q_INVOKABLE void reloadPresets();
-    Q_INVOKABLE QVariantMap installedInfo(int index, bool forCheck = false) const;
-    Q_INVOKABLE int roleInstalledCount(bool forCheck) const;
-    Q_INVOKABLE QVariantMap roleInstalledInfo(int index, bool forCheck) const;
+    // `index` is an index into the installer's own list, as `sourceIndex()` of
+    // the corresponding list model produces.
     Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);
     Q_INVOKABLE QString removeModel(int index);
     Q_INVOKABLE QString openModelFolder(int index);
@@ -98,7 +106,8 @@ private:
 
     bool isPresetInstalled(const ModelPreset &p) const;
     QString presetInstalledModelPath(const ModelPreset &p) const;
-    bool matchesRole(const ModelEntry &e, bool forCheck) const;
+    /// Pushes the current list into both per-role models.
+    void publishInstalled();
 
     SettingsStore &m_settings;
     // Runtime/models paths and the install lock, always current (ADR 109).
@@ -115,6 +124,8 @@ private:
     QList<ModelPreset> m_presets;
     QList<ModelPreset> m_presetsValidate;
     QList<ModelEntry> m_installed;
+    InstalledModelsModel *m_ocrModels = nullptr;
+    InstalledModelsModel *m_checkModels = nullptr;
 
 signals:
     void stateChanged();
