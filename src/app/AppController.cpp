@@ -22,6 +22,7 @@
 #include "parsers/ParserFactory.h"
 
 #include "app/RequestProfileStore.h"
+#include "core/StatusMessage.h"
 #include "models/OcrModelFactory.h"
 
 
@@ -63,21 +64,21 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
         emit busyChanged();
     });
     connect(&m_recognition, &RecognitionController::statusRequested, this,
-            [this](const QString& message) { setStatus(message); });
+            [this](const StatusMessage& message) { setStatus(message); });
     connect(&m_recognition, &RecognitionController::rawResultReady, this,
             &AppController::applyRawResult);
 
     connect(&m_verify, &VerificationQueueController::stateChanged, this,
             &AppController::checkStateChanged);
     connect(&m_verify, &VerificationQueueController::statusRequested, this,
-            [this](const QString &message) { setStatus(message); });
+            [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::blockChecked, this,
             &AppController::applyCheckResultToBox);
 
     connect(&m_export, &ExportController::exportingChanged, this,
             &AppController::exportingChanged);
     connect(&m_export, &ExportController::statusRequested, this,
-            [this](const QString &message) { setStatus(message); });
+            [this](const StatusMessage &message) { setStatus(message); });
 
     connect(this, &AppController::pageChanged, this, [this]() {
         ++m_imageRevision;
@@ -307,7 +308,7 @@ void AppController::openFiles(const QVariantList& fileUrls)
     }
 
     if (paths.isEmpty()) {
-        setStatus(tr("No files selected."));
+        setStatus(StatusMessage::translate("AppController", "No files selected."));
         return;
     }
 
@@ -326,7 +327,7 @@ void AppController::importNextFile(const std::shared_ptr<ImportState>& state)
         return;
     }
     const QString path = state->paths.at(state->next++);
-    setStatus(tr("Importing %1 (%2/%3)…")
+    setStatus(StatusMessage::translate("AppController", "Importing %1 (%2/%3)…")
                   .arg(QFileInfo(path).fileName()).arg(state->next).arg(state->paths.size()));
     const int pagesBefore = m_document.pageCount();
     const QString suffix = QFileInfo(path).suffix().toLower();
@@ -379,20 +380,28 @@ void AppController::recordImportedFile(const std::shared_ptr<ImportState>& state
 
 void AppController::finishImport(const ImportState& state)
 {
+    StatusMessage summary;
     if (state.addedPages == 0) {
-        setStatus(state.firstError.isEmpty() ? tr("None of the selected files could be added.")
-                                            : state.firstError);
+        summary = state.firstError.isEmpty()
+            ? StatusMessage::translate("AppController",
+                                "None of the selected files could be added.")
+            : StatusMessage::literal(state.firstError);
     } else if (state.skipped > 0) {
-        setStatus(tr("Added %1 file(s), %2 page(s); %3 file(s) skipped.")
-                      .arg(state.addedFiles).arg(state.addedPages).arg(state.skipped));
+        summary = StatusMessage::translate(
+            "AppController", "Added %1 file(s), %2 page(s); %3 file(s) skipped.")
+            .arg(state.addedFiles).arg(state.addedPages).arg(state.skipped);
     } else {
-        setStatus(tr("Added %1 file(s), %2 page(s).")
-                      .arg(state.addedFiles).arg(state.addedPages));
+        summary = StatusMessage::translate("AppController", "Added %1 file(s), %2 page(s).")
+            .arg(state.addedFiles).arg(state.addedPages);
     }
-    if (!state.warnings.isEmpty())
-        setStatus(m_statusMessage + QStringLiteral("\n")
-                  + tr("Warning: %1 page(s) replaced with blank pages. %2")
-                        .arg(state.warnings.size()).arg(state.warnings.first()));
+    if (!state.warnings.isEmpty()) {
+        setStatus(StatusMessage::join({summary,
+            StatusMessage::translate("AppController",
+                              "Warning: %1 page(s) replaced with blank pages. %2")
+                .arg(state.warnings.size()).arg(state.warnings.first())}));
+    } else {
+        setStatus(summary);
+    }
     m_importing = false;
     emit importingChanged();
     emit configChanged();
@@ -416,7 +425,7 @@ bool AppController::removePage(int index)
         m_pageModel.clear();
         m_boxModel.setBoxes({});
 
-        setStatus(tr("Page %1 deleted.").arg(index + 1));
+        setStatus(StatusMessage::translate("AppController", "Page %1 deleted.").arg(index + 1));
 
         notifyDocumentChanged();
         return true;
@@ -434,7 +443,7 @@ bool AppController::removePage(int index)
 
     updateBoxesForCurrent();
 
-    setStatus(tr("Page %1 deleted.").arg(index + 1));
+    setStatus(StatusMessage::translate("AppController", "Page %1 deleted.").arg(index + 1));
 
     notifyDocumentChanged();
     return true;
@@ -462,7 +471,8 @@ bool AppController::movePage(int from, int to)
     m_pageModel.setCurrent(m_currentPage);
     updateBoxesForCurrent();
 
-    setStatus(tr("Moved page %1 to position %2.").arg(from + 1).arg(to + 1));
+    setStatus(StatusMessage::translate("AppController", "Moved page %1 to position %2.")
+              .arg(from + 1).arg(to + 1));
 
     notifyDocumentChanged();
     return true;
@@ -473,7 +483,7 @@ void AppController::recognizeCurrent()
     if (m_recognition.busy() || m_importing || m_document.isEmpty())
         return;
     if (!canRecognize()) {
-        setStatus(tr("Set a model name in Settings first."));
+        setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
         return;
     }
 
@@ -486,7 +496,7 @@ void AppController::recognizeAll()
     if (m_recognition.busy() || m_importing || m_document.isEmpty())
         return;
     if (!canRecognize()) {
-        setStatus(tr("Set a model name in Settings first."));
+        setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
         return;
     }
 
@@ -837,19 +847,29 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
 QStringList AppController::exportNameFilters() const
 {
     QStringList filters;
-    filters << tr("Markdown (*.md)") << tr("Plain text (*.txt)") << tr("HTML (*.html)");
+    filters << StatusMessage::translate("AppController", "Markdown (*.md)").text()
+            << StatusMessage::translate("AppController", "Plain text (*.txt)").text()
+            << StatusMessage::translate("AppController", "HTML (*.html)").text();
     if (Exporter::isPandocAvailable())
-        filters << tr("Word document (*.docx)");
-    filters << tr("PDF (*.pdf)");
+        filters << StatusMessage::translate("AppController", "Word document (*.docx)").text();
+    filters << StatusMessage::translate("AppController", "PDF (*.pdf)").text();
     return filters;
 }
 
-void AppController::setStatus(const QString& message)
+void AppController::setStatus(const StatusMessage& message)
 {
     if (m_statusMessage == message)
         return;
     m_statusMessage = message;
     emit statusChanged();
+}
+
+void AppController::retranslate()
+{
+    // The messages hold their key and are rendered on read, so re-announcing
+    // them is all a language switch needs (ADR 114).
+    emit statusChanged();
+    emit retranslateRequested();
 }
 
 void AppController::notifyDocumentChanged()

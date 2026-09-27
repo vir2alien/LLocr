@@ -9,6 +9,7 @@
 #include "app/DocumentModel.h"
 #include "app/VerificationPromptStore.h"
 #include "core/CheckResult.h"
+#include "core/StatusMessage.h"
 #include "runtime/RuntimeController.h"
 
 namespace llocr {
@@ -36,7 +37,7 @@ public:
     bool finished() const { return m_checkFinished; }
     int progressDone() const { return m_verifyDone; }
     int progressTotal() const { return m_verifyTotal; }
-    QString errorMessage() const { return m_checkError; }
+    QString errorMessage() const { return m_checkError.text(); }
 
     bool pageVerificationSupported(int pageIndex) const;
     bool allPageVerificationSupported() const;
@@ -49,7 +50,7 @@ public slots:
 
 signals:
     void stateChanged();
-    void statusRequested(const QString &message);
+    void statusRequested(const StatusMessage &message);
     void blockChecked(int pageIndex, int boxIndex, const CheckResult &result);
 
 private:
@@ -74,7 +75,7 @@ private:
     bool m_checkFinished = false;
     int m_verifyTotal = 0;
     int m_verifyDone = 0;
-    QString m_checkError;
+    StatusMessage m_checkError;
 };
 
 }  // namespace llocr

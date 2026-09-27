@@ -179,6 +179,11 @@ int main(int argc, char* argv[]) {
                      &llocr::ModelInstaller::retranslate);
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &selfTestController,
                      &llocr::SelfTestController::retranslate);
+    // The app-layer controllers hold their status/error lines as translation
+    // keys and render them on read, so a language switch is a re-announcement
+    // rather than a re-computation (ADR 114).
+    QObject::connect(&i18n, &llocr::I18n::languageApplied, &appController,
+                     &llocr::AppController::retranslate);
 
     setupQmlEngine(engine, appController, uiController);
     i18n.applyInitial();

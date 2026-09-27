@@ -78,11 +78,14 @@ void RecognitionController::ensureConnectionReady()
             return;  // stopped while resolving
         if (conn.baseUrl.isEmpty()) {
             if (m_stopRequested)
-                emit statusRequested(tr("Stopped before recognition started."));
+                emit statusRequested(
+                    StatusMessage::translate("RecognitionController",
+                                      "Stopped before recognition started."));
             else
                 emit statusRequested(conn.error.isEmpty()
-                                         ? tr("Connection is not configured.")
-                                         : conn.error);
+                                         ? StatusMessage::translate("RecognitionController",
+                                                             "Connection is not configured.")
+                                         : StatusMessage::literal(conn.error));
             finishRun();
             return;
         }
@@ -96,31 +99,41 @@ void RecognitionController::recognizePage(int index)
     while (index >= 0 && index < m_totalPages && m_skipPage && m_skipPage(index)) {
         ++m_skippedPages;
         if (!m_recognizeAll) {
-            emit statusRequested(tr("Page %1 is a blank replacement for an unreadable page; recognition skipped.")
-                                     .arg(index + 1));
+            emit statusRequested(
+                StatusMessage::translate("RecognitionController",
+                                  "Page %1 is a blank replacement for an unreadable page; "
+                                  "recognition skipped.")
+                    .arg(index + 1));
             finishRun();
             return;
         }
         ++index;
     }
     if (index == m_totalPages && m_skippedPages > 0)
-        emit statusRequested(tr("Recognition finished. Skipped %1 unreadable page(s).").arg(m_skippedPages));
+        emit statusRequested(
+            StatusMessage::translate("RecognitionController",
+                              "Recognition finished. Skipped %1 unreadable page(s).")
+                .arg(m_skippedPages));
     if (index < 0 || index >= m_totalPages) {
         finishRun();
         return;
     }
 
     m_recognizingIndex = index;
-    emit statusRequested(tr("Recognizing page %1 of %2…").arg(index + 1).arg(m_totalPages));
+    emit statusRequested(
+        StatusMessage::translate("RecognitionController", "Recognizing page %1 of %2…")
+            .arg(index + 1).arg(m_totalPages));
 
     QString imageError;
     const QImage image = m_imageProvider(index, imageError);
     if (image.isNull()) {
-        emit statusRequested(tr("Error on page %1: %2")
-                                 .arg(index + 1)
-                                 .arg(imageError.isEmpty()
-                                          ? tr("the page has no image to recognize")
-                                          : imageError));
+        emit statusRequested(
+            StatusMessage::translate("RecognitionController", "Error on page %1: %2")
+                .arg(index + 1)
+                .arg(imageError.isEmpty()
+                         ? StatusMessage::translate("RecognitionController",
+                                             "the page has no image to recognize").text()
+                         : imageError));
         finishRun();
         return;
     }
@@ -155,14 +168,18 @@ void RecognitionController::onRecognitionFinished()
 
     const OcrResult raw = m_watcher.future().resultCount() > 0
                               ? m_watcher.result()
-                              : OcrResult::makeError(tr("No response"));
+                              : OcrResult::makeError(
+                                    StatusMessage::translate("RecognitionController", "No response"));
     const int index = m_recognizingIndex;
 
     if (!raw.success) {
         if (m_stopRequested)
-            emit statusRequested(tr("Stopped at page %1.").arg(index + 1));
+            emit statusRequested(
+                StatusMessage::translate("RecognitionController", "Stopped at page %1.").arg(index + 1));
         else {
-            emit statusRequested(tr("Error on page %1: %2").arg(index + 1).arg(raw.errorMessage));
+            emit statusRequested(
+                StatusMessage::translate("RecognitionController", "Error on page %1: %2")
+                    .arg(index + 1).arg(raw.errorMessage.text()));
         }
         finishRun();
         return;
@@ -171,7 +188,8 @@ void RecognitionController::onRecognitionFinished()
     emit rawResultReady(index, raw);
 
     if (m_stopRequested) {
-        emit statusRequested(tr("Stopped after page %1.").arg(index + 1));
+        emit statusRequested(
+            StatusMessage::translate("RecognitionController", "Stopped after page %1.").arg(index + 1));
         finishRun();
         return;
     }
@@ -185,8 +203,10 @@ void RecognitionController::onRecognitionFinished()
     }
 
     emit statusRequested(m_skippedPages > 0
-                             ? tr("Recognition finished. Skipped %1 unreadable page(s).").arg(m_skippedPages)
-                             : tr("Recognition finished."));
+                             ? StatusMessage::translate("RecognitionController",
+                                                 "Recognition finished. Skipped %1 unreadable page(s).")
+                                   .arg(m_skippedPages)
+                             : StatusMessage::translate("RecognitionController", "Recognition finished."));
     finishRun();
 }
 
@@ -198,7 +218,7 @@ void RecognitionController::stop()
     if (m_model)
         m_model->abort();
     m_runtime.cancelPendingStart();
-    emit statusRequested(tr("Stopping…"));
+    emit statusRequested(StatusMessage::translate("RecognitionController", "Stopping…"));
 }
 
 void RecognitionController::finishRun()

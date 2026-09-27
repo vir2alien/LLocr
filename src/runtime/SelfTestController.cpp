@@ -73,7 +73,8 @@ void SelfTestController::runSelfTestRequest(
             [promise, watch]() {
                 const OcrResult res =
                     watch->future().resultCount() > 0 ? watch->result()
-                                                      : OcrResult::makeError(QObject::tr("No response"));
+                                                      : OcrResult::makeError(
+                                                            StatusMessage::translate("SelfTestController", "No response"));
                 watch->deleteLater();
                 SelfTestResult r;
                 if (res.success) {
@@ -81,7 +82,9 @@ void SelfTestController::runSelfTestRequest(
                     r.text = res.text;
                 } else {
                     r.error =
-                        res.errorMessage.isEmpty() ? QObject::tr("Recognition failed") : res.errorMessage;
+                        res.errorMessage.isEmpty()
+                            ? QObject::tr("Recognition failed")
+                            : res.errorMessage.text();
                 }
                 promise->reportResult(std::move(r));
                 promise->reportFinished();

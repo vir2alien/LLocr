@@ -10,6 +10,7 @@
 
 #include "core/ConnectionConfig.h"
 #include "core/OcrRequest.h"
+#include "core/StatusMessage.h"
 #include "models/OcrModel.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeController.h"
@@ -40,7 +41,7 @@ public:
 
 signals:
     void rawResultReady(int pageIndex, const llocr::OcrResult& raw);
-    void statusRequested(const QString& message);
+    void statusRequested(const StatusMessage &message);
 
     void busyChanged();
 

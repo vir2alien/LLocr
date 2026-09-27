@@ -128,7 +128,7 @@ void ExporterTest::exportMarkdownFileRoundTrips()
     Exporter exporter;
     const Exporter::Result r =
         exporter.exportToFile({ { 1, "content here" } }, path);
-    QVERIFY2(r.success, qPrintable(r.message));
+    QVERIFY2(r.success, qPrintable(r.message.text()));
 
     QFile f(path);
     QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
@@ -145,7 +145,7 @@ void ExporterTest::unknownSuffixFallsBackToMarkdown()
     Exporter exporter;
     const Exporter::Result r =
         exporter.exportToFile({ { 1, "body" } }, path);
-    QVERIFY2(r.success, qPrintable(r.message));
+    QVERIFY2(r.success, qPrintable(r.message.text()));
 
     QFile f(path);
     QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
@@ -208,7 +208,7 @@ void ExporterTest::exportMarkdownEmbedsCroppedImages()
     Exporter exporter;
     const Exporter::Result r =
         exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
-    QVERIFY2(r.success, qPrintable(r.message));
+    QVERIFY2(r.success, qPrintable(r.message.text()));
 
     // Crops are saved into <output>_media/ next to the markdown file.
     const QString mediaFile = dir.filePath("result_media/page_0_img_0.png");
@@ -234,7 +234,7 @@ void ExporterTest::exportHtmlRendersImages()
     Exporter exporter;
     const Exporter::Result r =
         exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
-    QVERIFY2(r.success, qPrintable(r.message));
+    QVERIFY2(r.success, qPrintable(r.message.text()));
 
     QFile f(path);
     QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
@@ -261,7 +261,7 @@ void ExporterTest::exportDocxEmbedsCroppedImages()
     Exporter exporter;
     const Exporter::Result r =
         exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
-    QVERIFY2(r.success, qPrintable(r.message));
+    QVERIFY2(r.success, qPrintable(r.message.text()));
 
     // A .docx is a ZIP; entry names are stored uncompressed, so the embedded
     // crop must be visible as a word/media/ entry in the raw bytes.

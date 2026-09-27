@@ -91,19 +91,19 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject())
         return CheckResult::makeError(
-            QCoreApplication::translate("GeneralPurposeModel", "Invalid JSON response"));
+            StatusMessage::translate("GeneralPurposeModel", "Invalid JSON response"));
 
     const QJsonObject root = doc.object();
     const QJsonArray choices = root.value(QStringLiteral("choices")).toArray();
     if (choices.isEmpty())
         return CheckResult::makeError(
-            QCoreApplication::translate("GeneralPurposeModel", "No choices in response"));
+            StatusMessage::translate("GeneralPurposeModel", "No choices in response"));
 
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
     const QString content = stripControlTokens(message.value(QStringLiteral("content")).toString());
 
     if (content.isEmpty())
-        return CheckResult::makeError(QCoreApplication::translate(
+        return CheckResult::makeError(StatusMessage::translate(
             "GeneralPurposeModel",
             "The model returned no corrected text, only end-of-sentence markers. "
             "Check that the selected model can process images."));
@@ -131,7 +131,7 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
         if (fixed.startsWith(QLatin1Char(':')))
             fixed = fixed.mid(1).trimmed();
         if (fixed.isEmpty())
-            return CheckResult::makeError(QCoreApplication::translate(
+            return CheckResult::makeError(StatusMessage::translate(
                 "GeneralPurposeModel",
                 "The model returned FIX without the corrected text."));
         CheckResult fix;
@@ -140,7 +140,7 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
         return fix;
     }
 
-    return CheckResult::makeError(QCoreApplication::translate(
+    return CheckResult::makeError(StatusMessage::translate(
         "GeneralPurposeModel",
         "Unexpected verifier response\u2014expected OK, FIX or REVIEW. Received: %1")
         .arg(content.left(120)));

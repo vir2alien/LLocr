@@ -17,13 +17,14 @@ CheckController::CheckController(RequestProfileStore &requestProfiles,
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
         if (m_stopRequested) {
-            emit statusRequested(tr("Check stopped."));
+            emit statusRequested(StatusMessage::translate("CheckController", "Check stopped."));
             setBusy(false);
             return;
         }
         const CheckResult result = m_watcher.future().resultCount() > 0
                                        ? m_watcher.result()
-                                       : CheckResult::makeError(tr("No response"));
+                                       : CheckResult::makeError(
+                                             StatusMessage::translate("CheckController", "No response"));
         emit checkFinished(result);
         setBusy(false);
     });
@@ -37,7 +38,7 @@ void CheckController::stop()
     if (m_model)
         m_model->abort();
     m_runtime.cancelPendingStart();
-    emit statusRequested(tr("Stopping\u2026"));
+    emit statusRequested(StatusMessage::translate("CheckController", "Stopping…"));
 }
 
 QList<RequestParameter> CheckController::requestParameters() const
@@ -68,14 +69,15 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
         if (!m_busy)
             return;  // stopped while resolving
         if (m_stopRequested) {
-            emit statusRequested(tr("Stopped before check started."));
+            emit statusRequested(
+                StatusMessage::translate("CheckController", "Stopped before check started."));
             setBusy(false);
             return;
         }
         if (conn.baseUrl.isEmpty()) {
-            const QString message = conn.error.isEmpty()
-                ? tr("Connection is not configured.")
-                : conn.error;
+            const StatusMessage message = conn.error.isEmpty()
+                ? StatusMessage::translate("CheckController", "Connection is not configured.")
+                : StatusMessage::literal(conn.error);
             emit statusRequested(message);
             emit checkFinished(CheckResult::makeError(message));
             setBusy(false);

@@ -2,6 +2,8 @@
 
 #include <QString>
 
+#include "core/StatusMessage.h"
+
 namespace llocr {
 
 enum class CheckStatus : int {
@@ -14,9 +16,11 @@ enum class CheckStatus : int {
 struct CheckResult {
     CheckStatus status = CheckStatus::Failed;
     QString text;            ///< Corrected block text when status == Fixed.
-    QString errorMessage;    ///< Human-readable error when status == Failed.
+    /// Human-readable error when status == Failed. Untranslated until read, so
+    /// the error line follows the UI language (ADR 114).
+    StatusMessage errorMessage;
 
-    static CheckResult makeError(const QString& message) {
+    static CheckResult makeError(const StatusMessage& message) {
         CheckResult result;
         result.status = CheckStatus::Failed;
         result.errorMessage = message;

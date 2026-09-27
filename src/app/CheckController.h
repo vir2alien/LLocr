@@ -10,6 +10,7 @@
 #include "core/CheckRequest.h"
 #include "core/CheckResult.h"
 #include "core/ConnectionConfig.h"
+#include "core/StatusMessage.h"
 #include "models/GeneralPurposeModel.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeController.h"
@@ -35,7 +36,7 @@ public:
 signals:
     void busyChanged();
     void checkFinished(const CheckResult &result);
-    void statusRequested(const QString &message);
+    void statusRequested(const StatusMessage &message);
 
 private:
     QList<RequestParameter> requestParameters() const;

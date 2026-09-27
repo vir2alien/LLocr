@@ -10,6 +10,7 @@
 #include "app/Exporter.h"
 #include "app/ExportRenderer.h"
 #include "app/SettingsStore.h"
+#include "core/StatusMessage.h"
 
 namespace llocr {
 
@@ -38,7 +39,7 @@ public:
 
 signals:
     void exportingChanged();
-    void statusRequested(const QString &message);
+    void statusRequested(const StatusMessage &message);
 
 private:
     enum ExportScope : int {

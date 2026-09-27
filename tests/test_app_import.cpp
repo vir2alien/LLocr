@@ -27,6 +27,7 @@
 #include "app/RecognitionController.h"
 #include "app/RequestProfileStore.h"
 #include "app/VerificationPromptStore.h"
+#include "core/StatusMessage.h"
 
 using namespace llocr;
 
@@ -380,7 +381,7 @@ private slots:
         QCOMPARE(resultSpy.count(), 0);
         QCOMPARE(busySpy.count(), 2);
         QCOMPARE(statusSpy.count(), 1);
-        QCOMPARE(statusSpy.first().first().toString(),
+        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(),
                  QStringLiteral("Page 1 is a blank replacement for an unreadable page; recognition skipped."));
 
         skippedPages.clear();
@@ -393,7 +394,7 @@ private slots:
         QCOMPARE(resultSpy.count(), 0);
         QCOMPARE(busySpy.count(), 2);
         QCOMPARE(statusSpy.count(), 1);
-        QCOMPARE(statusSpy.first().first().toString(),
+        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(),
                  QStringLiteral("Recognition finished. Skipped 3 unreadable page(s)."));
     }
 
@@ -696,6 +697,51 @@ private slots:
         QCOMPARE(controller.pageCount(), 5);
     }
 #endif // LLOCR_HAVE_DJVU (asynchronous import path)
+
+    // A language switch must reach text that is already on screen. The status
+    // line used to hold the *translated* string, so it kept the previous
+    // language until something else overwrote it (ADR 114).
+    void retranslateRendersTheStatusLineInTheNewLanguage()
+    {
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        QCOMPARE(controller.statusMessage(),
+                 QStringLiteral("Added 1 file(s), 1 page(s)."));
+
+        // The tests link no .qm, so the language switch is simulated with a
+        // translator that knows two of this app's keys.
+        class FakeRu : public QTranslator
+        {
+        public:
+            QString translate(const char *context, const char *sourceText,
+                              const char *, int) const override
+            {
+                if (qstrcmp(context, "AppController") != 0)
+                    return QString();
+                if (qstrcmp(sourceText, "Added %1 file(s), %2 page(s).") == 0)
+                    return QStringLiteral("Добавлено файлов: %1, страниц: %2");
+                if (qstrcmp(sourceText, "Markdown (*.md)") == 0)
+                    return QStringLiteral("Markdown RU (*.md)");
+                return QString();
+            }
+        } translator;
+        QVERIFY(QCoreApplication::installTranslator(&translator));
+
+        // The message was set *before* the switch: only a message that keeps its
+        // key and renders on read can follow the language.
+        QSignalSpy retranslateSpy(&controller, &AppController::retranslateRequested);
+        controller.retranslate();
+        QCOMPARE(retranslateSpy.count(), 1);
+        QCOMPARE(controller.statusMessage(),
+                 QStringLiteral("Добавлено файлов: 1, страниц: 1"));
+
+        // exportNameFilters was CONSTANT: QML read it once and never again.
+        QCOMPARE(controller.exportNameFilters().value(0),
+                 QStringLiteral("Markdown RU (*.md)"));
+
+        QCoreApplication::removeTranslator(&translator);
+    }
 
     // Regression: the document is the source of truth for blocks. Deleting a
     // block through AppController must mutate the page (so the rebuilt text and

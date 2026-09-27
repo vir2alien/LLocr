@@ -20,7 +20,8 @@ ExportController::ExportController(Deps deps, QObject *parent)
             [this](int pagesDone, int pagesTotal) {
         if (m_exporting)
             emit statusRequested(
-                tr("Exporting… (%1/%2)").arg(pagesDone).arg(pagesTotal));
+                StatusMessage::translate("ExportController", "Exporting… (%1/%2)")
+                    .arg(pagesDone).arg(pagesTotal));
     });
 }
 
@@ -69,20 +70,24 @@ bool ExportController::exportPages(const QUrl &fileUrl, int scope,
     const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile()
                                                : fileUrl.toString();
     if (path.isEmpty()) {
-        emit statusRequested(tr("No output path."));
+        emit statusRequested(
+            StatusMessage::translate("ExportController", "No output path."));
         return false;
     }
 
     if (m_exporting) {
-        emit statusRequested(tr("An export is already in progress."));
+        emit statusRequested(
+            StatusMessage::translate("ExportController", "An export is already in progress."));
         return false;
     }
 
     const QList<Exporter::Page> pages =
         collectPages(scope, currentPage, fromPage, toPage);
     if (pages.isEmpty()) {
-        emit statusRequested(tr("Nothing to export for the selected pages "
-                                "(no recognized pages in that selection)."));
+        emit statusRequested(
+            StatusMessage::translate("ExportController",
+                              "Nothing to export for the selected pages "
+                              "(no recognized pages in that selection)."));
         return false;
     }
 
@@ -100,7 +105,7 @@ bool ExportController::exportPages(const QUrl &fileUrl, int scope,
 
     m_exporting = true;
     emit exportingChanged();
-    emit statusRequested(tr("Exporting…"));
+    emit statusRequested(StatusMessage::translate("ExportController", "Exporting…"));
 
     const Exporter::Format format =
         Exporter::formatForSuffix(QFileInfo(path).suffix());
@@ -164,7 +169,8 @@ void ExportController::finishExport(const Exporter::Result &result,
     m_exporting = false;
     emit exportingChanged();
     emit statusRequested(result.success
-                             ? tr("%1 (%2 page(s)).").arg(result.message).arg(pageCount)
+                             ? StatusMessage::translate("ExportController", "%1 (%2 page(s)).")
+                                   .arg(result.message.text()).arg(pageCount)
                              : result.message);
 }
 
@@ -188,15 +194,15 @@ Exporter::Result ExportController::finalizeRenderedExport(
     if (format == Exporter::Format::Pdf) {
         if (renderOk)
             return Exporter::Result::ok(
-                QCoreApplication::translate("Exporter", "Exported to %1")
+                StatusMessage::translate("Exporter", "Exported to %1")
                     .arg(QFileInfo(path).fileName()));
         const Exporter::Result fb =
             Exporter::writePdfFallback(pages, path, crop, pdfLayout,
                                        options.splitPages);
         if (fb.success)
             return Exporter::Result::ok(
-                QCoreApplication::translate(
-                    "Exporter", "Exported PDF using the built-in writer (%1).")
+                StatusMessage::translate("Exporter",
+                                  "Exported PDF using the built-in writer (%1).")
                     .arg(renderError));
         return fb;
     }
@@ -209,8 +215,8 @@ Exporter::Result ExportController::finalizeRenderedExport(
         m_exporter.exportToFile(pages, path, crop, options);
     if (fb.success)
         return Exporter::Result::ok(
-            QCoreApplication::translate(
-                "Exporter", "Exported HTML using the basic writer (%1).")
+            StatusMessage::translate("Exporter",
+                              "Exported HTML using the basic writer (%1).")
                 .arg(renderError));
     return fb;
 }

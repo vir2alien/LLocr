@@ -20,6 +20,7 @@
 #include "app/ExportController.h"
 #include "core/CheckResult.h"
 #include "core/OcrResult.h"
+#include "core/StatusMessage.h"
 #include "parsers/IOutputParser.h"
 #include "parsers/ParserOptions.h"
 #include "runtime/RuntimeController.h"
@@ -69,7 +70,7 @@ class AppController : public QObject
     Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY checkStateChanged)
     Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY checkStateChanged)
 
-    Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters CONSTANT)
+    Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters NOTIFY retranslateRequested)
 
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged)
 
@@ -82,8 +83,8 @@ class AppController : public QObject
 
     Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY configChanged)
 
-    Q_PROPERTY(QStringList parserNames READ parserNames CONSTANT)
-    Q_PROPERTY(QStringList parserLabels READ parserLabels CONSTANT)
+    Q_PROPERTY(QStringList parserNames READ parserNames NOTIFY retranslateRequested)
+    Q_PROPERTY(QStringList parserLabels READ parserLabels NOTIFY retranslateRequested)
 
     Q_PROPERTY(QString parseWarning READ parseWarning NOTIFY resultChanged)
 
@@ -98,7 +99,7 @@ public:
     bool exporting() const { return m_export.exporting(); }
     bool importing() const { return m_importing; }
     QString resultText() const;
-    QString statusMessage() const { return m_statusMessage; }
+    QString statusMessage() const { return m_statusMessage.text(); }
     QString currentPageWarning() const;
     QString parseWarning() const;
     bool hasImage() const;
@@ -139,6 +140,11 @@ public:
 
     void setCurrentPage(int index);
 
+    // The UI language changed: the status/error lines and the translated lists
+    // are re-read. Nothing is cached — the messages hold their translation key
+    // and are rendered on demand (ADR 114).
+    void retranslate();
+
     QImage currentImage();
     QImage pageImage(int index, QString *error = nullptr);
     QImage pageThumbnail(int index) const;
@@ -163,6 +169,8 @@ signals:
     void checkStateChanged();
 
     void editStateChanged();
+
+    void retranslateRequested();
 
 public slots:
     Q_INVOKABLE void openFiles(const QVariantList& fileUrls);
@@ -192,7 +200,7 @@ private:
     void recordImportedFile(const std::shared_ptr<ImportState>& state,
                             int pagesBefore, const QString& error);
     void finishImport(const ImportState& state);
-    void setStatus(const QString& message);
+    void setStatus(const StatusMessage& message);
     void notifyDocumentChanged();
     void notifyPageChanged();
     void applyRawResult(int index, const OcrResult& rawResult);
@@ -222,7 +230,6 @@ private:
     VerificationQueueController m_verify;
     bool m_importing = false;
     int m_currentPage = 0;
-    QString m_statusMessage;
     int m_imageRevision = 0;
     int m_docRevision = 0;
     int m_cropRevision = 0;
@@ -231,6 +238,7 @@ private:
     mutable QString m_previewCacheText;
     mutable QString m_previewCacheResult;
     PageEditStore m_editStore;
+    StatusMessage m_statusMessage;  ///< stored untranslated, rendered on read (ADR 114)
     ExportController m_export;
     mutable QReadWriteLock m_documentLock;
 

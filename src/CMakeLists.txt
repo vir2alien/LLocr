@@ -36,6 +36,8 @@ qt_add_library(llocr_core STATIC
     core/RequestProfile.cpp
     core/LaunchProfile.h
     core/LaunchProfile.cpp
+    core/StatusMessage.h
+    core/StatusMessage.cpp
     core/ValueParsing.h
 )
 target_include_directories(llocr_core PUBLIC ${CMAKE_SOURCE_DIR}/src)

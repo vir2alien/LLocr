@@ -9,6 +9,8 @@
 #include <QString>
 #include <QStringList>
 
+#include "core/StatusMessage.h"
+
 class QRegularExpression;
 
 namespace llocr {
@@ -25,9 +27,11 @@ public:
 
     struct Result {
         bool success = false;
-        QString message;
-        static Result ok(const QString& msg = {})  { return { true,  msg }; }
-        static Result fail(const QString& msg)      { return { false, msg }; }
+        // Untranslated until read: a language switch re-renders the status line
+        // instead of leaving the previous language on screen (ADR 114).
+        StatusMessage message;
+        static Result ok(const StatusMessage& msg = {})  { return { true,  msg }; }
+        static Result fail(const StatusMessage& msg)      { return { false, msg }; }
     };
 
     struct Page {

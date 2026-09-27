@@ -146,7 +146,7 @@ void VerificationQueueController::startVerifyQueue(
     if (tasks.isEmpty())
         return;
 
-    m_checkError.clear();
+    m_checkError = StatusMessage();
     m_checkFinished = false;
     m_verifyQueue = tasks;
     m_verifyPage = -1;

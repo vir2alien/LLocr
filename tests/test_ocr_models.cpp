@@ -297,7 +297,7 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(future.resultCount() > 0);
         QVERIFY2(future.result().success,
-                 future.result().errorMessage.toUtf8().constData());
+                 future.result().errorMessage.text().toUtf8().constData());
         QVERIFY(server.gotRequest);
         QCOMPARE(future.result().text, QStringLiteral("ok"));
     }
@@ -496,7 +496,7 @@ private slots:
             "{\"choices\":[{\"message\":{\"content\":"
             "\" thinkingreasoning response\\nFIX\\nfixed text\"}}]}");
         QVERIFY2(withThink.status == CheckStatus::Fixed,
-                 withThink.errorMessage.toUtf8().constData());
+                 withThink.errorMessage.text().toUtf8().constData());
         QCOMPARE(withThink.text, QStringLiteral("fixed text"));
 
         // Trailing end-of-sentence markers must be stripped (ADR 18 parity).
@@ -544,7 +544,7 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(server.gotRequest);
         QVERIFY2(future.result().status != CheckStatus::Failed,
-                 future.result().errorMessage.toUtf8().constData());
+                 future.result().errorMessage.text().toUtf8().constData());
         QCOMPARE(future.result().status, CheckStatus::Ok);
     }
 };

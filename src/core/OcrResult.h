@@ -5,6 +5,8 @@
 #include <QStringList>
 #include <QRectF>
 
+#include "core/StatusMessage.h"
+
 namespace llocr {
 
 enum class BoxCheckStatus : int {
@@ -37,11 +39,13 @@ struct OcrResult {
     bool success = false;    ///< Whether recognition succeeded.
     QString text;            ///< Flat text of all pages (joined).
     QList<OcrPage> pages;    ///< Structured per-page result.
-    QString errorMessage;    ///< Human-readable error when success == false.
+    /// Human-readable error when success == false. Untranslated until read, so
+    /// it follows the UI language (ADR 114).
+    StatusMessage errorMessage;
     QStringList notes;       ///< Non-fatal parser diagnostics (page kept, but
                              ///< something looked off — e.g. no layout tokens).
 
-    static OcrResult makeError(const QString& message) {
+    static OcrResult makeError(const StatusMessage& message) {
         OcrResult result;
         result.success = false;
         result.errorMessage = message;
