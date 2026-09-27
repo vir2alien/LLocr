@@ -43,10 +43,10 @@ public:
 
     struct Request {
         QUrl url;
-        QString targetDir;     // directory the file lands in
-        QString fileName;      // desired name (sanitized internally)
-        QString sha256;        // lowercase hex digest; empty = skip verification
-        QString authorization; // optional "Bearer …" for the origin host
+        QString targetDir;      // directory the file lands in
+        QString fileName;       // desired name (sanitized internally)
+        QString sha256;         // lowercase hex digest; empty = skip verification
+        QString authorization;  // optional "Bearer …" for the origin host
     };
 
     DownloadTask(const Request &request, QNetworkAccessManager *nam, QObject *parent = nullptr);
@@ -116,12 +116,10 @@ private:
     QString m_metaPath;
 
     State m_state = State::Queued;
-    // Resumed download: sha256 is computed over the finished .part on a worker
-    // instead of seeding the streaming hash with the prefix (ADR 105).
     bool m_hashFileOnDisk = false;
     QString m_error;
 
-    qint64 m_totalBytes = -1;    // -1 = unknown
+    qint64 m_totalBytes = -1;  // -1 = unknown
     qint64 m_receivedBytes = 0;
     int m_speedBps = 0;
     int m_etaSec = 0;

@@ -14,8 +14,7 @@ StatusMessage StatusMessage::literal(const QString &text)
     return message;
 }
 
-StatusMessage StatusMessage::translate(const char *context, const QString &key,
-                                       const QStringList &args)
+StatusMessage StatusMessage::translate(const char *context, const QString &key, const QStringList &args)
 {
     StatusMessage message;
     message.m_kind = Kind::Translated;
@@ -25,8 +24,7 @@ StatusMessage StatusMessage::translate(const char *context, const QString &key,
     return message;
 }
 
-StatusMessage StatusMessage::join(QList<StatusMessage> parts,
-                                  const QString &separator)
+StatusMessage StatusMessage::join(QList<StatusMessage> parts, const QString &separator)
 {
     StatusMessage message;
     // A single part needs no composite: it is cheaper to keep and to render.
@@ -60,8 +58,7 @@ QString StatusMessage::text() const
 
     // The source string is the fallback: an untranslated key must still read as
     // English rather than as an empty status line.
-    QString rendered = QCoreApplication::translate(m_context.toUtf8().constData(),
-                                                   m_key.toUtf8().constData());
+    QString rendered = QCoreApplication::translate(m_context.toUtf8().constData(), m_key.toUtf8().constData());
     for (const QString &arg : m_args)
         rendered = rendered.arg(arg);
     return rendered;

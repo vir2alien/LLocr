@@ -13,11 +13,11 @@ class SettingsStore;
 class BlockGroupFilterModel;
 
 struct VerificationBlock {
-    QString type;        ///< Canonical block label (text, title, table, ...).
-    QString name;        ///< Human-readable name for the UI.
-    QString group;       ///< UI grouping: content / captions / service.
-    bool enabled = true; ///< Whether this block type is auto-verified.
-    QString prompt;      ///< Type-specific instruction used by the verifier.
+    QString type;         ///< Canonical block label (text, title, table, ...).
+    QString name;         ///< Human-readable name for the UI.
+    QString group;        ///< UI grouping: content / captions / service.
+    bool enabled = true;  ///< Whether this block type is auto-verified.
+    QString prompt;       ///< Type-specific instruction used by the verifier.
 };
 
 class VerificationBlocksModel : public QAbstractListModel
@@ -73,13 +73,13 @@ class VerificationPromptStore : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString systemPrompt READ systemPrompt WRITE setSystemPrompt NOTIFY systemPromptChanged)
-    Q_PROPERTY(QObject* blockModel READ blockModel CONSTANT)
+    Q_PROPERTY(QObject *blockModel READ blockModel CONSTANT)
     // Group-filtered views over blockModel for the three-column UI
     // (content / captions / service). CONSTANT is safe: the source model
     // lives as long as the store.
-    Q_PROPERTY(QAbstractItemModel* blockModelContent READ blockModelContent CONSTANT)
-    Q_PROPERTY(QAbstractItemModel* blockModelCaptions READ blockModelCaptions CONSTANT)
-    Q_PROPERTY(QAbstractItemModel* blockModelService READ blockModelService CONSTANT)
+    Q_PROPERTY(QAbstractItemModel *blockModelContent READ blockModelContent CONSTANT)
+    Q_PROPERTY(QAbstractItemModel *blockModelCaptions READ blockModelCaptions CONSTANT)
+    Q_PROPERTY(QAbstractItemModel *blockModelService READ blockModelService CONSTANT)
 
 public:
     explicit VerificationPromptStore(SettingsStore &settings, QObject *parent = nullptr);
@@ -96,9 +96,9 @@ public:
     QString promptForType(const QString &type) const;
     bool isTypeEnabled(const QString &type) const;
 
-    Q_INVOKABLE void loadValues();      // re-read built-in + user file (discard edits)
-    Q_INVOKABLE void save();            // persist user overrides
-    Q_INVOKABLE void resetToDefaults(); // drop user file, re-read built-in
+    Q_INVOKABLE void loadValues();       // re-read built-in + user file (discard edits)
+    Q_INVOKABLE void save();             // persist user overrides
+    Q_INVOKABLE void resetToDefaults();  // drop user file, re-read built-in
     Q_INVOKABLE QString originalPromptAt(int row) const;
     Q_INVOKABLE QString originalSystemPrompt() const { return m_originalSystemPrompt; }
 

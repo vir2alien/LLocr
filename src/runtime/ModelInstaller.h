@@ -5,12 +5,12 @@
 #include <QQmlEngine>
 #include <QString>
 
-#include "runtime/ModelCatalog.h"
+#include "config/RuntimePaths.h"
 #include "runtime/InstalledModelsModel.h"
 #include "runtime/InstalledState.h"
+#include "runtime/ModelCatalog.h"
 #include "runtime/ModelPreset.h"
 #include "runtime/ModelRegistry.h"
-#include "runtime/RuntimePaths.h"
 
 namespace llocr {
 
@@ -24,8 +24,6 @@ class SettingsStore;
 class ModelInstaller : public QObject
 {
     Q_OBJECT
-    // See UiController.h: registered by hand in main.cpp until the module
-    // singletons get their create() factories (stage 4).
 
     Q_PROPERTY(int state READ stateInt NOTIFY stateChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
@@ -36,9 +34,6 @@ class ModelInstaller : public QObject
     Q_PROPERTY(int ocrInstalledCount READ ocrInstalledCount NOTIFY installedChanged)
     Q_PROPERTY(int checkInstalledCount READ checkInstalledCount NOTIFY installedChanged)
 
-    // Real list models with named roles, one per role (ADR 115). The UI used to
-    // index a QVariantMap by string key from QML, where a typo showed up as an
-    // empty cell rather than as an error.
     Q_PROPERTY(QObject *installedModels READ installedModels CONSTANT)
     Q_PROPERTY(QObject *checkInstalledModels READ checkInstalledModels CONSTANT)
 
@@ -58,9 +53,7 @@ public:
     };
     Q_ENUM(State)
 
-    explicit ModelInstaller(SettingsStore &settings, RuntimeController &runtime,
-                            LaunchProfileStore &launchProfiles, InstalledState &state,
-                            QObject *parent = nullptr);
+    explicit ModelInstaller(SettingsStore &settings, RuntimeController &runtime, LaunchProfileStore &launchProfiles, InstalledState &state, QObject *parent = nullptr);
     ~ModelInstaller() override;
 
     void shutdown();
@@ -108,13 +101,10 @@ private:
 
     bool isPresetInstalled(const ModelPreset &p) const;
     QString presetInstalledModelPath(const ModelPreset &p) const;
-    /// Surfaces a selected model whose files are gone (ADR 116).
     void reportStaleSelections(const ReconcileResult &report);
-    /// Pushes the current list into both per-role models.
     void publishInstalled();
 
     SettingsStore &m_settings;
-    // Runtime/models paths and the install lock, always current (ADR 109).
     InstalledState &m_installState;
     RuntimeController &m_runtime;
     LaunchProfileStore &m_launchProfiles;

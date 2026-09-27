@@ -6,8 +6,7 @@
 
 namespace llocr {
 
-ProblemLog::ProblemLog(QObject *parent)
-    : QObject(parent)
+ProblemLog::ProblemLog(QObject *parent) : QObject(parent)
 {
     m_flushTimer.setSingleShot(true);
     m_flushTimer.setInterval(200);
@@ -33,15 +32,11 @@ QString ProblemLog::logText() const
 {
     QStringList lines;
     if (m_dropped > 0) {
-        lines.append(QCoreApplication::translate("ProblemLog", "… %1 earlier entr(y/ies) dropped")
-                         .arg(m_dropped));
+        lines.append(QCoreApplication::translate("ProblemLog", "… %1 earlier entr(y/ies) dropped").arg(m_dropped));
     }
     for (const Entry &entry : m_entries) {
         lines.append(QCoreApplication::translate("ProblemLog", "%1: %2")
-                         .arg(entry.severity == Error
-                                  ? QCoreApplication::translate("ProblemLog", "error")
-                                  : QCoreApplication::translate("ProblemLog", "warning"),
-                              entry.message.text()));
+                         .arg(entry.severity == Error ? QCoreApplication::translate("ProblemLog", "error") : QCoreApplication::translate("ProblemLog", "warning"), entry.message.text()));
     }
     return lines.join(QLatin1Char('\n'));
 }
@@ -80,8 +75,6 @@ void ProblemLog::copyLog()
 
 void ProblemLog::retranslate()
 {
-    // The entries hold keys, not renderings (ADR 114), so a language switch is
-    // a re-read — but the log window is only listening, so say so.
     emit logChanged();
 }
 

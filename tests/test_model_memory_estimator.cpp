@@ -17,26 +17,28 @@ static QByteArray ggufHeader(int blockCount, int nHead, int nKvHead, int nEmbd)
 {
     struct W {
         QByteArray b;
-        void s(const QString &x) {
+        void s(const QString &x)
+        {
             QByteArray t = x.toUtf8();
             quint64 l = t.size();
-            b.append(reinterpret_cast<const char*>(&l), 8);
+            b.append(reinterpret_cast<const char *>(&l), 8);
             b.append(t);
         }
-        void k(const QString &key, quint32 v) {
+        void k(const QString &key, quint32 v)
+        {
             s(key);
-            quint32 t = 4; // Uint32
-            b.append(reinterpret_cast<const char*>(&t), 4);
-            b.append(reinterpret_cast<const char*>(&v), 4);
+            quint32 t = 4;  // Uint32
+            b.append(reinterpret_cast<const char *>(&t), 4);
+            b.append(reinterpret_cast<const char *>(&v), 4);
         }
     } w;
     const QString a = QStringLiteral("llama");
     w.b.append("GGUF", 4);
     quint32 ver = 3;
-    w.b.append(reinterpret_cast<const char*>(&ver), 4);
+    w.b.append(reinterpret_cast<const char *>(&ver), 4);
     quint64 tc = 0, kc = 4;
-    w.b.append(reinterpret_cast<const char*>(&tc), 8);
-    w.b.append(reinterpret_cast<const char*>(&kc), 8);
+    w.b.append(reinterpret_cast<const char *>(&tc), 8);
+    w.b.append(reinterpret_cast<const char *>(&kc), 8);
     w.k(a + QStringLiteral(".block_count"), blockCount);
     w.k(a + QStringLiteral(".attention.head_count"), nHead);
     w.k(a + QStringLiteral(".attention.head_count_kv"), nKvHead);
@@ -52,26 +54,36 @@ static QByteArray ggufMixedHeader(int blockCount, int nKhv)
 {
     struct W {
         QByteArray b;
-        void s(const QString &x) {
+        void s(const QString &x)
+        {
             QByteArray t = x.toUtf8();
             quint64 l = t.size();
-            b.append(reinterpret_cast<const char*>(&l), 8);
+            b.append(reinterpret_cast<const char *>(&l), 8);
             b.append(t);
         }
-        void key(const QString &k, quint32 type) { s(k); b.append(reinterpret_cast<const char*>(&type), 4); }
-        void i8(quint8 v) { b.append(reinterpret_cast<const char*>(&v), 1); }
-        void u16(quint16 v) { b.append(reinterpret_cast<const char*>(&v), 2); }
-        void u32(quint32 v) { b.append(reinterpret_cast<const char*>(&v), 4); }
-        void u64(quint64 v) { b.append(reinterpret_cast<const char*>(&v), 8); }
-        void f32(float v) { quint32 bits; std::memcpy(&bits, &v, sizeof bits); u32(bits); }
+        void key(const QString &k, quint32 type)
+        {
+            s(k);
+            b.append(reinterpret_cast<const char *>(&type), 4);
+        }
+        void i8(quint8 v) { b.append(reinterpret_cast<const char *>(&v), 1); }
+        void u16(quint16 v) { b.append(reinterpret_cast<const char *>(&v), 2); }
+        void u32(quint32 v) { b.append(reinterpret_cast<const char *>(&v), 4); }
+        void u64(quint64 v) { b.append(reinterpret_cast<const char *>(&v), 8); }
+        void f32(float v)
+        {
+            quint32 bits;
+            std::memcpy(&bits, &v, sizeof bits);
+            u32(bits);
+        }
     } w;
     w.b.append("GGUF", 4);
     quint32 ver = 3;
-    w.b.append(reinterpret_cast<const char*>(&ver), 4);
+    w.b.append(reinterpret_cast<const char *>(&ver), 4);
     quint64 tc = 0;
-    w.b.append(reinterpret_cast<const char*>(&tc), 8);
+    w.b.append(reinterpret_cast<const char *>(&tc), 8);
     quint64 kc = 7;
-    w.b.append(reinterpret_cast<const char*>(&kc), 8);
+    w.b.append(reinterpret_cast<const char *>(&kc), 8);
 
     const QString a = QStringLiteral("llama");
     // String value (type 8): "general.architecture"
@@ -93,8 +105,8 @@ static QByteArray ggufMixedHeader(int blockCount, int nKhv)
     w.u64(1234567890123ULL);
     // Array of strings (type 9)
     w.key(QStringLiteral("general.file_type"), 9);
-    w.u32(8); // elemType=String
-    w.u64(2); // count
+    w.u32(8);  // elemType=String
+    w.u64(2);  // count
     w.s(QStringLiteral("a"));
     w.s(QStringLiteral("b"));
     return w.b;
@@ -102,8 +114,7 @@ static QByteArray ggufMixedHeader(int blockCount, int nKhv)
 
 // Writes a GGUF file (with optional trailing pad bytes) into `dir`; returns the
 // path, or an empty string on failure. `dir` must outlive the estimate call.
-static QString writeGguf(QTemporaryDir &dir, const QByteArray &header,
-                         qint64 padBytes = 0)
+static QString writeGguf(QTemporaryDir &dir, const QByteArray &header, qint64 padBytes = 0)
 {
     const QString path = dir.path() + QStringLiteral("/model.gguf");
     QFile f(path);
@@ -116,7 +127,8 @@ static QString writeGguf(QTemporaryDir &dir, const QByteArray &header,
     return path;
 }
 
-class TestModelMemoryEstimator : public QObject {
+class TestModelMemoryEstimator : public QObject
+{
     Q_OBJECT
 private slots:
     void parsesHparamsAndComputesKvCache();
@@ -165,7 +177,7 @@ void TestModelMemoryEstimator::nonGgufFallsBackToDefaults()
     QVERIFY(!path.isEmpty());
     const ModelMemoryEstimate e = estimateModelMemory(path, 8192, QString(), QString());
     QVERIFY(!e.valid);
-    QVERIFY(e.kvCacheBytes > 0); // fall-back estimate, no crash
+    QVERIFY(e.kvCacheBytes > 0);  // fall-back estimate, no crash
 }
 
 void TestModelMemoryEstimator::f32CacheDoublesBytesPerValue()

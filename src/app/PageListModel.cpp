@@ -1,21 +1,18 @@
-#include "app/PageIndex.h"
 #include "app/PageListModel.h"
+#include "app/PageIndex.h"
 
 namespace llocr {
 
-PageListModel::PageListModel(QObject* parent)
-    : QAbstractListModel(parent)
-{
-}
+PageListModel::PageListModel(QObject *parent) : QAbstractListModel(parent) {}
 
-int PageListModel::rowCount(const QModelIndex& parent) const
+int PageListModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid())
         return 0;
     return m_recognized.size();
 }
 
-QVariant PageListModel::data(const QModelIndex& index, int role) const
+QVariant PageListModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= m_recognized.size())
         return {};
@@ -40,11 +37,11 @@ QVariant PageListModel::data(const QModelIndex& index, int role) const
 QHash<int, QByteArray> PageListModel::roleNames() const
 {
     static const QHash<int, QByteArray> roles = {
-        { PageIndexRole,     "pageIndex" },
-        { RecognizedRole,    "recognized" },
-        { CurrentRole,       "current" },
-        { EditedRole,        "edited" },
-        { HasDuplicatesRole, "hasDuplicates" },
+        {PageIndexRole, "pageIndex"},
+        {RecognizedRole, "recognized"},
+        {CurrentRole, "current"},
+        {EditedRole, "edited"},
+        {HasDuplicatesRole, "hasDuplicates"},
     };
     return roles;
 }
@@ -80,7 +77,7 @@ void PageListModel::setRecognized(int index, bool recognized)
         return;
     m_recognized[index] = recognized;
     const QModelIndex mi = this->index(index);
-    emit dataChanged(mi, mi, { RecognizedRole });
+    emit dataChanged(mi, mi, {RecognizedRole});
 }
 
 void PageListModel::setEdited(int index, bool edited)
@@ -91,7 +88,7 @@ void PageListModel::setEdited(int index, bool edited)
         return;
     m_edited[index] = edited;
     const QModelIndex mi = this->index(index);
-    emit dataChanged(mi, mi, { EditedRole });
+    emit dataChanged(mi, mi, {EditedRole});
 }
 
 void PageListModel::setHasDuplicates(int index, bool hasDup)
@@ -102,7 +99,7 @@ void PageListModel::setHasDuplicates(int index, bool hasDup)
         return;
     m_hasDuplicates[index] = hasDup;
     const QModelIndex mi = this->index(index);
-    emit dataChanged(mi, mi, { HasDuplicatesRole });
+    emit dataChanged(mi, mi, {HasDuplicatesRole});
 }
 
 void PageListModel::setCurrent(int index)
@@ -116,11 +113,11 @@ void PageListModel::setCurrent(int index)
 
     if (previous >= 0 && previous < m_recognized.size()) {
         const QModelIndex mi = this->index(previous);
-        emit dataChanged(mi, mi, { CurrentRole });
+        emit dataChanged(mi, mi, {CurrentRole});
     }
     if (m_current >= 0 && m_current < m_recognized.size()) {
         const QModelIndex mi = this->index(m_current);
-        emit dataChanged(mi, mi, { CurrentRole });
+        emit dataChanged(mi, mi, {CurrentRole});
     }
 }
 
@@ -177,4 +174,4 @@ void PageListModel::clear()
     endResetModel();
 }
 
-} // namespace llocr
+}  // namespace llocr

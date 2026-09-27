@@ -34,14 +34,9 @@ struct ZipEntry {
 class Reader
 {
 public:
-    explicit Reader(const QByteArray &bytes)
-        : m_bytes(bytes) {}
+    explicit Reader(const QByteArray &bytes) : m_bytes(bytes) {}
 
-    bool canRead(qint64 count) const
-    {
-        return count >= 0 && m_pos >= 0 && m_pos <= m_bytes.size()
-               && count <= m_bytes.size() - m_pos;
-    }
+    bool canRead(qint64 count) const { return count >= 0 && m_pos >= 0 && m_pos <= m_bytes.size() && count <= m_bytes.size() - m_pos; }
 
     qint64 pos() const { return m_pos; }
     void seek(qint64 position) { m_pos = position; }
@@ -61,8 +56,7 @@ public:
             return 0;
         const auto *p = reinterpret_cast<const uchar *>(m_bytes.constData() + m_pos);
         m_pos += 4;
-        return quint32(p[0]) | (quint32(p[1]) << 8) | (quint32(p[2]) << 16)
-               | (quint32(p[3]) << 24);
+        return quint32(p[0]) | (quint32(p[1]) << 8) | (quint32(p[2]) << 16) | (quint32(p[3]) << 24);
     }
 
     QByteArray take(qint64 count)
@@ -122,9 +116,7 @@ QString normalizeName(const QString &raw, bool &ok, QString &error, bool &isDir)
     return parts.join(QLatin1Char('/'));
 }
 
-bool inflateRaw(const QByteArray &input, qint64 expectedSize,
-                const std::function<bool(const char *, qint64)> &sink,
-                QString &error)
+bool inflateRaw(const QByteArray &input, qint64 expectedSize, const std::function<bool(const char *, qint64)> &sink, QString &error)
 {
     z_stream stream{};
     stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(input.constData()));
@@ -158,21 +150,18 @@ bool inflateRaw(const QByteArray &input, qint64 expectedSize,
     }
     const bool ok = result == Z_STREAM_END && (expectedSize < 0 || produced == expectedSize);
     if (!ok)
-        error = result == Z_STREAM_END ? QStringLiteral("deflate size verification failed")
-                                       : QStringLiteral("invalid deflate stream");
+        error = result == Z_STREAM_END ? QStringLiteral("deflate size verification failed") : QStringLiteral("invalid deflate stream");
     inflateEnd(&stream);
     return ok;
 }
 
-} // namespace
+}  // namespace
 
-ExtractResult ArchiveExtractor::extractArchive(const QString &archivePath,
-                                                const QString &destDir)
+ExtractResult ArchiveExtractor::extractArchive(const QString &archivePath, const QString &destDir)
 {
     if (archivePath.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive))
         return extractZip(archivePath, destDir);
-    if (archivePath.endsWith(QStringLiteral(".tar.gz"), Qt::CaseInsensitive)
-        || archivePath.endsWith(QStringLiteral(".tgz"), Qt::CaseInsensitive))
+    if (archivePath.endsWith(QStringLiteral(".tar.gz"), Qt::CaseInsensitive) || archivePath.endsWith(QStringLiteral(".tgz"), Qt::CaseInsensitive))
         return extractTarGz(archivePath, destDir);
     ExtractResult r;
     r.error = QObject::tr("Unsupported archive type: %1").arg(archivePath);
@@ -221,8 +210,7 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
     const quint16 totalEntries = eocdReader.readU16();
     const quint32 centralSize = eocdReader.readU32();
     const quint32 centralOffset = eocdReader.readU32();
-    if (diskEntries != totalEntries
-        || qint64(centralOffset) + qint64(centralSize) > size) {
+    if (diskEntries != totalEntries || qint64(centralOffset) + qint64(centralSize) > size) {
         result.error = QStringLiteral("unsupported or corrupt central directory");
         return result;
     }
@@ -236,17 +224,17 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
             result.error = QStringLiteral("corrupt central directory");
             return result;
         }
-        central.seek(central.pos() + 4); // version made/by
+        central.seek(central.pos() + 4);  // version made/by
         const quint16 flags = central.readU16();
         const quint16 method = central.readU16();
-        central.seek(central.pos() + 4); // time/date
+        central.seek(central.pos() + 4);  // time/date
         const quint32 crc = central.readU32();
         const quint32 compressedSize = central.readU32();
         const quint32 uncompressedSize = central.readU32();
         const quint16 nameLength = central.readU16();
         const quint16 extraLength = central.readU16();
         const quint16 commentLength = central.readU16();
-        central.seek(central.pos() + 4); // disk number, internal attributes
+        central.seek(central.pos() + 4);  // disk number, internal attributes
         const quint32 extAttr = central.readU32();
         const quint32 localOffset = central.readU32();
         if (!central.canRead(qint64(nameLength) + extraLength + commentLength)) {
@@ -270,8 +258,7 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
             result.error = QStringLiteral("encrypted ZIP entries are not supported");
             return result;
         }
-        entries.append(ZipEntry{method, crc, compressedSize, uncompressedSize,
-                                extAttr, localOffset, name});
+        entries.append(ZipEntry{method, crc, compressedSize, uncompressedSize, extAttr, localOffset, name});
     }
 
     if (entries.size() > kMaxFiles) {
@@ -311,13 +298,11 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
         const quint16 nameLength = local.readU16();
         const quint16 extraLength = local.readU16();
         const qint64 dataOffset = local.pos() + nameLength + extraLength;
-        if (dataOffset < 0 || dataOffset > size
-            || entry.compSize > size - dataOffset) {
+        if (dataOffset < 0 || dataOffset > size || entry.compSize > size - dataOffset) {
             result.error = QStringLiteral("zip entry data truncated");
             return result;
         }
-        if (entry.uncompSize > kMaxTotalBytes
-            || (entry.compSize > 0 && entry.uncompSize > entry.compSize * kMaxCompressionRatio)) {
+        if (entry.uncompSize > kMaxTotalBytes || (entry.compSize > 0 && entry.uncompSize > entry.compSize * kMaxCompressionRatio)) {
             result.error = QStringLiteral("zip entry exceeds size or compression ratio limit");
             return result;
         }
@@ -356,24 +341,19 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
             extractionError = QStringLiteral("unsupported zip compression method");
         }
         if (!extractionError.isEmpty() || !output.flush()) {
-            result.error = extractionError.isEmpty()
-                               ? QObject::tr("unable to write %1").arg(destination)
-                               : extractionError;
+            result.error = extractionError.isEmpty() ? QObject::tr("unable to write %1").arg(destination) : extractionError;
             return result;
         }
         output.close();
         if (writtenBytes != entry.uncompSize || crc != entry.crc) {
-            result.error = writtenBytes != entry.uncompSize
-                               ? QStringLiteral("zip entry size verification failed")
-                               : QStringLiteral("zip entry CRC mismatch");
+            result.error = writtenBytes != entry.uncompSize ? QStringLiteral("zip entry size verification failed") : QStringLiteral("zip entry CRC mismatch");
             return result;
         }
 
 #ifdef Q_OS_UNIX
         if ((entry.extAttr >> 16) & 0100u) {
             QFile permissions(destination);
-            permissions.setPermissions(permissions.permissions() | QFileDevice::ExeUser
-                                        | QFileDevice::ExeGroup | QFileDevice::ExeOther);
+            permissions.setPermissions(permissions.permissions() | QFileDevice::ExeUser | QFileDevice::ExeGroup | QFileDevice::ExeOther);
         }
 #endif
         ++result.fileCount;
@@ -388,8 +368,8 @@ namespace {
 qint64 parseOctalField(const QByteArray &field)
 {
     QString s = QString::fromLatin1(field.constData(), field.size());
-    s.remove(QChar(0));   // NUL padding
-    s = s.trimmed();      // space padding
+    s.remove(QChar(0));  // NUL padding
+    s = s.trimmed();     // space padding
     if (s.isEmpty())
         return 0;
     bool ok = false;
@@ -439,8 +419,7 @@ PaxValues parsePaxRecords(const QByteArray &data)
 
 }  // namespace
 
-ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
-                                             const QString &destDir)
+ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath, const QString &destDir)
 {
     ExtractResult result;
     QFile archive(tarGzPath);
@@ -503,8 +482,8 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
 
     QSet<QString> written;
     qint64 pos = 0;
-    QString pendingLongName;      // from a GNU 'L' entry
-    PaxValues pendingPax;         // from a PAX 'x' entry
+    QString pendingLongName;  // from a GNU 'L' entry
+    PaxValues pendingPax;     // from a PAX 'x' entry
     const qint64 size = tar.size();
 
     while (pos + 512 <= size) {
@@ -666,9 +645,7 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath,
 #ifdef Q_OS_UNIX
         if ((mode & 0100u)) {
             QFile permissions(dest);
-            permissions.setPermissions(permissions.permissions()
-                                       | QFileDevice::ExeUser | QFileDevice::ExeGroup
-                                       | QFileDevice::ExeOther);
+            permissions.setPermissions(permissions.permissions() | QFileDevice::ExeUser | QFileDevice::ExeGroup | QFileDevice::ExeOther);
         }
 #endif
         ++result.fileCount;

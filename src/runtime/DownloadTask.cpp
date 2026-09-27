@@ -9,9 +9,9 @@
 #include <QNetworkRequest>
 #include <QSaveFile>
 #include <QStorageInfo>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QTextStream>
 #include <QUrl>
-#include <QtConcurrent/QtConcurrentRun>
 
 #include <utility>
 
@@ -34,8 +34,7 @@ void flushToDisk(QFile &file)
 #ifdef Q_OS_WIN
     const HANDLE h = reinterpret_cast<HANDLE>(_get_osfhandle(file.handle()));
     if (h != INVALID_HANDLE_VALUE && !FlushFileBuffers(h))
-        qWarning("FlushFileBuffers failed for download file (error %lu)",
-                 static_cast<unsigned long>(GetLastError()));
+        qWarning("FlushFileBuffers failed for download file (error %lu)", static_cast<unsigned long>(GetLastError()));
 #else
     const int fd = static_cast<int>(file.handle());
     if (fd >= 0)
@@ -100,9 +99,9 @@ QString sanitizeFileName(const QString &name)
     for (const QChar c : name) {
         const ushort u = c.unicode();
         if (u < 0x20)
-            continue;                       // control characters
+            continue;  // control characters
         if (c == QLatin1Char('/') || c == QLatin1Char('\\') || c == QLatin1Char(':'))
-            continue;                       // path separators / drive colon
+            continue;  // path separators / drive colon
         out.append(c);
     }
     out = out.trimmed();
@@ -114,17 +113,10 @@ QString sanitizeFileName(const QString &name)
     if (out.isEmpty())
         out = QStringLiteral("download");
 
-    static const QStringList reserved = {QStringLiteral("CON"), QStringLiteral("PRN"),
-                                         QStringLiteral("AUX"), QStringLiteral("NUL"),
-                                         QStringLiteral("COM1"), QStringLiteral("COM2"),
-                                         QStringLiteral("COM3"), QStringLiteral("COM4"),
-                                         QStringLiteral("COM5"), QStringLiteral("COM6"),
-                                         QStringLiteral("COM7"), QStringLiteral("COM8"),
-                                         QStringLiteral("COM9"), QStringLiteral("LPT1"),
-                                         QStringLiteral("LPT2"), QStringLiteral("LPT3"),
-                                         QStringLiteral("LPT4"), QStringLiteral("LPT5"),
-                                         QStringLiteral("LPT6"), QStringLiteral("LPT7"),
-                                         QStringLiteral("LPT8"), QStringLiteral("LPT9")};
+    static const QStringList reserved = {QStringLiteral("CON"),  QStringLiteral("PRN"),  QStringLiteral("AUX"),  QStringLiteral("NUL"),  QStringLiteral("COM1"), QStringLiteral("COM2"),
+                                         QStringLiteral("COM3"), QStringLiteral("COM4"), QStringLiteral("COM5"), QStringLiteral("COM6"), QStringLiteral("COM7"), QStringLiteral("COM8"),
+                                         QStringLiteral("COM9"), QStringLiteral("LPT1"), QStringLiteral("LPT2"), QStringLiteral("LPT3"), QStringLiteral("LPT4"), QStringLiteral("LPT5"),
+                                         QStringLiteral("LPT6"), QStringLiteral("LPT7"), QStringLiteral("LPT8"), QStringLiteral("LPT9")};
     if (reserved.contains(out.section(QLatin1Char('.'), 0, 0).toUpper()))
         out.prepend(QLatin1Char('_'));
 
@@ -132,17 +124,9 @@ QString sanitizeFileName(const QString &name)
 }
 
 DownloadTask::DownloadTask(const Request &request, QNetworkAccessManager *nam, QObject *parent)
-    : QObject(parent)
-    , m_request(request)
-    , m_nam(nam)
-    , m_targetDir(request.targetDir)
-    , m_fileName(resolveFileNameCollision(request.targetDir, sanitizeFileName(request.fileName)))
-    , m_finalPath(QDir(m_targetDir).filePath(m_fileName))
-    , m_partPath(partPathFor(m_finalPath))
-    , m_metaPath(metaPathFor(m_partPath))
-    , m_freeBytesQuery([](const QString &dirPath) {
-          return QStorageInfo(dirPath).bytesAvailable();
-      })
+    : QObject(parent), m_request(request), m_nam(nam), m_targetDir(request.targetDir), m_fileName(resolveFileNameCollision(request.targetDir, sanitizeFileName(request.fileName))),
+      m_finalPath(QDir(m_targetDir).filePath(m_fileName)), m_partPath(partPathFor(m_finalPath)), m_metaPath(metaPathFor(m_partPath)),
+      m_freeBytesQuery([](const QString &dirPath) { return QStorageInfo(dirPath).bytesAvailable(); })
 {
 }
 
@@ -217,10 +201,6 @@ void DownloadTask::start()
     m_hash.reset();
     if (m_resumeRequested) {
         m_receivedBytes = m_resumeBytes;
-        // The prefix was downloaded in an earlier session and sha256 cannot be
-        // seeded from a precomputed digest, so the resumed file is hashed as a
-        // whole when it completes — on a worker (ADR 105). The start no longer
-        // re-reads the multi-GB .part on the GUI thread.
         m_hashFileOnDisk = true;
     } else {
         m_receivedBytes = 0;
@@ -252,8 +232,6 @@ void DownloadTask::issueRequest()
         return;
     }
 
-    // The shared HTTP policy (ADR 108): transfer timeout, manual redirects, and
-    // the Authorization header dropped by handleRedirect() when the host changes.
     HttpClient::Options httpOptions;
     httpOptions.timeoutMs = 30000;
     httpOptions.authorization = m_authorization.toUtf8();
@@ -265,12 +243,9 @@ void DownloadTask::issueRequest()
     }
     m_fileOpen = false;
     m_reply = m_nam->get(HttpClient::makeRequest(m_effectiveUrl, httpOptions));
-    connect(m_reply, &QNetworkReply::metaDataChanged, this,
-            [this, reply = m_reply]() { onMetadata(reply); });
-    connect(m_reply, &QNetworkReply::readyRead, this,
-            [this, reply = m_reply]() { onData(reply); });
-    connect(m_reply, &QNetworkReply::finished, this,
-            [this, reply = m_reply]() { onFinished(reply); });
+    connect(m_reply, &QNetworkReply::metaDataChanged, this, [this, reply = m_reply]() { onMetadata(reply); });
+    connect(m_reply, &QNetworkReply::readyRead, this, [this, reply = m_reply]() { onData(reply); });
+    connect(m_reply, &QNetworkReply::finished, this, [this, reply = m_reply]() { onFinished(reply); });
 }
 
 bool DownloadTask::hasResumeValidator() const
@@ -307,8 +282,7 @@ void DownloadTask::onMetadata(QNetworkReply *reply)
         qint64 total = -1;
         const QByteArray rangeReply = reply->rawHeader("Content-Range");
         const bool okRange = parseContentRange(QString::fromLatin1(rangeReply), start, end, total);
-        const bool totalMatches = !m_resumeRequested || m_resumeExpectedTotal <= 0
-                                  || total <= 0 || total == m_resumeExpectedTotal;
+        const bool totalMatches = !m_resumeRequested || m_resumeExpectedTotal <= 0 || total <= 0 || total == m_resumeExpectedTotal;
         if (!okRange || start != m_receivedBytes || !totalMatches) {
             restartFresh(reply);
             return;
@@ -319,12 +293,11 @@ void DownloadTask::onMetadata(QNetworkReply *reply)
         m_resumeLastModified = lastModified;
         openForAppend();
     } else if (status == 200) {
-        const qint64 contentLength =
-            reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
+        const qint64 contentLength = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
         m_totalBytes = contentLength > 0 ? contentLength : -1;
         m_receivedBytes = 0;
         m_resumeRequested = false;
-        m_hashFileOnDisk = false;   // the server sends the whole file: stream it
+        m_hashFileOnDisk = false;  // the server sends the whole file: stream it
         m_resumeEtag = etag;
         m_resumeLastModified = lastModified;
         m_hash.reset();
@@ -422,9 +395,7 @@ void DownloadTask::updateProgress()
         m_speedBps = static_cast<int>(delta * 1000 / elapsedMs);
         m_speedSampleBytes = m_receivedBytes;
         m_speedClock.restart();
-        m_etaSec = (m_speedBps > 0 && m_totalBytes > 0 && m_receivedBytes < m_totalBytes)
-                       ? static_cast<int>((m_totalBytes - m_receivedBytes) / m_speedBps)
-                       : 0;
+        m_etaSec = (m_speedBps > 0 && m_totalBytes > 0 && m_receivedBytes < m_totalBytes) ? static_cast<int>((m_totalBytes - m_receivedBytes) / m_speedBps) : 0;
     }
 }
 
@@ -505,8 +476,7 @@ bool DownloadTask::isAllowedUrl(const QUrl &url) const
     if (url.scheme().compare(QStringLiteral("http"), Qt::CaseInsensitive) != 0)
         return false;
     const QString host = url.host();
-    return host == QLatin1String("127.0.0.1") || host == QLatin1String("::1")
-           || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
+    return host == QLatin1String("127.0.0.1") || host == QLatin1String("::1") || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
 }
 
 // sha256 of a whole file, chunked so a multi-GB model does not land in memory.
@@ -537,11 +507,9 @@ void DownloadTask::verifySha256()
 {
     const QString expected = m_request.sha256.trimmed().toLower();
     if (!expected.isEmpty() && m_hashFileOnDisk) {
-        // Resumed download: hash the finished .part on a worker (ADR 105).
         const QString partPath = m_partPath;
         auto *watcher = new QFutureWatcher<QPair<QByteArray, bool>>(this);
-        connect(watcher, &QFutureWatcher<QPair<QByteArray, bool>>::finished, this,
-                [this, watcher, expected, partPath]() {
+        connect(watcher, &QFutureWatcher<QPair<QByteArray, bool>>::finished, this, [this, watcher, expected, partPath]() {
             const auto result = watcher->result();
             watcher->deleteLater();
             if (m_partPath != partPath || m_state != State::Verifying)
@@ -560,8 +528,7 @@ void DownloadTask::verifySha256()
         return;
     }
 
-    finishVerification(expected.isEmpty()
-                       || QString::fromLatin1(m_hash.result().toHex()) == expected);
+    finishVerification(expected.isEmpty() || QString::fromLatin1(m_hash.result().toHex()) == expected);
 }
 
 void DownloadTask::finishVerification(bool ok, const QString &readError)
@@ -569,9 +536,7 @@ void DownloadTask::finishVerification(bool ok, const QString &readError)
     if (!ok) {
         QFile::remove(m_partPath);
         QFile::remove(m_metaPath);
-        m_error = readError.isEmpty()
-            ? QObject::tr("Checksum mismatch for %1").arg(m_fileName)
-            : readError;
+        m_error = readError.isEmpty() ? QObject::tr("Checksum mismatch for %1").arg(m_fileName) : readError;
         setState(State::Failed);
         emit downloadFinished(false);
         return;

@@ -19,9 +19,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(int connectionTimeoutMs READ connectionTimeoutMs WRITE setConnectionTimeoutMs NOTIFY connectionTimeoutMsChanged)
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
     Q_PROPERTY(QString modelRecipeId READ modelRecipeId WRITE setModelRecipeId NOTIFY modelRecipeIdChanged)
-    // The sampling profile of the OCR role. Separate from modelRecipeId on
-    // purpose: the model decides the parser, the profile decides the sampling
-    // (ADR 110). Empty means "follow the model", as it always did.
     Q_PROPERTY(QString requestProfileId READ requestProfileId WRITE setRequestProfileId NOTIFY requestProfileIdChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(bool splitPages READ splitPages WRITE setSplitPages NOTIFY splitPagesChanged)
@@ -61,8 +58,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString launchModelAlias READ launchModelAlias WRITE setLaunchModelAlias NOTIFY launchModelAliasChanged)
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
-    // The Model tab's source combo ("specify files" vs "download") — a view
-    // mode, persisted so it survives an app restart.
     Q_PROPERTY(bool launchSourceDownload READ launchSourceDownload WRITE setLaunchSourceDownload NOTIFY launchSourceDownloadChanged)
 
     Q_PROPERTY(QString checkLaunchModelPath READ checkLaunchModelPath WRITE setCheckLaunchModelPath NOTIFY checkLaunchModelPathChanged)
@@ -84,8 +79,7 @@ public:
     Q_INVOKABLE void resetRuntimeDefaults();
     Q_INVOKABLE bool contains(const QString &key) const;
 
-    struct SettingDefault
-    {
+    struct SettingDefault {
         const char *key;
         const char *property;
         QVariant defaultValue;
@@ -270,7 +264,6 @@ public:
     static constexpr int kDefaultTimeoutMs = 120000;
     static constexpr const char *kDefaultModelName = "Unlimited-OCR";
     static constexpr const char *kDefaultModelRecipeId = "unlimited-ocr";
-    // "auto" — the OCR model adapter declares its parser (OcrModel::defaultParserId).
     static constexpr const char *kDefaultParserId = "auto";
     static constexpr bool kDefaultSplitPages = true;
     static constexpr bool kDefaultKeepPageNumbers = true;

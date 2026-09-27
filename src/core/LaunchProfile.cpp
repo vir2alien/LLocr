@@ -26,8 +26,10 @@ constexpr const char *kValueKey = "value";
 const QStringList &LaunchProfile::reservedArgNames()
 {
     static const QStringList names = {
-        QStringLiteral("model"), QStringLiteral("mmproj"),
-        QStringLiteral("alias"), QStringLiteral("host"),
+        QStringLiteral("model"),
+        QStringLiteral("mmproj"),
+        QStringLiteral("alias"),
+        QStringLiteral("host"),
         QStringLiteral("port"),
     };
     return names;
@@ -35,8 +37,7 @@ const QStringList &LaunchProfile::reservedArgNames()
 
 bool LaunchParameter::operator==(const LaunchParameter &other) const
 {
-    return name == other.name && kind == other.kind
-        && value.typeId() == other.value.typeId() && value == other.value;
+    return name == other.name && kind == other.kind && value.typeId() == other.value.typeId() && value == other.value;
 }
 
 bool LaunchProfile::parametersEqual(const LaunchProfile &other) const
@@ -50,13 +51,10 @@ bool LaunchProfile::parametersEqual(const LaunchProfile &other) const
 
 bool LaunchProfile::operator==(const LaunchProfile &other) const
 {
-    return id == other.id && name == other.name && os == other.os
-           && backend == other.backend && description == other.description
-           && parametersEqual(other);
+    return id == other.id && name == other.name && os == other.os && backend == other.backend && description == other.description && parametersEqual(other);
 }
 
-LaunchProfile LaunchProfile::merge(const LaunchProfile &defaults,
-                                   const LaunchProfile &user)
+LaunchProfile LaunchProfile::merge(const LaunchProfile &defaults, const LaunchProfile &user)
 {
     // The launch store's user copy *replaces* the parameter set — that is what
     // makes «remove this row» work — while the descriptive fields stay the
@@ -75,10 +73,7 @@ LaunchProfile LaunchProfile::merge(const LaunchProfile &defaults,
 
 void LaunchProfile::sortByOrder()
 {
-    std::stable_sort(parameters.begin(), parameters.end(),
-                     [](const LaunchParameter &a, const LaunchParameter &b) {
-                         return a.order < b.order;
-                     });
+    std::stable_sort(parameters.begin(), parameters.end(), [](const LaunchParameter &a, const LaunchParameter &b) { return a.order < b.order; });
 }
 
 const LaunchParameter *LaunchProfile::find(const QString &name) const
@@ -91,8 +86,7 @@ const LaunchParameter *LaunchProfile::find(const QString &name) const
 
 namespace {
 
-bool parseParameter(const QJsonObject &obj, int fallbackOrder,
-                    LaunchParameter &out, QString &error)
+bool parseParameter(const QJsonObject &obj, int fallbackOrder, LaunchParameter &out, QString &error)
 {
     const QString name = obj.value(QLatin1String("name")).toString();
     if (name.isEmpty()) {
@@ -104,8 +98,7 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder,
     if (obj.contains(QLatin1String(kOrderKey))) {
         out.order = obj.value(QLatin1String(kOrderKey)).toInt();
         if (out.order <= 0) {
-            error = QObject::tr("Launch profile parameter %1 has an invalid order")
-                        .arg(name);
+            error = QObject::tr("Launch profile parameter %1 has an invalid order").arg(name);
             return false;
         }
     } else {
@@ -127,8 +120,7 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder,
         out.value = QVariant(value.toString());
         break;
     default:
-        error = QObject::tr("Launch profile parameter %1 has an unsupported value")
-                    .arg(name);
+        error = QObject::tr("Launch profile parameter %1 has an unsupported value").arg(name);
         return false;
     }
 
@@ -138,8 +130,7 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder,
 
 }  // namespace
 
-QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root,
-                                              QString &error)
+QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root, QString &error)
 {
     const QJsonArray profiles = root.value(QLatin1String(kProfilesKey)).toArray();
 
@@ -157,8 +148,7 @@ QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root,
             return QList<LaunchProfile>();
         }
         if (seen.contains(id)) {
-            error = QObject::tr("Launch profile file has a duplicate profile: %1")
-                        .arg(id);
+            error = QObject::tr("Launch profile file has a duplicate profile: %1").arg(id);
             return QList<LaunchProfile>();
         }
         seen.insert(id);
@@ -171,8 +161,7 @@ QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root,
     return out;
 }
 
-bool LaunchProfile::profileFromJson(const QJsonObject &obj, LaunchProfile &profile,
-                                    QString &error)
+bool LaunchProfile::profileFromJson(const QJsonObject &obj, LaunchProfile &profile, QString &error)
 {
     profile = LaunchProfile();
     profile.id = obj.value(QLatin1String(kIdKey)).toString();
@@ -195,8 +184,7 @@ bool LaunchProfile::profileFromJson(const QJsonObject &obj, LaunchProfile &profi
             return false;
         fallbackOrder = parameter.order + 1;
         if (paramNames.contains(parameter.name)) {
-            error = QObject::tr("Launch profile %1 has a duplicate parameter: %2")
-                        .arg(profile.id, parameter.name);
+            error = QObject::tr("Launch profile %1 has a duplicate parameter: %2").arg(profile.id, parameter.name);
             return false;
         }
         paramNames.insert(parameter.name);

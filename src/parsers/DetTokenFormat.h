@@ -25,4 +25,4 @@ QString formatEquation(const QString &text);
 // Title text ("3.4.1. Attention computation") -> heading level (#####).
 int headingLevelFor(const QString &title);
 
-} // namespace llocr
+}  // namespace llocr

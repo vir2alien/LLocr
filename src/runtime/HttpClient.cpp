@@ -34,10 +34,8 @@ QNetworkRequest HttpClient::makeRequest(const QUrl &url, const Options &options)
     QNetworkRequest request(url);
     // Manual: the caller follows the redirect, so the Authorization header can
     // be dropped when the host changes (HttpClient::redirectFor).
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::ManualRedirectPolicy);
-    request.setAttribute(QNetworkRequest::CacheLoadControlAttribute,
-                         QNetworkRequest::AlwaysNetwork);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
+    request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
     if (options.timeoutMs > 0)
         request.setTransferTimeout(options.timeoutMs);
     for (auto it = options.headers.constBegin(); it != options.headers.constEnd(); ++it)
@@ -47,8 +45,7 @@ QNetworkRequest HttpClient::makeRequest(const QUrl &url, const Options &options)
     return request;
 }
 
-HttpClient::Redirect HttpClient::redirectFor(const QNetworkReply *reply, const QUrl &current,
-                                             int hopsUsed, int maxHops, bool allowInsecure)
+HttpClient::Redirect HttpClient::redirectFor(const QNetworkReply *reply, const QUrl &current, int hopsUsed, int maxHops, bool allowInsecure)
 {
     Redirect redirect;
     const QUrl target = reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
@@ -57,27 +54,20 @@ HttpClient::Redirect HttpClient::redirectFor(const QNetworkReply *reply, const Q
 
     redirect.present = true;
     redirect.target = current.resolved(target);
-    redirect.allowed = hopsUsed < maxHops
-        && redirect.target.isValid()
-        && (redirect.target.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0
-            || (allowInsecure
-                && (redirect.target.host() == QStringLiteral("127.0.0.1")
-                    || redirect.target.host() == QStringLiteral("::1")
-                    || redirect.target.host().compare(QStringLiteral("localhost"),
-                                                      Qt::CaseInsensitive) == 0)));
+    redirect.allowed = hopsUsed < maxHops && redirect.target.isValid() &&
+                       (redirect.target.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0 ||
+                        (allowInsecure && (redirect.target.host() == QStringLiteral("127.0.0.1") || redirect.target.host() == QStringLiteral("::1") ||
+                                           redirect.target.host().compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0)));
     redirect.crossHost = redirect.target.host() != current.host();
     return redirect;
 }
 
-HttpClient::Response HttpClient::get(const QUrl &url, const Options &options,
-                                     int maxRedirects, bool allowInsecure)
+HttpClient::Response HttpClient::get(const QUrl &url, const Options &options, int maxRedirects, bool allowInsecure)
 {
     return get(nullptr, url, options, maxRedirects, allowInsecure);
 }
 
-HttpClient::Response HttpClient::get(QNetworkAccessManager *nam, const QUrl &url,
-                                     const Options &options, int maxRedirects,
-                                     bool allowInsecure)
+HttpClient::Response HttpClient::get(QNetworkAccessManager *nam, const QUrl &url, const Options &options, int maxRedirects, bool allowInsecure)
 {
     QNetworkAccessManager &manager = nam ? *nam : networkAccessManager();
     Response response;

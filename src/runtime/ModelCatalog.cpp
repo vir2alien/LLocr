@@ -16,14 +16,12 @@ namespace llocr {
 
 namespace {
 
-const QRegularExpression kSplitRe(
-    QStringLiteral(R"(^(.*)-(\d{3,5})-of-(\d{3,5})\.gguf$)"));
+const QRegularExpression kSplitRe(QStringLiteral(R"(^(.*)-(\d{3,5})-of-(\d{3,5})\.gguf$)"));
 
-const QRegularExpression kQuantRe(QStringLiteral(
-    "(?:^|[^A-Za-z0-9])("
-    "Q[3456]_K_[SML]|IQ[124][0-9]?_[A-Z_]+|Q[0-9]_[01]|Q[3456]_K|B[2-8]_0|"
-    "F16|BF16|FP8|TF32|F8"
-    ")(?:[^A-Za-z0-9]|$)"));
+const QRegularExpression kQuantRe(QStringLiteral("(?:^|[^A-Za-z0-9])("
+                                                 "Q[3456]_K_[SML]|IQ[124][0-9]?_[A-Z_]+|Q[0-9]_[01]|Q[3456]_K|B[2-8]_0|"
+                                                 "F16|BF16|FP8|TF32|F8"
+                                                 ")(?:[^A-Za-z0-9]|$)"));
 
 QString quantInName(const QString &name)
 {
@@ -43,17 +41,12 @@ struct GetResult {
     QString error;  // transport-level failure description (status <= 0)
 };
 
-// One shared HTTP policy: timeout, manual redirects, Authorization dropped on a
-// host change (ADR 108). The former local implementation of the redirect loop
-// is now HttpClient::get.
-GetResult pullGet(QNetworkAccessManager *nam, const QUrl &url,
-                  const QByteArray &authorization, int timeoutMs)
+GetResult pullGet(QNetworkAccessManager *nam, const QUrl &url, const QByteArray &authorization, int timeoutMs)
 {
     HttpClient::Options options;
     options.authorization = authorization;
     options.timeoutMs = timeoutMs;
-    const HttpClient::Response response =
-        HttpClient::get(nam, url, options, ModelCatalog::kMaxRedirects);
+    const HttpClient::Response response = HttpClient::get(nam, url, options, ModelCatalog::kMaxRedirects);
     GetResult result;
     result.status = response.status > 0 ? response.status : -1;
     result.body = response.body;
@@ -80,10 +73,8 @@ QList<HfFile> ModelCatalog::parseTreeJson(const QJsonArray &items, QString &erro
         HfFile f;
         f.path = path;
         f.name = leafName(path);
-        const QString type =
-            o.value(QStringLiteral("type")).toString().toLower();
-        f.isDir = (type == QLatin1String("directory")
-                   || type == QLatin1String("folder"));
+        const QString type = o.value(QStringLiteral("type")).toString().toLower();
+        f.isDir = (type == QLatin1String("directory") || type == QLatin1String("folder"));
         f.type = type;
 
         const QJsonValue sizeV = o.value(QStringLiteral("size"));
@@ -149,8 +140,7 @@ bool ModelCatalog::isMultiPart(const QString &name)
     return kSplitRe.match(name).hasMatch();
 }
 
-bool ModelCatalog::splitMultiPart(const QString &name, QString *baseOut,
-                                  int *indexOut, int *countOut)
+bool ModelCatalog::splitMultiPart(const QString &name, QString *baseOut, int *indexOut, int *countOut)
 {
     const QRegularExpressionMatch m = kSplitRe.match(name);
     if (!m.hasMatch())
@@ -182,32 +172,21 @@ QString ModelCatalog::quantizationFromName(const QString &name)
 
 QString ModelCatalog::encodePath(const QString &path)
 {
-    return QString::fromUtf8(QUrl::toPercentEncoding(
-        path, QByteArrayLiteral("/")));
+    return QString::fromUtf8(QUrl::toPercentEncoding(path, QByteArrayLiteral("/")));
 }
 
-QUrl ModelCatalog::resolveUrl(const QString &repo, const QString &commitSha,
-                              const QString &path)
+QUrl ModelCatalog::resolveUrl(const QString &repo, const QString &commitSha, const QString &path)
 {
-    return QUrl(QStringLiteral("https://huggingface.co/%1/resolve/%2/%3")
-                    .arg(encodePath(repo), encodePath(commitSha), encodePath(path)));
+    return QUrl(QStringLiteral("https://huggingface.co/%1/resolve/%2/%3").arg(encodePath(repo), encodePath(commitSha), encodePath(path)));
 }
 
-QString ModelCatalog::fetchHeadSha(QNetworkAccessManager *nam, const QString &repo,
-                                   QString &error, const QByteArray &authorization,
-                                   int timeoutMs, const QUrl &baseUrl)
+QString ModelCatalog::fetchHeadSha(QNetworkAccessManager *nam, const QString &repo, QString &error, const QByteArray &authorization, int timeoutMs, const QUrl &baseUrl)
 {
-    const QString origin = baseUrl.isValid()
-        ? baseUrl.toString(QUrl::FullyEncoded)
-        : QStringLiteral("https://huggingface.co");
+    const QString origin = baseUrl.isValid() ? baseUrl.toString(QUrl::FullyEncoded) : QStringLiteral("https://huggingface.co");
     const QUrl url(origin + QStringLiteral("/api/models/%1").arg(encodePath(repo)));
     const GetResult res = pullGet(nam, url, authorization, timeoutMs);
     if (res.status != 200) {
-        error = res.status > 0
-            ? QObject::tr("Hugging Face API returned HTTP %1 for %2")
-                  .arg(res.status).arg(repo)
-            : QObject::tr("Hugging Face request failed for %1: %2")
-                  .arg(repo, res.error);
+        error = res.status > 0 ? QObject::tr("Hugging Face API returned HTTP %1 for %2").arg(res.status).arg(repo) : QObject::tr("Hugging Face request failed for %1: %2").arg(repo, res.error);
         return QString();
     }
     QJsonParseError perr;
@@ -218,35 +197,24 @@ QString ModelCatalog::fetchHeadSha(QNetworkAccessManager *nam, const QString &re
     }
     const QString sha = doc.object().value(QStringLiteral("sha")).toString();
     if (sha.isEmpty()) {
-        error = QObject::tr("Hugging Face response has no commit SHA for %1")
-                    .arg(repo);
+        error = QObject::tr("Hugging Face response has no commit SHA for %1").arg(repo);
         return QString();
     }
     return sha;
 }
 
-QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString &repo,
-                                      const QString &commitSha, QString &error,
-                                      const QByteArray &authorization, int timeoutMs,
-                                      const QUrl &baseUrl)
+QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString &repo, const QString &commitSha, QString &error, const QByteArray &authorization, int timeoutMs, const QUrl &baseUrl)
 {
     QList<HfFile> all;
-    const QString origin = baseUrl.isValid()
-        ? baseUrl.toString(QUrl::FullyEncoded)
-        : QStringLiteral("https://huggingface.co");
-    QString pageUrl = origin +
-        QStringLiteral("/api/models/%1/tree/%2?recursive=true")
-            .arg(encodePath(repo), encodePath(commitSha));
+    const QString origin = baseUrl.isValid() ? baseUrl.toString(QUrl::FullyEncoded) : QStringLiteral("https://huggingface.co");
+    QString pageUrl = origin + QStringLiteral("/api/models/%1/tree/%2?recursive=true").arg(encodePath(repo), encodePath(commitSha));
 
     int guard = 50;
     while (guard-- > 0) {
         const GetResult res = pullGet(nam, QUrl(pageUrl), authorization, timeoutMs);
         if (res.status != 200) {
-            error = res.status > 0
-                ? QObject::tr("Hugging Face API returned HTTP %1 for tree of %2")
-                      .arg(res.status).arg(repo)
-                : QObject::tr("Hugging Face request failed for tree of %1: %2")
-                      .arg(repo, res.error);
+            error = res.status > 0 ? QObject::tr("Hugging Face API returned HTTP %1 for tree of %2").arg(res.status).arg(repo)
+                                   : QObject::tr("Hugging Face request failed for tree of %1: %2").arg(repo, res.error);
             return QList<HfFile>();
         }
         QJsonParseError perr;

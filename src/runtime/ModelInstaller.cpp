@@ -1,54 +1,38 @@
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QDesktopServices>
 #include <QUrl>
 
 #include "runtime/RuntimeState.h"
 
-#include "app/LaunchProfileStore.h"
-#include "app/SettingsStore.h"
-#include "runtime/ModelInstallTransaction.h"
-#include "runtime/ModelInstaller.h"
+#include "config/RuntimePaths.h"
+#include "config/SettingsStore.h"
 #include "runtime/InstalledReconcile.h"
+#include "runtime/LaunchProfileStore.h"
+#include "runtime/ModelInstaller.h"
+#include "runtime/ModelInstallTransaction.h"
 #include "runtime/ModelPresetCatalog.h"
 #include "runtime/RuntimeController.h"
-#include "runtime/RuntimePaths.h"
 
 namespace llocr {
 
-ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime,
-                               LaunchProfileStore &launchProfiles, InstalledState &state,
-                               QObject *parent)
-    : QObject(parent)
-    , m_settings(settings)
-    , m_installState(state)
-    , m_runtime(runtime)
-    , m_launchProfiles(launchProfiles)
-    , m_transaction(new ModelInstallTransaction(settings, launchProfiles, m_installState, this))
-    , m_ocrModels(new InstalledModelsModel(settings, false, this))
-    , m_checkModels(new InstalledModelsModel(settings, true, this))
+ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime, LaunchProfileStore &launchProfiles, InstalledState &state, QObject *parent)
+    : QObject(parent), m_settings(settings), m_installState(state), m_runtime(runtime), m_launchProfiles(launchProfiles),
+      m_transaction(new ModelInstallTransaction(settings, launchProfiles, m_installState, this)), m_ocrModels(new InstalledModelsModel(settings, false, this)),
+      m_checkModels(new InstalledModelsModel(settings, true, this))
 {
-    connect(m_transaction, &ModelInstallTransaction::stateChanged, this,
-            [this](int state) { setState(static_cast<State>(state)); });
-    connect(m_transaction, &ModelInstallTransaction::busyChanged, this,
-            [this](bool busy) { setBusy(busy); });
-    connect(m_transaction, &ModelInstallTransaction::progressChanged, this,
-            [this](double progress) { setProgress(progress); });
-    connect(m_transaction, &ModelInstallTransaction::statusMessageChanged, this,
-            [this](const QString &message) { setStatusMessage(message); });
-    connect(m_transaction, &ModelInstallTransaction::installedListReplaced, this,
-            [this](const QList<ModelEntry> &installed) {
-                m_installed = installed;
-                publishInstalled();
-            });
-    // The active model lives in the settings, so the lists follow it: the
-    // highlight *and* which list a model belongs to (ADR 115).
-    connect(&m_settings, &SettingsStore::launchModelPathChanged, this,
-            &ModelInstaller::publishInstalled);
-    connect(&m_settings, &SettingsStore::checkLaunchModelPathChanged, this,
-            &ModelInstaller::publishInstalled);
+    connect(m_transaction, &ModelInstallTransaction::stateChanged, this, [this](int state) { setState(static_cast<State>(state)); });
+    connect(m_transaction, &ModelInstallTransaction::busyChanged, this, [this](bool busy) { setBusy(busy); });
+    connect(m_transaction, &ModelInstallTransaction::progressChanged, this, [this](double progress) { setProgress(progress); });
+    connect(m_transaction, &ModelInstallTransaction::statusMessageChanged, this, [this](const QString &message) { setStatusMessage(message); });
+    connect(m_transaction, &ModelInstallTransaction::installedListReplaced, this, [this](const QList<ModelEntry> &installed) {
+        m_installed = installed;
+        publishInstalled();
+    });
+    connect(&m_settings, &SettingsStore::launchModelPathChanged, this, &ModelInstaller::publishInstalled);
+    connect(&m_settings, &SettingsStore::checkLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
 
     reloadPresetsInternal();
     refreshInstalled();
@@ -145,17 +129,12 @@ void ModelInstaller::reloadPresetsInternal()
     const QString modelsDir = m_installState.paths().modelsDir();
 
     QString err;
-    m_presets = ModelPresetCatalog::load(
-        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath),
-        QDir(modelsDir).filePath(QStringLiteral("catalog.json")), err);
+    m_presets = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), QDir(modelsDir).filePath(QStringLiteral("catalog.json")), err);
     if (!err.isEmpty())
         setStatusMessage(err);
 
     QString validateErr;
-    m_presetsValidate = ModelPresetCatalog::load(
-        QLatin1String(ModelPresetCatalog::kBuiltInValidatePath),
-        QDir(modelsDir).filePath(QStringLiteral("catalogValidate.json")),
-        validateErr);
+    m_presetsValidate = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInValidatePath), QDir(modelsDir).filePath(QStringLiteral("catalogValidate.json")), validateErr);
     if (!validateErr.isEmpty())
         setStatusMessage(validateErr);
 
@@ -172,8 +151,7 @@ void ModelInstaller::refreshInstalled()
     selections.checkModelPath = m_settings.checkLaunchModelPath();
     selections.serverPath = m_settings.serverPath();
     selections.serverExists = QFileInfo::exists(m_settings.serverPath());
-    m_installed = ModelRegistry::load(m_installState.paths().modelsDir(), rebuilt, err,
-                                      &report, selections);
+    m_installed = ModelRegistry::load(m_installState.paths().modelsDir(), rebuilt, err, &report, selections);
     if (!err.isEmpty() && !rebuilt)
         setStatusMessage(err);
     reportStaleSelections(report);
@@ -197,10 +175,6 @@ void ModelInstaller::rescanRegistry()
 {
     QString err;
     const QString modelsDir = m_installState.paths().modelsDir();
-    // An explicit rescan is a *reset*: whatever the index claimed, the disk is
-    // the whole truth. The curated fields the index carried (roles, prompt,
-    // parser, a pinned revision) cannot be recovered from a scan, which is why
-    // this is a deliberate user action and not the startup path.
     m_installed = ModelRegistry::scanModelsDir(modelsDir);
     ModelRegistry::save(modelsDir, m_installed, err);
     m_transaction->setInstalled(m_installed);
@@ -227,12 +201,8 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
     m_settings.setLaunchModelPath(e.modelPath);
     if (!e.mmprojPath.isEmpty())
         m_settings.setLaunchMmprojPath(e.mmprojPath);
-    // The parser is not touched here: under "Automatic (model default)" the
-    // model adapter owns it (ADR 88), and a catalog-supplied parser would
-    // silently override an explicit choice made in Settings → Output.
     if (e.ctxSize > 0)
-        m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
-                                                e.ctxSize);
+        m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"), e.ctxSize);
     m_settings.forceSave();
     publishInstalled();
     return QString();
@@ -249,8 +219,7 @@ QString ModelInstaller::activatePreset(int index, bool forCheck)
         const ModelEntry &e = m_installed.at(i);
         if (e.repo != p.repo)
             continue;
-        if (!e.modelPath.isEmpty()
-            && ModelCatalog::leafName(e.modelPath) == modelLeaf)
+        if (!e.modelPath.isEmpty() && ModelCatalog::leafName(e.modelPath) == modelLeaf)
             return setActiveModel(i, forCheck);
     }
     return tr("The preset is not installed");
@@ -261,13 +230,10 @@ QString ModelInstaller::removeModel(int index)
     if (index < 0 || index >= m_installed.size())
         return tr("Invalid model selection");
     const ModelEntry &e = m_installed.at(index);
-    const bool active = !e.modelPath.isEmpty()
-                        && (e.modelPath == m_settings.launchModelPath()
-                            || e.modelPath == m_settings.checkLaunchModelPath());
+    const bool active = !e.modelPath.isEmpty() && (e.modelPath == m_settings.launchModelPath() || e.modelPath == m_settings.checkLaunchModelPath());
     const bool ready = m_runtime.state() == RuntimeState::Ready;
     const RuntimePaths currentPaths = m_installState.paths();
-    const QString guard =
-        ModelRegistry::removalError(e, currentPaths.modelsDir(), active, ready);
+    const QString guard = ModelRegistry::removalError(e, currentPaths.modelsDir(), active, ready);
     if (!guard.isEmpty())
         return guard;
 
@@ -277,8 +243,7 @@ QString ModelInstaller::removeModel(int index)
     for (const ModelEntry &x : std::as_const(m_installed)) {
         if (&x == &e)
             continue;
-        if (QFileInfo(x.dir).canonicalFilePath()
-            == QFileInfo(e.dir).canonicalFilePath()) {
+        if (QFileInfo(x.dir).canonicalFilePath() == QFileInfo(e.dir).canonicalFilePath()) {
             sharedDir = true;
             break;
         }
@@ -292,9 +257,7 @@ QString ModelInstaller::removeModel(int index)
             for (const ModelEntry &x : std::as_const(m_installed)) {
                 if (&x == &e)
                     continue;
-                if (QFileInfo(x.dir).canonicalFilePath()
-                        == QFileInfo(e.dir).canonicalFilePath()
-                    && x.mmprojPath == e.mmprojPath) {
+                if (QFileInfo(x.dir).canonicalFilePath() == QFileInfo(e.dir).canonicalFilePath() && x.mmprojPath == e.mmprojPath) {
                     mmprojShared = true;
                     break;
                 }
@@ -317,15 +280,16 @@ QString ModelInstaller::removeModel(int index)
     QString saveErr;
     QList<ModelEntry> updated;
     // Atomic read-modify-write (see ModelRegistry::update).
-    if (!ModelRegistry::update(currentPaths.modelsDir(),
+    if (!ModelRegistry::update(
+            currentPaths.modelsDir(),
             [&updated, &e](QList<ModelEntry> &entries) {
                 entries.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
                 updated = entries;
                 return entries;
-            }, saveErr)) {
+            },
+            saveErr)) {
         refreshInstalled();
-        return tr("Model files removed, but the registry could not be saved: %1")
-                   .arg(saveErr);
+        return tr("Model files removed, but the registry could not be saved: %1").arg(saveErr);
     }
     m_installed = updated;
     m_transaction->setInstalled(m_installed);
@@ -369,9 +333,7 @@ QVariantMap ModelInstaller::presetInfo(int index, bool forCheck) const
     out.insert(QStringLiteral("minBuild"), p.minBuild);
     out.insert(QStringLiteral("installed"), isPresetInstalled(p));
     const QString targetPath = presetInstalledModelPath(p);
-    out.insert(QStringLiteral("active"),
-               forCheck ? targetPath == m_settings.checkLaunchModelPath()
-                        : targetPath == m_settings.launchModelPath());
+    out.insert(QStringLiteral("active"), forCheck ? targetPath == m_settings.checkLaunchModelPath() : targetPath == m_settings.launchModelPath());
     return out;
 }
 
@@ -381,8 +343,7 @@ QString ModelInstaller::presetInstalledModelPath(const ModelPreset &p) const
     for (const ModelEntry &e : std::as_const(m_installed)) {
         if (e.repo != p.repo)
             continue;
-        if (!e.modelPath.isEmpty()
-            && ModelCatalog::leafName(e.modelPath) == modelLeaf)
+        if (!e.modelPath.isEmpty() && ModelCatalog::leafName(e.modelPath) == modelLeaf)
             return e.modelPath;
     }
     return QString();

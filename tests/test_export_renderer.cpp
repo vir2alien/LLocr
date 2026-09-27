@@ -47,18 +47,16 @@ void ExportRendererTest::rendersHtmlWithHeadingsTablesAndMath()
     ExportRenderer renderer;
     QVERIFY(!renderer.isBusy());
 
-    const QString md = QStringLiteral(
-        "# Heading\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n$$E=mc^2$$\n");
+    const QString md = QStringLiteral("# Heading\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n$$E=mc^2$$\n");
 
     bool finished = false;
     bool ok = false;
     QString html;
     ExportRenderer::Request request;
     request.output = ExportRenderer::Output::Html;
-    request.pages = { { 1, md }, { 2, QStringLiteral("second page body") } };
+    request.pages = {{1, md}, {2, QStringLiteral("second page body")}};
     request.styleSheet = Exporter::exportStyleSheet();
-    renderer.render(request,
-                    [&](bool success, const QString &result, const QString &) {
+    renderer.render(request, [&](bool success, const QString &result, const QString &) {
         ok = success;
         html = result;
         finished = true;
@@ -92,11 +90,10 @@ void ExportRendererTest::rendersHtmlWithoutPageHeadingsWhenSplitOff()
     QString html;
     ExportRenderer::Request request;
     request.output = ExportRenderer::Output::Html;
-    request.pages = { { 1, QStringLiteral("body text") } };
+    request.pages = {{1, QStringLiteral("body text")}};
     request.styleSheet = Exporter::exportStyleSheet(false);
     request.splitPages = false;
-    renderer.render(request,
-                    [&](bool success, const QString &result, const QString &) {
+    renderer.render(request, [&](bool success, const QString &result, const QString &) {
         ok = success;
         html = result;
         finished = true;
@@ -106,7 +103,6 @@ void ExportRendererTest::rendersHtmlWithoutPageHeadingsWhenSplitOff()
     QVERIFY2(ok, qPrintable(html));
     QVERIFY(html.contains(QStringLiteral("body text")));
     QVERIFY(!html.contains(QStringLiteral("Page 1")));
-    // Split off: no rule elements and no forced page breaks.
     QVERIFY(!html.contains(QStringLiteral("page-separator")));
     QVERIFY(!request.styleSheet.contains(QStringLiteral("break-before:page")));
 }
@@ -123,12 +119,11 @@ void ExportRendererTest::printsPdfFile()
     QString error;
     ExportRenderer::Request request;
     request.output = ExportRenderer::Output::Pdf;
-    request.pages = { { 1, QStringLiteral("hello **world**") } };
+    request.pages = {{1, QStringLiteral("hello **world**")}};
     request.styleSheet = Exporter::exportStyleSheet();
     request.outputPath = path;
     request.pageLayout = Exporter::defaultPdfLayout();
-    renderer.render(request,
-                    [&](bool success, const QString &, const QString &err) {
+    renderer.render(request, [&](bool success, const QString &, const QString &err) {
         ok = success;
         error = err;
         finished = true;

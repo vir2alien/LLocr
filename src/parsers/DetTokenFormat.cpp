@@ -15,8 +15,7 @@ QString unescapeModelText(const QString &text)
     const QChar backslash = QLatin1Char('\\');
     for (int i = 0; i < text.size(); ++i) {
         const QChar c = text.at(i);
-        if (c == backslash && i + 1 < text.size()
-            && text.at(i + 1) == QLatin1Char('n')) {
+        if (c == backslash && i + 1 < text.size() && text.at(i + 1) == QLatin1Char('n')) {
             out.append(QLatin1Char('\n'));
             ++i;
             continue;
@@ -26,31 +25,22 @@ QString unescapeModelText(const QString &text)
     return out;
 }
 
-// LaTeX math to Markdown
 QString convertMath(const QString &text)
 {
-    static const QRegularExpression inlineRe(
-        QStringLiteral(R"(\\\(\s*(.*?)\s*\\\))"),
-        QRegularExpression::DotMatchesEverythingOption);
-    static const QRegularExpression displayRe(
-        QStringLiteral(R"(\\\[\s*(.*?)\s*\\\])"),
-        QRegularExpression::DotMatchesEverythingOption);
+    static const QRegularExpression inlineRe(QStringLiteral(R"(\\\(\s*(.*?)\s*\\\))"), QRegularExpression::DotMatchesEverythingOption);
+    static const QRegularExpression displayRe(QStringLiteral(R"(\\\[\s*(.*?)\s*\\\])"), QRegularExpression::DotMatchesEverythingOption);
     // LFM2.5-VL sometimes drops the closing delimiter at a cell/row end —
     // a trailing "\(" (or "\[") with no closer is still a formula.
-    static const QRegularExpression danglingInlineRe(
-        QStringLiteral(R"(\\\((?![\s\S]*\\\))([\s\S]*)$)"));
-    static const QRegularExpression danglingDisplayRe(
-        QStringLiteral(R"(\\\[(?![\s\S]*\\\])([\s\S]*)$)"));
+    static const QRegularExpression danglingInlineRe(QStringLiteral(R"(\\\((?![\s\S]*\\\))([\s\S]*)$)"));
+    static const QRegularExpression danglingDisplayRe(QStringLiteral(R"(\\\[(?![\s\S]*\\\])([\s\S]*)$)"));
     // The model wraps inline \(…\) inside display \[…\] — after the display
     // conversion those inner delimiters are redundant (and render literally).
     // Only backslash-paren delimiters are removed — bare parens are legit
     // formula content.
-    static const QRegularExpression innerInlineRe(
-        QStringLiteral(R"(\\\(|\\\))"));
+    static const QRegularExpression innerInlineRe(QStringLiteral(R"(\\\(|\\\))"));
     // Non-breaking-space artifact inside formulas (e.g. \mathrm{~r}) —
     // cleaned within math spans only, plain-text tildes are kept.
-    static const QRegularExpression mathSpanRe(
-        QStringLiteral(R"(\$[^\$]+\$)"));
+    static const QRegularExpression mathSpanRe(QStringLiteral(R"(\$[^\$]+\$)"));
 
     QString out = text;
     out.replace(displayRe, QStringLiteral("\n\n$$\n\\1\n$$\n\n"));
@@ -61,8 +51,7 @@ QString convertMath(const QString &text)
     // block). Placeholders keep the spans out of the inline replacements.
     QStringList displayBlocks;
     {
-        static const QRegularExpression displaySpanRe(
-            QStringLiteral(R"(\$\$[\s\S]*?\$\$)"));
+        static const QRegularExpression displaySpanRe(QStringLiteral(R"(\$\$[\s\S]*?\$\$)"));
         QString kept;
         qsizetype last = 0;
         QRegularExpressionMatchIterator dit = displaySpanRe.globalMatch(out);
@@ -70,7 +59,7 @@ QString convertMath(const QString &text)
             const QRegularExpressionMatch m = dit.next();
             kept += out.mid(last, m.capturedStart() - last);
             QString block = m.captured(0);
-            block.remove(innerInlineRe);   // nested \(…\) -> bare content
+            block.remove(innerInlineRe);  // nested \(…\) -> bare content
             displayBlocks.append(block);
             kept += QStringLiteral("\x01%1\x01").arg(displayBlocks.size() - 1);
             last = m.capturedEnd();
@@ -83,8 +72,7 @@ QString convertMath(const QString &text)
     out.replace(danglingInlineRe, QStringLiteral("$\\1$"));
 
     // Restore the protected display blocks.
-    static const QRegularExpression placeholderRe(
-        QStringLiteral(R"(\x01(\d+)\x01)"));
+    static const QRegularExpression placeholderRe(QStringLiteral(R"(\x01(\d+)\x01)"));
     {
         QString restored;
         qsizetype last = 0;
@@ -122,15 +110,12 @@ QString escapeTableCell(QString cell)
     return cell;
 }
 
-// Display (block) math -> clean Markdown block.
 QString formatEquation(const QString &text)
 {
-    static const QRegularExpression wrapperRe(
-        QStringLiteral(R"(^\s*\\\[\s*([\s\S]*?)\s*\\\]\s*$)"));
+    static const QRegularExpression wrapperRe(QStringLiteral(R"(^\s*\\\[\s*([\s\S]*?)\s*\\\]\s*$)"));
     // The model often nests inline \(…\) inside the display \[…\] wrapper —
     // strip the redundant delimiters (bare parens are left untouched).
-    static const QRegularExpression innerDelimRe(
-        QStringLiteral(R"(\\\(|\\\))"));
+    static const QRegularExpression innerDelimRe(QStringLiteral(R"(\\\(|\\\))"));
 
     QString body = text.trimmed();
     const QRegularExpressionMatch m = wrapperRe.match(body);
@@ -141,7 +126,6 @@ QString formatEquation(const QString &text)
     return QStringLiteral("$$\n%1\n$$").arg(body.trimmed());
 }
 
-// Title to heading level
 int headingLevelFor(const QString &title)
 {
     static const QRegularExpression re(QStringLiteral(R"(^\s*(\d+\s*\.\s*)+)"));
@@ -157,4 +141,4 @@ int headingLevelFor(const QString &title)
     return std::clamp(groups + 1, 1, 5);
 }
 
-} // namespace llocr
+}  // namespace llocr

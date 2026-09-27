@@ -16,7 +16,6 @@ public:
     static void attachParent(QProcess &proc);
     static qint64 currentPid();
 
-    // Is a process with this id running?
     static bool isProcessAlive(qint64 pid);
 
     // Absolute path of the running process' executable, or an empty string when

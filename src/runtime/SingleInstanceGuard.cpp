@@ -2,11 +2,7 @@
 
 namespace llocr {
 
-SingleInstanceGuard::SingleInstanceGuard(QString lockFilePath, QObject *parent)
-    : QObject(parent)
-    , m_lockFile(lockFilePath)
-{
-}
+SingleInstanceGuard::SingleInstanceGuard(QString lockFilePath, QObject *parent) : QObject(parent), m_lockFile(lockFilePath) {}
 
 bool SingleInstanceGuard::tryAcquire(QString &errorMessage)
 {

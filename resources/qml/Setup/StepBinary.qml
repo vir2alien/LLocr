@@ -11,9 +11,6 @@ import "../Common"
 Item {
     id: root
 
-    // The gate is C++'s: a path that is set but missing on disk is not a
-    // configuration, and the wizard used to advance on a non-empty string
-    // (ADR 113).
     property bool complete: Runtime.serverPathValid
 
     onVisibleChanged: {

@@ -12,16 +12,8 @@ constexpr int kMaxFinishedTasks = 10;
 }
 
 DownloadManager::DownloadManager(QObject *parent)
-    : QAbstractListModel(parent)
-    , m_nam(new QNetworkAccessManager(this))
-    , m_freeBytesQuery([](const QString &dirPath) {
-          return QStorageInfo(dirPath).bytesAvailable();
-      })
+    : QAbstractListModel(parent), m_nam(new QNetworkAccessManager(this)), m_freeBytesQuery([](const QString &dirPath) { return QStorageInfo(dirPath).bytesAvailable(); })
 {
-    // The system proxy used to be enabled here, as a constructor side effect:
-    // any build that never constructed a DownloadManager silently ignored the
-    // user's proxy settings. HttpClient applies it from the request itself
-    // (ADR 108).
     HttpClient::applyProcessDefaults();
 }
 
@@ -52,17 +44,14 @@ int DownloadManager::enqueue(const DownloadTask::Request &request)
     connect(task, &DownloadTask::progressChanged, this, [this, task]() {
         const int r = m_tasks.indexOf(task);
         if (r >= 0)
-            emit dataChanged(index(r), index(r),
-                             {ReceivedBytesRole, TotalBytesRole, SpeedRole, EtaRole});
+            emit dataChanged(index(r), index(r), {ReceivedBytesRole, TotalBytesRole, SpeedRole, EtaRole});
         recalcAggregate();
     });
-    connect(task, &DownloadTask::downloadFinished, this,
-            [this, task](bool ok) { onTaskFinished(task, ok); });
+    connect(task, &DownloadTask::downloadFinished, this, [this, task](bool ok) { onTaskFinished(task, ok); });
 
     recalcAggregate();
     startNextQueued();
-    QMetaObject::invokeMethod(this, [this]() { evictFinishedTasks(); },
-                              Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, [this]() { evictFinishedTasks(); }, Qt::QueuedConnection);
     return row;
 }
 
@@ -138,13 +127,13 @@ QVariant DownloadManager::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> DownloadManager::roleNames() const
 {
     static const QHash<int, QByteArray> roles = {{NameRole, "name"},
-            {TargetDirRole, "targetDir"},
-            {TotalBytesRole, "totalBytes"},
-            {ReceivedBytesRole, "receivedBytes"},
-            {SpeedRole, "speed"},
-            {EtaRole, "eta"},
-            {StateRole, "state"},
-            {ErrorRole, "error"}};
+                                                 {TargetDirRole, "targetDir"},
+                                                 {TotalBytesRole, "totalBytes"},
+                                                 {ReceivedBytesRole, "receivedBytes"},
+                                                 {SpeedRole, "speed"},
+                                                 {EtaRole, "eta"},
+                                                 {StateRole, "state"},
+                                                 {ErrorRole, "error"}};
     return roles;
 }
 
@@ -189,9 +178,7 @@ void DownloadManager::recalcAggregate()
     m_totalBytes = total;
     m_receivedBytes = received;
     m_speedBps = speed;
-    m_etaSec = (speed > 0 && total > 0 && received < total)
-                   ? static_cast<int>((total - received) / speed)
-                   : 0;
+    m_etaSec = (speed > 0 && total > 0 && received < total) ? static_cast<int>((total - received) / speed) : 0;
     emit progressChanged();
 }
 
@@ -202,8 +189,13 @@ void DownloadManager::onTaskFinished(DownloadTask *task, bool ok)
     if (row >= 0)
         emit dataChanged(index(row), index(row), {StateRole, ErrorRole});
     recalcAggregate();
-    QMetaObject::invokeMethod(this, [this]() { startNextQueued(); evictFinishedTasks(); },
-                              Qt::QueuedConnection);
+    QMetaObject::invokeMethod(
+        this,
+        [this]() {
+            startNextQueued();
+            evictFinishedTasks();
+        },
+        Qt::QueuedConnection);
 }
 
 void DownloadManager::evictFinishedTasks()
@@ -211,8 +203,7 @@ void DownloadManager::evictFinishedTasks()
     QList<int> terminalRows;
     for (int i = 0; i < m_tasks.size(); ++i) {
         const auto st = m_tasks.at(i)->state();
-        if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed
-            || st == DownloadTask::State::Canceled)
+        if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed || st == DownloadTask::State::Canceled)
             terminalRows.append(i);
     }
     const int excess = terminalRows.size() - kMaxFinishedTasks;

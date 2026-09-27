@@ -33,4 +33,4 @@ QString RawParser::displayName() const
     return QCoreApplication::translate("RawParser", "Raw text");
 }
 
-} // namespace llocr
+}  // namespace llocr

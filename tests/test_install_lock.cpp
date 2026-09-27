@@ -3,14 +3,14 @@
 #include <QFileInfo>
 #include <QLockFile>
 #include <QTemporaryDir>
-#include <QVariantMap>
 #include <QtTest>
+#include <QVariantMap>
 
-#include "app/SettingsStore.h"
+#include "config/RuntimePaths.h"
+#include "config/SettingsStore.h"
 #include "runtime/InstalledBuildsModel.h"
 #include "runtime/InstalledState.h"
 #include "runtime/RuntimeInstaller.h"
-#include "runtime/RuntimePaths.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -24,18 +24,15 @@ using namespace llocr;
 // so a second GUI instance can keep using External / browsing while a runtime
 // install stays exclusive. These tests pin down the lock path and the
 // refusal/success behaviour of the guarded entry point.
-class TestInstallLock : public QObject {
+class TestInstallLock : public QObject
+{
     Q_OBJECT
 
 private:
     // Must precede any SettingsStore created by the tests (see the header).
     TestSettingsIsolation m_settingsIsolation;
 
-    static RuntimePaths makePaths(const QString &root)
-    {
-        return RuntimePaths(QDir(root).filePath(QStringLiteral("app")),
-                            QDir(root).filePath(QStringLiteral("models")));
-    }
+    static RuntimePaths makePaths(const QString &root) { return RuntimePaths(QDir(root).filePath(QStringLiteral("app")), QDir(root).filePath(QStringLiteral("models"))); }
 
     static void pointAtTempDir(SettingsStore &settings, const QString &root)
     {
@@ -65,10 +62,7 @@ private:
 
     // The installed builds are a real list model now (ADR 115); the helpers
     // read it the same way the QML delegates do.
-    static QAbstractItemModel *buildsOf(RuntimeInstaller &installer)
-    {
-        return qobject_cast<QAbstractItemModel *>(installer.installedBuilds());
-    }
+    static QAbstractItemModel *buildsOf(RuntimeInstaller &installer) { return qobject_cast<QAbstractItemModel *>(installer.installedBuilds()); }
 
     static QVariant buildData(RuntimeInstaller &installer, int row, int role)
     {
@@ -80,8 +74,7 @@ private:
     {
         auto *model = buildsOf(installer);
         for (int i = 0; i < model->rowCount(); ++i) {
-            if (model->data(model->index(i, 0), InstalledBuildsModel::TagRole)
-                    .toString() == tag)
+            if (model->data(model->index(i, 0), InstalledBuildsModel::TagRole).toString() == tag)
                 return i;
         }
         return -1;
@@ -92,8 +85,7 @@ private slots:
     {
         QTemporaryDir root;
         const RuntimePaths paths = makePaths(root.path());
-        QCOMPARE(paths.installLockPath(),
-                 QDir(paths.runtimeDir()).filePath(QStringLiteral(".install.lock")));
+        QCOMPARE(paths.installLockPath(), QDir(paths.runtimeDir()).filePath(QStringLiteral(".install.lock")));
         QVERIFY(paths.installLockPath().endsWith(QStringLiteral(".install.lock")));
         QVERIFY(paths.installLockPath().startsWith(paths.runtimeDir()));
     }
@@ -117,14 +109,12 @@ private slots:
         QVERIFY(other.tryLock(0));
 
         const QString refused = installer.cleanupUnusedBuilds();
-        QVERIFY2(refused.contains(QStringLiteral("installing"), Qt::CaseInsensitive),
-                 qPrintable(refused));
+        QVERIFY2(refused.contains(QStringLiteral("installing"), Qt::CaseInsensitive), qPrintable(refused));
 
         // Once instance 1 releases the lock, the same op succeeds (no refusal).
         other.unlock();
         const QString summary = installer.cleanupUnusedBuilds();
-        QVERIFY2(!summary.contains(QStringLiteral("installing"), Qt::CaseInsensitive),
-                 qPrintable(summary));
+        QVERIFY2(!summary.contains(QStringLiteral("installing"), Qt::CaseInsensitive), qPrintable(summary));
     }
 
     void secondInstallLockFileCannotInterleave()
@@ -136,9 +126,9 @@ private slots:
         QLockFile a(paths.installLockPath());
         QVERIFY(a.tryLock(0));
         QLockFile b(paths.installLockPath());
-        QVERIFY(!b.tryLock(0));   // a holds it — b is refused
+        QVERIFY(!b.tryLock(0));
         a.unlock();
-        QVERIFY(b.tryLock(0));    // after release b can take it
+        QVERIFY(b.tryLock(0));
         b.unlock();
     }
 
@@ -158,23 +148,18 @@ private slots:
         makeBuild(root.path(), QStringLiteral("llama.cpp-b101-cuda-cu12-win-x64"));
         makeBuild(root.path(), QStringLiteral("llama.cpp-b99-cpu-win-x64"));
         // Non-install dirs must be ignored by the scan.
-        QDir().mkpath(QDir(makePaths(root.path()).runtimeDir())
-                          .filePath(QStringLiteral("staging")));
-        QDir().mkpath(QDir(makePaths(root.path()).runtimeDir())
-                          .filePath(QStringLiteral("not-a-build")));
+        QDir().mkpath(QDir(makePaths(root.path()).runtimeDir()).filePath(QStringLiteral("staging")));
+        QDir().mkpath(QDir(makePaths(root.path()).runtimeDir()).filePath(QStringLiteral("not-a-build")));
 
         installer.rescanInstalledBuilds();
         QCOMPARE(installer.installedBuildCount(), 3);
 
         // Newest build first (b101), backend parsed from the tag including the
         // hyphenated "cuda-cu12" token.
-        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::BuildRole).toString(),
-                 QStringLiteral("b101"));
-        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::BackendRole).toString(),
-                 QStringLiteral("cuda-cu12"));
+        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::BuildRole).toString(), QStringLiteral("b101"));
+        QCOMPARE(buildData(installer, 0, InstalledBuildsModel::BackendRole).toString(), QStringLiteral("cuda-cu12"));
         QCOMPARE(buildData(installer, 0, InstalledBuildsModel::ActiveRole).toBool(), false);
-        const QString newestPath =
-            buildData(installer, 0, InstalledBuildsModel::ServerPathRole).toString();
+        const QString newestPath = buildData(installer, 0, InstalledBuildsModel::ServerPathRole).toString();
         QVERIFY(!newestPath.isEmpty());
 
         // Activate it: the settings now point at the scanned binary.
@@ -187,8 +172,7 @@ private slots:
         QCOMPARE(buildData(installer, 0, InstalledBuildsModel::ActiveRole).toBool(), true);
 
         // Other rows are not active, activating one switches cleanly.
-        const int oldIdx = findBuild(installer,
-                                     QStringLiteral("llama.cpp-b100-cpu-win-x64"));
+        const int oldIdx = findBuild(installer, QStringLiteral("llama.cpp-b100-cpu-win-x64"));
         QVERIFY(oldIdx >= 0);
         QVERIFY(installer.activateBuild(oldIdx).isEmpty());
         QCOMPARE(settings.installedBuild(), QStringLiteral("b100"));
@@ -197,19 +181,16 @@ private slots:
         QCOMPARE(buildData(installer, oldIdx, InstalledBuildsModel::ActiveRole).toBool(), true);
 
         // A build whose directory lost its binary cannot be activated.
-        QDir(QDir(makePaths(root.path()).runtimeDir())
-                 .filePath(QStringLiteral("llama.cpp-b99-cpu-win-x64")))
+        QDir(QDir(makePaths(root.path()).runtimeDir()).filePath(QStringLiteral("llama.cpp-b99-cpu-win-x64")))
 #ifdef Q_OS_WIN
             .remove(QStringLiteral("llama-server.exe"));
 #else
             .remove(QStringLiteral("llama-server"));
 #endif
         installer.rescanInstalledBuilds();
-        const int missingIdx = findBuild(installer,
-                                         QStringLiteral("llama.cpp-b99-cpu-win-x64"));
+        const int missingIdx = findBuild(installer, QStringLiteral("llama.cpp-b99-cpu-win-x64"));
         QVERIFY(missingIdx >= 0);
-        QCOMPARE(buildData(installer, missingIdx,
-                           InstalledBuildsModel::BinaryFoundRole).toBool(), false);
+        QCOMPARE(buildData(installer, missingIdx, InstalledBuildsModel::BinaryFoundRole).toBool(), false);
         const QString serverPathBefore = settings.serverPath();
         QVERIFY(!installer.activateBuild(missingIdx).isEmpty());
         QCOMPARE(settings.serverPath(), serverPathBefore);
@@ -217,17 +198,15 @@ private slots:
         // Cleanup keeps only the active build (b100); the others are swept.
         const QString summary = installer.cleanupUnusedBuilds();
         QVERIFY(summary.contains(QStringLiteral("Removed")));
-        QVERIFY(QFileInfo::exists(QDir(makePaths(root.path()).runtimeDir())
-                                      .filePath(QStringLiteral("llama.cpp-b100-cpu-win-x64"))));
-        QVERIFY(!QFileInfo::exists(QDir(makePaths(root.path()).runtimeDir())
-                                       .filePath(QStringLiteral("llama.cpp-b101-cuda-cu12-win-x64"))));
+        QVERIFY(QFileInfo::exists(QDir(makePaths(root.path()).runtimeDir()).filePath(QStringLiteral("llama.cpp-b100-cpu-win-x64"))));
+        QVERIFY(!QFileInfo::exists(QDir(makePaths(root.path()).runtimeDir()).filePath(QStringLiteral("llama.cpp-b101-cuda-cu12-win-x64"))));
     }
 
     void cleanupRefusedWithoutActiveBuild()
     {
         QTemporaryDir root;
         SettingsStore settings;
-        pointAtTempDir(settings, root.path());   // installedBuild left empty
+        pointAtTempDir(settings, root.path());  // installedBuild left empty
         InstalledState installed(settings);
         RuntimeInstaller installer(settings, installed);
 
@@ -236,11 +215,9 @@ private slots:
         QCOMPARE(installer.installedBuildCount(), 1);
 
         const QString refused = installer.cleanupUnusedBuilds();
-        QVERIFY2(refused.contains(QStringLiteral("active"), Qt::CaseInsensitive),
-                 qPrintable(refused));
+        QVERIFY2(refused.contains(QStringLiteral("active"), Qt::CaseInsensitive), qPrintable(refused));
         // The downloaded build survived the refused sweep.
-        QVERIFY(QFileInfo::exists(QDir(makePaths(root.path()).runtimeDir())
-                                      .filePath(QStringLiteral("llama.cpp-b100-cpu-win-x64"))));
+        QVERIFY(QFileInfo::exists(QDir(makePaths(root.path()).runtimeDir()).filePath(QStringLiteral("llama.cpp-b100-cpu-win-x64"))));
     }
 };
 

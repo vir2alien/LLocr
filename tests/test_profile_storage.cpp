@@ -1,35 +1,27 @@
-#include <QtTest>
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QTemporaryDir>
+#include <QtTest>
 
-#include "app/ProfileStorage.h"
+#include "config/ProfileStorage.h"
 
 using namespace llocr;
 
-class TestProfileStorage : public QObject {
+class TestProfileStorage : public QObject
+{
     Q_OBJECT
 
 private:
     QTemporaryDir m_dir;
 
-    QString path(const QString &name) const
-    {
-        return m_dir.filePath(name);
-    }
+    QString path(const QString &name) const { return m_dir.filePath(name); }
 
 private slots:
-    void initTestCase()
-    {
-        QVERIFY(m_dir.isValid());
-    }
+    void initTestCase() { QVERIFY(m_dir.isValid()); }
 
-    void removeFileIfExistsHandlesMissingFile()
-    {
-        QVERIFY(ProfileStorage::removeFileIfExists(path(QStringLiteral("missing.json"))));
-    }
+    void removeFileIfExistsHandlesMissingFile() { QVERIFY(ProfileStorage::removeFileIfExists(path(QStringLiteral("missing.json")))); }
 
     void removeFileIfExistsRemovesAndReportsFailures()
     {
@@ -71,8 +63,7 @@ private slots:
     {
         bool ok = true;
         QString error;
-        const QJsonDocument doc =
-            ProfileStorage::readJson(path(QStringLiteral("nope.json")), &ok, &error);
+        const QJsonDocument doc = ProfileStorage::readJson(path(QStringLiteral("nope.json")), &ok, &error);
         QVERIFY(!ok);
         QVERIFY(doc.isNull());
         QVERIFY(error.isEmpty());  // missing file is reported via ok, not error
@@ -106,8 +97,7 @@ private slots:
         const QJsonDocument doc = ProfileStorage::readJson(p, &ok, &error);
         QVERIFY(ok);
         QVERIFY(error.isEmpty());
-        QCOMPARE(doc.object().value(QStringLiteral("k")).toString(),
-                 QStringLiteral("v"));
+        QCOMPARE(doc.object().value(QStringLiteral("k")).toString(), QStringLiteral("v"));
     }
 };
 

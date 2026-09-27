@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include <atomic>
+#include <memory>
 #include <QAbstractItemModelTester>
 #include <QDateTime>
 #include <QFile>
@@ -9,8 +11,8 @@
 #include <QPageSize>
 #include <QPainter>
 #include <QPdfWriter>
-#include <QRegularExpression>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QSemaphore>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -18,18 +20,16 @@
 #include <QThread>
 #include <QThreadPool>
 #include <QTimer>
-#include <atomic>
-#include <memory>
 
-#include "testsettings.h"
 #include "app/AppController.h"
 #include "app/BoxListModel.h"
 #include "app/ProblemLog.h"
-#include "app/LaunchProfileStore.h"
 #include "app/RecognitionController.h"
-#include "app/RequestProfileStore.h"
 #include "app/VerificationPromptStore.h"
+#include "config/RequestProfileStore.h"
 #include "core/StatusMessage.h"
+#include "runtime/LaunchProfileStore.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
@@ -67,8 +67,7 @@ constexpr double kPdfDpi = 300.0;  // must match DocumentModel's render DPI
 
 QSize pdfPixelSize(const QSize &points)
 {
-    return {qRound(points.width() / 72.0 * kPdfDpi),
-            qRound(points.height() / 72.0 * kPdfDpi)};
+    return {qRound(points.width() / 72.0 * kPdfDpi), qRound(points.height() / 72.0 * kPdfDpi)};
 }
 
 bool writeTestPdf(const QString &path)
@@ -78,8 +77,7 @@ bool writeTestPdf(const QString &path)
     const auto layoutFor = [](int page) {
         // Zero margins so the painter's origin is the page corner and the
         // rendered quadrants land where they are painted.
-        return QPageLayout(QPageSize(QSizeF(nativeSize(page)), QPageSize::Point),
-                           QPageLayout::Portrait, QMarginsF(0, 0, 0, 0), QPageLayout::Point);
+        return QPageLayout(QPageSize(QSizeF(nativeSize(page)), QPageSize::Point), QPageLayout::Portrait, QMarginsF(0, 0, 0, 0), QPageLayout::Point);
     };
 
     QPdfWriter writer(path);
@@ -97,10 +95,7 @@ bool writeTestPdf(const QString &path)
         painter.fillRect(QRectF(0, 0, points.width(), points.height()), Qt::white);
         const QList<QColor> pageColors = colors(page);
         for (int i = 0; i < 4; ++i) {
-            painter.fillRect(QRectF((i % 2) * points.width() / 2,
-                                    (i / 2) * points.height() / 2,
-                                    points.width() / 2, points.height() / 2),
-                             pageColors.at(i));
+            painter.fillRect(QRectF((i % 2) * points.width() / 2, (i / 2) * points.height() / 2, points.width() / 2, points.height() / 2), pageColors.at(i));
         }
     }
     painter.end();
@@ -111,14 +106,10 @@ void compareQuadrants(const QImage &image, const QList<QColor> &expected)
 {
     QVERIFY(!image.isNull());
     for (int i = 0; i < 4; ++i) {
-        const QColor actual = image.pixelColor(image.width() * (i % 2 ? 3 : 1) / 4,
-                                               image.height() * (i / 2 ? 3 : 1) / 4);
+        const QColor actual = image.pixelColor(image.width() * (i % 2 ? 3 : 1) / 4, image.height() * (i / 2 ? 3 : 1) / 4);
         const QColor color = expected.at(i);
-        QVERIFY2(qAbs(actual.red() - color.red()) <= 12
-                     && qAbs(actual.green() - color.green()) <= 12
-                     && qAbs(actual.blue() - color.blue()) <= 12,
-                 qPrintable(QStringLiteral("Quadrant %1: expected %2, got %3")
-                                .arg(i).arg(color.name(), actual.name())));
+        QVERIFY2(qAbs(actual.red() - color.red()) <= 12 && qAbs(actual.green() - color.green()) <= 12 && qAbs(actual.blue() - color.blue()) <= 12,
+                 qPrintable(QStringLiteral("Quadrant %1: expected %2, got %3").arg(i).arg(color.name(), actual.name())));
     }
 }
 
@@ -136,8 +127,7 @@ void compareWhite(const QImage &image)
 class ImportWorkerGate
 {
 public:
-    ImportWorkerGate()
-        : m_previousMax(QThreadPool::globalInstance()->maxThreadCount())
+    ImportWorkerGate() : m_previousMax(QThreadPool::globalInstance()->maxThreadCount())
     {
         auto *pool = QThreadPool::globalInstance();
         pool->setMaxThreadCount(1);
@@ -183,22 +173,36 @@ public:
             if (QThread::currentThread() != thread())
                 wrongThread.store(true);
         };
-        for (auto signal : {&AppController::busyChanged, &AppController::importingChanged,
-                            &AppController::configChanged, &AppController::statusChanged,
-                            &AppController::documentChanged, &AppController::pageChanged,
-                            &AppController::imageChanged, &AppController::resultChanged,
+        for (auto signal : {&AppController::busyChanged,
+                            &AppController::importingChanged,
+                            &AppController::configChanged,
+                            &AppController::statusChanged,
+                            &AppController::documentChanged,
+                            &AppController::pageChanged,
+                            &AppController::imageChanged,
+                            &AppController::resultChanged,
                             &AppController::docRevisionChanged,
                             &AppController::imageRevisionChanged}) {
             connect(&controller, signal, this, observe, Qt::DirectConnection);
         }
-        connect(&controller, &AppController::importingChanged, this, [this, &controller] {
-            if (QThread::currentThread() == thread())
-                importingStates.append(controller.importing());
-        }, Qt::DirectConnection);
-        connect(&controller, &AppController::documentChanged, this, [this, &controller] {
-            if (QThread::currentThread() == thread())
-                committedCounts.append(controller.pageCount());
-        }, Qt::DirectConnection);
+        connect(
+            &controller,
+            &AppController::importingChanged,
+            this,
+            [this, &controller] {
+                if (QThread::currentThread() == thread())
+                    importingStates.append(controller.importing());
+            },
+            Qt::DirectConnection);
+        connect(
+            &controller,
+            &AppController::documentChanged,
+            this,
+            [this, &controller] {
+                if (QThread::currentThread() == thread())
+                    committedCounts.append(controller.pageCount());
+            },
+            Qt::DirectConnection);
         auto *model = qobject_cast<PageListModel *>(controller.pageModel());
         connect(model, &QAbstractItemModel::rowsAboutToBeInserted, this, observe, Qt::DirectConnection);
         connect(model, &QAbstractItemModel::rowsInserted, this, observe, Qt::DirectConnection);
@@ -210,7 +214,7 @@ public:
     QList<bool> importingStates;
     QList<int> committedCounts;
 };
-} // namespace
+}  // namespace
 
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
 // fixed det-token reply, so the real recognition pipeline produces real boxes.
@@ -218,19 +222,11 @@ public:
 class DetTokenChatServer : public QObject
 {
 public:
-    explicit DetTokenChatServer(QObject *parent = nullptr)
-        : QObject(parent)
-    {
-        connect(&m_server, &QTcpServer::newConnection, this,
-                &DetTokenChatServer::onNewConnection);
-    }
+    explicit DetTokenChatServer(QObject *parent = nullptr) : QObject(parent) { connect(&m_server, &QTcpServer::newConnection, this, &DetTokenChatServer::onNewConnection); }
 
     bool start() { return m_server.listen(QHostAddress::LocalHost, 0); }
 
-    QString baseUrl() const
-    {
-        return QStringLiteral("http://127.0.0.1:%1").arg(m_server.serverPort());
-    }
+    QString baseUrl() const { return QStringLiteral("http://127.0.0.1:%1").arg(m_server.serverPort()); }
 
 private:
     void onNewConnection()
@@ -253,18 +249,15 @@ private:
     {
         // The wrapped <|det|>…<|/det|> stream the current models emit; the model
         // streams newlines as the two characters `\n`.
-        static const QString content = QStringLiteral(
-            "<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
-            "<|det|>text [112, 132, 884, 309]<|/det|>Second block text");
+        static const QString content = QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
+                                                      "<|det|>text [112, 132, 884, 309]<|/det|>Second block text");
         const QByteArray body = QJsonDocument(QJsonObject{
-            {"id", "cmpl-test"},
-            {"object", "chat.completion"},
-            {"choices", QJsonArray{QJsonObject{
-                {"index", 0},
-                {"message", QJsonObject{{"role", "assistant"}, {"content", content}}}}}},
-        }).toJson(QJsonDocument::Compact);
-        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "
-               + QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+                                                  {"id", "cmpl-test"},
+                                                  {"object", "chat.completion"},
+                                                  {"choices", QJsonArray{QJsonObject{{"index", 0}, {"message", QJsonObject{{"role", "assistant"}, {"content", content}}}}}},
+                                              })
+                                    .toJson(QJsonDocument::Compact);
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
     }
 
     QTcpServer m_server;
@@ -311,10 +304,7 @@ private slots:
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_problems = std::make_unique<ProblemLog>();
-        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime,
-                                                       *m_requestProfiles,
-                                                       *m_checkRequestProfiles,
-                                                       *m_verification);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_verification);
         m_controller->setProblemLog(m_problems.get());
 
         // Fixtures that exist in every build: a raster, a generated multi-page
@@ -347,8 +337,7 @@ private slots:
     {
         m_controller.reset();
         // Drain abandoned static workers before deleting fixtures/prerequisites.
-        QVERIFY2(QThreadPool::globalInstance()->waitForDone(kImportTimeoutMs),
-                 "Import worker did not finish after controller destruction");
+        QVERIFY2(QThreadPool::globalInstance()->waitForDone(kImportTimeoutMs), "Import worker did not finish after controller destruction");
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         m_runtime.reset();
         m_requestProfiles.reset();
@@ -360,13 +349,18 @@ private slots:
     {
         int providerCalls = 0;
         QList<int> skippedPages;
-        RecognitionController recognition(*m_settings, *m_runtime, *m_requestProfiles,
+        RecognitionController recognition(
+            *m_settings,
+            *m_runtime,
+            *m_requestProfiles,
             [&providerCalls](int, QString &) {
                 ++providerCalls;
                 QImage image(800, 1000, QImage::Format_RGB32);
                 image.fill(Qt::white);
                 return image;
-            }, nullptr, [&skippedPages](int index) {
+            },
+            nullptr,
+            [&skippedPages](int index) {
                 skippedPages.append(index);
                 return true;
             });
@@ -386,8 +380,7 @@ private slots:
         QCOMPARE(resultSpy.count(), 0);
         QCOMPARE(busySpy.count(), 2);
         QCOMPARE(statusSpy.count(), 1);
-        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(),
-                 QStringLiteral("Page 1 is a blank replacement for an unreadable page; recognition skipped."));
+        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Page 1 is a blank replacement for an unreadable page; recognition skipped."));
 
         skippedPages.clear();
         statusSpy.clear();
@@ -399,8 +392,7 @@ private slots:
         QCOMPARE(resultSpy.count(), 0);
         QCOMPARE(busySpy.count(), 2);
         QCOMPARE(statusSpy.count(), 1);
-        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(),
-                 QStringLiteral("Recognition finished. Skipped 3 unreadable page(s)."));
+        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Recognition finished. Skipped 3 unreadable page(s)."));
     }
 
     // Mixed multi-file import on the *synchronous* path: images and PDFs are
@@ -418,8 +410,7 @@ private slots:
         QSignalSpy busySpy(&controller, &AppController::busyChanged);
 
         // raster (1 page), PDF (3), unreadable file, PDF (3) again
-        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf),
-                              QUrl::fromLocalFile(m_broken), QUrl::fromLocalFile(m_pdf)});
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf), QUrl::fromLocalFile(m_broken), QUrl::fromLocalFile(m_pdf)});
         QVERIFY(controller.importing());
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
@@ -438,8 +429,7 @@ private slots:
         QVERIFY(controller.hasImage());
         QVERIFY(!controller.hasResult());
         QVERIFY(controller.canRecognize());
-        QCOMPARE(controller.statusMessage(),
-                 QStringLiteral("Added 3 file(s), 7 page(s); 1 file(s) skipped."));
+        QCOMPARE(controller.statusMessage(), QStringLiteral("Added 3 file(s), 7 page(s); 1 file(s) skipped."));
         for (int row = 0; row < 7; ++row) {
             const QModelIndex index = model->index(row, 0);
             QCOMPARE(model->data(index, PageListModel::PageIndexRole).toInt(), row);
@@ -453,10 +443,8 @@ private slots:
             const QImage image = controller.pageImage(row, &error);
             QVERIFY2(!image.isNull(), qPrintable(error));
             QVERIFY(error.isEmpty());
-            const QList<QColor> expected =
-                row == 0 ? QList<QColor>(4, Qt::yellow) : colors((row - 1) % 3);
-            QCOMPARE(image.size(),
-                     row == 0 ? QSize(39, 27) : pdfPixelSize(nativeSize((row - 1) % 3)));
+            const QList<QColor> expected = row == 0 ? QList<QColor>(4, Qt::yellow) : colors((row - 1) % 3);
+            QCOMPARE(image.size(), row == 0 ? QSize(39, 27) : pdfPixelSize(nativeSize((row - 1) % 3)));
             compareQuadrants(image, expected);
             compareQuadrants(controller.pageThumbnail(row), expected);
         }
@@ -493,13 +481,12 @@ private slots:
 
         ImportWorkerGate gate;
         QVERIFY(gate.waitUntilHeld());
-        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_multipage),
-                              QUrl::fromLocalFile(m_malformed), QUrl::fromLocalFile(m_multipage)});
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_multipage), QUrl::fromLocalFile(m_malformed), QUrl::fromLocalFile(m_multipage)});
         QVERIFY(controller.importing());
         QVERIFY(!controller.busy());
         QTRY_VERIFY_WITH_TIMEOUT(heartbeats >= 3, 3000);
         QVERIFY(controller.importing());
-        QCOMPARE(controller.pageCount(), 1); // Raster committed; DjVu cannot run yet.
+        QCOMPARE(controller.pageCount(), 1);  // Raster committed; DjVu cannot run yet.
         gate.release();
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         heartbeat.stop();
@@ -580,8 +567,7 @@ private slots:
         QVERIFY(model);
         QAbstractItemModelTester modelTester(model, QAbstractItemModelTester::FailureReportingMode::QtTest);
         ImportSignals observations(controller);
-        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(path),
-                              QUrl::fromLocalFile(m_malformed), QUrl::fromLocalFile(path)});
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(path), QUrl::fromLocalFile(m_malformed), QUrl::fromLocalFile(path)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QCOMPARE(observations.importingStates, QList<bool>({true, false}));
         QCOMPARE(observations.committedCounts, QList<int>({1, 4, 7}));
@@ -631,7 +617,7 @@ private slots:
         }
 
         QVERIFY(controller.movePage(2, 0));
-        QVERIFY(controller.removePage(1)); // Remove the raster, not an original DjVu page.
+        QVERIFY(controller.removePage(1));  // Remove the raster, not an original DjVu page.
         QCOMPARE(controller.pageCount(), 6);
         for (int row = 0; row < 6; ++row) {
             controller.setCurrentPage(row);
@@ -659,7 +645,7 @@ private slots:
         QCOMPARE(controller.statusMessage(), QStringLiteral("Added 1 file(s), 3 page(s)."));
         QVERIFY(controller.currentPageWarning().isEmpty());
     }
-#endif // LLOCR_HAVE_DJVU
+#endif  // LLOCR_HAVE_DJVU
 
     void importingGuardsMutatingActions()
     {
@@ -708,7 +694,7 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QCOMPARE(controller.pageCount(), 5);
     }
-#endif // LLOCR_HAVE_DJVU (asynchronous import path)
+#endif  // LLOCR_HAVE_DJVU (asynchronous import path)
 
     // A diagnostic must not be able to grow the footer (ADR 119): the status
     // line keeps the count, the log keeps the reason. This is the case that
@@ -720,8 +706,7 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
         // One line, no path in it.
-        QCOMPARE(controller.statusMessage(),
-                 QStringLiteral("Added 1 file(s), 1 page(s); 1 file(s) skipped."));
+        QCOMPARE(controller.statusMessage(), QStringLiteral("Added 1 file(s), 1 page(s); 1 file(s) skipped."));
         QVERIFY(!controller.statusMessage().contains(m_broken));
 
         // The reason, at error severity, where a window can show it in full.
@@ -742,7 +727,7 @@ private slots:
         for (int i = 0; i < 50; ++i)
             log.report(StatusMessage::translate("TestAppImport", "Broken page %1.").arg(i));
         QCOMPARE(log.count(), 50);
-        QCOMPARE(changed.count(), 0);  // nothing announced yet
+        QCOMPARE(changed.count(), 0);
 
         QTRY_VERIFY_WITH_TIMEOUT(changed.count() == 1, 2000);
         QCOMPARE(changed.count(), 1);
@@ -771,8 +756,7 @@ private slots:
     {
         ProblemLog log;
         log.report(StatusMessage::literal(QStringLiteral("raw server text")));
-        log.report(StatusMessage::translate("TestAppImport", "Page %1 is blank.").arg(7),
-                   ProblemLog::Error);
+        log.report(StatusMessage::translate("TestAppImport", "Page %1 is blank.").arg(7), ProblemLog::Error);
 
         QCOMPARE(log.count(), 2);
         QCOMPARE(log.warningCount(), 1);
@@ -794,16 +778,14 @@ private slots:
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        QCOMPARE(controller.statusMessage(),
-                 QStringLiteral("Added 1 file(s), 1 page(s)."));
+        QCOMPARE(controller.statusMessage(), QStringLiteral("Added 1 file(s), 1 page(s)."));
 
         // The tests link no .qm, so the language switch is simulated with a
         // translator that knows two of this app's keys.
         class FakeRu : public QTranslator
         {
         public:
-            QString translate(const char *context, const char *sourceText,
-                              const char *, int) const override
+            QString translate(const char *context, const char *sourceText, const char *, int) const override
             {
                 if (qstrcmp(context, "AppController") != 0)
                     return QString();
@@ -821,12 +803,10 @@ private slots:
         QSignalSpy retranslateSpy(&controller, &AppController::retranslateRequested);
         controller.retranslate();
         QCOMPARE(retranslateSpy.count(), 1);
-        QCOMPARE(controller.statusMessage(),
-                 QStringLiteral("Добавлено файлов: 1, страниц: 1"));
+        QCOMPARE(controller.statusMessage(), QStringLiteral("Добавлено файлов: 1, страниц: 1"));
 
         // exportNameFilters was CONSTANT: QML read it once and never again.
-        QCOMPARE(controller.exportNameFilters().value(0),
-                 QStringLiteral("Markdown RU (*.md)"));
+        QCOMPARE(controller.exportNameFilters().value(0), QStringLiteral("Markdown RU (*.md)"));
 
         QCoreApplication::removeTranslator(&translator);
     }
@@ -881,8 +861,9 @@ private slots:
         QVERIFY2(ticks > 0, "the timer never fired");
         QVERIFY2(maxGapMs < 500,
                  qPrintable(QStringLiteral("longest gap between timer ticks: %1 ms "
-                                          "while rendering a page (%2 ticks total)")
-                                .arg(maxGapMs).arg(ticks)));
+                                           "while rendering a page (%2 ticks total)")
+                                .arg(maxGapMs)
+                                .arg(ticks)));
     }
 
     // A rendered page belongs to the document it was rendered from: switching
@@ -896,12 +877,10 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.previewRendering(0), 20000);
         QVERIFY(!controller.previewImage(0).isNull());
 
-        // A second document is appended; the cache must not answer for it.
         controller.openFiles({QUrl::fromLocalFile(m_pdf)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QVERIFY(controller.pageCount() > 1);
-        QVERIFY2(controller.previewImage(0).isNull(),
-                 "a page image from the previous document was still served");
+        QVERIFY2(controller.previewImage(0).isNull(), "a page image from the previous document was still served");
     }
 
     // Regression: the document is the source of truth for blocks. Deleting a
@@ -936,11 +915,9 @@ private slots:
         m_controller->setSelectedBoxIndex(1);
         QVERIFY(m_controller->removeBlock(1));
 
-        // Selection is cleared, the row is gone, and the text lost the block.
         QCOMPARE(m_controller->selectedBoxIndex(), -1);
         QCOMPARE(boxes->rowCount(), 1);
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::LabelRole).toString(),
-                 QStringLiteral("title"));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::LabelRole).toString(), QStringLiteral("title"));
         const QString after = m_controller->resultText();
         QVERIFY(after.contains(QStringLiteral("1. Introduction")));
         QVERIFY(!after.contains(QStringLiteral("Second block text")));
@@ -1004,10 +981,7 @@ private slots:
         // and the revert did not touch the boxes, so the remaining block can be
         // deleted again (only the removed one is gone).
         QCOMPARE(qobject_cast<QAbstractItemModel *>(m_controller->boxModel())->rowCount(), 1);
-        QVERIFY2(m_controller->removeBlock(0),
-                 qPrintable(QStringLiteral("pages=%2 hasResult=%3")
-                                .arg(m_controller->pageCount())
-                                .arg(m_controller->hasResult())));
+        QVERIFY2(m_controller->removeBlock(0), qPrintable(QStringLiteral("pages=%2 hasResult=%3").arg(m_controller->pageCount()).arg(m_controller->hasResult())));
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("1. Introduction")));
     }
 
@@ -1021,9 +995,7 @@ private slots:
     void failedImportsClearStateAndAllowRetry()
     {
         QFETCH(QString, kind);
-        const QString path = kind == QStringLiteral("unreadable")
-            ? m_broken
-            : m_dir.filePath(QStringLiteral("missing.pdf"));
+        const QString path = kind == QStringLiteral("unreadable") ? m_broken : m_dir.filePath(QStringLiteral("missing.pdf"));
         QVERIFY(!path.isEmpty());
         auto &controller = *m_controller;
         ImportSignals observations(controller);
@@ -1083,30 +1055,25 @@ private slots:
         }
         ImportSignals observations(*m_controller);
         QPointer<AppController> weak(m_controller.get());
-        m_controller->openFiles({QUrl::fromLocalFile(m_multipage), QUrl::fromLocalFile(m_raster),
-                                 QUrl::fromLocalFile(m_multipage)});
+        m_controller->openFiles({QUrl::fromLocalFile(m_multipage), QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_multipage)});
         QVERIFY(m_controller->importing());
         m_controller.reset();
         QVERIFY(weak.isNull());
         if (gate)
             gate->release();
-        QVERIFY2(QThreadPool::globalInstance()->waitForDone(kImportTimeoutMs),
-                 "Detached import worker did not finish");
+        QVERIFY2(QThreadPool::globalInstance()->waitForDone(kImportTimeoutMs), "Detached import worker did not finish");
         // Dispatch stale watcher events/queued next-file callbacks, if any.
         QTest::qWait(20);
         QCOMPARE(observations.importingStates, QList<bool>({true}));
         QVERIFY(observations.committedCounts.isEmpty());
         QVERIFY(!observations.wrongThread.load());
-        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime,
-                                                       *m_requestProfiles,
-                                                       *m_checkRequestProfiles,
-                                                       *m_verification);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_verification);
         m_controller->openFiles({QUrl::fromLocalFile(m_multipage)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
         QCOMPARE(m_controller->pageCount(), 3);
         compareQuadrants(m_controller->pageImage(1), colors(1));
     }
-#endif // LLOCR_HAVE_DJVU (asynchronous import path)
+#endif  // LLOCR_HAVE_DJVU (asynchronous import path)
 };
 
 int main(int argc, char *argv[])

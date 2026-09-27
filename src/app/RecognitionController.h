@@ -27,12 +27,8 @@ class RecognitionController : public QObject
 public:
     using ImageProvider = std::function<QImage(int pageIndex, QString &error)>;
 
-    explicit RecognitionController(SettingsStore &settings,
-                                   RuntimeController &runtime,
-                                   RequestProfileStore &requestProfiles,
-                                   ImageProvider imageProvider,
-                                   QObject *parent = nullptr,
-                                   std::function<bool(int)> skipPage = {});
+    explicit RecognitionController(
+        SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, ImageProvider imageProvider, QObject *parent = nullptr, std::function<bool(int)> skipPage = {});
 
     bool busy() const { return m_busy; }
     void startCurrent(int index, int totalPages);
@@ -40,7 +36,7 @@ public:
     void stop();
 
 signals:
-    void rawResultReady(int pageIndex, const llocr::OcrResult& raw);
+    void rawResultReady(int pageIndex, const llocr::OcrResult &raw);
     void statusRequested(const StatusMessage &message);
 
     void busyChanged();

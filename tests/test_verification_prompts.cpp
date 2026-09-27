@@ -1,11 +1,11 @@
-#include <QtTest>
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QTemporaryDir>
-#include <QCoreApplication>
+#include <QtTest>
 
-#include "app/SettingsStore.h"
 #include "app/VerificationPromptStore.h"
+#include "config/SettingsStore.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -14,13 +14,13 @@ namespace {
 
 QString userPromptsPath(const QTemporaryDir &dir)
 {
-    return QDir(dir.path())
-        .filePath(QStringLiteral("runtime/profiles/verifyPrompts.json"));
+    return QDir(dir.path()).filePath(QStringLiteral("runtime/profiles/verifyPrompts.json"));
 }
 
 }  // namespace
 
-class TestVerificationPrompts : public QObject {
+class TestVerificationPrompts : public QObject
+{
     Q_OBJECT
 
 private:
@@ -56,8 +56,6 @@ private slots:
         QCoreApplication::setApplicationName(QStringLiteral("test_verification_prompts"));
     }
 
-    // --- Built-in defaults ---
-
     void builtInHasBlocksAndSystemPrompt()
     {
         auto store = makeStore();
@@ -78,14 +76,11 @@ private slots:
         QVERIFY(store->isTypeEnabled(QStringLiteral("text")));
 
         // The list model mirrors the store.
-        const VerificationBlocksModel *model =
-            dynamic_cast<VerificationBlocksModel *>(store->blockModel());
+        const VerificationBlocksModel *model = dynamic_cast<VerificationBlocksModel *>(store->blockModel());
         QVERIFY(model);
         QVERIFY(model->rowCount() >= 6);
         QCOMPARE(model->rowCount(), store->blockTypes().size());
     }
-
-    // --- User overrides are persisted and merged back on reload ---
 
     void savePersistsChangedPromptAndEnablement()
     {
@@ -98,12 +93,10 @@ private slots:
         const int titleRow = store->blockTypes().indexOf(QStringLiteral("title"));
         QVERIFY(textRow >= 0 && titleRow >= 0);
 
-        const QString builtInTextPrompt =
-            store->promptForType(QStringLiteral("text"));
+        const QString builtInTextPrompt = store->promptForType(QStringLiteral("text"));
         QVERIFY(!builtInTextPrompt.isEmpty());
 
-        auto *model =
-            dynamic_cast<VerificationBlocksModel *>(store->blockModel());
+        auto *model = dynamic_cast<VerificationBlocksModel *>(store->blockModel());
         QVERIFY(model);
         model->setEnabled(titleRow, false);
         model->setPrompt(textRow, QStringLiteral("Custom prompt for text."));
@@ -117,8 +110,7 @@ private slots:
         QVERIFY(settings2);
         VerificationPromptStore reloaded(*settings2);
         QVERIFY(!reloaded.isTypeEnabled(QStringLiteral("title")));
-        QCOMPARE(reloaded.promptForType(QStringLiteral("text")),
-                 QStringLiteral("Custom prompt for text."));
+        QCOMPARE(reloaded.promptForType(QStringLiteral("text")), QStringLiteral("Custom prompt for text."));
         QCOMPARE(reloaded.systemPrompt(), QStringLiteral("Custom system prompt."));
 
         // Unchanged types keep their built-in values.
@@ -128,11 +120,8 @@ private slots:
         // Restoring defaults removes the user file and re-reads built-ins.
         reloaded.resetToDefaults();
         QVERIFY(reloaded.isTypeEnabled(QStringLiteral("title")));
-        QCOMPARE(reloaded.promptForType(QStringLiteral("text")),
-                 builtInTextPrompt);
+        QCOMPARE(reloaded.promptForType(QStringLiteral("text")), builtInTextPrompt);
     }
-
-    // --- Saving the built-in state removes the user file ---
 
     void saveMatchingDefaultsRemovesUserFile()
     {

@@ -1,11 +1,11 @@
-#include <QtTest>
 #include <QFile>
 #include <QTemporaryDir>
+#include <QtTest>
 
-#include "app/LaunchProfileStore.h"
-#include "app/SettingsStore.h"
-#include "runtime/ModelCatalog.h"
+#include "config/SettingsStore.h"
 #include "runtime/InstalledState.h"
+#include "runtime/LaunchProfileStore.h"
+#include "runtime/ModelCatalog.h"
 #include "runtime/ModelInstallTransaction.h"
 #include "runtime/ModelPreset.h"
 #include "runtime/StagedInstall.h"
@@ -30,7 +30,8 @@ HfFile file(const QString &path, qint64 size, bool isDir = false)
 
 // Pure logic extracted from ModelInstaller: repo directory naming, model/mmproj
 // selection from a HF tree, and the idle-state safety of cancel/shutdown.
-class TestModelInstallTransaction : public QObject {
+class TestModelInstallTransaction : public QObject
+{
     Q_OBJECT
 
 private:
@@ -43,26 +44,20 @@ private slots:
     {
         QVERIFY(m_dir.isValid());
         QCoreApplication::setOrganizationName(QStringLiteral("llocr_test"));
-        QCoreApplication::setApplicationName(
-            QStringLiteral("test_model_install_transaction"));
+        QCoreApplication::setApplicationName(QStringLiteral("test_model_install_transaction"));
     }
 
     void repoDirNameSanitizes()
     {
-        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("org/repo")),
-                 QStringLiteral("org__repo"));
+        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("org/repo")), QStringLiteral("org__repo"));
         // Hostile characters and backslashes are replaced (per segment; the
         // joiner between segments is a double underscore).
-        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("o*g/r:e\\p")),
-                 QStringLiteral("o_g__r_e_p"));
+        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("o*g/r:e\\p")), QStringLiteral("o_g__r_e_p"));
         // Dot segments are dropped.
-        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("../x/../repo")),
-                 QStringLiteral("x__repo"));
+        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("../x/../repo")), QStringLiteral("x__repo"));
         // Nothing usable falls back to a fixed name.
-        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("../..")),
-                 QStringLiteral("model"));
-        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("  ")),
-                 QStringLiteral("model"));
+        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("../..")), QStringLiteral("model"));
+        QCOMPARE(ModelInstallTransaction::repoDirName(QStringLiteral("  ")), QStringLiteral("model"));
     }
 
     void selectPicksLargestSingle()
@@ -74,8 +69,7 @@ private slots:
         };
         QStringList models;
         QString mmproj;
-        ModelInstallTransaction::selectModelFiles(tree, QString(), QString(),
-                                                  &models, mmproj);
+        ModelInstallTransaction::selectModelFiles(tree, QString(), QString(), &models, mmproj);
         QCOMPARE(models.size(), 1);
         QCOMPARE(models.first(), QStringLiteral("model/big-Q8_0.gguf"));
         QVERIFY(mmproj.isEmpty());
@@ -89,8 +83,7 @@ private slots:
         };
         QStringList models;
         QString mmproj;
-        ModelInstallTransaction::selectModelFiles(
-            tree, QStringLiteral("small-Q4_K_M.gguf"), QString(), &models, mmproj);
+        ModelInstallTransaction::selectModelFiles(tree, QStringLiteral("small-Q4_K_M.gguf"), QString(), &models, mmproj);
         QCOMPARE(models.size(), 1);
         QCOMPARE(models.first(), QStringLiteral("b/small-Q4_K_M.gguf"));
     }
@@ -104,8 +97,7 @@ private slots:
         };
         QStringList models;
         QString mmproj;
-        ModelInstallTransaction::selectModelFiles(tree, QString(), QString(),
-                                                  &models, mmproj);
+        ModelInstallTransaction::selectModelFiles(tree, QString(), QString(), &models, mmproj);
         // 110 (group) beats 80 (single); parts are ordered by split index.
         QCOMPARE(models.size(), 2);
         QCOMPARE(models.first(), QStringLiteral("m/model-00001-of-00002.gguf"));
@@ -123,9 +115,7 @@ private slots:
         };
         QStringList models;
         QString mmproj;
-        ModelInstallTransaction::selectModelFiles(
-            tree, QStringLiteral("model-00001-of-00002.gguf"),
-            QStringLiteral("mmproj-model.gguf"), &models, mmproj);
+        ModelInstallTransaction::selectModelFiles(tree, QStringLiteral("model-00001-of-00002.gguf"), QStringLiteral("mmproj-model.gguf"), &models, mmproj);
         QCOMPARE(models.size(), 2);
         QVERIFY(models.contains(QStringLiteral("m/model-00001-of-00002.gguf")));
         QVERIFY(models.contains(QStringLiteral("m/model-00002-of-00002.gguf")));
@@ -142,8 +132,7 @@ private slots:
         };
         QStringList models;
         QString mmproj;
-        ModelInstallTransaction::selectModelFiles(tree, QString(), QString(),
-                                                  &models, mmproj);
+        ModelInstallTransaction::selectModelFiles(tree, QString(), QString(), &models, mmproj);
         QCOMPARE(models.size(), 1);
         QCOMPARE(models.first(), QStringLiteral("d/model.gguf"));
         // No preference: the first projector in tree order wins.
@@ -159,8 +148,7 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(m_dir.filePath(QStringLiteral("runtime")));
         settings.setRuntimeModelsDir(m_dir.filePath(QStringLiteral("models")));
-        const QString presetsPath =
-            QDir(m_dir.path()).filePath(QStringLiteral("launch-presets.json"));
+        const QString presetsPath = QDir(m_dir.path()).filePath(QStringLiteral("launch-presets.json"));
         {
             QFile f(presetsPath);
             QVERIFY(f.open(QIODevice::WriteOnly));
@@ -187,8 +175,7 @@ private slots:
         settings.setRuntimeRootDir(m_dir.filePath(QStringLiteral("runtime")));
         settings.setRuntimeModelsDir(m_dir.filePath(QStringLiteral("models")));
 
-        const QString presetsPath =
-            QDir(m_dir.path()).filePath(QStringLiteral("launch-presets.json"));
+        const QString presetsPath = QDir(m_dir.path()).filePath(QStringLiteral("launch-presets.json"));
         {
             QFile f(presetsPath);
             QVERIFY(f.open(QIODevice::WriteOnly));

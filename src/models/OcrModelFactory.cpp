@@ -18,8 +18,7 @@ std::unique_ptr<OcrModel> OcrModelFactory::create(const QString &modelId)
         return std::make_unique<UnlimitedOcrModel>();
     if (modelId == QStringLiteral("lfm25-vl-3b"))
         return std::make_unique<Lfm25VlModel>();
-    qWarning() << "OcrModelFactory: unknown model id" << modelId
-               << "— falling back to the default model";
+    qWarning() << "OcrModelFactory: unknown model id" << modelId << "— falling back to the default model";
     return std::make_unique<UnlimitedOcrModel>();
 }
 
@@ -46,10 +45,7 @@ QString OcrModelFactory::idForDisplayName(const QString &displayName)
         if (model->displayName() == displayName)
             return id;
     }
-    // No silent substitution: an unknown display name yields an empty id, so a
-    // caller cannot end up "selecting" the default model by accident (ADR 110).
-    // The UI works on ids (OcrModelListModel) and no longer needs this at all.
     return QString();
 }
 
-} // namespace llocr
+}  // namespace llocr

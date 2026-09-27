@@ -1,15 +1,12 @@
 #include <QDir>
 #include <QStandardPaths>
 
-#include "runtime/RuntimePaths.h"
+#include "config/RuntimePaths.h"
 
 namespace llocr {
 
 RuntimePaths::RuntimePaths(QString rootDir, QString modelsDir)
-    : m_rootDir(rootDir.isEmpty() ? defaultRootDir() : rootDir)
-    , m_modelsDir(modelsDir.isEmpty()
-                      ? QDir(m_rootDir).filePath(QStringLiteral("models"))
-                      : modelsDir)
+    : m_rootDir(rootDir.isEmpty() ? defaultRootDir() : rootDir), m_modelsDir(modelsDir.isEmpty() ? QDir(m_rootDir).filePath(QStringLiteral("models")) : modelsDir)
 {
 }
 
@@ -75,8 +72,7 @@ QString RuntimePaths::serverLogPath() const
 
 QString RuntimePaths::ensureDirectories() const
 {
-    const QStringList dirs = {m_rootDir,   m_modelsDir,           runtimeDir(),
-                              stagingDir(), logsDir(),            cacheDir()};
+    const QStringList dirs = {m_rootDir, m_modelsDir, runtimeDir(), stagingDir(), logsDir(), cacheDir()};
     for (const QString &dir : dirs) {
         if (!QDir().mkpath(dir))
             return QObject::tr("Unable to create directory: %1").arg(dir);

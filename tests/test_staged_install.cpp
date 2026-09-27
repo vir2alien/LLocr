@@ -37,8 +37,7 @@ private slots:
             file.write("partial");
             file.close();
         }
-        QVERIFY2(!QFileInfo::exists(staging),
-                 "a staging directory must not survive an uncommitted install");
+        QVERIFY2(!QFileInfo::exists(staging), "a staging directory must not survive an uncommitted install");
     }
 
     void discardIsIdempotentAndExplicit()
@@ -82,12 +81,10 @@ private slots:
             QVERIFY(!QFileInfo::exists(staging));
             QVERIFY(QFileInfo::exists(finalDir));
             QVERIFY(QFileInfo::exists(QDir(finalDir).filePath(QStringLiteral("new.bin"))));
-            QVERIFY2(!QFileInfo::exists(QDir(finalDir).filePath(QStringLiteral("old.bin"))),
-                     "the replaced install must be gone");
+            QVERIFY2(!QFileInfo::exists(QDir(finalDir).filePath(QStringLiteral("old.bin"))), "the replaced install must be gone");
         }
         // No leftover .old-* backup directory.
-        const QStringList leftovers =
-            QDir(dir.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        const QStringList leftovers = QDir(dir.path()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
         QCOMPARE(leftovers, QStringList({QStringLiteral("build-1")}));
     }
 

@@ -8,7 +8,6 @@
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QFutureWatcher>
-#include <QTimer>
 #include <QHash>
 #include <QMarginsF>
 #include <QPageLayout>
@@ -17,72 +16,48 @@
 #include <QRegularExpression>
 #include <QStringView>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QTimer>
 #include <QVariant>
 
 #include "parsers/ParserFactory.h"
 
-#include "app/RequestProfileStore.h"
+#include "config/RequestProfileStore.h"
 #include "core/StatusMessage.h"
 #include "models/OcrModelFactory.h"
 
-
 namespace llocr {
 
-AppController::AppController(SettingsStore &settings, RuntimeController &runtime,
-                             RequestProfileStore &requestProfiles,
-                             RequestProfileStore &checkRequestProfiles,
-                             VerificationPromptStore &verification,
-                             QObject *parent)
-    : m_settings(settings)
-    , m_runtime(runtime)
-    , m_recognition(
-          settings, runtime, requestProfiles,
-          [this](int index, QString &error) { return pageImage(index, &error); },
-                    nullptr, [this](int index) {
-                        QReadLocker locker(&m_documentLock);
-                        return m_document.isValidIndex(index) && !m_document.page(index).sourceError.isEmpty();
-                    })
-    , m_verify(
-          {m_document, verification, checkRequestProfiles, runtime,
-           [this](int pageIndex, int boxIndex) {
-               return croppedImage(pageIndex, boxIndex);
-           },
-           [this]() { return m_recognition.busy(); }},
-          this)
-    , m_export(
-          {m_document, m_settings,
-           [this](int pageIndex, int boxIndex) {
-               return croppedImage(pageIndex, boxIndex);
-           },
-           [this]() { return m_importing; }},
-          this)
-    , QObject(parent)
+AppController::AppController(
+    SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, RequestProfileStore &checkRequestProfiles, VerificationPromptStore &verification, QObject *parent)
+    : m_settings(settings), m_runtime(runtime), m_recognition(
+                                                    settings,
+                                                    runtime,
+                                                    requestProfiles,
+                                                    [this](int index, QString &error) { return pageImage(index, &error); },
+                                                    nullptr,
+                                                    [this](int index) {
+                                                        QReadLocker locker(&m_documentLock);
+                                                        return m_document.isValidIndex(index) && !m_document.page(index).sourceError.isEmpty();
+                                                    }),
+      m_verify({m_document, verification, checkRequestProfiles, runtime, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_recognition.busy(); }},
+               this),
+      m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this), QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
         if (!m_recognition.busy() && !m_recognitionStopped && m_settings.autoCheck())
             QTimer::singleShot(0, this, [this]() { checkAllEnabledBlocks(true); });
         emit busyChanged();
     });
-    connect(&m_recognition, &RecognitionController::statusRequested, this,
-            [this](const StatusMessage& message) { setStatus(message); });
-    connect(&m_recognition, &RecognitionController::rawResultReady, this,
-            &AppController::applyRawResult);
+    connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+    connect(&m_recognition, &RecognitionController::rawResultReady, this, &AppController::applyRawResult);
 
-    connect(&m_verify, &VerificationQueueController::stateChanged, this,
-            &AppController::checkStateChanged);
-    connect(&m_verify, &VerificationQueueController::statusRequested, this,
-            [this](const StatusMessage &message) { setStatus(message); });
-    connect(&m_verify, &VerificationQueueController::blockChecked, this,
-            &AppController::applyCheckResultToBox);
-    connect(&m_verify, &VerificationQueueController::problemReported, this,
-            [this](const StatusMessage &message) {
-                reportProblem(message, ProblemLog::Error);
-            });
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::checkStateChanged);
+    connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+    connect(&m_verify, &VerificationQueueController::blockChecked, this, &AppController::applyCheckResultToBox);
+    connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
 
-    connect(&m_export, &ExportController::exportingChanged, this,
-            &AppController::exportingChanged);
-    connect(&m_export, &ExportController::statusRequested, this,
-            [this](const StatusMessage &message) { setStatus(message); });
+    connect(&m_export, &ExportController::exportingChanged, this, &AppController::exportingChanged);
+    connect(&m_export, &ExportController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
 
     connect(this, &AppController::pageChanged, this, [this]() {
         ++m_imageRevision;
@@ -95,18 +70,10 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
         emit imageRevisionChanged();
     });
 
-    connect(&m_settings, &SettingsStore::modelNameChanged, this, [this]() {
-        emit configChanged();
-    });
-    connect(&m_runtime, &RuntimeController::stateChanged, this, [this]() {
-        emit configChanged();
-    });
-    connect(&m_runtime, &RuntimeController::busyStateChanged, this, [this]() {
-        emit configChanged();
-    });
-    connect(&m_runtime, &RuntimeController::configValidChanged, this, [this]() {
-        emit configChanged();
-    });
+    connect(&m_settings, &SettingsStore::modelNameChanged, this, [this]() { emit configChanged(); });
+    connect(&m_runtime, &RuntimeController::stateChanged, this, [this]() { emit configChanged(); });
+    connect(&m_runtime, &RuntimeController::busyStateChanged, this, [this]() { emit configChanged(); });
+    connect(&m_runtime, &RuntimeController::configValidChanged, this, [this]() { emit configChanged(); });
 }
 
 QStringList AppController::parserNames() const
@@ -184,8 +151,7 @@ bool AppController::hasResult() const
 
 bool AppController::canRecognize() const
 {
-    if (m_document.isEmpty() || m_recognition.busy() || m_importing
-        || m_verify.checkBusy())
+    if (m_document.isEmpty() || m_recognition.busy() || m_importing || m_verify.checkBusy())
         return false;
     return m_runtime.canRecognize(true);
 }
@@ -193,15 +159,13 @@ bool AppController::canRecognize() const
 QString AppController::currentPageWarning() const
 {
     QReadLocker locker(&m_documentLock);
-    return m_document.isValidIndex(m_currentPage) ? m_document.page(m_currentPage).sourceError
-                                                 : QString();
+    return m_document.isValidIndex(m_currentPage) ? m_document.page(m_currentPage).sourceError : QString();
 }
 
 QString AppController::parseWarning() const
 {
     QReadLocker locker(&m_documentLock);
-    return m_document.isValidIndex(m_currentPage) ? m_document.page(m_currentPage).parseNote
-                                                 : QString();
+    return m_document.isValidIndex(m_currentPage) ? m_document.page(m_currentPage).parseNote : QString();
 }
 
 QString AppController::resultText() const
@@ -268,26 +232,23 @@ QImage AppController::previewImage(int index)
     const quint64 generation = m_previewGeneration;
 
     auto *watcher = new QFutureWatcher<QImage>(this);
-    connect(watcher, &QFutureWatcher<QImage>::finished, this,
-            [this, watcher, index, generation]() {
-                const QImage rendered = watcher->result();
-                watcher->deleteLater();
-                // The document (or the selected page) moved on while the worker
-                // ran: the result belongs to a state nobody is looking at.
-                if (generation != m_previewGeneration)
-                    return;
-                if (m_previewRendering == index)
-                    m_previewRendering = -1;
-                if (rendered.isNull())
-                    return;
-                m_previewCache.insert(index, rendered);
-                emit pageImageReady(index);
-                ++m_imageRevision;
-                emit imageRevisionChanged();
-            });
-    watcher->setFuture(QtConcurrent::run([request]() {
-        return DocumentModel::renderDetached(request);
-    }));
+    connect(watcher, &QFutureWatcher<QImage>::finished, this, [this, watcher, index, generation]() {
+        const QImage rendered = watcher->result();
+        watcher->deleteLater();
+        // The document (or the selected page) moved on while the worker
+        // ran: the result belongs to a state nobody is looking at.
+        if (generation != m_previewGeneration)
+            return;
+        if (m_previewRendering == index)
+            m_previewRendering = -1;
+        if (rendered.isNull())
+            return;
+        m_previewCache.insert(index, rendered);
+        emit pageImageReady(index);
+        ++m_imageRevision;
+        emit imageRevisionChanged();
+    });
+    watcher->setFuture(QtConcurrent::run([request]() { return DocumentModel::renderDetached(request); }));
     return {};
 }
 
@@ -296,10 +257,10 @@ QImage AppController::croppedImage(int pageIndex, int boxIndex)
     QWriteLocker locker(&m_documentLock);
     if (!m_document.isValidIndex(pageIndex))
         return {};
-    const DocumentPage& page = m_document.page(pageIndex);
+    const DocumentPage &page = m_document.page(pageIndex);
     if (!page.recognized || page.result.pages.isEmpty())
         return {};
-    const QList<BoundingBox>& boxes = page.result.pages[0].boxes;
+    const QList<BoundingBox> &boxes = page.result.pages[0].boxes;
     if (boxIndex < 0 || boxIndex >= boxes.size())
         return {};
 
@@ -308,14 +269,11 @@ QImage AppController::croppedImage(int pageIndex, int boxIndex)
         return {};
 
     m_document.fullImage(pageIndex);
-    const QImage& img = m_document.page(pageIndex).image;
+    const QImage &img = m_document.page(pageIndex).image;
     if (img.isNull())
         return {};
 
-    QRect px(qRound(norm.x() * img.width()),
-             qRound(norm.y() * img.height()),
-             qRound(norm.width() * img.width()),
-             qRound(norm.height() * img.height()));
+    QRect px(qRound(norm.x() * img.width()), qRound(norm.y() * img.height()), qRound(norm.width() * img.width()), qRound(norm.height() * img.height()));
     px = px.intersected(img.rect());
     if (px.width() < 1 || px.height() < 1)
         return {};
@@ -353,13 +311,13 @@ struct AppController::ImportState {
     QStringList warnings;
 };
 
-void AppController::openFiles(const QVariantList& fileUrls)
+void AppController::openFiles(const QVariantList &fileUrls)
 {
     if (m_recognition.busy() || m_importing || m_export.exporting())
         return;
 
     QStringList paths;
-    for (const QVariant& variant : fileUrls) {
+    for (const QVariant &variant : fileUrls) {
         const QUrl url = variant.toUrl();
         const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
         if (!path.isEmpty())
@@ -379,21 +337,19 @@ void AppController::openFiles(const QVariantList& fileUrls)
     importNextFile(state);
 }
 
-void AppController::importNextFile(const std::shared_ptr<ImportState>& state)
+void AppController::importNextFile(const std::shared_ptr<ImportState> &state)
 {
     if (state->next >= state->paths.size()) {
         finishImport(*state);
         return;
     }
     const QString path = state->paths.at(state->next++);
-    setStatus(StatusMessage::translate("AppController", "Importing %1 (%2/%3)…")
-                  .arg(QFileInfo(path).fileName()).arg(state->next).arg(state->paths.size()));
+    setStatus(StatusMessage::translate("AppController", "Importing %1 (%2/%3)…").arg(QFileInfo(path).fileName()).arg(state->next).arg(state->paths.size()));
     const int pagesBefore = m_document.pageCount();
     const QString suffix = QFileInfo(path).suffix().toLower();
     if (suffix == QStringLiteral("djvu") || suffix == QStringLiteral("djv")) {
         auto *watcher = new QFutureWatcher<DocumentModel::PreparedDjVu>(this);
-        connect(watcher, &QFutureWatcher<DocumentModel::PreparedDjVu>::finished, this,
-                [this, watcher, state, pagesBefore]() {
+        connect(watcher, &QFutureWatcher<DocumentModel::PreparedDjVu>::finished, this, [this, watcher, state, pagesBefore]() {
             const auto prepared = watcher->result();
             watcher->deleteLater();
             {
@@ -403,9 +359,7 @@ void AppController::importNextFile(const std::shared_ptr<ImportState>& state)
             state->warnings.append(prepared.warnings);
             recordImportedFile(state, pagesBefore, prepared.error);
         });
-        watcher->setFuture(QtConcurrent::run([path]() {
-            return DocumentModel::prepareDjVu(path);
-        }));
+        watcher->setFuture(QtConcurrent::run([path]() { return DocumentModel::prepareDjVu(path); }));
         return;
     }
     QString error;
@@ -416,8 +370,7 @@ void AppController::importNextFile(const std::shared_ptr<ImportState>& state)
     recordImportedFile(state, pagesBefore, error);
 }
 
-void AppController::recordImportedFile(const std::shared_ptr<ImportState>& state,
-                                       int pagesBefore, const QString& error)
+void AppController::recordImportedFile(const std::shared_ptr<ImportState> &state, int pagesBefore, const QString &error)
 {
     const int added = m_document.pageCount() - pagesBefore;
     if (added > 0) {
@@ -437,35 +390,27 @@ void AppController::recordImportedFile(const std::shared_ptr<ImportState>& state
     QTimer::singleShot(0, this, [this, state]() { importNextFile(state); });
 }
 
-void AppController::finishImport(const ImportState& state)
+void AppController::finishImport(const ImportState &state)
 {
     StatusMessage summary;
     if (state.addedPages == 0) {
-        summary = state.firstError.isEmpty()
-            ? StatusMessage::translate("AppController",
-                                "None of the selected files could be added.")
-            : StatusMessage::literal(state.firstError);
+        summary = state.firstError.isEmpty() ? StatusMessage::translate("AppController", "None of the selected files could be added.") : StatusMessage::literal(state.firstError);
     } else if (state.skipped > 0) {
-        summary = StatusMessage::translate(
-            "AppController", "Added %1 file(s), %2 page(s); %3 file(s) skipped.")
-            .arg(state.addedFiles).arg(state.addedPages).arg(state.skipped);
+        summary = StatusMessage::translate("AppController", "Added %1 file(s), %2 page(s); %3 file(s) skipped.").arg(state.addedFiles).arg(state.addedPages).arg(state.skipped);
     } else {
-        summary = StatusMessage::translate("AppController", "Added %1 file(s), %2 page(s).")
-            .arg(state.addedFiles).arg(state.addedPages);
+        summary = StatusMessage::translate("AppController", "Added %1 file(s), %2 page(s).").arg(state.addedFiles).arg(state.addedPages);
     }
-    // The per-page diagnostics go to the log. Joined onto the status line they
-    // became a paragraph of decoder output that did not fit the footer at all
-    // (ADR 119), so the line keeps the count and the log keeps the reasons.
-    for (const QString& warning : state.warnings)
+    for (const QString &warning : state.warnings)
         reportProblem(StatusMessage::literal(warning));
     if (state.skipped > 0 && !state.firstError.isEmpty())
         reportProblem(StatusMessage::literal(state.firstError), ProblemLog::Error);
 
     if (!state.warnings.isEmpty()) {
         setStatus(StatusMessage::join({summary,
-            StatusMessage::translate("AppController",
-                              "Warning: %1 page(s) replaced with blank pages — "
-                              "see the problem log.").arg(state.warnings.size())}));
+                                       StatusMessage::translate("AppController",
+                                                                "Warning: %1 page(s) replaced with blank pages — "
+                                                                "see the problem log.")
+                                           .arg(state.warnings.size())}));
     } else {
         setStatus(summary);
     }
@@ -474,7 +419,7 @@ void AppController::finishImport(const ImportState& state)
     emit configChanged();
 }
 
-bool AppController::reportProblem(const StatusMessage& message, ProblemLog::Severity severity)
+bool AppController::reportProblem(const StatusMessage &message, ProblemLog::Severity severity)
 {
     if (!m_problems || message.isEmpty())
         return false;
@@ -546,8 +491,7 @@ bool AppController::movePage(int from, int to)
     m_pageModel.setCurrent(m_currentPage);
     updateBoxesForCurrent();
 
-    setStatus(StatusMessage::translate("AppController", "Moved page %1 to position %2.")
-              .arg(from + 1).arg(to + 1));
+    setStatus(StatusMessage::translate("AppController", "Moved page %1 to position %2.").arg(from + 1).arg(to + 1));
 
     notifyDocumentChanged();
     return true;
@@ -579,7 +523,7 @@ void AppController::recognizeAll()
     m_recognitionStopped = false;
 }
 
-void AppController::applyRawResult(int index, const OcrResult& rawResult)
+void AppController::applyRawResult(int index, const OcrResult &rawResult)
 {
     if (!m_document.isValidIndex(index))
         return;
@@ -588,14 +532,12 @@ void AppController::applyRawResult(int index, const OcrResult& rawResult)
     if (auto parser = makeParser())
         parsed = parser->parse(rawResult.text);
 
-    DocumentPage& page = m_document.page(index);
+    DocumentPage &page = m_document.page(index);
     page.result = parsed;
     page.recognized = true;
     // Parser diagnostics (e.g. "no layout tokens found") stay on the page as a
     // non-blocking warning — the status line is overwritten by the run summary.
-    page.parseNote = parsed.success && !parsed.notes.isEmpty()
-                         ? parsed.notes.join(QLatin1String(" "))
-                         : QString();
+    page.parseNote = parsed.success && !parsed.notes.isEmpty() ? parsed.notes.join(QLatin1String(" ")) : QString();
 
     m_pageModel.setRecognized(index, true);
 
@@ -624,16 +566,12 @@ void AppController::stop()
     m_recognition.stop();
 }
 
-void AppController::setCurrentPageText(const QString& text)
+void AppController::setCurrentPageText(const QString &text)
 {
     if (!currentPageEditable())
         return;
 
     const int index = m_currentPage;
-    // Compare against what the page shows *now*: after a structural edit
-    // (removed block, applied fix) the recognized text is no longer what the
-    // page contains, and comparing against it made the editor discard the
-    // structural edit as soon as the user typed it back (ADR 102).
     if (text == pageText(index))
         return;
 
@@ -659,15 +597,14 @@ void AppController::revertCurrentPageEdits()
     emit editStateChanged();
 }
 
-void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y,
-                                     qreal width, qreal height)
+void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height)
 {
     if (!m_document.isValidIndex(m_currentPage))
         return;
-    DocumentPage& page = m_document.page(m_currentPage);
+    DocumentPage &page = m_document.page(m_currentPage);
     if (!page.recognized || page.result.pages.isEmpty())
         return;
-    QList<BoundingBox>& boxes = page.result.pages[0].boxes;
+    QList<BoundingBox> &boxes = page.result.pages[0].boxes;
     if (boxIndex < 0 || boxIndex >= boxes.size())
         return;
     boxes[boxIndex].rect = QRectF(x, y, width, height);
@@ -685,14 +622,13 @@ bool AppController::removeBlock(int boxIndex)
         return false;
     if (!m_document.isValidIndex(m_currentPage))
         return false;
-    DocumentPage& page = m_document.page(m_currentPage);
+    DocumentPage &page = m_document.page(m_currentPage);
     if (!page.recognized || page.result.pages.isEmpty())
         return false;
-    QList<BoundingBox>& boxes = page.result.pages[0].boxes;
+    QList<BoundingBox> &boxes = page.result.pages[0].boxes;
     if (boxIndex < 0 || boxIndex >= boxes.size())
         return false;
 
-    // The document is the source of truth; the view model follows it.
     boxes.removeAt(boxIndex);
     ++m_cropRevision;
     m_boxModel.removeBox(boxIndex);
@@ -754,13 +690,10 @@ QString AppController::selectedBlockCorrected() const
 void AppController::setSelectedBoxIndex(int index)
 {
     int clamped = index;
-    if (!m_document.isValidIndex(m_currentPage)
-        || !m_document.page(m_currentPage).recognized) {
+    if (!m_document.isValidIndex(m_currentPage) || !m_document.page(m_currentPage).recognized) {
         clamped = -1;
     } else if (index != -1) {
-        const int size = m_document.page(m_currentPage).result.pages.isEmpty()
-                             ? 0
-                             : m_document.page(m_currentPage).result.pages[0].boxes.size();
+        const int size = m_document.page(m_currentPage).result.pages.isEmpty() ? 0 : m_document.page(m_currentPage).result.pages[0].boxes.size();
         if (index < 0 || index >= size)
             clamped = -1;
     }
@@ -793,8 +726,7 @@ void AppController::revertBlockCorrection()
             return;
 
         BoundingBox &box = boxes[m_selectedBox];
-        if (box.checkStatus == BoxCheckStatus::NotChecked
-            && box.correctedText.isEmpty()) {
+        if (box.checkStatus == BoxCheckStatus::NotChecked && box.correctedText.isEmpty()) {
             return;
         }
         box.checkStatus = BoxCheckStatus::NotChecked;
@@ -802,7 +734,6 @@ void AppController::revertBlockCorrection()
 
         const QString rebuilt = rebuildPageText(page.result.pages[0]);
         if (rebuilt == m_editStore.baseline(m_currentPage)) {
-            // Back to the recognized text: the page is no longer edited.
             setPageText(m_currentPage, rebuilt);
             m_editStore.revert(m_currentPage);
             m_pageModel.setEdited(m_currentPage, false);
@@ -815,9 +746,7 @@ void AppController::revertBlockCorrection()
         textChanged = true;
     }
 
-    m_boxModel.updateBoxCheck(m_selectedBox,
-                              static_cast<int>(BoxCheckStatus::NotChecked),
-                              QString());
+    m_boxModel.updateBoxCheck(m_selectedBox, static_cast<int>(BoxCheckStatus::NotChecked), QString());
     emit selectedBoxChanged();
     emit checkStateChanged();
     if (textChanged) {
@@ -852,8 +781,7 @@ bool AppController::allPageVerificationSupported() const
     return m_verify.allPageVerificationSupported();
 }
 
-void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
-                                          const CheckResult &result)
+void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result)
 {
     if (!m_document.isValidIndex(pageIndex))
         return;
@@ -914,7 +842,7 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex,
         emit boxesChanged();
 }
 
-bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, int toPage)
+bool AppController::exportPages(const QUrl &fileUrl, int scope, int fromPage, int toPage)
 {
     return m_export.exportPages(fileUrl, scope, m_currentPage, fromPage, toPage);
 }
@@ -922,8 +850,7 @@ bool AppController::exportPages(const QUrl& fileUrl, int scope, int fromPage, in
 QStringList AppController::exportNameFilters() const
 {
     QStringList filters;
-    filters << StatusMessage::translate("AppController", "Markdown (*.md)").text()
-            << StatusMessage::translate("AppController", "Plain text (*.txt)").text()
+    filters << StatusMessage::translate("AppController", "Markdown (*.md)").text() << StatusMessage::translate("AppController", "Plain text (*.txt)").text()
             << StatusMessage::translate("AppController", "HTML (*.html)").text();
     if (Exporter::isPandocAvailable())
         filters << StatusMessage::translate("AppController", "Word document (*.docx)").text();
@@ -931,7 +858,7 @@ QStringList AppController::exportNameFilters() const
     return filters;
 }
 
-void AppController::setStatus(const StatusMessage& message)
+void AppController::setStatus(const StatusMessage &message)
 {
     if (m_statusMessage == message)
         return;
@@ -941,15 +868,12 @@ void AppController::setStatus(const StatusMessage& message)
 
 void AppController::retranslate()
 {
-    // The messages hold their key and are rendered on read, so re-announcing
-    // them is all a language switch needs (ADR 114).
     emit statusChanged();
     emit retranslateRequested();
 }
 
 void AppController::notifyDocumentChanged()
 {
-    // A rendered page is only valid for the document it was rendered from.
     ++m_previewGeneration;
     m_previewCache.clear();
     m_previewRendering = -1;
@@ -970,15 +894,12 @@ void AppController::notifyPageChanged()
     emit editStateChanged();
 }
 
-QString AppController::resolveImagesForPreview(const QString& markdown)
+QString AppController::resolveImagesForPreview(const QString &markdown)
 {
-    if (m_previewCacheRevision == m_imageRevision
-        && m_previewCacheCropRevision == m_cropRevision
-        && m_previewCacheText == markdown)
+    if (m_previewCacheRevision == m_imageRevision && m_previewCacheCropRevision == m_cropRevision && m_previewCacheText == markdown)
         return m_previewCacheResult;
 
-    static const QRegularExpression re(
-        QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)\))"));
+    static const QRegularExpression re(QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)\))"));
 
     QString result;
     qsizetype last = 0;
@@ -997,8 +918,7 @@ QString AppController::resolveImagesForPreview(const QString& markdown)
             QBuffer buffer(&bytes);
             if (buffer.open(QIODevice::WriteOnly)) {
                 img.save(&buffer, "PNG");
-                result += QStringLiteral("![%1](data:image/png;base64,%2)")
-                              .arg(m.captured(1), QString::fromLatin1(bytes.toBase64()));
+                result += QStringLiteral("![%1](data:image/png;base64,%2)").arg(m.captured(1), QString::fromLatin1(bytes.toBase64()));
             } else {
                 result += m.capturedView();
             }

@@ -3,18 +3,13 @@
 #include <QObject>
 #include <QQmlEngine>
 
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 
 namespace llocr {
 
 class UiController : public QObject
 {
     Q_OBJECT
-    // Registered into the LLocr QML module by hand in main.cpp
-    // (qmlRegisterSingletonInstance). The QML_ELEMENT/QML_SINGLETON pair is
-    // deliberately absent: with a real module (ADR 100) it would make
-    // qmltyperegistrar emit a default-constructor call for a class that has
-    // none. It comes back together with the create() factories in stage 4.
 
     Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged)
     Q_PROPERTY(bool dark READ dark NOTIFY darkChanged)

@@ -1,11 +1,8 @@
-#include "app/RequestParametersModel.h"
+#include "config/RequestParametersModel.h"
 
 namespace llocr {
 
-RequestParametersModel::RequestParametersModel(QObject *parent)
-    : QAbstractListModel(parent)
-{
-}
+RequestParametersModel::RequestParametersModel(QObject *parent) : QAbstractListModel(parent) {}
 
 int RequestParametersModel::rowCount(const QModelIndex &parent) const
 {
@@ -37,11 +34,11 @@ QVariant RequestParametersModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> RequestParametersModel::roleNames() const
 {
     static const QHash<int, QByteArray> roles = {
-        { NameRole, "name" },
-        { ValueTextRole, "valueText" },
-        { KindRole, "kind" },
-        { OrderRole, "order" },
-        { DescriptionRole, "description" },
+        {NameRole, "name"},
+        {ValueTextRole, "valueText"},
+        {KindRole, "kind"},
+        {OrderRole, "order"},
+        {DescriptionRole, "description"},
     };
     return roles;
 }
@@ -70,7 +67,7 @@ bool RequestParametersModel::setValue(int row, const QString &text)
 
     p.value = parsed;
     const QModelIndex idx = index(row);
-    emit dataChanged(idx, idx, { ValueTextRole });
+    emit dataChanged(idx, idx, {ValueTextRole});
     return true;
 }
 

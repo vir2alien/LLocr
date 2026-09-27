@@ -13,19 +13,30 @@ namespace {
 
 const char *kBuiltInLabels[] = {
     // Unlimited-OCR (and anything else speaking the same label vocabulary).
-    "title:heading",       "image:image",        "chart:image",
-    "image_caption:italic", "table_caption:italic", "table_footnote:italic",
-    "page_number:italic",  "equation:equation",  "table:table",
+    "title:heading",
+    "image:image",
+    "chart:image",
+    "image_caption:italic",
+    "table_caption:italic",
+    "table_footnote:italic",
+    "page_number:italic",
+    "equation:equation",
+    "table:table",
     // "text", "footer" and anything unmapped fall through to PlainText.
 };
 
 BlockStyle styleFromName(const QString &name)
 {
-    if (name == QLatin1String("heading"))  return BlockStyle::Heading;
-    if (name == QLatin1String("image"))    return BlockStyle::ImagePlaceholder;
-    if (name == QLatin1String("italic"))   return BlockStyle::Italic;
-    if (name == QLatin1String("equation")) return BlockStyle::Equation;
-    if (name == QLatin1String("table"))    return BlockStyle::Table;
+    if (name == QLatin1String("heading"))
+        return BlockStyle::Heading;
+    if (name == QLatin1String("image"))
+        return BlockStyle::ImagePlaceholder;
+    if (name == QLatin1String("italic"))
+        return BlockStyle::Italic;
+    if (name == QLatin1String("equation"))
+        return BlockStyle::Equation;
+    if (name == QLatin1String("table"))
+        return BlockStyle::Table;
     return BlockStyle::PlainText;
 }
 
@@ -48,7 +59,7 @@ QHash<QString, BlockStyleInfo> tableFromJson(const QJsonObject &object)
     return table;
 }
 
-} // namespace
+}  // namespace
 
 BlockStyleMap::BlockStyleMap()
 {
@@ -91,8 +102,7 @@ void BlockStyleMap::applyJson(const QJsonObject &root)
     }
 }
 
-BlockStyleInfo BlockStyleMap::styleForLabel(const QString &label,
-                                            const QString &modelId) const
+BlockStyleInfo BlockStyleMap::styleForLabel(const QString &label, const QString &modelId) const
 {
     if (!modelId.isEmpty()) {
         const auto modelIt = m_overrides.constFind(modelId);
@@ -105,4 +115,4 @@ BlockStyleInfo BlockStyleMap::styleForLabel(const QString &label,
     return m_default.value(label, {BlockStyle::PlainText, 0});
 }
 
-} // namespace llocr
+}  // namespace llocr

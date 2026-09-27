@@ -2,17 +2,11 @@
 
 #include <QFileInfo>
 
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 
 namespace llocr {
 
-InstalledModelsModel::InstalledModelsModel(SettingsStore &settings, bool forCheck,
-                                           QObject *parent)
-    : QAbstractListModel(parent)
-    , m_settings(settings)
-    , m_forCheck(forCheck)
-{
-}
+InstalledModelsModel::InstalledModelsModel(SettingsStore &settings, bool forCheck, QObject *parent) : QAbstractListModel(parent), m_settings(settings), m_forCheck(forCheck) {}
 
 int InstalledModelsModel::rowCount(const QModelIndex &parent) const
 {
@@ -22,16 +16,16 @@ int InstalledModelsModel::rowCount(const QModelIndex &parent) const
 QHash<int, QByteArray> InstalledModelsModel::roleNames() const
 {
     return {
-        { TitleRole, "title" },
-        { PathRole, "path" },
-        { MmprojPathRole, "mmprojPath" },
-        { SizeRole, "size" },
-        { QuantizationRole, "quantization" },
-        { OriginRole, "origin" },
-        { LicenseRole, "license" },
-        { RepoRole, "repo" },
-        { ActiveRole, "active" },
-        { PartsRole, "parts" },
+        {TitleRole, "title"},
+        {PathRole, "path"},
+        {MmprojPathRole, "mmprojPath"},
+        {SizeRole, "size"},
+        {QuantizationRole, "quantization"},
+        {OriginRole, "origin"},
+        {LicenseRole, "license"},
+        {RepoRole, "repo"},
+        {ActiveRole, "active"},
+        {PartsRole, "parts"},
     };
 }
 
@@ -53,8 +47,7 @@ QVariant InstalledModelsModel::data(const QModelIndex &index, int role) const
     case QuantizationRole:
         return entry.quantization;
     case OriginRole:
-        return entry.origin == ModelOrigin::Managed ? QStringLiteral("managed")
-                                                    : QStringLiteral("external");
+        return entry.origin == ModelOrigin::Managed ? QStringLiteral("managed") : QStringLiteral("external");
     case LicenseRole:
         return entry.license;
     case RepoRole:
@@ -105,9 +98,7 @@ void InstalledModelsModel::setEntries(const QList<ModelEntry> &entries)
     m_entries = entries;
     if (m_rows.isEmpty())
         return;
-    emit dataChanged(index(0, 0), index(m_rows.size() - 1, 0),
-                     { TitleRole, PathRole, MmprojPathRole, SizeRole, QuantizationRole,
-                       OriginRole, LicenseRole, RepoRole, ActiveRole, PartsRole });
+    emit dataChanged(index(0, 0), index(m_rows.size() - 1, 0), {TitleRole, PathRole, MmprojPathRole, SizeRole, QuantizationRole, OriginRole, LicenseRole, RepoRole, ActiveRole, PartsRole});
 }
 
 bool InstalledModelsModel::matches(const ModelEntry &entry) const
@@ -115,19 +106,15 @@ bool InstalledModelsModel::matches(const ModelEntry &entry) const
     return matchesRole(entry, m_settings, m_forCheck);
 }
 
-bool InstalledModelsModel::matchesRole(const ModelEntry &entry,
-                                       const SettingsStore &settings, bool forCheck)
+bool InstalledModelsModel::matchesRole(const ModelEntry &entry, const SettingsStore &settings, bool forCheck)
 {
-    const bool ocrActive = !entry.modelPath.isEmpty()
-                           && entry.modelPath == settings.launchModelPath();
-    const bool checkActive = !entry.modelPath.isEmpty()
-                             && entry.modelPath == settings.checkLaunchModelPath();
+    const bool ocrActive = !entry.modelPath.isEmpty() && entry.modelPath == settings.launchModelPath();
+    const bool checkActive = !entry.modelPath.isEmpty() && entry.modelPath == settings.checkLaunchModelPath();
 
     if (forCheck ? checkActive : ocrActive)
         return true;
     if (!entry.roles.isEmpty())
-        return entry.roles.contains(forCheck ? QStringLiteral("check")
-                                             : QStringLiteral("ocr"));
+        return entry.roles.contains(forCheck ? QStringLiteral("check") : QStringLiteral("ocr"));
     if (checkActive)
         return false;
     const bool vision = !entry.mmprojPath.isEmpty();
@@ -138,8 +125,7 @@ bool InstalledModelsModel::isActive(const ModelEntry &entry) const
 {
     if (entry.modelPath.isEmpty())
         return false;
-    const QString &active = m_forCheck ? m_settings.checkLaunchModelPath()
-                                       : m_settings.launchModelPath();
+    const QString &active = m_forCheck ? m_settings.checkLaunchModelPath() : m_settings.launchModelPath();
     return entry.modelPath == active;
 }
 

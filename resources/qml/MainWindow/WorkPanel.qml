@@ -75,7 +75,6 @@ Rectangle {
             Layout.fillHeight: true
             currentIndex: previewSwitch.checked ? 1 : 0
 
-            // --- 0: Edit ---
             ScrollView {
                 TextArea {
                     id: textArea
@@ -112,7 +111,6 @@ Rectangle {
                 }
             }
 
-            // --- 1: Preview ---
             Loader {
                 active: previewSwitch.checked
                 onActiveChanged: if (active) previewDebounce.restart()

@@ -15,12 +15,11 @@ enum class CheckStatus : int {
 
 struct CheckResult {
     CheckStatus status = CheckStatus::Failed;
-    QString text;            ///< Corrected block text when status == Fixed.
-    /// Human-readable error when status == Failed. Untranslated until read, so
-    /// the error line follows the UI language (ADR 114).
+    QString text;  ///< Corrected block text when status == Fixed.
     StatusMessage errorMessage;
 
-    static CheckResult makeError(const StatusMessage& message) {
+    static CheckResult makeError(const StatusMessage &message)
+    {
         CheckResult result;
         result.status = CheckStatus::Failed;
         result.errorMessage = message;

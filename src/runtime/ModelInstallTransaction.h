@@ -31,10 +31,7 @@ public:
     enum State { Idle = 0, Fetching = 1, ReadyToDownload = 2, Downloading = 3, Error = 4 };
     Q_ENUM(State)
 
-    explicit ModelInstallTransaction(SettingsStore &settings,
-                                     LaunchProfileStore &launchProfiles,
-                                     InstalledState &state,
-                                     QObject *parent = nullptr);
+    explicit ModelInstallTransaction(SettingsStore &settings, LaunchProfileStore &launchProfiles, InstalledState &state, QObject *parent = nullptr);
     ~ModelInstallTransaction() override;
 
     void shutdown();
@@ -55,9 +52,7 @@ public:
     void retranslate();
 
     static QString repoDirName(const QString &repo);
-    static void selectModelFiles(const QList<HfFile> &tree, const QString &prefer,
-                                 const QString &preferMmproj, QStringList *modelPaths,
-                                 QString &mmprojRel);
+    static void selectModelFiles(const QList<HfFile> &tree, const QString &prefer, const QString &preferMmproj, QStringList *modelPaths, QString &mmprojRel);
 
 signals:
     void stateChanged(int state);
@@ -77,12 +72,12 @@ private:
         QString prompt;
         int ctxSize = 0;
         QString presetId;
-        QString dir;              // <modelsDir>/<org>__<repo>
-        QString modelPath;        // absolute first part after install
-        QString mmprojRel;        // repo-relative projector path, or empty
-        QStringList modelNames;   // repo-relative model file paths (all parts)
+        QString dir;                         // <modelsDir>/<org>__<repo>
+        QString modelPath;                   // absolute first part after install
+        QString mmprojRel;                   // repo-relative projector path, or empty
+        QStringList modelNames;              // repo-relative model file paths (all parts)
         QHash<QString, QString> fileSha256;  // preset-pinned digest per file name (lowercased)
-        QList<HfFile> files;      // full candidate file list for the repo
+        QList<HfFile> files;                 // full candidate file list for the repo
     };
 
     void setState(State next);
@@ -93,20 +88,12 @@ private:
     void beginPrepare(const ModelPreset &preset);
     void onPrepareDone(const InstallPlan &p, const QString &err);
     void beginDownload();
-    // Enqueues the model files, and the projector unless it is already on disk
-    // (the check is a multi-GB hash and therefore runs on a worker).
     void enqueueModelFiles(bool mmprojOnDisk);
-    void enqueueFile(const QString &repoPath, const QString &repo,
-                     const QString &commitSha);
+    void enqueueFile(const QString &repoPath, const QString &repo, const QString &commitSha);
     QString expectedShaFor(const QString &repoPath) const;
-    // Free function so the worker task captures values, not `this`.
-    static bool mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel,
-                                    const QString &expected, const QString &revision,
-                                    const QList<ModelEntry> &installed);
+    static bool mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel, const QString &expected, const QString &revision, const QList<ModelEntry> &installed);
     void maybeFinishDownloads();
     void completeInstall();
-    // Releases the shared install lock (ADR 112): the model install takes the
-    // same lock the runtime install uses, for its whole duration.
     void releaseInstallLock();
 
     SettingsStore &m_settings;
@@ -121,8 +108,6 @@ private:
     QString m_statusMessage;
 
     InstallPlan m_pending;
-    // Where the download lands: a staging directory published by an atomic
-    // rename in completeInstall() (ADR 112). Empty before the first download.
     QString m_installDir;
     std::unique_ptr<StagedInstall> m_staging;
     bool m_lockHeld = false;

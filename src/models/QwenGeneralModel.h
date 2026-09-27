@@ -4,7 +4,8 @@
 
 namespace llocr {
 
-class QwenGeneralModel : public GeneralPurposeModel {
+class QwenGeneralModel : public GeneralPurposeModel
+{
     Q_DISABLE_COPY_MOVE(QwenGeneralModel)
 
 public:
@@ -14,4 +15,4 @@ public:
     QString displayName() const override;
 };
 
-} // namespace llocr
+}  // namespace llocr

@@ -7,9 +7,6 @@ import QtQuick.Layouts
 import LLocr
 import "Common"
 
-// The full text of every diagnostic the app has produced (ADR 119). The footer
-// keeps one elided line and a count; the reasons are here, where they can be
-// read and copied without pushing the rest of the UI off the window.
 ApplicationWindow {
     id: root
     title: qsTr("Problem log")

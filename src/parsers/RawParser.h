@@ -5,7 +5,8 @@
 
 namespace llocr {
 
-class RawParser : public IOutputParser {
+class RawParser : public IOutputParser
+{
     Q_DISABLE_COPY_MOVE(RawParser)
 
 public:
@@ -19,4 +20,4 @@ public:
     QString displayName() const override;
 };
 
-} // namespace llocr
+}  // namespace llocr

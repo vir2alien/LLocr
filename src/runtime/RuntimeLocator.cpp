@@ -1,10 +1,10 @@
 #include <QDir>
 #include <QElapsedTimer>
-#include <QProcess>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QProcess>
 #include <QSaveFile>
 #include <QStringList>
 
@@ -13,8 +13,7 @@
 
 namespace llocr {
 
-QString RuntimeLocator::runProbe(const QString &binaryPath, QStringList args,
-                                 int timeoutMs, QString &error)
+QString RuntimeLocator::runProbe(const QString &binaryPath, QStringList args, int timeoutMs, QString &error)
 {
     QProcess proc;
     proc.setProgram(binaryPath);
@@ -53,8 +52,7 @@ ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, int timeoutMs
     return r;
 }
 
-ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, const QString &cacheDir,
-                                        int timeoutMs)
+ProbeResult RuntimeLocator::probeCached(const QString &binaryPath, const QString &cacheDir, int timeoutMs)
 {
     ProbeResult cached;
     if (probeFromCache(binaryPath, cached))
@@ -85,8 +83,7 @@ ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
     QElapsedTimer budget;
     budget.start();
     QString errVersion, errHelp;
-    const QString versionText =
-        runProbe(binaryPath, {QStringLiteral("--version")}, timeoutMs, errVersion);
+    const QString versionText = runProbe(binaryPath, {QStringLiteral("--version")}, timeoutMs, errVersion);
     const int remaining = qMax(0, timeoutMs - int(budget.elapsed()));
     QString helpText;
     if (remaining > 0) {
@@ -101,20 +98,14 @@ ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
 
     if (r.ok) {
         if (r.capabilities.belowMinimum) {
-            r.error = QObject::tr("Requires llama.cpp %1 or newer").arg(
-                QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
+            r.error = QObject::tr("Requires llama.cpp %1 or newer").arg(QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
         } else {
             r.error.clear();
         }
     } else {
-        const QString versionDetail =
-            versionText.isEmpty() ? (errVersion.isEmpty() ? QObject::tr("no output") : errVersion)
-                                  : QObject::tr("version ok");
-        const QString helpDetail =
-            helpText.isEmpty() ? (errHelp.isEmpty() ? QObject::tr("no output") : errHelp)
-                               : QObject::tr("help ok");
-        r.error = QObject::tr("The binary did not answer (%1; %2)")
-                      .arg(versionDetail, helpDetail);
+        const QString versionDetail = versionText.isEmpty() ? (errVersion.isEmpty() ? QObject::tr("no output") : errVersion) : QObject::tr("version ok");
+        const QString helpDetail = helpText.isEmpty() ? (errHelp.isEmpty() ? QObject::tr("no output") : errHelp) : QObject::tr("help ok");
+        r.error = QObject::tr("The binary did not answer (%1; %2)").arg(versionDetail, helpDetail);
     }
     return r;
 }
@@ -122,15 +113,12 @@ ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
 QString RuntimeLocator::probeSummary(const ProbeResult &r)
 {
     if (r.capabilities.belowMinimum) {
-        return QObject::tr("Build %1 is below the minimum (%2) — update it")
-            .arg(r.capabilities.build, QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
+        return QObject::tr("Build %1 is below the minimum (%2) — update it").arg(r.capabilities.build, QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
     }
     if (!r.ok)
         return r.error;
     const QString build = r.capabilities.build;
-    return build.isEmpty()
-               ? QObject::tr("Valid llama-server (build unknown)")
-               : QObject::tr("Valid llama-server %1").arg(build);
+    return build.isEmpty() ? QObject::tr("Valid llama-server (build unknown)") : QObject::tr("Valid llama-server %1").arg(build);
 }
 
 namespace {
@@ -155,8 +143,7 @@ bool RuntimeLocator::probeFromCache(const QString &binaryPath, ProbeResult &out)
     const QFileInfo fi(binaryPath);
     if (!fi.exists() || !fi.isFile())
         return false;
-    const ProbeKey key{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(),
-                       fi.size()};
+    const ProbeKey key{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(), fi.size()};
     if (s_probeCache.valid && s_probeCache.key == key) {
         out = s_probeCache.result;
         return true;
@@ -169,14 +156,12 @@ void RuntimeLocator::cacheProbe(const QString &binaryPath, const ProbeResult &re
     const QFileInfo fi(binaryPath);
     if (!fi.exists() || !fi.isFile())
         return;
-    s_probeCache.key = ProbeKey{fi.absoluteFilePath(),
-                                fi.lastModified().toMSecsSinceEpoch(), fi.size()};
+    s_probeCache.key = ProbeKey{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(), fi.size()};
     s_probeCache.result = result;
     s_probeCache.valid = true;
 }
 
-bool RuntimeLocator::cachedProbe(const QString &binaryPath, const QString &cacheDir,
-                                 ProbeResult &out)
+bool RuntimeLocator::cachedProbe(const QString &binaryPath, const QString &cacheDir, ProbeResult &out)
 {
     if (probeFromCache(binaryPath, out))
         return true;
@@ -187,8 +172,7 @@ bool RuntimeLocator::cachedProbe(const QString &binaryPath, const QString &cache
     return false;
 }
 
-bool RuntimeLocator::probeFromDiskCache(const QString &binaryPath, const QString &cacheDir,
-                                        ProbeResult &out)
+bool RuntimeLocator::probeFromDiskCache(const QString &binaryPath, const QString &cacheDir, ProbeResult &out)
 {
     if (cacheDir.isEmpty())
         return false;
@@ -207,16 +191,14 @@ bool RuntimeLocator::probeFromDiskCache(const QString &binaryPath, const QString
     out.version = caps.versionText;
     out.ok = caps.ok;
     if (caps.ok && caps.belowMinimum) {
-        out.error = QObject::tr("Requires llama.cpp %1 or newer").arg(
-            QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
+        out.error = QObject::tr("Requires llama.cpp %1 or newer").arg(QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
     } else {
         out.error.clear();
     }
     return true;
 }
 
-void RuntimeLocator::writeDiskCache(const QString &binaryPath, const QString &cacheDir,
-                                    const ProbeResult &result)
+void RuntimeLocator::writeDiskCache(const QString &binaryPath, const QString &cacheDir, const ProbeResult &result)
 {
     if (cacheDir.isEmpty() || !result.ok)
         return;

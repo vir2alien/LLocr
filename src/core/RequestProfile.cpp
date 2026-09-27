@@ -27,12 +27,10 @@ constexpr const char *kDescriptionKey = "description";
 
 bool RequestParameter::operator==(const RequestParameter &other) const
 {
-    return name == other.name && kind == other.kind
-        && value.typeId() == other.value.typeId() && value == other.value;
+    return name == other.name && kind == other.kind && value.typeId() == other.value.typeId() && value == other.value;
 }
 
-bool RequestProfile::valueFromJson(const QJsonValue &value,
-                                   RequestValueKind &kind, QVariant &out)
+bool RequestProfile::valueFromJson(const QJsonValue &value, RequestValueKind &kind, QVariant &out)
 {
     switch (value.type()) {
     case QJsonValue::Bool:
@@ -106,8 +104,7 @@ QString RequestProfile::valueToText(const QVariant &value)
     }
 }
 
-bool RequestProfile::textToValue(const QString &text, RequestValueKind kind,
-                                 QVariant &out)
+bool RequestProfile::textToValue(const QString &text, RequestValueKind kind, QVariant &out)
 {
     switch (kind) {
     case RequestValueKind::Number: {
@@ -171,8 +168,7 @@ RequestProfile RequestProfile::fromJson(const QJsonObject &root, QString &error)
             return RequestProfile();
         }
         if (seen.contains(name)) {
-            error = QObject::tr("Request profile has a duplicate parameter: %1")
-                        .arg(name);
+            error = QObject::tr("Request profile has a duplicate parameter: %1").arg(name);
             return RequestProfile();
         }
 
@@ -181,8 +177,7 @@ RequestProfile RequestProfile::fromJson(const QJsonObject &root, QString &error)
         if (obj.contains(QLatin1String(kOrderKey))) {
             parameter.order = obj.value(QLatin1String(kOrderKey)).toInt();
             if (parameter.order <= 0) {
-                error = QObject::tr("Request profile parameter %1 has an invalid order")
-                            .arg(name);
+                error = QObject::tr("Request profile parameter %1 has an invalid order").arg(name);
                 return RequestProfile();
             }
         } else {
@@ -193,8 +188,7 @@ RequestProfile RequestProfile::fromJson(const QJsonObject &root, QString &error)
         RequestValueKind kind;
         QVariant value;
         if (!valueFromJson(obj.value(QLatin1String(kValueKey)), kind, value)) {
-            error = QObject::tr("Request profile parameter %1 has an unsupported value")
-                        .arg(name);
+            error = QObject::tr("Request profile parameter %1 has an unsupported value").arg(name);
             return RequestProfile();
         }
         parameter.kind = kind;
@@ -227,12 +221,10 @@ QJsonObject RequestProfile::toJson() const
     return root;
 }
 
-QList<RequestProfile> RequestProfile::profilesFromJson(const QJsonObject &root,
-                                                       QString &error)
+QList<RequestProfile> RequestProfile::profilesFromJson(const QJsonObject &root, QString &error)
 {
     if (root.contains(QLatin1String(kProfilesKey))) {
-        const QJsonArray profiles =
-            root.value(QLatin1String(kProfilesKey)).toArray();
+        const QJsonArray profiles = root.value(QLatin1String(kProfilesKey)).toArray();
 
         QList<RequestProfile> out;
         QSet<QString> seen;
@@ -248,8 +240,7 @@ QList<RequestProfile> RequestProfile::profilesFromJson(const QJsonObject &root,
                 return QList<RequestProfile>();
             }
             if (seen.contains(id)) {
-                error = QObject::tr("Request profile file has a duplicate profile: %1")
-                            .arg(id);
+                error = QObject::tr("Request profile file has a duplicate profile: %1").arg(id);
                 return QList<RequestProfile>();
             }
             seen.insert(id);
@@ -266,15 +257,14 @@ QList<RequestProfile> RequestProfile::profilesFromJson(const QJsonObject &root,
         const RequestProfile legacy = fromJson(root, error);
         if (!error.isEmpty())
             return QList<RequestProfile>();
-        return { legacy };
+        return {legacy};
     }
 
     error = QObject::tr("Request profile file has neither profiles nor parameters");
     return QList<RequestProfile>();
 }
 
-RequestProfile RequestProfile::merge(const RequestProfile &defaults,
-                                     const RequestProfile &user)
+RequestProfile RequestProfile::merge(const RequestProfile &defaults, const RequestProfile &user)
 {
     QHash<QString, RequestParameter> userByName;
     for (const RequestParameter &p : user.parameters)
@@ -296,10 +286,7 @@ RequestProfile RequestProfile::merge(const RequestProfile &defaults,
     }
 
     QList<RequestParameter> extra = userByName.values();
-    std::stable_sort(extra.begin(), extra.end(),
-                     [](const RequestParameter &a, const RequestParameter &b) {
-                         return a.order < b.order;
-                     });
+    std::stable_sort(extra.begin(), extra.end(), [](const RequestParameter &a, const RequestParameter &b) { return a.order < b.order; });
     for (const RequestParameter &p : extra)
         out.parameters.append(p);
 
@@ -317,10 +304,7 @@ bool RequestProfile::operator==(const RequestProfile &other) const
 
 void RequestProfile::sortByOrder()
 {
-    std::stable_sort(parameters.begin(), parameters.end(),
-                     [](const RequestParameter &a, const RequestParameter &b) {
-                         return a.order < b.order;
-                     });
+    std::stable_sort(parameters.begin(), parameters.end(), [](const RequestParameter &a, const RequestParameter &b) { return a.order < b.order; });
 }
 
 }  // namespace llocr

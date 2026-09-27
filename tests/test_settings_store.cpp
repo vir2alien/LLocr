@@ -1,15 +1,16 @@
-#include <QtTest>
 #include <QCoreApplication>
 #include <QHash>
 #include <QMetaProperty>
 #include <QSettings>
+#include <QtTest>
 
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 #include "testsettings.h"
 
 using namespace llocr;
 
-class TestSettingsStore : public QObject {
+class TestSettingsStore : public QObject
+{
     Q_OBJECT
 
 private:
@@ -53,7 +54,6 @@ private slots:
     void resetToDefaults()
     {
         SettingsStore store;
-        // Modify values
         store.setBaseUrl(QStringLiteral("http://custom:1234"));
         store.setApiKey(QStringLiteral("secret-token"));
         store.setConnectionTimeoutMs(5000);
@@ -71,7 +71,6 @@ private slots:
         QCOMPARE(store.themeMode(), 1);
         QCOMPARE(store.language(), QStringLiteral("ru"));
 
-        // Reset
         store.resetToDefaults();
 
         QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
@@ -147,8 +146,7 @@ private slots:
             QSettings settings;
             settings.setValue("provider/mode", QStringLiteral("external"));
             settings.setValue("provider/baseUrl", QString());
-            settings.setValue("provider/lastExternalBaseUrl",
-                              QStringLiteral("http://127.0.0.1:8080"));
+            settings.setValue("provider/lastExternalBaseUrl", QStringLiteral("http://127.0.0.1:8080"));
             settings.setValue("runtime/setupVersion", 1);
         }
 
@@ -162,8 +160,7 @@ private slots:
             QSettings settings;
             settings.setValue("provider/mode", QStringLiteral("external"));
             settings.setValue("provider/baseUrl", QStringLiteral("http://mine:9000"));
-            settings.setValue("provider/lastExternalBaseUrl",
-                              QStringLiteral("http://127.0.0.1:8080"));
+            settings.setValue("provider/lastExternalBaseUrl", QStringLiteral("http://127.0.0.1:8080"));
             settings.setValue("runtime/setupVersion", 1);
         }
 
@@ -207,7 +204,7 @@ private slots:
         QCOMPARE(store.setupDismissed(), false);
         QCOMPARE(store.serverPath(), QStringLiteral(""));
         QCOMPARE(store.serverPathIsManaged(), false);
-        QCOMPARE(store.autoStart(), false);       // §4.3: off by default
+        QCOMPARE(store.autoStart(), false);  // §4.3: off by default
         QCOMPARE(store.startOnDemand(), true);
         QCOMPARE(store.stopOnExit(), true);
         QCOMPARE(store.autoRestart(), true);
@@ -228,7 +225,7 @@ private slots:
         QCOMPARE(store.autoCheck(), false);
         store.setAutoCheck(true);
         QCOMPARE(store.autoCheck(), true);
-        store.setAutoCheck(true);   // no-op, no signal spam
+        store.setAutoCheck(true);  // no-op, no signal spam
         QCOMPARE(store.autoCheck(), true);
         store.setAutoCheck(false);
         QCOMPARE(store.autoCheck(), false);
@@ -239,8 +236,7 @@ private slots:
         // A pre-existing profile with a configured baseUrl must be treated as
         // already set up: no first-run wizard, and the mode stays External.
         QSettings pre;
-        pre.setValue(QStringLiteral("provider/baseUrl"),
-                     QStringLiteral("http://localhost:8080"));
+        pre.setValue(QStringLiteral("provider/baseUrl"), QStringLiteral("http://localhost:8080"));
         pre.setValue(QStringLiteral("provider/apiKey"), QStringLiteral("k"));
         pre.sync();
 
@@ -307,11 +303,7 @@ private slots:
         //  - connectionMode / lastExternalBaseUrl: covered implicitly through
         //    setConnectionMode()'s restore path (baseUrl is reset, but its
         //    final value when coming from Managed is the restored endpoint).
-        auto excluded = [](const QByteArray &name) {
-            return name.startsWith("window")
-                || name == QByteArrayLiteral("connectionMode")
-                || name == QByteArrayLiteral("lastExternalBaseUrl");
-        };
+        auto excluded = [](const QByteArray &name) { return name.startsWith("window") || name == QByteArrayLiteral("connectionMode") || name == QByteArrayLiteral("lastExternalBaseUrl"); };
 
         QHash<QByteArray, QVariant> sentinels;
         for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
@@ -373,7 +365,7 @@ private slots:
 
         store.resetToDefaults();
 
-        QCOMPARE(languageSpy.count(), 2);   // set + reset
+        QCOMPARE(languageSpy.count(), 2);  // set + reset
         QCOMPARE(baseUrlSpy.count(), 2);
         QCOMPARE(autoStartSpy.count(), 2);
         QCOMPARE(launchHostSpy.count(), 2);

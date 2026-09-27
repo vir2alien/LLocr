@@ -5,9 +5,7 @@
 
 namespace llocr {
 
-StagedInstall::StagedInstall(const QString &stagingPath, const QString &finalDir)
-    : m_stagingPath(stagingPath)
-    , m_finalPath(finalDir)
+StagedInstall::StagedInstall(const QString &stagingPath, const QString &finalDir) : m_stagingPath(stagingPath), m_finalPath(finalDir)
 {
     // A leftover staging directory (previous crash) is resumed, not merged.
     QDir().mkpath(QFileInfo(m_stagingPath).absolutePath());
@@ -41,8 +39,7 @@ bool StagedInstall::commit(QString *error)
 
     QString backupDir;
     if (QFileInfo::exists(m_finalPath)) {
-        backupDir = m_finalPath + QStringLiteral(".old-")
-                    + QString::number(QDateTime::currentMSecsSinceEpoch());
+        backupDir = m_finalPath + QStringLiteral(".old-") + QString::number(QDateTime::currentMSecsSinceEpoch());
         if (!QDir().rename(m_finalPath, backupDir))
             return fail(QObject::tr("Unable to move the existing install aside"));
     }

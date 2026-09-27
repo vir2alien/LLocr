@@ -26,13 +26,10 @@ constexpr int kDiagnosticMinLength = 32;
 // is handled too.
 constexpr double kDuplicateTolerance = 0.01;
 
-// Regex helpers
-
 // <|det|>label [x1, y1, x2, y2]<|/det|>
 const QRegularExpression &wrappedTokenRegex()
 {
-    static const QRegularExpression re(
-        QStringLiteral(R"(<\|det\|>([A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]<\|/det\|>)"));
+    static const QRegularExpression re(QStringLiteral(R"(<\|det\|>([A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]<\|/det\|>)"));
     return re;
 }
 
@@ -46,12 +43,11 @@ const QRegularExpression &wrappedTokenRegex()
 // come out as null captures and yield a zero rect).
 const QRegularExpression &tokenStartRegex()
 {
-    static const QRegularExpression re(QStringLiteral(
-        "(?|"
-        "(?:image_index=\\d+\\s+)?([A-Za-z_][A-Za-z0-9_]*)\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\]"
-        "|"
-        "image_index=\\d+\\s+<label>([A-Za-z_][A-Za-z0-9_]*)</label>(?:\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\])?"
-        ")"));
+    static const QRegularExpression re(QStringLiteral("(?|"
+                                                      "(?:image_index=\\d+\\s+)?([A-Za-z_][A-Za-z0-9_]*)\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\]"
+                                                      "|"
+                                                      "image_index=\\d+\\s+<label>([A-Za-z_][A-Za-z0-9_]*)</label>(?:\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\])?"
+                                                      ")"));
     return re;
 }
 
@@ -68,18 +64,12 @@ QString formatTable(const QString &text, bool tablesAsHtml)
     if (tablesAsHtml)
         return trimmed;
 
-    static const QRegularExpression rowRe(
-        QStringLiteral(R"(<tr\b[^>]*>([\s\S]*?)</\s*tr\s*>)"),
-        QRegularExpression::CaseInsensitiveOption);
-    static const QRegularExpression cellRe(
-        QStringLiteral(R"(<(td|th)\b([^>]*)>([\s\S]*?)</\s*\1\s*>)"),
-        QRegularExpression::CaseInsensitiveOption);
-    static const QRegularExpression attrRe(
-        QStringLiteral(R"(\b(rowspan|colspan)\s*=\s*["']?(\d+)["']?)"),
-        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression rowRe(QStringLiteral(R"(<tr\b[^>]*>([\s\S]*?)</\s*tr\s*>)"), QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression cellRe(QStringLiteral(R"(<(td|th)\b([^>]*)>([\s\S]*?)</\s*\1\s*>)"), QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression attrRe(QStringLiteral(R"(\b(rowspan|colspan)\s*=\s*["']?(\d+)["']?)"), QRegularExpression::CaseInsensitiveOption);
 
     struct Cell {
-        QString content;   // already escaped for a pipe-table cell
+        QString content;  // already escaped for a pipe-table cell
         int rowspan = 1;
         int colspan = 1;
     };
@@ -201,9 +191,7 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info, const Parser
     // LFM2.5-VL can leak OTSL rows into non-table blocks (a formula under a
     // text/equation token, a table fragment after it): convert them wherever
     // the tags appear, not only in Table blocks.
-    if (info.style != BlockStyle::ImagePlaceholder
-        && !text.contains(QStringLiteral("<table"))
-        && containsOtslTable(text)) {
+    if (info.style != BlockStyle::ImagePlaceholder && !text.contains(QStringLiteral("<table")) && containsOtslTable(text)) {
         return formatOtslTable(text, options.tablesAsHtml);
     }
 
@@ -212,11 +200,9 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info, const Parser
         // The model's figure text (e.g. OCR-ed figure labels) is not a useful
         // alt text — keep only the first meaningful line.
         QString alt = text.section(QLatin1Char('\n'), 0, 0);
-        while (alt.startsWith(QLatin1Char('!')) || alt.startsWith(QLatin1Char('*'))
-               || alt.startsWith(QLatin1Char('-')) || alt.startsWith(QLatin1Char(' ')))
+        while (alt.startsWith(QLatin1Char('!')) || alt.startsWith(QLatin1Char('*')) || alt.startsWith(QLatin1Char('-')) || alt.startsWith(QLatin1Char(' ')))
             alt = alt.mid(1).trimmed();
-        for (const QChar ch : {QLatin1Char('['), QLatin1Char(']'), QLatin1Char('('),
-                               QLatin1Char(')'), QLatin1Char('!')})
+        for (const QChar ch : {QLatin1Char('['), QLatin1Char(']'), QLatin1Char('('), QLatin1Char(')'), QLatin1Char('!')})
             alt.remove(ch);
         alt = alt.trimmed();
         if (alt.size() > 60)
@@ -241,7 +227,7 @@ QString applyStyle(const QString &text, const BlockStyleInfo &info, const Parser
     }
 }
 
-} // namespace
+}  // namespace
 
 QString DetTokensParser::rebuildText(const OcrPage &page) const
 {
@@ -288,20 +274,19 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
         Token t;
-        t.label       = m.captured(1);
-        t.x1          = m.captured(2).toInt();
-        t.y1          = m.captured(3).toInt();
-        t.x2          = m.captured(4).toInt();
-        t.y2          = m.captured(5).toInt();
-        t.hasBbox     = !m.captured(2).isNull();
-        t.textStart   = m.capturedEnd(0);
-        t.tokenStart  = m.capturedStart(0);
+        t.label = m.captured(1);
+        t.x1 = m.captured(2).toInt();
+        t.y1 = m.captured(3).toInt();
+        t.x2 = m.captured(4).toInt();
+        t.y2 = m.captured(5).toInt();
+        t.hasBbox = !m.captured(2).isNull();
+        t.textStart = m.capturedEnd(0);
+        t.tokenStart = m.capturedStart(0);
         tokens.append(t);
     }
 
     if (tokens.isEmpty()) {
-        page.text =
-            stripServiceTokens(wrapped ? unescapeModelText(rawText) : text).trimmed();
+        page.text = stripServiceTokens(wrapped ? unescapeModelText(rawText) : text).trimmed();
         result.text = page.text;
         result.pages.append(page);
         result.success = true;
@@ -310,10 +295,9 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         // an unsupported shape). The page is still usable as plain text, but the
         // user gets told why the overlay is empty.
         if (page.text.length() > kDiagnosticMinLength)
-            result.notes.append(QCoreApplication::translate(
-                "DetTokensParser",
-                "No layout tokens found in the model reply — the text was kept as "
-                "one block. Check that the OCR model and the output parser match."));
+            result.notes.append(QCoreApplication::translate("DetTokensParser",
+                                                            "No layout tokens found in the model reply — the text was kept as "
+                                                            "one block. Check that the OCR model and the output parser match."));
         return result;
     }
 
@@ -321,14 +305,14 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
     {
         QString preamble = text.left(tokens.first().tokenStart);
-        if (wrapped)   // decode the model's \n line separator (nothing else)
+        if (wrapped)  // decode the model's \n line separator (nothing else)
             preamble = unescapeModelText(preamble);
         preamble = stripServiceTokens(preamble).trimmed();
         if (!preamble.isEmpty()) {
             BoundingBox untagged;
             untagged.label = QStringLiteral("text");
-            untagged.text  = preamble;
-            untagged.positioned = false;  // the model placed nothing
+            untagged.text = preamble;
+            untagged.positioned = false;
             page.boxes.append(untagged);
         }
     }
@@ -339,9 +323,7 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
         const Token &t = tokens.at(i);
         if (!m_options.keepPageNumbers && t.label == QLatin1String("page_number"))
             continue;
-        const int spanEnd = (i + 1 < tokens.size())
-                                ? tokens.at(i + 1).tokenStart
-                                : text.size();
+        const int spanEnd = (i + 1 < tokens.size()) ? tokens.at(i + 1).tokenStart : text.size();
         QString boxText = text.mid(t.textStart, spanEnd - t.textStart);
         if (wrapped)
             boxText = unescapeModelText(boxText);
@@ -354,8 +336,8 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
 
         BoundingBox box;
         box.label = t.label;
-        box.text  = boxText;
-        box.rect  = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
+        box.text = boxText;
+        box.rect = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
         box.positioned = t.hasBbox;
 
         // Duplicate-region replacement: the model emitted the same region twice
@@ -370,10 +352,8 @@ OcrResult DetTokensParser::parse(const QString &rawText) const
                 const QRectF &other = page.boxes.at(j).rect;
                 if (!page.boxes.at(j).positioned)
                     continue;
-                if (qAbs(other.x() - nx1) <= kDuplicateTolerance
-                    && qAbs(other.y() - ny1) <= kDuplicateTolerance
-                    && qAbs(other.width() - (nx2 - nx1)) <= kDuplicateTolerance
-                    && qAbs(other.height() - (ny2 - ny1)) <= kDuplicateTolerance) {
+                if (qAbs(other.x() - nx1) <= kDuplicateTolerance && qAbs(other.y() - ny1) <= kDuplicateTolerance && qAbs(other.width() - (nx2 - nx1)) <= kDuplicateTolerance &&
+                    qAbs(other.height() - (ny2 - ny1)) <= kDuplicateTolerance) {
                     dupIndex = j;
                     break;
                 }
@@ -407,4 +387,4 @@ QString DetTokensParser::displayName() const
     return QCoreApplication::translate("DetTokensParser", "Layout tokens (with boxes)");
 }
 
-} // namespace llocr
+}  // namespace llocr

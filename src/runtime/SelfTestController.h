@@ -29,9 +29,7 @@ class SelfTestController : public QObject
     Q_PROPERTY(QString selftestMessage READ selftestMessage NOTIFY selftestFinished)
 
 public:
-    explicit SelfTestController(SettingsStore &settings, RuntimeController &runtime,
-                                RequestProfileStore &requestProfiles,
-                                QObject *parent = nullptr);
+    explicit SelfTestController(SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, QObject *parent = nullptr);
 
     QFuture<SelfTestResult> runSelfTest();
     Q_INVOKABLE void runSelfTestQml();
@@ -46,8 +44,7 @@ signals:
     void selftestFinished();
 
 private:
-    void runSelfTestRequest(const ResolvedConnection &conn,
-                            std::shared_ptr<QFutureInterface<SelfTestResult>> promise);
+    void runSelfTestRequest(const ResolvedConnection &conn, std::shared_ptr<QFutureInterface<SelfTestResult>> promise);
     static QImage makeTestImage();
 
 private:

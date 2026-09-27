@@ -11,9 +11,9 @@
 #include "runtime/ArchiveExtractor.h"
 #include "runtime/InstallTransaction.h"
 
-#include "runtime/StagedInstall.h"
 #include "runtime/RuntimeLocator.h"
 #include "runtime/ServerCapabilities.h"
+#include "runtime/StagedInstall.h"
 
 namespace llocr {
 
@@ -73,9 +73,7 @@ ProbeResult probeInstalledBinary(const QString &serverAbs)
 
 }  // namespace
 
-InstallOutput InstallTransaction::start(const QString &archivePath,
-                                        const ReleaseAsset &asset,
-                                        RuntimePaths paths, CommitFn commit)
+InstallOutput InstallTransaction::start(const QString &archivePath, const ReleaseAsset &asset, RuntimePaths paths, CommitFn commit)
 {
     InstallOutput out;
 
@@ -85,9 +83,7 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
         return out;
     }
     if (asset.size > 0 && zfi.size() != asset.size) {
-        out.error = QObject::tr("Downloaded archive size mismatch (expected %1, got %2)")
-                        .arg(asset.size)
-                        .arg(zfi.size());
+        out.error = QObject::tr("Downloaded archive size mismatch (expected %1, got %2)").arg(asset.size).arg(zfi.size());
         return out;
     }
     if (!asset.sha256.isEmpty()) {
@@ -128,8 +124,7 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
         return out;
     }
     if (probe.capabilities.belowMinimum) {
-        out.error = QObject::tr("This release is below the minimum supported build (%1)")
-                        .arg(QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
+        out.error = QObject::tr("This release is below the minimum supported build (%1)").arg(QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
         return out;
     }
     QString build = probe.capabilities.build;
@@ -138,12 +133,7 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
     if (build.isEmpty())
         build = QStringLiteral("unknown");
 
-    const QString finalTag = QStringLiteral("llama.cpp-%1-%2-%3-%4")
-                                 .arg(build,
-                                      asset.backend.isEmpty()
-                                          ? QStringLiteral("cpu")
-                                          : asset.backend,
-                                      asset.os, asset.arch);
+    const QString finalTag = QStringLiteral("llama.cpp-%1-%2-%3-%4").arg(build, asset.backend.isEmpty() ? QStringLiteral("cpu") : asset.backend, asset.os, asset.arch);
     const QString finalDir = paths.installDir(finalTag);
     staged.setFinalPath(finalDir);
     if (!staged.commit(&out.error))
@@ -162,8 +152,7 @@ InstallOutput InstallTransaction::start(const QString &archivePath,
 
 void InstallTransaction::cleanupStaging(RuntimePaths paths, bool keepModelStaging)
 {
-    const QStringList names =
-        QDir(paths.stagingDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    const QStringList names = QDir(paths.stagingDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QString &name : names) {
         if (keepModelStaging && name.startsWith(QLatin1String("model-")))
             continue;
@@ -171,12 +160,10 @@ void InstallTransaction::cleanupStaging(RuntimePaths paths, bool keepModelStagin
     }
 }
 
-QString InstallTransaction::cleanupUnusedBuilds(RuntimePaths paths,
-                                                const QString &keepTag)
+QString InstallTransaction::cleanupUnusedBuilds(RuntimePaths paths, const QString &keepTag)
 {
     int removed = 0;
-    const QStringList names =
-        QDir(paths.runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    const QStringList names = QDir(paths.runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QString &name : names) {
         if (name == keepTag)
             continue;
@@ -187,8 +174,7 @@ QString InstallTransaction::cleanupUnusedBuilds(RuntimePaths paths,
     return QStringLiteral("Removed %1 build(s)").arg(removed);
 }
 
-QList<InstalledBuildInfo>
-InstallTransaction::scanInstalledBuilds(const RuntimePaths &paths)
+QList<InstalledBuildInfo> InstallTransaction::scanInstalledBuilds(const RuntimePaths &paths)
 {
     QList<InstalledBuildInfo> result;
     const QDir runtime(paths.runtimeDir());
@@ -196,19 +182,17 @@ InstallTransaction::scanInstalledBuilds(const RuntimePaths &paths)
         return result;
 
     const QString prefix = QStringLiteral("llama.cpp-");
-    const QStringList dirs =
-        runtime.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    const QStringList dirs = runtime.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
     for (const QString &name : dirs) {
         if (!name.startsWith(prefix))
-            continue;   // staging/ and one-off leftovers are not installs
+            continue;  // staging/ and one-off leftovers are not installs
         InstalledBuildInfo info;
         info.tag = name;
         const QStringList parts = name.mid(prefix.size()).split(QLatin1Char('-'));
         if (!parts.isEmpty())
             info.build = parts.first();
         if (parts.size() >= 4) {
-            info.backend = QStringList(parts.mid(1, parts.size() - 3))
-                               .join(QLatin1Char('-'));
+            info.backend = QStringList(parts.mid(1, parts.size() - 3)).join(QLatin1Char('-'));
         } else if (parts.size() == 3) {
             info.backend = parts.at(1);
         }
@@ -218,16 +202,13 @@ InstallTransaction::scanInstalledBuilds(const RuntimePaths &paths)
         result.append(info);
     }
 
-    std::sort(result.begin(), result.end(),
-              [](const InstalledBuildInfo &a, const InstalledBuildInfo &b) {
-                  const int ab = a.build.size() > 1 && a.build.startsWith(QLatin1Char('b'))
-                                     ? a.build.mid(1).toInt() : -1;
-                  const int bb = b.build.size() > 1 && b.build.startsWith(QLatin1Char('b'))
-                                     ? b.build.mid(1).toInt() : -1;
-                  if (ab != bb)
-                      return ab > bb;
-                  return a.tag < b.tag;
-              });
+    std::sort(result.begin(), result.end(), [](const InstalledBuildInfo &a, const InstalledBuildInfo &b) {
+        const int ab = a.build.size() > 1 && a.build.startsWith(QLatin1Char('b')) ? a.build.mid(1).toInt() : -1;
+        const int bb = b.build.size() > 1 && b.build.startsWith(QLatin1Char('b')) ? b.build.mid(1).toInt() : -1;
+        if (ab != bb)
+            return ab > bb;
+        return a.tag < b.tag;
+    });
     return result;
 }
 

@@ -15,7 +15,8 @@ class QRegularExpression;
 
 namespace llocr {
 
-class Exporter {
+class Exporter
+{
 public:
     enum class Format { Markdown, PlainText, Html, Docx, Pdf, Unknown };
 
@@ -27,11 +28,9 @@ public:
 
     struct Result {
         bool success = false;
-        // Untranslated until read: a language switch re-renders the status line
-        // instead of leaving the previous language on screen (ADR 114).
         StatusMessage message;
-        static Result ok(const StatusMessage& msg = {})  { return { true,  msg }; }
-        static Result fail(const StatusMessage& msg)      { return { false, msg }; }
+        static Result ok(const StatusMessage &msg = {}) { return {true, msg}; }
+        static Result fail(const StatusMessage &msg) { return {false, msg}; }
     };
 
     struct Page {
@@ -44,49 +43,33 @@ public:
         explicit ExportOptions(bool split = true) : splitPages(split) {}
     };
 
-    static Format formatForSuffix(const QString& suffix);
+    static Format formatForSuffix(const QString &suffix);
     static bool isPandocAvailable();
     static QString pandocExecutable();
-    static QString buildMarkdown(const QList<Page>& pages, bool splitPages = true);
-    static QString buildPlainText(const QList<Page>& pages, bool splitPages = true);
-    static QString buildHtml(const QList<Page>& pages, bool splitPages = true);
-    static QString embedImagesAsDataUrls(
-        const QString& markdown, const std::function<QImage(int boxIndex)>& crop);
+    static QString buildMarkdown(const QList<Page> &pages, bool splitPages = true);
+    static QString buildPlainText(const QList<Page> &pages, bool splitPages = true);
+    static QString buildHtml(const QList<Page> &pages, bool splitPages = true);
+    static QString embedImagesAsDataUrls(const QString &markdown, const std::function<QImage(int boxIndex)> &crop);
     static QString katexCssForExport();
     static QString exportStyleSheet(bool splitPages = true);
-    static QString assembleHtmlDocument(const QStringList& pageSections);
-    static Result writeTextFile(const QString& path, const QString& content);
+    static QString assembleHtmlDocument(const QStringList &pageSections);
+    static Result writeTextFile(const QString &path, const QString &content);
     static QPageLayout defaultPdfLayout();
-    static Result writePdfFallback(const QList<Page> &pages, const QString &path,
-                                   const CropProvider &crop,
-                                   const QPageLayout &layout = defaultPdfLayout(),
-                                   bool splitPages = true);
+    static Result writePdfFallback(const QList<Page> &pages, const QString &path, const CropProvider &crop, const QPageLayout &layout = defaultPdfLayout(), bool splitPages = true);
 
     static QList<QPair<int, int>> referencedCrops(const QList<Page> &pages);
-    Result exportToFile(const QList<Page>& pages, const QString& filePath,
-                        const CropProvider& crop = {},
-                        const ExportOptions& options = ExportOptions()) const;
-    static ResolvedImages resolveImageReferences(
-        const QString& markdown, int pageIndex,
-        const std::function<QImage(int boxIndex)>& crop,
-        const QString& mediaDir,
-        const QString& referencePrefix = {});
+    Result exportToFile(const QList<Page> &pages, const QString &filePath, const CropProvider &crop = {}, const ExportOptions &options = ExportOptions()) const;
+    static ResolvedImages resolveImageReferences(const QString &markdown, int pageIndex, const std::function<QImage(int boxIndex)> &crop, const QString &mediaDir, const QString &referencePrefix = {});
 
 private:
     static QRegularExpression imageRefRegex();
 
-    static QString joinPages(const QList<Page>& pages, const QString& pageBreak);
+    static QString joinPages(const QList<Page> &pages, const QString &pageBreak);
 
-    QString buildMarkdownResolved(const QList<Page>& pages, const CropProvider& crop,
-                                  const QString& mediaDir, const QString& referencePrefix,
-                                  const QString& pageBreak) const;
-    Result exportViaPandoc(const QList<Page>& pages, const QString& filePath,
-                           const CropProvider& crop, const QStringList& extraArgs,
-                           bool splitPages) const;
+    QString buildMarkdownResolved(const QList<Page> &pages, const CropProvider &crop, const QString &mediaDir, const QString &referencePrefix, const QString &pageBreak) const;
+    Result exportViaPandoc(const QList<Page> &pages, const QString &filePath, const CropProvider &crop, const QStringList &extraArgs, bool splitPages) const;
 
-    static Result runPandoc(const QString& markdown,
-                            const QString& outputPath,
-                            const QStringList& extraArgs);
+    static Result runPandoc(const QString &markdown, const QString &outputPath, const QStringList &extraArgs);
 };
 
-} // namespace llocr
+}  // namespace llocr

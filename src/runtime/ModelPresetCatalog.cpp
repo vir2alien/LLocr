@@ -16,8 +16,7 @@ constexpr const char *kUserSchemaKey = "schemaVersion";
 constexpr int kUserSchemaVersion = 1;
 constexpr const char *kModelsKey = "models";
 
-QList<ModelPreset> readFile(const QString &path, const QString &fileDesc,
-                            QString &error, bool missingIsOk)
+QList<ModelPreset> readFile(const QString &path, const QString &fileDesc, QString &error, bool missingIsOk)
 {
     QFile f(path);
     if (!f.exists()) {
@@ -41,8 +40,7 @@ QList<ModelPreset> readFile(const QString &path, const QString &fileDesc,
         if (root.contains(QLatin1String(kUserSchemaKey))) {
             const int version = root.value(QLatin1String(kUserSchemaKey)).toInt(-1);
             if (version > kUserSchemaVersion) {
-                error = QObject::tr("%1 uses an unsupported schema version (%2; supported: %3)")
-                            .arg(fileDesc).arg(version).arg(kUserSchemaVersion);
+                error = QObject::tr("%1 uses an unsupported schema version (%2; supported: %3)").arg(fileDesc).arg(version).arg(kUserSchemaVersion);
                 return QList<ModelPreset>();
             }
         }
@@ -82,25 +80,22 @@ QJsonArray ModelPresetCatalog::toArray(const QList<ModelPreset> &presets)
     return arr;
 }
 
-QList<ModelPreset> ModelPresetCatalog::load(const QString &builtInPath,
-                                            const QString &userCatalogPath,
-                                            QString &error)
+QList<ModelPreset> ModelPresetCatalog::load(const QString &builtInPath, const QString &userCatalogPath, QString &error)
 {
     QList<ModelPreset> out;
 
     QString builtinErr;
-    QList<ModelPreset> builtIn = readFile(builtInPath,
-                                           QObject::tr("built-in preset catalog"),
-                                           builtinErr, /*missingIsOk=*/false);
+    QList<ModelPreset> builtIn = readFile(builtInPath, QObject::tr("built-in preset catalog"), builtinErr, /*missingIsOk=*/false);
     if (builtIn.isEmpty() && !builtinErr.isEmpty()) {
         error = builtinErr;
         return QList<ModelPreset>();
     }
 
     QString userErr;
-    QList<ModelPreset> user =
-        readFile(userCatalogPath, QObject::tr("user preset catalog"), userErr,
-                 /*missingIsOk=*/true);
+    QList<ModelPreset> user = readFile(userCatalogPath,
+                                       QObject::tr("user preset catalog"),
+                                       userErr,
+                                       /*missingIsOk=*/true);
 
     QList<ModelPreset> merged;
     QHash<QString, int> indexById;
@@ -120,8 +115,7 @@ QList<ModelPreset> ModelPresetCatalog::load(const QString &builtInPath,
     return merged;
 }
 
-bool ModelPresetCatalog::save(const QString &userCatalogPath,
-                              const QList<ModelPreset> &presets, QString &error)
+bool ModelPresetCatalog::save(const QString &userCatalogPath, const QList<ModelPreset> &presets, QString &error)
 {
     QDir().mkpath(QFileInfo(userCatalogPath).absolutePath());
 
@@ -131,27 +125,23 @@ bool ModelPresetCatalog::save(const QString &userCatalogPath,
 
     QSaveFile f(userCatalogPath);
     if (!f.open(QIODevice::WriteOnly)) {
-        error = QObject::tr("Unable to write preset catalog: %1")
-                    .arg(f.errorString());
+        error = QObject::tr("Unable to write preset catalog: %1").arg(f.errorString());
         return false;
     }
     f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
     if (!f.commit()) {
-        error = QObject::tr("Unable to commit preset catalog: %1")
-                    .arg(f.errorString());
+        error = QObject::tr("Unable to commit preset catalog: %1").arg(f.errorString());
         return false;
     }
     return true;
 }
 
-bool ModelPresetCatalog::resetUserCatalog(const QString &userCatalogPath,
-                                          QString &error)
+bool ModelPresetCatalog::resetUserCatalog(const QString &userCatalogPath, QString &error)
 {
     QFile f(userCatalogPath);
     if (f.exists()) {
         if (!f.remove()) {
-            error = QObject::tr("Unable to remove user catalog: %1")
-                        .arg(f.errorString());
+            error = QObject::tr("Unable to remove user catalog: %1").arg(f.errorString());
             return false;
         }
     }

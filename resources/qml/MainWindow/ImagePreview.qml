@@ -15,9 +15,6 @@ Image {
             : ""
     cache: false
 
-    // The page render is asynchronous (ADR 118): until the worker delivers the
-    // full image the provider serves the thumbnail, so say so rather than let
-    // the user read a soft image as the final one.
     LLOLabel {
         anchors.centerIn: parent
         visible: Controller.previewRendering(Controller.currentPage)
@@ -119,7 +116,6 @@ Image {
                     }
                 }
 
-                // --- Selection: any recognized block can be picked for verification ---
                 MouseArea {
                     anchors.fill: parent
                     visible: !boxDelegate.isImage
@@ -176,7 +172,6 @@ Image {
                     onClicked: Controller.removeBlock(boxDelegate.index)
                 }
 
-                // --- Image-block boundary editing (resize handles) ---
                 function resizeRect(mode, ox, oy, ow, oh, dx, dy) {
                     const minS = 0.01
                     var nx = ox, ny = oy, nw = ow, nh = oh

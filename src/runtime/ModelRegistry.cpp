@@ -10,9 +10,9 @@
 
 #include <algorithm>
 
+#include "runtime/InstalledReconcile.h"
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelRegistry.h"
-#include "runtime/InstalledReconcile.h"
 
 namespace llocr {
 
@@ -24,14 +24,12 @@ constexpr const char *kModelsKey = "models";
 
 QString originToString(ModelOrigin o)
 {
-    return o == ModelOrigin::Managed ? QStringLiteral("managed")
-                                     : QStringLiteral("external");
+    return o == ModelOrigin::Managed ? QStringLiteral("managed") : QStringLiteral("external");
 }
 
 ModelOrigin originFromString(const QString &s)
 {
-    return s == QLatin1String("managed") ? ModelOrigin::Managed
-                                         : ModelOrigin::External;
+    return s == QLatin1String("managed") ? ModelOrigin::Managed : ModelOrigin::External;
 }
 
 bool isSubpathOf(const QString &path, const QString &dir)
@@ -73,8 +71,7 @@ ModelEntry entryFromJson(const QJsonObject &o)
     e.mmprojPath = o.value(QStringLiteral("mmprojPath")).toString();
     e.dir = o.value(QStringLiteral("dir")).toString();
     e.origin = originFromString(o.value(QStringLiteral("managed")).toString());
-    e.byteSize =
-        static_cast<qint64>(o.value(QStringLiteral("byteSize")).toDouble(0));
+    e.byteSize = static_cast<qint64>(o.value(QStringLiteral("byteSize")).toDouble(0));
     e.quantization = o.value(QStringLiteral("quantization")).toString();
     e.license = o.value(QStringLiteral("license")).toString();
     e.sha256 = o.value(QStringLiteral("sha256")).toString();
@@ -157,15 +154,12 @@ QString ModelRegistry::lockPathFor(const QString &modelsDir)
     return QDir(modelsDir).filePath(QLatin1String(kLockFile));
 }
 
-QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
-                                      QString &error)
+QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt, QString &error)
 {
     return load(modelsDir, rebuilt, error, nullptr, ReconcileSelections());
 }
 
-QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
-                                      QString &error, ReconcileResult *report,
-                                      const ReconcileSelections &selections)
+QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt, QString &error, ReconcileResult *report, const ReconcileSelections &selections)
 {
     rebuilt = false;
     // One path for every way the index can be unusable: a missing, unreadable,
@@ -183,12 +177,10 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
             const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
             if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
                 error = QObject::tr("Model index is corrupt; rescanning models directory");
-            } else if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1)
-                       != kSchemaVersion) {
+            } else if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1) != kSchemaVersion) {
                 error = QObject::tr("Model index version mismatch; rescanning");
             } else {
-                const QJsonArray arr =
-                    doc.object().value(QLatin1String(kModelsKey)).toArray();
+                const QJsonArray arr = doc.object().value(QLatin1String(kModelsKey)).toArray();
                 for (const QJsonValue &v : arr) {
                     if (!v.isObject())
                         continue;
@@ -223,8 +215,7 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt,
     return result.models;
 }
 
-bool ModelRegistry::save(const QString &modelsDir, const QList<ModelEntry> &entries,
-                         QString &error)
+bool ModelRegistry::save(const QString &modelsDir, const QList<ModelEntry> &entries, QString &error)
 {
     QDir().mkpath(modelsDir);
 
@@ -237,9 +228,7 @@ bool ModelRegistry::save(const QString &modelsDir, const QList<ModelEntry> &entr
     return writeIndex(modelsDir, entries, error);
 }
 
-bool ModelRegistry::update(const QString &modelsDir,
-                           const std::function<QList<ModelEntry>(QList<ModelEntry> &)> &mutate,
-                           QString &error)
+bool ModelRegistry::update(const QString &modelsDir, const std::function<QList<ModelEntry>(QList<ModelEntry> &)> &mutate, QString &error)
 {
     QDir().mkpath(modelsDir);
 
@@ -283,8 +272,7 @@ QList<ModelEntry> ModelRegistry::readIndex(const QString &modelsDir, QString &er
     return out;
 }
 
-bool ModelRegistry::writeIndex(const QString &modelsDir, const QList<ModelEntry> &entries,
-                               QString &error)
+bool ModelRegistry::writeIndex(const QString &modelsDir, const QList<ModelEntry> &entries, QString &error)
 {
     QJsonObject root;
     root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
@@ -296,8 +284,7 @@ bool ModelRegistry::writeIndex(const QString &modelsDir, const QList<ModelEntry>
     QSaveFile f(indexPathFor(modelsDir));
     f.setDirectWriteFallback(true);
     if (!f.open(QIODevice::WriteOnly)) {
-        error = QObject::tr("Unable to open model index for writing: %1")
-                    .arg(f.errorString());
+        error = QObject::tr("Unable to open model index for writing: %1").arg(f.errorString());
         return false;
     }
     f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
@@ -314,12 +301,10 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
     const QDir base(modelsDir);
     if (!base.exists())
         return out;
-    const QFileInfoList subdirs =
-        base.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    const QFileInfoList subdirs = base.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
     for (const QFileInfo &subdirInfo : subdirs) {
         const QDir d(subdirInfo.absoluteFilePath());
-        const QStringList gguFs =
-            ModelCatalog::allGguf(d.entryList(QDir::Files, QDir::Name));
+        const QStringList gguFs = ModelCatalog::allGguf(d.entryList(QDir::Files, QDir::Name));
         if (gguFs.isEmpty())
             continue;
 
@@ -338,8 +323,7 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
 
         const QString dirName = subdirInfo.fileName();
         const QString dirPath = subdirInfo.canonicalFilePath();
-        const QString mmprojPath =
-            mmprojRel.isEmpty() ? QString() : d.filePath(mmprojRel);
+        const QString mmprojPath = mmprojRel.isEmpty() ? QString() : d.filePath(mmprojRel);
 
         QStringList stems = byStem.keys();
         stems.sort();
@@ -348,15 +332,11 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
             sortSplitParts(&modelParts);
 
             ModelEntry e;
-            const QString quant =
-                ModelCatalog::quantizationFromName(modelParts.first());
-            e.id = quant.isEmpty() ? dirName
-                                   : dirName + QLatin1Char('_') + quant;
+            const QString quant = ModelCatalog::quantizationFromName(modelParts.first());
+            e.id = quant.isEmpty() ? dirName : dirName + QLatin1Char('_') + quant;
             e.title = dirName;
             const int sep = dirName.indexOf(QLatin1String("__"));
-            e.repoId = sep > 0
-                ? dirName.left(sep) + QLatin1Char('/') + dirName.mid(sep + 2)
-                : dirName;
+            e.repoId = sep > 0 ? dirName.left(sep) + QLatin1Char('/') + dirName.mid(sep + 2) : dirName;
             e.repo = e.repoId;
             e.dir = dirPath;
             e.origin = ModelOrigin::Managed;  // inside modelsDir ⇒ managed
@@ -378,23 +358,14 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
     return out;
 }
 
-QString ModelRegistry::removalError(const ModelEntry &e, const QString &modelsDir,
-                                    bool active, bool runtimeReady)
+QString ModelRegistry::removalError(const ModelEntry &e, const QString &modelsDir, bool active, bool runtimeReady)
 {
     if (e.origin != ModelOrigin::Managed)
-        return QObject::tr(
-            "This model is external and can only be hidden from the list, not deleted");
-    const QString modelPath =
-        canonicalPath(e.modelPath).isEmpty()
-            ? QFileInfo(e.modelPath).absoluteFilePath()
-            : canonicalPath(e.modelPath);
-    const QString dirPath = canonicalPath(modelsDir).isEmpty()
-                                ? QFileInfo(modelsDir).absoluteFilePath()
-                                : canonicalPath(modelsDir);
-    if (dirPath.isEmpty() || modelPath.isEmpty()
-        || !isSubpathOf(modelPath, dirPath))
-        return QObject::tr(
-            "This model file lies outside the models directory and cannot be removed.");
+        return QObject::tr("This model is external and can only be hidden from the list, not deleted");
+    const QString modelPath = canonicalPath(e.modelPath).isEmpty() ? QFileInfo(e.modelPath).absoluteFilePath() : canonicalPath(e.modelPath);
+    const QString dirPath = canonicalPath(modelsDir).isEmpty() ? QFileInfo(modelsDir).absoluteFilePath() : canonicalPath(modelsDir);
+    if (dirPath.isEmpty() || modelPath.isEmpty() || !isSubpathOf(modelPath, dirPath))
+        return QObject::tr("This model file lies outside the models directory and cannot be removed.");
     if (active && runtimeReady)
         return QObject::tr("This model is in use. Stop the server before removing it.");
     return QString();

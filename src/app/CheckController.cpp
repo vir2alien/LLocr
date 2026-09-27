@@ -2,18 +2,13 @@
 
 #include <QFutureWatcher>
 
-#include "app/RequestProfileStore.h"
+#include "config/RequestProfileStore.h"
 #include "models/QwenGeneralModel.h"
 
 namespace llocr {
 
-CheckController::CheckController(RequestProfileStore &requestProfiles,
-                                 RuntimeController &runtime,
-                                 QObject *parent)
-    : QObject(parent)
-    , m_requestProfiles(requestProfiles)
-    , m_runtime(runtime)
-    , m_model(std::make_unique<QwenGeneralModel>())
+CheckController::CheckController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent)
+    : QObject(parent), m_requestProfiles(requestProfiles), m_runtime(runtime), m_model(std::make_unique<QwenGeneralModel>())
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
         if (m_stopRequested) {
@@ -21,10 +16,7 @@ CheckController::CheckController(RequestProfileStore &requestProfiles,
             setBusy(false);
             return;
         }
-        const CheckResult result = m_watcher.future().resultCount() > 0
-                                       ? m_watcher.result()
-                                       : CheckResult::makeError(
-                                             StatusMessage::translate("CheckController", "No response"));
+        const CheckResult result = m_watcher.future().resultCount() > 0 ? m_watcher.result() : CheckResult::makeError(StatusMessage::translate("CheckController", "No response"));
         emit checkFinished(result);
         setBusy(false);
     });
@@ -55,8 +47,7 @@ ConnectionConfig CheckController::buildConfig(const ResolvedConnection &conn) co
     return config;
 }
 
-void CheckController::checkBlock(const QImage &image, const QString &recognizedText,
-                                 const QString &systemPrompt, const QString &typePrompt)
+void CheckController::checkBlock(const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt)
 {
     if (m_busy || image.isNull())
         return;
@@ -64,20 +55,16 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
     setBusy(true);
     m_stopRequested = false;
 
-    m_runtime.ensureConnectionReady(this, ConnectionRole::Check,
-                                    [this, image, recognizedText, systemPrompt, typePrompt](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, ConnectionRole::Check, [this, image, recognizedText, systemPrompt, typePrompt](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
         if (m_stopRequested) {
-            emit statusRequested(
-                StatusMessage::translate("CheckController", "Stopped before check started."));
+            emit statusRequested(StatusMessage::translate("CheckController", "Stopped before check started."));
             setBusy(false);
             return;
         }
         if (conn.baseUrl.isEmpty()) {
-            const StatusMessage message = conn.error.isEmpty()
-                ? StatusMessage::translate("CheckController", "Connection is not configured.")
-                : StatusMessage::literal(conn.error);
+            const StatusMessage message = conn.error.isEmpty() ? StatusMessage::translate("CheckController", "Connection is not configured.") : StatusMessage::literal(conn.error);
             emit statusRequested(message);
             emit checkFinished(CheckResult::makeError(message));
             setBusy(false);

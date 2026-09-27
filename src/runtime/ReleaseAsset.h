@@ -22,15 +22,14 @@ struct ReleaseAsset {
 };
 
 struct ReleaseInfo {
-    QString tagName;       // e.g. "b10594"
-    qint64 build = -1;     // numeric build extracted from tagName, -1 when unknown
-    QString name;          // release title
-    QString publishedAt;   // ISO-8601 string, for the picker label
+    QString tagName;      // e.g. "b10594"
+    qint64 build = -1;    // numeric build extracted from tagName, -1 when unknown
+    QString name;         // release title
+    QString publishedAt;  // ISO-8601 string, for the picker label
     QList<ReleaseAsset> assets;
-    QString body;          // raw body; sha256 entries are parsed from here
+    QString body;  // raw body; sha256 entries are parsed from here
 
-    ReleaseAsset pickAsset(QString os, QString arch, QString backend,
-                           bool wantCudart = false) const;
+    ReleaseAsset pickAsset(QString os, QString arch, QString backend, bool wantCudart = false) const;
 };
 
 }  // namespace llocr

@@ -1,5 +1,5 @@
-#include <QDir>
 #include <QDateTime>
+#include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -9,12 +9,12 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
-#include "app/LaunchProfileStore.h"
-#include "app/RequestProfileStore.h"
-#include "app/SettingsStore.h"
+#include "config/RequestProfileStore.h"
+#include "config/RuntimePaths.h"
+#include "config/SettingsStore.h"
 #include "runtime/InstalledState.h"
+#include "runtime/LaunchProfileStore.h"
 #include "runtime/RuntimeController.h"
-#include "runtime/RuntimePaths.h"
 #include "runtime/RuntimeState.h"
 #include "runtime/SelfTestController.h"
 #include "testsettings.h"
@@ -67,7 +67,8 @@ QString writeTestLaunchCatalogWithParameter(const QTemporaryDir &dir)
 // (start → /health → /v1/models → alias), deduplication of concurrent calls,
 // cancelPendingStart(), and the health-timeout path. Runs against the mock
 // llama-server (tests/mock_llama_server.cpp).
-class TestEnsureConnection : public QObject {
+class TestEnsureConnection : public QObject
+{
     Q_OBJECT
 
 private:
@@ -81,10 +82,7 @@ private slots:
         QCoreApplication::setApplicationName(QStringLiteral("test_ensure_connection"));
     }
 
-    void cleanup()
-    {
-        QSettings().clear();
-    }
+    void cleanup() { QSettings().clear(); }
 
     void externalResolvesImmediately()
     {
@@ -124,13 +122,10 @@ private slots:
 
         RuntimeController runtime(settings, launchProfiles);
         ResolvedConnection ocr, check;
-        runtime.ensureConnectionReady(ConnectionRole::Ocr,
-                                      [&](const ResolvedConnection &c) { ocr = c; });
-        runtime.ensureConnectionReady(ConnectionRole::Check,
-                                      [&](const ResolvedConnection &c) { check = c; });
+        runtime.ensureConnectionReady(ConnectionRole::Ocr, [&](const ResolvedConnection &c) { ocr = c; });
+        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { check = c; });
         QCOMPARE(ocr.modelId, QStringLiteral("ocr-model"));
         QCOMPARE(check.modelId, QStringLiteral("check-model"));
-        // Same endpoint for both roles; only the model id differs.
         QCOMPARE(check.baseUrl, ocr.baseUrl);
         QCOMPARE(check.apiKey, ocr.apiKey);
         QCOMPARE(check.timeoutMs, ocr.timeoutMs);
@@ -141,8 +136,7 @@ private slots:
         // which is surfaced verbatim (§7.5). No silent fallback to the OCR name.
         settings.setCheckModelName(QString());
         ResolvedConnection empty;
-        runtime.ensureConnectionReady(ConnectionRole::Check,
-                                      [&](const ResolvedConnection &c) { empty = c; });
+        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { empty = c; });
         QVERIFY(empty.modelId.isEmpty());
     }
 
@@ -173,43 +167,40 @@ private slots:
         store.setStartupTimeoutMs(10000);
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir),
-                                         LaunchProfileStore::Role::Check);
+        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir), LaunchProfileStore::Role::Check);
         RuntimeController runtime(store, launchProfiles, &checkProfiles);
 
-        // Start with the OCR model.
         int first = 0;
         runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
         QTRY_VERIFY_WITH_TIMEOUT(first == 1, 15000);
         QCOMPARE(runtime.state(), RuntimeState::Ready);
 
         QList<int> states;
-        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() {
-            states.append(int(runtime.state()));
-        });
+        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() { states.append(int(runtime.state())); });
 
-        // The check resolve must restart the server for the check model.
         int done = 0;
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::Check,
-                                      [&](const ResolvedConnection &c) { resolved = c; ++done; });
+        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
         QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
         QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
         QVERIFY(!resolved.baseUrl.isEmpty());
         QCOMPARE(runtime.state(), RuntimeState::Ready);
-        QVERIFY2(states.contains(int(RuntimeState::Stopped)),
-                 "expected the server to be stopped for the role switch");
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)), "expected the server to be stopped for the role switch");
 
-        // Back to recognition: switches to the OCR model again.
         states.clear();
         int done2 = 0;
         ResolvedConnection resolved2;
-        runtime.ensureConnectionReady([&](const ResolvedConnection &c) { resolved2 = c; ++done2; });
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved2 = c;
+            ++done2;
+        });
         QTRY_VERIFY_WITH_TIMEOUT(done2 == 1, 15000);
         QVERIFY2(resolved2.error.isEmpty(), qPrintable(resolved2.error));
         QCOMPARE(runtime.state(), RuntimeState::Ready);
-        QVERIFY2(states.contains(int(RuntimeState::Stopped)),
-                 "expected a restart switching back to the OCR model");
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)), "expected a restart switching back to the OCR model");
 
         runtime.stopServer();
     }
@@ -242,8 +233,7 @@ private slots:
         store.setStartupTimeoutMs(10000);
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir),
-                                         LaunchProfileStore::Role::Check);
+        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir), LaunchProfileStore::Role::Check);
         RuntimeController runtime(store, launchProfiles, &checkProfiles);
 
         QStringList events;
@@ -259,11 +249,10 @@ private slots:
             events.append(QStringLiteral("ocr"));
         });
         // Issued while the first resolve is still in flight.
-        runtime.ensureConnectionReady(ConnectionRole::Check,
-                                      [&](const ResolvedConnection &c) {
-                                          checkConn = c;
-                                          events.append(QStringLiteral("check"));
-                                      });
+        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) {
+            checkConn = c;
+            events.append(QStringLiteral("check"));
+        });
 
         QTRY_VERIFY_WITH_TIMEOUT(events.contains(QStringLiteral("check")), 20000);
         QCOMPARE(runtime.state(), RuntimeState::Ready);
@@ -275,11 +264,8 @@ private slots:
         // The OCR request is answered first, and only then does the server switch
         // for the check role.
         QCOMPARE(events.indexOf(QStringLiteral("ocr")), 0);
-        QVERIFY2(events.indexOf(QStringLiteral("stopped"))
-                     > events.indexOf(QStringLiteral("ocr")),
-                 qPrintable(events.join(QLatin1Char(','))));
-        QVERIFY2(events.indexOf(QStringLiteral("check")) > events.indexOf(QStringLiteral("stopped")),
-                 qPrintable(events.join(QLatin1Char(','))));
+        QVERIFY2(events.indexOf(QStringLiteral("stopped")) > events.indexOf(QStringLiteral("ocr")), qPrintable(events.join(QLatin1Char(','))));
+        QVERIFY2(events.indexOf(QStringLiteral("check")) > events.indexOf(QStringLiteral("stopped")), qPrintable(events.join(QLatin1Char(','))));
 
         runtime.stopServer();
     }
@@ -305,15 +291,12 @@ private slots:
         store.setStartupTimeoutMs(10000);
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir),
-                                         LaunchProfileStore::Role::Check);
+        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir), LaunchProfileStore::Role::Check);
         RuntimeController runtime(store, launchProfiles, &checkProfiles);
 
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::Check,
-                                      [&](const ResolvedConnection &c) { resolved = c; });
-        QVERIFY2(resolved.error.contains(QStringLiteral("Check model"), Qt::CaseInsensitive),
-                 qPrintable(resolved.error));
+        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { resolved = c; });
+        QVERIFY2(resolved.error.contains(QStringLiteral("Check model"), Qt::CaseInsensitive), qPrintable(resolved.error));
         QVERIFY(resolved.baseUrl.isEmpty());
         QVERIFY(runtime.state() != RuntimeState::Starting);
         QVERIFY(runtime.state() != RuntimeState::Ready);
@@ -321,10 +304,8 @@ private slots:
         // A stale check-model path is named in the error.
         store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("gone.gguf")));
         ResolvedConnection resolved2;
-        runtime.ensureConnectionReady(ConnectionRole::Check,
-                                      [&](const ResolvedConnection &c) { resolved2 = c; });
-        QVERIFY2(resolved2.error.contains(QStringLiteral("gone.gguf")),
-                 qPrintable(resolved2.error));
+        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { resolved2 = c; });
+        QVERIFY2(resolved2.error.contains(QStringLiteral("gone.gguf")), qPrintable(resolved2.error));
     }
 
     // The probe spawns the binary and waits for it — up to two minutes on a
@@ -348,12 +329,10 @@ private slots:
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
         const RuntimePaths paths(store.runtimeRootDir(), store.runtimeModelsDir());
         paths.ensureDirectories();
-        const QString ownerPath =
-            QDir(paths.runtimeDir()).filePath(QStringLiteral("owner.json"));
+        const QString ownerPath = QDir(paths.runtimeDir()).filePath(QStringLiteral("owner.json"));
         QVERIFY(!QFileInfo(ownerPath).absolutePath().isEmpty());
 
-        const auto writeRecord = [&ownerPath](qint64 pid, qint64 parentPid, int port,
-                                              const QString &program) {
+        const auto writeRecord = [&ownerPath](qint64 pid, qint64 parentPid, int port, const QString &program) {
             QJsonObject object;
             object.insert(QStringLiteral("pid"), double(pid));
             object.insert(QStringLiteral("parentPid"), double(parentPid));
@@ -366,8 +345,7 @@ private slots:
             file.close();
             return true;
         };
-        const QString mock =
-            QFileInfo(QString::fromUtf8(LLOCR_MOCK_SERVER)).absoluteFilePath();
+        const QString mock = QFileInfo(QString::fromUtf8(LLOCR_MOCK_SERVER)).absoluteFilePath();
 
         // No record at all: nothing to report.
         RuntimeController runtime(store, launchProfiles);
@@ -386,18 +364,14 @@ private slots:
 
         // A live foreign process whose image matches the record: an orphan.
         QProcess server;
-        server.start(mock, {QStringLiteral("--port"), QStringLiteral("0"),
-                            QStringLiteral("--never-healthy")});
+        server.start(mock, {QStringLiteral("--port"), QStringLiteral("0"), QStringLiteral("--never-healthy")});
         QVERIFY(server.waitForStarted(10000));
-        QVERIFY(writeRecord(server.processId(), 999998, 18082,
-                            QFileInfo(server.program()).absoluteFilePath()));
+        QVERIFY(writeRecord(server.processId(), 999998, 18082, QFileInfo(server.program()).absoluteFilePath()));
 
         RuntimeController runtime2(store, launchProfiles);
-        QVERIFY2(runtime2.orphanDetected(),
-                 "a live llama-server from a previous run must be reported");
+        QVERIFY2(runtime2.orphanDetected(), "a live llama-server from a previous run must be reported");
         QVERIFY(runtime2.orphanInfo().contains(QString::number(server.processId())));
 
-        // And the user can get rid of it.
         const QString result = runtime2.terminateOrphan();
         QVERIFY2(result.isEmpty(), qPrintable(result));
         QVERIFY(!runtime2.orphanDetected());
@@ -511,8 +485,10 @@ private slots:
         // health poll ticks every 250 ms, so anything near the delay is a block.
         QVERIFY2(maxGapMs < kVersionDelayMs / 2,
                  qPrintable(QStringLiteral("longest gap between timer ticks: %1 ms "
-                                          "(probe delay was %2 ms, %3 ticks total)")
-                                .arg(maxGapMs).arg(kVersionDelayMs).arg(ticks)));
+                                           "(probe delay was %2 ms, %3 ticks total)")
+                                .arg(maxGapMs)
+                                .arg(kVersionDelayMs)
+                                .arg(ticks)));
 
         runtime.stopServer();
     }
@@ -618,8 +594,7 @@ private slots:
         // settings gone from QSettings the delay goes through the launch
         // profile's user copy (a valueless flag row).
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("delay-start"),
-                                                    QStringLiteral("4000")));
+        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("delay-start"), QStringLiteral("4000")));
         launchProfiles.saveDraft();
         store.setStartupTimeoutMs(30000);
 
@@ -632,7 +607,6 @@ private slots:
             ++done;
         });
 
-        // Wait until the process is starting, then interrupt.
         QTRY_VERIFY_WITH_TIMEOUT(runtime.state() == RuntimeState::Starting, 5000);
         runtime.cancelPendingStart();
 
@@ -665,10 +639,8 @@ private slots:
         // health watchdog truly hits the startup timeout. Both flags go
         // through the launch profile's user copy.
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("never-healthy"),
-                                                    QString()));
-        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("no-models"),
-                                                    QString()));
+        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("never-healthy"), QString()));
+        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("no-models"), QString()));
         launchProfiles.saveDraft();
 
         RuntimeController runtime(store, launchProfiles);
@@ -708,24 +680,25 @@ private slots:
 
         // Request-profile store for the self-test request; written to the temp
         // dir because test binaries embed no resources.
-        const QString defaultsPath =
-            dir.filePath(QStringLiteral("request-defaults.json"));
+        const QString defaultsPath = dir.filePath(QStringLiteral("request-defaults.json"));
         {
             QFile defaultsFile(defaultsPath);
             QVERIFY(defaultsFile.open(QIODevice::WriteOnly));
-            defaultsFile.write(QByteArrayLiteral(
-                "{\"schemaVersion\":1,\"parameters\":["
-                "{\"order\":1,\"name\":\"temperature\",\"value\":0.0},"
-                "{\"order\":2,\"name\":\"max_tokens\",\"value\":1024},"
-                "{\"order\":3,\"name\":\"stream\",\"value\":false}]}").constData());
+            defaultsFile.write(QByteArrayLiteral("{\"schemaVersion\":1,\"parameters\":["
+                                                 "{\"order\":1,\"name\":\"temperature\",\"value\":0.0},"
+                                                 "{\"order\":2,\"name\":\"max_tokens\",\"value\":1024},"
+                                                 "{\"order\":3,\"name\":\"stream\",\"value\":false}]}")
+                                   .constData());
         }
         RequestProfileStore profiles(store, defaultsPath);
         SelfTestController selfTest(store, runtime, profiles);
         SelfTestResult result;
         int done = 0;
         QFutureWatcher<SelfTestResult> watch;
-        connect(&watch, &QFutureWatcher<SelfTestResult>::finished, this,
-                [&]() { result = watch.result(); ++done; });
+        connect(&watch, &QFutureWatcher<SelfTestResult>::finished, this, [&]() {
+            result = watch.result();
+            ++done;
+        });
         watch.setFuture(selfTest.runSelfTest());
 
         QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
@@ -760,7 +733,6 @@ private slots:
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
         RuntimeController runtime(store, launchProfiles);
 
-        // Start once so the server is Ready.
         int first = 0;
         runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
         QTRY_VERIFY_WITH_TIMEOUT(first == 1, 15000);
@@ -809,8 +781,7 @@ private slots:
 
         const QString err = runtime.startServer();
         QVERIFY2(!err.isEmpty(), "start must be refused without a model");
-        QVERIFY2(err.contains(QStringLiteral("model"), Qt::CaseInsensitive),
-                 qPrintable(err));
+        QVERIFY2(err.contains(QStringLiteral("model"), Qt::CaseInsensitive), qPrintable(err));
         // Nothing was spawned.
         QVERIFY(runtime.state() != RuntimeState::Starting);
         QVERIFY(runtime.state() != RuntimeState::Ready);
@@ -818,11 +789,8 @@ private slots:
         // The recognition gate reports the same actionable reason when a start
         // would be needed (the server is not live).
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
-            resolved = c;
-        });
-        QVERIFY(resolved.error.contains(QStringLiteral("model"),
-                                        Qt::CaseInsensitive));
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) { resolved = c; });
+        QVERIFY(resolved.error.contains(QStringLiteral("model"), Qt::CaseInsensitive));
     }
 
     // A stale model path (recorded but no longer on disk) must name the path
@@ -847,11 +815,8 @@ private slots:
         QVERIFY2(err.contains(QStringLiteral("gone.gguf")), qPrintable(err));
 
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
-            resolved = c;
-        });
-        QVERIFY2(resolved.error.contains(QStringLiteral("gone.gguf")),
-                 qPrintable(resolved.error));
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) { resolved = c; });
+        QVERIFY2(resolved.error.contains(QStringLiteral("gone.gguf")), qPrintable(resolved.error));
     }
 
     // The wizard gates used to be `Settings.serverPath.trim().length > 0`, so a

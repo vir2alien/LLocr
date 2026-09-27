@@ -12,4 +12,4 @@ QString QwenGeneralModel::displayName() const
     return QStringLiteral("Qwen (general purpose)");
 }
 
-} // namespace llocr
+}  // namespace llocr

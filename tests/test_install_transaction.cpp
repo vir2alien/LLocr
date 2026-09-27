@@ -9,9 +9,9 @@
 
 #include <zlib.h>
 
+#include "config/RuntimePaths.h"
 #include "runtime/InstallTransaction.h"
 #include "runtime/ReleaseAsset.h"
-#include "runtime/RuntimePaths.h"
 
 using namespace llocr;
 
@@ -39,11 +39,11 @@ static QString serverEntryName()
 
 struct ZipEntry {
     QString name;
-    QByteArray content;          // uncompressed bytes (CRC source)
+    QByteArray content;  // uncompressed bytes (CRC source)
     quint16 method = 0;
-    QByteArray compData;         // pre-compressed bytes; empty => stored content
-    quint32 crc = 0;             // 0 => computed from content
-    quint32 modeAttr = 0;        // upper 16 bits => (mode << 16)
+    QByteArray compData;   // pre-compressed bytes; empty => stored content
+    quint32 crc = 0;       // 0 => computed from content
+    quint32 modeAttr = 0;  // upper 16 bits => (mode << 16)
 };
 
 static void pushU16(QByteArray &out, quint16 v)
@@ -62,15 +62,14 @@ static void pushU32(QByteArray &out, quint32 v)
 
 static quint32 crc32(const QByteArray &data)
 {
-    return ::crc32(0L, reinterpret_cast<const Bytef *>(data.constData()),
-                   static_cast<uInt>(data.size()));
+    return ::crc32(0L, reinterpret_cast<const Bytef *>(data.constData()), static_cast<uInt>(data.size()));
 }
 
 static QByteArray buildZip(const QList<ZipEntry> &entries)
 {
     QByteArray out;
     QByteArray central;
-    quint32 running = 0;   // byte offset of the next local header
+    quint32 running = 0;  // byte offset of the next local header
 
     for (const ZipEntry &e : entries) {
         const QByteArray nameBytes = e.name.toUtf8();
@@ -99,7 +98,7 @@ static QByteArray buildZip(const QList<ZipEntry> &entries)
         // Central directory entry.
         QByteArray c;
         pushU32(c, 0x02014b50u);
-        pushU16(c, 0x0300u);         // made by Unix
+        pushU16(c, 0x0300u);  // made by Unix
         pushU16(c, 20);
         pushU16(c, 0);
         pushU16(c, e.method);
@@ -134,8 +133,7 @@ static QByteArray buildZip(const QList<ZipEntry> &entries)
     return out;
 }
 
-static QString writeArchive(const QString &dir, const QString &file,
-                            const QByteArray &raw)
+static QString writeArchive(const QString &dir, const QString &file, const QByteArray &raw)
 {
     const QString path = QDir(dir).filePath(file);
     QFile f(path);
@@ -146,8 +144,7 @@ static QString writeArchive(const QString &dir, const QString &file,
     return path;
 }
 
-static QString archiveFor(const QString &dir, const QString &file,
-                          const QList<ZipEntry> &entries)
+static QString archiveFor(const QString &dir, const QString &file, const QList<ZipEntry> &entries)
 {
     return writeArchive(dir, file, buildZip(entries));
 }
@@ -168,8 +165,7 @@ QByteArray tarGzPayload(const QList<ZipEntry> &entries)
         const QString mode = QStringLiteral("%1").arg(e.modeAttr >> 16, 7, 8, QLatin1Char('0'));
         ::memcpy(raw + 100, mode.toLatin1().constData(), 7);
         if (!e.content.isEmpty()) {
-            const QString size = QStringLiteral("%1").arg(e.content.size(), 11, 8,
-                                                          QLatin1Char('0'));
+            const QString size = QStringLiteral("%1").arg(e.content.size(), 11, 8, QLatin1Char('0'));
             ::memcpy(raw + 124, size.toLatin1().constData(), 11);
         }
         h[156] = char(e.content.isEmpty() ? '5' : '0');
@@ -187,8 +183,7 @@ QByteArray tarGzPayload(const QList<ZipEntry> &entries)
     z_stream stream{};
     stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(tar.constData()));
     stream.avail_in = static_cast<uInt>(tar.size());
-    deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8,
-                 Z_DEFAULT_STRATEGY);
+    deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY);
     out.resize(tar.size() + (tar.size() >> 4) + 128);
     stream.next_out = reinterpret_cast<Bytef *>(out.data());
     stream.avail_out = static_cast<uInt>(out.size());
@@ -200,8 +195,7 @@ QByteArray tarGzPayload(const QList<ZipEntry> &entries)
 
 }  // namespace
 
-static QString archiveTarGzFor(const QString &dir, const QString &file,
-                               const QList<ZipEntry> &entries)
+static QString archiveTarGzFor(const QString &dir, const QString &file, const QList<ZipEntry> &entries)
 {
     return writeArchive(dir, file, tarGzPayload(entries));
 }
@@ -210,24 +204,22 @@ static QString archiveTarGzFor(const QString &dir, const QString &file,
 // install must leave nothing behind there).
 static bool stagingEmpty(const RuntimePaths &paths)
 {
-    return QDir(paths.stagingDir())
-        .entryList(QDir::Dirs | QDir::NoDotAndDotDot)
-        .isEmpty();
+    return QDir(paths.stagingDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot).isEmpty();
 }
 
 // True when no installed build directory exists under runtime/ (used to assert
 // that a failed install left nothing behind).
 static bool noInstalledBuild(const RuntimePaths &paths)
 {
-    for (const QString &name : QDir(paths.runtimeDir())
-             .entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+    for (const QString &name : QDir(paths.runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
         if (name != QStringLiteral("staging"))
             return false;
     }
     return true;
 }
 
-class TestInstallTransaction : public QObject {
+class TestInstallTransaction : public QObject
+{
     Q_OBJECT
 
 private slots:
@@ -257,7 +249,7 @@ void TestInstallTransaction::installsSuccessfully()
     ZipEntry server;
     server.name = serverEntryName();
     server.content = serverBin;
-    server.modeAttr = 0755u << 16;   // executable per the extractor
+    server.modeAttr = 0755u << 16;  // executable per the extractor
     server.crc = crc32(serverBin);
     entries << server;
 
@@ -271,8 +263,7 @@ void TestInstallTransaction::installsSuccessfully()
     QVERIFY2(!zipPath.isEmpty(), "failed to write archive");
 
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     ReleaseAsset asset;
     asset.fileName = QStringLiteral("llama-b10594-bin-macos-arm64.zip");
@@ -285,11 +276,10 @@ void TestInstallTransaction::installsSuccessfully()
 
     bool committed = false;
     QString committedTag;
-    std::function<void(const InstallOutput &)> commit =
-        [&](const InstallOutput &o) {
-            committed = true;
-            committedTag = o.tag;
-        };
+    std::function<void(const InstallOutput &)> commit = [&](const InstallOutput &o) {
+        committed = true;
+        committedTag = o.tag;
+    };
 
     const InstallOutput out = InstallTransaction::start(zipPath, asset, paths, commit);
 
@@ -331,13 +321,11 @@ void TestInstallTransaction::installsFromTarGz()
     entries << readme;
 
     QTemporaryDir dir;
-    const QString archivePath =
-        archiveTarGzFor(dir.path(), QStringLiteral("llama-b10825-bin-macos-arm64.tar.gz"), entries);
+    const QString archivePath = archiveTarGzFor(dir.path(), QStringLiteral("llama-b10825-bin-macos-arm64.tar.gz"), entries);
     QVERIFY2(!archivePath.isEmpty(), "failed to write archive");
 
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     ReleaseAsset asset;
     asset.fileName = QStringLiteral("llama-b10825-bin-macos-arm64.tar.gz");
@@ -349,11 +337,10 @@ void TestInstallTransaction::installsFromTarGz()
 
     bool committed = false;
     QString committedTag;
-    std::function<void(const InstallOutput &)> commit =
-        [&](const InstallOutput &o) {
-            committed = true;
-            committedTag = o.tag;
-        };
+    std::function<void(const InstallOutput &)> commit = [&](const InstallOutput &o) {
+        committed = true;
+        committedTag = o.tag;
+    };
 
     const InstallOutput out = InstallTransaction::start(archivePath, asset, paths, commit);
 
@@ -380,15 +367,14 @@ void TestInstallTransaction::sizeMismatchFails()
     const QString zipPath = archiveFor(dir.path(), QStringLiteral("rel.zip"), entries);
 
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     ReleaseAsset asset;
     asset.fileName = QStringLiteral("llama-release.zip");
     asset.os = QStringLiteral("macos");
     asset.backend = QStringLiteral("cpu");
     asset.arch = QStringLiteral("arm64");
-    asset.size = QFileInfo(zipPath).size() + 1;   // wrong size
+    asset.size = QFileInfo(zipPath).size() + 1;
     asset.sha256 = QString();
 
     bool committed = false;
@@ -414,8 +400,7 @@ void TestInstallTransaction::shaMismatchFails()
     const QString zipPath = archiveFor(dir.path(), QStringLiteral("rel.zip"), entries);
 
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     ReleaseAsset asset;
     asset.fileName = QStringLiteral("llama-release.zip");
@@ -423,7 +408,7 @@ void TestInstallTransaction::shaMismatchFails()
     asset.backend = QStringLiteral("cpu");
     asset.arch = QStringLiteral("arm64");
     asset.size = QFileInfo(zipPath).size();
-    asset.sha256 = QString(64, QLatin1Char('f'));   // wrong digest
+    asset.sha256 = QString(64, QLatin1Char('f'));
 
     bool committed = false;
     const auto commit = [&](const InstallOutput &) { committed = true; };
@@ -443,8 +428,7 @@ void TestInstallTransaction::badArchiveFails()
     const QString zipPath = writeArchive(dir.path(), QStringLiteral("junk.zip"), junk);
 
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     ReleaseAsset asset;
     asset.fileName = QStringLiteral("llama-release.zip");
@@ -486,8 +470,7 @@ void TestInstallTransaction::duplicateEntryFails()
     QVERIFY(!zipPath.isEmpty());
 
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     ReleaseAsset asset;
     asset.fileName = QStringLiteral("llama-release.zip");
@@ -524,8 +507,7 @@ void TestInstallTransaction::probeFailureFails()
     QVERIFY(!zipPath.isEmpty());
 
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     ReleaseAsset asset;
     asset.fileName = QStringLiteral("llama-release.zip");
@@ -549,15 +531,13 @@ void TestInstallTransaction::probeFailureFails()
 void TestInstallTransaction::cleanupUnused()
 {
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     QVERIFY(QDir().mkpath(paths.installDir(QStringLiteral("Tag1"))));
     QVERIFY(QDir().mkpath(paths.installDir(QStringLiteral("Tag2"))));
     QVERIFY(QDir().mkpath(QDir(paths.runtimeDir()).filePath("staging/uuid")));
 
-    const QString summary = InstallTransaction::cleanupUnusedBuilds(
-        paths, QStringLiteral("Tag2"));
+    const QString summary = InstallTransaction::cleanupUnusedBuilds(paths, QStringLiteral("Tag2"));
 
     QVERIFY(!QFile::exists(paths.installDir(QStringLiteral("Tag1"))));
     QVERIFY(QFile::exists(paths.installDir(QStringLiteral("Tag2"))));
@@ -569,11 +549,9 @@ void TestInstallTransaction::cleanupUnused()
 void TestInstallTransaction::cleanupStaging()
 {
     QTemporaryDir root;
-    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")),
-                             QDir(root.path()).filePath(QStringLiteral("models")));
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
-    const QString uuidDir =
-        QDir(paths.stagingDir()).filePath(QStringLiteral("deadbeef-uuid"));
+    const QString uuidDir = QDir(paths.stagingDir()).filePath(QStringLiteral("deadbeef-uuid"));
     QVERIFY(QDir().mkpath(uuidDir));
     QFile stale(QDir(uuidDir).filePath(QStringLiteral("stale.bin")));
     QVERIFY(stale.open(QIODevice::WriteOnly | QIODevice::Truncate));

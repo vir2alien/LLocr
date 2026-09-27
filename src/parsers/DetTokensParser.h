@@ -5,7 +5,8 @@
 
 namespace llocr {
 
-class DetTokensParser : public IOutputParser {
+class DetTokensParser : public IOutputParser
+{
     Q_DISABLE_COPY_MOVE(DetTokensParser)
 
 public:
@@ -25,4 +26,4 @@ private:
     ParserOptions m_options;
 };
 
-} // namespace llocr
+}  // namespace llocr

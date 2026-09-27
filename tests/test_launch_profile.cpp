@@ -1,5 +1,4 @@
 #include <QAbstractItemModelTester>
-#include <QtTest>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -7,9 +6,10 @@
 #include <QJsonObject>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <QtTest>
 
-#include "app/LaunchProfileStore.h"
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
+#include "runtime/LaunchProfileStore.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -39,8 +39,7 @@ constexpr const char *kPresetsJson = R"({
 
 constexpr const char *kEmptyCatalog = R"({ "schemaVersion": 1, "profiles": [] })";
 
-QString writeProfileFile(const QTemporaryDir &dir, const QString &name,
-                         const QByteArray &json)
+QString writeProfileFile(const QTemporaryDir &dir, const QString &name, const QByteArray &json)
 {
     const QString path = QDir(dir.path()).filePath(name);
     QFile f(path);
@@ -51,7 +50,8 @@ QString writeProfileFile(const QTemporaryDir &dir, const QString &name,
 
 }  // namespace
 
-class TestLaunchProfile : public QObject {
+class TestLaunchProfile : public QObject
+{
     Q_OBJECT
 
 private:
@@ -76,8 +76,7 @@ private slots:
     void storeResolvesAndAutoSwitches()
     {
         QTemporaryDir dir;
-        const QString presetsPath =
-            writeProfileFile(dir, "presets.json", kPresetsJson);
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
 
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
@@ -87,8 +86,7 @@ private slots:
         LaunchProfileStore store(settings, presetsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         const QString initialId = store.activeProfileId();
-        QVERIFY(initialId == QStringLiteral("metal")
-                || initialId == QStringLiteral("cpu"));
+        QVERIFY(initialId == QStringLiteral("metal") || initialId == QStringLiteral("cpu"));
 
         // Installing a CPU backend switches (and persists) to the cpu preset.
         settings.setRuntimeBackend(QStringLiteral("cpu"));
@@ -108,8 +106,7 @@ private slots:
     void storeDraftSaveLoad()
     {
         QTemporaryDir dir;
-        const QString presetsPath =
-            writeProfileFile(dir, "presets.json", kPresetsJson);
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
 
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
@@ -119,10 +116,7 @@ private slots:
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.activeProfileId(), QStringLiteral("cpu"));
         QCOMPARE(store.draftModel()->rowCount(), 1);
-        QCOMPARE(store.draftModel()->data(
-                     store.draftModel()->index(0),
-                     LaunchParametersModel::ValueTextRole),
-                 QStringLiteral("8192"));
+        QCOMPARE(store.draftModel()->data(store.draftModel()->index(0), LaunchParametersModel::ValueTextRole), QStringLiteral("8192"));
 
         // Draft edits do not touch the persisted state.
         QVERIFY(store.setDraftValue(0, "4096"));
@@ -149,8 +143,7 @@ private slots:
     void storeAppendRemove()
     {
         QTemporaryDir dir;
-        const QString presetsPath =
-            writeProfileFile(dir, "presets.json", kPresetsJson);
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
 
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
@@ -163,30 +156,26 @@ private slots:
         QVERIFY(!store.appendDraftParameter(QStringLiteral("model"), QString()));
         QVERIFY(!store.appendDraftParameter(QStringLiteral("port"), QString()));
         QVERIFY(!store.appendDraftParameter(QStringLiteral("ctx-size"), QString()));
-        QVERIFY(store.appendDraftParameter(QStringLiteral("flash-attn"),
-                                           QStringLiteral("off")));
+        QVERIFY(store.appendDraftParameter(QStringLiteral("flash-attn"), QStringLiteral("off")));
         QCOMPARE(store.draftModel()->rowCount(), 2);
 
         // Remove the built-in ctx-size row: the user copy now has one row.
         store.removeDraftRow(0);
         store.saveDraft();
         QCOMPARE(store.activeProfile().parameters.size(), 1);
-        QCOMPARE(store.activeProfile().parameters.first().name,
-                 QStringLiteral("flash-attn"));
+        QCOMPARE(store.activeProfile().parameters.first().name, QStringLiteral("flash-attn"));
 
         // Restore defaults drops the user copy.
         store.resetToDefaults();
         QVERIFY(!store.hasUserProfile());
         QCOMPARE(store.activeProfile().parameters.size(), 1);
-        QCOMPARE(store.activeProfile().parameters.first().name,
-                 QStringLiteral("ctx-size"));
+        QCOMPARE(store.activeProfile().parameters.first().name, QStringLiteral("ctx-size"));
     }
 
     void storeSelectDraftProfileSwitchesRows()
     {
         QTemporaryDir dir;
-        const QString presetsPath =
-            writeProfileFile(dir, "presets.json", kPresetsJson);
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
 
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
@@ -221,8 +210,7 @@ private slots:
     void emptyCatalogStillWorks()
     {
         QTemporaryDir dir;
-        const QString presetsPath =
-            writeProfileFile(dir, "presets.json", kEmptyCatalog);
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kEmptyCatalog);
 
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
@@ -236,8 +224,7 @@ private slots:
         // but saveDraft is a safe no-op — there is no preset id to key a user
         // copy by. Production always ships presets; this only guards corrupt
         // / missing resources.
-        QVERIFY(store.appendDraftParameter(QStringLiteral("ctx-size"),
-                                           QStringLiteral("8192")));
+        QVERIFY(store.appendDraftParameter(QStringLiteral("ctx-size"), QStringLiteral("8192")));
         QCOMPARE(store.draftModel()->rowCount(), 1);
         store.saveDraft();
         QVERIFY(!store.hasUserProfile());

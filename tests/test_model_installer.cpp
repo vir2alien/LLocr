@@ -5,10 +5,10 @@
 
 #include <memory>
 
-#include "app/LaunchProfileStore.h"
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 #include "runtime/InstalledModelsModel.h"
 #include "runtime/InstalledState.h"
+#include "runtime/LaunchProfileStore.h"
 #include "runtime/ModelInstaller.h"
 #include "runtime/ModelRegistry.h"
 #include "runtime/RuntimeController.h"
@@ -18,7 +18,6 @@ using namespace llocr;
 
 namespace {
 
-// Writes a placeholder GGUF file; returns its absolute path.
 QString writeGguf(const QString &dir, const QString &name)
 {
     const QString p = QDir(dir).filePath(name);
@@ -59,18 +58,15 @@ private:
     static void makeRuntime(Setup &s)
     {
         // An empty built-in catalog (test binaries embed no resources).
-        const QString presetsPath =
-            QDir(s.root.path()).filePath(QStringLiteral("launch-presets.json"));
+        const QString presetsPath = QDir(s.root.path()).filePath(QStringLiteral("launch-presets.json"));
         {
             QFile f(presetsPath);
             if (f.open(QIODevice::WriteOnly))
-                f.write(QByteArrayLiteral(
-                    "{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
+                f.write(QByteArrayLiteral("{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
         }
         s.launchProfiles.reset(new LaunchProfileStore(s.settings, presetsPath));
         s.installed.reset(new InstalledState(s.settings));
-        s.runtime.reset(new RuntimeController(s.settings, *s.launchProfiles, nullptr,
-                                              s.installed.data()));
+        s.runtime.reset(new RuntimeController(s.settings, *s.launchProfiles, nullptr, s.installed.data()));
     }
 
     static void pointAtTempDir(SettingsStore &settings, const QString &root)
@@ -87,16 +83,14 @@ private:
     {
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
-        const QString modelsDir =
-            QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
         const QString sub = QDir(modelsDir).filePath(QStringLiteral("org__repo"));
         if (!QDir().mkpath(sub))
             return nullptr;
 
         const QString q4Path = writeGguf(sub, QStringLiteral("model-Q4_K_M.gguf"));
         const QString q8Path = writeGguf(sub, QStringLiteral("model-Q8_0.gguf"));
-        const QString mmproj =
-            writeGguf(sub, QStringLiteral("mmproj-model-F16.gguf"));
+        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-model-F16.gguf"));
         if (q4Path.isEmpty() || q8Path.isEmpty() || mmproj.isEmpty())
             return nullptr;
 
@@ -121,28 +115,17 @@ private:
             return nullptr;
 
         makeRuntime(*s);
-        s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
-                                              *s->launchProfiles, *s->installed));
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->launchProfiles, *s->installed));
         return s;
     }
 
     // The list models replace the stringly-typed QVariantMap (ADR 115); the
     // helpers read a role through the same rows QML binds to.
-    static QAbstractItemModel *ocrModels(ModelInstaller &installer)
-    {
-        return qobject_cast<QAbstractItemModel *>(installer.installedModels());
-    }
+    static QAbstractItemModel *ocrModels(ModelInstaller &installer) { return qobject_cast<QAbstractItemModel *>(installer.installedModels()); }
 
-    static QAbstractItemModel *checkModels(ModelInstaller &installer)
-    {
-        return qobject_cast<QAbstractItemModel *>(installer.checkInstalledModels());
-    }
+    static QAbstractItemModel *checkModels(ModelInstaller &installer) { return qobject_cast<QAbstractItemModel *>(installer.checkInstalledModels()); }
 
-    static QString pathAt(QAbstractItemModel *model, int row)
-    {
-        return model->data(model->index(row, 0),
-                           InstalledModelsModel::PathRole).toString();
-    }
+    static QString pathAt(QAbstractItemModel *model, int row) { return model->data(model->index(row, 0), InstalledModelsModel::PathRole).toString(); }
 
     // The *installer's* index, not the row: the list models are filtered per
     // role, and removeModel()/setActiveModel() address the registry list.
@@ -150,8 +133,7 @@ private:
     {
         auto *model = qobject_cast<InstalledModelsModel *>(ocrModels(installer));
         for (int i = 0; i < model->rowCount(); ++i) {
-            if (model->data(model->index(i, 0),
-                            InstalledModelsModel::QuantizationRole).toString() == quant)
+            if (model->data(model->index(i, 0), InstalledModelsModel::QuantizationRole).toString() == quant)
                 return model->sourceIndex(i);
         }
         return -1;
@@ -173,29 +155,23 @@ private slots:
         const int idx = indexOfQuant(*s->installer, QStringLiteral("Q4_K_M"));
         QVERIFY(idx >= 0);
 
-        const QString sub = QDir(s->settings.runtimeModelsDir())
-                                .filePath(QStringLiteral("org__repo"));
-        const QString q4Path =
-            QDir(sub).filePath(QStringLiteral("model-Q4_K_M.gguf"));
-        const QString q8Path =
-            QDir(sub).filePath(QStringLiteral("model-Q8_0.gguf"));
-        const QString mmproj =
-            QDir(sub).filePath(QStringLiteral("mmproj-model-F16.gguf"));
+        const QString sub = QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("org__repo"));
+        const QString q4Path = QDir(sub).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+        const QString q8Path = QDir(sub).filePath(QStringLiteral("model-Q8_0.gguf"));
+        const QString mmproj = QDir(sub).filePath(QStringLiteral("mmproj-model-F16.gguf"));
         QVERIFY(QFile::exists(q4Path));
         QVERIFY(QFile::exists(q8Path));
         QVERIFY(QFile::exists(mmproj));
 
         QVERIFY(s->installer->removeModel(idx).isEmpty());
-        QVERIFY(!QFile::exists(q4Path));  // the removed quant is gone
-        QVERIFY(QFile::exists(q8Path));   // the other quant survives
-        QVERIFY(QFile::exists(mmproj));   // shared mmproj survives (key assert)
-        QVERIFY(QDir(sub).exists());      // shared folder survives
+        QVERIFY(!QFile::exists(q4Path));
+        QVERIFY(QFile::exists(q8Path));
+        QVERIFY(QFile::exists(mmproj));
+        QVERIFY(QDir(sub).exists());
 
-        // Registry now holds exactly the remaining quant.
         QString err;
         bool rebuilt = false;
-        const QList<ModelEntry> entries =
-            ModelRegistry::load(s->settings.runtimeModelsDir(), rebuilt, err);
+        const QList<ModelEntry> entries = ModelRegistry::load(s->settings.runtimeModelsDir(), rebuilt, err);
         QCOMPARE(entries.size(), 1);
         QCOMPARE(entries.at(0).quantization, QStringLiteral("Q8_0"));
         QCOMPARE(entries.at(0).modelPath, q8Path);
@@ -214,9 +190,8 @@ private slots:
         QVERIFY(q8 >= 0);
         QVERIFY(s->installer->removeModel(q8).isEmpty());
 
-        const QString sub = QDir(s->settings.runtimeModelsDir())
-                                .filePath(QStringLiteral("org__repo"));
-        QVERIFY(!QDir(sub).exists());  // the whole folder is gone
+        const QString sub = QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("org__repo"));
+        QVERIFY(!QDir(sub).exists());
     }
 
     // A quant with its OWN (unshared) projector: removing it must delete both.
@@ -234,8 +209,7 @@ private slots:
         const QString q8Path = writeGguf(sub, QStringLiteral("model-Q8_0.gguf"));
         const QString mmprojA = writeGguf(sub, QStringLiteral("mmproj-A.gguf"));
         const QString mmprojB = writeGguf(sub, QStringLiteral("mmproj-B.gguf"));
-        QVERIFY(!q4Path.isEmpty() && !q8Path.isEmpty() && !mmprojA.isEmpty()
-                && !mmprojB.isEmpty());
+        QVERIFY(!q4Path.isEmpty() && !q8Path.isEmpty() && !mmprojA.isEmpty() && !mmprojB.isEmpty());
 
         ModelEntry q4;
         q4.id = QStringLiteral("org__repo_Q4_K_M");
@@ -258,13 +232,11 @@ private slots:
         QVERIFY2(ModelRegistry::save(modelsDir, {q4, q8}, err), qPrintable(err));
 
         // An empty built-in catalog (test binaries embed no resources).
-        const QString presetsPath =
-            QDir(root.path()).filePath(QStringLiteral("launch-presets.json"));
+        const QString presetsPath = QDir(root.path()).filePath(QStringLiteral("launch-presets.json"));
         {
             QFile f(presetsPath);
             if (f.open(QIODevice::WriteOnly))
-                f.write(QByteArrayLiteral(
-                    "{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
+                f.write(QByteArrayLiteral("{ \"schemaVersion\": 1, \"profiles\": [] }").constData());
         }
         LaunchProfileStore launchProfiles(settings, presetsPath);
         RuntimeController runtime(settings, launchProfiles);
@@ -275,9 +247,9 @@ private slots:
         QVERIFY(installer.removeModel(idx).isEmpty());
 
         QVERIFY(!QFile::exists(q4Path));
-        QVERIFY(!QFile::exists(mmprojA));  // unshared projector of removed quant
+        QVERIFY(!QFile::exists(mmprojA));
         QVERIFY(QFile::exists(q8Path));
-        QVERIFY(QFile::exists(mmprojB));   // other quant's projector survives
+        QVERIFY(QFile::exists(mmprojB));
     }
 
     // Preset Install buttons must be disabled for already-installed models.
@@ -288,16 +260,12 @@ private slots:
     {
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
-        const QString modelsDir =
-            QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub =
-            QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
-        const QString q8Path =
-            writeGguf(sub, QStringLiteral("Unlimited-OCR-Q8_0.gguf"));
-        const QString mmproj =
-            writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
+        const QString q8Path = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q8_0.gguf"));
+        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
         QVERIFY(!q8Path.isEmpty() && !mmproj.isEmpty());
 
         ModelEntry q8;
@@ -315,29 +283,24 @@ private slots:
         QVERIFY2(ModelRegistry::save(modelsDir, {q8}, err), qPrintable(err));
 
         makeRuntime(*s);
-        s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
-                                              *s->launchProfiles, *s->installed));
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->launchProfiles, *s->installed));
         ModelInstaller &mi = *s->installer;
 
         auto findPreset = [&](const QString &presetId) {
             for (int i = 0; i < mi.presetCount(); ++i) {
-                if (mi.presetInfo(i).value(QStringLiteral("id")).toString()
-                    == presetId)
+                if (mi.presetInfo(i).value(QStringLiteral("id")).toString() == presetId)
                     return i;
             }
             return -1;
         };
         const int q8Preset = findPreset(QStringLiteral("unlimited-ocr-q8_0"));
-        const int q4Preset =
-            findPreset(QStringLiteral("unlimited-ocr-q4_k_m.gguf"));
+        const int q4Preset = findPreset(QStringLiteral("unlimited-ocr-q4_k_m.gguf"));
         QVERIFY(q8Preset >= 0);
         QVERIFY(q4Preset >= 0);
 
-        // Q8_0 installed ⇒ its preset flag true; the sibling preset is not.
         QVERIFY(mi.presetInfo(q8Preset).value(QStringLiteral("installed")).toBool());
         QVERIFY(!mi.presetInfo(q4Preset).value(QStringLiteral("installed")).toBool());
 
-        // Removing the installed quant clears its preset's flag.
         const int q8Idx = indexOfQuant(mi, QStringLiteral("Q8_0"));
         QVERIFY(q8Idx >= 0);
         QVERIFY(mi.removeModel(q8Idx).isEmpty());
@@ -364,8 +327,7 @@ private slots:
         const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-ocr-F16.gguf"));
         const QString textPath = writeGguf(sub, QStringLiteral("chat-Q4_K_M.gguf"));
         const QString verifierPath = writeGguf(sub, QStringLiteral("verify-Q4_K_M.gguf"));
-        QVERIFY(!ocrPath.isEmpty() && !mmproj.isEmpty() && !textPath.isEmpty()
-                && !verifierPath.isEmpty());
+        QVERIFY(!ocrPath.isEmpty() && !mmproj.isEmpty() && !textPath.isEmpty() && !verifierPath.isEmpty());
 
         ModelEntry ocr;
         ocr.id = QStringLiteral("org__repo_ocr");
@@ -395,13 +357,11 @@ private slots:
         verifier.quantization = QStringLiteral("verify");
 
         QString err;
-        QVERIFY2(ModelRegistry::save(modelsDir, {ocr, text, verifier}, err),
-                 qPrintable(err));
+        QVERIFY2(ModelRegistry::save(modelsDir, {ocr, text, verifier}, err), qPrintable(err));
         settings.setCheckLaunchModelPath(verifierPath);
 
         makeRuntime(*s);
-        s->installer.reset(new ModelInstaller(s->settings, *s->runtime,
-                                              *s->launchProfiles, *s->installed));
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->launchProfiles, *s->installed));
         ModelInstaller &mi = *s->installer;
 
         // OCR list: only the mmproj model — the verifier (active as the check
@@ -415,7 +375,6 @@ private slots:
         QCOMPARE(pathAt(ocrList, -1), QString());
         QCOMPARE(pathAt(ocrList, 5), QString());
 
-        // Check list: the text model plus the active verifier.
         QCOMPARE(checkList->rowCount(), 2);
         QCOMPARE(pathAt(checkList, 0), textPath);
         QCOMPARE(pathAt(checkList, 1), verifierPath);
@@ -472,20 +431,14 @@ private slots:
         auto *models = qobject_cast<InstalledModelsModel *>(installer.installedModels());
         QVERIFY(models);
         QCOMPARE(models->rowCount(), 1);
-        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::PathRole).toString(),
-                 modelPath);
-        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::MmprojPathRole).toString(),
-                 mmproj);
-        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::OriginRole).toString(),
-                 QStringLiteral("managed"));
-        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::LicenseRole).toString(),
-                 QString());
-        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::TitleRole).toString(),
-                 QStringLiteral("ocr Q4_K_M"));
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::PathRole).toString(), modelPath);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::MmprojPathRole).toString(), mmproj);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::OriginRole).toString(), QStringLiteral("managed"));
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::LicenseRole).toString(), QString());
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::TitleRole).toString(), QStringLiteral("ocr Q4_K_M"));
         // A row outside the model has no data, rather than reading row 0.
         QVERIFY(!models->data(models->index(7, 0), InstalledModelsModel::PathRole).isValid());
 
-        // The roles the delegate binds are the ones the model declares.
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(InstalledModelsModel::PathRole), QByteArray("path"));
         QCOMPARE(names.value(InstalledModelsModel::ActiveRole), QByteArray("active"));
@@ -498,8 +451,7 @@ private slots:
 
         // Activating the model re-reads the highlight from the settings.
         QVERIFY(installer.setActiveModel(0).isEmpty());
-        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(),
-                 true);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(), true);
     }
 
     // The highlight is *derived* from the settings, so activating a model
@@ -514,17 +466,13 @@ private slots:
         // Both selections set explicitly: the tests share one QSettings
         // process-wide, so an inherited value would decide the initial highlight.
         s->settings.setCheckLaunchModelPath(QString());
-        s->settings.setLaunchModelPath(
-            QDir(QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("org__repo")))
-                .filePath(QStringLiteral("model-Q4_K_M.gguf")));
+        s->settings.setLaunchModelPath(QDir(QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("org__repo"))).filePath(QStringLiteral("model-Q4_K_M.gguf")));
 
         auto *models = qobject_cast<InstalledModelsModel *>(ocrModels(*s->installer));
         QVERIFY(models != nullptr);
         QCOMPARE(models->rowCount(), 2);
-        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(),
-                 true);
-        QCOMPARE(models->data(models->index(1, 0), InstalledModelsModel::ActiveRole).toBool(),
-                 false);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(), true);
+        QCOMPARE(models->data(models->index(1, 0), InstalledModelsModel::ActiveRole).toBool(), false);
 
         QSignalSpy changed(models, &QAbstractItemModel::dataChanged);
 
@@ -532,10 +480,8 @@ private slots:
         QVERIFY(idx >= 0);
         QVERIFY(s->installer->setActiveModel(idx).isEmpty());
 
-        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(),
-                 false);
-        QCOMPARE(models->data(models->index(1, 0), InstalledModelsModel::ActiveRole).toBool(),
-                 true);
+        QCOMPARE(models->data(models->index(0, 0), InstalledModelsModel::ActiveRole).toBool(), false);
+        QCOMPARE(models->data(models->index(1, 0), InstalledModelsModel::ActiveRole).toBool(), true);
 
         QVERIFY2(changed.count() > 0, "the list was not told to re-read the highlight");
         bool sawActiveRole = false;
@@ -581,18 +527,14 @@ private slots:
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles);
         ModelInstaller installer(settings, runtime, launchProfiles, installed);
-        QVERIFY2(!installer.statusMessage().contains(QStringLiteral("no longer")),
-                 qPrintable(installer.statusMessage()));
+        QVERIFY2(!installer.statusMessage().contains(QStringLiteral("no longer")), qPrintable(installer.statusMessage()));
 
-        // The user deletes the model directory.
         QVERIFY(QDir(sub).removeRecursively());
         installer.refreshInstalled();
 
         QCOMPARE(installer.installedCount(), 0);
-        QVERIFY2(installer.statusMessage().contains(QStringLiteral("no longer")),
-                 qPrintable(installer.statusMessage()));
-        QVERIFY2(installer.statusMessage().contains(QStringLiteral("ocr-Q4_K_M.gguf")),
-                 qPrintable(installer.statusMessage()));
+        QVERIFY2(installer.statusMessage().contains(QStringLiteral("no longer")), qPrintable(installer.statusMessage()));
+        QVERIFY2(installer.statusMessage().contains(QStringLiteral("ocr-Q4_K_M.gguf")), qPrintable(installer.statusMessage()));
     }
 };
 

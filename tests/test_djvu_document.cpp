@@ -1,16 +1,16 @@
 #include <QtTest>
 
+#include <limits>
 #include <QDir>
 #include <QFile>
 #include <QFutureWatcher>
 #include <QPainter>
 #include <QPdfWriter>
 #include <QSemaphore>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QTimer>
-#include <QtConcurrent/QtConcurrentRun>
-#include <limits>
 
 #include "app/DjVuDocument.h"
 #include "app/DocumentModel.h"
@@ -18,29 +18,25 @@
 using namespace llocr;
 
 namespace {
-QString fixture(const char* name)
+QString fixture(const char *name)
 {
     return QFINDTESTDATA(QStringLiteral("fixtures/djvu/") + QString::fromLatin1(name));
 }
 
 // Sample well inside each quadrant, away from compression/scale boundaries.
-void compareQuadrants(const QImage& image, const QList<QColor>& expected)
+void compareQuadrants(const QImage &image, const QList<QColor> &expected)
 {
     QVERIFY(!image.isNull());
     QCOMPARE(expected.size(), 4);
     for (int i = 0; i < 4; ++i) {
-        const QColor actual = image.pixelColor(image.width() * (i % 2 ? 3 : 1) / 4,
-                                              image.height() * (i / 2 ? 3 : 1) / 4);
+        const QColor actual = image.pixelColor(image.width() * (i % 2 ? 3 : 1) / 4, image.height() * (i / 2 ? 3 : 1) / 4);
         const QColor color = expected[i];
-        QVERIFY2(qAbs(actual.red() - color.red()) <= 12
-                     && qAbs(actual.green() - color.green()) <= 12
-                     && qAbs(actual.blue() - color.blue()) <= 12,
-                 qPrintable(QStringLiteral("Quadrant %1: expected %2, got %3")
-                                .arg(i).arg(color.name(), actual.name())));
+        QVERIFY2(qAbs(actual.red() - color.red()) <= 12 && qAbs(actual.green() - color.green()) <= 12 && qAbs(actual.blue() - color.blue()) <= 12,
+                 qPrintable(QStringLiteral("Quadrant %1: expected %2, got %3").arg(i).arg(color.name(), actual.name())));
     }
 }
 
-void compareWhite(const QImage& image)
+void compareWhite(const QImage &image)
 {
     QVERIFY(!image.isNull());
     QImage expected(image.size(), QImage::Format_RGB32);
@@ -51,7 +47,7 @@ void compareWhite(const QImage& image)
 QList<QColor> colors(int page)
 {
     if (page == 1)
-        return {Qt::green, Qt::white, Qt::red, Qt::blue}; // Native 90-degree CCW rotation.
+        return {Qt::green, Qt::white, Qt::red, Qt::blue};  // Native 90-degree CCW rotation.
     if (page == 2)
         return {Qt::cyan, Qt::magenta, Qt::yellow, Qt::black};
     return {Qt::red, Qt::green, Qt::blue, Qt::white};
@@ -65,9 +61,10 @@ QSize nativeSize(int page)
         return {63, 45};
     return {81, 57};
 }
-}
+}  // namespace
 
-class TestDjVuDocument : public QObject {
+class TestDjVuDocument : public QObject
+{
     Q_OBJECT
 
 private slots:
@@ -149,7 +146,7 @@ private slots:
         emptyFile.close();
         DjVuDocument document;
         QString error;
-        for (const QString& path : {malformed, empty, dir.filePath(QStringLiteral("missing.djvu")), dir.path()}) {
+        for (const QString &path : {malformed, empty, dir.filePath(QStringLiteral("missing.djvu")), dir.path()}) {
             QVERIFY(document.open(fixture("multipage.djvu")));
             QVERIFY(!document.open(path, &error));
             QVERIFY(!error.isEmpty());
@@ -159,7 +156,7 @@ private slots:
             QVERIFY(!error.isEmpty());
             QVERIFY(document.render(0, QSize(10, 10), &error).isNull());
             QVERIFY(!error.isEmpty());
-            QVERIFY(!document.open(path)); // Optional error output.
+            QVERIFY(!document.open(path));  // Optional error output.
         }
         QVERIFY(document.open(fixture("quadrants.djvu"), &error));
         QVERIFY(error.isEmpty());
@@ -241,7 +238,7 @@ private slots:
         if (source.width() > 16384 || source.height() > 16384)
             QCOMPARE(qMax(size.width(), size.height()), 16384);
         else
-            QVERIFY(area > 39900000); // Bound, do not fall back to thumbnail/PDF DPI resolution.
+            QVERIFY(area > 39900000);  // Bound, do not fall back to thumbnail/PDF DPI resolution.
     }
 
     void damagedLaterPage()
@@ -268,7 +265,7 @@ private slots:
         QVERIFY(error.isEmpty());
         QCOMPARE(model.pageCount(), 3);
         for (int i = 0; i < 3; ++i) {
-            const auto& page = model.page(i);
+            const auto &page = model.page(i);
             QCOMPARE(page.sourceType, DocumentSource::DjVu);
             QCOMPARE(page.sourcePageIndex, i);
             QCOMPARE(page.sourcePath, path);
@@ -353,7 +350,7 @@ private slots:
         QCOMPARE(prepared.pages.size(), 3);
         QCOMPARE(prepared.warnings, QStringList{originalError});
         for (int i = 0; i < 3; ++i) {
-            const auto& page = prepared.pages[i];
+            const auto &page = prepared.pages[i];
             QCOMPARE(page.sourcePath, path);
             QCOMPARE(page.sourceType, DocumentSource::DjVu);
             QCOMPARE(page.sourcePageIndex, i);
@@ -385,7 +382,7 @@ private slots:
         QVERIFY(model.appendDjVu(fixture("multipage.djvu")));
         for (int row : {0, 2, 3, 4, 5})
             QVERIFY(!model.fullImage(row).isNull());
-        QVERIFY(model.page(1).image.isNull()); // The placeholder was evicted too.
+        QVERIFY(model.page(1).image.isNull());  // The placeholder was evicted too.
         QCOMPARE(model.page(1).sourceError, originalError);
         compareWhite(model.thumbnail(1));
 
@@ -399,7 +396,7 @@ private slots:
         QVERIFY(model.movePage(1, 0));
         QCOMPARE(model.page(0).sourcePageIndex, 1);
         QCOMPARE(model.page(0).sourceError, originalError);
-        QVERIFY(model.removePage(1)); // Remove the original healthy first page.
+        QVERIFY(model.removePage(1));  // Remove the original healthy first page.
         QCOMPARE(model.page(1).sourcePageIndex, 2);
         QVERIFY(model.page(1).sourceError.isEmpty());
         QCOMPARE(model.page(0).sourceError, originalError);
@@ -484,7 +481,7 @@ private slots:
         QVERIFY(file.open(QIODevice::WriteOnly));
         QVERIFY(file.write("Not a DjVu document") > 0);
         file.close();
-        for (const QString& path : {malformed, dir.filePath(QStringLiteral("missing.djvu"))}) {
+        for (const QString &path : {malformed, dir.filePath(QStringLiteral("missing.djvu"))}) {
             for (bool dispatch : {false, true}) {
                 error.clear();
                 QVERIFY(!(dispatch ? model.appendFile(path, &error) : model.appendDjVu(path, &error)));
@@ -526,11 +523,10 @@ private slots:
             // Neither the worker nor its result depends on this QObject owner.
             QObject owner;
             QFutureWatcher<DocumentModel::PreparedDjVu> watcher(&owner);
-            QThread* const guiThread = QThread::currentThread();
+            QThread *const guiThread = QThread::currentThread();
             bool delivered = false;
             bool deliveredOnGui = false;
-            connect(&watcher, &QFutureWatcher<DocumentModel::PreparedDjVu>::finished,
-                    &owner, [&] {
+            connect(&watcher, &QFutureWatcher<DocumentModel::PreparedDjVu>::finished, &owner, [&] {
                 deliveredOnGui = QThread::currentThread() == guiThread;
                 prepared = watcher.result();
                 delivered = true;
@@ -581,7 +577,7 @@ private slots:
         QVERIFY(prepared.warnings.isEmpty());
         QCOMPARE(prepared.pages.size(), 3);
         for (int i = 0; i < 3; ++i) {
-            const auto& page = prepared.pages[i];
+            const auto &page = prepared.pages[i];
             QCOMPARE(page.sourcePath, path);
             QCOMPARE(page.sourceType, DocumentSource::DjVu);
             QCOMPARE(page.sourcePageIndex, i);
@@ -624,9 +620,9 @@ private slots:
             QVERIFY2(repeated.error.isEmpty(), qPrintable(repeated.error));
             QVERIFY(original.lock() != repeated.document);
             model.appendPreparedDjVu(repeated);
-            QVERIFY(!original.expired()); // A duplicate must not replace the old decoder.
+            QVERIFY(!original.expired());  // A duplicate must not replace the old decoder.
         }
-        QVERIFY(model.appendDjVu(path)); // Synchronous API shares the same commit path.
+        QVERIFY(model.appendDjVu(path));  // Synchronous API shares the same commit path.
         QVERIFY(!original.expired());
         QCOMPARE(model.pageCount(), 9);
         for (int i = 0; i < 9; ++i)
@@ -653,8 +649,7 @@ private slots:
         model.page(0).recognized = true;
         const qint64 thumbKey = model.thumbnail(0).cacheKey();
         const qint64 imageKey = model.fullImage(0).cacheKey();
-        for (const QString& path : {malformed, empty,
-                                   dir.filePath(QStringLiteral("missing.djvu")), dir.path()}) {
+        for (const QString &path : {malformed, empty, dir.filePath(QStringLiteral("missing.djvu")), dir.path()}) {
             const auto prepared = DocumentModel::prepareDjVu(path);
             QVERIFY(!prepared.error.isEmpty());
             QVERIFY(prepared.error.contains(path));
@@ -674,7 +669,7 @@ private slots:
     void fileDispatch_data()
     {
         QTest::addColumn<QString>("suffix");
-        for (const char* suffix : {"djvu", "djv", "DJVU", "DJV", "DjVu", "dJv"})
+        for (const char *suffix : {"djvu", "djv", "DJVU", "DJV", "DjVu", "dJv"})
             QTest::newRow(suffix) << QString::fromLatin1(suffix);
     }
 
@@ -737,7 +732,7 @@ private slots:
         compareQuadrants(model.fullImage(2), {Qt::cyan, Qt::cyan, Qt::cyan, Qt::cyan});
         compareQuadrants(model.fullImage(4), colors(1));
         QVERIFY(model.movePage(4, 0));
-        QVERIFY(model.removePage(2)); // Remove PDF page 0, not a DjVu source page.
+        QVERIFY(model.removePage(2));  // Remove PDF page 0, not a DjVu source page.
         QCOMPARE(model.pageCount(), 5);
         QCOMPARE(model.page(0).sourceType, DocumentSource::DjVu);
         QCOMPARE(model.page(0).sourcePageIndex, 1);

@@ -26,8 +26,7 @@ class TestSettingsIsolation
 public:
     TestSettingsIsolation()
     {
-        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
-                           m_dir.path());
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, m_dir.path());
         QSettings::setDefaultFormat(QSettings::IniFormat);
     }
 

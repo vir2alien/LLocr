@@ -105,7 +105,7 @@ endif()
 # Enable Qt6 policies for modern CMake integration (qt_add_executable, etc.).
 qt_standard_project_setup(REQUIRES 6.10)
 
-# DjVu input support is optional (ADR 69): without DjVuLibre the app builds and
+# DjVu input support is optional: without DjVuLibre the app builds and
 # works, and opening a .djvu file reports an actionable error at runtime.
 # Dependency acquisition is deliberately outside this build.
 option(LLOCR_WITH_DJVU "Enable DjVu input support (requires DjVuLibre)" ON)

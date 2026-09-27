@@ -1,4 +1,4 @@
-# ==== Layers (ADR 94/95) ======================================================
+# ==== Layers =================================================================
 #
 # The code is split into targets that mirror the layer diagram in
 # docs/03-architecture.md, so a layer can only reach the ones it links:
@@ -15,10 +15,11 @@
 #        |
 #   llocr          the executable: main.cpp + resources + the QML module
 #
-# The include root stays ${CMAKE_SOURCE_DIR}/src, so headers keep their
-# "app/…", "runtime/…" spelling; what a layer may *use* is now decided by the
-# link graph instead of by convention. Moving the settings stores into their own
-# layer is what breaks the old app <-> runtime cycle (runtime needs
+# Each layer owns a directory of the same name, and the include root stays
+# ${CMAKE_SOURCE_DIR}/src, so a header's include spelling says which layer it
+# belongs to. What a layer may *use* is decided by the link graph, not by
+# convention. Moving the settings stores into their own layer is what breaks the
+# old app <-> runtime cycle (runtime needs
 # SettingsStore/LaunchProfileStore/RequestProfileStore, and the stores need
 # RuntimePaths).
 
@@ -53,22 +54,24 @@ target_link_libraries(llocr_core PUBLIC Qt6::Core Qt6::Network)
 # it belongs to llocr_runtime next to those. RequestProfileStore has no such
 # dependency and stays.
 qt_add_library(llocr_config STATIC
-    app/ProfileStorage.h
-    app/ProfileStorage.cpp
-    app/SettingsStore.h
-    app/SettingsStore.cpp
-    app/RequestParametersModel.h
-    app/RequestParametersModel.cpp
-    app/RequestProfileStore.h
-    app/RequestProfileStore.cpp
-    runtime/RuntimePaths.h
-    runtime/RuntimePaths.cpp
+    config/ProfileStorage.h
+    config/ProfileStorage.cpp
+    config/ProfileStore.h
+    config/SettingsStore.h
+    config/SettingsStore.cpp
+    config/RequestParametersModel.h
+    config/RequestParametersModel.cpp
+    config/RequestProfileStore.h
+    config/RequestProfileStore.cpp
+    config/RuntimePaths.h
+    config/RuntimePaths.cpp
 )
 target_include_directories(llocr_config PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_config PUBLIC llocr_core Qt6::Core Qt6::Gui)
 
 # ---- llocr_models ------------------------------------------------------------
 qt_add_library(llocr_models STATIC
+    models/ChatExchange.h
     models/OcrModel.h
     models/OcrModel.cpp
     models/UnlimitedOcrModel.h
@@ -177,15 +180,15 @@ qt_add_library(llocr_runtime STATIC
     runtime/ModelInstaller.cpp
     runtime/ModelMemoryEstimator.h
     runtime/ModelMemoryEstimator.cpp
-    app/LaunchProfileStore.h
-    app/LaunchProfileStore.cpp
-    app/LaunchParametersModel.h
-    app/LaunchParametersModel.cpp
+    runtime/LaunchProfileStore.h
+    runtime/LaunchProfileStore.cpp
+    runtime/LaunchParametersModel.h
+    runtime/LaunchParametersModel.cpp
 )
 target_include_directories(llocr_runtime PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_runtime
     # Qt6::Qml is PUBLIC: SelfTestController.h / ModelInstaller.h include
-    # <QQmlEngine>, so consumers need the include path (ADR 94).
+    # <QQmlEngine>, so consumers need the include path
     PUBLIC llocr_config llocr_core llocr_models Qt6::Qml
     PRIVATE Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent ZLIB::ZLIB
 )
@@ -246,11 +249,11 @@ target_link_libraries(llocr_app
             Qt6::WebEngineCore ZLIB::ZLIB
 )
 
-# DjVu input support is compiled only when DjVuLibre was found (ADR 69).
+# DjVu input support is compiled only when DjVuLibre was found.
 # Without it the app builds and opening .djvu files reports a clear error.
 # Only the *implementation* is conditional: DocumentModel.h includes
 # DjVuDocument.h unconditionally (it only forward-declares the ddjvu_* structs),
-# so the class layout does not depend on the dependency (ADR 95).
+# so the class layout does not depend on the dependency.
 if(LLOCR_DJVU_AVAILABLE)
     target_sources(llocr_app PRIVATE
         app/DjVuDocument.h
@@ -293,7 +296,7 @@ if(LLOCR_DJVU_AVAILABLE)
     endif()
 endif()
 
-# The QML tree is a real module (stage 0.2, ADR 100): the file list is
+# The QML tree is a real module: the file list is
 # globbed, so a new .qml file no longer has to be added by hand, and
 # qmllint/qmlcachegen can resolve the module. Files land as
 # qrc:/qt/qml/LLocr/… (main.cpp loads that URL; the old hand-maintained

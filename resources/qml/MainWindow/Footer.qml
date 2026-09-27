@@ -19,9 +19,6 @@ Item {
 
     readonly property bool serverActive: Runtime.state === Runtime.Starting || Runtime.state === Runtime.Ready
 
-    // The one diagnostic the current context is about, if any. Only ever a
-    // single line: the full texts live in the problem log, which is what an
-    // unreadable DjVu page or a failed check is reported to (ADR 119).
     readonly property string currentDiagnostic: {
         if (Controller.currentPageWarning.length > 0)
             return qsTr("Blank replacement — this page could not be decoded. %1")
@@ -104,10 +101,6 @@ Item {
         }
     }
 
-    // The rule itself lives in C++ (Runtime.launchConfigDirty): the live server's
-    // launch configuration is compared with the one the settings now produce, so
-    // a setting added there cannot be forgotten here (ADR 113). QML keeps only the
-    // presentational state — whether the user hid the banner for this session.
     readonly property bool launchDirty: Runtime.launchConfigDirty
 
     ColumnLayout {
@@ -148,9 +141,6 @@ Item {
             }
         }//Rectangle
 
-        // A llama-server from a previous run kept the model (and the VRAM)
-        // loaded: offer to get rid of it instead of silently starting a second
-        // one (ADR 107). Never killed without a click.
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: orphanBanner.implicitHeight + 12
@@ -179,10 +169,6 @@ Item {
             }
         }//Rectangle
 
-        // One bounded line for whatever went wrong, and a way into the log that
-        // holds the reasons. These labels used to wrap: a DjVu decoder message
-        // is a whole paragraph, and it pushed the status line off the window
-        // (ADR 119).
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? diagnosticsRow.implicitHeight + 12 : 0

@@ -1,5 +1,5 @@
-#include <QtTest>
 #include <QAbstractItemModelTester>
+#include <QtTest>
 
 #include "app/BoxListModel.h"
 #include "core/OcrResult.h"
@@ -10,8 +10,7 @@ using namespace llocr;
 
 namespace {
 
-BoundingBox makeBox(const QString& label, const QRectF& rect,
-                    const QString& text = QStringLiteral("t"))
+BoundingBox makeBox(const QString &label, const QRectF &rect, const QString &text = QStringLiteral("t"))
 {
     BoundingBox box;
     box.label = label;
@@ -25,15 +24,15 @@ BoundingBox makeBox(const QString& label, const QRectF& rect,
 // QAbstractItemModelTester coverage for BoxListModel (I-02): the model drives
 // the ImagePreview box overlay and must keep its signals consistent across
 // resets, rect updates and removals.
-class TestBoxModel : public QObject {
+class TestBoxModel : public QObject
+{
     Q_OBJECT
 
 private slots:
     void setBoxesResetsAndExposesRoles()
     {
         BoxListModel model;
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         const QList<BoundingBox> boxes = {
             makeBox(QStringLiteral("text"), QRectF(0.1, 0.1, 0.3, 0.2)),
@@ -57,8 +56,7 @@ private slots:
     void updateBoxRectEmitsDataChanged()
     {
         BoxListModel model;
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1))});
 
@@ -84,18 +82,15 @@ private slots:
     void updateBoxTextEmitsDataChanged()
     {
         BoxListModel model;
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
-        model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1),
-                                QStringLiteral("before"))});
+        model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1), QStringLiteral("before"))});
 
         QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
         model.updateBoxText(0, QStringLiteral("after"));
 
         QCOMPARE(spy.size(), 1);
-        QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(),
-                 QStringLiteral("after"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(), QStringLiteral("after"));
 
         // Same-value update must not emit anything.
         model.updateBoxText(0, QStringLiteral("after"));
@@ -109,8 +104,7 @@ private slots:
     void removeBoxRemovesRow()
     {
         BoxListModel model;
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setBoxes({
             makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1)),
@@ -124,8 +118,7 @@ private slots:
 
         QCOMPARE(removeSpy.count(), 1);
         QCOMPARE(model.rowCount(), 2);
-        QCOMPARE(model.data(model.index(1), BoxListModel::LabelRole).toString(),
-                 QStringLiteral("chart"));
+        QCOMPARE(model.data(model.index(1), BoxListModel::LabelRole).toString(), QStringLiteral("chart"));
         QVERIFY(model.isImageBox(1));
 
         // Out-of-range removal is a no-op.
@@ -148,8 +141,7 @@ private slots:
     void setFromResultTakesFirstPage()
     {
         BoxListModel model;
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         OcrResult result;
         OcrPage page;

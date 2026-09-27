@@ -16,9 +16,7 @@ class ServerLaunchConfig
 {
 public:
     ServerLaunchConfig() = default;
-    static ServerLaunchConfig fromSettings(const SettingsStore &settings,
-                                           const LaunchProfileStore &launchProfiles,
-                                           ConnectionRole role = ConnectionRole::Ocr);
+    static ServerLaunchConfig fromSettings(const SettingsStore &settings, const LaunchProfileStore &launchProfiles, ConnectionRole role = ConnectionRole::Ocr);
     QStringList toArguments(const ServerCapabilities &caps) const;
     QString toDisplayCommand(const ServerCapabilities &caps) const;
 
@@ -27,13 +25,10 @@ public:
     QString mmprojPath;
     QString modelAlias;
     QString host = QStringLiteral("127.0.0.1");
-    int port = 0;           // 0 = auto-pick (no --port passed / caller allocates)
+    int port = 0;  // 0 = auto-pick (no --port passed / caller allocates)
 
     QList<LaunchParameter> parameters;
 
-    // Value equality: the restart banner compares the configuration a running
-    // server was started with against the current one (ADR 113), so a launch
-    // setting that changes the arguments can never be missed.
     bool operator==(const ServerLaunchConfig &other) const;
     bool operator!=(const ServerLaunchConfig &other) const { return !(*this == other); }
 };

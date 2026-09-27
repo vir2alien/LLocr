@@ -22,22 +22,19 @@ public:
         CorrectedRole,
     };
 
-    explicit BoxListModel(QObject* parent = nullptr);
+    explicit BoxListModel(QObject *parent = nullptr);
 
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
+    int rowCount(const QModelIndex &parent = {}) const override;
+    QVariant data(const QModelIndex &index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setBoxes(const QList<BoundingBox>& boxes);
+    void setBoxes(const QList<BoundingBox> &boxes);
 
-    void setFromResult(const OcrResult& result);
+    void setFromResult(const OcrResult &result);
 
     Q_INVOKABLE void updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height);
     Q_INVOKABLE void updateBoxText(int index, const QString &text);
     Q_INVOKABLE void updateBoxCheck(int index, int status, const QString &correctedText);
-    // Row removal is driven by AppController (the document owns the truth), so
-    // this is a plain C++ method: it must not be callable from QML, otherwise the
-    // view model and the page diverge. See ADR 103.
     void removeBox(int index);
     Q_INVOKABLE bool isImageBox(int index) const;
 
@@ -45,4 +42,4 @@ private:
     QList<BoundingBox> m_boxes;
 };
 
-} // namespace llocr
+}  // namespace llocr

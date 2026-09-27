@@ -9,7 +9,8 @@ namespace llocr {
 // Strategy that turns a raw model reply into an OcrResult. Instances are
 // configured at construction time (ParserFactory::create(id, options)) and are
 // stateless afterwards, so one instance can be reused for a whole run.
-class IOutputParser {
+class IOutputParser
+{
 public:
     virtual ~IOutputParser() = default;
 
@@ -29,4 +30,4 @@ public:
     virtual QString displayName() const = 0;
 };
 
-} // namespace llocr
+}  // namespace llocr

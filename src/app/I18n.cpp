@@ -1,6 +1,6 @@
 #include "app/I18n.h"
 
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 
 #include <QCoreApplication>
 #include <QLibraryInfo>
@@ -22,10 +22,7 @@ QString resolveLanguage(const QString &requested)
 
 }  // namespace
 
-I18n::I18n(const SettingsStore &settings, QObject *parent)
-    : QObject(parent), m_settings(settings)
-{
-}
+I18n::I18n(const SettingsStore &settings, QObject *parent) : QObject(parent), m_settings(settings) {}
 
 void I18n::applyInitial()
 {
@@ -65,8 +62,7 @@ void I18n::install(const QString &language)
 
     m_qtTranslator = new QTranslator(this);
     const QString dir = QLibraryInfo::path(QLibraryInfo::TranslationsPath);
-    if (m_qtTranslator->load(QLocale(QLocale::Russian), QStringLiteral("qtbase"),
-                             QStringLiteral("_"), dir)) {
+    if (m_qtTranslator->load(QLocale(QLocale::Russian), QStringLiteral("qtbase"), QStringLiteral("_"), dir)) {
         QCoreApplication::installTranslator(m_qtTranslator);
     } else {
         delete m_qtTranslator;

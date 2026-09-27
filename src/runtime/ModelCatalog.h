@@ -11,19 +11,19 @@ class QNetworkAccessManager;
 namespace llocr {
 
 struct HfFile {
-    QString path;       // repo-relative path, may contain '/'
-    QString name;       // last path segment
+    QString path;  // repo-relative path, may contain '/'
+    QString name;  // last path segment
     qint64 size = 0;
-    QString lfsOid;     // sha256 (lowercase hex), empty for non-LFS files
+    QString lfsOid;  // sha256 (lowercase hex), empty for non-LFS files
     bool isLfs = false;
     bool isDir = false;
-    QString type;       // "file" | "directory" | "lfs" | ...
+    QString type;  // "file" | "directory" | "lfs" | ...
 };
 
 enum class ModelFileKind {
-    NotModel,   // not a .gguf
-    Model,      // main vision model (or one part of a multi-file split)
-    Vision,     // mmproj projector
+    NotModel,  // not a .gguf
+    Model,     // main vision model (or one part of a multi-file split)
+    Vision,    // mmproj projector
 };
 
 class ModelCatalog
@@ -37,8 +37,7 @@ public:
     static QString leafName(const QString &path);
     static QStringList allGguf(const QStringList &names);
     static ModelFileKind fileKind(const QString &name);
-    static bool splitMultiPart(const QString &name, QString *baseOut = nullptr,
-                               int *indexOut = nullptr, int *countOut = nullptr);
+    static bool splitMultiPart(const QString &name, QString *baseOut = nullptr, int *indexOut = nullptr, int *countOut = nullptr);
     static bool isMultiPart(const QString &name);
 
     static bool splitAscending(const QString &a, const QString &b);
@@ -46,16 +45,14 @@ public:
 
     static QString encodePath(const QString &path);
 
-    static QUrl resolveUrl(const QString &repo, const QString &commitSha,
-                           const QString &path);
+    static QUrl resolveUrl(const QString &repo, const QString &commitSha, const QString &path);
 
-    static QString fetchHeadSha(QNetworkAccessManager *nam, const QString &repo,
-                                QString &error, const QByteArray &authorization = {},
-                                int timeoutMs = kRequestTimeoutMs,
-                                const QUrl &baseUrl = QUrl());
+    static QString fetchHeadSha(QNetworkAccessManager *nam, const QString &repo, QString &error, const QByteArray &authorization = {}, int timeoutMs = kRequestTimeoutMs, const QUrl &baseUrl = QUrl());
 
-    static QList<HfFile> fetchTree(QNetworkAccessManager *nam, const QString &repo,
-                                   const QString &commitSha, QString &error,
+    static QList<HfFile> fetchTree(QNetworkAccessManager *nam,
+                                   const QString &repo,
+                                   const QString &commitSha,
+                                   QString &error,
                                    const QByteArray &authorization = {},
                                    int timeoutMs = kRequestTimeoutMs,
                                    const QUrl &baseUrl = QUrl());

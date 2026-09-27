@@ -12,4 +12,4 @@ namespace llocr {
 // regex handles it directly.
 QString normalizeDriftRegions(const QString &raw);
 
-} // namespace llocr
+}  // namespace llocr

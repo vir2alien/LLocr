@@ -10,9 +10,6 @@ import "../Common"
 Item {
     id: root
 
-    // Runtime.configValid is the whole managed configuration — the binary and a
-    // model file that actually exist — instead of two non-empty strings that
-    // the start could still reject (ADR 113).
     property bool complete: Runtime.configValid
                             && SelfTest.selftestOk
                             && !SelfTest.selftestRunning
@@ -40,8 +37,6 @@ Item {
         root.totalBytes = m.totalBytes
         root.systemRamBytes = m.systemRamBytes
         root.hasEstimate = true
-        // The threshold is a memory policy, not a layout rule, so it is decided
-        // in C++ next to the estimate (ADR 113).
         root.hasMemoryWarning = m.overBudget
     }
 

@@ -11,7 +11,8 @@ using namespace llocr;
 // to the decoder must carry the original sourcePath (regression: a fresh
 // DocumentPage with an empty path was passed to decodeSource, so every full
 // decode failed with "file not found" while thumbnails worked).
-class TestDocumentModel : public QObject {
+class TestDocumentModel : public QObject
+{
     Q_OBJECT
 
 private slots:

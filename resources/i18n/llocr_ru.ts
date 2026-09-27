@@ -1806,7 +1806,7 @@
         <translation type="vanished">Не удалось сделать бинарник исполняемым</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/RuntimePaths.cpp" line="+82"/>
+        <location filename="../../src/config/RuntimePaths.cpp" line="+82"/>
         <source>Unable to create directory: %1</source>
         <translation>Не удалось создать папку: %1</translation>
     </message>

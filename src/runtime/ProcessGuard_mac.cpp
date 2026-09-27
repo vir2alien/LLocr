@@ -4,8 +4,8 @@
 #include "runtime/ProcessGuard.h"
 
 #if defined(Q_OS_MACOS)
-#include <libproc.h>
 #include <csignal>
+#include <libproc.h>
 #include <unistd.h>
 #endif
 

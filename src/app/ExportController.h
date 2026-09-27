@@ -1,15 +1,15 @@
 #pragma once
 
+#include <functional>
 #include <QImage>
 #include <QObject>
 #include <QPageLayout>
 #include <QUrl>
-#include <functional>
 
 #include "app/DocumentModel.h"
 #include "app/Exporter.h"
 #include "app/ExportRenderer.h"
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 #include "core/StatusMessage.h"
 
 namespace llocr {
@@ -34,8 +34,7 @@ public:
 
     bool exporting() const { return m_exporting; }
 
-    bool exportPages(const QUrl &fileUrl, int scope, int currentPage,
-                     int fromPage, int toPage);
+    bool exportPages(const QUrl &fileUrl, int scope, int currentPage, int fromPage, int toPage);
 
 signals:
     void exportingChanged();
@@ -48,15 +47,17 @@ private:
         ExportRange = 2,
     };
 
-    QList<Exporter::Page> collectPages(int scope, int currentPage,
-                                       int fromPage, int toPage) const;
+    QList<Exporter::Page> collectPages(int scope, int currentPage, int fromPage, int toPage) const;
     QPageLayout pdfPageLayout() const;
-    Exporter::Result finalizeRenderedExport(
-        Exporter::Format format, const QString &path,
-        const QList<Exporter::Page> &pages, const Exporter::CropProvider &crop,
-        const Exporter::ExportOptions &options, const QPageLayout &pdfLayout,
-        bool renderOk, const QString &renderedHtml,
-        const QString &renderError) const;
+    Exporter::Result finalizeRenderedExport(Exporter::Format format,
+                                            const QString &path,
+                                            const QList<Exporter::Page> &pages,
+                                            const Exporter::CropProvider &crop,
+                                            const Exporter::ExportOptions &options,
+                                            const QPageLayout &pdfLayout,
+                                            bool renderOk,
+                                            const QString &renderedHtml,
+                                            const QString &renderError) const;
     void finishExport(const Exporter::Result &result, int pageCount);
 
     Deps m_deps;

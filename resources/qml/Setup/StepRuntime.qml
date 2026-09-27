@@ -11,8 +11,6 @@ import "../Common"
 Item {
     id: root
 
-    // A path that is set but missing on disk is not a usable runtime; the gate
-    // is C++'s so the wizard and the footer agree (ADR 113).
     property bool complete: Runtime.serverPathValid
 
     onVisibleChanged: {
@@ -40,7 +38,7 @@ Item {
                        + "you already have.")
         }
 
-        GroupBox {//Option A: install via RuntimeInstaller
+        GroupBox {
             Layout.fillWidth: true
             title: qsTr("Download llama.cpp")
             font.pointSize: Theme.captionSize
@@ -148,7 +146,6 @@ Item {
             color: Theme.divider
         }
 
-        // Option B: existing binary
         LLOLabel {
             text: qsTr("Use an existing llama-server binary")
         }

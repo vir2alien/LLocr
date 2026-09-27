@@ -27,7 +27,8 @@ struct BlockStyleInfo {
 // below is the fallback for builds without the resource (unit tests) and for a
 // malformed file. Model-specific styling lives under "overrides" keyed by OCR
 // model id and is looked up by blockStyleForLabel(label, modelId).
-class BlockStyleMap {
+class BlockStyleMap
+{
 public:
     static const BlockStyleMap &instance();
 
@@ -44,11 +45,9 @@ private:
     QHash<QString, QHash<QString, BlockStyleInfo>> m_overrides;
 };
 
-// Convenience wrapper around BlockStyleMap::instance().
-inline BlockStyleInfo blockStyleForLabel(const QString &label,
-                                        const QString &modelId = {})
+inline BlockStyleInfo blockStyleForLabel(const QString &label, const QString &modelId = {})
 {
     return BlockStyleMap::instance().styleForLabel(label, modelId);
 }
 
-} // namespace llocr
+}  // namespace llocr

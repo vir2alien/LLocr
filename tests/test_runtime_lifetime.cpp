@@ -1,12 +1,12 @@
-#include <QtTest>
 #include <QDir>
 #include <QFile>
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QTemporaryDir>
+#include <QtTest>
 
-#include "app/LaunchProfileStore.h"
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
+#include "runtime/LaunchProfileStore.h"
 #include "runtime/RuntimeController.h"
 #include "testsettings.h"
 
@@ -30,7 +30,8 @@ QString writeEmptyLaunchCatalog(const QTemporaryDir &dir)
 // Verifies the §1.2 contract: QML's `Runtime` singleton must return exactly the
 // instance passed to AppController (the one created in main.cpp). QML must not
 // be able to create its own RuntimeController.
-class TestRuntimeLifetime : public QObject {
+class TestRuntimeLifetime : public QObject
+{
     Q_OBJECT
 
 private:
@@ -50,19 +51,17 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
-        LaunchProfileStore launchProfiles(
-            settings, writeEmptyLaunchCatalog(dir));
+        LaunchProfileStore launchProfiles(settings, writeEmptyLaunchCatalog(dir));
         RuntimeController runtime(settings, launchProfiles);
 
         QQmlEngine engine;
         qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtime);
 
         QQmlComponent component(&engine);
-        component.setData(
-            QByteArray("import LLocr 1.0\n"
-                       "import QtQml 2.0\n"
-                       "QtObject { property var rt: Runtime }\n"),
-            QUrl(QStringLiteral("qrc:/test/instance.qml")));
+        component.setData(QByteArray("import LLocr 1.0\n"
+                                     "import QtQml 2.0\n"
+                                     "QtObject { property var rt: Runtime }\n"),
+                          QUrl(QStringLiteral("qrc:/test/instance.qml")));
         QVERIFY2(component.isReady(), qPrintable(component.errorString()));
 
         QScopedPointer<QObject> obj(component.create());

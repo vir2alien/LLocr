@@ -1,17 +1,15 @@
 
 #include "runtime/ServerLaunchConfig.h"
 
-#include "app/LaunchProfileStore.h"
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
+#include "runtime/LaunchProfileStore.h"
 #include "runtime/ServerCapabilities.h"
 
 #include <algorithm>
 
 namespace llocr {
 
-ServerLaunchConfig ServerLaunchConfig::fromSettings(
-    const SettingsStore &s, const LaunchProfileStore &launchProfiles,
-    ConnectionRole role)
+ServerLaunchConfig ServerLaunchConfig::fromSettings(const SettingsStore &s, const LaunchProfileStore &launchProfiles, ConnectionRole role)
 {
     ServerLaunchConfig cfg;
     if (role == ConnectionRole::Check) {
@@ -30,9 +28,8 @@ ServerLaunchConfig ServerLaunchConfig::fromSettings(
 
 bool ServerLaunchConfig::operator==(const ServerLaunchConfig &other) const
 {
-    return program == other.program && modelPath == other.modelPath
-           && mmprojPath == other.mmprojPath && modelAlias == other.modelAlias
-           && host == other.host && port == other.port && parameters == other.parameters;
+    return program == other.program && modelPath == other.modelPath && mmprojPath == other.mmprojPath && modelAlias == other.modelAlias && host == other.host && port == other.port &&
+           parameters == other.parameters;
 }
 
 namespace {
@@ -87,10 +84,7 @@ QStringList ServerLaunchConfig::toArguments(const ServerCapabilities &caps) cons
         appendPair(args, QStringLiteral("--port"), QString::number(port));
 
     QList<LaunchParameter> rows = parameters;
-    std::stable_sort(rows.begin(), rows.end(),
-                     [](const LaunchParameter &a, const LaunchParameter &b) {
-                         return a.order < b.order;
-                     });
+    std::stable_sort(rows.begin(), rows.end(), [](const LaunchParameter &a, const LaunchParameter &b) { return a.order < b.order; });
     for (const LaunchParameter &p : rows) {
         if (LaunchProfile::reservedArgNames().contains(p.name))
             continue;  // owned by the fields above; never duplicated

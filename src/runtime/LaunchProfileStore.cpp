@@ -1,40 +1,28 @@
-#include "app/LaunchProfileStore.h"
+#include "runtime/LaunchProfileStore.h"
 
 #include <QDebug>
 #include <QDir>
 
-#include "app/ProfileStore.h"
-#include "app/SettingsStore.h"
+#include "config/ProfileStore.h"
+#include "config/RuntimePaths.h"
+#include "config/SettingsStore.h"
 #include "runtime/ReleaseCatalog.h"
-#include "runtime/RuntimePaths.h"
 
 namespace llocr {
 
-LaunchProfileStore::LaunchProfileStore(SettingsStore &settings,
-                                       const QString &builtInPath,
-                                       Role role,
-                                       QObject *parent)
-    : QObject(parent)
-    , m_settings(settings)
-    , m_role(role)
-    , m_profiles(new ProfileStore<LaunchProfile>(
-          builtInPath,
-          role == Role::Check ? QStringLiteral("serverLaunchValidate.json")
-                              : QStringLiteral("serverLaunch.json"),
-          kSchemaVersion, QStringLiteral("LaunchProfileStore")))
-    , m_model(new LaunchParametersModel(this))
+LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &builtInPath, Role role, QObject *parent)
+    : QObject(parent), m_settings(settings), m_role(role),
+      m_profiles(new ProfileStore<LaunchProfile>(
+          builtInPath, role == Role::Check ? QStringLiteral("serverLaunchValidate.json") : QStringLiteral("serverLaunch.json"), kSchemaVersion, QStringLiteral("LaunchProfileStore"))),
+      m_model(new LaunchParametersModel(this))
 {
-    m_profiles->setUserPath(
-        QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir())
-                 .profilesDir())
-            .filePath(role == Role::Check ? QStringLiteral("serverLaunchValidate.json")
-                                          : QStringLiteral("serverLaunch.json")));
+    m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir())
+                                .filePath(role == Role::Check ? QStringLiteral("serverLaunchValidate.json") : QStringLiteral("serverLaunch.json")));
     // The path is only known after the settings are read, so the user copy is
     // loaded now rather than in the ProfileStore constructor.
     m_profiles->reloadUserProfiles();
 
-    connect(&m_settings, &SettingsStore::runtimeBackendChanged, this,
-            &LaunchProfileStore::ensureProfileResolved);
+    connect(&m_settings, &SettingsStore::runtimeBackendChanged, this, &LaunchProfileStore::ensureProfileResolved);
     ensureProfileResolved();
     reloadDraft();
 }
@@ -65,9 +53,7 @@ const LaunchProfile *LaunchProfileStore::findPreset(const QString &id) const
     return m_profiles->findBuiltIn(id);
 }
 
-bool LaunchProfileStore::presetMatches(const LaunchProfile &preset,
-                                       const QString &backend,
-                                       const QString &osTag) const
+bool LaunchProfileStore::presetMatches(const LaunchProfile &preset, const QString &backend, const QString &osTag) const
 {
     const bool backendOk = preset.backend.isEmpty() || preset.backend == backend;
     const bool osOk = preset.os.isEmpty() || preset.os == osTag;
@@ -94,17 +80,14 @@ void LaunchProfileStore::ensureProfileResolved()
 
 QString LaunchProfileStore::activeProfileId() const
 {
-    const QString stored = m_role == Role::Check
-                               ? m_settings.checkLaunchProfileId()
-                               : m_settings.launchProfileId();
+    const QString stored = m_role == Role::Check ? m_settings.checkLaunchProfileId() : m_settings.launchProfileId();
     const PlatformInfo platform = ReleaseCatalog::detectPlatform();
     QString backend = m_settings.runtimeBackend();
     if (backend.isEmpty())
         backend = platform.backend;
     const QString osTag = platform.osTag;
 
-    if (const LaunchProfile *storedPreset = findPreset(stored);
-        storedPreset && presetMatches(*storedPreset, backend, osTag))
+    if (const LaunchProfile *storedPreset = findPreset(stored); storedPreset && presetMatches(*storedPreset, backend, osTag))
         return stored;
 
     for (const LaunchProfile &p : m_profiles->builtIn()) {
@@ -144,8 +127,7 @@ bool LaunchProfileStore::setDraftValue(int row, const QString &text)
     return m_model->setValue(row, text);
 }
 
-bool LaunchProfileStore::appendDraftParameter(const QString &name,
-                                              const QString &text)
+bool LaunchProfileStore::appendDraftParameter(const QString &name, const QString &text)
 {
     return m_model->appendRow(name, text);
 }

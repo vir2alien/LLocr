@@ -84,7 +84,6 @@ Item {
             }
         }
 
-        // --- Type list ----------------------------------------------------
         ListView {
             id: typeList
             SplitView.preferredWidth: 260
@@ -183,7 +182,6 @@ Item {
             }
         }
 
-        // --- Editor -------------------------------------------------------
         ColumnLayout {
             id: editorPane
             SplitView.fillWidth: true

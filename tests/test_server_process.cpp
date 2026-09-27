@@ -11,7 +11,8 @@ using namespace llocr;
 #define LLOCR_MOCK_SERVER "mock_llama_server"
 #endif
 
-class TestServerProcess : public QObject {
+class TestServerProcess : public QObject
+{
     Q_OBJECT
 
 private slots:
@@ -26,9 +27,7 @@ private slots:
 
 // Helper that builds a server pointed at the mock binary. Timers/network need
 // the event loop: QTRY_VERIFY_WITH_TIMEOUT drives it while waiting.
-static LlamaServerProcess *makeServer(const QStringList &extraArgs, int timeoutMs,
-                                      bool autoRestart, QTemporaryDir &dir,
-                                      QString &logFile)
+static LlamaServerProcess *makeServer(const QStringList &extraArgs, int timeoutMs, bool autoRestart, QTemporaryDir &dir, QString &logFile)
 {
     LlamaServerProcess::Options opts;
     opts.program = QString::fromUtf8(LLOCR_MOCK_SERVER);
@@ -66,9 +65,7 @@ void TestServerProcess::ringBufferCapturesOutput()
     QScopedPointer<LlamaServerProcess> m(makeServer({}, 60000, true, dir, logFile));
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 12000);
-    QTRY_VERIFY_WITH_TIMEOUT(
-        static_cast<int>(m->ringBuffer().filter(QStringLiteral("llama_model_loader")).size()) >= 5,
-        12000);
+    QTRY_VERIFY_WITH_TIMEOUT(static_cast<int>(m->ringBuffer().filter(QStringLiteral("llama_model_loader")).size()) >= 5, 12000);
     m->stop();
     QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
 }
@@ -80,9 +77,7 @@ void TestServerProcess::healthyTimeout()
     // --never-healthy: /health always 503 → the watchdog times out and fails.
     // --no-models: the /v1/models §2.9 fallback also fails, so readiness cannot
     // be reached through either path and the timeout must surface as Failed.
-    QScopedPointer<LlamaServerProcess> m(
-        makeServer({QStringLiteral("--never-healthy"), QStringLiteral("--no-models")},
-                   1500, false, dir, logFile));
+    QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--never-healthy"), QStringLiteral("--no-models")}, 1500, false, dir, logFile));
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Failed, 10000);
     m->stop();
@@ -96,9 +91,7 @@ void TestServerProcess::crashAndAutoRestartRecovery()
     // The mock stays healthy, then hard-exits after 2500 ms (a real crash loop
     // from /health is per-process by construction — this one is while Ready).
     // Auto-restart must re-spawn and reach Ready again (bounded ≤3 / 5 min).
-    QScopedPointer<LlamaServerProcess> m(
-        makeServer({QStringLiteral("--crash-after"), QStringLiteral("2500")},
-                   60000, true, dir, logFile));
+    QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--crash-after"), QStringLiteral("2500")}, 60000, true, dir, logFile));
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 12000);
     // Wait for the respawn to actually be spawned (not just scheduled): the
@@ -119,15 +112,12 @@ void TestServerProcess::crashWindowReportsRestarting()
     // I-04: while the ~500 ms auto-restart window is pending, the wrapper
     // must surface Starting — never the stale Ready with a dead child, or a
     // resolve started here would hit a dead port.
-    QScopedPointer<LlamaServerProcess> m(
-        makeServer({QStringLiteral("--crash-after"), QStringLiteral("2500")},
-                   60000, true, dir, logFile));
+    QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--crash-after"), QStringLiteral("2500")}, 60000, true, dir, logFile));
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 12000);
 
     // The status flips synchronously with the state at crash detection.
-    QTRY_VERIFY_WITH_TIMEOUT(
-        m->statusMessage().contains(QStringLiteral("restarting")), 10000);
+    QTRY_VERIFY_WITH_TIMEOUT(m->statusMessage().contains(QStringLiteral("restarting")), 10000);
     QCOMPARE(int(m->state()), int(RuntimeState::Starting));
 
     // Stop during the window must land on Stopped and cancel the respawn.
@@ -141,9 +131,7 @@ void TestServerProcess::stopDuringStartupIsSafe()
     QString logFile;
     // Stopping while /health is still being polled must land on Stopped, not
     // Failed. --no-models keeps the §2.9 fallback from flipping to Ready mid-test.
-    QScopedPointer<LlamaServerProcess> m(
-        makeServer({QStringLiteral("--never-healthy"), QStringLiteral("--no-models")},
-                   600000, false, dir, logFile));
+    QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--never-healthy"), QStringLiteral("--no-models")}, 600000, false, dir, logFile));
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Starting, 3000);
     m->stop();
@@ -156,9 +144,7 @@ void TestServerProcess::reportsTensorLoadPercent()
     QString logFile;
     // --progress emits "llama_model_loader: - loading tensors, NN%" lines; the
     // classifier must surface them as a status percentage (§H.7 task 2).
-    QScopedPointer<LlamaServerProcess> m(
-        makeServer({QStringLiteral("--progress"), QStringLiteral("4")},
-                   60000, true, dir, logFile));
+    QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--progress"), QStringLiteral("4")}, 60000, true, dir, logFile));
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->loadProgressPercent() == 100, 12000);
     QVERIFY(m->statusMessage().contains(QStringLiteral("Loading model")));

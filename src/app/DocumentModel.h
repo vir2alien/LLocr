@@ -1,13 +1,13 @@
 #pragma once
 
+#include "app/DjVuDocument.h"
+#include "core/OcrResult.h"
+#include <memory>
 #include <QHash>
 #include <QImage>
 #include <QList>
 #include <QString>
 #include <QStringList>
-#include <memory>
-#include "app/DjVuDocument.h"
-#include "core/OcrResult.h"
 
 class QPdfDocument;
 
@@ -25,22 +25,9 @@ struct DocumentPage {
     int sourcePageIndex = -1;
     QSize pixelSize;
     QString sourceError;
-    QString parseNote;   ///< Non-fatal parser diagnostic for the last recognition.
+    QString parseNote;  ///< Non-fatal parser diagnostic for the last recognition.
 };
 
-// The in-memory document: the page list, the per-page images and the OCR
-// results. GUI-thread resident (ADR 104).
-//
-// Threading contract: the *page list and the results* may only be touched from
-// the GUI thread. Two places cross that line and both are deliberate:
-//   * the export pipeline resolves block crops from a worker thread, holding
-//     AppController's document lock for the duration, so a render triggered by
-//     the GUI thread cannot pull a half-written image cache out from under it;
-//   * DjVuDocument/QPdfDocument are read (never written) while a page is
-//     rendered, which currently happens on the calling thread.
-// The lock is therefore only as good as its call sites — keep every access to
-// m_pages/m_pdfs/m_djvus inside AppController (or another owner) rather than
-// handing the model out.
 class DocumentModel
 {
 public:
@@ -56,36 +43,27 @@ public:
         QStringList warnings;
     };
 
-    static PreparedDjVu prepareDjVu(const QString& path);
-    void appendPreparedDjVu(const PreparedDjVu& prepared);
+    static PreparedDjVu prepareDjVu(const QString &path);
+    void appendPreparedDjVu(const PreparedDjVu &prepared);
 
-    /// Everything a detached render needs, by value: a worker must not read the
-    /// model (ADR 104). The DjVu handle is a shared_ptr the import path already
-    /// hands across threads; a PDF gets its *own* QPdfDocument in the worker,
-    /// because the one the model owns is GUI-thread state.
     struct RenderRequest {
-        DocumentPage page;                          ///< a copy, image field unused
-        std::shared_ptr<DjVuDocument> djvu;         ///< for a DjVu page
+        DocumentPage page;  ///< a copy, image field unused
+        std::shared_ptr<DjVuDocument> djvu;
     };
 
-    /// Renders one page without touching any DocumentModel state, so it can run
-    /// on a worker while the GUI thread stays responsive (ADR 118).
-    static QImage renderDetached(const RenderRequest& request, QString* error = nullptr);
-
-    /// Builds a request for `index` from the model. GUI thread only; the result
-    /// is self-contained and can be rendered anywhere.
+    static QImage renderDetached(const RenderRequest &request, QString *error = nullptr);
     RenderRequest renderRequestFor(int index) const;
 
     DocumentModel() = default;
     ~DocumentModel();
     Q_DISABLE_COPY_MOVE(DocumentModel)
 
-    bool loadImage(const QString& path);
+    bool loadImage(const QString &path);
 
-    bool appendImage(const QString& path);
-    bool appendPdf(const QString& path);
-    bool appendDjVu(const QString& path, QString* error = nullptr);
-    bool appendFile(const QString& path, QString* error = nullptr);
+    bool appendImage(const QString &path);
+    bool appendPdf(const QString &path);
+    bool appendDjVu(const QString &path, QString *error = nullptr);
+    bool appendFile(const QString &path, QString *error = nullptr);
 
     bool removePage(int index);
     bool movePage(int from, int to);
@@ -94,29 +72,28 @@ public:
     int pageCount() const { return m_pages.size(); }
     bool isEmpty() const { return m_pages.isEmpty(); }
 
-    DocumentPage& page(int index) { return m_pages[index]; }
-    const DocumentPage& page(int index) const { return m_pages[index]; }
+    DocumentPage &page(int index) { return m_pages[index]; }
+    const DocumentPage &page(int index) const { return m_pages[index]; }
 
     bool isValidIndex(int index) const;
 
     QImage fullImage(int index, QString *error = nullptr);
-    const QImage& thumbnail(int index) const;
+    const QImage &thumbnail(int index) const;
 
 private:
-    bool decodeSource(DocumentPage& page, QString *error = nullptr);
-    /// Decodes a raster page without touching the model; the worker path.
-    static QImage decodeSourceCopy(const DocumentPage& page, QString *error = nullptr);
-    QImage renderFull(const DocumentPage& page, QString *error = nullptr);
+    bool decodeSource(DocumentPage &page, QString *error = nullptr);
+    static QImage decodeSourceCopy(const DocumentPage &page, QString *error = nullptr);
+    QImage renderFull(const DocumentPage &page, QString *error = nullptr);
     void ensureFullImage(int index, QString *error = nullptr);
     void evictFullImages();
-    void evictUnusedSourceDocuments(const QString& path);
-    QPdfDocument* pdfFor(const QString& path);
+    void evictUnusedSourceDocuments(const QString &path);
+    QPdfDocument *pdfFor(const QString &path);
 
 private:
     QList<DocumentPage> m_pages;
-    QHash<QString, QPdfDocument*> m_pdfs;
+    QHash<QString, QPdfDocument *> m_pdfs;
     QHash<QString, std::shared_ptr<DjVuDocument>> m_djvus;
     QList<int> m_fullCache;
 };
 
-} // namespace llocr
+}  // namespace llocr

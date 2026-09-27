@@ -8,28 +8,28 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QUrl>
 #include <QVariantMap>
-#include <QtConcurrent/QtConcurrentRun>
 
 #include <algorithm>
 #include <utility>
 
-#include "app/SettingsStore.h"
-#include "app/LaunchProfileStore.h"
+#include "config/RuntimePaths.h"
+#include "config/SettingsStore.h"
 #include "core/LaunchProfile.h"
+#include "runtime/HttpClient.h"
+#include "runtime/InstalledState.h"
+#include "runtime/LaunchProfileStore.h"
 #include "runtime/LlamaServerProcess.h"
 #include "runtime/ModelMemoryEstimator.h"
+#include "runtime/ProcessGuard.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeLocator.h"
 #include "runtime/RuntimeLog.h"
-#include "runtime/InstalledState.h"
-#include "runtime/RuntimePaths.h"
-#include "runtime/HttpClient.h"
-#include "runtime/ProcessGuard.h"
 #include "runtime/ServerCapabilities.h"
-#include "runtime/ServerOwner.h"
 #include "runtime/ServerLaunchConfig.h"
+#include "runtime/ServerOwner.h"
 #include "runtime/SingleInstanceGuard.h"
 
 namespace llocr {
@@ -37,37 +37,23 @@ namespace llocr {
 namespace {
 constexpr int kModelsRequestTimeoutMs = 10000;  // /v1/models query
 constexpr int kProbeTimeoutMs = 120000;         // RuntimeLocator::probeCached (cold Metal cache)
-constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
-// A managed model is allowed to plan for 90 % of system RAM; above that the
-// estimate is a warning in the wizard, not an error.
+constexpr int kShutdownTimeoutMs = 5000;        // shutdownSync grace
 constexpr double kMemoryBudgetFactor = 0.9;
 
-// Connects every `…Changed` signal of `source` to `slot` on `receiver`.
-//
-// The restart banner used to name eleven Settings signals by hand in QML, so
-// every new launch setting had to be remembered there. Walking the meta-object
-// instead makes the subscription a property of the store: SettingsStore already
-// emits one notify signal per property, and this picks up the ones added later
-// (ADR 113). Cost is one connection per property — a few dozen.
 void connectEveryChangeSignal(QObject *source, QObject *receiver, const char *slot)
 {
-    // A typo in the slot name would otherwise fail silently, so it is resolved
-    // against the meta-object once, up front.
     const QString slotName = QString::fromLatin1(slot);
     const QMetaObject *receiverMeta = receiver->metaObject();
     QMetaMethod target;
     for (int i = 0; i < receiverMeta->methodCount(); ++i) {
         const QMetaMethod candidate = receiverMeta->method(i);
-        if (candidate.methodType() == QMetaMethod::Slot
-            && slotName == QLatin1String(candidate.name())) {
+        if (candidate.methodType() == QMetaMethod::Slot && slotName == QLatin1String(candidate.name())) {
             target = candidate;
             break;
         }
     }
     if (!target.isValid()) {
-        qWarning("connectEveryChangeSignal: %s has no slot %s",
-                 qUtf8Printable(QString::fromLatin1(source->metaObject()->className())),
-                 slot);
+        qWarning("connectEveryChangeSignal: %s has no slot %s", qUtf8Printable(QString::fromLatin1(source->metaObject()->className())), slot);
         return;
     }
 
@@ -85,16 +71,8 @@ void connectEveryChangeSignal(QObject *source, QObject *receiver, const char *sl
 }
 }  // namespace
 
-RuntimeController::RuntimeController(SettingsStore &settings,
-                                     LaunchProfileStore &launchProfiles,
-                                     LaunchProfileStore *checkLaunchProfiles,
-                                     InstalledState *state,
-                                     QObject *parent)
-    : QObject(parent)
-    , m_settings(settings)
-    , m_installedState(state)
-    , m_launchProfiles(launchProfiles)
-    , m_checkLaunchProfiles(checkLaunchProfiles ? checkLaunchProfiles : &launchProfiles)
+RuntimeController::RuntimeController(SettingsStore &settings, LaunchProfileStore &launchProfiles, LaunchProfileStore *checkLaunchProfiles, InstalledState *state, QObject *parent)
+    : QObject(parent), m_settings(settings), m_installedState(state), m_launchProfiles(launchProfiles), m_checkLaunchProfiles(checkLaunchProfiles ? checkLaunchProfiles : &launchProfiles)
 {
     if (!checkLaunchProfiles) {
         qWarning("RuntimeController: no check launch profile store wired - "
@@ -104,15 +82,11 @@ RuntimeController::RuntimeController(SettingsStore &settings,
     recomputeLaunchConfigDirty();
     connectEveryChangeSignal(&m_settings, this, "recomputeConfigValid");
     connectEveryChangeSignal(&m_settings, this, "recomputeLaunchConfigDirty");
-    connect(&m_settings, &SettingsStore::runtimeRootDirChanged, this,
-            &RuntimeController::scanForOrphanedServer);
-    connect(&m_settings, &SettingsStore::runtimeModelsDirChanged, this,
-            &RuntimeController::scanForOrphanedServer);
+    connect(&m_settings, &SettingsStore::runtimeRootDirChanged, this, &RuntimeController::scanForOrphanedServer);
+    connect(&m_settings, &SettingsStore::runtimeModelsDirChanged, this, &RuntimeController::scanForOrphanedServer);
     // A saved launch profile is a launch-setting change like any other.
-    connect(&m_launchProfiles, &LaunchProfileStore::profileChanged, this,
-            &RuntimeController::recomputeLaunchConfigDirty);
-    connect(m_checkLaunchProfiles, &LaunchProfileStore::profileChanged, this,
-            &RuntimeController::recomputeLaunchConfigDirty);
+    connect(&m_launchProfiles, &LaunchProfileStore::profileChanged, this, &RuntimeController::recomputeLaunchConfigDirty);
+    connect(m_checkLaunchProfiles, &LaunchProfileStore::profileChanged, this, &RuntimeController::recomputeLaunchConfigDirty);
     scanForOrphanedServer();
 }
 
@@ -243,11 +217,9 @@ void RuntimeController::recomputeConfigValid()
     const QString model = m_settings.launchModelPath().trimmed();
     const bool modelOk = !model.isEmpty() && QFileInfo(model).isFile();
 
-    const bool valid = serverOk
-        && (modeFromSettings(m_settings) == ConnectionMode::External || modelOk);
+    const bool valid = serverOk && (modeFromSettings(m_settings) == ConnectionMode::External || modelOk);
 
-    const bool changed = valid != m_configValid || serverOk != m_serverPathValid
-                         || modelOk != m_modelPathValid;
+    const bool changed = valid != m_configValid || serverOk != m_serverPathValid || modelOk != m_modelPathValid;
     m_configValid = valid;
     m_serverPathValid = serverOk;
     m_modelPathValid = modelOk;
@@ -264,10 +236,7 @@ void RuntimeController::recomputeLaunchConfigDirty()
     // Compare the configuration the live server was started with against the one
     // the current settings produce — the same object that becomes the process
     // arguments, so the two can never disagree about what "changed" means.
-    ServerLaunchConfig current = ServerLaunchConfig::fromSettings(
-        m_settings, m_startedRole == ConnectionRole::Check ? *m_checkLaunchProfiles
-                                                           : m_launchProfiles,
-        m_startedRole);
+    ServerLaunchConfig current = ServerLaunchConfig::fromSettings(m_settings, m_startedRole == ConnectionRole::Check ? *m_checkLaunchProfiles : m_launchProfiles, m_startedRole);
     current.program = m_settings.serverPath().trimmed();
     const bool dirty = m_hasStartedConfig && current != m_startedConfig;
     if (dirty == m_launchConfigDirty)
@@ -283,16 +252,12 @@ ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings
 
 QString RuntimeController::roleModelPath(ConnectionRole role) const
 {
-    return role == ConnectionRole::Check
-               ? m_settings.checkLaunchModelPath().trimmed()
-               : m_settings.launchModelPath().trimmed();
+    return role == ConnectionRole::Check ? m_settings.checkLaunchModelPath().trimmed() : m_settings.launchModelPath().trimmed();
 }
 
 QString RuntimeController::roleMmprojPath(ConnectionRole role) const
 {
-    return role == ConnectionRole::Check
-               ? m_settings.checkLaunchMmprojPath().trimmed()
-               : m_settings.launchMmprojPath().trimmed();
+    return role == ConnectionRole::Check ? m_settings.checkLaunchMmprojPath().trimmed() : m_settings.launchMmprojPath().trimmed();
 }
 
 bool RuntimeController::serverRunsRole(ConnectionRole role) const
@@ -300,8 +265,7 @@ bool RuntimeController::serverRunsRole(ConnectionRole role) const
     const QString want = roleModelPath(role);
     if (want.isEmpty())
         return true;
-    return m_startedConfig.modelPath.trimmed() == want
-           && m_startedConfig.mmprojPath.trimmed() == roleMmprojPath(role);
+    return m_startedConfig.modelPath.trimmed() == want && m_startedConfig.mmprojPath.trimmed() == roleMmprojPath(role);
 }
 
 QString RuntimeController::roleConfigError(ConnectionRole role) const
@@ -320,15 +284,15 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
             return tr("Check model is not selected — pick a model in Settings → Check model");
         if (!QFileInfo(model).isFile())
             return tr("Check model file not found: %1 — re-select the model in "
-                      "Settings → Check model").arg(model);
+                      "Settings → Check model")
+                .arg(model);
         return QString();
     }
     if (model.isEmpty())
         return tr("Model is not selected — pick a model in Settings → Models "
                   "or in the Setup wizard");
     if (!QFileInfo(model).isFile())
-        return tr("Model file not found: %1 — re-select the model in Settings → Models")
-                   .arg(model);
+        return tr("Model file not found: %1 — re-select the model in Settings → Models").arg(model);
     return QString();
 }
 
@@ -340,8 +304,7 @@ bool RuntimeController::canRecognize(bool documentLoaded) const
         return true;
     if (m_state == RuntimeState::Ready)
         return true;
-    return m_state == RuntimeState::Stopped && m_configValid
-           && (m_settings.autoStart() || m_settings.startOnDemand());
+    return m_state == RuntimeState::Stopped && m_configValid && (m_settings.autoStart() || m_settings.startOnDemand());
 }
 
 ResolvedConnection RuntimeController::resolveExternal(ConnectionRole role) const
@@ -349,34 +312,27 @@ ResolvedConnection RuntimeController::resolveExternal(ConnectionRole role) const
     ResolvedConnection conn;
     conn.baseUrl = m_settings.baseUrl();
     conn.apiKey = m_settings.apiKey();
-    conn.modelId = role == ConnectionRole::Check
-                       ? m_settings.checkModelName()
-                       : m_settings.modelName();
+    conn.modelId = role == ConnectionRole::Check ? m_settings.checkModelName() : m_settings.modelName();
     conn.timeoutMs = m_settings.connectionTimeoutMs();
     return conn;
 }
 
-void RuntimeController::ensureConnectionReady(
-    const std::function<void(const ResolvedConnection &)> &onResolved)
+void RuntimeController::ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved)
 {
     ensureConnectionReady(nullptr, ConnectionRole::Ocr, onResolved);
 }
 
-void RuntimeController::ensureConnectionReady(
-    QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved)
+void RuntimeController::ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved)
 {
     ensureConnectionReady(context, ConnectionRole::Ocr, onResolved);
 }
 
-void RuntimeController::ensureConnectionReady(
-    ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved)
+void RuntimeController::ensureConnectionReady(ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved)
 {
     ensureConnectionReady(nullptr, role, onResolved);
 }
 
-void RuntimeController::ensureConnectionReady(
-    QObject *context, ConnectionRole role,
-    const std::function<void(const ResolvedConnection &)> &onResolved)
+void RuntimeController::ensureConnectionReady(QObject *context, ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved)
 {
     if (modeFromSettings(m_settings) == ConnectionMode::External) {
         onResolved(resolveExternal(role));
@@ -411,8 +367,7 @@ void RuntimeController::startResolveForRole(ConnectionRole role)
         return;
     }
 
-    const bool serverLive = m_state == RuntimeState::Ready
-                         || m_state == RuntimeState::Starting;
+    const bool serverLive = m_state == RuntimeState::Ready || m_state == RuntimeState::Starting;
     const bool switchNeeded = serverLive && !serverRunsRole(role);
 
     if (!serverLive || switchNeeded) {
@@ -421,8 +376,7 @@ void RuntimeController::startResolveForRole(ConnectionRole role)
             failResolve(roleError);
             return;
         }
-        if (!serverLive && m_state != RuntimeState::Stopping
-            && !m_settings.autoStart() && !m_settings.startOnDemand()) {
+        if (!serverLive && m_state != RuntimeState::Stopping && !m_settings.autoStart() && !m_settings.startOnDemand()) {
             failResolve(tr("Server is not set to start automatically. "
                            "Start it from the main window or Settings → Runtime."));
             return;
@@ -466,8 +420,7 @@ void RuntimeController::beginManagedResolve()
     }  // switch (m_state)
 }
 
-void RuntimeController::deliverCallbacks(const std::vector<PendingResolve> &callbacks,
-                                         const ResolvedConnection &conn)
+void RuntimeController::deliverCallbacks(const std::vector<PendingResolve> &callbacks, const ResolvedConnection &conn)
 {
     for (const auto &cb : callbacks) {
         if (cb.guarded && cb.context.isNull())
@@ -498,10 +451,7 @@ void RuntimeController::completeResolve(ResolvedConnection conn)
         if (cb.role == nextRole)
             m_resolveCallbacks.push_back(cb);
     }
-    m_deferredResolves.erase(
-        std::remove_if(m_deferredResolves.begin(), m_deferredResolves.end(),
-                       [nextRole](const PendingResolve &cb) { return cb.role == nextRole; }),
-        m_deferredResolves.end());
+    m_deferredResolves.erase(std::remove_if(m_deferredResolves.begin(), m_deferredResolves.end(), [nextRole](const PendingResolve &cb) { return cb.role == nextRole; }), m_deferredResolves.end());
 
     startResolveForRole(nextRole);
 }
@@ -517,8 +467,7 @@ void RuntimeController::onServerStateForResolve()
 {
     if (!m_resolveInProgress) {
         m_switching = false;
-        if (m_state == RuntimeState::Ready || m_state == RuntimeState::Stopped
-            || m_state == RuntimeState::Failed)
+        if (m_state == RuntimeState::Ready || m_state == RuntimeState::Stopped || m_state == RuntimeState::Failed)
             setBusyState(AppBusyState::Idle);
         return;
     }
@@ -532,8 +481,7 @@ void RuntimeController::onServerStateForResolve()
         }
         setBusyState(AppBusyState::Idle);
         failResolve(describeServerFailure());
-    } else if (m_state == RuntimeState::Stopping
-               || m_state == RuntimeState::Stopped) {
+    } else if (m_state == RuntimeState::Stopping || m_state == RuntimeState::Stopped) {
         if (m_switching) {
             if (m_state == RuntimeState::Stopped) {
                 m_switching = false;
@@ -551,9 +499,7 @@ void RuntimeController::beginRoleSwitch()
     m_switching = true;
     setBusyState(AppBusyState::StartingRuntime);
     setLoadProgressPercent(-1);
-    setStatusMessage(m_resolveRole == ConnectionRole::Check
-                         ? tr("Switching to the check model…")
-                         : tr("Switching to the OCR model…"));
+    setStatusMessage(m_resolveRole == ConnectionRole::Check ? tr("Switching to the check model…") : tr("Switching to the OCR model…"));
     if (!m_server) {
         m_switching = false;
         beginManagedResolve();
@@ -572,9 +518,7 @@ ResolvedConnection RuntimeController::buildManagedConnection() const
     url.setPort(port);
     conn.baseUrl = url.toString();
     conn.apiKey.clear();  // Managed server is loopback-only, no auth
-    conn.modelId = m_settings.launchModelAlias().isEmpty()
-                       ? QStringLiteral("llocr-local")
-                       : m_settings.launchModelAlias();
+    conn.modelId = m_settings.launchModelAlias().isEmpty() ? QStringLiteral("llocr-local") : m_settings.launchModelAlias();
     conn.timeoutMs = m_settings.connectionTimeoutMs();
     return conn;
 }
@@ -585,12 +529,9 @@ void RuntimeController::fetchManagedModels()
     if (!m_modelsNet)
         m_modelsNet = new QNetworkAccessManager(this);
 
-    // Shared HTTP policy (ADR 108): transfer timeout, manual redirects, and the
-    // system proxy applied from the request itself.
     HttpClient::Options options;
     options.timeoutMs = kModelsRequestTimeoutMs;
-    QNetworkRequest req = HttpClient::makeRequest(
-        QUrl(m_modelsBaseUrl + QStringLiteral("/v1/models")), options);
+    QNetworkRequest req = HttpClient::makeRequest(QUrl(m_modelsBaseUrl + QStringLiteral("/v1/models")), options);
     QNetworkReply *reply = m_modelsNet->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() { onModelsReply(reply); });
 }
@@ -612,8 +553,7 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
     const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &perr);
     if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
         setBusyState(AppBusyState::Idle);
-        failResolve(tr("Server returned a malformed /v1/models response: %1")
-                        .arg(perr.errorString()));
+        failResolve(tr("Server returned a malformed /v1/models response: %1").arg(perr.errorString()));
         return;
     }
     const QJsonArray data = doc.object().value(QStringLiteral("data")).toArray();
@@ -644,9 +584,7 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
 QString RuntimeController::describeServerFailure() const
 {
     QString msg = m_server ? translateServerLine(m_server->lastError()) : QString();
-    const QString tail = m_server
-        ? m_server->ringBuffer(20).join(QStringLiteral("\n"))
-        : QString();
+    const QString tail = m_server ? m_server->ringBuffer(20).join(QStringLiteral("\n")) : QString();
     if (!tail.isEmpty()) {
         if (msg.isEmpty())
             msg = tr("Server failed");
@@ -659,18 +597,13 @@ QString RuntimeController::translateServerLine(const QString &line)
 {
     if (line.isEmpty())
         return QString();
-    if (line.contains(QStringLiteral("address already in use"))
-        || line.contains(QStringLiteral("failed to bind"))
-        || line.contains(QStringLiteral("cannot bind")))
+    if (line.contains(QStringLiteral("address already in use")) || line.contains(QStringLiteral("failed to bind")) || line.contains(QStringLiteral("cannot bind")))
         return tr("Port is busy. Change the port or enable auto-pick");
-    if (line.contains(QStringLiteral("unknown argument"))
-        || line.contains(QStringLiteral("invalid argument")))
+    if (line.contains(QStringLiteral("unknown argument")) || line.contains(QStringLiteral("invalid argument")))
         return tr("The server rejected an argument that is not supported by your build");
-    if (line.contains(QStringLiteral("failed to load model"))
-        || line.contains(QStringLiteral("no such file")))
+    if (line.contains(QStringLiteral("failed to load model")) || line.contains(QStringLiteral("no such file")))
         return tr("Model file not found. Re-check the model path in Settings");
-    if (line.contains(QStringLiteral("cudaMalloc failed"))
-        || line.contains(QStringLiteral("buffer_type_alloc_buffer")))
+    if (line.contains(QStringLiteral("cudaMalloc failed")) || line.contains(QStringLiteral("buffer_type_alloc_buffer")))
         return tr("Not enough VRAM. Lower --n-gpu-layers or --ctx-size");
     if (line.contains(QStringLiteral("cudart64")))
         return tr("CUDA runtime not installed. Install the CUDA archive or pick CPU/Vulkan");
@@ -699,9 +632,7 @@ QString RuntimeController::startServer(ConnectionRole role)
     if (m_lockedOut)
         return tr("Another instance is already running");
 
-    if (m_server && (m_server->state() == RuntimeState::Starting
-                     || m_server->state() == RuntimeState::Ready
-                     || m_server->state() == RuntimeState::Stopping))
+    if (m_server && (m_server->state() == RuntimeState::Starting || m_server->state() == RuntimeState::Ready || m_server->state() == RuntimeState::Stopping))
         return tr("Server is already running");
 
     if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
@@ -712,10 +643,6 @@ QString RuntimeController::startServer(ConnectionRole role)
         }
     }
 
-    // The probe spawns the binary and waits for it: on a cold cache that is up
-    // to two minutes (ADR 105), so it runs on a worker and continues in the
-    // callback — the GUI event loop keeps running meanwhile. A generation
-    // counter drops the result of a probe that was cancelled or superseded.
     RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     paths.ensureDirectories();
     const quint64 generation = ++m_startGeneration;
@@ -723,22 +650,18 @@ QString RuntimeController::startServer(ConnectionRole role)
     setStatusMessage(tr("Probing %1…").arg(fi.fileName()));
 
     auto *watcher = new QFutureWatcher<ProbeResult>(this);
-    connect(watcher, &QFutureWatcher<ProbeResult>::finished, this,
-            [this, watcher, role, program, generation]() {
+    connect(watcher, &QFutureWatcher<ProbeResult>::finished, this, [this, watcher, role, program, generation]() {
         const ProbeResult probe = watcher->result();
         watcher->deleteLater();
         if (generation != m_startGeneration)
             return;  // cancelled or superseded by a newer start
         finishStartServer(role, program, probe);
     });
-    watcher->setFuture(QtConcurrent::run([program, cacheDir]() {
-        return RuntimeLocator::probeCached(program, cacheDir, kProbeTimeoutMs);
-    }));
+    watcher->setFuture(QtConcurrent::run([program, cacheDir]() { return RuntimeLocator::probeCached(program, cacheDir, kProbeTimeoutMs); }));
     return QString();
 }
 
-void RuntimeController::finishStartServer(ConnectionRole role, const QString &program,
-                                          const ProbeResult &probe)
+void RuntimeController::finishStartServer(ConnectionRole role, const QString &program, const ProbeResult &probe)
 {
     if (!probe.ok) {
         setStatusMessage(probe.error);
@@ -755,10 +678,7 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
     RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     paths.ensureDirectories();
 
-    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(
-        m_settings,
-        role == ConnectionRole::Check ? *m_checkLaunchProfiles : m_launchProfiles,
-        role);
+    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings, role == ConnectionRole::Check ? *m_checkLaunchProfiles : m_launchProfiles, role);
     cfg.program = program;
     QStringList args = cfg.toArguments(probe.capabilities);
 
@@ -776,15 +696,12 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
 
     if (!m_server) {
         m_server = new LlamaServerProcess(opts, this);
-        connect(m_server, &LlamaServerProcess::stateChanged, this,
-                [this]() {
-                    setState(m_server->state());
-                    onServerStateForResolve();
-                });
-        connect(m_server, &LlamaServerProcess::statusMessageChanged, this,
-                [this]() { setStatusMessage(m_server->statusMessage()); });
-        connect(m_server, &LlamaServerProcess::loadProgressChanged, this,
-                [this]() { setLoadProgressPercent(m_server->loadProgressPercent()); });
+        connect(m_server, &LlamaServerProcess::stateChanged, this, [this]() {
+            setState(m_server->state());
+            onServerStateForResolve();
+        });
+        connect(m_server, &LlamaServerProcess::statusMessageChanged, this, [this]() { setStatusMessage(m_server->statusMessage()); });
+        connect(m_server, &LlamaServerProcess::loadProgressChanged, this, [this]() { setLoadProgressPercent(m_server->loadProgressPercent()); });
     } else {
         m_server->setOptions(opts);
     }
@@ -845,17 +762,15 @@ void RuntimeController::restartServer()
         setBusyState(AppBusyState::StoppingRuntime);
         setStatusMessage(tr("Stopping…"));
         cancelPendingRestart();
-        m_restartConn = connect(
-            m_server, &LlamaServerProcess::stateChanged, this,
-            [this]() {
-                if (m_server->state() != RuntimeState::Stopped)
-                    return;
-                cancelPendingRestart();
-                setBusyState(AppBusyState::Idle);
-                const QString err = startServer();
-                if (!err.isEmpty())
-                    setStatusMessage(err);
-            });
+        m_restartConn = connect(m_server, &LlamaServerProcess::stateChanged, this, [this]() {
+            if (m_server->state() != RuntimeState::Stopped)
+                return;
+            cancelPendingRestart();
+            setBusyState(AppBusyState::Idle);
+            const QString err = startServer();
+            if (!err.isEmpty())
+                setStatusMessage(err);
+        });
         m_server->stop();
         return;
     }
@@ -878,20 +793,16 @@ QString RuntimeController::probeRuntimePath(const QString &path)
     const quint64 generation = ++m_startGeneration;
     setStatusMessage(tr("Probing %1…").arg(QFileInfo(program).fileName()));
     auto *watcher = new QFutureWatcher<ProbeResult>(this);
-    connect(watcher, &QFutureWatcher<ProbeResult>::finished, this,
-            [this, watcher, program, generation]() {
+    connect(watcher, &QFutureWatcher<ProbeResult>::finished, this, [this, watcher, program, generation]() {
         const ProbeResult probe = watcher->result();
         watcher->deleteLater();
         if (generation != m_startGeneration)
             return;
         setStatusMessage(RuntimeLocator::probeSummary(probe));
     });
-    watcher->setFuture(QtConcurrent::run([program]() {
-        return RuntimeLocator::probe(program, kProbeTimeoutMs);
-    }));
+    watcher->setFuture(QtConcurrent::run([program]() { return RuntimeLocator::probe(program, kProbeTimeoutMs); }));
     return QString();
 }
-
 
 QString RuntimeController::launchCommandPreview()
 {
@@ -903,11 +814,9 @@ QString RuntimeController::launchCommandPreview()
     const RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     ProbeResult probe;
     RuntimeLocator::cachedProbe(program, paths.cacheDir(), probe);
-    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings,
-                                                              m_launchProfiles);
+    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings, m_launchProfiles);
     cfg.program = program;
-    return cfg.toDisplayCommand(probe.ok ? probe.capabilities
-                                         : ServerCapabilities{});
+    return cfg.toDisplayCommand(probe.ok ? probe.capabilities : ServerCapabilities{});
 }
 
 QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath)
@@ -917,18 +826,14 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath)
     int ctxSize = 8192;
     QString cacheTypeK;
     QString cacheTypeV;
-    if (const LaunchParameter *row = profile.find(QStringLiteral("ctx-size"));
-        row && row->kind == LaunchValueKind::Number)
+    if (const LaunchParameter *row = profile.find(QStringLiteral("ctx-size")); row && row->kind == LaunchValueKind::Number)
         ctxSize = int(row->value.toDouble());
-    if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-k"));
-        row && row->kind == LaunchValueKind::Text)
+    if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-k")); row && row->kind == LaunchValueKind::Text)
         cacheTypeK = row->value.toString();
-    if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-v"));
-        row && row->kind == LaunchValueKind::Text)
+    if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-v")); row && row->kind == LaunchValueKind::Text)
         cacheTypeV = row->value.toString();
 
-    const ModelMemoryEstimate e =
-        ::llocr::estimateModelMemory(modelPath, ctxSize, cacheTypeK, cacheTypeV);
+    const ModelMemoryEstimate e = ::llocr::estimateModelMemory(modelPath, ctxSize, cacheTypeK, cacheTypeV);
     out.insert(QStringLiteral("modelBytes"), e.modelBytes);
     out.insert(QStringLiteral("kvCacheBytes"), e.kvCacheBytes);
     out.insert(QStringLiteral("totalBytes"), e.totalBytes);
@@ -938,12 +843,7 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath)
     out.insert(QStringLiteral("nLayer"), e.nLayer);
     out.insert(QStringLiteral("nKvHead"), e.nKvHead);
     out.insert(QStringLiteral("headDim"), e.headDim);
-    // The wizard used to compare the estimate against system RAM in QML with a
-    // 0.9 factor; the threshold is a memory policy, so it lives next to the
-    // estimate that produces the numbers (ADR 113).
-    out.insert(QStringLiteral("overBudget"),
-               e.valid && e.systemRamBytes > 0
-                   && e.totalBytes > static_cast<qint64>(e.systemRamBytes * kMemoryBudgetFactor));
+    out.insert(QStringLiteral("overBudget"), e.valid && e.systemRamBytes > 0 && e.totalBytes > static_cast<qint64>(e.systemRamBytes * kMemoryBudgetFactor));
     return out;
 }
 

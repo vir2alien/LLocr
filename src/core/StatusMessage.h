@@ -28,26 +28,11 @@ class StatusMessage
 {
 public:
     StatusMessage() = default;
-    /// A QString is a message that is already in the user's language (a server
-    /// reply, a transport error, a file path). Implicit so that a `Result` that
-    /// takes a StatusMessage can still be built from a plain error string —
-    /// which is what the shared transport and the adapters hand around.
     StatusMessage(const QString &text) : StatusMessage(literal(text)) {}
 
-    /// Text that is already in the user's language, or needs no translation.
     static StatusMessage literal(const QString &text);
-    /// A translatable message. `args` fills the `%1…%n` placeholders in order.
-    ///
-    /// Named `translate`, not `tr`, on purpose: `lupdate` reads the first string
-    /// literal of a `translate(…)` call as the context, so the keys keep landing
-    /// in the context the runtime looks them up in. A `StatusMessage::tr(…)`
-    /// would be filed under `StatusMessage` and never match.
-    static StatusMessage translate(const char *context, const QString &key,
-                                   const QStringList &args = {});
-    /// Convenience for the common `tr(...).arg(a).arg(b)` call sites.
-    template <typename... Args>
-    static StatusMessage translate(const char *context, const QString &key,
-                                   Args &&...args)
+    static StatusMessage translate(const char *context, const QString &key, const QStringList &args = {});
+    template <typename... Args> static StatusMessage translate(const char *context, const QString &key, Args &&...args)
     {
         StatusMessage message;
         message.m_kind = Kind::Translated;
@@ -56,16 +41,9 @@ public:
         (message.m_args.append(toArg(std::forward<Args>(args))), ...);
         return message;
     }
-    /// Joins messages with `separator` (a newline by default) into one line of
-    /// text that is still assembled from untranslated parts.
-    static StatusMessage join(QList<StatusMessage> parts,
-                              const QString &separator = QStringLiteral("\n"));
+    static StatusMessage join(QList<StatusMessage> parts, const QString &separator = QStringLiteral("\n"));
 
-    /// Appends a `%n` argument, so a translatable message reads the same as
-    /// `tr(...).arg(a).arg(b)` did. Numbers go through `QString::number`, which
-    /// is what `QString::arg` would have done.
-    template <typename Arg, typename... Args>
-    StatusMessage arg(Arg &&first, Args &&...rest) const
+    template <typename Arg, typename... Args> StatusMessage arg(Arg &&first, Args &&...rest) const
     {
         StatusMessage copy = *this;
         copy.m_args.append(toArg(std::forward<Arg>(first)));
@@ -73,18 +51,13 @@ public:
         return copy;
     }
 
-    /// Renders in the language that is installed *right now*.
     QString text() const;
     bool isEmpty() const;
 
-    /// True when both messages would render the same text — the identity a
-    /// setter compares before emitting a change notification.
     bool operator==(const StatusMessage &other) const;
     bool operator!=(const StatusMessage &other) const { return !(*this == other); }
 
 private:
-    /// The numeric overload of QString::arg, without the implicit-conversion
-    /// surprises: only the types a message actually interpolates are accepted.
     static QString toArg(const QString &value) { return value; }
     static QString toArg(const char *value) { return QString::fromUtf8(value); }
     static QString toArg(int value) { return QString::number(value); }
@@ -100,12 +73,12 @@ private:
     };
 
     Kind m_kind = Kind::Empty;
-    QString m_text;                        ///< Literal
-    QString m_context;                     ///< Translated
-    QString m_key;                         ///< Translated
-    QStringList m_args;                    ///< Translated
-    QList<StatusMessage> m_parts;          ///< Composite
-    QString m_separator;                   ///< Composite
+    QString m_text;                ///< Literal
+    QString m_context;             ///< Translated
+    QString m_key;                 ///< Translated
+    QStringList m_args;            ///< Translated
+    QList<StatusMessage> m_parts;  ///< Composite
+    QString m_separator;           ///< Composite
 };
 
 }  // namespace llocr

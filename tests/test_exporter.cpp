@@ -50,15 +50,15 @@ void ExporterTest::suffixMapping_data()
     QTest::addColumn<QString>("suffix");
     QTest::addColumn<int>("format");
 
-    QTest::newRow("md")   << "md"       << int(Exporter::Format::Markdown);
+    QTest::newRow("md") << "md" << int(Exporter::Format::Markdown);
     QTest::newRow("markdown") << "markdown" << int(Exporter::Format::Markdown);
-    QTest::newRow("txt")  << "txt"      << int(Exporter::Format::PlainText);
-    QTest::newRow("html") << "html"     << int(Exporter::Format::Html);
-    QTest::newRow("htm")  << "htm"      << int(Exporter::Format::Html);
-    QTest::newRow("docx") << "docx"     << int(Exporter::Format::Docx);
-    QTest::newRow("pdf")  << "pdf"      << int(Exporter::Format::Pdf);
+    QTest::newRow("txt") << "txt" << int(Exporter::Format::PlainText);
+    QTest::newRow("html") << "html" << int(Exporter::Format::Html);
+    QTest::newRow("htm") << "htm" << int(Exporter::Format::Html);
+    QTest::newRow("docx") << "docx" << int(Exporter::Format::Docx);
+    QTest::newRow("pdf") << "pdf" << int(Exporter::Format::Pdf);
     QTest::newRow("upper-PDF") << "PDF" << int(Exporter::Format::Pdf);
-    QTest::newRow("bogus") << "xyz"     << int(Exporter::Format::Unknown);
+    QTest::newRow("bogus") << "xyz" << int(Exporter::Format::Unknown);
 }
 
 void ExporterTest::suffixMapping()
@@ -71,8 +71,8 @@ void ExporterTest::suffixMapping()
 void ExporterTest::markdownHasPageHeadings()
 {
     const QList<Exporter::Page> pages = {
-        { 1, "First page body" },
-        { 2, "Second page body" },
+        {1, "First page body"},
+        {2, "Second page body"},
     };
     const QString md = Exporter::buildMarkdown(pages);
     // Pages are separated by a horizontal rule, with no "Page N" labels.
@@ -80,14 +80,13 @@ void ExporterTest::markdownHasPageHeadings()
     QVERIFY(md.contains("\n---\n"));
     QVERIFY(md.contains("First page body"));
     QVERIFY(md.contains("Second page body"));
-    // Page 1 body must come before the rule, page 2 body after it.
     QVERIFY(md.indexOf("First page body") < md.indexOf("\n---\n"));
     QVERIFY(md.indexOf("\n---\n") < md.indexOf("Second page body"));
 }
 
 void ExporterTest::plainTextHasSeparators()
 {
-    const QList<Exporter::Page> pages = { { 1, "hello" } };
+    const QList<Exporter::Page> pages = {{1, "hello"}};
     const QString txt = Exporter::buildPlainText(pages);
     // A single page exports as-is: no separators and no page labels.
     QVERIFY(!txt.contains("Page"));
@@ -95,7 +94,7 @@ void ExporterTest::plainTextHasSeparators()
     QVERIFY(!txt.contains("## Page"));  // no Markdown syntax leaked in
 
     // Several pages get a plain dash rule between them (no "Page N" labels).
-    const QString multi = Exporter::buildPlainText({ { 1, "one" }, { 2, "two" } });
+    const QString multi = Exporter::buildPlainText({{1, "one"}, {2, "two"}});
     QVERIFY(!multi.contains("Page"));
     QVERIFY(multi.contains("--------"));
     QVERIFY(multi.indexOf("one") < multi.indexOf("--------"));
@@ -104,15 +103,15 @@ void ExporterTest::plainTextHasSeparators()
 
 void ExporterTest::htmlEscapesAngleBrackets()
 {
-    const QList<Exporter::Page> pages = { { 1, "a < b && c > d" } };
+    const QList<Exporter::Page> pages = {{1, "a < b && c > d"}};
     const QString html = Exporter::buildHtml(pages);
     QVERIFY(html.contains("a &lt; b &amp;&amp; c &gt; d"));
-    QVERIFY(!html.contains("a < b &&"));  // raw text must not survive
+    QVERIFY(!html.contains("a < b &&"));
 }
 
 void ExporterTest::htmlIsSelfContained()
 {
-    const QList<Exporter::Page> pages = { { 1, "x" } };
+    const QList<Exporter::Page> pages = {{1, "x"}};
     const QString html = Exporter::buildHtml(pages);
     QVERIFY(html.startsWith("<!DOCTYPE html>"));
     QVERIFY(html.contains("<meta charset=\"utf-8\">"));
@@ -126,8 +125,7 @@ void ExporterTest::exportMarkdownFileRoundTrips()
     const QString path = dir.filePath("out.md");
 
     Exporter exporter;
-    const Exporter::Result r =
-        exporter.exportToFile({ { 1, "content here" } }, path);
+    const Exporter::Result r = exporter.exportToFile({{1, "content here"}}, path);
     QVERIFY2(r.success, qPrintable(r.message.text()));
 
     QFile f(path);
@@ -143,8 +141,7 @@ void ExporterTest::unknownSuffixFallsBackToMarkdown()
     const QString path = dir.filePath("out.weird");
 
     Exporter exporter;
-    const Exporter::Result r =
-        exporter.exportToFile({ { 1, "body" } }, path);
+    const Exporter::Result r = exporter.exportToFile({{1, "body"}}, path);
     QVERIFY2(r.success, qPrintable(r.message.text()));
 
     QFile f(path);
@@ -171,11 +168,9 @@ void ExporterTest::resolveImageReferencesReplacesUrlsAndSavesFiles()
         img.fill(Qt::blue);
         return img;
     };
-    const QString md = QStringLiteral(
-        "Intro\n\n![Figure 1](image://ocr/crop/3)\n\nOutro");
+    const QString md = QStringLiteral("Intro\n\n![Figure 1](image://ocr/crop/3)\n\nOutro");
 
-    const Exporter::ResolvedImages r =
-        Exporter::resolveImageReferences(md, 0, crop, dir.path());
+    const Exporter::ResolvedImages r = Exporter::resolveImageReferences(md, 0, crop, dir.path());
 
     QVERIFY(r.processedMarkdown.contains("![Figure 1](page_0_img_3.png)"));
     QVERIFY(!r.processedMarkdown.contains("image://ocr"));
@@ -189,8 +184,7 @@ void ExporterTest::resolveImageReferencesKeepsStaleRefs()
     QTemporaryDir dir;
     // The crop provider always returns a null image (e.g. box was removed).
     const auto crop = [](int) { return QImage(); };
-    const Exporter::ResolvedImages r =
-        Exporter::resolveImageReferences("![X](image://ocr/crop/5)", 0, crop, dir.path());
+    const Exporter::ResolvedImages r = Exporter::resolveImageReferences("![X](image://ocr/crop/5)", 0, crop, dir.path());
 
     QVERIFY(r.processedMarkdown.contains("![X](image://ocr/crop/5)"));
 }
@@ -206,11 +200,9 @@ void ExporterTest::exportMarkdownEmbedsCroppedImages()
     const auto crop = [&img](int, int) { return img; };
 
     Exporter exporter;
-    const Exporter::Result r =
-        exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
+    const Exporter::Result r = exporter.exportToFile({{1, "![Image](image://ocr/crop/0)"}}, path, crop);
     QVERIFY2(r.success, qPrintable(r.message.text()));
 
-    // Crops are saved into <output>_media/ next to the markdown file.
     const QString mediaFile = dir.filePath("result_media/page_0_img_0.png");
     QVERIFY(QFile::exists(mediaFile));
 
@@ -232,14 +224,12 @@ void ExporterTest::exportHtmlRendersImages()
     const auto crop = [&img](int, int) { return img; };
 
     Exporter exporter;
-    const Exporter::Result r =
-        exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
+    const Exporter::Result r = exporter.exportToFile({{1, "![Image](image://ocr/crop/0)"}}, path, crop);
     QVERIFY2(r.success, qPrintable(r.message.text()));
 
     QFile f(path);
     QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString content = QString::fromUtf8(f.readAll());
-    // The markdown image becomes a real <img> pointing at the saved crop.
     QVERIFY(content.contains("<img"));
     QVERIFY(content.contains("result_media/page_0_img_0.png"));
     QVERIFY(!content.contains("image://ocr"));
@@ -259,8 +249,7 @@ void ExporterTest::exportDocxEmbedsCroppedImages()
     const auto crop = [&img](int, int) { return img; };
 
     Exporter exporter;
-    const Exporter::Result r =
-        exporter.exportToFile({ { 1, "![Image](image://ocr/crop/0)" } }, path, crop);
+    const Exporter::Result r = exporter.exportToFile({{1, "![Image](image://ocr/crop/0)"}}, path, crop);
     QVERIFY2(r.success, qPrintable(r.message.text()));
 
     // A .docx is a ZIP; entry names are stored uncompressed, so the embedded
@@ -268,14 +257,12 @@ void ExporterTest::exportDocxEmbedsCroppedImages()
     QFile f(path);
     QVERIFY(f.open(QIODevice::ReadOnly));
     const QByteArray raw = f.readAll();
-    QVERIFY2(raw.contains("word/media/"),
-             "docx contains no embedded images (pandoc did not resolve the crops)");
+    QVERIFY2(raw.contains("word/media/"), "docx contains no embedded images (pandoc did not resolve the crops)");
 }
 
 void ExporterTest::plainTextStripsImageReferences()
 {
-    const QString txt = Exporter::buildPlainText(
-        { { 1, "![Figure](image://ocr/crop/0)\nBody text" } });
+    const QString txt = Exporter::buildPlainText({{1, "![Figure](image://ocr/crop/0)\nBody text"}});
     QVERIFY(!txt.contains("image://ocr"));
     QVERIFY(!txt.contains("![Figure]"));
     QVERIFY(txt.contains("Body text"));
@@ -286,9 +273,7 @@ void ExporterTest::embedImagesAsDataUrlsConvertsRefs()
     QImage img(4, 2, QImage::Format_RGB32);
     img.fill(Qt::red);
     const QString md = QStringLiteral("A\n\n![Fig](image://ocr/crop/2)\n\nB");
-    const QString out = Exporter::embedImagesAsDataUrls(md, [&img](int boxIndex) {
-        return boxIndex == 2 ? img : QImage();
-    });
+    const QString out = Exporter::embedImagesAsDataUrls(md, [&img](int boxIndex) { return boxIndex == 2 ? img : QImage(); });
 
     QVERIFY(out.contains(QStringLiteral("A")));
     QVERIFY(out.contains(QStringLiteral("B")));
@@ -299,15 +284,13 @@ void ExporterTest::embedImagesAsDataUrlsConvertsRefs()
 void ExporterTest::embedImagesAsDataUrlsKeepsNullCrops()
 {
     const QString md = QStringLiteral("![X](image://ocr/crop/5)");
-    const QString out =
-        Exporter::embedImagesAsDataUrls(md, [](int) { return QImage(); });
+    const QString out = Exporter::embedImagesAsDataUrls(md, [](int) { return QImage(); });
     QCOMPARE(out, md);
 }
 
 void ExporterTest::assembleHtmlDocumentIsSelfContained()
 {
-    const QString html = Exporter::assembleHtmlDocument(
-        { QStringLiteral("<section><h2>Page 1</h2><p>hi</p></section>") });
+    const QString html = Exporter::assembleHtmlDocument({QStringLiteral("<section><h2>Page 1</h2><p>hi</p></section>")});
 
     QVERIFY(html.startsWith(QStringLiteral("<!DOCTYPE html>")));
     QVERIFY(html.contains(QStringLiteral("<meta charset=\"utf-8\">")));
@@ -347,8 +330,8 @@ void ExporterTest::pandocDetectionConsistent()
 void ExporterTest::splitPagesOffOmitsPageLabels()
 {
     const QList<Exporter::Page> pages = {
-        { 1, "first" },
-        { 2, "second" },
+        {1, "first"},
+        {2, "second"},
     };
 
     // Split ON (default): pages are separated by a markdown rule…

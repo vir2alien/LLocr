@@ -111,7 +111,6 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // --- Automatic checking ------------------------------------------
         LLOCheckBox {
             id: autoCheckBox
             Layout.fillWidth: true
@@ -159,7 +158,6 @@ Item {
                        + "runtime just starts checking.")
         }
 
-        // --- Block types --------------------------------------------------
         RowLayout {
             Layout.fillWidth: true
             Layout.topMargin: Theme.spacingXLarge

@@ -1,4 +1,4 @@
-# Continuous verification for LLocr (stage 0.1, ADR 100).
+# Continuous verification for LLocr
 #
 # The local equivalent is `scripts/check.sh`; keep the two in sync — CI runs
 # the script, so a green run locally means a green run here.
@@ -15,7 +15,7 @@
 #   The Windows runner additionally needs the MSVC 2022 toolchain and ZLIB via
 #   vcpkg (triplet x64-windows) — see the Windows section of
 #   docs/06-dev-setup.md. DjVu is optional: the suite now builds and runs
-#   without it (ADR 99), so Linux/macOS can skip DjVuLibre entirely.
+#   without it, so Linux/macOS can skip DjVuLibre entirely.
 
 name: CI
 

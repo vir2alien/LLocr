@@ -14,8 +14,6 @@ using namespace llocr;
 
 namespace {
 
-// Creates a fake repo subdir under `modelsDir` with a couple of GGUF files and
-// returns the absolute dir path.
 QString makeRepoDir(const QString &modelsDir, const QString &name)
 {
     const QString dir = QDir(modelsDir).filePath(name);
@@ -37,7 +35,6 @@ QString corruptIndex(const QString &modelsDir)
     return path;
 }
 
-// Writes a placeholder GGUF and returns its absolute path.
 QString writeFile(const QString &dir, const QString &name)
 {
     const QString path = QDir(dir).filePath(name);
@@ -130,10 +127,8 @@ void TestModelRegistry::scansMultiQuantAsSeparateEntries()
         } else if (e.quantization == QLatin1String("Q8_0")) {
             sawQ8 = true;
             QCOMPARE(e.parts.size(), 1);
-            QVERIFY(e.modelPath.endsWith(
-                QStringLiteral("model-Q8_0-00001-of-00002.gguf")));
-            QVERIFY(e.parts.at(0).endsWith(
-                QStringLiteral("model-Q8_0-00002-of-00002.gguf")));
+            QVERIFY(e.modelPath.endsWith(QStringLiteral("model-Q8_0-00001-of-00002.gguf")));
+            QVERIFY(e.parts.at(0).endsWith(QStringLiteral("model-Q8_0-00002-of-00002.gguf")));
             QVERIFY(e.id == QStringLiteral("org__repo_Q8_0"));
         } else {
             QFAIL(qPrintable("unexpected quantization " + e.quantization));
@@ -154,8 +149,8 @@ void TestModelRegistry::rebuildsOnCorruptIndex()
     QString err;
     const QList<ModelEntry> entries = ModelRegistry::load(dir.path(), rebuilt, err);
     QVERIFY(rebuilt);
-    QVERIFY(!err.isEmpty());   // "corrupt; rescanning"
-    QCOMPARE(entries.size(), 1);  // recovered from disk
+    QVERIFY(!err.isEmpty());  // "corrupt; rescanning"
+    QCOMPARE(entries.size(), 1);
 }
 
 // The role tags ("ocr" / "check") recorded at install time survive a
@@ -180,8 +175,7 @@ void TestModelRegistry::persistsRoles()
     const QList<ModelEntry> loaded = ModelRegistry::load(dir.path(), rebuilt, err);
     QVERIFY(!rebuilt);
     QCOMPARE(loaded.size(), 1);
-    QCOMPARE(loaded.at(0).roles,
-             QStringList({QStringLiteral("ocr"), QStringLiteral("check")}));
+    QCOMPARE(loaded.at(0).roles, QStringList({QStringLiteral("ocr"), QStringLiteral("check")}));
 
     // A legacy entry without roles stays empty (visible in both lists). Its
     // file has to exist: the reconciliation drops an entry whose files are gone
@@ -204,8 +198,7 @@ void TestModelRegistry::persistsRoles()
         if (x.id == QStringLiteral("legacy"))
             QVERIFY(x.roles.isEmpty());
         else
-            QCOMPARE(x.roles,
-                     QStringList({QStringLiteral("ocr"), QStringLiteral("check")}));
+            QCOMPARE(x.roles, QStringList({QStringLiteral("ocr"), QStringLiteral("check")}));
     }
 }
 
@@ -293,7 +286,7 @@ void TestModelRegistry::recoversFromTruncatedIndex()
     const QList<ModelEntry> entries = ModelRegistry::load(dir.path(), rebuilt, err);
     QVERIFY(rebuilt);
     QVERIFY(!err.isEmpty());
-    QCOMPARE(entries.size(), 1);  // recovered from the on-disk model
+    QCOMPARE(entries.size(), 1);
 }
 
 void TestModelRegistry::assertsRegistryLock()
@@ -319,8 +312,7 @@ void TestModelRegistry::refusesExternalDelete()
 {
     ModelEntry e;
     e.origin = ModelOrigin::External;
-    const QString reason = ModelRegistry::removalError(
-        e, QStringLiteral("/tmp/models"), false, false);
+    const QString reason = ModelRegistry::removalError(e, QStringLiteral("/tmp/models"), false, false);
     QVERIFY(!reason.isEmpty());
 }
 
@@ -329,8 +321,7 @@ void TestModelRegistry::refusesActiveDeleteWhileReady()
     ModelEntry e;
     e.origin = ModelOrigin::Managed;
     e.modelPath = QStringLiteral("/models/org__repo/model.gguf");
-    const QString reason = ModelRegistry::removalError(
-        e, QStringLiteral("/models"), true /*active*/, true /*ready*/);
+    const QString reason = ModelRegistry::removalError(e, QStringLiteral("/models"), true /*active*/, true /*ready*/);
     QVERIFY(!reason.isEmpty());
     QVERIFY(reason.contains(QStringLiteral("in use")));
 }
@@ -340,8 +331,7 @@ void TestModelRegistry::allowsManagedDeleteWhenNotActive()
     ModelEntry e;
     e.origin = ModelOrigin::Managed;
     e.modelPath = QStringLiteral("/models/org__repo/model.gguf");
-    const QString reason = ModelRegistry::removalError(
-        e, QStringLiteral("/models"), false, false);
+    const QString reason = ModelRegistry::removalError(e, QStringLiteral("/models"), false, false);
     QVERIFY(reason.isEmpty());
 }
 
@@ -372,7 +362,6 @@ void TestModelRegistry::refusesSymlinkEscapeFromModelsDir()
     QVERIFY(QDir().mkpath(modelsDir));
     makeRepoDir(modelsDir, QStringLiteral("org__repo"));
 
-    // A real symlink inside modelsDir pointing at a directory outside it.
     const QString outsideTarget = QDir(dir.path()).filePath(QStringLiteral("outside_target"));
     QVERIFY(QDir().mkpath(outsideTarget));
     QFile gf(QDir(outsideTarget).filePath(QStringLiteral("model.gguf")));
@@ -386,9 +375,10 @@ void TestModelRegistry::refusesSymlinkEscapeFromModelsDir()
     ModelEntry e;
     e.origin = ModelOrigin::Managed;
     e.modelPath = QDir(linkDir).filePath(QStringLiteral("model.gguf"));
-    const QString reason =
-        ModelRegistry::removalError(e, modelsDir, /*active=*/false,
-                                    /*runtimeReady=*/false);
+    const QString reason = ModelRegistry::removalError(e,
+                                                       modelsDir,
+                                                       /*active=*/false,
+                                                       /*runtimeReady=*/false);
     // Canonical resolution walks the symlink out of modelsDir, so removal must
     // be refused, not silently allowed to escape.
     QVERIFY(!reason.isEmpty());
@@ -420,7 +410,7 @@ void TestModelRegistry::dropsEntriesWhoseFilesAreGone()
     ReconcileInput input;
     input.index = {kept, phantom};
     input.disk = ModelRegistry::scanModelsDir(dir.path());
-    QCOMPARE(input.disk.size(), 1);  // only the surviving model is on disk
+    QCOMPARE(input.disk.size(), 1);
 
     const ReconcileResult result = reconcileInstalled(input);
     QCOMPARE(result.models.size(), 1);
@@ -522,8 +512,8 @@ void TestModelRegistry::keepsProjectorPairingAndRecordsItsAbsence()
 
     const ReconcileResult result = reconcileInstalled(input);
     QCOMPARE(result.models.size(), 2);
-    QCOMPARE(result.models.at(0).mmprojPath, mmproj);    // pairing kept
-    QVERIFY(result.models.at(1).mmprojPath.isEmpty());  // absence kept
+    QCOMPARE(result.models.at(0).mmprojPath, mmproj);
+    QVERIFY(result.models.at(1).mmprojPath.isEmpty());
 }
 
 // The settings are pointers, not membership: a model that is selected but gone
@@ -585,7 +575,6 @@ void TestModelRegistry::anUnreadableModelsDirectoryIsNotAnEmptyOne()
     QVERIFY(result.staleModelSelections.isEmpty());
 }
 
-// The report is what tells the caller — and the user — what happened.
 void TestModelRegistry::reportsWhatItReconciled()
 {
     QTemporaryDir dir;
@@ -613,8 +602,7 @@ void TestModelRegistry::reportsWhatItReconciled()
     QCOMPARE(result.models.size(), 2);
     // Index order first, then what the scan contributed.
     QCOMPARE(result.models.first().id, QStringLiteral("org__repo"));
-    QCOMPARE(QFileInfo(result.models.last().dir).canonicalFilePath(),
-             QFileInfo(copied).canonicalFilePath());
+    QCOMPARE(QFileInfo(result.models.last().dir).canonicalFilePath(), QFileInfo(copied).canonicalFilePath());
 }
 
 QTEST_MAIN(TestModelRegistry)

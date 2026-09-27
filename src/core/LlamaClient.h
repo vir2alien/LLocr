@@ -17,7 +17,8 @@ struct HttpResponse {
     QString error;
 };
 
-class LlamaClient {
+class LlamaClient
+{
     Q_DISABLE_COPY_MOVE(LlamaClient)
 
 public:
@@ -25,8 +26,7 @@ public:
 
     static QUrl endpointUrl(const QString &baseUrl);
 
-    QFuture<HttpResponse> postJson(const QUrl &url, const QByteArray &body,
-                                   const QString &apiKey, int timeoutMs);
+    QFuture<HttpResponse> postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, int timeoutMs);
 
     void abort();
 
@@ -38,4 +38,4 @@ private:
     QPointer<QNetworkReply> m_currentReply;
 };
 
-} // namespace llocr
+}  // namespace llocr

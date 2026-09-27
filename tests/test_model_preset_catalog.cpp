@@ -26,8 +26,7 @@ void TestModelPresetCatalog::builtInCatalogParses()
     // load() with an empty user path exercises just the built-in resource,
     // which must always be present and parse cleanly.
     QString err;
-    const QList<ModelPreset> presets = ModelPresetCatalog::load(
-        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), QString(), err);
+    const QList<ModelPreset> presets = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), QString(), err);
     QVERIFY2(err.isEmpty(), qPrintable(err));
     QVERIFY(presets.size() >= 2);  // the two shipped presets
 
@@ -36,7 +35,7 @@ void TestModelPresetCatalog::builtInCatalogParses()
         QVERIFY(!p.id.isEmpty());
         QVERIFY(!p.title.isEmpty());
         QVERIFY(!p.repo.isEmpty());
-        QVERIFY(!p.model.isEmpty());       // at least a main model file
+        QVERIFY(!p.model.isEmpty());  // at least a main model file
         QVERIFY(!p.parser.isEmpty());
         QVERIFY(p.ctxSize > 0);
         QVERIFY(!p.minBuild.isEmpty());
@@ -74,8 +73,7 @@ void TestModelPresetCatalog::mergeByUserPrecedence()
     QVERIFY(ModelPresetCatalog::save(userPath, user, err));
     QVERIFY(err.isEmpty());
 
-    const QList<ModelPreset> merged = ModelPresetCatalog::load(
-        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
+    const QList<ModelPreset> merged = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
     QVERIFY(err.isEmpty());
 
     // The overridden id now carries the user's title/repo.
@@ -108,8 +106,7 @@ void TestModelPresetCatalog::importToJsonRoundTrips()
     p.ctxSize = 4096;
     p.minBuild = QStringLiteral("b4000");
     p.license = QStringLiteral("apache-2.0");
-    p.sha256.insert(QStringLiteral("model-q4_k_m.gguf"),
-                    QStringLiteral("abcdef"));
+    p.sha256.insert(QStringLiteral("model-q4_k_m.gguf"), QStringLiteral("abcdef"));
 
     const ModelPreset restored = ModelPreset::fromJson(p.toJson());
     QCOMPARE(restored.id, p.id);
@@ -117,11 +114,9 @@ void TestModelPresetCatalog::importToJsonRoundTrips()
     QCOMPARE(restored.model, p.model);
     QCOMPARE(restored.mmproj, p.mmproj);
     QCOMPARE(restored.ctxSize, 4096);
-    QCOMPARE(restored.sha256.value(QStringLiteral("model-q4_k_m.gguf")),
-             QStringLiteral("abcdef"));
+    QCOMPARE(restored.sha256.value(QStringLiteral("model-q4_k_m.gguf")), QStringLiteral("abcdef"));
     // Serialize→parse→serialize is stable.
-    QCOMPARE(ModelPreset::fromJson(restored.toJson()).toJson().toVariantMap(),
-             p.toJson().toVariantMap());
+    QCOMPARE(ModelPreset::fromJson(restored.toJson()).toJson().toVariantMap(), p.toJson().toVariantMap());
 }
 
 void TestModelPresetCatalog::saveThenReset()
@@ -143,8 +138,7 @@ void TestModelPresetCatalog::saveThenReset()
     QVERIFY(QFile::exists(userPath));
 
     // The file round-trips: load() reads the two sources and returns `one`.
-    const QList<ModelPreset> loaded = ModelPresetCatalog::load(
-        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
+    const QList<ModelPreset> loaded = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
     QVERIFY(err.isEmpty());
     bool sawSaved = false;
     for (const ModelPreset &pp : loaded)
@@ -157,8 +151,7 @@ void TestModelPresetCatalog::saveThenReset()
     QVERIFY(!QFile::exists(userPath));
     err.clear();
     // After reset the user catalog is gone: load() only yields built-ins.
-    const QList<ModelPreset> afterReset = ModelPresetCatalog::load(
-        QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
+    const QList<ModelPreset> afterReset = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
     QVERIFY(err.isEmpty());
     bool hasOne = false;
     for (const ModelPreset &pp : afterReset)

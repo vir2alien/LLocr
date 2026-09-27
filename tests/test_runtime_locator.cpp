@@ -16,7 +16,8 @@ using namespace llocr;
 #define LLOCR_MOCK_SERVER "mock_llama_server"
 #endif
 
-class TestRuntimeLocator : public QObject {
+class TestRuntimeLocator : public QObject
+{
     Q_OBJECT
 
 private slots:
@@ -121,7 +122,7 @@ void TestRuntimeLocator::cacheInvalidatesOnFileChange()
     QVERIFY(f.write("build: 99999 (b99999)\n") > 0);
     f.close();
     const ProbeResult r2 = RuntimeLocator::probeCached(target);
-    QVERIFY(!r2.ok);  // not a valid llama-server
+    QVERIFY(!r2.ok);
     QVERIFY(!r2.error.isEmpty());
 }
 
@@ -137,9 +138,7 @@ void TestRuntimeLocator::cacheHoldsSingleEntry()
     QVERIFY(dir.isValid());
     const QString mock = QFileInfo(mockPath()).absoluteFilePath();
 
-    auto makeBinary = [&dir, &mock](const QString &path) {
-        QVERIFY2(QFile::copy(mock, path), "copy mock failed");
-    };
+    auto makeBinary = [&dir, &mock](const QString &path) { QVERIFY2(QFile::copy(mock, path), "copy mock failed"); };
     auto probeCount = [](const QString &log) -> int {
         QFile f(log);
         if (!f.open(QIODevice::ReadOnly))
@@ -203,9 +202,7 @@ void TestRuntimeLocator::diskCacheSkipsReProbeOnUnchanged()
         f.close();
         return int(data.count('\n'));
     };
-    auto setMarker = [](const QString &log) {
-        ::qputenv("LLOCR_MOCK_MARKER", log.toUtf8());
-    };
+    auto setMarker = [](const QString &log) { ::qputenv("LLOCR_MOCK_MARKER", log.toUtf8()); };
 
     // 1) Fresh probe writes the disk cache entry.
     setMarker(logA);

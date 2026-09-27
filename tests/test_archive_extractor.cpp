@@ -1,7 +1,7 @@
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QFileDevice>
+#include <QFileInfo>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -39,8 +39,7 @@ private:
 
 uint32_t crc32Of(const QByteArray &data)
 {
-    return ::crc32(0L, reinterpret_cast<const Bytef *>(data.constData()),
-                   static_cast<uInt>(data.size()));
+    return ::crc32(0L, reinterpret_cast<const Bytef *>(data.constData()), static_cast<uInt>(data.size()));
 }
 
 // Raw DEFLATE from qCompress output. qCompress prepends a 4-byte big-endian
@@ -56,10 +55,10 @@ QByteArray rawDeflate(const QByteArray &b)
 struct ESpec {
     QString name;
     int method;
-    QByteArray payload;   // uncompressed
-    QByteArray comp;      // on-disk bytes
-    quint32 externalAttr; // (mode << 16), e.g. 0755u<<16
-    quint32 badCrc;       // nonzero => force an incorrect CRC for the entry
+    QByteArray payload;    // uncompressed
+    QByteArray comp;       // on-disk bytes
+    quint32 externalAttr;  // (mode << 16), e.g. 0755u<<16
+    quint32 badCrc;        // nonzero => force an incorrect CRC for the entry
     bool isDir = false;
     // declared-uncomp size override for bomb/ratio tests (0 = none)
     qint64 declaredUncomp = 0;
@@ -144,8 +143,7 @@ QString writeZip(const QTemporaryDir &dir, const QString &name, const QByteArray
     return path;
 }
 
-ESpec makeEntry(const QString &name, const QByteArray &payload,
-                bool deflate = false, quint32 attr = 0, quint32 badCrc = 0)
+ESpec makeEntry(const QString &name, const QByteArray &payload, bool deflate = false, quint32 attr = 0, quint32 badCrc = 0)
 {
     ESpec e;
     e.name = name;
@@ -163,8 +161,8 @@ ESpec makeEntry(const QString &name, const QByteArray &payload,
 
 struct TEntry {
     QString name;
-    QByteArray content;    // payload for regular files, link target for symlinks
-    QString linkTarget;    // non-empty => symlink (typeflag '2')
+    QByteArray content;  // payload for regular files, link target for symlinks
+    QString linkTarget;  // non-empty => symlink (typeflag '2')
     bool isDir = false;
     quint32 mode = 0644;
 };
@@ -179,7 +177,7 @@ QByteArray buildTar(const QList<TEntry> &entries)
         ::memcpy(raw, name.constData(), ::size_t(name.size() < 100 ? name.size() : 100));
         const QString mode = QStringLiteral("%1").arg(e.mode, 7, 8, QLatin1Char('0'));
         ::memcpy(raw + 100, mode.toLatin1().constData(), 7);
-        const QByteArray spaces(6, ' ');     // checksum placeholder
+        const QByteArray spaces(6, ' ');  // checksum placeholder
         ::memcpy(raw + 148, spaces.constData(), 6);
         if (e.isDir) {
             h[156] = char('5');
@@ -189,8 +187,7 @@ QByteArray buildTar(const QList<TEntry> &entries)
             ::memcpy(raw + 157, target.constData(), ::size_t(target.size()));
         } else {
             h[156] = char('0');
-            const QString size = QStringLiteral("%1").arg(e.content.size(), 11, 8,
-                                                          QLatin1Char('0'));
+            const QString size = QStringLiteral("%1").arg(e.content.size(), 11, 8, QLatin1Char('0'));
             ::memcpy(raw + 124, size.toLatin1().constData(), 11);
         }
         // magic "ustar\0" (raw bytes; no template overload ambiguity)
@@ -212,8 +209,7 @@ QByteArray gzipBytes(const QByteArray &data)
     z_stream stream{};
     stream.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(data.constData()));
     stream.avail_in = static_cast<uInt>(data.size());
-    deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8,
-                 Z_DEFAULT_STRATEGY);
+    deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY);
     out.resize(data.size() + (data.size() >> 4) + 128);
     stream.next_out = reinterpret_cast<Bytef *>(out.data());
     stream.avail_out = static_cast<uInt>(out.size());
@@ -223,8 +219,7 @@ QByteArray gzipBytes(const QByteArray &data)
     return out;
 }
 
-TEntry tarEntry(const QString &name, const QByteArray &content,
-                quint32 mode = 0644)
+TEntry tarEntry(const QString &name, const QByteArray &content, quint32 mode = 0644)
 {
     TEntry e;
     e.name = name;
@@ -289,16 +284,13 @@ private slots:
         QTemporaryDir dir;
         QList<ESpec> specs;
         specs.append(makeEntry(QStringLiteral("/etc/passwd"), QByteArrayLiteral("x")));
-        QVERIFY(!ArchiveExtractor::extractZip(writeZip(dir, "a", buildZip(specs)),
-                                              QDir(dir.path()).filePath("o1")).ok);
+        QVERIFY(!ArchiveExtractor::extractZip(writeZip(dir, "a", buildZip(specs)), QDir(dir.path()).filePath("o1")).ok);
         specs.clear();
         specs.append(makeEntry(QStringLiteral("C:/win/x"), QByteArrayLiteral("x")));
-        QVERIFY(!ArchiveExtractor::extractZip(writeZip(dir, "b", buildZip(specs)),
-                                              QDir(dir.path()).filePath("o2")).ok);
+        QVERIFY(!ArchiveExtractor::extractZip(writeZip(dir, "b", buildZip(specs)), QDir(dir.path()).filePath("o2")).ok);
         specs.clear();
         specs.append(makeEntry(QStringLiteral("dir\\file"), QByteArrayLiteral("x")));
-        QVERIFY(!ArchiveExtractor::extractZip(writeZip(dir, "c", buildZip(specs)),
-                                              QDir(dir.path()).filePath("o3")).ok);
+        QVERIFY(!ArchiveExtractor::extractZip(writeZip(dir, "c", buildZip(specs)), QDir(dir.path()).filePath("o3")).ok);
     }
 
     void rejectsControlChar()
@@ -315,8 +307,7 @@ private slots:
         QTemporaryDir dir;
         QList<ESpec> specs;
         // mode type 0xA000 = symlink
-        specs.append(makeEntry(QStringLiteral("link"), QByteArrayLiteral("target"),
-                               false, 0xA0000000u));
+        specs.append(makeEntry(QStringLiteral("link"), QByteArrayLiteral("target"), false, 0xA0000000u));
         const QString zip = writeZip(dir, "e.zip", buildZip(specs));
         const ExtractResult r = ArchiveExtractor::extractZip(zip, QDir(dir.path()).filePath("out"));
         QVERIFY(!r.ok);
@@ -341,8 +332,7 @@ private slots:
         // entries each declaring 1 GiB: the 5 GiB cumulative size trips the
         // 4 GiB anti-bomb limit before any per-entry checks.
         for (int i = 0; i < 5; ++i)
-            specs.append(makeEntry(QStringLiteral("bomb%1.bin").arg(i),
-                                   QByteArrayLiteral("A"), true));
+            specs.append(makeEntry(QStringLiteral("bomb%1.bin").arg(i), QByteArrayLiteral("A"), true));
         const QString zip = writeZip(dir, "g.zip", buildZip(specs, 1LL << 30));
         const ExtractResult r = ArchiveExtractor::extractZip(zip, QDir(dir.path()).filePath("out"));
         QVERIFY(!r.ok);
@@ -366,8 +356,7 @@ private slots:
 #ifdef Q_OS_UNIX
         QTemporaryDir dir;
         QList<ESpec> specs;
-        specs.append(makeEntry(QStringLiteral("run.sh"), QByteArrayLiteral("#!/bin/sh\n"),
-                               false, 0755u << 16));
+        specs.append(makeEntry(QStringLiteral("run.sh"), QByteArrayLiteral("#!/bin/sh\n"), false, 0755u << 16));
         const QString zip = writeZip(dir, "i.zip", buildZip(specs));
         const ExtractResult r = ArchiveExtractor::extractZip(zip, QDir(dir.path()).filePath("out"));
         QVERIFY(r.ok);
@@ -381,13 +370,10 @@ private slots:
     {
         QTemporaryDir dir;
         QList<ESpec> specs;
-        specs.append(makeEntry(QStringLiteral("file.bin"), QByteArrayLiteral("payload"),
-                               false, 0, 0x12345678u));
+        specs.append(makeEntry(QStringLiteral("file.bin"), QByteArrayLiteral("payload"), false, 0, 0x12345678u));
         const QString zip = writeZip(dir, "j.zip", buildZip(specs));
         QVERIFY(!ArchiveExtractor::extractZip(zip, QDir(dir.path()).filePath("out")).ok);
     }
-
-    // --- tar.gz ------------------------------------------------------------
 
     void extractsTarGzWithSymlinks()
     {
@@ -395,18 +381,18 @@ private slots:
         // executable llama-server, a plain file, and versioned .dylib symlinks.
         QTemporaryDir dir;
         QList<TEntry> entries;
-        TEntry d; d.name = QStringLiteral("llama-b10825"); d.isDir = true;
+        TEntry d;
+        d.name = QStringLiteral("llama-b10825");
+        d.isDir = true;
         entries << d;
-        entries << tarEntry(QStringLiteral("llama-b10825/llama-server"),
-                            QByteArray("#!/bin/sh\necho llama-server\n"), 0755);
-        entries << tarEntry(QStringLiteral("llama-b10825/readme.txt"),
-                            QByteArray("llama.cpp\n"));
-        TEntry link; link.name = QStringLiteral("llama-b10825/libggml.dylib");
+        entries << tarEntry(QStringLiteral("llama-b10825/llama-server"), QByteArray("#!/bin/sh\necho llama-server\n"), 0755);
+        entries << tarEntry(QStringLiteral("llama-b10825/readme.txt"), QByteArray("llama.cpp\n"));
+        TEntry link;
+        link.name = QStringLiteral("llama-b10825/libggml.dylib");
         link.linkTarget = QStringLiteral("libggml.0.23.0.dylib");
         entries << link;
 
-        const QString archive = writeZip(dir, QStringLiteral("a.tar.gz"),
-                                         gzipBytes(buildTar(entries)));
+        const QString archive = writeZip(dir, QStringLiteral("a.tar.gz"), gzipBytes(buildTar(entries)));
         const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
         const ExtractResult r = ArchiveExtractor::extractTarGz(archive, dest);
         QVERIFY2(r.ok, qPrintable(r.error));
@@ -425,8 +411,7 @@ private slots:
         // this synthetic archive, so check the link itself, not its target.
         QFileInfo linkInfo(QDir(dest).filePath("llama-b10825/libggml.dylib"));
         QVERIFY(linkInfo.isSymLink());
-        QCOMPARE(QFileInfo(linkInfo.symLinkTarget()).fileName(),
-                 QStringLiteral("libggml.0.23.0.dylib"));
+        QCOMPARE(QFileInfo(linkInfo.symLinkTarget()).fileName(), QStringLiteral("libggml.0.23.0.dylib"));
 #endif
     }
 
@@ -435,8 +420,7 @@ private slots:
         QTemporaryDir dir;
         QList<TEntry> entries;
         entries << tarEntry(QStringLiteral("f.txt"), QByteArrayLiteral("x"));
-        const QString archive = writeZip(dir, QStringLiteral("rel.tar.gz"),
-                                         gzipBytes(buildTar(entries)));
+        const QString archive = writeZip(dir, QStringLiteral("rel.tar.gz"), gzipBytes(buildTar(entries)));
         const QString dest = QDir(dir.path()).filePath(QStringLiteral("out"));
         const ExtractResult r = ArchiveExtractor::extractArchive(archive, dest);
         QVERIFY2(r.ok, qPrintable(r.error));
@@ -457,8 +441,7 @@ private slots:
         QTemporaryDir dir;
         QList<TEntry> entries;
         entries << tarEntry(QStringLiteral("../evil"), QByteArrayLiteral("x"));
-        const QString archive = writeZip(dir, QStringLiteral("t.tar.gz"),
-                                         gzipBytes(buildTar(entries)));
+        const QString archive = writeZip(dir, QStringLiteral("t.tar.gz"), gzipBytes(buildTar(entries)));
         QVERIFY(!ArchiveExtractor::extractTarGz(archive, QDir(dir.path()).filePath("out")).ok);
     }
 
@@ -466,11 +449,11 @@ private slots:
     {
         QTemporaryDir dir;
         QList<TEntry> entries;
-        TEntry link; link.name = QStringLiteral("a/b");
+        TEntry link;
+        link.name = QStringLiteral("a/b");
         link.linkTarget = QStringLiteral("../../etc/passwd");
         entries << link;
-        const QString archive = writeZip(dir, QStringLiteral("s.tar.gz"),
-                                         gzipBytes(buildTar(entries)));
+        const QString archive = writeZip(dir, QStringLiteral("s.tar.gz"), gzipBytes(buildTar(entries)));
         const ExtractResult r = ArchiveExtractor::extractTarGz(archive, QDir(dir.path()).filePath("out"));
         QVERIFY(r.ok);
         QVERIFY(!r.warning.isEmpty());
@@ -479,8 +462,7 @@ private slots:
     void tarRejectsNonGzip()
     {
         QTemporaryDir dir;
-        const QString archive = writeZip(dir, QStringLiteral("x.tar.gz"),
-                                         QByteArrayLiteral("this is not gzip"));
+        const QString archive = writeZip(dir, QStringLiteral("x.tar.gz"), QByteArrayLiteral("this is not gzip"));
         const ExtractResult r = ArchiveExtractor::extractTarGz(archive, dir.path());
         QVERIFY(!r.ok);
     }

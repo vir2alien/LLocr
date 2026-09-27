@@ -8,10 +8,7 @@ namespace {
 constexpr int kGroupRole = Qt::UserRole + 3;
 }  // namespace
 
-BlockGroupFilterModel::BlockGroupFilterModel(QObject *parent)
-    : QSortFilterProxyModel(parent)
-{
-}
+BlockGroupFilterModel::BlockGroupFilterModel(QObject *parent) : QSortFilterProxyModel(parent) {}
 
 void BlockGroupFilterModel::setGroup(const QString &group)
 {
@@ -23,8 +20,7 @@ void BlockGroupFilterModel::setGroup(const QString &group)
     emit groupChanged();
 }
 
-bool BlockGroupFilterModel::filterAcceptsRow(int sourceRow,
-                                             const QModelIndex &sourceParent) const
+bool BlockGroupFilterModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
     if (m_group.isEmpty() || !sourceModel())
         return false;

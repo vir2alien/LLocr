@@ -4,7 +4,8 @@
 
 namespace llocr {
 
-class UnlimitedOcrModel : public OcrModel {
+class UnlimitedOcrModel : public OcrModel
+{
     Q_DISABLE_COPY_MOVE(UnlimitedOcrModel)
 
 public:
@@ -16,4 +17,4 @@ public:
     QString defaultParserId() const override;
 };
 
-} // namespace llocr
+}  // namespace llocr

@@ -21,7 +21,6 @@
 
 namespace llocr {
 
-
 namespace {
 
 QString locatePandoc()
@@ -43,14 +42,12 @@ QString locatePandoc()
     if (!programFilesX86.isEmpty())
         candidates << QDir(programFilesX86).filePath(relative);
 #elif defined(Q_OS_MAC)
-    candidates << QStringLiteral("/usr/local/bin/pandoc")
-               << QStringLiteral("/opt/homebrew/bin/pandoc")
-               << QStringLiteral("/opt/local/bin/pandoc");
+    candidates << QStringLiteral("/usr/local/bin/pandoc") << QStringLiteral("/opt/homebrew/bin/pandoc") << QStringLiteral("/opt/local/bin/pandoc");
 #else
     candidates << QStringLiteral("/usr/local/bin/pandoc");
 #endif
 
-    for (const QString& candidate : candidates) {
+    for (const QString &candidate : candidates) {
         const QFileInfo info(candidate);
         if (info.isFile() && info.isExecutable())
             return info.absoluteFilePath();
@@ -81,7 +78,7 @@ QString plainTextPageRule()
 
 }  // namespace
 
-Exporter::Format Exporter::formatForSuffix(const QString& suffix)
+Exporter::Format Exporter::formatForSuffix(const QString &suffix)
 {
     const QString s = suffix.toLower();
     if (s == QStringLiteral("md") || s == QStringLiteral("markdown"))
@@ -108,11 +105,11 @@ bool Exporter::isPandocAvailable()
     return !pandocExecutable().isEmpty();
 }
 
-QString Exporter::joinPages(const QList<Page>& pages, const QString& pageBreak)
+QString Exporter::joinPages(const QList<Page> &pages, const QString &pageBreak)
 {
     QString out;
     bool first = true;
-    for (const Page& page : pages) {
+    for (const Page &page : pages) {
         if (!first)
             out += pageBreak.isEmpty() ? QStringLiteral("\n\n") : pageBreak;
         first = false;
@@ -122,17 +119,17 @@ QString Exporter::joinPages(const QList<Page>& pages, const QString& pageBreak)
     return out;
 }
 
-QString Exporter::buildMarkdown(const QList<Page>& pages, bool splitPages)
+QString Exporter::buildMarkdown(const QList<Page> &pages, bool splitPages)
 {
     return joinPages(pages, splitPages ? markdownPageRule() : QString());
 }
 
-QString Exporter::buildPlainText(const QList<Page>& pages, bool splitPages)
+QString Exporter::buildPlainText(const QList<Page> &pages, bool splitPages)
 {
     const QRegularExpression re = imageRefRegex();
     QString out;
     bool first = true;
-    for (const Page& page : pages) {
+    for (const Page &page : pages) {
         if (!first)
             out += splitPages ? plainTextPageRule() : QStringLiteral("\n");
         first = false;
@@ -147,17 +144,16 @@ QString Exporter::buildPlainText(const QList<Page>& pages, bool splitPages)
 QRegularExpression Exporter::imageRefRegex()
 {
     // image://ocr/crop/<boxIndex>
-    static const QRegularExpression re(
-        QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)(?:/(\d+))?\))"));
+    static const QRegularExpression re(QStringLiteral(R"(!\[([^\]]*)\]\(image://ocr/crop/(\d+)(?:/(\d+))?\))"));
     return re;
 }
 
-QList<QPair<int, int>> Exporter::referencedCrops(const QList<Page>& pages)
+QList<QPair<int, int>> Exporter::referencedCrops(const QList<Page> &pages)
 {
     const QRegularExpression re = imageRefRegex();
     QList<QPair<int, int>> refs;
     QSet<QPair<int, int>> seen;
-    for (const Page& page : pages) {
+    for (const Page &page : pages) {
         QRegularExpressionMatchIterator it = re.globalMatch(page.text);
         while (it.hasNext()) {
             const QRegularExpressionMatch m = it.next();
@@ -175,10 +171,9 @@ QList<QPair<int, int>> Exporter::referencedCrops(const QList<Page>& pages)
     return refs;
 }
 
-static QString htmlFromMarkdown(const QString& markdown)
+static QString htmlFromMarkdown(const QString &markdown)
 {
-    static const QRegularExpression imageRe(
-        QStringLiteral(R"(!\[([^\]]*)\]\(([^)\s]+)\))"));
+    static const QRegularExpression imageRe(QStringLiteral(R"(!\[([^\]]*)\]\(([^)\s]+)\))"));
     QString out;
     int last = 0;
     QRegularExpressionMatchIterator it = imageRe.globalMatch(markdown);
@@ -187,19 +182,18 @@ static QString htmlFromMarkdown(const QString& markdown)
         out += markdown.mid(last, m.capturedStart() - last).toHtmlEscaped();
         const QString alt = m.captured(1).toHtmlEscaped();
         const QString src = m.captured(2).toHtmlEscaped();
-        out += QStringLiteral("<img src=\"%1\" alt=\"%2\" style=\"max-width:100%\">")
-                   .arg(src, alt);
+        out += QStringLiteral("<img src=\"%1\" alt=\"%2\" style=\"max-width:100%\">").arg(src, alt);
         last = m.capturedEnd();
     }
     out += markdown.mid(last).toHtmlEscaped();
     return out;
 }
 
-QString Exporter::buildHtml(const QList<Page>& pages, bool splitPages)
+QString Exporter::buildHtml(const QList<Page> &pages, bool splitPages)
 {
     QString body;
     bool first = true;
-    for (const Page& page : pages) {
+    for (const Page &page : pages) {
         if (!first && splitPages)
             body += QStringLiteral("<hr>\n");
         first = false;
@@ -207,18 +201,16 @@ QString Exporter::buildHtml(const QList<Page>& pages, bool splitPages)
         body += htmlFromMarkdown(page.text);
         body += QStringLiteral("</pre>\n</section>\n");
     }
-    return QStringLiteral(
-               "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n"
-               "<title>OCR result</title>\n"
-               "<style>body{font-family:sans-serif;margin:2em;}"
-               "pre{white-space:pre-wrap;font-family:inherit;}"
-               "h2{border-bottom:1px solid #ccc;padding-bottom:.2em;}</style>\n"
-               "</head>\n<body>\n%1</body>\n</html>\n")
+    return QStringLiteral("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n"
+                          "<title>OCR result</title>\n"
+                          "<style>body{font-family:sans-serif;margin:2em;}"
+                          "pre{white-space:pre-wrap;font-family:inherit;}"
+                          "h2{border-bottom:1px solid #ccc;padding-bottom:.2em;}</style>\n"
+                          "</head>\n<body>\n%1</body>\n</html>\n")
         .arg(body);
 }
 
-QString Exporter::embedImagesAsDataUrls(
-    const QString& markdown, const std::function<QImage(int boxIndex)>& crop)
+QString Exporter::embedImagesAsDataUrls(const QString &markdown, const std::function<QImage(int boxIndex)> &crop)
 {
     const QRegularExpression re = imageRefRegex();
     QString out;
@@ -241,8 +233,7 @@ QString Exporter::embedImagesAsDataUrls(
             continue;
 
         out += view.sliced(last, m.capturedStart() - last);
-        out += QStringLiteral("![%1](data:image/png;base64,%2)")
-                   .arg(m.captured(1), QString::fromLatin1(png.toBase64()));
+        out += QStringLiteral("![%1](data:image/png;base64,%2)").arg(m.captured(1), QString::fromLatin1(png.toBase64()));
         last = m.capturedEnd();
     }
     out += view.sliced(last);
@@ -256,13 +247,11 @@ QString Exporter::katexCssForExport()
         return {};
     QString css = QString::fromUtf8(cssFile.readAll());
 
-    static const QRegularExpression legacySources(QStringLiteral(
-        R"(,\s*url\(fonts/[^)]+?\.woff\)\s*format\(["']woff["']\)|)"
-        R"(,\s*url\(fonts/[^)]+?\.ttf\)\s*format\(["']truetype["']\))"));
+    static const QRegularExpression legacySources(QStringLiteral(R"(,\s*url\(fonts/[^)]+?\.woff\)\s*format\(["']woff["']\)|)"
+                                                                 R"(,\s*url\(fonts/[^)]+?\.ttf\)\s*format\(["']truetype["']\))"));
     css.remove(legacySources);
 
-    static const QRegularExpression woff2Ref(
-        QStringLiteral(R"(url\((fonts/[^)]+?\.woff2)\))"));
+    static const QRegularExpression woff2Ref(QStringLiteral(R"(url\((fonts/[^)]+?\.woff2)\))"));
     QString out;
     QStringView view(css);
     qsizetype last = 0;
@@ -273,8 +262,7 @@ QString Exporter::katexCssForExport()
         if (!font.open(QIODevice::ReadOnly))
             continue;  // leave the original reference untouched
         out += view.sliced(last, m.capturedStart() - last);
-        out += QStringLiteral("url(data:font/woff2;base64,%1)")
-                   .arg(QString::fromLatin1(font.readAll().toBase64()));
+        out += QStringLiteral("url(data:font/woff2;base64,%1)").arg(QString::fromLatin1(font.readAll().toBase64()));
         last = m.capturedEnd();
     }
     out += view.sliced(last);
@@ -283,25 +271,24 @@ QString Exporter::katexCssForExport()
 
 QString Exporter::exportStyleSheet(bool splitPages)
 {
-    QString css = QStringLiteral(
-        "body{margin:0;padding:24px 28px;background:#fff;color:#1a1a1a;"
-        "font-family:-apple-system,\"Segoe UI\",Roboto,sans-serif;"
-        "font-size:11pt;line-height:1.5;word-wrap:break-word;}"
-        "h2{border-bottom:1px solid #ccc;padding-bottom:.2em;}"
-        "table{border-collapse:collapse;margin:12px 0;}"
-        "th,td{border:1px solid #999;padding:5px 9px;text-align:left;}"
-        "th{background:rgba(0,0,0,0.06);}"
-        "pre{white-space:pre-wrap;background:rgba(128,128,128,0.12);"
-        "padding:9px 11px;border-radius:4px;}"
-        "code{font-family:\"SF Mono\",Consolas,monospace;font-size:0.9em;}"
-        "blockquote{margin:12px 0;padding-left:12px;"
-        "border-left:3px solid #ccc;color:#666;}"
-        "img{max-width:100%;height:auto;}"
-        ".katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0;}"
-        ".page-separator{border:none;border-top:1px solid #ccc;margin:28px 0;}"
-        "@media print{"
-        "body{padding:0;}"
-        ".page-separator{display:none;}");
+    QString css = QStringLiteral("body{margin:0;padding:24px 28px;background:#fff;color:#1a1a1a;"
+                                 "font-family:-apple-system,\"Segoe UI\",Roboto,sans-serif;"
+                                 "font-size:11pt;line-height:1.5;word-wrap:break-word;}"
+                                 "h2{border-bottom:1px solid #ccc;padding-bottom:.2em;}"
+                                 "table{border-collapse:collapse;margin:12px 0;}"
+                                 "th,td{border:1px solid #999;padding:5px 9px;text-align:left;}"
+                                 "th{background:rgba(0,0,0,0.06);}"
+                                 "pre{white-space:pre-wrap;background:rgba(128,128,128,0.12);"
+                                 "padding:9px 11px;border-radius:4px;}"
+                                 "code{font-family:\"SF Mono\",Consolas,monospace;font-size:0.9em;}"
+                                 "blockquote{margin:12px 0;padding-left:12px;"
+                                 "border-left:3px solid #ccc;color:#666;}"
+                                 "img{max-width:100%;height:auto;}"
+                                 ".katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0;}"
+                                 ".page-separator{border:none;border-top:1px solid #ccc;margin:28px 0;}"
+                                 "@media print{"
+                                 "body{padding:0;}"
+                                 ".page-separator{display:none;}");
     if (splitPages)
         css += QStringLiteral(".export-page{break-before:page;}"
                               ".export-page:first-child{break-before:auto;}");
@@ -311,7 +298,7 @@ QString Exporter::exportStyleSheet(bool splitPages)
     return css;
 }
 
-QString Exporter::assembleHtmlDocument(const QStringList& pageSections)
+QString Exporter::assembleHtmlDocument(const QStringList &pageSections)
 {
     QString html;
     html += QStringLiteral("<!DOCTYPE html>\n<html>\n<head>\n"
@@ -324,9 +311,7 @@ QString Exporter::assembleHtmlDocument(const QStringList& pageSections)
     return html;
 }
 
-Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString& filePath,
-                                        const CropProvider& crop,
-                                        const ExportOptions& options) const
+Exporter::Result Exporter::exportToFile(const QList<Page> &pages, const QString &filePath, const CropProvider &crop, const ExportOptions &options) const
 {
     if (pages.isEmpty())
         return Result::fail(StatusMessage::translate("Exporter", "Nothing to export."));
@@ -336,17 +321,13 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
 
     const QFileInfo info(filePath);
     const Format format = formatForSuffix(info.suffix());
-    const QString mediaDir = info.absolutePath() + QLatin1Char('/')
-                           + info.completeBaseName() + QStringLiteral("_media");
+    const QString mediaDir = info.absolutePath() + QLatin1Char('/') + info.completeBaseName() + QStringLiteral("_media");
     const QString mediaPrefix = info.completeBaseName() + QStringLiteral("_media/");
     const bool splitPages = options.splitPages;
 
     switch (format) {
     case Format::Markdown: {
-        const QString md = crop
-            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix,
-                                    splitPages ? markdownPageRule() : QString())
-            : buildMarkdown(pages, splitPages);
+        const QString md = crop ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, splitPages ? markdownPageRule() : QString()) : buildMarkdown(pages, splitPages);
         return writeTextFile(filePath, md);
     }
     case Format::PlainText:
@@ -356,10 +337,7 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
         QList<Page> rendered = pages;
         if (crop) {
             for (int i = 0; i < pages.size(); ++i) {
-                const ResolvedImages r = resolveImageReferences(
-                    pages.at(i).text, i,
-                    [&](int boxIndex) { return crop(pages.at(i).number, boxIndex); },
-                    mediaDir, mediaPrefix);
+                const ResolvedImages r = resolveImageReferences(pages.at(i).text, i, [&](int boxIndex) { return crop(pages.at(i).number, boxIndex); }, mediaDir, mediaPrefix);
                 rendered[i].text = r.processedMarkdown;
             }
         }
@@ -369,8 +347,8 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
     case Format::Docx: {
         if (!isPandocAvailable())
             return Result::fail(StatusMessage::translate("Exporter",
-                "DOCX export requires Pandoc, which was not found on PATH. "
-                "Install it from pandoc.org, or export to Markdown/HTML instead."));
+                                                         "DOCX export requires Pandoc, which was not found on PATH. "
+                                                         "Install it from pandoc.org, or export to Markdown/HTML instead."));
         return exportViaPandoc(pages, filePath, crop, {}, splitPages);
     }
 
@@ -379,45 +357,33 @@ Exporter::Result Exporter::exportToFile(const QList<Page>& pages, const QString&
             const Result r = exportViaPandoc(pages, filePath, crop, {}, splitPages);
             if (r.success)
                 return r;
-            const Result fb = writePdfFallback(pages, filePath, crop,
-                                               defaultPdfLayout(), splitPages);
+            const Result fb = writePdfFallback(pages, filePath, crop, defaultPdfLayout(), splitPages);
             if (fb.success)
-                return Result::ok(StatusMessage::translate("Exporter",
-                    "Exported PDF using the built-in writer (%1).").arg(r.message.text()));
+                return Result::ok(StatusMessage::translate("Exporter", "Exported PDF using the built-in writer (%1).").arg(r.message.text()));
             return fb;
         }
         return writePdfFallback(pages, filePath, crop, defaultPdfLayout(), splitPages);
     }
 
     case Format::Unknown: {
-        const QString md = crop
-            ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix,
-                                    splitPages ? markdownPageRule() : QString())
-            : buildMarkdown(pages, splitPages);
+        const QString md = crop ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, splitPages ? markdownPageRule() : QString()) : buildMarkdown(pages, splitPages);
         return writeTextFile(filePath, md);
     }
     }
 }
 
-QString Exporter::buildMarkdownResolved(const QList<Page>& pages,
-                                        const CropProvider& crop,
-                                        const QString& mediaDir,
-                                        const QString& referencePrefix,
-                                        const QString& pageBreak) const
+QString Exporter::buildMarkdownResolved(const QList<Page> &pages, const CropProvider &crop, const QString &mediaDir, const QString &referencePrefix, const QString &pageBreak) const
 {
     QString out;
     bool first = true;
     for (int i = 0; i < pages.size(); ++i) {
-        const Page& page = pages.at(i);
+        const Page &page = pages.at(i);
         if (!first)
             out += pageBreak.isEmpty() ? QStringLiteral("\n\n") : pageBreak;
         first = false;
 
         QString text = page.text.trimmed();
-        const ResolvedImages r = resolveImageReferences(
-            text, i,
-            [&page, &crop](int boxIndex) { return crop(page.number, boxIndex); },
-            mediaDir, referencePrefix);
+        const ResolvedImages r = resolveImageReferences(text, i, [&page, &crop](int boxIndex) { return crop(page.number, boxIndex); }, mediaDir, referencePrefix);
         text = r.processedMarkdown.trimmed();
         out += text;
         out += QChar('\n');
@@ -425,11 +391,7 @@ QString Exporter::buildMarkdownResolved(const QList<Page>& pages,
     return out;
 }
 
-Exporter::Result Exporter::exportViaPandoc(const QList<Page>& pages,
-                                           const QString& filePath,
-                                           const CropProvider& crop,
-                                           const QStringList& extraArgs,
-                                           bool splitPages) const
+Exporter::Result Exporter::exportViaPandoc(const QList<Page> &pages, const QString &filePath, const CropProvider &crop, const QStringList &extraArgs, bool splitPages) const
 {
     QString markdown;
     QStringList extra = extraArgs;
@@ -439,10 +401,8 @@ Exporter::Result Exporter::exportViaPandoc(const QList<Page>& pages,
     QTemporaryDir tmp;
     if (crop) {
         if (!tmp.isValid())
-            return Result::fail(StatusMessage::translate("Exporter",
-                "Cannot create a temporary directory for images."));
-        markdown = buildMarkdownResolved(pages, crop, tmp.path(), QString(),
-                                         pageBreak);
+            return Result::fail(StatusMessage::translate("Exporter", "Cannot create a temporary directory for images."));
+        markdown = buildMarkdownResolved(pages, crop, tmp.path(), QString(), pageBreak);
         extra << QStringLiteral("--resource-path=%1").arg(tmp.path());
     } else {
         markdown = joinPages(pages, pageBreak);
@@ -451,10 +411,8 @@ Exporter::Result Exporter::exportViaPandoc(const QList<Page>& pages,
     return runPandoc(markdown, filePath, extra);
 }
 
-Exporter::ResolvedImages Exporter::resolveImageReferences(
-    const QString& markdown, int pageIndex,
-    const std::function<QImage(int boxIndex)>& crop,
-    const QString& mediaDir, const QString& referencePrefix)
+Exporter::ResolvedImages
+Exporter::resolveImageReferences(const QString &markdown, int pageIndex, const std::function<QImage(int boxIndex)> &crop, const QString &mediaDir, const QString &referencePrefix)
 {
     ResolvedImages result;
     const QRegularExpression re = imageRefRegex();
@@ -477,8 +435,7 @@ Exporter::ResolvedImages Exporter::resolveImageReferences(
         if (!image.isNull()) {
             fileName = QStringLiteral("page_%1_img_%2.png").arg(pageIndex).arg(boxIndex);
             const QString fullPath = QDir(mediaDir).filePath(fileName);
-            if (!QDir().mkpath(mediaDir)
-                || !image.save(fullPath, "PNG")) {
+            if (!QDir().mkpath(mediaDir) || !image.save(fullPath, "PNG")) {
                 fileName.clear();
             }
         }
@@ -497,7 +454,7 @@ Exporter::ResolvedImages Exporter::resolveImageReferences(
     return result;
 }
 
-Exporter::Result Exporter::writeTextFile(const QString& path, const QString& content)
+Exporter::Result Exporter::writeTextFile(const QString &path, const QString &content)
 {
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
@@ -509,25 +466,19 @@ Exporter::Result Exporter::writeTextFile(const QString& path, const QString& con
     out.flush();
     file.close();
     if (file.error() != QFileDevice::NoError) {
-        return Result::fail(StatusMessage::translate("Exporter", "Cannot write file: %1 (%2)")
-                                .arg(path, file.errorString()));
+        return Result::fail(StatusMessage::translate("Exporter", "Cannot write file: %1 (%2)").arg(path, file.errorString()));
     }
     return Result::ok(StatusMessage::translate("Exporter", "Exported to %1").arg(QFileInfo(path).fileName()));
 }
 
-Exporter::Result Exporter::runPandoc(const QString& markdown,
-                                     const QString& outputPath,
-                                     const QStringList& extraArgs)
+Exporter::Result Exporter::runPandoc(const QString &markdown, const QString &outputPath, const QStringList &extraArgs)
 {
     const QString exe = pandocExecutable();
     if (exe.isEmpty())
         return Result::fail(StatusMessage::translate("Exporter", "Pandoc not found."));
 
     QStringList args;
-    args << QStringLiteral("--from=markdown")
-         << QStringLiteral("--standalone")
-         << QStringLiteral("--output") << outputPath
-         << extraArgs;
+    args << QStringLiteral("--from=markdown") << QStringLiteral("--standalone") << QStringLiteral("--output") << outputPath << extraArgs;
 
     QProcess process;
     process.start(exe, args);
@@ -544,10 +495,7 @@ Exporter::Result Exporter::runPandoc(const QString& markdown,
 
     if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
         const QString err = QString::fromUtf8(process.readAllStandardError()).trimmed();
-        return Result::fail(err.isEmpty()
-                                ? StatusMessage::translate("Exporter", "Pandoc failed (exit %1).")
-                                      .arg(process.exitCode())
-                                : StatusMessage::literal(err));
+        return Result::fail(err.isEmpty() ? StatusMessage::translate("Exporter", "Pandoc failed (exit %1).").arg(process.exitCode()) : StatusMessage::literal(err));
     }
 
     return Result::ok(StatusMessage::translate("Exporter", "Exported to %1").arg(QFileInfo(outputPath).fileName()));
@@ -555,13 +503,10 @@ Exporter::Result Exporter::runPandoc(const QString& markdown,
 
 QPageLayout Exporter::defaultPdfLayout()
 {
-    return QPageLayout(QPageSize(QPageSize::A4), QPageLayout::Portrait,
-                       QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
+    return QPageLayout(QPageSize(QPageSize::A4), QPageLayout::Portrait, QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
 }
 
-Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QString& path,
-                                            const CropProvider& crop,
-                                            const QPageLayout& layout, bool splitPages)
+Exporter::Result Exporter::writePdfFallback(const QList<Page> &pages, const QString &path, const CropProvider &crop, const QPageLayout &layout, bool splitPages)
 {
     QFile::remove(path);
 
@@ -570,9 +515,8 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
     writer.setResolution(300);
 
     QTextDocument doc;
-    doc.setDefaultStyleSheet(QStringLiteral(
-        "h2{font-size:14pt;margin-top:16pt;} pre{white-space:pre-wrap;}"
-        "img{max-width:100%;}"));
+    doc.setDefaultStyleSheet(QStringLiteral("h2{font-size:14pt;margin-top:16pt;} pre{white-space:pre-wrap;}"
+                                            "img{max-width:100%;}"));
 
     QList<Page> rendered = pages;
     if (crop) {
@@ -589,8 +533,7 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
                 const int boxIndex = m.captured(2).toInt();
                 const QImage img = crop(pages.at(i).number, boxIndex);
                 if (!img.isNull()) {
-                    const QString key =
-                        QStringLiteral("media://page%1img%2").arg(i).arg(boxIndex);
+                    const QString key = QStringLiteral("media://page%1img%2").arg(i).arg(boxIndex);
                     doc.addResource(QTextDocument::ImageResource, QUrl(key), img);
                     out += QStringLiteral("![%1](%2)").arg(alt, key);
                 } else {
@@ -613,4 +556,4 @@ Exporter::Result Exporter::writePdfFallback(const QList<Page>& pages, const QStr
     return Result::ok(StatusMessage::translate("Exporter", "Exported to %1").arg(info.fileName()));
 }
 
-} // namespace llocr
+}  // namespace llocr

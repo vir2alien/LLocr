@@ -2,12 +2,9 @@
 
 namespace llocr {
 
-BoxListModel::BoxListModel(QObject* parent)
-    : QAbstractListModel(parent)
-{
-}
+BoxListModel::BoxListModel(QObject *parent) : QAbstractListModel(parent) {}
 
-int BoxListModel::rowCount(const QModelIndex& parent) const
+int BoxListModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid()) {
         return 0;
@@ -15,48 +12,58 @@ int BoxListModel::rowCount(const QModelIndex& parent) const
     return static_cast<int>(m_boxes.size());
 }
 
-QVariant BoxListModel::data(const QModelIndex& index, int role) const
+QVariant BoxListModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= m_boxes.size()) {
         return {};
     }
 
-    const BoundingBox& box = m_boxes.at(index.row());
+    const BoundingBox &box = m_boxes.at(index.row());
     switch (role) {
-        case XRole:      return box.rect.x();
-        case YRole:      return box.rect.y();
-        case WidthRole:  return box.rect.width();
-        case HeightRole: return box.rect.height();
-        case TextRole:   return box.text;
-        case LabelRole:  return box.label;
-        case CheckStatusRole: return static_cast<int>(box.checkStatus);
-        case CorrectedRole:   return box.correctedText;
-        default:         return {};
+    case XRole:
+        return box.rect.x();
+    case YRole:
+        return box.rect.y();
+    case WidthRole:
+        return box.rect.width();
+    case HeightRole:
+        return box.rect.height();
+    case TextRole:
+        return box.text;
+    case LabelRole:
+        return box.label;
+    case CheckStatusRole:
+        return static_cast<int>(box.checkStatus);
+    case CorrectedRole:
+        return box.correctedText;
+    default:
+        return {};
     }
 }
 
 QHash<int, QByteArray> BoxListModel::roleNames() const
 {
     static const QHash<int, QByteArray> roles = {
-        {XRole,      "boxX"},
-        {YRole,      "boxY"},
-        {WidthRole,  "boxWidth"},
+        {XRole, "boxX"},
+        {YRole, "boxY"},
+        {WidthRole, "boxWidth"},
         {HeightRole, "boxHeight"},
-        {TextRole,   "boxText"},
-        {LabelRole,  "boxLabel"},
+        {TextRole, "boxText"},
+        {LabelRole, "boxLabel"},
         {CheckStatusRole, "boxCheckStatus"},
-        {CorrectedRole,   "boxCorrectedText"},
+        {CorrectedRole, "boxCorrectedText"},
     };
     return roles;
 }
 
-void BoxListModel::setBoxes(const QList<BoundingBox>& boxes) {
+void BoxListModel::setBoxes(const QList<BoundingBox> &boxes)
+{
     beginResetModel();
     m_boxes = boxes;
     endResetModel();
 }
 
-void BoxListModel::setFromResult(const OcrResult& result)
+void BoxListModel::setFromResult(const OcrResult &result)
 {
     if (result.pages.isEmpty()) {
         setBoxes({});
@@ -69,7 +76,7 @@ void BoxListModel::updateBoxRect(int index, qreal x, qreal y, qreal width, qreal
 {
     if (index < 0 || index >= m_boxes.size())
         return;
-    BoundingBox& box = m_boxes[index];
+    BoundingBox &box = m_boxes[index];
     const QRectF newRect(x, y, width, height);
     if (box.rect == newRect)
         return;
@@ -115,9 +122,7 @@ void BoxListModel::removeBox(int index)
 
 bool BoxListModel::isImageBox(int index) const
 {
-    return index >= 0 && index < m_boxes.size()
-        && (m_boxes.at(index).label == QLatin1String("image")
-            || m_boxes.at(index).label == QLatin1String("chart"));
+    return index >= 0 && index < m_boxes.size() && (m_boxes.at(index).label == QLatin1String("image") || m_boxes.at(index).label == QLatin1String("chart"));
 }
 
-} // namespace llocr
+}  // namespace llocr

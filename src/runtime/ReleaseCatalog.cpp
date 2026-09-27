@@ -23,19 +23,18 @@ namespace llocr {
 
 namespace {
 
-const QRegularExpression kGenericRe(
-    QStringLiteral(R"(^llama-b(\d+)-bin-([a-z0-9]+)-([a-z0-9]+)\.(zip|tar\.gz)$)"));
+const QRegularExpression kGenericRe(QStringLiteral(R"(^llama-b(\d+)-bin-([a-z0-9]+)-([a-z0-9]+)\.(zip|tar\.gz)$)"));
 
-const QRegularExpression kBackendRe(
-    QStringLiteral(R"(^llama-b(\d+)-bin-([a-z0-9]+)-(.+)-([a-z0-9]+)\.(zip|tar\.gz)$)"));
+const QRegularExpression kBackendRe(QStringLiteral(R"(^llama-b(\d+)-bin-([a-z0-9]+)-(.+)-([a-z0-9]+)\.(zip|tar\.gz)$)"));
 
-const QRegularExpression kCudartRe(
-    QStringLiteral(R"(^cudart-llama-bin-win-cuda-([0-9a-z.]+?)(?:-(x64|arm64))?\.zip$)"));
+const QRegularExpression kCudartRe(QStringLiteral(R"(^cudart-llama-bin-win-cuda-([0-9a-z.]+?)(?:-(x64|arm64))?\.zip$)"));
 
-const QRegularExpression kShaRe(
-    QStringLiteral(R"((?:sha256\s*[:=]\s*)?([0-9a-fA-F]{64})\s+(\S+))"));
+const QRegularExpression kShaRe(QStringLiteral(R"((?:sha256\s*[:=]\s*)?([0-9a-fA-F]{64})\s+(\S+))"));
 
-QString normalizedLower(const QString &s) { return s.toLower(); }
+QString normalizedLower(const QString &s)
+{
+    return s.toLower();
+}
 
 }  // namespace
 
@@ -51,8 +50,7 @@ int extractBuildNumberFromTag(const QString &tagName)
     return ok ? int(n) : -1;
 }
 
-ReleaseAsset ReleaseCatalog::parseAssetName(const QString &fileName,
-                                            const QString &downloadUrl, qint64 size)
+ReleaseAsset ReleaseCatalog::parseAssetName(const QString &fileName, const QString &downloadUrl, qint64 size)
 {
     ReleaseAsset a;
     a.fileName = fileName;
@@ -105,8 +103,7 @@ QHash<QString, QString> ReleaseCatalog::parseSha256Table(const QString &body)
     return out;
 }
 
-QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items,
-                                                     QString &error)
+QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items, QString &error)
 {
     QList<ReleaseInfo> releases;
     for (const QJsonValue &v : items) {
@@ -126,8 +123,7 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items,
             const QJsonObject ao = av.toObject();
             const QString name = ao.value(QStringLiteral("name")).toString();
             const QString url = ao.value(QStringLiteral("browser_download_url")).toString();
-            const qint64 sz =
-                static_cast<qint64>(ao.value(QStringLiteral("size")).toDouble(-1));
+            const qint64 sz = static_cast<qint64>(ao.value(QStringLiteral("size")).toDouble(-1));
             r.assets.append(parseAssetName(name, url, sz));
         }
 
@@ -136,8 +132,7 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items,
         const QHash<QString, QString> table = parseSha256Table(body);
         for (ReleaseAsset &asset : r.assets) {
             if (asset.sha256.isEmpty()) {
-                const QString digest =
-                    table.value(normalizedLower(asset.fileName));
+                const QString digest = table.value(normalizedLower(asset.fileName));
                 if (!digest.isEmpty())
                     asset.sha256 = digest;
             }
@@ -149,8 +144,7 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items,
     return releases;
 }
 
-QList<ReleaseInfo> ReleaseCatalog::readCacheFile(const QString &cacheDir, QString &error,
-                                                qint64 *cachedBuild)
+QList<ReleaseInfo> ReleaseCatalog::readCacheFile(const QString &cacheDir, QString &error, qint64 *cachedBuild)
 {
     const QString path = QDir(cacheDir).filePath(QStringLiteral("releases.json"));
     if (!QFileInfo::exists(path)) {
@@ -170,16 +164,12 @@ QList<ReleaseInfo> ReleaseCatalog::readCacheFile(const QString &cacheDir, QStrin
     }
     const QJsonArray arr = doc.array();
     if (cachedBuild && !arr.isEmpty()) {
-        *cachedBuild = extractBuildNumberFromTag(
-            arr.first().toObject().value(QStringLiteral("tag_name")).toString());
+        *cachedBuild = extractBuildNumberFromTag(arr.first().toObject().value(QStringLiteral("tag_name")).toString());
     }
     return parseReleasesJson(arr, error);
 }
 
-QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir,
-                                             QDateTime &cachedAt,
-                                             qint64 &cachedBuild,
-                                             bool &isFresh, QString &error)
+QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir, QDateTime &cachedAt, qint64 &cachedBuild, bool &isFresh, QString &error)
 {
     isFresh = false;
     cachedBuild = -1;
@@ -198,9 +188,7 @@ QList<ReleaseInfo> ReleaseCatalog::loadCache(const QString &cacheDir,
     return readCacheFile(cacheDir, error, &cachedBuild);
 }
 
-QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam,
-                                                      QString cacheDir, QString &error,
-                                                      int timeoutMs, const QString &apiUrl)
+QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam, QString cacheDir, QString &error, int timeoutMs, const QString &apiUrl)
 {
     QList<ReleaseInfo> fromCache;
     QDateTime cachedAt;
@@ -210,8 +198,6 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     fromCache = loadCache(cacheDir, cachedAt, cachedBuild, isFresh, cacheErr);
     if (isFresh)
         return fromCache;
-    // Age alone does not invalidate the list: keep the last known good one as
-    // the offline fallback for a failed fetch.
     if (fromCache.isEmpty())
         fromCache = readCacheFile(cacheDir, cacheErr, &cachedBuild);
 
@@ -220,36 +206,25 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
         return QList<ReleaseInfo>();
     }
 
-    // One HTTP policy for the whole runtime layer: transfer timeout, watchdog,
-    // manual redirects with the Authorization dropped on a host change (ADR 108).
     HttpClient::Options options;
     options.timeoutMs = timeoutMs;
     options.headers = {
         {"Accept", "application/vnd.github+json"},
     };
-    const HttpClient::Response response = HttpClient::get(
-        nam, QUrl(apiUrl.isEmpty() ? QLatin1String(kApiUrl) : apiUrl), options);
+    const HttpClient::Response response = HttpClient::get(nam, QUrl(apiUrl.isEmpty() ? QLatin1String(kApiUrl) : apiUrl), options);
     const QByteArray payload = response.body;
     const int status = response.status;
 
-    // A transport failure, a rate limit or an unexpected body must NOT drop the
-    // cached list: it is the only offline fallback, and the cache is replaced
-    // exclusively by a successfully parsed list (see the QSaveFile below). Fall
-    // back to the stale list instead of reporting "no releases available".
-    const auto failWithCache = [&fromCache](const QString &message) {
-        return fromCache.isEmpty() ? QList<ReleaseInfo>() : fromCache;
-    };
+    const auto failWithCache = [&fromCache](const QString &message) { return fromCache.isEmpty() ? QList<ReleaseInfo>() : fromCache; };
 
     if (response.timedOut) {
         error = QObject::tr("Timed out fetching release list");
         return failWithCache(error);
     }
 
-    // The rate-limit hint travels in the final reply's headers.
     qint64 resetEpoch = 0;
     for (const auto &header : response.headers) {
-        if (header.first.compare(QByteArrayLiteral("X-RateLimit-Reset"),
-                                 Qt::CaseInsensitive) == 0)
+        if (header.first.compare(QByteArrayLiteral("X-RateLimit-Reset"), Qt::CaseInsensitive) == 0)
             resetEpoch = header.second.toLongLong();
     }
     const QString transportError = response.error;
@@ -257,17 +232,13 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     if (status == 403) {
         QString when = QObject::tr("soon");
         if (resetEpoch > 0) {
-            when = QDateTime::fromSecsSinceEpoch(resetEpoch)
-                       .toLocalTime()
-                       .toString(Qt::ISODate);
+            when = QDateTime::fromSecsSinceEpoch(resetEpoch).toLocalTime().toString(Qt::ISODate);
         }
         error = QObject::tr("GitHub rate limit reached; retry around %1").arg(when);
         return failWithCache(error);
     }
     if (status != 200) {
-        error = status > 0
-            ? QObject::tr("GitHub API returned HTTP %1").arg(status)
-            : QObject::tr("GitHub request failed: %1").arg(transportError);
+        error = status > 0 ? QObject::tr("GitHub API returned HTTP %1").arg(status) : QObject::tr("GitHub request failed: %1").arg(transportError);
         return failWithCache(error);
     }
 
@@ -299,8 +270,7 @@ PlatformInfo ReleaseCatalog::detectPlatform()
     info.arch = QStringLiteral("x64");  // safe default for unknown arches
     if (arch == QLatin1String("x86_64") || arch == QLatin1String("amd64"))
         info.arch = QStringLiteral("x64");
-    else if (arch == QLatin1String("i386") || arch == QLatin1String("i586")
-             || arch == QLatin1String("i686") || arch == QLatin1String("x86"))
+    else if (arch == QLatin1String("i386") || arch == QLatin1String("i586") || arch == QLatin1String("i686") || arch == QLatin1String("x86"))
         info.arch = QStringLiteral("x86");
     else if (arch == QLatin1String("arm64") || arch == QLatin1String("aarch64"))
         info.arch = QStringLiteral("arm64");
@@ -313,8 +283,7 @@ PlatformInfo ReleaseCatalog::detectPlatform()
         info.os = PlatformOs::macOS;
         info.osTag = QStringLiteral("macos");
         info.backend = QStringLiteral("metal");
-        info.backendReason =
-            QStringLiteral("Metal backend recommended on Apple silicon; fall back to CPU on Intel");
+        info.backendReason = QStringLiteral("Metal backend recommended on Apple silicon; fall back to CPU on Intel");
     } else {
         info.os = PlatformOs::Linux;
         info.osTag = QStringLiteral("linux");

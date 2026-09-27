@@ -9,14 +9,9 @@ namespace llocr {
 
 int ServerCapabilities::extractBuildNumber(const QString &versionOutput)
 {
-    static const QRegularExpression buildWord(
-        QStringLiteral(R"(\bbuild[ :=]+\s*(?:b)?(\d{2,6})\b)"),
-        QRegularExpression::CaseInsensitiveOption);
-    static const QRegularExpression bTag(QStringLiteral(R"(\bb(\d{3,6})\b)"),
-                                         QRegularExpression::CaseInsensitiveOption);
-    static const QRegularExpression versionWord(
-        QStringLiteral(R"(\b(?:version|release)[ :=]+\s*(\d{3,6})\b)"),
-        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression buildWord(QStringLiteral(R"(\bbuild[ :=]+\s*(?:b)?(\d{2,6})\b)"), QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression bTag(QStringLiteral(R"(\bb(\d{3,6})\b)"), QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression versionWord(QStringLiteral(R"(\b(?:version|release)[ :=]+\s*(\d{3,6})\b)"), QRegularExpression::CaseInsensitiveOption);
 
     QRegularExpressionMatch m = buildWord.match(versionOutput);
     if (!m.hasMatch())
@@ -28,8 +23,7 @@ int ServerCapabilities::extractBuildNumber(const QString &versionOutput)
     return m.captured(1).toInt();
 }
 
-ServerCapabilities ServerCapabilities::detect(const QString &versionOutput,
-                                              const QString &helpOutput)
+ServerCapabilities ServerCapabilities::detect(const QString &versionOutput, const QString &helpOutput)
 {
     ServerCapabilities caps;
     caps.versionText = versionOutput.trimmed();
@@ -55,17 +49,12 @@ ServerCapabilities ServerCapabilities::detect(const QString &versionOutput,
         const bool hasFlash = helpOutput.contains(QStringLiteral("--flash-attn"));
         caps.supportsFlashAttn = caps.supportsFlashAttn && hasFlash;
         if (hasFlash) {
-            caps.supportsFlashAttnValue =
-                helpOutput.contains(QStringLiteral("on|off|auto"));
+            caps.supportsFlashAttnValue = helpOutput.contains(QStringLiteral("on|off|auto"));
         }
-        caps.supportsAlias = caps.supportsAlias
-                             && helpOutput.contains(QStringLiteral("--alias"));
-        caps.supportsJinja = caps.supportsJinja
-                             && helpOutput.contains(QStringLiteral("--jinja"));
-        caps.supportsCacheTypeK = caps.supportsCacheTypeK
-                                  && helpOutput.contains(QStringLiteral("-ctk"));
-        caps.supportsCacheTypeV = caps.supportsCacheTypeV
-                                  && helpOutput.contains(QStringLiteral("-ctv"));
+        caps.supportsAlias = caps.supportsAlias && helpOutput.contains(QStringLiteral("--alias"));
+        caps.supportsJinja = caps.supportsJinja && helpOutput.contains(QStringLiteral("--jinja"));
+        caps.supportsCacheTypeK = caps.supportsCacheTypeK && helpOutput.contains(QStringLiteral("-ctk"));
+        caps.supportsCacheTypeV = caps.supportsCacheTypeV && helpOutput.contains(QStringLiteral("-ctv"));
     }
 
     return caps;
@@ -104,18 +93,12 @@ ServerCapabilities ServerCapabilities::fromJson(const QJsonObject &o)
     return caps;
 }
 
-QString ServerCapabilities::cacheFileName(const QString &cacheDir,
-                                          const QString &binaryPath)
+QString ServerCapabilities::cacheFileName(const QString &cacheDir, const QString &binaryPath)
 {
     const QFileInfo fi(binaryPath);
-    const QString key = QStringLiteral("%1@%2@%3")
-                            .arg(fi.absoluteFilePath(),
-                                 QString::number(fi.lastModified().toMSecsSinceEpoch()),
-                                 QString::number(fi.size()));
-    const QByteArray hash =
-        QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex();
-    return QDir(cacheDir).filePath(QStringLiteral("capabilities-%1.json").arg(
-        QString::fromLatin1(hash)));
+    const QString key = QStringLiteral("%1@%2@%3").arg(fi.absoluteFilePath(), QString::number(fi.lastModified().toMSecsSinceEpoch()), QString::number(fi.size()));
+    const QByteArray hash = QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex();
+    return QDir(cacheDir).filePath(QStringLiteral("capabilities-%1.json").arg(QString::fromLatin1(hash)));
 }
 
 }  // namespace llocr

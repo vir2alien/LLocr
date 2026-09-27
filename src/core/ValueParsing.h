@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QString>
 #include <optional>
+#include <QString>
 
 namespace llocr {
 
@@ -14,4 +14,4 @@ inline std::optional<double> toFiniteNumber(const QString &text)
     return number;
 }
 
-}
+}  // namespace llocr

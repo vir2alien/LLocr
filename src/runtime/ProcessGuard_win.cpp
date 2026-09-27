@@ -18,8 +18,7 @@ HANDLE ensureJob()
         info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
         jobHandle = ::CreateJobObject(nullptr, nullptr);
         if (jobHandle)
-            ::SetInformationJobObject(jobHandle, JobObjectExtendedLimitInformation,
-                                      &info, sizeof(info));
+            ::SetInformationJobObject(jobHandle, JobObjectExtendedLimitInformation, &info, sizeof(info));
     }
     return jobHandle;
 }
@@ -36,8 +35,7 @@ void ProcessGuard::attachParent(QProcess &proc)
     const HANDLE job = ensureJob();
     if (!job)
         return;
-    HANDLE child = ::OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, false,
-                                 static_cast<DWORD>(proc.processId()));
+    HANDLE child = ::OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, false, static_cast<DWORD>(proc.processId()));
     if (!child) {
         qWarning() << "OpenProcess(AssignToJobObject) failed:" << ::GetLastError();
         return;
@@ -56,8 +54,7 @@ bool ProcessGuard::isProcessAlive(qint64 pid)
 {
     if (pid <= 0)
         return false;
-    HANDLE process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE,
-                                   static_cast<DWORD>(pid));
+    HANDLE process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, static_cast<DWORD>(pid));
     if (!process)
         return false;
     DWORD code = 0;
@@ -70,8 +67,7 @@ QString ProcessGuard::processImagePath(qint64 pid)
 {
     if (pid <= 0)
         return {};
-    HANDLE process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE,
-                                   static_cast<DWORD>(pid));
+    HANDLE process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, static_cast<DWORD>(pid));
     if (!process)
         return {};
     wchar_t buffer[MAX_PATH] = {};

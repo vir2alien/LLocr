@@ -29,7 +29,8 @@
 
 #include <cstdlib>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
     QCoreApplication app(argc, argv);
 
     // Probe-cache tests need to observe how many times this binary is spawned
@@ -147,10 +148,14 @@ int main(int argc, char* argv[]) {
             }
             const QByteArray body = neverHealthy ? "unavailable" : "{\"status\":\"ok\"}";
             const QByteArray status = neverHealthy ? "503 Service Unavailable" : "200 OK";
-            s->write("HTTP/1.1 " + status + "\r\n"
+            s->write("HTTP/1.1 " + status +
+                     "\r\n"
                      "Content-Type: application/json\r\n"
-                     "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
-                     "Connection: close\r\n\r\n" + body);
+                     "Content-Length: " +
+                     QByteArray::number(body.size()) +
+                     "\r\n"
+                     "Connection: close\r\n\r\n" +
+                     body);
             s->flush();
         } else if (req.contains("GET /v1/models")) {
             if (noModels) {
@@ -158,33 +163,28 @@ int main(int argc, char* argv[]) {
                 s->flush();
                 return;
             }
-            const QByteArray body =
-                QJsonDocument(QJsonObject{{"object", "list"},
-                                          {"data", QJsonArray{{QJsonObject{
-                                                                       {"id", "llocr-local"},
-                                                                       {"object", "model"}}}}}})
-                    .toJson(QJsonDocument::Compact);
+            const QByteArray body = QJsonDocument(QJsonObject{{"object", "list"}, {"data", QJsonArray{{QJsonObject{{"id", "llocr-local"}, {"object", "model"}}}}}}).toJson(QJsonDocument::Compact);
             s->write("HTTP/1.1 200 OK\r\n"
                      "Content-Type: application/json\r\n"
-                     "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
-                     "Connection: close\r\n\r\n" + body);
+                     "Content-Length: " +
+                     QByteArray::number(body.size()) +
+                     "\r\n"
+                     "Connection: close\r\n\r\n" +
+                     body);
             s->flush();
         } else if (req.contains("POST /v1/chat/completions")) {
             // Self-test endpoint: echo a fixed OCR-looking response.
-            const QByteArray body =
-                QJsonDocument(QJsonObject{
-                    {"id", "cmpl-self"},
-                    {"object", "chat.completion"},
-                    {"choices", QJsonArray{{QJsonObject{
-                                                     {"index", 0},
-                                                     {"message", QJsonObject{
-                                                                     {"role", "assistant"},
-                                                                     {"content", "SELFTEST_OK"}}}}}}}})
-                    .toJson(QJsonDocument::Compact);
+            const QByteArray body = QJsonDocument(QJsonObject{{"id", "cmpl-self"},
+                                                              {"object", "chat.completion"},
+                                                              {"choices", QJsonArray{{QJsonObject{{"index", 0}, {"message", QJsonObject{{"role", "assistant"}, {"content", "SELFTEST_OK"}}}}}}}})
+                                        .toJson(QJsonDocument::Compact);
             s->write("HTTP/1.1 200 OK\r\n"
                      "Content-Type: application/json\r\n"
-                     "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
-                     "Connection: close\r\n\r\n" + body);
+                     "Content-Length: " +
+                     QByteArray::number(body.size()) +
+                     "\r\n"
+                     "Connection: close\r\n\r\n" +
+                     body);
             s->flush();
         } else {
             s->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");

@@ -4,9 +4,7 @@
 
 namespace llocr {
 
-OcrModelListModel::OcrModelListModel(QObject *parent)
-    : QAbstractListModel(parent)
-    , m_ids(OcrModelFactory::registeredIds())
+OcrModelListModel::OcrModelListModel(QObject *parent) : QAbstractListModel(parent), m_ids(OcrModelFactory::registeredIds())
 {
     for (const QString &id : std::as_const(m_ids))
         m_names.append(OcrModelFactory::displayNameForId(id));

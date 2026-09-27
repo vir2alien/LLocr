@@ -92,7 +92,9 @@
   * The C++ code is split into **layer targets** (ADR 106): `llocr_core` →
     `llocr_config` → {`llocr_models`, `llocr_parsers`} → `llocr_runtime` →
     `llocr_app` → `llocr`. A layer can only use what it links, and the 31 tests
-    link the same targets — never a hand-listed copy of the sources. Note
+    link the same targets — never a hand-listed copy of the sources. Each layer
+    owns a directory of the same name under `src/`, and the include root is
+    `src/`, so an include's spelling already names the layer it comes from. Note
     `LaunchProfileStore` lives in `llocr_runtime` (it needs the release
     catalog and a QML list model), while `RequestProfileStore` is in
     `llocr_config`.

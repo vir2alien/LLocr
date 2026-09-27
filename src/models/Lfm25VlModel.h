@@ -11,7 +11,8 @@ namespace llocr {
 // which DetTokensParser consumes via its unwrapped-token path (the parser
 // skips the image_index prefix; OTSL table content is flattened to a GFM
 // pipe table). Tables are serialized in OTSL, not HTML.
-class Lfm25VlModel : public OcrModel {
+class Lfm25VlModel : public OcrModel
+{
     Q_DISABLE_COPY_MOVE(Lfm25VlModel)
 
 public:
@@ -23,4 +24,4 @@ public:
     QString defaultParserId() const override;
 };
 
-} // namespace llocr
+}  // namespace llocr

@@ -32,17 +32,13 @@ namespace {
 // rotated. Files land in <AppDataDir>/raw-debug/ — one file per request.
 bool rawDebugEnabled()
 {
-    static const bool enabled =
-        qEnvironmentVariableIsSet("LLOCR_RAW_DEBUG")
-        && qEnvironmentVariable("LLOCR_RAW_DEBUG") != QLatin1String("0");
+    static const bool enabled = qEnvironmentVariableIsSet("LLOCR_RAW_DEBUG") && qEnvironmentVariable("LLOCR_RAW_DEBUG") != QLatin1String("0");
     return enabled;
 }
 
 QDir rawDebugDir()
 {
-    const QDir dir(QStandardPaths::writableLocation(
-                       QStandardPaths::AppLocalDataLocation)
-                   + QStringLiteral("/raw-debug"));
+    const QDir dir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/raw-debug"));
     dir.mkpath(QStringLiteral("."));
     return dir;
 }
@@ -55,10 +51,7 @@ void dumpRawRequest(const QByteArray &requestBody)
     static QAtomicInt sequence;
     const int n = sequence.fetchAndAddRelaxed(1) + 1;
 
-    const QString base = QStringLiteral("raw-%1-%2-request")
-                             .arg(QDateTime::currentDateTime().toString(
-                                 QStringLiteral("yyyyMMdd-HHmmss")))
-                             .arg(n, 4, 10, QLatin1Char('0'));
+    const QString base = QStringLiteral("raw-%1-%2-request").arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"))).arg(n, 4, 10, QLatin1Char('0'));
     QFile file(rawDebugDir().filePath(base + QStringLiteral(".json")));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         qWarning() << "[raw-debug] cannot write" << file.fileName();
@@ -68,8 +61,7 @@ void dumpRawRequest(const QByteArray &requestBody)
     qInfo().noquote() << "[raw-debug] request saved:" << file.fileName();
 }
 
-void dumpRawResponse(const QByteArray &responseData, const QString &content,
-                     bool parsed)
+void dumpRawResponse(const QByteArray &responseData, const QString &content, bool parsed)
 {
     if (!rawDebugEnabled())
         return;
@@ -77,18 +69,12 @@ void dumpRawResponse(const QByteArray &responseData, const QString &content,
     static QAtomicInt sequence;
     const int n = sequence.fetchAndAddRelaxed(1) + 1;
 
-    const QDir dir(QStandardPaths::writableLocation(
-                       QStandardPaths::AppLocalDataLocation)
-                   + QStringLiteral("/raw-debug"));
+    const QDir dir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/raw-debug"));
 
-    const QString base = QStringLiteral("raw-%1-%2")
-                             .arg(QDateTime::currentDateTime().toString(
-                                 QStringLiteral("yyyyMMdd-HHmmss")))
-                             .arg(n, 4, 10, QLatin1Char('0'));
+    const QString base = QStringLiteral("raw-%1-%2").arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"))).arg(n, 4, 10, QLatin1Char('0'));
     // Parsed replies store the verbatim model text; anything the JSON layer
     // could not read stores the full envelope for diagnosis.
-    QFile file(dir.filePath(base + (parsed ? QStringLiteral(".txt")
-                                           : QStringLiteral(".invalid.json"))));
+    QFile file(dir.filePath(base + (parsed ? QStringLiteral(".txt") : QStringLiteral(".invalid.json"))));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         qWarning() << "[raw-debug] cannot write" << file.fileName();
         return;
@@ -97,10 +83,9 @@ void dumpRawResponse(const QByteArray &responseData, const QString &content,
     qInfo().noquote() << "[raw-debug] model response saved:" << file.fileName();
 }
 
-} // namespace
+}  // namespace
 
-QByteArray OcrModel::buildRequestBody(const OcrRequest &request,
-                                      const QByteArray &imageDataUrl)
+QByteArray OcrModel::buildRequestBody(const OcrRequest &request, const QByteArray &imageDataUrl)
 {
     QJsonObject textPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.prompt}};
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
@@ -110,16 +95,10 @@ QByteArray OcrModel::buildRequestBody(const OcrRequest &request,
 
     QJsonObject message{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
 
-    QJsonObject root{
-        {QStringLiteral("model"), request.modelId},
-        {QStringLiteral("messages"), QJsonArray{message}}
-    };
+    QJsonObject root{{QStringLiteral("model"), request.modelId}, {QStringLiteral("messages"), QJsonArray{message}}};
 
     QList<RequestParameter> parameters = request.parameters;
-    std::stable_sort(parameters.begin(), parameters.end(),
-                     [](const RequestParameter &a, const RequestParameter &b) {
-                         return a.order < b.order;
-                     });
+    std::stable_sort(parameters.begin(), parameters.end(), [](const RequestParameter &a, const RequestParameter &b) { return a.order < b.order; });
     for (const RequestParameter &parameter : parameters)
         root.insert(parameter.name, RequestProfile::valueToJson(parameter.value));
 
@@ -157,13 +136,11 @@ QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const Connecti
     auto client = std::make_shared<LlamaClient>();
     m_activeClient = client;
 
-    return runChatExchange<OcrResult>(
-        [request]() {
-            return buildRequestBody(request, encodeImageDataUrl(request.image));
-        },
-        config, client,
-        [](const QByteArray &body) { return parseResponse(body); },
-        QCoreApplication::translate("OcrModel", "Failed to encode the page image"));
+    return runChatExchange<OcrResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
+                                      config,
+                                      client,
+                                      [](const QByteArray &body) { return parseResponse(body); },
+                                      QCoreApplication::translate("OcrModel", "Failed to encode the page image"));
 }
 
 void OcrModel::abort()
@@ -172,4 +149,4 @@ void OcrModel::abort()
         m_activeClient->abort();
 }
 
-} // namespace llocr
+}  // namespace llocr

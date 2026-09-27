@@ -5,15 +5,14 @@
 #include <QObject>
 #include <QString>
 
-#include "app/RequestParametersModel.h"
+#include "config/RequestParametersModel.h"
 
 class QAbstractListModel;
 
 namespace llocr {
 
 class SettingsStore;
-template <typename T>
-class ProfileStore;
+template <typename T> class ProfileStore;
 
 class RequestProfileStore : public QObject
 {
@@ -22,13 +21,12 @@ class RequestProfileStore : public QObject
     Q_PROPERTY(QString draftProfileId READ draftProfileId NOTIFY draftProfileChanged)
 
 public:
-    enum class Role { Ocr, Check, };
+    enum class Role {
+        Ocr,
+        Check,
+    };
 
-    explicit RequestProfileStore(SettingsStore &settings,
-                                 const QString &builtInPath =
-                                     QString::fromUtf8(RequestProfile::kBuiltInPath),
-                                 Role role = Role::Ocr,
-                                 QObject *parent = nullptr);
+    explicit RequestProfileStore(SettingsStore &settings, const QString &builtInPath = QString::fromUtf8(RequestProfile::kBuiltInPath), Role role = Role::Ocr, QObject *parent = nullptr);
 
     QAbstractListModel *draftModel() const { return m_model; }
 
@@ -53,7 +51,6 @@ signals:
 private:
     SettingsStore &m_settings;
     Role m_role;
-    // The built-in list, the user overrides and their merge (ADR 117).
     ProfileStore<RequestProfile> *m_profiles;
     QString m_draftProfileId;
     RequestParametersModel *m_model;

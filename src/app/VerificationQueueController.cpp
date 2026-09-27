@@ -2,43 +2,31 @@
 
 #include <QTimer>
 
-#include "app/RequestProfileStore.h"
+#include "config/RequestProfileStore.h"
 
 namespace llocr {
 
-VerificationQueueController::VerificationQueueController(Deps deps,
-                                                         QObject *parent)
-    : QObject(parent)
-    , m_deps(std::move(deps))
-    , m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr)
+VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent) : QObject(parent), m_deps(std::move(deps)), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr)
 {
-    connect(&m_check, &CheckController::checkFinished, this,
-            [this](const CheckResult &result) {
-                if (result.status == CheckStatus::Failed
-                    && !result.errorMessage.isEmpty()
-                    && result.errorMessage != m_checkError) {
-                    m_checkError = result.errorMessage;
-                    // A failed check is an event, not a state: the log keeps the
-                    // text so the footer can stay a single bounded line (ADR 119).
-                    emit problemReported(result.errorMessage);
-                }
-                const int page = m_verifyPage;
-                const int box = m_verifyBoxIndex;
-                emit blockChecked(page, box, result);
-                ++m_verifyDone;
-                emit stateChanged();
-                QTimer::singleShot(0, this, [this]() { startNextVerify(); });
-            });
-    connect(&m_check, &CheckController::busyChanged, this,
-            &VerificationQueueController::stateChanged);
-    connect(&m_check, &CheckController::statusRequested, this,
-            &VerificationQueueController::statusRequested);
+    connect(&m_check, &CheckController::checkFinished, this, [this](const CheckResult &result) {
+        if (result.status == CheckStatus::Failed && !result.errorMessage.isEmpty() && result.errorMessage != m_checkError) {
+            m_checkError = result.errorMessage;
+            emit problemReported(result.errorMessage);
+        }
+        const int page = m_verifyPage;
+        const int box = m_verifyBoxIndex;
+        emit blockChecked(page, box, result);
+        ++m_verifyDone;
+        emit stateChanged();
+        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+    });
+    connect(&m_check, &CheckController::busyChanged, this, &VerificationQueueController::stateChanged);
+    connect(&m_check, &CheckController::statusRequested, this, &VerificationQueueController::statusRequested);
 }
 
 void VerificationQueueController::checkBlock(int pageIndex, int boxIndex)
 {
-    if (!m_deps.document.isValidIndex(pageIndex)
-        || !m_deps.document.page(pageIndex).recognized) {
+    if (!m_deps.document.isValidIndex(pageIndex) || !m_deps.document.page(pageIndex).recognized) {
         return;
     }
     startVerifyQueue({{pageIndex, boxIndex}});
@@ -73,9 +61,7 @@ void VerificationQueueController::checkAllEnabledBlocks(bool onlyUnchecked)
     startVerifyQueue(tasks);
 }
 
-void VerificationQueueController::collectEnabledBoxes(int pageIndex,
-                                                      QList<int> &out,
-                                                      bool onlyUnchecked) const
+void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, bool onlyUnchecked) const
 {
     if (!m_deps.document.isValidIndex(pageIndex))
         return;
@@ -108,12 +94,9 @@ void VerificationQueueController::stop()
         m_check.stop();
 }
 
-bool VerificationQueueController::pageVerificationSupported(
-    int pageIndex) const
+bool VerificationQueueController::pageVerificationSupported(int pageIndex) const
 {
-    if (!m_deps.document.isValidIndex(pageIndex)
-        || !m_deps.document.page(pageIndex).recognized
-        || m_deps.document.page(pageIndex).result.pages.isEmpty())
+    if (!m_deps.document.isValidIndex(pageIndex) || !m_deps.document.page(pageIndex).recognized || m_deps.document.page(pageIndex).result.pages.isEmpty())
         return false;
     if (m_deps.recognitionBusy())
         return false;
@@ -135,16 +118,14 @@ bool VerificationQueueController::allPageVerificationSupported() const
             continue;
         const OcrPage &page = docPage.result.pages.first();
         for (const BoundingBox &box : std::as_const(page.boxes)) {
-            if (m_deps.verification.isTypeEnabled(box.label)
-                && !box.text.isEmpty())
+            if (m_deps.verification.isTypeEnabled(box.label) && !box.text.isEmpty())
                 return true;
         }
     }
     return false;
 }
 
-void VerificationQueueController::startVerifyQueue(
-    const QList<VerifyTask> &tasks)
+void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &tasks)
 {
     if (m_deps.recognitionBusy() || m_check.busy() || m_verifyQueueActive)
         return;
@@ -201,9 +182,7 @@ void VerificationQueueController::startNextVerify()
     }
 
     const BoundingBox &box = boxes.at(m_verifyBoxIndex);
-    m_check.checkBlock(crop, text,
-                       m_deps.verification.systemPrompt(),
-                       m_deps.verification.promptForType(box.label));
+    m_check.checkBlock(crop, text, m_deps.verification.systemPrompt(), m_deps.verification.promptForType(box.label));
 }
 
 void VerificationQueueController::finishVerifyQueue()

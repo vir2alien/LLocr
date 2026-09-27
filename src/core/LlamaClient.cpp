@@ -2,12 +2,12 @@
 
 #include <memory>
 
+#include <QCoreApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPromise>
-#include <QCoreApplication>
 #include <QTimer>
 
 namespace llocr {
@@ -20,8 +20,7 @@ QUrl LlamaClient::endpointUrl(const QString &baseUrl)
     return QUrl(base + QStringLiteral("/v1/chat/completions"));
 }
 
-QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &body,
-                                            const QString &apiKey, int timeoutMs)
+QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, int timeoutMs)
 {
     auto promise = std::make_shared<QPromise<HttpResponse>>();
     promise->start();
@@ -47,10 +46,8 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
         HttpResponse response;
         if (reply->error() != QNetworkReply::NoError) {
             QString error;
-            if (reply->error() == QNetworkReply::OperationCanceledError
-                && reply->property("llocrTimedOut").toBool()) {
-                error = QCoreApplication::translate("LlamaClient",
-                            "Request timed out after %1 ms").arg(timeoutMs);
+            if (reply->error() == QNetworkReply::OperationCanceledError && reply->property("llocrTimedOut").toBool()) {
+                error = QCoreApplication::translate("LlamaClient", "Request timed out after %1 ms").arg(timeoutMs);
             } else {
                 error = reply->errorString();
                 const QString serverError = extractServerError(reply->readAll());
@@ -89,4 +86,4 @@ QString LlamaClient::extractServerError(const QByteArray &responseData)
     return QString();
 }
 
-} // namespace llocr
+}  // namespace llocr

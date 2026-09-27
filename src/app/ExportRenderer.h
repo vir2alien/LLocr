@@ -1,10 +1,10 @@
 #pragma once
 
+#include <functional>
+#include <memory>
 #include <QObject>
 #include <QString>
 #include <QVariant>
-#include <functional>
-#include <memory>
 
 #include <QList>
 #include <QPageLayout>
@@ -24,8 +24,7 @@ public:
     enum class Output { Html, Pdf };
 
     using PageInput = QPair<int, QString>;
-    using ResultCallback =
-        std::function<void(bool success, const QString &html, const QString &error)>;
+    using ResultCallback = std::function<void(bool success, const QString &html, const QString &error)>;
 
     struct Request {
         Output output = Output::Html;
@@ -55,8 +54,7 @@ private:
     void pollFonts();
     void deliver();
     void startPdfPrint();
-    void runJs(const QString &script,
-               const std::function<void(const QVariant &)> &onResult);
+    void runJs(const QString &script, const std::function<void(const QVariant &)> &onResult);
     void fail(const QString &error);
     void finish(bool success, const QString &html, const QString &error);
     static QString jsonString(const QString &value);
@@ -81,4 +79,4 @@ private:
     bool m_printing = false;
 };
 
-} // namespace llocr
+}  // namespace llocr

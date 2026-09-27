@@ -1,24 +1,24 @@
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QCryptographicHash>
 #include <QNetworkAccessManager>
 #include <QRegularExpression>
 
-#include <QSet>
 #include <algorithm>
+#include <QSet>
 #include <QtConcurrent>
 #include <utility>
 
-#include "app/LaunchProfileStore.h"
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 #include "runtime/DownloadGroup.h"
 #include "runtime/DownloadManager.h"
+#include "runtime/LaunchProfileStore.h"
 #include "runtime/ModelInstallTransaction.h"
 
+#include "config/RuntimePaths.h"
 #include "runtime/InstalledState.h"
-#include "runtime/RuntimePaths.h"
 
 namespace llocr {
 
@@ -30,8 +30,7 @@ QString ModelInstallTransaction::repoDirName(const QString &repo)
         if (s.isEmpty() || s == QLatin1String(".") || s == QLatin1String(".."))
             continue;
         s.replace(QLatin1Char('\\'), QStringLiteral("_"));
-        static const QRegularExpression hostile(
-            QStringLiteral("[^A-Za-z0-9._-]"));
+        static const QRegularExpression hostile(QStringLiteral("[^A-Za-z0-9._-]"));
         s.replace(hostile, QStringLiteral("_"));
         if (!s.isEmpty())
             parts.append(s);
@@ -41,11 +40,7 @@ QString ModelInstallTransaction::repoDirName(const QString &repo)
     return parts.join(QStringLiteral("__"));
 }
 
-void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree,
-                                               const QString &prefer,
-                                               const QString &preferMmproj,
-                                               QStringList *modelPaths,
-                                               QString &mmprojRel)
+void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree, const QString &prefer, const QString &preferMmproj, QStringList *modelPaths, QString &mmprojRel)
 {
     modelPaths->clear();
     mmprojRel.clear();
@@ -53,7 +48,7 @@ void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree,
     QStringList singles;                                // repo-relative paths
     QHash<QString, QPair<QStringList, qint64>> groups;  // key -> (paths,size)
     QStringList projectors;
-    QHash<QString, qint64> sizeByPath;                  // path -> size
+    QHash<QString, qint64> sizeByPath;
 
     for (const HfFile &f : tree) {
         if (f.isDir)
@@ -77,13 +72,11 @@ void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree,
         }
     }
     for (auto it = groups.begin(); it != groups.end(); ++it)
-        std::sort(it.value().first.begin(), it.value().first.end(),
-                  &ModelCatalog::splitAscending);
+        std::sort(it.value().first.begin(), it.value().first.end(), &ModelCatalog::splitAscending);
 
     if (mmprojRel.isEmpty()) {
         for (const QString &p : projectors) {
-            if (!preferMmproj.isEmpty()
-                && ModelCatalog::leafName(p) == preferMmproj) {
+            if (!preferMmproj.isEmpty() && ModelCatalog::leafName(p) == preferMmproj) {
                 mmprojRel = p;
                 break;
             }
@@ -124,8 +117,7 @@ void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree,
     QString largestGroup;
     qint64 groupBest = -1;
     for (auto it = groups.constBegin(); it != groups.constEnd(); ++it) {
-        if (it.value().second > groupBest
-            || (it.value().second == groupBest && it.key() < largestGroup)) {
+        if (it.value().second > groupBest || (it.value().second == groupBest && it.key() < largestGroup)) {
             groupBest = it.value().second;
             largestGroup = it.key();
         }
@@ -140,29 +132,16 @@ void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree,
         *modelPaths = {largestSingle};
 }
 
-ModelInstallTransaction::ModelInstallTransaction(SettingsStore &settings,
-                                                 LaunchProfileStore &launchProfiles,
-                                                 InstalledState &state,
-                                                 QObject *parent)
-    : QObject(parent)
-    , m_settings(settings)
-    , m_installState(state)
-    , m_launchProfiles(launchProfiles)
-    , m_downloads(new DownloadManager(this))
+ModelInstallTransaction::ModelInstallTransaction(SettingsStore &settings, LaunchProfileStore &launchProfiles, InstalledState &state, QObject *parent)
+    : QObject(parent), m_settings(settings), m_installState(state), m_launchProfiles(launchProfiles), m_downloads(new DownloadManager(this))
 {
     m_group = new DownloadGroup(m_downloads, this);
-    connect(m_group, &DownloadGroup::progressChanged, this,
-            [this]() { setProgress(m_group->progress()); });
-    connect(m_group, &DownloadGroup::allFinished, this, [this](bool) {
-        maybeFinishDownloads();
-    });
+    connect(m_group, &DownloadGroup::progressChanged, this, [this]() { setProgress(m_group->progress()); });
+    connect(m_group, &DownloadGroup::allFinished, this, [this](bool) { maybeFinishDownloads(); });
 }
 
 ModelInstallTransaction::~ModelInstallTransaction()
 {
-    // An uncommitted staging directory goes away with the transaction, and the
-    // shared install lock is released so a second instance is not locked out
-    // forever (ADR 112).
     m_staging.reset();
     releaseInstallLock();
     if (m_downloads)
@@ -247,52 +226,46 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
     const QString token = m_settings.hfToken();
     const QString modelsDir = m_installState.paths().modelsDir();
 
-    QFuture<QPair<InstallPlan, QString>> future =
-        QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, token,
-                          modelsDir]() -> QPair<InstallPlan, QString> {
-            QNetworkAccessManager nam;
-            QString err;
-            QByteArray auth;
-            if (!token.isEmpty())
-                auth = QStringLiteral("Bearer %1").arg(token).toUtf8();
-            QString rev;
-            if (!pin.isEmpty()) {
-                rev = pin;
-            } else {
-                rev = ModelCatalog::fetchHeadSha(&nam, repo, err, auth);
-                if (rev.isEmpty())
-                    return {InstallPlan{}, err.isEmpty()
-                                          ? QObject::tr("Could not resolve repository %1").arg(repo)
-                                          : err};
-            }
-            const QList<HfFile> tree = ModelCatalog::fetchTree(&nam, repo, rev, err, auth);
-            if (tree.isEmpty())
-                return {InstallPlan{}, err.isEmpty()
-                                      ? QObject::tr("No files found in %1").arg(repo)
-                                      : err};
+    QFuture<QPair<InstallPlan, QString>> future = QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, token, modelsDir]() -> QPair<InstallPlan, QString> {
+        QNetworkAccessManager nam;
+        QString err;
+        QByteArray auth;
+        if (!token.isEmpty())
+            auth = QStringLiteral("Bearer %1").arg(token).toUtf8();
+        QString rev;
+        if (!pin.isEmpty()) {
+            rev = pin;
+        } else {
+            rev = ModelCatalog::fetchHeadSha(&nam, repo, err, auth);
+            if (rev.isEmpty())
+                return {InstallPlan{}, err.isEmpty() ? QObject::tr("Could not resolve repository %1").arg(repo) : err};
+        }
+        const QList<HfFile> tree = ModelCatalog::fetchTree(&nam, repo, rev, err, auth);
+        if (tree.isEmpty())
+            return {InstallPlan{}, err.isEmpty() ? QObject::tr("No files found in %1").arg(repo) : err};
 
-            QStringList modelNames;
-            QString mmprojRel;
-            selectModelFiles(tree, prefer, preferMmproj, &modelNames, mmprojRel);
-            if (modelNames.isEmpty())
-                return {InstallPlan{}, QObject::tr("No usable model file found in %1").arg(repo)};
+        QStringList modelNames;
+        QString mmprojRel;
+        selectModelFiles(tree, prefer, preferMmproj, &modelNames, mmprojRel);
+        if (modelNames.isEmpty())
+            return {InstallPlan{}, QObject::tr("No usable model file found in %1").arg(repo)};
 
-            InstallPlan p;
-            p.repo = repo;
-            p.revision = rev;
-            p.title = preset.title.isEmpty() ? repo : preset.title;
-            p.license = preset.license;
-            p.parser = preset.parser;
-            p.prompt = preset.prompt;
-            p.ctxSize = preset.ctxSize;
-            p.presetId = preset.id;
-            p.dir = QDir(modelsDir).filePath(repoDirName(repo));
-            p.mmprojRel = mmprojRel;
-            p.modelNames = modelNames;
-            p.fileSha256 = preset.sha256;
-            p.files = tree;
-            return {std::move(p), QString()};
-        });
+        InstallPlan p;
+        p.repo = repo;
+        p.revision = rev;
+        p.title = preset.title.isEmpty() ? repo : preset.title;
+        p.license = preset.license;
+        p.parser = preset.parser;
+        p.prompt = preset.prompt;
+        p.ctxSize = preset.ctxSize;
+        p.presetId = preset.id;
+        p.dir = QDir(modelsDir).filePath(repoDirName(repo));
+        p.mmprojRel = mmprojRel;
+        p.modelNames = modelNames;
+        p.fileSha256 = preset.sha256;
+        p.files = tree;
+        return {std::move(p), QString()};
+    });
 
     const int generation = ++m_prepareGeneration;
 
@@ -332,17 +305,9 @@ void ModelInstallTransaction::beginDownload()
 {
     m_installState.ensureDirectories();
 
-    // The install now behaves like the runtime one (ADR 112): it takes the
-    // install lock and writes into a staging directory that is published by an
-    // atomic rename. Before this, a cancelled or failed install left a
-    // half-populated <modelsDir>/<org>__<repo> that the next scan adopted as a
-    // valid model, and a second instance could install into the same directory.
     const RuntimePaths paths = m_installState.paths();
     m_staging.reset();
-    m_staging = std::make_unique<StagedInstall>(
-        StagedInstall::stagingPathFor(paths.stagingDir(),
-                                      QStringLiteral("model-%1").arg(repoDirName(m_pending.repo))),
-        m_pending.dir);
+    m_staging = std::make_unique<StagedInstall>(StagedInstall::stagingPathFor(paths.stagingDir(), QStringLiteral("model-%1").arg(repoDirName(m_pending.repo))), m_pending.dir);
     if (!m_staging->isValid()) {
         setBusy(false);
         setStatusMessage(m_staging->error());
@@ -369,10 +334,6 @@ void ModelInstallTransaction::beginDownload()
 
     m_group->begin();
 
-    // Whether the projector is already on disk means hashing a multi-GB file
-    // (ADR 105), so the decision runs on a worker and the files are enqueued
-    // from its callback. Everything the check needs is captured by value: the
-    // transaction may be destroyed while the hash is in flight.
     if (m_pending.mmprojRel.isEmpty()) {
         enqueueModelFiles(false);
         return;
@@ -383,18 +344,14 @@ void ModelInstallTransaction::beginDownload()
     const QString revision = m_pending.revision;
     const QList<ModelEntry> installed = m_installed;
     auto *watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this,
-            [this, watcher, dir, mmprojRel, expected, revision, installed]() {
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, dir, mmprojRel, expected, revision, installed]() {
         const bool onDisk = watcher->result();
         watcher->deleteLater();
         if (m_state != State::Downloading)
             return;  // cancelled meanwhile
         enqueueModelFiles(onDisk);
     });
-    watcher->setFuture(QtConcurrent::run(
-        [dir, mmprojRel, expected, revision, installed]() {
-            return mmprojAlreadyOnDisk(dir, mmprojRel, expected, revision, installed);
-        }));
+    watcher->setFuture(QtConcurrent::run([dir, mmprojRel, expected, revision, installed]() { return mmprojAlreadyOnDisk(dir, mmprojRel, expected, revision, installed); }));
 }
 
 void ModelInstallTransaction::enqueueModelFiles(bool mmprojOnDisk)
@@ -404,8 +361,7 @@ void ModelInstallTransaction::enqueueModelFiles(bool mmprojOnDisk)
         leaves.insert(ModelCatalog::leafName(path));
     if (!m_pending.mmprojRel.isEmpty())
         leaves.insert(ModelCatalog::leafName(m_pending.mmprojRel));
-    if (leaves.size() < m_pending.modelNames.size()
-                          + (m_pending.mmprojRel.isEmpty() ? 0 : 1)) {
+    if (leaves.size() < m_pending.modelNames.size() + (m_pending.mmprojRel.isEmpty() ? 0 : 1)) {
         setBusy(false);
         setStatusMessage(tr("Repository contains identically named files in "
                             "different subdirectories; cannot install"));
@@ -424,8 +380,7 @@ void ModelInstallTransaction::enqueueModelFiles(bool mmprojOnDisk)
         enqueueFile(m_pending.mmprojRel, repo, rev);
 }
 
-void ModelInstallTransaction::enqueueFile(const QString &repoPath, const QString &repo,
-                                          const QString &commitSha)
+void ModelInstallTransaction::enqueueFile(const QString &repoPath, const QString &repo, const QString &commitSha)
 {
     const QString leaf = ModelCatalog::leafName(repoPath);
     const QUrl url = ModelCatalog::resolveUrl(repo, commitSha, repoPath);
@@ -457,10 +412,7 @@ QString ModelInstallTransaction::expectedShaFor(const QString &repoPath) const
     return QString();
 }
 
-bool ModelInstallTransaction::mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel,
-                                                   const QString &expected,
-                                                   const QString &revision,
-                                                   const QList<ModelEntry> &installed)
+bool ModelInstallTransaction::mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel, const QString &expected, const QString &revision, const QList<ModelEntry> &installed)
 {
     const QString target = QDir(dir).filePath(ModelCatalog::leafName(mmprojRel));
     const QFileInfo fi(target);
@@ -516,13 +468,9 @@ void ModelInstallTransaction::maybeFinishDownloads()
 void ModelInstallTransaction::completeInstall()
 {
     // Paths point at the staging directory until the swap below.
-    auto localPath = [this](const QString &repoPath) {
-        return QDir(m_installDir).filePath(ModelCatalog::leafName(repoPath));
-    };
+    auto localPath = [this](const QString &repoPath) { return QDir(m_installDir).filePath(ModelCatalog::leafName(repoPath)); };
     // ... and at the published directory afterwards.
-    auto installedPath = [this](const QString &repoPath) {
-        return QDir(m_pending.dir).filePath(ModelCatalog::leafName(repoPath));
-    };
+    auto installedPath = [this](const QString &repoPath) { return QDir(m_pending.dir).filePath(ModelCatalog::leafName(repoPath)); };
 
     const QString primary = localPath(m_pending.modelNames.first());
 
@@ -544,8 +492,7 @@ void ModelInstallTransaction::completeInstall()
     ModelEntry e;
     {
         const QString baseId = repoDirName(m_pending.repo);
-        const QString quant = ModelCatalog::quantizationFromName(
-            ModelCatalog::leafName(m_pending.modelNames.first()));
+        const QString quant = ModelCatalog::quantizationFromName(ModelCatalog::leafName(m_pending.modelNames.first()));
         e.id = quant.isEmpty() ? baseId : baseId + QLatin1Char('_') + quant;
     }
     e.title = m_pending.title;
@@ -561,8 +508,7 @@ void ModelInstallTransaction::completeInstall()
     }
     if (!m_pending.mmprojRel.isEmpty())
         e.mmprojPath = installedPath(m_pending.mmprojRel);
-    e.quantization = ModelCatalog::quantizationFromName(
-        ModelCatalog::leafName(m_pending.modelNames.first()));
+    e.quantization = ModelCatalog::quantizationFromName(ModelCatalog::leafName(m_pending.modelNames.first()));
     e.license = m_pending.license;
     e.parser = m_pending.parser;
     e.prompt = m_pending.prompt;
@@ -577,8 +523,7 @@ void ModelInstallTransaction::completeInstall()
             if (!e.roles.contains(r))
                 e.roles.append(r);
     }
-    const QString installRole =
-        m_pendingForCheck ? QStringLiteral("check") : QStringLiteral("ocr");
+    const QString installRole = m_pendingForCheck ? QStringLiteral("check") : QStringLiteral("ocr");
     if (!e.roles.contains(installRole))
         e.roles.append(installRole);
 
@@ -589,9 +534,6 @@ void ModelInstallTransaction::completeInstall()
         total += QFileInfo(localPath(m_pending.mmprojRel)).size();
     e.byteSize = total;
 
-    // Publish: the staging directory becomes the model directory in one rename
-    // (ADR 112). Until this point nothing in <modelsDir> has changed, so a
-    // failure above leaves the previous model — or no model — untouched.
     if (m_staging) {
         QString commitError;
         if (!m_staging->commit(&commitError)) {
@@ -609,17 +551,20 @@ void ModelInstallTransaction::completeInstall()
     QList<ModelEntry> updated;
     // Atomic read-modify-write: a second instance installing its own model must
     // not have its entry dropped by a first-writer-wins save.
-    const bool saved = ModelRegistry::update(pendingModelsDir,
+    const bool saved = ModelRegistry::update(
+        pendingModelsDir,
         [&updated, &e](QList<ModelEntry> &entries) {
             entries.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
             entries.append(e);
             updated = entries;
             return entries;
-        }, saveErr);
+        },
+        saveErr);
     if (!saved) {
         setBusy(false);
         setStatusMessage(tr("Model downloaded, but the registry could not be "
-                            "saved: %1").arg(saveErr));
+                            "saved: %1")
+                             .arg(saveErr));
         setState(State::Error);
         return;
     }
@@ -636,8 +581,7 @@ void ModelInstallTransaction::completeInstall()
         if (!e.parser.isEmpty())
             m_settings.setParserId(e.parser);
         if (e.ctxSize > 0)
-            m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"),
-                                                    e.ctxSize);
+            m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"), e.ctxSize);
     }
     m_settings.forceSave();
 
@@ -652,8 +596,6 @@ void ModelInstallTransaction::cancel()
 {
     ++m_prepareGeneration;
     m_downloads->cancelAll(true);
-    // Cancelling must not leave a staging directory that the next scan could
-    // mistake for an installed model (ADR 112).
     m_staging.reset();
     releaseInstallLock();
     setBusy(false);

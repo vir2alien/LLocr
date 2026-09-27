@@ -39,7 +39,8 @@ enum GGUFType : quint32 {
     Float64 = 12,
 };
 
-class GgufReader {
+class GgufReader
+{
 public:
     static constexpr qint64 kMaxHeaderBytes = 8 * 1024 * 1024;  // 8 MiB
 
@@ -63,8 +64,7 @@ public:
         in.setByteOrder(QDataStream::LittleEndian);
 
         char magic[4] = {};
-        if (in.readRawData(magic, 4) != 4
-            || std::memcmp(magic, "GGUF", 4) != 0) {
+        if (in.readRawData(magic, 4) != 4 || std::memcmp(magic, "GGUF", 4) != 0) {
             error = QStringLiteral("not a GGUF file");
             return false;
         }
@@ -133,32 +133,108 @@ private:
     bool takeValue(QDataStream &in, quint32 type, QVariant &value) const
     {
         switch (type) {
-        case Uint8: { quint8 v; if (!takeUint8(in, v)) return false; value = v; return true; }
-        case Int8: { qint8 v; in >> v; if (in.status() != QDataStream::Ok) return false; value = v; return true; }
-        case Uint16: { quint16 v; in >> v; if (in.status() != QDataStream::Ok) return false; value = v; return true; }
-        case Int16: { qint16 v; in >> v; if (in.status() != QDataStream::Ok) return false; value = v; return true; }
-        case Uint32: { quint32 v; if (!takeUint32(in, v)) return false; value = v; return true; }
-        case Int32: { quint32 v; if (!takeUint32(in, v)) return false; value = static_cast<qint32>(v); return true; }
-        case Float32: {
-            quint32 raw; if (!takeUint32(in, raw)) return false;
-            float f{}; std::memcpy(&f, &raw, sizeof f); value = static_cast<double>(f); return true;
+        case Uint8: {
+            quint8 v;
+            if (!takeUint8(in, v))
+                return false;
+            value = v;
+            return true;
         }
-        case Bool: { quint8 v; if (!takeUint8(in, v)) return false; value = (v != 0); return true; }
-        case String: { QString s; if (!takeString(in, s)) return false; value = s; return true; }
-        case Uint64: { quint64 v; if (!takeU64(in, v)) return false; value = v; return true; }
-        case Int64: { quint64 v; if (!takeU64(in, v)) return false; value = static_cast<qint64>(v); return true; }
+        case Int8: {
+            qint8 v;
+            in >> v;
+            if (in.status() != QDataStream::Ok)
+                return false;
+            value = v;
+            return true;
+        }
+        case Uint16: {
+            quint16 v;
+            in >> v;
+            if (in.status() != QDataStream::Ok)
+                return false;
+            value = v;
+            return true;
+        }
+        case Int16: {
+            qint16 v;
+            in >> v;
+            if (in.status() != QDataStream::Ok)
+                return false;
+            value = v;
+            return true;
+        }
+        case Uint32: {
+            quint32 v;
+            if (!takeUint32(in, v))
+                return false;
+            value = v;
+            return true;
+        }
+        case Int32: {
+            quint32 v;
+            if (!takeUint32(in, v))
+                return false;
+            value = static_cast<qint32>(v);
+            return true;
+        }
+        case Float32: {
+            quint32 raw;
+            if (!takeUint32(in, raw))
+                return false;
+            float f{};
+            std::memcpy(&f, &raw, sizeof f);
+            value = static_cast<double>(f);
+            return true;
+        }
+        case Bool: {
+            quint8 v;
+            if (!takeUint8(in, v))
+                return false;
+            value = (v != 0);
+            return true;
+        }
+        case String: {
+            QString s;
+            if (!takeString(in, s))
+                return false;
+            value = s;
+            return true;
+        }
+        case Uint64: {
+            quint64 v;
+            if (!takeU64(in, v))
+                return false;
+            value = v;
+            return true;
+        }
+        case Int64: {
+            quint64 v;
+            if (!takeU64(in, v))
+                return false;
+            value = static_cast<qint64>(v);
+            return true;
+        }
         case Float64: {
-            quint64 raw; if (!takeU64(in, raw)) return false;
-            double d{}; std::memcpy(&d, &raw, sizeof d); value = d; return true;
+            quint64 raw;
+            if (!takeU64(in, raw))
+                return false;
+            double d{};
+            std::memcpy(&d, &raw, sizeof d);
+            value = d;
+            return true;
         }
         case Array: {
-            quint32 elemType = 0; quint64 count = 0;
-            if (!takeUint32(in, elemType) || !takeU64(in, count)) return false;
+            quint32 elemType = 0;
+            quint64 count = 0;
+            if (!takeUint32(in, elemType) || !takeU64(in, count))
+                return false;
             for (quint64 i = 0; i < count; ++i) {
                 QVariant ignored;
-                if (!takeValue(in, elemType, ignored)) return false;
+                if (!takeValue(in, elemType, ignored))
+                    return false;
             }
-            value = QVariant(); // arrays skipped
+            value = QVariant();  // arrays skipped
             return true;
         }
         default:
@@ -172,9 +248,7 @@ private:
     QFile m_file;
 };
 
-bool readIntMeta(const QHash<QString, QVariant> &meta,
-                 const QString &candidate1, const QString &candidate2,
-                 qint64 &value)
+bool readIntMeta(const QHash<QString, QVariant> &meta, const QString &candidate1, const QString &candidate2, qint64 &value)
 {
     for (const QString &key : {candidate1, candidate2}) {
         if (meta.contains(key)) {
@@ -193,11 +267,9 @@ QString cacheType(const QString &type)
     return QStringLiteral("f16");
 }
 
-} // namespace
+}  // namespace
 
-ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize,
-                                        const QString &cacheTypeK,
-                                        const QString &cacheTypeV)
+ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, const QString &cacheTypeK, const QString &cacheTypeV)
 {
     ModelMemoryEstimate e;
     e.modelBytes = QFileInfo(modelPath).size();
@@ -215,27 +287,26 @@ ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize,
     qint64 nLayer = 0, nKvHead = 0, headCount = 0, nEmbd = 0;
     qint64 headDim = 0;
     if (e.valid) {
-        for (const QString &arch : {QStringLiteral("llama"), QStringLiteral("qwen2"),
-                                    QStringLiteral("gptneox")}) {
+        for (const QString &arch : {QStringLiteral("llama"), QStringLiteral("qwen2"), QStringLiteral("gptneox")}) {
             if (!nLayer)
                 readIntMeta(meta, arch + ".block_count", arch + ".n_layer", nLayer);
             if (!nKvHead)
-                readIntMeta(meta, arch + ".attention.head_count_kv",
-                            arch + ".n_head_kv", nKvHead);
+                readIntMeta(meta, arch + ".attention.head_count_kv", arch + ".n_head_kv", nKvHead);
             if (!headCount)
-                readIntMeta(meta, arch + ".attention.head_count",
-                            arch + ".n_head", headCount);
+                readIntMeta(meta, arch + ".attention.head_count", arch + ".n_head", headCount);
             if (!nEmbd)
-                readIntMeta(meta, arch + ".embedding_length",
-                            arch + ".n_embd", nEmbd);
+                readIntMeta(meta, arch + ".embedding_length", arch + ".n_embd", nEmbd);
         }
     }
     if (headCount > 0 && nEmbd > 0)
         headDim = nEmbd / headCount;
 
-    if (nLayer <= 0) nLayer = 28;
-    if (nKvHead <= 0) nKvHead = 8;
-    if (headDim <= 0) headDim = 128;
+    if (nLayer <= 0)
+        nLayer = 28;
+    if (nKvHead <= 0)
+        nKvHead = 8;
+    if (headDim <= 0)
+        headDim = 128;
 
     e.nLayer = nLayer;
     e.nKvHead = nKvHead;
@@ -270,4 +341,4 @@ qint64 systemPhysicalRamBytes()
 #endif
 }
 
-} // namespace llocr
+}  // namespace llocr

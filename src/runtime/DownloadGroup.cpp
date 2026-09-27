@@ -4,12 +4,9 @@
 
 namespace llocr {
 
-DownloadGroup::DownloadGroup(DownloadManager *manager, QObject *parent)
-    : QObject(parent)
-    , m_manager(manager)
+DownloadGroup::DownloadGroup(DownloadManager *manager, QObject *parent) : QObject(parent), m_manager(manager)
 {
-    connect(manager, &DownloadManager::progressChanged, this,
-            &DownloadGroup::progressChanged);
+    connect(manager, &DownloadManager::progressChanged, this, &DownloadGroup::progressChanged);
 }
 
 void DownloadGroup::begin()
@@ -25,20 +22,14 @@ void DownloadGroup::enqueue(const DownloadTask::Request &request)
     DownloadTask *task = m_manager->taskAt(m_manager->enqueue(request));
     ++m_count;
     m_tasks.append(task);
-    connect(task, &DownloadTask::downloadFinished, this,
-            [this](bool ok) { onOneFinished(ok); });
+    connect(task, &DownloadTask::downloadFinished, this, [this](bool ok) { onOneFinished(ok); });
     const auto st = task->state();
-    if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed
-        || st == DownloadTask::State::Canceled)
+    if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed || st == DownloadTask::State::Canceled)
         onOneFinished(st == DownloadTask::State::Completed);
 }
 
 double DownloadGroup::progress() const
 {
-    // Sum over *this group's* tasks, not the manager's aggregate: the manager is
-    // shared with every other group and keeps up to ten terminal tasks, so a
-    // second install used to be diluted by the first one's leftovers and the bar
-    // stalled below 100 % (ADR 107).
     qint64 total = 0;
     qint64 received = 0;
     for (const DownloadTask *task : m_tasks) {

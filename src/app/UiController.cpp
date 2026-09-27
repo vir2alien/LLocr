@@ -9,10 +9,7 @@ UiController::UiController(SettingsStore &settings, QObject *parent) : m_setting
 {
     m_mode = static_cast<Mode>(m_settings.themeMode());
 
-    connect(QGuiApplication::styleHints(),
-            &QStyleHints::colorSchemeChanged,
-            this,
-            &UiController::darkChanged);
+    connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this, &UiController::darkChanged);
 
     apply();
 }
@@ -46,9 +43,7 @@ bool UiController::dark() const
 
 void UiController::apply() const
 {
-    const auto scheme = m_mode == Light ? Qt::ColorScheme::Light
-                        : m_mode == Dark ? Qt::ColorScheme::Dark
-                                         : Qt::ColorScheme::Unknown;
+    const auto scheme = m_mode == Light ? Qt::ColorScheme::Light : m_mode == Dark ? Qt::ColorScheme::Dark : Qt::ColorScheme::Unknown;
     QGuiApplication::styleHints()->setColorScheme(scheme);
 }
 

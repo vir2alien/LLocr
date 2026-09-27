@@ -15,7 +15,8 @@
 
 namespace llocr {
 
-class GeneralPurposeModel {
+class GeneralPurposeModel
+{
     Q_DISABLE_COPY_MOVE(GeneralPurposeModel)
 
 public:
@@ -25,20 +26,16 @@ public:
     virtual QString id() const = 0;
     virtual QString displayName() const = 0;
 
-    QFuture<CheckResult> check(const CheckRequest &request,
-                               const ConnectionConfig &config);
+    QFuture<CheckResult> check(const CheckRequest &request, const ConnectionConfig &config);
 
     void abort();
 
 protected:
-    // Static for the same reason as OcrModel: check() must complete even after
-    // the adapter is destroyed (ADR 111).
-    static QByteArray buildRequestBody(const CheckRequest &request,
-                                       const QByteArray &imageDataUrl);
+    static QByteArray buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl);
     static CheckResult parseResponse(const QByteArray &responseData);
 
 private:
     std::shared_ptr<LlamaClient> m_activeClient;
 };
 
-} // namespace llocr
+}  // namespace llocr

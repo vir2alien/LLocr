@@ -21,12 +21,12 @@ class LlamaServerProcess : public QObject
 
 public:
     struct Options {
-        QString program;          // absolute path to llama-server
+        QString program;  // absolute path to llama-server
         QStringList arguments;
         QString workingDirectory;
         QString host = QStringLiteral("127.0.0.1");
-        QString baseUrl;          // override health target; empty → host:port
-        int port = 0;             // 0 = pick a free port
+        QString baseUrl;  // override health target; empty → host:port
+        int port = 0;     // 0 = pick a free port
         int startupTimeoutMs = 180000;
         bool autoRestart = true;  // bounded: ≤3 restarts / 5 min
         QString logFile;          // rotating file path (5 MB × 3)

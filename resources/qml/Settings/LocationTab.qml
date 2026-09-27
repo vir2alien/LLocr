@@ -72,7 +72,6 @@ Item {
             width: parent.width
             spacing: 6
 
-            // --- External server: the model is not managed here ----------
             ColumnLayout {
                 visible: root.externalMode
                 Layout.fillWidth: true
@@ -98,7 +97,6 @@ Item {
                 }
             }
 
-            // --- Managed runtime -----------------------------------------
             ColumnLayout {
                 visible: !root.externalMode
                 Layout.fillWidth: true
@@ -125,7 +123,6 @@ Item {
                     }
                 }
 
-                // -- Specify model files -------------------------------
                 ColumnLayout {
                     visible: sourceBox.currentIndex === 0
                     Layout.fillWidth: true
@@ -220,7 +217,6 @@ Item {
                     }
                 }
 
-                // -- Download model ------------------------------------
                 ColumnLayout {
                     visible: sourceBox.currentIndex === 1
                     Layout.fillWidth: true

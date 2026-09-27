@@ -1,5 +1,5 @@
-#include <QtTest>
 #include <QAbstractItemModelTester>
+#include <QtTest>
 
 #include "app/PageListModel.h"
 
@@ -8,12 +8,13 @@ using namespace llocr;
 // Verification of PageListModel::movePage ordering, including the
 // beginMoveRows()/endMoveRows() signalling that keeps the QML ListView
 // (QQmlDelegateModel) in sync with the underlying data.
-class TestPageModel : public QObject {
+class TestPageModel : public QObject
+{
     Q_OBJECT
 
 private:
     // Returns true if `recognized` is set on exactly row `row`.
-    bool isRecognizedAt(const PageListModel& model, int row, bool recognized = true) const
+    bool isRecognizedAt(const PageListModel &model, int row, bool recognized = true) const
     {
         const QModelIndex mi = model.index(row);
         return mi.isValid() && model.data(mi, PageListModel::RecognizedRole).toBool() == recognized;
@@ -24,18 +25,15 @@ private slots:
     {
         PageListModel model;
         model.setPageCount(4);
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         // Mark page 0 as recognized so we can track it across the move.
         model.setRecognized(0, true);
         QVERIFY(isRecognizedAt(model, 0));
 
-        // Move page 0 down to position 2.
         model.movePage(0, 2);
 
         QCOMPARE(model.rowCount(), 4);
-        // The recognized page should now sit at index 2.
         QVERIFY(isRecognizedAt(model, 2));
         QVERIFY(isRecognizedAt(model, 0, false));
         QVERIFY(isRecognizedAt(model, 1, false));
@@ -46,8 +44,7 @@ private slots:
     {
         PageListModel model;
         model.setPageCount(3);
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setRecognized(0, true);
 
@@ -63,12 +60,10 @@ private slots:
     {
         PageListModel model;
         model.setPageCount(4);
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setRecognized(3, true);
 
-        // Move page 3 up to position 1.
         model.movePage(3, 1);
 
         QCOMPARE(model.rowCount(), 4);
@@ -80,8 +75,7 @@ private slots:
     {
         PageListModel model;
         model.setPageCount(4);
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setCurrent(2);
 
@@ -90,7 +84,6 @@ private slots:
         model.movePage(0, 3);
         QVERIFY(isCurrent(model, 1));
 
-        // Move page 1 (the current page) up to the top.
         model.movePage(1, 0);
         QVERIFY(isCurrent(model, 0));
 
@@ -110,7 +103,7 @@ private slots:
 
         // The view must be told all rows changed so the "Page N" labels refresh.
         QCOMPARE(spy.count(), 1);
-        const QList<QVariant>& args = spy.at(0);
+        const QList<QVariant> &args = spy.at(0);
         QCOMPARE(args.at(0).value<QModelIndex>().row(), 0);
         QCOMPARE(args.at(1).value<QModelIndex>().row(), 3);
 
@@ -126,8 +119,7 @@ private slots:
     {
         PageListModel model;
         model.setPageCount(2);
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setRecognized(0, true);
         model.setEdited(1, true);
@@ -161,8 +153,7 @@ private slots:
     {
         PageListModel model;
         model.setPageCount(3);
-        QAbstractItemModelTester tester(&model,
-                                        QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setCurrent(1);
         QVERIFY(isCurrent(model, 1));
@@ -184,7 +175,7 @@ private slots:
         QVERIFY(isCurrent(model, 2));
     }
 
-    bool isCurrent(const PageListModel& model, int row) const
+    bool isCurrent(const PageListModel &model, int row) const
     {
         const QModelIndex mi = model.index(row);
         return mi.isValid() && model.data(mi, PageListModel::CurrentRole).toBool();

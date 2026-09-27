@@ -1,9 +1,9 @@
 #pragma once
 
+#include <functional>
 #include <QImage>
 #include <QObject>
 #include <QString>
-#include <functional>
 
 #include "app/CheckController.h"
 #include "app/DocumentModel.h"
@@ -50,11 +50,9 @@ public slots:
 
 signals:
     void stateChanged();
-    void statusRequested(const StatusMessage &message);
-    void blockChecked(int pageIndex, int boxIndex, const CheckResult &result);
-    /// A check failed: the error text belongs in the problem log, not only in
-    /// the footer line that shows it while the queue runs (ADR 119).
-    void problemReported(const StatusMessage &message);
+    void statusRequested(const llocr::StatusMessage &message);
+    void blockChecked(int pageIndex, int boxIndex, const llocr::CheckResult &result);
+    void problemReported(const llocr::StatusMessage &message);
 
 private:
     struct VerifyTask {
@@ -65,8 +63,7 @@ private:
     void startVerifyQueue(const QList<VerifyTask> &tasks);
     void startNextVerify();
     void finishVerifyQueue();
-    void collectEnabledBoxes(int pageIndex, QList<int> &out,
-                             bool onlyUnchecked) const;
+    void collectEnabledBoxes(int pageIndex, QList<int> &out, bool onlyUnchecked) const;
 
     Deps m_deps;
     CheckController m_check;

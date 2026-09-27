@@ -1,4 +1,4 @@
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 
 #include <QCoreApplication>
 #include <QMetaProperty>
@@ -6,54 +6,51 @@
 namespace llocr {
 
 const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
-    { kLanguage, "language", QVariant(QString::fromUtf8(kDefaultLanguage)) },
-    { kThemeMode, "themeMode", QVariant(kDefaultThemeMode) },
-    { kBaseUrl, "baseUrl", QVariant(QString::fromUtf8(kDefaultBaseUrl)) },
-    { kApiKey, "apiKey", QVariant(QString::fromUtf8(kDefaultApiKey)) },
-    { kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs) },
-    { kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName)) },
-    { kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId)) },
-    // Same default as the model id it used to be: the profile follows the model
-    // until somebody chooses otherwise (ADR 110).
-    { kRequestProfileId, "requestProfileId",
-      QVariant(QString::fromUtf8(kDefaultModelRecipeId)) },
-    { kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId)) },
-    { kSplitPages, "splitPages", QVariant(kDefaultSplitPages) },
-    { kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers) },
-    { kTablesAsHtml, "tablesAsHtml", QVariant(kDefaultTablesAsHtml) },
-    { kPdfLandscape, "pdfLandscape", QVariant(kDefaultPdfLandscape) },
-    { kPdfMarginMm, "pdfMarginMm", QVariant(kDefaultPdfMarginMm) },
-    { kConnectionMode, "connectionMode", QVariant(QString::fromUtf8(kModeExternal)) },
-    { kSetupVersion, "setupVersion", QVariant(0) },  // 0 = re-run first-run wizard
-    { kSetupDismissed, "setupDismissed", QVariant(false) },
-    { kServerPath, "serverPath", QVariant(QString()) },
-    { kServerPathIsManaged, "serverPathIsManaged", QVariant(false) },
-    { kRuntimeRootDir, "runtimeRootDir", QVariant(QString()) },
-    { kRuntimeModelsDir, "runtimeModelsDir", QVariant(QString()) },
-    { kRuntimeBackend, "runtimeBackend", QVariant(QString()) },
-    { kInstalledBuild, "installedBuild", QVariant(QString()) },
-    { kAutoStart, "autoStart", QVariant(false) },
-    { kStartOnDemand, "startOnDemand", QVariant(true) },
-    { kStopOnExit, "stopOnExit", QVariant(true) },
-    { kAutoRestart, "autoRestart", QVariant(true) },
-    { kStartupTimeoutMs, "startupTimeoutMs", QVariant(kDefaultStartupTimeoutMs) },
-    { kAllowNonLoopback, "allowNonLoopback", QVariant(false) },
-    { kLaunchProfileId, "launchProfileId", QVariant(QString()) },
-    { kLaunchModelPath, "launchModelPath", QVariant(QString()) },
-    { kLaunchMmprojPath, "launchMmprojPath", QVariant(QString()) },
-    { kLaunchModelAlias, "launchModelAlias", QVariant(QString::fromUtf8(kDefaultModelAlias)) },
-    { kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost)) },
-    { kLaunchPort, "launchPort", QVariant(kDefaultPort) },
-    { kLaunchSourceDownload, "launchSourceDownload", QVariant(false) },
-    { kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString()) },
-    { kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString()) },
-    { kCheckLaunchSourceDownload, "checkLaunchSourceDownload", QVariant(false) },
-    { kCheckRequestProfileId, "checkRequestProfileId", QVariant(QString()) },
-    { kCheckLaunchProfileId, "checkLaunchProfileId", QVariant(QString()) },
-    { kCheckModelName, "checkModelName", QVariant(QString()) },
-    { kAutoCheck, "autoCheck", QVariant(false) },
-    { kHfToken, "hfToken", QVariant(QString()) },
-    { kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString()) },
+    {kLanguage, "language", QVariant(QString::fromUtf8(kDefaultLanguage))},
+    {kThemeMode, "themeMode", QVariant(kDefaultThemeMode)},
+    {kBaseUrl, "baseUrl", QVariant(QString::fromUtf8(kDefaultBaseUrl))},
+    {kApiKey, "apiKey", QVariant(QString::fromUtf8(kDefaultApiKey))},
+    {kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs)},
+    {kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName))},
+    {kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
+    {kRequestProfileId, "requestProfileId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
+    {kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId))},
+    {kSplitPages, "splitPages", QVariant(kDefaultSplitPages)},
+    {kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers)},
+    {kTablesAsHtml, "tablesAsHtml", QVariant(kDefaultTablesAsHtml)},
+    {kPdfLandscape, "pdfLandscape", QVariant(kDefaultPdfLandscape)},
+    {kPdfMarginMm, "pdfMarginMm", QVariant(kDefaultPdfMarginMm)},
+    {kConnectionMode, "connectionMode", QVariant(QString::fromUtf8(kModeExternal))},
+    {kSetupVersion, "setupVersion", QVariant(0)},  // 0 = re-run first-run wizard
+    {kSetupDismissed, "setupDismissed", QVariant(false)},
+    {kServerPath, "serverPath", QVariant(QString())},
+    {kServerPathIsManaged, "serverPathIsManaged", QVariant(false)},
+    {kRuntimeRootDir, "runtimeRootDir", QVariant(QString())},
+    {kRuntimeModelsDir, "runtimeModelsDir", QVariant(QString())},
+    {kRuntimeBackend, "runtimeBackend", QVariant(QString())},
+    {kInstalledBuild, "installedBuild", QVariant(QString())},
+    {kAutoStart, "autoStart", QVariant(false)},
+    {kStartOnDemand, "startOnDemand", QVariant(true)},
+    {kStopOnExit, "stopOnExit", QVariant(true)},
+    {kAutoRestart, "autoRestart", QVariant(true)},
+    {kStartupTimeoutMs, "startupTimeoutMs", QVariant(kDefaultStartupTimeoutMs)},
+    {kAllowNonLoopback, "allowNonLoopback", QVariant(false)},
+    {kLaunchProfileId, "launchProfileId", QVariant(QString())},
+    {kLaunchModelPath, "launchModelPath", QVariant(QString())},
+    {kLaunchMmprojPath, "launchMmprojPath", QVariant(QString())},
+    {kLaunchModelAlias, "launchModelAlias", QVariant(QString::fromUtf8(kDefaultModelAlias))},
+    {kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost))},
+    {kLaunchPort, "launchPort", QVariant(kDefaultPort)},
+    {kLaunchSourceDownload, "launchSourceDownload", QVariant(false)},
+    {kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString())},
+    {kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString())},
+    {kCheckLaunchSourceDownload, "checkLaunchSourceDownload", QVariant(false)},
+    {kCheckRequestProfileId, "checkRequestProfileId", QVariant(QString())},
+    {kCheckLaunchProfileId, "checkLaunchProfileId", QVariant(QString())},
+    {kCheckModelName, "checkModelName", QVariant(QString())},
+    {kAutoCheck, "autoCheck", QVariant(false)},
+    {kHfToken, "hfToken", QVariant(QString())},
+    {kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString())},
 };
 
 SettingsStore::SettingsStore(QObject *parent) : QObject(parent)
@@ -78,34 +75,23 @@ bool SettingsStore::contains(const QString &key) const
 void SettingsStore::applyStartupMigration()
 {
     if (!m_settings.contains(kSetupVersion)) {
-        const bool looksConfigured = m_settings.contains(kBaseUrl)
-                                  && !m_settings.value(kBaseUrl).toString().isEmpty();
+        const bool looksConfigured = m_settings.contains(kBaseUrl) && !m_settings.value(kBaseUrl).toString().isEmpty();
         m_settings.setValue(kConnectionMode, QString::fromUtf8(kModeExternal));
         m_settings.setValue(kSetupVersion, looksConfigured ? kCurrentSetupVersion : 0);
     }
 
-    if (m_settings.value(kConnectionMode).toString()
-            == QString::fromUtf8(kModeExternal)
-        && m_settings.contains(kBaseUrl)
-        && m_settings.value(kBaseUrl).toString().isEmpty()) {
+    if (m_settings.value(kConnectionMode).toString() == QString::fromUtf8(kModeExternal) && m_settings.contains(kBaseUrl) && m_settings.value(kBaseUrl).toString().isEmpty()) {
         const QString saved = m_settings.value(kLastExternalBaseUrl).toString();
         if (!saved.isEmpty())
             m_settings.setValue(kBaseUrl, saved);
     }
 
-    // The OCR request profile used to live in model/recipeId, which also names
-    // the model adapter. Adopt it into its own key once, so the two stop moving
-    // together (ADR 110). Read through the getter: the raw value is absent on a
-    // profile that never chose a model, and the getter supplies the default.
     if (!m_settings.contains(kRequestProfileId)) {
         const QString legacy = modelRecipeId();
         if (!legacy.isEmpty())
             m_settings.setValue(kRequestProfileId, legacy);
     }
 
-    // `launch/presetId` was written by the preset installer and read by nobody:
-    // the active launch profile is `launch/profileId` (ADR 117). Drop the key
-    // so an old profile does not keep a value that no longer means anything.
     m_settings.remove(QString::fromUtf8("launch/presetId"));
 }
 
@@ -127,8 +113,7 @@ void SettingsStore::resetGroup(const std::function<bool(const QString &)> &match
             continue;
         const QMetaProperty prop = mo->property(mo->indexOfProperty(entry.property));
         if (!prop.isValid() || !prop.write(this, entry.defaultValue)) {
-            qWarning("SettingsStore: resetGroup() cannot write property %s",
-                     entry.property);
+            qWarning("SettingsStore: resetGroup() cannot write property %s", entry.property);
         }
     }
     forceSave();
@@ -136,23 +121,14 @@ void SettingsStore::resetGroup(const std::function<bool(const QString &)> &match
 
 void SettingsStore::resetOutputDefaults()
 {
-    resetGroup([](const QString &key) {
-        return key == QLatin1String("parser/id")
-            || key.startsWith(QLatin1String("output/"))
-            || key.startsWith(QLatin1String("export/"));
-    });
+    resetGroup([](const QString &key) { return key == QLatin1String("parser/id") || key.startsWith(QLatin1String("output/")) || key.startsWith(QLatin1String("export/")); });
 }
 
 void SettingsStore::resetRuntimeDefaults()
 {
     resetGroup([](const QString &key) {
-        return key == QLatin1String("provider/mode")
-            || key == QLatin1String("provider/baseUrl")
-            || key == QLatin1String("provider/apiKey")
-            || key == QLatin1String("provider/timeoutMs")
-            || key == QLatin1String("model/name")
-            || key == QLatin1String("check/modelName")
-            || key == QLatin1String("runtime/serverPath");
+        return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/apiKey") || key == QLatin1String("provider/timeoutMs") ||
+               key == QLatin1String("model/name") || key == QLatin1String("check/modelName") || key == QLatin1String("runtime/serverPath");
     });
 }
 
@@ -225,8 +201,7 @@ QString SettingsStore::modelRecipeId() const
 
 QString SettingsStore::requestProfileId() const
 {
-    return m_settings.value(kRequestProfileId,
-                            QString::fromUtf8(kDefaultModelRecipeId)).toString();
+    return m_settings.value(kRequestProfileId, QString::fromUtf8(kDefaultModelRecipeId)).toString();
 }
 
 void SettingsStore::setRequestProfileId(const QString &id)
@@ -422,21 +397,17 @@ QString SettingsStore::connectionMode() const
 
 ConnectionMode SettingsStore::mode() const
 {
-    return connectionMode() == QString::fromUtf8(kModeManaged)
-               ? ConnectionMode::Managed
-               : ConnectionMode::External;
+    return connectionMode() == QString::fromUtf8(kModeManaged) ? ConnectionMode::Managed : ConnectionMode::External;
 }
 
 void SettingsStore::setMode(ConnectionMode mode)
 {
-    setConnectionMode(mode == ConnectionMode::Managed ? QString::fromUtf8(kModeManaged)
-                                                      : QString::fromUtf8(kModeExternal));
+    setConnectionMode(mode == ConnectionMode::Managed ? QString::fromUtf8(kModeManaged) : QString::fromUtf8(kModeExternal));
 }
 
 void SettingsStore::setConnectionMode(const QString &mode)
 {
-    if (mode != QString::fromUtf8(kModeExternal)
-        && mode != QString::fromUtf8(kModeManaged)) {
+    if (mode != QString::fromUtf8(kModeExternal) && mode != QString::fromUtf8(kModeManaged)) {
         qWarning("Ignoring invalid connection mode %s", qPrintable(mode));
         return;
     }
@@ -636,7 +607,6 @@ void SettingsStore::setStartupTimeoutMs(int ms)
     m_settings.setValue(kStartupTimeoutMs, ms);
     emit startupTimeoutMsChanged();
 }
-
 
 bool SettingsStore::allowNonLoopback() const
 {

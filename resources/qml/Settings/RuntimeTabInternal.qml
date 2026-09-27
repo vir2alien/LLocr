@@ -81,7 +81,6 @@ ScrollView {
         width: parent.width
         spacing: 4
 
-        // --- Variant 1: user-specified llama-server binary ----------------
         LLOLabel {
             visible: !root.downloadMode
             text: qsTr("llama-server binary")
@@ -122,7 +121,6 @@ ScrollView {
                    ? Theme.textSecondary : Theme.textMuted
         }
 
-        // --- Variant 2: download llama.cpp via the app --------------------
         LLOLabel {
             visible: root.downloadMode
             text: qsTr("Install llama.cpp")

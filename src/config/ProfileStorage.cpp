@@ -1,4 +1,4 @@
-#include "app/ProfileStorage.h"
+#include "config/ProfileStorage.h"
 
 #include <QDir>
 #include <QFile>
@@ -29,8 +29,7 @@ bool removeFileIfExists(const QString &path, QString *error)
     return true;
 }
 
-bool writeJsonAtomic(const QString &path, const QJsonObject &root,
-                     QString *error)
+bool writeJsonAtomic(const QString &path, const QJsonObject &root, QString *error)
 {
     QDir().mkpath(QFileInfo(path).absolutePath());
 
@@ -71,8 +70,7 @@ QJsonDocument readJson(const QString &path, bool *ok, QString *error)
     return doc;
 }
 
-QJsonDocument readEnvelope(const QString &path, int expectedSchemaVersion,
-                           const QString &storeName, bool *ok, QString *error)
+QJsonDocument readEnvelope(const QString &path, int expectedSchemaVersion, const QString &storeName, bool *ok, QString *error)
 {
     QJsonDocument doc = readJson(path, ok, error);
     if (!*ok || !doc.isObject())
@@ -87,15 +85,13 @@ QJsonDocument readEnvelope(const QString &path, int expectedSchemaVersion,
         // A newer build wrote this. Applying what can be parsed beats discarding
         // the user's overrides, but it must not be silent.
         if (error) {
-            *error = QStringLiteral("%1: schema version %2 is newer than the supported %3")
-                         .arg(storeName).arg(version).arg(expectedSchemaVersion);
+            *error = QStringLiteral("%1: schema version %2 is newer than the supported %3").arg(storeName).arg(version).arg(expectedSchemaVersion);
         }
     }
     return doc;
 }
 
-bool writeEnvelope(const QString &path, int schemaVersion, const QJsonObject &body,
-                   QString *error)
+bool writeEnvelope(const QString &path, int schemaVersion, const QJsonObject &body, QString *error)
 {
     QJsonObject root = body;
     root.insert(QLatin1String(kSchemaVersionKey), schemaVersion);

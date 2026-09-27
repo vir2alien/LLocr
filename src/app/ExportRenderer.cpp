@@ -21,21 +21,16 @@ public:
     using QWebEnginePage::QWebEnginePage;
 
 protected:
-    bool acceptNavigationRequest(const QUrl &url, NavigationType, bool) override
-    {
-        return url.scheme() == QLatin1String("qrc")
-            && url.path().startsWith(QLatin1String("/preview/"));
-    }
+    bool acceptNavigationRequest(const QUrl &url, NavigationType, bool) override { return url.scheme() == QLatin1String("qrc") && url.path().startsWith(QLatin1String("/preview/")); }
 };
 
 namespace {
 constexpr int kPollIntervalMs = 100;
-constexpr int kMaxPollCount = 40;    // ~4 s cap for the font settling
+constexpr int kMaxPollCount = 40;  // ~4 s cap for the font settling
 constexpr int kWatchdogTimeoutMs = 180000;
 }  // namespace
 
-ExportRenderer::ExportRenderer(QObject *parent)
-    : QObject(parent)
+ExportRenderer::ExportRenderer(QObject *parent) : QObject(parent)
 {
     m_pollTimer = new QTimer(this);
     m_pollTimer->setInterval(kPollIntervalMs);
@@ -44,9 +39,7 @@ ExportRenderer::ExportRenderer(QObject *parent)
     m_watchdog = new QTimer(this);
     m_watchdog->setSingleShot(true);
     m_watchdog->setInterval(kWatchdogTimeoutMs);
-    connect(m_watchdog, &QTimer::timeout, this, [this]() {
-        fail(tr("Export rendering timed out."));
-    });
+    connect(m_watchdog, &QTimer::timeout, this, [this]() { fail(tr("Export rendering timed out.")); });
 }
 
 ExportRenderer::~ExportRenderer() = default;
@@ -70,8 +63,7 @@ void ExportRenderer::render(const Request &request, const ResultCallback &callba
     m_nextPage = 0;
     m_styleSheet = request.styleSheet;
     m_splitPages = request.splitPages;
-    m_pageLayout = request.pageLayout.isValid()
-                       ? request.pageLayout : Exporter::defaultPdfLayout();
+    m_pageLayout = request.pageLayout.isValid() ? request.pageLayout : Exporter::defaultPdfLayout();
     m_outputPath = request.outputPath;
     m_callback = std::move(callback);
     m_printing = false;
@@ -84,8 +76,7 @@ void ExportRenderer::ensurePage()
 {
     if (!m_page) {
         m_page = std::make_unique<ExportPage>(this);
-        connect(m_page.get(), &QWebEnginePage::loadFinished, this,
-                [this](bool ok) {
+        connect(m_page.get(), &QWebEnginePage::loadFinished, this, [this](bool ok) {
             m_pageReady = ok;
             if (!m_busy)
                 return;
@@ -94,8 +85,7 @@ void ExportRenderer::ensurePage()
             else
                 fail(tr("Cannot load the export page."));
         });
-        connect(m_page.get(), &QWebEnginePage::renderProcessTerminated, this,
-                [this](QWebEnginePage::RenderProcessTerminationStatus, int) {
+        connect(m_page.get(), &QWebEnginePage::renderProcessTerminated, this, [this](QWebEnginePage::RenderProcessTerminationStatus, int) {
             m_pageReady = false;
             if (m_busy)
                 fail(tr("The export renderer process terminated."));
@@ -112,18 +102,17 @@ void ExportRenderer::ensurePage()
 void ExportRenderer::startRun()
 {
     runJs(QStringLiteral("typeof window.beginExport === 'function'"
-                        " && window.beginExport(%1, %2)")
-              .arg(jsonString(m_styleSheet), m_splitPages ? QStringLiteral("true")
-                                                          : QStringLiteral("false")),
+                         " && window.beginExport(%1, %2)")
+              .arg(jsonString(m_styleSheet), m_splitPages ? QStringLiteral("true") : QStringLiteral("false")),
           [this](const QVariant &ok) {
-        if (!m_busy)
-            return;
-        if (!ok.toBool()) {
-            fail(tr("Cannot load the export page."));
-            return;
-        }
-        appendNextPage();
-    });
+              if (!m_busy)
+                  return;
+              if (!ok.toBool()) {
+                  fail(tr("Cannot load the export page."));
+                  return;
+              }
+              appendNextPage();
+          });
 }
 
 void ExportRenderer::appendNextPage()
@@ -139,26 +128,25 @@ void ExportRenderer::appendNextPage()
     emit progress(m_nextPage, m_pages.size());
 
     runJs(QStringLiteral("typeof window.appendExportPage === 'function'"
-                        " && window.appendExportPage(%1, %2)")
+                         " && window.appendExportPage(%1, %2)")
               .arg(QString::number(page.first), jsonString(page.second)),
           [this](const QVariant &ok) {
-        if (!m_busy)
-            return;
-        if (!ok.toBool()) {
-            fail(tr("Cannot load the export page."));
-            return;
-        }
-        ++m_nextPage;
-        appendNextPage();
-    });
+              if (!m_busy)
+                  return;
+              if (!ok.toBool()) {
+                  fail(tr("Cannot load the export page."));
+                  return;
+              }
+              ++m_nextPage;
+              appendNextPage();
+          });
 }
 
 void ExportRenderer::startFontWait()
 {
     emit progress(m_pages.size(), m_pages.size());
 
-    runJs(QStringLiteral("typeof window.finishExport === 'function' && window.finishExport()"),
-          [this](const QVariant &ok) {
+    runJs(QStringLiteral("typeof window.finishExport === 'function' && window.finishExport()"), [this](const QVariant &ok) {
         if (!m_busy)
             return;
         if (!ok.toBool()) {
@@ -190,10 +178,7 @@ void ExportRenderer::pollFonts()
 void ExportRenderer::deliver()
 {
     if (m_output == Output::Html) {
-        runJs(QStringLiteral("document.getElementById('export-root').innerHTML"),
-              [this](const QVariant &html) {
-            finish(true, html.toString(), {});
-        });
+        runJs(QStringLiteral("document.getElementById('export-root').innerHTML"), [this](const QVariant &html) { finish(true, html.toString(), {}); });
         return;
     }
     startPdfPrint();
@@ -204,33 +189,33 @@ void ExportRenderer::startPdfPrint()
     if (m_printing)
         return;
     m_printing = true;
-    connect(m_page.get(), &QWebEnginePage::pdfPrintingFinished, this,
-            [this](const QString &, bool ok) {
-        m_printing = false;
-        if (!m_busy)
-            return;
-        if (ok)
-            finish(true, {}, {});
-        else
-            fail(tr("PDF printing failed."));
-    }, Qt::SingleShotConnection);
+    connect(
+        m_page.get(),
+        &QWebEnginePage::pdfPrintingFinished,
+        this,
+        [this](const QString &, bool ok) {
+            m_printing = false;
+            if (!m_busy)
+                return;
+            if (ok)
+                finish(true, {}, {});
+            else
+                fail(tr("PDF printing failed."));
+        },
+        Qt::SingleShotConnection);
 
     m_page->printToPdf(m_outputPath, m_pageLayout);
 }
 
-void ExportRenderer::runJs(const QString &script,
-                           const std::function<void(const QVariant &)> &onResult)
+void ExportRenderer::runJs(const QString &script, const std::function<void(const QVariant &)> &onResult)
 {
-    m_page->runJavaScript(script, [this, onResult](const QVariant &result) {
-        onResult(result);
-    });
+    m_page->runJavaScript(script, [this, onResult](const QVariant &result) { onResult(result); });
 }
 
 QString ExportRenderer::jsonString(const QString &value)
 {
-    const QJsonArray arr{ value };
-    const QString json =
-        QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact));
+    const QJsonArray arr{value};
+    const QString json = QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact));
     return json.mid(1, json.size() - 2);  // strip the wrapping brackets
 }
 
@@ -252,4 +237,4 @@ void ExportRenderer::finish(bool success, const QString &html, const QString &er
         callback(success, success ? html : QString(), success ? QString() : error);
 }
 
-} // namespace llocr
+}  // namespace llocr

@@ -14,9 +14,7 @@ QString UnlimitedOcrModel::displayName() const
 
 QList<OcrPromptVariant> UnlimitedOcrModel::promptVariants() const
 {
-    return { OcrPromptVariant{ QStringLiteral("document-parsing"),
-                               QStringLiteral("Document parsing"),
-                               QStringLiteral("document parsing.") } };
+    return {OcrPromptVariant{QStringLiteral("document-parsing"), QStringLiteral("Document parsing"), QStringLiteral("document parsing.")}};
 }
 
 QString UnlimitedOcrModel::defaultParserId() const
@@ -24,4 +22,4 @@ QString UnlimitedOcrModel::defaultParserId() const
     return QStringLiteral("det_tokens");
 }
 
-} // namespace llocr
+}  // namespace llocr

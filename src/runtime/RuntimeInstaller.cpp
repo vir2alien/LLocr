@@ -8,7 +8,7 @@
 
 #include <QtConcurrent>
 
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 #include "runtime/ArchiveExtractor.h"
 #include "runtime/DownloadGroup.h"
 #include "runtime/DownloadManager.h"
@@ -58,14 +58,9 @@ bool backendMatches(const QString &assetBackend, const QString &requested)
 
 }  // namespace
 
-RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state,
-                                   QObject *parent)
-    : QObject(parent)
-    , m_settings(settings)
-    , m_installState(state)
-    , m_downloads(new DownloadManager(this))
-    , m_group(new DownloadGroup(m_downloads, this))
-    , m_installedBuilds(new InstalledBuildsModel(settings, this))
+RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent)
+    : QObject(parent), m_settings(settings), m_installState(state), m_downloads(new DownloadManager(this)), m_group(new DownloadGroup(m_downloads, this)),
+      m_installedBuilds(new InstalledBuildsModel(settings, this))
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
     m_platformLabel = QStringLiteral("%1 %2").arg(osLabel(info), info.arch);
@@ -80,21 +75,11 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &stat
     connect(m_group, &DownloadGroup::progressChanged, this, [this]() {
         setProgress(m_group->progress());
         if (m_state == State::Downloading) {
-            setStatusMessage(tr("Downloading %1 …")
-                                 .arg(m_pendingMain.fileName.isEmpty()
-                                          ? tr("runtime")
-                                          : m_pendingMain.fileName));
+            setStatusMessage(tr("Downloading %1 …").arg(m_pendingMain.fileName.isEmpty() ? tr("runtime") : m_pendingMain.fileName));
         }
     });
-    connect(m_group, &DownloadGroup::allFinished, this, [this](bool) {
-        maybeFinishDownloads();
-    });
-    // Which build is the active one is a settings value, so the list re-evaluates
-    // it rather than keeping a stale highlight (ADR 115).
-    connect(&m_settings, &SettingsStore::serverPathChanged,
-            m_installedBuilds, &InstalledBuildsModel::settingsChanged);
-    // A moved runtime directory invalidates the installed-builds list (and the
-    // update hint) — rescan instead of keeping what the old tree contained.
+    connect(m_group, &DownloadGroup::allFinished, this, [this](bool) { maybeFinishDownloads(); });
+    connect(&m_settings, &SettingsStore::serverPathChanged, m_installedBuilds, &InstalledBuildsModel::settingsChanged);
     connect(&m_installState, &InstalledState::pathsChanged, this, [this]() {
         rescanInstalledBuilds();
         recomputeHasUpdate();
@@ -164,10 +149,7 @@ void RuntimeInstaller::retranslate()
         setStatusMessage(tr("Checking for updates…"));
         break;
     case State::Downloading:
-        setStatusMessage(tr("Downloading %1 …")
-                             .arg(m_pendingMain.fileName.isEmpty()
-                                      ? tr("runtime")
-                                      : m_pendingMain.fileName));
+        setStatusMessage(tr("Downloading %1 …").arg(m_pendingMain.fileName.isEmpty() ? tr("runtime") : m_pendingMain.fileName));
         break;
     case State::Installing:
         setStatusMessage(tr("Installing %1 …").arg(backendDisplayName(m_pendingBackend)));
@@ -257,13 +239,10 @@ void RuntimeInstaller::startCatalogFetch()
         return {rels, error};
     });
 
-    future.then(this, [this](const QPair<QList<ReleaseInfo>, QString> &res) {
-        onCatalogLoaded(res.first, res.second);
-    });
+    future.then(this, [this](const QPair<QList<ReleaseInfo>, QString> &res) { onCatalogLoaded(res.first, res.second); });
 }
 
-void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases,
-                                       const QString &error)
+void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error)
 {
     setBusy(false);
     if (releases.isEmpty()) {
@@ -280,10 +259,7 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases,
     recomputeHasUpdate();
 
     QDate newest = QDate::fromString(m_releases.first().publishedAt.left(10), Qt::ISODate);
-    setStatusMessage(tr("Latest release: %1 (%2)")
-                         .arg(m_releases.first().tagName,
-                              newest.isValid() ? newest.toString(Qt::ISODate)
-                                               : QStringLiteral("—")));
+    setStatusMessage(tr("Latest release: %1 (%2)").arg(m_releases.first().tagName, newest.isValid() ? newest.toString(Qt::ISODate) : QStringLiteral("—")));
     setState(State::Ready);
     emit catalogChanged();
 }
@@ -307,8 +283,7 @@ void RuntimeInstaller::openReleasePage()
     if (m_releases.isEmpty())
         return;
     const QString tag = m_releases.first().tagName;
-    const QUrl url(QStringLiteral("https://github.com/ggml-org/llama.cpp/releases/tag/%1")
-                       .arg(tag));
+    const QUrl url(QStringLiteral("https://github.com/ggml-org/llama.cpp/releases/tag/%1").arg(tag));
     QDesktopServices::openUrl(url);
 }
 
@@ -344,8 +319,7 @@ void RuntimeInstaller::beginInstall(const QString &backend)
     const ReleaseInfo &release = m_releases.at(m_selectedRelease);
     m_pendingMain = pickAsset(release, backend, /*cudart=*/false);
     if (m_pendingMain.downloadUrl.isEmpty()) {
-        setStatusMessage(tr("No %1 build available for this platform in release %2")
-                             .arg(backendDisplayName(backend), release.tagName));
+        setStatusMessage(tr("No %1 build available for this platform in release %2").arg(backendDisplayName(backend), release.tagName));
         setState(State::Error);
         releaseInstallLock();
         return;
@@ -370,17 +344,13 @@ void RuntimeInstaller::beginDownloads()
 
     m_group->begin();
 
-    m_group->enqueue(DownloadTask::Request{
-        QUrl(m_pendingMain.downloadUrl), targetDir, m_pendingMain.fileName,
-        m_pendingMain.sha256, QString()});
+    m_group->enqueue(DownloadTask::Request{QUrl(m_pendingMain.downloadUrl), targetDir, m_pendingMain.fileName, m_pendingMain.sha256, QString()});
 
     if (m_state != State::Downloading)
         return;
 
     if (m_pendingHasCudart) {
-        m_group->enqueue(DownloadTask::Request{
-            QUrl(m_pendingCudart.downloadUrl), targetDir, m_pendingCudart.fileName,
-            m_pendingCudart.sha256, QString()});
+        m_group->enqueue(DownloadTask::Request{QUrl(m_pendingCudart.downloadUrl), targetDir, m_pendingCudart.fileName, m_pendingCudart.sha256, QString()});
     }
 }
 
@@ -426,40 +396,36 @@ void RuntimeInstaller::runInstallAsync()
 
     const RuntimePaths currentPaths = m_installState.paths();
     const QString mainZip = QDir(currentPaths.runtimeDir()).filePath(m_pendingMain.fileName);
-    const QString cudartZip = m_pendingHasCudart
-                                  ? QDir(currentPaths.runtimeDir()).filePath(m_pendingCudart.fileName)
-                                  : QString();
+    const QString cudartZip = m_pendingHasCudart ? QDir(currentPaths.runtimeDir()).filePath(m_pendingCudart.fileName) : QString();
     const ReleaseAsset mainAsset = m_pendingMain;
     const bool hasCudart = m_pendingHasCudart;
     const QString installDir = currentPaths.runtimeDir();
     const RuntimePaths paths = currentPaths;
 
-    QFuture<QPair<InstallOutput, QString>> future =
-        QtConcurrent::run([mainZip, mainAsset, paths]() -> QPair<InstallOutput, QString> {
-            InstallOutput out = InstallTransaction::start(mainZip, mainAsset, paths);
-            return {out, out.warning};
-        });
-
-    future.then([cudartZip, hasCudart](QPair<InstallOutput, QString> res)
-                    -> QPair<InstallOutput, QString> {
-        InstallOutput out = res.first;
-        QString warning = res.second;
-        if (out.ok && hasCudart) {
-            const QString serverDir = QFileInfo(out.serverPath).absolutePath();
-            const ExtractResult ex = ArchiveExtractor::extractZip(cudartZip, serverDir);
-            if (!ex.error.isEmpty())
-                warning = tr("CUDA runtime extraction warning: %1").arg(ex.error);
-        }
-        return {out, warning};
-    }).then(this, [this, currentPaths](const QPair<InstallOutput, QString> &res) {
-        const InstallOutput out = res.first;
-        const QString warning = res.second;
-        m_downloadedMainZip = QDir(currentPaths.runtimeDir()).filePath(m_pendingMain.fileName);
-        m_downloadedCudartZip = m_pendingHasCudart
-                                    ? QDir(currentPaths.runtimeDir()).filePath(m_pendingCudart.fileName)
-                                    : QString();
-        onInstallFinished(out, warning);
+    QFuture<QPair<InstallOutput, QString>> future = QtConcurrent::run([mainZip, mainAsset, paths]() -> QPair<InstallOutput, QString> {
+        InstallOutput out = InstallTransaction::start(mainZip, mainAsset, paths);
+        return {out, out.warning};
     });
+
+    future
+        .then([cudartZip, hasCudart](QPair<InstallOutput, QString> res) -> QPair<InstallOutput, QString> {
+            InstallOutput out = res.first;
+            QString warning = res.second;
+            if (out.ok && hasCudart) {
+                const QString serverDir = QFileInfo(out.serverPath).absolutePath();
+                const ExtractResult ex = ArchiveExtractor::extractZip(cudartZip, serverDir);
+                if (!ex.error.isEmpty())
+                    warning = tr("CUDA runtime extraction warning: %1").arg(ex.error);
+            }
+            return {out, warning};
+        })
+        .then(this, [this, currentPaths](const QPair<InstallOutput, QString> &res) {
+            const InstallOutput out = res.first;
+            const QString warning = res.second;
+            m_downloadedMainZip = QDir(currentPaths.runtimeDir()).filePath(m_pendingMain.fileName);
+            m_downloadedCudartZip = m_pendingHasCudart ? QDir(currentPaths.runtimeDir()).filePath(m_pendingCudart.fileName) : QString();
+            onInstallFinished(out, warning);
+        });
 }
 
 void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString &warning)
@@ -477,11 +443,9 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
     }
 
     if (warning.isEmpty())
-        setStatusMessage(tr("Installed %1 (%2)")
-                             .arg(out.build, backendDisplayName(m_pendingBackend)));
+        setStatusMessage(tr("Installed %1 (%2)").arg(out.build, backendDisplayName(m_pendingBackend)));
     else
-        setStatusMessage(tr("Installed %1 (%2). %3")
-                             .arg(out.build, backendDisplayName(m_pendingBackend), warning));
+        setStatusMessage(tr("Installed %1 (%2). %3").arg(out.build, backendDisplayName(m_pendingBackend), warning));
 
     m_settings.setServerPath(out.serverPath);
     m_settings.setServerPathIsManaged(true);
@@ -500,9 +464,7 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
 void RuntimeInstaller::recomputeHasUpdate()
 {
     const int latestBuild = m_releases.isEmpty() ? -1 : m_releases.first().build;
-    const int cur = installedBuild().startsWith(QLatin1Char('b'))
-                        ? installedBuild().mid(1).toInt()
-                        : -1;
+    const int cur = installedBuild().startsWith(QLatin1Char('b')) ? installedBuild().mid(1).toInt() : -1;
     const bool upd = cur >= 0 && latestBuild > cur;
     if (m_hasUpdate != upd) {
         m_hasUpdate = upd;
@@ -539,10 +501,8 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
 
     QString keepTag;
     if (!installedBuild().isEmpty()) {
-        const QString prefix =
-            QStringLiteral("llama.cpp-%1-%2").arg(installedBuild(), installedBackend());
-        const QStringList dirs =
-            QDir(m_installState.paths().runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        const QString prefix = QStringLiteral("llama.cpp-%1-%2").arg(installedBuild(), installedBackend());
+        const QStringList dirs = QDir(m_installState.paths().runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
         for (const QString &name : dirs) {
             if (name.startsWith(prefix)) {
                 keepTag = name;
@@ -567,8 +527,7 @@ void RuntimeInstaller::rescanInstalledBuilds()
 {
     // The same paths everything else uses — a moved runtime directory used to
     // make the scan look in the new tree while installs kept the old one.
-    m_installedBuilds->setBuilds(
-        InstallTransaction::scanInstalledBuilds(m_installState.paths()));
+    m_installedBuilds->setBuilds(InstallTransaction::scanInstalledBuilds(m_installState.paths()));
     emit installedBuildsChanged();
 }
 
@@ -609,21 +568,14 @@ QString RuntimeInstaller::activateBuild(int index)
         m_settings.setRuntimeBackend(b.backend);
     m_settings.forceSave();
 
-    setStatusMessage(tr("Activated %1%2")
-                         .arg(b.build.isEmpty() ? b.tag : b.build,
-                              b.backend.isEmpty()
-                                  ? QString()
-                                  : QStringLiteral(" (%1)")
-                                        .arg(backendDisplayName(b.backend))));
+    setStatusMessage(tr("Activated %1%2").arg(b.build.isEmpty() ? b.tag : b.build, b.backend.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(backendDisplayName(b.backend))));
     emit installedChanged();
     rescanInstalledBuilds();
     recomputeHasUpdate();
     return QString();
 }
 
-ReleaseAsset RuntimeInstaller::pickAsset(const ReleaseInfo &release,
-                                         const QString &backend,
-                                         bool wantCudart) const
+ReleaseAsset RuntimeInstaller::pickAsset(const ReleaseInfo &release, const QString &backend, bool wantCudart) const
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
     for (const ReleaseAsset &a : release.assets) {

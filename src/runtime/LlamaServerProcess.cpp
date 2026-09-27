@@ -9,8 +9,8 @@
 #include <QNetworkRequest>
 #include <QRegularExpression>
 #include <QSaveFile>
-#include <QTextStream>
 #include <QTcpServer>
+#include <QTextStream>
 #include <QUrl>
 
 #ifdef Q_OS_WIN
@@ -23,11 +23,11 @@
 namespace llocr {
 
 namespace {
-constexpr qint64 kLogRotateSizeBytes = 5 * 1024 * 1024;   // rotate at 5 MB
-constexpr int kLogRotateCheckEveryLines = 256;            // check each N lines
-constexpr qint64 kRestartWindowMs = 5 * 60 * 1000;        // bounded auto-restart
-constexpr int kMaxRestartsInWindow = 3;                   //   ≤3 per window
-constexpr int kRestartDelayMs = 500;                      // grace before respawn
+constexpr qint64 kLogRotateSizeBytes = 5 * 1024 * 1024;  // rotate at 5 MB
+constexpr int kLogRotateCheckEveryLines = 256;           // check each N lines
+constexpr qint64 kRestartWindowMs = 5 * 60 * 1000;       // bounded auto-restart
+constexpr int kMaxRestartsInWindow = 3;                  //   ≤3 per window
+constexpr int kRestartDelayMs = 500;                     // grace before respawn
 }  // namespace
 
 int LlamaServerProcess::pickFreePort(QString *error)
@@ -46,19 +46,15 @@ int LlamaServerProcess::pickFreePort(QString *error)
     return 0;
 }
 
-LlamaServerProcess::LlamaServerProcess(const Options &opts, QObject *parent)
-    : QObject(parent)
-    , m_opts(opts)
+LlamaServerProcess::LlamaServerProcess(const Options &opts, QObject *parent) : QObject(parent), m_opts(opts)
 {
     m_process.setProcessChannelMode(QProcess::MergedChannels);
     m_process.setProgram(m_opts.program);
 #ifdef Q_OS_WIN
-    m_process.setCreateProcessArgumentsModifier(
-        [](QProcess::CreateProcessArguments *args) { args->flags |= CREATE_NO_WINDOW; });
+    m_process.setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments *args) { args->flags |= CREATE_NO_WINDOW; });
 #endif
 
-    connect(&m_process, &QProcess::readyReadStandardOutput, this,
-            &LlamaServerProcess::onReadyRead);
+    connect(&m_process, &QProcess::readyReadStandardOutput, this, &LlamaServerProcess::onReadyRead);
     connect(&m_process, &QProcess::finished, this, &LlamaServerProcess::onProcessFinished);
 }
 
@@ -162,11 +158,10 @@ void LlamaServerProcess::armHealthPolling()
         m_healthTimer = new QTimer(this);
         m_healthTimer->setInterval(250);
         connect(m_healthTimer, &QTimer::timeout, this, [this]() {
-    if (m_state != RuntimeState::Starting)
-        return;
+            if (m_state != RuntimeState::Starting)
+                return;
             if (m_elapsed.elapsed() > m_opts.startupTimeoutMs) {
-                markFailed(QObject::tr("Server did not answer /health within %1 ms")
-                               .arg(m_opts.startupTimeoutMs));
+                markFailed(QObject::tr("Server did not answer /health within %1 ms").arg(m_opts.startupTimeoutMs));
                 return;
             }
             if (m_healthInFlight)
@@ -175,8 +170,7 @@ void LlamaServerProcess::armHealthPolling()
             QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/health")));
             req.setTransferTimeout(500);
             QNetworkReply *reply = m_net->get(req);
-            connect(reply, &QNetworkReply::finished, this,
-                    [this, reply]() { onHealthReply(reply); });
+            connect(reply, &QNetworkReply::finished, this, [this, reply]() { onHealthReply(reply); });
         });
     }
     m_healthTimer->start();
@@ -188,8 +182,7 @@ void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
     m_healthInFlight = false;
     if (m_state != RuntimeState::Starting)
         return;
-    const int code =
-        reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (code >= 200 && code < 300) {
         m_healthTimer->stop();
         m_healthReached = true;
@@ -212,17 +205,14 @@ void LlamaServerProcess::tryModelsFallback()
         reply->deleteLater();
         if (m_state != RuntimeState::Starting)
             return;
-        const int code =
-            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (reply->error() != QNetworkReply::NoError ||
-            (code < 200 || code >= 300)) {
+        const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() != QNetworkReply::NoError || (code < 200 || code >= 300)) {
             qWarning() << "/v1/models fallback failed:" << reply->errorString();
             return;
         }
         QJsonParseError perr;
         const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &perr);
-        if (perr.error != QJsonParseError::NoError || !doc.isObject() ||
-            !doc.object().contains(QStringLiteral("data"))) {
+        if (perr.error != QJsonParseError::NoError || !doc.isObject() || !doc.object().contains(QStringLiteral("data"))) {
             qWarning() << "/v1/models fallback returned a malformed body";
             return;
         }
@@ -269,8 +259,7 @@ void LlamaServerProcess::appendLogFile(const QString &line)
         return;
     if (!m_logFile.isOpen()) {
         m_logFile.setFileName(m_opts.logFile);
-        if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append
-                            | QIODevice::Text))
+        if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
             return;
         m_logStream.setDevice(&m_logFile);
     }
@@ -278,8 +267,7 @@ void LlamaServerProcess::appendLogFile(const QString &line)
         m_linesSinceRotateCheck = 0;
         if (rotateLogIfNeeded()) {
             m_logFile.setFileName(m_opts.logFile);
-            if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append
-                                | QIODevice::Text))
+            if (!m_logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
                 return;
             m_logStream.setDevice(&m_logFile);
         }
@@ -308,8 +296,7 @@ int LlamaServerProcess::parseLoadPercent(const QString &line)
     if (!line.contains(QStringLiteral("tensors")))
         return -1;
 
-    static const QRegularExpression percentRe(
-        QStringLiteral("(\\d{1,5}(?:[.,]\\d{1,3})?)\\s*%"));
+    static const QRegularExpression percentRe(QStringLiteral("(\\d{1,5}(?:[.,]\\d{1,3})?)\\s*%"));
 
     QRegularExpressionMatchIterator it = percentRe.globalMatch(line);
     if (!it.hasNext())
@@ -357,8 +344,7 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
         m_lastError = QObject::tr("Server process exited unexpectedly");
     setStatus(m_lastError);
 
-    const bool restartEligible = m_opts.autoRestart && !m_stopRequested
-                                 && m_state != RuntimeState::Failed;
+    const bool restartEligible = m_opts.autoRestart && !m_stopRequested && m_state != RuntimeState::Failed;
     int remaining = 0;
     if (restartEligible) {
         if (!m_restartWindow.isValid() || m_restartWindow.elapsed() > kRestartWindowMs) {
@@ -463,9 +449,7 @@ void LlamaServerProcess::retranslate()
 
 bool LlamaServerProcess::isRunning() const
 {
-    return m_process.state() != QProcess::NotRunning
-           && (m_state == RuntimeState::Starting || m_state == RuntimeState::Ready
-               || m_state == RuntimeState::Stopping);
+    return m_process.state() != QProcess::NotRunning && (m_state == RuntimeState::Starting || m_state == RuntimeState::Ready || m_state == RuntimeState::Stopping);
 }
 
 RuntimeState LlamaServerProcess::state() const

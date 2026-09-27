@@ -10,10 +10,9 @@ import "../Common"
 Item {
     id: root
 
-    // false = the recognition (OCR) request profile, true = the verification
-    // (check) request profile.
     property bool checkRole: false
-
+    readonly property real nameWidth: 0.28
+    readonly property real valueWidth: 0.26
     readonly property var profiles: checkRole ? RequestProfilesValidate
                                               : RequestProfilesOcr
 
@@ -29,15 +28,9 @@ Item {
         root.profiles.saveDraft()
     }
 
-    // Restore defaults: loads the default profile into the draft (uncommitted
-    // until Save).
     function resetValues() {
         root.profiles.loadDefaultDraft()
     }
-
-    // Column proportions shared by the header and the delegates.
-    readonly property real nameWidth: 0.28
-    readonly property real valueWidth: 0.26
 
     ColumnLayout {
         anchors.fill: parent
@@ -58,9 +51,6 @@ Item {
                 visible: !root.checkRole
                 Layout.preferredWidth: root.width * 0.4
                 implicitHeight: Theme.controlHeight
-                // id + display name straight from the adapter list (ADR 110):
-                // no round-trip through the display name, so the row can never
-                // show a different model than the one recognition uses.
                 model: Controller.ocrModels
                 textRole: "displayName"
                 valueRole: "modelId"
@@ -75,7 +65,6 @@ Item {
             Item { Layout.fillWidth: true }
         }
 
-        // Header, anchored like the delegate rows so the columns line up.
         Item {
             Layout.fillWidth: true
             implicitHeight: headerValue.implicitHeight

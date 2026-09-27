@@ -1,13 +1,10 @@
-#include "app/LaunchParametersModel.h"
+#include "runtime/LaunchParametersModel.h"
 
 #include "core/ValueParsing.h"
 
 namespace llocr {
 
-LaunchParametersModel::LaunchParametersModel(QObject *parent)
-    : QAbstractListModel(parent)
-{
-}
+LaunchParametersModel::LaunchParametersModel(QObject *parent) : QAbstractListModel(parent) {}
 
 int LaunchParametersModel::rowCount(const QModelIndex &parent) const
 {
@@ -41,10 +38,10 @@ QVariant LaunchParametersModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> LaunchParametersModel::roleNames() const
 {
     static const QHash<int, QByteArray> roles = {
-        { NameRole, "name" },
-        { ValueTextRole, "valueText" },
-        { KindRole, "kind" },
-        { DescriptionRole, "description" },
+        {NameRole, "name"},
+        {ValueTextRole, "valueText"},
+        {KindRole, "kind"},
+        {DescriptionRole, "description"},
     };
     return roles;
 }
@@ -65,8 +62,7 @@ bool LaunchParametersModel::setValue(int row, const QString &text)
         return false;
 
     LaunchParameter &p = m_parameters[row];
-    if (p.kind == LaunchValueKind::Number && !text.trimmed().isEmpty()
-        && !toFiniteNumber(text).has_value())
+    if (p.kind == LaunchValueKind::Number && !text.trimmed().isEmpty() && !toFiniteNumber(text).has_value())
         return false;
 
     LaunchValueKind nextKind = p.kind;
@@ -78,20 +74,17 @@ bool LaunchParametersModel::setValue(int row, const QString &text)
         nextKind = number ? LaunchValueKind::Number : LaunchValueKind::Text;
         nextValue = number ? QVariant(*number) : QVariant(text);
     } else {
-        nextValue = p.kind == LaunchValueKind::Number
-                        ? QVariant(text.trimmed().toDouble())
-                        : QVariant(text);
+        nextValue = p.kind == LaunchValueKind::Number ? QVariant(text.trimmed().toDouble()) : QVariant(text);
     }
 
-    const bool valueChanged = p.kind != nextKind
-        || (nextKind != LaunchValueKind::Flag && p.value != nextValue);
+    const bool valueChanged = p.kind != nextKind || (nextKind != LaunchValueKind::Flag && p.value != nextValue);
     if (!valueChanged)
         return true;
 
     p.kind = nextKind;
     p.value = nextValue;
     const QModelIndex idx = index(row);
-    emit dataChanged(idx, idx, { ValueTextRole, KindRole });
+    emit dataChanged(idx, idx, {ValueTextRole, KindRole});
     return true;
 }
 

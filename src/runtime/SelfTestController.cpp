@@ -2,8 +2,8 @@
 #include <QImage>
 #include <QPainter>
 
-#include "app/SettingsStore.h"
-#include "app/RequestProfileStore.h"
+#include "config/RequestProfileStore.h"
+#include "config/SettingsStore.h"
 #include "core/ConnectionConfig.h"
 #include "core/OcrResult.h"
 #include "models/OcrModel.h"
@@ -14,14 +14,8 @@
 
 namespace llocr {
 
-SelfTestController::SelfTestController(SettingsStore &settings,
-                                       RuntimeController &runtime,
-                                       RequestProfileStore &requestProfiles,
-                                       QObject *parent)
-    : QObject(parent)
-    , m_settings(settings)
-    , m_runtime(runtime)
-    , m_requestProfiles(requestProfiles)
+SelfTestController::SelfTestController(SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, QObject *parent)
+    : QObject(parent), m_settings(settings), m_runtime(runtime), m_requestProfiles(requestProfiles)
 {
 }
 
@@ -51,8 +45,7 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
     return promise->future();
 }
 
-void SelfTestController::runSelfTestRequest(
-    const ResolvedConnection &conn, std::shared_ptr<QFutureInterface<SelfTestResult>> promise)
+void SelfTestController::runSelfTestRequest(const ResolvedConnection &conn, std::shared_ptr<QFutureInterface<SelfTestResult>> promise)
 {
     if (!m_selftestModel)
         m_selftestModel = OcrModelFactory::create(m_settings.modelRecipeId());
@@ -69,26 +62,19 @@ void SelfTestController::runSelfTestRequest(
     config.timeoutMs = conn.timeoutMs;
 
     QFutureWatcher<OcrResult> *watch = new QFutureWatcher<OcrResult>(this);
-    connect(watch, &QFutureWatcher<OcrResult>::finished, this,
-            [promise, watch]() {
-                const OcrResult res =
-                    watch->future().resultCount() > 0 ? watch->result()
-                                                      : OcrResult::makeError(
-                                                            StatusMessage::translate("SelfTestController", "No response"));
-                watch->deleteLater();
-                SelfTestResult r;
-                if (res.success) {
-                    r.ok = true;
-                    r.text = res.text;
-                } else {
-                    r.error =
-                        res.errorMessage.isEmpty()
-                            ? QObject::tr("Recognition failed")
-                            : res.errorMessage.text();
-                }
-                promise->reportResult(std::move(r));
-                promise->reportFinished();
-            });
+    connect(watch, &QFutureWatcher<OcrResult>::finished, this, [promise, watch]() {
+        const OcrResult res = watch->future().resultCount() > 0 ? watch->result() : OcrResult::makeError(StatusMessage::translate("SelfTestController", "No response"));
+        watch->deleteLater();
+        SelfTestResult r;
+        if (res.success) {
+            r.ok = true;
+            r.text = res.text;
+        } else {
+            r.error = res.errorMessage.isEmpty() ? QObject::tr("Recognition failed") : res.errorMessage.text();
+        }
+        promise->reportResult(std::move(r));
+        promise->reportFinished();
+    });
     watch->setFuture(m_selftestModel->recognize(request, config));
 }
 
@@ -116,17 +102,14 @@ void SelfTestController::runSelfTestQml()
     emit selftestFinished();
 
     auto *watch = new QFutureWatcher<SelfTestResult>(this);
-    connect(watch, &QFutureWatcher<SelfTestResult>::finished, this,
-            [this, watch]() {
-                const SelfTestResult r = watch->result();
-                watch->deleteLater();
-                m_selftestRunning = false;
-                m_selftestOk = r.ok;
-                m_selftestMessage = r.ok ? r.text
-                                         : (r.error.isEmpty() ? tr("Recognition failed")
-                                                               : r.error);
-                emit selftestFinished();
-            });
+    connect(watch, &QFutureWatcher<SelfTestResult>::finished, this, [this, watch]() {
+        const SelfTestResult r = watch->result();
+        watch->deleteLater();
+        m_selftestRunning = false;
+        m_selftestOk = r.ok;
+        m_selftestMessage = r.ok ? r.text : (r.error.isEmpty() ? tr("Recognition failed") : r.error);
+        emit selftestFinished();
+    });
     watch->setFuture(runSelfTest());
 }
 

@@ -32,8 +32,7 @@ QStringList ParserFactory::selectableDisplayNames()
     return names;
 }
 
-std::unique_ptr<IOutputParser> ParserFactory::create(const QString &parserId,
-                                                    const ParserOptions &options)
+std::unique_ptr<IOutputParser> ParserFactory::create(const QString &parserId, const ParserOptions &options)
 {
     if (parserId == QLatin1String("det_tokens"))
         return std::make_unique<DetTokensParser>(options);
@@ -41,17 +40,12 @@ std::unique_ptr<IOutputParser> ParserFactory::create(const QString &parserId,
         return std::make_unique<RawParser>(options);
 
     if (parserId == kAutoId) {
-        // "auto" is a Settings-level value, not a parser id: it must be resolved
-        // against the selected model adapter (AppController::effectiveParserId)
-        // before it reaches the factory. Answering here with a concrete parser
-        // would silently pin the wrong one — the mismatch ADR 88 removed.
         qWarning() << "ParserFactory: 'auto' must be resolved before create()";
         return nullptr;
     }
 
-    qWarning() << "ParserFactory: unknown parser id" << parserId
-               << "— falling back to 'raw'";
+    qWarning() << "ParserFactory: unknown parser id" << parserId << "— falling back to 'raw'";
     return std::make_unique<RawParser>(options);
 }
 
-} // namespace llocr
+}  // namespace llocr

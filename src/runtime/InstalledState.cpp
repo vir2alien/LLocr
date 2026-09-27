@@ -4,9 +4,7 @@
 
 namespace llocr {
 
-InstalledState::InstalledState(SettingsStore &settings, QObject *parent)
-    : QObject(parent)
-    , m_settings(settings)
+InstalledState::InstalledState(SettingsStore &settings, QObject *parent) : QObject(parent), m_settings(settings)
 {
     rebindLock();
     connect(&m_settings, &SettingsStore::runtimeRootDirChanged, this, [this]() {

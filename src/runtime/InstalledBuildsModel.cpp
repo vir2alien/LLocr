@@ -3,16 +3,12 @@
 #include <QDir>
 #include <QFileInfo>
 
-#include "app/SettingsStore.h"
+#include "config/SettingsStore.h"
 #include "runtime/RuntimeInstaller.h"
 
 namespace llocr {
 
-InstalledBuildsModel::InstalledBuildsModel(SettingsStore &settings, QObject *parent)
-    : QAbstractListModel(parent)
-    , m_settings(settings)
-{
-}
+InstalledBuildsModel::InstalledBuildsModel(SettingsStore &settings, QObject *parent) : QAbstractListModel(parent), m_settings(settings) {}
 
 int InstalledBuildsModel::rowCount(const QModelIndex &parent) const
 {
@@ -22,13 +18,13 @@ int InstalledBuildsModel::rowCount(const QModelIndex &parent) const
 QHash<int, QByteArray> InstalledBuildsModel::roleNames() const
 {
     return {
-        { TagRole, "tag" },
-        { BuildRole, "build" },
-        { BackendRole, "backend" },
-        { BackendDisplayRole, "backendDisplay" },
-        { ServerPathRole, "serverPath" },
-        { BinaryFoundRole, "binaryFound" },
-        { ActiveRole, "active" },
+        {TagRole, "tag"},
+        {BuildRole, "build"},
+        {BackendRole, "backend"},
+        {BackendDisplayRole, "backendDisplay"},
+        {ServerPathRole, "serverPath"},
+        {BinaryFoundRole, "binaryFound"},
+        {ActiveRole, "active"},
     };
 }
 
@@ -45,8 +41,7 @@ QVariant InstalledBuildsModel::data(const QModelIndex &index, int role) const
     case BackendRole:
         return build.backend;
     case BackendDisplayRole:
-        return build.backend.isEmpty() ? QString()
-                                       : RuntimeInstaller::backendDisplayName(build.backend);
+        return build.backend.isEmpty() ? QString() : RuntimeInstaller::backendDisplayName(build.backend);
     case ServerPathRole:
         return build.serverPath;
     case BinaryFoundRole:
@@ -77,7 +72,7 @@ void InstalledBuildsModel::settingsChanged()
     // Only the active highlight can change; re-emit it for every row.
     const QModelIndex first = index(0, 0);
     const QModelIndex last = index(m_builds.size() - 1, 0);
-    emit dataChanged(first, last, { ActiveRole });
+    emit dataChanged(first, last, {ActiveRole});
 }
 
 bool InstalledBuildsModel::isActive(const InstalledBuildInfo &build) const

@@ -1,7 +1,7 @@
 #include "parsers/OtslTable.h"
 
-#include "parsers/DetTokenFormat.h"
 #include "core/ServiceMarkers.h"
+#include "parsers/DetTokenFormat.h"
 
 #include <QRegularExpression>
 #include <QStringList>
@@ -13,16 +13,14 @@ namespace llocr {
 
 bool containsOtslTable(const QString &text)
 {
-    static const QRegularExpression re(
-        QStringLiteral(R"(<\s*/?(?:fcel|lcel|ucel|xcel|nl)\s*>)"),
-        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression re(QStringLiteral(R"(<\s*/?(?:fcel|lcel|ucel|xcel|nl)\s*>)"), QRegularExpression::CaseInsensitiveOption);
     return re.match(text).hasMatch();
 }
 
 namespace {
 
 struct OtslHtmlCell {
-    QString text;      // unescaped cell content
+    QString text;  // unescaped cell content
     int colspan = 1;
     int rowspan = 1;
 };
@@ -30,21 +28,18 @@ struct OtslHtmlCell {
 // How the cell slot being closed relates to its neighbours' spans.
 enum class OtslCellKind { Content, CoveredLeft, CoveredUp, CoveredBoth };
 
-} // namespace
+}  // namespace
 
 QString formatOtslTable(QString text, bool tablesAsHtml)
 {
-    static const QRegularExpression tokenRe(
-        QStringLiteral(R"(<\s*/?(fcel|lcel|ucel|xcel|nl)\s*>)"),
-        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression tokenRe(QStringLiteral(R"(<\s*/?(fcel|lcel|ucel|xcel|nl)\s*>)"), QRegularExpression::CaseInsensitiveOption);
 
     // LFM2.5-VL drift: cells may be separated by CLOSING </fcel> tags and rows
     // by plain newlines instead of <nl>; a stray <table>/</table> wrapper can
     // wrap everything. Normalize before tokenizing.
     QString work = text;
     const bool hadRowBreaks = work.contains(QStringLiteral("<nl"));
-    static const QRegularExpression rowEndCloseRe(
-        QStringLiteral(R"(</fcel>[ \t]*(?=\n|$))"));
+    static const QRegularExpression rowEndCloseRe(QStringLiteral(R"(</fcel>[ \t]*(?=\n|$))"));
     work.replace(rowEndCloseRe, QStringLiteral("<nl>"));
     work.replace(QStringLiteral("</fcel>"), QStringLiteral("<fcel>"));
     work.remove(QStringLiteral("<table>"));
@@ -53,11 +48,11 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
         work.replace(QLatin1Char('\n'), QStringLiteral("<nl>"));
     text = work;
 
-    QVector<QStringList> rows;               // GFM output: one entry per column slot
-    QVector<QVector<OtslHtmlCell>> htmlRows; // HTML output: explicit cells with spans
+    QVector<QStringList> rows;                // GFM output: one entry per column slot
+    QVector<QVector<OtslHtmlCell>> htmlRows;  // HTML output: explicit cells with spans
     QStringList row;
     QVector<OtslHtmlCell> htmlRow;
-    QString pending;      // content accumulated for the current cell
+    QString pending;  // content accumulated for the current cell
     bool haveCell = false;
     OtslCellKind kind = OtslCellKind::Content;
     int pos = 0;
@@ -80,17 +75,12 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
             cell.text = convertMath(stripServiceTokens(pending));
             htmlRow.append(cell);
         } else {
-            // A span-covered cell is empty per the ADR 19 convention — the
-            // value lives in the top-left cell, so any content that leaked
-            // after the covered token is dropped.
             row.append(QString());
             int col = 0;
             for (const OtslHtmlCell &c : std::as_const(htmlRow))
                 col += c.colspan;
             bool coveredHandled = false;
             if (kind != OtslCellKind::CoveredLeft && !htmlRows.isEmpty()) {
-                // <ucel>/<xcel>: extend the rowspan of the cell above that
-                // already covers this column.
                 const QVector<OtslHtmlCell> &above = htmlRows.last();
                 int start = 0;
                 for (int i = 0; i < above.size(); ++i) {
@@ -103,8 +93,6 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
                 }
             }
             if (!coveredHandled) {
-                // <lcel> (or an unresolvable <ucel>/<xcel>): widen the
-                // previous cell in this row.
                 if (!htmlRow.isEmpty())
                     ++htmlRow.last().colspan;
                 else
@@ -117,7 +105,6 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
     QRegularExpressionMatchIterator it = tokenRe.globalMatch(text);
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
-        // Text before this token is the content of the cell opened earlier.
         pending += text.mid(pos, m.capturedStart() - pos);
         pos = m.capturedEnd();
 
@@ -132,8 +119,6 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
             row.clear();
             htmlRow.clear();
         } else {
-            // <fcel> opens a content cell; <lcel>/<ucel>/<xcel> open a cell
-            // covered by a left/up/cross span. Both close the previous cell.
             flushCell();
             haveCell = true;
             if (token == QLatin1String("fcel"))
@@ -146,7 +131,6 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
                 kind = OtslCellKind::CoveredBoth;
         }
     }
-    // A truncated sequence may end without <nl> — keep the last row.
     flushCell();
     if (!row.isEmpty()) {
         rows.append(row);
@@ -160,9 +144,6 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
     for (const QStringList &r : std::as_const(rows))
         cols = std::max(cols, static_cast<int>(r.size()));
 
-    // A leaked single-column OTSL fragment (e.g. one formula per row under a
-    // text/equation token) is plain content, not a real table — return the
-    // lines without any table dressing.
     if (cols == 1) {
         QStringList lines;
         for (const QStringList &r : std::as_const(rows))
@@ -171,9 +152,6 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
         return lines.join(QLatin1Char('\n'));
     }
 
-    // HTML output keeps the OTSL span information as real rowspan/colspan
-    // attributes — the same “Tables as HTML” mode ADR 64 uses for the
-    // Unlimited-OCR model's verbatim <table> output.
     if (tablesAsHtml) {
         QString out = QStringLiteral("<table>\n<tbody>\n");
         for (int r = 0; r < htmlRows.size(); ++r) {
@@ -185,8 +163,7 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
                     out += QStringLiteral(" colspan=\"%1\"").arg(cell.colspan);
                 if (cell.rowspan > 1)
                     out += QStringLiteral(" rowspan=\"%1\"").arg(cell.rowspan);
-                out += QLatin1Char('>') + cell.text.simplified().toHtmlEscaped()
-                        + QStringLiteral("</") + tag + QLatin1Char('>');
+                out += QLatin1Char('>') + cell.text.simplified().toHtmlEscaped() + QStringLiteral("</") + tag + QLatin1Char('>');
             }
             out += QStringLiteral("</tr>\n");
         }
@@ -215,4 +192,4 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
     return out.trimmed();
 }
 
-} // namespace llocr
+}  // namespace llocr

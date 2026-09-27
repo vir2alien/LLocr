@@ -52,11 +52,8 @@ QJsonArray buildReleases()
     const QString mystery = QStringLiteral("llama-b10594-mystery-file.txt");
 
     QStringList bodyLines;
-    bodyLines << QStringLiteral("## sha256")
-              << QStringLiteral("sha256: %1  %2").arg(digestOf('a'), winCuda)
-              << QStringLiteral("sha256: %1  %2").arg(digestOf('b'), winCpu)
-              << QStringLiteral("sha256: %1  %2").arg(digestOf('c'), macTar)
-              << QStringLiteral("sha256: %1  %2").arg(digestOf('d'), linuxVulkan)
+    bodyLines << QStringLiteral("## sha256") << QStringLiteral("sha256: %1  %2").arg(digestOf('a'), winCuda) << QStringLiteral("sha256: %1  %2").arg(digestOf('b'), winCpu)
+              << QStringLiteral("sha256: %1  %2").arg(digestOf('c'), macTar) << QStringLiteral("sha256: %1  %2").arg(digestOf('d'), linuxVulkan)
               << QStringLiteral("sha256: %1  %2").arg(digestOf('e'), linuxGeneric);
 
     QJsonObject r1;
@@ -79,8 +76,7 @@ QJsonArray buildReleases()
     r2.insert(QStringLiteral("published_at"), QStringLiteral("2025-05-20T00:00:00Z"));
     r2.insert(QStringLiteral("body"), QStringLiteral("No sha256 table in this release."));
     QJsonArray a2;
-    a2.append(makeAsset(QStringLiteral("llama-b10589-bin-macos-x64.tar.gz"),
-                        QStringLiteral("https://example.com/macos-old.tar.gz"), 777));
+    a2.append(makeAsset(QStringLiteral("llama-b10589-bin-macos-x64.tar.gz"), QStringLiteral("https://example.com/macos-old.tar.gz"), 777));
     r2.insert(QStringLiteral("assets"), a2);
 
     QJsonArray releases;
@@ -136,10 +132,7 @@ private:
             return m_server.listen(QHostAddress::LocalHost, 0);
         }
 
-        QString url() const
-        {
-            return QStringLiteral("http://127.0.0.1:%1/releases").arg(m_server.serverPort());
-        }
+        QString url() const { return QStringLiteral("http://127.0.0.1:%1/releases").arg(m_server.serverPort()); }
 
     private:
         QByteArray m_status;
@@ -177,32 +170,21 @@ void TestReleaseCatalog::picksPlatformAsset()
     QString err;
     const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(buildReleases(), err);
     const ReleaseInfo &r = releases.at(0);
-    QCOMPARE(r.pickAsset(QStringLiteral("win"), QStringLiteral("x64"),
-                         QStringLiteral("cuda-cu12")).fileName,
-             QStringLiteral("llama-b10594-bin-win-cuda-cu12-x64.zip"));
+    QCOMPARE(r.pickAsset(QStringLiteral("win"), QStringLiteral("x64"), QStringLiteral("cuda-cu12")).fileName, QStringLiteral("llama-b10594-bin-win-cuda-cu12-x64.zip"));
     // macOS ships a single universal build (no backend token): both the
     // recommended "metal" and the fallback "cpu" must select it.
-    QCOMPARE(r.pickAsset(QStringLiteral("macos"), QStringLiteral("arm64"),
-                         QStringLiteral("metal")).fileName,
-             QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz"));
-    QCOMPARE(r.pickAsset(QStringLiteral("macos"), QStringLiteral("arm64"),
-                         QStringLiteral("cpu")).fileName,
-             QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz"));
-    QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"),
-                         QStringLiteral("vulkan")).fileName,
-             QStringLiteral("llama-b10594-bin-ubuntu-vulkan-x64.tar.gz"));
+    QCOMPARE(r.pickAsset(QStringLiteral("macos"), QStringLiteral("arm64"), QStringLiteral("metal")).fileName, QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz"));
+    QCOMPARE(r.pickAsset(QStringLiteral("macos"), QStringLiteral("arm64"), QStringLiteral("cpu")).fileName, QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz"));
+    QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"), QStringLiteral("vulkan")).fileName, QStringLiteral("llama-b10594-bin-ubuntu-vulkan-x64.tar.gz"));
     // Generic Ubuntu build serves the plain "cpu" request.
-    QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"),
-                         QStringLiteral("cpu")).fileName,
-             QStringLiteral("llama-b10594-bin-ubuntu-x64.tar.gz"));
+    QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"), QStringLiteral("cpu")).fileName, QStringLiteral("llama-b10594-bin-ubuntu-x64.tar.gz"));
 }
 
 void TestReleaseCatalog::pickUnknownReturnsEmpty()
 {
     QString err;
     const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(buildReleases(), err);
-    QVERIFY(releases.at(0).pickAsset(QStringLiteral("unknown"), QStringLiteral("x64"),
-                                     QStringLiteral("cpu")).fileName.isEmpty());
+    QVERIFY(releases.at(0).pickAsset(QStringLiteral("unknown"), QStringLiteral("x64"), QStringLiteral("cpu")).fileName.isEmpty());
     bool foundMystery = false;
     for (const ReleaseAsset &a : releases.at(0).assets)
         if (a.fileName == QStringLiteral("llama-b10594-mystery-file.txt"))
@@ -215,12 +197,9 @@ void TestReleaseCatalog::cudartAssetIsFlagged()
     // Two real-world shapes: legacy `...-cu124.zip` and the current
     // `...-12.4-x64.zip` / `...-13.3-arm64.zip` naming.
     QJsonArray assets;
-    assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-cu124.zip"),
-                            QStringLiteral("https://example.com/cu.zip"), 1100));
-    assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-12.4-x64.zip"),
-                            QStringLiteral("https://example.com/cu124.zip"), 1200));
-    assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-13.3-arm64.zip"),
-                            QStringLiteral("https://example.com/cu133.zip"), 1300));
+    assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-cu124.zip"), QStringLiteral("https://example.com/cu.zip"), 1100));
+    assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-12.4-x64.zip"), QStringLiteral("https://example.com/cu124.zip"), 1200));
+    assets.append(makeAsset(QStringLiteral("cudart-llama-bin-win-cuda-13.3-arm64.zip"), QStringLiteral("https://example.com/cu133.zip"), 1300));
     QJsonObject release;
     release.insert(QStringLiteral("tag_name"), QStringLiteral("b10594"));
     release.insert(QStringLiteral("assets"), assets);
@@ -262,8 +241,7 @@ void TestReleaseCatalog::cacheMissingIsNotFresh()
     bool fresh = false;
     QString err;
     qint64 cachedBuild = -1;
-    const QList<ReleaseInfo> list =
-        ReleaseCatalog::loadCache(dir.path(), when, cachedBuild, fresh, err);
+    const QList<ReleaseInfo> list = ReleaseCatalog::loadCache(dir.path(), when, cachedBuild, fresh, err);
     QVERIFY(list.isEmpty());
     QVERIFY(!fresh);
     QVERIFY(!err.isEmpty());
@@ -282,8 +260,7 @@ void TestReleaseCatalog::cacheIsFreshWithinTtl()
     bool fresh = false;
     QString err;
     qint64 cachedBuild = -1;
-    const QList<ReleaseInfo> list =
-        ReleaseCatalog::loadCache(dir.path(), when, cachedBuild, fresh, err);
+    const QList<ReleaseInfo> list = ReleaseCatalog::loadCache(dir.path(), when, cachedBuild, fresh, err);
     QVERIFY(fresh);
     QCOMPARE(list.size(), 2);
     QCOMPARE(cachedBuild, qint64(10594));
@@ -316,22 +293,19 @@ void TestReleaseCatalog::staleCacheSurvivesFailedFetch()
         // Age the cache past the TTL so the fetch is actually attempted
         // (setFileTime needs an open file).
         QVERIFY(f.open(QIODevice::ReadWrite));
-        QVERIFY(f.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-8 * 3600),
-                              QFileDevice::FileModificationTime));
+        QVERIFY(f.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-8 * 3600), QFileDevice::FileModificationTime));
         f.close();
 
         StatusServer server;
         QVERIFY(server.start(status));
         QNetworkAccessManager nam;
         QString error;
-        const QList<ReleaseInfo> list = ReleaseCatalog::fetchReleasesLocal(
-            &nam, dir.path(), error, 5000, server.url());
+        const QList<ReleaseInfo> list = ReleaseCatalog::fetchReleasesLocal(&nam, dir.path(), error, 5000, server.url());
 
         QVERIFY2(!error.isEmpty(), "the failure must still be reported");
         QCOMPARE(list.size(), 2);
         QCOMPARE(list.first().build, qint64(10594));
-        QVERIFY2(QFile::exists(cacheFile),
-                 "a failed fetch must not drop the cached release list");
+        QVERIFY2(QFile::exists(cacheFile), "a failed fetch must not drop the cached release list");
     }
 }
 

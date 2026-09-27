@@ -1,14 +1,14 @@
 #include <QtTest>
 
+#include <QDir>
 #include <QFuture>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDir>
+#include <QNetworkReply>
 #include <QStandardPaths>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include <QNetworkReply>
 #include <QTimer>
 
 #include "core/CheckRequest.h"
@@ -33,15 +33,9 @@ public:
     QString id() const override { return QStringLiteral("test-general"); }
     QString displayName() const override { return QStringLiteral("Test general"); }
 
-    QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl)
-    {
-        return buildRequestBody(request, imageDataUrl);
-    }
+    QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
 
-    CheckResult parse(const QByteArray &responseData)
-    {
-        return parseResponse(responseData);
-    }
+    CheckResult parse(const QByteArray &responseData) { return parseResponse(responseData); }
 };
 
 class RecordingServer : public QObject
@@ -88,12 +82,14 @@ private:
         if (holdResponse)
             return;
 
-        const QByteArray replyBody =
-            "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"ok\"}}]}";
+        const QByteArray replyBody = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"ok\"}}]}";
         socket->write("HTTP/1.1 200 OK\r\n"
                       "Content-Type: application/json\r\n"
-                      "Content-Length: " + QByteArray::number(replyBody.size()) + "\r\n"
-                      "Connection: close\r\n\r\n" + replyBody);
+                      "Content-Length: " +
+                      QByteArray::number(replyBody.size()) +
+                      "\r\n"
+                      "Connection: close\r\n\r\n" +
+                      replyBody);
         socket->flush();
         socket->disconnectFromHost();
     }
@@ -104,11 +100,13 @@ private:
 
 }  // namespace
 
-class TestOcrModels : public QObject {
+class TestOcrModels : public QObject
+{
     Q_OBJECT
 
 private slots:
-    void factoryDefaultAndRegistry() {
+    void factoryDefaultAndRegistry()
+    {
         QCOMPARE(OcrModelFactory::defaultId(), QStringLiteral("unlimited-ocr"));
         QVERIFY(OcrModelFactory::registeredIds().contains(QStringLiteral("unlimited-ocr")));
         QVERIFY(OcrModelFactory::registeredIds().contains(QStringLiteral("lfm25-vl-3b")));
@@ -124,11 +122,10 @@ private slots:
 
     // The raw-response dump (which includes the full base64 page image) is
     // opt-in via LLOCR_RAW_DEBUG — a normal recognition run must not write it.
-    void rawDebugDumpIsOptIn() {
+    void rawDebugDumpIsOptIn()
+    {
         QStandardPaths::setTestModeEnabled(true);
-        const QString dumpDir = QDir(QStandardPaths::writableLocation(
-                                        QStandardPaths::AppLocalDataLocation))
-                                    .filePath(QStringLiteral("raw-debug"));
+        const QString dumpDir = QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(QStringLiteral("raw-debug"));
         QDir(dumpDir).removeRecursively();
         QVERIFY(!QDir(dumpDir).exists());
 
@@ -150,17 +147,18 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QCOMPARE(future.result().text, QStringLiteral("ok"));
 
-        QVERIFY2(!QDir(dumpDir).exists(),
-                 "the raw-debug dump must not be written unless LLOCR_RAW_DEBUG is set");
+        QVERIFY2(!QDir(dumpDir).exists(), "the raw-debug dump must not be written unless LLOCR_RAW_DEBUG is set");
     }
 
-    void unknownIdFallsBackToDefault() {
+    void unknownIdFallsBackToDefault()
+    {
         const auto model = OcrModelFactory::create(QStringLiteral("no-such-model"));
         QVERIFY(model != nullptr);
         QCOMPARE(model->id(), OcrModelFactory::defaultId());
     }
 
-    void idNameMapping() {
+    void idNameMapping()
+    {
         const QString id = OcrModelFactory::defaultId();
         const QString name = OcrModelFactory::displayNameForId(id);
         QVERIFY(!name.isEmpty());
@@ -171,19 +169,18 @@ private slots:
     // owns the parser choice. Every registered model must therefore declare a
     // parser id that ParserFactory can actually build — a new adapter shipping
     // with a typo would otherwise only fail at recognition time.
-    void everyModelDeclaresARegisteredParser() {
+    void everyModelDeclaresARegisteredParser()
+    {
         const QStringList parsers = ParserFactory::registeredIds();
         for (const QString &modelId : OcrModelFactory::registeredIds()) {
-            const QString parserId =
-                OcrModelFactory::create(modelId)->defaultParserId();
+            const QString parserId = OcrModelFactory::create(modelId)->defaultParserId();
             QVERIFY2(!parserId.isEmpty(), qPrintable(modelId));
-            QVERIFY2(parsers.contains(parserId),
-                     qPrintable(QStringLiteral("model %1 declares unregistered parser %2")
-                                    .arg(modelId, parserId)));
+            QVERIFY2(parsers.contains(parserId), qPrintable(QStringLiteral("model %1 declares unregistered parser %2").arg(modelId, parserId)));
         }
     }
 
-    void unlimitedModelContract() {
+    void unlimitedModelContract()
+    {
         UnlimitedOcrModel model;
 
         QCOMPARE(model.id(), QStringLiteral("unlimited-ocr"));
@@ -197,7 +194,8 @@ private slots:
         QVERIFY(!variants.first().title.isEmpty());
     }
 
-    void lfm25ModelContract() {
+    void lfm25ModelContract()
+    {
         Lfm25VlModel model;
 
         QCOMPARE(model.id(), QStringLiteral("lfm25-vl-3b"));
@@ -214,7 +212,8 @@ private slots:
         QVERIFY(!variants.first().title.isEmpty());
     }
 
-    void recognizeSendsDecodableJpegDataUrl() {
+    void recognizeSendsDecodableJpegDataUrl()
+    {
         RecordingServer server;
         QVERIFY(server.start());
 
@@ -242,16 +241,13 @@ private slots:
 
         const QJsonDocument doc = QJsonDocument::fromJson(server.body);
         QVERIFY(doc.isObject());
-        const QJsonArray content = doc.object()
-                                       .value(QStringLiteral("messages")).toArray().at(0).toObject()
-                                       .value(QStringLiteral("content")).toArray();
+        const QJsonArray content = doc.object().value(QStringLiteral("messages")).toArray().at(0).toObject().value(QStringLiteral("content")).toArray();
         QString dataUrl;
         QString textPart;
         for (const QJsonValue &part : content) {
             const QJsonObject obj = part.toObject();
             if (obj.value(QStringLiteral("type")).toString() == QStringLiteral("image_url"))
-                dataUrl = obj.value(QStringLiteral("image_url")).toObject()
-                              .value(QStringLiteral("url")).toString();
+                dataUrl = obj.value(QStringLiteral("image_url")).toObject().value(QStringLiteral("url")).toString();
             if (obj.value(QStringLiteral("type")).toString() == QStringLiteral("text"))
                 textPart = obj.value(QStringLiteral("text")).toString();
         }
@@ -259,8 +255,7 @@ private slots:
 
         QVERIFY(!dataUrl.isEmpty());
         QVERIFY(dataUrl.startsWith(QStringLiteral("data:image/png;base64,")));
-        const QByteArray png = QByteArray::fromBase64(
-            dataUrl.mid(QStringLiteral("data:image/png;base64,").size()).toLatin1());
+        const QByteArray png = QByteArray::fromBase64(dataUrl.mid(QStringLiteral("data:image/png;base64,").size()).toLatin1());
         QVERIFY(png.size() > 100);
         QVERIFY(png.startsWith("\x89PNG"));
 
@@ -270,7 +265,8 @@ private slots:
         QCOMPARE(decoded.height(), 91);
     }
 
-    void futureCompletesAfterModelDestruction() {
+    void futureCompletesAfterModelDestruction()
+    {
         RecordingServer server;
         QVERIFY(server.start());
 
@@ -296,13 +292,13 @@ private slots:
 
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(future.resultCount() > 0);
-        QVERIFY2(future.result().success,
-                 future.result().errorMessage.text().toUtf8().constData());
+        QVERIFY2(future.result().success, future.result().errorMessage.text().toUtf8().constData());
         QVERIFY(server.gotRequest);
         QCOMPARE(future.result().text, QStringLiteral("ok"));
     }
 
-    void qtAbortOnDeadlineReportsCancellation() {
+    void qtAbortOnDeadlineReportsCancellation()
+    {
         RecordingServer server;
         server.holdResponse = true;
         QVERIFY(server.start());
@@ -316,19 +312,18 @@ private slots:
         reply->deleteLater();
     }
 
-    void requestTimeoutIsNotReportedAsCancellation() {
+    void requestTimeoutIsNotReportedAsCancellation()
+    {
         RecordingServer server;
         server.holdResponse = true;
         QVERIFY(server.start());
         LlamaClient client;
-        const auto url = LlamaClient::endpointUrl(
-            QStringLiteral("http://127.0.0.1:%1").arg(server.port()));
+        const auto url = LlamaClient::endpointUrl(QStringLiteral("http://127.0.0.1:%1").arg(server.port()));
         const auto future = client.postJson(url, "{}", {}, 200);
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 5000);
         QVERIFY(server.gotRequest);
         QVERIFY(!future.result().success);
-        QVERIFY2(future.result().error.contains(QStringLiteral("timed out")),
-                 qPrintable(future.result().error));
+        QVERIFY2(future.result().error.contains(QStringLiteral("timed out")), qPrintable(future.result().error));
         QVERIFY(future.result().error.contains(QStringLiteral("200")));
 
         // A timeout must not leak into the next request on the same client.
@@ -338,13 +333,13 @@ private slots:
         QVERIFY2(next.result().success, qPrintable(next.result().error));
     }
 
-    void manualAbortIsNotReportedAsTimeout() {
+    void manualAbortIsNotReportedAsTimeout()
+    {
         RecordingServer server;
         server.holdResponse = true;
         QVERIFY(server.start());
         LlamaClient client;
-        const auto future = client.postJson(LlamaClient::endpointUrl(
-            QStringLiteral("http://127.0.0.1:%1").arg(server.port())), "{}", {}, 10000);
+        const auto future = client.postJson(LlamaClient::endpointUrl(QStringLiteral("http://127.0.0.1:%1").arg(server.port())), "{}", {}, 10000);
         QTRY_VERIFY_WITH_TIMEOUT(server.gotRequest, 5000);
         client.abort();
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 5000);
@@ -353,7 +348,8 @@ private slots:
         QVERIFY(!future.result().error.contains(QStringLiteral("timed out")));
     }
 
-    void recognizeFailsCleanlyOnNullImage() {
+    void recognizeFailsCleanlyOnNullImage()
+    {
         OcrRequest request;
         request.prompt = QStringLiteral("document parsing.");
         request.modelId = QStringLiteral("unlimited-ocr");
@@ -372,7 +368,8 @@ private slots:
         QVERIFY(!result.errorMessage.isEmpty());
     }
 
-    void qwenGeneralModelContract() {
+    void qwenGeneralModelContract()
+    {
         QwenGeneralModel model;
 
         QVERIFY(!model.id().isEmpty());
@@ -380,7 +377,8 @@ private slots:
         QCOMPARE(model.id(), QStringLiteral("qwen-general"));
     }
 
-    void checkRequestBodyContainsImagePromptAndRecognizedText() {
+    void checkRequestBodyContainsImagePromptAndRecognizedText()
+    {
         ExposedGeneralPurposeModel model;
         CheckRequest request;
         request.image = QImage(4, 4, QImage::Format_ARGB32);
@@ -390,13 +388,13 @@ private slots:
         request.typePrompt = QStringLiteral("Verify the text block.");
         request.modelId = QStringLiteral("ocr-verifier");
         request.parameters = {
-            { QStringLiteral("temperature"), 0, RequestValueKind::Number, 0.0, QString() },
-            { QStringLiteral("repeat_penalty"), 1, RequestValueKind::Number, 1.0, QString() },
-            { QStringLiteral("presence_penalty"), 2, RequestValueKind::Number, 0.0, QString() },
-            { QStringLiteral("frequency_penalty"), 3, RequestValueKind::Number, 0.0, QString() },
-            { QStringLiteral("max_tokens"), 4, RequestValueKind::Number, 512.0, QString() },
-            { QStringLiteral("stream"), 5, RequestValueKind::Boolean, false, QString() },
-            { QStringLiteral("cache_prompt"), 6, RequestValueKind::Boolean, true, QString() },
+            {QStringLiteral("temperature"), 0, RequestValueKind::Number, 0.0, QString()},
+            {QStringLiteral("repeat_penalty"), 1, RequestValueKind::Number, 1.0, QString()},
+            {QStringLiteral("presence_penalty"), 2, RequestValueKind::Number, 0.0, QString()},
+            {QStringLiteral("frequency_penalty"), 3, RequestValueKind::Number, 0.0, QString()},
+            {QStringLiteral("max_tokens"), 4, RequestValueKind::Number, 512.0, QString()},
+            {QStringLiteral("stream"), 5, RequestValueKind::Boolean, false, QString()},
+            {QStringLiteral("cache_prompt"), 6, RequestValueKind::Boolean, true, QString()},
         };
 
         const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
@@ -414,20 +412,17 @@ private slots:
         QCOMPARE(root.value(QStringLiteral("cache_prompt")).toBool(), true);
 
         // Thinking must be disabled so Qwen3-family models answer directly.
-        QCOMPARE(root.value(QStringLiteral("chat_template_kwargs")).toObject()
-                     .value(QStringLiteral("enable_thinking")).toBool(), false);
+        QCOMPARE(root.value(QStringLiteral("chat_template_kwargs")).toObject().value(QStringLiteral("enable_thinking")).toBool(), false);
 
         // System message carries the shared protocol contract.
         const QJsonArray messages = root.value(QStringLiteral("messages")).toArray();
         QCOMPARE(messages.size(), 2);
         const QJsonObject systemMessage = messages.at(0).toObject();
         QCOMPARE(systemMessage.value(QStringLiteral("role")).toString(), QStringLiteral("system"));
-        QVERIFY(systemMessage.value(QStringLiteral("content")).toString()
-                    .startsWith(QStringLiteral("You are an OCR verifier.")));
+        QVERIFY(systemMessage.value(QStringLiteral("content")).toString().startsWith(QStringLiteral("You are an OCR verifier.")));
 
         // User message: type prompt, then image, then the OCR candidate.
-        const QJsonArray content = messages.at(1).toObject()
-                                      .value(QStringLiteral("content")).toArray();
+        const QJsonArray content = messages.at(1).toObject().value(QStringLiteral("content")).toArray();
         QCOMPARE(content.size(), 3);
 
         QStringList textParts;
@@ -438,8 +433,7 @@ private slots:
             if (type == QStringLiteral("text"))
                 textParts.append(obj.value(QStringLiteral("text")).toString());
             else if (type == QStringLiteral("image_url"))
-                imageUrl = obj.value(QStringLiteral("image_url")).toObject()
-                                 .value(QStringLiteral("url")).toString();
+                imageUrl = obj.value(QStringLiteral("image_url")).toObject().value(QStringLiteral("url")).toString();
         }
         QCOMPARE(textParts.size(), 2);
         QCOMPARE(textParts.at(0), QStringLiteral("Verify the text block."));
@@ -449,66 +443,57 @@ private slots:
         QCOMPARE(imageUrl, QStringLiteral("data:image/png;base64,AAAA"));
     }
 
-    void checkResponseParsing() {
+    void checkResponseParsing()
+    {
         ExposedGeneralPurposeModel model;
 
         // OK — the recognized block is correct, no correction is needed.
-        const CheckResult ok = model.parse(
-            "{\"choices\":[{\"message\":{\"role\":\"assistant\","
-            "\"content\":\"OK\"}}]}");
+        const CheckResult ok = model.parse("{\"choices\":[{\"message\":{\"role\":\"assistant\","
+                                           "\"content\":\"OK\"}}]}");
         QCOMPARE(ok.status, CheckStatus::Ok);
         QVERIFY(ok.text.isEmpty());
 
         // Trailing whitespace / punctuation must not confuse the detector.
-        const CheckResult okPunct = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":\"  OK  \"}}]}");
+        const CheckResult okPunct = model.parse("{\"choices\":[{\"message\":{\"content\":\"  OK  \"}}]}");
         QCOMPARE(okPunct.status, CheckStatus::Ok);
 
         // FIX — the corrected block follows the marker.
-        const CheckResult fix = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":"
-            "\"FIX\\nhello world\"}}]}");
+        const CheckResult fix = model.parse("{\"choices\":[{\"message\":{\"content\":"
+                                            "\"FIX\\nhello world\"}}]}");
         QCOMPARE(fix.status, CheckStatus::Fixed);
         QCOMPARE(fix.text, QStringLiteral("hello world"));
 
         // "FIX: <block>" spelling is accepted too.
-        const CheckResult fixColon = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":\"FIX: hello world\"}}]}");
+        const CheckResult fixColon = model.parse("{\"choices\":[{\"message\":{\"content\":\"FIX: hello world\"}}]}");
         QCOMPARE(fixColon.status, CheckStatus::Fixed);
         QCOMPARE(fixColon.text, QStringLiteral("hello world"));
 
         // REVIEW — the block is unreadable.
-        const CheckResult review = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":\"REVIEW\"}}]}");
+        const CheckResult review = model.parse("{\"choices\":[{\"message\":{\"content\":\"REVIEW\"}}]}");
         QCOMPARE(review.status, CheckStatus::Review);
         QVERIFY(review.text.isEmpty());
 
         // Marker-only output (thinking model that never answered) is an error,
         // not an empty "success" that would wipe the block text.
-        const CheckResult markerOnly = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":"
-            "\"<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
+        const CheckResult markerOnly = model.parse("{\"choices\":[{\"message\":{\"content\":"
+                                                   "\"<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
         QCOMPARE(markerOnly.status, CheckStatus::Failed);
         QVERIFY(!markerOnly.errorMessage.isEmpty());
 
         // A think block must be dropped; only the final answer remains.
-        const CheckResult withThink = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":"
-            "\" thinkingreasoning response\\nFIX\\nfixed text\"}}]}");
-        QVERIFY2(withThink.status == CheckStatus::Fixed,
-                 withThink.errorMessage.text().toUtf8().constData());
+        const CheckResult withThink = model.parse("{\"choices\":[{\"message\":{\"content\":"
+                                                  "\" thinkingreasoning response\\nFIX\\nfixed text\"}}]}");
+        QVERIFY2(withThink.status == CheckStatus::Fixed, withThink.errorMessage.text().toUtf8().constData());
         QCOMPARE(withThink.text, QStringLiteral("fixed text"));
 
         // Trailing end-of-sentence markers must be stripped (ADR 18 parity).
-        const CheckResult fixMarker = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":"
-            "\"FIX\\ncorrected\\n<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
+        const CheckResult fixMarker = model.parse("{\"choices\":[{\"message\":{\"content\":"
+                                                  "\"FIX\\ncorrected\\n<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
         QCOMPARE(fixMarker.status, CheckStatus::Fixed);
         QCOMPARE(fixMarker.text, QStringLiteral("corrected"));
 
         // Unexpected answers are failures, not silent successes.
-        const CheckResult unexpected = model.parse(
-            "{\"choices\":[{\"message\":{\"content\":\"The text is fine.\"}}]}");
+        const CheckResult unexpected = model.parse("{\"choices\":[{\"message\":{\"content\":\"The text is fine.\"}}]}");
         QCOMPARE(unexpected.status, CheckStatus::Failed);
         QVERIFY(!unexpected.errorMessage.isEmpty());
 
@@ -521,7 +506,8 @@ private slots:
         QVERIFY(!notJson.errorMessage.isEmpty());
     }
 
-    void checkSendsRequestAndParsesResult() {
+    void checkSendsRequestAndParsesResult()
+    {
         RecordingServer server;
         QVERIFY(server.start());
 
@@ -543,8 +529,7 @@ private slots:
         QFuture<CheckResult> future = model->check(request, config);
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(server.gotRequest);
-        QVERIFY2(future.result().status != CheckStatus::Failed,
-                 future.result().errorMessage.text().toUtf8().constData());
+        QVERIFY2(future.result().status != CheckStatus::Failed, future.result().errorMessage.text().toUtf8().constData());
         QCOMPARE(future.result().status, CheckStatus::Ok);
     }
 };

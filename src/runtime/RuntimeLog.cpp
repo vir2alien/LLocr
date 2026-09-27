@@ -4,21 +4,18 @@
 #include <QGuiApplication>
 #include <QUrl>
 
-#include "app/SettingsStore.h"
+#include "config/RuntimePaths.h"
+#include "config/SettingsStore.h"
 #include "runtime/LlamaServerProcess.h"
 #include "runtime/RuntimeLog.h"
-#include "runtime/RuntimePaths.h"
 
 namespace llocr {
 
-RuntimeLog::RuntimeLog(SettingsStore &settings, QObject *parent)
-    : QObject(parent)
-    , m_settings(settings)
+RuntimeLog::RuntimeLog(SettingsStore &settings, QObject *parent) : QObject(parent), m_settings(settings)
 {
     m_flushTimer.setSingleShot(true);
     m_flushTimer.setInterval(200);
-    connect(&m_flushTimer, &QTimer::timeout, this,
-            [this]() { emit serverLogChanged(); });
+    connect(&m_flushTimer, &QTimer::timeout, this, [this]() { emit serverLogChanged(); });
 }
 
 void RuntimeLog::setServer(LlamaServerProcess *server)
@@ -30,10 +27,8 @@ void RuntimeLog::setServer(LlamaServerProcess *server)
     m_server = server;
     m_flushTimer.stop();
     if (m_server) {
-        connect(m_server, &LlamaServerProcess::logLineAppended, this,
-                [this](const QString &) { m_flushTimer.start(); });
-        connect(m_server, &QObject::destroyed, this,
-                [this]() { m_server = nullptr; });
+        connect(m_server, &LlamaServerProcess::logLineAppended, this, [this](const QString &) { m_flushTimer.start(); });
+        connect(m_server, &QObject::destroyed, this, [this]() { m_server = nullptr; });
     }
     emit serverLogChanged();
 }

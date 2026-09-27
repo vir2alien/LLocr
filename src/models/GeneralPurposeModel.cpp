@@ -23,8 +23,7 @@ namespace {
 
 QString stripControlTokens(const QString &text)
 {
-    static const QRegularExpression thinkBlock(
-        QStringLiteral(R"( thinking[\s\S]*? response\s*)"));
+    static const QRegularExpression thinkBlock(QStringLiteral(R"( thinking[\s\S]*? response\s*)"));
 
     QString out = stripServiceTokens(text);
     out.remove(thinkBlock);
@@ -38,8 +37,7 @@ QString stripControlTokens(const QString &text)
 
 }  // namespace
 
-QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request,
-                                                 const QByteArray &imageDataUrl)
+QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
 {
     // The verifier protocol: the model must answer with exactly one of
     //   OK
@@ -49,36 +47,22 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request,
     // the type prompt, the block image and the OCR candidate to verify.
 
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
-    QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")},
-                          {QStringLiteral("image_url"), imageUrl}};
-    QJsonObject typePromptPart{{QStringLiteral("type"), QStringLiteral("text")},
-                               {QStringLiteral("text"), request.typePrompt}};
-    QJsonObject ocrPart{
-        {QStringLiteral("type"), QStringLiteral("text")},
-        {QStringLiteral("text"),
-         QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>")
-             .arg(request.recognizedText)}};
+    QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
+    QJsonObject typePromptPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.typePrompt}};
+    QJsonObject ocrPart{{QStringLiteral("type"), QStringLiteral("text")},
+                        {QStringLiteral("text"), QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>").arg(request.recognizedText)}};
 
     QJsonArray content{typePromptPart, imagePart, ocrPart};
 
-    QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")},
-                              {QStringLiteral("content"), request.systemPrompt}};
-    QJsonObject userMessage{{QStringLiteral("role"), QStringLiteral("user")},
-                            {QStringLiteral("content"), content}};
+    QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")}, {QStringLiteral("content"), request.systemPrompt}};
+    QJsonObject userMessage{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
 
-    QJsonObject root{
-        {QStringLiteral("model"), request.modelId},
-        {QStringLiteral("messages"), QJsonArray{systemMessage, userMessage}}
-    };
+    QJsonObject root{{QStringLiteral("model"), request.modelId}, {QStringLiteral("messages"), QJsonArray{systemMessage, userMessage}}};
 
-    root.insert(QStringLiteral("chat_template_kwargs"),
-                QJsonObject{{QStringLiteral("enable_thinking"), false}});
+    root.insert(QStringLiteral("chat_template_kwargs"), QJsonObject{{QStringLiteral("enable_thinking"), false}});
 
     QList<RequestParameter> parameters = request.parameters;
-    std::stable_sort(parameters.begin(), parameters.end(),
-                     [](const RequestParameter &a, const RequestParameter &b) {
-                         return a.order < b.order;
-                     });
+    std::stable_sort(parameters.begin(), parameters.end(), [](const RequestParameter &a, const RequestParameter &b) { return a.order < b.order; });
     for (const RequestParameter &parameter : parameters)
         root.insert(parameter.name, RequestProfile::valueToJson(parameter.value));
 
@@ -90,25 +74,21 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
     QJsonParseError parseError{};
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject())
-        return CheckResult::makeError(
-            StatusMessage::translate("GeneralPurposeModel", "Invalid JSON response"));
+        return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "Invalid JSON response"));
 
     const QJsonObject root = doc.object();
     const QJsonArray choices = root.value(QStringLiteral("choices")).toArray();
     if (choices.isEmpty())
-        return CheckResult::makeError(
-            StatusMessage::translate("GeneralPurposeModel", "No choices in response"));
+        return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "No choices in response"));
 
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
     const QString content = stripControlTokens(message.value(QStringLiteral("content")).toString());
 
     if (content.isEmpty())
-        return CheckResult::makeError(StatusMessage::translate(
-            "GeneralPurposeModel",
-            "The model returned no corrected text, only end-of-sentence markers. "
-            "Check that the selected model can process images."));
+        return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel",
+                                                               "The model returned no corrected text, only end-of-sentence markers. "
+                                                               "Check that the selected model can process images."));
 
-    // --- Verifier protocol: OK / FIX\n<block> / REVIEW ---
     const QString trimmed = content.trimmed();
     const QString upper = trimmed.toUpper();
 
@@ -131,35 +111,26 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
         if (fixed.startsWith(QLatin1Char(':')))
             fixed = fixed.mid(1).trimmed();
         if (fixed.isEmpty())
-            return CheckResult::makeError(StatusMessage::translate(
-                "GeneralPurposeModel",
-                "The model returned FIX without the corrected text."));
+            return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "The model returned FIX without the corrected text."));
         CheckResult fix;
         fix.status = CheckStatus::Fixed;
         fix.text = fixed;
         return fix;
     }
 
-    return CheckResult::makeError(StatusMessage::translate(
-        "GeneralPurposeModel",
-        "Unexpected verifier response\u2014expected OK, FIX or REVIEW. Received: %1")
-        .arg(content.left(120)));
+    return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "Unexpected verifier response\u2014expected OK, FIX or REVIEW. Received: %1").arg(content.left(120)));
 }
 
-QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request,
-                                                const ConnectionConfig &config)
+QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request, const ConnectionConfig &config)
 {
     auto client = std::make_shared<LlamaClient>();
     m_activeClient = client;
 
-    return runChatExchange<CheckResult>(
-        [request]() {
-            return buildRequestBody(request, encodeImageDataUrl(request.image));
-        },
-        config, client,
-        [](const QByteArray &body) { return parseResponse(body); },
-        QCoreApplication::translate("GeneralPurposeModel",
-                                    "Failed to encode the block image"));
+    return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
+                                        config,
+                                        client,
+                                        [](const QByteArray &body) { return parseResponse(body); },
+                                        QCoreApplication::translate("GeneralPurposeModel", "Failed to encode the block image"));
 }
 
 void GeneralPurposeModel::abort()
@@ -168,4 +139,4 @@ void GeneralPurposeModel::abort()
         m_activeClient->abort();
 }
 
-} // namespace llocr
+}  // namespace llocr

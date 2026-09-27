@@ -59,10 +59,7 @@ public:
 
     int port() const { return m_server.serverPort(); }
 
-    QString url(const QString &name) const
-    {
-        return QStringLiteral("http://127.0.0.1:%1/%2").arg(m_server.serverPort()).arg(name);
-    }
+    QString url(const QString &name) const { return QStringLiteral("http://127.0.0.1:%1/%2").arg(m_server.serverPort()).arg(name); }
 
 private:
     // Declaration order matters for destruction: accepted sockets are children
@@ -96,8 +93,7 @@ private:
         return rest.left(dash).toLongLong();
     }
 
-    void respond(QTcpSocket *socket, const QByteArray &statusLine, const QList<QByteArray> &headers,
-                 const QByteArray &body, int declaredLength, bool keepOpen)
+    void respond(QTcpSocket *socket, const QByteArray &statusLine, const QList<QByteArray> &headers, const QByteArray &body, int declaredLength, bool keepOpen)
     {
         QByteArray raw;
         raw += statusLine + "\r\n";
@@ -151,16 +147,14 @@ private:
             if (corruptContentRange) {
                 // 206 with a Content-Range whose start mismatches the request.
                 QList<QByteArray> headers = baseHeaders();
-                headers.append("Content-Range: bytes 0-" + QByteArray::number(content.size() - 1)
-                               + "/" + QByteArray::number(content.size()));
+                headers.append("Content-Range: bytes 0-" + QByteArray::number(content.size() - 1) + "/" + QByteArray::number(content.size()));
                 respond(socket, "HTTP/1.1 206 Partial Content", headers, QByteArray(), 0, false);
                 return;
             }
             const qint64 start = rangeStart(range);
             const QByteArray body = (start >= 0 && start < content.size()) ? content.mid(int(start)) : QByteArray();
             QList<QByteArray> headers = baseHeaders();
-            headers.append("Content-Range: bytes " + QByteArray::number(start) + "-"
-                           + QByteArray::number(start + body.size() - 1) + "/" + QByteArray::number(content.size()));
+            headers.append("Content-Range: bytes " + QByteArray::number(start) + "-" + QByteArray::number(start + body.size() - 1) + "/" + QByteArray::number(content.size()));
             respond(socket, "HTTP/1.1 206 Partial Content", headers, body, -1, false);
             return;
         }
@@ -196,8 +190,7 @@ QString sha256Hex(const QByteArray &data)
     return QString::fromLatin1(QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex());
 }
 
-DownloadTask::Request makeReq(const QString &url, const QString &targetDir, const QString &name,
-                              const QString &sha = QString())
+DownloadTask::Request makeReq(const QString &url, const QString &targetDir, const QString &name, const QString &sha = QString())
 {
     DownloadTask::Request request;
     request.url = QUrl(url);
@@ -232,10 +225,6 @@ const QString kEtagV1 = QStringLiteral("\"v1\"");
 const QString kEtagV2 = QStringLiteral("\"v2\"");
 
 }  // namespace
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 class TestDownloadManager : public QObject
 {
@@ -355,12 +344,10 @@ void TestDownloadManager::resumeWithCorruptedPrefixFailsChecksum()
 
     DownloadManager mgr;
     mgr.setAllowLoopbackHttp(true);
-    const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin",
-                                         sha256Hex(data)));
+    const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin", sha256Hex(data)));
     DownloadTask *task = mgr.taskAt(row);
     QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 5000);
     QVERIFY(!task->error().isEmpty());
-    // The mismatching partial is removed, exactly like a fresh download.
     QVERIFY(!QFile::exists(QDir(dir.path()).filePath(QStringLiteral("model.bin.part"))));
     QVERIFY(!QFile::exists(QDir(dir.path()).filePath(QStringLiteral("model.bin"))));
 }
@@ -372,7 +359,7 @@ void TestDownloadManager::changedValidatorForcesFullRedownload()
     const QByteArray oldData(4000, 'A');
     const QByteArray newData(4000, 'B');
     server.content = newData;
-    server.etag = kEtagV2;  // validator moved on since the partial was saved
+    server.etag = kEtagV2;
     server.honorRanges = true;
     QVERIFY(server.start());
 
@@ -545,25 +532,17 @@ void TestDownloadManager::groupProgressIsPerGroupNotTheManagerAggregate()
     DownloadGroup firstGroup(&mgr);
     DownloadGroup secondGroup(&mgr);
 
-    // First "install": a single 4 KB file, finished before the second starts.
     firstGroup.begin();
     firstGroup.enqueue(makeReq(server.url("first.bin"), dir.path(), "first.bin"));
-    QTRY_COMPARE_WITH_TIMEOUT(int(mgr.taskAt(0)->state()),
-                              int(DownloadTask::State::Completed), 5000);
+    QTRY_COMPARE_WITH_TIMEOUT(int(mgr.taskAt(0)->state()), int(DownloadTask::State::Completed), 5000);
     QVERIFY(firstGroup.progress() > 0.99);
     QVERIFY(!firstGroup.failed());
 
-    // Second "install": its progress starts from zero, not from the manager's
-    // total of both files.
     secondGroup.begin();
-    QVERIFY2(secondGroup.progress() == 0.0,
-             "a new group must start at zero progress");
+    QVERIFY2(secondGroup.progress() == 0.0, "a new group must start at zero progress");
     secondGroup.enqueue(makeReq(server.url("second.bin"), dir.path(), "second.bin"));
-    QTRY_COMPARE_WITH_TIMEOUT(int(mgr.taskAt(1)->state()),
-                              int(DownloadTask::State::Completed), 5000);
-    QVERIFY2(secondGroup.progress() > 0.99,
-             qPrintable(QStringLiteral("second group progress: %1")
-                            .arg(secondGroup.progress())));
+    QTRY_COMPARE_WITH_TIMEOUT(int(mgr.taskAt(1)->state()), int(DownloadTask::State::Completed), 5000);
+    QVERIFY2(secondGroup.progress() > 0.99, qPrintable(QStringLiteral("second group progress: %1").arg(secondGroup.progress())));
     QVERIFY(!secondGroup.failed());
 }
 

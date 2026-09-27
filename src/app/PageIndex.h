@@ -19,8 +19,7 @@ inline int remapIndexAfterMove(int key, int from, int to)
 
 // Per-page side data (edit baselines, "edited" markers) follows the document's
 // page indices, so it has to move with removePage()/movePage().
-template <typename T>
-inline QHash<int, T> remapHashAfterRemove(const QHash<int, T>& map, int removedIndex)
+template <typename T> inline QHash<int, T> remapHashAfterRemove(const QHash<int, T> &map, int removedIndex)
 {
     QHash<int, T> out;
     for (auto it = map.cbegin(); it != map.cend(); ++it) {
@@ -31,8 +30,7 @@ inline QHash<int, T> remapHashAfterRemove(const QHash<int, T>& map, int removedI
     return out;
 }
 
-template <typename T>
-inline QHash<int, T> remapHashAfterMove(const QHash<int, T>& map, int from, int to)
+template <typename T> inline QHash<int, T> remapHashAfterMove(const QHash<int, T> &map, int from, int to)
 {
     QHash<int, T> out;
     out.reserve(map.size());

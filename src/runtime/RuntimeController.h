@@ -9,8 +9,8 @@
 #include <functional>
 #include <vector>
 
+#include "config/RuntimePaths.h"
 #include "runtime/ConnectionMode.h"
-#include "runtime/RuntimePaths.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeLocator.h"
 #include "runtime/ServerLaunchConfig.h"
@@ -35,38 +35,25 @@ class RuntimeController : public QObject
     Q_PROPERTY(int busyState READ busyStateInt NOTIFY busyStateChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(int loadProgressPercent READ loadProgressPercent NOTIFY loadProgressChanged)
-    // The three settings gates the UI used to re-derive in QML. `configValid` is
-    // the whole managed configuration; the two parts are exposed separately
-    // because the wizard asks about them one step at a time.
     Q_PROPERTY(bool configValid READ configValid NOTIFY configValidChanged)
     Q_PROPERTY(bool serverPathValid READ serverPathValid NOTIFY configValidChanged)
     Q_PROPERTY(bool modelPathValid READ modelPathValid NOTIFY configValidChanged)
     Q_PROPERTY(bool lockedOut READ lockedOut NOTIFY lockedOutChanged)
-    // "The running server was started with a configuration that differs from the
-    // one the current settings produce" — the restart banner's single rule. The
-    // comparison is made against the real launch config, so a setting that
-    // ServerLaunchConfig does not read cannot raise a false banner, and one that
-    // it does read cannot be forgotten (ADR 113).
     Q_PROPERTY(bool launchConfigDirty READ launchConfigDirty NOTIFY launchConfigDirtyChanged)
-    // A llama-server left running by a previous LLocr run (ADR 107). The record
-    // is offered to the user, never killed without a click.
     Q_PROPERTY(bool orphanDetected READ orphanDetected NOTIFY orphanChanged)
     Q_PROPERTY(QString orphanInfo READ orphanInfo NOTIFY orphanChanged)
 
 public:
-    explicit RuntimeController(SettingsStore &settings,
-                               LaunchProfileStore &launchProfiles,
-                               LaunchProfileStore *checkLaunchProfiles = nullptr,
-                               InstalledState *state = nullptr,
-                               QObject *parent = nullptr);
+    explicit RuntimeController(
+        SettingsStore &settings, LaunchProfileStore &launchProfiles, LaunchProfileStore *checkLaunchProfiles = nullptr, InstalledState *state = nullptr, QObject *parent = nullptr);
 
     enum class AppBusyState {
         Idle,
         StartingRuntime,  // server is starting / loading the model
         Recognizing,
         StoppingRuntime,
-        Downloading,      // model or runtime download in progress
-        Installing,       // archive extraction / verification
+        Downloading,  // model or runtime download in progress
+        Installing,   // archive extraction / verification
     };
     Q_ENUM(AppBusyState)
 
@@ -92,31 +79,21 @@ public:
 
     bool orphanDetected() const { return m_orphan.isValid(); }
     QString orphanInfo() const;
-    /// Terminates the detected orphan (after re-validating it) and drops the
-    /// record. Returns an empty string on success, a user-facing reason otherwise.
     Q_INVOKABLE QString terminateOrphan();
 
-    Q_INVOKABLE static QString localPath(const QUrl &url)
-    {
-        return url.isLocalFile() ? url.toLocalFile() : url.toString();
-    }
+    Q_INVOKABLE static QString localPath(const QUrl &url) { return url.isLocalFile() ? url.toLocalFile() : url.toString(); }
 
     Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath);
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
-    void ensureConnectionReady(QObject *context,
-                               const std::function<void(const ResolvedConnection &)> &onResolved);
-    void ensureConnectionReady(ConnectionRole role,
-                               const std::function<void(const ResolvedConnection &)> &onResolved);
-    void ensureConnectionReady(QObject *context, ConnectionRole role,
-                               const std::function<void(const ResolvedConnection &)> &onResolved);
+    void ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved);
+    void ensureConnectionReady(ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved);
+    void ensureConnectionReady(QObject *context, ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved);
     void cancelPendingStart();
     void setSingleInstanceHeld(bool held);
     void bindSingleInstanceGuard(SingleInstanceGuard *guard);
     Q_INVOKABLE void refreshSingleInstanceLock();
     void setLogTarget(RuntimeLog *log);
-    // Re-reads <rootDir>/owner.json. Called at construction; the paths follow
-    // the current settings, so a moved runtime directory is re-scanned.
     void scanForOrphanedServer();
     Q_INVOKABLE QString startServer();
     Q_INVOKABLE void stopServer();
@@ -142,8 +119,6 @@ private:
     void setLoadProgressPercent(int pct);
 
 private slots:
-    // Connected to *every* `…Changed` signal of SettingsStore (see the
-    // constructor), so a new setting cannot be added without being considered.
     void recomputeConfigValid();
     void recomputeLaunchConfigDirty();
 
@@ -161,8 +136,7 @@ private:
     void startResolveForRole(ConnectionRole role);
     void completeResolve(ResolvedConnection conn);
     void failResolve(const QString &message);
-    void deliverCallbacks(const std::vector<PendingResolve> &callbacks,
-                          const ResolvedConnection &conn);
+    void deliverCallbacks(const std::vector<PendingResolve> &callbacks, const ResolvedConnection &conn);
     void onServerStateForResolve();
     void cancelPendingRestart();
 
@@ -170,8 +144,7 @@ private:
     void onModelsReply(QNetworkReply *reply);
 
     QString startServer(ConnectionRole role);
-    void finishStartServer(ConnectionRole role, const QString &program,
-                           const ProbeResult &probe);
+    void finishStartServer(ConnectionRole role, const QString &program, const ProbeResult &probe);
     QString describeServerFailure() const;
     static QString translateServerLine(const QString &line);
 
@@ -191,8 +164,6 @@ private:
     RuntimeLog *m_logTarget = nullptr;
     SingleInstanceGuard *m_instanceGuard = nullptr;
     SettingsStore &m_settings;
-    // Optional: when not wired, paths are derived from the settings on demand
-    // (ADR 109). With it, the install lock and the caches are shared.
     InstalledState *m_installedState = nullptr;
     LaunchProfileStore &m_launchProfiles;
     LaunchProfileStore *m_checkLaunchProfiles = nullptr;
@@ -202,21 +173,13 @@ private:
         ConnectionRole role = ConnectionRole::Ocr;
         std::function<void(const ResolvedConnection &)> onResolved;
     };
-    // Callbacks of the resolve that is in flight — all of them asked for the
-    // same role, so one connection serves them all.
     std::vector<PendingResolve> m_resolveCallbacks;
-    // Requests for the *other* role that arrived while a resolve was in flight.
-    // The single managed server serves one role at a time (ADR 74), so joining
-    // the in-flight batch would silently answer with the wrong model; they wait
-    // here for their own dispatch (a role switch when the server is live).
     std::vector<PendingResolve> m_deferredResolves;
     ConnectionRole m_resolveRole = ConnectionRole::Ocr;
     bool m_switching = false;
     bool m_resolveInProgress = false;
     QNetworkAccessManager *m_modelsNet = nullptr;
     QString m_modelsBaseUrl;
-    // The configuration the live server was actually started with, and the role
-    // it serves (ADR 74: one server, one role at a time).
     ServerLaunchConfig m_startedConfig;
     ConnectionRole m_startedRole = ConnectionRole::Ocr;
     bool m_hasStartedConfig = false;
@@ -231,8 +194,6 @@ private:
     bool m_lockedOut = false;
     ServerOwnerRecord m_orphan;
     QString m_orphanJsonPath;
-    // Bumped for every started probe; a result whose generation is stale
-    // (cancelled, or superseded by a newer probe) is dropped (ADR 105).
     quint64 m_startGeneration = 0;
 };
 

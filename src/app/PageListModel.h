@@ -18,10 +18,10 @@ public:
         HasDuplicatesRole,
     };
 
-    explicit PageListModel(QObject* parent = nullptr);
+    explicit PageListModel(QObject *parent = nullptr);
 
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
+    int rowCount(const QModelIndex &parent = {}) const override;
+    QVariant data(const QModelIndex &index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
     void setPageCount(int count);
@@ -41,4 +41,4 @@ private:
     int m_current = -1;
 };
 
-} // namespace llocr
+}  // namespace llocr

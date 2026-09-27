@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QList>
 #include <QDateTime>
+#include <QList>
 #include <QLockFile>
 #include <QObject>
 #include <QQmlEngine>
@@ -9,11 +9,11 @@
 #include <QStringList>
 #include <QVariant>
 
-#include "runtime/InstallTransaction.h"
+#include "config/RuntimePaths.h"
 #include "runtime/InstalledBuildsModel.h"
-#include "runtime/ReleaseCatalog.h"
 #include "runtime/InstalledState.h"
-#include "runtime/RuntimePaths.h"
+#include "runtime/InstallTransaction.h"
+#include "runtime/ReleaseCatalog.h"
 
 namespace llocr {
 
@@ -24,8 +24,6 @@ class SettingsStore;
 class RuntimeInstaller : public QObject
 {
     Q_OBJECT
-    // See UiController.h: registered by hand in main.cpp until the module
-    // singletons get their create() factories (stage 4).
 
     Q_PROPERTY(int state READ stateInt NOTIFY stateChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
@@ -46,9 +44,6 @@ class RuntimeInstaller : public QObject
 
     Q_PROPERTY(int installedBuildCount READ installedBuildCount NOTIFY installedBuildsChanged)
 
-    // The installed builds as a real list model with named roles, so the QML
-    // delegate no longer indexes a QVariantMap by string key and re-fetches its
-    // row on every change signal (ADR 115).
     Q_PROPERTY(QObject *installedBuilds READ installedBuilds CONSTANT)
 
     Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
@@ -57,18 +52,17 @@ class RuntimeInstaller : public QObject
 
 public:
     enum State {
-        Idle = 0,          // nothing loaded yet
-        Fetching = 1,      // fetching the release catalog
-        Ready = 2,         // catalog loaded, awaiting a user action
-        Downloading = 3,   // downloading the archive(s)
-        Installing = 4,    // verifying / extracting / probing
-        Installed = 5,     // a build is installed and active
-        Error = 6,         // last operation failed; statusMessage explains it
+        Idle = 0,         // nothing loaded yet
+        Fetching = 1,     // fetching the release catalog
+        Ready = 2,        // catalog loaded, awaiting a user action
+        Downloading = 3,  // downloading the archive(s)
+        Installing = 4,   // verifying / extracting / probing
+        Installed = 5,    // a build is installed and active
+        Error = 6,        // last operation failed; statusMessage explains it
     };
     Q_ENUM(State)
 
-    explicit RuntimeInstaller(SettingsStore &settings, InstalledState &state,
-                              QObject *parent = nullptr);
+    explicit RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent = nullptr);
     ~RuntimeInstaller() override;
 
     void shutdown();
@@ -127,8 +121,7 @@ private:
     void runInstallAsync();
     void onInstallFinished(const InstallOutput &out, const QString &warning);
 
-    ReleaseAsset pickAsset(const ReleaseInfo &release, const QString &backend,
-                           bool wantCudart) const;
+    ReleaseAsset pickAsset(const ReleaseInfo &release, const QString &backend, bool wantCudart) const;
     void maybeFinishDownloads();
     bool acquireInstallLock(QString &error);
     void releaseInstallLock();
@@ -147,8 +140,6 @@ signals:
 
 private:
     SettingsStore &m_settings;
-    // Paths and the install lock come from InstalledState, which follows the
-    // settings instead of freezing them at construction (ADR 109).
     InstalledState &m_installState;
 
     State m_state = State::Idle;

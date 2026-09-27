@@ -1,11 +1,11 @@
 #include "app/DocumentModel.h"
 
-#include <QCoreApplication>
-#include <QFileInfo>
-#include <QImageReader>
 #include <exception>
 #include <memory>
 #include <new>
+#include <QCoreApplication>
+#include <QFileInfo>
+#include <QImageReader>
 #include <utility>
 
 #include <QPdfDocument>
@@ -20,7 +20,7 @@ constexpr int kFullCacheLimit = 4;
 constexpr int kThumbMaxWidth = 220;
 constexpr int kThumbMaxHeight = 300;
 
-QSize fitWithin(const QSize& size, const QSize& bounds)
+QSize fitWithin(const QSize &size, const QSize &bounds)
 {
     if (size.isEmpty() || bounds.isEmpty())
         return QSize(200, 260);
@@ -30,10 +30,9 @@ QSize fitWithin(const QSize& size, const QSize& bounds)
     return scaled;
 }
 
-QSize pdfPixelSize(const QSizeF& pointSize)
+QSize pdfPixelSize(const QSizeF &pointSize)
 {
-    return QSize(qRound(pointSize.width() / 72.0 * kDpi),
-                 qRound(pointSize.height() / 72.0 * kDpi));
+    return QSize(qRound(pointSize.width() / 72.0 * kDpi), qRound(pointSize.height() / 72.0 * kDpi));
 }
 
 }  // namespace
@@ -43,13 +42,13 @@ DocumentModel::~DocumentModel()
     clear();
 }
 
-bool DocumentModel::loadImage(const QString& path)
+bool DocumentModel::loadImage(const QString &path)
 {
     clear();
     return appendImage(path);
 }
 
-bool DocumentModel::appendImage(const QString& path)
+bool DocumentModel::appendImage(const QString &path)
 {
     DocumentPage page;
     page.sourcePath = path;
@@ -71,9 +70,9 @@ bool DocumentModel::appendImage(const QString& path)
     return true;
 }
 
-bool DocumentModel::appendPdf(const QString& path)
+bool DocumentModel::appendPdf(const QString &path)
 {
-    QPdfDocument* pdf = pdfFor(path);
+    QPdfDocument *pdf = pdfFor(path);
     if (!pdf || pdf->pageCount() <= 0)
         return false;
 
@@ -88,11 +87,9 @@ bool DocumentModel::appendPdf(const QString& path)
         page.pixelSize = pixelSize;
 
         QPdfDocumentRenderOptions options;
-        QImage image = pdf->render(i, fitWithin(pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)),
-                                   options);
+        QImage image = pdf->render(i, fitWithin(pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)), options);
         if (image.isNull()) {
-            image = QImage(fitWithin(pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)),
-                           QImage::Format_ARGB32);
+            image = QImage(fitWithin(pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)), QImage::Format_ARGB32);
             image.fill(Qt::white);
         }
         page.thumb = image;
@@ -102,7 +99,7 @@ bool DocumentModel::appendPdf(const QString& path)
     return true;
 }
 
-bool DocumentModel::appendFile(const QString& path, QString* error)
+bool DocumentModel::appendFile(const QString &path, QString *error)
 {
     if (error)
         error->clear();
@@ -115,7 +112,7 @@ bool DocumentModel::appendFile(const QString& path, QString* error)
     return ok;
 }
 
-DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString& path)
+DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString &path)
 {
     PreparedDjVu prepared;
 #ifdef LLOCR_HAVE_DJVU
@@ -134,19 +131,15 @@ DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString& path)
                 QString pageError;
                 page.pixelSize = document->pageSize(i, &pageError);
                 if (!page.pixelSize.isEmpty())
-                    page.thumb = document->render(i, fitWithin(page.pixelSize,
-                                                 QSize(kThumbMaxWidth, kThumbMaxHeight)),
-                                                 &pageError);
+                    page.thumb = document->render(i, fitWithin(page.pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)), &pageError);
                 if (page.thumb.isNull()) {
                     if (pageError.isEmpty())
-                        pageError = QCoreApplication::translate("DocumentModel",
-                            "Failed to read DjVu %1, page %2.").arg(path).arg(i + 1);
+                        pageError = QCoreApplication::translate("DocumentModel", "Failed to read DjVu %1, page %2.").arg(path).arg(i + 1);
                     page.sourceError = pageError;
                     prepared.warnings.append(pageError);
                     if (page.pixelSize.isEmpty())
                         page.pixelSize = QSize(800, 1000);
-                    page.thumb = QImage(fitWithin(page.pixelSize,
-                                        QSize(kThumbMaxWidth, kThumbMaxHeight)), QImage::Format_RGB32);
+                    page.thumb = QImage(fitWithin(page.pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight)), QImage::Format_RGB32);
                     if (page.thumb.isNull())
                         throw std::bad_alloc();
                     page.thumb.fill(Qt::white);
@@ -160,27 +153,24 @@ DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString& path)
             }
         }
         if (prepared.error.isEmpty())
-            prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1.")
-                                 .arg(path);
-    } catch (const std::bad_alloc&) {
+            prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1.").arg(path);
+    } catch (const std::bad_alloc &) {
         prepared.error = QStringLiteral("Not enough memory to prepare DjVu document.");
-    } catch (const std::exception& exception) {
-        prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1: %2")
-                             .arg(path, QString::fromUtf8(exception.what()));
+    } catch (const std::exception &exception) {
+        prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1: %2").arg(path, QString::fromUtf8(exception.what()));
     } catch (...) {
-        prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1.")
-                             .arg(path);
+        prepared.error = QCoreApplication::translate("DocumentModel", "Failed to open DjVu %1.").arg(path);
     }
 #else
     Q_UNUSED(path);
     prepared.error = QCoreApplication::translate("DocumentModel",
-        "DjVu support is not available in this build. Install DjVuLibre and rebuild "
-        "LLocr (see docs/06-dev-setup.md), or convert the document to PDF.");
+                                                 "DjVu support is not available in this build. Install DjVuLibre and rebuild "
+                                                 "LLocr (see docs/06-dev-setup.md), or convert the document to PDF.");
 #endif
     return prepared;
 }
 
-void DocumentModel::appendPreparedDjVu(const PreparedDjVu& prepared)
+void DocumentModel::appendPreparedDjVu(const PreparedDjVu &prepared)
 {
     if (!prepared.error.isEmpty() || prepared.pages.isEmpty())
         return;
@@ -188,14 +178,14 @@ void DocumentModel::appendPreparedDjVu(const PreparedDjVu& prepared)
     // reaches this point and the document handle is never needed.
     if (!prepared.document)
         return;
-    const QString& key = prepared.pages.first().sourcePath;
+    const QString &key = prepared.pages.first().sourcePath;
     if (!m_djvus.contains(key))
         m_djvus.insert(key, prepared.document);
     m_pages.reserve(m_pages.size() + prepared.pages.size());
     m_pages.append(prepared.pages);
 }
 
-bool DocumentModel::appendDjVu(const QString& path, QString* error)
+bool DocumentModel::appendDjVu(const QString &path, QString *error)
 {
     const PreparedDjVu prepared = prepareDjVu(path);
     if (error)
@@ -235,15 +225,15 @@ void DocumentModel::clear()
     m_djvus.clear();
 }
 
-void DocumentModel::evictUnusedSourceDocuments(const QString& path)
+void DocumentModel::evictUnusedSourceDocuments(const QString &path)
 {
     if (path.isEmpty())
         return;
-    for (const DocumentPage& page : m_pages) {
+    for (const DocumentPage &page : m_pages) {
         if (page.sourcePath == path)
             return;
     }
-    if (QPdfDocument* pdf = m_pdfs.take(path)) {
+    if (QPdfDocument *pdf = m_pdfs.take(path)) {
         delete pdf;
         return;
     }
@@ -255,7 +245,7 @@ bool DocumentModel::isValidIndex(int index) const
     return index >= 0 && index < m_pages.size();
 }
 
-bool DocumentModel::decodeSource(DocumentPage& page, QString *error)
+bool DocumentModel::decodeSource(DocumentPage &page, QString *error)
 {
     QImageReader reader(page.sourcePath);
     reader.setAutoTransform(true);
@@ -263,16 +253,11 @@ bool DocumentModel::decodeSource(DocumentPage& page, QString *error)
     QImage image = reader.read();
     if (image.isNull()) {
         if (error)
-            *error = QStringLiteral("Failed to read %1: %2")
-                         .arg(page.sourcePath,
-                              reader.errorString().isEmpty()
-                                  ? QStringLiteral("unknown error")
-                                  : reader.errorString());
+            *error = QStringLiteral("Failed to read %1: %2").arg(page.sourcePath, reader.errorString().isEmpty() ? QStringLiteral("unknown error") : reader.errorString());
         return false;
     }
 
-    if (image.format() != QImage::Format_RGB32
-        && image.format() != QImage::Format_ARGB32) {
+    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32) {
         image = image.convertToFormat(QImage::Format_ARGB32);
     }
 
@@ -280,7 +265,7 @@ bool DocumentModel::decodeSource(DocumentPage& page, QString *error)
     return true;
 }
 
-QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
+QImage DocumentModel::renderFull(const DocumentPage &page, QString *error)
 {
     if (!page.sourceError.isEmpty()) {
         QImage placeholder(page.pixelSize, QImage::Format_RGB32);
@@ -297,26 +282,23 @@ QImage DocumentModel::renderFull(const DocumentPage& page, QString *error)
         const auto document = m_djvus.value(page.sourcePath);
         if (!document) {
             if (error)
-                *error = QCoreApplication::translate("DocumentModel", "DjVu document is not open: %1")
-                             .arg(page.sourcePath);
+                *error = QCoreApplication::translate("DocumentModel", "DjVu document is not open: %1").arg(page.sourcePath);
             return {};
         }
         return document->render(page.sourcePageIndex, page.pixelSize, error);
     }
 #endif
     if (page.sourceType == DocumentSource::Pdf) {
-        QPdfDocument* pdf = pdfFor(page.sourcePath);
+        QPdfDocument *pdf = pdfFor(page.sourcePath);
         if (!pdf) {
             if (error)
-                *error = QStringLiteral("Failed to open %1 as a PDF document")
-                             .arg(page.sourcePath);
+                *error = QStringLiteral("Failed to open %1 as a PDF document").arg(page.sourcePath);
             return QImage();
         }
         QPdfDocumentRenderOptions options;
         QImage image = pdf->render(page.sourcePageIndex, page.pixelSize, options);
         if (image.isNull()) {
-            image = QImage(page.pixelSize.isEmpty() ? QSize(800, 1000) : page.pixelSize,
-                           QImage::Format_ARGB32);
+            image = QImage(page.pixelSize.isEmpty() ? QSize(800, 1000) : page.pixelSize, QImage::Format_ARGB32);
             image.fill(Qt::white);
         }
         return image;
@@ -341,7 +323,7 @@ DocumentModel::RenderRequest DocumentModel::renderRequestFor(int index) const
     return request;
 }
 
-QImage DocumentModel::renderDetached(const RenderRequest& request, QString *error)
+QImage DocumentModel::renderDetached(const RenderRequest &request, QString *error)
 {
     const DocumentPage &page = request.page;
     if (error)
@@ -361,9 +343,7 @@ QImage DocumentModel::renderDetached(const RenderRequest& request, QString *erro
     if (page.sourceType == DocumentSource::DjVu) {
         if (!request.djvu) {
             if (error) {
-                *error = QCoreApplication::translate(
-                             "DocumentModel", "DjVu document is not open: %1")
-                             .arg(page.sourcePath);
+                *error = QCoreApplication::translate("DocumentModel", "DjVu document is not open: %1").arg(page.sourcePath);
             }
             return {};
         }
@@ -377,16 +357,14 @@ QImage DocumentModel::renderDetached(const RenderRequest& request, QString *erro
         const QPdfDocument::Error err = pdf.load(page.sourcePath);
         if (err != QPdfDocument::Error::None) {
             if (error) {
-                *error = QStringLiteral("Failed to open %1 as a PDF document")
-                             .arg(page.sourcePath);
+                *error = QStringLiteral("Failed to open %1 as a PDF document").arg(page.sourcePath);
             }
             return QImage();
         }
         QPdfDocumentRenderOptions options;
         QImage image = pdf.render(page.sourcePageIndex, page.pixelSize, options);
         if (image.isNull()) {
-            image = QImage(page.pixelSize.isEmpty() ? QSize(800, 1000) : page.pixelSize,
-                           QImage::Format_ARGB32);
+            image = QImage(page.pixelSize.isEmpty() ? QSize(800, 1000) : page.pixelSize, QImage::Format_ARGB32);
             image.fill(Qt::white);
         }
         return image;
@@ -395,7 +373,7 @@ QImage DocumentModel::renderDetached(const RenderRequest& request, QString *erro
     return decodeSourceCopy(page, error);
 }
 
-QImage DocumentModel::decodeSourceCopy(const DocumentPage& page, QString *error)
+QImage DocumentModel::decodeSourceCopy(const DocumentPage &page, QString *error)
 {
     QImageReader reader(page.sourcePath);
     reader.setAutoTransform(true);
@@ -403,16 +381,11 @@ QImage DocumentModel::decodeSourceCopy(const DocumentPage& page, QString *error)
     QImage image = reader.read();
     if (image.isNull()) {
         if (error) {
-            *error = QStringLiteral("Failed to read %1: %2")
-                         .arg(page.sourcePath,
-                              reader.errorString().isEmpty()
-                                  ? QStringLiteral("unknown error")
-                                  : reader.errorString());
+            *error = QStringLiteral("Failed to read %1: %2").arg(page.sourcePath, reader.errorString().isEmpty() ? QStringLiteral("unknown error") : reader.errorString());
         }
         return {};
     }
-    if (image.format() != QImage::Format_RGB32
-        && image.format() != QImage::Format_ARGB32) {
+    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32) {
         image = image.convertToFormat(QImage::Format_ARGB32);
     }
     return image;
@@ -439,9 +412,9 @@ void DocumentModel::evictFullImages()
     }
 }
 
-QPdfDocument* DocumentModel::pdfFor(const QString& path)
+QPdfDocument *DocumentModel::pdfFor(const QString &path)
 {
-    QPdfDocument* pdf = m_pdfs.value(path, nullptr);
+    QPdfDocument *pdf = m_pdfs.value(path, nullptr);
     if (pdf)
         return pdf;
     pdf = new QPdfDocument();
@@ -466,7 +439,7 @@ QImage DocumentModel::fullImage(int index, QString *error)
     return m_pages[index].image;
 }
 
-const QImage& DocumentModel::thumbnail(int index) const
+const QImage &DocumentModel::thumbnail(int index) const
 {
     static const QImage null;
     if (!isValidIndex(index))
@@ -474,4 +447,4 @@ const QImage& DocumentModel::thumbnail(int index) const
     return m_pages[index].thumb;
 }
 
-} // namespace llocr
+}  // namespace llocr
