@@ -1,7 +1,9 @@
 #pragma once
 
 #include <memory>
+#include <QHash>
 #include <QImage>
+#include <QList>
 #include <QObject>
 #include <QReadWriteLock>
 #include <QUrl>
@@ -234,8 +236,16 @@ private:
     bool m_recognitionStopped = false;
 
     QHash<int, QImage> m_previewCache;
+    QList<int> m_previewCacheOrder;
+    qint64 m_previewCacheBytes = 0;
     int m_previewRendering = -1;      ///< page index a worker is busy with, -1 = idle
     quint64 m_previewGeneration = 0;  ///< bumped when the document changes
+
+    void cachePreview(int index, const QImage &image);
+    void evictPreviewCache();
+    void clearPreviewCache();
+    void notifyPageListGrown();
+    void notifyImportFinished();
 };
 
 }  // namespace llocr

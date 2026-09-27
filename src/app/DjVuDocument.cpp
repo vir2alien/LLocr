@@ -10,7 +10,7 @@
 namespace llocr {
 namespace {
 constexpr qint64 kDecodeTimeoutMs = 30000;
-constexpr qint64 kMaxRenderPixels = 40000000;
+constexpr qint64 kMaxRenderPixels = 16000000;
 constexpr int kMaxRenderSide = 16384;
 
 struct PageDeleter {

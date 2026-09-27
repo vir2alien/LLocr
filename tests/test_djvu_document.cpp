@@ -233,12 +233,12 @@ private slots:
         QVERIFY(size.width() <= 16384);
         QVERIFY(size.height() <= 16384);
         const qint64 area = qint64(size.width()) * size.height();
-        QVERIFY(area <= 40000000);
+        QVERIFY(area <= 16000000);
         QVERIFY(qAbs(double(size.width()) / size.height() - double(source.width()) / source.height()) < 0.03);
         if (source.width() > 16384 || source.height() > 16384)
             QCOMPARE(qMax(size.width(), size.height()), 16384);
         else
-            QVERIFY(area > 39900000);  // Bound, do not fall back to thumbnail/PDF DPI resolution.
+            QVERIFY(area > 15900000);  // Bound, do not fall back to thumbnail/PDF DPI resolution.
     }
 
     void damagedLaterPage()

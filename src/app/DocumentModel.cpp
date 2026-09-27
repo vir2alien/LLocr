@@ -19,6 +19,7 @@ constexpr double kDpi = 300.0;
 constexpr int kFullCacheLimit = 4;
 constexpr int kThumbMaxWidth = 220;
 constexpr int kThumbMaxHeight = 300;
+constexpr qint64 kMaxDecodeBytes = 256ll * 1024 * 1024;
 
 QSize fitWithin(const QSize &size, const QSize &bounds)
 {
@@ -174,8 +175,6 @@ void DocumentModel::appendPreparedDjVu(const PreparedDjVu &prepared)
 {
     if (!prepared.error.isEmpty() || prepared.pages.isEmpty())
         return;
-    // Without DjVu support prepareDjVu() always reports an error, so nothing
-    // reaches this point and the document handle is never needed.
     if (!prepared.document)
         return;
     const QString &key = prepared.pages.first().sourcePath;
@@ -243,26 +242,6 @@ void DocumentModel::evictUnusedSourceDocuments(const QString &path)
 bool DocumentModel::isValidIndex(int index) const
 {
     return index >= 0 && index < m_pages.size();
-}
-
-bool DocumentModel::decodeSource(DocumentPage &page, QString *error)
-{
-    QImageReader reader(page.sourcePath);
-    reader.setAutoTransform(true);
-    reader.setAllocationLimit(0);
-    QImage image = reader.read();
-    if (image.isNull()) {
-        if (error)
-            *error = QStringLiteral("Failed to read %1: %2").arg(page.sourcePath, reader.errorString().isEmpty() ? QStringLiteral("unknown error") : reader.errorString());
-        return false;
-    }
-
-    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32) {
-        image = image.convertToFormat(QImage::Format_ARGB32);
-    }
-
-    page.image = image;
-    return true;
 }
 
 QImage DocumentModel::renderFull(const DocumentPage &page, QString *error)
@@ -351,8 +330,6 @@ QImage DocumentModel::renderDetached(const RenderRequest &request, QString *erro
     }
 #endif
     if (page.sourceType == DocumentSource::Pdf) {
-        // A private handle: the model's QPdfDocument is GUI-thread state and
-        // QPdfDocument is not safe to share across threads.
         QPdfDocument pdf;
         const QPdfDocument::Error err = pdf.load(page.sourcePath);
         if (err != QPdfDocument::Error::None) {
@@ -377,7 +354,7 @@ QImage DocumentModel::decodeSourceCopy(const DocumentPage &page, QString *error)
 {
     QImageReader reader(page.sourcePath);
     reader.setAutoTransform(true);
-    reader.setAllocationLimit(0);
+    reader.setAllocationLimit(kMaxDecodeBytes);
     QImage image = reader.read();
     if (image.isNull()) {
         if (error) {

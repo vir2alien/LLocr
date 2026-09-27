@@ -81,7 +81,6 @@ public:
     const QImage &thumbnail(int index) const;
 
 private:
-    bool decodeSource(DocumentPage &page, QString *error = nullptr);
     static QImage decodeSourceCopy(const DocumentPage &page, QString *error = nullptr);
     QImage renderFull(const DocumentPage &page, QString *error = nullptr);
     void ensureFullImage(int index, QString *error = nullptr);

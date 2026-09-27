@@ -866,8 +866,11 @@ private slots:
                                 .arg(ticks)));
     }
 
-    // A rendered page belongs to the document it was rendered from: switching
-    // away and back must not resurrect a stale image.
+    // A rendered page belongs to the page it was rendered from, not to the
+    // document as a whole. Appending must keep it — that is the whole point of
+    // the batch fast path, and re-decoding page 0 for every imported file is
+    // what made a 1000-file import render the same page a thousand times. Any
+    // change that *replaces* what sits at an index must invalidate it.
     void previewRenderIsDroppedWhenTheDocumentChanges()
     {
         auto &controller = *m_controller;
@@ -875,11 +878,18 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QVERIFY(controller.previewImage(0).isNull());
         QTRY_VERIFY_WITH_TIMEOUT(!controller.previewRendering(0), 20000);
-        QVERIFY(!controller.previewImage(0).isNull());
+        const QImage rendered = controller.previewImage(0);
+        QVERIFY(!rendered.isNull());
 
+        // Appending: page 0 is still the same raster, so its image must survive.
         controller.openFiles({QUrl::fromLocalFile(m_pdf)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QVERIFY(controller.pageCount() > 1);
+        QCOMPARE(controller.previewImage(0).cacheKey(), rendered.cacheKey());
+
+        // Removing page 0 shifts every later index, so the cached image would
+        // now be served for the wrong page and must be gone.
+        QVERIFY(controller.removePage(0));
         QVERIFY2(controller.previewImage(0).isNull(), "a page image from the previous document was still served");
     }
 

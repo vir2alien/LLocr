@@ -26,6 +26,11 @@
 #include "models/OcrModelFactory.h"
 
 namespace llocr {
+namespace {
+
+constexpr qint64 kPreviewCacheBudgetBytes = 64ll * 1024 * 1024;
+
+}  // namespace
 
 AppController::AppController(
     SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, RequestProfileStore &checkRequestProfiles, VerificationPromptStore &verification, QObject *parent)
@@ -66,6 +71,8 @@ AppController::AppController(
     connect(this, &AppController::documentChanged, this, [this]() {
         ++m_docRevision;
         emit docRevisionChanged();
+        if (m_importing)
+            return;
         ++m_imageRevision;
         emit imageRevisionChanged();
     });
@@ -205,6 +212,36 @@ bool AppController::previewRendering(int index) const
     return m_previewRendering == index;
 }
 
+void AppController::cachePreview(int index, const QImage &image)
+{
+    const auto existing = m_previewCache.constFind(index);
+    if (existing != m_previewCache.constEnd())
+        m_previewCacheBytes -= existing->sizeInBytes();
+    m_previewCache.insert(index, image);
+    m_previewCacheBytes += image.sizeInBytes();
+    m_previewCacheOrder.removeAll(index);
+    m_previewCacheOrder.prepend(index);
+    evictPreviewCache();
+}
+
+void AppController::evictPreviewCache()
+{
+    while (m_previewCacheOrder.size() > 1 && m_previewCacheBytes > kPreviewCacheBudgetBytes) {
+        const auto it = m_previewCache.find(m_previewCacheOrder.takeLast());
+        if (it == m_previewCache.end())
+            continue;
+        m_previewCacheBytes -= it->sizeInBytes();
+        m_previewCache.erase(it);
+    }
+}
+
+void AppController::clearPreviewCache()
+{
+    m_previewCache.clear();
+    m_previewCacheOrder.clear();
+    m_previewCacheBytes = 0;
+}
+
 QImage AppController::previewImage(int index)
 {
     DocumentModel::RenderRequest request;
@@ -220,12 +257,12 @@ QImage AppController::previewImage(int index)
             request = m_document.renderRequestFor(index);
         }
     }
-    if (cached)
+    if (cached) {
+        m_previewCacheOrder.removeAll(index);
+        m_previewCacheOrder.prepend(index);
         return m_previewCache.value(index);
+    }
 
-    // Nothing cached: start a render on a worker and let the caller show the
-    // thumbnail meanwhile. Only one is in flight — a second page switch drops
-    // the older request by generation rather than queueing another render.
     if (m_previewRendering == index)
         return {};
     m_previewRendering = index;
@@ -235,15 +272,13 @@ QImage AppController::previewImage(int index)
     connect(watcher, &QFutureWatcher<QImage>::finished, this, [this, watcher, index, generation]() {
         const QImage rendered = watcher->result();
         watcher->deleteLater();
-        // The document (or the selected page) moved on while the worker
-        // ran: the result belongs to a state nobody is looking at.
         if (generation != m_previewGeneration)
             return;
         if (m_previewRendering == index)
             m_previewRendering = -1;
         if (rendered.isNull())
             return;
-        m_previewCache.insert(index, rendered);
+        cachePreview(index, rendered);
         emit pageImageReady(index);
         ++m_imageRevision;
         emit imageRevisionChanged();
@@ -380,8 +415,7 @@ void AppController::recordImportedFile(const std::shared_ptr<ImportState> &state
             m_currentPage = 0;
         m_pageModel.appendPages(added);
         m_pageModel.setCurrent(m_currentPage);
-        updateBoxesForCurrent();
-        notifyDocumentChanged();
+        notifyPageListGrown();
     } else {
         ++state->skipped;
         if (state->firstError.isEmpty())
@@ -417,6 +451,10 @@ void AppController::finishImport(const ImportState &state)
     m_importing = false;
     emit importingChanged();
     emit configChanged();
+    if (state.addedPages > 0) {
+        updateBoxesForCurrent();
+        notifyImportFinished();
+    }
 }
 
 bool AppController::reportProblem(const StatusMessage &message, ProblemLog::Severity severity)
@@ -535,8 +573,6 @@ void AppController::applyRawResult(int index, const OcrResult &rawResult)
     DocumentPage &page = m_document.page(index);
     page.result = parsed;
     page.recognized = true;
-    // Parser diagnostics (e.g. "no layout tokens found") stay on the page as a
-    // non-blocking warning — the status line is overwritten by the run summary.
     page.parseNote = parsed.success && !parsed.notes.isEmpty() ? parsed.notes.join(QLatin1String(" ")) : QString();
 
     m_pageModel.setRecognized(index, true);
@@ -872,10 +908,24 @@ void AppController::retranslate()
     emit retranslateRequested();
 }
 
+void AppController::notifyPageListGrown()
+{
+    emit documentChanged();
+}
+
+void AppController::notifyImportFinished()
+{
+    emit pageChanged();
+    emit imageChanged();
+    emit resultChanged();
+    emit boxesChanged();
+    emit editStateChanged();
+}
+
 void AppController::notifyDocumentChanged()
 {
     ++m_previewGeneration;
-    m_previewCache.clear();
+    clearPreviewCache();
     m_previewRendering = -1;
     emit documentChanged();
     emit pageChanged();
