@@ -4,7 +4,7 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+366"/>
+        <location filename="../../src/app/AppController.cpp" line="+370"/>
         <source>No files selected.</source>
         <translation type="unfinished">Не выбрано ни одного файла</translation>
     </message>
@@ -29,12 +29,16 @@
         <translation type="unfinished">Добавлено файлов: %1, страниц: %2</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Warning: %1 page(s) replaced with blank pages. %2</source>
-        <translation type="unfinished">Внимание: %1 стр. заменено пустыми страницами. %2</translation>
+        <translation type="obsolete">Внимание: %1 стр. заменено пустыми страницами. %2</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+13"/>
+        <source>Warning: %1 page(s) replaced with blank pages — see the problem log.</source>
+        <translation>Внимание: %1 стр. заменено пустыми страницами — см. журнал проблем.</translation>
+    </message>
+    <message>
+        <location line="+37"/>
         <location line="+18"/>
         <source>Page %1 deleted.</source>
         <translation type="unfinished">Страница %1 удалена</translation>
@@ -505,12 +509,12 @@
 <context>
     <name>Footer</name>
     <message>
-        <location filename="../qml/MainWindow/Footer.qml" line="+164"/>
+        <location filename="../qml/MainWindow/Footer.qml" line="+27"/>
         <source>Blank replacement — this page could not be decoded. %1</source>
         <translation>Пустая страница вместо повреждённой — не удалось декодировать оригинал. %1</translation>
     </message>
     <message>
-        <location line="-51"/>
+        <location line="+105"/>
         <source>Launch settings changed — restart the server to apply them.</source>
         <translation>Параметры запуска изменены — перезапустите сервер, чтобы они применились.</translation>
     </message>
@@ -525,7 +529,7 @@
         <translation>Скрыть</translation>
     </message>
     <message>
-        <location line="+127"/>
+        <location line="+168"/>
         <source>Stop server</source>
         <translation>Остановить сервер</translation>
     </message>
@@ -540,7 +544,7 @@
         <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location line="-233"/>
+        <location line="-274"/>
         <source>The local runtime is owned by another LLocr instance.</source>
         <translation>Локальный рантайм занят другим экземпляром LLocr.</translation>
     </message>
@@ -605,7 +609,17 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+64"/>
+        <source>%1 problem(s) logged</source>
+        <translation>В журнале проблем: %1</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Details…</source>
+        <translation>Подробнее…</translation>
+    </message>
+    <message>
+        <location line="+38"/>
         <source>Check %1 / %2</source>
         <translation>Проверка %1 / %2</translation>
     </message>
@@ -1324,6 +1338,68 @@
         <location filename="../../src/parsers/ParserFactory.cpp" line="+27"/>
         <source>Automatic (model default)</source>
         <translation>Автоматически (по модели)</translation>
+    </message>
+</context>
+<context>
+    <name>ProblemLog</name>
+    <message>
+        <location filename="../../src/app/ProblemLog.cpp" line="+36"/>
+        <source>… %1 earlier entr(y/ies) dropped</source>
+        <translation>… отброшено более ранних записей: %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>%1: %2</source>
+        <translation>%1: %2</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>error</source>
+        <translation>ошибка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>warning</source>
+        <translation>предупреждение</translation>
+    </message>
+</context>
+<context>
+    <name>ProblemLogWindow</name>
+    <message>
+        <location filename="../qml/ProblemLogWindow.qml" line="+15"/>
+        <location line="+43"/>
+        <source>Problem log</source>
+        <translation>Журнал проблем</translation>
+    </message>
+    <message>
+        <location line="-37"/>
+        <source>Nothing went wrong so far.</source>
+        <translation>Пока ничего не произошло.</translation>
+    </message>
+    <message>
+        <location line="+45"/>
+        <source>%1 error(s)</source>
+        <translation>Ошибок: %1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>%1 warning(s)</source>
+        <translation>Предупреждений: %1</translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>Copy log</source>
+        <translation>Скопировать журнал</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Clear log</source>
+        <translation>Очистить журнал</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>%1 entr(y/ies)</source>
+        <translation>Записей: %1</translation>
     </message>
 </context>
 <context>

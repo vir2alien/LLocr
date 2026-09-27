@@ -24,6 +24,7 @@
 #include "testsettings.h"
 #include "app/AppController.h"
 #include "app/BoxListModel.h"
+#include "app/ProblemLog.h"
 #include "app/LaunchProfileStore.h"
 #include "app/RecognitionController.h"
 #include "app/RequestProfileStore.h"
@@ -283,6 +284,7 @@ private:
     std::unique_ptr<RequestProfileStore> m_checkRequestProfiles;
     std::unique_ptr<VerificationPromptStore> m_verification;
     std::unique_ptr<RuntimeController> m_runtime;
+    std::unique_ptr<ProblemLog> m_problems;
     std::unique_ptr<AppController> m_controller;
     QString m_raster;
     QString m_pdf;
@@ -308,10 +310,12 @@ private slots:
         m_checkRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
+        m_problems = std::make_unique<ProblemLog>();
         m_controller = std::make_unique<AppController>(*m_settings, *m_runtime,
                                                        *m_requestProfiles,
                                                        *m_checkRequestProfiles,
                                                        *m_verification);
+        m_controller->setProblemLog(m_problems.get());
 
         // Fixtures that exist in every build: a raster, a generated multi-page
         // PDF and an unreadable file. The import pipeline coverage must not
@@ -587,11 +591,18 @@ private slots:
         const QString status = controller.statusMessage();
         const QString summary = QStringLiteral("Added 3 file(s), 7 page(s); 1 file(s) skipped.");
         QVERIFY2(status.startsWith(summary), qPrintable(status));
-        QVERIFY2(status.contains(warning), qPrintable(status));
-        // Check the warning count separately from file/page totals and from
-        // the original warning's source path and one-based page number.
-        const QString warningSummary = status.mid(summary.size(), status.indexOf(warning) - summary.size());
-        QVERIFY2(warningSummary.contains(QRegularExpression(QStringLiteral("\\b2\\b"))), qPrintable(status));
+        // The status line keeps the count and nothing else: the decoder's own
+        // paragraph lives in the problem log, because joined onto the status
+        // line it did not fit the footer at all (ADR 119).
+        QVERIFY2(!status.contains(warning), qPrintable(status));
+        QVERIFY2(status.contains(QRegularExpression(QStringLiteral("\\b2\\b"))), qPrintable(status));
+        QVERIFY2(status.contains(QStringLiteral("problem log")), qPrintable(status));
+        // Both unreadable pages of the two copies, plus the malformed file.
+        QCOMPARE(m_problems->warningCount(), 2);
+        QCOMPARE(m_problems->errorCount(), 1);
+        const QString logText = m_problems->logText();
+        QVERIFY2(logText.contains(warning), qPrintable(logText));
+        QVERIFY2(logText.contains(m_malformed), qPrintable(logText));
         QVERIFY(controller.currentPageWarning().isEmpty());
 
         QSignalSpy pageSpy(&controller, &AppController::pageChanged);
@@ -698,6 +709,82 @@ private slots:
         QCOMPARE(controller.pageCount(), 5);
     }
 #endif // LLOCR_HAVE_DJVU (asynchronous import path)
+
+    // A diagnostic must not be able to grow the footer (ADR 119): the status
+    // line keeps the count, the log keeps the reason. This is the case that
+    // actually happens on every build — a file that cannot be opened.
+    void aSkippedFileGoesToTheLogNotTheStatusLine()
+    {
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_broken)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        // One line, no path in it.
+        QCOMPARE(controller.statusMessage(),
+                 QStringLiteral("Added 1 file(s), 1 page(s); 1 file(s) skipped."));
+        QVERIFY(!controller.statusMessage().contains(m_broken));
+
+        // The reason, at error severity, where a window can show it in full.
+        QCOMPARE(m_problems->count(), 1);
+        QCOMPARE(m_problems->errorCount(), 1);
+        QCOMPARE(m_problems->warningCount(), 0);
+        QVERIFY2(m_problems->logText().contains(m_broken), qPrintable(m_problems->logText()));
+    }
+
+    // The log coalesces its notifications. A book with hundreds of unreadable
+    // pages must not wake the UI — and re-render the whole log — hundreds of
+    // times, and it must not grow the process without limit either.
+    void theProblemLogCoalescesAndStaysBounded()
+    {
+        ProblemLog log;
+        QSignalSpy changed(&log, &ProblemLog::logChanged);
+
+        for (int i = 0; i < 50; ++i)
+            log.report(StatusMessage::translate("TestAppImport", "Broken page %1.").arg(i));
+        QCOMPARE(log.count(), 50);
+        QCOMPARE(changed.count(), 0);  // nothing announced yet
+
+        QTRY_VERIFY_WITH_TIMEOUT(changed.count() == 1, 2000);
+        QCOMPARE(changed.count(), 1);
+
+        for (int i = 0; i < 5000; ++i)
+            log.report(StatusMessage::literal(QStringLiteral("flood %1").arg(i)));
+        QCOMPARE(log.count(), 2000);
+        // The oldest entries fell off, and the log says so instead of pretending
+        // it never happened.
+        const QString text = log.logText();
+        QVERIFY2(!text.contains(QStringLiteral("flood 0")), qPrintable(text.left(200)));
+        QVERIFY2(text.contains(QStringLiteral("flood 4999")), qPrintable(text.left(200)));
+        QVERIFY2(text.contains(QStringLiteral("dropped")), qPrintable(text.left(200)));
+
+        log.clear();
+        QCOMPARE(log.count(), 0);
+        QVERIFY(log.logText().isEmpty());
+        QCOMPARE(log.errorCount(), 0);
+        QCOMPARE(log.warningCount(), 0);
+    }
+
+    // An entry that is already in the user's language (a server reply, a file
+    // path) is kept verbatim; one we author keeps its key, so a language switch
+    // reaches the log too (ADR 114).
+    void theProblemLogRendersOnRead()
+    {
+        ProblemLog log;
+        log.report(StatusMessage::literal(QStringLiteral("raw server text")));
+        log.report(StatusMessage::translate("TestAppImport", "Page %1 is blank.").arg(7),
+                   ProblemLog::Error);
+
+        QCOMPARE(log.count(), 2);
+        QCOMPARE(log.warningCount(), 1);
+        QCOMPARE(log.errorCount(), 1);
+        const QString text = log.logText();
+        QVERIFY2(text.contains(QStringLiteral("raw server text")), qPrintable(text));
+        QVERIFY2(text.contains(QStringLiteral("Page 7 is blank.")), qPrintable(text));
+
+        // The severity is part of the line, so a reader can tell them apart.
+        QCOMPARE(text.split(QLatin1Char('\n')).size(), 2);
+        QVERIFY(text.startsWith(QStringLiteral("warning: ")));
+    }
 
     // A language switch must reach text that is already on screen. The status
     // line used to hold the *translated* string, so it kept the previous

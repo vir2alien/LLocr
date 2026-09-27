@@ -9,6 +9,7 @@
 #include "app/I18n.h"
 #include "app/LaunchProfileStore.h"
 #include "app/OcrImageProvider.h"
+#include "app/ProblemLog.h"
 #include "app/RequestProfileStore.h"
 #include "app/SettingsStore.h"
 #include "app/UiController.h"
@@ -165,6 +166,9 @@ int main(int argc, char* argv[]) {
     llocr::AppController appController(settingsStore, runtimeController,
                                        requestProfilesOcr, requestProfilesValidate,
                                        verificationPrompts);
+    llocr::ProblemLog problemLog;
+    appController.setProblemLog(&problemLog);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "Log", &problemLog);
     llocr::UiController uiController(settingsStore);
 
     QQmlApplicationEngine engine;
@@ -184,6 +188,8 @@ int main(int argc, char* argv[]) {
     // rather than a re-computation (ADR 114).
     QObject::connect(&i18n, &llocr::I18n::languageApplied, &appController,
                      &llocr::AppController::retranslate);
+    QObject::connect(&i18n, &llocr::I18n::languageApplied, &problemLog,
+                     &llocr::ProblemLog::retranslate);
 
     setupQmlEngine(engine, appController, uiController);
     i18n.applyInitial();

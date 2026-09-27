@@ -155,10 +155,15 @@ ApplicationWindow {
 
     footer: Footer {
         logWindow: serverLogWindow
+        problemWindow: problemLogWindow
     }
 
     ServerLogWindow {
         id: serverLogWindow
+    }
+
+    ProblemLogWindow {
+        id: problemLogWindow
     }
 
     UiSettingsWindow {

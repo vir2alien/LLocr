@@ -52,6 +52,9 @@ signals:
     void stateChanged();
     void statusRequested(const StatusMessage &message);
     void blockChecked(int pageIndex, int boxIndex, const CheckResult &result);
+    /// A check failed: the error text belongs in the problem log, not only in
+    /// the footer line that shows it while the queue runs (ADR 119).
+    void problemReported(const StatusMessage &message);
 
 private:
     struct VerifyTask {

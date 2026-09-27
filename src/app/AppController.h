@@ -13,6 +13,7 @@
 #include "app/Exporter.h"
 #include "app/PageListModel.h"
 #include "app/PageEditStore.h"
+#include "app/ProblemLog.h"
 #include "app/RecognitionController.h"
 #include "app/SettingsStore.h"
 #include "app/VerificationPromptStore.h"
@@ -140,6 +141,11 @@ public:
 
     void setCurrentPage(int index);
 
+    /// The log the import diagnostics are reported to (ADR 119). Optional: a
+    /// caller that shows no problem log (a test, a headless tool) simply gets
+    /// none, and the status line still says that something was wrong.
+    void setProblemLog(ProblemLog *log) { m_problems = log; }
+
     // The UI language changed: the status/error lines and the translated lists
     // are re-read. Nothing is cached — the messages hold their translation key
     // and are rendered on demand (ADR 114).
@@ -211,6 +217,10 @@ private:
                             int pagesBefore, const QString& error);
     void finishImport(const ImportState& state);
     void setStatus(const StatusMessage& message);
+    /// Routes one diagnostic to the problem log and returns whether it was
+    /// accepted, so a caller can decide to mention it in the status line too.
+    bool reportProblem(const StatusMessage &message,
+                       ProblemLog::Severity severity = ProblemLog::Warning);
     void notifyDocumentChanged();
     void notifyPageChanged();
     void applyRawResult(int index, const OcrResult& rawResult);
@@ -249,6 +259,7 @@ private:
     mutable QString m_previewCacheResult;
     PageEditStore m_editStore;
     StatusMessage m_statusMessage;  ///< stored untranslated, rendered on read (ADR 114)
+    ProblemLog *m_problems = nullptr;  ///< not owned; the full diagnostic texts live here
     ExportController m_export;
     mutable QReadWriteLock m_documentLock;
 

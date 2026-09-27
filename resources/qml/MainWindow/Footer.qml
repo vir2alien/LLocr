@@ -15,8 +15,31 @@ Item {
 
     property bool bannerDismissed: false
     property var logWindow: null
+    property var problemWindow: null
 
     readonly property bool serverActive: Runtime.state === Runtime.Starting || Runtime.state === Runtime.Ready
+
+    // The one diagnostic the current context is about, if any. Only ever a
+    // single line: the full texts live in the problem log, which is what an
+    // unreadable DjVu page or a failed check is reported to (ADR 119).
+    readonly property string currentDiagnostic: {
+        if (Controller.currentPageWarning.length > 0)
+            return qsTr("Blank replacement — this page could not be decoded. %1")
+                       .arg(Controller.currentPageWarning)
+        if (Controller.checkErrorMessage.length > 0)
+            return Controller.checkErrorMessage
+        if (Controller.parseWarning.length > 0)
+            return Controller.parseWarning
+        return ""
+    }
+
+    readonly property bool currentDiagnosticIsError:
+        Controller.currentPageWarning.length > 0 || Controller.checkErrorMessage.length > 0
+    readonly property bool hasDiagnostics: currentDiagnostic.length > 0 || Log.count > 0
+    // Red when *anything* went wrong that way, not only while the offending
+    // page happens to be the current one.
+    readonly property bool hasError:
+        currentDiagnosticIsError || (Log.errorCount > 0)
 
     function requestRestart() {
         if (Controller.busy) {
@@ -156,39 +179,78 @@ Item {
             }
         }//Rectangle
 
-        LLOLabel {
+        // One bounded line for whatever went wrong, and a way into the log that
+        // holds the reasons. These labels used to wrap: a DjVu decoder message
+        // is a whole paragraph, and it pushed the status line off the window
+        // (ADR 119).
+        Rectangle {
             Layout.fillWidth: true
-            Layout.leftMargin: Theme.spacing * 2
-            Layout.rightMargin: Theme.spacing * 2
-            visible: Controller.currentPageWarning.length > 0
-            text: qsTr("Blank replacement — this page could not be decoded. %1")
-                       .arg(Controller.currentPageWarning)
-            textFormat: Text.PlainText
-            wrapMode: Text.Wrap
-            color: Theme.error
-        }
+            Layout.preferredHeight: visible ? diagnosticsRow.implicitHeight + 12 : 0
+            visible: root.hasDiagnostics
+            color: Theme.surfaceAlt
+            border.color: root.hasError ? Theme.border : "transparent"
+            border.width: 1
 
-        LLOLabel {//Parser diagnostic
-            Layout.fillWidth: true
-            Layout.leftMargin: Theme.spacing * 2
-            Layout.rightMargin: Theme.spacing * 2
-            visible: Controller.parseWarning.length > 0
-            text: Controller.parseWarning
-            textFormat: Text.PlainText
-            wrapMode: Text.Wrap
-            color: Theme.warning
-        }
+            RowLayout {
+                id: diagnosticsRow
+                anchors.fill: parent
+                anchors.leftMargin: Theme.spacing * 2
+                anchors.rightMargin: Theme.spacing
+                spacing: Theme.spacing
 
-        LLOLabel {//Check error
-            Layout.fillWidth: true
-            Layout.leftMargin: Theme.spacing * 2
-            Layout.rightMargin: Theme.spacing * 2
-            visible: Controller.checkErrorMessage.length > 0
-            text: Controller.checkErrorMessage
-            textFormat: Text.PlainText
-            wrapMode: Text.Wrap
-            color: Theme.error
-        }
+                Rectangle {
+                    Layout.preferredWidth: 8
+                    Layout.preferredHeight: 8
+                    Layout.alignment: Qt.AlignVCenter
+                    radius: 4
+                    color: root.hasError ? Theme.error : Theme.warning
+                }
+
+                LLOLabel {
+                    id: diagnosticsLabel
+                    Layout.fillWidth: true
+                    visible: root.currentDiagnostic.length > 0
+                    text: root.currentDiagnostic
+                    textFormat: Text.PlainText
+                    // NoWrap + elide is the point: the bar is one line tall
+                    // whatever the message is.
+                    elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
+                    color: root.currentDiagnosticIsError ? Theme.error : Theme.warning
+
+                    MouseArea {
+                        id: diagnosticsHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
+
+                        ToolTip {
+                            visible: diagnosticsHover.containsMouse
+                            delay: 600
+                            text: diagnosticsLabel.text
+                        }
+                    }
+                }
+
+                LLOLabel {
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: root.currentDiagnostic.length === 0 && Log.count > 0
+                    text: qsTr("%1 problem(s) logged").arg(Log.count)
+                    font.pointSize: Theme.captionSize
+                    color: Theme.textMuted
+                }
+
+                LLOButton {
+                    visible: Log.count > 0
+                    flat: true
+                    text: qsTr("Details…")
+                    onClicked: {
+                        if (root.problemWindow)
+                            root.problemWindow.show()
+                    }
+                }
+            }
+        }//Rectangle
 
         Rectangle {//Toolbar row
             Layout.fillWidth: true

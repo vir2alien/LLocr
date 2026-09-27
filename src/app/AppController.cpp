@@ -74,6 +74,10 @@ AppController::AppController(SettingsStore &settings, RuntimeController &runtime
             [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::blockChecked, this,
             &AppController::applyCheckResultToBox);
+    connect(&m_verify, &VerificationQueueController::problemReported, this,
+            [this](const StatusMessage &message) {
+                reportProblem(message, ProblemLog::Error);
+            });
 
     connect(&m_export, &ExportController::exportingChanged, this,
             &AppController::exportingChanged);
@@ -449,17 +453,33 @@ void AppController::finishImport(const ImportState& state)
         summary = StatusMessage::translate("AppController", "Added %1 file(s), %2 page(s).")
             .arg(state.addedFiles).arg(state.addedPages);
     }
+    // The per-page diagnostics go to the log. Joined onto the status line they
+    // became a paragraph of decoder output that did not fit the footer at all
+    // (ADR 119), so the line keeps the count and the log keeps the reasons.
+    for (const QString& warning : state.warnings)
+        reportProblem(StatusMessage::literal(warning));
+    if (state.skipped > 0 && !state.firstError.isEmpty())
+        reportProblem(StatusMessage::literal(state.firstError), ProblemLog::Error);
+
     if (!state.warnings.isEmpty()) {
         setStatus(StatusMessage::join({summary,
             StatusMessage::translate("AppController",
-                              "Warning: %1 page(s) replaced with blank pages. %2")
-                .arg(state.warnings.size()).arg(state.warnings.first())}));
+                              "Warning: %1 page(s) replaced with blank pages — "
+                              "see the problem log.").arg(state.warnings.size())}));
     } else {
         setStatus(summary);
     }
     m_importing = false;
     emit importingChanged();
     emit configChanged();
+}
+
+bool AppController::reportProblem(const StatusMessage& message, ProblemLog::Severity severity)
+{
+    if (!m_problems || message.isEmpty())
+        return false;
+    m_problems->report(message, severity);
+    return true;
 }
 
 bool AppController::removePage(int index)

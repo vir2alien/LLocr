@@ -223,6 +223,8 @@ qt_add_library(llocr_app STATIC
     app/PageEditStore.h
     app/PageEditStore.cpp
     app/PageIndex.h
+    app/ProblemLog.h
+    app/ProblemLog.cpp
     app/RecognitionController.h
     app/RecognitionController.cpp
     app/CheckController.h

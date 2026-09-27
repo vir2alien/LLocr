@@ -15,8 +15,13 @@ VerificationQueueController::VerificationQueueController(Deps deps,
     connect(&m_check, &CheckController::checkFinished, this,
             [this](const CheckResult &result) {
                 if (result.status == CheckStatus::Failed
-                    && !result.errorMessage.isEmpty())
+                    && !result.errorMessage.isEmpty()
+                    && result.errorMessage != m_checkError) {
                     m_checkError = result.errorMessage;
+                    // A failed check is an event, not a state: the log keeps the
+                    // text so the footer can stay a single bounded line (ADR 119).
+                    emit problemReported(result.errorMessage);
+                }
                 const int page = m_verifyPage;
                 const int box = m_verifyBoxIndex;
                 emit blockChecked(page, box, result);

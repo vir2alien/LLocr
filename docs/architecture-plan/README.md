@@ -48,7 +48,16 @@ data-driven точка расширения; `ProfileStorage` и `TestSettingsIs
 | 5. Runtime: транзакции установки, «установленное» состояние, HTTP, осиротевший сервер | **✅ завершён**: D1, D7, D4/ADR 109, ADR 108 и D3/ADR 112 (публикация переименованием + блокировка у модели) |
 | 6. Конфигурация и расширяемость моделей | **✅ завершён (27.09.2026)**: раздельные id + список моделей по id (ADR 110), общий обмен с сервером (ADR 111), один шаблон хранилища профилей (ADR 117) |
 | 7. QML как слой представления | **✅ завершён (27.09.2026)**: правила гейтов и рестарта в C++ (ADR 113), живые переводы (ADR 114), list-модели вместо `QVariantMap`-ролей (ADR 115) |
-| — | Вне этапов: примитив между тремя источниками правды (ADR 116) |
+| — | Вне этапов: примитив между тремя источниками правды (ADR 116); интерфейсный дефект, найденный на живом DjVu: диагностика уезжает в отдельный журнал (ADR 119) |
+
+### Этап 7 — что сделано
+
+| Пункт | Изменение | ADR | Проверка |
+|-------|-----------|-----|----------|
+| M | Гейты мастера и баннер рестарта считает C++; `Runtime.launchConfigDirty` сравнивает настоящий `ServerLaunchConfig` сервера с текущим, подписка — обход мета-объекта `SettingsStore` | 113 | `TestEnsureConnection::launchConfigDirtyFollowsTheRealLaunchConfiguration` (проверен на старом списке из 11 сигналов), `::configGatesRequireTheFilesToExist` |
+| — | `core/StatusMessage`: контекст + ключ + аргументы, рендер при чтении; `CONSTANT` снят с `exportNameFilters`/`parserNames`/`parserLabels` | 114 | `TestAppImport::retranslateRendersTheStatusLineInTheNewLanguage` — проверен на `text()` с кешем |
+| — | `InstalledBuildsModel` / `InstalledModelsModel` с именованными ролями вместо `QVariantMap` | 115 | `TestModelInstaller::installedModelsExposeNamedRoles` + переписанные кейсы фильтрации по роли |
+| — | Диагностика переехала в отдельный журнал: `ProblemLog` + `ProblemLogWindow.qml`, футер — одна неразрывающаяся строка | 119 | `TestAppImport::aSkippedFileGoesToTheLogNotTheStatusLine`, `::theProblemLogCoalescesAndStaysBounded`, `::theProblemLogRendersOnRead`; переписаны ожидания в `::damagedPagesImportWithWarningsAndKeepQueueOrder` — проверены на старой склейке статуса |
 
 ### Этап 6 — что сделано
 
