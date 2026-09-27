@@ -1,5 +1,6 @@
 #include <QtTest>
 
+#include <algorithm>
 #include <QFile>
 #include <QMarginsF>
 #include <QPageLayout>
@@ -8,6 +9,11 @@
 #include <QPdfWriter>
 #include <QtConcurrent/QtConcurrentMap>
 #include <QTemporaryDir>
+
+#ifdef __APPLE__
+#include <mach/mach.h>
+#include <malloc/malloc.h>
+#endif
 
 #include "app/DocumentModel.h"
 
@@ -48,6 +54,25 @@ bool writePdf(const QString &path, int pages)
     painter.end();
     return true;
 }
+
+#ifdef __APPLE__
+// Resident bytes of this process — the same quantity the operator reads off
+// `footprint`/`vmmap`, so the numbers below are comparable with the reports in
+// docs/optimization-plan.
+qint64 residentBytes()
+{
+    mach_task_basic_info info = {};
+    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) != KERN_SUCCESS)
+        return -1;
+    return qint64(info.resident_size);
+}
+
+void relieveAllocator()
+{
+    malloc_zone_pressure_relief(nullptr, 0);
+}
+#endif
 
 }  // namespace
 
@@ -180,6 +205,132 @@ private slots:
             QVERIFY(!results.at(i).isNull());
             QCOMPARE(results.at(i).size(), model.page(i).pixelSize);
         }
+    }
+
+    // Measurement, and the guard for the render-cache bounds.
+    //
+    // The Stage 3 report showed ~199 MB of MALLOC_LARGE (empty) after listing 30
+    // pages — free memory the allocator kept — and neither removing the repeated
+    // PDF re-parse nor shrinking the render target moved it. This harness
+    // reproduces the access pattern (render 30 pages, keep the last two as the
+    // preview cache does) and reports how far the resident set moves, across the
+    // two factors that could plausibly explain it: a different target size per
+    // render, and a buffer allocated on a worker but released on the GUI thread
+    // (the preview worker fills the cache, the GUI thread evicts it).
+    //
+    // What it actually locks in is the property that does matter and that this
+    // suite can see: 30 renders of a 17 MB page must not leave 30 pages behind.
+    // The measured growth is a rounding error, so the bound is deliberately wide
+    // and the per-variant numbers are printed rather than asserted.
+    void renderFootprintFollowsTargetSize()
+    {
+#ifndef __APPLE__
+        QSKIP("macOS-only measurement");
+#else
+        QTemporaryDir dir;
+        const QString path = dir.filePath(QStringLiteral("book.pdf"));
+        QVERIFY(writePdf(path, 3));
+
+        DocumentModel model;
+        QVERIFY(model.appendPdf(path));
+        const QSize fullSize = model.page(0).pixelSize.scaled(2481, 3508, Qt::KeepAspectRatio);
+        const QSize thumbSize = DocumentModel::thumbnailSizeFor(fullSize);
+
+        const auto run = [&](const QSize &size, int &nullRenders) -> qint64 {
+            QList<QImage> kept;
+            // Warm up the decoder and the allocator, then hand the free memory
+            // back so the baseline is a clean steady state.
+            for (int i = 0; i < 5; ++i) {
+                DocumentModel::RenderRequest request = model.renderRequestFor(i % model.pageCount());
+                request.page.pixelSize = size;
+                kept.prepend(DocumentModel::renderDetached(request));
+            }
+            kept.clear();
+            relieveAllocator();
+            const qint64 baseline = residentBytes();
+
+            qint64 peak = baseline;
+            for (int i = 0; i < 30; ++i) {
+                DocumentModel::RenderRequest request = model.renderRequestFor(i % model.pageCount());
+                request.page.pixelSize = size;
+                const QImage image = DocumentModel::renderDetached(request);
+                if (image.isNull() || image.size() != size) {
+                    ++nullRenders;
+                    continue;
+                }
+                kept.prepend(image);
+                if (kept.size() > 2)
+                    kept.removeLast();
+                peak = std::max(peak, residentBytes());
+            }
+            return peak - baseline;
+        };
+
+        int nullRenders = 0;
+        const qint64 fullGrowth = run(fullSize, nullRenders);
+        QVERIFY2(nullRenders == 0, qPrintable(QStringLiteral("%1 full-size renders returned an unexpected image").arg(nullRenders)));
+        const qint64 thumbGrowth = run(thumbSize, nullRenders);
+        QVERIFY2(nullRenders == 0, qPrintable(QStringLiteral("%1 thumbnail renders returned an unexpected image").arg(nullRenders)));
+
+        qInfo(
+            "render target %dx%d (%lld KB): resident growth over 30 renders %lld KB", fullSize.width(), fullSize.height(), fullSize.width() * qint64(fullSize.height()) * 4 / 1024, fullGrowth / 1024);
+        qInfo("render target %dx%d (%lld KB): resident growth over 30 renders %lld KB",
+              thumbSize.width(),
+              thumbSize.height(),
+              thumbSize.width() * qint64(thumbSize.height()) * 4 / 1024,
+              thumbGrowth / 1024);
+
+        // The run above reuses one target size, which the allocator reuses
+        // perfectly. The app renders *different* pages, so the two remaining
+        // suspects are a different size per render and a buffer allocated on a
+        // worker but released on the GUI thread (the preview worker fills the
+        // cache, the GUI thread evicts it).
+        const auto sizeForIndex = [&](int i) { return fullSize.scaled(2400 + (i % 17) * 5, 3508, Qt::KeepAspectRatio); };
+
+        const auto runVaried = [&](const QSize &base, bool offThread) -> qint64 {
+            QList<QImage> kept;
+            const auto renderOne = [&](int i) {
+                DocumentModel::RenderRequest request = model.renderRequestFor(i % model.pageCount());
+                request.page.pixelSize = sizeForIndex(i).scaled(base, Qt::KeepAspectRatio);
+                return DocumentModel::renderDetached(request);
+            };
+            for (int i = 0; i < 5; ++i)
+                kept.prepend(renderOne(i));
+            kept.clear();
+            relieveAllocator();
+            const qint64 baseline = residentBytes();
+            qint64 peak = baseline;
+
+            for (int i = 0; i < 30; ++i) {
+                QImage image;
+                if (offThread) {
+                    // Allocated on a worker, released below on the GUI thread,
+                    // exactly like AppController::previewImage.
+                    QtConcurrent::blockingMap(QList<int>{i}, [&renderOne, &image](int index) { image = renderOne(index); });
+                } else {
+                    image = renderOne(i);
+                }
+                if (image.isNull())
+                    continue;
+                kept.prepend(image);
+                if (kept.size() > 2)
+                    kept.removeLast();
+                peak = std::max(peak, residentBytes());
+            }
+            return peak - baseline;
+        };
+
+        const qint64 variedOnThread = runVaried(fullSize, false);
+        const qint64 variedOffThread = runVaried(fullSize, true);
+        const qint64 thumbVaried = runVaried(thumbSize, true);
+        qInfo("varied sizes, GUI thread:        %lld KB", variedOnThread / 1024);
+        qInfo("varied sizes, worker -> GUI:     %lld KB", variedOffThread / 1024);
+        qInfo("varied sizes, worker, thumb size: %lld KB", thumbVaried / 1024);
+
+        const qint64 worst = std::max({fullGrowth, variedOnThread, variedOffThread});
+        qInfo("worst resident growth across variants: %lld KB for %lld KB of render traffic", worst / 1024, 30ll * fullSize.width() * fullSize.height() * 4 / 1024);
+        QVERIFY2(worst < 32ll * 1024 * 1024, "resident memory grows with the number of renders: a render cache is no longer releasing what it drops");
+#endif
     }
 };
 
