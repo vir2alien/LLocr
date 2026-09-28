@@ -20,6 +20,8 @@ constexpr const char *kBackendKey = "backend";
 constexpr const char *kDescriptionKey = "description";
 constexpr const char *kOrderKey = "order";
 constexpr const char *kValueKey = "value";
+constexpr const char *kParametersKey = "parameters";
+constexpr const char *kPolicyKey = "policy";
 
 }  // namespace
 
@@ -129,6 +131,33 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder, LaunchParameter &
 }
 
 }  // namespace
+
+QList<LaunchParameter> LaunchProfile::parsePolicy(const QJsonObject &root, QString &error)
+{
+    const QJsonObject policy = root.value(QLatin1String(kPolicyKey)).toObject();
+    const QJsonArray parameters = policy.value(QLatin1String(kParametersKey)).toArray();
+
+    QList<LaunchParameter> out;
+    QSet<QString> names;
+    int fallbackOrder = 1;
+    for (const QJsonValue &value : parameters) {
+        if (!value.isObject()) {
+            error = QObject::tr("Launch policy parameter is not an object");
+            return {};
+        }
+        LaunchParameter parameter;
+        if (!parseParameter(value.toObject(), fallbackOrder, parameter, error))
+            return {};
+        fallbackOrder = parameter.order + 1;
+        if (names.contains(parameter.name)) {
+            error = QObject::tr("Launch policy has a duplicate parameter: %1").arg(parameter.name);
+            return {};
+        }
+        names.insert(parameter.name);
+        out.append(parameter);
+    }
+    return out;
+}
 
 QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root, QString &error)
 {

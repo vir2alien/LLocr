@@ -64,7 +64,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString checkLaunchMmprojPath READ checkLaunchMmprojPath WRITE setCheckLaunchMmprojPath NOTIFY checkLaunchMmprojPathChanged)
     Q_PROPERTY(bool checkLaunchSourceDownload READ checkLaunchSourceDownload WRITE setCheckLaunchSourceDownload NOTIFY checkLaunchSourceDownloadChanged)
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
-    Q_PROPERTY(QString checkLaunchProfileId READ checkLaunchProfileId WRITE setCheckLaunchProfileId NOTIFY checkLaunchProfileIdChanged)
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
     Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
 
@@ -193,8 +192,6 @@ public:
     void setLaunchSourceDownload(bool on);
     QString checkRequestProfileId() const;
     void setCheckRequestProfileId(const QString &id);
-    QString checkLaunchProfileId() const;
-    void setCheckLaunchProfileId(const QString &id);
     QString checkModelName() const;
     void setCheckModelName(const QString &name);
     bool autoCheck() const;
@@ -250,7 +247,6 @@ signals:
     void checkLaunchSourceDownloadChanged();
     void launchSourceDownloadChanged();
     void checkRequestProfileIdChanged();
-    void checkLaunchProfileIdChanged();
     void checkModelNameChanged();
     void autoCheckChanged();
     void hfTokenChanged();
@@ -341,7 +337,6 @@ private:
     static constexpr const char *kCheckLaunchModelPath = "check/modelPath";
     static constexpr const char *kCheckLaunchMmprojPath = "check/mmprojPath";
     static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
-    static constexpr const char *kCheckLaunchProfileId = "check/launchProfileId";
     static constexpr const char *kCheckModelName = "check/modelName";
     static constexpr const char *kCheckLaunchSourceDownload = "check/sourceDownload";
     static constexpr const char *kAutoCheck = "check/autoCheck";

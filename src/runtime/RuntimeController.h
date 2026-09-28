@@ -44,8 +44,7 @@ class RuntimeController : public QObject
     Q_PROPERTY(QString orphanInfo READ orphanInfo NOTIFY orphanChanged)
 
 public:
-    explicit RuntimeController(
-        SettingsStore &settings, LaunchProfileStore &launchProfiles, LaunchProfileStore *checkLaunchProfiles = nullptr, InstalledState *state = nullptr, QObject *parent = nullptr);
+    explicit RuntimeController(SettingsStore &settings, LaunchProfileStore &launchProfiles, InstalledState *state = nullptr, QObject *parent = nullptr);
 
     enum class AppBusyState {
         Idle,
@@ -166,7 +165,6 @@ private:
     SettingsStore &m_settings;
     InstalledState *m_installedState = nullptr;
     LaunchProfileStore &m_launchProfiles;
-    LaunchProfileStore *m_checkLaunchProfiles = nullptr;
     struct PendingResolve {
         QPointer<QObject> context;
         bool guarded = false;

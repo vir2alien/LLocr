@@ -183,7 +183,6 @@ ApplicationWindow {
 
             LaunchTab {
                 id: launchTab
-                checkRole: window.isVerifyModelRole
                 runtimeSettingsRef: window.runtimeSettingsRef
             }
 

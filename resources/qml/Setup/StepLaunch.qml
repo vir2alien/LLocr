@@ -47,9 +47,9 @@ Item {
 
     function syncPresetModel() {
         presetListModel.clear()
-        for (let i = 0; i < LaunchProfilesOcr.presetIds.length; ++i)
-            presetListModel.append({ name: LaunchProfilesOcr.presetNames[i] })
-        const idx = LaunchProfilesOcr.presetIds.indexOf(LaunchProfilesOcr.activeProfileId)
+        for (let i = 0; i < LaunchProfiles.presetIds.length; ++i)
+            presetListModel.append({ name: LaunchProfiles.presetNames[i] })
+        const idx = LaunchProfiles.presetIds.indexOf(LaunchProfiles.activeProfileId)
         profileBox.currentIndex = idx >= 0 ? idx : 0
     }
 
@@ -61,7 +61,7 @@ Item {
         function onLaunchModelAliasChanged() { root.commandPreview = Runtime.launchCommandPreview() }
     }
     Connections {
-        target: LaunchProfilesOcr
+        target: LaunchProfiles
         function onProfileChanged() { refreshAll() }
         function onActiveProfileChanged() { syncPresetModel() }
     }
@@ -117,8 +117,8 @@ Item {
                 implicitHeight: Theme.controlHeight
                 textRole: "name"
                 model: ListModel { id: presetListModel }
-                onActivated: LaunchProfilesOcr.selectDraftProfile(
-                                 LaunchProfilesOcr.presetIds[currentIndex])
+                onActivated: LaunchProfiles.selectDraftProfile(
+                                 LaunchProfiles.presetIds[currentIndex])
             }
         }//GridLayout
 

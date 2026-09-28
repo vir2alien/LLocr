@@ -167,8 +167,7 @@ private slots:
         store.setStartupTimeoutMs(10000);
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir), LaunchProfileStore::Role::Check);
-        RuntimeController runtime(store, launchProfiles, &checkProfiles);
+        RuntimeController runtime(store, launchProfiles);
 
         int first = 0;
         runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
@@ -233,8 +232,7 @@ private slots:
         store.setStartupTimeoutMs(10000);
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir), LaunchProfileStore::Role::Check);
-        RuntimeController runtime(store, launchProfiles, &checkProfiles);
+        RuntimeController runtime(store, launchProfiles);
 
         QStringList events;
         connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() {
@@ -291,8 +289,7 @@ private slots:
         store.setStartupTimeoutMs(10000);
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        LaunchProfileStore checkProfiles(store, writeTestLaunchCatalog(dir), LaunchProfileStore::Role::Check);
-        RuntimeController runtime(store, launchProfiles, &checkProfiles);
+        RuntimeController runtime(store, launchProfiles);
 
         ResolvedConnection resolved;
         runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { resolved = c; });

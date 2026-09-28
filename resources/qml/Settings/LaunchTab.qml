@@ -10,16 +10,12 @@ import "../Common"
 Item {
     id: root
 
-    // false = the recognition (OCR) launch profile, true = the verification
-    // (check) launch profile.
-    property bool checkRole: false
     // Opened via the "Configure runtime" button in External mode.
     property var runtimeSettingsRef: null
 
     readonly property bool externalMode: Settings.connectionMode === "external"
 
-    readonly property var profiles: checkRole ? LaunchProfilesValidate
-                                              : LaunchProfilesOcr
+    readonly property var profiles: LaunchProfiles
 
     function loadValues() {
         root.profiles.reloadDraft()
@@ -127,6 +123,7 @@ Item {
                 required property string name
                 required property string valueText
                 required property string description
+                required property bool editable
 
                 width: paramsList.width
                 implicitHeight: Math.max(Theme.controlHeight,
@@ -150,6 +147,7 @@ Item {
                     width: parent.width * root.valueWidth
                     implicitHeight: Theme.controlHeight
                     selectByMouse: true
+                    enabled: paramRow.editable
                     placeholderText: qsTr("(flag)")
                     text: paramRow.valueText
 
@@ -180,6 +178,7 @@ Item {
                     width: root.removeWidth
                     height: Theme.controlHeight
                     flat: true
+                    visible: paramRow.editable
                     text: "\u2715"
                     font.pointSize: Theme.captionSize
                     onClicked: root.profiles.removeDraftRow(paramRow.index)
@@ -220,9 +219,10 @@ Item {
 
         LLOLabel {
             Layout.fillWidth: true
+            wrapMode: Text.WordWrap
             font.pointSize: Theme.captionSize
             color: Theme.helpColor
-            text: qsTr("llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings")
+            text: qsTr("llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows are the shared server policy and apply to every model on this machine.")
         }
     }
 

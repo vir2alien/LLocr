@@ -99,15 +99,12 @@ int main(int argc, char *argv[])
     llocr::VerificationPromptStore verificationPrompts(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Verification", &verificationPrompts);
 
-    llocr::LaunchProfileStore launchProfilesOcr(settingsStore);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfilesOcr", &launchProfilesOcr);
-
-    llocr::LaunchProfileStore launchProfilesValidate(settingsStore, QString::fromUtf8(":/profiles/serverLaunchValidate.json"), llocr::LaunchProfileStore::Role::Check);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfilesValidate", &launchProfilesValidate);
+    llocr::LaunchProfileStore launchProfiles(settingsStore);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", &launchProfiles);
 
     llocr::InstalledState installedState(settingsStore);
 
-    llocr::RuntimeController runtimeController(settingsStore, launchProfilesOcr, &launchProfilesValidate, &installedState);
+    llocr::RuntimeController runtimeController(settingsStore, launchProfiles, &installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
 
     llocr::RuntimeLog runtimeLog(settingsStore);
@@ -120,7 +117,7 @@ int main(int argc, char *argv[])
     llocr::RuntimeInstaller runtimeInstaller(settingsStore, installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
 
-    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController, launchProfilesOcr, installedState);
+    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController, launchProfiles, installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
 
     llocr::RuntimePaths runtimePaths(settingsStore.runtimeRootDir(), settingsStore.runtimeModelsDir());

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QHash>
+#include <QList>
 #include <QObject>
 #include <QString>
 
@@ -24,12 +25,7 @@ class LaunchProfileStore : public QObject
     Q_PROPERTY(QStringList presetNames READ presetNames CONSTANT)
 
 public:
-    enum class Role {
-        Ocr,
-        Check,
-    };
-
-    explicit LaunchProfileStore(SettingsStore &settings, const QString &builtInPath = QString::fromUtf8(LaunchProfile::kBuiltInPath), Role role = Role::Ocr, QObject *parent = nullptr);
+    explicit LaunchProfileStore(SettingsStore &settings, const QString &builtInPath = QString::fromUtf8(LaunchProfile::kBuiltInPath), QObject *parent = nullptr);
 
     QAbstractListModel *draftModel() const { return m_model; }
     QString draftProfileId() const { return m_draftProfileId; }
@@ -60,10 +56,11 @@ private:
     const LaunchProfile *findPreset(const QString &id) const;
     void ensureProfileResolved();
     bool presetMatches(const LaunchProfile &preset, const QString &backend, const QString &osTag) const;
+    LaunchProfile compose(const LaunchProfile &profile) const;
 
     SettingsStore &m_settings;
-    Role m_role;
     ProfileStore<LaunchProfile> *m_profiles;
+    QList<LaunchParameter> m_policy;
     QString m_draftProfileId;
     LaunchParametersModel *m_model;
 };

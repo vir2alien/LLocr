@@ -46,7 +46,6 @@ const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
     {kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString())},
     {kCheckLaunchSourceDownload, "checkLaunchSourceDownload", QVariant(false)},
     {kCheckRequestProfileId, "checkRequestProfileId", QVariant(QString())},
-    {kCheckLaunchProfileId, "checkLaunchProfileId", QVariant(QString())},
     {kCheckModelName, "checkModelName", QVariant(QString())},
     {kAutoCheck, "autoCheck", QVariant(false)},
     {kHfToken, "hfToken", QVariant(QString())},
@@ -93,6 +92,7 @@ void SettingsStore::applyStartupMigration()
     }
 
     m_settings.remove(QString::fromUtf8("launch/presetId"));
+    m_settings.remove(QStringLiteral("check/launchProfileId"));
 }
 
 void SettingsStore::forceSave()
@@ -757,19 +757,6 @@ void SettingsStore::setCheckRequestProfileId(const QString &id)
         return;
     m_settings.setValue(kCheckRequestProfileId, id);
     emit checkRequestProfileIdChanged();
-}
-
-QString SettingsStore::checkLaunchProfileId() const
-{
-    return m_settings.value(kCheckLaunchProfileId).toString();
-}
-
-void SettingsStore::setCheckLaunchProfileId(const QString &id)
-{
-    if (checkLaunchProfileId() == id)
-        return;
-    m_settings.setValue(kCheckLaunchProfileId, id);
-    emit checkLaunchProfileIdChanged();
 }
 
 QString SettingsStore::checkModelName() const

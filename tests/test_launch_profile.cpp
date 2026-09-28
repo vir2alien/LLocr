@@ -21,14 +21,20 @@ QJsonObject objectFromJson(const QByteArray &json)
     return QJsonDocument::fromJson(json).object();
 }
 
-// Two presets: metal-tagged and cpu-tagged, for the auto-switch tests.
+// Two presets: metal-tagged and cpu-tagged, for the auto-switch tests. The
+// policy section is a layer of its own: it depends on neither the model nor
+// the platform, so it rides along with every preset.
 constexpr const char *kPresetsJson = R"({
     "schemaVersion": 1,
+    "policy": { "parameters": [
+        { "order": 1, "name": "parallel", "value": 1 },
+        { "order": 2, "name": "no-warmup" }
+    ] },
     "profiles": [
         { "id": "metal", "name": "Metal", "os": "macos", "backend": "metal",
           "parameters": [
               { "order": 1, "name": "ctx-size", "value": 16384 },
-              { "order": 2, "name": "no-warmup" }
+              { "order": 2, "name": "flash-attn", "value": "off" }
           ] },
         { "id": "cpu", "name": "CPU", "backend": "cpu",
           "parameters": [
@@ -115,29 +121,30 @@ private slots:
         LaunchProfileStore store(settings, presetsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.activeProfileId(), QStringLiteral("cpu"));
-        QCOMPARE(store.draftModel()->rowCount(), 1);
-        QCOMPARE(store.draftModel()->data(store.draftModel()->index(0), LaunchParametersModel::ValueTextRole), QStringLiteral("8192"));
+        // 2 policy rows + 1 platform row.
+        QCOMPARE(store.draftModel()->rowCount(), 3);
+        QCOMPARE(store.draftModel()->data(store.draftModel()->index(2), LaunchParametersModel::ValueTextRole), QStringLiteral("8192"));
 
         // Draft edits do not touch the persisted state.
-        QVERIFY(store.setDraftValue(0, "4096"));
-        QCOMPARE(store.activeProfile().parameters.first().value.toDouble(), 8192.0);
+        QVERIFY(store.setDraftValue(2, "4096"));
+        QCOMPARE(store.activeProfile().find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
         QVERIFY(!store.hasUserProfile());
 
         // Save commits the draft: a user copy is written and wins.
         store.saveDraft();
         QVERIFY(store.hasUserProfile());
-        QCOMPARE(store.activeProfile().parameters.first().value.toDouble(), 4096.0);
+        QCOMPARE(store.activeProfile().find(QStringLiteral("ctx-size"))->value.toDouble(), 4096.0);
         QCOMPARE(settings.launchProfileId(), QStringLiteral("cpu"));
 
         // A fresh store reads the user copy back.
         LaunchProfileStore store2(settings, presetsPath);
-        QCOMPARE(store2.activeProfile().parameters.first().value.toDouble(), 4096.0);
+        QCOMPARE(store2.activeProfile().find(QStringLiteral("ctx-size"))->value.toDouble(), 4096.0);
 
         // Saving built-in values again drops the user copy.
         store2.loadDefaultDraft();
         store2.saveDraft();
         QVERIFY(!store2.hasUserProfile());
-        QCOMPARE(store2.activeProfile().parameters.first().value.toDouble(), 8192.0);
+        QCOMPARE(store2.activeProfile().find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
     }
 
     void storeAppendRemove()
@@ -156,20 +163,58 @@ private slots:
         QVERIFY(!store.appendDraftParameter(QStringLiteral("model"), QString()));
         QVERIFY(!store.appendDraftParameter(QStringLiteral("port"), QString()));
         QVERIFY(!store.appendDraftParameter(QStringLiteral("ctx-size"), QString()));
+        // A policy row is inherited by every platform, so it cannot be added
+        // a second time either.
+        QVERIFY(!store.appendDraftParameter(QStringLiteral("parallel"), QString()));
         QVERIFY(store.appendDraftParameter(QStringLiteral("flash-attn"), QStringLiteral("off")));
-        QCOMPARE(store.draftModel()->rowCount(), 2);
+        QCOMPARE(store.draftModel()->rowCount(), 4);
 
         // Remove the built-in ctx-size row: the user copy now has one row.
-        store.removeDraftRow(0);
+        store.removeDraftRow(2);
         store.saveDraft();
-        QCOMPARE(store.activeProfile().parameters.size(), 1);
-        QCOMPARE(store.activeProfile().parameters.first().name, QStringLiteral("flash-attn"));
+        QCOMPARE(store.activeProfile().find(QStringLiteral("ctx-size")), nullptr);
+        QCOMPARE(store.activeProfile().find(QStringLiteral("flash-attn"))->value.toString(), QStringLiteral("off"));
 
         // Restore defaults drops the user copy.
         store.resetToDefaults();
         QVERIFY(!store.hasUserProfile());
-        QCOMPARE(store.activeProfile().parameters.size(), 1);
-        QCOMPARE(store.activeProfile().parameters.first().name, QStringLiteral("ctx-size"));
+        QVERIFY(store.activeProfile().find(QStringLiteral("ctx-size")) != nullptr);
+        QVERIFY(store.activeProfile().find(QStringLiteral("flash-attn")) == nullptr);
+    }
+
+    // The policy layer is a layer of its own: it rides along with every
+    // platform, and its rows are not the user's to edit — an edit there would
+    // either be silently dropped on save or would leak into a single preset.
+    void policyLayerIsSharedAndReadOnly()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        LaunchProfileStore store(settings, presetsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        const QAbstractListModel *model = store.draftModel();
+        QCOMPARE(model->rowCount(), 4);
+        QCOMPARE(model->data(model->index(0), LaunchParametersModel::NameRole), QStringLiteral("parallel"));
+        QCOMPARE(model->data(model->index(1), LaunchParametersModel::NameRole), QStringLiteral("no-warmup"));
+        QCOMPARE(model->data(model->index(0), LaunchParametersModel::EditableRole), false);
+        QCOMPARE(model->data(model->index(1), LaunchParametersModel::EditableRole), false);
+        QCOMPARE(model->data(model->index(2), LaunchParametersModel::EditableRole), true);
+
+        // Neither editing nor removing a policy row is accepted.
+        QVERIFY(!store.setDraftValue(0, "4"));
+        store.removeDraftRow(1);
+        QCOMPARE(model->rowCount(), 4);
+
+        // A policy row is present whichever platform resolves.
+        QVERIFY(store.activeProfile().find(QStringLiteral("parallel")) != nullptr);
+        settings.setRuntimeBackend(QStringLiteral("cpu"));
+        QVERIFY(store.activeProfile().find(QStringLiteral("parallel")) != nullptr);
+        settings.setRuntimeBackend(QStringLiteral("metal"));
+        QVERIFY(store.activeProfile().find(QStringLiteral("parallel")) != nullptr);
     }
 
     void storeSelectDraftProfileSwitchesRows()
@@ -187,7 +232,7 @@ private slots:
         // Switching the draft preset loads that preset's rows (uncommitted).
         store.selectDraftProfile(QStringLiteral("metal"));
         QCOMPARE(store.draftProfileId(), QStringLiteral("metal"));
-        QCOMPARE(store.draftModel()->rowCount(), 2);
+        QCOMPARE(store.draftModel()->rowCount(), 4);
         // The persisted selection is untouched by a draft-only switch.
         QCOMPARE(settings.launchProfileId(), QStringLiteral("cpu"));
         QCOMPARE(store.activeProfileId(), QStringLiteral("cpu"));
@@ -204,7 +249,7 @@ private slots:
         store.selectDraftProfile(QStringLiteral("cpu"));
         store.reloadDraft();
         QCOMPARE(store.draftProfileId(), QStringLiteral("cpu"));
-        QCOMPARE(store.draftModel()->rowCount(), 1);
+        QCOMPARE(store.draftModel()->rowCount(), 3);
     }
 
     void emptyCatalogStillWorks()

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "_comment": "Launch parameters. 'policy' does not depend on the model or the platform. 'profiles' is the platform layer, keyed by os+backend. NOTE: the model-dependent parameters (ctx-size, n-predict, cache-type-*, image-*-tokens, dry-sequence-breaker, special) still sit in the platform layer and are marked per-model in the file name's sibling docs; they move to models/<id>.json in step 2 of docs/10-model-profiles.md, where a parameter present in this file stops applying to every model the machine runs.",
+  "policy": {
+    "parameters": [
+      { "order": 1, "name": "parallel",        "value": 1,    "description": "Number of concurrent server slots." },
+      { "order": 2, "name": "cache-reuse",     "value": 0,    "description": "Context reuse window between requests; 0 disables." },
+      { "order": 3, "name": "no-context-shift",              "description": "Keep the context stable: do not shift the KV cache when the window overflows." },
+      { "order": 4, "name": "no-warmup",                     "description": "Skip the warmup run at model load (faster start, slower first request)." }
+    ]
+  },
+  "profiles": [
+    {
+      "id": "macos-metal",
+      "name": "macOS · Metal",
+      "os": "macos",
+      "backend": "metal",
+      "parameters": [
+        { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+        { "order": 2,  "name": "flash-attn",          "value": "off", "description": "Flash attention: on, off or auto." },
+        { "order": 3,  "name": "special",                           "description": "Emit special tokens in the server output." },
+        { "order": 4,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+        { "order": 5,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+        { "order": 6,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+        { "order": 7,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+        { "order": 8,  "name": "image-min-tokens",    "value": 456,  "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 9,  "name": "image-max-tokens",    "value": 1156, "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 10, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+      ]
+    },
+    {
+      "id": "win-cuda",
+      "name": "Windows · CUDA",
+      "os": "win",
+      "backend": "cuda",
+      "parameters": [
+        { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+        { "order": 2,  "name": "flash-attn",          "value": "on",  "description": "Flash attention: on, off or auto." },
+        { "order": 3,  "name": "special",                           "description": "Emit special tokens in the server output." },
+        { "order": 4,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+        { "order": 5,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+        { "order": 6,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+        { "order": 7,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+        { "order": 8,  "name": "image-min-tokens",    "value": 456,  "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 9,  "name": "image-max-tokens",    "value": 1156, "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 10, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+      ]
+    },
+    {
+      "id": "win-vulkan",
+      "name": "Windows · Vulkan",
+      "os": "win",
+      "backend": "vulkan",
+      "parameters": [
+        { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+        { "order": 2,  "name": "flash-attn",          "value": "off", "description": "Flash attention: on, off or auto (Vulkan flash attention is experimental)." },
+        { "order": 3,  "name": "special",                           "description": "Emit special tokens in the server output." },
+        { "order": 4,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+        { "order": 5,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+        { "order": 6,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+        { "order": 7,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+        { "order": 8,  "name": "image-min-tokens",    "value": 456,  "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 9,  "name": "image-max-tokens",    "value": 1156, "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 10, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+      ]
+    },
+    {
+      "id": "linux-cuda",
+      "name": "Linux · CUDA",
+      "os": "linux",
+      "backend": "cuda",
+      "parameters": [
+        { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+        { "order": 2,  "name": "flash-attn",          "value": "on",  "description": "Flash attention: on, off or auto." },
+        { "order": 3,  "name": "special",                           "description": "Emit special tokens in the server output." },
+        { "order": 4,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+        { "order": 5,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+        { "order": 6,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+        { "order": 7,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+        { "order": 8,  "name": "image-min-tokens",    "value": 456,  "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 9,  "name": "image-max-tokens",    "value": 1156, "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 10, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+      ]
+    },
+    {
+      "id": "linux-vulkan",
+      "name": "Linux · Vulkan",
+      "os": "linux",
+      "backend": "vulkan",
+      "parameters": [
+        { "order": 1,  "name": "n-gpu-layers",        "value": 99,   "description": "Number of model layers offloaded to the GPU; 99 = all." },
+        { "order": 2,  "name": "flash-attn",          "value": "off", "description": "Flash attention: on, off or auto (Vulkan flash attention is experimental)." },
+        { "order": 3,  "name": "special",                           "description": "Emit special tokens in the server output." },
+        { "order": 4,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+        { "order": 5,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+        { "order": 6,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+        { "order": 7,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+        { "order": 8,  "name": "image-min-tokens",    "value": 456,  "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 9,  "name": "image-max-tokens",    "value": 1156, "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 10, "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+      ]
+    },
+    {
+      "id": "cpu",
+      "name": "CPU (universal)",
+      "os": "",
+      "backend": "cpu",
+      "parameters": [
+        { "order": 1,  "name": "flash-attn",          "value": "off", "description": "Flash attention: on, off or auto." },
+        { "order": 2,  "name": "special",                           "description": "Emit special tokens in the server output." },
+        { "order": 3,  "name": "n-predict",           "value": 8192, "description": "Maximum tokens to generate per completion (OCR page)." },
+        { "order": 4,  "name": "ctx-size",            "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+        { "order": 5,  "name": "cache-type-k",        "value": "f32", "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+        { "order": 6,  "name": "cache-type-v",        "value": "f32", "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+        { "order": 7,  "name": "image-min-tokens",    "value": 456,  "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 8,  "name": "image-max-tokens",    "value": 1156, "description": "Vision budget tuned for Unlimited-OCR. Models that carry their own vision defaults (e.g. LFM2.5-VL) prefer no cap - remove this row when switching models." },
+        { "order": 9,  "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." }
+      ]
+    }
+  ]
+}

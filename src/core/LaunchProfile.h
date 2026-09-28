@@ -32,12 +32,13 @@ struct LaunchProfile {
     QString backend;  // "cuda" | "metal" | "vulkan" | "cpu" | "" (any)
     QString description;
     QList<LaunchParameter> parameters;
-    static constexpr const char *kBuiltInPath = ":/profiles/serverLaunchOcr.json";
+    static constexpr const char *kBuiltInPath = ":/profiles/serverLaunch.json";
 
     static const QStringList &reservedArgNames();
     static QList<LaunchProfile> parseFile(const QJsonObject &root, QString &error);
     static QList<LaunchProfile> profilesFromJson(const QJsonObject &root, QString &error) { return parseFile(root, error); }
     static LaunchProfile merge(const LaunchProfile &defaults, const LaunchProfile &user);
+    static QList<LaunchParameter> parsePolicy(const QJsonObject &root, QString &error);
 
     QJsonObject toJson() const;
     const LaunchParameter *find(const QString &name) const;

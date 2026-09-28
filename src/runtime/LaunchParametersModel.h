@@ -17,6 +17,7 @@ public:
         ValueTextRole,
         KindRole,
         DescriptionRole,
+        EditableRole,
     };
 
     explicit LaunchParametersModel(QObject *parent = nullptr);
@@ -26,13 +27,17 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     const QList<LaunchParameter> &parameters() const { return m_parameters; }
+    void setLockedPrefix(int rows);
     void resetFrom(const QList<LaunchParameter> &parameters);
     bool setValue(int row, const QString &text);
     bool appendRow(const QString &name, const QString &text);
     void removeRow(int row);
 
 private:
+    bool isEditable(int row) const { return row >= m_lockedPrefix; }
+
     QList<LaunchParameter> m_parameters;
+    int m_lockedPrefix = 0;
 };
 
 }  // namespace llocr

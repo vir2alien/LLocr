@@ -71,13 +71,9 @@ void connectEveryChangeSignal(QObject *source, QObject *receiver, const char *sl
 }
 }  // namespace
 
-RuntimeController::RuntimeController(SettingsStore &settings, LaunchProfileStore &launchProfiles, LaunchProfileStore *checkLaunchProfiles, InstalledState *state, QObject *parent)
-    : QObject(parent), m_settings(settings), m_installedState(state), m_launchProfiles(launchProfiles), m_checkLaunchProfiles(checkLaunchProfiles ? checkLaunchProfiles : &launchProfiles)
+RuntimeController::RuntimeController(SettingsStore &settings, LaunchProfileStore &launchProfiles, InstalledState *state, QObject *parent)
+    : QObject(parent), m_settings(settings), m_installedState(state), m_launchProfiles(launchProfiles)
 {
-    if (!checkLaunchProfiles) {
-        qWarning("RuntimeController: no check launch profile store wired - "
-                 "the check role falls back to the OCR launch profiles");
-    }
     recomputeConfigValid();
     recomputeLaunchConfigDirty();
     connectEveryChangeSignal(&m_settings, this, "recomputeConfigValid");
@@ -86,7 +82,6 @@ RuntimeController::RuntimeController(SettingsStore &settings, LaunchProfileStore
     connect(&m_settings, &SettingsStore::runtimeModelsDirChanged, this, &RuntimeController::scanForOrphanedServer);
     // A saved launch profile is a launch-setting change like any other.
     connect(&m_launchProfiles, &LaunchProfileStore::profileChanged, this, &RuntimeController::recomputeLaunchConfigDirty);
-    connect(m_checkLaunchProfiles, &LaunchProfileStore::profileChanged, this, &RuntimeController::recomputeLaunchConfigDirty);
     scanForOrphanedServer();
 }
 
@@ -236,7 +231,7 @@ void RuntimeController::recomputeLaunchConfigDirty()
     // Compare the configuration the live server was started with against the one
     // the current settings produce — the same object that becomes the process
     // arguments, so the two can never disagree about what "changed" means.
-    ServerLaunchConfig current = ServerLaunchConfig::fromSettings(m_settings, m_startedRole == ConnectionRole::Check ? *m_checkLaunchProfiles : m_launchProfiles, m_startedRole);
+    ServerLaunchConfig current = ServerLaunchConfig::fromSettings(m_settings, m_launchProfiles, m_startedRole);
     current.program = m_settings.serverPath().trimmed();
     const bool dirty = m_hasStartedConfig && current != m_startedConfig;
     if (dirty == m_launchConfigDirty)
@@ -678,7 +673,7 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
     RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     paths.ensureDirectories();
 
-    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings, role == ConnectionRole::Check ? *m_checkLaunchProfiles : m_launchProfiles, role);
+    ServerLaunchConfig cfg = ServerLaunchConfig::fromSettings(m_settings, m_launchProfiles, role);
     cfg.program = program;
     QStringList args = cfg.toArguments(probe.capabilities);
 

@@ -139,8 +139,7 @@ qt_add_resources(test_app_import "app_import_profiles"
         "${CMAKE_SOURCE_DIR}/resources/profiles/requestOcr.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/requestValidate.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchOcr.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunchValidate.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
 )
 if(WIN32 AND LLOCR_DJVU_AVAILABLE)
     add_custom_command(TARGET test_app_import POST_BUILD

@@ -2,6 +2,7 @@
 
 #include <QDebug>
 #include <QDir>
+#include <QFile>
 
 #include "config/ProfileStore.h"
 #include "config/RuntimePaths.h"
@@ -10,17 +11,48 @@
 
 namespace llocr {
 
-LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &builtInPath, Role role, QObject *parent)
-    : QObject(parent), m_settings(settings), m_role(role),
-      m_profiles(new ProfileStore<LaunchProfile>(
-          builtInPath, role == Role::Check ? QStringLiteral("serverLaunchValidate.json") : QStringLiteral("serverLaunch.json"), kSchemaVersion, QStringLiteral("LaunchProfileStore"))),
+namespace {
+const QString kUserFileName = QStringLiteral("serverLaunch.json");
+const QString kLegacyCheckFileName = QStringLiteral("serverLaunchValidate.json");
+}  // namespace
+
+LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &builtInPath, QObject *parent)
+    : QObject(parent), m_settings(settings), m_profiles(new ProfileStore<LaunchProfile>(builtInPath, kUserFileName, kSchemaVersion, QStringLiteral("LaunchProfileStore"))),
       m_model(new LaunchParametersModel(this))
 {
-    m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir())
-                                .filePath(role == Role::Check ? QStringLiteral("serverLaunchValidate.json") : QStringLiteral("serverLaunch.json")));
-    // The path is only known after the settings are read, so the user copy is
-    // loaded now rather than in the ProfileStore constructor.
-    m_profiles->reloadUserProfiles();
+    m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(kUserFileName));
+
+    QString policyError;
+    QJsonParseError parseError{};
+    QFile builtIn(builtInPath);
+    if (builtIn.open(QIODevice::ReadOnly)) {
+        const QJsonDocument doc = QJsonDocument::fromJson(builtIn.readAll(), &parseError);
+        if (parseError.error == QJsonParseError::NoError && doc.isObject())
+            m_policy = LaunchProfile::parsePolicy(doc.object(), policyError);
+    } else {
+        policyError = builtIn.errorString();
+    }
+    if (!policyError.isEmpty())
+        qWarning("LaunchProfileStore: cannot load the launch policy %s: %s", qUtf8Printable(builtInPath), qUtf8Printable(policyError));
+    else if (parseError.error != QJsonParseError::NoError)
+        qWarning("LaunchProfileStore: cannot read the launch profiles %s: %s", qUtf8Printable(builtInPath), qUtf8Printable(parseError.errorString()));
+
+    m_model->setLockedPrefix(m_policy.size());
+
+    // The check role used to keep its own user copy. Its rows are a subset of
+    // what the merged file now provides, so an existing copy is adopted as the
+    // starting point rather than discarded without a word.
+    const QString userPath = m_profiles->userPath();
+    if (!QFile::exists(userPath)) {
+        const QString legacy = QFileInfo(userPath).absoluteDir().filePath(kLegacyCheckFileName);
+        if (QFile::exists(legacy)) {
+            m_profiles->setUserPath(legacy);
+            m_profiles->reloadUserProfiles();
+            m_profiles->setUserPath(userPath);
+        }
+    } else {
+        m_profiles->reloadUserProfiles();
+    }
 
     connect(&m_settings, &SettingsStore::runtimeBackendChanged, this, &LaunchProfileStore::ensureProfileResolved);
     ensureProfileResolved();
@@ -60,17 +92,24 @@ bool LaunchProfileStore::presetMatches(const LaunchProfile &preset, const QStrin
     return backendOk && osOk;
 }
 
+LaunchProfile LaunchProfileStore::compose(const LaunchProfile &profile) const
+{
+    LaunchProfile out = profile;
+    out.parameters = m_policy + profile.parameters;
+    // The layers are concatenated in a fixed order and renumbered, so a row
+    // keeps its layer. Sorting on the per-layer `order` alone would interleave
+    // them (policy order 1 next to platform order 1) and the policy rows would
+    // stop being a contiguous read-only prefix of the draft.
+    int order = 1;
+    for (LaunchParameter &parameter : out.parameters)
+        parameter.order = order++;
+    out.sortByOrder();
+    return out;
+}
+
 void LaunchProfileStore::ensureProfileResolved()
 {
     const QString resolved = activeProfileId();
-    if (m_role == Role::Check) {
-        if (resolved != m_settings.checkLaunchProfileId()) {
-            m_settings.setCheckLaunchProfileId(resolved);
-            emit activeProfileChanged();
-            emit profileChanged();
-        }
-        return;
-    }
     if (resolved != m_settings.launchProfileId()) {
         m_settings.setLaunchProfileId(resolved);
         emit activeProfileChanged();
@@ -80,7 +119,7 @@ void LaunchProfileStore::ensureProfileResolved()
 
 QString LaunchProfileStore::activeProfileId() const
 {
-    const QString stored = m_role == Role::Check ? m_settings.checkLaunchProfileId() : m_settings.launchProfileId();
+    const QString stored = m_settings.launchProfileId();
     const PlatformInfo platform = ReleaseCatalog::detectPlatform();
     QString backend = m_settings.runtimeBackend();
     if (backend.isEmpty())
@@ -103,13 +142,13 @@ QString LaunchProfileStore::activeProfileId() const
 
 LaunchProfile LaunchProfileStore::activeProfile() const
 {
-    return m_profiles->merged(activeProfileId());
+    return compose(m_profiles->merged(activeProfileId()));
 }
 
 void LaunchProfileStore::reloadDraft()
 {
     m_draftProfileId = activeProfileId();
-    m_model->resetFrom(m_profiles->merged(m_draftProfileId).parameters);
+    m_model->resetFrom(compose(m_profiles->merged(m_draftProfileId)).parameters);
     emit draftProfileChanged();
 }
 
@@ -118,7 +157,7 @@ void LaunchProfileStore::selectDraftProfile(const QString &id)
     if (!findPreset(id) || id == m_draftProfileId)
         return;
     m_draftProfileId = id;
-    m_model->resetFrom(m_profiles->merged(id).parameters);
+    m_model->resetFrom(compose(m_profiles->merged(id)).parameters);
     emit draftProfileChanged();
 }
 
@@ -142,9 +181,14 @@ void LaunchProfileStore::saveDraft()
     if (m_draftProfileId.isEmpty())
         return;
 
+    const int policyRows = m_policy.size();
+    const QList<LaunchParameter> draftRows = m_model->parameters();
+    if (draftRows.size() < policyRows)
+        return;
+
     LaunchProfile draft;
     draft.id = m_draftProfileId;
-    draft.parameters = m_model->parameters();
+    draft.parameters = draftRows.mid(policyRows);
     draft.sortByOrder();
     if (const LaunchProfile *preset = findPreset(m_draftProfileId)) {
         draft.name = preset->name;
@@ -153,16 +197,9 @@ void LaunchProfileStore::saveDraft()
         draft.description = preset->description;
     }
 
-    // The active profile follows the draft whether or not the *file* changed:
-    // selecting a preset that is already built-in still has to take effect.
     const bool fileChanged = m_profiles->putUserProfile(draft);
 
-    if (m_role == Role::Check) {
-        if (m_settings.checkLaunchProfileId() != m_draftProfileId) {
-            m_settings.setCheckLaunchProfileId(m_draftProfileId);
-            emit activeProfileChanged();
-        }
-    } else if (m_settings.launchProfileId() != m_draftProfileId) {
+    if (m_settings.launchProfileId() != m_draftProfileId) {
         m_settings.setLaunchProfileId(m_draftProfileId);
         emit activeProfileChanged();
     }
@@ -173,7 +210,7 @@ void LaunchProfileStore::saveDraft()
 void LaunchProfileStore::loadDefaultDraft()
 {
     if (const LaunchProfile *preset = findPreset(m_draftProfileId))
-        m_model->resetFrom(preset->parameters);
+        m_model->resetFrom(compose(*preset).parameters);
     else
         m_model->resetFrom(QList<LaunchParameter>());
 }
@@ -181,10 +218,7 @@ void LaunchProfileStore::loadDefaultDraft()
 void LaunchProfileStore::resetToDefaults()
 {
     m_profiles->resetToBuiltIn();
-    if (m_role == Role::Check)
-        m_settings.setCheckLaunchProfileId(QString());
-    else
-        m_settings.setLaunchProfileId(QString());
+    m_settings.setLaunchProfileId(QString());
     ensureProfileResolved();
     reloadDraft();
     emit profileChanged();

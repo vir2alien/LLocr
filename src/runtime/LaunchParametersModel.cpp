@@ -30,6 +30,8 @@ QVariant LaunchParametersModel::data(const QModelIndex &index, int role) const
         return int(p.kind);
     case DescriptionRole:
         return p.description;
+    case EditableRole:
+        return isEditable(index.row());
     default:
         return QVariant();
     }
@@ -42,8 +44,19 @@ QHash<int, QByteArray> LaunchParametersModel::roleNames() const
         {ValueTextRole, "valueText"},
         {KindRole, "kind"},
         {DescriptionRole, "description"},
+        {EditableRole, "editable"},
     };
     return roles;
+}
+
+void LaunchParametersModel::setLockedPrefix(int rows)
+{
+    m_lockedPrefix = qMax(0, rows);
+    if (!m_parameters.isEmpty()) {
+        const QModelIndex first = index(m_lockedPrefix > 0 ? m_lockedPrefix - 1 : 0);
+        const QModelIndex last = index(m_parameters.size() - 1);
+        emit dataChanged(first, last, {EditableRole});
+    }
 }
 
 void LaunchParametersModel::resetFrom(const QList<LaunchParameter> &parameters)
@@ -59,6 +72,8 @@ void LaunchParametersModel::resetFrom(const QList<LaunchParameter> &parameters)
 bool LaunchParametersModel::setValue(int row, const QString &text)
 {
     if (row < 0 || row >= m_parameters.size())
+        return false;
+    if (!isEditable(row))
         return false;
 
     LaunchParameter &p = m_parameters[row];
@@ -123,6 +138,8 @@ bool LaunchParametersModel::appendRow(const QString &name, const QString &text)
 void LaunchParametersModel::removeRow(int row)
 {
     if (row < 0 || row >= m_parameters.size())
+        return;
+    if (!isEditable(row))
         return;
     beginRemoveRows(QModelIndex(), row, row);
     m_parameters.removeAt(row);

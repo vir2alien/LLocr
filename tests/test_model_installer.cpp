@@ -66,7 +66,7 @@ private:
         }
         s.launchProfiles.reset(new LaunchProfileStore(s.settings, presetsPath));
         s.installed.reset(new InstalledState(s.settings));
-        s.runtime.reset(new RuntimeController(s.settings, *s.launchProfiles, nullptr, s.installed.data()));
+        s.runtime.reset(new RuntimeController(s.settings, *s.launchProfiles, s.installed.data()));
     }
 
     static void pointAtTempDir(SettingsStore &settings, const QString &root)
