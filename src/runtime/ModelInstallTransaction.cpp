@@ -256,7 +256,6 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
         p.title = preset.title.isEmpty() ? repo : preset.title;
         p.license = preset.license;
         p.parser = preset.parser;
-        p.prompt = preset.prompt;
         p.ctxSize = preset.ctxSize;
         p.presetId = preset.id;
         p.dir = QDir(modelsDir).filePath(repoDirName(repo));
@@ -511,7 +510,6 @@ void ModelInstallTransaction::completeInstall()
     e.quantization = ModelCatalog::quantizationFromName(ModelCatalog::leafName(m_pending.modelNames.first()));
     e.license = m_pending.license;
     e.parser = m_pending.parser;
-    e.prompt = m_pending.prompt;
     e.ctxSize = m_pending.ctxSize;
     e.ctxSizeSet = m_pending.ctxSize > 0;
     e.addedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);

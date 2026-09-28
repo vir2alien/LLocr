@@ -14,6 +14,15 @@
 # Per-test resources (JSON catalogs, the preview bundle) stay on the test target:
 # they are fixtures, not code.
 
+# The model profiles: one file per model, and a test that reads a model contract
+# needs the shipped data. Declared once so adding a model does not mean editing
+# every test target (docs/11-profile-findings.md, finding 6).
+set(LLOCR_MODEL_PROFILE_FILES
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/unlimited-ocr.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/lfm25-vl-3b.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-4b.json"
+)
+
 # Test double: a local llama-server stand-in. It is NOT registered via add_test;
 # the runtime tests spawn it as a real child process to exercise probe/health.
 qt_add_executable(mock_llama_server mock_llama_server.cpp)
@@ -37,6 +46,11 @@ qt_add_resources(test_det_parser "det_parser_labels_res"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
+)
+qt_add_resources(test_det_parser "det_parser_model_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${LLOCR_MODEL_PROFILE_FILES}
 )
 add_test(NAME test_det_parser COMMAND test_det_parser)
 
@@ -68,6 +82,16 @@ target_link_libraries(test_ocr_models PRIVATE
     Qt6::Test
     llocr_models
     llocr_parsers
+)
+qt_add_resources(test_ocr_models "ocr_model_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${LLOCR_MODEL_PROFILE_FILES}
+)
+qt_add_resources(test_ocr_models "ocr_model_labels"
+    PREFIX "/profiles"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
+    FILES "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )
 add_test(NAME test_ocr_models COMMAND test_ocr_models)
 
@@ -136,10 +160,14 @@ qt_add_resources(test_app_import "app_import_profiles"
     PREFIX "/profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
-        "${CMAKE_SOURCE_DIR}/resources/profiles/requestOcr.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/requestValidate.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
+        "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
+)
+qt_add_resources(test_app_import "app_import_model_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${LLOCR_MODEL_PROFILE_FILES}
 )
 if(WIN32 AND LLOCR_DJVU_AVAILABLE)
     add_custom_command(TARGET test_app_import POST_BUILD

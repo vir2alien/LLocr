@@ -12,7 +12,6 @@ ModelPreset ModelPreset::fromJson(const QJsonObject &o)
     p.model = o.value(QStringLiteral("model")).toString();
     p.mmproj = o.value(QStringLiteral("mmproj")).toString();
     p.parser = o.value(QStringLiteral("parser")).toString();
-    p.prompt = o.value(QStringLiteral("prompt")).toString();
     p.ctxSize = o.value(QStringLiteral("ctxSize")).toInt(8192);
     p.minBuild = o.value(QStringLiteral("minBuild")).toString();
     p.license = o.value(QStringLiteral("license")).toString();
@@ -39,8 +38,6 @@ QJsonObject ModelPreset::toJson() const
         o.insert(QStringLiteral("mmproj"), mmproj);
     if (!parser.isEmpty())
         o.insert(QStringLiteral("parser"), parser);
-    if (!prompt.isEmpty())
-        o.insert(QStringLiteral("prompt"), prompt);
     if (ctxSize != 8192)
         o.insert(QStringLiteral("ctxSize"), ctxSize);
     if (!minBuild.isEmpty())

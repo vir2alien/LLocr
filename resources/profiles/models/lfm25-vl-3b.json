@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "id": "lfm25-vl-3b",
   "title": "LFM2.5-VL-3B",
+  "license": "https://huggingface.co/LiquidAI/LFM2.5-VL-3B-GGUF",
   "minBuild": "b8000",
   "fallback": {
     "launch": [
-      { "order": 1, "name": "ctx-size",   "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
-      { "order": 2, "name": "n-predict",  "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." },
-      { "order": 3, "name": "special",                  "description": "Emit special tokens in the server output." }
+      { "order": 1, "name": "ctx-size",  "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+      { "order": 2, "name": "n-predict", "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." }
     ]
   },
   "roles": {
@@ -15,12 +15,41 @@
       "alias": "llocr-lfm25-vl-3b",
       "parser": "det_tokens",
       "maxOutput": 8192,
+      "prompts": [
+        {
+          "id": "layout-annotation",
+          "title": "Layout annotation",
+          "text": "Parse this document into its layout regions. The pages are provided as images in reading order. For every region, in reading order across all pages, output a header line immediately followed by the region's content:\n\nimage_index=<n> <label> [xmin, ymin, xmax, ymax]\n<content>\n\nwhere:\n- image_index is the zero-based index of the page image the region appears on (0 for the first image, 1 for the second, and so on)\n- <label> is one of these layout labels: text, title, list, table, table_caption, table_footnote, image, image_block, image_caption, image_footnote, chart, equation, formula_number, code, code_caption, algorithm, aside_text, ref_text, phonetic, page_header, page_footer, page_number, page_footnote\n- [xmin, ymin, xmax, ymax] are normalized integer coordinates in [0, 1000]\n- <content> is the region's content: plain text for text regions, LaTeX for equations, OTSL for tables, and a short description for images and charts\n\nSeparate each region block with one blank line. Return only the parsed regions."
+        }
+      ],
+      "blocks": {
+        "styles": {
+          "image_block": "image",
+          "image_footnote": "italic",
+          "code_caption": "italic",
+          "page_header": "text",
+          "page_footer": "text",
+          "page_footnote": "text",
+          "formula_number": "text",
+          "list": "text",
+          "code": "text",
+          "algorithm": "text",
+          "aside_text": "text",
+          "phonetic": "text"
+        }
+      },
       "launch": [
         { "order": 1, "name": "ctx-size",     "value": 16384, "description": "Model context window in tokens (prompt + image + output). Needs measuring: a long page may not fit." },
         { "order": 2, "name": "n-predict",    "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." },
         { "order": 3, "name": "cache-type-k", "value": "f32",  "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
         { "order": 4, "name": "cache-type-v", "value": "f32",  "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
         { "order": 5, "name": "special",                  "description": "Emit special tokens in the server output; the det-token parser needs them." }
+      ],
+      "request": [
+        { "order": 1, "name": "temperature",    "value": 0.2,  "description": "Sampling randomness; LiquidAI recommends 0.2 with top_k 50 for LFM2.5-VL." },
+        { "order": 2, "name": "top_k",          "value": 50,   "description": "Sample only from the 50 most likely tokens (LiquidAI recommendation)." },
+        { "order": 3, "name": "repeat_penalty", "value": 1.0,  "description": "Repetition penalty; 1.0 disables it (LiquidAI recommendation)." },
+        { "order": 4, "name": "stream",         "value": false, "description": "Stream tokens as they arrive; false gives the parser one complete response." }
       ]
     }
   }

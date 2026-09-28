@@ -6,6 +6,7 @@
 #include <QString>
 
 #include "config/RequestParametersModel.h"
+#include "core/ModelProfiles.h"
 
 class QAbstractListModel;
 
@@ -26,7 +27,8 @@ public:
         Check,
     };
 
-    explicit RequestProfileStore(SettingsStore &settings, const QString &builtInPath = QString::fromUtf8(RequestProfile::kBuiltInPath), Role role = Role::Ocr, QObject *parent = nullptr);
+    explicit RequestProfileStore(SettingsStore &settings, Role role = Role::Ocr, QObject *parent = nullptr);
+    void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     QAbstractListModel *draftModel() const { return m_model; }
 
@@ -52,8 +54,10 @@ private:
     SettingsStore &m_settings;
     Role m_role;
     ProfileStore<RequestProfile> *m_profiles;
+    QList<ModelProfiles::Profile> m_modelProfiles;
     QString m_draftProfileId;
     RequestParametersModel *m_model;
+    void loadBuiltInFromModelProfiles();
 };
 
 }  // namespace llocr

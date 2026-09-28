@@ -445,7 +445,6 @@ void TestModelRegistry::keepsIndexMetadataAndRefreshesFileFacts()
     recorded.license = QStringLiteral("apache-2.0");
     recorded.roles = {QStringLiteral("check")};
     recorded.parser = QStringLiteral("det_tokens");
-    recorded.prompt = QStringLiteral("parse the page");
     recorded.addedAt = QStringLiteral("2026-01-01T00:00:00Z");
     recorded.byteSize = 999999;  // stale on purpose
 
@@ -467,7 +466,6 @@ void TestModelRegistry::keepsIndexMetadataAndRefreshesFileFacts()
     QCOMPARE(merged.license, QStringLiteral("apache-2.0"));
     QCOMPARE(merged.roles, QStringList({QStringLiteral("check")}));
     QCOMPARE(merged.parser, QStringLiteral("det_tokens"));
-    QCOMPARE(merged.prompt, QStringLiteral("parse the page"));
     QCOMPARE(merged.addedAt, QStringLiteral("2026-01-01T00:00:00Z"));
     QCOMPARE(result.refreshed, 1);
 }

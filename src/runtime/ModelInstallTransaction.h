@@ -68,7 +68,6 @@ private:
         QString title;
         QString license;
         QString parser;
-        QString prompt;
         int ctxSize = 0;
         QString presetId;
         QString dir;                         // <modelsDir>/<org>__<repo>

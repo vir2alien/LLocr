@@ -76,7 +76,6 @@ ModelEntry entryFromJson(const QJsonObject &o)
     e.license = o.value(QStringLiteral("license")).toString();
     e.sha256 = o.value(QStringLiteral("sha256")).toString();
     e.parser = o.value(QStringLiteral("parser")).toString();
-    e.prompt = o.value(QStringLiteral("prompt")).toString();
     if (o.contains(QStringLiteral("ctxSize"))) {
         e.ctxSize = o.value(QStringLiteral("ctxSize")).toInt();
         e.ctxSizeSet = true;
@@ -120,8 +119,6 @@ QJsonObject entryToJson(const ModelEntry &e)
         o.insert(QStringLiteral("sha256"), e.sha256);
     if (!e.parser.isEmpty())
         o.insert(QStringLiteral("parser"), e.parser);
-    if (!e.prompt.isEmpty())
-        o.insert(QStringLiteral("prompt"), e.prompt);
     if (e.ctxSizeSet)
         o.insert(QStringLiteral("ctxSize"), e.ctxSize);
     o.insert(QStringLiteral("addedAt"), e.addedAt);

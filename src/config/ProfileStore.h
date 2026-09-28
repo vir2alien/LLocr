@@ -27,6 +27,7 @@ public:
 
     const QList<T> &builtIn() const { return m_builtIn; }
     QList<T> &mutableBuiltIn() { return m_builtIn; }
+    void setBuiltIn(QList<T> profiles) { m_builtIn = std::move(profiles); }
     const QHash<QString, T> &userProfiles() const { return m_userProfiles; }
 
     void reloadUserProfiles() { reloadUserProfilesImpl(); }

@@ -14,7 +14,6 @@ struct ModelPreset {
     QString model;     // main .gguf file name (or first part of a multi-file)
     QString mmproj;    // optional vision-projector file name
     QString parser;    // e.g. "det_tokens"
-    QString prompt;    // e.g. "document parsing."
     int ctxSize = 8192;
     QString minBuild;  // minimum llama.cpp build tag, e.g. "b4000"
     QString license;   // URL or short license name

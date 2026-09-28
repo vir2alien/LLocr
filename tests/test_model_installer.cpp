@@ -348,7 +348,6 @@ private slots:
         text.mmprojPath.clear();
         text.quantization = QStringLiteral("chat");
         text.parser = QStringLiteral("det_tokens");
-        text.prompt = QStringLiteral("document parsing.");
 
         // A vision-capable model used as the verifier (legacy, no roles).
         ModelEntry verifier = ocr;

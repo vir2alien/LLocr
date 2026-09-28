@@ -4,10 +4,10 @@
 #include <QDir>
 #include <QFile>
 
-#include "config/ModelProfiles.h"
 #include "config/ProfileStore.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "runtime/ReleaseCatalog.h"
 
 namespace llocr {

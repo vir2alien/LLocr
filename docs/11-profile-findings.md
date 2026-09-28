@@ -29,13 +29,14 @@ ADR 96 убрал запись `ModelEntry::parser` в `Settings.parserId` из
 
 Закрыто на шаге 2: вызов удалён.
 
-## 🟡 3. `ModelEntry::prompt` — мёртвое поле ⬜
+## 🟡 3. `ModelEntry::prompt` — мёртвое поле ✅ закрыт
 
 Пишется при установке, сериализуется в `index.json`, но при распознавании не
-читается: `RecognitionController::promptText()` берёт текст из
-`OcrModel::promptVariants()`. Дубликат источника истины, причём рабочий — в
-коде. Удаляется на шаге 3. Перед удалением убедиться полным grep по
-`ModelEntry` в `src/` и `tests/`, что чтений нет.
+читался: `RecognitionController::promptText()` брал текст из
+`OcrModel::promptVariants()`.
+
+Закрыто на шаге 3: поле удалено из `ModelEntry` и `ModelPreset`, промпт живёт
+в профиле модели, и `promptText()` читает его оттуда.
 
 ## 🟡 4. `image-min/max-tokens` Unlimited-OCR попадают в проверочную роль ✅ закрыт
 
@@ -56,15 +57,14 @@ LFM2.5-VL — только для показа: пресет с `minBuild` вы�
 `ModelProfiles::Profile::minBuild` уже читается из профиля модели; проверка на
 старте — в шаге 4 вместе с миграцией настроек.
 
-## 🟡 6. Список ресурсов профилей продублирован в шести местах CMake ◑ частично
+## 🟡 6. Список ресурсов профилей продублирован в шести местах CMake ✅ закрыт
 
 Один и тот же набор JSON перечислен в `src/CMakeLists.txt` и в пяти блоках
 `tests/CMakeLists.txt`.
 
-Профили моделей уже подхватываются glob'ом (`file(GLOB MODEL_PROFILE_FILES …)`),
-новый файл в `resources/profiles/models/` не требует правки CMake. Остальные
-каталоги (`labels.json`, `request*.json`) перечислены вручную — переводить их
-на glob решено в шаге 3, когда там появится новый набор файлов.
+Закрыто на шаге 3: список профилей моделей объявлен один раз
+(`LLOCR_MODEL_PROFILE_FILES` в `tests/CMakeLists.txt`, glob в
+`src/CMakeLists.txt`) — новая модель это новый файл, а не правка шести мест.
 
 ## 🟡 7. `alias` один на обе роли ⬜
 
@@ -82,14 +82,15 @@ per-role настройки — тогда переключение роли н�
 `qwen3.5-4b-q4_k_xl` без `.gguf`. Уходит при переходе на `files.quants[].id`
 в шаге 4.
 
-## 🟢 9. `n-predict` и `max_tokens` дублируют один предел вывода ◑ частично
+## 🟢 9. `n-predict` и `max_tokens` дублируют один предел вывода ✅ закрыт
 
 `n-predict: 8192` и `max_tokens: 8192` — одно и то же число в двух файлах.
 `max_tokens: 8192` при `n-predict: 4096` даёт тихую обрезку ответа без ошибки.
 
-`maxOutput` в профиле модели теперь единственный источник `n-predict`.
-`max_tokens` в request-профиле пока независим — расходится в шаге 3, вместе с
-переносом request-параметров.
+Закрыто на шаге 3: `maxOutput` в профиле модели — единственный источник;
+`n-predict` берётся из launch-параметров, `max_tokens` подставляется из
+`maxOutput` в `ModelProfiles::requestWithMaxOutput()`. В JSON `max_tokens` не
+пишется вовсе, разойтись он больше не может.
 
 ## 🟢 10. `estimateModelMemory` считает только для OCR-роли ✅ закрыт
 
@@ -99,12 +100,12 @@ per-role настройки — тогда переключение роли н�
 Закрыто на шаге 2: сигнатура `estimateModelMemory(modelPath, forCheck)`, роль
 выбирает профиль модели.
 
-## 🟢 11. `dry_sequence_breakers: ["\uE000"]` — хак в request-параметрах ⬜
+## 🟢 11. `dry_sequence_breakers: ["\uE000"]` — хак в request-параметрах ✅ закрыт
 
 `requestOcr.json`, order 5. Private-use символ U+E000, который никогда не
 совпадёт, — способ заставить сервер принять непустой массив. Прямое следствие:
 `dry-sequence-breaker` на уровне сервера и `dry_sequence_breakers` в API — два
 места одного и того же без проверки согласованности.
 
-Хак убирается в шаге 3, когда request-параметры переезжают в профиль модели;
-серверный `dry-sequence-breaker` уже живёт там.
+Закрыто на шаге 3: хак удалён вместе с `requestOcr.json`; уровень сервера
+(`dry-sequence-breaker` в `roles.ocr.launch` профиля) покрывает задачу.

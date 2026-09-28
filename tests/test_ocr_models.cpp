@@ -14,12 +14,12 @@
 #include "core/CheckRequest.h"
 #include "core/CheckResult.h"
 #include "core/ConnectionConfig.h"
+#include "core/ModelProfiles.h"
 #include "core/OcrRequest.h"
 #include "models/GeneralPurposeModel.h"
-#include "models/Lfm25VlModel.h"
 #include "models/OcrModelFactory.h"
 #include "models/QwenGeneralModel.h"
-#include "models/UnlimitedOcrModel.h"
+#include "parsers/BlockStyle.h"
 #include "parsers/ParserFactory.h"
 
 using namespace llocr;
@@ -179,15 +179,18 @@ private slots:
         }
     }
 
+    // The model contract now lives in resources/profiles/models/<id>.json: a
+    // model is added as data, so the tests read the shipped file rather than a
+    // C++ subclass.
     void unlimitedModelContract()
     {
-        UnlimitedOcrModel model;
+        const OcrModel model(QStringLiteral("unlimited-ocr"));
 
         QCOMPARE(model.id(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(model.displayName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(model.defaultParserId(), QStringLiteral("det_tokens"));
 
-        const QList<OcrPromptVariant> variants = model.promptVariants();
+        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
         QCOMPARE(variants.size(), 1);
         QCOMPARE(variants.first().text, QStringLiteral("document parsing."));
         QVERIFY(!variants.first().id.isEmpty());
@@ -196,13 +199,13 @@ private slots:
 
     void lfm25ModelContract()
     {
-        Lfm25VlModel model;
+        const OcrModel model(QStringLiteral("lfm25-vl-3b"));
 
         QCOMPARE(model.id(), QStringLiteral("lfm25-vl-3b"));
         QCOMPARE(model.displayName(), QStringLiteral("LFM2.5-VL-3B"));
         QCOMPARE(model.defaultParserId(), QStringLiteral("det_tokens"));
 
-        const QList<OcrPromptVariant> variants = model.promptVariants();
+        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
         QCOMPARE(variants.size(), 1);
         // The prompt must describe the layout-annotation contract the parser
         // consumes: the image_index header and the [0, 1000] coordinate range.
@@ -210,6 +213,27 @@ private slots:
         QVERIFY(variants.first().text.contains(QStringLiteral("[0, 1000]")));
         QVERIFY(!variants.first().id.isEmpty());
         QVERIFY(!variants.first().title.isEmpty());
+    }
+
+    // Every label the LFM prompt advertises must be resolvable, otherwise the
+    // parser styles a region as plain text the model meant as an image.
+    void lfmVocabularyIsStyled()
+    {
+        const OcrModel lfm(QStringLiteral("lfm25-vl-3b"));
+        const QString prompt = lfm.promptVariants().constFirst().text;
+        const int start = prompt.indexOf(QStringLiteral("<label> is one of these layout labels:"));
+        QVERIFY(start > 0);
+        const QString list = prompt.mid(start).section(QLatin1Char('\n'), 0, 0);
+        const QStringList labels = list.split(QStringLiteral(": "), Qt::SkipEmptyParts).last().split(QStringLiteral(", "));
+        QVERIFY(labels.size() > 20);
+        for (const QString &label : labels) {
+            QVERIFY2(BlockStyleMap::instance().knowsLabel(label, QStringLiteral("lfm25-vl-3b")), qPrintable(QStringLiteral("label %1 has no style").arg(label)));
+        }
+        // The labels LFM adds over the base vocabulary come from its profile.
+        QCOMPARE(blockStyleForLabel(QStringLiteral("image_block"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::ImagePlaceholder);
+        QCOMPARE(blockStyleForLabel(QStringLiteral("code"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::PlainText);
+        // …and Unlimited-OCR must not inherit them.
+        QCOMPARE(blockStyleForLabel(QStringLiteral("image_block"), QStringLiteral("unlimited-ocr")).style, BlockStyle::PlainText);
     }
 
     void recognizeSendsDecodableJpegDataUrl()

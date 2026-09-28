@@ -5,8 +5,8 @@
 #include <QObject>
 #include <QString>
 
-#include "config/ModelProfiles.h"
 #include "core/LaunchProfile.h"
+#include "core/ModelProfiles.h"
 #include "runtime/LaunchParametersModel.h"
 
 class QAbstractListModel;

@@ -85,6 +85,27 @@ void dumpRawResponse(const QByteArray &responseData, const QString &content, boo
 
 }  // namespace
 
+OcrModel::OcrModel(QString modelId) : m_id(std::move(modelId)) {}
+
+QString OcrModel::displayName() const
+{
+    if (const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), m_id))
+        return profile->title;
+    return m_id;
+}
+
+QList<ModelProfiles::Prompt> OcrModel::promptVariants() const
+{
+    return ModelProfiles::promptsFor(ModelProfiles::instance(), m_id, QStringLiteral("ocr"));
+}
+
+QString OcrModel::defaultParserId() const
+{
+    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(m_id, QStringLiteral("ocr")))
+        return role->parser;
+    return QStringLiteral("raw");
+}
+
 QByteArray OcrModel::buildRequestBody(const OcrRequest &request, const QByteArray &imageDataUrl)
 {
     QJsonObject textPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.prompt}};

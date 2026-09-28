@@ -11,10 +11,10 @@
 #include "app/ProblemLog.h"
 #include "app/UiController.h"
 #include "app/VerificationPromptStore.h"
-#include "config/ModelProfiles.h"
 #include "config/RequestProfileStore.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "runtime/InstalledState.h"
 #include "runtime/InstallTransaction.h"
 #include "runtime/LaunchProfileStore.h"
@@ -26,8 +26,6 @@
 #include "runtime/SingleInstanceGuard.h"
 
 namespace {
-
-QString launchProfileLoadError;
 
 void setApplicationIdentity()
 {
@@ -93,19 +91,21 @@ int main(int argc, char *argv[])
     llocr::I18n i18n(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "I18n", &i18n);
 
+    const QList<llocr::ModelProfiles::Profile> modelProfiles = llocr::ModelProfiles::instance();
+
     llocr::RequestProfileStore requestProfilesOcr(settingsStore);
+    requestProfilesOcr.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesOcr", &requestProfilesOcr);
 
-    llocr::RequestProfileStore requestProfilesValidate(settingsStore, QString::fromUtf8(":/profiles/requestValidate.json"), llocr::RequestProfileStore::Role::Check);
+    llocr::RequestProfileStore requestProfilesValidate(settingsStore, llocr::RequestProfileStore::Role::Check);
+    requestProfilesValidate.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesValidate", &requestProfilesValidate);
 
     llocr::VerificationPromptStore verificationPrompts(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Verification", &verificationPrompts);
 
     llocr::LaunchProfileStore launchProfiles(settingsStore);
-    launchProfiles.setModelProfiles(llocr::ModelProfiles::loadBuiltIn(launchProfileLoadError));
-    if (!launchProfileLoadError.isEmpty())
-        qWarning().noquote() << "model profiles:" << launchProfileLoadError;
+    launchProfiles.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", &launchProfiles);
 
     llocr::InstalledState installedState(settingsStore);

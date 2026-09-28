@@ -31,7 +31,6 @@ struct ModelEntry {
     QString license;
     QString sha256;  // digest of the main file (from lfs.oid / preset)
     QString parser;
-    QString prompt;
     int ctxSize = 8192;
     bool ctxSizeSet = false;
     QString addedAt;  // ISO timestamp
@@ -42,8 +41,7 @@ struct ModelEntry {
     {
         return id == other.id && title == other.title && repo == other.repo && revision == other.revision && modelPath == other.modelPath && parts == other.parts && mmprojPath == other.mmprojPath &&
                dir == other.dir && origin == other.origin && byteSize == other.byteSize && quantization == other.quantization && license == other.license && sha256 == other.sha256 &&
-               parser == other.parser && prompt == other.prompt && ctxSize == other.ctxSize && ctxSizeSet == other.ctxSizeSet && addedAt == other.addedAt && repoId == other.repoId &&
-               roles == other.roles;
+               parser == other.parser && ctxSize == other.ctxSize && ctxSizeSet == other.ctxSizeSet && addedAt == other.addedAt && repoId == other.repoId && roles == other.roles;
     }
     bool operator!=(const ModelEntry &other) const { return !(*this == other); }
 };

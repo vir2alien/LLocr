@@ -2,47 +2,47 @@
 
 #include <QDebug>
 
-#include "models/Lfm25VlModel.h"
-#include "models/UnlimitedOcrModel.h"
+#include "core/ModelProfiles.h"
 
 namespace llocr {
 
-static const QStringList kModelIds = {
-    QStringLiteral("unlimited-ocr"),
-    QStringLiteral("lfm25-vl-3b"),
-};
-
 std::unique_ptr<OcrModel> OcrModelFactory::create(const QString &modelId)
 {
-    if (modelId == QStringLiteral("unlimited-ocr"))
-        return std::make_unique<UnlimitedOcrModel>();
-    if (modelId == QStringLiteral("lfm25-vl-3b"))
-        return std::make_unique<Lfm25VlModel>();
-    qWarning() << "OcrModelFactory: unknown model id" << modelId << "— falling back to the default model";
-    return std::make_unique<UnlimitedOcrModel>();
+    if (ModelProfiles::find(ModelProfiles::instance(), modelId))
+        return std::make_unique<OcrModel>(modelId);
+
+    const QString fallback = defaultId();
+    qWarning() << "OcrModelFactory: unknown model id" << modelId << "— falling back to" << fallback;
+    return std::make_unique<OcrModel>(fallback);
 }
 
 QStringList OcrModelFactory::registeredIds()
 {
-    return kModelIds;
+    return ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
 }
 
 QString OcrModelFactory::defaultId()
 {
-    return kModelIds.first();
+    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
+    for (const ModelProfiles::Profile &profile : profiles) {
+        if (profile.isDefault && ModelProfiles::roleFor(profile, QStringLiteral("ocr")))
+            return profile.id;
+    }
+    // A profile that opts in is the only reliable default: the catalog is
+    // loaded in file-name order, so "first" would change with the file names.
+    const QStringList ids = registeredIds();
+    return ids.isEmpty() ? QString() : ids.first();
 }
 
 QString OcrModelFactory::displayNameForId(const QString &modelId)
 {
-    const std::unique_ptr<OcrModel> model = create(modelId);
-    return model->displayName();
+    return create(modelId)->displayName();
 }
 
 QString OcrModelFactory::idForDisplayName(const QString &displayName)
 {
-    for (const QString &id : kModelIds) {
-        const std::unique_ptr<OcrModel> model = create(id);
-        if (model->displayName() == displayName)
+    for (const QString &id : registeredIds()) {
+        if (create(id)->displayName() == displayName)
             return id;
     }
     return QString();

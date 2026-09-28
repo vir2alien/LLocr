@@ -8,8 +8,8 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
-#include "config/ModelProfiles.h"
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "runtime/LaunchProfileStore.h"
 #include "testsettings.h"
 

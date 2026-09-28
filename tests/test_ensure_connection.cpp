@@ -675,19 +675,17 @@ private slots:
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
         RuntimeController runtime(store, launchProfiles);
 
-        // Request-profile store for the self-test request; written to the temp
-        // dir because test binaries embed no resources.
-        const QString defaultsPath = dir.filePath(QStringLiteral("request-defaults.json"));
-        {
-            QFile defaultsFile(defaultsPath);
-            QVERIFY(defaultsFile.open(QIODevice::WriteOnly));
-            defaultsFile.write(QByteArrayLiteral("{\"schemaVersion\":1,\"parameters\":["
-                                                 "{\"order\":1,\"name\":\"temperature\",\"value\":0.0},"
-                                                 "{\"order\":2,\"name\":\"max_tokens\",\"value\":1024},"
-                                                 "{\"order\":3,\"name\":\"stream\",\"value\":false}]}")
-                                   .constData());
-        }
-        RequestProfileStore profiles(store, defaultsPath);
+        // Request-profile store for the self-test request; test binaries embed
+        // no resources, so the profile is injected.
+        ModelProfiles::Profile selfTestProfile;
+        selfTestProfile.id = QStringLiteral("unlimited-ocr");
+        ModelProfiles::Role selfTestRole;
+        selfTestRole.request = {RequestParameter{QStringLiteral("temperature"), 1, RequestValueKind::Number, 0.0, QString()},
+                                RequestParameter{QStringLiteral("max_tokens"), 2, RequestValueKind::Number, 1024.0, QString()},
+                                RequestParameter{QStringLiteral("stream"), 3, RequestValueKind::Boolean, false, QString()}};
+        selfTestProfile.roles.insert(QStringLiteral("ocr"), selfTestRole);
+        RequestProfileStore profiles(store);
+        profiles.setModelProfiles({selfTestProfile});
         SelfTestController selfTest(store, runtime, profiles);
         SelfTestResult result;
         int done = 0;

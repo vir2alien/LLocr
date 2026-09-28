@@ -5,6 +5,7 @@
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
 #include "core/ConnectionConfig.h"
+#include "core/ModelProfiles.h"
 #include "models/OcrModelFactory.h"
 
 namespace llocr {
@@ -56,7 +57,7 @@ QString RecognitionController::promptText() const
 {
     if (!m_model)
         return QString();
-    const QList<OcrPromptVariant> variants = m_model->promptVariants();
+    const QList<ModelProfiles::Prompt> variants = m_model->promptVariants();
     return variants.isEmpty() ? QString() : variants.constFirst().text;
 }
 

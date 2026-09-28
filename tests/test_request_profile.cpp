@@ -10,11 +10,60 @@
 
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "testsettings.h"
 
 using namespace llocr;
 
 namespace {
+
+RequestParameter makeParameter(int order, const QString &name, const QVariant &value, const QString &description = {})
+{
+    RequestParameter parameter;
+    parameter.order = order;
+    parameter.name = name;
+    parameter.description = description;
+    if (value.typeId() == QMetaType::Bool) {
+        parameter.kind = RequestValueKind::Boolean;
+    } else if (value.typeId() == QMetaType::QStringList) {
+        parameter.kind = RequestValueKind::StringList;
+    } else if (value.typeId() == QMetaType::QString) {
+        parameter.kind = RequestValueKind::String;
+    } else {
+        parameter.kind = RequestValueKind::Number;
+    }
+    parameter.value = value;
+    return parameter;
+}
+
+// The built-in request parameters now come from the model profiles, so the
+// store under test is fed the same shape the app ships.
+ModelProfiles::Profile makeProfile(const QString &id, const QList<RequestParameter> &parameters)
+{
+    ModelProfiles::Profile profile;
+    profile.id = id;
+    profile.title = id;
+    ModelProfiles::Role role;
+    role.request = parameters;
+    profile.roles.insert(QStringLiteral("ocr"), role);
+    return profile;
+}
+
+QList<RequestParameter> defaultParameters()
+{
+    return {makeParameter(1, QStringLiteral("alpha"), 0.8, QStringLiteral("alpha description")), makeParameter(2, QStringLiteral("beta"), 35)};
+}
+
+QList<ModelProfiles::Profile> twoModels()
+{
+    ModelProfiles::Profile second;
+    second.id = QStringLiteral("deepseek-ocr");
+    second.title = second.id;
+    ModelProfiles::Role secondRole;
+    secondRole.request = {makeParameter(1, QStringLiteral("gamma"), 1)};
+    second.roles.insert(QStringLiteral("ocr"), secondRole);
+    return {makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters()), second};
+}
 
 // Built-in-style defaults: two parameters to exercise merge ordering.
 constexpr const char *kDefaultsJson = R"({
@@ -96,11 +145,10 @@ const RequestParameter *findParameter(const RequestProfile &profile, const QStri
 
 RequestProfile parseBuiltInDefaults()
 {
-    QString error;
-    const QList<RequestProfile> profiles = RequestProfile::profilesFromJson(objectFromJson(kDefaultsJson), error);
-    Q_ASSERT(error.isEmpty());
-    Q_ASSERT(profiles.size() == 1);
-    return profiles.constFirst();
+    RequestProfile profile;
+    profile.id = QStringLiteral("unlimited-ocr");
+    profile.parameters = defaultParameters();
+    return profile;
 }
 
 }  // namespace
@@ -392,7 +440,8 @@ private slots:
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
         settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
-        RequestProfileStore store(settings, defaultsPath);
+        RequestProfileStore store(settings);
+        store.setModelProfiles({makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters())});
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         QVERIFY(!store.hasUserProfile());
@@ -426,7 +475,8 @@ private slots:
         QCOMPARE(savedProfiles.at(0).toObject().value("parameters").toArray().size(), 2);
 
         // A fresh store reads the saved values back.
-        RequestProfileStore store2(settings, defaultsPath);
+        RequestProfileStore store2(settings);
+        store2.setModelProfiles({makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters())});
         const RequestProfile reread = store2.activeProfile();
         const RequestParameter *rereadAlpha = findParameter(reread, "alpha");
         QVERIFY(rereadAlpha);
@@ -470,7 +520,8 @@ private slots:
         })");
         userFile.close();
 
-        RequestProfileStore store(settings, defaultsPath);
+        RequestProfileStore store(settings);
+        store.setModelProfiles({makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters())});
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
         const RequestProfile savedView = store.activeProfile();
@@ -493,7 +544,6 @@ private slots:
     void activeProfileIsIndependentOfTheModel()
     {
         QTemporaryDir dir;
-        const QString defaultsPath = writeProfile(dir, "defaults.json", kTwoProfilesJson);
 
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
@@ -505,7 +555,8 @@ private slots:
         // The startup migration adopted the legacy model id as the profile id.
         QCOMPARE(settings.requestProfileId(), QStringLiteral("unlimited-ocr"));
 
-        RequestProfileStore store(settings, defaultsPath);
+        RequestProfileStore store(settings);
+        store.setModelProfiles(twoModels());
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 2);
@@ -531,7 +582,6 @@ private slots:
     void selectDraftProfileSwitchesDraft()
     {
         QTemporaryDir dir;
-        const QString defaultsPath = writeProfile(dir, "defaults.json", kTwoProfilesJson);
 
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
@@ -540,7 +590,8 @@ private slots:
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
         settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
-        RequestProfileStore store(settings, defaultsPath);
+        RequestProfileStore store(settings);
+        store.setModelProfiles(twoModels());
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 2);
@@ -600,7 +651,8 @@ private slots:
         broken.write("{ not valid json");
         broken.close();
 
-        RequestProfileStore store(settings, defaultsPath);
+        RequestProfileStore store(settings);
+        store.setModelProfiles({makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters())});
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
         // Corrupt user profile: defaults win instead of failing.
         QVERIFY(store.activeProfile() == parseBuiltInDefaults());

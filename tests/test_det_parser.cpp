@@ -1,5 +1,6 @@
 #include <QtTest>
 
+#include "core/ModelProfiles.h"
 #include "core/OcrResult.h"
 #include "parsers/BlockStyle.h"
 #include "parsers/DetTokensParser.h"
@@ -1062,30 +1063,22 @@ private slots:
         QCOMPARE(blockStyleForLabel(QStringLiteral("page_caption")).style, BlockStyle::PlainText);
     }
 
-    void jsonOverridesApplyPerModel()
+    // Model styling now lives in resources/profiles/models/<id>.json, not in
+    // labels.json, so the base document carries no per-model section at all.
+    void modelStylesDoNotBleedIntoOtherModels()
     {
-        BlockStyleMap map;
-        QJsonObject root;
-        QJsonObject defaults;
-        defaults.insert(QStringLiteral("title"), QStringLiteral("text"));
-        defaults.insert(QStringLiteral("image"), QStringLiteral("image"));
-        defaults.insert(QStringLiteral("image_block"), QStringLiteral("image"));
-        root.insert(QStringLiteral("default"), defaults);
-        QJsonObject overrides;
-        QJsonObject lfm;
-        lfm.insert(QStringLiteral("image_block"), QStringLiteral("text"));
-        lfm.insert(QStringLiteral("code_caption"), QStringLiteral("italic"));
-        overrides.insert(QStringLiteral("lfm25-vl-3b"), lfm);
-        root.insert(QStringLiteral("overrides"), overrides);
-        map.applyJson(root);
+        const ModelProfiles::Role *lfm = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        QVERIFY(lfm);
+        QCOMPARE(lfm->blockStyles.value(QStringLiteral("image_block")), QStringLiteral("image"));
+        QCOMPARE(lfm->blockStyles.value(QStringLiteral("code_caption")), QStringLiteral("italic"));
 
-        // The default table replaced the built-in one...
-        QCOMPARE(map.styleForLabel(QStringLiteral("title")).style, BlockStyle::PlainText);
-        QCOMPARE(map.styleForLabel(QStringLiteral("image_block")).style, BlockStyle::ImagePlaceholder);
-        // ...and the model override wins for the named model only.
-        QCOMPARE(map.styleForLabel(QStringLiteral("image_block"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::PlainText);
+        const BlockStyleMap &map = BlockStyleMap::instance();
+        QCOMPARE(map.styleForLabel(QStringLiteral("image_block"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::ImagePlaceholder);
         QCOMPARE(map.styleForLabel(QStringLiteral("code_caption"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::Italic);
-        // A label the override does not name still falls through to the default.
+        // A model that does not name the label must not inherit it.
+        QCOMPARE(map.styleForLabel(QStringLiteral("image_block"), QStringLiteral("unlimited-ocr")).style, BlockStyle::PlainText);
+        QVERIFY(!map.knowsLabel(QStringLiteral("image_block"), QStringLiteral("unlimited-ocr")));
+        // A label the model does not name still falls through to the base map.
         QCOMPARE(map.styleForLabel(QStringLiteral("image"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::ImagePlaceholder);
     }
 
@@ -1103,11 +1096,12 @@ private slots:
 
         BlockStyleMap map;
         map.applyJson(doc.object());
+        QCOMPARE(doc.object().contains(QStringLiteral("overrides")), false);
 
-        // Every label the LFM2.5-VL prompt advertises must be named explicitly
-        // (defaults or overrides) — a typo must not degrade it to plain text.
-        const QJsonObject defaults = doc.object().value(QStringLiteral("default")).toObject();
-        const QJsonObject lfm = doc.object().value(QStringLiteral("overrides")).toObject().value(QStringLiteral("lfm25-vl-3b")).toObject();
+        // Every label the LFM2.5-VL prompt advertises must be named explicitly —
+        // a typo must not degrade it to plain text.
+        const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        QVERIFY(role);
         const QStringList lfmLabels{QStringLiteral("text"),           QStringLiteral("title"),          QStringLiteral("list"),         QStringLiteral("table"),
                                     QStringLiteral("table_caption"),  QStringLiteral("table_footnote"), QStringLiteral("image"),        QStringLiteral("image_block"),
                                     QStringLiteral("image_caption"),  QStringLiteral("image_footnote"), QStringLiteral("chart"),        QStringLiteral("equation"),
@@ -1115,7 +1109,7 @@ private slots:
                                     QStringLiteral("aside_text"),     QStringLiteral("ref_text"),       QStringLiteral("phonetic"),     QStringLiteral("page_header"),
                                     QStringLiteral("page_footer"),    QStringLiteral("page_number"),    QStringLiteral("page_footnote")};
         for (const QString &label : lfmLabels) {
-            const bool named = defaults.contains(label) || lfm.contains(label);
+            const bool named = role->blockStyles.contains(label) || BlockStyleMap::instance().knowsLabel(label);
             QVERIFY2(named, qPrintable(QStringLiteral("unmapped label: %1").arg(label)));
         }
 

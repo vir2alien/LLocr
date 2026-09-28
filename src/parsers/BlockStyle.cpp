@@ -93,23 +93,29 @@ void BlockStyleMap::applyJson(const QJsonObject &root)
     const QJsonObject defaults = root.value(QStringLiteral("default")).toObject();
     if (!defaults.isEmpty())
         m_default = tableFromJson(defaults);
+}
 
-    const QJsonObject overrides = root.value(QStringLiteral("overrides")).toObject();
-    for (auto it = overrides.constBegin(); it != overrides.constEnd(); ++it) {
-        const QHash<QString, BlockStyleInfo> table = tableFromJson(it.value().toObject());
-        if (!table.isEmpty())
-            m_overrides.insert(it.key(), table);
+bool BlockStyleMap::knowsLabel(const QString &label, const QString &modelId) const
+{
+    if (!modelId.isEmpty()) {
+        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, QStringLiteral("ocr"))) {
+            if (role->blockStyles.contains(label))
+                return true;
+        }
     }
+    return m_default.contains(label);
 }
 
 BlockStyleInfo BlockStyleMap::styleForLabel(const QString &label, const QString &modelId) const
 {
     if (!modelId.isEmpty()) {
-        const auto modelIt = m_overrides.constFind(modelId);
-        if (modelIt != m_overrides.constEnd()) {
-            const auto styleIt = modelIt->constFind(label);
-            if (styleIt != modelIt->constEnd())
-                return *styleIt;
+        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, QStringLiteral("ocr"))) {
+            const auto styleIt = role->blockStyles.constFind(label);
+            if (styleIt != role->blockStyles.constEnd()) {
+                BlockStyleInfo info;
+                info.style = styleFromName(*styleIt);
+                return info;
+            }
         }
     }
     return m_default.value(label, {BlockStyle::PlainText, 0});

@@ -5,28 +5,50 @@
 #include "config/ProfileStore.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 
 namespace llocr {
 
 namespace {
 constexpr int kSchemaVersion = 2;
+
+QString userFileName(RequestProfileStore::Role role)
+{
+    return role == RequestProfileStore::Role::Check ? QStringLiteral("requestValidate.json") : QStringLiteral("request.json");
+}
+
+QString roleName(RequestProfileStore::Role role)
+{
+    return role == RequestProfileStore::Role::Check ? QStringLiteral("check") : QStringLiteral("ocr");
+}
 }  // namespace
 
-RequestProfileStore::RequestProfileStore(SettingsStore &settings, const QString &builtInPath, Role role, QObject *parent)
-    : QObject(parent), m_settings(settings), m_role(role), m_profiles(new ProfileStore<RequestProfile>(builtInPath,
-                                                                                                       role == Role::Check ? QStringLiteral("requestValidate.json") : QStringLiteral("request.json"),
-                                                                                                       kSchemaVersion,
-                                                                                                       QStringLiteral("RequestProfileStore"),
-                                                                                                       QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
+RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QObject *parent)
+    : QObject(parent), m_settings(settings), m_role(role),
+      m_profiles(new ProfileStore<RequestProfile>(QString(), userFileName(role), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
       m_model(new RequestParametersModel(this))
 {
-    m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir())
-                                .filePath(role == Role::Check ? QStringLiteral("requestValidate.json") : QStringLiteral("request.json")));
-    const QString fallback = QString::fromUtf8(SettingsStore::kDefaultModelRecipeId);
-    for (RequestProfile &profile : m_profiles->mutableBuiltIn()) {
-        if (profile.id.isEmpty())
-            profile.id = fallback;
+    m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(userFileName(role)));
+    setModelProfiles(ModelProfiles::instance());
+}
+
+void RequestProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &profiles)
+{
+    m_modelProfiles = profiles;
+
+    QList<RequestProfile> builtIn;
+    const QString role = roleName(m_role);
+    for (const ModelProfiles::Profile &profile : profiles) {
+        if (!ModelProfiles::roleFor(profile, role))
+            continue;
+        RequestProfile request;
+        request.id = profile.id;
+        request.parameters = ModelProfiles::requestWithMaxOutput(profiles, profile.id, role);
+        request.sortByOrder();
+        builtIn.append(request);
     }
+
+    m_profiles->setBuiltIn(builtIn);
     m_profiles->reloadUserProfiles();
     reloadDraft();
 }

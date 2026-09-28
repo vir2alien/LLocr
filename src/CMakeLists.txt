@@ -40,6 +40,8 @@ qt_add_library(llocr_core STATIC
     core/StatusMessage.h
     core/StatusMessage.cpp
     core/ValueParsing.h
+    core/ModelProfiles.h
+    core/ModelProfiles.cpp
 )
 target_include_directories(llocr_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_core PUBLIC Qt6::Core Qt6::Network)
@@ -57,8 +59,6 @@ qt_add_library(llocr_config STATIC
     config/ProfileStorage.h
     config/ProfileStorage.cpp
     config/ProfileStore.h
-    config/ModelProfiles.h
-    config/ModelProfiles.cpp
     config/SettingsStore.h
     config/SettingsStore.cpp
     config/RequestParametersModel.h
@@ -76,10 +76,6 @@ qt_add_library(llocr_models STATIC
     models/ChatExchange.h
     models/OcrModel.h
     models/OcrModel.cpp
-    models/UnlimitedOcrModel.h
-    models/UnlimitedOcrModel.cpp
-    models/Lfm25VlModel.h
-    models/Lfm25VlModel.cpp
     models/OcrModelFactory.h
     models/OcrModelFactory.cpp
     models/OcrModelListModel.h
@@ -356,8 +352,6 @@ qt_add_resources(llocr "app_profiles"
     PREFIX "/profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
-        "${CMAKE_SOURCE_DIR}/resources/profiles/requestOcr.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/requestValidate.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
