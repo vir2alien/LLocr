@@ -8,6 +8,7 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "config/ModelProfiles.h"
 #include "config/SettingsStore.h"
 #include "runtime/LaunchProfileStore.h"
 #include "testsettings.h"
@@ -44,6 +45,52 @@ constexpr const char *kPresetsJson = R"({
 })";
 
 constexpr const char *kEmptyCatalog = R"({ "schemaVersion": 1, "profiles": [] })";
+
+// A platform catalog that names no model parameters: those live in
+// models/<id>.json, so a name here would apply to every model the machine runs.
+constexpr const char *kLayeredPresetsJson = R"({
+    "schemaVersion": 1,
+    "policy": { "parameters": [ { "order": 1, "name": "parallel", "value": 1 } ] },
+    "profiles": [
+        { "id": "cpu", "name": "CPU", "backend": "cpu",
+          "parameters": [ { "order": 1, "name": "flash-attn", "value": "off" } ] }
+    ]
+})";
+
+// One file per model, as shipped. Unlimited-OCR names the vision budget and
+// the DRY reset; LFM2.5-VL names neither; Qwen answers the check role only.
+constexpr const char *kUnlimitedProfileJson = R"({
+    "schemaVersion": 1,
+    "id": "unlimited-ocr",
+    "title": "Unlimited-OCR",
+    "fallback": { "launch": [ { "order": 1, "name": "ctx-size", "value": 16384 } ] },
+    "roles": { "ocr": { "launch": [
+        { "order": 1, "name": "ctx-size", "value": 16384 },
+        { "order": 2, "name": "image-min-tokens", "value": 456 },
+        { "order": 3, "name": "dry-sequence-breaker", "value": "none" }
+    ] } }
+})";
+
+constexpr const char *kLfmProfileJson = R"({
+    "schemaVersion": 1,
+    "id": "lfm25-vl-3b",
+    "title": "LFM2.5-VL-3B",
+    "fallback": { "launch": [ { "order": 1, "name": "ctx-size", "value": 16384 } ] },
+    "roles": { "ocr": { "launch": [
+        { "order": 1, "name": "ctx-size", "value": 16384 }
+    ] } }
+})";
+
+constexpr const char *kCheckProfileJson = R"({
+    "schemaVersion": 1,
+    "id": "qwen3.5-4b",
+    "title": "Qwen3.5-4B",
+    "fallback": { "launch": [ { "order": 1, "name": "ctx-size", "value": 8192 } ] },
+    "roles": { "check": { "launch": [
+        { "order": 1, "name": "ctx-size", "value": 8192 },
+        { "order": 2, "name": "cache-type-k", "value": "q8_0" }
+    ] } }
+})";
 
 QString writeProfileFile(const QTemporaryDir &dir, const QString &name, const QByteArray &json)
 {
@@ -180,6 +227,96 @@ private slots:
         QVERIFY(!store.hasUserProfile());
         QVERIFY(store.activeProfile().find(QStringLiteral("ctx-size")) != nullptr);
         QVERIFY(store.activeProfile().find(QStringLiteral("flash-attn")) == nullptr);
+    }
+
+    // The model layer is a property of the weights, so what one model names the
+    // next must not inherit. This is the whole point of the split: a parameter
+    // in the platform file applies to every model the machine runs.
+    void modelParametersDoNotLeakBetweenModels()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kLayeredPresetsJson);
+        const QString modelDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+        QVERIFY(QDir().mkpath(modelDir));
+        QFile unlimitedFile(QDir(modelDir).filePath(QStringLiteral("unlimited-ocr.json")));
+        QVERIFY(unlimitedFile.open(QIODevice::WriteOnly));
+        QCOMPARE(unlimitedFile.write(QByteArray(kUnlimitedProfileJson)), qint64(QByteArray(kUnlimitedProfileJson).size()));
+        unlimitedFile.close();
+        QFile lfmFile(QDir(modelDir).filePath(QStringLiteral("lfm25-vl-3b.json")));
+        QVERIFY(lfmFile.open(QIODevice::WriteOnly));
+        QCOMPARE(lfmFile.write(QByteArray(kLfmProfileJson)), qint64(QByteArray(kLfmProfileJson).size()));
+        lfmFile.close();
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath(QStringLiteral("modelsDir")));
+        settings.setRuntimeBackend(QStringLiteral("cpu"));
+        LaunchProfileStore store(settings, presetsPath);
+
+        QString error;
+        const QList<ModelProfiles::Profile> profiles = ModelProfiles::loadFrom(modelDir, error);
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+        QCOMPARE(profiles.size(), 2);
+        store.setModelProfiles(profiles);
+
+        // Unlimited-OCR carries the vision budget and the DRY reset.
+        const LaunchProfile unlimited = store.activeProfile(QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"));
+        QVERIFY(unlimited.find(QStringLiteral("image-min-tokens")) != nullptr);
+        QVERIFY(unlimited.find(QStringLiteral("dry-sequence-breaker")) != nullptr);
+        QCOMPARE(unlimited.find(QStringLiteral("image-min-tokens"))->value.toDouble(), 456.0);
+
+        // LFM2.5-VL names neither: a parameter it does not declare must be
+        // absent, not inherited and not left at a stale value.
+        const LaunchProfile lfm = store.activeProfile(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        QVERIFY(lfm.find(QStringLiteral("image-min-tokens")) == nullptr);
+        QVERIFY(lfm.find(QStringLiteral("dry-sequence-breaker")) == nullptr);
+        // …and the layers it does share are all present.
+        QVERIFY(lfm.find(QStringLiteral("ctx-size")) != nullptr);
+        QVERIFY(lfm.find(QStringLiteral("flash-attn")) != nullptr);
+        QVERIFY(lfm.find(QStringLiteral("parallel")) != nullptr);
+
+        // A model with no profile at all (a hand-picked GGUF) still gets a
+        // context window from the built-in fallback: llama.cpp's own default is
+        // 4096, which truncates a page with a table.
+        const LaunchProfile unknown = store.activeProfile(QStringLiteral("some-other-model"), QStringLiteral("ocr"));
+        QVERIFY(unknown.find(QStringLiteral("ctx-size")) == nullptr);
+    }
+
+    // A model answers one role; asking it for another must not hand over the
+    // rows it declares for the role it does have.
+    void modelParametersArePerRole()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kLayeredPresetsJson);
+        const QString modelDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+        QVERIFY(QDir().mkpath(modelDir));
+        QFile file(QDir(modelDir).filePath(QStringLiteral("qwen3.5-4b.json")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write(QByteArray(kCheckProfileJson)), qint64(QByteArray(kCheckProfileJson).size()));
+        file.close();
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath(QStringLiteral("modelsDir")));
+        settings.setRuntimeBackend(QStringLiteral("cpu"));
+        LaunchProfileStore store(settings, presetsPath);
+
+        QString error;
+        const QList<ModelProfiles::Profile> loaded = ModelProfiles::loadFrom(modelDir, error);
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+        QCOMPARE(loaded.size(), 1);
+        store.setModelProfiles(loaded);
+
+        // The check role gets the verifier's own values.
+        const LaunchProfile check = store.activeProfile(QStringLiteral("qwen3.5-4b"), QStringLiteral("check"));
+        QCOMPARE(check.find(QStringLiteral("cache-type-k"))->value.toString(), QStringLiteral("q8_0"));
+        QCOMPARE(check.find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
+
+        // Asking the same model for the ocr role falls back rather than
+        // silently reusing the check role's rows.
+        const LaunchProfile ocr = store.activeProfile(QStringLiteral("qwen3.5-4b"), QStringLiteral("ocr"));
+        QVERIFY(ocr.find(QStringLiteral("cache-type-k")) == nullptr);
+        QCOMPARE(ocr.find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
     }
 
     // The policy layer is a layer of its own: it rides along with every

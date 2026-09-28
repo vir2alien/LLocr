@@ -899,7 +899,10 @@ private slots:
         QVERIFY(!runtime.launchConfigDirty());
 
         // A launch parameter the old list did not cover: a saved user profile.
-        launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"), 4096);
+        // ctx-size is no longer addable here — it belongs to the model layer.
+        launchProfiles.setModelProfiles({});
+        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("cache-type-k"), QStringLiteral("f16")));
+        launchProfiles.saveDraft();
         QVERIFY(runtime.launchConfigDirty());
 
         runtime.stopServer();

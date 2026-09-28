@@ -132,8 +132,8 @@ void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree, const 
         *modelPaths = {largestSingle};
 }
 
-ModelInstallTransaction::ModelInstallTransaction(SettingsStore &settings, LaunchProfileStore &launchProfiles, InstalledState &state, QObject *parent)
-    : QObject(parent), m_settings(settings), m_installState(state), m_launchProfiles(launchProfiles), m_downloads(new DownloadManager(this))
+ModelInstallTransaction::ModelInstallTransaction(SettingsStore &settings, InstalledState &state, QObject *parent)
+    : QObject(parent), m_settings(settings), m_installState(state), m_downloads(new DownloadManager(this))
 {
     m_group = new DownloadGroup(m_downloads, this);
     connect(m_group, &DownloadGroup::progressChanged, this, [this]() { setProgress(m_group->progress()); });
@@ -578,10 +578,6 @@ void ModelInstallTransaction::completeInstall()
         m_settings.setLaunchModelPath(e.modelPath);
         if (!e.mmprojPath.isEmpty())
             m_settings.setLaunchMmprojPath(e.mmprojPath);
-        if (!e.parser.isEmpty())
-            m_settings.setParserId(e.parser);
-        if (e.ctxSize > 0)
-            m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"), e.ctxSize);
     }
     m_settings.forceSave();
 

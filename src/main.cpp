@@ -11,6 +11,7 @@
 #include "app/ProblemLog.h"
 #include "app/UiController.h"
 #include "app/VerificationPromptStore.h"
+#include "config/ModelProfiles.h"
 #include "config/RequestProfileStore.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
@@ -25,6 +26,8 @@
 #include "runtime/SingleInstanceGuard.h"
 
 namespace {
+
+QString launchProfileLoadError;
 
 void setApplicationIdentity()
 {
@@ -100,6 +103,9 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Verification", &verificationPrompts);
 
     llocr::LaunchProfileStore launchProfiles(settingsStore);
+    launchProfiles.setModelProfiles(llocr::ModelProfiles::loadBuiltIn(launchProfileLoadError));
+    if (!launchProfileLoadError.isEmpty())
+        qWarning().noquote() << "model profiles:" << launchProfileLoadError;
     qmlRegisterSingletonInstance("LLocr", 1, 0, "LaunchProfiles", &launchProfiles);
 
     llocr::InstalledState installedState(settingsStore);
@@ -117,7 +123,7 @@ int main(int argc, char *argv[])
     llocr::RuntimeInstaller runtimeInstaller(settingsStore, installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
 
-    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController, launchProfiles, installedState);
+    llocr::ModelInstaller modelInstaller(settingsStore, runtimeController, installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
 
     llocr::RuntimePaths runtimePaths(settingsStore.runtimeRootDir(), settingsStore.runtimeModelsDir());

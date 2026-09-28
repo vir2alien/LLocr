@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "unlimited-ocr",
+  "title": "Unlimited-OCR",
+  "fallback": {
+    "launch": [
+      { "order": 1, "name": "ctx-size",   "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+      { "order": 2, "name": "n-predict",  "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." },
+      { "order": 3, "name": "special",                  "description": "Emit special tokens in the server output." }
+    ]
+  },
+  "roles": {
+    "ocr": {
+      "alias": "llocr-unlimited-ocr",
+      "parser": "det_tokens",
+      "maxOutput": 8192,
+      "launch": [
+        { "order": 1,  "name": "ctx-size",             "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+        { "order": 2,  "name": "n-predict",            "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." },
+        { "order": 3,  "name": "cache-type-k",         "value": "f32",  "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+        { "order": 4,  "name": "cache-type-v",         "value": "f32",  "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+        { "order": 5,  "name": "image-min-tokens",     "value": 456,   "description": "Vision budget tuned for Unlimited-OCR." },
+        { "order": 6,  "name": "image-max-tokens",     "value": 1156,  "description": "Vision budget tuned for Unlimited-OCR." },
+        { "order": 7,  "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." },
+        { "order": 8,  "name": "special",                            "description": "Emit special tokens in the server output; the det-token parser needs them." }
+      ]
+    }
+  }
+}

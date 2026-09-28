@@ -160,7 +160,7 @@ private slots:
         const RuntimePaths paths(settings.runtimeRootDir(), settings.runtimeModelsDir());
         paths.ensureDirectories();
 
-        ModelInstallTransaction tx(settings, launchProfiles, installed);
+        ModelInstallTransaction tx(settings, installed);
         tx.cancel();
 
         // Nothing appeared in <modelsDir>, and the lock is free again.
@@ -184,7 +184,7 @@ private slots:
         LaunchProfileStore launchProfiles(settings, presetsPath);
 
         InstalledState installed(settings);
-        ModelInstallTransaction tx(settings, launchProfiles, installed);
+        ModelInstallTransaction tx(settings, installed);
         QCOMPARE(tx.state(), ModelInstallTransaction::State::Idle);
         QVERIFY(!tx.busy());
 

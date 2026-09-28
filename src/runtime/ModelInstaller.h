@@ -53,7 +53,7 @@ public:
     };
     Q_ENUM(State)
 
-    explicit ModelInstaller(SettingsStore &settings, RuntimeController &runtime, LaunchProfileStore &launchProfiles, InstalledState &state, QObject *parent = nullptr);
+    explicit ModelInstaller(SettingsStore &settings, RuntimeController &runtime, InstalledState &state, QObject *parent = nullptr);
     ~ModelInstaller() override;
 
     void shutdown();
@@ -107,7 +107,6 @@ private:
     SettingsStore &m_settings;
     InstalledState &m_installState;
     RuntimeController &m_runtime;
-    LaunchProfileStore &m_launchProfiles;
     ModelInstallTransaction *m_transaction = nullptr;
 
     State m_state = State::Idle;

@@ -57,6 +57,8 @@ qt_add_library(llocr_config STATIC
     config/ProfileStorage.h
     config/ProfileStorage.cpp
     config/ProfileStore.h
+    config/ModelProfiles.h
+    config/ModelProfiles.cpp
     config/SettingsStore.h
     config/SettingsStore.cpp
     config/RequestParametersModel.h
@@ -361,6 +363,15 @@ qt_add_resources(llocr "app_profiles"
         "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsValidate.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
+)
+
+# One file per model, all under :/profiles/models — the loader walks the
+# directory, so a new model is a new file and no list to maintain.
+file(GLOB MODEL_PROFILE_FILES "${CMAKE_SOURCE_DIR}/resources/profiles/models/*.json")
+qt_add_resources(llocr "app_model_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${MODEL_PROFILE_FILES}
 )
 
 file(GLOB_RECURSE PREVIEW_FILES

@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QString>
 
+#include "config/ModelProfiles.h"
 #include "core/LaunchProfile.h"
 #include "runtime/LaunchParametersModel.h"
 
@@ -33,6 +34,8 @@ public:
     QStringList presetNames() const;
     QString activeProfileId() const;
     LaunchProfile activeProfile() const;
+    LaunchProfile activeProfile(const QString &modelId, const QString &role = QString()) const;
+    void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     Q_INVOKABLE bool hasUserProfile() const;
     Q_INVOKABLE void reloadDraft();
@@ -43,7 +46,6 @@ public:
     Q_INVOKABLE void saveDraft();
     Q_INVOKABLE void loadDefaultDraft();
     Q_INVOKABLE void resetToDefaults();
-    void setActiveProfileNumber(const QString &name, double value);
 
 signals:
     void profileChanged();
@@ -56,11 +58,12 @@ private:
     const LaunchProfile *findPreset(const QString &id) const;
     void ensureProfileResolved();
     bool presetMatches(const LaunchProfile &preset, const QString &backend, const QString &osTag) const;
-    LaunchProfile compose(const LaunchProfile &profile) const;
+    LaunchProfile compose(const LaunchProfile &profile, const QString &modelId, const QString &role) const;
 
     SettingsStore &m_settings;
     ProfileStore<LaunchProfile> *m_profiles;
     QList<LaunchParameter> m_policy;
+    QList<ModelProfiles::Profile> m_modelProfiles;
     QString m_draftProfileId;
     LaunchParametersModel *m_model;
 };

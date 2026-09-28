@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "lfm25-vl-3b",
+  "title": "LFM2.5-VL-3B",
+  "minBuild": "b8000",
+  "fallback": {
+    "launch": [
+      { "order": 1, "name": "ctx-size",   "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
+      { "order": 2, "name": "n-predict",  "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." },
+      { "order": 3, "name": "special",                  "description": "Emit special tokens in the server output." }
+    ]
+  },
+  "roles": {
+    "ocr": {
+      "alias": "llocr-lfm25-vl-3b",
+      "parser": "det_tokens",
+      "maxOutput": 8192,
+      "launch": [
+        { "order": 1, "name": "ctx-size",     "value": 16384, "description": "Model context window in tokens (prompt + image + output). Needs measuring: a long page may not fit." },
+        { "order": 2, "name": "n-predict",    "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." },
+        { "order": 3, "name": "cache-type-k", "value": "f32",  "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
+        { "order": 4, "name": "cache-type-v", "value": "f32",  "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
+        { "order": 5, "name": "special",                  "description": "Emit special tokens in the server output; the det-token parser needs them." }
+      ]
+    }
+  }
+}

@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QFile>
 
+#include "config/ModelProfiles.h"
 #include "config/ProfileStore.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
@@ -92,14 +93,29 @@ bool LaunchProfileStore::presetMatches(const LaunchProfile &preset, const QStrin
     return backendOk && osOk;
 }
 
-LaunchProfile LaunchProfileStore::compose(const LaunchProfile &profile) const
+LaunchProfile LaunchProfileStore::compose(const LaunchProfile &profile, const QString &modelId, const QString &role) const
 {
     LaunchProfile out = profile;
-    out.parameters = m_policy + profile.parameters;
+
+    QList<LaunchParameter> combined = m_policy + profile.parameters;
+    for (const LaunchParameter &p : ModelProfiles::launchFor(m_modelProfiles, modelId, role)) {
+        bool replaced = false;
+        for (LaunchParameter &existing : combined) {
+            if (existing.name == p.name) {
+                existing = p;
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced)
+            combined.append(p);
+    }
+
     // The layers are concatenated in a fixed order and renumbered, so a row
     // keeps its layer. Sorting on the per-layer `order` alone would interleave
     // them (policy order 1 next to platform order 1) and the policy rows would
     // stop being a contiguous read-only prefix of the draft.
+    out.parameters = combined;
     int order = 1;
     for (LaunchParameter &parameter : out.parameters)
         parameter.order = order++;
@@ -140,15 +156,25 @@ QString LaunchProfileStore::activeProfileId() const
     return stored;
 }
 
+void LaunchProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &profiles)
+{
+    m_modelProfiles = profiles;
+}
+
 LaunchProfile LaunchProfileStore::activeProfile() const
 {
-    return compose(m_profiles->merged(activeProfileId()));
+    return activeProfile(m_settings.modelRecipeId());
+}
+
+LaunchProfile LaunchProfileStore::activeProfile(const QString &modelId, const QString &role) const
+{
+    return compose(m_profiles->merged(activeProfileId()), modelId, role);
 }
 
 void LaunchProfileStore::reloadDraft()
 {
     m_draftProfileId = activeProfileId();
-    m_model->resetFrom(compose(m_profiles->merged(m_draftProfileId)).parameters);
+    m_model->resetFrom(compose(m_profiles->merged(m_draftProfileId), QString(), QString()).parameters);
     emit draftProfileChanged();
 }
 
@@ -157,7 +183,7 @@ void LaunchProfileStore::selectDraftProfile(const QString &id)
     if (!findPreset(id) || id == m_draftProfileId)
         return;
     m_draftProfileId = id;
-    m_model->resetFrom(compose(m_profiles->merged(id)).parameters);
+    m_model->resetFrom(compose(m_profiles->merged(id), QString(), QString()).parameters);
     emit draftProfileChanged();
 }
 
@@ -210,7 +236,7 @@ void LaunchProfileStore::saveDraft()
 void LaunchProfileStore::loadDefaultDraft()
 {
     if (const LaunchProfile *preset = findPreset(m_draftProfileId))
-        m_model->resetFrom(compose(*preset).parameters);
+        m_model->resetFrom(compose(*preset, QString(), QString()).parameters);
     else
         m_model->resetFrom(QList<LaunchParameter>());
 }
@@ -221,26 +247,6 @@ void LaunchProfileStore::resetToDefaults()
     m_settings.setLaunchProfileId(QString());
     ensureProfileResolved();
     reloadDraft();
-    emit profileChanged();
-}
-
-void LaunchProfileStore::setActiveProfileNumber(const QString &name, double value)
-{
-    const QString id = activeProfileId();
-    LaunchProfile profile = m_profiles->merged(id);
-    LaunchParameter *row = nullptr;
-    for (LaunchParameter &p : profile.parameters) {
-        if (p.name == name) {
-            row = &p;
-            break;
-        }
-    }
-    if (!row || row->kind != LaunchValueKind::Number)
-        return;
-    if (row->value.toDouble() == value)
-        return;
-    row->value = QVariant(value);
-    m_profiles->putUserProfile(profile);
     emit profileChanged();
 }
 

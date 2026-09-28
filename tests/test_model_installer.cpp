@@ -115,7 +115,7 @@ private:
             return nullptr;
 
         makeRuntime(*s);
-        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->launchProfiles, *s->installed));
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
         return s;
     }
 
@@ -241,7 +241,7 @@ private slots:
         LaunchProfileStore launchProfiles(settings, presetsPath);
         RuntimeController runtime(settings, launchProfiles);
         InstalledState installed(settings);
-        ModelInstaller installer(settings, runtime, launchProfiles, installed);
+        ModelInstaller installer(settings, runtime, installed);
         const int idx = indexOfQuant(installer, q4.quantization);
         QVERIFY(idx >= 0);
         QVERIFY(installer.removeModel(idx).isEmpty());
@@ -283,7 +283,7 @@ private slots:
         QVERIFY2(ModelRegistry::save(modelsDir, {q8}, err), qPrintable(err));
 
         makeRuntime(*s);
-        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->launchProfiles, *s->installed));
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
         ModelInstaller &mi = *s->installer;
 
         auto findPreset = [&](const QString &presetId) {
@@ -361,7 +361,7 @@ private slots:
         settings.setCheckLaunchModelPath(verifierPath);
 
         makeRuntime(*s);
-        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->launchProfiles, *s->installed));
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
         ModelInstaller &mi = *s->installer;
 
         // OCR list: only the mmproj model — the verifier (active as the check
@@ -426,7 +426,7 @@ private slots:
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles);
-        ModelInstaller installer(settings, runtime, launchProfiles, installed);
+        ModelInstaller installer(settings, runtime, installed);
 
         auto *models = qobject_cast<InstalledModelsModel *>(installer.installedModels());
         QVERIFY(models);
@@ -526,7 +526,7 @@ private slots:
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles);
-        ModelInstaller installer(settings, runtime, launchProfiles, installed);
+        ModelInstaller installer(settings, runtime, installed);
         QVERIFY2(!installer.statusMessage().contains(QStringLiteral("no longer")), qPrintable(installer.statusMessage()));
 
         QVERIFY(QDir(sub).removeRecursively());

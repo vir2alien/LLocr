@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "qwen3.5-4b",
+  "title": "Qwen3.5-4B",
+  "fallback": {
+    "launch": [
+      { "order": 1, "name": "ctx-size",   "value": 16384, "description": "Model context window in tokens (prompt + output)." },
+      { "order": 2, "name": "n-predict",  "value": 8192,  "description": "Maximum tokens to generate per completion." }
+    ]
+  },
+  "roles": {
+    "check": {
+      "alias": "llocr-verify",
+      "maxOutput": 8192,
+      "launch": [
+        { "order": 1, "name": "ctx-size",     "value": 16384, "description": "Model context window in tokens (prompt + output)." },
+        { "order": 2, "name": "n-predict",    "value": 8192,  "description": "Maximum tokens to generate per completion." },
+        { "order": 3, "name": "cache-type-k", "value": "q8_0", "description": "KV cache data type for K; the verifier does not need OCR-grade f32." },
+        { "order": 4, "name": "cache-type-v", "value": "q8_0", "description": "KV cache data type for V; the verifier does not need OCR-grade f32." }
+      ]
+    }
+  }
+}

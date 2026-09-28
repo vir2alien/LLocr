@@ -12,17 +12,23 @@ namespace llocr {
 ServerLaunchConfig ServerLaunchConfig::fromSettings(const SettingsStore &s, const LaunchProfileStore &launchProfiles, ConnectionRole role)
 {
     ServerLaunchConfig cfg;
+    QString modelId;
+    QString roleName;
     if (role == ConnectionRole::Check) {
         cfg.modelPath = s.checkLaunchModelPath();
         cfg.mmprojPath = s.checkLaunchMmprojPath();
+        modelId = s.checkRequestProfileId();
+        roleName = QStringLiteral("check");
     } else {
         cfg.modelPath = s.launchModelPath();
         cfg.mmprojPath = s.launchMmprojPath();
+        modelId = s.modelRecipeId();
+        roleName = QStringLiteral("ocr");
     }
     cfg.modelAlias = s.launchModelAlias();
     cfg.host = s.launchHost();
     cfg.port = s.launchPort();
-    cfg.parameters = launchProfiles.activeProfile().parameters;
+    cfg.parameters = launchProfiles.activeProfile(modelId, roleName).parameters;
     return cfg;
 }
 

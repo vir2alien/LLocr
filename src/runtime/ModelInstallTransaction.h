@@ -20,7 +20,6 @@ class InstalledState;
 
 class DownloadGroup;
 class DownloadManager;
-class LaunchProfileStore;
 class SettingsStore;
 
 class ModelInstallTransaction : public QObject
@@ -31,7 +30,7 @@ public:
     enum State { Idle = 0, Fetching = 1, ReadyToDownload = 2, Downloading = 3, Error = 4 };
     Q_ENUM(State)
 
-    explicit ModelInstallTransaction(SettingsStore &settings, LaunchProfileStore &launchProfiles, InstalledState &state, QObject *parent = nullptr);
+    explicit ModelInstallTransaction(SettingsStore &settings, InstalledState &state, QObject *parent = nullptr);
     ~ModelInstallTransaction() override;
 
     void shutdown();
@@ -97,7 +96,6 @@ private:
     void releaseInstallLock();
 
     SettingsStore &m_settings;
-    LaunchProfileStore &m_launchProfiles;
     InstalledState &m_installState;
     DownloadManager *m_downloads = nullptr;
     DownloadGroup *m_group = nullptr;

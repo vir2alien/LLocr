@@ -13,12 +13,11 @@ constexpr int kSchemaVersion = 2;
 }  // namespace
 
 RequestProfileStore::RequestProfileStore(SettingsStore &settings, const QString &builtInPath, Role role, QObject *parent)
-    : QObject(parent), m_settings(settings), m_role(role),
-      m_profiles(new ProfileStore<RequestProfile>(builtInPath,
-                                                  role == Role::Check ? QStringLiteral("requestValidate.json") : QStringLiteral("request.json"),
-                                                  kSchemaVersion,
-                                                  QStringLiteral("RequestProfileStore"),
-                                                  QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
+    : QObject(parent), m_settings(settings), m_role(role), m_profiles(new ProfileStore<RequestProfile>(builtInPath,
+                                                                                                       role == Role::Check ? QStringLiteral("requestValidate.json") : QStringLiteral("request.json"),
+                                                                                                       kSchemaVersion,
+                                                                                                       QStringLiteral("RequestProfileStore"),
+                                                                                                       QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
       m_model(new RequestParametersModel(this))
 {
     m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir())

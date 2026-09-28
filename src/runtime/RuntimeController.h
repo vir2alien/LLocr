@@ -82,7 +82,7 @@ public:
 
     Q_INVOKABLE static QString localPath(const QUrl &url) { return url.isLocalFile() ? url.toLocalFile() : url.toString(); }
 
-    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath);
+    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, bool forCheck = false);
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved);

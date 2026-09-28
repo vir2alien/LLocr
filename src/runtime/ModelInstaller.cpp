@@ -18,10 +18,9 @@
 
 namespace llocr {
 
-ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime, LaunchProfileStore &launchProfiles, InstalledState &state, QObject *parent)
-    : QObject(parent), m_settings(settings), m_installState(state), m_runtime(runtime), m_launchProfiles(launchProfiles),
-      m_transaction(new ModelInstallTransaction(settings, launchProfiles, m_installState, this)), m_ocrModels(new InstalledModelsModel(settings, false, this)),
-      m_checkModels(new InstalledModelsModel(settings, true, this))
+ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime, InstalledState &state, QObject *parent)
+    : QObject(parent), m_settings(settings), m_installState(state), m_runtime(runtime), m_transaction(new ModelInstallTransaction(settings, m_installState, this)),
+      m_ocrModels(new InstalledModelsModel(settings, false, this)), m_checkModels(new InstalledModelsModel(settings, true, this))
 {
     connect(m_transaction, &ModelInstallTransaction::stateChanged, this, [this](int state) { setState(static_cast<State>(state)); });
     connect(m_transaction, &ModelInstallTransaction::busyChanged, this, [this](bool busy) { setBusy(busy); });
@@ -201,8 +200,6 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
     m_settings.setLaunchModelPath(e.modelPath);
     if (!e.mmprojPath.isEmpty())
         m_settings.setLaunchMmprojPath(e.mmprojPath);
-    if (e.ctxSize > 0)
-        m_launchProfiles.setActiveProfileNumber(QStringLiteral("ctx-size"), e.ctxSize);
     m_settings.forceSave();
     publishInstalled();
     return QString();

@@ -814,10 +814,11 @@ QString RuntimeController::launchCommandPreview()
     return cfg.toDisplayCommand(probe.ok ? probe.capabilities : ServerCapabilities{});
 }
 
-QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath)
+QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, bool forCheck)
 {
     QVariantMap out;
-    const LaunchProfile &profile = m_launchProfiles.activeProfile();
+    const LaunchProfile profile =
+        forCheck ? m_launchProfiles.activeProfile(m_settings.checkRequestProfileId(), QStringLiteral("check")) : m_launchProfiles.activeProfile(m_settings.modelRecipeId(), QStringLiteral("ocr"));
     int ctxSize = 8192;
     QString cacheTypeK;
     QString cacheTypeV;
