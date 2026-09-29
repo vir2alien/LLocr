@@ -22,6 +22,8 @@ private slots:
     // parameter lists are what make a model recognisable, so both are checked
     // against the values the model card and the launcher actually document.
     void shippedProfilesAreTheOnesTheDocsDescribe();
+    void checkModelBlockPromptsOverridePerType();
+    void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
     void importToJsonRoundTrips();
     void saveThenReset();
@@ -54,19 +56,16 @@ void TestModelPresetCatalog::builtInCatalogParses()
     }
 
     // A model that serves one role is offered only there, and the catalog does
-    // not carry the role itself: two lists could disagree with the profile.
-    for (const ModelPreset &p : presets) {
-        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), p.profileId);
-        if (ModelProfiles::roleFor(*profile, QStringLiteral("check")))
-            QVERIFY(!ModelProfiles::roleFor(*profile, QStringLiteral("ocr")));
-    }
+    // not carry the role itself: two lists could disagree with the profile. A
+    // model may serve both — the same weights, two tasks — and the roles it
+    // declares are pinned per model below.
 }
 
 void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
 {
     struct Expected {
         const char *id;
-        const char *role;
+        const char *roles;  // comma-separated, as shipped
         const char *minBuild;
         const char *quants;  // comma-separated, as shipped
         const char *launch;
@@ -78,6 +77,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "ctx-size,n-predict,cache-type-k,cache-type-v,image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
         {"lfm25-vl-3b", "ocr", "b8000", "q4_k_m,q8_0", "ctx-size,n-predict,cache-type-k,cache-type-v,special"},
         {"qwen3.5-4b", "check", "b4000", "q8_0,q4_k_xl", "ctx-size,n-predict,cache-type-k,cache-type-v"},
+        {"teleocr", "ocr,check", "b4000", "q4_k_m,q5_k_m,q8_0,f16", "ctx-size,n-predict,cache-type-k,cache-type-v"},
     };
 
     for (const Expected &e : expected) {
@@ -91,17 +91,75 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
             quants.append(q.id);
         QCOMPARE(quants.join(QLatin1Char(',')), QString::fromUtf8(e.quants));
 
-        // Exactly the one role this model serves — a stray second role means a
-        // profile was pasted from the wrong file.
-        QCOMPARE(profile->roles.keys(), QStringList{QString::fromUtf8(e.role)});
+        // Exactly the roles this model serves — a stray second role means a
+        // profile was pasted from the wrong file. Compared as a set: the role
+        // keys live in a QHash and have no order to compare against.
+        const QStringList declared = QString::fromUtf8(e.roles).split(QLatin1Char(','));
+        QCOMPARE(profile->roles.size(), declared.size());
+        for (const QString &roleName : declared)
+            QVERIFY2(ModelProfiles::roleFor(*profile, roleName), qPrintable(QStringLiteral("%1 does not declare the role %2").arg(id, roleName)));
+        for (const QString &roleName : declared) {
+            const ModelProfiles::Role *role = ModelProfiles::roleFor(*profile, roleName);
+            QVERIFY2(role, qPrintable(id));
+            QStringList launch;
+            for (const LaunchParameter &p : role->launch)
+                launch.append(p.name);
+            QCOMPARE(launch.join(QLatin1Char(',')), QString::fromUtf8(e.launch));
+        }
 
-        const ModelProfiles::Role *role = ModelProfiles::roleFor(*profile, QString::fromUtf8(e.role));
-        QVERIFY2(role, qPrintable(id));
-        QStringList launch;
-        for (const LaunchParameter &p : role->launch)
-            launch.append(p.name);
-        QCOMPARE(launch.join(QLatin1Char(',')), QString::fromUtf8(e.launch));
+        // A model that serves both roles has to declare the same launch layer
+        // in both: the flags are startup flags, so a difference makes the
+        // runtime unload and reload the very model the user picked once.
+        if (declared.size() == 2) {
+            const ModelProfiles::Role *ocr = ModelProfiles::roleFor(*profile, QStringLiteral("ocr"));
+            const ModelProfiles::Role *check = ModelProfiles::roleFor(*profile, QStringLiteral("check"));
+            QVERIFY2(ocr->launch == check->launch, qPrintable(QStringLiteral("%1: the two roles declare different launch parameters, so switching task reloads the model").arg(id)));
+        }
     }
+}
+
+// A check model can carry its own wording per block type — it was trained with
+// it — while a type it says nothing about still gets verifyPrompts.json. The
+// types are the labels the OCR parsers emit, so a typo here would silently
+// disable the override.
+void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
+{
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("check"));
+    QVERIFY(role);
+    QVERIFY(!role->blockPrompts.isEmpty());
+
+    const QStringList expected = {QStringLiteral("text"), QStringLiteral("title"), QStringLiteral("table"), QStringLiteral("code"), QStringLiteral("formula"), QStringLiteral("equation")};
+    for (const QString &type : expected)
+        QVERIFY2(!role->blockPrompts.value(type).isEmpty(), qPrintable(type));
+
+    // Every override has to keep the answer protocol's output format: the block
+    // prompt is the only place it is stated, the system prompt carries the rest.
+    QCOMPARE(role->blockPrompts.value(QStringLiteral("formula")).contains(QStringLiteral("Output format after FIX: LaTeX.")), true);
+    QCOMPARE(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("Output format after FIX: HTML table")), true);
+    // Tables: the model card asks for OTSL, the app compares HTML — the override
+    // must not ask for the format the parser cannot use.
+    QVERIFY(!role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("OTSL format")));
+
+    // An unknown type, a model without prompts and a model outside the catalog
+    // all fall back to what the caller passes.
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const QString fallback = QStringLiteral("from verifyPrompts.json");
+    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("check"), QStringLiteral("list"), fallback), fallback);
+    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("check"), QStringLiteral("formula"), fallback).isEmpty(), false);
+    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("check"), QStringLiteral("formula"), fallback), fallback);
+    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("check"), QStringLiteral("formula"), fallback), fallback);
+    // The ocr role of the same model has no block prompts at all.
+    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"), QStringLiteral("formula"), fallback), fallback);
+}
+
+// A model the managed runtime cannot load says so in its profile, and the note
+// reaches the store the settings windows read.
+void TestModelPresetCatalog::runtimeNoteReachesTheSettings()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    QVERIFY(!ModelProfiles::runtimeNoteFor(profiles, QStringLiteral("teleocr")).isEmpty());
+    QVERIFY(ModelProfiles::runtimeNoteFor(profiles, QStringLiteral("qwen3.5-4b")).isEmpty());
+    QVERIFY(ModelProfiles::runtimeNoteFor(profiles, QStringLiteral("some-guf")).isEmpty());
 }
 
 void TestModelPresetCatalog::mergeByUserPrecedence()

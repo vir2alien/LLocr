@@ -250,7 +250,23 @@ bool RuntimeController::serverRunsRole(ConnectionRole role) const
     const QString want = roleModelPath(role);
     if (want.isEmpty())
         return true;
-    return m_startedConfig.modelPath.trimmed() == want && m_startedConfig.mmprojPath.trimmed() == roleMmprojPath(role);
+    if (m_startedConfig.modelPath.trimmed() != want || m_startedConfig.mmprojPath.trimmed() != roleMmprojPath(role))
+        return false;
+    if (role == m_startedRole)
+        return true;  // the running server is this role's own; changed launch settings are the restart banner's business
+
+    // One model for both roles: the same weights are already loaded, and the
+    // request parameters travel in the request body, so only the startup flags
+    // can force a reload. Comparing them is what keeps the same model from being
+    // loaded again between recognition and verification — and what makes a role
+    // whose own layer differs (a wider context, a different KV type, a vision
+    // budget) get the server it asked for instead of the other role's.
+    // The alias is a label and stays out: the running one is what
+    // buildManagedConnection() reports and the request names.
+    ServerLaunchConfig forRole = ServerLaunchConfig::fromSettings(m_settings, m_launchProfiles, role);
+    forRole.program = m_startedConfig.program;
+    forRole.modelAlias = m_startedConfig.modelAlias;
+    return forRole == m_startedConfig;
 }
 
 QString RuntimeController::roleConfigError(ConnectionRole role) const

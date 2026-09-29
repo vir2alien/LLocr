@@ -21,6 +21,10 @@ Item {
         ? profiles.checkModelProfileMissing
         : profiles.modelProfileMissing
 
+    readonly property string runtimeNote: role === "check"
+        ? profiles.checkModelRuntimeNote
+        : profiles.modelRuntimeNote
+
     function loadValues() {
         root.profiles.reloadDraft()
     }
@@ -67,6 +71,15 @@ Item {
             font.pointSize: Theme.captionSize
             color: Theme.warning
             text: qsTr("This model is not in the catalog, so its launch parameters come from the fallback set instead of the model's own. The context window may be wrong for it — check the log if a page comes out truncated.")
+        }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            visible: root.runtimeNote.length > 0
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.warning
+            text: qsTr("The managed runtime cannot run this model. %1").arg(root.runtimeNote)
         }
 
         RowLayout {

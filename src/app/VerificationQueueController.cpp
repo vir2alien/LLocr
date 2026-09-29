@@ -3,6 +3,7 @@
 #include <QTimer>
 
 #include "config/RequestProfileStore.h"
+#include "core/ModelProfiles.h"
 
 namespace llocr {
 
@@ -182,7 +183,12 @@ void VerificationQueueController::startNextVerify()
     }
 
     const BoundingBox &box = boxes.at(m_verifyBoxIndex);
-    m_check.checkBlock(crop, text, m_deps.verification.systemPrompt(), m_deps.verification.promptForType(box.label));
+    // The check model's own wording for this block type wins; a type it says
+    // nothing about — and every block of a model without such prompts — is
+    // served by verifyPrompts.json.
+    const QString typePrompt =
+        ModelProfiles::blockPromptFor(ModelProfiles::instance(), m_deps.checkRequestProfiles.activeProfileId(), QStringLiteral("check"), box.label, m_deps.verification.promptForType(box.label));
+    m_check.checkBlock(crop, text, m_deps.verification.systemPrompt(), typePrompt);
 }
 
 void VerificationQueueController::finishVerifyQueue()

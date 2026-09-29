@@ -27,6 +27,8 @@ class LaunchProfileStore : public QObject
     Q_PROPERTY(QStringList otherPresetNames READ otherPresetNames CONSTANT)
     Q_PROPERTY(bool modelProfileMissing READ modelProfileMissing NOTIFY profileChanged)
     Q_PROPERTY(bool checkModelProfileMissing READ checkModelProfileMissing NOTIFY profileChanged)
+    Q_PROPERTY(QString modelRuntimeNote READ modelRuntimeNote NOTIFY profileChanged)
+    Q_PROPERTY(QString checkModelRuntimeNote READ checkModelRuntimeNote NOTIFY profileChanged)
 
 public:
     explicit LaunchProfileStore(SettingsStore &settings, const QString &builtInPath = QString::fromUtf8(LaunchProfile::kBuiltInPath), QObject *parent = nullptr);
@@ -42,6 +44,11 @@ public:
 
     bool modelProfileMissing() const;
     bool checkModelProfileMissing() const;
+
+    // What the managed runtime cannot do for the role's model, empty when it
+    // can. Data from the profile, never invented here.
+    QString modelRuntimeNote() const;
+    QString checkModelRuntimeNote() const;
     void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     Q_INVOKABLE bool hasUserProfile() const;

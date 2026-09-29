@@ -298,4 +298,20 @@ QString ReleaseCatalog::defaultBackendFor(const QString &osTag, const QString &a
     return osTag == QLatin1String("macos") && arch == QLatin1String("arm64") ? QStringLiteral("metal") : QStringLiteral("cpu");
 }
 
+QStringList ReleaseCatalog::backendsFor(const PlatformInfo &info)
+{
+    switch (info.os) {
+    case PlatformOs::Windows:
+        return {QStringLiteral("cpu"), QStringLiteral("cuda"), QStringLiteral("vulkan")};
+    case PlatformOs::macOS:
+        // macOS publishes one build per arch, and it is the one the platform
+        // defaults to: offering "cpu" there would offer a download the platform
+        // has no artifact for — the same tarball under a second name.
+        return {defaultBackendFor(info.osTag, info.arch)};
+    case PlatformOs::Linux:
+        return {QStringLiteral("cpu"), QStringLiteral("vulkan"), QStringLiteral("cuda")};
+    }
+    return {QStringLiteral("cpu"), QStringLiteral("vulkan"), QStringLiteral("cuda")};
+}
+
 }  // namespace llocr

@@ -204,6 +204,135 @@ private slots:
         runtime.stopServer();
     }
 
+    // One model profile serving both roles, with the launch layer the profile
+    // gives each role: the same one twice, or two different ones.
+    ModelProfiles::Profile twoRoleProfile(const QString &id, int ocrCtxSize, int checkCtxSize)
+    {
+        ModelProfiles::Profile profile;
+        profile.id = id;
+        profile.title = id;
+        for (const QString &roleName : {QStringLiteral("ocr"), QStringLiteral("check")}) {
+            ModelProfiles::Role role;
+            role.alias = QStringLiteral("llocr-%1-%2").arg(id, roleName);
+            LaunchParameter ctx;
+            ctx.name = QStringLiteral("ctx-size");
+            ctx.kind = LaunchValueKind::Number;
+            ctx.value = roleName == QLatin1String("ocr") ? ocrCtxSize : checkCtxSize;
+            ctx.order = 1;
+            role.launch.append(ctx);
+            profile.roles.insert(roleName, role);
+        }
+        return profile;
+    }
+
+    // The other half of the switch rule: one model for both roles does not mean
+    // two loads. The same weights are already in memory and the request
+    // parameters travel in the body, so a check request on a running OCR server
+    // of the same model has to be answered by that server — not by a reload the
+    // user would watch as a multi-second stall between recognising and verifying.
+    void sameModelForBothRolesKeepsTheRunningServer()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile model(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("shared");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
+        store.setModelRecipeId(QStringLiteral("shared"));
+        store.setCheckRequestProfileId(QStringLiteral("shared"));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        // Same launch layer in both roles — the shape a model used for both
+        // tasks is expected to ship (teleocr).
+        launchProfiles.setModelProfiles({twoRoleProfile(QStringLiteral("shared"), 16384, 16384)});
+        RuntimeController runtime(store, launchProfiles);
+
+        int first = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
+        QTRY_VERIFY_WITH_TIMEOUT(first == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+
+        QList<int> states;
+        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() { states.append(int(runtime.state())); });
+
+        int done = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+        QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
+        QVERIFY(!resolved.baseUrl.isEmpty());
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(!states.contains(int(RuntimeState::Stopped)), "the running server was stopped to serve a check request on the same model");
+        QVERIFY2(!states.contains(int(RuntimeState::Starting)), "the model was loaded again for the check role");
+
+        runtime.stopServer();
+    }
+
+    // …and the other side of the coin: the same weights with a different launch
+    // layer per role. Those flags are startup flags, so the server has to be
+    // restarted — the alternative is silently serving the check role with the
+    // OCR role's context window and KV type.
+    void sameWeightsWithDifferentLaunchFlagsRestartTheServer()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile model(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("shared");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
+        store.setModelRecipeId(QStringLiteral("shared"));
+        store.setCheckRequestProfileId(QStringLiteral("shared"));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        // One model, two roles, two different context windows.
+        launchProfiles.setModelProfiles({twoRoleProfile(QStringLiteral("shared"), 32768, 16384)});
+        RuntimeController runtime(store, launchProfiles);
+
+        int first = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
+        QTRY_VERIFY_WITH_TIMEOUT(first == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+
+        QList<int> states;
+        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() { states.append(int(runtime.state())); });
+
+        int done = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+        QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)), "the check role kept the OCR role's launch flags instead of restarting the server");
+
+        runtime.stopServer();
+    }
+
     // Regression: a Check request that arrives while an Ocr resolve is still in
     // flight must not be answered with the in-flight (OCR) connection — the
     // single managed server serves one role at a time, so the check request has

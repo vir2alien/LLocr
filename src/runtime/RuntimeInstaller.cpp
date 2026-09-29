@@ -21,19 +21,6 @@ namespace llocr {
 
 namespace {
 
-QStringList backendsForPlatform(const PlatformInfo &info)
-{
-    switch (info.os) {
-    case PlatformOs::Windows:
-        return {QStringLiteral("cpu"), QStringLiteral("cuda"), QStringLiteral("vulkan")};
-    case PlatformOs::macOS:
-        return {ReleaseCatalog::defaultBackendFor(info.osTag, info.arch)};
-    case PlatformOs::Linux:
-        return {QStringLiteral("cpu"), QStringLiteral("vulkan"), QStringLiteral("cuda")};
-    }
-    return {QStringLiteral("cpu"), QStringLiteral("vulkan"), QStringLiteral("cuda")};
-}
-
 QString osLabel(const PlatformInfo &info)
 {
     switch (info.os) {
@@ -66,7 +53,7 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &stat
     m_platformLabel = QStringLiteral("%1 %2").arg(osLabel(info), info.arch);
     m_recommendedBackend = info.backend;
     m_recommendationReason = info.backendReason;
-    m_availableBackends = backendsForPlatform(info);
+    m_availableBackends = ReleaseCatalog::backendsFor(info);
     if (m_availableBackends.contains(m_recommendedBackend))
         m_backend = m_recommendedBackend;
     else if (!m_availableBackends.isEmpty())

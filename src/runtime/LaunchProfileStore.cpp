@@ -110,14 +110,23 @@ QList<LaunchProfile> LaunchProfileStore::applicablePresets() const
 
 QStringList LaunchProfileStore::otherPresetNames() const
 {
+    // The profiles the machine could run, but not with the build that is
+    // installed: the GPU one on a CPU build is the question this answers. A
+    // profile of another OS is not among them — that machine never runs it —
+    // and neither is a backend the platform has no build for, which would offer
+    // a switch the runtime installer cannot make.
+    const PlatformInfo platform = ReleaseCatalog::detectPlatform();
+    const QStringList backends = ReleaseCatalog::backendsFor(platform);
     const QString backend = targetBackend();
-    const QString osTag = ReleaseCatalog::detectPlatform().osTag;
     QStringList names;
     for (const LaunchProfile &p : m_profiles->builtIn()) {
         if (p.backend == backend)
             continue;
-        if (p.os.isEmpty() || p.os == osTag)
-            names.append(p.name);
+        if (!p.os.isEmpty() && p.os != platform.osTag)
+            continue;
+        if (!p.backend.isEmpty() && !backends.contains(p.backend))
+            continue;
+        names.append(p.name);
     }
     return names;
 }
@@ -221,6 +230,16 @@ bool LaunchProfileStore::modelProfileMissing() const
 bool LaunchProfileStore::checkModelProfileMissing() const
 {
     return modelLayerMissing(m_settings.checkRequestProfileId(), QStringLiteral("check"));
+}
+
+QString LaunchProfileStore::modelRuntimeNote() const
+{
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, m_settings.modelRecipeId());
+}
+
+QString LaunchProfileStore::checkModelRuntimeNote() const
+{
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, m_settings.checkRequestProfileId());
 }
 
 LaunchProfile LaunchProfileStore::activeProfile() const

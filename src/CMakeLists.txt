@@ -359,7 +359,10 @@ qt_add_resources(llocr "app_profiles"
 
 # One file per model, all under :/profiles/models — the loader walks the
 # directory, so a new model is a new file and no list to maintain.
-file(GLOB MODEL_PROFILE_FILES "${CMAKE_SOURCE_DIR}/resources/profiles/models/*.json")
+# CONFIGURE_DEPENDS keeps that promise at build time too: without it a profile
+# added after the configure is simply absent from the binary, and the catalog
+# looks like it never existed.
+file(GLOB MODEL_PROFILE_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/resources/profiles/models/*.json")
 qt_add_resources(llocr "app_model_profiles"
     PREFIX "/profiles/models"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"

@@ -857,12 +857,20 @@
         <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки — общая политика сервера, она действует для любой модели на этой машине</translation>
     </message>
     <message>
-        <source>This model is not in the catalog, so its launch parameters come from the fallback set instead of the model&apos;s own. The context window may be wrong for it — check the log if a page comes out truncated.</source>
+        <source>This model is not in the catalog, so its launch parameters come from the fallback set instead of the model's own. The context window may be wrong for it — check the log if a page comes out truncated.</source>
         <translation>Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора, а не из её собственных. Размер контекста может ей не подходить — если страница обрезается, посмотрите журнал</translation>
+    </message>
+    <message>
+        <source>The managed runtime cannot run this model. %1</source>
+        <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
     <message>
         <source>This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.</source>
         <translation>Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора. Если страница обрезается, прежде всего стоит проверить размер контекста</translation>
+    </message>
+    <message>
+        <source>The managed runtime cannot run this model. %1</source>
+        <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
     <message>
         <location line="+16"/>

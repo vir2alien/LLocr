@@ -173,6 +173,7 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         profile.title = profile.id;
     profile.minBuild = root.value(QStringLiteral("minBuild")).toString();
     profile.license = root.value(QStringLiteral("license")).toString();
+    profile.runtimeNote = root.value(QStringLiteral("runtimeNote")).toString();
     profile.isDefault = root.value(QStringLiteral("default")).toBool(false);
     profile.files = readFiles(root, profile.id, error);
     if (!error.isEmpty())
@@ -211,6 +212,16 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         const QJsonObject styles = blocks.contains(QStringLiteral("styles")) ? blocks.value(QStringLiteral("styles")).toObject() : blocks;
         for (auto style = styles.constBegin(); style != styles.constEnd(); ++style) {
             role.blockStyles.insert(style.key(), style.value().toVariant().toString());
+        }
+
+        const QJsonObject blockPrompts = roleObject.value(QStringLiteral("blockPrompts")).toObject();
+        for (auto prompt = blockPrompts.constBegin(); prompt != blockPrompts.constEnd(); ++prompt) {
+            const QString text = prompt.value().toString();
+            if (prompt.key().isEmpty() || text.isEmpty()) {
+                error = QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(profile.id);
+                return profile;
+            }
+            role.blockPrompts.insert(prompt.key(), text);
         }
 
         profile.roles.insert(it.key(), role);
@@ -358,6 +369,24 @@ QList<ModelProfiles::Prompt> ModelProfiles::promptsFor(const QList<Profile> &pro
     if (const Role *found = roleFor(modelId, role))
         return found->prompts;
     return {};
+}
+
+QString ModelProfiles::blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type, const QString &fallback)
+{
+    const Profile *profile = find(profiles, modelId);
+    const Role *found = profile ? roleFor(*profile, role) : nullptr;
+    if (found) {
+        const QString own = found->blockPrompts.value(type);
+        if (!own.isEmpty())
+            return own;
+    }
+    return fallback;
+}
+
+QString ModelProfiles::runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId)
+{
+    const Profile *profile = find(profiles, modelId);
+    return profile ? profile->runtimeNote : QString();
 }
 
 QList<RequestParameter> ModelProfiles::requestWithMaxOutput(const QList<Profile> &profiles, const QString &modelId, const QString &role)

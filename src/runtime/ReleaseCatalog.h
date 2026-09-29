@@ -1,5 +1,9 @@
 #pragma once
 
+#include <QList>
+#include <QString>
+#include <QStringList>
+
 #include <QDateTime>
 #include <QHash>
 #include <QJsonArray>
@@ -32,6 +36,12 @@ public:
     static PlatformInfo detectPlatform();
 
     static QString defaultBackendFor(const QString &osTag, const QString &arch);
+
+    // The backends this platform can actually be built for — what the runtime
+    // installer offers and what a profile may suggest as an alternative build.
+    // macOS publishes one build per arch, so it has exactly one.
+    static QStringList backendsFor(const PlatformInfo &info);
+
     static QList<ReleaseInfo> parseReleasesJson(const QJsonArray &items, QString &error);
 
     static ReleaseAsset parseAssetName(const QString &fileName, const QString &downloadUrl, qint64 size);

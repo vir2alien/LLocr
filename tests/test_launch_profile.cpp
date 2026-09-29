@@ -183,12 +183,18 @@ private slots:
 
         // What the machine could run with another build. On macOS that is the
         // metal profile; a Windows profile is not a candidate for this machine
-        // and stays out of the answer.
+        // and stays out of the answer — and so does a backend the platform has
+        // no build for, which would be a switch the installer cannot make.
         const QStringList other = store.otherPresetNames();
-        if (ReleaseCatalog::detectPlatform().osTag == QLatin1String("macos"))
-            QCOMPARE(other, QStringList{QStringLiteral("Metal")});
-        else
+        const PlatformInfo platform = ReleaseCatalog::detectPlatform();
+        if (platform.osTag == QLatin1String("macos")) {
+            if (platform.arch == QLatin1String("arm64"))
+                QCOMPARE(other, QStringList{QStringLiteral("Metal")});
+            else
+                QVERIFY(other.isEmpty());
+        } else {
             QVERIFY(!other.contains(QStringLiteral("Metal")));
+        }
 
         // A backend the catalog does not know (a build from somewhere else)
         // leaves nothing applicable, and an empty combo would be worse than the
