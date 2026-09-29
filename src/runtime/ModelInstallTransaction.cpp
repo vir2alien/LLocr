@@ -12,9 +12,9 @@
 #include <utility>
 
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "runtime/DownloadGroup.h"
 #include "runtime/DownloadManager.h"
-#include "runtime/LaunchProfileStore.h"
 #include "runtime/ModelInstallTransaction.h"
 
 #include "config/RuntimePaths.h"
@@ -225,8 +225,9 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
 
     const QString token = m_settings.hfToken();
     const QString modelsDir = m_installState.paths().modelsDir();
+    const QString parser = preset.parserFor(m_pendingForCheck);
 
-    QFuture<QPair<InstallPlan, QString>> future = QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, token, modelsDir]() -> QPair<InstallPlan, QString> {
+    QFuture<QPair<InstallPlan, QString>> future = QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, parser, token, modelsDir]() -> QPair<InstallPlan, QString> {
         QNetworkAccessManager nam;
         QString err;
         QByteArray auth;
@@ -255,7 +256,7 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
         p.revision = rev;
         p.title = preset.title.isEmpty() ? repo : preset.title;
         p.license = preset.license;
-        p.parser = preset.parser;
+        p.parser = parser;
         p.ctxSize = preset.ctxSize;
         p.presetId = preset.id;
         p.dir = QDir(modelsDir).filePath(repoDirName(repo));
@@ -577,6 +578,7 @@ void ModelInstallTransaction::completeInstall()
         if (!e.mmprojPath.isEmpty())
             m_settings.setLaunchMmprojPath(e.mmprojPath);
     }
+    m_settings.selectModelProfile(m_pending.repo, m_pendingForCheck ? QStringLiteral("check") : QStringLiteral("ocr"), m_pendingForCheck);
     m_settings.forceSave();
 
     setBusy(false);

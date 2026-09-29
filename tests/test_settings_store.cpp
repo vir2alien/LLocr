@@ -1,13 +1,79 @@
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QHash>
+#include <QMetaObject>
 #include <QMetaProperty>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QtTest>
 
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "testsettings.h"
 
 using namespace llocr;
+
+namespace {
+
+struct ConnectionsBlock {
+    QString target;
+    QStringList handlers;
+};
+
+// A Connections block runs to its matching brace; the target and every handler
+// inside it belong together, which is what a flat regex gets wrong.
+QList<ConnectionsBlock> parseConnectionsBlocks(const QString &source)
+{
+    static const QRegularExpression start(QStringLiteral("\\bConnections\\s*\\{"));
+    static const QRegularExpression targetRe(QStringLiteral("\\btarget:\\s*([A-Za-z_]\\w*)"));
+    static const QRegularExpression handlerRe(QStringLiteral("\\bfunction\\s+on([A-Z]\\w*Changed)\\s*\\("));
+
+    QList<ConnectionsBlock> blocks;
+    int from = 0;
+    while (true) {
+        const QRegularExpressionMatch open = start.match(source, from);
+        if (!open.hasMatch())
+            break;
+        int depth = 0;
+        int i = open.capturedEnd() - 1;
+        for (; i < source.size(); ++i) {
+            if (source.at(i) == QLatin1Char('{'))
+                ++depth;
+            else if (source.at(i) == QLatin1Char('}') && --depth == 0)
+                break;
+        }
+        const QString body = source.mid(open.capturedEnd(), i - open.capturedEnd());
+
+        ConnectionsBlock block;
+        const QRegularExpressionMatch target = targetRe.match(body);
+        if (target.hasMatch()) {
+            block.target = target.captured(1);
+            QRegularExpressionMatchIterator it = handlerRe.globalMatch(body);
+            while (it.hasNext())
+                block.handlers.append(it.next().captured(1));
+            if (!block.handlers.isEmpty())
+                blocks.append(block);
+        }
+        from = i + 1;
+    }
+    return blocks;
+}
+
+QStringList findQmlFiles(const QDir &root)
+{
+    QStringList out;
+    for (const QFileInfo &entry : root.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot)) {
+        if (entry.isDir())
+            out += findQmlFiles(QDir(entry.absoluteFilePath()));
+        else if (entry.suffix() == QLatin1String("qml"))
+            out.append(entry.absoluteFilePath());
+    }
+    return out;
+}
+
+}  // namespace
 
 class TestSettingsStore : public QObject
 {
@@ -211,12 +277,157 @@ private slots:
         QCOMPARE(store.startupTimeoutMs(), 180000);
         QCOMPARE(store.allowNonLoopback(), false);
 
-        QCOMPARE(store.launchModelAlias(), QStringLiteral("llocr-local"));
         QCOMPARE(store.launchHost(), QStringLiteral("127.0.0.1"));
         QCOMPARE(store.launchPort(), 0);
         QCOMPARE(store.launchProfileId(), QStringLiteral(""));
         QCOMPARE(store.autoCheck(), false);
         QCOMPARE(store.hfToken(), QStringLiteral(""));
+    }
+
+    // The check role's request profile is the id of its model profile. A
+    // profile written before the split has nothing stored, and the verifier
+    // would resolve to no sampling parameters at all.
+    void checkRoleResolvesAModelProfileWithoutOneStored()
+    {
+        QSettings pre;
+        pre.remove(QStringLiteral("check/requestProfileId"));
+
+        const SettingsStore store;
+        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("check"));
+        QVERIFY(!checkModels.isEmpty());
+        QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
+        // Nothing is written: the default is a fallback, not a stored choice.
+        QVERIFY(!store.contains(QStringLiteral("check/requestProfileId")));
+
+        // An explicit choice still wins.
+        SettingsStore chosen;
+        chosen.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        QCOMPARE(chosen.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+    }
+
+    // The key's default used to be the empty string, so every existing profile
+    // holds one. QSettings::value() would return that empty string instead of
+    // the fallback, and the verifier would end up with no sampling parameters
+    // while the UI reported the model as unknown.
+    void anEmptyStoredCheckProfileIsNotAChoice()
+    {
+        QSettings pre;
+        pre.setValue(QStringLiteral("check/requestProfileId"), QString());
+
+        const SettingsStore store;
+        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("check"));
+        QVERIFY(!checkModels.isEmpty());
+        QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
+    }
+
+    // The alias is the model's, per role: one stored alias could only ever name
+    // one of the two servers.
+    void migrationDropsTheStoredAlias()
+    {
+        QSettings pre;
+        pre.setValue(QStringLiteral("launch/modelAlias"), QStringLiteral("stale-alias"));
+
+        const SettingsStore store;
+        QVERIFY(!store.contains(QStringLiteral("launch/modelAlias")));
+    }
+
+    // An id from the retired request-profile space ("ocr-verifier") is not a
+    // choice: the catalog has no such model, so the app put the check model on
+    // the generic launch fallback and showed a "not in the catalog" notice for a
+    // model that is in the catalog. The migration resolves it and writes the
+    // model profile back, so the next run reads a value it can act on.
+    void aModelIdFromTheRetiredIdSpaceIsResolved()
+    {
+        QSettings pre;
+        pre.setValue(QStringLiteral("check/requestProfileId"), QStringLiteral("ocr-verifier"));
+        pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("ocr-verifier"));
+        pre.setValue(QStringLiteral("model/requestProfileId"), QStringLiteral("ocr-verifier"));
+
+        const SettingsStore store;
+        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("check"));
+        const QString ocrModel = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
+        QVERIFY(!checkModels.isEmpty());
+        QVERIFY(!ocrModel.isEmpty());
+        QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
+        QCOMPARE(store.modelRecipeId(), ocrModel);
+        // Written back, not just answered differently on every read.
+        QCOMPARE(pre.value(QStringLiteral("check/requestProfileId")).toString(), checkModels.constFirst());
+        QCOMPARE(pre.value(QStringLiteral("model/recipeId")).toString(), ocrModel);
+
+        // A real choice survives: the check role has one model, the ocr role
+        // three, so the two resolve to different ids and both are kept.
+        QSettings other;
+        other.setValue(QStringLiteral("check/requestProfileId"), checkModels.constFirst());
+        other.setValue(QStringLiteral("model/recipeId"), QStringLiteral("lfm25-vl-3b"));
+        const SettingsStore kept;
+        QCOMPARE(kept.checkRequestProfileId(), checkModels.constFirst());
+        QCOMPARE(kept.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+    }
+
+    // Activating a model of a known family has to pick that family's profile:
+    // the weights on disk would otherwise run with another model's launch
+    // parameters. A repo the catalog does not know, or one that does not answer
+    // the role, leaves the selection alone.
+    void activatingAModelSelectsItsFamilyProfile()
+    {
+        SettingsStore store;
+        store.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+
+        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("ocr"), false);
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+
+        // The same family does not answer the check role.
+        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("check"), true);
+        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+
+        store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("check"), true);
+        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+
+        // A hand-picked GGUF joins to nothing.
+        store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        store.selectModelProfile(QString(), QStringLiteral("ocr"), false);
+        store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("ocr"), false);
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("unlimited-ocr"));
+    }
+
+    // qmllint cannot resolve Settings (it is registered by hand in main.cpp, not
+    // a module type), so a handler for a signal that no longer exists is
+    // invisible to the lint gate and surfaces only as a runtime warning. This
+    // walks the QML, pairs each Connections block with its target, and asks the
+    // meta-object of the targets this test can see.
+    void qmlSignalHandlersExist()
+    {
+        const QDir root(QStringLiteral(LLOCR_SOURCE_DIR) + QStringLiteral("/resources/qml"));
+        QVERIFY2(root.exists(), qPrintable(root.path()));
+
+        // Only Settings is linked here; the other singletons live in layers this
+        // target does not pull in, so their blocks are skipped rather than
+        // reported as missing.
+        const QHash<QString, const QMetaObject *> known = {{QStringLiteral("Settings"), &SettingsStore::staticMetaObject}};
+
+        int blocks = 0;
+        int handlers = 0;
+        for (const QString &path : findQmlFiles(root)) {
+            QFile file(path);
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            const QString source = QString::fromUtf8(file.readAll());
+            for (const ConnectionsBlock &block : parseConnectionsBlocks(source)) {
+                const QMetaObject *mo = known.value(block.target);
+                if (!mo)
+                    continue;
+                ++blocks;
+                for (const QString &handler : block.handlers) {
+                    // onLaunchModelPathChanged names the signal
+                    // launchModelPathChanged; indexOfSignal() wants a signature.
+                    const QString signature = handler.left(1).toLower() + handler.mid(1) + QLatin1String("()");
+                    QVERIFY2(mo->indexOfSignal(signature.toUtf8().constData()) >= 0, qPrintable(QStringLiteral("%1: %2 has no signal %3").arg(path, block.target, handler)));
+                    ++handlers;
+                }
+            }
+        }
+        QVERIFY2(blocks > 0, "no Connections block targets a singleton this test can check");
+        QVERIFY(handlers > 0);
     }
 
     void autoCheckRoundTrip()

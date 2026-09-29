@@ -107,6 +107,59 @@ QList<RequestParameter> readRequestParameters(const QJsonArray &array, QString &
     return out;
 }
 
+ModelProfiles::Module readModule(const QJsonObject &object, QString &error)
+{
+    ModelProfiles::Module module;
+    if (object.isEmpty())
+        return module;
+    module.id = object.value(QStringLiteral("id")).toString();
+    module.file = object.value(QStringLiteral("file")).toString();
+    module.sha256 = object.value(QStringLiteral("sha256")).toString().toLower();
+    if (module.file.isEmpty()) {
+        error = QObject::tr("Model profile %1 has a module without a file name").arg(module.id);
+        return module;
+    }
+    return module;
+}
+
+ModelProfiles::Files readFiles(const QJsonObject &root, const QString &profileId, QString &error)
+{
+    ModelProfiles::Files files;
+    const QJsonObject object = root.value(QStringLiteral("files")).toObject();
+    if (object.isEmpty())
+        return files;  // a model that is not downloaded from the catalog
+
+    files.repo = object.value(QStringLiteral("repo")).toString();
+    files.revision = object.value(QStringLiteral("revision")).toString();
+    if (files.repo.isEmpty()) {
+        error = QObject::tr("Model profile %1 has files without a repo").arg(profileId);
+        return files;
+    }
+
+    for (const QJsonValue &value : object.value(QStringLiteral("quants")).toArray()) {
+        const QJsonObject entry = value.toObject();
+        ModelProfiles::Quant quant;
+        quant.id = entry.value(QStringLiteral("id")).toString();
+        quant.file = entry.value(QStringLiteral("file")).toString();
+        quant.sha256 = entry.value(QStringLiteral("sha256")).toString().toLower();
+        if (quant.id.isEmpty() || quant.file.isEmpty()) {
+            error = QObject::tr("Model profile %1 has a quantization without an id or a file name").arg(profileId);
+            return files;
+        }
+        files.quants.append(quant);
+    }
+    if (files.quants.isEmpty()) {
+        error = QObject::tr("Model profile %1 has no quantizations").arg(profileId);
+        return files;
+    }
+
+    files.mmproj = readModule(object.value(QStringLiteral("mmproj")).toObject(), error);
+    if (!error.isEmpty())
+        return files;
+    files.mtp = readModule(object.value(QStringLiteral("mtp")).toObject(), error);
+    return files;
+}
+
 ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
 {
     ModelProfiles::Profile profile;
@@ -119,13 +172,9 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
     if (profile.title.isEmpty())
         profile.title = profile.id;
     profile.minBuild = root.value(QStringLiteral("minBuild")).toString();
+    profile.license = root.value(QStringLiteral("license")).toString();
     profile.isDefault = root.value(QStringLiteral("default")).toBool(false);
-
-    const QJsonObject fallback = root.value(QStringLiteral("fallback")).toObject();
-    profile.fallbackLaunch = readLaunchParameters(fallback.value(QStringLiteral("launch")).toArray(), error);
-    if (!error.isEmpty())
-        return profile;
-    profile.fallbackRequest = readRequestParameters(fallback.value(QStringLiteral("request")).toArray(), error);
+    profile.files = readFiles(root, profile.id, error);
     if (!error.isEmpty())
         return profile;
 
@@ -253,6 +302,27 @@ const ModelProfiles::Role *ModelProfiles::roleFor(const QString &modelId, const 
     return profile ? roleFor(*profile, role) : nullptr;
 }
 
+QString ModelProfiles::idForRepo(const QList<Profile> &profiles, const QString &repo)
+{
+    if (repo.isEmpty())
+        return QString();
+    for (const Profile &profile : profiles) {
+        if (profile.files.repo == repo)
+            return profile.id;
+    }
+    return QString();
+}
+
+QString ModelProfiles::defaultIdForRole(const QList<Profile> &profiles, const QString &role)
+{
+    for (const Profile &profile : profiles) {
+        if (profile.isDefault && roleFor(profile, role))
+            return profile.id;
+    }
+    const QStringList ids = idsForRole(profiles, role);
+    return ids.isEmpty() ? QString() : ids.constFirst();
+}
+
 QStringList ModelProfiles::idsForRole(const QList<Profile> &profiles, const QString &role)
 {
     QStringList ids;
@@ -270,7 +340,7 @@ QList<LaunchParameter> ModelProfiles::launchFor(const QList<Profile> &profiles, 
         return {};
     if (const Role *found = roleFor(*profile, role))
         return found->launch;
-    return profile->fallbackLaunch;
+    return {};
 }
 
 QList<RequestParameter> ModelProfiles::requestFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
@@ -280,7 +350,7 @@ QList<RequestParameter> ModelProfiles::requestFor(const QList<Profile> &profiles
         return {};
     if (const Role *found = roleFor(*profile, role))
         return found->request;
-    return profile->fallbackRequest;
+    return {};
 }
 
 QList<ModelProfiles::Prompt> ModelProfiles::promptsFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)

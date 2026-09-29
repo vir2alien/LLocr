@@ -186,6 +186,15 @@ target_link_libraries(test_settings_store PRIVATE
     Qt6::Test
     llocr_config
 )
+qt_add_resources(test_settings_store "settings_store_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${LLOCR_MODEL_PROFILE_FILES}
+)
+# The QML signal-handler check needs the source tree, not just the resources.
+target_compile_definitions(test_settings_store PRIVATE
+    LLOCR_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
 add_test(NAME test_settings_store COMMAND test_settings_store)
 
 qt_add_executable(test_request_profile test_request_profile.cpp)
@@ -404,12 +413,10 @@ qt_add_executable(test_model_installer test_model_installer.cpp)
 # The built-in preset catalogs are Qt resources; register them under the
 # same :/profiles/ prefix so ModelInstaller::reloadPresetsInternal resolves
 # them.
-qt_add_resources(test_model_installer "model_installer_preset_res"
-    PREFIX "/profiles"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
-    FILES
-        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsValidate.json"
+qt_add_resources(test_model_installer "model_installer_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${LLOCR_MODEL_PROFILE_FILES}
 )
 
 target_link_libraries(test_model_installer PRIVATE
@@ -433,11 +440,10 @@ qt_add_executable(test_model_preset_catalog test_model_preset_catalog.cpp)
 # The shipped built-in preset catalog is a Qt resource; register it under the
 # same :/profiles/ prefix so ModelPresetCatalog::kBuiltInOcrPath resolves
 # in-test.
-qt_add_resources(test_model_preset_catalog "preset_res"
-    PREFIX "/profiles"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
-    FILES
-        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
+qt_add_resources(test_model_preset_catalog "preset_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${LLOCR_MODEL_PROFILE_FILES}
 )
 
 target_link_libraries(test_model_preset_catalog PRIVATE

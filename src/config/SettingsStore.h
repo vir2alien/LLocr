@@ -2,6 +2,7 @@
 
 #include <functional>
 
+#include <QList>
 #include <QObject>
 #include <QSettings>
 #include <QString>
@@ -55,7 +56,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString launchProfileId READ launchProfileId WRITE setLaunchProfileId NOTIFY launchProfileIdChanged)
     Q_PROPERTY(QString launchModelPath READ launchModelPath WRITE setLaunchModelPath NOTIFY launchModelPathChanged)
     Q_PROPERTY(QString launchMmprojPath READ launchMmprojPath WRITE setLaunchMmprojPath NOTIFY launchMmprojPathChanged)
-    Q_PROPERTY(QString launchModelAlias READ launchModelAlias WRITE setLaunchModelAlias NOTIFY launchModelAliasChanged)
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
     Q_PROPERTY(bool launchSourceDownload READ launchSourceDownload WRITE setLaunchSourceDownload NOTIFY launchSourceDownloadChanged)
@@ -103,6 +103,8 @@ public:
 
     QString requestProfileId() const;
     void setRequestProfileId(const QString &id);
+
+    void selectModelProfile(const QString &repo, const QString &role, bool forCheck);
 
     QString parserId() const;
     void setParserId(const QString &parserName);
@@ -173,8 +175,6 @@ public:
     void setLaunchModelPath(const QString &path);
     QString launchMmprojPath() const;
     void setLaunchMmprojPath(const QString &path);
-    QString launchModelAlias() const;
-    void setLaunchModelAlias(const QString &alias);
     QString launchHost() const;
     void setLaunchHost(const QString &host);
     int launchPort() const;
@@ -239,7 +239,6 @@ signals:
     void launchProfileIdChanged();
     void launchModelPathChanged();
     void launchMmprojPathChanged();
-    void launchModelAliasChanged();
     void launchHostChanged();
     void launchPortChanged();
     void checkLaunchModelPathChanged();
@@ -269,7 +268,6 @@ public:
     static constexpr int kMaxPdfMarginMm = 50;
     static constexpr int kDefaultThemeMode = 0;  // System
     static constexpr const char *kDefaultLanguage = "system";
-    static constexpr const char *kDefaultModelAlias = "llocr-local";
     static constexpr const char *kDefaultHost = "127.0.0.1";
     static constexpr int kDefaultPort = 0;  // 0 = auto-pick
     static constexpr int kDefaultStartupTimeoutMs = 180000;
@@ -277,9 +275,10 @@ public:
 private:
     static QSettings makeSettings();
     QSettings m_settings = makeSettings();
-    static const SettingDefault kDefaults[];
+    static const QList<SettingDefault> &defaultTable();
 
     void resetGroup(const std::function<bool(const QString &)> &matches);
+    void resolveStoredModelId(const char *key, const QString &role);
 
     static constexpr const char *kBaseUrl = "provider/baseUrl";
     static constexpr const char *kApiKey = "provider/apiKey";
@@ -328,7 +327,6 @@ private:
     static constexpr const char *kLaunchProfileId = "launch/profileId";
     static constexpr const char *kLaunchModelPath = "launch/modelPath";
     static constexpr const char *kLaunchMmprojPath = "launch/mmprojPath";
-    static constexpr const char *kLaunchModelAlias = "launch/modelAlias";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
     static constexpr const char *kLaunchSourceDownload = "launch/sourceDownload";

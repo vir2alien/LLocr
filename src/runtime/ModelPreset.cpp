@@ -1,17 +1,25 @@
 #include "runtime/ModelPreset.h"
 
+#include "core/ModelProfiles.h"
+
 namespace llocr {
+
+QString ModelPreset::parserFor(bool forCheck) const
+{
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(profileId, forCheck ? QStringLiteral("check") : QStringLiteral("ocr"));
+    return role ? role->parser : QString();
+}
 
 ModelPreset ModelPreset::fromJson(const QJsonObject &o)
 {
     ModelPreset p;
     p.id = o.value(QStringLiteral("id")).toString();
     p.title = o.value(QStringLiteral("title")).toString();
+    p.profileId = o.value(QStringLiteral("profileId")).toString();
     p.repo = o.value(QStringLiteral("repo")).toString();
     p.revision = o.value(QStringLiteral("revision")).toString();
     p.model = o.value(QStringLiteral("model")).toString();
     p.mmproj = o.value(QStringLiteral("mmproj")).toString();
-    p.parser = o.value(QStringLiteral("parser")).toString();
     p.ctxSize = o.value(QStringLiteral("ctxSize")).toInt(8192);
     p.minBuild = o.value(QStringLiteral("minBuild")).toString();
     p.license = o.value(QStringLiteral("license")).toString();
@@ -28,6 +36,8 @@ QJsonObject ModelPreset::toJson() const
     o.insert(QStringLiteral("id"), id);
     if (!title.isEmpty())
         o.insert(QStringLiteral("title"), title);
+    if (!profileId.isEmpty())
+        o.insert(QStringLiteral("profileId"), profileId);
     if (!repo.isEmpty())
         o.insert(QStringLiteral("repo"), repo);
     if (!revision.isEmpty())
@@ -36,8 +46,6 @@ QJsonObject ModelPreset::toJson() const
         o.insert(QStringLiteral("model"), model);
     if (!mmproj.isEmpty())
         o.insert(QStringLiteral("mmproj"), mmproj);
-    if (!parser.isEmpty())
-        o.insert(QStringLiteral("parser"), parser);
     if (ctxSize != 8192)
         o.insert(QStringLiteral("ctxSize"), ctxSize);
     if (!minBuild.isEmpty())

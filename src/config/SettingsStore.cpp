@@ -1,56 +1,72 @@
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 
 #include <QCoreApplication>
 #include <QMetaProperty>
 
 namespace llocr {
 
-const SettingsStore::SettingDefault SettingsStore::kDefaults[] = {
-    {kLanguage, "language", QVariant(QString::fromUtf8(kDefaultLanguage))},
-    {kThemeMode, "themeMode", QVariant(kDefaultThemeMode)},
-    {kBaseUrl, "baseUrl", QVariant(QString::fromUtf8(kDefaultBaseUrl))},
-    {kApiKey, "apiKey", QVariant(QString::fromUtf8(kDefaultApiKey))},
-    {kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs)},
-    {kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName))},
-    {kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
-    {kRequestProfileId, "requestProfileId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
-    {kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId))},
-    {kSplitPages, "splitPages", QVariant(kDefaultSplitPages)},
-    {kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers)},
-    {kTablesAsHtml, "tablesAsHtml", QVariant(kDefaultTablesAsHtml)},
-    {kPdfLandscape, "pdfLandscape", QVariant(kDefaultPdfLandscape)},
-    {kPdfMarginMm, "pdfMarginMm", QVariant(kDefaultPdfMarginMm)},
-    {kConnectionMode, "connectionMode", QVariant(QString::fromUtf8(kModeExternal))},
-    {kSetupVersion, "setupVersion", QVariant(0)},  // 0 = re-run first-run wizard
-    {kSetupDismissed, "setupDismissed", QVariant(false)},
-    {kServerPath, "serverPath", QVariant(QString())},
-    {kServerPathIsManaged, "serverPathIsManaged", QVariant(false)},
-    {kRuntimeRootDir, "runtimeRootDir", QVariant(QString())},
-    {kRuntimeModelsDir, "runtimeModelsDir", QVariant(QString())},
-    {kRuntimeBackend, "runtimeBackend", QVariant(QString())},
-    {kInstalledBuild, "installedBuild", QVariant(QString())},
-    {kAutoStart, "autoStart", QVariant(false)},
-    {kStartOnDemand, "startOnDemand", QVariant(true)},
-    {kStopOnExit, "stopOnExit", QVariant(true)},
-    {kAutoRestart, "autoRestart", QVariant(true)},
-    {kStartupTimeoutMs, "startupTimeoutMs", QVariant(kDefaultStartupTimeoutMs)},
-    {kAllowNonLoopback, "allowNonLoopback", QVariant(false)},
-    {kLaunchProfileId, "launchProfileId", QVariant(QString())},
-    {kLaunchModelPath, "launchModelPath", QVariant(QString())},
-    {kLaunchMmprojPath, "launchMmprojPath", QVariant(QString())},
-    {kLaunchModelAlias, "launchModelAlias", QVariant(QString::fromUtf8(kDefaultModelAlias))},
-    {kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost))},
-    {kLaunchPort, "launchPort", QVariant(kDefaultPort)},
-    {kLaunchSourceDownload, "launchSourceDownload", QVariant(false)},
-    {kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString())},
-    {kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString())},
-    {kCheckLaunchSourceDownload, "checkLaunchSourceDownload", QVariant(false)},
-    {kCheckRequestProfileId, "checkRequestProfileId", QVariant(QString())},
-    {kCheckModelName, "checkModelName", QVariant(QString())},
-    {kAutoCheck, "autoCheck", QVariant(false)},
-    {kHfToken, "hfToken", QVariant(QString())},
-    {kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString())},
-};
+namespace {
+
+QString defaultCheckRequestProfileId()
+{
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("check"));
+}
+
+}  // namespace
+
+const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
+{
+    // Built once, on first use: the check role's default is the id of a model
+    // profile, and the catalog lives in a resource that is not linked into every
+    // binary that reads the settings.
+    static const QList<SettingDefault> table = {
+        {kLanguage, "language", QVariant(QString::fromUtf8(kDefaultLanguage))},
+        {kThemeMode, "themeMode", QVariant(kDefaultThemeMode)},
+        {kBaseUrl, "baseUrl", QVariant(QString::fromUtf8(kDefaultBaseUrl))},
+        {kApiKey, "apiKey", QVariant(QString::fromUtf8(kDefaultApiKey))},
+        {kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs)},
+        {kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName))},
+        {kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
+        {kRequestProfileId, "requestProfileId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
+        {kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId))},
+        {kSplitPages, "splitPages", QVariant(kDefaultSplitPages)},
+        {kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers)},
+        {kTablesAsHtml, "tablesAsHtml", QVariant(kDefaultTablesAsHtml)},
+        {kPdfLandscape, "pdfLandscape", QVariant(kDefaultPdfLandscape)},
+        {kPdfMarginMm, "pdfMarginMm", QVariant(kDefaultPdfMarginMm)},
+        {kConnectionMode, "connectionMode", QVariant(QString::fromUtf8(kModeExternal))},
+        {kSetupVersion, "setupVersion", QVariant(0)},  // 0 = re-run first-run wizard
+        {kSetupDismissed, "setupDismissed", QVariant(false)},
+        {kServerPath, "serverPath", QVariant(QString())},
+        {kServerPathIsManaged, "serverPathIsManaged", QVariant(false)},
+        {kRuntimeRootDir, "runtimeRootDir", QVariant(QString())},
+        {kRuntimeModelsDir, "runtimeModelsDir", QVariant(QString())},
+        {kRuntimeBackend, "runtimeBackend", QVariant(QString())},
+        {kInstalledBuild, "installedBuild", QVariant(QString())},
+        {kAutoStart, "autoStart", QVariant(false)},
+        {kStartOnDemand, "startOnDemand", QVariant(true)},
+        {kStopOnExit, "stopOnExit", QVariant(true)},
+        {kAutoRestart, "autoRestart", QVariant(true)},
+        {kStartupTimeoutMs, "startupTimeoutMs", QVariant(kDefaultStartupTimeoutMs)},
+        {kAllowNonLoopback, "allowNonLoopback", QVariant(false)},
+        {kLaunchProfileId, "launchProfileId", QVariant(QString())},
+        {kLaunchModelPath, "launchModelPath", QVariant(QString())},
+        {kLaunchMmprojPath, "launchMmprojPath", QVariant(QString())},
+        {kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost))},
+        {kLaunchPort, "launchPort", QVariant(kDefaultPort)},
+        {kLaunchSourceDownload, "launchSourceDownload", QVariant(false)},
+        {kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString())},
+        {kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString())},
+        {kCheckLaunchSourceDownload, "checkLaunchSourceDownload", QVariant(false)},
+        {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultCheckRequestProfileId())},
+        {kCheckModelName, "checkModelName", QVariant(QString())},
+        {kAutoCheck, "autoCheck", QVariant(false)},
+        {kHfToken, "hfToken", QVariant(QString())},
+        {kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString())},
+    };
+    return table;
+}
 
 SettingsStore::SettingsStore(QObject *parent) : QObject(parent)
 {
@@ -91,8 +107,30 @@ void SettingsStore::applyStartupMigration()
             m_settings.setValue(kRequestProfileId, legacy);
     }
 
-    m_settings.remove(QString::fromUtf8("launch/presetId"));
-    m_settings.remove(QStringLiteral("check/launchProfileId"));
+    // The alias now comes from the model profile, per role; a stored one would
+    // only be able to speak for one of them.
+    m_settings.remove(QStringLiteral("launch/modelAlias"));
+
+    resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
+    resolveStoredModelId(kRequestProfileId, QStringLiteral("ocr"));
+    resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("check"));
+}
+
+void SettingsStore::resolveStoredModelId(const char *key, const QString &role)
+{
+    // The model ids name a profile in the current catalog. An id from the
+    // retired request-profile space ("ocr-verifier") is residue, not a choice:
+    // nothing writes one any more, and honouring it leaves the model on the
+    // generic launch fallback with a "not in the catalog" notice. Resolving it
+    // has to run on every start rather than once — a profile may be renamed
+    // between releases.
+    const QString stored = m_settings.value(key).toString();
+    if (stored.isEmpty() || ModelProfiles::roleFor(stored, role))
+        return;
+    const QString resolved = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), role);
+    if (resolved.isEmpty() || resolved == stored)
+        return;
+    m_settings.setValue(key, resolved);
 }
 
 void SettingsStore::forceSave()
@@ -108,7 +146,7 @@ void SettingsStore::resetToDefaults()
 void SettingsStore::resetGroup(const std::function<bool(const QString &)> &matches)
 {
     const QMetaObject *mo = metaObject();
-    for (const SettingDefault &entry : kDefaults) {
+    for (const SettingDefault &entry : defaultTable()) {
         if (!matches(QString::fromUtf8(entry.key)))
             continue;
         const QMetaProperty prop = mo->property(mo->indexOfProperty(entry.property));
@@ -134,12 +172,12 @@ void SettingsStore::resetRuntimeDefaults()
 
 const SettingsStore::SettingDefault *SettingsStore::defaults()
 {
-    return kDefaults;
+    return defaultTable().constData();
 }
 
 int SettingsStore::defaultsCount()
 {
-    return int(sizeof(kDefaults) / sizeof(kDefaults[0]));
+    return int(defaultTable().size());
 }
 
 QString SettingsStore::baseUrl() const
@@ -218,6 +256,17 @@ void SettingsStore::setModelRecipeId(const QString &recipeId)
         return;
     m_settings.setValue(kModelRecipeId, recipeId);
     emit modelRecipeIdChanged();
+}
+
+void SettingsStore::selectModelProfile(const QString &repo, const QString &role, bool forCheck)
+{
+    const QString profileId = ModelProfiles::idForRepo(ModelProfiles::instance(), repo);
+    if (profileId.isEmpty() || !ModelProfiles::roleFor(profileId, role))
+        return;
+    if (forCheck)
+        setCheckRequestProfileId(profileId);
+    else
+        setModelRecipeId(profileId);
 }
 
 QString SettingsStore::parserId() const
@@ -655,19 +704,6 @@ void SettingsStore::setLaunchMmprojPath(const QString &path)
     emit launchMmprojPathChanged();
 }
 
-QString SettingsStore::launchModelAlias() const
-{
-    return m_settings.value(kLaunchModelAlias, QString::fromUtf8(kDefaultModelAlias)).toString();
-}
-
-void SettingsStore::setLaunchModelAlias(const QString &alias)
-{
-    if (launchModelAlias() == alias)
-        return;
-    m_settings.setValue(kLaunchModelAlias, alias);
-    emit launchModelAliasChanged();
-}
-
 QString SettingsStore::launchHost() const
 {
     return m_settings.value(kLaunchHost, QString::fromUtf8(kDefaultHost)).toString();
@@ -748,7 +784,14 @@ void SettingsStore::setCheckLaunchSourceDownload(bool on)
 
 QString SettingsStore::checkRequestProfileId() const
 {
-    return m_settings.value(kCheckRequestProfileId).toString();
+    // An empty stored value counts as unset, not as a choice: the key's default
+    // was the empty string, so every profile written before the check role got
+    // a model profile holds one — and QSettings::value() would return it rather
+    // than the fallback, leaving the verifier with no sampling parameters. An
+    // id the catalog does not know is the same kind of residue; the startup
+    // migration rewrites those, so a read only has to answer what the file says.
+    const QString stored = m_settings.value(kCheckRequestProfileId).toString();
+    return stored.isEmpty() ? defaultCheckRequestProfileId() : stored;
 }
 
 void SettingsStore::setCheckRequestProfileId(const QString &id)

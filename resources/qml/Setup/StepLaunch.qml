@@ -58,7 +58,6 @@ Item {
         function onLaunchModelPathChanged() { refreshAll() }
         function onLaunchPortChanged() { root.commandPreview = Runtime.launchCommandPreview() }
         function onLaunchHostChanged() { root.commandPreview = Runtime.launchCommandPreview() }
-        function onLaunchModelAliasChanged() { root.commandPreview = Runtime.launchCommandPreview() }
     }
     Connections {
         target: LaunchProfiles
@@ -97,7 +96,6 @@ Item {
             columns: 2
             rowSpacing: 8
             columnSpacing: 10
-
             LLOLabel { text: qsTr("Port") }
             TextField {
                 id: portField
@@ -121,6 +119,15 @@ Item {
                                  LaunchProfiles.presetIds[currentIndex])
             }
         }//GridLayout
+
+        LLOLabel {
+            Layout.fillWidth: true
+            visible: LaunchProfiles.modelProfileMissing
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.warning
+            text: qsTr("This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.")
+        }
 
         RowLayout {
             Layout.fillWidth: true

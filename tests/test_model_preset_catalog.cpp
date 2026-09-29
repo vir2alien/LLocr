@@ -2,6 +2,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include "core/ModelProfiles.h"
 #include "runtime/ModelPreset.h"
 #include "runtime/ModelPresetCatalog.h"
 
@@ -16,6 +17,11 @@ class TestModelPresetCatalog : public QObject
 
 private slots:
     void builtInCatalogParses();
+    // A copy-paste between two profiles once gave the verifier role to an OCR
+    // model, and the two offered each other's rows. The role split and the
+    // parameter lists are what make a model recognisable, so both are checked
+    // against the values the model card and the launcher actually document.
+    void shippedProfilesAreTheOnesTheDocsDescribe();
     void mergeByUserPrecedence();
     void importToJsonRoundTrips();
     void saveThenReset();
@@ -26,23 +32,75 @@ void TestModelPresetCatalog::builtInCatalogParses()
     // load() with an empty user path exercises just the built-in resource,
     // which must always be present and parse cleanly.
     QString err;
-    const QList<ModelPreset> presets = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), QString(), err);
+    const QList<ModelPreset> presets = ModelPresetCatalog::load(ModelPresetCatalog::expand(ModelProfiles::instance()), QString(), err);
     QVERIFY2(err.isEmpty(), qPrintable(err));
-    QVERIFY(presets.size() >= 2);  // the two shipped presets
+    QVERIFY(presets.size() >= 2);  // the shipped presets
 
     for (const ModelPreset &p : presets) {
-        // §4.1 schema contract: the fields the pipeline consumes are present.
+        // Schema contract: the fields the pipeline consumes are present.
         QVERIFY(!p.id.isEmpty());
         QVERIFY(!p.title.isEmpty());
         QVERIFY(!p.repo.isEmpty());
         QVERIFY(!p.model.isEmpty());  // at least a main model file
-        QVERIFY(!p.parser.isEmpty());
         QVERIFY(p.ctxSize > 0);
         QVERIFY(!p.minBuild.isEmpty());
         QVERIFY(!p.license.isEmpty());
-        // revision may be empty → always pin via fetchHeadSha at install time;
-        // sha256 is a per-file digest map (object), empty until populated.
-        QVERIFY(p.sha256.isEmpty() || !p.sha256.isEmpty());
+        // Every entry names a model profile, and that profile answers at least
+        // one role — otherwise the entry could never be offered in a window.
+        QVERIFY(!p.profileId.isEmpty());
+        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), p.profileId);
+        QVERIFY2(profile, qPrintable(QStringLiteral("preset %1 names unknown profile %2").arg(p.id, p.profileId)));
+        QVERIFY(ModelProfiles::roleFor(*profile, QStringLiteral("ocr")) || ModelProfiles::roleFor(*profile, QStringLiteral("check")));
+    }
+
+    // A model that serves one role is offered only there, and the catalog does
+    // not carry the role itself: two lists could disagree with the profile.
+    for (const ModelPreset &p : presets) {
+        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), p.profileId);
+        if (ModelProfiles::roleFor(*profile, QStringLiteral("check")))
+            QVERIFY(!ModelProfiles::roleFor(*profile, QStringLiteral("ocr")));
+    }
+}
+
+void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
+{
+    struct Expected {
+        const char *id;
+        const char *role;
+        const char *minBuild;
+        const char *quants;  // comma-separated, as shipped
+        const char *launch;
+    };
+    // The launch lists are the ones a wrong edit silently truncates: a model
+    // that loses cache-type-* or cache-type-v still starts, and the only symptom
+    // is a slower or a more memory-hungry run.
+    const QList<Expected> expected = {
+        {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "ctx-size,n-predict,cache-type-k,cache-type-v,image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
+        {"lfm25-vl-3b", "ocr", "b8000", "q4_k_m,q8_0", "ctx-size,n-predict,cache-type-k,cache-type-v,special"},
+        {"qwen3.5-4b", "check", "b4000", "q8_0,q4_k_xl", "ctx-size,n-predict,cache-type-k,cache-type-v"},
+    };
+
+    for (const Expected &e : expected) {
+        const QString id = QString::fromUtf8(e.id);
+        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), id);
+        QVERIFY2(profile, qPrintable(id));
+        QCOMPARE(profile->minBuild, QString::fromUtf8(e.minBuild));
+
+        QStringList quants;
+        for (const ModelProfiles::Quant &q : profile->files.quants)
+            quants.append(q.id);
+        QCOMPARE(quants.join(QLatin1Char(',')), QString::fromUtf8(e.quants));
+
+        // Exactly the one role this model serves — a stray second role means a
+        // profile was pasted from the wrong file.
+        QCOMPARE(profile->roles.keys(), QStringList{QString::fromUtf8(e.role)});
+
+        const ModelProfiles::Role *role = ModelProfiles::roleFor(*profile, QString::fromUtf8(e.role));
+        QVERIFY2(role, qPrintable(id));
+        QStringList launch;
+        for (const LaunchParameter &p : role->launch)
+            launch.append(p.name);
+        QCOMPARE(launch.join(QLatin1Char(',')), QString::fromUtf8(e.launch));
     }
 }
 
@@ -55,7 +113,6 @@ void TestModelPresetCatalog::mergeByUserPrecedence()
     override_.title = QStringLiteral("User-tuned Unlimited-OCR");
     override_.repo = QStringLiteral("user/override-repo");
     override_.model = QStringLiteral("model.gguf");
-    override_.parser = QStringLiteral("det_tokens");
     user << override_;
 
     ModelPreset added;
@@ -63,7 +120,6 @@ void TestModelPresetCatalog::mergeByUserPrecedence()
     added.title = QStringLiteral("New");
     added.repo = QStringLiteral("user/new-repo");
     added.model = QStringLiteral("new.gguf");
-    added.parser = QStringLiteral("det_tokens");
     user << added;
 
     QTemporaryDir dir;
@@ -73,7 +129,7 @@ void TestModelPresetCatalog::mergeByUserPrecedence()
     QVERIFY(ModelPresetCatalog::save(userPath, user, err));
     QVERIFY(err.isEmpty());
 
-    const QList<ModelPreset> merged = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
+    const QList<ModelPreset> merged = ModelPresetCatalog::load(ModelPresetCatalog::expand(ModelProfiles::instance()), userPath, err);
     QVERIFY(err.isEmpty());
 
     // The overridden id now carries the user's title/repo.
@@ -101,7 +157,6 @@ void TestModelPresetCatalog::importToJsonRoundTrips()
     p.revision = QStringLiteral("deadbeef");
     p.model = QStringLiteral("model-Q4_K_M.gguf");
     p.mmproj = QStringLiteral("mmproj.gguf");
-    p.parser = QStringLiteral("det_tokens");
     p.ctxSize = 4096;
     p.minBuild = QStringLiteral("b4000");
     p.license = QStringLiteral("apache-2.0");
@@ -129,7 +184,6 @@ void TestModelPresetCatalog::saveThenReset()
     p.id = QStringLiteral("one");
     p.repo = QStringLiteral("org/one");
     p.model = QStringLiteral("one.gguf");
-    p.parser = QStringLiteral("det_tokens");
     presets << p;
 
     QString err;
@@ -137,7 +191,7 @@ void TestModelPresetCatalog::saveThenReset()
     QVERIFY(QFile::exists(userPath));
 
     // The file round-trips: load() reads the two sources and returns `one`.
-    const QList<ModelPreset> loaded = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
+    const QList<ModelPreset> loaded = ModelPresetCatalog::load(ModelPresetCatalog::expand(ModelProfiles::instance()), userPath, err);
     QVERIFY(err.isEmpty());
     bool sawSaved = false;
     for (const ModelPreset &pp : loaded)
@@ -150,7 +204,7 @@ void TestModelPresetCatalog::saveThenReset()
     QVERIFY(!QFile::exists(userPath));
     err.clear();
     // After reset the user catalog is gone: load() only yields built-ins.
-    const QList<ModelPreset> afterReset = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), userPath, err);
+    const QList<ModelPreset> afterReset = ModelPresetCatalog::load(ModelPresetCatalog::expand(ModelProfiles::instance()), userPath, err);
     QVERIFY(err.isEmpty());
     bool hasOne = false;
     for (const ModelPreset &pp : afterReset)

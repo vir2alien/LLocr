@@ -9,6 +9,7 @@
 
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "runtime/InstalledReconcile.h"
 #include "runtime/LaunchProfileStore.h"
 #include "runtime/ModelInstaller.h"
@@ -128,14 +129,19 @@ void ModelInstaller::reloadPresetsInternal()
     const QString modelsDir = m_installState.paths().modelsDir();
 
     QString err;
-    m_presets = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInOcrPath), QDir(modelsDir).filePath(QStringLiteral("catalog.json")), err);
+    const QList<ModelPreset> all = ModelPresetCatalog::load(ModelPresetCatalog::expand(ModelProfiles::instance()), QDir(modelsDir).filePath(QStringLiteral("catalog.json")), err);
     if (!err.isEmpty())
         setStatusMessage(err);
 
-    QString validateErr;
-    m_presetsValidate = ModelPresetCatalog::load(QLatin1String(ModelPresetCatalog::kBuiltInValidatePath), QDir(modelsDir).filePath(QStringLiteral("catalogValidate.json")), validateErr);
-    if (!validateErr.isEmpty())
-        setStatusMessage(validateErr);
+    m_presets.clear();
+    m_presetsValidate.clear();
+    for (const ModelPreset &preset : all) {
+        const QString profileId = preset.profileId.isEmpty() ? preset.id : preset.profileId;
+        if (ModelProfiles::roleFor(profileId, QStringLiteral("ocr")))
+            m_presets.append(preset);
+        if (ModelProfiles::roleFor(profileId, QStringLiteral("check")))
+            m_presetsValidate.append(preset);
+    }
 
     emit presetsChanged();
 }
@@ -192,6 +198,7 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
         m_settings.setCheckLaunchModelPath(e.modelPath);
         if (!e.mmprojPath.isEmpty())
             m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
+        m_settings.selectModelProfile(e.repo, QStringLiteral("check"), true);
         m_settings.forceSave();
         publishInstalled();
         return QString();
@@ -200,6 +207,7 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
     m_settings.setLaunchModelPath(e.modelPath);
     if (!e.mmprojPath.isEmpty())
         m_settings.setLaunchMmprojPath(e.mmprojPath);
+    m_settings.selectModelProfile(e.repo, QStringLiteral("ocr"), false);
     m_settings.forceSave();
     publishInstalled();
     return QString();
@@ -276,7 +284,6 @@ QString ModelInstaller::removeModel(int index)
 
     QString saveErr;
     QList<ModelEntry> updated;
-    // Atomic read-modify-write (see ModelRegistry::update).
     if (!ModelRegistry::update(
             currentPaths.modelsDir(),
             [&updated, &e](QList<ModelEntry> &entries) {

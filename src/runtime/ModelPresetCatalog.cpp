@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QSaveFile>
 
+#include "runtime/ModelCatalog.h"
 #include "runtime/ModelPresetCatalog.h"
 
 namespace llocr {
@@ -80,22 +81,43 @@ QJsonArray ModelPresetCatalog::toArray(const QList<ModelPreset> &presets)
     return arr;
 }
 
-QList<ModelPreset> ModelPresetCatalog::load(const QString &builtInPath, const QString &userCatalogPath, QString &error)
+QString ModelPresetCatalog::entryId(const QString &profileId, const QString &quantId)
+{
+    return quantId.isEmpty() ? profileId : profileId + QLatin1Char('-') + quantId;
+}
+
+QList<ModelPreset> ModelPresetCatalog::expand(const QList<ModelProfiles::Profile> &profiles)
 {
     QList<ModelPreset> out;
-
-    QString builtinErr;
-    QList<ModelPreset> builtIn = readFile(builtInPath, QObject::tr("built-in preset catalog"), builtinErr, /*missingIsOk=*/false);
-    if (builtIn.isEmpty() && !builtinErr.isEmpty()) {
-        error = builtinErr;
-        return QList<ModelPreset>();
+    for (const ModelProfiles::Profile &profile : profiles) {
+        for (const ModelProfiles::Quant &quant : profile.files.quants) {
+            ModelPreset preset;
+            preset.id = entryId(profile.id, quant.id);
+            preset.profileId = profile.id;
+            preset.title = QStringLiteral("%1 (%2)").arg(profile.title, quant.id);
+            preset.repo = profile.files.repo;
+            preset.revision = profile.files.revision;
+            preset.model = quant.file;
+            preset.mmproj = profile.files.mmproj.file;
+            preset.minBuild = profile.minBuild;
+            preset.license = profile.license;
+            preset.ctxSize = 8192;
+            if (!quant.sha256.isEmpty())
+                preset.sha256.insert(ModelCatalog::leafName(quant.file), quant.sha256);
+            if (!profile.files.mmproj.sha256.isEmpty())
+                preset.sha256.insert(ModelCatalog::leafName(profile.files.mmproj.file), profile.files.mmproj.sha256);
+            if (!profile.files.mtp.sha256.isEmpty())
+                preset.sha256.insert(ModelCatalog::leafName(profile.files.mtp.file), profile.files.mtp.sha256);
+            out.append(preset);
+        }
     }
+    return out;
+}
 
+QList<ModelPreset> ModelPresetCatalog::load(const QList<ModelPreset> &builtIn, const QString &userCatalogPath, QString &error)
+{
     QString userErr;
-    QList<ModelPreset> user = readFile(userCatalogPath,
-                                       QObject::tr("user preset catalog"),
-                                       userErr,
-                                       /*missingIsOk=*/true);
+    const QList<ModelPreset> user = readFile(userCatalogPath, QObject::tr("user preset catalog"), userErr, /*missingIsOk=*/true);
 
     QList<ModelPreset> merged;
     QHash<QString, int> indexById;

@@ -86,9 +86,9 @@ launch args = platform ∪ policy ∪ model ∪ user
 
 ```
 resources/profiles/
-  serverLaunch.json        ← platform (os+backend) + policy, не пересекаются
+  serverLaunch.json        ← fallback + policy + platform: не пересекаются
   models/
-    unlimited-ocr.json     ← один файл на семейство моделей
+    unlimited-ocr.json     ← один файл на семейство: всё, что свойство весов
     lfm25-vl-3b.json
     qwen3.5-4b.json
   labels.json              ← базовый словарь label → style (без overrides)
@@ -97,6 +97,16 @@ resources/profiles/
 
 `labels.json` теряет секцию `overrides` — она переезжает в
 `roles.<role>.blocks.styles` профиля модели.
+
+**Отдельного каталога скачивания нет.** То, что раньше лежало в
+`defaultLlmPresetsOcr/Validate.json`, живёт в `files` профиля
+(`repo`, `revision`, `quants[]`, `mmproj`, `mtp`), а `ModelPresetCatalog::expand()`
+разворачивает семейство в записи — по одной на квант, с id
+`<profileId>-<quantId>`. `minBuild` и `license` копируются из профиля и нигде
+не повторяются. Конвейер установки и реестр получают тот же
+`QList<ModelPreset>`, что и раньше, и не тронуты.
+
+Пользовательский `models/catalog.json` остаётся отдельным — это дельты.
 
 ## 5. Формат профиля модели
 
@@ -107,18 +117,11 @@ resources/profiles/
   "schemaVersion": 1,
   "id": "unlimited-ocr",
   "title": "Unlimited-OCR",
+  "default": true,
   "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
   "minBuild": "b4000",
 
-  "files": {
-    "repo": "sahilchachra/Unlimited-OCR-GGUF",
-    "revision": "",
-    "quants": [
-      { "id": "q8_0",   "file": "Unlimited-OCR-Q8_0.gguf",   "sha256": "" },
-      { "id": "q4_k_m", "file": "Unlimited-OCR-Q4_K_M.gguf", "sha256": "" }
-    ],
-    "mmproj": { "id": "f16", "file": "mmproj-Unlimited-OCR-F16.gguf", "sha256": "" }
-  },
+  "files": { … },
 
   "roles": {
     "ocr": {
@@ -174,14 +177,19 @@ resources/profiles/
 Тогда `ctx-size` неоткуда взять, и llama-server подставит свой дефолт —
 **4096**, то есть катастрофа для страницы с таблицей.
 
-Нужен явный резервный набор и предупреждение в UI. Это не «единый набор для
-всех», а последний рубеж, применяемый только когда профиль модели не найден:
+Нужен явный резервный набор. Это не «единый набор для всех», а последний
+рубеж, применяемый **только когда профиль модели не найден**, и лежит он
+в `serverLaunch.json` — это свойство запуска сервера, а не модели:
 
 ```jsonc
-"fallback": { "ctx-size": 16384, "n-predict": 8192 }
+"fallback": { "parameters": [ { "name": "ctx-size", "value": 16384 },
+                              { "name": "n-predict", "value": 8192 } ] }
 ```
 
-UI: «Модель не из каталога — параметры запуска взяты из резервного набора».
+`LaunchProfileStore::compose()` добавляет его последним, когда модельный слой
+пуст. Раньше та же идея была в каждом профиле (`fallback.launch`), но там она
+не срабатывала: ветка «профиль не найден» возвращала пустой список, и
+`ctx-size` до сервера не доходил.
 
 ## 6. Профиль без роли: `roles.check` без `prompts`
 
@@ -286,15 +294,39 @@ launch-параметров становится правильным тольк
 - Правки CMake: один список `LLOCR_MODEL_PROFILE_FILES` на тесты вместо
   пяти дублирований — **находка #6 закрыта для профилей моделей**.
 
-### Шаг 4. Роли, alias, миграция настроек
+### Шаг 4. Роли, alias, миграция настроек ✅
 
-- `defaultLlmPresetsValidate.json` → `roles.check`; один каталог, фильтр по роли.
-- `alias` в профиль; per-role настройка либо отказ от хранения alias.
-- `model/recipeId` + `model/requestProfileId` + `check/requestProfileId` +
-  `launch/profileId` + `check/launchProfileId` → `ocr/profileId` +
-  `check/profileId`. Миграция в `applyStartupMigration()` — осторожно, ADR 83
-  уже показал, как неаккуратная запись стирает настройки.
-- Проверка `minBuild` на старте (находка 5).
+- `defaultLlmPresetsOcr.json` + `defaultLlmPresetsValidate.json` →
+  один `defaultLlmPresets.json`. Роль записи не хранится: она берётся из
+  профиля модели через `profileId`. Модель, работающая в двух ролях,
+  указана один раз и предлагается в обоих окнах.
+- Позже каталог и сам исчез: `files` переехал в профиль, записи разворачивает
+  `ModelPresetCatalog::expand()`. `parser` уехал туда же — он тоже свойство
+  роли, а не записи; `ModelPreset::parserFor()` читает его из профиля в момент
+  установки. Итог: `defaultLlmPresets.json` удалён, в `profiles/` осталось
+  четыре файла.
+- `alias` приходит из `roles.<role>.alias` профиля, настройка
+  `launch/modelAlias` удалена — **находка #7 закрыта**. `ResolvedConnection`
+  берёт alias того сервера, который реально запущен.
+- Проверка `minBuild` в `RuntimeController::modelBuildError()`: профиль
+  с `minBuild: b8000` на сборке `b5000` больше не запускается молча —
+  **находка #5 закрыта**.
+- `check/requestProfileId` по умолчанию резолвится в первую check-модель
+  каталога, ключ остаётся незаписанным до явного выбора. Таблица дефолтов
+  `SettingsStore` стала ленивой (`defaultTable()`), потому что значение
+  считается из каталога, а он живёт в ресурсе.
+- Миграция чистит `check/launchProfileId` и `launch/modelAlias`.
+- **Находка #8 закрыта**: id пресетов без расширения
+  (`unlimited-ocr-q4_k_m`, `qwen3.5-4b-q4_k_xl`).
+
+### Что осталось открытым
+
+- `model/recipeId` и `model/requestProfileId` остались раздельными
+  (ADR 110): профиль запроса по-прежнему можно указать отличным от модели,
+  и пользовательская копия `request.json` накладывается поверх. Схлопывать
+  их в один `ocr/profileId` не стал — это отменило бы решение ADR 110.
+- `ParserOptions::modelId` по-прежнему берётся из `modelRecipeId`; это
+  совпадает с id профиля, отдельной настройки не требует.
 
 ## 9. Чего рефакторинг не даёт
 

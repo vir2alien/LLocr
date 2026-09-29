@@ -354,8 +354,6 @@ qt_add_resources(llocr "app_profiles"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsOcr.json"
-        "${CMAKE_SOURCE_DIR}/resources/profiles/defaultLlmPresetsValidate.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )
 

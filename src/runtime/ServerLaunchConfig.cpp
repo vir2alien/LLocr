@@ -2,6 +2,7 @@
 #include "runtime/ServerLaunchConfig.h"
 
 #include "config/SettingsStore.h"
+#include "core/ModelProfiles.h"
 #include "runtime/LaunchProfileStore.h"
 #include "runtime/ServerCapabilities.h"
 
@@ -25,7 +26,8 @@ ServerLaunchConfig ServerLaunchConfig::fromSettings(const SettingsStore &s, cons
         modelId = s.modelRecipeId();
         roleName = QStringLiteral("ocr");
     }
-    cfg.modelAlias = s.launchModelAlias();
+    if (const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(modelId, roleName))
+        cfg.modelAlias = modelRole->alias;
     cfg.host = s.launchHost();
     cfg.port = s.launchPort();
     cfg.parameters = launchProfiles.activeProfile(modelId, roleName).parameters;

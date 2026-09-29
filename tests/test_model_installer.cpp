@@ -294,7 +294,7 @@ private slots:
             return -1;
         };
         const int q8Preset = findPreset(QStringLiteral("unlimited-ocr-q8_0"));
-        const int q4Preset = findPreset(QStringLiteral("unlimited-ocr-q4_k_m.gguf"));
+        const int q4Preset = findPreset(QStringLiteral("unlimited-ocr-q4_k_m"));
         QVERIFY(q8Preset >= 0);
         QVERIFY(q4Preset >= 0);
 
@@ -534,6 +534,60 @@ private slots:
         QCOMPARE(installer.installedCount(), 0);
         QVERIFY2(installer.statusMessage().contains(QStringLiteral("no longer")), qPrintable(installer.statusMessage()));
         QVERIFY2(installer.statusMessage().contains(QStringLiteral("ocr-Q4_K_M.gguf")), qPrintable(installer.statusMessage()));
+    }
+
+    // Activating a model has to move the profile with it: the check model runs
+    // with the launch parameters of the family it belongs to, and picking an
+    // installed GGUF that no longer left the previous family's profile in place
+    // is what put Unlimited-OCR's flags on a Qwen server.
+    void activatingAModelSelectsItsFamilyProfile()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
+
+        ModelEntry qwen;
+        const QString qwenDir = QDir(modelsDir).filePath(QStringLiteral("unsloth__Qwen3.5-4B-MTP-GGUF"));
+        QVERIFY(QDir().mkpath(qwenDir));
+        qwen.id = QStringLiteral("unsloth__Qwen3.5-4B-MTP-GGUF");
+        qwen.repo = QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF");
+        qwen.dir = qwenDir;
+        qwen.modelPath = writeGguf(qwenDir, QStringLiteral("Qwen3.5-4B-UD-Q4_K_XL.gguf"));
+        qwen.mmprojPath = writeGguf(qwenDir, QStringLiteral("mmproj-F16.gguf"));
+        qwen.origin = ModelOrigin::Managed;
+
+        ModelEntry lfm = qwen;
+        const QString lfmDir = QDir(modelsDir).filePath(QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF"));
+        QVERIFY(QDir().mkpath(lfmDir));
+        lfm.id = QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF");
+        lfm.repo = QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF");
+        lfm.dir = lfmDir;
+        lfm.modelPath = writeGguf(lfmDir, QStringLiteral("LFM2.5-VL-3B-Q8_0.gguf"));
+        lfm.mmprojPath = writeGguf(lfmDir, QStringLiteral("mmproj-LFM2.5-VL-3B-F16.gguf"));
+
+        QVERIFY(!qwen.modelPath.isEmpty() && !lfm.modelPath.isEmpty());
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {qwen, lfm}, err), qPrintable(err));
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        settings.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        LaunchProfileStore launchProfiles(settings);
+        InstalledState installed(settings);
+        RuntimeController runtime(settings, launchProfiles);
+        ModelInstaller installer(settings, runtime, installed);
+
+        QVERIFY(installer.setActiveModel(0, true).isEmpty());
+        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+
+        // The same family does not answer the ocr role, so the ocr selection
+        // stays where it was rather than following the file.
+        QVERIFY(installer.setActiveModel(0, false).isEmpty());
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("unlimited-ocr"));
+
+        QVERIFY(installer.setActiveModel(1, false).isEmpty());
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
     }
 };
 

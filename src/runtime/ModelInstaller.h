@@ -75,8 +75,6 @@ public:
     QString checkActiveTitle() const;
 
     Q_INVOKABLE void reloadPresets();
-    // `index` is an index into the installer's own list, as `sourceIndex()` of
-    // the corresponding list model produces.
     Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);
     Q_INVOKABLE QString removeModel(int index);
     Q_INVOKABLE QString openModelFolder(int index);

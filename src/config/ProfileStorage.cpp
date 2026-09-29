@@ -78,12 +78,9 @@ QJsonDocument readEnvelope(const QString &path, int expectedSchemaVersion, const
 
     const int version = doc.object().value(QLatin1String(kSchemaVersionKey)).toInt(-1);
     if (version < 0) {
-        // A hand-written file with no version: read it, but say so.
         if (error)
             *error = QStringLiteral("no schemaVersion");
     } else if (version > expectedSchemaVersion) {
-        // A newer build wrote this. Applying what can be parsed beats discarding
-        // the user's overrides, but it must not be silent.
         if (error) {
             *error = QStringLiteral("%1: schema version %2 is newer than the supported %3").arg(storeName).arg(version).arg(expectedSchemaVersion);
         }

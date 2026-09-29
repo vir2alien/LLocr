@@ -183,6 +183,7 @@ ApplicationWindow {
 
             LaunchTab {
                 id: launchTab
+                role: window.role
                 runtimeSettingsRef: window.runtimeSettingsRef
             }
 

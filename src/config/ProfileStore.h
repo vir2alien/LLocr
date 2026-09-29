@@ -81,6 +81,23 @@ public:
         return true;
     }
 
+    int dropUserProfiles(const std::function<bool(const QString &, const T &)> &reject)
+    {
+        QHash<QString, T> kept;
+        int dropped = 0;
+        for (auto it = m_userProfiles.constBegin(); it != m_userProfiles.constEnd(); ++it) {
+            if (reject(it.key(), it.value()))
+                ++dropped;
+            else
+                kept.insert(it.key(), it.value());
+        }
+        if (dropped == 0)
+            return 0;
+        m_userProfiles = kept;
+        persistUserProfiles();
+        return dropped;
+    }
+
     void resetToBuiltIn()
     {
         if (m_userProfiles.isEmpty())

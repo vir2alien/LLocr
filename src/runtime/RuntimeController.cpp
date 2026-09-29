@@ -18,6 +18,7 @@
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
 #include "core/LaunchProfile.h"
+#include "core/ModelProfiles.h"
 #include "runtime/HttpClient.h"
 #include "runtime/InstalledState.h"
 #include "runtime/LaunchProfileStore.h"
@@ -97,9 +98,6 @@ QString RuntimeController::orphanInfo() const
 
 void RuntimeController::scanForOrphanedServer()
 {
-    // Always re-read: the scan is a small file read plus a liveness probe, and
-    // the record can appear or expire between two calls (the user may also have
-    // killed the process). The signal fires only when the verdict changes.
     const RuntimePaths paths = m_installedState ? m_installedState->paths() : currentPaths();
     const QString ownerPath = QDir(paths.runtimeDir()).filePath(QStringLiteral("owner.json"));
     m_orphanJsonPath = ownerPath;
@@ -119,7 +117,6 @@ QString RuntimeController::terminateOrphan()
 {
     if (!m_orphan.isValid())
         return tr("No orphaned server to terminate");
-    // Re-validate: the pid may have exited or been recycled since the scan.
     if (!ServerOwner::isOrphan(m_orphan))
         return tr("The orphaned server is already gone");
     if (!ProcessGuard::terminateProcess(m_orphan.pid))
@@ -167,8 +164,6 @@ void RuntimeController::setState(RuntimeState next)
     if (m_state == next)
         return;
     m_state = next;
-    // Nothing is running, so there is nothing to restart: the next start picks
-    // the current settings up by definition.
     if (next != RuntimeState::Starting && next != RuntimeState::Ready) {
         m_hasStartedConfig = false;
         if (m_launchConfigDirty) {
@@ -206,8 +201,6 @@ void RuntimeController::setLoadProgressPercent(int pct)
 void RuntimeController::recomputeConfigValid()
 {
     const QString program = m_settings.serverPath().trimmed();
-    // A configured path is not a working one: the wizard used to advance on a
-    // non-empty string and the start then failed with «File not found».
     const bool serverOk = !program.isEmpty() && QFileInfo(program).isFile();
     const QString model = m_settings.launchModelPath().trimmed();
     const bool modelOk = !model.isEmpty() && QFileInfo(model).isFile();
@@ -228,9 +221,6 @@ void RuntimeController::recomputeConfigValid()
 
 void RuntimeController::recomputeLaunchConfigDirty()
 {
-    // Compare the configuration the live server was started with against the one
-    // the current settings produce — the same object that becomes the process
-    // arguments, so the two can never disagree about what "changed" means.
     ServerLaunchConfig current = ServerLaunchConfig::fromSettings(m_settings, m_launchProfiles, m_startedRole);
     current.program = m_settings.serverPath().trimmed();
     const bool dirty = m_hasStartedConfig && current != m_startedConfig;
@@ -274,6 +264,8 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
         return QString();
 
     const QString model = roleModelPath(role);
+    if (const QString buildError = modelBuildError(role); !buildError.isEmpty())
+        return buildError;
     if (role == ConnectionRole::Check) {
         if (model.isEmpty())
             return tr("Check model is not selected — pick a model in Settings → Check model");
@@ -289,6 +281,27 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
     if (!QFileInfo(model).isFile())
         return tr("Model file not found: %1 — re-select the model in Settings → Models").arg(model);
     return QString();
+}
+
+QString RuntimeController::modelBuildError(ConnectionRole role) const
+{
+    const QString modelId = role == ConnectionRole::Check ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
+    const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(modelId, role == ConnectionRole::Check ? QStringLiteral("check") : QStringLiteral("ocr"));
+    const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), modelId);
+    const QString minBuild = profile ? profile->minBuild : QString();
+    if (minBuild.isEmpty())
+        return QString();
+
+    ProbeResult probe;
+    RuntimeLocator::cachedProbe(m_settings.serverPath(), currentPaths().cacheDir(), probe);
+    if (!probe.ok || !probe.capabilities.ok)
+        return QString();  // the binary says nothing; the start reports that
+    if (probe.capabilities.build.compare(minBuild, Qt::CaseInsensitive) >= 0)
+        return QString();
+
+    return tr("%1 needs llama.cpp %2 or newer (this build is %3) — update the "
+              "runtime in Settings → Runtime")
+        .arg(modelRole ? modelRole->alias : modelId, minBuild, probe.capabilities.build);
 }
 
 bool RuntimeController::canRecognize(bool documentLoaded) const
@@ -341,7 +354,6 @@ void RuntimeController::ensureConnectionReady(QObject *context, ConnectionRole r
     pending.onResolved = onResolved;
 
     if (m_resolveInProgress) {
-        // The in-flight resolve produces a connection for m_resolveRole only.
         auto &queue = role == m_resolveRole ? m_resolveCallbacks : m_deferredResolves;
         queue.push_back(std::move(pending));
         return;
@@ -351,7 +363,6 @@ void RuntimeController::ensureConnectionReady(QObject *context, ConnectionRole r
     startResolveForRole(role);
 }
 
-// Drives the resolve for the batch currently held in m_resolveCallbacks.
 void RuntimeController::startResolveForRole(ConnectionRole role)
 {
     m_resolveInProgress = true;
@@ -434,13 +445,9 @@ void RuntimeController::completeResolve(ResolvedConnection conn)
     m_resolveCallbacks.clear();
     deliverCallbacks(callbacks, conn);
 
-    // A callback may itself have asked for a connection; that resolve is now in
-    // flight and must not be clobbered. The queued other-role requests then
-    // simply wait for its completion.
     if (m_resolveInProgress || m_deferredResolves.empty())
         return;
 
-    // Promote the oldest deferred batch (one role) and give it its own dispatch.
     const ConnectionRole nextRole = m_deferredResolves.front().role;
     for (const auto &cb : std::as_const(m_deferredResolves)) {
         if (cb.role == nextRole)
@@ -513,7 +520,13 @@ ResolvedConnection RuntimeController::buildManagedConnection() const
     url.setPort(port);
     conn.baseUrl = url.toString();
     conn.apiKey.clear();  // Managed server is loopback-only, no auth
-    conn.modelId = m_settings.launchModelAlias().isEmpty() ? QStringLiteral("llocr-local") : m_settings.launchModelAlias();
+    if (!m_startedConfig.modelAlias.isEmpty())
+        conn.modelId = m_startedConfig.modelAlias;
+    else if (const ModelProfiles::Role *role = ModelProfiles::roleFor(m_startedRole == ConnectionRole::Check ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId(),
+                                                                      m_startedRole == ConnectionRole::Check ? QStringLiteral("check") : QStringLiteral("ocr")))
+        conn.modelId = role->alias;
+    if (conn.modelId.isEmpty())
+        conn.modelId = QStringLiteral("llocr-local");
     conn.timeoutMs = m_settings.connectionTimeoutMs();
     return conn;
 }
@@ -660,8 +673,6 @@ void RuntimeController::finishStartServer(ConnectionRole role, const QString &pr
 {
     if (!probe.ok) {
         setStatusMessage(probe.error);
-        // A resolve that is waiting for this start must fail with it; a start
-        // requested from the UI (Start/Restart button) only reports it.
         if (m_resolveInProgress) {
             setBusyState(AppBusyState::Idle);
             failResolve(probe.error);
@@ -776,9 +787,6 @@ void RuntimeController::restartServer()
 
 QString RuntimeController::probeRuntimePath(const QString &path)
 {
-    // Same reasoning as startServer(): the probe waits for a child process and
-    // must not block the GUI thread. The summary lands in statusMessage when
-    // the probe finishes; the QML call sites ignore the return value.
     const QString program = path.trimmed();
     if (program.isEmpty()) {
         const QString empty = QObject::tr("No server binary selected");
@@ -851,12 +859,9 @@ void RuntimeController::cancelPendingStart()
         return;
 
     setBusyState(AppBusyState::Idle);
-    // Invalidate an in-flight probe: it must not start the server after a Stop.
     ++m_startGeneration;
     const QString message = tr("Server start cancelled");
 
-    // Drop the queued other-role requests first: a cancel must not let them
-    // start (or switch to) the server right after the user pressed Stop.
     const auto deferred = std::move(m_deferredResolves);
     m_deferredResolves.clear();
 

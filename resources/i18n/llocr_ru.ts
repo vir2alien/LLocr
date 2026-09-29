@@ -853,8 +853,16 @@
     </message>
     <message>
         <location line="+16"/>
-        <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings</source>
-        <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска</translation>
+        <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows are the shared server policy and apply to every model on this machine.</source>
+        <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки — общая политика сервера, она действует для любой модели на этой машине</translation>
+    </message>
+    <message>
+        <source>This model is not in the catalog, so its launch parameters come from the fallback set instead of the model&apos;s own. The context window may be wrong for it — check the log if a page comes out truncated.</source>
+        <translation>Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора, а не из её собственных. Размер контекста может ей не подходить — если страница обрезается, посмотрите журнал</translation>
+    </message>
+    <message>
+        <source>This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.</source>
+        <translation>Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора. Если страница обрезается, прежде всего стоит проверить размер контекста</translation>
     </message>
     <message>
         <location line="+16"/>

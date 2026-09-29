@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QSet>
 
 #include "config/ProfileStore.h"
 #include "config/RuntimePaths.h"
@@ -23,39 +24,52 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
 {
     m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(kUserFileName));
 
-    QString policyError;
+    QString readError;
     QJsonParseError parseError{};
     QFile builtIn(builtInPath);
     if (builtIn.open(QIODevice::ReadOnly)) {
         const QJsonDocument doc = QJsonDocument::fromJson(builtIn.readAll(), &parseError);
-        if (parseError.error == QJsonParseError::NoError && doc.isObject())
-            m_policy = LaunchProfile::parsePolicy(doc.object(), policyError);
+        if (parseError.error == QJsonParseError::NoError && doc.isObject()) {
+            m_policy = LaunchProfile::parsePolicy(doc.object(), readError);
+            if (readError.isEmpty())
+                m_fallback = LaunchProfile::parseFallback(doc.object(), readError);
+        } else {
+            readError = parseError.errorString();
+        }
     } else {
-        policyError = builtIn.errorString();
+        readError = builtIn.errorString();
     }
-    if (!policyError.isEmpty())
-        qWarning("LaunchProfileStore: cannot load the launch policy %s: %s", qUtf8Printable(builtInPath), qUtf8Printable(policyError));
-    else if (parseError.error != QJsonParseError::NoError)
-        qWarning("LaunchProfileStore: cannot read the launch profiles %s: %s", qUtf8Printable(builtInPath), qUtf8Printable(parseError.errorString()));
+    if (!readError.isEmpty())
+        qWarning("LaunchProfileStore: cannot load the launch profiles %s: %s", qUtf8Printable(builtInPath), qUtf8Printable(readError));
 
     m_model->setLockedPrefix(m_policy.size());
 
-    // The check role used to keep its own user copy. Its rows are a subset of
-    // what the merged file now provides, so an existing copy is adopted as the
-    // starting point rather than discarded without a word.
-    const QString userPath = m_profiles->userPath();
-    if (!QFile::exists(userPath)) {
-        const QString legacy = QFileInfo(userPath).absoluteDir().filePath(kLegacyCheckFileName);
-        if (QFile::exists(legacy)) {
-            m_profiles->setUserPath(legacy);
-            m_profiles->reloadUserProfiles();
-            m_profiles->setUserPath(userPath);
-        }
-    } else {
-        m_profiles->reloadUserProfiles();
+    m_profiles->reloadUserProfiles();
+
+    QSet<QString> known;
+    for (const LaunchParameter &p : m_policy)
+        known.insert(p.name);
+    for (const LaunchProfile &preset : m_profiles->builtIn()) {
+        for (const LaunchParameter &p : preset.parameters)
+            known.insert(p.name);
     }
+    const int dropped = m_profiles->dropUserProfiles([&known](const QString &, const LaunchProfile &profile) {
+        for (const LaunchParameter &p : profile.parameters) {
+            if (!known.contains(p.name))
+                return true;
+        }
+        return false;
+    });
+    if (dropped > 0)
+        qWarning("LaunchProfileStore: %d user launch profile(s) carried parameters the layers no longer own (they now come from the model); the stale rows were dropped", dropped);
+
+    const QString legacy = QFileInfo(m_profiles->userPath()).absoluteDir().filePath(kLegacyCheckFileName);
+    if (QFile::exists(legacy) && !QFile::remove(legacy))
+        qWarning("LaunchProfileStore: cannot remove the obsolete %s", qUtf8Printable(legacy));
 
     connect(&m_settings, &SettingsStore::runtimeBackendChanged, this, &LaunchProfileStore::ensureProfileResolved);
+    connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, &LaunchProfileStore::profileChanged);
+    connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, &LaunchProfileStore::profileChanged);
     ensureProfileResolved();
     reloadDraft();
 }
@@ -98,23 +112,24 @@ LaunchProfile LaunchProfileStore::compose(const LaunchProfile &profile, const QS
     LaunchProfile out = profile;
 
     QList<LaunchParameter> combined = m_policy + profile.parameters;
-    for (const LaunchParameter &p : ModelProfiles::launchFor(m_modelProfiles, modelId, role)) {
-        bool replaced = false;
-        for (LaunchParameter &existing : combined) {
-            if (existing.name == p.name) {
-                existing = p;
-                replaced = true;
-                break;
+    if (!modelId.isEmpty()) {
+        const QList<LaunchParameter> modelLayer = ModelProfiles::launchFor(m_modelProfiles, modelId, role);
+        for (const LaunchParameter &p : modelLayer) {
+            bool replaced = false;
+            for (LaunchParameter &existing : combined) {
+                if (existing.name == p.name) {
+                    existing = p;
+                    replaced = true;
+                    break;
+                }
             }
+            if (!replaced)
+                combined.append(p);
         }
-        if (!replaced)
-            combined.append(p);
+        if (modelLayer.isEmpty())
+            combined += m_fallback;
     }
 
-    // The layers are concatenated in a fixed order and renumbered, so a row
-    // keeps its layer. Sorting on the per-layer `order` alone would interleave
-    // them (policy order 1 next to platform order 1) and the policy rows would
-    // stop being a contiguous read-only prefix of the draft.
     out.parameters = combined;
     int order = 1;
     for (LaunchParameter &parameter : out.parameters)
@@ -159,11 +174,27 @@ QString LaunchProfileStore::activeProfileId() const
 void LaunchProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &profiles)
 {
     m_modelProfiles = profiles;
+    emit profileChanged();
+}
+
+bool LaunchProfileStore::modelLayerMissing(const QString &modelId, const QString &role) const
+{
+    return ModelProfiles::launchFor(m_modelProfiles, modelId, role).isEmpty();
+}
+
+bool LaunchProfileStore::modelProfileMissing() const
+{
+    return modelLayerMissing(m_settings.modelRecipeId(), QStringLiteral("ocr"));
+}
+
+bool LaunchProfileStore::checkModelProfileMissing() const
+{
+    return modelLayerMissing(m_settings.checkRequestProfileId(), QStringLiteral("check"));
 }
 
 LaunchProfile LaunchProfileStore::activeProfile() const
 {
-    return activeProfile(m_settings.modelRecipeId());
+    return activeProfile(m_settings.modelRecipeId(), QStringLiteral("ocr"));
 }
 
 LaunchProfile LaunchProfileStore::activeProfile(const QString &modelId, const QString &role) const

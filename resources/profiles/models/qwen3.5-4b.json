@@ -4,32 +4,94 @@
   "title": "Qwen3.5-4B",
   "license": "https://huggingface.co/unsloth/Qwen3.5-4B-MTP-GGUF",
   "minBuild": "b4000",
-  "fallback": {
-    "launch": [
-      { "order": 1, "name": "ctx-size",  "value": 16384, "description": "Model context window in tokens (prompt + output)." },
-      { "order": 2, "name": "n-predict", "value": 8192,  "description": "Maximum tokens to generate per completion." }
+  "files": {
+    "repo": "unsloth/Qwen3.5-4B-MTP-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q8_0",
+        "file": "Qwen3.5-4B-Q8_0.gguf",
+        "sha256": ""
+      },
+      {
+        "id": "q4_k_xl",
+        "file": "Qwen3.5-4B-UD-Q4_K_XL.gguf",
+        "sha256": ""
+      }
     ],
-    "request": [
-      { "order": 1, "name": "temperature", "value": 0.0, "description": "Sampling randomness; 0 = deterministic greedy decoding." }
-    ]
+    "mmproj": {
+      "id": "f16",
+      "file": "mmproj-F16.gguf",
+      "sha256": ""
+    }
   },
   "roles": {
     "check": {
       "alias": "llocr-verify",
       "maxOutput": 8192,
       "launch": [
-        { "order": 1, "name": "ctx-size",     "value": 16384, "description": "Model context window in tokens (prompt + output)." },
-        { "order": 2, "name": "n-predict",    "value": 8192,  "description": "Maximum tokens to generate per completion." },
-        { "order": 3, "name": "cache-type-k", "value": "q8_0", "description": "KV cache data type for K; the verifier does not need OCR-grade f32." },
-        { "order": 4, "name": "cache-type-v", "value": "q8_0", "description": "KV cache data type for V; the verifier does not need OCR-grade f32." }
+        {
+          "order": 1,
+          "name": "ctx-size",
+          "value": 16384,
+          "description": "Model context window in tokens (prompt + output)."
+        },
+        {
+          "order": 2,
+          "name": "n-predict",
+          "value": 8192,
+          "description": "Maximum tokens to generate per completion."
+        },
+        {
+          "order": 3,
+          "name": "cache-type-k",
+          "value": "q8_0",
+          "description": "KV cache data type for K; the verifier does not need OCR-grade f32."
+        },
+        {
+          "order": 4,
+          "name": "cache-type-v",
+          "value": "q8_0",
+          "description": "KV cache data type for V; the verifier does not need OCR-grade f32."
+        }
       ],
       "request": [
-        { "order": 1, "name": "temperature",       "value": 0.0,  "description": "Sampling randomness; 0 = deterministic greedy decoding." },
-        { "order": 2, "name": "repeat_penalty",    "value": 1.0,  "description": "Penalty for repeating tokens; 1.0 disables it." },
-        { "order": 3, "name": "presence_penalty",  "value": 0.0,  "description": "Penalty for tokens already present in the prompt; 0 disables it." },
-        { "order": 4, "name": "frequency_penalty", "value": 0.0,  "description": "Penalty proportional to token frequency; 0 disables it." },
-        { "order": 5, "name": "stream",            "value": false, "description": "Stream tokens as they arrive; false gives the parser one complete response." },
-        { "order": 6, "name": "cache_prompt",      "value": true, "description": "Cache the prompt (image embeddings, system message) between blocks." }
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 3,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 6,
+          "name": "cache_prompt",
+          "value": true,
+          "description": "Cache the prompt (image embeddings, system message) between blocks."
+        }
       ]
     }
   }

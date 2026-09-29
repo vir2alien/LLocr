@@ -22,6 +22,7 @@ constexpr const char *kOrderKey = "order";
 constexpr const char *kValueKey = "value";
 constexpr const char *kParametersKey = "parameters";
 constexpr const char *kPolicyKey = "policy";
+constexpr const char *kFallbackKey = "fallback";
 
 }  // namespace
 
@@ -58,11 +59,6 @@ bool LaunchProfile::operator==(const LaunchProfile &other) const
 
 LaunchProfile LaunchProfile::merge(const LaunchProfile &defaults, const LaunchProfile &user)
 {
-    // The launch store's user copy *replaces* the parameter set — that is what
-    // makes «remove this row» work — while the descriptive fields stay the
-    // built-in's: they describe the preset, and an override file has no
-    // business changing them. (The request store merges parameter-wise; the two
-    // stores genuinely differ here, which is why the policy lives on the type.)
     LaunchProfile out = user;
     out.id = defaults.id.isEmpty() ? user.id : defaults.id;
     out.name = defaults.name.isEmpty() ? user.name : defaults.name;
@@ -130,19 +126,14 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder, LaunchParameter &
     return true;
 }
 
-}  // namespace
-
-QList<LaunchParameter> LaunchProfile::parsePolicy(const QJsonObject &root, QString &error)
+QList<LaunchParameter> readParameters(const QJsonArray &array, QString &error, const QString &what)
 {
-    const QJsonObject policy = root.value(QLatin1String(kPolicyKey)).toObject();
-    const QJsonArray parameters = policy.value(QLatin1String(kParametersKey)).toArray();
-
     QList<LaunchParameter> out;
     QSet<QString> names;
     int fallbackOrder = 1;
-    for (const QJsonValue &value : parameters) {
+    for (const QJsonValue &value : array) {
         if (!value.isObject()) {
-            error = QObject::tr("Launch policy parameter is not an object");
+            error = QObject::tr("%1 parameter is not an object").arg(what);
             return {};
         }
         LaunchParameter parameter;
@@ -150,13 +141,25 @@ QList<LaunchParameter> LaunchProfile::parsePolicy(const QJsonObject &root, QStri
             return {};
         fallbackOrder = parameter.order + 1;
         if (names.contains(parameter.name)) {
-            error = QObject::tr("Launch policy has a duplicate parameter: %1").arg(parameter.name);
+            error = QObject::tr("%1 has a duplicate parameter: %2").arg(what, parameter.name);
             return {};
         }
         names.insert(parameter.name);
         out.append(parameter);
     }
     return out;
+}
+
+}  // namespace
+
+QList<LaunchParameter> LaunchProfile::parseFallback(const QJsonObject &root, QString &error)
+{
+    return readParameters(root.value(QLatin1String(kFallbackKey)).toObject().value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Launch fallback"));
+}
+
+QList<LaunchParameter> LaunchProfile::parsePolicy(const QJsonObject &root, QString &error)
+{
+    return readParameters(root.value(QLatin1String(kPolicyKey)).toObject().value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Launch policy"));
 }
 
 QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root, QString &error)

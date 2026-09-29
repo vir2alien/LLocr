@@ -8,6 +8,7 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
 #include "core/ModelProfiles.h"
 #include "runtime/LaunchProfileStore.h"
@@ -51,6 +52,10 @@ constexpr const char *kEmptyCatalog = R"({ "schemaVersion": 1, "profiles": [] })
 constexpr const char *kLayeredPresetsJson = R"({
     "schemaVersion": 1,
     "policy": { "parameters": [ { "order": 1, "name": "parallel", "value": 1 } ] },
+    "fallback": { "parameters": [
+        { "order": 1, "name": "ctx-size", "value": 16384 },
+        { "order": 2, "name": "n-predict", "value": 8192 }
+    ] },
     "profiles": [
         { "id": "cpu", "name": "CPU", "backend": "cpu",
           "parameters": [ { "order": 1, "name": "flash-attn", "value": "off" } ] }
@@ -275,11 +280,19 @@ private slots:
         QVERIFY(lfm.find(QStringLiteral("flash-attn")) != nullptr);
         QVERIFY(lfm.find(QStringLiteral("parallel")) != nullptr);
 
-        // A model with no profile at all (a hand-picked GGUF) still gets a
-        // context window from the built-in fallback: llama.cpp's own default is
-        // 4096, which truncates a page with a table.
+        // A model with no profile at all — a hand-picked GGUF — still gets a
+        // context window, from the global fallback in serverLaunch.json. Left to
+        // llama.cpp its own default is 4096, which truncates a page with a
+        // table, and the user has no way to see that it happened.
         const LaunchProfile unknown = store.activeProfile(QStringLiteral("some-other-model"), QStringLiteral("ocr"));
-        QVERIFY(unknown.find(QStringLiteral("ctx-size")) == nullptr);
+        QVERIFY(unknown.find(QStringLiteral("ctx-size")) != nullptr);
+        QCOMPARE(unknown.find(QStringLiteral("ctx-size"))->value.toDouble(), 16384.0);
+        QVERIFY(unknown.find(QStringLiteral("n-predict")) != nullptr);
+        // The fallback is last resort only: it does not leak into a model that
+        // has a profile, and it does not shadow the platform or policy layers.
+        QVERIFY(unknown.find(QStringLiteral("parallel")) != nullptr);
+        QVERIFY(unknown.find(QStringLiteral("flash-attn")) != nullptr);
+        QVERIFY(unknown.find(QStringLiteral("image-min-tokens")) == nullptr);
     }
 
     // A model answers one role; asking it for another must not hand over the
@@ -312,11 +325,103 @@ private slots:
         QCOMPARE(check.find(QStringLiteral("cache-type-k"))->value.toString(), QStringLiteral("q8_0"));
         QCOMPARE(check.find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
 
-        // Asking the same model for the ocr role falls back rather than
-        // silently reusing the check role's rows.
+        // Asking the same model for the ocr role does not hand over the check
+        // role's rows — the model simply does not answer that role, and the
+        // global fallback covers the ground instead.
         const LaunchProfile ocr = store.activeProfile(QStringLiteral("qwen3.5-4b"), QStringLiteral("ocr"));
         QVERIFY(ocr.find(QStringLiteral("cache-type-k")) == nullptr);
-        QCOMPARE(ocr.find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
+        QVERIFY(ocr.find(QStringLiteral("cache_prompt")) == nullptr);
+        QCOMPARE(ocr.find(QStringLiteral("ctx-size"))->value.toDouble(), 16384.0);
+
+        // The notice asks the same question the composition does, per role: the
+        // model is in the catalog, but not for this one.
+        settings.setModelRecipeId(QStringLiteral("qwen3.5-4b"));
+        settings.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        QVERIFY(store.modelProfileMissing());
+        QVERIFY(!store.checkModelProfileMissing());
+    }
+
+    // The notice the UI shows when the fallback is in play. Without it the
+    // difference between the model's own 16384 and the fallback's is invisible.
+    void fallbackIsReportedWhenTheModelIsUnknown()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kLayeredPresetsJson);
+        const QString modelDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+        QVERIFY(QDir().mkpath(modelDir));
+        QFile file(QDir(modelDir).filePath(QStringLiteral("unlimited-ocr.json")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(QByteArray(kUnlimitedProfileJson));
+        file.close();
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath(QStringLiteral("modelsDir")));
+        LaunchProfileStore store(settings, presetsPath);
+
+        // Nothing loaded yet: every model is unknown, and the store says so
+        // rather than silently serving the fallback.
+        QVERIFY(store.modelProfileMissing());
+
+        QString error;
+        store.setModelProfiles(ModelProfiles::loadFrom(modelDir, error));
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        QVERIFY(!store.modelProfileMissing());
+        // The check role has no profile at all — it is a different model.
+        QVERIFY(store.checkModelProfileMissing());
+
+        settings.setModelRecipeId(QStringLiteral("some-other-model"));
+        QVERIFY(store.modelProfileMissing());
+    }
+
+    // A profile written before the layers split carries the model's own
+    // parameters, which now come from its profile. Adopted as is, it puts a
+    // stale ctx-size back and duplicates the policy rows.
+    void staleUserCopyIsPrunedToTheLayersItMayOwn()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kLayeredPresetsJson);
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath(QStringLiteral("models")));
+        settings.setRuntimeBackend(QStringLiteral("cpu"));  // the only preset the fixture has
+
+        // A copy in the old shape: the whole set, model parameters included,
+        // with the ctx-size the install path used to overwrite.
+        const QDir profilesDir = RuntimePaths(settings.runtimeRootDir(), settings.runtimeModelsDir()).profilesDir();
+        QVERIFY(QDir().mkpath(profilesDir.path()));
+        const QString userPath = profilesDir.filePath(QStringLiteral("serverLaunch.json"));
+        QFile user(userPath);
+        QVERIFY(user.open(QIODevice::WriteOnly));
+        user.write(QByteArrayLiteral("{\"schemaVersion\":1,\"profiles\":[{\"id\":\"cpu\",\"parameters\":["
+                                     "{\"order\":1,\"name\":\"ctx-size\",\"value\":8192},"
+                                     "{\"order\":2,\"name\":\"n-predict\",\"value\":4096},"
+                                     "{\"order\":3,\"name\":\"flash-attn\",\"value\":\"off\"},"
+                                     "{\"order\":4,\"name\":\"image-min-tokens\",\"value\":456}]}]}"));
+        user.close();
+
+        LaunchProfileStore store(settings, presetsPath);
+
+        // The draft is exactly the two layers a user copy may own: policy and
+        // platform. The model's rows must not be there.
+        const QAbstractListModel *draft = store.draftModel();
+        QStringList draftNames;
+        for (int i = 0; i < draft->rowCount(); ++i)
+            draftNames << draft->data(draft->index(i), LaunchParametersModel::NameRole).toString();
+        QVERIFY(!draftNames.contains(QStringLiteral("ctx-size")));
+        QVERIFY(!draftNames.contains(QStringLiteral("n-predict")));
+        QVERIFY(!draftNames.contains(QStringLiteral("image-min-tokens")));
+        // The user's own platform row survived…
+        QVERIFY(draftNames.contains(QStringLiteral("flash-attn")));
+        // …and the policy row is there once, not twice.
+        QCOMPARE(draftNames.count(QStringLiteral("parallel")), 1);
+
+        // Resolved, the model supplies its own context — not the stale 8192.
+        const LaunchProfile active = store.activeProfile();
+        QVERIFY(active.find(QStringLiteral("ctx-size")) != nullptr);
+        QCOMPARE(active.find(QStringLiteral("ctx-size"))->value.toDouble(), 16384.0);
     }
 
     // The policy layer is a layer of its own: it rides along with every

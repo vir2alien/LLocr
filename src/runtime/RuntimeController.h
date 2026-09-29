@@ -126,6 +126,7 @@ private:
     QString roleMmprojPath(ConnectionRole role) const;
     bool serverRunsRole(ConnectionRole role) const;
     QString roleConfigError(ConnectionRole role) const;
+    QString modelBuildError(ConnectionRole role) const;
     void beginRoleSwitch();
 
     ResolvedConnection resolveExternal(ConnectionRole role = ConnectionRole::Ocr) const;

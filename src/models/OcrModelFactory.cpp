@@ -23,15 +23,7 @@ QStringList OcrModelFactory::registeredIds()
 
 QString OcrModelFactory::defaultId()
 {
-    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
-    for (const ModelProfiles::Profile &profile : profiles) {
-        if (profile.isDefault && ModelProfiles::roleFor(profile, QStringLiteral("ocr")))
-            return profile.id;
-    }
-    // A profile that opts in is the only reliable default: the catalog is
-    // loaded in file-name order, so "first" would change with the file names.
-    const QStringList ids = registeredIds();
-    return ids.isEmpty() ? QString() : ids.first();
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
 }
 
 QString OcrModelFactory::displayNameForId(const QString &modelId)

@@ -10,12 +10,16 @@ import "../Common"
 Item {
     id: root
 
-    // Opened via the "Configure runtime" button in External mode.
+    property string role: "ocr"
     property var runtimeSettingsRef: null
 
     readonly property bool externalMode: Settings.connectionMode === "external"
 
     readonly property var profiles: LaunchProfiles
+
+    readonly property bool modelProfileMissing: role === "check"
+        ? profiles.checkModelProfileMissing
+        : profiles.modelProfileMissing
 
     function loadValues() {
         root.profiles.reloadDraft()
@@ -55,6 +59,15 @@ Item {
         spacing: Theme.spacingSmall
 
         Item { implicitHeight: 4 }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            visible: root.modelProfileMissing
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.warning
+            text: qsTr("This model is not in the catalog, so its launch parameters come from the fallback set instead of the model's own. The context window may be wrong for it — check the log if a page comes out truncated.")
+        }
 
         RowLayout {
             Layout.fillWidth: true

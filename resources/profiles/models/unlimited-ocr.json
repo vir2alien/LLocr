@@ -5,11 +5,26 @@
   "default": true,
   "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
   "minBuild": "b4000",
-  "fallback": {
-    "launch": [
-      { "order": 1, "name": "ctx-size",  "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
-      { "order": 2, "name": "n-predict", "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." }
-    ]
+  "files": {
+    "repo": "sahilchachra/Unlimited-OCR-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q8_0",
+        "file": "Unlimited-OCR-Q8_0.gguf",
+        "sha256": ""
+      },
+      {
+        "id": "q4_k_m",
+        "file": "Unlimited-OCR-Q4_K_M.gguf",
+        "sha256": ""
+      }
+    ],
+    "mmproj": {
+      "id": "f16",
+      "file": "mmproj-Unlimited-OCR-F16.gguf",
+      "sha256": ""
+    }
   },
   "roles": {
     "ocr": {
@@ -17,26 +32,101 @@
       "parser": "det_tokens",
       "maxOutput": 8192,
       "prompts": [
-        { "id": "document-parsing", "title": "Document parsing", "text": "document parsing." }
+        {
+          "id": "document-parsing",
+          "title": "Document parsing",
+          "text": "document parsing."
+        }
       ],
-      "blocks": { "styles": {} },
+      "blocks": {
+        "styles": {}
+      },
       "launch": [
-        { "order": 1,  "name": "ctx-size",             "value": 16384, "description": "Model context window in tokens (prompt + image + output)." },
-        { "order": 2,  "name": "n-predict",            "value": 8192,  "description": "Maximum tokens to generate per completion (OCR page)." },
-        { "order": 3,  "name": "cache-type-k",         "value": "f32",  "description": "KV cache data type for K; f32 maximizes OCR accuracy." },
-        { "order": 4,  "name": "cache-type-v",         "value": "f32",  "description": "KV cache data type for V; f32 maximizes OCR accuracy." },
-        { "order": 5,  "name": "image-min-tokens",     "value": 456,   "description": "Vision budget tuned for Unlimited-OCR." },
-        { "order": 6,  "name": "image-max-tokens",     "value": 1156,  "description": "Vision budget tuned for Unlimited-OCR." },
-        { "order": 7,  "name": "dry-sequence-breaker", "value": "none", "description": "Sequences that end DRY repetition tracking; none resets the default list." },
-        { "order": 8,  "name": "special",                            "description": "Emit special tokens in the server output; the det-token parser needs them." }
+        {
+          "order": 1,
+          "name": "ctx-size",
+          "value": 16384,
+          "description": "Model context window in tokens (prompt + image + output)."
+        },
+        {
+          "order": 2,
+          "name": "n-predict",
+          "value": 8192,
+          "description": "Maximum tokens to generate per completion (OCR page)."
+        },
+        {
+          "order": 3,
+          "name": "cache-type-k",
+          "value": "f32",
+          "description": "KV cache data type for K; f32 maximizes OCR accuracy."
+        },
+        {
+          "order": 4,
+          "name": "cache-type-v",
+          "value": "f32",
+          "description": "KV cache data type for V; f32 maximizes OCR accuracy."
+        },
+        {
+          "order": 5,
+          "name": "image-min-tokens",
+          "value": 456,
+          "description": "Vision budget tuned for Unlimited-OCR."
+        },
+        {
+          "order": 6,
+          "name": "image-max-tokens",
+          "value": 1156,
+          "description": "Vision budget tuned for Unlimited-OCR."
+        },
+        {
+          "order": 7,
+          "name": "dry-sequence-breaker",
+          "value": "none",
+          "description": "Sequences that end DRY repetition tracking; none resets the default list."
+        },
+        {
+          "order": 8,
+          "name": "special",
+          "description": "Emit special tokens in the server output; the det-token parser needs them."
+        }
       ],
       "request": [
-        { "order": 1, "name": "temperature",         "value": 0.0,  "description": "Sampling randomness; 0 = deterministic greedy decoding." },
-        { "order": 2, "name": "dry_multiplier",      "value": 0.8,  "description": "DRY repetition penalty multiplier; 0 disables DRY sampling." },
-        { "order": 3, "name": "dry_base",            "value": 1.75, "description": "Base of the exponential penalty growth for repeated sequences." },
-        { "order": 4, "name": "dry_allowed_length",  "value": 35,   "description": "Number of tokens that may repeat before the penalty applies." },
-        { "order": 5, "name": "dry_penalty_last_n",  "value": 2048, "description": "Window of recent tokens considered by the DRY penalty." },
-        { "order": 6, "name": "stream",              "value": false, "description": "Stream tokens as they arrive; false gives the parser one complete response." }
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "dry_multiplier",
+          "value": 0.8,
+          "description": "DRY repetition penalty multiplier; 0 disables DRY sampling."
+        },
+        {
+          "order": 3,
+          "name": "dry_base",
+          "value": 1.75,
+          "description": "Base of the exponential penalty growth for repeated sequences."
+        },
+        {
+          "order": 4,
+          "name": "dry_allowed_length",
+          "value": 35,
+          "description": "Number of tokens that may repeat before the penalty applies."
+        },
+        {
+          "order": 5,
+          "name": "dry_penalty_last_n",
+          "value": 128,
+          "description": "Window of recent tokens considered by the DRY penalty."
+        },
+        {
+          "order": 6,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        }
       ]
     }
   }

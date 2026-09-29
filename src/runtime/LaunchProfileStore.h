@@ -24,6 +24,8 @@ class LaunchProfileStore : public QObject
     Q_PROPERTY(QString activeProfileId READ activeProfileId NOTIFY activeProfileChanged)
     Q_PROPERTY(QStringList presetIds READ presetIds CONSTANT)
     Q_PROPERTY(QStringList presetNames READ presetNames CONSTANT)
+    Q_PROPERTY(bool modelProfileMissing READ modelProfileMissing NOTIFY profileChanged)
+    Q_PROPERTY(bool checkModelProfileMissing READ checkModelProfileMissing NOTIFY profileChanged)
 
 public:
     explicit LaunchProfileStore(SettingsStore &settings, const QString &builtInPath = QString::fromUtf8(LaunchProfile::kBuiltInPath), QObject *parent = nullptr);
@@ -34,7 +36,10 @@ public:
     QStringList presetNames() const;
     QString activeProfileId() const;
     LaunchProfile activeProfile() const;
-    LaunchProfile activeProfile(const QString &modelId, const QString &role = QString()) const;
+    LaunchProfile activeProfile(const QString &modelId, const QString &role) const;
+
+    bool modelProfileMissing() const;
+    bool checkModelProfileMissing() const;
     void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     Q_INVOKABLE bool hasUserProfile() const;
@@ -59,10 +64,12 @@ private:
     void ensureProfileResolved();
     bool presetMatches(const LaunchProfile &preset, const QString &backend, const QString &osTag) const;
     LaunchProfile compose(const LaunchProfile &profile, const QString &modelId, const QString &role) const;
+    bool modelLayerMissing(const QString &modelId, const QString &role) const;
 
     SettingsStore &m_settings;
     ProfileStore<LaunchProfile> *m_profiles;
     QList<LaunchParameter> m_policy;
+    QList<LaunchParameter> m_fallback;
     QList<ModelProfiles::Profile> m_modelProfiles;
     QString m_draftProfileId;
     LaunchParametersModel *m_model;
