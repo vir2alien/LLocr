@@ -82,7 +82,7 @@ bool LaunchProfileStore::hasUserProfile() const
 QStringList LaunchProfileStore::presetIds() const
 {
     QStringList ids;
-    for (const LaunchProfile &p : m_profiles->builtIn())
+    for (const LaunchProfile &p : applicablePresets())
         ids.append(p.id);
     return ids;
 }
@@ -90,9 +90,42 @@ QStringList LaunchProfileStore::presetIds() const
 QStringList LaunchProfileStore::presetNames() const
 {
     QStringList names;
-    for (const LaunchProfile &p : m_profiles->builtIn())
+    for (const LaunchProfile &p : applicablePresets())
         names.append(p.name);
     return names;
+}
+
+QList<LaunchProfile> LaunchProfileStore::applicablePresets() const
+{
+    const QString backend = targetBackend();
+    const QString osTag = ReleaseCatalog::detectPlatform().osTag;
+    QList<LaunchProfile> applicable;
+    for (const LaunchProfile &p : m_profiles->builtIn()) {
+        if (presetMatches(p, backend, osTag))
+            applicable.append(p);
+    }
+
+    return applicable.isEmpty() ? m_profiles->builtIn() : applicable;
+}
+
+QStringList LaunchProfileStore::otherPresetNames() const
+{
+    const QString backend = targetBackend();
+    const QString osTag = ReleaseCatalog::detectPlatform().osTag;
+    QStringList names;
+    for (const LaunchProfile &p : m_profiles->builtIn()) {
+        if (p.backend == backend)
+            continue;
+        if (p.os.isEmpty() || p.os == osTag)
+            names.append(p.name);
+    }
+    return names;
+}
+
+QString LaunchProfileStore::targetBackend() const
+{
+    const QString configured = m_settings.runtimeBackend();
+    return configured.isEmpty() ? ReleaseCatalog::detectPlatform().backend : configured;
 }
 
 const LaunchProfile *LaunchProfileStore::findPreset(const QString &id) const
@@ -152,9 +185,7 @@ QString LaunchProfileStore::activeProfileId() const
 {
     const QString stored = m_settings.launchProfileId();
     const PlatformInfo platform = ReleaseCatalog::detectPlatform();
-    QString backend = m_settings.runtimeBackend();
-    if (backend.isEmpty())
-        backend = platform.backend;
+    const QString backend = targetBackend();
     const QString osTag = platform.osTag;
 
     if (const LaunchProfile *storedPreset = findPreset(stored); storedPreset && presetMatches(*storedPreset, backend, osTag))

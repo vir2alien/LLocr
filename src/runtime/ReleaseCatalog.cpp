@@ -282,8 +282,8 @@ PlatformInfo ReleaseCatalog::detectPlatform()
     } else if (kernel.contains(QLatin1String("mac")) || kernel.contains(QLatin1String("darwin"))) {
         info.os = PlatformOs::macOS;
         info.osTag = QStringLiteral("macos");
-        info.backend = QStringLiteral("metal");
-        info.backendReason = QStringLiteral("Metal backend recommended on Apple silicon; fall back to CPU on Intel");
+        info.backend = defaultBackendFor(info.osTag, info.arch);
+        info.backendReason = QObject::tr("Metal backend recommended on Apple silicon; fall back to CPU on Intel");
     } else {
         info.os = PlatformOs::Linux;
         info.osTag = QStringLiteral("linux");
@@ -291,6 +291,11 @@ PlatformInfo ReleaseCatalog::detectPlatform()
         info.backendReason = QStringLiteral("CPU backend; Vulkan selected if a Vulkan loader is present");
     }
     return info;
+}
+
+QString ReleaseCatalog::defaultBackendFor(const QString &osTag, const QString &arch)
+{
+    return osTag == QLatin1String("macos") && arch == QLatin1String("arm64") ? QStringLiteral("metal") : QStringLiteral("cpu");
 }
 
 }  // namespace llocr

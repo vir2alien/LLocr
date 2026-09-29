@@ -100,6 +100,7 @@ private slots:
     void parsesKnownLayout();
     void extractsShaFromBody();
     void picksPlatformAsset();
+    void genericAssetNamesItsPlatformBackend();
     void pickUnknownReturnsEmpty();
     void cudartAssetIsFlagged();
     void cacheMissingIsNotFresh();
@@ -180,6 +181,18 @@ void TestReleaseCatalog::picksPlatformAsset()
     QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"), QStringLiteral("cpu")).fileName, QStringLiteral("llama-b10594-bin-ubuntu-x64.tar.gz"));
 }
 
+void TestReleaseCatalog::genericAssetNamesItsPlatformBackend()
+{
+    // An asset name without a backend token is not a CPU build: upstream has no
+    // CPU variant of the macOS arm64 tarball, so that tarball is the Metal one.
+    // Everything else without a token is CPU.
+    QCOMPARE(ReleaseCatalog::defaultBackendFor(QStringLiteral("macos"), QStringLiteral("arm64")), QStringLiteral("metal"));
+    QCOMPARE(ReleaseCatalog::defaultBackendFor(QStringLiteral("macos"), QStringLiteral("x64")), QStringLiteral("cpu"));
+    QCOMPARE(ReleaseCatalog::defaultBackendFor(QStringLiteral("linux"), QStringLiteral("x64")), QStringLiteral("cpu"));
+    QCOMPARE(ReleaseCatalog::defaultBackendFor(QStringLiteral("win"), QStringLiteral("x64")), QStringLiteral("cpu"));
+    QCOMPARE(ReleaseCatalog::defaultBackendFor(QString(), QString()), QStringLiteral("cpu"));
+}
+
 void TestReleaseCatalog::pickUnknownReturnsEmpty()
 {
     QString err;
@@ -224,6 +237,10 @@ void TestReleaseCatalog::detectPlatformMatchesHost()
     QCOMPARE(info.os, PlatformOs::macOS);
     QCOMPARE(info.osTag, QStringLiteral("macos"));
     QVERIFY(!info.arch.isEmpty());
+    // The recommendation follows the same rule the install tag is written
+    // with, or the app recommends a backend the build cannot have.
+    QCOMPARE(info.backend, ReleaseCatalog::defaultBackendFor(info.osTag, info.arch));
+    QCOMPARE(info.backend, info.arch == QLatin1String("arm64") ? QStringLiteral("metal") : QStringLiteral("cpu"));
 #elif defined(Q_OS_WIN)
     QCOMPARE(info.os, PlatformOs::Windows);
     QCOMPARE(info.osTag, QStringLiteral("win"));

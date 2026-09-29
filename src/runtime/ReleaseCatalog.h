@@ -30,13 +30,12 @@ public:
     static constexpr const char *kApiUrl = "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=10";
 
     static PlatformInfo detectPlatform();
+
+    static QString defaultBackendFor(const QString &osTag, const QString &arch);
     static QList<ReleaseInfo> parseReleasesJson(const QJsonArray &items, QString &error);
 
     static ReleaseAsset parseAssetName(const QString &fileName, const QString &downloadUrl, qint64 size);
     static QHash<QString, QString> parseSha256Table(const QString &body);
-    // Reads and parses releases.json regardless of its age. loadCache() adds the
-    // TTL gate; fetchReleasesLocal() uses this to keep serving the last known
-    // good list when the network fails.
     static QList<ReleaseInfo> readCacheFile(const QString &cacheDir, QString &error, qint64 *cachedBuild = nullptr);
     static QList<ReleaseInfo> loadCache(const QString &cacheDir, QDateTime &cachedAt, qint64 &cachedBuild, bool &isFresh, QString &error);
     static QList<ReleaseInfo> fetchReleasesLocal(QNetworkAccessManager *nam, QString cacheDir, QString &error, int timeoutMs = kRequestTimeoutMs, const QString &apiUrl = QString());

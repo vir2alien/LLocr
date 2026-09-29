@@ -115,6 +115,7 @@ private:
     void startCatalogFetch();
     void onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error);
     void recomputeHasUpdate();
+    void reconcileInstalledBackend();
 
     void beginInstall(const QString &backend);
     void beginDownloads();

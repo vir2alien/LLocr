@@ -24,6 +24,7 @@ class LaunchProfileStore : public QObject
     Q_PROPERTY(QString activeProfileId READ activeProfileId NOTIFY activeProfileChanged)
     Q_PROPERTY(QStringList presetIds READ presetIds CONSTANT)
     Q_PROPERTY(QStringList presetNames READ presetNames CONSTANT)
+    Q_PROPERTY(QStringList otherPresetNames READ otherPresetNames CONSTANT)
     Q_PROPERTY(bool modelProfileMissing READ modelProfileMissing NOTIFY profileChanged)
     Q_PROPERTY(bool checkModelProfileMissing READ checkModelProfileMissing NOTIFY profileChanged)
 
@@ -34,6 +35,7 @@ public:
     QString draftProfileId() const { return m_draftProfileId; }
     QStringList presetIds() const;
     QStringList presetNames() const;
+    QStringList otherPresetNames() const;
     QString activeProfileId() const;
     LaunchProfile activeProfile() const;
     LaunchProfile activeProfile(const QString &modelId, const QString &role) const;
@@ -65,6 +67,8 @@ private:
     bool presetMatches(const LaunchProfile &preset, const QString &backend, const QString &osTag) const;
     LaunchProfile compose(const LaunchProfile &profile, const QString &modelId, const QString &role) const;
     bool modelLayerMissing(const QString &modelId, const QString &role) const;
+    QList<LaunchProfile> applicablePresets() const;
+    QString targetBackend() const;
 
     SettingsStore &m_settings;
     ProfileStore<LaunchProfile> *m_profiles;

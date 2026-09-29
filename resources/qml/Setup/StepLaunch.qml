@@ -145,7 +145,9 @@ Item {
                 color: Theme.helpColor
                 text: qsTr("Full parameter table: Settings → Launch. "
                            + "Loading the model at startup uses several GB "
-                           + "of RAM/VRAM even when idle — off by default.")
+                           + "of RAM/VRAM even when idle — off by default. "
+                           + "The profile list holds only what this system "
+                           + "and the installed backend can run.")
             }
         }
 

@@ -92,6 +92,27 @@ Item {
             Item { Layout.fillWidth: true }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacing
+            visible: root.profiles.otherPresetNames.length > 0
+
+            LLOLabel {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pointSize: Theme.captionSize
+                color: Theme.helpColor
+                text: qsTr("The list follows the build that is installed. These profiles need another one: %1.").arg(root.profiles.otherPresetNames.join(", "))
+            }
+            LLOButton {
+                text: qsTr("Runtime settings…")
+                onClicked: {
+                    if (root.runtimeSettingsRef)
+                        root.runtimeSettingsRef.show()
+                }
+            }
+        }
+
         Item {
             Layout.fillWidth: true
             implicitHeight: headerValue.implicitHeight

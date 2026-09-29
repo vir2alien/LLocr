@@ -10,8 +10,13 @@
 #include <zlib.h>
 
 #include "config/RuntimePaths.h"
+#include "config/SettingsStore.h"
+#include "runtime/InstalledState.h"
 #include "runtime/InstallTransaction.h"
 #include "runtime/ReleaseAsset.h"
+#include "runtime/ReleaseCatalog.h"
+#include "runtime/RuntimeInstaller.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
@@ -225,6 +230,8 @@ class TestInstallTransaction : public QObject
 private slots:
     void installsSuccessfully();
     void installsFromTarGz();
+    void legacyCpuNamedMacosBuildIsRelabelled();
+    void installedBackendFollowsTheTagOnDisk();
     void sizeMismatchFails();
     void shaMismatchFails();
     void badArchiveFails();
@@ -350,9 +357,96 @@ void TestInstallTransaction::installsFromTarGz()
     QCOMPARE(out.build, QStringLiteral("b10594"));
     QVERIFY(QFile::exists(out.serverPath));
     QVERIFY(QDir(paths.installDir(out.tag)).exists());
-    QCOMPARE(out.tag, QStringLiteral("llama.cpp-b10594-cpu-macos-arm64"));
+    // The macOS tarball carries no backend token, and the tag has to name what
+    // it is: the release has no CPU variant for Apple silicon.
+    QCOMPARE(out.tag, QStringLiteral("llama.cpp-b10594-metal-macos-arm64"));
     QVERIFY(committed);
     QVERIFY(stagingEmpty(paths));
+}
+
+// The three macOS installs every user made before the tag carried a real
+// backend read back as CPU builds. The scan relabels them, so the Metal
+// profile becomes reachable again without downloading the same tarball twice.
+void TestInstallTransaction::legacyCpuNamedMacosBuildIsRelabelled()
+{
+    QTemporaryDir root;
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
+    const QString runtimeDir = paths.runtimeDir();
+    QVERIFY(QDir().mkpath(runtimeDir));
+    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b10594-cpu-macos-arm64/llama-b10594"))));
+    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b10594-cpu-linux-x64/llama-b10594"))));
+    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b10594-cpu-macos-x64/llama-b10594"))));
+
+    const QList<InstalledBuildInfo> builds = InstallTransaction::scanInstalledBuilds(paths);
+    QCOMPARE(builds.size(), 3);
+    for (const InstalledBuildInfo &b : builds) {
+        if (b.tag.endsWith(QLatin1String("-macos-arm64")))
+            QCOMPARE(b.backend, QStringLiteral("metal"));
+        else
+            QCOMPARE(b.backend, QStringLiteral("cpu"));
+    }
+}
+
+// The tag now says metal, so the setting the launch profiles read has to say
+// metal too — otherwise the app runs a Metal build under the CPU profile and
+// never offers the Metal one.
+void TestInstallTransaction::installedBackendFollowsTheTagOnDisk()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
+
+    const QString buildDir = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b10594-cpu-macos-arm64/llama-b10594"));
+    QVERIFY(QDir().mkpath(buildDir));
+    const QString server = QDir(buildDir).filePath(serverEntryName());
+    QFile mock(server);
+    QVERIFY(mock.open(QIODevice::WriteOnly));
+    mock.write("placeholder");
+    mock.close();
+
+    TestSettingsIsolation isolation;
+    SettingsStore settings;
+    settings.setRuntimeRootDir(paths.rootDir());
+    settings.setRuntimeModelsDir(paths.modelsDir());
+    settings.setServerPath(server);
+    settings.setInstalledBuild(QStringLiteral("b10594"));
+    settings.setRuntimeBackend(QStringLiteral("cpu"));
+    QCOMPARE(settings.runtimeBackend(), QStringLiteral("cpu"));
+
+    InstalledState state(settings);
+    RuntimeInstaller installer(settings, state);
+
+    QCOMPARE(settings.runtimeBackend(), QStringLiteral("metal"));
+
+    // The picker offers what the platform actually publishes. On macOS that is
+    // a single build per arch, and the backend it defaults to.
+    QCOMPARE(installer.availableBackends(), QStringList{ReleaseCatalog::defaultBackendFor(ReleaseCatalog::detectPlatform().osTag, ReleaseCatalog::detectPlatform().arch)});
+
+    // The sweep keeps the directory that is running even though its name still
+    // spells the old backend: a prefix guessed from the settings (now "metal")
+    // would not match it, and the running build would be swept away too.
+    const QString running = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b10594-cpu-macos-arm64"));
+    const QString spare = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b10599-metal-macos-arm64"));
+    QVERIFY(QDir().mkpath(QDir(spare).filePath(QStringLiteral("llama-b10599"))));
+    installer.cleanupUnusedBuilds();
+    QVERIFY2(QDir(running).exists(), qPrintable(installer.statusMessage()));
+    QVERIFY(!QDir(spare).exists());
+    installer.shutdown();
+
+    // A build of another platform keeps the backend it was activated with.
+    const QString linuxDir = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b10594-cpu-linux-x64/llama-b10594"));
+    QVERIFY(QDir().mkpath(linuxDir));
+    const QString linuxServer = QDir(linuxDir).filePath(serverEntryName());
+    QFile linuxFile(linuxServer);
+    QVERIFY(linuxFile.open(QIODevice::WriteOnly));
+    linuxFile.write("placeholder");
+    linuxFile.close();
+    settings.setServerPath(linuxServer);
+
+    InstalledState otherState(settings);
+    RuntimeInstaller other(settings, otherState);
+    other.shutdown();
+    QCOMPARE(settings.runtimeBackend(), QStringLiteral("cpu"));
 }
 
 void TestInstallTransaction::sizeMismatchFails()
@@ -544,6 +638,14 @@ void TestInstallTransaction::cleanupUnused()
     // The staging tree sits inside runtime/ and is swept as well.
     QVERIFY(!QFile::exists(QDir(paths.runtimeDir()).filePath("staging")));
     QVERIFY(summary.contains(QStringLiteral("Removed")));
+
+    // A sweep that cannot name the build to keep removes nothing at all: the
+    // alternative is deleting the very build the server runs from.
+    QVERIFY(QDir().mkpath(paths.installDir(QStringLiteral("Tag3"))));
+    const QString refused = InstallTransaction::cleanupUnusedBuilds(paths, QString());
+    QVERIFY(QFile::exists(paths.installDir(QStringLiteral("Tag2"))));
+    QVERIFY(QFile::exists(paths.installDir(QStringLiteral("Tag3"))));
+    QVERIFY(!refused.contains(QStringLiteral("Removed")));
 }
 
 void TestInstallTransaction::cleanupStaging()

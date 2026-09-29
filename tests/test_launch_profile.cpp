@@ -12,6 +12,7 @@
 #include "config/SettingsStore.h"
 #include "core/ModelProfiles.h"
 #include "runtime/LaunchProfileStore.h"
+#include "runtime/ReleaseCatalog.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -159,6 +160,42 @@ private slots:
         // An unknown backend keeps the current selection (nothing better).
         settings.setRuntimeBackend(QStringLiteral("vulkan"));
         QCOMPARE(store.activeProfileId(), QStringLiteral("metal"));
+    }
+
+    // The combo offers only what this machine can run. A preset tagged for
+    // another backend is not kept — activeProfileId() drops it on the next
+    // resolve — so offering it is offering a choice that cannot be saved.
+    void thePresetListHoldsOnlyWhatThisMachineCanRun()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        settings.setRuntimeBackend(QStringLiteral("cpu"));
+        LaunchProfileStore store(settings, presetsPath);
+
+        // The universal CPU profile fits any OS; the metal one does not fit a
+        // cpu build.
+        QCOMPARE(store.presetIds(), QStringList{QStringLiteral("cpu")});
+        QCOMPARE(store.presetNames(), QStringList{QStringLiteral("CPU")});
+
+        // What the machine could run with another build. On macOS that is the
+        // metal profile; a Windows profile is not a candidate for this machine
+        // and stays out of the answer.
+        const QStringList other = store.otherPresetNames();
+        if (ReleaseCatalog::detectPlatform().osTag == QLatin1String("macos"))
+            QCOMPARE(other, QStringList{QStringLiteral("Metal")});
+        else
+            QVERIFY(!other.contains(QStringLiteral("Metal")));
+
+        // A backend the catalog does not know (a build from somewhere else)
+        // leaves nothing applicable, and an empty combo would be worse than the
+        // full list.
+        settings.setRuntimeBackend(QStringLiteral("vulkan"));
+        QCOMPARE(store.presetIds().size(), 2);
+        QCOMPARE(store.presetNames().size(), store.presetIds().size());
     }
 
     void storeDraftSaveLoad()

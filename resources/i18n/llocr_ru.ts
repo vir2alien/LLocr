@@ -874,6 +874,14 @@
         <source>Configure runtime…</source>
         <translation>Настроить рантайм…</translation>
     </message>
+    <message>
+        <source>The list follows the build that is installed. These profiles need another one: %1.</source>
+        <translation>Список следует за установленной сборкой. Эти профили требуют другой сборки: %1</translation>
+    </message>
+    <message>
+        <source>Runtime settings…</source>
+        <translation>Настройки рантайма…</translation>
+    </message>
 </context>
 <context>
     <name>LlamaClient</name>
@@ -1549,6 +1557,10 @@
         <location filename="../../src/runtime/InstallTransaction.cpp" line="+84"/>
         <source>Downloaded archive missing: %1</source>
         <translation>Скачанный архив отсутствует: %1</translation>
+    </message>
+    <message>
+        <source>Cannot tell which build is in use — nothing was removed. Install or activate a build first.</source>
+        <translation>Не удалось определить, какая сборка используется — ничего не удалено. Сначала установите или активируйте сборку.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -2971,8 +2983,8 @@
     </message>
     <message>
         <location line="+9"/>
-        <source>Full parameter table: Settings → Launch. Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default.</source>
-        <translation>Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено.</translation>
+        <source>Full parameter table: Settings → Launch. Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default. The profile list holds only what this system and the installed backend can run.</source>
+        <translation>Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено. В списке профилей только то, что может запустить эта система с установленным бэкендом</translation>
     </message>
     <message>
         <location line="+55"/>

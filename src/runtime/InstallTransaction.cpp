@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QDirIterator>
@@ -11,6 +12,7 @@
 #include "runtime/ArchiveExtractor.h"
 #include "runtime/InstallTransaction.h"
 
+#include "runtime/ReleaseCatalog.h"
 #include "runtime/RuntimeLocator.h"
 #include "runtime/ServerCapabilities.h"
 #include "runtime/StagedInstall.h"
@@ -133,7 +135,8 @@ InstallOutput InstallTransaction::start(const QString &archivePath, const Releas
     if (build.isEmpty())
         build = QStringLiteral("unknown");
 
-    const QString finalTag = QStringLiteral("llama.cpp-%1-%2-%3-%4").arg(build, asset.backend.isEmpty() ? QStringLiteral("cpu") : asset.backend, asset.os, asset.arch);
+    const QString backend = asset.backend.isEmpty() ? ReleaseCatalog::defaultBackendFor(asset.os, asset.arch) : asset.backend;
+    const QString finalTag = QStringLiteral("llama.cpp-%1-%2-%3-%4").arg(build, backend, asset.os, asset.arch);
     const QString finalDir = paths.installDir(finalTag);
     staged.setFinalPath(finalDir);
     if (!staged.commit(&out.error))
@@ -162,6 +165,9 @@ void InstallTransaction::cleanupStaging(RuntimePaths paths, bool keepModelStagin
 
 QString InstallTransaction::cleanupUnusedBuilds(RuntimePaths paths, const QString &keepTag)
 {
+    if (keepTag.isEmpty()) {
+        return QCoreApplication::translate("llocr::InstallTransaction", "Cannot tell which build is in use — nothing was removed. Install or activate a build first.");
+    }
     int removed = 0;
     const QStringList names = QDir(paths.runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QString &name : names) {
@@ -193,6 +199,8 @@ QList<InstalledBuildInfo> InstallTransaction::scanInstalledBuilds(const RuntimeP
             info.build = parts.first();
         if (parts.size() >= 4) {
             info.backend = QStringList(parts.mid(1, parts.size() - 3)).join(QLatin1Char('-'));
+            if (info.backend == QLatin1String("cpu") && ReleaseCatalog::defaultBackendFor(parts.at(parts.size() - 2), parts.last()) == QLatin1String("metal"))
+                info.backend = QStringLiteral("metal");
         } else if (parts.size() == 3) {
             info.backend = parts.at(1);
         }

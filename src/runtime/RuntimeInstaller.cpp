@@ -27,7 +27,7 @@ QStringList backendsForPlatform(const PlatformInfo &info)
     case PlatformOs::Windows:
         return {QStringLiteral("cpu"), QStringLiteral("cuda"), QStringLiteral("vulkan")};
     case PlatformOs::macOS:
-        return {QStringLiteral("metal"), QStringLiteral("cpu")};
+        return {ReleaseCatalog::defaultBackendFor(info.osTag, info.arch)};
     case PlatformOs::Linux:
         return {QStringLiteral("cpu"), QStringLiteral("vulkan"), QStringLiteral("cuda")};
     }
@@ -87,6 +87,7 @@ RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &stat
 
     m_installState.ensureDirectories();
     rescanInstalledBuilds();
+    reconcileInstalledBackend();
 }
 
 RuntimeInstaller::~RuntimeInstaller()
@@ -500,7 +501,14 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
     }
 
     QString keepTag;
-    if (!installedBuild().isEmpty()) {
+    const QString serverPath = m_settings.serverPath();
+    for (const InstalledBuildInfo &build : m_installedBuilds->builds()) {
+        if (build.serverPath == serverPath) {
+            keepTag = build.tag;
+            break;
+        }
+    }
+    if (keepTag.isEmpty() && !installedBuild().isEmpty()) {
         const QString prefix = QStringLiteral("llama.cpp-%1-%2").arg(installedBuild(), installedBackend());
         const QStringList dirs = QDir(m_installState.paths().runtimeDir()).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
         for (const QString &name : dirs) {
@@ -525,10 +533,24 @@ QString RuntimeInstaller::normalizedPath(const QString &path)
 
 void RuntimeInstaller::rescanInstalledBuilds()
 {
-    // The same paths everything else uses — a moved runtime directory used to
-    // make the scan look in the new tree while installs kept the old one.
     m_installedBuilds->setBuilds(InstallTransaction::scanInstalledBuilds(m_installState.paths()));
     emit installedBuildsChanged();
+}
+
+void RuntimeInstaller::reconcileInstalledBackend()
+{
+    const QString serverPath = m_settings.serverPath();
+    if (serverPath.isEmpty())
+        return;
+    for (const InstalledBuildInfo &build : m_installedBuilds->builds()) {
+        if (build.serverPath != serverPath)
+            continue;
+        if (!build.backend.isEmpty() && m_settings.runtimeBackend() != build.backend) {
+            m_settings.setRuntimeBackend(build.backend);
+            m_settings.forceSave();
+        }
+        return;
+    }
 }
 
 QObject *RuntimeInstaller::installedBuilds() const
