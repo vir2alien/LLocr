@@ -53,6 +53,16 @@
   6. UI text sizes — use `Theme.*Size` / `Theme.*` fonts from
      `resources/qml/Theme.qml`; never hardcode `font.pointSize` in QML. They
      carry the macOS point-size compensation (ADR 77).
+  7. **Comments only in the most extreme cases** — when the code cannot be
+     understood from the surrounding context and from the names of the classes,
+     functions and variables. Never restate what the code says, never narrate
+     the obvious ("loop over pages", "returns true on success"), never leave
+     commented-out code, section banners, or TODO notes where the commit/git
+     history and the ADRs belong. When a piece of code seems to need a comment
+     to be clear, the first response is better naming or a smaller function —
+     comment last. A comment that survives must answer *why* this way and not
+     *what* happens (workarounds, invariants, ADR references, non-obvious
+     platform behaviour).
   
   ## Build & test (fastest path)
 
