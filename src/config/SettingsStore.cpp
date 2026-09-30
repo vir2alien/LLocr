@@ -107,23 +107,24 @@ void SettingsStore::applyStartupMigration()
             m_settings.setValue(kRequestProfileId, legacy);
     }
 
-    // The alias now comes from the model profile, per role; a stored one would
-    // only be able to speak for one of them.
     m_settings.remove(QStringLiteral("launch/modelAlias"));
 
     resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
     resolveStoredModelId(kRequestProfileId, QStringLiteral("ocr"));
     resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("check"));
+
+    if (m_settings.value(kParserId).toString() == QLatin1String("det_tokens")) {
+        QString resolved = QString::fromUtf8(kDefaultParserId);
+        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelRecipeId(), QStringLiteral("ocr"))) {
+            if (!role->parser.isEmpty())
+                resolved = role->parser;
+        }
+        m_settings.setValue(kParserId, resolved);
+    }
 }
 
 void SettingsStore::resolveStoredModelId(const char *key, const QString &role)
 {
-    // The model ids name a profile in the current catalog. An id from the
-    // retired request-profile space ("ocr-verifier") is residue, not a choice:
-    // nothing writes one any more, and honouring it leaves the model on the
-    // generic launch fallback with a "not in the catalog" notice. Resolving it
-    // has to run on every start rather than once — a profile may be renamed
-    // between releases.
     const QString stored = m_settings.value(key).toString();
     if (stored.isEmpty() || ModelProfiles::roleFor(stored, role))
         return;
@@ -784,12 +785,6 @@ void SettingsStore::setCheckLaunchSourceDownload(bool on)
 
 QString SettingsStore::checkRequestProfileId() const
 {
-    // An empty stored value counts as unset, not as a choice: the key's default
-    // was the empty string, so every profile written before the check role got
-    // a model profile holds one — and QSettings::value() would return it rather
-    // than the fallback, leaving the verifier with no sampling parameters. An
-    // id the catalog does not know is the same kind of residue; the startup
-    // migration rewrites those, so a read only has to answer what the file says.
     const QString stored = m_settings.value(kCheckRequestProfileId).toString();
     return stored.isEmpty() ? defaultCheckRequestProfileId() : stored;
 }

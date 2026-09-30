@@ -3,10 +3,11 @@
 #include "core/ModelProfiles.h"
 #include "core/OcrResult.h"
 #include "parsers/BlockStyle.h"
-#include "parsers/DetTokensParser.h"
+#include "parsers/Lfm25VlParser.h"
 #include "parsers/ParserFactory.h"
 #include "parsers/ParserOptions.h"
 #include "parsers/RawParser.h"
+#include "parsers/UnlimitedOcrParser.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -19,6 +20,14 @@ class TestDetParser : public QObject
 {
     Q_OBJECT
 
+    // The two model parsers, for the properties that belong to the engine rather
+    // than to one model's reply shape.
+    template <typename Body> void forEachDetParser(Body body)
+    {
+        body(UnlimitedOcrParser());
+        body(Lfm25VlParser());
+    }
+
 private slots:
     // The current model wraps every token in <|det|>…<|/det|> and streams
     // newlines as the two characters `\n`.
@@ -29,7 +38,7 @@ private slots:
                                            R"(<|det|>text [141, 484, 884, 581]<|/det|>- We introduce Reference Sliding Window Attention (R-SWA)\n)"
                                            R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3)");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -67,7 +76,7 @@ private slots:
                                            R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3\n)"
                                            R"(<|det|>text [112, 132, 884, 309]<|/det|>Body paragraph\n)");
 
-        DetTokensParser parser(ParserOptions{false, false});
+        UnlimitedOcrParser parser(ParserOptions{false, false});
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -85,7 +94,7 @@ private slots:
         numberBox.label = QStringLiteral("page_number");
         numberBox.text = QStringLiteral("3");
         withNumber.boxes.append(numberBox);
-        QVERIFY(DetTokensParser().rebuildText(withNumber).contains(QStringLiteral("*3*")));
+        QVERIFY(UnlimitedOcrParser().rebuildText(withNumber).contains(QStringLiteral("*3*")));
         QVERIFY(!parser.rebuildText(withNumber).contains(QStringLiteral("*3*")));
     }
 
@@ -97,7 +106,7 @@ private slots:
         const QString raw = QStringLiteral(R"(<|det|>text [112, 132, 884, 309]<|/det|>line one\nline two  \( m + n \)\n)"
                                            R"(<|det|>text [113, 780, 884, 860]<|/det|>see  \( [10, 30, 33, 34] \)\n)");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -118,7 +127,7 @@ private slots:
         const QString raw = QStringLiteral(
             R"(<|det|>equation [295, 564, 884, 579]<|/det|>\alpha_ {t j} = \frac {\exp \left(\frac {\mathbf {q} _ {t} ^ {\top} \mathbf {k}}{\sqrt {d _ {k}}}\right)}{\sum_ {i \in \mathcal {N} (t)} \exp \left(\frac {\mathbf {q} _ {t} ^ {\top} \mathbf {k} _ {i}}{\sqrt {d _ {k}}}\right)}, \quad j \in \mathcal {N} (t), \tag {3}\n)");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -140,7 +149,7 @@ private slots:
     {
         const QString raw = QStringLiteral(R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3<|end_of_sentence|>\n)");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -164,7 +173,7 @@ private slots:
                                            "end\u2581of\u2581sentence\uFF5C"
                                            ">\n");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -182,7 +191,7 @@ private slots:
     {
         const QString raw = QStringLiteral(R"(<|det|>text [112, 132, 884, 309]<|/det|>Body text <|grounding|> with more.\n)");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -199,7 +208,7 @@ private slots:
                                            "text [81, 304, 745, 400]√ Выбрать может оттиска и оснастку;\n"
                                            "footer [402, 904, 602, 941]ПЕЧАТИ\nИ ШТАМПЫ");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
 
         const OcrResult r = parser.parse(raw);
 
@@ -236,7 +245,7 @@ private slots:
                                            "image_index=0 page_number [493, 924, 506, 935]\n"
                                            "3");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -266,7 +275,7 @@ private slots:
                                            "<fcel>Нефть, млн. т<fcel>в мире<fcel>3179,7<nl>"
                                            "<fcel>Россия<lcel><fcel>518<nl>");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -290,7 +299,7 @@ private slots:
                                            "<fcel>Мир<fcel>100<lcel><nl>"
                                            "<fcel>Россия<ucel><fcel>50<nl>");
 
-        DetTokensParser parser(ParserOptions{true, true});
+        UnlimitedOcrParser parser(ParserOptions{true, true});
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -315,7 +324,7 @@ private slots:
                                            "<fcel>\\( \\mathrm{~r}_{O_{2}} = 0,211 ;<nl>"
                                            "<fcel>\\( \\mathrm{~r}_{N_{2}} = 0,789 \\) .<nl>");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -333,7 +342,7 @@ private slots:
         const QString raw = QStringLiteral("text [10, 10, 400, 100]\\( \\mathrm{~r}_{O_{2}} = 0,211 ;<nl>"
                                            "\\( \\mathrm{~r}_{N_{2}} = 0,789 \\) .<nl>");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -359,7 +368,7 @@ private slots:
                                            "image_index=0 <label>title</label> [114, 402, 282, 420]\n"
                                            "<content>3. Methodology</content>");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -388,7 +397,7 @@ private slots:
         const QString raw = QStringLiteral("image_index=0 <label>title</label>\n<content>First</content>\n\n"
                                            "image_index=0 <label>title</label>\n<content>Second</content>");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -403,7 +412,7 @@ private slots:
     // \left( kept), both in equation blocks and in text with $$…$$ math.
     void stripsNestedInlineDelimsInDisplayMath()
     {
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const QString raw = QStringLiteral("equation [10, 10, 400, 100]\\[\n\\(N(t) = \\mathcal{P} \\cup D_{n}(t),\\)\n\\]");
         const OcrResult r = parser.parse(raw);
 
@@ -432,7 +441,7 @@ private slots:
                                            "image_index=0 title [114, 383, 338, 401]\n"
                                            "6. Efficiency Analysis");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -462,7 +471,7 @@ private slots:
                                            "text [10, 10, 200, 200]\nFirst\n\n"
                                            "text [10, 10, 200, 200]\nSecond");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -484,7 +493,7 @@ private slots:
                                            "text [10, 10, 200, 200]\nFirst\n"
                                            "text [10, 10, 200, 200]\nSecond");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -500,14 +509,16 @@ private slots:
 
     // The page text is a pure function of the boxes: parsing produces exactly
     // what rebuildText() renders, whatever the reply shape. This is the property
-    // the parallel block list used to break.
+    // the parallel block list used to break. Each sample is run through the
+    // parser of the model that writes it.
     void pageTextAlwaysEqualsRebuiltText()
     {
-        const QList<QString> samples = {
-            // wrapped stream with a page number
+        const QList<QString> wrapped = {
             QStringLiteral(R"(<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\n)"
                            R"(<|det|>text [112, 132, 884, 309]<|/det|>Body\n)"
                            R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3)"),
+        };
+        const QList<QString> bare = {
             // bare tokens with an untagged preamble and an image block
             QStringLiteral("Lead in\n"
                            "title [92, 109, 890, 165]Heading\n"
@@ -525,15 +536,18 @@ private slots:
                            "text [10, 10, 200, 200]Second"),
         };
 
-        DetTokensParser parser;
-        for (const QString &raw : samples) {
-            const OcrResult r = parser.parse(raw);
-            QVERIFY(r.success);
-            QCOMPARE(r.pages.size(), 1);
-            const OcrPage &page = r.pages.first();
-            QVERIFY2(page.text == parser.rebuildText(page), qPrintable(QStringLiteral("text/rebuild mismatch for:\n%1\ntext: %2").arg(raw, page.text)));
-            QCOMPARE(r.text, page.text);
-        }
+        const auto check = [](const IOutputParser &parser, const QList<QString> &samples) {
+            for (const QString &raw : samples) {
+                const OcrResult r = parser.parse(raw);
+                QVERIFY(r.success);
+                QCOMPARE(r.pages.size(), 1);
+                const OcrPage &page = r.pages.first();
+                QVERIFY2(page.text == parser.rebuildText(page), qPrintable(QStringLiteral("text/rebuild mismatch for:\n%1\ntext: %2").arg(raw, page.text)));
+                QCOMPARE(r.text, page.text);
+            }
+        };
+        check(UnlimitedOcrParser(), wrapped);
+        check(Lfm25VlParser(), bare);
     }
 
     // The image placeholder must not inherit the model's multi-line figure
@@ -542,7 +556,7 @@ private slots:
     {
         const QString raw = QStringLiteral("image [10, 10, 400, 200]! Vanilla Attention\n! R-SWA\n! Reference");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -552,15 +566,37 @@ private slots:
 
     void fallsBackWhenNoTokens()
     {
-        DetTokensParser parser;
-        const OcrResult r = parser.parse(QStringLiteral("just plain text"));
+        // A reply with no layout header at all is kept as text — by whichever
+        // parser was pointed at it.
+        forEachDetParser([&](const IOutputParser &parser) {
+            const OcrResult r = parser.parse(QStringLiteral("just plain text"));
 
-        QVERIFY(r.success);
-        QCOMPARE(r.pages.size(), 1);
-        QCOMPARE(r.pages.first().text, QStringLiteral("just plain text"));
-        QVERIFY(r.pages.first().boxes.isEmpty());
+            QVERIFY(r.success);
+            QCOMPARE(r.pages.size(), 1);
+            QCOMPARE(r.pages.first().text, QStringLiteral("just plain text"));
+            QVERIFY(r.pages.first().boxes.isEmpty());
+        });
     }
 
+    // A parser is named after the model whose reply it reads, and the id is
+    // what the profile names. The retired shared id must not linger: it resolves
+    // to raw like any other unknown one, which is why the startup migration
+    // rewrites a stored one instead of letting it sit.
+    void parsersAreNamedAfterTheirModel()
+    {
+        QCOMPARE(UnlimitedOcrParser().id(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(UnlimitedOcrParser().displayName(), QStringLiteral("Unlimited-OCR"));
+        QCOMPARE(Lfm25VlParser().id(), QStringLiteral("lfm2.5-vl"));
+        QCOMPARE(Lfm25VlParser().displayName(), QStringLiteral("LFM2.5-VL"));
+
+        const QStringList ids = ParserFactory::registeredIds();
+        QVERIFY(ids.contains(QStringLiteral("unlimited-ocr")));
+        QVERIFY(ids.contains(QStringLiteral("lfm2.5-vl")));
+        QVERIFY(!ids.contains(QStringLiteral("det_tokens")));
+        QVERIFY(dynamic_cast<UnlimitedOcrParser *>(ParserFactory::create(QStringLiteral("unlimited-ocr")).get()));
+        QVERIFY(dynamic_cast<Lfm25VlParser *>(ParserFactory::create(QStringLiteral("lfm2.5-vl")).get()));
+        QCOMPARE(ParserFactory::create(QStringLiteral("det_tokens"))->id(), QStringLiteral("raw"));
+    }
     void parsesAllTagsAndFormatsMarkdown()
     {
         const QString raw = QStringLiteral("image [132, 118, 862, 269]\n"
@@ -570,7 +606,7 @@ private slots:
                                            "text [113, 456, 885, 603]Body text here.\n"
                                            "page_number [493, 923, 506, 935]5");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -598,7 +634,7 @@ private slots:
     {
         const QString raw = QStringLiteral("text [1, 1, 2, 2]capacity of  \\( m + n \\) and  \\( (m + 1) \\)-th token");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -616,7 +652,7 @@ private slots:
                                            "\\mathcal {N} (t) = \\mathcal {P} \\cup \\mathcal {D} _ {n} (t); \\quad \\mathcal {P} = \\{1, \\dots , L _ {m} \\}, \\tag {1}\n\\]\n"
                                            "text [112, 610, 884, 658]then the following text.");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -637,7 +673,7 @@ private slots:
         const QString raw = QStringLiteral("Some intro text.\n"
                                            "title [100, 100, 200, 200]Heading");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
         QCOMPARE(r.pages.first().boxes.size(), 2);
@@ -656,7 +692,7 @@ private slots:
     {
         const QString raw = QStringLiteral("text [200, 300, 100, 100]some text");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
         QCOMPARE(r.pages.first().boxes.size(), 1);
@@ -685,7 +721,7 @@ private slots:
             R"(<|det|>page_number [489, 923, 511, 936]<|/det|>10
 )");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
         QCOMPARE(r.pages.size(), 1);
@@ -714,7 +750,7 @@ private slots:
             R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td colspan="2">A</td><td>B</td></tr><tr><td>1</td><td>2</td><td>3</td></tr></table>
 )");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -735,7 +771,7 @@ private slots:
             R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td>Model</td><td>Size</td><td>Overall ↑</td><td>Read-order ↓</td></tr><tr><td colspan="4">End-to-end Model (v1.5)</td></tr><tr><td>OCRFlux [3]</td><td>3B</td><td>74.82</td><td>0.202</td></tr><tr><td rowspan="3">Unlimited-OCR</td><td rowspan="3">3B-A0.5B</td><td>93.23</td><td>0.045</td></tr><tr><td>↑ 6.22</td><td>↓ 0.041</td></tr><tr><td colspan="2">End-to-end Model (v1.6)</td></tr><tr><td>HunyuanOCR [29]</td><td>1B</td><td>89.95</td><td>0.171</td></tr></table>
 )");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -762,7 +798,7 @@ private slots:
             R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td colspan="2">A</td><td>B</td></tr><tr><td>1</td><td>2</td><td>3</td></tr></table>
 )");
 
-        DetTokensParser parser(ParserOptions{true, true});
+        UnlimitedOcrParser parser(ParserOptions{true, true});
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -773,7 +809,7 @@ private slots:
 
         // rebuildText() honours the flag too; the default still flattens.
         QVERIFY(parser.rebuildText(r.pages.first()).contains(QStringLiteral("<table>")));
-        QVERIFY(DetTokensParser().rebuildText(r.pages.first()).contains(QStringLiteral("| --- |")));
+        QVERIFY(UnlimitedOcrParser().rebuildText(r.pages.first()).contains(QStringLiteral("| --- |")));
     }
 
     // Table with inline math and escaped pipe characters inside cells.
@@ -783,7 +819,7 @@ private slots:
             R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td>Formula</td><td>Notes</td></tr><tr><td>\( a | b \)</td><td>A | B</td></tr></table>
 )");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -798,7 +834,7 @@ private slots:
         const QString raw = QStringLiteral(R"(<|det|>image [100, 200, 300, 400]<|/det|>Figure 1 - Overview\n)"
                                            R"(<|det|>text [100, 500, 800, 600]<|/det|>Body text\n)");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -810,7 +846,7 @@ private slots:
     {
         const QString raw = QStringLiteral("<|det|>image [100, 200, 300, 400]<|/det|>");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -826,7 +862,7 @@ private slots:
             R"(<|det|>text [112, 853, 884, 903]<|/det|>Same pattern holds.
 )");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -842,7 +878,7 @@ private slots:
     {
         const QString raw = QStringLiteral("<|det|>chart [499, 601, 875, 803]<|/det|>");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -858,7 +894,7 @@ private slots:
                                            "text [0, 200, 100, 300]Body\n"
                                            "image [0, 400, 100, 500]\n");
 
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
         OcrPage page = r.pages.first();
@@ -886,7 +922,7 @@ private slots:
             R"(<|det|>ref_text [115, 144, 885, 194]<|/det|>[32] H. Wei, L. Kong, J. Chen, L. Zhao, Z. Ge, J. Yang, J. Sun, C. Han, and X. Zhang. Vary: Scaling up the vision vocabulary for large vision-language model. In European Conference on Computer Vision, pages 408–424. Springer, 2024.\n)"
             R"(<|det|>page_number [489, 923, 511, 935]<|/det|>14)");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
         QCOMPARE(r.pages.size(), 1);
@@ -930,7 +966,7 @@ private slots:
                                            R"(<|det|>text [112, 838, 884, 903]<|/det|>Correct continuation text.\n)"
                                            R"(<|det|>equation [437, 794, 885, 829]<|/det|>\[\mathbf{o}_t = \sum \alpha_{tj} \mathbf{v}_j. \tag{4}\]\n)");
 
-        DetTokensParser parser;
+        UnlimitedOcrParser parser;
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
         QCOMPARE(r.pages.size(), 1);
@@ -963,27 +999,29 @@ private slots:
     {
         const QString raw = QStringLiteral("Sure! Here is the text of the page you asked for, transcribed "
                                            "in plain paragraphs without any layout markup at all.");
-        DetTokensParser parser;
-        const OcrResult r = parser.parse(raw);
+        forEachDetParser([&](const IOutputParser &parser) {
+            const OcrResult r = parser.parse(raw);
 
-        QVERIFY(r.success);
-        QCOMPARE(r.pages.size(), 1);
-        QVERIFY(r.pages.first().text.contains(QStringLiteral("plain paragraphs")));
-        QCOMPARE(r.notes.size(), 1);
-        QVERIFY(r.notes.first().contains(QStringLiteral("No layout tokens")));
+            QVERIFY(r.success);
+            QCOMPARE(r.pages.size(), 1);
+            QVERIFY(r.pages.first().text.contains(QStringLiteral("plain paragraphs")));
+            QCOMPARE(r.notes.size(), 1);
+            QVERIFY(r.notes.first().contains(QStringLiteral("No layout tokens")));
+        });
     }
 
     void shortReplyWithoutTokensIsSilent()
     {
-        DetTokensParser parser;
-        const OcrResult r = parser.parse(QStringLiteral("OK"));
-        QVERIFY(r.success);
-        QVERIFY(r.notes.isEmpty());
+        forEachDetParser([&](const IOutputParser &parser) {
+            const OcrResult r = parser.parse(QStringLiteral("OK"));
+            QVERIFY(r.success);
+            QVERIFY(r.notes.isEmpty());
+        });
     }
 
     void tokenizedReplyHasNoNotes()
     {
-        DetTokensParser parser;
+        Lfm25VlParser parser;
         const OcrResult r = parser.parse(QStringLiteral("text [10, 10, 400, 100]A paragraph of recognized text.\n"));
         QVERIFY(r.success);
         QVERIFY(r.notes.isEmpty());
@@ -997,7 +1035,7 @@ private slots:
 
         ParserOptions wide;
         wide.bboxRange = 10000;
-        const OcrResult r = DetTokensParser(wide).parse(raw);
+        const OcrResult r = Lfm25VlParser(wide).parse(raw);
 
         QVERIFY(r.success);
         const OcrPage &page = r.pages.first();
@@ -1019,12 +1057,10 @@ private slots:
         QCOMPARE(parser.displayName(), QStringLiteral("Raw text"));
     }
 
-    // Every registered model id must resolve to a parser that exists —
-    // catches a new adapter shipping with a parser id nobody registered.
+    // Every registered id must resolve to a parser that exists.
     void registeredParsersAreCreatable()
     {
         const QStringList ids = ParserFactory::registeredIds();
-        QVERIFY(ids.contains(QStringLiteral("det_tokens")));
         QVERIFY(ids.contains(QStringLiteral("raw")));
         for (const QString &id : ids) {
             const auto parser = ParserFactory::create(id);

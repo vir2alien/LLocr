@@ -15,7 +15,7 @@
      │                  SingleInstanceGuard · LaunchProfileStore
      │           ┌──────┴───────┐
    llocr_models      llocr_parsers
-   OcrModel adapters  IOutputParser · det_tokens/raw · BlockStyle
+   OcrModel adapters  IOutputParser · one parser per model · BlockStyle
      │           └──────┬───────┘
    llocr_config       SettingsStore · RequestProfileStore · ProfileStorage ·
      │                RequestParametersModel · RuntimePaths
@@ -53,7 +53,7 @@ public:
     virtual QString id() const = 0;               // "unlimited-ocr"
     virtual QString displayName() const = 0;      // "Unlimited-OCR"
     virtual QList<OcrPromptVariant> promptVariants() const = 0;
-    virtual QString defaultParserId() const = 0;  // "det_tokens"
+    virtual QString defaultParserId() const = 0;  // "unlimited-ocr"
 
     QFuture<OcrResult> recognize(const OcrRequest &request,
                                  const ConnectionConfig &config);
@@ -88,12 +88,12 @@ Implementations:
   (`parseResponse`, virtual). Async via `QPromise`; per-request timeout;
   **`abort()`** so the UI Stop button can cancel an in-flight request.
 - `UnlimitedOcrModel` — one prompt variant ("document parsing."), parser
-  `det_tokens`.
+  `unlimited-ocr`.
 - `Lfm25VlModel` — id `lfm25-vl-3b` (LiquidAI/LFM2.5-VL-3B): the model card's
-  layout-annotation prompt, parser `det_tokens` (the parser additionally
-  accepts the model's optional `image_index=<n>` token prefix and converts its
-  OTSL tables — ADR 87). Adding another LLM = one new subclass + one line in
-  `OcrModelFactory` + a same-id built-in request profile (ADR 59). The
+  layout-annotation prompt, parser `lfm2.5-vl` (it additionally accepts the
+  model's optional `image_index=<n>` token prefix, repairs its XML drift and
+  converts its OTSL tables — ADR 87). Adding another LLM = one new subclass + one
+  line in `OcrModelFactory` + a same-id built-in request profile (ADR 59). The
   adapter's `defaultParserId()` is what Settings → Output uses in its
   «Automatic (model default)» mode (ADR 88).
 - `LlamaClient` (`core/LlamaClient.h`) — thin transport: joins the
@@ -150,7 +150,8 @@ store.
   **prompt** comes from the selected adapter's `promptVariants()` — the
   authority moved from `AppController`/presets to the model adapter (ADR 58).
 - `parserId` selects the response-parsing strategy via `ParserFactory`
-  (`auto` | `raw` | `det_tokens`; default **`auto`**, which resolves to the
+  (`auto` | `raw` | one parser per model — `unlimited-ocr`, `lfm2.5-vl`; key
+  `parser/id`; default **`auto`**, which resolves to the
   selected model's `defaultParserId()` — ADR 88). The parser is configured
   through `ParserOptions` (`keepPageNumbers`, `tablesAsHtml`, `bboxRange`,
   `modelId`) and `IOutputParser::rebuildText()` re-renders a page's Markdown
@@ -291,7 +292,7 @@ UI (file selection)
         → ResolvedConnection → ConnectionConfig + OcrRequest
       → DocumentModel (decode image / render PDF page → QImage)
       → OcrModel.recognize() → LlamaClient.postJson()  [async, cancellable]
-      → OutputParser (from settings: auto / raw / det_tokens)
+      → OutputParser (from settings: auto / raw / the model's own)
     → OcrResult (text + optional normalized boxes + parse notes)
   → AppController (applyRawResult → per-page OcrResult + PageEditStore)
 → UI: text panel + bbox overlay + thumbnail "recognized" marker

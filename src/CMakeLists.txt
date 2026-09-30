@@ -98,8 +98,12 @@ qt_add_library(llocr_parsers STATIC
     parsers/BlockStyle.cpp
     parsers/RawParser.h
     parsers/RawParser.cpp
-    parsers/DetTokensParser.h
-    parsers/DetTokensParser.cpp
+    parsers/DetTokenParserBase.h
+    parsers/DetTokenParserBase.cpp
+    parsers/UnlimitedOcrParser.h
+    parsers/UnlimitedOcrParser.cpp
+    parsers/Lfm25VlParser.h
+    parsers/Lfm25VlParser.cpp
     parsers/DetTokenFormat.h
     parsers/DetTokenFormat.cpp
     parsers/OtslTable.h

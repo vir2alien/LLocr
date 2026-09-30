@@ -320,6 +320,39 @@ private slots:
         QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
     }
 
+    // The parser family split into one parser per model, so the id that named
+    // the shared parser is retired. A stored one is resolved to the parser the
+    // selected model declares — after the model id itself is normalized, so a
+    // model the catalog does not know follows the model it became.
+    void aStoredRetiredParserIdIsResolved()
+    {
+        {
+            QSettings pre;
+            pre.setValue(QStringLiteral("parser/id"), QStringLiteral("det_tokens"));
+            pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("lfm25-vl-3b"));
+
+            const SettingsStore store;
+            QCOMPARE(store.parserId(), QStringLiteral("lfm2.5-vl"));
+        }
+        {
+            QSettings pre;
+            pre.setValue(QStringLiteral("parser/id"), QStringLiteral("det_tokens"));
+            pre.remove(QStringLiteral("model/recipeId"));
+
+            const SettingsStore store;
+            QCOMPARE(store.parserId(), QStringLiteral("unlimited-ocr"));
+        }
+        {
+            // A stored parser id nobody knows is left alone: only the retired
+            // one is rewritten, and an unknown id degrades to raw at use.
+            QSettings pre;
+            pre.setValue(QStringLiteral("parser/id"), QStringLiteral("no-such-parser"));
+
+            const SettingsStore store;
+            QCOMPARE(store.parserId(), QStringLiteral("no-such-parser"));
+        }
+    }
+
     // The alias is the model's, per role: one stored alias could only ever name
     // one of the two servers.
     void migrationDropsTheStoredAlias()

@@ -127,7 +127,7 @@ resources/profiles/
   "roles": {
     "ocr": {
       "alias": "llocr-unlimited-ocr",
-      "parser": "det_tokens",
+      "parser": "unlimited-ocr",
       "maxOutput": 8192,
       "prompts": [
         { "id": "document-parsing", "title": "Document parsing", "text": "document parsing." }

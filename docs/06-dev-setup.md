@@ -409,7 +409,9 @@ LLocr/
 │   ├── models/       # OcrModel (abstract adapter), UnlimitedOcrModel,
 │   │                 #   Lfm25VlModel, OcrModelFactory
 │   ├── parsers/      # IOutputParser, ParserOptions, RawParser,
-│   │                 #   DetTokensParser, DetTokenFormat (shared text
+│   │                 #   DetTokenParserBase (shared engine) + one parser
+│   │                 #   per model (UnlimitedOcrParser, Lfm25VlParser),
+│   │                 #   DetTokenFormat (shared text
 │   │                 #   helpers), OtslTable (LFM2.5-VL tables), Lfm25VlDrift
 │   │                 #   (annotation drift), ParserFactory, BlockStyleMap
 │   │                 #   (label → style, from profiles/labels.json)

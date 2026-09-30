@@ -96,7 +96,7 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
   parameters** (multiplier, base, allowed length, penalty last-N). In
   `Managed` mode the model id / alias is computed by the runtime, not typed.
 - **Output** — OCR model adapter (`unlimited-ocr`; `model/recipeId`) and output
-  parser (`Automatic` / `raw` / `det_tokens`; default `auto`, ADR 88).
+  parser (`Automatic` / `raw` / one parser per model — `unlimited-ocr`, `lfm2.5-vl`; default `auto`, ADR 88 and 112).
 - **Runtime** — managed `llama-server` binary path + probe, Start/Stop/Restart,
   **Show log**, and the **stage-D installer** (release + backend pickers,
   «Download and install» with progress, «Installed: bXXXX (CUDA)», «Check for

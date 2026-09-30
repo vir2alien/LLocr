@@ -263,14 +263,9 @@
     </message>
 </context>
 <context>
-    <name>DetTokensParser</name>
+    <name>DetTokenParser</name>
     <message>
-        <location filename="../../src/parsers/DetTokensParser.cpp" line="+407"/>
-        <source>Layout tokens (with boxes)</source>
-        <translation>Токены разметки (с рамками)</translation>
-    </message>
-    <message>
-        <location line="-94"/>
+        <location filename="../../src/parsers/DetTokenParserBase.cpp" line="+226"/>
         <source>No layout tokens found in the model reply — the text was kept as one block. Check that the OCR model and the output parser match.</source>
         <translation>В ответе модели не найдено токенов разметки — текст сохранён одним блоком. Проверьте, что модель OCR и парсер вывода совпадают.</translation>
     </message>

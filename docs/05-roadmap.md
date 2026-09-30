@@ -15,7 +15,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ todo
 
 ## Stage 2 — Model extensibility — ✅ COMPLETE (revised)
 - [x] `ILlmProvider` abstraction.
-- [x] Output parsers (`raw` / `det_tokens` bbox) + `ParserFactory`.
+- [x] Output parsers (`raw` / one parser per model, bbox) + `ParserFactory`.
 - [x] Box rendering on the preview (`BoxListModel` + QML `Repeater`).
 - [x] **Configuration moved to Settings** (URL, key, timeout, **model name,
       temperature, max tokens, DRY sampling params, parser**) + persistence.

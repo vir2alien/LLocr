@@ -188,7 +188,7 @@ private slots:
 
         QCOMPARE(model.id(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(model.displayName(), QStringLiteral("Unlimited-OCR"));
-        QCOMPARE(model.defaultParserId(), QStringLiteral("det_tokens"));
+        QCOMPARE(model.defaultParserId(), QStringLiteral("unlimited-ocr"));
 
         const QList<ModelProfiles::Prompt> variants = model.promptVariants();
         QCOMPARE(variants.size(), 1);
@@ -203,7 +203,7 @@ private slots:
 
         QCOMPARE(model.id(), QStringLiteral("lfm25-vl-3b"));
         QCOMPARE(model.displayName(), QStringLiteral("LFM2.5-VL-3B"));
-        QCOMPARE(model.defaultParserId(), QStringLiteral("det_tokens"));
+        QCOMPARE(model.defaultParserId(), QStringLiteral("lfm2.5-vl"));
 
         const QList<ModelProfiles::Prompt> variants = model.promptVariants();
         QCOMPARE(variants.size(), 1);

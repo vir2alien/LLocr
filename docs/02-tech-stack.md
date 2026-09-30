@@ -35,7 +35,8 @@
   > The model prompt is **not** free-typed in `SettingsStore` — it is owned by
   > the selected **OCR model adapter** (`OcrModel::promptVariants()`; for
   > Unlimited-OCR a single fixed variant "document parsing.", ADR 58).
-  > The bbox coordinate range is hardcoded (`DetTokensParser`, 1000).
+  > The bbox coordinate range is a parser option (`ParserOptions::bboxRange`,
+  > 1000 by default).
 
   ## Managed local runtime (llama.cpp) — stages A–G ✅
   Starting with a llama.cpp binary or downloading it from GitHub Releases

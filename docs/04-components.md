@@ -9,7 +9,7 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   virtual hook) and parses the response (`parseResponse`, virtual hook);
   async (`QPromise`/`QFuture`), per-request timeout, and **`abort()`** for Stop.
   `UnlimitedOcrModel` supplies its single prompt variant ("document parsing.")
-  and the default parser (`det_tokens`); new LLMs are added as new subclasses
+  and the default parser (`unlimited-ocr`); new LLMs are added as new subclasses
   registered in `OcrModelFactory` (ADR 58).
 - **LlamaClient** ✅ (`core/LlamaClient.h`): thin transport — POSTs JSON to
   `/v1/chat/completions` with an optional bearer token, per-request timeout and
@@ -64,8 +64,8 @@ model windows have per-tab resets instead (profile restore in Launch/Request).
 | Window      | Fields                                                              |
 | ----------- | ------------------------------------------------------------------- |
 | Interface   | language (System / English / Русский), theme (System / Light / Dark); applies immediately, scoped «Restore defaults» |
-| Output      | output parser (`auto` / `raw` / `det_tokens`; default `auto` — the  |
-|             | selected model's `defaultParserId()`, ADR 88); **split   |
+| Output      | output parser (`auto` / `raw` / one parser per model: `unlimited-ocr`, `lfm2.5-vl`; key `parser/id`, default `auto` — the
+|             | selected model's `defaultParserId()`, ADR 88, 112); **split   |
 |             | pages** (`output/splitPages`, default on — `---` rule in MD, dash     |
 |             | line in TXT, `<hr>` in HTML, page break in PDF/DOCX — no “Page N”     |
 |             | headings, ADR 64); **keep page numbers** (`output/keepPageNumbers`,   |
@@ -124,21 +124,22 @@ Three options handled by `UiController` (a QML singleton), selected in
 - `Dark`
 
 ## 4.4 Output parsers
-- `det_tokens` ✅ — the layout-token parser (`DetTokensParser`). It extracts
-  text + coordinates from the model's `<|det|> label [x1,y1,x2,y2] <|/det|> text`
-  stream (content is JSON-escaped and unescaped by the parser; model control
-  tokens such as `<|end_of_sentence|>` — incl. full-width-pipe variants — are
-  stripped). Legacy bare `label [x1,y1,x2,y2] text` lines are still accepted,
-  as is the LFM2.5-VL `image_index=<n> <label>…</label>` annotation and its
-  OTSL tables (ADR 87). Input is one page per request, so no page splitting
-  happens here. Coordinates are normalized to [0,1] by `ParserOptions::bboxRange`
-  (1000 by default, i.e. the usual 0–1000 model space).
+- **One parser per model** ✅ (`DetTokenParserBase` + `UnlimitedOcrParser` / `Lfm25VlParser`): each reads the reply
+  shape its own model writes — the `<|det|>label [x1,y1,x2,y2]<|/det|>` wrapped
+  stream with JSON-escaped content (`\n` → newline), and the bare
+  `label [x1,y1,x2,y2]` / `image_index=<n> <label>…</label>` layout annotation
+  with its XML drift repair. The engine (token scan → normalized boxes → Markdown
+  via `rebuildText()`, OTSL and `<table>` sub-formats, service-token stripping)
+  is shared; a model that answers in another shape is a new subclass, not a new
+  branch in a parser every model shares (ADR 112). A reply with no layout header
+  keeps its text and records a diagnostic. Coordinates are normalized to [0,1] by
+  `ParserOptions::bboxRange` (1000 by default, the usual 0–1000 model space).
 - `raw` ✅ — text as-is (`RawParser`).
 - `auto` ✅ — **default** (`parser/id = auto`, ADR 88). Not a parser: it
   resolves to the selected model's `OcrModel::defaultParserId()` in
   `AppController::effectiveParserId()`, so switching the OCR model can never
-  leave a mismatched parser behind. Both supported models declare
-  `det_tokens`, and `test_ocr_models::everyModelDeclaresARegisteredParser`
+  leave a mismatched parser behind. Every model declares the parser of its own
+  reply shape, and `test_ocr_models::everyModelDeclaresARegisteredParser`
   guards the link at build time.
 - Created and configured via `ParserFactory::create(id, ParserOptions)`;
   `selectableIds()` / `selectableDisplayNames()` feed **Settings → Output**
@@ -204,7 +205,7 @@ Three options handled by `UiController` (a QML singleton), selected in
 
 ## 4.6 Box rendering & image-block editing
 - Overlay bboxes on top of the preview via a QML `Repeater` bound to
-  `BoxListModel` (normalized rectangles). ✅ (populated when `det_tokens` is used).
+  `BoxListModel` (normalized rectangles). ✅ (populated when a model parser is used).
 - Image/chart blocks (`label` = `image` / `chart`) are **editable**: they can
   be moved, resized (8 resize handles), and deleted directly on the preview.
   Deletion/geometry changes are pushed through

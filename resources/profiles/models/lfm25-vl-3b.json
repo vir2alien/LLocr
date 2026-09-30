@@ -16,7 +16,7 @@
   "roles": {
     "ocr": {
       "alias": "llocr-lfm25-vl-3b",
-      "parser": "det_tokens",
+      "parser": "lfm2.5-vl",
       "maxOutput": 8192,
       "prompts": [
         {
