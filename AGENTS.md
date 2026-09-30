@@ -75,6 +75,12 @@
   scripts/check.sh --configure     # re-configure it first
   ```
 
+  CI runs this script in two tiers (ADR 121): `--format-only` (clang-format
+  alone, no Qt) on every push, the full sequence on `workflow_dispatch` only —
+  the hosted runners have no Qt 6.10.3 and the provisioning step is still a
+  `TODO(provision-qt)`. Read the ADR before touching the workflow; a push-triggered
+  matrix that cannot pass is what made CI mail “all jobs failed” on every commit.
+
   Tell future agents to compile/run tests by reusing the ready-made `build/`
   directory — do **not** try to re-configure from scratch. The `dev` preset in
   `CMakePresets.json` matches that tree (**Unix Makefiles**, Qt at

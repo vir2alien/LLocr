@@ -5,7 +5,7 @@
 | ---------------- | ------------------------------------------- | ------ |
 | Build system     | CMake                                       | ✅ used |
 | Version control  | Git + GitHub/GitLab                         | ✅ used |
-| CI/CD            | GitHub Actions (`.github/workflows/ci.yml`) — **pending the Qt 6.10.3 artifact**; the same sequence runs locally via `scripts/check.sh` | 🟡 |
+| CI/CD            | GitHub Actions (`.github/workflows/ci.yml`) — `clang-format` gate on every push, full matrix on `workflow_dispatch` (**pending the Qt 6.10.3 provisioning step**); the same sequence runs locally via `scripts/check.sh` | 🟡 |
 | C++ dependencies | vcpkg — **Windows only**, provides ZLIB (`x64-windows`); not used on the macOS build | 🟡 |
 | Formatting       | clang-format                                          | ✅ used |
 | Tests            | Qt Test (unit tests in `tests/`)                      | ✅ done |
@@ -14,10 +14,14 @@
 > `CMAKE_PREFIX_PATH=~/Qt/6.10.3/macos`); `VCPKG_ROOT` is unset and vcpkg does
 > not participate in the macOS build. `scripts/check.sh` wraps the whole
 > verification (configure → build → `ctest` → clang-format → `qmllint`) and is
-> what CI runs. The Qt **6.10.3** the project builds against is a custom
-> build, not an official installer build — the CI workflow therefore still has
-> its Qt provisioning step marked `TODO(provision-qt)` and must not be switched
-> to `push`/`pull_request` triggers until that artifact is wired in.
+> what CI runs. CI itself is two tiers (ADR 121): a Qt-free `clang-format` gate
+> on every push, and the full matrix on `workflow_dispatch` only — the hosted
+> runners have no Qt and the provisioning step is still `TODO(provision-qt)`.
+> The Qt **6.10.3** this project builds against is an official online-installer
+> build (`qt.qt6.6103.clang_64` + `extensions.qtwebengine.6103` in
+> `~/Qt/components.xml`), not a custom one, so that step can use
+> `jurplel/install-qt-action` (aqtinstall) — the per-host recipe is in the
+> workflow header.
 >
 > **QML is a real module** (`qt_add_qml_module` in `src/CMakeLists.txt`,
 > ADR 101): the file list is globbed with `CONFIGURE_DEPENDS` (no more 49-line

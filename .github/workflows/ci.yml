@@ -1,21 +1,27 @@
-# Continuous verification for LLocr
+# Continuous verification for LLocr — two tiers on purpose.
 #
-# The local equivalent is `scripts/check.sh`; keep the two in sync — CI runs
-# the script, so a green run locally means a green run here.
+#   format          every push/PR: clang-format only, no Qt, ~30 s
+#   build-and-test  workflow_dispatch only: configure → build → ctest → qmllint
 #
-# The project builds against a **custom Qt 6.10.3** (docs/06-dev-setup.md), not
-# an official installer build, so the Qt provisioning step below is still a
-# TODO. Everything after it is verified locally; switch the triggers from
-# workflow_dispatch to push/pull_request once the Qt artifact is wired in.
+# Both tiers go through `scripts/check.sh`, so the local and the CI sequence
+# cannot drift (ADR 100). The full tier needs Qt 6.10.3, which the hosted
+# runners do not have, and the provisioning step below is still a TODO — that
+# is why the full matrix is manual. A per-push tier that cannot pass is worse
+# than no CI: it only teaches the reader to ignore red.
 #
-#   TODO(provision-qt): replace the QT_PREFIX_* values with the real Qt 6.10.3
-#   location for each runner (archive URL, internal mirror, or a self-hosted
-#   image). It must provide QtCore, QtGui, QtQml, QtQuick, QtQuickControls2,
-#   QtPdf, QtWebEngineQuick, QtConcurrent and QtTest.
-#   The Windows runner additionally needs the MSVC 2022 toolchain and ZLIB via
-#   vcpkg (triplet x64-windows) — see the Windows section of
-#   docs/06-dev-setup.md. DjVu is optional: the suite now builds and runs
-#   without it, so Linux/macOS can skip DjVuLibre entirely.
+#   TODO(provision-qt): install Qt 6.10.3 into ${{ matrix.qt_prefix }} with
+#   jurplel/install-qt-action (aqtinstall; `cache: true`, the package with
+#   WebEngine is ~2 GB) and drop the QT_PREFIX_* placeholders below, which
+#   point at a workspace path nothing creates. Qt 6.10.3 is an *official*
+#   online-installer build (components qt.qt6.6103.*), not a custom one, so it
+#   is available from download.qt.io: per host the arch is gcc_64 (Linux,
+#   plus modules qtwebengine + qtwebengine-dev-tools, and the WebEngine
+#   runtime deps libnss3 libxss1 libasound2t64 libxtst6 libxkbcommon-x11-0
+#   libxcomposite1 libxdamage1 libxrandr2 libgbm1 libatk1.0-0t64 libcups2t64
+#   libdrm2 libpango-1.0-0), macos (universal) and msvc2022_64 (Windows,
+#   which also needs ilammy/msvc-dev-cmd for the bash shell and vcpkg for
+#   ZLIB, triplet x64-windows — see the Windows section of docs/06-dev-setup.md).
+#   DjVu is optional: the suite builds and runs without it.
 
 name: CI
 
@@ -32,12 +38,25 @@ on:
       - 'docs/**'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+      - name: clang-format
+        run: scripts/check.sh --format-only
+
   build-and-test:
     name: ${{ matrix.name }}
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:

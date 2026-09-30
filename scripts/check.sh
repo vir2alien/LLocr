@@ -10,6 +10,7 @@
 #   scripts/check.sh --no-tests       build only
 #   scripts/check.sh --no-format      skip the clang-format check
 #   scripts/check.sh --no-lint        skip the QML lint
+#   scripts/check.sh --format-only    clang-format check alone, no Qt needed
 #
 # Environment:
 #   BUILD_DIR   build tree to use            (default: build)
@@ -38,6 +39,7 @@ else
 fi
 
 DO_CONFIGURE=0
+DO_BUILD=1
 DO_TESTS=1
 DO_FORMAT=1
 DO_LINT=1
@@ -48,7 +50,8 @@ for arg in "$@"; do
         --no-tests)   DO_TESTS=0 ;;
         --no-format)  DO_FORMAT=0 ;;
         --no-lint)    DO_LINT=0 ;;
-        -h|--help)    sed -n '2,25p' "$0"; exit 0 ;;
+        --format-only) DO_CONFIGURE=0; DO_BUILD=0; DO_TESTS=0; DO_LINT=0 ;;
+        -h|--help)    sed -n '2,/^$/p' "$0"; exit 0 ;;
         *)            echo "check.sh: unknown option '$arg' (try --help)" >&2; exit 2 ;;
     esac
 done
@@ -56,7 +59,7 @@ done
 say() { printf '\n=== %s\n' "$*"; }
 
 # ---- configure ------------------------------------------------------------
-if [ "$DO_CONFIGURE" -eq 1 ] || [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; then
+if [ "$DO_CONFIGURE" -eq 1 ] || { [ "$DO_BUILD" -eq 1 ] && [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; }; then
     say "Configuring $BUILD_DIR ($BUILD_TYPE, Qt: $QT_PREFIX)"
     if [ -d "$QT_PREFIX" ]; then
         cmake -S "$ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
@@ -72,8 +75,10 @@ else
 fi
 
 # ---- build ----------------------------------------------------------------
-say "Building (jobs: $JOBS)"
-cmake --build "$BUILD_DIR" -j "$JOBS"
+if [ "$DO_BUILD" -eq 1 ]; then
+    say "Building (jobs: $JOBS)"
+    cmake --build "$BUILD_DIR" -j "$JOBS"
+fi
 
 # ---- tests ----------------------------------------------------------------
 if [ "$DO_TESTS" -eq 1 ]; then
@@ -82,7 +87,7 @@ if [ "$DO_TESTS" -eq 1 ]; then
     # tests/CMakeLists.txt, so a hang fails the run instead of blocking.
     ctest --test-dir "$BUILD_DIR" -j "$JOBS" --output-on-failure
 else
-    say "Tests skipped (--no-tests)"
+    say "Tests skipped"
 fi
 
 # ---- formatting -----------------------------------------------------------
