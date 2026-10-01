@@ -412,6 +412,57 @@ QString ModelInstallTransaction::expectedShaFor(const QString &repoPath) const
     return QString();
 }
 
+bool ModelInstallTransaction::preserveExistingFiles(const QString &finalDir, const QString &stagingDir, const QStringList &writtenNames, QString *error)
+{
+    auto fail = [error](const QString &path) {
+        if (error)
+            *error = QObject::tr("Unable to keep the existing file %1").arg(path);
+        return false;
+    };
+
+    QDir source(finalDir);
+    if (!source.exists())
+        return true;
+
+    const QDir target(stagingDir);
+    QSet<QString> written;
+    for (const QString &name : writtenNames)
+        written.insert(name);
+
+    QStringList moved;
+    const QFileInfoList entries = source.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QFileInfo &entry : entries) {
+        const QString name = entry.fileName();
+        if (written.contains(name) || entry.suffix() == QStringLiteral("part"))
+            continue;
+
+        const QString to = target.filePath(name);
+        if (QFileInfo::exists(to)) {
+            const bool gone = entry.isDir() ? QDir(entry.absoluteFilePath()).removeRecursively() : QFile::remove(entry.absoluteFilePath());
+            if (!gone)
+                return fail(entry.absoluteFilePath());
+            continue;
+        }
+        if (!QDir().rename(entry.absoluteFilePath(), to)) {
+            for (int i = moved.size() - 1; i >= 0; --i)
+                QDir().rename(target.filePath(QFileInfo(moved.at(i)).fileName()), moved.at(i));
+            return fail(entry.absoluteFilePath());
+        }
+        moved.append(entry.absoluteFilePath());
+    }
+    return true;
+}
+
+bool ModelInstallTransaction::preservePendingFiles(QString *error)
+{
+    QStringList written;
+    for (const QString &path : std::as_const(m_pending.modelNames))
+        written.append(ModelCatalog::leafName(path));
+    if (!m_pending.mmprojRel.isEmpty())
+        written.append(ModelCatalog::leafName(m_pending.mmprojRel));
+    return preserveExistingFiles(m_pending.dir, m_staging->stagingPath(), written, error);
+}
+
 bool ModelInstallTransaction::mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel, const QString &expected, const QString &revision, const QList<ModelEntry> &installed)
 {
     const QString target = QDir(dir).filePath(ModelCatalog::leafName(mmprojRel));
@@ -535,7 +586,7 @@ void ModelInstallTransaction::completeInstall()
 
     if (m_staging) {
         QString commitError;
-        if (!m_staging->commit(&commitError)) {
+        if (!preservePendingFiles(&commitError) || !m_staging->commit(&commitError)) {
             setBusy(false);
             setStatusMessage(commitError);
             setState(State::Error);

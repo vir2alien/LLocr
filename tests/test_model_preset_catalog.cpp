@@ -71,13 +71,15 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         const char *launch;
     };
     // The launch lists are the ones a wrong edit silently truncates: a model
-    // that loses cache-type-* or cache-type-v still starts, and the only symptom
-    // is a slower or a more memory-hungry run.
+    // that loses image-*-tokens or dry-sequence-breaker still starts, and the only
+    // symptom is a worse vision budget. ctx-size and n-predict are not listed on
+    // purpose — they follow the machine's memory and live in the platform
+    // profiles of serverLaunch.json (ADR 126).
     const QList<Expected> expected = {
-        {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "ctx-size,n-predict,cache-type-k,cache-type-v,image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
-        {"lfm25-vl-3b", "ocr", "b8000", "q4_k_m,q8_0", "ctx-size,n-predict,cache-type-k,cache-type-v,special"},
-        {"qwen3.5-4b", "check", "b4000", "q8_0,q4_k_xl", "ctx-size,n-predict,cache-type-k,cache-type-v"},
-        {"teleocr", "ocr,check", "b4000", "q4_k_m,q5_k_m,q8_0,f16", "ctx-size,n-predict,cache-type-k,cache-type-v"},
+        {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
+        {"lfm25-vl-3b", "ocr", "b8000", "q4_k_m,q8_0", "special"},
+        {"qwen3.5-4b", "check", "b4000", "q8_0,q4_k_xl", ""},
+        {"teleocr", "ocr,check", "b4000", "q4_k_m,q8_0", ""},
     };
 
     for (const Expected &e : expected) {
@@ -153,12 +155,22 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
 }
 
 // A model the managed runtime cannot load says so in its profile, and the note
-// reaches the store the settings windows read.
+// reaches the store the settings windows read. Fed from a profile built here, not
+// from a shipped one: no shipped model needs a note, and a test that borrowed one
+// would start failing the day its model became runnable.
 void TestModelPresetCatalog::runtimeNoteReachesTheSettings()
 {
-    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    QVERIFY(!ModelProfiles::runtimeNoteFor(profiles, QStringLiteral("teleocr")).isEmpty());
-    QVERIFY(ModelProfiles::runtimeNoteFor(profiles, QStringLiteral("qwen3.5-4b")).isEmpty());
+    ModelProfiles::Profile unrunnable;
+    unrunnable.id = QStringLiteral("needs-a-patch");
+    unrunnable.title = unrunnable.id;
+    unrunnable.runtimeNote = QStringLiteral("stock llama.cpp cannot load this GGUF");
+
+    QList<ModelProfiles::Profile> profiles = {unrunnable, ModelProfiles::instance().constFirst()};
+    QCOMPARE(ModelProfiles::runtimeNoteFor(profiles, QStringLiteral("needs-a-patch")), QStringLiteral("stock llama.cpp cannot load this GGUF"));
+    // No note, no warning: every model the app ships runs on the runtime it
+    // downloads (TeleOCR carried a note until its repository moved to weights
+    // that load on a stock build).
+    QVERIFY(ModelProfiles::runtimeNoteFor(profiles, profiles.last().id).isEmpty());
     QVERIFY(ModelProfiles::runtimeNoteFor(profiles, QStringLiteral("some-guf")).isEmpty());
 }
 

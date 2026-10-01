@@ -16,6 +16,8 @@ Button {
     background: Rectangle {
         radius: Theme.controlRadius
         color: {
+            if (!control.enabled)
+                return control.emphasis ? Theme.selected : Theme.surfaceSunken
             if (control.emphasis)
                 return control.down ? Qt.darker(Theme.accent, 1.15) : Theme.accent
             if (control.subtle)
@@ -26,14 +28,15 @@ Button {
                                 : (control.hovered ? Theme.surfaceSunken
                                                    : Theme.surface)
         }
-        border.color: control.emphasis ? Theme.accent : Theme.divider
-        border.width: control.subtle && !control.hovered && !control.down ? 0 : 1
+        border.color: control.emphasis && control.enabled ? Theme.accent : Theme.divider
+        border.width: control.subtle && (!control.enabled || (!control.hovered && !control.down)) ? 0 : 1
     }
 
     contentItem: Text {
         text: control.text
         font: control.font
-        color: control.emphasis ? (Theme.dark ? "#1c1c1c" : "#ffffff")
+        color: !control.enabled ? Theme.textMuted
+                                : control.emphasis ? (Theme.dark ? "#1c1c1c" : "#ffffff")
                                 : (control.subtle && !control.hovered
                                    ? Theme.textSecondary : Theme.textPrimary)
         horizontalAlignment: Text.AlignHCenter

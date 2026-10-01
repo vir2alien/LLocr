@@ -65,6 +65,26 @@ constexpr const char *kLayeredPresetsJson = R"({
 
 // One file per model, as shipped. Unlimited-OCR names the vision budget and
 // the DRY reset; LFM2.5-VL names neither; Qwen answers the check role only.
+// The shipped shape (ADR 126): the context window and the generation budget
+// belong to the machine, so the platform profile carries them. The global
+// fallback names them too and must only fill gaps — a second --ctx-size on the
+// command line is a server that refuses to start.
+constexpr const char *kMachineOwnsContextJson = R"({
+    "schemaVersion": 1,
+    "policy": { "parameters": [ { "order": 1, "name": "parallel", "value": 1 } ] },
+    "fallback": { "parameters": [
+        { "order": 1, "name": "ctx-size", "value": 16384 },
+        { "order": 2, "name": "n-predict", "value": 8192 }
+    ] },
+    "profiles": [
+        { "id": "cpu", "name": "CPU", "backend": "cpu",
+          "parameters": [
+              { "order": 1, "name": "ctx-size", "value": 8192 },
+              { "order": 2, "name": "n-predict", "value": 8192 }
+          ] }
+    ]
+})";
+
 constexpr const char *kUnlimitedProfileJson = R"({
     "schemaVersion": 1,
     "id": "unlimited-ocr",
@@ -376,10 +396,15 @@ private slots:
         QVERIFY(ocr.find(QStringLiteral("cache_prompt")) == nullptr);
         QCOMPARE(ocr.find(QStringLiteral("ctx-size"))->value.toDouble(), 16384.0);
 
-        // The notice asks the same question the composition does, per role: the
-        // model is in the catalog, but not for this one.
+        // The notice asks whether the model is in the catalog, not whether it
+        // answers this role: qwen3.5-4b is in it, so neither window warns — it
+        // simply does not answer the ocr role, and the machine's parameters stand
+        // in for it. A model the catalog does not know is what the notice is for.
         settings.setModelRecipeId(QStringLiteral("qwen3.5-4b"));
         settings.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        QVERIFY(!store.modelProfileMissing());
+        QVERIFY(!store.checkModelProfileMissing());
+        settings.setModelRecipeId(QStringLiteral("some-hand-picked-gguf"));
         QVERIFY(store.modelProfileMissing());
         QVERIFY(!store.checkModelProfileMissing());
     }
@@ -447,15 +472,19 @@ private slots:
 
         LaunchProfileStore store(settings, presetsPath);
 
-        // The draft is exactly the two layers a user copy may own: policy and
-        // platform. The model's rows must not be there.
         const QAbstractListModel *draft = store.draftModel();
         QStringList draftNames;
         for (int i = 0; i < draft->rowCount(); ++i)
             draftNames << draft->data(draft->index(i), LaunchParametersModel::NameRole).toString();
-        QVERIFY(!draftNames.contains(QStringLiteral("ctx-size")));
-        QVERIFY(!draftNames.contains(QStringLiteral("n-predict")));
+        // The draft is the composed set the server is started from: policy,
+        // platform, and — this store knows no models — the global fallback that
+        // stands in for a model outside the catalog. What the stale copy carried
+        // is gone, and with it the 8192 the runtime never uses (asserted below).
+        QVERIFY(draftNames.contains(QStringLiteral("ctx-size")));
+        QVERIFY(draftNames.contains(QStringLiteral("n-predict")));
         QVERIFY(!draftNames.contains(QStringLiteral("image-min-tokens")));
+        int ctxRow = draftNames.indexOf(QStringLiteral("ctx-size"));
+        QCOMPARE(draft->data(draft->index(ctxRow), LaunchParametersModel::ValueTextRole), QStringLiteral("16384"));
         // The user's own platform row survived…
         QVERIFY(draftNames.contains(QStringLiteral("flash-attn")));
         // …and the policy row is there once, not twice.
@@ -500,6 +529,174 @@ private slots:
         QVERIFY(store.activeProfile().find(QStringLiteral("parallel")) != nullptr);
         settings.setRuntimeBackend(QStringLiteral("metal"));
         QVERIFY(store.activeProfile().find(QStringLiteral("parallel")) != nullptr);
+    }
+
+    // The machine's memory decides the context window: it is a platform parameter
+    // now, and the user edits it where every other machine-wide value is edited.
+    void theMachinesContextWinsOverTheGlobalFallback()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kMachineOwnsContextJson);
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        settings.setRuntimeBackend(QStringLiteral("cpu"));
+        settings.setModelRecipeId(QStringLiteral("some-hand-picked-gguf"));
+        LaunchProfileStore store(settings, presetsPath);
+
+        // A model outside the catalog: the platform's 8192 stands, not the
+        // fallback's 16384, and the name appears exactly once.
+        const LaunchProfile unknown = store.activeProfile(QStringLiteral("some-hand-picked-gguf"), QStringLiteral("ocr"));
+        QCOMPARE(unknown.find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
+        QCOMPARE(unknown.find(QStringLiteral("n-predict"))->value.toDouble(), 8192.0);
+        int occurrences = 0;
+        for (const LaunchParameter &p : unknown.parameters) {
+            if (p.name == QLatin1String("ctx-size"))
+                ++occurrences;
+        }
+        QCOMPARE(occurrences, 1);
+
+        // …and it is the user's to edit: the fallback locked only what it supplied
+        // itself, and it supplied nothing here.
+        store.reloadDraft(QStringLiteral("ocr"));
+        const QAbstractListModel *draft = store.draftModel();
+        int ctxRow = -1;
+        for (int i = 0; i < draft->rowCount(); ++i) {
+            if (draft->data(draft->index(i), LaunchParametersModel::NameRole).toString() == QLatin1String("ctx-size"))
+                ctxRow = i;
+        }
+        QVERIFY(ctxRow >= 0);
+        QCOMPARE(draft->data(draft->index(ctxRow), LaunchParametersModel::EditableRole), true);
+        QVERIFY(store.setDraftValue(ctxRow, QStringLiteral("32768")));
+        store.saveDraft();
+        QCOMPARE(store.activeProfile(QStringLiteral("some-hand-picked-gguf"), QStringLiteral("ocr")).find(QStringLiteral("ctx-size"))->value.toDouble(), 32768.0);
+    }
+
+    // The draft is what the settings window shows, so it has to be the same
+    // composition the server is started from — the model layer included. It was
+    // composed without the model, so the tab showed only the shared policy and
+    // the platform rows while the server ran with the model's values on top.
+    void draftCarriesTheModelLayerAndFollowsTheModel()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kLayeredPresetsJson);
+        const QString modelDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+        QVERIFY(QDir().mkpath(modelDir));
+        QFile unlimitedFile(QDir(modelDir).filePath(QStringLiteral("unlimited-ocr.json")));
+        QVERIFY(unlimitedFile.open(QIODevice::WriteOnly));
+        unlimitedFile.write(QByteArray(kUnlimitedProfileJson));
+        unlimitedFile.close();
+        QFile lfmFile(QDir(modelDir).filePath(QStringLiteral("lfm25-vl-3b.json")));
+        QVERIFY(lfmFile.open(QIODevice::WriteOnly));
+        lfmFile.write(QByteArray(kLfmProfileJson));
+        lfmFile.close();
+        QFile checkFile(QDir(modelDir).filePath(QStringLiteral("qwen3.5-4b.json")));
+        QVERIFY(checkFile.open(QIODevice::WriteOnly));
+        checkFile.write(QByteArray(kCheckProfileJson));
+        checkFile.close();
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("modelsDir"));
+        settings.setRuntimeBackend(QStringLiteral("cpu"));
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        LaunchProfileStore store(settings, presetsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        QString error;
+        store.setModelProfiles(ModelProfiles::loadFrom(modelDir, error));
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+
+        const QAbstractListModel *model = store.draftModel();
+        const auto names = [&model] {
+            QStringList out;
+            for (int i = 0; i < model->rowCount(); ++i)
+                out.append(model->data(model->index(i), LaunchParametersModel::NameRole).toString());
+            return out;
+        };
+
+        store.reloadDraft(QStringLiteral("ocr"));
+        // policy + platform + the model's own rows, in that order.
+        QCOMPARE(names(),
+                 QStringList({QStringLiteral("parallel"), QStringLiteral("flash-attn"), QStringLiteral("ctx-size"), QStringLiteral("image-min-tokens"), QStringLiteral("dry-sequence-breaker")}));
+
+        // The policy and the model's rows are the profile's, not the user file's:
+        // shown, not editable, and refused as an added row for the same reason.
+        for (int i = 0; i < model->rowCount(); ++i) {
+            const QString name = model->data(model->index(i), LaunchParametersModel::NameRole).toString();
+            const bool owned = name == QLatin1String("parallel") || name == QLatin1String("ctx-size") || name == QLatin1String("image-min-tokens") || name == QLatin1String("dry-sequence-breaker");
+            QCOMPARE(model->data(model->index(i), LaunchParametersModel::EditableRole), !owned);
+        }
+        QVERIFY(!store.appendDraftParameter(QStringLiteral("image-min-tokens"), QStringLiteral("999")));
+
+        // Switching the model re-composes the draft: the rows on screen are the
+        // ones the server would be started with.
+        settings.setModelRecipeId(QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(names(), QStringList({QStringLiteral("parallel"), QStringLiteral("flash-attn"), QStringLiteral("ctx-size")}));
+
+        // A model outside the catalog gets the fallback rows, in the model's place.
+        settings.setModelRecipeId(QStringLiteral("some-hand-picked-gguf"));
+        QCOMPARE(names(), QStringList({QStringLiteral("parallel"), QStringLiteral("flash-attn"), QStringLiteral("ctx-size"), QStringLiteral("n-predict")}));
+
+        // The role decides the model: the check model contributes its own layer,
+        // and the OCR model does not answer that role.
+        settings.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        store.reloadDraft(QStringLiteral("check"));
+        QVERIFY(names().contains(QStringLiteral("cache-type-k")));
+        QVERIFY(!names().contains(QStringLiteral("image-min-tokens")));
+
+        store.reloadDraft(QStringLiteral("ocr"));
+        QVERIFY(names().contains(QStringLiteral("image-min-tokens")));
+        QVERIFY(!names().contains(QStringLiteral("cache-type-k")));
+    }
+
+    // Saving writes the user copy of a *platform* profile. A row the model owns
+    // would be frozen into that copy and then win for every other model — and be
+    // dropped at the next start by the pruning in the constructor.
+    void savingTheDraftKeepsTheModelLayerOut()
+    {
+        QTemporaryDir dir;
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kLayeredPresetsJson);
+        const QString modelDir = QDir(dir.path()).filePath(QStringLiteral("models"));
+        QVERIFY(QDir().mkpath(modelDir));
+        QFile file(QDir(modelDir).filePath(QStringLiteral("unlimited-ocr.json")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(QByteArray(kUnlimitedProfileJson));
+        file.close();
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("modelsDir"));
+        settings.setRuntimeBackend(QStringLiteral("cpu"));
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        LaunchProfileStore store(settings, presetsPath);
+        QString error;
+        store.setModelProfiles(ModelProfiles::loadFrom(modelDir, error));
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+        store.reloadDraft(QStringLiteral("ocr"));
+
+        const QAbstractListModel *model = store.draftModel();
+        int flashRow = -1;
+        for (int i = 0; i < model->rowCount(); ++i) {
+            if (model->data(model->index(i), LaunchParametersModel::NameRole).toString() == QLatin1String("flash-attn"))
+                flashRow = i;
+        }
+        QVERIFY(flashRow >= 0);
+        QVERIFY(store.setDraftValue(flashRow, QStringLiteral("on")));
+        store.saveDraft();
+
+        // The saved profile carries the platform edit and nothing of the model.
+        LaunchProfileStore reloaded(settings, presetsPath);
+        reloaded.setModelProfiles(ModelProfiles::loadFrom(modelDir, error));
+        const LaunchProfile composed = reloaded.activeProfile(QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"));
+        QCOMPARE(composed.find(QStringLiteral("flash-attn"))->value.toString(), QStringLiteral("on"));
+        QCOMPARE(composed.find(QStringLiteral("image-min-tokens"))->value.toDouble(), 456.0);
+        // …and a model with no layer of its own still shows the value, from the
+        // profile rather than from a frozen copy.
+        const LaunchProfile other = reloaded.activeProfile(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        QVERIFY(other.find(QStringLiteral("image-min-tokens")) == nullptr);
     }
 
     void storeSelectDraftProfileSwitchesRows()

@@ -1,11 +1,12 @@
 #include "config/RequestProfileStore.h"
 
-#include <QDir>
-
 #include "config/ProfileStore.h"
+#include "config/RequestProfileListModel.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
 #include "core/ModelProfiles.h"
+
+#include <QDir>
 
 namespace llocr {
 
@@ -26,7 +27,7 @@ QString roleName(RequestProfileStore::Role role)
 RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QObject *parent)
     : QObject(parent), m_settings(settings), m_role(role),
       m_profiles(new ProfileStore<RequestProfile>(QString(), userFileName(role), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
-      m_model(new RequestParametersModel(this))
+      m_model(new RequestParametersModel(this)), m_profileModels(new RequestProfileListModel(this))
 {
     m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(userFileName(role)));
     setModelProfiles(ModelProfiles::instance());
@@ -36,18 +37,17 @@ void RequestProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &
 {
     m_modelProfiles = profiles;
 
+    const QList<ModelProfiles::Profile> roleProfiles = ModelProfiles::forRole(profiles, roleName(m_role));
     QList<RequestProfile> builtIn;
-    const QString role = roleName(m_role);
-    for (const ModelProfiles::Profile &profile : profiles) {
-        if (!ModelProfiles::roleFor(profile, role))
-            continue;
+    for (const ModelProfiles::Profile &profile : roleProfiles) {
         RequestProfile request;
         request.id = profile.id;
-        request.parameters = ModelProfiles::requestWithMaxOutput(profiles, profile.id, role);
+        request.parameters = ModelProfiles::requestWithMaxOutput(profiles, profile.id, roleName(m_role));
         request.sortByOrder();
         builtIn.append(request);
     }
 
+    m_profileModels->resetFrom(roleProfiles);
     m_profiles->setBuiltIn(builtIn);
     m_profiles->reloadUserProfiles();
     reloadDraft();

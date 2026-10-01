@@ -12,7 +12,6 @@ Item {
     id: root
 
     property bool downloadMode: true
-    property int preparedIndex: -1
     property bool preparedForCheck: false
 
     readonly property bool downloadComplete: Runtime.modelPathValid
@@ -31,22 +30,6 @@ Item {
         ModelInstaller.refreshInstalled()
         ModelInstaller.reloadPresets()
         ModelInstaller.rescanRegistry()
-    }
-
-    Connections {
-        target: ModelInstaller
-        function onStateChanged() {
-            if (ModelInstaller.state !== ModelInstaller.ReadyToDownload
-                    || !pickDialog.visible)
-                return
-            const count = root.preparedForCheck ? ModelInstaller.checkPresetCount
-                                                : ModelInstaller.presetCount
-            if (root.preparedIndex >= 0 && root.preparedIndex < count)
-                pickDialog.license = ModelInstaller.presetInfo(
-                            root.preparedIndex, root.preparedForCheck).license
-            else
-                pickDialog.license = ""
-        }
     }
 
     ColumnLayout {
@@ -135,41 +118,24 @@ Item {
                             }
 
                             LLOLabel {
-                                visible: installedList.count === 0
-                                text: qsTr("No models installed")
+                                visible: downloadList.count === 0
+                                text: qsTr("No models available")
                                 color: Theme.textPrimary
                             }
 
-                            ModelInstalledList {
-                                id: installedList
+                            ModelDownloadList {
+                                id: downloadList
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: installedList.implicitHeight
-                                rowHeight: 34
-                                managementActions: true
+                                Layout.preferredHeight: downloadList.implicitHeight
+                                maxVisibleRows: -1
                                 isVerifyModelRole: rolePane.forCheck
                                 onActionError: (msg) => statusLabel.text = msg
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.topMargin: 6
-                                Layout.preferredHeight: 1
-                                color: Theme.divider
-                            }
-
-                            LLOLabel {
-                                text: qsTr("Preset catalog")
-                            }
-
-                            ModelPresetList {
-                                id: presetList
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: presetList.implicitHeight
-                                isVerifyModelRole: rolePane.forCheck
-                                onInstallClicked: (index) => {
-                                    ModelInstaller.preparePreset(index, rolePane.forCheck)
-                                    root.preparedIndex = index
+                                onDownloadRequested: (title, quantId, license, runtimeNote) => {
                                     root.preparedForCheck = rolePane.forCheck
+                                    pickDialog.modelTitle = title
+                                    pickDialog.quantId = quantId
+                                    pickDialog.license = license
+                                    pickDialog.runtimeNote = runtimeNote
                                     pickDialog.open()
                                 }
                             }
@@ -294,7 +260,10 @@ Item {
         title: qsTr("Install model")
         standardButtons: Dialog.Ok | Dialog.Cancel
 
+        property string modelTitle: ""
+        property string quantId: ""
         property string license: ""
+        property string runtimeNote: ""
 
         ColumnLayout {
             width: parent.width
@@ -302,9 +271,24 @@ Item {
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
+                color: Theme.textPrimary
+                text: [pickDialog.modelTitle, pickDialog.quantId].join(" ").trim()
+            }
+            LLOLabel {
+                Layout.fillWidth: true
+                font.pointSize: Theme.captionSize
                 color: Theme.textSecondary
                 text: qsTr("Downloading starts after confirmation. The model license "
                            + "applies — review it before installing.")
+            }
+            LLOLabel {
+                Layout.fillWidth: true
+                visible: pickDialog.runtimeNote.length > 0
+                wrapMode: Text.WordWrap
+                font.pointSize: Theme.captionSize
+                color: Theme.warning
+                text: qsTr("The managed runtime cannot run this model. %1")
+                        .arg(pickDialog.runtimeNote)
             }
             LLOLabel {
                 Layout.fillWidth: true

@@ -17,10 +17,10 @@ Item {
                                               : RequestProfilesOcr
 
     function loadValues() {
-        if (!root.checkRole) {
-            const row = Controller.ocrModels.rowOfId(Settings.modelRecipeId)
-            modelBox.currentIndex = row >= 0 ? row : 0
-        }
+        const wanted = root.checkRole ? Settings.checkRequestProfileId : Settings.modelRecipeId
+        const list = root.checkRole ? root.profiles.profileModel : Controller.ocrModels
+        const row = list.rowOfId(wanted)
+        modelBox.currentIndex = row >= 0 ? row : 0
         root.profiles.reloadDraft()
     }
 
@@ -48,10 +48,9 @@ Item {
 
             ComboBox {
                 id: modelBox
-                visible: !root.checkRole
                 Layout.preferredWidth: root.width * 0.4
                 implicitHeight: Theme.controlHeight
-                model: Controller.ocrModels
+                model: root.checkRole ? root.profiles.profileModel : Controller.ocrModels
                 textRole: "displayName"
                 valueRole: "modelId"
                 onActivated: root.profiles.selectDraftProfile(modelBox.currentValue)

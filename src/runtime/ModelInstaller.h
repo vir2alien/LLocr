@@ -6,10 +6,10 @@
 #include <QString>
 
 #include "config/RuntimePaths.h"
-#include "runtime/InstalledModelsModel.h"
 #include "runtime/InstalledState.h"
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelPreset.h"
+#include "runtime/ModelQuantModel.h"
 #include "runtime/ModelRegistry.h"
 
 namespace llocr {
@@ -31,14 +31,9 @@ class ModelInstaller : public QObject
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
 
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
-    Q_PROPERTY(int ocrInstalledCount READ ocrInstalledCount NOTIFY installedChanged)
-    Q_PROPERTY(int checkInstalledCount READ checkInstalledCount NOTIFY installedChanged)
 
-    Q_PROPERTY(QObject *installedModels READ installedModels CONSTANT)
-    Q_PROPERTY(QObject *checkInstalledModels READ checkInstalledModels CONSTANT)
-
-    Q_PROPERTY(int presetCount READ presetCount NOTIFY presetsChanged)
-    Q_PROPERTY(int checkPresetCount READ checkPresetCount NOTIFY presetsChanged)
+    Q_PROPERTY(QObject *quantModels READ quantModels CONSTANT)
+    Q_PROPERTY(QObject *checkQuantModels READ checkQuantModels CONSTANT)
 
     Q_PROPERTY(QString activeTitle READ activeTitle NOTIFY installedChanged)
     Q_PROPERTY(QString checkActiveTitle READ checkActiveTitle NOTIFY installedChanged)
@@ -65,14 +60,13 @@ public:
     double progress() const { return m_progress; }
     QString statusMessage() const { return m_statusMessage; }
     int installedCount() const { return m_installed.size(); }
-    int ocrInstalledCount() const { return m_ocrModels->rowCount(); }
-    int checkInstalledCount() const { return m_checkModels->rowCount(); }
-    QObject *installedModels() const;
-    QObject *checkInstalledModels() const;
-    int presetCount() const { return m_presets.size(); }
-    int checkPresetCount() const { return m_presetsValidate.size(); }
+    QObject *quantModels() const;
+    QObject *checkQuantModels() const;
     QString activeTitle() const;
     QString checkActiveTitle() const;
+
+    const QList<ModelPreset> &presetsForRole(bool forCheck) const { return forCheck ? m_presetsValidate : m_presets; }
+    const QList<ModelEntry> &installedEntries() const { return m_installed; }
 
     Q_INVOKABLE void reloadPresets();
     Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);
@@ -82,9 +76,13 @@ public:
     Q_INVOKABLE void refreshInstalled();
     Q_INVOKABLE void rescanRegistry();
 
-    Q_INVOKABLE QVariantMap presetInfo(int index, bool forCheck = false) const;
-    Q_INVOKABLE QString activatePreset(int index, bool forCheck = false);
-    Q_INVOKABLE void preparePreset(int index, bool forCheck = false);
+    Q_INVOKABLE void selectQuant(const QString &key, const QString &quantId);
+    Q_INVOKABLE QString useQuant(const QString &key, const QString &quantId, bool forCheck = false);
+    Q_INVOKABLE void downloadQuant(const QString &key, const QString &quantId, bool forCheck = false);
+    Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, bool forCheck = false);
+    Q_INVOKABLE QString removeModelRow(const QString &key, bool forCheck = false);
+    Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, bool forCheck = false);
+
     Q_INVOKABLE void installPrepared();
 
     Q_INVOKABLE void cancelInstall();
@@ -97,9 +95,10 @@ private:
 
     void reloadPresetsInternal();
 
-    bool isPresetInstalled(const ModelPreset &p) const;
-    QString presetInstalledModelPath(const ModelPreset &p) const;
     void reportStaleSelections(const ReconcileResult &report);
+
+    ModelQuantModel *quantModel(bool forCheck) const;
+    int installedIndexFor(const QString &key, const QString &quantId, bool forCheck) const;
     void publishInstalled();
 
     SettingsStore &m_settings;
@@ -115,8 +114,8 @@ private:
     QList<ModelPreset> m_presets;
     QList<ModelPreset> m_presetsValidate;
     QList<ModelEntry> m_installed;
-    InstalledModelsModel *m_ocrModels = nullptr;
-    InstalledModelsModel *m_checkModels = nullptr;
+    ModelQuantModel *m_ocrModels = nullptr;
+    ModelQuantModel *m_checkModels = nullptr;
 
 signals:
     void stateChanged();

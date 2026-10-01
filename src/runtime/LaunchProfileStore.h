@@ -45,14 +45,12 @@ public:
     bool modelProfileMissing() const;
     bool checkModelProfileMissing() const;
 
-    // What the managed runtime cannot do for the role's model, empty when it
-    // can. Data from the profile, never invented here.
     QString modelRuntimeNote() const;
     QString checkModelRuntimeNote() const;
     void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     Q_INVOKABLE bool hasUserProfile() const;
-    Q_INVOKABLE void reloadDraft();
+    Q_INVOKABLE void reloadDraft(const QString &role = QString());
     Q_INVOKABLE void selectDraftProfile(const QString &id);
     Q_INVOKABLE bool setDraftValue(int row, const QString &text);
     Q_INVOKABLE bool appendDraftParameter(const QString &name, const QString &text);
@@ -73,9 +71,15 @@ private:
     void ensureProfileResolved();
     bool presetMatches(const LaunchProfile &preset, const QString &backend, const QString &osTag) const;
     LaunchProfile compose(const LaunchProfile &profile, const QString &modelId, const QString &role) const;
-    bool modelLayerMissing(const QString &modelId, const QString &role) const;
+    bool modelNotInCatalog(const QString &modelId) const;
     QList<LaunchProfile> applicablePresets() const;
     QString targetBackend() const;
+
+    QString modelIdForRole(const QString &role) const;
+    QSet<QString> m_policyNames() const;
+    QSet<QString> profileOwnedNames(const QString &role) const;
+    void composeDraft();
+    void modelChangedForRole(const QString &role);
 
     SettingsStore &m_settings;
     ProfileStore<LaunchProfile> *m_profiles;
@@ -83,7 +87,8 @@ private:
     QList<LaunchParameter> m_fallback;
     QList<ModelProfiles::Profile> m_modelProfiles;
     QString m_draftProfileId;
-    LaunchParametersModel *m_model;
+    QString m_draftRole = QStringLiteral("ocr");
+    LaunchParametersModel *m_model = nullptr;
 };
 
 }  // namespace llocr

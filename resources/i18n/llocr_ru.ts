@@ -848,8 +848,12 @@
     </message>
     <message>
         <location line="+16"/>
+        <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows belong to a layer: the shared server policy, this machine's build, or the model itself — they are what the server is started with, and the profile owns them.</source>
+        <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки принадлежат какому-то слою: общей политике сервера, сборке этой машины или самой модели — это то, с чем сервер реально запускается, и принадлежит профилю</translation>
+    </message>
+    <message>
         <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows are the shared server policy and apply to every model on this machine.</source>
-        <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки — общая политика сервера, она действует для любой модели на этой машине</translation>
+        <translation type="vanished">Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки — общая политика сервера, она действует для любой модели на этой машине</translation>
     </message>
     <message>
         <source>This model is not in the catalog, so its launch parameters come from the fallback set instead of the model's own. The context window may be wrong for it — check the log if a page comes out truncated.</source>
@@ -993,14 +997,20 @@
         <translation>Модели хранятся локально и запускаются управляемым рантаймом.</translation>
     </message>
     <message>
-        <location line="+31"/>
         <source>No models installed</source>
-        <translation>Установленных моделей нет</translation>
+        <translation type="vanished">Установленных моделей нет</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <source>Models</source>
+        <translation>Модели</translation>
+    </message>
+    <message>
+        <source>The managed runtime cannot run this model. %1</source>
+        <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
+    </message>
+    <message>
         <source>No presets available</source>
-        <translation>Нет доступных пресетов</translation>
+        <translation type="vanished">Нет доступных пресетов</translation>
     </message>
     <message>
         <source>managed</source>
@@ -1027,9 +1037,8 @@
         <translation type="vanished">Открыть папку</translation>
     </message>
     <message>
-        <location line="-30"/>
         <source>Preset catalog</source>
-        <translation>Каталог пресетов</translation>
+        <translation type="vanished">Каталог пресетов</translation>
     </message>
     <message>
         <source>~%1 GiB VRAM</source>
@@ -1060,9 +1069,8 @@
         <translation type="vanished">Отмена</translation>
     </message>
     <message>
-        <location line="-30"/>
         <source>Installed models: </source>
-        <translation>Установленные модели: </translation>
+        <translation type="vanished">Установленные модели: </translation>
     </message>
     <message>
         <source>HF token (optional)</source>
@@ -1153,36 +1161,70 @@
     </message>
 </context>
 <context>
-    <name>ModelInstalledList</name>
+    <name>ModelDownloadList</name>
     <message>
-        <location filename="../qml/Common/ModelInstalledList.qml" line="+87"/>
-        <source>managed</source>
-        <translation>управляемая</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>external</source>
-        <translation>внешняя</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location filename="../qml/Common/ModelDownloadList.qml" line="+133"/>
         <source>Active</source>
         <translation>Активна</translation>
     </message>
     <message>
-        <location line="+0"/>
-        <source>Activate</source>
-        <translation>Активировать</translation>
+        <source>Use</source>
+        <translation>Использовать</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <source>Remove</source>
+        <source>Download</source>
+        <translation>Скачать</translation>
+    </message>
+    <message>
+        <source>Open folder</source>
+        <translation>Открыть папку</translation>
+    </message>
+    <message>
+        <source>Delete quantization</source>
+        <translation>Удалить квант</translation>
+    </message>
+    <message>
+        <source>Delete model</source>
+        <translation>Удалить модель</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>Delete</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <source>%1 will be deleted from disk with every quantization of it.</source>
+        <translation>%1 будет удалена с диска вместе со всеми её квантами.</translation>
+    </message>
+</context>
+<context>
+    <name>ModelInstalledList</name>
+    <message>
+        <source>managed</source>
+        <translation type="vanished">управляемая</translation>
+    </message>
+    <message>
+        <source>external</source>
+        <translation type="vanished">внешняя</translation>
+    </message>
+    <message>
+        <source>Active</source>
+        <translation type="vanished">Активна</translation>
+    </message>
+    <message>
+        <source>Activate</source>
+        <translation type="vanished">Активировать</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation type="vanished">Удалить</translation>
+    </message>
+    <message>
         <source>Open folder</source>
-        <translation>Открыть папку</translation>
+        <translation type="vanished">Открыть папку</translation>
     </message>
 </context>
 <context>
@@ -1192,19 +1234,16 @@
         <translation type="obsolete">~%1 ГиБ VRAM</translation>
     </message>
     <message>
-        <location filename="../qml/Common/ModelPresetList.qml" line="+68"/>
         <source>Active</source>
-        <translation>Активна</translation>
+        <translation type="vanished">Активна</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Activate</source>
-        <translation>Активировать</translation>
+        <translation type="vanished">Активировать</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Install</source>
-        <translation>Установить</translation>
+        <translation type="vanished">Установить</translation>
     </message>
 </context>
 <context>
@@ -3164,17 +3203,23 @@
     <message>
         <location line="+32"/>
         <source>Pick a preset to download, or activate an installed model.</source>
-        <translation>Выберите пресет для скачивания или активируйте установленную модель.</translation>
+        <translation>Выберите модель и квант для скачивания или активируйте установленную модель.</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <source>No models available</source>
+        <translation>Нет доступных моделей</translation>
+    </message>
+    <message>
         <source>No models installed</source>
-        <translation>Установленных моделей нет</translation>
+        <translation type="vanished">Установленных моделей нет</translation>
     </message>
     <message>
-        <location line="+22"/>
         <source>Preset catalog</source>
-        <translation>Каталог пресетов</translation>
+        <translation type="vanished">Каталог пресетов</translation>
+    </message>
+    <message>
+        <source>The managed runtime cannot run this model. %1</source>
+        <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
     <message>
         <location line="+37"/>
@@ -4300,14 +4345,24 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+208"/>
         <source>No preset selected</source>
-        <translation>Пресет не выбран</translation>
+        <translation type="vanished">Пресет не выбран</translation>
     </message>
     <message>
-        <location line="-141"/>
         <source>The preset is not installed</source>
-        <translation>Пресет не установлен</translation>
+        <translation type="vanished">Пресет не установлен</translation>
+    </message>
+    <message>
+        <source>This quantization is not installed</source>
+        <translation>Этот квант не установлен</translation>
+    </message>
+    <message>
+        <source>This quantization is not available for download</source>
+        <translation>Этот квант недоступен для скачивания</translation>
+    </message>
+    <message>
+        <source>This model is not installed</source>
+        <translation>Эта модель не установлена</translation>
     </message>
     <message>
         <source>Enter a search query</source>

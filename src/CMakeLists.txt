@@ -63,6 +63,8 @@ qt_add_library(llocr_config STATIC
     config/SettingsStore.cpp
     config/RequestParametersModel.h
     config/RequestParametersModel.cpp
+    config/RequestProfileListModel.h
+    config/RequestProfileListModel.cpp
     config/RequestProfileStore.h
     config/RequestProfileStore.cpp
     config/RuntimePaths.h
@@ -127,8 +129,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/InstalledState.cpp
     runtime/InstalledBuildsModel.h
     runtime/InstalledBuildsModel.cpp
-    runtime/InstalledModelsModel.h
-    runtime/InstalledModelsModel.cpp
+    runtime/ModelQuantModel.h
+    runtime/ModelQuantModel.cpp
     runtime/StagedInstall.h
     runtime/StagedInstall.cpp
     runtime/ResolvedConnection.h

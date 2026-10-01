@@ -68,10 +68,17 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
         qWarning("LaunchProfileStore: cannot remove the obsolete %s", qUtf8Printable(legacy));
 
     connect(&m_settings, &SettingsStore::runtimeBackendChanged, this, &LaunchProfileStore::ensureProfileResolved);
-    connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, &LaunchProfileStore::profileChanged);
-    connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, &LaunchProfileStore::profileChanged);
+    connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { modelChangedForRole(QStringLiteral("ocr")); });
+    connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { modelChangedForRole(QStringLiteral("check")); });
     ensureProfileResolved();
     reloadDraft();
+}
+
+void LaunchProfileStore::modelChangedForRole(const QString &role)
+{
+    emit profileChanged();
+    if (role == m_draftRole)
+        composeDraft();
 }
 
 bool LaunchProfileStore::hasUserProfile() const
@@ -110,11 +117,6 @@ QList<LaunchProfile> LaunchProfileStore::applicablePresets() const
 
 QStringList LaunchProfileStore::otherPresetNames() const
 {
-    // The profiles the machine could run, but not with the build that is
-    // installed: the GPU one on a CPU build is the question this answers. A
-    // profile of another OS is not among them — that machine never runs it —
-    // and neither is a backend the platform has no build for, which would offer
-    // a switch the runtime installer cannot make.
     const PlatformInfo platform = ReleaseCatalog::detectPlatform();
     const QStringList backends = ReleaseCatalog::backendsFor(platform);
     const QString backend = targetBackend();
@@ -168,8 +170,19 @@ LaunchProfile LaunchProfileStore::compose(const LaunchProfile &profile, const QS
             if (!replaced)
                 combined.append(p);
         }
-        if (modelLayer.isEmpty())
-            combined += m_fallback;
+        if (modelLayer.isEmpty()) {
+            for (const LaunchParameter &p : std::as_const(m_fallback)) {
+                bool present = false;
+                for (const LaunchParameter &existing : std::as_const(combined)) {
+                    if (existing.name == p.name) {
+                        present = true;
+                        break;
+                    }
+                }
+                if (!present)
+                    combined.append(p);
+            }
+        }
     }
 
     out.parameters = combined;
@@ -217,29 +230,65 @@ void LaunchProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &p
     emit profileChanged();
 }
 
-bool LaunchProfileStore::modelLayerMissing(const QString &modelId, const QString &role) const
+bool LaunchProfileStore::modelNotInCatalog(const QString &modelId) const
 {
-    return ModelProfiles::launchFor(m_modelProfiles, modelId, role).isEmpty();
+    return ModelProfiles::find(m_modelProfiles, modelId) == nullptr;
 }
 
 bool LaunchProfileStore::modelProfileMissing() const
 {
-    return modelLayerMissing(m_settings.modelRecipeId(), QStringLiteral("ocr"));
+    return modelNotInCatalog(modelIdForRole(QStringLiteral("ocr")));
 }
 
 bool LaunchProfileStore::checkModelProfileMissing() const
 {
-    return modelLayerMissing(m_settings.checkRequestProfileId(), QStringLiteral("check"));
+    return modelNotInCatalog(modelIdForRole(QStringLiteral("check")));
 }
 
 QString LaunchProfileStore::modelRuntimeNote() const
 {
-    return ModelProfiles::runtimeNoteFor(m_modelProfiles, m_settings.modelRecipeId());
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("ocr")));
 }
 
 QString LaunchProfileStore::checkModelRuntimeNote() const
 {
-    return ModelProfiles::runtimeNoteFor(m_modelProfiles, m_settings.checkRequestProfileId());
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("check")));
+}
+
+QString LaunchProfileStore::modelIdForRole(const QString &role) const
+{
+    return role == QLatin1String("check") ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
+}
+
+QSet<QString> LaunchProfileStore::profileOwnedNames(const QString &role) const
+{
+    QSet<QString> names = m_policyNames();
+    QList<LaunchParameter> owned = ModelProfiles::launchFor(m_modelProfiles, modelIdForRole(role), role);
+    if (owned.isEmpty()) {
+        const LaunchProfile platform = m_profiles->merged(m_draftProfileId);
+        for (const LaunchParameter &p : m_fallback) {
+            if (platform.find(p.name) == nullptr)
+                owned.append(p);
+        }
+    }
+    for (const LaunchParameter &p : owned)
+        names.insert(p.name);
+    return names;
+}
+
+QSet<QString> LaunchProfileStore::m_policyNames() const
+{
+    QSet<QString> names;
+    for (const LaunchParameter &p : m_policy)
+        names.insert(p.name);
+    return names;
+}
+
+void LaunchProfileStore::composeDraft()
+{
+    const QString modelId = modelIdForRole(m_draftRole);
+    m_model->resetFrom(compose(m_profiles->merged(m_draftProfileId), modelId, m_draftRole).parameters);
+    m_model->setLockedNames(profileOwnedNames(m_draftRole));
 }
 
 LaunchProfile LaunchProfileStore::activeProfile() const
@@ -252,10 +301,12 @@ LaunchProfile LaunchProfileStore::activeProfile(const QString &modelId, const QS
     return compose(m_profiles->merged(activeProfileId()), modelId, role);
 }
 
-void LaunchProfileStore::reloadDraft()
+void LaunchProfileStore::reloadDraft(const QString &role)
 {
+    if (!role.isEmpty())
+        m_draftRole = role;
     m_draftProfileId = activeProfileId();
-    m_model->resetFrom(compose(m_profiles->merged(m_draftProfileId), QString(), QString()).parameters);
+    composeDraft();
     emit draftProfileChanged();
 }
 
@@ -264,7 +315,7 @@ void LaunchProfileStore::selectDraftProfile(const QString &id)
     if (!findPreset(id) || id == m_draftProfileId)
         return;
     m_draftProfileId = id;
-    m_model->resetFrom(compose(m_profiles->merged(id), QString(), QString()).parameters);
+    composeDraft();
     emit draftProfileChanged();
 }
 
@@ -289,13 +340,18 @@ void LaunchProfileStore::saveDraft()
         return;
 
     const int policyRows = m_policy.size();
-    const QList<LaunchParameter> draftRows = m_model->parameters();
-    if (draftRows.size() < policyRows)
-        return;
+    QList<LaunchParameter> rows = m_model->parameters().mid(policyRows);
+
+    // The model layer is composed into the draft so it can be read, not so it
+    // can be written back: a user copy of a platform profile that carried
+    // ctx-size would freeze one model's values for every model on this machine,
+    // and the constructor's pruning drops exactly such rows at the next start.
+    const QSet<QString> modelOwned = profileOwnedNames(m_draftRole) - QSet<QString>(m_policyNames());
+    rows.erase(std::remove_if(rows.begin(), rows.end(), [&modelOwned](const LaunchParameter &p) { return modelOwned.contains(p.name); }), rows.end());
 
     LaunchProfile draft;
     draft.id = m_draftProfileId;
-    draft.parameters = draftRows.mid(policyRows);
+    draft.parameters = rows;
     draft.sortByOrder();
     if (const LaunchProfile *preset = findPreset(m_draftProfileId)) {
         draft.name = preset->name;
@@ -316,10 +372,13 @@ void LaunchProfileStore::saveDraft()
 
 void LaunchProfileStore::loadDefaultDraft()
 {
-    if (const LaunchProfile *preset = findPreset(m_draftProfileId))
-        m_model->resetFrom(compose(*preset, QString(), QString()).parameters);
-    else
+    const LaunchProfile *preset = findPreset(m_draftProfileId);
+    if (!preset) {
         m_model->resetFrom(QList<LaunchParameter>());
+        return;
+    }
+    m_model->resetFrom(compose(*preset, modelIdForRole(m_draftRole), m_draftRole).parameters);
+    m_model->setLockedNames(profileOwnedNames(m_draftRole));
 }
 
 void LaunchProfileStore::resetToDefaults()

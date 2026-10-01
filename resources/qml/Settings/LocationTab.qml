@@ -10,7 +10,6 @@ import "../Common"
 
 Item {
     id: root
-    property int preparedIndex: -1
     property bool isVerifyModelRole: false
     property var runtimeSettingsRef: null
 
@@ -40,22 +39,6 @@ Item {
         function onCheckLaunchMmprojPathChanged() {
             if (root.isVerifyModelRole && !mmprojPathField.activeFocus)
                 mmprojPathField.text = Settings.checkLaunchMmprojPath
-        }
-    }
-
-    Connections {
-        target: ModelInstaller
-        function onStateChanged() {
-            if (ModelInstaller.state === ModelInstaller.ReadyToDownload && pickDialog.visible) {
-                const idx = preparedIndex
-                const count = root.isVerifyModelRole ? ModelInstaller.checkPresetCount
-                                                    : ModelInstaller.presetCount
-                if (idx >= 0 && idx < count)
-                    pickDialog.license = ModelInstaller.presetInfo(idx,
-                                                root.isVerifyModelRole).license
-                else
-                    pickDialog.license = ""
-            }
         }
     }
 
@@ -239,67 +222,23 @@ Item {
                     }
 
                     LLOLabel {
-                        text: qsTr("Installed models: ")
+                        text: qsTr("Models")
                     }
 
-                    ModelInstalledList {
-                        id: installedList
+                    ModelDownloadList {
+                        id: downloadList
                         Layout.fillWidth: true
-                        Layout.preferredHeight: installedList.implicitHeight
-                        managementActions: true
+                        Layout.preferredHeight: downloadList.implicitHeight
+                        maxVisibleRows: -1
                         isVerifyModelRole: root.isVerifyModelRole
                         onActionError: (msg) => statusMsg.text = msg
-                    }//ListView
-
-                    LLOLabel {
-                        visible: installedList.count === 0
-                        Layout.fillWidth: true
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textPrimary
-                        text: qsTr("No models installed")
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.topMargin: 6
-                        Layout.preferredHeight: 1
-                        color: Theme.divider
-                    }
-
-                    LLOLabel {
-                        text: qsTr("Preset catalog")
-                    }
-
-                    ModelPresetList {
-                        id: presetList
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Math.max(
-                            presetList.implicitHeight,
-                            modelsScroll.height - presetList.y
-                                - modelsLayout.spacing
-                                - (noPresetsLabel.visible
-                                       ? noPresetsLabel.height + modelsLayout.spacing : 0)
-                                - (statusMsg.visible
-                                       ? statusMsg.height + modelsLayout.spacing : 0))
-                        isVerifyModelRole: root.isVerifyModelRole
-                        onInstallClicked: (index) => {
-                            ModelInstaller.preparePreset(index, root.isVerifyModelRole)
-                            preparedIndex = index
+                        onDownloadRequested: (title, quantId, license, runtimeNote) => {
+                            pickDialog.modelTitle = title
+                            pickDialog.quantId = quantId
+                            pickDialog.license = license
+                            pickDialog.runtimeNote = runtimeNote
                             pickDialog.open()
                         }
-                    }//ListView
-
-                    LLOLabel {
-                        id: noPresetsLabel
-                        visible: presetList.count === 0
-                        Layout.fillWidth: true
-                        elide: Text.ElideMiddle
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: Theme.textPrimary
-                        text: qsTr("No presets available")
                     }
 
                     LLOLabel {
@@ -324,7 +263,10 @@ Item {
         title: qsTr("Install model")
         standardButtons: Dialog.Ok | Dialog.Cancel
 
+        property string modelTitle: ""
+        property string quantId: ""
         property string license: ""
+        property string runtimeNote: ""
 
         ColumnLayout {
             width: parent.width
@@ -332,9 +274,25 @@ Item {
             LLOLabel {
                 Layout.fillWidth: true
                 font.pointSize: Theme.captionSize
+                color: Theme.textPrimary
+                text: [pickDialog.modelTitle, pickDialog.quantId].join(" ").trim()
+            }
+            LLOLabel {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pointSize: Theme.captionSize
                 color: Theme.textSecondary
                 text: qsTr("Downloading starts after confirmation. The model license "
                            + "applies — review it before installing.")
+            }
+            LLOLabel {
+                Layout.fillWidth: true
+                visible: pickDialog.runtimeNote.length > 0
+                wrapMode: Text.WordWrap
+                font.pointSize: Theme.captionSize
+                color: Theme.warning
+                text: qsTr("The managed runtime cannot run this model. %1")
+                        .arg(pickDialog.runtimeNote)
             }
             LLOLabel {
                 Layout.fillWidth: true

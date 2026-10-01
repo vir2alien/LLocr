@@ -44,10 +44,12 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   The Blocks tab list is backed by group-filtered proxy models
   (`BlockGroupFilterModel` over the shared `VerificationBlocksModel`, exposed
   as `Verification.blockModelContent/Captions/Service`, ADR 82); the embedded
-  list components (`Common/ModelInstalledList`, `ModelPresetList`,
-  `RuntimeBuildsList`) expose `implicitHeight` (cap via `maxVisibleRows`,
+  list components (`Common/ModelDownloadList`, `RuntimeBuildsList`) expose
+  `implicitHeight` (cap via `maxVisibleRows`,
   `<= 0` = uncapped) so consumers bind heights instead of re-deriving row
-  counts (ADR 82). The HF preset install pipeline lives in
+  counts (ADR 82). The models list is one row per model with the quantizations
+  chosen on the row (`ModelQuantModel` behind `ModelDownloadList`,
+  ADR 122) — the installed/preset split it replaced is gone. The HF preset install pipeline lives in
   `ModelInstallTransaction` (prepare → download → finalize, ADR 85);
   `ModelInstaller` stays the QML façade over presets, the registry and
   role-filtered views.

@@ -8,6 +8,7 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "config/RequestProfileListModel.h"
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
 #include "core/ModelProfiles.h"
@@ -574,9 +575,75 @@ private slots:
         QVERIFY(gamma);
         QCOMPARE(gamma->value.toDouble(), 1.0);
 
-        // An unknown profile id falls back to the first built-in.
+        // An unknown profile id falls back to the model the picker offers first:
+        // the recommended one (ModelProfiles::forRole), then the rest by title.
         settings.setRequestProfileId(QStringLiteral("unknown-profile"));
-        QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
+        QList<ModelProfiles::Profile> withRecommendation = twoModels();
+        withRecommendation[1].isDefault = true;
+        RequestProfileStore recommended(settings);
+        recommended.setModelProfiles(withRecommendation);
+        QCOMPARE(recommended.activeProfileId(), QStringLiteral("deepseek-ocr"));
+
+        // Without a recommendation the order is the title order, and the fallback
+        // follows it rather than the order the catalog files happen to load in.
+        RequestProfileStore alphabetical(settings);
+        alphabetical.setModelProfiles(twoModels());
+        QCOMPARE(alphabetical.activeProfileId(), QStringLiteral("deepseek-ocr"));
+    }
+
+    // The check role has no model registry of its own, so the picker lists the
+    // model profiles that answer the role — the ids the store's profiles are keyed
+    // by, which is also what its setting holds. Without it, a check model set by path
+    // or served externally had no way to be given the right request profile.
+    void profileModelListsTheModelsOfTheRole()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+
+        QList<ModelProfiles::Profile> profiles = twoModels();
+        ModelProfiles::Profile check;
+        check.id = QStringLiteral("verifier");
+        check.title = QStringLiteral("Verifier");
+        ModelProfiles::Role checkRole;
+        checkRole.request = {makeParameter(1, QStringLiteral("gamma"), 1)};
+        check.roles.insert(QStringLiteral("check"), checkRole);
+        profiles.append(check);
+
+        // The recommended model first: the picker and the models list agree.
+        profiles[0].isDefault = true;
+        profiles[1].title = QStringLiteral("Zeta OCR");
+
+        RequestProfileStore ocr(settings);
+        ocr.setModelProfiles(profiles);
+        auto *ocrList = ocr.profileModel();
+        QAbstractItemModelTester ocrTester(ocrList, QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QCOMPARE(ocrList->rowCount(), 2);
+        QCOMPARE(ocrList->data(ocrList->index(0, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(ocrList->data(ocrList->index(0, 0), RequestProfileListModel::DisplayRole).toString(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(ocrList->data(ocrList->index(1, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("deepseek-ocr"));
+        QCOMPARE(qobject_cast<RequestProfileListModel *>(ocrList)->rowOfId(QStringLiteral("verifier")), -1);
+        QCOMPARE(qobject_cast<RequestProfileListModel *>(ocrList)->rowOfId(QStringLiteral("no-such-model")), -1);
+
+        RequestProfileStore checkStore(settings, RequestProfileStore::Role::Check);
+        checkStore.setModelProfiles(profiles);
+        auto *checkList = checkStore.profileModel();
+        QAbstractItemModelTester checkTester(checkList, QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QCOMPARE(checkList->rowCount(), 1);
+        QCOMPARE(checkList->data(checkList->index(0, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("verifier"));
+        QCOMPARE(checkList->data(checkList->index(0, 0), RequestProfileListModel::DisplayRole).toString(), QStringLiteral("Verifier"));
+        QCOMPARE(qobject_cast<RequestProfileListModel *>(checkList)->rowOfId(QStringLiteral("verifier")), 0);
+
+        // Picking a profile from the list is the same call the picker makes, and the
+        // store still answers the setting the check role keeps.
+        settings.setCheckRequestProfileId(QStringLiteral("verifier"));
+        checkStore.reloadDraft();
+        QCOMPARE(checkStore.draftProfileId(), QStringLiteral("verifier"));
+        QCOMPARE(checkStore.activeProfileId(), QStringLiteral("verifier"));
+        QCOMPARE(checkStore.activeProfile().parameters.size(), 1);
     }
 
     void selectDraftProfileSwitchesDraft()

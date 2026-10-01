@@ -2,11 +2,10 @@
   "schemaVersion": 1,
   "id": "teleocr",
   "title": "TeleOCR (NaviDC-OCR)",
-  "license": "https://huggingface.co/XingChen-AGI/TeleOCR",
+  "license": "https://huggingface.co/konradjr007/NaviDC-OCR-GGUF",
   "minBuild": "b4000",
-  "runtimeNote": "stock llama.cpp cannot load this GGUF. The model sets head_dim=128 while hidden_size/num_heads=64, and the qwen2vl loader assumes the two are equal; the fix is not upstream, so no release will do. Run it from External mode with a llama.cpp built with the qwen2vl QK-norm patch (PATCHES.md in the GGUF repository).",
   "files": {
-    "repo": "nandraj/NaviDC-OCR-GGUF",
+    "repo": "konradjr007/NaviDC-OCR-GGUF",
     "revision": "",
     "quants": [
       {
@@ -15,18 +14,8 @@
         "sha256": ""
       },
       {
-        "id": "q5_k_m",
-        "file": "NaviDC-OCR-Q5_K_M.gguf",
-        "sha256": ""
-      },
-      {
         "id": "q8_0",
         "file": "NaviDC-OCR-Q8_0.gguf",
-        "sha256": ""
-      },
-      {
-        "id": "f16",
-        "file": "NaviDC-OCR-f16.gguf",
         "sha256": ""
       }
     ],
@@ -43,40 +32,15 @@
       "maxOutput": 8192,
       "prompts": [
         {
-          "id": "page-text",
-          "title": "Page text",
-          "text": "Please output the text content from the image."
+          "id": "document-parsing",
+          "title": "Document parsing",
+          "text": "Analyze the image layout."
         }
       ],
       "blocks": {
         "styles": {}
       },
-      "launch": [
-        {
-          "order": 1,
-          "name": "ctx-size",
-          "value": 16384,
-          "description": "Model context window in tokens (prompt + image + output); 16384 is what the reference pipeline uses."
-        },
-        {
-          "order": 2,
-          "name": "n-predict",
-          "value": 8192,
-          "description": "Maximum tokens to generate per completion."
-        },
-        {
-          "order": 3,
-          "name": "cache-type-k",
-          "value": "q8_0",
-          "description": "KV cache data type for K. Same value in both roles on purpose: a differing layer would make the runtime reload the model when the task changes."
-        },
-        {
-          "order": 4,
-          "name": "cache-type-v",
-          "value": "q8_0",
-          "description": "KV cache data type for V. Same value in both roles on purpose: a differing layer would make the runtime reload the model when the task changes."
-        }
-      ],
+      "launch": [],
       "request": [
         {
           "order": 1,
@@ -119,32 +83,7 @@
     "check": {
       "alias": "llocr-verify",
       "maxOutput": 8192,
-      "launch": [
-        {
-          "order": 1,
-          "name": "ctx-size",
-          "value": 16384,
-          "description": "Model context window in tokens (prompt + image + output); 16384 is what the reference pipeline uses."
-        },
-        {
-          "order": 2,
-          "name": "n-predict",
-          "value": 8192,
-          "description": "Maximum tokens to generate per completion."
-        },
-        {
-          "order": 3,
-          "name": "cache-type-k",
-          "value": "q8_0",
-          "description": "KV cache data type for K. Same value in both roles on purpose: a differing layer would make the runtime reload the model when the task changes."
-        },
-        {
-          "order": 4,
-          "name": "cache-type-v",
-          "value": "q8_0",
-          "description": "KV cache data type for V. Same value in both roles on purpose: a differing layer would make the runtime reload the model when the task changes."
-        }
-      ],
+      "launch": [],
       "request": [
         {
           "order": 1,

@@ -5,6 +5,9 @@
 #include <QFileInfo>
 #include <QUrl>
 
+#include <algorithm>
+#include <functional>
+
 #include "runtime/RuntimeState.h"
 
 #include "config/RuntimePaths.h"
@@ -21,7 +24,7 @@ namespace llocr {
 
 ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime, InstalledState &state, QObject *parent)
     : QObject(parent), m_settings(settings), m_installState(state), m_runtime(runtime), m_transaction(new ModelInstallTransaction(settings, m_installState, this)),
-      m_ocrModels(new InstalledModelsModel(settings, false, this)), m_checkModels(new InstalledModelsModel(settings, true, this))
+      m_ocrModels(new ModelQuantModel(*this, settings, false, this)), m_checkModels(new ModelQuantModel(*this, settings, true, this))
 {
     connect(m_transaction, &ModelInstallTransaction::stateChanged, this, [this](int state) { setState(static_cast<State>(state)); });
     connect(m_transaction, &ModelInstallTransaction::busyChanged, this, [this](bool busy) { setBusy(busy); });
@@ -38,20 +41,25 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     refreshInstalled();
 }
 
-QObject *ModelInstaller::installedModels() const
+QObject *ModelInstaller::quantModels() const
 {
     return m_ocrModels;
 }
 
-QObject *ModelInstaller::checkInstalledModels() const
+QObject *ModelInstaller::checkQuantModels() const
 {
     return m_checkModels;
 }
 
+ModelQuantModel *ModelInstaller::quantModel(bool forCheck) const
+{
+    return forCheck ? m_checkModels : m_ocrModels;
+}
+
 void ModelInstaller::publishInstalled()
 {
-    m_ocrModels->setEntries(m_installed);
-    m_checkModels->setEntries(m_installed);
+    m_ocrModels->refresh();
+    m_checkModels->refresh();
     emit installedChanged();
 }
 
@@ -143,6 +151,8 @@ void ModelInstaller::reloadPresetsInternal()
             m_presetsValidate.append(preset);
     }
 
+    m_ocrModels->refresh();
+    m_checkModels->refresh();
     emit presetsChanged();
 }
 
@@ -213,21 +223,84 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
     return QString();
 }
 
-QString ModelInstaller::activatePreset(int index, bool forCheck)
+void ModelInstaller::selectQuant(const QString &key, const QString &quantId)
 {
-    const QList<ModelPreset> &list = forCheck ? m_presetsValidate : m_presets;
-    if (index < 0 || index >= list.size())
-        return tr("Invalid model selection");
-    const ModelPreset &p = list.at(index);
-    const QString modelLeaf = ModelCatalog::leafName(p.model);
-    for (int i = 0; i < m_installed.size(); ++i) {
-        const ModelEntry &e = m_installed.at(i);
-        if (e.repo != p.repo)
-            continue;
-        if (!e.modelPath.isEmpty() && ModelCatalog::leafName(e.modelPath) == modelLeaf)
-            return setActiveModel(i, forCheck);
+    if (quantId.isEmpty())
+        return;
+    if (!m_ocrModels->hasQuant(key, quantId) && !m_checkModels->hasQuant(key, quantId))
+        return;
+    m_settings.setSelectedQuant(key, quantId);
+    m_ocrModels->refresh();
+    m_checkModels->refresh();
+}
+
+int ModelInstaller::installedIndexFor(const QString &key, const QString &quantId, bool forCheck) const
+{
+    return quantModel(forCheck)->entryIndexFor(key, quantId);
+}
+
+QString ModelInstaller::useQuant(const QString &key, const QString &quantId, bool forCheck)
+{
+    const int index = installedIndexFor(key, quantId, forCheck);
+    if (index < 0)
+        return tr("This quantization is not installed");
+    return setActiveModel(index, forCheck);
+}
+
+void ModelInstaller::downloadQuant(const QString &key, const QString &quantId, bool forCheck)
+{
+    if (m_busy)
+        return;
+    const QList<ModelPreset> &presets = presetsForRole(forCheck);
+    const int preset = quantModel(forCheck)->presetIndexFor(key, quantId);
+    if (preset < 0 || preset >= presets.size()) {
+        setStatusMessage(tr("This quantization is not available for download"));
+        setState(State::Error);
+        return;
     }
-    return tr("The preset is not installed");
+    m_transaction->prepare(presets.at(preset), forCheck);
+}
+
+QString ModelInstaller::removeQuant(const QString &key, const QString &quantId, bool forCheck)
+{
+    const int index = installedIndexFor(key, quantId, forCheck);
+    if (index < 0)
+        return tr("This quantization is not installed");
+    return removeModel(index);
+}
+
+QString ModelInstaller::removeModelRow(const QString &key, bool forCheck)
+{
+    QList<int> targets = quantModel(forCheck)->entryIndexesFor(key);
+    if (targets.isEmpty())
+        return tr("This model is not installed");
+
+    const RuntimePaths paths = m_installState.paths();
+    const bool ready = m_runtime.state() == RuntimeState::Ready;
+    for (int index : std::as_const(targets)) {
+        const ModelEntry &entry = m_installed.at(index);
+        const bool active = !entry.modelPath.isEmpty() && (entry.modelPath == m_settings.launchModelPath() || entry.modelPath == m_settings.checkLaunchModelPath());
+        const QString guard = ModelRegistry::removalError(entry, paths.modelsDir(), active, ready);
+        if (!guard.isEmpty())
+            return guard;
+    }
+
+    std::sort(targets.begin(), targets.end(), std::greater<int>());
+    QString firstError;
+    for (int index : std::as_const(targets)) {
+        const QString error = removeModel(index);
+        if (!error.isEmpty() && firstError.isEmpty())
+            firstError = error;
+    }
+    return firstError;
+}
+
+QString ModelInstaller::openQuantFolder(const QString &key, const QString &quantId, bool forCheck)
+{
+    const int index = installedIndexFor(key, quantId, forCheck);
+    if (index < 0)
+        return tr("This quantization is not installed");
+    return openModelFolder(index);
 }
 
 QString ModelInstaller::removeModel(int index)
@@ -315,55 +388,6 @@ QString ModelInstaller::openModelFolder(int index)
         return tr("Model folder not found: %1").arg(dir);
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
     return QString();
-}
-
-bool ModelInstaller::isPresetInstalled(const ModelPreset &p) const
-{
-    return !presetInstalledModelPath(p).isEmpty();
-}
-
-QVariantMap ModelInstaller::presetInfo(int index, bool forCheck) const
-{
-    const QList<ModelPreset> &list = forCheck ? m_presetsValidate : m_presets;
-    QVariantMap out;
-    if (index < 0 || index >= list.size())
-        return out;
-    const ModelPreset &p = list.at(index);
-    out.insert(QStringLiteral("id"), p.id);
-    out.insert(QStringLiteral("title"), p.title);
-    out.insert(QStringLiteral("repo"), p.repo);
-    out.insert(QStringLiteral("license"), p.license);
-    out.insert(QStringLiteral("ctxSize"), p.ctxSize);
-    out.insert(QStringLiteral("minBuild"), p.minBuild);
-    out.insert(QStringLiteral("installed"), isPresetInstalled(p));
-    const QString targetPath = presetInstalledModelPath(p);
-    out.insert(QStringLiteral("active"), forCheck ? targetPath == m_settings.checkLaunchModelPath() : targetPath == m_settings.launchModelPath());
-    return out;
-}
-
-QString ModelInstaller::presetInstalledModelPath(const ModelPreset &p) const
-{
-    const QString modelLeaf = ModelCatalog::leafName(p.model);
-    for (const ModelEntry &e : std::as_const(m_installed)) {
-        if (e.repo != p.repo)
-            continue;
-        if (!e.modelPath.isEmpty() && ModelCatalog::leafName(e.modelPath) == modelLeaf)
-            return e.modelPath;
-    }
-    return QString();
-}
-
-void ModelInstaller::preparePreset(int index, bool forCheck)
-{
-    if (m_busy)
-        return;
-    const QList<ModelPreset> &list = forCheck ? m_presetsValidate : m_presets;
-    if (index < 0 || index >= list.size()) {
-        setStatusMessage(tr("No preset selected"));
-        setState(State::Error);
-        return;
-    }
-    m_transaction->prepare(list.at(index), forCheck);
 }
 
 void ModelInstaller::installPrepared()

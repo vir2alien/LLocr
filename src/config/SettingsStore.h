@@ -200,6 +200,9 @@ public:
     QString hfToken() const;
     void setHfToken(const QString &token);
 
+    QString selectedQuant(const QString &profileId) const;
+    void setSelectedQuant(const QString &profileId, const QString &quantId);
+
 signals:
     void baseUrlChanged();
     void apiKeyChanged();
@@ -341,6 +344,8 @@ private:
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";
+
+    static constexpr const char *kQuantSelectionGroup = "models/quant";
 };
 
 }  // namespace llocr

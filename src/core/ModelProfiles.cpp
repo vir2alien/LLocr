@@ -9,6 +9,8 @@
 #include <QObject>
 #include <QSet>
 
+#include <algorithm>
+
 namespace llocr {
 
 namespace {
@@ -342,6 +344,21 @@ QStringList ModelProfiles::idsForRole(const QList<Profile> &profiles, const QStr
             ids.append(p.id);
     }
     return ids;
+}
+
+QList<ModelProfiles::Profile> ModelProfiles::forRole(const QList<Profile> &profiles, const QString &role)
+{
+    QList<Profile> out;
+    for (const Profile &p : profiles) {
+        if (roleFor(p, role))
+            out.append(p);
+    }
+    std::stable_sort(out.begin(), out.end(), [](const Profile &a, const Profile &b) {
+        if (a.isDefault != b.isDefault)
+            return a.isDefault;
+        return a.title.compare(b.title, Qt::CaseInsensitive) < 0;
+    });
+    return out;
 }
 
 QList<LaunchParameter> ModelProfiles::launchFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)

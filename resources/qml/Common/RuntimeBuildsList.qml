@@ -10,8 +10,6 @@ ListView {
     id: root
 
     property int rowHeight: 36
-    // Height of the embedded (non-scrolling) list. Consumers bind
-    // Layout.preferredHeight to implicitHeight; maxVisibleRows <= 0 = uncapped.
     property int maxVisibleRows: 3
     property bool scrollable: true
 

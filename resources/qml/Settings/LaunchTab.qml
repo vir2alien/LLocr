@@ -26,7 +26,7 @@ Item {
         : profiles.modelRuntimeNote
 
     function loadValues() {
-        root.profiles.reloadDraft()
+        root.profiles.reloadDraft(root.role)
     }
 
     function saveValues() {
@@ -269,12 +269,10 @@ Item {
             wrapMode: Text.WordWrap
             font.pointSize: Theme.captionSize
             color: Theme.helpColor
-            text: qsTr("llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows are the shared server policy and apply to every model on this machine.")
+            text: qsTr("llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows belong to a layer: the shared server policy, this machine's build, or the model itself — they are what the server is started with, and the profile owns them.")
         }
     }
 
-    // External server: launch settings belong to the managed runtime only.
-    // spacing 6 matches the LocationTab external pane.
     ColumnLayout {
         anchors.fill: parent
         visible: root.externalMode

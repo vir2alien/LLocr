@@ -26,6 +26,14 @@ HfFile file(const QString &path, qint64 size, bool isDir = false)
     return f;
 }
 
+bool write(const QString &dir, const QString &name)
+{
+    QFile f(QDir(dir).filePath(name));
+    if (!f.open(QIODevice::WriteOnly))
+        return false;
+    return f.write("GGUF placeholder") >= 0;
+}
+
 }  // namespace
 
 // Pure logic extracted from ModelInstaller: repo directory naming, model/mmproj
@@ -137,6 +145,67 @@ private slots:
         QCOMPARE(models.first(), QStringLiteral("d/model.gguf"));
         // No preference: the first projector in tree order wins.
         QCOMPARE(mmproj, QStringLiteral("d/mmproj-b.gguf"));
+    }
+
+    // Publishing an install replaces the whole <org>__<repo> folder, so a second
+    // quantization installed from the same repo used to take the first one with
+    // it (ADR 122). What the install does not write has to move into the staging
+    // directory first.
+    void publishingKeepsTheQuantizationsAlreadyInstalled()
+    {
+        const QString repoDir = QDir(m_dir.path()).filePath(QStringLiteral("org__repo"));
+        const QString staging = QDir(m_dir.path()).filePath(QStringLiteral("staging"));
+        QVERIFY(QDir().mkpath(repoDir));
+        QVERIFY(QDir().mkpath(staging));
+
+        // The folder as an earlier install of Q8_0 left it.
+        QVERIFY(write(repoDir, QStringLiteral("model-Q8_0.gguf")));
+        QVERIFY(write(repoDir, QStringLiteral("mmproj-model-F16.gguf")));
+        QVERIFY(write(repoDir, QStringLiteral("README.md")));
+        // A partial download of an install that never published.
+        QVERIFY(write(repoDir, QStringLiteral("model-Q8_0.gguf.part")));
+        // The staging directory of the new install: it downloaded Q4_K_M and the
+        // projector again.
+        QVERIFY(write(staging, QStringLiteral("model-Q4_K_M.gguf")));
+        QVERIFY(write(staging, QStringLiteral("mmproj-model-F16.gguf")));
+
+        QString error;
+        QVERIFY2(ModelInstallTransaction::preserveExistingFiles(repoDir, staging, {QStringLiteral("model-Q4_K_M.gguf"), QStringLiteral("mmproj-model-F16.gguf")}, &error), qPrintable(error));
+
+        // Everything the new install did not write came along, partials did not.
+        QVERIFY(QFile::exists(QDir(staging).filePath(QStringLiteral("model-Q8_0.gguf"))));
+        QVERIFY(QFile::exists(QDir(staging).filePath(QStringLiteral("README.md"))));
+        QVERIFY(!QFile::exists(QDir(staging).filePath(QStringLiteral("model-Q8_0.gguf.part"))));
+        // The file the install writes itself is untouched: the verified copy wins.
+        QVERIFY(!QFile::exists(QDir(repoDir).filePath(QStringLiteral("model-Q4_K_M.gguf"))));
+        QVERIFY(!QFile::exists(QDir(repoDir).filePath(QStringLiteral("model-Q8_0.gguf"))));
+        QVERIFY(QFile::exists(QDir(repoDir).filePath(QStringLiteral("mmproj-model-F16.gguf"))));
+    }
+
+    // A file the install does not write but that a resumed staging directory
+    // already holds: the older copy in the folder goes, the staging one stays.
+    void aFileAlreadyInTheStagingDirectoryIsNotOverwritten()
+    {
+        const QString repoDir = QDir(m_dir.path()).filePath(QStringLiteral("org__repo2"));
+        const QString staging = QDir(m_dir.path()).filePath(QStringLiteral("staging2"));
+        QVERIFY(QDir().mkpath(repoDir));
+        QVERIFY(QDir().mkpath(staging));
+        QVERIFY(write(repoDir, QStringLiteral("README.md")));
+        QVERIFY(write(staging, QStringLiteral("README.md")));
+
+        QString error;
+        QVERIFY2(ModelInstallTransaction::preserveExistingFiles(repoDir, staging, {QStringLiteral("model-Q4_K_M.gguf")}, &error), qPrintable(error));
+        QVERIFY(QFile::exists(QDir(staging).filePath(QStringLiteral("README.md"))));
+        QVERIFY(QDir(repoDir).entryList(QDir::Files).isEmpty());
+    }
+
+    void preserveIsANoOpWhenTheFolderDoesNotExistYet()
+    {
+        const QString staging = QDir(m_dir.path()).filePath(QStringLiteral("staging3"));
+        QVERIFY(QDir().mkpath(staging));
+        QString error;
+        QVERIFY(ModelInstallTransaction::preserveExistingFiles(QDir(m_dir.path()).filePath(QStringLiteral("absent")), staging, {}, &error));
+        QVERIFY(error.isEmpty());
     }
 
     // ADR 112: a model install publishes by atomic rename, so a failed or

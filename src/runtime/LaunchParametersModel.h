@@ -2,6 +2,7 @@
 
 #include <QAbstractListModel>
 #include <QList>
+#include <QSet>
 
 #include "core/LaunchProfile.h"
 
@@ -28,16 +29,18 @@ public:
 
     const QList<LaunchParameter> &parameters() const { return m_parameters; }
     void setLockedPrefix(int rows);
+    void setLockedNames(const QSet<QString> &names);
     void resetFrom(const QList<LaunchParameter> &parameters);
     bool setValue(int row, const QString &text);
     bool appendRow(const QString &name, const QString &text);
     void removeRow(int row);
 
 private:
-    bool isEditable(int row) const { return row >= m_lockedPrefix; }
+    bool isEditable(int row) const;
 
     QList<LaunchParameter> m_parameters;
     int m_lockedPrefix = 0;
+    QSet<QString> m_lockedNames;
 };
 
 }  // namespace llocr

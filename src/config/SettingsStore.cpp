@@ -841,4 +841,22 @@ void SettingsStore::setHfToken(const QString &token)
     emit hfTokenChanged();
 }
 
+QString SettingsStore::selectedQuant(const QString &profileId) const
+{
+    if (profileId.isEmpty())
+        return QString();
+    return m_settings.value(QLatin1String(kQuantSelectionGroup) + QLatin1Char('/') + profileId).toString();
+}
+
+void SettingsStore::setSelectedQuant(const QString &profileId, const QString &quantId)
+{
+    if (profileId.isEmpty())
+        return;
+    const QString key = QLatin1String(kQuantSelectionGroup) + QLatin1Char('/') + profileId;
+    if (quantId.isEmpty())
+        m_settings.remove(key);
+    else
+        m_settings.setValue(key, quantId);
+}
+
 }  // namespace llocr

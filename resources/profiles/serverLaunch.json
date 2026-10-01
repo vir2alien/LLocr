@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "_comment": "Launch parameters in three layers. 'policy' does not depend on the model or the platform: how the server is driven. 'profiles' is the platform layer, keyed by os+backend. 'fallback' is used only when no model profile answers (a hand-picked GGUF, a model the catalog does not know) — llama.cpp's own 4096-token default would otherwise truncate a page carrying a table. Model parameters (ctx-size, n-predict, cache-type-*, image-*-tokens, dry-sequence-breaker, special) live in models/<id>.json: a parameter in this file applies to every model the machine runs, which is exactly what a per-model value must not do. See docs/10-model-profiles.md.",
+  "_comment": "Launch parameters in three layers. 'policy' does not depend on the model or the platform: how the server is driven. 'profiles' is the platform layer, keyed by os+backend, and it owns what belongs to the machine — how many layers go on the GPU, and the context window and the generation budget, because those are the two values that follow the memory the machine has. 'fallback' is used only when no layer above it names a parameter (a hand-picked GGUF, a model the catalog does not know) — llama.cpp's own 4096-token default would otherwise truncate a page carrying a table. Model parameters (image-*-tokens, dry-sequence-breaker, special) live in models/<id>.json: what the weights need, which the machine cannot decide. See docs/10-model-profiles.md.",
   "fallback": {
     "parameters": [
       { "order": 1, "name": "ctx-size",  "value": 16384, "description": "Model context window in tokens. Last resort for a model outside the catalog." },
@@ -51,6 +51,18 @@
           "name": "flash-attn",
           "value": "off",
           "description": "Flash attention: on, off or auto."
+        },
+        {
+          "order": 3,
+          "name": "ctx-size",
+          "value": 16384,
+          "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
+        },
+        {
+          "order": 4,
+          "name": "n-predict",
+          "value": 8192,
+          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -71,6 +83,18 @@
           "name": "flash-attn",
           "value": "on",
           "description": "Flash attention: on, off or auto."
+        },
+        {
+          "order": 3,
+          "name": "ctx-size",
+          "value": 16384,
+          "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
+        },
+        {
+          "order": 4,
+          "name": "n-predict",
+          "value": 8192,
+          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -91,6 +115,18 @@
           "name": "flash-attn",
           "value": "off",
           "description": "Flash attention: on, off or auto (Vulkan flash attention is experimental)."
+        },
+        {
+          "order": 3,
+          "name": "ctx-size",
+          "value": 16384,
+          "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
+        },
+        {
+          "order": 4,
+          "name": "n-predict",
+          "value": 8192,
+          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -111,6 +147,18 @@
           "name": "flash-attn",
           "value": "on",
           "description": "Flash attention: on, off or auto."
+        },
+        {
+          "order": 3,
+          "name": "ctx-size",
+          "value": 16384,
+          "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
+        },
+        {
+          "order": 4,
+          "name": "n-predict",
+          "value": 8192,
+          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -131,6 +179,18 @@
           "name": "flash-attn",
           "value": "off",
           "description": "Flash attention: on, off or auto (Vulkan flash attention is experimental)."
+        },
+        {
+          "order": 3,
+          "name": "ctx-size",
+          "value": 16384,
+          "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
+        },
+        {
+          "order": 4,
+          "name": "n-predict",
+          "value": 8192,
+          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -145,6 +205,18 @@
           "name": "flash-attn",
           "value": "off",
           "description": "Flash attention: on, off or auto."
+        },
+        {
+          "order": 2,
+          "name": "ctx-size",
+          "value": 8192,
+          "description": "Model context window in tokens (prompt + image + output). A CPU build has the least memory to spend on it."
+        },
+        {
+          "order": 3,
+          "name": "n-predict",
+          "value": 8192,
+          "description": "Maximum tokens to generate per completion."
         }
       ]
     }

@@ -189,7 +189,8 @@ A dedicated `src/runtime/` layer sits between the backend and the OS:
   commit-`sha` pinning, mmproj/multi-part, ADR 29), `ModelPresetCatalog`
   (built-in `:/models/default-presets.json` + user `models/catalog.json`, ADR 42),
   `ModelRegistry` (index.json, managed vs external, removal guards).
-  QML singleton `ModelInstaller`.
+  QML singleton `ModelInstaller`, with `ModelQuantModel` as its one list model:
+  a row is a model, its quantizations are chosen on the row (ADR 122).
 - **DownloadTask/DownloadManager** — resumable downloads (`.part`+`.part.meta`,
   `Range`/`If-Range`, streaming `sha256`), ≤2 parallel, `.part` lives next to
   the target (ADR 40); redirects https-only with `Authorization` dropped on

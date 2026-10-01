@@ -330,7 +330,13 @@
     **export** to TXT / MD / HTML / DOCX (Pandoc) / PDF (Pandoc or built-in
     writer), with **All / Current / page-range** scope, and — in
     **Settings → Runtime** — install a local llama.cpp runtime, and in
-    **Settings → Models** — install GGUF models from Hugging Face. A clean
+    **Settings → Models** — install GGUF models from Hugging Face. That list is
+    **one row per model** with the quantization picked on the row
+    (`ModelQuantModel` + `Common/ModelDownloadList.qml`, ADR 122): «Use» /
+    «Download» are one button, the ⋮ menu has Open folder / Delete quantization
+    / Delete model, and the chosen quantization is remembered per profile
+    (`models/quant/<id>`). The two-list UI (installed + preset catalog) and
+    `InstalledModelsModel` are gone. A clean
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).

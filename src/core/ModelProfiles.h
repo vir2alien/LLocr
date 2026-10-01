@@ -26,10 +26,6 @@ public:
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
         QHash<QString, QString> blockStyles;
-        // Instructions this model was trained with, per verification block
-        // type. A model that knows the exact wording for an element reads it
-        // better than a generic one; a type the profile says nothing about
-        // falls back to verifyPrompts.json rather than losing the instruction.
         QHash<QString, QString> blockPrompts;
     };
 
@@ -58,10 +54,6 @@ public:
         QString title;
         QString minBuild;
         QString license;
-        // What the managed runtime cannot do for this model, in the model's own
-        // terms (a runtime that has to be built by hand, a flag the stock
-        // server rejects). Empty for a model the managed runtime can run; shown
-        // as a warning where the model is configured, never guessed at.
         QString runtimeNote;
         bool isDefault = false;
         Files files;
@@ -86,15 +78,14 @@ public:
 
     static QStringList idsForRole(const QList<Profile> &profiles, const QString &role);
 
+    static QList<Profile> forRole(const QList<Profile> &profiles, const QString &role);
+
     static QList<LaunchParameter> launchFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
     static QList<RequestParameter> requestFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
     static QList<Prompt> promptsFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
-    // The instruction for one verification block type: the role's own text when
-    // the profile carries one, the caller's (verifyPrompts.json) otherwise.
     static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type, const QString &fallback);
 
-    // What the managed runtime cannot do for this model, empty when it can.
     static QString runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId);
 
     static QList<RequestParameter> requestWithMaxOutput(const QList<Profile> &profiles, const QString &modelId, const QString &role);

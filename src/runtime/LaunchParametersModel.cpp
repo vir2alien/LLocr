@@ -59,6 +59,18 @@ void LaunchParametersModel::setLockedPrefix(int rows)
     }
 }
 
+bool LaunchParametersModel::isEditable(int row) const
+{
+    return row >= m_lockedPrefix && !m_lockedNames.contains(m_parameters.at(row).name);
+}
+
+void LaunchParametersModel::setLockedNames(const QSet<QString> &names)
+{
+    m_lockedNames = names;
+    if (!m_parameters.isEmpty())
+        emit dataChanged(index(0), index(m_parameters.size() - 1), {EditableRole});
+}
+
 void LaunchParametersModel::resetFrom(const QList<LaunchParameter> &parameters)
 {
     LaunchProfile profile;
@@ -111,6 +123,8 @@ bool LaunchParametersModel::appendRow(const QString &name, const QString &text)
     if (clean.isEmpty())
         return false;
     if (LaunchProfile::reservedArgNames().contains(clean))
+        return false;
+    if (m_lockedNames.contains(clean))
         return false;
     for (const LaunchParameter &p : std::as_const(m_parameters))
         if (p.name == clean)

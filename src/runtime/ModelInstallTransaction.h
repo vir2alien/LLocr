@@ -52,6 +52,7 @@ public:
 
     static QString repoDirName(const QString &repo);
     static void selectModelFiles(const QList<HfFile> &tree, const QString &prefer, const QString &preferMmproj, QStringList *modelPaths, QString &mmprojRel);
+    static bool preserveExistingFiles(const QString &finalDir, const QString &stagingDir, const QStringList &writtenNames, QString *error = nullptr);
 
 signals:
     void stateChanged(int state);
@@ -90,6 +91,7 @@ private:
     void enqueueFile(const QString &repoPath, const QString &repo, const QString &commitSha);
     QString expectedShaFor(const QString &repoPath) const;
     static bool mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel, const QString &expected, const QString &revision, const QList<ModelEntry> &installed);
+    bool preservePendingFiles(QString *error);
     void maybeFinishDownloads();
     void completeInstall();
     void releaseInstallLock();
