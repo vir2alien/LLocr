@@ -1,4 +1,5 @@
 #include "app/AppController.h"
+#include "app/LruImageCache.h"
 #include "app/PageIndex.h"
 
 #include <algorithm>
@@ -27,12 +28,6 @@
 #include "models/OcrModelFactory.h"
 
 namespace llocr {
-namespace {
-
-constexpr qint64 kPreviewCacheBudgetBytes = 64ll * 1024 * 1024;
-constexpr qint64 kThumbnailCacheBudgetBytes = 48ll * 1024 * 1024;
-
-}  // namespace
 
 AppController::AppController(
     SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, RequestProfileStore &checkRequestProfiles, VerificationPromptStore &verification, QObject *parent)
@@ -203,11 +198,9 @@ QImage AppController::pageThumbnail(int index)
 {
     {
         QMutexLocker locker(&m_thumbnailMutex);
-        const auto it = m_thumbnailCache.constFind(index);
-        if (it != m_thumbnailCache.constEnd()) {
-            m_thumbnailOrder.removeAll(index);
-            m_thumbnailOrder.prepend(index);
-            return it.value();
+        if (const QImage *hit = m_thumbnailCache.find(index)) {
+            m_thumbnailCache.touch(index);
+            return *hit;
         }
     }
 
@@ -239,56 +232,13 @@ QImage AppController::pageThumbnail(int index)
     }
 
     QMutexLocker locker(&m_thumbnailMutex);
-    const auto existing = m_thumbnailCache.constFind(index);
-    if (existing != m_thumbnailCache.constEnd())
-        m_thumbnailBytes -= existing->sizeInBytes();
     m_thumbnailCache.insert(index, image);
-    m_thumbnailBytes += image.sizeInBytes();
-    m_thumbnailOrder.removeAll(index);
-    m_thumbnailOrder.prepend(index);
-    while (m_thumbnailOrder.size() > 1 && m_thumbnailBytes > kThumbnailCacheBudgetBytes) {
-        const auto victim = m_thumbnailCache.find(m_thumbnailOrder.takeLast());
-        if (victim == m_thumbnailCache.end())
-            continue;
-        m_thumbnailBytes -= victim->sizeInBytes();
-        m_thumbnailCache.erase(victim);
-    }
     return image;
 }
 
 bool AppController::previewRendering(int index) const
 {
     return m_previewRendering == index;
-}
-
-void AppController::cachePreview(int index, const QImage &image)
-{
-    const auto existing = m_previewCache.constFind(index);
-    if (existing != m_previewCache.constEnd())
-        m_previewCacheBytes -= existing->sizeInBytes();
-    m_previewCache.insert(index, image);
-    m_previewCacheBytes += image.sizeInBytes();
-    m_previewCacheOrder.removeAll(index);
-    m_previewCacheOrder.prepend(index);
-    evictPreviewCache();
-}
-
-void AppController::evictPreviewCache()
-{
-    while (m_previewCacheOrder.size() > 1 && m_previewCacheBytes > kPreviewCacheBudgetBytes) {
-        const auto it = m_previewCache.find(m_previewCacheOrder.takeLast());
-        if (it == m_previewCache.end())
-            continue;
-        m_previewCacheBytes -= it->sizeInBytes();
-        m_previewCache.erase(it);
-    }
-}
-
-void AppController::clearPreviewCache()
-{
-    m_previewCache.clear();
-    m_previewCacheOrder.clear();
-    m_previewCacheBytes = 0;
 }
 
 QImage AppController::previewImage(int index)
@@ -299,17 +249,15 @@ QImage AppController::previewImage(int index)
         QReadLocker locker(&m_documentLock);
         if (!m_document.isValidIndex(index))
             return {};
-        const auto it = m_previewCache.constFind(index);
-        if (it != m_previewCache.constEnd()) {
-            cached = true;
-        } else {
+        const QImage *hit = m_previewCache.find(index);
+        cached = hit != nullptr;
+        if (!cached)
             request = m_document.renderRequestFor(index);
-        }
     }
     if (cached) {
-        m_previewCacheOrder.removeAll(index);
-        m_previewCacheOrder.prepend(index);
-        return m_previewCache.value(index);
+        m_previewCache.touch(index);
+        const QImage *image = m_previewCache.find(index);
+        return image ? *image : QImage();
     }
 
     if (m_previewRendering == index)
@@ -327,7 +275,7 @@ QImage AppController::previewImage(int index)
             m_previewRendering = -1;
         if (rendered.isNull())
             return;
-        cachePreview(index, rendered);
+        m_previewCache.insert(index, rendered);
         emit pageImageReady(index);
         ++m_imageRevision;
         emit imageRevisionChanged();
@@ -521,7 +469,7 @@ void AppController::finishImport(const ImportState &state)
     emit configChanged();
     if (state.addedPages > 0) {
         updateBoxesForCurrent();
-        notifyImportFinished();
+        notifyPageChanged();
     }
 }
 
@@ -679,10 +627,7 @@ void AppController::setCurrentPageText(const QString &text)
         return;
 
     setPageText(index, text);
-    if (!m_editStore.isEdited(index)) {
-        m_editStore.setEdited(index, true);
-        m_pageModel.setEdited(index, true);
-    }
+    markPageEdited(index);
     emit resultChanged();
     emit editStateChanged();
 }
@@ -736,10 +681,7 @@ bool AppController::removeBlock(int boxIndex)
     m_boxModel.removeBox(boxIndex);
 
     setPageText(m_currentPage, rebuildPageText(page.result.pages[0]));
-    if (!m_editStore.isEdited(m_currentPage)) {
-        m_editStore.setEdited(m_currentPage, true);
-        m_pageModel.setEdited(m_currentPage, true);
-    }
+    markPageEdited(m_currentPage);
 
     if (m_selectedBox == boxIndex)
         setSelectedBoxIndex(-1);
@@ -840,8 +782,7 @@ void AppController::revertBlockCorrection()
             m_pageModel.setEdited(m_currentPage, false);
         } else {
             setPageText(m_currentPage, rebuilt);
-            m_editStore.setEdited(m_currentPage, true);
-            m_pageModel.setEdited(m_currentPage, true);
+            markPageEdited(m_currentPage);
         }
         ++m_cropRevision;
         textChanged = true;
@@ -920,10 +861,7 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
 
         if (box.checkStatus == BoxCheckStatus::Fixed) {
             setPageText(pageIndex, rebuildPageText(page.result.pages[0]));
-            if (!m_editStore.isEdited(pageIndex)) {
-                m_editStore.setEdited(pageIndex, true);
-                m_pageModel.setEdited(pageIndex, true);
-            }
+            markPageEdited(pageIndex);
             textChanged = true;
         }
         ++m_cropRevision;
@@ -970,29 +908,27 @@ void AppController::retranslate()
     emit retranslateRequested();
 }
 
+void AppController::markPageEdited(int index)
+{
+    if (m_editStore.isEdited(index))
+        return;
+    m_editStore.setEdited(index, true);
+    m_pageModel.setEdited(index, true);
+}
+
 void AppController::notifyPageListGrown()
 {
     emit documentChanged();
 }
 
-void AppController::notifyImportFinished()
-{
-    emit pageChanged();
-    emit imageChanged();
-    emit resultChanged();
-    emit editStateChanged();
-}
-
 void AppController::notifyDocumentChanged()
 {
     ++m_previewGeneration;
-    clearPreviewCache();
+    m_previewCache.clear();
     m_previewRendering = -1;
     {
         QMutexLocker locker(&m_thumbnailMutex);
         m_thumbnailCache.clear();
-        m_thumbnailOrder.clear();
-        m_thumbnailBytes = 0;
     }
     m_reportedUnrenderablePages.clear();
     emit documentChanged();

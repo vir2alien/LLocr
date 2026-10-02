@@ -84,11 +84,11 @@ const LaunchParameter *LaunchProfile::find(const QString &name) const
 
 namespace {
 
-bool parseParameter(const QJsonObject &obj, int fallbackOrder, LaunchParameter &out, QString &error)
+bool parseParameter(const QJsonObject &obj, int fallbackOrder, const QString &what, LaunchParameter &out, QString &error)
 {
     const QString name = obj.value(QLatin1String("name")).toString();
     if (name.isEmpty()) {
-        error = QObject::tr("Launch profile parameter has an empty name");
+        error = QObject::tr("%1 parameter has an empty name").arg(what);
         return false;
     }
     out.name = name;
@@ -96,7 +96,7 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder, LaunchParameter &
     if (obj.contains(QLatin1String(kOrderKey))) {
         out.order = obj.value(QLatin1String(kOrderKey)).toInt();
         if (out.order <= 0) {
-            error = QObject::tr("Launch profile parameter %1 has an invalid order").arg(name);
+            error = QObject::tr("%1 parameter %2 has an invalid order").arg(what, name);
             return false;
         }
     } else {
@@ -118,7 +118,7 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder, LaunchParameter &
         out.value = QVariant(value.toString());
         break;
     default:
-        error = QObject::tr("Launch profile parameter %1 has an unsupported value").arg(name);
+        error = QObject::tr("%1 parameter %2 has an unsupported value").arg(what, name);
         return false;
     }
 
@@ -126,7 +126,9 @@ bool parseParameter(const QJsonObject &obj, int fallbackOrder, LaunchParameter &
     return true;
 }
 
-QList<LaunchParameter> readParameters(const QJsonArray &array, QString &error, const QString &what)
+}  // namespace
+
+QList<LaunchParameter> LaunchProfile::parseParameters(const QJsonArray &array, QString &error, const QString &what)
 {
     QList<LaunchParameter> out;
     QSet<QString> names;
@@ -137,7 +139,7 @@ QList<LaunchParameter> readParameters(const QJsonArray &array, QString &error, c
             return {};
         }
         LaunchParameter parameter;
-        if (!parseParameter(value.toObject(), fallbackOrder, parameter, error))
+        if (!parseParameter(value.toObject(), fallbackOrder, what, parameter, error))
             return {};
         fallbackOrder = parameter.order + 1;
         if (names.contains(parameter.name)) {
@@ -150,16 +152,14 @@ QList<LaunchParameter> readParameters(const QJsonArray &array, QString &error, c
     return out;
 }
 
-}  // namespace
-
 QList<LaunchParameter> LaunchProfile::parseFallback(const QJsonObject &root, QString &error)
 {
-    return readParameters(root.value(QLatin1String(kFallbackKey)).toObject().value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Launch fallback"));
+    return parseParameters(root.value(QLatin1String(kFallbackKey)).toObject().value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Launch fallback"));
 }
 
 QList<LaunchParameter> LaunchProfile::parsePolicy(const QJsonObject &root, QString &error)
 {
-    return readParameters(root.value(QLatin1String(kPolicyKey)).toObject().value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Launch policy"));
+    return parseParameters(root.value(QLatin1String(kPolicyKey)).toObject().value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Launch policy"));
 }
 
 QList<LaunchProfile> LaunchProfile::parseFile(const QJsonObject &root, QString &error)
@@ -204,24 +204,10 @@ bool LaunchProfile::profileFromJson(const QJsonObject &obj, LaunchProfile &profi
     profile.backend = obj.value(QLatin1String(kBackendKey)).toString();
     profile.description = obj.value(QLatin1String(kDescriptionKey)).toString();
 
-    int fallbackOrder = 1;
-    QSet<QString> paramNames;
-    for (const QJsonValue &pv : obj.value(QLatin1String("parameters")).toArray()) {
-        if (!pv.isObject()) {
-            error = QObject::tr("Launch profile parameter is not an object");
-            return false;
-        }
-        LaunchParameter parameter;
-        if (!parseParameter(pv.toObject(), fallbackOrder, parameter, error))
-            return false;
-        fallbackOrder = parameter.order + 1;
-        if (paramNames.contains(parameter.name)) {
-            error = QObject::tr("Launch profile %1 has a duplicate parameter: %2").arg(profile.id, parameter.name);
-            return false;
-        }
-        paramNames.insert(parameter.name);
-        profile.parameters.append(parameter);
-    }
+    const QList<LaunchParameter> parameters = parseParameters(obj.value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Launch profile %1").arg(profile.id));
+    if (!error.isEmpty())
+        return false;
+    profile.parameters = parameters;
     profile.sortByOrder();
     return true;
 }

@@ -144,6 +144,50 @@ bool RequestProfile::textToValue(const QString &text, RequestValueKind kind, QVa
     return false;
 }
 
+QList<RequestParameter> RequestProfile::parseParameters(const QJsonArray &array, QString &error, const QString &what)
+{
+    QList<RequestParameter> out;
+    QSet<QString> names;
+    int fallbackOrder = 1;
+    for (const QJsonValue &entry : array) {
+        if (!entry.isObject()) {
+            error = QObject::tr("%1 parameter is not an object").arg(what);
+            return {};
+        }
+        const QJsonObject obj = entry.toObject();
+        RequestParameter parameter;
+        parameter.name = obj.value(QLatin1String(kNameKey)).toString();
+        if (parameter.name.isEmpty()) {
+            error = QObject::tr("%1 parameter has an empty name").arg(what);
+            return {};
+        }
+        if (obj.contains(QLatin1String(kOrderKey))) {
+            parameter.order = obj.value(QLatin1String(kOrderKey)).toInt();
+            if (parameter.order <= 0) {
+                error = QObject::tr("%1 parameter %2 has an invalid order").arg(what, parameter.name);
+                return {};
+            }
+        } else {
+            parameter.order = fallbackOrder;
+        }
+        fallbackOrder = parameter.order + 1;
+
+        if (!valueFromJson(obj.value(QLatin1String(kValueKey)), parameter.kind, parameter.value)) {
+            error = QObject::tr("%1 parameter %2 has an unsupported value").arg(what, parameter.name);
+            return {};
+        }
+        parameter.description = obj.value(QLatin1String(kDescriptionKey)).toString();
+
+        if (names.contains(parameter.name)) {
+            error = QObject::tr("%1 has a duplicate parameter: %2").arg(what, parameter.name);
+            return {};
+        }
+        names.insert(parameter.name);
+        out.append(parameter);
+    }
+    return out;
+}
+
 RequestProfile RequestProfile::fromJson(const QJsonObject &root, QString &error)
 {
     if (!root.contains(QLatin1String(kParametersKey))) {
@@ -153,51 +197,9 @@ RequestProfile RequestProfile::fromJson(const QJsonObject &root, QString &error)
 
     RequestProfile profile;
     profile.id = root.value(QLatin1String(kIdKey)).toString();
-    const QJsonArray params = root.value(QLatin1String(kParametersKey)).toArray();
-    QSet<QString> seen;
-    int fallbackOrder = 1;
-    for (const QJsonValue &entry : params) {
-        if (!entry.isObject()) {
-            error = QObject::tr("Request profile parameter is not an object");
-            return RequestProfile();
-        }
-        const QJsonObject obj = entry.toObject();
-        const QString name = obj.value(QLatin1String(kNameKey)).toString();
-        if (name.isEmpty()) {
-            error = QObject::tr("Request profile parameter has an empty name");
-            return RequestProfile();
-        }
-        if (seen.contains(name)) {
-            error = QObject::tr("Request profile has a duplicate parameter: %1").arg(name);
-            return RequestProfile();
-        }
-
-        RequestParameter parameter;
-        parameter.name = name;
-        if (obj.contains(QLatin1String(kOrderKey))) {
-            parameter.order = obj.value(QLatin1String(kOrderKey)).toInt();
-            if (parameter.order <= 0) {
-                error = QObject::tr("Request profile parameter %1 has an invalid order").arg(name);
-                return RequestProfile();
-            }
-        } else {
-            parameter.order = fallbackOrder;
-        }
-        fallbackOrder = parameter.order + 1;
-
-        RequestValueKind kind;
-        QVariant value;
-        if (!valueFromJson(obj.value(QLatin1String(kValueKey)), kind, value)) {
-            error = QObject::tr("Request profile parameter %1 has an unsupported value").arg(name);
-            return RequestProfile();
-        }
-        parameter.kind = kind;
-        parameter.value = value;
-        parameter.description = obj.value(QLatin1String(kDescriptionKey)).toString();
-
-        seen.insert(name);
-        profile.parameters.append(parameter);
-    }
+    profile.parameters = parseParameters(root.value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Request profile"));
+    if (!error.isEmpty())
+        return RequestProfile();
     profile.sortByOrder();
     return profile;
 }

@@ -2,6 +2,8 @@
 
 #include <QString>
 
+#include "core/ConnectionConfig.h"
+
 namespace llocr {
 
 enum class ConnectionRole {
@@ -16,6 +18,15 @@ struct ResolvedConnection {
     int timeoutMs = 0;
 
     QString error;
+
+    ConnectionConfig toConnectionConfig() const
+    {
+        ConnectionConfig config;
+        config.apiKey = apiKey;
+        config.baseUrl = baseUrl;
+        config.timeoutMs = timeoutMs;
+        return config;
+    }
 };
 
 struct SelfTestResult {

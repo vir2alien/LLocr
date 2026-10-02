@@ -52,7 +52,6 @@ private:
     void setBusy(bool busy);
     QString promptText() const;
     OcrRequest buildRequest(const QImage &image, const ResolvedConnection &conn) const;
-    ConnectionConfig buildConfig(const ResolvedConnection &conn) const;
 
     SettingsStore &m_settings;
     RuntimeController &m_runtime;

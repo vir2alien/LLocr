@@ -15,6 +15,7 @@
 #include "app/DocumentModel.h"
 #include "app/ExportController.h"
 #include "app/Exporter.h"
+#include "app/LruImageCache.h"
 #include "app/PageEditStore.h"
 #include "app/PageListModel.h"
 #include "app/ProblemLog.h"
@@ -33,6 +34,9 @@
 namespace llocr {
 
 class RequestProfileStore;
+
+constexpr qint64 kPreviewCacheBudgetBytes = 64ll * 1024 * 1024;
+constexpr qint64 kThumbnailCacheBudgetBytes = 48ll * 1024 * 1024;
 
 class AppController : public QObject
 {
@@ -242,23 +246,16 @@ private:
     int m_selectedBox = -1;
     bool m_recognitionStopped = false;
 
-    QHash<int, QImage> m_previewCache;
-    QList<int> m_previewCacheOrder;
-    qint64 m_previewCacheBytes = 0;
+    LruImageCache m_previewCache{kPreviewCacheBudgetBytes};
     int m_previewRendering = -1;      ///< page index a worker is busy with, -1 = idle
     quint64 m_previewGeneration = 0;  ///< bumped when the document changes
 
     QMutex m_thumbnailMutex;
-    QHash<int, QImage> m_thumbnailCache;
-    QList<int> m_thumbnailOrder;
-    qint64 m_thumbnailBytes = 0;
+    LruImageCache m_thumbnailCache{kThumbnailCacheBudgetBytes};
     QSet<QString> m_reportedUnrenderablePages;
 
-    void cachePreview(int index, const QImage &image);
-    void evictPreviewCache();
-    void clearPreviewCache();
     void notifyPageListGrown();
-    void notifyImportFinished();
+    void markPageEdited(int index);
 };
 
 }  // namespace llocr

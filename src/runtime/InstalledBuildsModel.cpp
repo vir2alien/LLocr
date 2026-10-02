@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFileInfo>
 
+#include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
 #include "runtime/RuntimeInstaller.h"
 
@@ -79,12 +80,7 @@ bool InstalledBuildsModel::isActive(const InstalledBuildInfo &build) const
 {
     if (build.serverPath.isEmpty() || m_settings.serverPath().isEmpty())
         return false;
-    return normalizedPath(build.serverPath) == normalizedPath(m_settings.serverPath());
-}
-
-QString InstalledBuildsModel::normalizedPath(const QString &path)
-{
-    return QDir::cleanPath(QFileInfo(path).absoluteFilePath());
+    return RuntimePaths::normalized(build.serverPath) == RuntimePaths::normalized(m_settings.serverPath());
 }
 
 }  // namespace llocr

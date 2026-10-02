@@ -113,16 +113,7 @@ void RecognitionController::recognizePage(int index)
         return;
     }
     const OcrRequest request = buildRequest(image, m_connection);
-    m_watcher.setFuture(m_model->recognize(request, buildConfig(m_connection)));
-}
-
-ConnectionConfig RecognitionController::buildConfig(const ResolvedConnection &conn) const
-{
-    ConnectionConfig config;
-    config.apiKey = conn.apiKey;
-    config.baseUrl = conn.baseUrl;
-    config.timeoutMs = conn.timeoutMs;
-    return config;
+    m_watcher.setFuture(m_model->recognize(request, m_connection.toConnectionConfig()));
 }
 
 OcrRequest RecognitionController::buildRequest(const QImage &image, const ResolvedConnection &conn) const

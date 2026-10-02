@@ -5,8 +5,8 @@
 core/config/models/parsers, QML, кросс-слойный архитектурный) с перекрёстной
 верификацией каждой находки grep-ом по `src/`, `resources/qml/`, `tests/`,
 `main.cpp` — с учётом Q_PROPERTY/метаобъектных вызовов из QML и вызовов через
-указатели. Статус: **открыт** — код на момент аудита не менялся; ниже план
-чистки по раундам (§9).
+указатели. Статус: **в работе** — раунды 1 и 2 выполнены; раунды 3–5 не
+начаты. Ниже план чистки по раундам (§9).
 
 Сводка: ~70 находок — мёртвый код 25, «используется только тестами» ~18,
 дублирование 20, оверинжиниринг/переусложнение ~15.
@@ -16,10 +16,10 @@ core/config/models/parsers, QML, кросс-слойный архитектур�
 | # | Проблема | Объём |
 | --- | --- | --- |
 | 1.1 | Три копии стейт-машины установки (`state/busy/progress/statusMessage`) в `RuntimeInstaller` / `ModelInstaller` / `ModelInstallTransaction` + два разных паттерна для одной задачи | ~200 строк |
-| 1.2 | Потоковый SHA-256 файла — три копии в слое runtime | ~50 строк |
-| 1.3 | ~40% `Theme.qml` мёртво (~25 неиспользуемых шрифтов/цветов/алиасов) | ~40 строк |
+| 1.2 | Потоковый SHA-256 файла — три копии в слое runtime | ~50 строк ✅ раунд 2a |
+| 1.3 | ~40% `Theme.qml` мёртво (~25 неиспользуемых шрифтов/цветов/алиасов) | ~40 строк ✅ раунд 1 |
 | 1.4 | QML-копипаст «шаг визарда ↔ вкладка настроек»: `pickDialog`, редакторы параметров, Language/Theme, чекбоксы output, External-заглушка, блок установки runtime | ~500+ строк |
-| 1.5 | Парсер параметров профиля — 4 копии, уже разошедшиеся в деталях | ~150 строк |
+| 1.5 | Парсер параметров профиля — 4 копии, уже разошедшиеся в деталях | ~150 строк ✅ раунд 2 |
 
 ## 2. Полностью мёртвый код (потребителя нет нигде)
 
@@ -235,8 +235,8 @@ core/config/models/parsers, QML, кросс-слойный архитектур�
   `profiles` и читает глобальный синглтон — латентная несогласованность.
 - 🟢 **Мелочь**: `Main.qml:97` — identity-копия `drop.urls.map(u => u)`;
   `StepLaunch` — `gib()` ≡ `giText()`; `ServerLogWindow` — разрыв binding'а +
-  восстановление через `Qt.binding()` ×2; `InstalledReconcile::selectsPath` —
-  неиспользуемый параметр `input`.
+  восстановление через `Qt.binding()` ×2; ~~`InstalledReconcile::selectsPath` —
+  неиспользуемый параметр `input`~~ ✅ закрыто в раунде 2.
 
 ## 7. Что проверено и чисто
 
@@ -278,19 +278,26 @@ test-only, остаются до раунда 4), `test_archive_extractor` не 
 Проверка: зелёный `scripts/check.sh` без правки тестов (кроме случаев из §2,
 где тестов-потребителей нет по определению).
 
-### Раунд 2 — внутрислоевые дедупликации C++
+### Раунд 2 — внутрислоевые дедупликации C++ ✅ выполнен
 
-- Общий хелпер SHA-256 (§4.2.6) в runtime-слое.
-- Единый `normalizedPath` (§4.2.7).
-- Общий парсер параметров профиля (§4.2.8) — самый тонкий шаг: копии уже
-  разошлись, сначала зафиксировать текущее поведение тестами.
-- `ResolvedConnection::toConnectionConfig()` (§4.1.3) — тривиально.
+- Общий хелпер SHA-256 (§4.2.6) — `runtime/FileDigest.{h,cpp}`.
+- Единый `normalizedPath` (§4.2.7) — `RuntimePaths::normalized()`; ушла и
+  разница в семантике (одна копия резолвила в абсолютный путь, другая нет).
+- Общий парсер параметров профиля (§4.2.8) — `LaunchProfile::parseParameters()`
+  и `RequestProfile::parseParameters()`, обе публичные статические; четыре копии
+  в `LaunchProfile`, `ModelProfiles`, `RequestProfile` удалены.
+- `ResolvedConnection::toConnectionConfig()` (§4.1.3).
 - `AppController`: `notifyImportFinished` → `notifyPageChanged`, метод
-  `markPageEdited(int)`, общая LRU-утилита (§4.2.11).
-- `VerificationPromptStore`: `save()` через `loadBuiltIn`-переиспользование,
-  `promptForType`/`isTypeEnabled` через `findBlock` (§4.2.13).
-- `kGroupRole` → публичная константа роли из `VerificationBlocksModel`
-  (§4.2.15).
+  `markPageEdited(int)`, общая `app/LruImageCache.h` (§4.2.11).
+- `VerificationPromptStore`: общий `readBuiltInDocument()` для `loadBuiltIn()`
+  и `save()`, `promptForType`/`isTypeEnabled` через `findBlock` (§4.2.13).
+- `kGroupRole` → `VerificationBlocksModel::GroupRole` (§4.2.15).
+
+Сообщения парсеров стали форматами с подстановкой (`"%1 parameter %2 has an
+invalid order"`), а префикс передаётся вызывающим (`tr("Model profile")`,
+`tr("Launch fallback")` и т.д.); `resources/i18n/llocr_ru.ts` перегенерирован
+целью CMake `update_translations` — она знает полный список источников, включая
+QML, в отличие от `lupdate src`, который теряет переводы QML-строк.
 
 ### Раунд 3 — QML-компоненты
 

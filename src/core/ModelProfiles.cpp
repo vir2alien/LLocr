@@ -11,103 +11,12 @@
 
 #include <algorithm>
 
+#include "core/LaunchProfile.h"
+#include "core/RequestProfile.h"
+
 namespace llocr {
 
 namespace {
-
-QList<LaunchParameter> readLaunchParameters(const QJsonArray &array, QString &error)
-{
-    QList<LaunchParameter> out;
-    QSet<QString> names;
-    int fallbackOrder = 1;
-    for (const QJsonValue &value : array) {
-        if (!value.isObject()) {
-            error = QObject::tr("Model profile parameter is not an object");
-            return {};
-        }
-        const QJsonObject obj = value.toObject();
-        LaunchParameter parameter;
-        parameter.name = obj.value(QStringLiteral("name")).toString();
-        if (parameter.name.isEmpty()) {
-            error = QObject::tr("Model profile parameter has an empty name");
-            return {};
-        }
-        parameter.order = obj.contains(QStringLiteral("order")) ? obj.value(QStringLiteral("order")).toInt(fallbackOrder) : fallbackOrder;
-        if (parameter.order <= 0) {
-            error = QObject::tr("Model profile parameter %1 has an invalid order").arg(parameter.name);
-            return {};
-        }
-        fallbackOrder = parameter.order + 1;
-
-        const QJsonValue v = obj.value(QStringLiteral("value"));
-        switch (v.type()) {
-        case QJsonValue::Undefined:
-        case QJsonValue::Null:
-            parameter.kind = LaunchValueKind::Flag;
-            break;
-        case QJsonValue::Double:
-            parameter.kind = LaunchValueKind::Number;
-            parameter.value = QVariant(v.toDouble());
-            break;
-        case QJsonValue::String:
-            parameter.kind = LaunchValueKind::Text;
-            parameter.value = QVariant(v.toString());
-            break;
-        default:
-            error = QObject::tr("Model profile parameter %1 has an unsupported value").arg(parameter.name);
-            return {};
-        }
-        parameter.description = obj.value(QStringLiteral("description")).toString();
-
-        if (names.contains(parameter.name)) {
-            error = QObject::tr("Model profile has a duplicate parameter: %1").arg(parameter.name);
-            return {};
-        }
-        names.insert(parameter.name);
-        out.append(parameter);
-    }
-    return out;
-}
-
-QList<RequestParameter> readRequestParameters(const QJsonArray &array, QString &error)
-{
-    QList<RequestParameter> out;
-    QSet<QString> names;
-    int fallbackOrder = 1;
-    for (const QJsonValue &value : array) {
-        if (!value.isObject()) {
-            error = QObject::tr("Model profile request parameter is not an object");
-            return {};
-        }
-        const QJsonObject obj = value.toObject();
-        RequestParameter parameter;
-        parameter.name = obj.value(QStringLiteral("name")).toString();
-        if (parameter.name.isEmpty()) {
-            error = QObject::tr("Model profile request parameter has an empty name");
-            return {};
-        }
-        parameter.order = obj.contains(QStringLiteral("order")) ? obj.value(QStringLiteral("order")).toInt(fallbackOrder) : fallbackOrder;
-        if (parameter.order <= 0) {
-            error = QObject::tr("Model profile request parameter %1 has an invalid order").arg(parameter.name);
-            return {};
-        }
-        fallbackOrder = parameter.order + 1;
-
-        if (!RequestProfile::valueFromJson(obj.value(QStringLiteral("value")), parameter.kind, parameter.value)) {
-            error = QObject::tr("Model profile request parameter %1 has an unsupported value").arg(parameter.name);
-            return {};
-        }
-        parameter.description = obj.value(QStringLiteral("description")).toString();
-
-        if (names.contains(parameter.name)) {
-            error = QObject::tr("Model profile has a duplicate request parameter: %1").arg(parameter.name);
-            return {};
-        }
-        names.insert(parameter.name);
-        out.append(parameter);
-    }
-    return out;
-}
 
 ModelProfiles::Module readModule(const QJsonObject &object, QString &error)
 {
@@ -188,10 +97,10 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.alias = roleObject.value(QStringLiteral("alias")).toString();
         role.parser = roleObject.value(QStringLiteral("parser")).toString();
         role.maxOutput = roleObject.value(QStringLiteral("maxOutput")).toInt(0);
-        role.launch = readLaunchParameters(roleObject.value(QStringLiteral("launch")).toArray(), error);
+        role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
         if (!error.isEmpty())
             return profile;
-        role.request = readRequestParameters(roleObject.value(QStringLiteral("request")).toArray(), error);
+        role.request = RequestProfile::parseParameters(roleObject.value(QStringLiteral("request")).toArray(), error, QObject::tr("Model profile request"));
         if (!error.isEmpty())
             return profile;
 

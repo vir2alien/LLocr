@@ -37,7 +37,6 @@ signals:
 
 private:
     QList<RequestParameter> requestParameters() const;
-    ConnectionConfig buildConfig(const ResolvedConnection &conn) const;
     void setBusy(bool busy);
 
     RequestProfileStore &m_requestProfiles;

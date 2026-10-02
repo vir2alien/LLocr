@@ -2,11 +2,9 @@
 
 #include <QAbstractItemModel>
 
-namespace llocr {
+#include "app/VerificationPromptStore.h"
 
-namespace {
-constexpr int kGroupRole = Qt::UserRole + 3;
-}  // namespace
+namespace llocr {
 
 BlockGroupFilterModel::BlockGroupFilterModel(QObject *parent) : QSortFilterProxyModel(parent) {}
 
@@ -25,7 +23,7 @@ bool BlockGroupFilterModel::filterAcceptsRow(int sourceRow, const QModelIndex &s
     if (m_group.isEmpty() || !sourceModel())
         return false;
     const QModelIndex idx = sourceModel()->index(sourceRow, 0, sourceParent);
-    return sourceModel()->data(idx, kGroupRole).toString() == m_group;
+    return sourceModel()->data(idx, VerificationBlocksModel::GroupRole).toString() == m_group;
 }
 
 }  // namespace llocr

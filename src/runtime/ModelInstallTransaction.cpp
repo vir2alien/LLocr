@@ -1,4 +1,3 @@
-#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -15,6 +14,7 @@
 #include "core/ModelProfiles.h"
 #include "runtime/DownloadGroup.h"
 #include "runtime/DownloadManager.h"
+#include "runtime/FileDigest.h"
 #include "runtime/ModelInstallTransaction.h"
 
 #include "config/RuntimePaths.h"
@@ -480,18 +480,9 @@ bool ModelInstallTransaction::mmprojAlreadyOnDisk(const QString &dir, const QStr
     if (expected.isEmpty())
         return false;
 
-    QFile f(target);
-    if (!f.open(QIODevice::ReadOnly))
-        return false;
-    QCryptographicHash hash(QCryptographicHash::Sha256);
-    QByteArray buf(1 << 20, Qt::Uninitialized);
-    qint64 n = 0;
-    while ((n = f.read(buf.data(), buf.size())) > 0)
-        hash.addData(QByteArrayView(buf.constData(), static_cast<int>(n)));
-    f.close();
-    if (n < 0)
-        return false;
-    return QString::fromLatin1(hash.result().toHex()) == expected.toLower();
+    bool ok = false;
+    const QByteArray digest = sha256File(target, &ok);
+    return ok && QString::fromLatin1(digest) == expected.toLower();
 }
 
 void ModelInstallTransaction::releaseInstallLock()

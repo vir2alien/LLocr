@@ -38,15 +38,6 @@ QList<RequestParameter> CheckController::requestParameters() const
     return m_requestProfiles.activeProfile().parameters;
 }
 
-ConnectionConfig CheckController::buildConfig(const ResolvedConnection &conn) const
-{
-    ConnectionConfig config;
-    config.apiKey = conn.apiKey;
-    config.baseUrl = conn.baseUrl;
-    config.timeoutMs = conn.timeoutMs;
-    return config;
-}
-
 void CheckController::checkBlock(const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt)
 {
     if (m_busy || image.isNull())
@@ -79,7 +70,7 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
         request.modelId = conn.modelId;
         request.parameters = requestParameters();
 
-        m_watcher.setFuture(m_model->check(request, buildConfig(conn)));
+        m_watcher.setFuture(m_model->check(request, conn.toConnectionConfig()));
     });
 }
 

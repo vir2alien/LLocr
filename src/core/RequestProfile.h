@@ -5,6 +5,7 @@
 #include <QString>
 #include <QVariant>
 
+class QJsonArray;
 class QJsonObject;
 
 namespace llocr {
@@ -34,6 +35,7 @@ struct RequestProfile {
     static RequestProfile fromJson(const QJsonObject &root, QString &error);
     QJsonObject toJson() const;
     static QList<RequestProfile> profilesFromJson(const QJsonObject &root, QString &error);
+    static QList<RequestParameter> parseParameters(const QJsonArray &array, QString &error, const QString &what);
 
     static RequestProfile merge(const RequestProfile &defaults, const RequestProfile &user);
 

@@ -1,5 +1,4 @@
 #include <QCoreApplication>
-#include <QCryptographicHash>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -10,6 +9,7 @@
 #include <algorithm>
 
 #include "runtime/ArchiveExtractor.h"
+#include "runtime/FileDigest.h"
 #include "runtime/InstallTransaction.h"
 
 #include "runtime/ReleaseCatalog.h"
@@ -20,23 +20,6 @@
 namespace llocr {
 
 namespace {
-
-// Streams a file into a SHA-256 digest (archives are large).
-QString fileSha256(const QString &path)
-{
-    QFile f(path);
-    if (!f.open(QIODevice::ReadOnly))
-        return QString();
-    QCryptographicHash hash(QCryptographicHash::Sha256);
-    QByteArray chunk;
-    while (!f.atEnd()) {
-        chunk = f.read(1 << 20);
-        hash.addData(chunk);
-        if (chunk.isEmpty())
-            break;
-    }
-    return QString::fromLatin1(hash.result().toHex());
-}
 
 const QString kServerName =
 #ifdef Q_OS_WIN
@@ -89,7 +72,7 @@ InstallOutput InstallTransaction::start(const QString &archivePath, const Releas
         return out;
     }
     if (!asset.sha256.isEmpty()) {
-        const QString actual = fileSha256(archivePath);
+        const QString actual = QString::fromLatin1(sha256File(archivePath));
         if (actual != asset.sha256) {
             out.error = QStringLiteral("sha256 mismatch for the downloaded archive");
             return out;

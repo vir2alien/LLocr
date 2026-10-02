@@ -56,11 +56,6 @@ void SelfTestController::runSelfTestRequest(const ResolvedConnection &conn, std:
     request.modelId = conn.modelId;
     request.parameters = m_requestProfiles.activeProfile().parameters;
 
-    ConnectionConfig config;
-    config.baseUrl = conn.baseUrl;
-    config.apiKey = conn.apiKey;
-    config.timeoutMs = conn.timeoutMs;
-
     QFutureWatcher<OcrResult> *watch = new QFutureWatcher<OcrResult>(this);
     connect(watch, &QFutureWatcher<OcrResult>::finished, this, [promise, watch]() {
         const OcrResult res = watch->future().resultCount() > 0 ? watch->result() : OcrResult::makeError(StatusMessage::translate("SelfTestController", "No response"));
@@ -75,7 +70,7 @@ void SelfTestController::runSelfTestRequest(const ResolvedConnection &conn, std:
         promise->reportResult(std::move(r));
         promise->reportFinished();
     });
-    watch->setFuture(m_selftestModel->recognize(request, config));
+    watch->setFuture(m_selftestModel->recognize(request, conn.toConnectionConfig()));
 }
 
 void SelfTestController::retranslate()

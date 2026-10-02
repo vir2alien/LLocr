@@ -29,6 +29,8 @@ public:
 
     static QString defaultRootDir();
 
+    static QString normalized(const QString &path);
+
 private:
     QString m_rootDir;
     QString m_modelsDir;

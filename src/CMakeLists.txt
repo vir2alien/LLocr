@@ -137,6 +137,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/ServerCapabilities.cpp
     runtime/ServerLaunchConfig.h
     runtime/ServerLaunchConfig.cpp
+        runtime/FileDigest.h
+        runtime/FileDigest.cpp
     runtime/RuntimeLocator.h
     runtime/RuntimeLocator.cpp
     runtime/LlamaServerProcess.h
@@ -215,6 +217,7 @@ qt_add_library(llocr_app STATIC
     app/DocumentModel.cpp
     app/Exporter.h
     app/Exporter.cpp
+    app/LruImageCache.h
     app/ExportRenderer.h
     app/ExportRenderer.cpp
     app/I18n.h

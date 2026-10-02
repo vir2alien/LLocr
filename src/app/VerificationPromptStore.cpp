@@ -18,9 +18,45 @@
 namespace llocr {
 
 namespace {
+
 constexpr int kSchemaVersion = 1;
 constexpr const char kBuiltInPath[] = ":/profiles/verifyPrompts.json";
 constexpr const char kUserFileName[] = "verifyPrompts.json";
+
+bool readBuiltInDocument(QList<VerificationBlock> &blocks, QString &systemPrompt)
+{
+    QFile builtIn(QString::fromUtf8(kBuiltInPath));
+    if (!builtIn.open(QIODevice::ReadOnly)) {
+        qWarning("VerificationPromptStore: cannot open built-in prompts %s: %s", qUtf8Printable(QString::fromUtf8(kBuiltInPath)), qUtf8Printable(builtIn.errorString()));
+        return false;
+    }
+
+    QJsonParseError parseError{};
+    const QJsonDocument doc = QJsonDocument::fromJson(builtIn.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning("VerificationPromptStore: cannot parse built-in prompts: %s", qUtf8Printable(parseError.errorString()));
+        return false;
+    }
+
+    const QJsonObject root = doc.object();
+    systemPrompt = root.value(QStringLiteral("systemPrompt")).toString();
+
+    blocks.clear();
+    const QJsonArray array = root.value(QStringLiteral("blocks")).toArray();
+    for (const QJsonValue &value : array) {
+        const QJsonObject obj = value.toObject();
+        VerificationBlock block;
+        block.type = obj.value(QStringLiteral("type")).toString();
+        block.name = obj.value(QStringLiteral("name")).toString();
+        block.group = obj.value(QStringLiteral("group")).toString(QStringLiteral("content"));
+        block.enabled = obj.value(QStringLiteral("enabled")).toBool(true);
+        block.prompt = obj.value(QStringLiteral("prompt")).toString();
+        if (!block.type.isEmpty())
+            blocks.append(block);
+    }
+    return true;
+}
+
 }  // namespace
 
 VerificationBlocksModel::VerificationBlocksModel(QObject *parent) : QAbstractListModel(parent) {}
@@ -215,58 +251,29 @@ VerificationBlock *VerificationPromptStore::findBlock(const QString &type)
 
 QString VerificationPromptStore::promptForType(const QString &type) const
 {
-    for (const VerificationBlock &block : m_model->blocks()) {
-        if (block.type == type)
-            return block.prompt;
-    }
-    return QString();
+    const VerificationBlock *block = findBlock(type);
+    return block ? block->prompt : QString();
 }
 
 bool VerificationPromptStore::isTypeEnabled(const QString &type) const
 {
-    for (const VerificationBlock &block : m_model->blocks()) {
-        if (block.type == type)
-            return block.enabled;
-    }
-    return false;
+    const VerificationBlock *block = findBlock(type);
+    return block && block->enabled;
 }
 
 void VerificationPromptStore::loadBuiltIn()
 {
     m_originalPrompts.clear();
 
-    QFile builtIn(QString::fromUtf8(kBuiltInPath));
-    if (!builtIn.open(QIODevice::ReadOnly)) {
-        qWarning("VerificationPromptStore: cannot open built-in prompts %s: %s", qUtf8Printable(QString::fromUtf8(kBuiltInPath)), qUtf8Printable(builtIn.errorString()));
-        return;
-    }
-
-    QJsonParseError parseError{};
-    const QJsonDocument doc = QJsonDocument::fromJson(builtIn.readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        qWarning("VerificationPromptStore: cannot parse built-in prompts: %s", qUtf8Printable(parseError.errorString()));
-        return;
-    }
-
-    const QJsonObject root = doc.object();
-    m_systemPrompt = root.value(QStringLiteral("systemPrompt")).toString();
-    m_originalSystemPrompt = m_systemPrompt;
-
     QList<VerificationBlock> blocks;
-    const QJsonArray array = root.value(QStringLiteral("blocks")).toArray();
-    for (const QJsonValue &value : array) {
-        const QJsonObject obj = value.toObject();
-        VerificationBlock block;
-        block.type = obj.value(QStringLiteral("type")).toString();
-        block.name = obj.value(QStringLiteral("name")).toString();
-        block.group = obj.value(QStringLiteral("group")).toString(QStringLiteral("content"));
-        block.enabled = obj.value(QStringLiteral("enabled")).toBool(true);
-        block.prompt = obj.value(QStringLiteral("prompt")).toString();
-        if (!block.type.isEmpty()) {
-            m_originalPrompts.insert(block.type, block.prompt);
-            blocks.append(block);
-        }
-    }
+    QString systemPrompt;
+    if (!readBuiltInDocument(blocks, systemPrompt))
+        return;
+
+    m_systemPrompt = systemPrompt;
+    m_originalSystemPrompt = systemPrompt;
+    for (const VerificationBlock &block : std::as_const(blocks))
+        m_originalPrompts.insert(block.type, block.prompt);
     m_blocks = blocks;
 }
 
@@ -347,30 +354,9 @@ void VerificationPromptStore::loadValues()
 
 void VerificationPromptStore::save()
 {
-    const QString builtInPath = QString::fromUtf8(kBuiltInPath);
     QList<VerificationBlock> builtIn;
     QString builtInSystem;
-    {
-        QFile builtInFile(builtInPath);
-        if (builtInFile.open(QIODevice::ReadOnly)) {
-            const QJsonDocument doc = QJsonDocument::fromJson(builtInFile.readAll());
-            if (doc.isObject()) {
-                const QJsonObject root = doc.object();
-                builtInSystem = root.value(QStringLiteral("systemPrompt")).toString();
-                const QJsonArray array = root.value(QStringLiteral("blocks")).toArray();
-                for (const QJsonValue &value : array) {
-                    const QJsonObject obj = value.toObject();
-                    VerificationBlock block;
-                    block.type = obj.value(QStringLiteral("type")).toString();
-                    block.name = obj.value(QStringLiteral("name")).toString();
-                    block.enabled = obj.value(QStringLiteral("enabled")).toBool(true);
-                    block.prompt = obj.value(QStringLiteral("prompt")).toString();
-                    if (!block.type.isEmpty())
-                        builtIn.append(block);
-                }
-            }
-        }
-    }
+    readBuiltInDocument(builtIn, builtInSystem);
 
     const bool systemChanged = m_systemPrompt != builtInSystem;
     QJsonArray changedBlocks;

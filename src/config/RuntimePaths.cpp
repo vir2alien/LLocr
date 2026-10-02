@@ -15,6 +15,11 @@ QString RuntimePaths::defaultRootDir()
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 }
 
+QString RuntimePaths::normalized(const QString &path)
+{
+    return QDir::cleanPath(QDir::fromNativeSeparators(path));
+}
+
 QString RuntimePaths::rootDir() const
 {
     return m_rootDir;

@@ -43,7 +43,6 @@ signals:
 
 private:
     bool isActive(const InstalledBuildInfo &build) const;
-    static QString normalizedPath(const QString &path);
 
     SettingsStore &m_settings;
     QList<InstalledBuildInfo> m_builds;

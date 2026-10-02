@@ -6,14 +6,11 @@
 
 #include <algorithm>
 
+#include "config/RuntimePaths.h"
+
 namespace llocr {
 
 namespace {
-
-QString normalizedPath(const QString &path)
-{
-    return QDir::cleanPath(QDir::fromNativeSeparators(path));
-}
 
 bool entryIsPresent(const ModelEntry &entry)
 {
@@ -46,11 +43,11 @@ bool diskFactsDiffer(const ModelEntry &recorded, const ModelEntry &scanned)
     return recorded.modelPath != scanned.modelPath || recorded.parts != scanned.parts || recorded.byteSize != scanned.byteSize || recorded.dir != scanned.dir;
 }
 
-bool selectsPath(const ReconcileInput &input, const ModelEntry &entry, const QString &selected)
+bool selectsPath(const ModelEntry &entry, const QString &selected)
 {
     if (selected.isEmpty() || entry.modelPath.isEmpty())
         return false;
-    return normalizedPath(entry.modelPath) == normalizedPath(selected);
+    return RuntimePaths::normalized(entry.modelPath) == RuntimePaths::normalized(selected);
 }
 
 }  // namespace
@@ -73,7 +70,7 @@ ReconcileResult reconcileInstalled(const ReconcileInput &input)
         const QString &path = input.disk.at(i).modelPath;
         if (path.isEmpty())
             continue;
-        diskByPath.insert(normalizedPath(path), i);
+        diskByPath.insert(RuntimePaths::normalized(path), i);
     }
 
     for (const ModelEntry &recorded : input.index) {
@@ -85,7 +82,7 @@ ReconcileResult reconcileInstalled(const ReconcileInput &input)
 
         int scannedIndex = -1;
         if (!recorded.modelPath.isEmpty()) {
-            const auto it = diskByPath.constFind(normalizedPath(recorded.modelPath));
+            const auto it = diskByPath.constFind(RuntimePaths::normalized(recorded.modelPath));
             if (it != diskByPath.constEnd()) {
                 scannedIndex = it.value();
                 diskMatched[scannedIndex] = 1;
@@ -117,7 +114,7 @@ ReconcileResult reconcileInstalled(const ReconcileInput &input)
     for (const QString &selected : {input.selectedModelPath, input.selectedCheckModelPath}) {
         if (selected.isEmpty())
             continue;
-        const bool resolved = std::any_of(merged.cbegin(), merged.cend(), [&](const ModelEntry &entry) { return selectsPath(input, entry, selected); });
+        const bool resolved = std::any_of(merged.cbegin(), merged.cend(), [&](const ModelEntry &entry) { return selectsPath(entry, selected); });
         if (!resolved)
             result.staleModelSelections.append(selected);
     }

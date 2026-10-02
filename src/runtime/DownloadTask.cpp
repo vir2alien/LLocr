@@ -23,6 +23,7 @@
 #endif
 
 #include "runtime/DownloadTask.h"
+#include "runtime/FileDigest.h"
 #include "runtime/HttpClient.h"
 
 namespace llocr {
@@ -469,30 +470,6 @@ bool DownloadTask::isAllowedUrl(const QUrl &url) const
         return false;
     const QString host = url.host();
     return host == QLatin1String("127.0.0.1") || host == QLatin1String("::1") || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
-}
-
-// sha256 of a whole file, chunked so a multi-GB model does not land in memory.
-static QByteArray sha256File(const QString &path, bool *ok)
-{
-    if (ok)
-        *ok = false;
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
-    QCryptographicHash hash(QCryptographicHash::Sha256);
-    QByteArray buffer(1024 * 1024, Qt::Uninitialized);
-    while (true) {
-        const qint64 n = file.read(buffer.data(), buffer.size());
-        if (n < 0)
-            return {};
-        if (n == 0)
-            break;
-        hash.addData(QByteArrayView(buffer.constData(), static_cast<int>(n)));
-    }
-    file.close();
-    if (ok)
-        *ok = true;
-    return hash.result().toHex();
 }
 
 void DownloadTask::verifySha256()
