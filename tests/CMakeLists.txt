@@ -326,6 +326,14 @@ target_compile_definitions(test_ensure_connection PRIVATE
     LLOCR_MOCK_SERVER="$<TARGET_FILE:mock_llama_server>"
 )
 
+# minBuildIsComparedByNumber reads a model profile's minBuild, so the shipped
+# profiles have to be a resource of this binary too.
+qt_add_resources(test_ensure_connection "ensure_connection_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${LLOCR_MODEL_PROFILE_FILES}
+)
+
 target_link_libraries(test_ensure_connection PRIVATE
     Qt6::Test
     llocr_runtime

@@ -169,9 +169,21 @@ void ModelInstaller::refreshInstalled()
     m_installed = ModelRegistry::load(m_installState.paths().modelsDir(), rebuilt, err, &report, selections);
     if (!err.isEmpty() && !rebuilt)
         setStatusMessage(err);
+    syncProfileToActiveModel();
     reportStaleSelections(report);
     m_transaction->setInstalled(m_installed);
     publishInstalled();
+}
+
+void ModelInstaller::syncProfileToActiveModel()
+{
+    const QString active = m_settings.launchModelPath();
+    for (const ModelEntry &e : m_installed) {
+        if (e.modelPath.isEmpty() || e.modelPath != active || e.repo.isEmpty())
+            continue;
+        m_settings.selectModelProfile(e.repo, QStringLiteral("ocr"), false);
+        break;
+    }
 }
 
 void ModelInstaller::reportStaleSelections(const ReconcileResult &report)

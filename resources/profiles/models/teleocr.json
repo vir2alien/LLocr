@@ -20,8 +20,8 @@
       }
     ],
     "mmproj": {
-      "id": "q8_0",
-      "file": "NaviDC-OCR-mmproj-q8_0.gguf",
+      "id": "f16",
+      "file": "mmproj-NaviDC-OCR-F16.gguf ",
       "sha256": ""
     }
   },

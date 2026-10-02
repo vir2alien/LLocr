@@ -10,6 +10,7 @@ class TestCapabilities : public QObject
 
 private slots:
     void buildNumberExtraction();
+    void buildTagsCompareByNumber();
     void modernBuildDetect();
     void ancientBuildProfiles();
     void helpRefinesAllowlist();
@@ -26,6 +27,20 @@ void TestCapabilities::buildNumberExtraction()
     QCOMPARE(ServerCapabilities::extractBuildNumber(QStringLiteral("llama-server build 9999")), 9999);
     QCOMPARE(ServerCapabilities::extractBuildNumber(QStringLiteral("1.4.0")), -1);  // semver tail — ambiguous
     QCOMPARE(ServerCapabilities::extractBuildNumber(QStringLiteral("hello")), -1);
+}
+
+void TestCapabilities::buildTagsCompareByNumber()
+{
+    // As text "b11312" sorts before "b4000", which refused every five-digit
+    // build as older than every four-digit one.
+    QVERIFY(ServerCapabilities::buildAtLeast(QStringLiteral("b11312"), QStringLiteral("b4000")));
+    QVERIFY(ServerCapabilities::buildAtLeast(QStringLiteral("b4000"), QStringLiteral("b4000")));
+    QVERIFY(ServerCapabilities::buildAtLeast(QStringLiteral("b10594"), QStringLiteral("b8000")));
+    QVERIFY(!ServerCapabilities::buildAtLeast(QStringLiteral("b3999"), QStringLiteral("b4000")));
+    QVERIFY(!ServerCapabilities::buildAtLeast(QStringLiteral("b5000"), QStringLiteral("b8000")));
+    // An unreadable tag on either side cannot refuse a start.
+    QVERIFY(ServerCapabilities::buildAtLeast(QString(), QStringLiteral("b8000")));
+    QVERIFY(ServerCapabilities::buildAtLeast(QStringLiteral("b11312"), QString()));
 }
 
 void TestCapabilities::modernBuildDetect()

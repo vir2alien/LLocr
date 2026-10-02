@@ -846,6 +846,45 @@ private slots:
         QVERIFY(installer.setActiveModel(1, false).isEmpty());
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
     }
+
+    // A model whose repo was renamed in the catalog kept the profile of the
+    // model selected before it: the alias, the parser and the launch rows then
+    // belonged to weights that were no longer loaded.
+    void theStoredProfileFollowsTheActiveModel()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("konradjr007__NaviDC-OCR-GGUF"));
+        QVERIFY(QDir().mkpath(sub));
+
+        ModelEntry entry;
+        entry.id = QStringLiteral("konradjr007__NaviDC-OCR-GGUF_Q8_0");
+        entry.title = QStringLiteral("NaviDC");
+        entry.repo = QStringLiteral("konradjr007/NaviDC-OCR-GGUF");
+        entry.dir = sub;
+        entry.modelPath = writeGguf(sub, QStringLiteral("NaviDC-OCR-Q8_0.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("NaviDC-OCR-mmproj-q8_0.gguf"));
+        entry.origin = ModelOrigin::Managed;
+        entry.quantization = QStringLiteral("Q8_0");
+        QVERIFY(!entry.modelPath.isEmpty());
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {entry}, err), qPrintable(err));
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        // The state a renamed profile leaves behind: another model's id stored
+        // next to this model's file.
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        settings.setLaunchModelPath(entry.modelPath);
+        LaunchProfileStore launchProfiles(settings);
+        InstalledState installed(settings);
+        RuntimeController runtime(settings, launchProfiles, &installed);
+
+        ModelInstaller installer(settings, runtime, installed);
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("teleocr"));
+    }
 };
 
 QTEST_MAIN(TestModelInstaller)

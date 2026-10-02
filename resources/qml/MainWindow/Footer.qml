@@ -33,8 +33,6 @@ Item {
     readonly property bool currentDiagnosticIsError:
         Controller.currentPageWarning.length > 0 || Controller.checkErrorMessage.length > 0
     readonly property bool hasDiagnostics: currentDiagnostic.length > 0 || Log.count > 0
-    // Red when *anything* went wrong that way, not only while the offending
-    // page happens to be the current one.
     readonly property bool hasError:
         currentDiagnosticIsError || (Log.errorCount > 0)
 
@@ -86,17 +84,17 @@ Item {
     function stateText() {
         if (Settings.connectionMode === "external")
             return qsTr("External")
+        const why = Runtime.statusMessage
         switch (Runtime.state) {
         case Runtime.NotConfigured: return qsTr("Runtime: not configured")
-        case Runtime.Stopped:       return qsTr("Runtime: stopped")
-        case Runtime.Starting:      return Runtime.statusMessage.length
-                                           ? Runtime.statusMessage
-                                           : qsTr("Runtime: starting…")
+        case Runtime.Stopped:       return why.length ? why
+                                                  : qsTr("Runtime: stopped")
+        case Runtime.Starting:      return why.length ? why
+                                                  : qsTr("Runtime: starting…")
         case Runtime.Ready:         return qsTr("Runtime: ready")
         case Runtime.Stopping:      return qsTr("Runtime: stopping…")
-        case Runtime.Failed:        return Runtime.statusMessage.length
-                                           ? Runtime.statusMessage
-                                           : qsTr("Runtime: failed")
+        case Runtime.Failed:        return why.length ? why
+                                                  : qsTr("Runtime: failed")
         default: return qsTr("Runtime: unknown")
         }
     }
@@ -198,8 +196,6 @@ Item {
                     visible: root.currentDiagnostic.length > 0
                     text: root.currentDiagnostic
                     textFormat: Text.PlainText
-                    // NoWrap + elide is the point: the bar is one line tall
-                    // whatever the message is.
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
                     color: root.currentDiagnosticIsError ? Theme.error : Theme.warning

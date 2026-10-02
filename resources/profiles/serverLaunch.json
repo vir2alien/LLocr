@@ -49,7 +49,7 @@
         {
           "order": 2,
           "name": "flash-attn",
-          "value": "off",
+          "value": "on",
           "description": "Flash attention: on, off or auto."
         },
         {

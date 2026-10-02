@@ -137,6 +137,9 @@ void RuntimeController::setSingleInstanceHeld(bool held)
     if (m_lockedOut == held)
         return;
     m_lockedOut = held;
+    if (held)
+        setStatusMessage(tr("Another LLocr instance is already running; "
+                            "local server operations are disabled."));
     emit lockedOutChanged();
 }
 
@@ -312,7 +315,7 @@ QString RuntimeController::modelBuildError(ConnectionRole role) const
     RuntimeLocator::cachedProbe(m_settings.serverPath(), currentPaths().cacheDir(), probe);
     if (!probe.ok || !probe.capabilities.ok)
         return QString();  // the binary says nothing; the start reports that
-    if (probe.capabilities.build.compare(minBuild, Qt::CaseInsensitive) >= 0)
+    if (ServerCapabilities::buildAtLeast(probe.capabilities.build, minBuild))
         return QString();
 
     return tr("%1 needs llama.cpp %2 or newer (this build is %3) — update the "
@@ -647,17 +650,22 @@ QString RuntimeController::startServer()
 
 QString RuntimeController::startServer(ConnectionRole role)
 {
+    auto refuse = [this](const QString &message) {
+        setStatusMessage(message);
+        return message;
+    };
+
     const QString program = m_settings.serverPath().trimmed();
     if (program.isEmpty())
-        return tr("No server binary selected");
+        return refuse(tr("No server binary selected"));
     const QFileInfo fi(program);
     if (!fi.exists())
-        return tr("File not found: %1").arg(program);
+        return refuse(tr("File not found: %1").arg(program));
     if (m_lockedOut)
-        return tr("Another instance is already running");
+        return refuse(tr("Another instance is already running"));
 
     if (m_server && (m_server->state() == RuntimeState::Starting || m_server->state() == RuntimeState::Ready || m_server->state() == RuntimeState::Stopping))
-        return tr("Server is already running");
+        return refuse(tr("Server is already running"));
 
     if (modeFromSettings(m_settings) == ConnectionMode::Managed) {
         const QString roleError = roleConfigError(role);

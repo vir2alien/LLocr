@@ -97,6 +97,8 @@ private:
 
     void reportStaleSelections(const ReconcileResult &report);
 
+    void syncProfileToActiveModel();
+
     ModelQuantModel *quantModel(bool forCheck) const;
     int installedIndexFor(const QString &key, const QString &quantId, bool forCheck) const;
     void publishInstalled();

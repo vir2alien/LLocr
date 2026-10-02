@@ -23,6 +23,15 @@ int ServerCapabilities::extractBuildNumber(const QString &versionOutput)
     return m.captured(1).toInt();
 }
 
+bool ServerCapabilities::buildAtLeast(const QString &build, const QString &minimum)
+{
+    const int have = extractBuildNumber(build);
+    const int need = extractBuildNumber(minimum);
+    if (have <= 0 || need <= 0)
+        return true;  // an unreadable tag cannot refuse a start; the probe reports it
+    return have >= need;
+}
+
 ServerCapabilities ServerCapabilities::detect(const QString &versionOutput, const QString &helpOutput)
 {
     ServerCapabilities caps;

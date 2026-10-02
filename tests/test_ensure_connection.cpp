@@ -17,6 +17,7 @@
 #include "runtime/RuntimeController.h"
 #include "runtime/RuntimeState.h"
 #include "runtime/SelfTestController.h"
+#include "runtime/ServerCapabilities.h"
 #include "testsettings.h"
 
 #include <algorithm>
@@ -941,6 +942,56 @@ private slots:
         ResolvedConnection resolved;
         runtime.ensureConnectionReady([&](const ResolvedConnection &c) { resolved = c; });
         QVERIFY2(resolved.error.contains(QStringLiteral("gone.gguf")), qPrintable(resolved.error));
+    }
+
+    // A build tag is a number, not text: «b11312» sorts before «b4000», so the
+    // profile's minBuild used to refuse every five-digit build and sent the user
+    // to Settings → Runtime for a runtime that was already new enough.
+    void minBuildIsComparedByNumber()
+    {
+        QTemporaryDir dir;
+        const QString binary = dir.filePath(QStringLiteral("llama-server"));
+        QFile binaryFile(binary);
+        QVERIFY(binaryFile.open(QIODevice::WriteOnly));
+        binaryFile.close();
+
+        // The probe answers from this cache instead of running the binary, so the
+        // build is the one this test names.
+        const QString cacheDir = dir.filePath(QStringLiteral("runtime/cache"));
+        QVERIFY(QDir().mkpath(cacheDir));
+        QFile probeFile(ServerCapabilities::cacheFileName(cacheDir, binary));
+        QVERIFY(probeFile.open(QIODevice::WriteOnly));
+        ServerCapabilities caps;
+        caps.ok = true;
+        caps.build = QStringLiteral("b11312");
+        probeFile.write(QJsonDocument(caps.toJson()).toJson(QJsonDocument::Compact));
+        probeFile.close();
+
+        const QString modelPath = dir.filePath(QStringLiteral("model.gguf"));
+        QFile modelFile(modelPath);
+        QVERIFY(modelFile.open(QIODevice::WriteOnly));
+        modelFile.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(binary);
+        store.setLaunchModelPath(modelPath);
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        // Neither switch: the resolve stops at «not set to start automatically»
+        // instead of spawning anything, so the assertion is about the refusal.
+        store.setAutoStart(false);
+        store.setStartOnDemand(false);
+        // A profile the catalog knows, whose minBuild is far below the build.
+        store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) { resolved = c; });
+        QVERIFY2(!resolved.error.isEmpty(), "the resolve must refuse rather than start");
+        QVERIFY2(!resolved.error.contains(QStringLiteral("needs llama.cpp")), qPrintable(resolved.error));
     }
 
     // The wizard gates used to be `Settings.serverPath.trim().length > 0`, so a

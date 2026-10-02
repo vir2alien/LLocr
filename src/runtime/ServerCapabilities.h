@@ -24,6 +24,8 @@ struct ServerCapabilities {
 
     static int extractBuildNumber(const QString &versionOutput);
 
+    static bool buildAtLeast(const QString &build, const QString &minimum);
+
     QJsonObject toJson() const;
     static ServerCapabilities fromJson(const QJsonObject &o);
     static QString cacheFileName(const QString &cacheDir, const QString &binaryPath);
