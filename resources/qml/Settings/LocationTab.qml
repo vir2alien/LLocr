@@ -17,6 +17,18 @@ Item {
     readonly property string activeTitleText: isVerifyModelRole
         ? ModelInstaller.checkActiveTitle : ModelInstaller.activeTitle
 
+    readonly property var profileList: isVerifyModelRole
+        ? RequestProfilesValidate.profileModel : RequestProfilesOcr.profileModel
+    readonly property string activeProfileId: isVerifyModelRole
+        ? Settings.checkRequestProfileId
+        : (Settings.requestProfileId.length
+           ? Settings.requestProfileId : Settings.modelRecipeId)
+
+    function syncProfileBox() {
+        const row = profileList.rowOfId(root.activeProfileId)
+        profileBox.currentIndex = row >= 0 ? row : 0
+    }
+
     ScrollView {
         id: modelsScroll
         anchors.fill: parent
@@ -44,6 +56,33 @@ Item {
                     text: qsTr("The model is managed by the external server. "
                                + "Location and download settings are not "
                                + "available in this mode.")
+                }
+
+                LLOLabel {
+                    text: qsTr("Model profile")
+                }
+                ComboBox {
+                    id: profileBox
+                    Layout.fillWidth: true
+                    implicitHeight: Theme.controlHeight
+                    model: root.profileList
+                    textRole: "displayName"
+                    valueRole: "modelId"
+                    Component.onCompleted: root.syncProfileBox()
+                    Connections {
+                        target: Settings
+                        function onModelRecipeIdChanged() { root.syncProfileBox() }
+                        function onRequestProfileIdChanged() { root.syncProfileBox() }
+                        function onCheckRequestProfileIdChanged() { root.syncProfileBox() }
+                    }
+                    onActivated: {
+                        if (root.isVerifyModelRole) {
+                            Settings.checkRequestProfileId = profileBox.currentValue
+                        } else {
+                            Settings.modelRecipeId = profileBox.currentValue
+                            Settings.requestProfileId = profileBox.currentValue
+                        }
+                    }
                 }
 
                 LLOButton {

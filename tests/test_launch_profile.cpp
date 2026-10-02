@@ -182,10 +182,11 @@ private slots:
         QCOMPARE(store.activeProfileId(), QStringLiteral("metal"));
     }
 
-    // The combo offers only what this machine can run. A preset tagged for
-    // another backend is not kept — activeProfileId() drops it on the next
-    // resolve — so offering it is offering a choice that cannot be saved.
-    void thePresetListHoldsOnlyWhatThisMachineCanRun()
+    // The launch profile follows the installed build with no picker in
+    // between: switching the backend reloads the draft from the newly
+    // resolved preset, so the settings table always shows what the server
+    // will be started with.
+    void draftFollowsTheResolvedProfile()
     {
         QTemporaryDir dir;
         const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
@@ -193,35 +194,16 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
-        settings.setRuntimeBackend(QStringLiteral("cpu"));
         LaunchProfileStore store(settings, presetsPath);
+        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QVERIFY(store.draftProfileId() == QStringLiteral("metal") || store.draftProfileId() == QStringLiteral("cpu"));
 
-        // The universal CPU profile fits any OS; the metal one does not fit a
-        // cpu build.
-        QCOMPARE(store.presetIds(), QStringList{QStringLiteral("cpu")});
-        QCOMPARE(store.presetNames(), QStringList{QStringLiteral("CPU")});
-
-        // What the machine could run with another build. On macOS that is the
-        // metal profile; a Windows profile is not a candidate for this machine
-        // and stays out of the answer — and so does a backend the platform has
-        // no build for, which would be a switch the installer cannot make.
-        const QStringList other = store.otherPresetNames();
-        const PlatformInfo platform = ReleaseCatalog::detectPlatform();
-        if (platform.osTag == QLatin1String("macos")) {
-            if (platform.arch == QLatin1String("arm64"))
-                QCOMPARE(other, QStringList{QStringLiteral("Metal")});
-            else
-                QVERIFY(other.isEmpty());
-        } else {
-            QVERIFY(!other.contains(QStringLiteral("Metal")));
-        }
-
-        // A backend the catalog does not know (a build from somewhere else)
-        // leaves nothing applicable, and an empty combo would be worse than the
-        // full list.
-        settings.setRuntimeBackend(QStringLiteral("vulkan"));
-        QCOMPARE(store.presetIds().size(), 2);
-        QCOMPARE(store.presetNames().size(), store.presetIds().size());
+        // Installing a CPU build switches the draft (and the persisted
+        // selection) to the cpu preset; back again on metal.
+        settings.setRuntimeBackend(QStringLiteral("cpu"));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("cpu"));
+        settings.setRuntimeBackend(QStringLiteral("metal"));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("metal"));
     }
 
     void storeDraftSaveLoad()
@@ -699,41 +681,6 @@ private slots:
         QVERIFY(other.find(QStringLiteral("image-min-tokens")) == nullptr);
     }
 
-    void storeSelectDraftProfileSwitchesRows()
-    {
-        QTemporaryDir dir;
-        const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
-
-        SettingsStore settings;
-        settings.setRuntimeRootDir(dir.path());
-        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
-        settings.setRuntimeBackend(QStringLiteral("cpu"));
-        LaunchProfileStore store(settings, presetsPath);
-        QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
-
-        // Switching the draft preset loads that preset's rows (uncommitted).
-        store.selectDraftProfile(QStringLiteral("metal"));
-        QCOMPARE(store.draftProfileId(), QStringLiteral("metal"));
-        QCOMPARE(store.draftModel()->rowCount(), 4);
-        // The persisted selection is untouched by a draft-only switch.
-        QCOMPARE(settings.launchProfileId(), QStringLiteral("cpu"));
-        QCOMPARE(store.activeProfileId(), QStringLiteral("cpu"));
-
-        // Save commits the selection together with the rows.
-        store.saveDraft();
-        QCOMPARE(settings.launchProfileId(), QStringLiteral("metal"));
-        // The profile follows the installed backend: with cpu installed, the
-        // metal selection is not active (the stored choice returns when the
-        // backend switches back, or the next auto-resolve normalizes it).
-        QCOMPARE(store.activeProfileId(), QStringLiteral("cpu"));
-
-        // Cancel semantics: reloadDraft() returns to the persisted state.
-        store.selectDraftProfile(QStringLiteral("cpu"));
-        store.reloadDraft();
-        QCOMPARE(store.draftProfileId(), QStringLiteral("cpu"));
-        QCOMPARE(store.draftModel()->rowCount(), 3);
-    }
-
     void emptyCatalogStillWorks()
     {
         QTemporaryDir dir;
@@ -744,7 +691,7 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         LaunchProfileStore store(settings, presetsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
-        QVERIFY(store.presetIds().isEmpty());
+        QVERIFY(store.activeProfileId().isEmpty());
         QVERIFY(store.activeProfile().parameters.isEmpty());
         QVERIFY(store.draftModel()->rowCount() == 0);
         // Degenerate case (no presets at all): the draft can still be edited,

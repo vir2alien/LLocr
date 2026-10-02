@@ -41,22 +41,6 @@ Item {
     readonly property real valueWidth: 0.24
     readonly property real removeWidth: 28
 
-    Component.onCompleted: syncPresetModel()
-
-    function syncPresetModel() {
-        presetListModel.clear()
-        for (let i = 0; i < root.profiles.presetIds.length; ++i)
-            presetListModel.append({ name: root.profiles.presetNames[i] })
-        const idx = root.profiles.presetIds.indexOf(root.profiles.draftProfileId)
-        profileBox.currentIndex = idx >= 0 ? idx : 0
-    }
-
-    Connections {
-        target: root.profiles
-        function onDraftProfileChanged() { syncPresetModel() }
-        function onActiveProfileChanged() { syncPresetModel() }
-    }
-
     ColumnLayout {
         anchors.fill: parent
         visible: !root.externalMode
@@ -80,50 +64,6 @@ Item {
             font.pointSize: Theme.captionSize
             color: Theme.warning
             text: qsTr("The managed runtime cannot run this model. %1").arg(root.runtimeNote)
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacing
-
-            LLOLabel {
-                text: qsTr("Profile")
-            }
-            ComboBox {
-                id: profileBox
-                Layout.preferredWidth: root.width * 0.4
-                implicitHeight: Theme.controlHeight
-                textRole: "name"
-                model: ListModel { id: presetListModel }
-                onActivated: root.profiles.selectDraftProfile(
-                                 root.profiles.presetIds[currentIndex])
-            }
-            LLOButton {
-                text: qsTr("Restore profile")
-                onClicked: root.resetValues()
-            }
-            Item { Layout.fillWidth: true }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacing
-            visible: root.profiles.otherPresetNames.length > 0
-
-            LLOLabel {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                font.pointSize: Theme.captionSize
-                color: Theme.helpColor
-                text: qsTr("The list follows the build that is installed. These profiles need another one: %1.").arg(root.profiles.otherPresetNames.join(", "))
-            }
-            LLOButton {
-                text: qsTr("Runtime settings…")
-                onClicked: {
-                    if (root.runtimeSettingsRef)
-                        root.runtimeSettingsRef.show()
-                }
-            }
         }
 
         Item {

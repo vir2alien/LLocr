@@ -42,7 +42,6 @@ public:
 
     Q_INVOKABLE bool hasUserProfile() const;
     Q_INVOKABLE void reloadDraft();
-    Q_INVOKABLE void selectDraftProfile(const QString &id);
     Q_INVOKABLE bool setDraftValue(int row, const QString &text);
     Q_INVOKABLE bool appendDraftRow(const QString &name, const QString &text);
     Q_INVOKABLE void saveDraft();
@@ -62,6 +61,7 @@ private:
     RequestParametersModel *m_model = nullptr;
     RequestProfileListModel *m_profileModels = nullptr;
     void loadBuiltInFromModelProfiles();
+    void followActiveProfile();
 };
 
 }  // namespace llocr

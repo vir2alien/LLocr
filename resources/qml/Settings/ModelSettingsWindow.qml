@@ -75,15 +75,6 @@ ApplicationWindow {
                 onClicked: {
                     launchTab.saveValues()
                     requestTab.saveValues()
-                    const draftId = requestTab.profiles.draftProfileId
-                    if (draftId.length > 0) {
-                        if (window.isVerifyModelRole)
-                            Settings.checkRequestProfileId = draftId
-                        else {
-                            Settings.modelRecipeId = draftId
-                            Settings.requestProfileId = draftId
-                        }
-                    }
                     Settings.forceSave()
                     window.close()
                 }

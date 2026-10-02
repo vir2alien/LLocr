@@ -31,6 +31,13 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QOb
 {
     m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(userFileName(role)));
     setModelProfiles(ModelProfiles::instance());
+
+    if (m_role == Role::Check) {
+        connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
+    } else {
+        connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
+        connect(&m_settings, &SettingsStore::requestProfileIdChanged, this, [this] { followActiveProfile(); });
+    }
 }
 
 void RequestProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &profiles)
@@ -80,15 +87,10 @@ void RequestProfileStore::reloadDraft()
     emit draftProfileChanged();
 }
 
-void RequestProfileStore::selectDraftProfile(const QString &id)
+void RequestProfileStore::followActiveProfile()
 {
-    if (id == m_draftProfileId)
-        return;
-    if (!m_profiles->isKnown(id))
-        return;
-    m_draftProfileId = id;
-    m_model->resetFrom(m_profiles->merged(id).parameters);
-    emit draftProfileChanged();
+    if (activeProfileId() != m_draftProfileId)
+        reloadDraft();
 }
 
 bool RequestProfileStore::setDraftValue(int row, const QString &text)

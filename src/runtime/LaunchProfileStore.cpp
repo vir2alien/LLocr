@@ -86,53 +86,6 @@ bool LaunchProfileStore::hasUserProfile() const
     return m_profiles->hasUserProfile();
 }
 
-QStringList LaunchProfileStore::presetIds() const
-{
-    QStringList ids;
-    for (const LaunchProfile &p : applicablePresets())
-        ids.append(p.id);
-    return ids;
-}
-
-QStringList LaunchProfileStore::presetNames() const
-{
-    QStringList names;
-    for (const LaunchProfile &p : applicablePresets())
-        names.append(p.name);
-    return names;
-}
-
-QList<LaunchProfile> LaunchProfileStore::applicablePresets() const
-{
-    const QString backend = targetBackend();
-    const QString osTag = ReleaseCatalog::detectPlatform().osTag;
-    QList<LaunchProfile> applicable;
-    for (const LaunchProfile &p : m_profiles->builtIn()) {
-        if (presetMatches(p, backend, osTag))
-            applicable.append(p);
-    }
-
-    return applicable.isEmpty() ? m_profiles->builtIn() : applicable;
-}
-
-QStringList LaunchProfileStore::otherPresetNames() const
-{
-    const PlatformInfo platform = ReleaseCatalog::detectPlatform();
-    const QStringList backends = ReleaseCatalog::backendsFor(platform);
-    const QString backend = targetBackend();
-    QStringList names;
-    for (const LaunchProfile &p : m_profiles->builtIn()) {
-        if (p.backend == backend)
-            continue;
-        if (!p.os.isEmpty() && p.os != platform.osTag)
-            continue;
-        if (!p.backend.isEmpty() && !backends.contains(p.backend))
-            continue;
-        names.append(p.name);
-    }
-    return names;
-}
-
 QString LaunchProfileStore::targetBackend() const
 {
     const QString configured = m_settings.runtimeBackend();
@@ -201,6 +154,8 @@ void LaunchProfileStore::ensureProfileResolved()
         emit activeProfileChanged();
         emit profileChanged();
     }
+    if (resolved != m_draftProfileId)
+        reloadDraft();
 }
 
 QString LaunchProfileStore::activeProfileId() const
@@ -306,15 +261,6 @@ void LaunchProfileStore::reloadDraft(const QString &role)
     if (!role.isEmpty())
         m_draftRole = role;
     m_draftProfileId = activeProfileId();
-    composeDraft();
-    emit draftProfileChanged();
-}
-
-void LaunchProfileStore::selectDraftProfile(const QString &id)
-{
-    if (!findPreset(id) || id == m_draftProfileId)
-        return;
-    m_draftProfileId = id;
     composeDraft();
     emit draftProfileChanged();
 }

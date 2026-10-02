@@ -22,9 +22,6 @@ class LaunchProfileStore : public QObject
     Q_PROPERTY(QAbstractListModel *draftModel READ draftModel CONSTANT)
     Q_PROPERTY(QString draftProfileId READ draftProfileId NOTIFY draftProfileChanged)
     Q_PROPERTY(QString activeProfileId READ activeProfileId NOTIFY activeProfileChanged)
-    Q_PROPERTY(QStringList presetIds READ presetIds CONSTANT)
-    Q_PROPERTY(QStringList presetNames READ presetNames CONSTANT)
-    Q_PROPERTY(QStringList otherPresetNames READ otherPresetNames CONSTANT)
     Q_PROPERTY(bool modelProfileMissing READ modelProfileMissing NOTIFY profileChanged)
     Q_PROPERTY(bool checkModelProfileMissing READ checkModelProfileMissing NOTIFY profileChanged)
     Q_PROPERTY(QString modelRuntimeNote READ modelRuntimeNote NOTIFY profileChanged)
@@ -35,9 +32,6 @@ public:
 
     QAbstractListModel *draftModel() const { return m_model; }
     QString draftProfileId() const { return m_draftProfileId; }
-    QStringList presetIds() const;
-    QStringList presetNames() const;
-    QStringList otherPresetNames() const;
     QString activeProfileId() const;
     LaunchProfile activeProfile() const;
     LaunchProfile activeProfile(const QString &modelId, const QString &role) const;
@@ -51,7 +45,6 @@ public:
 
     Q_INVOKABLE bool hasUserProfile() const;
     Q_INVOKABLE void reloadDraft(const QString &role = QString());
-    Q_INVOKABLE void selectDraftProfile(const QString &id);
     Q_INVOKABLE bool setDraftValue(int row, const QString &text);
     Q_INVOKABLE bool appendDraftParameter(const QString &name, const QString &text);
     Q_INVOKABLE void removeDraftRow(int row);
@@ -72,7 +65,6 @@ private:
     bool presetMatches(const LaunchProfile &preset, const QString &backend, const QString &osTag) const;
     LaunchProfile compose(const LaunchProfile &profile, const QString &modelId, const QString &role) const;
     bool modelNotInCatalog(const QString &modelId) const;
-    QList<LaunchProfile> applicablePresets() const;
     QString targetBackend() const;
 
     QString modelIdForRole(const QString &role) const;

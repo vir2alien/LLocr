@@ -25,7 +25,7 @@
 #include "core/CheckResult.h"
 #include "core/OcrResult.h"
 #include "core/StatusMessage.h"
-#include "models/OcrModelListModel.h"
+#include "models/OcrModel.h"
 #include "parsers/IOutputParser.h"
 #include "parsers/ParserOptions.h"
 #include "runtime/RuntimeController.h"
@@ -77,8 +77,6 @@ class AppController : public QObject
     Q_PROPERTY(QObject *pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject *boxModel READ boxModel CONSTANT)
 
-    Q_PROPERTY(QObject *ocrModels READ ocrModels CONSTANT)
-
     Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY configChanged)
 
     Q_PROPERTY(QStringList parserNames READ parserNames NOTIFY retranslateRequested)
@@ -114,7 +112,6 @@ public:
     bool canRecognize() const;
     QStringList parserNames() const;
     QStringList parserLabels() const;
-    QObject *ocrModels() const;
 
     QStringList exportNameFilters() const;
 
@@ -220,7 +217,6 @@ private:
 private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
-    OcrModelListModel m_ocrModels;
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;

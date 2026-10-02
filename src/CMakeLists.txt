@@ -80,8 +80,6 @@ qt_add_library(llocr_models STATIC
     models/OcrModel.cpp
     models/OcrModelFactory.h
     models/OcrModelFactory.cpp
-    models/OcrModelListModel.h
-    models/OcrModelListModel.cpp
     models/ImageDataUrl.h
     models/ImageDataUrl.cpp
     models/GeneralPurposeModel.h

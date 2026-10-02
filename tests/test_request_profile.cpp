@@ -591,10 +591,11 @@ private slots:
         QCOMPARE(alphabetical.activeProfileId(), QStringLiteral("deepseek-ocr"));
     }
 
-    // The check role has no model registry of its own, so the picker lists the
-    // model profiles that answer the role — the ids the store's profiles are keyed
-    // by, which is also what its setting holds. Without it, a check model set by path
-    // or served externally had no way to be given the right request profile.
+    // The check role has no model registry of its own, so the external-mode
+    // picker on the Model tab lists the model profiles that answer the role —
+    // the ids the store's profiles are keyed by, which is also what its
+    // setting holds. Without it, a check model served externally had no way to
+    // be given the right request profile.
     void profileModelListsTheModelsOfTheRole()
     {
         QTemporaryDir dir;
@@ -646,7 +647,10 @@ private slots:
         QCOMPARE(checkStore.activeProfile().parameters.size(), 1);
     }
 
-    void selectDraftProfileSwitchesDraft()
+    // The draft follows the model selection with no picker in between: the
+    // settings id change reloads it, edits are committed for the edited
+    // profile only, and the profile id stays a setting of its own (ADR 110).
+    void draftFollowsTheModelSelection()
     {
         QTemporaryDir dir;
 
@@ -663,39 +667,39 @@ private slots:
         QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 2);
 
-        store.selectDraftProfile(QStringLiteral("deepseek-ocr"));
+        // Selecting another model (Settings → Model, the wizard, a finished
+        // install) reloads the draft from that model's profile automatically.
+        settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
+        settings.setRequestProfileId(QStringLiteral("deepseek-ocr"));
         QCOMPARE(store.draftProfileId(), QStringLiteral("deepseek-ocr"));
         QCOMPARE(store.draftModel()->rowCount(), 1);
-        // The active profile still follows the model setting.
-        QVERIFY(store.activeProfile() == parseBuiltInDefaults());
-
-        // Unknown ids are ignored.
-        store.selectDraftProfile(QStringLiteral("no-such-profile"));
-        QCOMPARE(store.draftProfileId(), QStringLiteral("deepseek-ocr"));
 
         // Edits are committed for the edited profile only.
         QVERIFY(store.setDraftValue(0, "2"));
         store.saveDraft();
-        const RequestProfile afterSave = store.activeProfile();
-        QVERIFY(!findParameter(afterSave, "gamma"));
-        QCOMPARE(store.draftModel()->rowCount(), 1);
-
-        // Switching the model no longer rewrites the profile (ADR 110) — the
-        // profile id is its own setting.
-        settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
-        QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
-        settings.setRequestProfileId(QStringLiteral("deepseek-ocr"));
-        const RequestProfile editedProfile = store.activeProfile();
-        const RequestParameter *edited = findParameter(editedProfile, "gamma");
+        const RequestProfile deepseekView = store.activeProfile();
+        const RequestParameter *edited = findParameter(deepseekView, "gamma");
         QVERIFY(edited);
         QCOMPARE(edited->value.toDouble(), 2.0);
+        QVERIFY(store.hasUserProfile());
 
-        // Reset drops only the edited profile's user copy.
+        // Switching back to the first model reloads its untouched profile —
+        // the deepseek edit stays with deepseek (ADR 110: the profile id is
+        // its own setting).
+        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(store.draftModel()->rowCount(), 2);
+        const RequestProfile unlimitedView = store.activeProfile();
+        QVERIFY(!findParameter(unlimitedView, "gamma"));
+
+        // Switching to deepseek again shows the user copy…
+        settings.setRequestProfileId(QStringLiteral("deepseek-ocr"));
+        const RequestProfile backView = store.activeProfile();
+        QCOMPARE(findParameter(backView, "gamma")->value.toDouble(), 2.0);
+        // …and reset drops only that user copy.
         store.resetToDefaults();
-        const RequestProfile resetProfile = store.activeProfile();
-        const RequestParameter *reset = findParameter(resetProfile, "gamma");
-        QVERIFY(reset);
-        QCOMPARE(reset->value.toDouble(), 1.0);
+        const RequestProfile resetView = store.activeProfile();
+        QCOMPARE(findParameter(resetView, "gamma")->value.toDouble(), 1.0);
         QVERIFY(!store.hasUserProfile());
     }
 

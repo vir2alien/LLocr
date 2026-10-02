@@ -17,10 +17,6 @@ Item {
                                               : RequestProfilesOcr
 
     function loadValues() {
-        const wanted = root.checkRole ? Settings.checkRequestProfileId : Settings.modelRecipeId
-        const list = root.checkRole ? root.profiles.profileModel : Controller.ocrModels
-        const row = list.rowOfId(wanted)
-        modelBox.currentIndex = row >= 0 ? row : 0
         root.profiles.reloadDraft()
     }
 
@@ -37,32 +33,6 @@ Item {
         spacing: Theme.spacingSmall
 
         Item { implicitHeight: 4 }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacing
-
-            LLOLabel {
-                text: qsTr("Profile")
-            }
-
-            ComboBox {
-                id: modelBox
-                Layout.preferredWidth: root.width * 0.4
-                implicitHeight: Theme.controlHeight
-                model: root.checkRole ? root.profiles.profileModel : Controller.ocrModels
-                textRole: "displayName"
-                valueRole: "modelId"
-                onActivated: root.profiles.selectDraftProfile(modelBox.currentValue)
-            }
-
-            LLOButton {
-                text: qsTr("Restore profile")
-                onClicked: root.resetValues()
-            }
-
-            Item { Layout.fillWidth: true }
-        }
 
         Item {
             Layout.fillWidth: true

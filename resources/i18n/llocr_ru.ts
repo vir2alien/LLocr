@@ -806,17 +806,15 @@
 <context>
     <name>LaunchTab</name>
     <message>
-        <location filename="../qml/Settings/LaunchTab.qml" line="+68"/>
         <source>Profile</source>
-        <translation>Профиль</translation>
+        <translation type="vanished">Профиль</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Restore profile</source>
-        <translation>Восстановить профиль</translation>
+        <translation type="vanished">Восстановить профиль</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location filename="../qml/Settings/LaunchTab.qml" line="+68"/>
         <source>Parameter</source>
         <translation>Параметр</translation>
     </message>
@@ -883,11 +881,11 @@
     </message>
     <message>
         <source>The list follows the build that is installed. These profiles need another one: %1.</source>
-        <translation>Список следует за установленной сборкой. Эти профили требуют другой сборки: %1</translation>
+        <translation type="vanished">Список следует за установленной сборкой. Эти профили требуют другой сборки: %1</translation>
     </message>
     <message>
         <source>Runtime settings…</source>
-        <translation>Настройки рантайма…</translation>
+        <translation type="vanished">Настройки рантайма…</translation>
     </message>
 </context>
 <context>
@@ -905,8 +903,14 @@
         <translation type="vanished">Расположение модели</translation>
     </message>
     <message>
+        <location filename="../qml/Settings/LocationTab.qml" line="+141"/>
         <source>These paths are used when the managed llama-server is launched. Activating a downloaded model fills them automatically.</source>
         <translation type="vanished">Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
+    </message>
+    <message>
+        <location line="-100"/>
+        <source>Model profile</source>
+        <translation>Профиль модели</translation>
     </message>
     <message>
         <source>These paths select the model for text verification. Activating a downloaded model fills them automatically.</source>
@@ -2238,14 +2242,12 @@
         <translation type="vanished">Модель OCR</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/RequestTab.qml" line="+53"/>
         <source>Profile</source>
-        <translation>Профиль</translation>
+        <translation type="vanished">Профиль</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>Restore profile</source>
-        <translation>Восстановить профиль</translation>
+        <translation type="vanished">Восстановить профиль</translation>
     </message>
     <message>
         <location line="+17"/>
@@ -2933,9 +2935,8 @@
         <translation type="vanished">Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено.</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Launch profile</source>
-        <translation>Профиль запуска</translation>
+        <translation type="vanished">Профиль запуска</translation>
     </message>
     <message>
         <location line="+18"/>
@@ -2944,8 +2945,12 @@
     </message>
     <message>
         <location line="+9"/>
+        <source>Full parameter table: Settings → Launch. Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default. The launch profile follows the installed build automatically.</source>
+        <translation>Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено. Профиль запуска следит за установленной сборкой автоматически</translation>
+    </message>
+    <message>
         <source>Full parameter table: Settings → Launch. Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default. The profile list holds only what this system and the installed backend can run.</source>
-        <translation>Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено. В списке профилей только то, что может запустить эта система с установленным бэкендом</translation>
+        <translation type="vanished">Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено. В списке профилей только то, что может запустить эта система с установленным бэкендом</translation>
     </message>
     <message>
         <location line="+55"/>

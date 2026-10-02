@@ -45,14 +45,6 @@ Item {
         commandPreview = Runtime.launchCommandPreview()
     }
 
-    function syncPresetModel() {
-        presetListModel.clear()
-        for (let i = 0; i < LaunchProfiles.presetIds.length; ++i)
-            presetListModel.append({ name: LaunchProfiles.presetNames[i] })
-        const idx = LaunchProfiles.presetIds.indexOf(LaunchProfiles.activeProfileId)
-        profileBox.currentIndex = idx >= 0 ? idx : 0
-    }
-
     Connections {
         target: Settings
         function onLaunchModelPathChanged() { refreshAll() }
@@ -62,13 +54,11 @@ Item {
     Connections {
         target: LaunchProfiles
         function onProfileChanged() { refreshAll() }
-        function onActiveProfileChanged() { syncPresetModel() }
     }
     onVisibleChanged: {
         if (!visible)
             return
         refreshAll()
-        syncPresetModel()
     }
 
     ColumnLayout {
@@ -104,19 +94,6 @@ Item {
                 validator: IntValidator { bottom: 0; top: 65535 }
                 text: Settings.launchPort
                 onEditingFinished: Settings.launchPort = parseInt(text, 10) || 0
-            }
-
-            LLOLabel {
-                text: qsTr("Launch profile")
-            }
-            ComboBox {
-                id: profileBox
-                Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                textRole: "name"
-                model: ListModel { id: presetListModel }
-                onActivated: LaunchProfiles.selectDraftProfile(
-                                 LaunchProfiles.presetIds[currentIndex])
             }
         }//GridLayout
 
@@ -155,8 +132,8 @@ Item {
                 text: qsTr("Full parameter table: Settings → Launch. "
                            + "Loading the model at startup uses several GB "
                            + "of RAM/VRAM even when idle — off by default. "
-                           + "The profile list holds only what this system "
-                           + "and the installed backend can run.")
+                           + "The launch profile follows the installed "
+                           + "build automatically.")
             }
         }
 

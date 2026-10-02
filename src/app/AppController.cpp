@@ -140,11 +140,6 @@ QString AppController::pageText(int index) const
     return m_document.isValidIndex(index) ? m_document.page(index).result.text : QString();
 }
 
-QObject *AppController::ocrModels() const
-{
-    return const_cast<OcrModelListModel *>(&m_ocrModels);
-}
-
 bool AppController::hasImage() const
 {
     return !m_document.isEmpty();
