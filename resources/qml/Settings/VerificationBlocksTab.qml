@@ -146,7 +146,6 @@ Item {
             }
         }
         LLOLabel {
-            id: detailsLabel2
             Layout.fillWidth: true
             visible: root.showHelp
             font.pointSize: Theme.footnoteSize

@@ -25,8 +25,7 @@ public:
         QStringList arguments;
         QString workingDirectory;
         QString host = QStringLiteral("127.0.0.1");
-        QString baseUrl;  // override health target; empty → host:port
-        int port = 0;     // 0 = pick a free port
+        int port = 0;  // 0 = pick a free port
         int startupTimeoutMs = 180000;
         bool autoRestart = true;  // bounded: ≤3 restarts / 5 min
         QString logFile;          // rotating file path (5 MB × 3)
@@ -101,9 +100,7 @@ private:
     QElapsedTimer m_restartWindow;
     int m_restartWindowCount = 0;
 
-    bool m_healthReached = false;
     bool m_healthInFlight = false;
-    bool m_autoRestartScheduled = false;
     bool m_stopRequested = false;
     int m_attemptsTotal = 0;
     int m_loadPercent = -1;

@@ -192,14 +192,6 @@ void VerificationPromptStore::setSystemPrompt(const QString &text)
     emit systemPromptChanged();
 }
 
-QStringList VerificationPromptStore::blockTypes() const
-{
-    QStringList types;
-    for (const VerificationBlock &block : m_model->blocks())
-        types.append(block.type);
-    return types;
-}
-
 int VerificationPromptStore::indexOfType(const QString &type) const
 {
     for (int i = 0; i < m_blocks.size(); ++i) {

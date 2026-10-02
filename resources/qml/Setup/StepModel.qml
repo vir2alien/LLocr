@@ -10,8 +10,6 @@ import "../Common"
 Item {
     id: root
 
-    property bool preparedForCheck: false
-
     property bool complete: Runtime.modelPathValid
 
     onVisibleChanged: {
@@ -108,7 +106,6 @@ Item {
                                 isVerifyModelRole: rolePane.forCheck
                                 onActionError: (msg) => statusLabel.text = msg
                                 onDownloadRequested: (title, quantId, license, runtimeNote) => {
-                                    root.preparedForCheck = rolePane.forCheck
                                     pickDialog.modelTitle = title
                                     pickDialog.quantId = quantId
                                     pickDialog.license = license

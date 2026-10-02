@@ -51,7 +51,6 @@ ScrollView {
                 backendBox.currentIndex = idx >= 0 ? idx : 0
             }
         }
-        function onInstalledChanged() { }
     }
 
     ScrollBar.vertical.policy: ScrollBar.AsNeeded
@@ -200,7 +199,6 @@ ScrollView {
         }
 
         InstallerStatusLabel {
-            id: installStatusLabel
             isError: RuntimeInstaller.state === RuntimeInstaller.Error
             busy: RuntimeInstaller.busy
             statusText: RuntimeInstaller.state === RuntimeInstaller.Idle
@@ -209,7 +207,6 @@ ScrollView {
         }
 
         ProgressBar {
-            id: installProgress
             Layout.fillWidth: true
             Layout.preferredHeight: 12
             visible: RuntimeInstaller.busy

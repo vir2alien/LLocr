@@ -16,14 +16,8 @@ Item {
     property bool showFormatHelp: false
 
     readonly property bool hasSelection: currentIndex >= 0
-    readonly property int modelRevision: Verification.blockModel.revision
     readonly property bool modifiedFromOriginal: hasSelection
         && promptArea.text !== Verification.originalPromptAt(currentIndex)
-    readonly property bool userModified: hasSelection && modelRevision >= 0
-        && Verification.blockModel.promptAt(currentIndex)
-           !== Verification.originalPromptAt(currentIndex)
-    readonly property bool draftDirty: hasSelection
-        && promptArea.text !== Verification.blockModel.promptAt(currentIndex)
 
     function selectIndex(index) {
         if (index === root.currentIndex)

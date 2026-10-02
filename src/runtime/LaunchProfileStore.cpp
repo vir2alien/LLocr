@@ -19,8 +19,7 @@ const QString kLegacyCheckFileName = QStringLiteral("serverLaunchValidate.json")
 }  // namespace
 
 LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &builtInPath, QObject *parent)
-    : QObject(parent), m_settings(settings), m_profiles(new ProfileStore<LaunchProfile>(builtInPath, kUserFileName, kSchemaVersion, QStringLiteral("LaunchProfileStore"))),
-      m_model(new LaunchParametersModel(this))
+    : QObject(parent), m_settings(settings), m_profiles(new ProfileStore<LaunchProfile>(builtInPath, kSchemaVersion, QStringLiteral("LaunchProfileStore"))), m_model(new LaunchParametersModel(this))
 {
     m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(kUserFileName));
 

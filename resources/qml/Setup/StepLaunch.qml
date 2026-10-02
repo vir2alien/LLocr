@@ -88,7 +88,6 @@ Item {
             columnSpacing: 10
             LLOLabel { text: qsTr("Port") }
             TextField {
-                id: portField
                 Layout.fillWidth: true
                 implicitHeight: Theme.controlHeight
                 validator: IntValidator { bottom: 0; top: 65535 }
@@ -119,7 +118,6 @@ Item {
             Layout.fillWidth: true
             spacing: 6
             LLOCheckBox {
-                id: autoStartBox
                 text: qsTr("Start the server when the app launches")
                 font.pointSize: Theme.captionSize
                 checked: Settings.autoStart

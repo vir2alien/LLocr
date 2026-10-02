@@ -45,11 +45,11 @@ int DownloadManager::enqueue(const DownloadTask::Request &request)
         const int r = m_tasks.indexOf(task);
         if (r >= 0)
             emit dataChanged(index(r), index(r), {ReceivedBytesRole, TotalBytesRole, SpeedRole, EtaRole});
-        recalcAggregate();
+        emitProgress();
     });
     connect(task, &DownloadTask::downloadFinished, this, [this, task](bool ok) { onTaskFinished(task, ok); });
 
-    recalcAggregate();
+    emitProgress();
     startNextQueued();
     QMetaObject::invokeMethod(this, [this]() { evictFinishedTasks(); }, Qt::QueuedConnection);
     return row;
@@ -164,21 +164,8 @@ int DownloadManager::countRunning() const
     return count;
 }
 
-void DownloadManager::recalcAggregate()
+void DownloadManager::emitProgress()
 {
-    qint64 total = 0;
-    qint64 received = 0;
-    int speed = 0;
-    for (const DownloadTask *task : std::as_const(m_tasks)) {
-        if (task->totalBytes() > 0)
-            total += task->totalBytes();
-        received += task->receivedBytes();
-        speed += task->speedBytesPerSec();
-    }
-    m_totalBytes = total;
-    m_receivedBytes = received;
-    m_speedBps = speed;
-    m_etaSec = (speed > 0 && total > 0 && received < total) ? static_cast<int>((total - received) / speed) : 0;
     emit progressChanged();
 }
 
@@ -188,7 +175,7 @@ void DownloadManager::onTaskFinished(DownloadTask *task, bool ok)
     const int row = m_tasks.indexOf(task);
     if (row >= 0)
         emit dataChanged(index(row), index(row), {StateRole, ErrorRole});
-    recalcAggregate();
+    emitProgress();
     QMetaObject::invokeMethod(
         this,
         [this]() {

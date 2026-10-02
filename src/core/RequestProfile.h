@@ -31,7 +31,6 @@ struct RequestProfile {
     QString id;
     QList<RequestParameter> parameters;
 
-    static constexpr const char *kBuiltInPath = ":/profiles/requestOcr.json";
     static RequestProfile fromJson(const QJsonObject &root, QString &error);
     QJsonObject toJson() const;
     static QList<RequestProfile> profilesFromJson(const QJsonObject &root, QString &error);

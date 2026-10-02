@@ -39,10 +39,7 @@ public:
     bool busy() const { return m_busy; }
     double progress() const { return m_progress; }
     const QString &statusMessage() const { return m_statusMessage; }
-    QString pendingTitle() const { return m_pending.title; }
-    QString pendingRepo() const { return m_pending.repo; }
 
-    const QList<ModelEntry> &installed() const { return m_installed; }
     void setInstalled(const QList<ModelEntry> &installed) { m_installed = installed; }
 
     void prepare(const ModelPreset &preset, bool forCheck);
@@ -60,7 +57,6 @@ signals:
     void progressChanged(double progress);
     void statusMessageChanged(const QString &message);
     void installedListReplaced(const QList<llocr::ModelEntry> &installed);
-    void installFinished();
 
 private:
     struct InstallPlan {

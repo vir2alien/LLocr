@@ -26,7 +26,7 @@ QString roleName(RequestProfileStore::Role role)
 
 RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QObject *parent)
     : QObject(parent), m_settings(settings), m_role(role),
-      m_profiles(new ProfileStore<RequestProfile>(QString(), userFileName(role), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
+      m_profiles(new ProfileStore<RequestProfile>(QString(), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
       m_model(new RequestParametersModel(this)), m_profileModels(new RequestProfileListModel(this))
 {
     m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(userFileName(role)));

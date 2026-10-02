@@ -33,7 +33,6 @@ public:
     enum class State {
         Queued,
         Running,
-        Paused,
         Verifying,
         Completed,
         Canceled,
@@ -55,7 +54,6 @@ public:
     State state() const { return m_state; }
     QString fileName() const { return m_fileName; }
     QString targetDir() const { return m_targetDir; }
-    QString partPath() const { return m_partPath; }
     qint64 totalBytes() const { return m_totalBytes; }
     qint64 receivedBytes() const { return m_receivedBytes; }
     int speedBytesPerSec() const { return m_speedBps; }
@@ -143,7 +141,6 @@ private:
 
     bool m_cancelRequested = false;
     bool m_cancelDeletePartial = false;
-    bool m_pauseRequested = false;
     bool m_abortRequested = false;
 
     QElapsedTimer m_speedClock;

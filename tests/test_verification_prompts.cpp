@@ -62,10 +62,17 @@ private slots:
         QVERIFY(store);
         QVERIFY(!store->systemPrompt().isEmpty());
         QVERIFY(store->systemPrompt().contains(QStringLiteral("FIX")));
-        QVERIFY(!store->blockTypes().isEmpty());
+
+        const VerificationBlocksModel *model = dynamic_cast<VerificationBlocksModel *>(store->blockModel());
+        QVERIFY(model);
+        QVERIFY(model->rowCount() > 0);
+
+        QStringList types;
+        for (const VerificationBlock &block : model->blocks())
+            types.append(block.type);
+        QVERIFY(!types.isEmpty());
 
         // Core block types the OCR model emits are present.
-        const QStringList types = store->blockTypes();
         QVERIFY(types.contains(QStringLiteral("text")));
         QVERIFY(types.contains(QStringLiteral("title")));
         QVERIFY(types.contains(QStringLiteral("table")));
@@ -75,11 +82,7 @@ private slots:
         QVERIFY(!store->promptForType(QStringLiteral("text")).isEmpty());
         QVERIFY(store->isTypeEnabled(QStringLiteral("text")));
 
-        // The list model mirrors the store.
-        const VerificationBlocksModel *model = dynamic_cast<VerificationBlocksModel *>(store->blockModel());
-        QVERIFY(model);
-        QVERIFY(model->rowCount() >= 6);
-        QCOMPARE(model->rowCount(), store->blockTypes().size());
+        QCOMPARE(model->rowCount(), types.size());
     }
 
     void savePersistsChangedPromptAndEnablement()
@@ -89,15 +92,16 @@ private slots:
         const QString userPath = userPromptsPath(m_dir);
         QVERIFY(!QFile::exists(userPath));
 
-        const int textRow = store->blockTypes().indexOf(QStringLiteral("text"));
-        const int titleRow = store->blockTypes().indexOf(QStringLiteral("title"));
+        auto *model = dynamic_cast<VerificationBlocksModel *>(store->blockModel());
+        QVERIFY(model);
+
+        const int textRow = model->rowOfType(QStringLiteral("text"));
+        const int titleRow = model->rowOfType(QStringLiteral("title"));
         QVERIFY(textRow >= 0 && titleRow >= 0);
 
         const QString builtInTextPrompt = store->promptForType(QStringLiteral("text"));
         QVERIFY(!builtInTextPrompt.isEmpty());
 
-        auto *model = dynamic_cast<VerificationBlocksModel *>(store->blockModel());
-        QVERIFY(model);
         model->setEnabled(titleRow, false);
         model->setPrompt(textRow, QStringLiteral("Custom prompt for text."));
         store->setSystemPrompt(QStringLiteral("Custom system prompt."));

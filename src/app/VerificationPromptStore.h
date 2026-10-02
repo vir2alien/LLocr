@@ -92,7 +92,6 @@ public:
     QAbstractItemModel *blockModelCaptions() const;
     QAbstractItemModel *blockModelService() const;
 
-    QStringList blockTypes() const;
     QString promptForType(const QString &type) const;
     bool isTypeEnabled(const QString &type) const;
 

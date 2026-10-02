@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QJsonObject>
 #include <QList>
 #include <QString>
 
@@ -16,9 +15,6 @@ struct ReleaseAsset {
     qint64 size = -1;     // -1 = size not reported
     QString sha256;       // lowercase hex digest from the release body; empty = not published
     bool cudart = false;  // true for the CUDA runtime zip (not the llama-server archive)
-
-    QJsonObject toJson() const;
-    static ReleaseAsset fromJson(const QJsonObject &o);
 };
 
 struct ReleaseInfo {

@@ -33,7 +33,6 @@ Item {
         }
 
         LLOCheckBox {
-            id: splitPagesCheck
             font.pointSize: Theme.captionSize
             text: qsTr("Split pages")
             checked: Settings.splitPages
@@ -48,7 +47,6 @@ Item {
         }
 
         LLOCheckBox {
-            id: pageNumbersCheck
             font.pointSize: Theme.captionSize
             text: qsTr("Keep page numbers")
             checked: Settings.keepPageNumbers
@@ -63,7 +61,6 @@ Item {
         }
 
         LLOCheckBox {
-            id: tablesAsHtmlCheck
             font.pointSize: Theme.captionSize
             text: qsTr("Keep tables as HTML")
             checked: Settings.tablesAsHtml

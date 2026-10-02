@@ -166,7 +166,6 @@ void DownloadTask::start()
         return;
 
     m_cancelRequested = false;
-    m_pauseRequested = false;
     m_abortRequested = false;
     m_error.clear();
 
@@ -419,13 +418,6 @@ void DownloadTask::onFinished(QNetworkReply *reply)
             QFile::remove(m_metaPath);
         }
         setState(State::Canceled);
-        emit downloadFinished(false);
-        return;
-    }
-
-    if (m_pauseRequested) {
-        closeFile();
-        setState(State::Paused);
         emit downloadFinished(false);
         return;
     }

@@ -163,7 +163,6 @@ signals:
     void imageRevisionChanged();
     void docRevisionChanged();
     void configChanged();
-    void boxesChanged();
     void pageImageReady(int index);
 
     void selectedBoxChanged();

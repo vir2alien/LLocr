@@ -197,7 +197,6 @@ ApplicationWindow {
             }
 
             VerificationPromptsTab {
-                id: promptsTab
                 onEdited: window.unsavedChanges = true
             }
         }

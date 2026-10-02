@@ -71,7 +71,6 @@ Item {
             implicitHeight: headerValue.implicitHeight
 
             LLOLabel {
-                id: headerName
                 anchors.left: parent.left
                 width: parent.width * root.nameWidth
                 font.bold: true

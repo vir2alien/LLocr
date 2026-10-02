@@ -636,7 +636,6 @@ void ModelInstallTransaction::completeInstall()
     setStatusMessage(tr("Installed %1").arg(e.title));
     emit installedListReplaced(m_installed);
     setState(State::Idle);
-    emit installFinished();
 }
 
 void ModelInstallTransaction::cancel()

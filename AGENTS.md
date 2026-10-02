@@ -36,6 +36,7 @@
   | `docs/07-glossary.md`     | Terms and adopted decisions                |
   | `docs/08-app-icon.md`     | Cross-platform application icon            |
   | `docs/09-local-runtime-plan.md` | Managed runtime: llama.cpp + model install |
+  | `docs/12-code-debt-audit.md` | Code audit: dead code, duplication, cleanup plan (Oct 2026) |
   | `docs/architecture-plan/README.md` | Architectural review (Sep 2026) and the   |
   |                           | remediation plan (stages 0–7)              |
   | `docs/TODO.md`            | Short backlog of open items                 |

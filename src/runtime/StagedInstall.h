@@ -16,7 +16,6 @@ public:
     bool isValid() const { return m_error.isEmpty(); }
     const QString &error() const { return m_error; }
     const QString &stagingPath() const { return m_stagingPath; }
-    const QString &finalPath() const { return m_finalPath; }
 
     void setFinalPath(const QString &finalDir) { m_finalPath = finalDir; }
 

@@ -96,7 +96,6 @@ QString LlamaServerProcess::start()
 
 void LlamaServerProcess::spawn()
 {
-    m_healthReached = false;
     m_modelsProbed = false;
     m_healthInFlight = false;
     if (m_opts.port == 0)
@@ -107,15 +106,11 @@ void LlamaServerProcess::spawn()
         markFailed(QObject::tr("Unable to allocate a free loopback port"));
         return;
     }
-    if (m_opts.baseUrl.isEmpty()) {
-        QUrl url;
-        url.setScheme(QStringLiteral("http"));
-        url.setHost(m_opts.host);
-        url.setPort(m_port);
-        m_healthUrl = url.toString();
-    } else {
-        m_healthUrl = m_opts.baseUrl;
-    }
+    QUrl url;
+    url.setScheme(QStringLiteral("http"));
+    url.setHost(m_opts.host);
+    url.setPort(m_port);
+    m_healthUrl = url.toString();
 
     m_attemptsTotal++;
     m_loadPercent = -1;
@@ -185,7 +180,6 @@ void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
     const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (code >= 200 && code < 300) {
         m_healthTimer->stop();
-        m_healthReached = true;
         setState(RuntimeState::Ready);
         setStatus(QStringLiteral("Ready"));
         return;
@@ -217,7 +211,6 @@ void LlamaServerProcess::tryModelsFallback()
             return;
         }
         m_healthTimer->stop();
-        m_healthReached = true;
         setState(RuntimeState::Ready);
         setStatus(QStringLiteral("Ready"));
     });
@@ -358,11 +351,9 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
 
     if (restartEligible && remaining > 0) {
         m_restartWindowCount++;
-        m_autoRestartScheduled = true;
         setStatus(QObject::tr("Server crashed — restarting…"));
         setState(RuntimeState::Starting);
         QTimer::singleShot(kRestartDelayMs, this, [this]() {
-            m_autoRestartScheduled = false;
             if (m_stopRequested)
                 return;
             spawn();

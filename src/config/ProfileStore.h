@@ -15,8 +15,8 @@ namespace llocr {
 template <typename T> class ProfileStore
 {
 public:
-    ProfileStore(QString builtInPath, QString userFileName, int schemaVersion, QString storeName, QString defaultUserId = {})
-        : m_builtInPath(std::move(builtInPath)), m_userFileName(std::move(userFileName)), m_schemaVersion(schemaVersion), m_storeName(std::move(storeName)), m_defaultUserId(std::move(defaultUserId))
+    ProfileStore(QString builtInPath, int schemaVersion, QString storeName, QString defaultUserId = {})
+        : m_builtInPath(std::move(builtInPath)), m_schemaVersion(schemaVersion), m_storeName(std::move(storeName)), m_defaultUserId(std::move(defaultUserId))
     {
         loadBuiltIn();
         reloadUserProfiles();
@@ -26,9 +26,7 @@ public:
     void setUserPath(const QString &path) { m_userPath = path; }
 
     const QList<T> &builtIn() const { return m_builtIn; }
-    QList<T> &mutableBuiltIn() { return m_builtIn; }
     void setBuiltIn(QList<T> profiles) { m_builtIn = std::move(profiles); }
-    const QHash<QString, T> &userProfiles() const { return m_userProfiles; }
 
     void reloadUserProfiles() { reloadUserProfilesImpl(); }
 
@@ -185,7 +183,6 @@ private:
     static constexpr const char *kProfilesKey = "profiles";
 
     QString m_builtInPath;
-    QString m_userFileName;
     int m_schemaVersion = 1;
     QString m_storeName;
     QString m_defaultUserId;

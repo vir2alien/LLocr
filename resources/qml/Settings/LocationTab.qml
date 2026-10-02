@@ -30,7 +30,6 @@ Item {
     }
 
     ScrollView {
-        id: modelsScroll
         anchors.fill: parent
         contentWidth: availableWidth
         contentHeight: modelsLayout.implicitHeight

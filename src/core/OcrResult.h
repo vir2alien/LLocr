@@ -20,9 +20,8 @@ struct BoundingBox {
     QString text;           ///< Recognized text of this fragment.
     QString correctedText;  ///< Verified text (when checkStatus == Fixed); kept separate from text.
     BoxCheckStatus checkStatus = BoxCheckStatus::NotChecked;
-    QString label;            ///< Block type reported by the model (title, text, table...).
-    QRectF rect;              ///< Normalized rectangle: x, y, width, height in [0, 1].
-    double confidence = 0.0;  ///< Optional model confidence, if provided.
+    QString label;  ///< Block type reported by the model (title, text, table...).
+    QRectF rect;    ///< Normalized rectangle: x, y, width, height in [0, 1].
     bool positioned = true;
 };
 

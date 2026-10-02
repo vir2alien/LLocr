@@ -19,7 +19,6 @@ Item {
     required property bool hasDuplicates
 
     property ListView listView
-    property int pageIdx: pageIndex
     property bool dragActive: dragHandler.active
 
     z: dragActive ? 10 : 1
@@ -121,7 +120,6 @@ Item {
     }// ToolButton
 
     Rectangle {
-        id: dragGrip
         width: 24
         height: 24
         anchors.left: parent.left

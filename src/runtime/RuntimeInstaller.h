@@ -110,7 +110,6 @@ private:
     void setSelectedRelease(int index);
     void setStatusMessage(const QString &msg);
     void setProgress(double p);
-    static QString normalizedPath(const QString &path);
 
     void startCatalogFetch();
     void onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error);

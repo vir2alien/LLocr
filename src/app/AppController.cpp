@@ -656,7 +656,6 @@ void AppController::applyRawResult(int index, const OcrResult &rawResult)
     if (index == m_currentPage) {
         updateBoxesForCurrent();
         emit resultChanged();
-        emit boxesChanged();
         if (droppedEdit)
             emit editStateChanged();
     } else {
@@ -716,7 +715,6 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width
 
     m_boxModel.updateBoxRect(boxIndex, x, y, width, height);
 
-    emit boxesChanged();
     emit imageChanged();
 }
 
@@ -748,7 +746,6 @@ bool AppController::removeBlock(int boxIndex)
     else if (m_selectedBox > boxIndex)
         setSelectedBoxIndex(m_selectedBox - 1);
 
-    emit boxesChanged();
     emit resultChanged();
     emit editStateChanged();
     return true;
@@ -857,7 +854,6 @@ void AppController::revertBlockCorrection()
         emit resultChanged();
         emit editStateChanged();
     }
-    emit boxesChanged();
 }
 
 void AppController::checkEnabledBlocksOnPage()
@@ -942,8 +938,6 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
         emit resultChanged();
         emit editStateChanged();
     }
-    if (onCurrentPage)
-        emit boxesChanged();
 }
 
 bool AppController::exportPages(const QUrl &fileUrl, int scope, int fromPage, int toPage)
@@ -986,7 +980,6 @@ void AppController::notifyImportFinished()
     emit pageChanged();
     emit imageChanged();
     emit resultChanged();
-    emit boxesChanged();
     emit editStateChanged();
 }
 
@@ -1006,7 +999,6 @@ void AppController::notifyDocumentChanged()
     emit pageChanged();
     emit imageChanged();
     emit resultChanged();
-    emit boxesChanged();
     emit editStateChanged();
 }
 
@@ -1015,7 +1007,6 @@ void AppController::notifyPageChanged()
     emit pageChanged();
     emit imageChanged();
     emit resultChanged();
-    emit boxesChanged();
     emit editStateChanged();
 }
 

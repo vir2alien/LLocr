@@ -387,7 +387,6 @@ void RuntimeInstaller::runInstallAsync()
     const QString cudartZip = m_pendingHasCudart ? QDir(currentPaths.runtimeDir()).filePath(m_pendingCudart.fileName) : QString();
     const ReleaseAsset mainAsset = m_pendingMain;
     const bool hasCudart = m_pendingHasCudart;
-    const QString installDir = currentPaths.runtimeDir();
     const RuntimePaths paths = currentPaths;
 
     QFuture<QPair<InstallOutput, QString>> future = QtConcurrent::run([mainZip, mainAsset, paths]() -> QPair<InstallOutput, QString> {
@@ -510,11 +509,6 @@ QString RuntimeInstaller::cleanupUnusedBuilds()
     rescanInstalledBuilds();
     releaseInstallLock();
     return summary;
-}
-
-QString RuntimeInstaller::normalizedPath(const QString &path)
-{
-    return QDir::cleanPath(QDir::fromNativeSeparators(path));
 }
 
 void RuntimeInstaller::rescanInstalledBuilds()

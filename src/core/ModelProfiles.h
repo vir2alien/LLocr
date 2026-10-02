@@ -66,7 +66,6 @@ public:
     static QList<Profile> loadBuiltIn(QString &error);
 
     static const QList<Profile> &instance();
-    static void setInstance(const QList<Profile> &profiles);
 
     static const Profile *find(const QList<Profile> &profiles, const QString &id);
     static const Role *roleFor(const Profile &profile, const QString &role);

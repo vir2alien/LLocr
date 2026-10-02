@@ -289,11 +289,6 @@ const QList<ModelProfiles::Profile> &ModelProfiles::instance()
     return loaded;
 }
 
-void ModelProfiles::setInstance(const QList<Profile> &profiles)
-{
-    const_cast<QList<Profile> &>(instance()) = profiles;
-}
-
 const ModelProfiles::Profile *ModelProfiles::find(const QList<Profile> &profiles, const QString &id)
 {
     for (const Profile &p : profiles) {

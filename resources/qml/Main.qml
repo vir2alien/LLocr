@@ -21,9 +21,6 @@ ApplicationWindow {
     title: qsTr("LLM OCR")
 
     color: Theme.background
-    ButtonGroup {
-        id: themeGroup
-    }
 
     WindowSettings {
         window: mainWindow

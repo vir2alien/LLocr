@@ -32,8 +32,6 @@ QtObject {
     readonly property color helpColor: textSecondary
 
     // --- Overlay (bounding boxes on the image preview) ---
-    readonly property color overlayOuter: overlayTextOuter
-    readonly property color overlayInner: overlayTextInner
     readonly property color overlayTextOuter: "#1a1a1a"
     readonly property color overlayTextInner: "#f5f5f5"
     readonly property color overlayImageOuter: "#2196F3"
@@ -53,61 +51,16 @@ QtObject {
 
     // --- Text pt sizes ---
     readonly property real platformTextScale: Qt.platform.os === "osx" ? 4 / 3 : 1
-    readonly property real textScale: platformTextScale
-    readonly property int iconSize: 9 * textScale
-    readonly property real captionSize: 8 * textScale
-    readonly property real footnoteSize: 9 * textScale
-    readonly property real bodySmallSize: 10 * textScale
-    readonly property real bodySize: 11 * textScale
-    readonly property real subtitleSize: 13 * textScale
-    readonly property real titleSize: 16 * textScale
-    readonly property real h2Size: 19 * textScale
-    readonly property real h1Size: 23 * textScale
-    readonly property real displaySize: 30 * textScale
+    readonly property int iconSize: 9 * platformTextScale
+    readonly property int captionSize: 8 * platformTextScale
+    readonly property int footnoteSize: 9 * platformTextScale
+    readonly property int bodySmallSize: 10 * platformTextScale
+    readonly property int bodySize: 11 * platformTextScale
+    readonly property int titleSize: 16 * platformTextScale
 
-    readonly property color captionColor: textMuted
-    readonly property color footnoteColor: textMuted
-    readonly property color bodySmallColor: textPrimary
-    readonly property color bodyColor: textPrimary
-    readonly property color subtitleColor: textSecondary
-    readonly property color titleColor: textPrimary
-    readonly property color h2Color: textPrimary
-    readonly property color h1Color: textPrimary
-    readonly property color displayColor: textPrimary
     readonly property color linkColor: accent
-    readonly property color disabledTextColor: textMuted
 
     readonly property font caption: Qt.font({
         pointSize: captionSize
     })
-    readonly property font footnote: Qt.font({
-        pointSize: footnoteSize
-    })
-    readonly property font bodySmall: Qt.font({
-        pointSize: bodySmallSize
-    })
-    readonly property font body: Qt.font({
-        pointSize: bodySize
-    })
-    readonly property font subtitle: Qt.font({
-        pointSize: subtitleSize
-    })
-    readonly property font title: Qt.font({
-        pointSize: titleSize,
-        weight: Font.DemiBold
-    })
-    readonly property font h2: Qt.font({
-        pointSize: h2Size,
-        weight: Font.Bold
-    })
-    readonly property font h1: Qt.font({
-        pointSize: h1Size,
-        weight: Font.Bold
-    })
-    readonly property font display: Qt.font({
-        pointSize: displaySize,
-        weight: Font.Bold
-    })
-
-
 }
