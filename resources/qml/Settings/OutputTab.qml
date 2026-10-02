@@ -86,42 +86,24 @@ ColumnLayout {
 
     Item { implicitHeight: 6 }
 
-    LLOCheckBox {
+    OptionCheck {
         id: splitPagesCheck
-        font.pointSize: Theme.captionSize
-        text: qsTr("Split pages")
-    }
-    LLOLabel {
-        Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
-        color: Theme.helpColor
-        text: qsTr("When off, exported pages are joined without the "
+        label: qsTr("Split pages")
+        help: qsTr("When off, exported pages are joined without the "
                    + "“Page 1”, “Page 2” … headings.")
     }
 
-    LLOCheckBox {
+    OptionCheck {
         id: pageNumbersCheck
-        font.pointSize: Theme.captionSize
-        text: qsTr("Keep page numbers")
-    }
-    LLOLabel {
-        Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
-        color: Theme.helpColor
-        text: qsTr("When off, page_number blocks from the model are ignored "
+        label: qsTr("Keep page numbers")
+        help: qsTr("When off, page_number blocks from the model are ignored "
                    + "during recognition. Applies to newly recognized pages.")
     }
 
-    LLOCheckBox {
+    OptionCheck {
         id: tablesAsHtmlCheck
-        font.pointSize: Theme.captionSize
-        text: qsTr("Keep tables as HTML")
-    }
-    LLOLabel {
-        Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
-        color: Theme.helpColor
-        text: qsTr("When on, recognized tables are kept as the model's <table> "
+        label: qsTr("Keep tables as HTML")
+        help: qsTr("When on, recognized tables are kept as the model's <table> "
                    + "HTML instead of being converted to a Markdown pipe table. "
                    + "Most Markdown editors render this.")
     }

@@ -105,13 +105,8 @@ Item {
                                 maxVisibleRows: -1
                                 isVerifyModelRole: rolePane.forCheck
                                 onActionError: (msg) => statusLabel.text = msg
-                                onDownloadRequested: (title, quantId, license, runtimeNote) => {
-                                    pickDialog.modelTitle = title
-                                    pickDialog.quantId = quantId
-                                    pickDialog.license = license
-                                    pickDialog.runtimeNote = runtimeNote
-                                    pickDialog.open()
-                                }
+                                onDownloadRequested: (title, quantId, license, runtimeNote) =>
+                                        pickDialog.showFor(title, quantId, license, runtimeNote)
                             }
 
                             LLOLabel {
@@ -132,64 +127,8 @@ Item {
         Item { Layout.fillHeight: true }
     }//ColumnLayout
 
-    Dialog {
+    InstallModelDialog {
         id: pickDialog
-        modal: true
-        anchors.centerIn: parent
-        width: 420
-        title: qsTr("Install model")
-        standardButtons: Dialog.Ok | Dialog.Cancel
-
-        property string modelTitle: ""
-        property string quantId: ""
-        property string license: ""
-        property string runtimeNote: ""
-
-        ColumnLayout {
-            width: parent.width
-            spacing: 6
-            LLOLabel {
-                Layout.fillWidth: true
-                font.pointSize: Theme.captionSize
-                color: Theme.textPrimary
-                text: [pickDialog.modelTitle, pickDialog.quantId].join(" ").trim()
-            }
-            LLOLabel {
-                Layout.fillWidth: true
-                font.pointSize: Theme.captionSize
-                color: Theme.textSecondary
-                text: qsTr("Downloading starts after confirmation. The model license "
-                           + "applies — review it before installing.")
-            }
-            LLOLabel {
-                Layout.fillWidth: true
-                visible: pickDialog.runtimeNote.length > 0
-                wrapMode: Text.WordWrap
-                font.pointSize: Theme.captionSize
-                color: Theme.warning
-                text: qsTr("The managed runtime cannot run this model. %1")
-                        .arg(pickDialog.runtimeNote)
-            }
-            LLOLabel {
-                Layout.fillWidth: true
-                font.pointSize: Theme.captionSize
-                color: Theme.accent
-                visible: pickDialog.license.length > 0
-                textFormat: Text.RichText
-                text: {
-                    var lic = pickDialog.license
-                    if (/^https?:\/\//.test(lic))
-                        return qsTr("License: %1")
-                            .arg("<a href=\"" + lic + "\">License</a>")
-                    return qsTr("License: %1").arg(lic)
-                }
-                onLinkActivated: (link) => Qt.openUrlExternally(link)
-            }
-        }
-
-        onAccepted: {
-            ModelInstaller.installPrepared()
-        }
     }
 
 }

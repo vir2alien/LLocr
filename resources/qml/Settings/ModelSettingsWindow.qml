@@ -19,65 +19,37 @@ ApplicationWindow {
     height: 680
     modality: Qt.NonModal
 
-    // Runtime settings window reference — the Model tab's "Configure runtime"
-    // button opens it when the connection mode is External.
     property var runtimeSettingsRef: null
 
-    background: Rectangle {
-        color: Theme.surface
-        radius: Theme.dialogRadius
-        border.color: Theme.border
-        border.width: 1
+    background: SettingsSurface {
     }
 
-    footer: Rectangle {
-        implicitHeight: footerRow.implicitHeight + 2 * Theme.spacingLarge
-        color: Theme.surface
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            height: 1
-            color: Theme.divider
+    footer: SettingsFooter {
+        LLOButton {
+            subtle: true
+            text: qsTr("Restore defaults")
+            onClicked: {
+                launchTab.resetValues()
+                requestTab.resetValues()
+            }
         }
-
-        RowLayout {
-            id: footerRow
-            anchors.fill: parent
-            anchors.leftMargin: Theme.paddingWindow
-            anchors.rightMargin: Theme.paddingWindow
-            anchors.topMargin: Theme.spacingLarge
-            anchors.bottomMargin: Theme.spacingLarge
-            spacing: Theme.spacing
-
-            LLOButton {
-                subtle: true
-                text: qsTr("Restore defaults")
-                onClicked: {
-                    launchTab.resetValues()
-                    requestTab.resetValues()
-                }
+        Item { Layout.fillWidth: true }
+        LLOButton {
+            text: qsTr("Cancel")
+            onClicked: {
+                launchTab.loadValues()
+                requestTab.loadValues()
+                window.close()
             }
-            Item { Layout.fillWidth: true }
-
-            LLOButton {
-                text: qsTr("Cancel")
-                onClicked: {
-                    launchTab.loadValues()
-                    requestTab.loadValues()
-                    window.close()
-                }
-            }
-            LLOButton {
-                emphasis: true
-                text: qsTr("Save")
-                onClicked: {
-                    launchTab.saveValues()
-                    requestTab.saveValues()
-                    Settings.forceSave()
-                    window.close()
-                }
+        }
+        LLOButton {
+            emphasis: true
+            text: qsTr("Save")
+            onClicked: {
+                launchTab.saveValues()
+                requestTab.saveValues()
+                Settings.forceSave()
+                window.close()
             }
         }
     }//footer
@@ -112,54 +84,11 @@ ApplicationWindow {
         anchors.margins: Theme.paddingWindow
         spacing: 8
 
-        TabBar {
+        SettingsTabBar {
             id: tabBar
             Layout.fillWidth: true
-            implicitHeight: 32
-
-            background: Rectangle {
-                color: "transparent"
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: 1
-                    color: Theme.divider
-                }
-            }
-
-            component CustomTabButton: TabButton {
-                id: tabBtn
-                implicitHeight: 32
-                padding: 12
-
-                background: Rectangle { color: "transparent" }
-
-                contentItem: Text {
-                    text: tabBtn.text
-                    font.pointSize: Theme.bodySmallSize
-                    font.bold: tabBtn.checked
-                    color: tabBtn.checked ? Theme.textPrimary : Theme.textSecondary
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideNone
-                }
-
-                indicator: Rectangle {
-                    visible: tabBtn.checked
-                    anchors.bottom: parent.bottom
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    height: 2
-                    radius: 1
-                    color: Theme.accent
-                }
-            }
-
-            CustomTabButton { text: qsTr("Model") }
-            CustomTabButton { text: qsTr("Launch") }
-            CustomTabButton { text: qsTr("Request") }
-        }//TabBar
+            titles: [qsTr("Model"), qsTr("Launch"), qsTr("Request")]
+        }
 
         StackLayout {
             Layout.fillWidth: true

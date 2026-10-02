@@ -369,39 +369,19 @@ Item {
         }//Rectangle
     }//ColumnLayout
 
-    Dialog {
+    InterruptConfirmDialog {
         id: restartConfirmDialog
-        parent: Overlay.overlay
-        modal: true
-        width: 420
         title: qsTr("Restart server?")
-        standardButtons: Dialog.Cancel | Dialog.Ok
-
-        LLOLabel {
-            width: parent.width
-            color: Theme.textPrimary
-            text: qsTr("Recognition is in progress. Restarting the server will "
-                       + "interrupt the current job. Continue?")
-        }
-
-        onAccepted: root.doRestart()
+        prompt: qsTr("Recognition is in progress. Restarting the server will "
+                     + "interrupt the current job. Continue?")
+        onConfirmed: root.doRestart()
     }
 
-    Dialog {
+    InterruptConfirmDialog {
         id: stopConfirmDialog
-        parent: Overlay.overlay
-        modal: true
-        width: 420
         title: qsTr("Stop server?")
-        standardButtons: Dialog.Cancel | Dialog.Ok
-
-        LLOLabel {
-            width: parent.width
-            color: Theme.textPrimary
-            text: qsTr("Recognition is in progress. Stopping the server will "
-                       + "interrupt the current job. Continue?")
-        }
-
-        onAccepted: root.doStop()
+        prompt: qsTr("Recognition is in progress. Stopping the server will "
+                     + "interrupt the current job. Continue?")
+        onConfirmed: root.doStop()
     }
 }

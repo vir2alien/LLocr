@@ -105,13 +105,8 @@ Item {
             text: qsTr("This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.")
         }
 
-        LLOLabel {
-            Layout.fillWidth: true
-            visible: LaunchProfiles.modelRuntimeNote.length > 0
-            wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
-            color: Theme.warning
-            text: qsTr("The managed runtime cannot run this model. %1").arg(LaunchProfiles.modelRuntimeNote)
+        RuntimeNoteWarning {
+            note: LaunchProfiles.modelRuntimeNote
         }
 
         RowLayout {

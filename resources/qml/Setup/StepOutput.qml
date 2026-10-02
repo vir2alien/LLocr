@@ -32,46 +32,28 @@ Item {
                        + "Everything can be changed later in Settings → Output.")
         }
 
-        LLOCheckBox {
-            font.pointSize: Theme.captionSize
-            text: qsTr("Split pages")
-            checked: Settings.splitPages
-            onToggled: Settings.splitPages = checked
-        }
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: Theme.helpColor
-            text: qsTr("When off, exported pages are joined without the "
+        OptionCheck {
+            label: qsTr("Split pages")
+            help: qsTr("When off, exported pages are joined without the "
                        + "“Page 1”, “Page 2” … headings.")
+            checked: Settings.splitPages
+            onToggled: (value) => Settings.splitPages = value
         }
 
-        LLOCheckBox {
-            font.pointSize: Theme.captionSize
-            text: qsTr("Keep page numbers")
-            checked: Settings.keepPageNumbers
-            onToggled: Settings.keepPageNumbers = checked
-        }
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: Theme.helpColor
-            text: qsTr("When off, page_number blocks from the model are ignored "
+        OptionCheck {
+            label: qsTr("Keep page numbers")
+            help: qsTr("When off, page_number blocks from the model are ignored "
                        + "during recognition. Applies to newly recognized pages.")
+            checked: Settings.keepPageNumbers
+            onToggled: (value) => Settings.keepPageNumbers = value
         }
 
-        LLOCheckBox {
-            font.pointSize: Theme.captionSize
-            text: qsTr("Keep tables as HTML")
-            checked: Settings.tablesAsHtml
-            onToggled: Settings.tablesAsHtml = checked
-        }
-        LLOLabel {
-            Layout.fillWidth: true
-            font.pointSize: Theme.captionSize
-            color: Theme.helpColor
-            text: qsTr("When on, recognized tables are kept as the model's <table> "
+        OptionCheck {
+            label: qsTr("Keep tables as HTML")
+            help: qsTr("When on, recognized tables are kept as the model's <table> "
                        + "HTML instead of being converted to a Markdown pipe table.")
+            checked: Settings.tablesAsHtml
+            onToggled: (value) => Settings.tablesAsHtml = value
         }
 
         Item { implicitHeight: 6 }

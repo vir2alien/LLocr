@@ -645,22 +645,22 @@
         <translation>Стоп</translation>
     </message>
     <message>
-        <location line="+78"/>
+        <location line="+75"/>
         <source>Restart server?</source>
         <translation>Перезапустить сервер?</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+1"/>
         <source>Recognition is in progress. Restarting the server will interrupt the current job. Continue?</source>
         <translation>Идёт распознавание. Перезапуск сервера прервёт текущий процесс. Продолжить?</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+7"/>
         <source>Stop server?</source>
         <translation>Остановить сервер?</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+1"/>
         <source>Recognition is in progress. Stopping the server will interrupt the current job. Continue?</source>
         <translation>Идёт распознавание. Остановка сервера прервёт текущий процесс. Продолжить?</translation>
     </message>
@@ -800,11 +800,59 @@
     </message>
 </context>
 <context>
+    <name>InstallModelDialog</name>
+    <message>
+        <location filename="../qml/Common/InstallModelDialog.qml" line="+23"/>
+        <source>Install model</source>
+        <translation type="unfinished">Установка модели</translation>
+    </message>
+    <message>
+        <location line="+25"/>
+        <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
+        <translation type="unfinished">Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <location line="+2"/>
+        <source>License: %1</source>
+        <translation type="unfinished">Лицензия: %1</translation>
+    </message>
+</context>
+<context>
     <name>InstallerProgressRow</name>
     <message>
         <location filename="../qml/Common/InstallerProgressRow.qml" line="+30"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
+    </message>
+</context>
+<context>
+    <name>InterfaceSettings</name>
+    <message>
+        <location filename="../qml/Common/InterfaceSettings.qml" line="+16"/>
+        <source>Language</source>
+        <translation type="unfinished">Язык</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+26"/>
+        <source>System</source>
+        <translation type="unfinished">Как в ОС</translation>
+    </message>
+    <message>
+        <location line="-6"/>
+        <source>Theme</source>
+        <translation type="unfinished">Тема</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Light</source>
+        <translation type="unfinished">Светлая</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Dark</source>
+        <translation type="unfinished">Тёмная</translation>
     </message>
 </context>
 <context>
@@ -818,38 +866,32 @@
         <translation type="vanished">Восстановить профиль</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/LaunchTab.qml" line="+77"/>
         <source>Parameter</source>
-        <translation>Параметр</translation>
+        <translation type="vanished">Параметр</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Value</source>
-        <translation>Значение</translation>
+        <translation type="vanished">Значение</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Description</source>
-        <translation>Описание</translation>
+        <translation type="vanished">Описание</translation>
     </message>
     <message>
-        <location line="+44"/>
-        <location line="+54"/>
+        <location filename="../qml/Settings/LaunchTab.qml" line="+70"/>
         <source>(flag)</source>
         <translation>(флаг)</translation>
     </message>
     <message>
-        <location line="-7"/>
         <source>New parameter name</source>
-        <translation>Имя нового параметра</translation>
+        <translation type="vanished">Имя нового параметра</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Add</source>
-        <translation>Добавить</translation>
+        <translation type="vanished">Добавить</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+11"/>
         <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows belong to a layer: the shared server policy, this machine&apos;s build, or the model itself — they are what the server is started with, and the profile owns them.</source>
         <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки принадлежат какому-то слою: общей политике сервера, сборке этой машины или самой модели — это то, с чем сервер реально запускается, и принадлежит профилю</translation>
     </message>
@@ -858,21 +900,20 @@
         <translation type="vanished">Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки — общая политика сервера, она действует для любой модели на этой машине</translation>
     </message>
     <message>
-        <location line="-154"/>
+        <location line="-25"/>
         <source>This model is not in the catalog, so its launch parameters come from the fallback set instead of the model&apos;s own. The context window may be wrong for it — check the log if a page comes out truncated.</source>
         <translation>Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора, а не из её собственных. Размер контекста может ей не подходить — если страница обрезается, посмотрите журнал</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>The managed runtime cannot run this model. %1</source>
-        <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
+        <translation type="vanished">Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
     <message>
         <source>This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.</source>
         <translation type="vanished">Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора. Если страница обрезается, прежде всего стоит проверить размер контекста</translation>
     </message>
     <message>
-        <location line="+159"/>
+        <location line="+39"/>
         <source>The model is managed by the external server. Location and download settings are not available in this mode.</source>
         <translation>Моделью управляет внешний сервер. Настройки расположения и скачивания модели в этом режиме недоступны.</translation>
     </message>
@@ -909,7 +950,7 @@
         <translation type="vanished">Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/LocationTab.qml" line="+61"/>
+        <location filename="../qml/Settings/LocationTab.qml" line="+59"/>
         <source>Model profile</source>
         <translation>Профиль модели</translation>
     </message>
@@ -930,12 +971,12 @@
         <translation type="vanished">Обзор…</translation>
     </message>
     <message>
-        <location line="-6"/>
+        <location line="-4"/>
         <source>The model is managed by the external server. Location and download settings are not available in this mode.</source>
         <translation>Моделью управляет внешний сервер. Настройки расположения и скачивания модели в этом режиме недоступны.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+31"/>
         <source>Configure runtime…</source>
         <translation>Настроить рантайм…</translation>
     </message>
@@ -995,9 +1036,8 @@
         <translation>Модели</translation>
     </message>
     <message>
-        <location line="+68"/>
         <source>The managed runtime cannot run this model. %1</source>
-        <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
+        <translation type="vanished">Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
     <message>
         <source>No presets available</source>
@@ -1084,20 +1124,16 @@
         <translation type="vanished">Восстановить по умолчанию</translation>
     </message>
     <message>
-        <location line="-31"/>
         <source>Install model</source>
-        <translation>Установка модели</translation>
+        <translation type="vanished">Установка модели</translation>
     </message>
     <message>
-        <location line="+22"/>
         <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
-        <translation>Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
+        <translation type="vanished">Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <location line="+2"/>
         <source>License: %1</source>
-        <translation>Лицензия: %1</translation>
+        <translation type="vanished">Лицензия: %1</translation>
     </message>
     <message>
         <source>Import preset catalog</source>
@@ -1267,27 +1303,27 @@
         <translation type="vanished">Расположение</translation>
     </message>
     <message>
-        <location line="+143"/>
+        <location line="+76"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>Launch</source>
         <translation>Запуск</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>Request</source>
         <translation>Запрос</translation>
     </message>
     <message>
-        <location line="-105"/>
+        <location line="-60"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+17"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
@@ -1323,7 +1359,7 @@
         <translation>Настройки вывода</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+11"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
@@ -1351,32 +1387,32 @@
         <translation>«Автоматически» использует парсер, ожидаемый выбранной моделью OCR. «Текст как есть» сохраняет ответ модели без изменений; «Токены разметки» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+9"/>
         <source>Split pages</source>
         <translation>Разбивать на страницы</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+1"/>
         <source>When off, exported pages are joined without the “Page 1”, “Page 2” … headings.</source>
         <translation>Когда выключено, страницы объединяются без заголовков «Page 1», «Page 2» и т.д.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+6"/>
         <source>Keep page numbers</source>
         <translation>Оставлять номера страниц</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+1"/>
         <source>When off, page_number blocks from the model are ignored during recognition. Applies to newly recognized pages.</source>
         <translation>Когда выключено, блоки page_number игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+6"/>
         <source>Keep tables as HTML</source>
         <translation>Сохранять таблицы в HTML формате</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+1"/>
         <source>When on, recognized tables are kept as the model&apos;s &lt;table&gt; HTML instead of being converted to a Markdown pipe table. Most Markdown editors render this.</source>
         <translation>Когда включено, распознанные таблицы сохраняются как HTML-разметка &lt;table&gt; модели, а не преобразуются в Markdown-таблицу. Большинство редакторов Markdown это поддерживают.</translation>
     </message>
@@ -1404,6 +1440,39 @@
         <location line="+9"/>
         <source>Margins (mm)</source>
         <translation>Поля (мм)</translation>
+    </message>
+</context>
+<context>
+    <name>ParamsTableEditor</name>
+    <message>
+        <location filename="../qml/Common/ParamsTableEditor.qml" line="+20"/>
+        <source>value</source>
+        <translation type="unfinished">значение</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>Parameter</source>
+        <translation type="unfinished">Параметр</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Value</source>
+        <translation type="unfinished">Значение</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Description</source>
+        <translation type="unfinished">Описание</translation>
+    </message>
+    <message>
+        <location line="+93"/>
+        <source>New parameter name</source>
+        <translation type="unfinished">Имя нового параметра</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Add</source>
+        <translation type="unfinished">Добавить</translation>
     </message>
 </context>
 <context>
@@ -2334,37 +2403,31 @@
         <translation type="vanished">Восстановить профиль</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/RequestTab.qml" line="+45"/>
         <source>Parameter</source>
-        <translation>Параметр</translation>
+        <translation type="vanished">Параметр</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Value</source>
-        <translation>Значение</translation>
+        <translation type="vanished">Значение</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Description</source>
-        <translation>Описание</translation>
+        <translation type="vanished">Описание</translation>
     </message>
     <message>
-        <location line="+74"/>
         <source>New parameter name</source>
-        <translation>Имя нового параметра</translation>
+        <translation type="vanished">Имя нового параметра</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>value</source>
-        <translation>значение</translation>
+        <translation type="vanished">значение</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Add</source>
-        <translation>Добавить</translation>
+        <translation type="vanished">Добавить</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location filename="../qml/Settings/RequestTab.qml" line="+53"/>
         <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
         <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
     </message>
@@ -2398,6 +2461,14 @@
     </message>
 </context>
 <context>
+    <name>RuntimeNoteWarning</name>
+    <message>
+        <location filename="../qml/Common/RuntimeNoteWarning.qml" line="+14"/>
+        <source>The managed runtime cannot run this model. %1</source>
+        <translation type="unfinished">Управляемый рантайм не может запустить эту модель. %1</translation>
+    </message>
+</context>
+<context>
     <name>RuntimeSettingsWindow</name>
     <message>
         <location filename="../qml/Settings/RuntimeSettingsWindow.qml" line="+12"/>
@@ -2405,7 +2476,7 @@
         <translation>Настройки рантайма</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+11"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
@@ -2944,30 +3015,24 @@
         <translation>Этот помощник распознаёт текст на изображениях и PDF с помощью локальной LLM. Несколько шагов настроят приложение — всё потом можно изменить в настройках.</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Language</source>
-        <translation>Язык</translation>
+        <translation type="vanished">Язык</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location line="+24"/>
         <source>System</source>
-        <translation>Как в ОС</translation>
+        <translation type="vanished">Как в ОС</translation>
     </message>
     <message>
-        <location line="-6"/>
         <source>Theme</source>
-        <translation>Тема</translation>
+        <translation type="vanished">Тема</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Light</source>
-        <translation>Светлая</translation>
+        <translation type="vanished">Светлая</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Dark</source>
-        <translation>Тёмная</translation>
+        <translation type="vanished">Тёмная</translation>
     </message>
 </context>
 <context>
@@ -2977,7 +3042,7 @@
         <translation type="vanished">Запуск</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="+156"/>
+        <location filename="../qml/Setup/StepLaunch.qml" line="+151"/>
         <source>Estimated memory needs ~%1 GiB (model + context) — this looks high for %2 GiB of RAM.</source>
         <translation>Примерная потребность в памяти ~%1 ГБ (модель + контекст) — это много для %2 ГБ ОЗУ.</translation>
     </message>
@@ -2992,7 +3057,7 @@
         <translation>Оценка памяти: всего ~%1 ГБ (%2 ГБ модель + %3 ГБ KV-кэш) при %4 ГБ ОЗУ</translation>
     </message>
     <message>
-        <location line="-93"/>
+        <location line="-88"/>
         <source>Tune how the local server starts, then run a quick end-to-end check. It starts the server, loads your model and performs one OCR request.</source>
         <translation>Настройте, как запускается локальный сервер, затем выполните быструю сквозную проверку. Она запустит сервер, загрузит модель и выполнит один OCR-запрос.</translation>
     </message>
@@ -3023,7 +3088,7 @@
         <translation type="vanished">Профиль запуска</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+27"/>
         <source>Start the server when the app launches</source>
         <translation>Запускать сервер при старте приложения</translation>
     </message>
@@ -3037,17 +3102,16 @@
         <translation type="vanished">Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено. В списке профилей только то, что может запустить эта система с установленным бэкендом</translation>
     </message>
     <message>
-        <location line="-25"/>
+        <location line="-20"/>
         <source>This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.</source>
         <translation type="unfinished">Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора. Если страница обрезается, прежде всего стоит проверить размер контекста</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>The managed runtime cannot run this model. %1</source>
-        <translation type="unfinished">Управляемый рантайм не может запустить эту модель. %1</translation>
+        <translation type="obsolete">Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
     <message>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>Command preview</source>
         <translation>Предпросмотр команды</translation>
     </message>
@@ -3171,26 +3235,23 @@
         <translation type="vanished">Локальная модель не управляется: за её лицензию отвечаете вы, и каталог её не проверяет.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="+140"/>
         <source>Install model</source>
-        <translation>Установка модели</translation>
+        <translation type="vanished">Установка модели</translation>
     </message>
     <message>
         <source>Review the license before installing. Downloading starts after confirmation.</source>
         <translation type="vanished">Перед установкой ознакомьтесь с лицензией. Загрузка начнётся после подтверждения.</translation>
     </message>
     <message>
-        <location line="+42"/>
-        <location line="+2"/>
         <source>License: %1</source>
-        <translation>Лицензия: %1</translation>
+        <translation type="vanished">Лицензия: %1</translation>
     </message>
     <message>
         <source>Select a GGUF model</source>
         <translation type="vanished">Выберите модель GGUF</translation>
     </message>
     <message>
-        <location line="-148"/>
+        <location filename="../qml/Setup/StepModel.qml" line="+36"/>
         <source>Models</source>
         <translation>Модели</translation>
     </message>
@@ -3231,9 +3292,8 @@
         <translation type="vanished">Каталог пресетов</translation>
     </message>
     <message>
-        <location line="+73"/>
         <source>The managed runtime cannot run this model. %1</source>
-        <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
+        <translation type="vanished">Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
     <message>
         <source>Path to the OCR model</source>
@@ -3268,9 +3328,8 @@
         <translation type="vanished">Модель проверки необязательна — проверку текста можно настроить позже в настройках.</translation>
     </message>
     <message>
-        <location line="-9"/>
         <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
-        <translation>Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
+        <translation type="vanished">Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
     </message>
     <message>
         <source>Select a model file</source>
@@ -3302,37 +3361,37 @@
         <translation>Как структурируется и экспортируется распознанный текст. Всё можно изменить позже в Настройки → Вывод.</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+5"/>
         <source>Split pages</source>
         <translation>Разбивать на страницы</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+1"/>
         <source>When off, exported pages are joined without the “Page 1”, “Page 2” … headings.</source>
         <translation>Когда выключено, страницы объединяются без заголовков «Page 1», «Page 2» и т.д.</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+7"/>
         <source>Keep page numbers</source>
         <translation>Оставлять номера страниц</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+1"/>
         <source>When off, page_number blocks from the model are ignored during recognition. Applies to newly recognized pages.</source>
         <translation>Когда выключено, блоки page_number игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+7"/>
         <source>Keep tables as HTML</source>
         <translation>Сохранять таблицы в HTML формате</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+1"/>
         <source>When on, recognized tables are kept as the model&apos;s &lt;table&gt; HTML instead of being converted to a Markdown pipe table.</source>
         <translation>Когда включено, распознанные таблицы сохраняются как HTML &lt;table&gt; модели вместо преобразования в Markdown-таблицу.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+9"/>
         <source>PDF export</source>
         <translation>Экспорт в PDF</translation>
     </message>
@@ -3586,30 +3645,24 @@
 <context>
     <name>UITab</name>
     <message>
-        <location filename="../qml/Settings/UITab.qml" line="+15"/>
         <source>Language</source>
-        <translation>Язык</translation>
+        <translation type="vanished">Язык</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location line="+26"/>
         <source>System</source>
-        <translation>Как в ОС</translation>
+        <translation type="vanished">Как в ОС</translation>
     </message>
     <message>
-        <location line="-6"/>
         <source>Theme</source>
-        <translation>Тема</translation>
+        <translation type="vanished">Тема</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Light</source>
-        <translation>Светлая</translation>
+        <translation type="vanished">Светлая</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Dark</source>
-        <translation>Тёмная</translation>
+        <translation type="vanished">Тёмная</translation>
     </message>
 </context>
 <context>
@@ -3620,7 +3673,7 @@
         <translation>Настройки интерфейса</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+11"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
@@ -3764,22 +3817,19 @@
         <translation>Снять выбор</translation>
     </message>
     <message>
-        <location line="+37"/>
         <source>Main content</source>
-        <translation>Основное содержимое</translation>
+        <translation type="vanished">Основное содержимое</translation>
     </message>
     <message>
-        <location line="+23"/>
         <source>Captions, footnotes and references</source>
-        <translation>Подписи, сноски и ссылки</translation>
+        <translation type="vanished">Подписи, сноски и ссылки</translation>
     </message>
     <message>
-        <location line="+23"/>
         <source>Service</source>
-        <translation>Служебные</translation>
+        <translation type="vanished">Служебные</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+66"/>
         <source>Blocks without OCR text are not checked.</source>
         <translation>Блоки без OCR-текста не проверяются.</translation>
     </message>
@@ -3929,12 +3979,12 @@
         <translation type="vanished">Блоки</translation>
     </message>
     <message>
-        <location line="+38"/>
+        <location line="+14"/>
         <source>Reset all settings</source>
         <translation>Сбросить все настройки</translation>
     </message>
     <message>
-        <location line="+63"/>
+        <location line="+62"/>
         <source>Discard changes?</source>
         <translation>Закрыть без сохранения?</translation>
     </message>
@@ -3944,17 +3994,17 @@
         <translation>Есть несохранённые изменения. Закрыть без сохранения?</translation>
     </message>
     <message>
-        <location line="+59"/>
+        <location line="+18"/>
         <source>Block checking</source>
         <translation>Проверка блоков</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>System prompt</source>
         <translation>Системный промпт</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>Block prompts</source>
         <translation>Промпты блоков</translation>
     </message>
@@ -3963,7 +4013,7 @@
         <translation type="vanished">Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location line="-113"/>
+        <location line="-69"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>

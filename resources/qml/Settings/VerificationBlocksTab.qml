@@ -223,72 +223,35 @@ Item {
                 width: typesScroll.availableWidth
                 spacing: 0
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: columnsRow.width / 3
-                    Layout.minimumWidth: 0
-                    Layout.alignment: Qt.AlignTop
-                    spacing: 0
+                Repeater {
+                    model: [
+                        { group: "content", source: Verification.blockModelContent },
+                        { group: "captions", source: Verification.blockModelCaptions },
+                        { group: "service", source: Verification.blockModelService }
+                    ]
+                    delegate: ColumnLayout {
+                        required property var modelData
 
-                    LLOLabel {
                         Layout.fillWidth: true
-                        topPadding: Theme.spacingSmall
-                        bottomPadding: Theme.spacingSmall
-                        text: qsTr("Main content")
-                        font.pointSize: Theme.footnoteSize
-                        font.bold: true
-                        color: Theme.textSecondary
-                        elide: Text.ElideRight
-                    }
-                    Repeater {
-                        model: Verification.blockModelContent
-                        delegate: BlockTypeRow {}
-                    }
-                }
+                        Layout.preferredWidth: columnsRow.width / 3
+                        Layout.minimumWidth: 0
+                        Layout.alignment: Qt.AlignTop
+                        spacing: 0
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: columnsRow.width / 3
-                    Layout.minimumWidth: 0
-                    Layout.alignment: Qt.AlignTop
-                    spacing: 0
-
-                    LLOLabel {
-                        Layout.fillWidth: true
-                        topPadding: Theme.spacingSmall
-                        bottomPadding: Theme.spacingSmall
-                        text: qsTr("Captions, footnotes and references")
-                        font.pointSize: Theme.footnoteSize
-                        font.bold: true
-                        color: Theme.textSecondary
-                        elide: Text.ElideRight
-                    }
-                    Repeater {
-                        model: Verification.blockModelCaptions
-                        delegate: BlockTypeRow {}
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: columnsRow.width / 3
-                    Layout.minimumWidth: 0
-                    Layout.alignment: Qt.AlignTop
-                    spacing: 0
-
-                    LLOLabel {
-                        Layout.fillWidth: true
-                        topPadding: Theme.spacingSmall
-                        bottomPadding: Theme.spacingSmall
-                        text: qsTr("Service")
-                        font.pointSize: Theme.footnoteSize
-                        font.bold: true
-                        color: Theme.textSecondary
-                        elide: Text.ElideRight
-                    }
-                    Repeater {
-                        model: Verification.blockModelService
-                        delegate: BlockTypeRow {}
+                        LLOLabel {
+                            Layout.fillWidth: true
+                            topPadding: Theme.spacingSmall
+                            bottomPadding: Theme.spacingSmall
+                            text: BlockNames.groupTitle(modelData.group)
+                            font.pointSize: Theme.footnoteSize
+                            font.bold: true
+                            color: Theme.textSecondary
+                            elide: Text.ElideRight
+                        }
+                        Repeater {
+                            model: modelData.source
+                            delegate: BlockTypeRow {}
+                        }
                     }
                 }
             }
