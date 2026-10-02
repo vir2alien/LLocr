@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import LLocr
@@ -11,12 +10,9 @@ import "../Common"
 Item {
     id: root
 
-    property bool downloadMode: true
     property bool preparedForCheck: false
 
-    readonly property bool downloadComplete: Runtime.modelPathValid
-    readonly property bool pathComplete: Runtime.modelPathValid
-    property bool complete: downloadMode ? downloadComplete : pathComplete
+    property bool complete: Runtime.modelPathValid
 
     onVisibleChanged: {
         if (!visible)
@@ -45,26 +41,7 @@ Item {
             font.bold: true
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            RadioButton {
-                id: downloadRadio
-                text: qsTr("Download models")
-                checked: true
-                onToggled: root.downloadMode = true
-            }
-            RadioButton {
-                id: pathRadio
-                text: qsTr("Specify model files")
-                onToggled: root.downloadMode = false
-            }
-            Item { Layout.fillWidth: true }
-        }
-
         ColumnLayout {
-            visible: root.downloadMode
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 6
@@ -155,100 +132,6 @@ Item {
             }//StackLayout
         }//ColumnLayout
 
-        ColumnLayout {
-            visible: !root.downloadMode
-            Layout.fillWidth: true
-            spacing: 6
-
-            LLOLabel {
-                text: qsTr("Path to the OCR model")
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                TextField {
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    placeholderText: qsTr("path to the .gguf model file")
-                    text: Settings.launchModelPath
-                    onEditingFinished: Settings.launchModelPath = text.trim()
-                }
-                LLOButton {
-                    text: qsTr("Browse…")
-                    onClicked: { picker.target = 0; picker.open() }
-                }
-            }
-
-            LLOLabel {
-                text: qsTr("OCR multimodal module (mmproj)")
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                TextField {
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    placeholderText: qsTr("optional mmproj file for vision models")
-                    text: Settings.launchMmprojPath
-                    onEditingFinished: Settings.launchMmprojPath = text.trim()
-                }
-                LLOButton {
-                    text: qsTr("Browse…")
-                    onClicked: { picker.target = 1; picker.open() }
-                }
-            }
-
-            LLOLabel {
-                text: qsTr("Path to the check model")
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                TextField {
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    placeholderText: qsTr("optional small general-purpose model")
-                    text: Settings.checkLaunchModelPath
-                    onEditingFinished: Settings.checkLaunchModelPath = text.trim()
-                }
-                LLOButton {
-                    text: qsTr("Browse…")
-                    onClicked: { picker.target = 2; picker.open() }
-                }
-            }
-
-            LLOLabel {
-                text: qsTr("Check multimodal module (mmproj)")
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                TextField {
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.controlHeight
-                    selectByMouse: true
-                    placeholderText: qsTr("optional mmproj file for vision models")
-                    text: Settings.checkLaunchMmprojPath
-                    onEditingFinished: Settings.checkLaunchMmprojPath = text.trim()
-                }
-                LLOButton {
-                    text: qsTr("Browse…")
-                    onClicked: { picker.target = 3; picker.open() }
-                }
-            }
-
-            LLOLabel {
-                Layout.fillWidth: true
-                font.pointSize: Theme.captionSize
-                color: Theme.helpColor
-                text: qsTr("The check model is optional — text verification can be "
-                           + "configured later in Settings.")
-            }
-        }
-
         Item { Layout.fillHeight: true }
     }//ColumnLayout
 
@@ -312,22 +195,4 @@ Item {
         }
     }
 
-    FileDialog {
-        id: picker
-        property int target: 0
-        title: qsTr("Select a model file")
-        fileMode: FileDialog.OpenFile
-        nameFilters: [qsTr("GGUF models (*.gguf)"), qsTr("All files (*)")]
-        onAccepted: {
-            const path = Runtime.localPath(selectedFile)
-            if (picker.target === 0)
-                Settings.launchModelPath = path
-            else if (picker.target === 1)
-                Settings.launchMmprojPath = path
-            else if (picker.target === 2)
-                Settings.checkLaunchModelPath = path
-            else
-                Settings.checkLaunchMmprojPath = path
-        }
-    }
 }

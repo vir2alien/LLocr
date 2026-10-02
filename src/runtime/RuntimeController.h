@@ -80,8 +80,6 @@ public:
     QString orphanInfo() const;
     Q_INVOKABLE QString terminateOrphan();
 
-    Q_INVOKABLE static QString localPath(const QUrl &url) { return url.isLocalFile() ? url.toLocalFile() : url.toString(); }
-
     Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, bool forCheck = false);
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
@@ -97,7 +95,6 @@ public:
     Q_INVOKABLE QString startServer();
     Q_INVOKABLE void stopServer();
     Q_INVOKABLE void restartServer();
-    Q_INVOKABLE QString probeRuntimePath(const QString &path);
     Q_INVOKABLE QString launchCommandPreview();
     void shutdownSync();
 

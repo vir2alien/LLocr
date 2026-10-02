@@ -110,17 +110,6 @@ ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
     return r;
 }
 
-QString RuntimeLocator::probeSummary(const ProbeResult &r)
-{
-    if (r.capabilities.belowMinimum) {
-        return QObject::tr("Build %1 is below the minimum (%2) — update it").arg(r.capabilities.build, QLatin1String(ServerCapabilities::kMinimumSupportedBuild));
-    }
-    if (!r.ok)
-        return r.error;
-    const QString build = r.capabilities.build;
-    return build.isEmpty() ? QObject::tr("Valid llama-server (build unknown)") : QObject::tr("Valid llama-server %1").arg(build);
-}
-
 namespace {
 
 struct ProbeKey {

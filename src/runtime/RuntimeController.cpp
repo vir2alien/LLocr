@@ -809,28 +809,6 @@ void RuntimeController::restartServer()
         setStatusMessage(err);
 }
 
-QString RuntimeController::probeRuntimePath(const QString &path)
-{
-    const QString program = path.trimmed();
-    if (program.isEmpty()) {
-        const QString empty = QObject::tr("No server binary selected");
-        setStatusMessage(empty);
-        return empty;
-    }
-    const quint64 generation = ++m_startGeneration;
-    setStatusMessage(tr("Probing %1…").arg(QFileInfo(program).fileName()));
-    auto *watcher = new QFutureWatcher<ProbeResult>(this);
-    connect(watcher, &QFutureWatcher<ProbeResult>::finished, this, [this, watcher, program, generation]() {
-        const ProbeResult probe = watcher->result();
-        watcher->deleteLater();
-        if (generation != m_startGeneration)
-            return;
-        setStatusMessage(RuntimeLocator::probeSummary(probe));
-    });
-    watcher->setFuture(QtConcurrent::run([program]() { return RuntimeLocator::probe(program, kProbeTimeoutMs); }));
-    return QString();
-}
-
 QString RuntimeController::launchCommandPreview()
 {
     if (modeFromSettings(m_settings) == ConnectionMode::External)

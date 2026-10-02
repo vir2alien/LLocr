@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import LLocr
@@ -33,9 +32,8 @@ Item {
 
         LLOLabel {
             Layout.fillWidth: true
-            text: qsTr("LLM OCR manages a local llama-server process. First obtain its "
-                       + "binary — by downloading a prebuilt build or pointing to one "
-                       + "you already have.")
+            text: qsTr("LLM OCR manages a local llama-server process. Download a "
+                       + "prebuilt build below, or activate one already installed.")
         }
 
         GroupBox {
@@ -134,67 +132,12 @@ Item {
                     font.pointSize: Theme.captionSize
                     color: Theme.helpColor
                     text: qsTr("On Windows, a freshly downloaded binary can be flagged by "
-                               + "SmartScreen or antivirus; if launch fails, pick the file "
-                               + "manually below.")
+                               + "SmartScreen or antivirus; if launch fails, allow the "
+                               + "file in the antivirus settings.")
                 }
             }
         }//GroupBox
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.divider
-        }
-
-        LLOLabel {
-            text: qsTr("Use an existing llama-server binary")
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            TextField {
-                id: pathField
-                Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                placeholderText: qsTr("path to llama-server")
-                text: Settings.serverPath
-                onEditingFinished: Settings.serverPath = text.trim()
-            }
-            LLOButton {
-                text: qsTr("Browse…")
-                onClicked: binaryPicker.open()
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            LLOButton {
-                text: qsTr("Probe")
-                onClicked: Runtime.probeRuntimePath(Settings.serverPath.trim())
-            }
-            LLOLabel {
-                Layout.fillWidth: true
-                font.pointSize: Theme.captionSize
-                color: Runtime.serverPathValid ? Theme.textSecondary : Theme.textMuted
-                text: Settings.serverPath.trim().length
-                      ? Runtime.statusMessage
-                      : qsTr("No binary selected yet.")
-                elide: Text.ElideMiddle
-                wrapMode: Text.NoWrap
-            }
-        }
-
         Item { Layout.fillHeight: true }
-    }
-
-    FileDialog {
-        id: binaryPicker
-        title: qsTr("Select llama-server binary")
-        onAccepted: {
-            const path = Runtime.localPath(selectedFile)
-            Settings.serverPath = path
-        }
     }
 }

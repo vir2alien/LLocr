@@ -31,12 +31,9 @@ Dialog {
 
     function rebuildSteps() {
         const choice = stepWelcome.choice
-        if (choice === 2)
+        if (choice === 1)
             // External server: no model and no managed-launch steps.
             steps = [stepIntro, stepWelcome, stepExternal, stepOutput, stepDone]
-        else if (choice === 1)
-            steps = [stepIntro, stepWelcome, stepBinary, stepModel, stepOutput,
-                     stepLaunch, stepDone]
         else
             steps = [stepIntro, stepWelcome, stepRuntime, stepModel, stepOutput,
                      stepLaunch, stepDone]
@@ -80,11 +77,7 @@ Dialog {
             anchors.fill: parent
             visible: wizard.currentStep === stepRuntime
         }
-        StepBinary {
-            id: stepBinary
-            anchors.fill: parent
-            visible: wizard.currentStep === stepBinary
-        }
+
         StepExternal {
             id: stepExternal
             anchors.fill: parent

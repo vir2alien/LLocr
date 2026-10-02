@@ -41,7 +41,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(int setupVersion READ setupVersion WRITE setSetupVersion NOTIFY setupVersionChanged)
     Q_PROPERTY(bool setupDismissed READ setupDismissed WRITE setSetupDismissed NOTIFY setupDismissedChanged)
     Q_PROPERTY(QString serverPath READ serverPath WRITE setServerPath NOTIFY serverPathChanged)
-    Q_PROPERTY(bool serverPathIsManaged READ serverPathIsManaged WRITE setServerPathIsManaged NOTIFY serverPathIsManagedChanged)
     Q_PROPERTY(QString runtimeRootDir READ runtimeRootDir WRITE setRuntimeRootDir NOTIFY runtimeRootDirChanged)
     Q_PROPERTY(QString runtimeModelsDir READ runtimeModelsDir WRITE setRuntimeModelsDir NOTIFY runtimeModelsDirChanged)
     Q_PROPERTY(QString runtimeBackend READ runtimeBackend WRITE setRuntimeBackend NOTIFY runtimeBackendChanged)
@@ -58,11 +57,9 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString launchMmprojPath READ launchMmprojPath WRITE setLaunchMmprojPath NOTIFY launchMmprojPathChanged)
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
-    Q_PROPERTY(bool launchSourceDownload READ launchSourceDownload WRITE setLaunchSourceDownload NOTIFY launchSourceDownloadChanged)
 
     Q_PROPERTY(QString checkLaunchModelPath READ checkLaunchModelPath WRITE setCheckLaunchModelPath NOTIFY checkLaunchModelPathChanged)
     Q_PROPERTY(QString checkLaunchMmprojPath READ checkLaunchMmprojPath WRITE setCheckLaunchMmprojPath NOTIFY checkLaunchMmprojPathChanged)
-    Q_PROPERTY(bool checkLaunchSourceDownload READ checkLaunchSourceDownload WRITE setCheckLaunchSourceDownload NOTIFY checkLaunchSourceDownloadChanged)
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
     Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
@@ -148,8 +145,6 @@ public:
     void setSetupDismissed(bool dismissed);
     QString serverPath() const;
     void setServerPath(const QString &path);
-    bool serverPathIsManaged() const;
-    void setServerPathIsManaged(bool managed);
     QString runtimeRootDir() const;
     void setRuntimeRootDir(const QString &dir);
     QString runtimeModelsDir() const;
@@ -186,10 +181,6 @@ public:
     void setCheckLaunchModelPath(const QString &path);
     QString checkLaunchMmprojPath() const;
     void setCheckLaunchMmprojPath(const QString &path);
-    bool checkLaunchSourceDownload() const;
-    void setCheckLaunchSourceDownload(bool on);
-    bool launchSourceDownload() const;
-    void setLaunchSourceDownload(bool on);
     QString checkRequestProfileId() const;
     void setCheckRequestProfileId(const QString &id);
     QString checkModelName() const;
@@ -228,7 +219,6 @@ signals:
     void setupVersionChanged();
     void setupDismissedChanged();
     void serverPathChanged();
-    void serverPathIsManagedChanged();
     void runtimeRootDirChanged();
     void runtimeModelsDirChanged();
     void runtimeBackendChanged();
@@ -246,8 +236,6 @@ signals:
     void launchPortChanged();
     void checkLaunchModelPathChanged();
     void checkLaunchMmprojPathChanged();
-    void checkLaunchSourceDownloadChanged();
-    void launchSourceDownloadChanged();
     void checkRequestProfileIdChanged();
     void checkModelNameChanged();
     void autoCheckChanged();
@@ -314,7 +302,6 @@ private:
     static constexpr const char *kSetupVersion = "runtime/setupVersion";
     static constexpr const char *kSetupDismissed = "runtime/setupDismissed";
     static constexpr const char *kServerPath = "runtime/serverPath";
-    static constexpr const char *kServerPathIsManaged = "runtime/serverPathIsManaged";
     static constexpr const char *kRuntimeRootDir = "runtime/rootDir";
     static constexpr const char *kRuntimeModelsDir = "runtime/modelsDir";
     static constexpr const char *kRuntimeBackend = "runtime/backend";
@@ -332,14 +319,12 @@ private:
     static constexpr const char *kLaunchMmprojPath = "launch/mmprojPath";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
-    static constexpr const char *kLaunchSourceDownload = "launch/sourceDownload";
 
     // Verification (check) model
     static constexpr const char *kCheckLaunchModelPath = "check/modelPath";
     static constexpr const char *kCheckLaunchMmprojPath = "check/mmprojPath";
     static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
     static constexpr const char *kCheckModelName = "check/modelName";
-    static constexpr const char *kCheckLaunchSourceDownload = "check/sourceDownload";
     static constexpr const char *kAutoCheck = "check/autoCheck";
 
     // Hugging Face

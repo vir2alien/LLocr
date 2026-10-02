@@ -167,7 +167,6 @@ private slots:
         QCOMPARE(settings.serverPath(), newestPath);
         QCOMPARE(settings.installedBuild(), QStringLiteral("b101"));
         QCOMPARE(settings.runtimeBackend(), QStringLiteral("cuda-cu12"));
-        QVERIFY(settings.serverPathIsManaged());
         // The active highlight follows the settings, not a stored flag.
         QCOMPARE(buildData(installer, 0, InstalledBuildsModel::ActiveRole).toBool(), true);
 

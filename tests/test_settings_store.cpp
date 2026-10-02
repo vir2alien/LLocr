@@ -269,7 +269,6 @@ private slots:
         QCOMPARE(store.setupVersion(), 0);
         QCOMPARE(store.setupDismissed(), false);
         QCOMPARE(store.serverPath(), QStringLiteral(""));
-        QCOMPARE(store.serverPathIsManaged(), false);
         QCOMPARE(store.autoStart(), false);  // §4.3: off by default
         QCOMPARE(store.startOnDemand(), true);
         QCOMPARE(store.stopOnExit(), true);

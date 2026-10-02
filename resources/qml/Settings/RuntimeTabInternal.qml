@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import LLocr
@@ -13,29 +12,11 @@ ScrollView {
     contentWidth: availableWidth
     contentHeight: formLayout.implicitHeight
 
-    // true = "Download llama.cpp via app" variant (install UI only);
-    // false = "Specify llama.cpp binary" variant (binary path only).
-    property bool downloadMode: false
-
     property var backendOptions: []
     property var releaseOptions: []
 
     function loadValues() {
-        // Re-assigning (not only the initial binding) — the user's editing
-        // breaks the text binding, so a reset/reopen must restore the value.
-        serverPathField.text = Settings.serverPath
         buildInstallOptions()
-    }
-
-    // The initial text binding is one-shot; external writers (install,
-    // activate, restore defaults) must reach the field too. The focus guard
-    // keeps mid-typing user input from being overridden.
-    Connections {
-        target: Settings
-        function onServerPathChanged() {
-            if (!serverPathField.activeFocus)
-                serverPathField.text = Settings.serverPath
-        }
     }
 
     function buildInstallOptions() {
@@ -82,54 +63,12 @@ ScrollView {
         spacing: 4
 
         LLOLabel {
-            visible: !root.downloadMode
-            text: qsTr("llama-server binary")
-        }
-        RowLayout {
-            visible: !root.downloadMode
-            Layout.fillWidth: true
-            spacing: 6
-            TextField {
-                id: serverPathField
-                Layout.fillWidth: true
-                implicitHeight: Theme.controlHeight
-                selectByMouse: true
-                placeholderText: qsTr("path to llama-server")
-                text: Settings.serverPath
-                onEditingFinished: Settings.serverPath = text.trim()
-            }
-            LLOButton {
-                text: qsTr("Browse…")
-                onClicked: serverPicker.open()
-            }
-        }
-
-        // Probe result (the check runs when a binary is picked).
-        LLOLabel {
-            id: probeStatusLabel
-            visible: !root.downloadMode
-            Layout.fillWidth: true
-            text: Runtime.statusMessage.length
-                  ? Runtime.statusMessage
-                  : (Settings.serverPath.length
-                     ? qsTr("Not probed yet")
-                     : qsTr("No server binary selected"))
-            elide: Text.ElideMiddle
-            wrapMode: Text.NoWrap
-            font.pointSize: Theme.captionSize
-            color: Settings.serverPath.length && !Runtime.lockedOut
-                   ? Theme.textSecondary : Theme.textMuted
-        }
-
-        LLOLabel {
-            visible: root.downloadMode
             text: qsTr("Install llama.cpp")
             color: Theme.textPrimary
             font.bold: true
         }
 
         LLOLabel {
-            visible: root.downloadMode
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
             color: Theme.textMuted
@@ -141,13 +80,13 @@ ScrollView {
         }
 
         LLOLabel {
-            visible: root.downloadMode && RuntimeInstaller.installedBuildCount > 0
+            visible: RuntimeInstaller.installedBuildCount > 0
             text: qsTr("Installed builds")
         }
 
         RuntimeBuildsList {
             id: buildsList
-            visible: root.downloadMode && RuntimeInstaller.installedBuildCount > 0
+            visible: RuntimeInstaller.installedBuildCount > 0
             Layout.fillWidth: true
             // Not capped and not interactive: the surrounding ScrollView
             // scrolls the whole tab, so a long list just grows (a nested
@@ -159,7 +98,7 @@ ScrollView {
 
         Rectangle {
             Layout.fillWidth: true
-            visible: root.downloadMode && RuntimeInstaller.hasUpdate
+            visible: RuntimeInstaller.hasUpdate
             implicitHeight: updatePlaque.implicitHeight + 2 * 8
             color: Theme.warningBg
             border.color: Theme.warning
@@ -211,7 +150,6 @@ ScrollView {
         }
 
         LLOLabel {
-            visible: root.downloadMode
             Layout.fillWidth: true
             font.pointSize: Theme.captionSize
             color: Theme.textMuted
@@ -221,7 +159,6 @@ ScrollView {
         }
 
         GridLayout {
-            visible: root.downloadMode
             Layout.fillWidth: true
             columns: 2
             rowSpacing: 4
@@ -263,7 +200,6 @@ ScrollView {
         }
 
         InstallerStatusLabel {
-            visible: root.downloadMode
             id: installStatusLabel
             isError: RuntimeInstaller.state === RuntimeInstaller.Error
             busy: RuntimeInstaller.busy
@@ -276,14 +212,13 @@ ScrollView {
             id: installProgress
             Layout.fillWidth: true
             Layout.preferredHeight: 12
-            visible: root.downloadMode && RuntimeInstaller.busy
+            visible: RuntimeInstaller.busy
             from: 0
             to: 1
             value: RuntimeInstaller.progress
         }
 
         RowLayout {
-            visible: root.downloadMode
             Layout.fillWidth: true
             spacing: 6
             LLOButton {
@@ -314,16 +249,4 @@ ScrollView {
             }
         }
     }//ColumnLayout
-
-    FileDialog {
-        id: serverPicker
-        title: qsTr("Select llama-server binary")
-        fileMode: FileDialog.OpenFile
-        nameFilters: [qsTr("Executables (*)")]
-        onAccepted: {
-            const path = Runtime.localPath(selectedFile)
-            Settings.serverPath = path
-            Runtime.probeRuntimePath(path)
-        }
-    }
 }

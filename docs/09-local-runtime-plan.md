@@ -266,8 +266,7 @@ resources/qml/
 | `provider/lastExternalBaseUrl` | string | «» | сохраняется при уходе в Managed |
 | `runtime/setupVersion` | int | `0` | версия пройденного мастера; текущая — `1` |
 | `runtime/setupDismissed` | bool | `false` | пользователь закрыл мастер |
-| `runtime/serverPath` | string | «» | абсолютный путь к бинарнику |
-| `runtime/serverPathIsManaged` | bool | `false` | скачан нами или указан вручную |
+| `runtime/serverPath` | string | «» | абсолютный путь к бинарнику (заполняется установщиком, ADR 128) |
 | `runtime/rootDir` | string | AppData | |
 | `runtime/modelsDir` | string | AppData/models | |
 | `runtime/backend` | string | «» | `cpu`/`cuda`/`vulkan`/`metal`/`hip`/`sycl` |

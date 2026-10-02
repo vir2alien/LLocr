@@ -11,18 +11,12 @@ Item {
     id: root
 
     // 0 = managed, download llama.cpp via the app
-    // 1 = managed, user-specified llama.cpp binary
-    // 2 = external server
+    // 1 = external server
     property int choice: -1
     property bool complete: choice >= 0
 
     function applyChoice() {
-        if (root.choice === 2) {
-            Settings.connectionMode = "external"
-        } else {
-            Settings.connectionMode = "managed"
-            Settings.serverPathIsManaged = (root.choice === 0)
-        }
+        Settings.connectionMode = (root.choice === 1) ? "external" : "managed"
     }
 
     ColumnLayout {
@@ -42,10 +36,6 @@ Item {
                 {
                     title: qsTr("LLM OCR will manage the server (LLM OCR downloads llama.cpp)"),
                     hint: qsTr("A prebuilt llama.cpp is downloaded and updated by the app.")
-                },
-                {
-                    title: qsTr("LLM OCR will manage the server (I will specify the llama.cpp binary)"),
-                    hint: qsTr("You already have a llama-server binary on this machine.")
                 },
                 {
                     title: qsTr("I will run the server with models myself"),

@@ -64,9 +64,7 @@ Item {
                         font.pointSize: Theme.captionSize; color: Theme.textPrimary
                         text: Settings.connectionMode === "external"
                               ? qsTr("External server")
-                              : (Settings.serverPathIsManaged
-                                 ? qsTr("Managed (downloaded llama.cpp)")
-                                 : qsTr("Managed (own llama.cpp binary)"))
+                              : qsTr("Managed (downloaded llama.cpp)")
                     }
                 }
                 RowLayout {

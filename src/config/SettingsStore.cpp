@@ -39,7 +39,6 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kSetupVersion, "setupVersion", QVariant(0)},  // 0 = re-run first-run wizard
         {kSetupDismissed, "setupDismissed", QVariant(false)},
         {kServerPath, "serverPath", QVariant(QString())},
-        {kServerPathIsManaged, "serverPathIsManaged", QVariant(false)},
         {kRuntimeRootDir, "runtimeRootDir", QVariant(QString())},
         {kRuntimeModelsDir, "runtimeModelsDir", QVariant(QString())},
         {kRuntimeBackend, "runtimeBackend", QVariant(QString())},
@@ -55,10 +54,8 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kLaunchMmprojPath, "launchMmprojPath", QVariant(QString())},
         {kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost))},
         {kLaunchPort, "launchPort", QVariant(kDefaultPort)},
-        {kLaunchSourceDownload, "launchSourceDownload", QVariant(false)},
         {kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString())},
         {kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString())},
-        {kCheckLaunchSourceDownload, "checkLaunchSourceDownload", QVariant(false)},
         {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultCheckRequestProfileId())},
         {kCheckModelName, "checkModelName", QVariant(QString())},
         {kAutoCheck, "autoCheck", QVariant(false)},
@@ -106,8 +103,6 @@ void SettingsStore::applyStartupMigration()
         if (!legacy.isEmpty())
             m_settings.setValue(kRequestProfileId, legacy);
     }
-
-    m_settings.remove(QStringLiteral("launch/modelAlias"));
 
     resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
     resolveStoredModelId(kRequestProfileId, QStringLiteral("ocr"));
@@ -528,19 +523,6 @@ void SettingsStore::setServerPath(const QString &path)
     emit serverPathChanged();
 }
 
-bool SettingsStore::serverPathIsManaged() const
-{
-    return m_settings.value(kServerPathIsManaged, false).toBool();
-}
-
-void SettingsStore::setServerPathIsManaged(bool managed)
-{
-    if (serverPathIsManaged() == managed)
-        return;
-    m_settings.setValue(kServerPathIsManaged, managed);
-    emit serverPathIsManagedChanged();
-}
-
 QString SettingsStore::runtimeRootDir() const
 {
     return m_settings.value(kRuntimeRootDir).toString();
@@ -731,19 +713,6 @@ void SettingsStore::setLaunchPort(int port)
     emit launchPortChanged();
 }
 
-bool SettingsStore::launchSourceDownload() const
-{
-    return m_settings.value(kLaunchSourceDownload, false).toBool();
-}
-
-void SettingsStore::setLaunchSourceDownload(bool on)
-{
-    if (launchSourceDownload() == on)
-        return;
-    m_settings.setValue(kLaunchSourceDownload, on);
-    emit launchSourceDownloadChanged();
-}
-
 QString SettingsStore::checkLaunchModelPath() const
 {
     return m_settings.value(kCheckLaunchModelPath).toString();
@@ -768,19 +737,6 @@ void SettingsStore::setCheckLaunchMmprojPath(const QString &path)
         return;
     m_settings.setValue(kCheckLaunchMmprojPath, path);
     emit checkLaunchMmprojPathChanged();
-}
-
-bool SettingsStore::checkLaunchSourceDownload() const
-{
-    return m_settings.value(kCheckLaunchSourceDownload, false).toBool();
-}
-
-void SettingsStore::setCheckLaunchSourceDownload(bool on)
-{
-    if (checkLaunchSourceDownload() == on)
-        return;
-    m_settings.setValue(kCheckLaunchSourceDownload, on);
-    emit checkLaunchSourceDownloadChanged();
 }
 
 QString SettingsStore::checkRequestProfileId() const

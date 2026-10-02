@@ -14,7 +14,7 @@ ColumnLayout {
 
     Layout.maximumHeight: Number.POSITIVE_INFINITY
 
-    readonly property int connectionMode: connectionModeBox.currentIndex
+    readonly property bool externalMode: Settings.connectionMode === "external"
 
     function loadValues() {
         rtExternal.loadValues();
@@ -36,22 +36,13 @@ ColumnLayout {
         textRole: "text"
         model: [
             { value: "external", text: qsTr("External server") },
-            { value: "managed", text: qsTr("Managed local server (Specify llama.cpp binary)") },
-            { value: "managed-download", text: qsTr("Managed local server (Download llama.cpp via app)") }
+            { value: "managed", text: qsTr("Managed local server") }
         ]
         function syncMode() {
-            if (Settings.connectionMode === "managed")
-                currentIndex = Settings.serverPathIsManaged ? 2 : 1
-            else
-                currentIndex = 0
+            currentIndex = Settings.connectionMode === "managed" ? 1 : 0
         }
         onActivated: (idx) => {
-            if (idx === 0) {
-                Settings.connectionMode = "external"
-            } else {
-                Settings.connectionMode = "managed"
-                Settings.serverPathIsManaged = (idx === 2)
-            }
+            Settings.connectionMode = (idx === 1) ? "managed" : "external"
         }
         onModelChanged: syncMode()
         Component.onCompleted: syncMode()
@@ -69,15 +60,14 @@ ColumnLayout {
 
     RuntimeTabExternal {
         id: rtExternal
-        visible: connectionMode === 0
+        visible: runtimeLayout.externalMode
         Layout.fillWidth: true
         Layout.fillHeight: true
     }
 
     RuntimeTabInternal {
         id: rtInternal
-        downloadMode: connectionMode === 2
-        visible: connectionMode !== 0
+        visible: !runtimeLayout.externalMode
         Layout.fillWidth: true
         Layout.fillHeight: true
     }

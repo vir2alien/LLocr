@@ -436,7 +436,6 @@ void RuntimeInstaller::onInstallFinished(const InstallOutput &out, const QString
         setStatusMessage(tr("Installed %1 (%2). %3").arg(out.build, backendDisplayName(m_pendingBackend), warning));
 
     m_settings.setServerPath(out.serverPath);
-    m_settings.setServerPathIsManaged(true);
     m_settings.setInstalledBuild(out.build);
     m_settings.setRuntimeBackend(m_pendingBackend);
     m_settings.forceSave();
@@ -570,7 +569,6 @@ QString RuntimeInstaller::activateBuild(int index)
         return tr("The build directory contains no llama-server binary");
 
     m_settings.setServerPath(b.serverPath);
-    m_settings.setServerPathIsManaged(true);
     if (!b.build.isEmpty())
         m_settings.setInstalledBuild(b.build);
     if (!b.backend.isEmpty())

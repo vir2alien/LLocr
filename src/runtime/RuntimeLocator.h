@@ -23,7 +23,6 @@ public:
     static ProbeResult probeCached(const QString &binaryPath, int timeoutMs = 5000);
     static ProbeResult probeCached(const QString &binaryPath, const QString &cacheDir, int timeoutMs = 5000);
     static bool cachedProbe(const QString &binaryPath, const QString &cacheDir, ProbeResult &out);
-    static QString probeSummary(const ProbeResult &r);
 
 private:
     static QString runProbe(const QString &binaryPath, QStringList args, int timeoutMs, QString &error);

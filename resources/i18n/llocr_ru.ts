@@ -905,30 +905,24 @@
         <translation type="vanished">Расположение модели</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/LocationTab.qml" line="+141"/>
         <source>These paths are used when the managed llama-server is launched. Activating a downloaded model fills them automatically.</source>
-        <translation>Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
+        <translation type="vanished">Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
     </message>
     <message>
-        <location line="-2"/>
         <source>These paths select the model for text verification. Activating a downloaded model fills them automatically.</source>
-        <translation>Эти пути выбирают модель для проверки текста. Активация скачанной через приложение модели заполняет их автоматически.</translation>
+        <translation type="vanished">Эти пути выбирают модель для проверки текста. Активация скачанной через приложение модели заполняет их автоматически.</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Path to the main model</source>
-        <translation>Путь до основной модели</translation>
+        <translation type="vanished">Путь до основной модели</translation>
     </message>
     <message>
-        <location line="+26"/>
         <source>Path to the multimodal module (mmproj)</source>
-        <translation>Путь до мультимодального модуля (mmproj)</translation>
+        <translation type="vanished">Путь до мультимодального модуля (mmproj)</translation>
     </message>
     <message>
-        <location line="-6"/>
-        <location line="+26"/>
         <source>Browse…</source>
-        <translation>Обзор…</translation>
+        <translation type="vanished">Обзор…</translation>
     </message>
     <message>
         <location line="-106"/>
@@ -941,24 +935,20 @@
         <translation>Настроить рантайм…</translation>
     </message>
     <message>
-        <location line="+21"/>
         <source>Specify model files</source>
-        <translation>Указать файлы модели</translation>
+        <translation type="vanished">Указать файлы модели</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Download model</source>
-        <translation>Скачать модель</translation>
+        <translation type="vanished">Скачать модель</translation>
     </message>
     <message>
-        <location line="+42"/>
         <source>path to the .gguf model file</source>
-        <translation>путь до файла модели .gguf</translation>
+        <translation type="vanished">путь до файла модели .gguf</translation>
     </message>
     <message>
-        <location line="+26"/>
         <source>optional mmproj file for vision models</source>
-        <translation>необязательный mmproj-файл для визуальных моделей</translation>
+        <translation type="vanished">необязательный mmproj-файл для визуальных моделей</translation>
     </message>
     <message>
         <location line="+22"/>
@@ -966,30 +956,24 @@
         <translation>Активирована: %1</translation>
     </message>
     <message>
-        <location line="+13"/>
         <source>A model outside the app registry — used as-is for the managed launch.</source>
-        <translation>Модель вне реестра приложения — используется как есть при запуске.</translation>
+        <translation type="vanished">Модель вне реестра приложения — используется как есть при запуске.</translation>
     </message>
     <message>
-        <location line="-2"/>
         <source>A model outside the app registry — used for text verification.</source>
-        <translation>Модель вне реестра приложения — используется для проверки текста.</translation>
+        <translation type="vanished">Модель вне реестра приложения — используется для проверки текста.</translation>
     </message>
     <message>
-        <location line="+151"/>
         <source>Select a model file</source>
-        <translation>Выберите файл модели</translation>
+        <translation type="vanished">Выберите файл модели</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Select an mmproj file</source>
-        <translation>Выберите файл mmproj</translation>
+        <translation type="vanished">Выберите файл mmproj</translation>
     </message>
     <message>
-        <location line="-12"/>
-        <location line="+14"/>
         <source>GGUF models (*.gguf)</source>
-        <translation>GGUF-модели (*.gguf)</translation>
+        <translation type="vanished">GGUF-модели (*.gguf)</translation>
     </message>
     <message>
         <location line="-149"/>
@@ -2372,17 +2356,8 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Managed local server (Specify llama.cpp binary)</source>
-        <translation>Управляемый локальный сервер (указать бинарник llama.cpp)</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Managed local server (Download llama.cpp via app)</source>
-        <translation>Управляемый локальный сервер (скачать llama.cpp через приложение)</translation>
-    </message>
-    <message>
         <source>Managed local server</source>
-        <translation type="vanished">Управляемый локальный сервер</translation>
+        <translation>Управляемый локальный сервер</translation>
     </message>
 </context>
 <context>
@@ -2441,43 +2416,36 @@
 <context>
     <name>RuntimeTabInternal</name>
     <message>
-        <location filename="../qml/Settings/RuntimeTabInternal.qml" line="+87"/>
         <source>llama-server binary</source>
-        <translation>Бинарник llama-server</translation>
+        <translation type="vanished">Бинарник llama-server</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>path to llama-server</source>
-        <translation>путь к llama-server</translation>
+        <translation type="vanished">путь к llama-server</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Browse…</source>
-        <translation>Обзор…</translation>
+        <translation type="vanished">Обзор…</translation>
     </message>
     <message>
-        <location line="+219"/>
         <source>Select llama-server binary</source>
-        <translation>Выбрать бинарник llama-server</translation>
+        <translation type="vanished">Выбрать бинарник llama-server</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Executables (*)</source>
-        <translation>Исполняемые файлы (*)</translation>
+        <translation type="vanished">Исполняемые файлы (*)</translation>
     </message>
     <message>
         <source>Auto-detect</source>
         <translation type="vanished">Определить автоматически</translation>
     </message>
     <message>
-        <location line="-208"/>
         <source>Not probed yet</source>
-        <translation>Ещё не проверено</translation>
+        <translation type="vanished">Ещё не проверено</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>No server binary selected</source>
-        <translation>Бинарник сервера не выбран</translation>
+        <translation type="vanished">Бинарник сервера не выбран</translation>
     </message>
     <message>
         <source>Check</source>
@@ -2757,54 +2725,6 @@
     </message>
 </context>
 <context>
-    <name>StepBinary</name>
-    <message>
-        <location filename="../qml/Setup/StepBinary.qml" line="+31"/>
-        <source>llama-server binary</source>
-        <translation>Бинарник llama-server</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Point to the llama-server binary you already have. The binary is checked right after selection.</source>
-        <translation>Укажите путь до бинарника llama-server. Сразу после выбора он будет проверен.</translation>
-    </message>
-    <message>
-        <location line="+12"/>
-        <source>path to llama-server</source>
-        <translation>путь к llama-server</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Browse…</source>
-        <translation>Обзор…</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Check</source>
-        <translation>Проверить</translation>
-    </message>
-    <message>
-        <location line="+10"/>
-        <source>Not probed yet</source>
-        <translation>Ещё не проверено</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>No server binary selected</source>
-        <translation>Бинарник сервера не выбран</translation>
-    </message>
-    <message>
-        <location line="+13"/>
-        <source>Select llama-server binary</source>
-        <translation>Выберите бинарник llama-server</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Executables (*)</source>
-        <translation>Исполняемые файлы (*)</translation>
-    </message>
-</context>
-<context>
     <name>StepDone</name>
     <message>
         <source>Done</source>
@@ -2868,9 +2788,8 @@
         <translation>Управляемый (скачанный llama.cpp)</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Managed (own llama.cpp binary)</source>
-        <translation>Управляемый (свой бинарник llama.cpp)</translation>
+        <translation type="vanished">Управляемый (свой бинарник llama.cpp)</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -3141,12 +3060,8 @@
         <translation type="vanished">путь к модели .gguf</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepModel.qml" line="+214"/>
-        <location line="+20"/>
-        <location line="+20"/>
-        <location line="+20"/>
         <source>Browse…</source>
-        <translation>Обзор…</translation>
+        <translation type="vanished">Обзор…</translation>
     </message>
     <message>
         <source>Use this file</source>
@@ -3181,14 +3096,12 @@
         <translation>Модели</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Download models</source>
-        <translation>Скачать модели</translation>
+        <translation type="vanished">Скачать модели</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Specify model files</source>
-        <translation>Указать файлы модели</translation>
+        <translation type="vanished">Указать файлы модели</translation>
     </message>
     <message>
         <location line="+15"/>
@@ -3222,45 +3135,36 @@
         <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
     <message>
-        <location line="+37"/>
         <source>Path to the OCR model</source>
-        <translation>Путь до модели OCR</translation>
+        <translation type="vanished">Путь до модели OCR</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>path to the .gguf model file</source>
-        <translation>путь до файла модели .gguf</translation>
+        <translation type="vanished">путь до файла модели .gguf</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>OCR multimodal module (mmproj)</source>
-        <translation>Мультимодальный модуль OCR (mmproj)</translation>
+        <translation type="vanished">Мультимодальный модуль OCR (mmproj)</translation>
     </message>
     <message>
-        <location line="+9"/>
-        <location line="+40"/>
         <source>optional mmproj file for vision models</source>
-        <translation>необязательный mmproj-файл для визуальных моделей</translation>
+        <translation type="vanished">необязательный mmproj-файл для визуальных моделей</translation>
     </message>
     <message>
-        <location line="-29"/>
         <source>Path to the check model</source>
-        <translation>Путь до модели проверки</translation>
+        <translation type="vanished">Путь до модели проверки</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>optional small general-purpose model</source>
-        <translation>необязательная небольшая модель общего назначения</translation>
+        <translation type="vanished">необязательная небольшая модель общего назначения</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Check multimodal module (mmproj)</source>
-        <translation>Мультимодальный модуль проверки (mmproj)</translation>
+        <translation type="vanished">Мультимодальный модуль проверки (mmproj)</translation>
     </message>
     <message>
-        <location line="+23"/>
         <source>The check model is optional — text verification can be configured later in Settings.</source>
-        <translation>Модель проверки необязательна — проверку текста можно настроить позже в настройках.</translation>
+        <translation type="vanished">Модель проверки необязательна — проверку текста можно настроить позже в настройках.</translation>
     </message>
     <message>
         <location line="+25"/>
@@ -3268,19 +3172,16 @@
         <translation>Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
     </message>
     <message>
-        <location line="+28"/>
         <source>Select a model file</source>
-        <translation>Выберите файл модели</translation>
+        <translation type="vanished">Выберите файл модели</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>GGUF models (*.gguf)</source>
-        <translation>Модели GGUF (*.gguf)</translation>
+        <translation type="vanished">Модели GGUF (*.gguf)</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>All files (*)</source>
-        <translation>Все файлы (*)</translation>
+        <translation type="vanished">Все файлы (*)</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -3363,9 +3264,13 @@
         <translation>Рантайм (llama.cpp)</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>LLM OCR manages a local llama-server process. First obtain its binary — by downloading a prebuilt build or pointing to one you already have.</source>
-        <translation>LLM OCR управляет локальным процессом llama-server. Сначала получите его бинарник — скачав готовую сборку или указав уже имеющуюся.</translation>
+        <translation type="vanished">LLM OCR управляет локальным процессом llama-server. Сначала получите его бинарник — скачав готовую сборку или указав уже имеющуюся.</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>LLM OCR manages a local llama-server process. Download a prebuilt build below, or activate one already installed.</source>
+        <translation>LLM OCR управляет локальным процессом llama-server. Скачайте готовую сборку ниже или активируйте уже установленную.</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -3426,38 +3331,36 @@
     </message>
     <message>
         <location line="+11"/>
+        <source>On Windows, a freshly downloaded binary can be flagged by SmartScreen or antivirus; if launch fails, allow the file in the antivirus settings.</source>
+        <translation>На Windows свежескачанный бинарник может быть помечен SmartScreen или антивирусом; если запуск не удаётся, разрешите файл в настройках антивируса.</translation>
+    </message>
+    <message>
         <source>On Windows, a freshly downloaded binary can be flagged by SmartScreen or antivirus; if launch fails, pick the file manually below.</source>
-        <translation>На Windows свежескачанный бинарник может быть помечен SmartScreen или антивирусом; если запуск не удаётся, выберите файл вручную ниже.</translation>
+        <translation type="vanished">На Windows свежескачанный бинарник может быть помечен SmartScreen или антивирусом; если запуск не удаётся, выберите файл вручную ниже.</translation>
     </message>
     <message>
-        <location line="+15"/>
         <source>Use an existing llama-server binary</source>
-        <translation>Использовать существующий бинарник llama-server</translation>
+        <translation type="vanished">Использовать существующий бинарник llama-server</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>path to llama-server</source>
-        <translation>путь к llama-server</translation>
+        <translation type="vanished">путь к llama-server</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Browse…</source>
-        <translation>Обзор…</translation>
+        <translation type="vanished">Обзор…</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>Probe</source>
-        <translation>Проверить</translation>
+        <translation type="vanished">Проверить</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>No binary selected yet.</source>
-        <translation>Бинарник ещё не выбран.</translation>
+        <translation type="vanished">Бинарник ещё не выбран.</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Select llama-server binary</source>
-        <translation>Выберите бинарник llama-server</translation>
+        <translation type="vanished">Выберите бинарник llama-server</translation>
     </message>
 </context>
 <context>
@@ -3502,14 +3405,12 @@
         <translation>Готовая сборка llama.cpp скачивается и обновляется приложением.</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>LLM OCR will manage the server (I will specify the llama.cpp binary)</source>
-        <translation>LLM OCR будет управлять запуском сервера (укажу расположение исполняемого файла llama.cpp)</translation>
+        <translation type="vanished">LLM OCR будет управлять запуском сервера (укажу расположение исполняемого файла llama.cpp)</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>You already have a llama-server binary on this machine.</source>
-        <translation>Бинарник llama-server уже есть на этом компьютере.</translation>
+        <translation type="vanished">Бинарник llama-server уже есть на этом компьютере.</translation>
     </message>
     <message>
         <location line="+3"/>
