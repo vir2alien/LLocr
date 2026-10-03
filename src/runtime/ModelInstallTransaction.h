@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "runtime/InstallLockGuard.h"
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelPreset.h"
 #include "runtime/ModelRegistry.h"
@@ -20,6 +21,7 @@ class InstalledState;
 
 class DownloadGroup;
 class DownloadManager;
+class InstallLockGuard;
 class SettingsStore;
 
 class ModelInstallTransaction : public QObject
@@ -105,7 +107,7 @@ private:
     InstallPlan m_pending;
     QString m_installDir;
     std::unique_ptr<StagedInstall> m_staging;
-    bool m_lockHeld = false;
+    std::unique_ptr<InstallLockGuard> m_lock;
     bool m_pendingForCheck = false;  // install auto-activates the check model
     int m_prepareGeneration = 0;
     QList<ModelEntry> m_installed;

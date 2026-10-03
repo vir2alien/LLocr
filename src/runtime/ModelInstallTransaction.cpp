@@ -314,16 +314,18 @@ void ModelInstallTransaction::beginDownload()
         setState(State::Error);
         return;
     }
-    if (!m_lockHeld) {
-        if (!m_installState.installLock().tryLock(0)) {
+    if (!m_lock || !m_lock->held()) {
+        if (!m_lock)
+            m_lock = std::make_unique<InstallLockGuard>(m_installState.installLock());
+        if (!m_lock->tryLock()) {
             setBusy(false);
             setStatusMessage(tr("Another LLocr instance is installing a model right "
                                 "now; try again in a moment."));
             setState(State::Error);
             m_staging.reset();
+            m_lock.reset();
             return;
         }
-        m_lockHeld = true;
     }
     m_installDir = m_staging->stagingPath();
 
@@ -487,9 +489,7 @@ bool ModelInstallTransaction::mmprojAlreadyOnDisk(const QString &dir, const QStr
 
 void ModelInstallTransaction::releaseInstallLock()
 {
-    if (!m_lockHeld)
-        return;
-    m_lockHeld = false;
+    m_lock.reset();
     m_installState.installLock().unlock();
 }
 

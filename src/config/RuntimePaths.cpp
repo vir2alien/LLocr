@@ -2,6 +2,7 @@
 #include <QStandardPaths>
 
 #include "config/RuntimePaths.h"
+#include "config/SettingsStore.h"
 
 namespace llocr {
 
@@ -13,6 +14,11 @@ RuntimePaths::RuntimePaths(QString rootDir, QString modelsDir)
 QString RuntimePaths::defaultRootDir()
 {
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+}
+
+RuntimePaths RuntimePaths::fromSettings(const SettingsStore &settings)
+{
+    return RuntimePaths(settings.runtimeRootDir(), settings.runtimeModelsDir());
 }
 
 QString RuntimePaths::normalized(const QString &path)

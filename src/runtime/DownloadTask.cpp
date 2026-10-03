@@ -462,14 +462,7 @@ void DownloadTask::handleRedirect(const QUrl &target)
 
 bool DownloadTask::isAllowedUrl(const QUrl &url) const
 {
-    if (url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0)
-        return true;
-    if (!m_allowLoopbackHttp)
-        return false;
-    if (url.scheme().compare(QStringLiteral("http"), Qt::CaseInsensitive) != 0)
-        return false;
-    const QString host = url.host();
-    return host == QLatin1String("127.0.0.1") || host == QLatin1String("::1") || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
+    return HttpClient::isAllowedUrl(url, m_allowLoopbackHttp);
 }
 
 void DownloadTask::verifySha256()

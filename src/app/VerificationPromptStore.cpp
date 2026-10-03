@@ -202,7 +202,7 @@ VerificationPromptStore::VerificationPromptStore(SettingsStore &settings, QObjec
 
 QString VerificationPromptStore::userPath() const
 {
-    return QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(QString::fromUtf8(kUserFileName));
+    return QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(QString::fromUtf8(kUserFileName));
 }
 
 QAbstractItemModel *VerificationPromptStore::blockModelContent() const

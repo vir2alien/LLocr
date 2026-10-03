@@ -302,6 +302,7 @@ private:
     static constexpr const char *kSetupVersion = "runtime/setupVersion";
     static constexpr const char *kSetupDismissed = "runtime/setupDismissed";
     static constexpr const char *kServerPath = "runtime/serverPath";
+    static constexpr const char *kRetiredServerPathIsManaged = "runtime/serverPathIsManaged";
     static constexpr const char *kRuntimeRootDir = "runtime/rootDir";
     static constexpr const char *kRuntimeModelsDir = "runtime/modelsDir";
     static constexpr const char *kRuntimeBackend = "runtime/backend";
@@ -319,6 +320,8 @@ private:
     static constexpr const char *kLaunchMmprojPath = "launch/mmprojPath";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
+    static constexpr const char *kRetiredAlias = "launch/modelAlias";
+    static constexpr const char *kRetiredLaunchSourceDownload = "launch/sourceDownload";
 
     // Verification (check) model
     static constexpr const char *kCheckLaunchModelPath = "check/modelPath";
@@ -326,6 +329,7 @@ private:
     static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
     static constexpr const char *kCheckModelName = "check/modelName";
     static constexpr const char *kAutoCheck = "check/autoCheck";
+    static constexpr const char *kRetiredCheckSourceDownload = "check/sourceDownload";
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";

@@ -29,7 +29,7 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QOb
       m_profiles(new ProfileStore<RequestProfile>(QString(), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
       m_model(new RequestParametersModel(this)), m_profileModels(new RequestProfileListModel(this))
 {
-    m_profiles->setUserPath(QDir(RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir()).profilesDir()).filePath(userFileName(role)));
+    m_profiles->setUserPath(QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(userFileName(role)));
     setModelProfiles(ModelProfiles::instance());
 
     if (m_role == Role::Check) {

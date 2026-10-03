@@ -5,6 +5,8 @@
 
 namespace llocr {
 
+class SettingsStore;
+
 class RuntimePaths
 {
     Q_DECLARE_TR_FUNCTIONS(RuntimePaths)
@@ -28,6 +30,8 @@ public:
     QString ensureDirectories() const;
 
     static QString defaultRootDir();
+
+    static RuntimePaths fromSettings(const SettingsStore &settings);
 
     static QString normalized(const QString &path);
 

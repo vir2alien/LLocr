@@ -12,6 +12,7 @@
 #include "config/RuntimePaths.h"
 #include "runtime/InstalledBuildsModel.h"
 #include "runtime/InstalledState.h"
+#include "runtime/InstallLockGuard.h"
 #include "runtime/InstallTransaction.h"
 #include "runtime/ReleaseCatalog.h"
 
@@ -168,7 +169,7 @@ private:
 
     DownloadManager *m_downloads = nullptr;
     DownloadGroup *m_group = nullptr;
-    bool m_installLockHeld = false;
+    InstallLockGuard m_installLock;
 };
 
 }  // namespace llocr

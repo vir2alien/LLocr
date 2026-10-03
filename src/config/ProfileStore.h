@@ -18,7 +18,8 @@ public:
     ProfileStore(QString builtInPath, int schemaVersion, QString storeName, QString defaultUserId = {})
         : m_builtInPath(std::move(builtInPath)), m_schemaVersion(schemaVersion), m_storeName(std::move(storeName)), m_defaultUserId(std::move(defaultUserId))
     {
-        loadBuiltIn();
+        if (!m_builtInPath.isEmpty())
+            loadBuiltIn();
         reloadUserProfiles();
     }
 

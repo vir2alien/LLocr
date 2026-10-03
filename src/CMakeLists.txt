@@ -127,6 +127,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/ModelQuantModel.cpp
     runtime/StagedInstall.h
     runtime/StagedInstall.cpp
+    runtime/InstallLockGuard.h
+    runtime/InstallLockGuard.cpp
     runtime/ResolvedConnection.h
     runtime/RuntimeState.h
     runtime/ServerCapabilities.h

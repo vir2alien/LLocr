@@ -93,6 +93,20 @@ ModelEntry entryFromJson(const QJsonObject &o)
     return e;
 }
 
+QList<ModelEntry> entriesFromIndex(const QJsonObject &root)
+{
+    QList<ModelEntry> out;
+    const QJsonArray arr = root.value(QLatin1String(kModelsKey)).toArray();
+    for (const QJsonValue &v : arr) {
+        if (!v.isObject())
+            continue;
+        ModelEntry e = entryFromJson(v.toObject());
+        if (!e.modelPath.isEmpty() || !e.dir.isEmpty())
+            out.append(std::move(e));
+    }
+    return out;
+}
+
 QJsonObject entryToJson(const ModelEntry &e)
 {
     QJsonObject o;
@@ -177,14 +191,7 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt, Q
             } else if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1) != kSchemaVersion) {
                 error = QObject::tr("Model index version mismatch; rescanning");
             } else {
-                const QJsonArray arr = doc.object().value(QLatin1String(kModelsKey)).toArray();
-                for (const QJsonValue &v : arr) {
-                    if (!v.isObject())
-                        continue;
-                    ModelEntry e = entryFromJson(v.toObject());
-                    if (!e.modelPath.isEmpty() || !e.dir.isEmpty())
-                        index.append(std::move(e));
-                }
+                index = entriesFromIndex(doc.object());
             }
         }
     }
@@ -258,15 +265,7 @@ QList<ModelEntry> ModelRegistry::readIndex(const QString &modelsDir, QString &er
         error = QObject::tr("Model index is corrupt");
         return out;
     }
-    const QJsonArray arr = doc.object().value(QLatin1String(kModelsKey)).toArray();
-    for (const QJsonValue &v : arr) {
-        if (!v.isObject())
-            continue;
-        ModelEntry e = entryFromJson(v.toObject());
-        if (!e.modelPath.isEmpty() || !e.dir.isEmpty())
-            out.append(std::move(e));
-    }
-    return out;
+    return entriesFromIndex(doc.object());
 }
 
 bool ModelRegistry::writeIndex(const QString &modelsDir, const QList<ModelEntry> &entries, QString &error)

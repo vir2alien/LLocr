@@ -353,14 +353,27 @@ private slots:
     }
 
     // The alias is the model's, per role: one stored alias could only ever name
-    // one of the two servers.
-    void migrationDropsTheStoredAlias()
+    // one of the two servers. The three flags below lost their reader when the
+    // path pickers went away; a stored value nobody reads is not harmless
+    // either — it is a leftover the next reader would trust.
+    void migrationDropsTheRetiredKeys()
     {
+        const QStringList retired = {
+            QStringLiteral("launch/modelAlias"),
+            QStringLiteral("runtime/serverPathIsManaged"),
+            QStringLiteral("launch/sourceDownload"),
+            QStringLiteral("check/sourceDownload"),
+        };
+
         QSettings pre;
         pre.setValue(QStringLiteral("launch/modelAlias"), QStringLiteral("stale-alias"));
+        pre.setValue(QStringLiteral("runtime/serverPathIsManaged"), true);
+        pre.setValue(QStringLiteral("launch/sourceDownload"), true);
+        pre.setValue(QStringLiteral("check/sourceDownload"), true);
 
         const SettingsStore store;
-        QVERIFY(!store.contains(QStringLiteral("launch/modelAlias")));
+        for (const QString &key : retired)
+            QVERIFY2(!store.contains(key), qPrintable(key));
     }
 
     // An id from the retired request-profile space ("ocr-verifier") is not a

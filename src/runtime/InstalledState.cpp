@@ -19,7 +19,7 @@ InstalledState::InstalledState(SettingsStore &settings, QObject *parent) : QObje
 
 RuntimePaths InstalledState::paths() const
 {
-    return RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    return RuntimePaths::fromSettings(m_settings);
 }
 
 QLockFile &InstalledState::installLock()

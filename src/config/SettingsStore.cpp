@@ -104,6 +104,9 @@ void SettingsStore::applyStartupMigration()
             m_settings.setValue(kRequestProfileId, legacy);
     }
 
+    for (const char *retired : {kRetiredAlias, kRetiredServerPathIsManaged, kRetiredLaunchSourceDownload, kRetiredCheckSourceDownload})
+        m_settings.remove(QString::fromLatin1(retired));
+
     resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
     resolveStoredModelId(kRequestProfileId, QStringLiteral("ocr"));
     resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("check"));

@@ -26,6 +26,8 @@ public:
 
     static QNetworkRequest makeRequest(const QUrl &url, const Options &options);
 
+    static bool isAllowedUrl(const QUrl &url, bool allowInsecure);
+
     struct Redirect {
         bool present = false;    ///< the reply asked for a redirect
         QUrl target;             ///< resolved against the current URL

@@ -129,7 +129,7 @@ QString RuntimeController::terminateOrphan()
 
 RuntimePaths RuntimeController::currentPaths() const
 {
-    return RuntimePaths(m_settings.runtimeRootDir(), m_settings.runtimeModelsDir());
+    return RuntimePaths::fromSettings(m_settings);
 }
 
 void RuntimeController::setSingleInstanceHeld(bool held)

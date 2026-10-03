@@ -47,7 +47,7 @@ bool backendMatches(const QString &assetBackend, const QString &requested)
 
 RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent)
     : QObject(parent), m_settings(settings), m_installState(state), m_downloads(new DownloadManager(this)), m_group(new DownloadGroup(m_downloads, this)),
-      m_installedBuilds(new InstalledBuildsModel(settings, this))
+      m_installedBuilds(new InstalledBuildsModel(settings, this)), m_installLock(m_installState.installLock())
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
     m_platformLabel = QStringLiteral("%1 %2").arg(osLabel(info), info.arch);
@@ -359,23 +359,19 @@ void RuntimeInstaller::maybeFinishDownloads()
 
 bool RuntimeInstaller::acquireInstallLock(QString &error)
 {
-    if (m_installLockHeld)
+    if (m_installLock.held())
         return true;
-    if (!m_installState.installLock().tryLock(0)) {
+    if (!m_installLock.tryLock()) {
         error = tr("Another LLocr instance is installing a runtime right now; "
                    "try again in a moment.");
         return false;
     }
-    m_installLockHeld = true;
     return true;
 }
 
 void RuntimeInstaller::releaseInstallLock()
 {
-    if (!m_installLockHeld)
-        return;
-    m_installState.installLock().unlock();
-    m_installLockHeld = false;
+    m_installLock.release();
 }
 
 void RuntimeInstaller::runInstallAsync()
