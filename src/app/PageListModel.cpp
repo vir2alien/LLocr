@@ -46,16 +46,6 @@ QHash<int, QByteArray> PageListModel::roleNames() const
     return roles;
 }
 
-void PageListModel::setPageCount(int count)
-{
-    beginResetModel();
-    m_recognized = QList<bool>(count, false);
-    m_edited = QList<bool>(count, false);
-    m_hasDuplicates = QList<bool>(count, false);
-    m_current = count > 0 ? 0 : -1;
-    endResetModel();
-}
-
 void PageListModel::appendPages(int count)
 {
     if (count <= 0)

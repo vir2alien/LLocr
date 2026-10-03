@@ -99,9 +99,7 @@ class TestReleaseCatalog : public QObject
 private slots:
     void parsesKnownLayout();
     void extractsShaFromBody();
-    void picksPlatformAsset();
     void genericAssetNamesItsPlatformBackend();
-    void pickUnknownReturnsEmpty();
     void cudartAssetIsFlagged();
     void cacheMissingIsNotFresh();
     void cacheIsFreshWithinTtl();
@@ -166,21 +164,6 @@ void TestReleaseCatalog::extractsShaFromBody()
     QVERIFY(releases.at(1).assets.at(0).sha256.isEmpty());
 }
 
-void TestReleaseCatalog::picksPlatformAsset()
-{
-    QString err;
-    const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(buildReleases(), err);
-    const ReleaseInfo &r = releases.at(0);
-    QCOMPARE(r.pickAsset(QStringLiteral("win"), QStringLiteral("x64"), QStringLiteral("cuda-cu12")).fileName, QStringLiteral("llama-b10594-bin-win-cuda-cu12-x64.zip"));
-    // macOS ships a single universal build (no backend token): both the
-    // recommended "metal" and the fallback "cpu" must select it.
-    QCOMPARE(r.pickAsset(QStringLiteral("macos"), QStringLiteral("arm64"), QStringLiteral("metal")).fileName, QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz"));
-    QCOMPARE(r.pickAsset(QStringLiteral("macos"), QStringLiteral("arm64"), QStringLiteral("cpu")).fileName, QStringLiteral("llama-b10594-bin-macos-arm64.tar.gz"));
-    QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"), QStringLiteral("vulkan")).fileName, QStringLiteral("llama-b10594-bin-ubuntu-vulkan-x64.tar.gz"));
-    // Generic Ubuntu build serves the plain "cpu" request.
-    QCOMPARE(r.pickAsset(QStringLiteral("linux"), QStringLiteral("x64"), QStringLiteral("cpu")).fileName, QStringLiteral("llama-b10594-bin-ubuntu-x64.tar.gz"));
-}
-
 void TestReleaseCatalog::genericAssetNamesItsPlatformBackend()
 {
     // An asset name without a backend token is not a CPU build: upstream has no
@@ -191,18 +174,6 @@ void TestReleaseCatalog::genericAssetNamesItsPlatformBackend()
     QCOMPARE(ReleaseCatalog::defaultBackendFor(QStringLiteral("linux"), QStringLiteral("x64")), QStringLiteral("cpu"));
     QCOMPARE(ReleaseCatalog::defaultBackendFor(QStringLiteral("win"), QStringLiteral("x64")), QStringLiteral("cpu"));
     QCOMPARE(ReleaseCatalog::defaultBackendFor(QString(), QString()), QStringLiteral("cpu"));
-}
-
-void TestReleaseCatalog::pickUnknownReturnsEmpty()
-{
-    QString err;
-    const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(buildReleases(), err);
-    QVERIFY(releases.at(0).pickAsset(QStringLiteral("unknown"), QStringLiteral("x64"), QStringLiteral("cpu")).fileName.isEmpty());
-    bool foundMystery = false;
-    for (const ReleaseAsset &a : releases.at(0).assets)
-        if (a.fileName == QStringLiteral("llama-b10594-mystery-file.txt"))
-            foundMystery = true;
-    QVERIFY(foundMystery);
 }
 
 void TestReleaseCatalog::cudartAssetIsFlagged()

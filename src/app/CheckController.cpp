@@ -3,12 +3,12 @@
 #include <QFutureWatcher>
 
 #include "config/RequestProfileStore.h"
-#include "models/QwenGeneralModel.h"
+#include "models/GeneralPurposeModel.h"
 
 namespace llocr {
 
 CheckController::CheckController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent)
-    : QObject(parent), m_requestProfiles(requestProfiles), m_runtime(runtime), m_model(std::make_unique<QwenGeneralModel>())
+    : QObject(parent), m_requestProfiles(requestProfiles), m_runtime(runtime), m_model(std::make_unique<GeneralPurposeModel>())
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
         if (m_stopRequested) {

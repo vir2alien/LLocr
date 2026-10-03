@@ -30,7 +30,7 @@ constexpr int kMaxRestartsInWindow = 3;                  //   ≤3 per window
 constexpr int kRestartDelayMs = 500;                     // grace before respawn
 }  // namespace
 
-int LlamaServerProcess::pickFreePort(QString *error)
+int LlamaServerProcess::pickFreePort()
 {
     for (int attempt = 0; attempt < 3; ++attempt) {
         QTcpServer probe;
@@ -41,8 +41,6 @@ int LlamaServerProcess::pickFreePort(QString *error)
                 return port;
         }
     }
-    if (error)
-        *error = QObject::tr("Unable to allocate a free loopback port");
     return 0;
 }
 
@@ -99,7 +97,7 @@ void LlamaServerProcess::spawn()
     m_modelsProbed = false;
     m_healthInFlight = false;
     if (m_opts.port == 0)
-        m_port = pickFreePort(nullptr);
+        m_port = pickFreePort();
     else
         m_port = m_opts.port;
     if (m_port <= 0) {

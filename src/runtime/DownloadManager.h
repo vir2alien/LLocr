@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QAbstractListModel>
 #include <QList>
+#include <QObject>
 
 #include "runtime/DownloadTask.h"
 
@@ -9,36 +9,20 @@ class QNetworkAccessManager;
 
 namespace llocr {
 
-class DownloadManager : public QAbstractListModel
+class DownloadManager : public QObject
 {
     Q_OBJECT
 
 public:
-    enum Role {
-        NameRole = Qt::UserRole + 1,
-        TargetDirRole,
-        TotalBytesRole,
-        ReceivedBytesRole,
-        SpeedRole,
-        EtaRole,
-        StateRole,
-        ErrorRole,
-    };
-    Q_ENUM(Role)
-
     explicit DownloadManager(QObject *parent = nullptr);
     ~DownloadManager() override;
 
     int enqueue(const DownloadTask::Request &request);
 
-    void cancel(int row, bool deletePartial);
     void cancelAll(bool deletePartial);
 
     DownloadTask *taskAt(int row) const;
-
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role) const override;
-    QHash<int, QByteArray> roleNames() const override;
+    int taskCount() const { return m_tasks.size(); }
 
     void setAllowLoopbackHttp(bool allow);
     void setFreeBytesQuery(DownloadTask::FreeBytesQuery query);

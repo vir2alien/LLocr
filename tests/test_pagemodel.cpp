@@ -24,7 +24,7 @@ private slots:
     void moveDown()
     {
         PageListModel model;
-        model.setPageCount(4);
+        model.appendPages(4);
         QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         // Mark page 0 as recognized so we can track it across the move.
@@ -43,7 +43,7 @@ private slots:
     void moveDownByOne()
     {
         PageListModel model;
-        model.setPageCount(3);
+        model.appendPages(3);
         QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setRecognized(0, true);
@@ -59,7 +59,7 @@ private slots:
     void moveUp()
     {
         PageListModel model;
-        model.setPageCount(4);
+        model.appendPages(4);
         QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setRecognized(3, true);
@@ -74,7 +74,7 @@ private slots:
     void currentFollowsMove()
     {
         PageListModel model;
-        model.setPageCount(4);
+        model.appendPages(4);
         QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setCurrent(2);
@@ -95,7 +95,7 @@ private slots:
     void renumberNotifiesAllRows()
     {
         PageListModel model;
-        model.setPageCount(4);
+        model.appendPages(4);
 
         QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
 
@@ -118,7 +118,7 @@ private slots:
     void appendPreservesExistingRows()
     {
         PageListModel model;
-        model.setPageCount(2);
+        model.appendPages(2);
         QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setRecognized(0, true);
@@ -144,7 +144,7 @@ private slots:
     void appendZeroIsNoOp()
     {
         PageListModel model;
-        model.setPageCount(2);
+        model.appendPages(2);
         model.appendPages(0);
         QCOMPARE(model.rowCount(), 2);
     }
@@ -152,7 +152,7 @@ private slots:
     void setCurrentGuardsRange()
     {
         PageListModel model;
-        model.setPageCount(3);
+        model.appendPages(3);
         QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
 
         model.setCurrent(1);

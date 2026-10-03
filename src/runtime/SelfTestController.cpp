@@ -7,7 +7,6 @@
 #include "core/ConnectionConfig.h"
 #include "core/OcrResult.h"
 #include "models/OcrModel.h"
-#include "models/OcrModelFactory.h"
 #include "runtime/ConnectionMode.h"
 #include "runtime/RuntimeController.h"
 #include "runtime/SelfTestController.h"
@@ -48,7 +47,7 @@ QFuture<SelfTestResult> SelfTestController::runSelfTest()
 void SelfTestController::runSelfTestRequest(const ResolvedConnection &conn, std::shared_ptr<QFutureInterface<SelfTestResult>> promise)
 {
     if (!m_selftestModel)
-        m_selftestModel = OcrModelFactory::create(m_settings.modelRecipeId());
+        m_selftestModel = OcrModel::create(m_settings.modelRecipeId());
 
     OcrRequest request;
     request.image = makeTestImage();

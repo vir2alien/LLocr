@@ -1,4 +1,3 @@
-#include <QAbstractItemModelTester>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -272,18 +271,15 @@ void TestDownloadManager::simpleDownload()
     QVERIFY(server.start());
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("file.bin"), dir.path(), "file.bin", sha256Hex(data)));
 
-    QCOMPARE(mgr.rowCount(), 1);
-    QCOMPARE(mgr.roleNames().value(DownloadManager::NameRole), QByteArray("name"));
-    QCOMPARE(mgr.data(mgr.index(0), DownloadManager::StateRole).toInt(), int(DownloadTask::State::Running));
+    QCOMPARE(mgr.taskCount(), 1);
 
     DownloadTask *task = mgr.taskAt(row);
     QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Completed), 5000);
 
-    QCOMPARE(mgr.data(mgr.index(0), DownloadManager::NameRole).toString(), QStringLiteral("file.bin"));
+    QCOMPARE(task->fileName(), QStringLiteral("file.bin"));
     QCOMPARE(task->receivedBytes(), qint64(data.size()));
     QCOMPARE(task->totalBytes(), qint64(data.size()));
     QCOMPARE(readFile(QDir(dir.path()).filePath("file.bin")), data);
@@ -307,7 +303,6 @@ void TestDownloadManager::resumeFromSeededPartial()
     QVERIFY(seedPartial(dir.path(), "model.bin", data, split, kEtagV1));
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin", sha256Hex(data)));
     DownloadTask *task = mgr.taskAt(row);
@@ -366,7 +361,6 @@ void TestDownloadManager::changedValidatorForcesFullRedownload()
     QVERIFY(seedPartial(dir.path(), "model.bin", oldData, 2000, kEtagV1));
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin", sha256Hex(newData)));
     DownloadTask *task = mgr.taskAt(row);
@@ -393,7 +387,6 @@ void TestDownloadManager::incorrectContentRangeRestartsFresh()
     QVERIFY(seedPartial(dir.path(), "model.bin", data, 2000, kEtagV1));
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("model.bin"), dir.path(), "model.bin", sha256Hex(data)));
     DownloadTask *task = mgr.taskAt(row);
@@ -416,7 +409,6 @@ void TestDownloadManager::badSha256RemovesFile()
     QVERIFY(server.start());
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const QString badSha(64, QLatin1Char('0'));
     const int row = mgr.enqueue(makeReq(server.url("f.bin"), dir.path(), "f.bin", badSha));
@@ -439,13 +431,12 @@ void TestDownloadManager::cancelKeepsPartial()
     QVERIFY(server.start());
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("big.bin"), dir.path(), "big.bin"));
     DownloadTask *task = mgr.taskAt(row);
     QTRY_VERIFY_WITH_TIMEOUT(task->receivedBytes() > 0, 5000);
 
-    mgr.cancel(row, false);
+    mgr.cancelAll(false);
     QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Canceled), 5000);
     QVERIFY(QFile::exists(QDir(dir.path()).filePath("big.bin.part")));
 }
@@ -459,13 +450,12 @@ void TestDownloadManager::cancelDeletesPartial()
     QVERIFY(server.start());
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     const int row = mgr.enqueue(makeReq(server.url("big.bin"), dir.path(), "big.bin"));
     DownloadTask *task = mgr.taskAt(row);
     QTRY_VERIFY_WITH_TIMEOUT(task->receivedBytes() > 0, 5000);
 
-    mgr.cancel(row, true);
+    mgr.cancelAll(true);
     QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Canceled), 5000);
     QVERIFY(!QFile::exists(QDir(dir.path()).filePath("big.bin.part")));
     QVERIFY(!QFile::exists(QDir(dir.path()).filePath("big.bin.part.meta")));
@@ -479,7 +469,6 @@ void TestDownloadManager::insufficientSpaceFails()
     QVERIFY(server.start());
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     mgr.setFreeBytesQuery([](const QString &) { return qint64(0); });
     const int row = mgr.enqueue(makeReq(server.url("m.bin"), dir.path(), "m.bin"));
@@ -497,7 +486,6 @@ void TestDownloadManager::parallelLimitRespectsTwoSlots()
     QVERIFY(server.start());
 
     DownloadManager mgr;
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     mgr.setAllowLoopbackHttp(true);
     for (int i = 0; i < 4; ++i) {
         const QString name = QStringLiteral("f%1.bin").arg(i);
@@ -506,7 +494,7 @@ void TestDownloadManager::parallelLimitRespectsTwoSlots()
 
     auto count = [&](DownloadTask::State state) {
         int n = 0;
-        for (int i = 0; i < mgr.rowCount(); ++i)
+        for (int i = 0; i < mgr.taskCount(); ++i)
             if (mgr.taskAt(i)->state() == state)
                 ++n;
         return n;
@@ -550,7 +538,6 @@ void TestDownloadManager::refusesInsecureUrlByDefault()
 {
     QTemporaryDir dir;
     DownloadManager mgr;  // allowLoopbackHttp stays false
-    QAbstractItemModelTester tester(&mgr, QAbstractItemModelTester::FailureReportingMode::Fatal);
     const int row = mgr.enqueue(makeReq(QStringLiteral("http://127.0.0.1:1/x"), dir.path(), "x"));
     DownloadTask *task = mgr.taskAt(row);
     QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 3000);

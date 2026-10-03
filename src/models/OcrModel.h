@@ -4,6 +4,7 @@
 #include <QFuture>
 #include <QList>
 #include <QString>
+#include <QStringList>
 
 #include <memory>
 
@@ -15,9 +16,6 @@
 
 namespace llocr {
 
-// The OCR transport for every model. What a model says — its prompts, its
-// parser — comes from its profile in ":/profiles/models", not from a subclass:
-// a model whose reply shape differs gets a sibling adapter instead (ADR 89).
 class OcrModel
 {
     Q_DISABLE_COPY_MOVE(OcrModel)
@@ -25,6 +23,10 @@ class OcrModel
 public:
     explicit OcrModel(QString modelId);
     ~OcrModel() = default;
+
+    static std::unique_ptr<OcrModel> create(const QString &modelId);
+    static QString defaultId();
+    static QStringList registeredIds();
 
     QString id() const { return m_id; }
     QString displayName() const;

@@ -56,7 +56,7 @@ public:
     int startCount() const;
     int restartCount() const;
     int resolvedPort() const;
-    static int pickFreePort(QString *error = nullptr);
+    static int pickFreePort();
 
 signals:
     void stateChanged();

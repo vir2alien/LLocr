@@ -17,8 +17,7 @@
 #include "core/ModelProfiles.h"
 #include "core/OcrRequest.h"
 #include "models/GeneralPurposeModel.h"
-#include "models/OcrModelFactory.h"
-#include "models/QwenGeneralModel.h"
+#include "models/OcrModel.h"
 #include "parsers/BlockStyle.h"
 #include "parsers/ParserFactory.h"
 
@@ -30,9 +29,6 @@ namespace {
 class ExposedGeneralPurposeModel : public GeneralPurposeModel
 {
 public:
-    QString id() const override { return QStringLiteral("test-general"); }
-    QString displayName() const override { return QStringLiteral("Test general"); }
-
     QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
 
     CheckResult parse(const QByteArray &responseData) { return parseResponse(responseData); }
@@ -107,15 +103,15 @@ class TestOcrModels : public QObject
 private slots:
     void factoryDefaultAndRegistry()
     {
-        QCOMPARE(OcrModelFactory::defaultId(), QStringLiteral("unlimited-ocr"));
-        QVERIFY(OcrModelFactory::registeredIds().contains(QStringLiteral("unlimited-ocr")));
-        QVERIFY(OcrModelFactory::registeredIds().contains(QStringLiteral("lfm25-vl-3b")));
+        QCOMPARE(OcrModel::defaultId(), QStringLiteral("unlimited-ocr"));
+        QVERIFY(OcrModel::registeredIds().contains(QStringLiteral("unlimited-ocr")));
+        QVERIFY(OcrModel::registeredIds().contains(QStringLiteral("lfm25-vl-3b")));
 
-        const auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        const auto model = OcrModel::create(OcrModel::defaultId());
         QVERIFY(model != nullptr);
         QCOMPARE(model->id(), QStringLiteral("unlimited-ocr"));
 
-        const auto lfm = OcrModelFactory::create(QStringLiteral("lfm25-vl-3b"));
+        const auto lfm = OcrModel::create(QStringLiteral("lfm25-vl-3b"));
         QVERIFY(lfm != nullptr);
         QCOMPARE(lfm->id(), QStringLiteral("lfm25-vl-3b"));
     }
@@ -141,7 +137,7 @@ private slots:
         request.image = image;
         request.prompt = QStringLiteral("document parsing.");
 
-        auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        auto model = OcrModel::create(OcrModel::defaultId());
         QVERIFY(model != nullptr);
         QFuture<OcrResult> future = model->recognize(request, config);
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
@@ -152,17 +148,9 @@ private slots:
 
     void unknownIdFallsBackToDefault()
     {
-        const auto model = OcrModelFactory::create(QStringLiteral("no-such-model"));
+        const auto model = OcrModel::create(QStringLiteral("no-such-model"));
         QVERIFY(model != nullptr);
-        QCOMPARE(model->id(), OcrModelFactory::defaultId());
-    }
-
-    void idNameMapping()
-    {
-        const QString id = OcrModelFactory::defaultId();
-        const QString name = OcrModelFactory::displayNameForId(id);
-        QVERIFY(!name.isEmpty());
-        QCOMPARE(OcrModelFactory::idForDisplayName(name), id);
+        QCOMPARE(model->id(), OcrModel::defaultId());
     }
 
     // ADR 88: Settings → Output defaults to "auto", i.e. the model adapter
@@ -172,8 +160,8 @@ private slots:
     void everyModelDeclaresARegisteredParser()
     {
         const QStringList parsers = ParserFactory::registeredIds();
-        for (const QString &modelId : OcrModelFactory::registeredIds()) {
-            const QString parserId = OcrModelFactory::create(modelId)->defaultParserId();
+        for (const QString &modelId : OcrModel::registeredIds()) {
+            const QString parserId = OcrModel::create(modelId)->defaultParserId();
             QVERIFY2(!parserId.isEmpty(), qPrintable(modelId));
             QVERIFY2(parsers.contains(parserId), qPrintable(QStringLiteral("model %1 declares unregistered parser %2").arg(modelId, parserId)));
         }
@@ -256,7 +244,7 @@ private slots:
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
         config.timeoutMs = 10000;
 
-        const auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        const auto model = OcrModel::create(OcrModel::defaultId());
         QVERIFY(model != nullptr);
 
         QFuture<OcrResult> future = model->recognize(request, config);
@@ -306,7 +294,7 @@ private slots:
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
         config.timeoutMs = 10000;
 
-        auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        auto model = OcrModel::create(OcrModel::defaultId());
         QFuture<OcrResult> future = model->recognize(request, config);
 
         // I-05: the async chain is self-contained (no `this` captures), so
@@ -382,7 +370,7 @@ private slots:
         config.baseUrl = QStringLiteral("http://127.0.0.1:1");
         config.timeoutMs = 1000;
 
-        const auto model = OcrModelFactory::create(OcrModelFactory::defaultId());
+        const auto model = OcrModel::create(OcrModel::defaultId());
         QVERIFY(model != nullptr);
 
         QFuture<OcrResult> future = model->recognize(request, config);
@@ -390,15 +378,6 @@ private slots:
         const OcrResult result = future.result();
         QVERIFY(!result.success);
         QVERIFY(!result.errorMessage.isEmpty());
-    }
-
-    void qwenGeneralModelContract()
-    {
-        QwenGeneralModel model;
-
-        QVERIFY(!model.id().isEmpty());
-        QVERIFY(!model.displayName().isEmpty());
-        QCOMPARE(model.id(), QStringLiteral("qwen-general"));
     }
 
     void checkRequestBodyContainsImagePromptAndRecognizedText()
@@ -549,7 +528,7 @@ private slots:
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
         config.timeoutMs = 10000;
 
-        const auto model = std::make_unique<QwenGeneralModel>();
+        const auto model = std::make_unique<GeneralPurposeModel>();
         QFuture<CheckResult> future = model->check(request, config);
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(server.gotRequest);

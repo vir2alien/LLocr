@@ -5,8 +5,8 @@
 core/config/models/parsers, QML, кросс-слойный архитектурный) с перекрёстной
 верификацией каждой находки grep-ом по `src/`, `resources/qml/`, `tests/`,
 `main.cpp` — с учётом Q_PROPERTY/метаобъектных вызовов из QML и вызовов через
-указатели. Статус: **в работе** — раунды 1–3 выполнены; раунды 4–5 не
-начаты. Ниже план чистки по раундам (§9).
+указатели. Статус: **в работе** — раунды 1–4 выполнены; раунд 5 не начат.
+Ниже план чистки по раундам (§9).
 
 Сводка: ~70 находок — мёртвый код 25, «используется только тестами» ~18,
 дублирование 20, оверинжиниринг/переусложнение ~15.
@@ -331,14 +331,42 @@ QML, в отличие от `lupdate src`, который теряет пере�
 новых компонентов вместе с текстом (`lrelease` собрал 555 переводов), старые
 контексты помечены `vanished`.
 
-### Раунд 4 — test-only API и оверинжиниринг
+### Раунд 4 — test-only API и оверинжиниринг ✅ выполнен
 
-- Решение по каждому пункту §3: удалить (с тестом) или пометить как test seam.
-- Свёртка `QwenGeneralModel` в конкретный `GeneralPurposeModel` (§5).
-- Упрощение `DownloadManager` до QObject-очереди (§5) — модельный контракт
-  `test_download_manager` переписать под новую поверхность.
-- `OcrModelFactory` → простая функция/`defaultId()` (§3).
-- Явные connect'ы вместо `connectEveryChangeSignal` (§5).
+Удалено как мёртвое или дублирующее:
+`OcrModelFactory` целиком — фабрика без полиморфизма свёрнута в
+`OcrModel::create()` / `defaultId()` / `registeredIds()` (ADR 110/129 оставили
+хвост: `displayNameForId()`/`idForDisplayName()` и тест `idNameMapping` удалены,
+выбор модели идёт по id);
+`QwenGeneralModel` — иерархия из одного класса, виртуальные `id()`/
+`displayName()` не вызывались никем, `GeneralPurposeModel` стал конкретным;
+`DownloadManager` перестал быть `QAbstractListModel` (8 ролей и
+`QAbstractItemModelTester` в 11 тестах обслуживали представление, которого нет):
+теперь очередь на `QObject` с `taskCount()`;
+`ReleaseInfo::pickAsset()` — второй, параллельный выбор актива с другой
+семантикой матчинга (продюкшн выбирает через `RuntimeInstaller::pickAsset`),
+удалён вместе с двумя тестами;
+`DocumentModel::loadImage()`, `PageListModel::setPageCount()`,
+`BoxListModel::updateBoxText()`, `AppController::currentImage()`,
+`LlamaServerProcess::pickFreePort(QString *error)` — обёртки и out-параметр,
+жившие только ради тестов; тесты переписаны на публичный API.
+
+Оставлено сознательно (аудит назвал «только для тестов», но это ложные
+срабатывания — проверка grep'ом дала три ложноотрицательных результата, и
+компилятор их поймал):
+`RequestProfileStore::hasUserProfile()`/`resetToDefaults()`,
+`LaunchProfileStore::hasUserProfile()`/`resetToDefaults()` — тесты ими
+проверяют контракт персистентности («Save создаёт копию пользователя»,
+«сброс удаляет только её»), а не существование ради существования;
+`ServerCapabilities` (`supportsFlashAttn` и прочие) — документированная
+детекция возможностей, покрытая `test_capabilities`.
+
+`RuntimeController::connectEveryChangeSignal()` (п. §5) **не тронут**: это не
+оверинжиниринг, а работающее решение ADR 113. Тест
+`launchConfigDirtyFollowsTheRealLaunchConfiguration` требует, чтобы настройка,
+которую «никто не вспомнил внести», всё равно поднимала баннер, а
+несвязанная (геометрия окна) — нет; явный список connect'ов ровно это и ломал
+(тест падал на старом списке из 11 сигналов).
 
 ### Раунд 5 — архитектурные дедупликации
 

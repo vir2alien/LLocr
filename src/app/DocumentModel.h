@@ -58,8 +58,6 @@ public:
     ~DocumentModel();
     Q_DISABLE_COPY_MOVE(DocumentModel)
 
-    bool loadImage(const QString &path);
-
     bool appendImage(const QString &path);
     bool appendPdf(const QString &path);
     bool appendDjVu(const QString &path, QString *error = nullptr);

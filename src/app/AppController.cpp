@@ -25,7 +25,7 @@
 
 #include "config/RequestProfileStore.h"
 #include "core/StatusMessage.h"
-#include "models/OcrModelFactory.h"
+#include "models/OcrModel.h"
 
 namespace llocr {
 
@@ -97,7 +97,7 @@ QString AppController::effectiveParserId() const
     const QString configured = m_settings.parserId();
     if (!configured.isEmpty() && configured != ParserFactory::kAutoId)
         return configured;
-    return OcrModelFactory::create(m_settings.modelRecipeId())->defaultParserId();
+    return OcrModel::create(m_settings.modelRecipeId())->defaultParserId();
 }
 
 ParserOptions AppController::parserOptions() const
@@ -181,11 +181,6 @@ bool AppController::currentPageEditable() const
 bool AppController::currentPageEdited() const
 {
     return m_editStore.isEdited(m_currentPage);
-}
-
-QImage AppController::currentImage()
-{
-    return pageImage(m_currentPage);
 }
 
 QImage AppController::pageImage(int index, QString *error)

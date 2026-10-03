@@ -21,10 +21,7 @@ class GeneralPurposeModel
 
 public:
     GeneralPurposeModel() = default;
-    virtual ~GeneralPurposeModel() = default;
-
-    virtual QString id() const = 0;
-    virtual QString displayName() const = 0;
+    ~GeneralPurposeModel() = default;
 
     QFuture<CheckResult> check(const CheckRequest &request, const ConnectionConfig &config);
 

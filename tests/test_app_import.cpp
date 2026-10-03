@@ -493,7 +493,7 @@ private slots:
         }
         controller.setCurrentPage(5);
         QCOMPARE(controller.currentPage(), 5);
-        compareQuadrants(controller.currentImage(), colors(1));
+        compareQuadrants(controller.pageImage(controller.currentPage()), colors(1));
 
         const QString output = m_dir.filePath(QStringLiteral("unrecognized.txt"));
         QVERIFY(!controller.exportPages(QUrl::fromLocalFile(output), 0));
@@ -571,7 +571,7 @@ private slots:
         }
         controller.setCurrentPage(5);
         QCOMPARE(controller.currentPage(), 5);
-        compareQuadrants(controller.currentImage(), colors(1));
+        compareQuadrants(controller.pageImage(controller.currentPage()), colors(1));
         QVERIFY(model->data(model->index(5, 0), PageListModel::CurrentRole).toBool());
         QVERIFY(!model->data(model->index(0, 0), PageListModel::CurrentRole).toBool());
 
@@ -649,7 +649,7 @@ private slots:
             if (damaged) {
                 QCOMPARE(image.size(), QSize(800, 1000));
                 compareWhite(image);
-                compareWhite(controller.currentImage());
+                compareWhite(controller.pageImage(controller.currentPage()));
                 compareWhite(controller.pageThumbnail(row));
             } else {
                 const QList<QColor> expected = row == 0 ? QList<QColor>(4, Qt::yellow) : colors((row - 1) % 3);
@@ -667,11 +667,11 @@ private slots:
             const bool damaged = row == 0 || row == 4;
             QCOMPARE(controller.currentPageWarning(), damaged ? warning : QString());
             if (damaged) {
-                compareWhite(controller.currentImage());
+                compareWhite(controller.pageImage(controller.currentPage()));
             } else {
                 const int source = row == 1 || row == 3 ? 0 : 2;
-                QCOMPARE(controller.currentImage().size(), nativeSize(source));
-                compareQuadrants(controller.currentImage(), colors(source));
+                QCOMPARE(controller.pageImage(controller.currentPage()).size(), nativeSize(source));
+                compareQuadrants(controller.pageImage(controller.currentPage()), colors(source));
             }
         }
         QVERIFY(controller.removePage(4));
@@ -679,7 +679,7 @@ private slots:
         for (int row = 0; row < 4; ++row) {
             controller.setCurrentPage(row);
             QVERIFY(controller.currentPageWarning().isEmpty());
-            compareQuadrants(controller.currentImage(), colors(row % 2 == 0 ? 0 : 2));
+            compareQuadrants(controller.pageImage(controller.currentPage()), colors(row % 2 == 0 ? 0 : 2));
         }
 
         controller.openFiles({QUrl::fromLocalFile(m_multipage)});
@@ -1122,7 +1122,7 @@ private slots:
         compareQuadrants(controller.pageImage(2), colors(2));
 
         controller.setCurrentPage(1);
-        const qint64 imageKey = controller.currentImage().cacheKey();
+        const qint64 imageKey = controller.pageImage(controller.currentPage()).cacheKey();
         const qint64 thumbKey = controller.pageThumbnail(1).cacheKey();
         observations.committedCounts.clear();
         controller.openFiles({QUrl::fromLocalFile(path)});
@@ -1130,7 +1130,7 @@ private slots:
         QCOMPARE(controller.pageCount(), 3);
         QCOMPARE(qobject_cast<PageListModel *>(controller.pageModel())->rowCount(), 3);
         QCOMPARE(controller.currentPage(), 1);
-        QCOMPARE(controller.currentImage().cacheKey(), imageKey);
+        QCOMPARE(controller.pageImage(controller.currentPage()).cacheKey(), imageKey);
         QCOMPARE(controller.pageThumbnail(1).cacheKey(), thumbKey);
         QVERIFY(controller.currentPageWarning().isEmpty());
         QVERIFY(observations.committedCounts.isEmpty());

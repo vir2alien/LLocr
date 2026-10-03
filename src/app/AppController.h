@@ -146,7 +146,6 @@ public:
     void setProblemLog(ProblemLog *log) { m_problems = log; }
     void retranslate();
 
-    QImage currentImage();
     QImage pageImage(int index, QString *error = nullptr);
     QImage pageThumbnail(int index);
     QImage previewImage(int index);

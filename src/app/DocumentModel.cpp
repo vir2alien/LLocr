@@ -40,12 +40,6 @@ DocumentModel::~DocumentModel()
     clear();
 }
 
-bool DocumentModel::loadImage(const QString &path)
-{
-    clear();
-    return appendImage(path);
-}
-
 bool DocumentModel::appendImage(const QString &path)
 {
     DocumentPage page;
@@ -93,6 +87,17 @@ bool DocumentModel::appendFile(const QString &path, QString *error)
     if (!ok && error)
         *error = QCoreApplication::translate("DocumentModel", "Failed to open %1.").arg(path);
     return ok;
+}
+
+bool DocumentModel::appendDjVu(const QString &path, QString *error)
+{
+    const PreparedDjVu prepared = prepareDjVu(path);
+    if (error)
+        *error = prepared.error;
+    if (!prepared.error.isEmpty())
+        return false;
+    appendPreparedDjVu(prepared);
+    return true;
 }
 
 DocumentModel::PreparedDjVu DocumentModel::prepareDjVu(const QString &path)
@@ -157,17 +162,6 @@ void DocumentModel::appendPreparedDjVu(const PreparedDjVu &prepared)
         m_djvus.insert(key, prepared.document);
     m_pages.reserve(m_pages.size() + prepared.pages.size());
     m_pages.append(prepared.pages);
-}
-
-bool DocumentModel::appendDjVu(const QString &path, QString *error)
-{
-    const PreparedDjVu prepared = prepareDjVu(path);
-    if (error)
-        *error = prepared.error;
-    if (!prepared.error.isEmpty())
-        return false;
-    appendPreparedDjVu(prepared);
-    return true;
 }
 
 bool DocumentModel::removePage(int index)

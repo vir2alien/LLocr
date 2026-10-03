@@ -6,7 +6,7 @@
 #include "config/SettingsStore.h"
 #include "core/ConnectionConfig.h"
 #include "core/ModelProfiles.h"
-#include "models/OcrModelFactory.h"
+#include "models/OcrModel.h"
 
 namespace llocr {
 
@@ -49,7 +49,7 @@ void RecognitionController::resolveModel()
     const QString recipeId = m_settings.modelRecipeId();
     if (m_model && m_modelId == recipeId)
         return;
-    m_model = OcrModelFactory::create(recipeId);
+    m_model = OcrModel::create(recipeId);
     m_modelId = recipeId;
 }
 

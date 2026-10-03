@@ -33,7 +33,6 @@ public:
     void setFromResult(const OcrResult &result);
 
     Q_INVOKABLE void updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height);
-    Q_INVOKABLE void updateBoxText(int index, const QString &text);
     Q_INVOKABLE void updateBoxCheck(int index, int status, const QString &correctedText);
     void removeBox(int index);
     Q_INVOKABLE bool isImageBox(int index) const;

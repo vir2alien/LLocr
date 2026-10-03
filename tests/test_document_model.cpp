@@ -94,7 +94,8 @@ private slots:
         QVERIFY(source.save(path, "PNG"));
 
         DocumentModel model;
-        QVERIFY(model.loadImage(path));
+        model.clear();
+        QVERIFY(model.appendImage(path));
 
         QString error;
         const QImage image = model.fullImage(0, &error);
@@ -113,7 +114,8 @@ private slots:
         QVERIFY(valid.save(path, "PNG"));
 
         DocumentModel model;
-        QVERIFY(model.loadImage(path));
+        model.clear();
+        QVERIFY(model.appendImage(path));
         QVERIFY(QFile::remove(path));
 
         QString error;
@@ -132,7 +134,8 @@ private slots:
         QVERIFY(source.save(path, "PNG"));
 
         DocumentModel model;
-        QVERIFY(model.loadImage(path));
+        model.clear();
+        QVERIFY(model.appendImage(path));
         QVERIFY(!model.fullImage(0).isNull());
         QVERIFY(QFile::remove(path));
 

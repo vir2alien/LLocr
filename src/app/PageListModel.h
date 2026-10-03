@@ -24,7 +24,6 @@ public:
     QVariant data(const QModelIndex &index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setPageCount(int count);
     void appendPages(int count);
     void setRecognized(int index, bool recognized);
     void setEdited(int index, bool edited);

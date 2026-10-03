@@ -12,7 +12,7 @@ constexpr int kMaxFinishedTasks = 10;
 }
 
 DownloadManager::DownloadManager(QObject *parent)
-    : QAbstractListModel(parent), m_nam(new QNetworkAccessManager(this)), m_freeBytesQuery([](const QString &dirPath) { return QStorageInfo(dirPath).bytesAvailable(); })
+    : QObject(parent), m_nam(new QNetworkAccessManager(this)), m_freeBytesQuery([](const QString &dirPath) { return QStorageInfo(dirPath).bytesAvailable(); })
 {
     HttpClient::applyProcessDefaults();
 }
@@ -32,21 +32,9 @@ int DownloadManager::enqueue(const DownloadTask::Request &request)
     task->setFreeBytesQuery(m_freeBytesQuery);
 
     const int row = m_tasks.size();
-    beginInsertRows(QModelIndex(), row, row);
     m_tasks.append(task);
-    endInsertRows();
 
-    connect(task, &DownloadTask::stateChanged, this, [this, task]() {
-        const int r = m_tasks.indexOf(task);
-        if (r >= 0)
-            emit dataChanged(index(r), index(r), {StateRole, ErrorRole});
-    });
-    connect(task, &DownloadTask::progressChanged, this, [this, task]() {
-        const int r = m_tasks.indexOf(task);
-        if (r >= 0)
-            emit dataChanged(index(r), index(r), {ReceivedBytesRole, TotalBytesRole, SpeedRole, EtaRole});
-        emitProgress();
-    });
+    connect(task, &DownloadTask::progressChanged, this, [this]() { emitProgress(); });
     connect(task, &DownloadTask::downloadFinished, this, [this, task](bool ok) { onTaskFinished(task, ok); });
 
     emitProgress();
@@ -70,13 +58,6 @@ void DownloadManager::setFreeBytesQuery(DownloadTask::FreeBytesQuery query)
         task->setFreeBytesQuery(m_freeBytesQuery);
 }
 
-void DownloadManager::cancel(int row, bool deletePartial)
-{
-    if (row < 0 || row >= m_tasks.size())
-        return;
-    m_tasks.at(row)->cancel(deletePartial);
-}
-
 void DownloadManager::cancelAll(bool deletePartial)
 {
     for (DownloadTask *task : m_tasks)
@@ -88,53 +69,6 @@ DownloadTask *DownloadManager::taskAt(int row) const
     if (row < 0 || row >= m_tasks.size())
         return nullptr;
     return m_tasks.at(row);
-}
-
-int DownloadManager::rowCount(const QModelIndex &parent) const
-{
-    if (parent.isValid())
-        return 0;
-    return m_tasks.size();
-}
-
-QVariant DownloadManager::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_tasks.size())
-        return {};
-    const DownloadTask *task = m_tasks.at(index.row());
-    switch (role) {
-    case NameRole:
-        return task->fileName();
-    case TargetDirRole:
-        return task->targetDir();
-    case TotalBytesRole:
-        return QVariant::fromValue<qlonglong>(task->totalBytes());
-    case ReceivedBytesRole:
-        return QVariant::fromValue<qlonglong>(task->receivedBytes());
-    case SpeedRole:
-        return task->speedBytesPerSec();
-    case EtaRole:
-        return task->etaSec();
-    case StateRole:
-        return static_cast<int>(task->state());
-    case ErrorRole:
-        return task->error();
-    default:
-        return {};
-    }
-}
-
-QHash<int, QByteArray> DownloadManager::roleNames() const
-{
-    static const QHash<int, QByteArray> roles = {{NameRole, "name"},
-                                                 {TargetDirRole, "targetDir"},
-                                                 {TotalBytesRole, "totalBytes"},
-                                                 {ReceivedBytesRole, "receivedBytes"},
-                                                 {SpeedRole, "speed"},
-                                                 {EtaRole, "eta"},
-                                                 {StateRole, "state"},
-                                                 {ErrorRole, "error"}};
-    return roles;
 }
 
 void DownloadManager::startNextQueued()
@@ -172,9 +106,7 @@ void DownloadManager::emitProgress()
 void DownloadManager::onTaskFinished(DownloadTask *task, bool ok)
 {
     Q_UNUSED(ok);
-    const int row = m_tasks.indexOf(task);
-    if (row >= 0)
-        emit dataChanged(index(row), index(row), {StateRole, ErrorRole});
+    Q_UNUSED(task);
     emitProgress();
     QMetaObject::invokeMethod(
         this,
@@ -195,10 +127,7 @@ void DownloadManager::evictFinishedTasks()
     }
     const int excess = terminalRows.size() - kMaxFinishedTasks;
     for (int k = 0; k < excess; ++k) {
-        const int row = terminalRows.at(k) - k;
-        beginRemoveRows(QModelIndex(), row, row);
-        DownloadTask *task = m_tasks.takeAt(row);
-        endRemoveRows();
+        DownloadTask *task = m_tasks.takeAt(terminalRows.at(k) - k);
         task->disconnect(this);
         task->deleteLater();
     }

@@ -78,14 +78,10 @@ qt_add_library(llocr_models STATIC
     models/ChatExchange.h
     models/OcrModel.h
     models/OcrModel.cpp
-    models/OcrModelFactory.h
-    models/OcrModelFactory.cpp
     models/ImageDataUrl.h
     models/ImageDataUrl.cpp
     models/GeneralPurposeModel.h
     models/GeneralPurposeModel.cpp
-    models/QwenGeneralModel.h
-    models/QwenGeneralModel.cpp
 )
 target_include_directories(llocr_models PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_models PUBLIC llocr_core Qt6::Core Qt6::Gui)
@@ -161,7 +157,6 @@ qt_add_library(llocr_runtime STATIC
     runtime/SingleInstanceGuard.h
     runtime/SingleInstanceGuard.cpp
     runtime/ReleaseAsset.h
-    runtime/ReleaseAsset.cpp
     runtime/ReleaseCatalog.h
     runtime/ReleaseCatalog.cpp
     runtime/RuntimeInstaller.h

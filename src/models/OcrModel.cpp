@@ -87,6 +87,26 @@ void dumpRawResponse(const QByteArray &responseData, const QString &content, boo
 
 OcrModel::OcrModel(QString modelId) : m_id(std::move(modelId)) {}
 
+std::unique_ptr<OcrModel> OcrModel::create(const QString &modelId)
+{
+    if (ModelProfiles::find(ModelProfiles::instance(), modelId))
+        return std::make_unique<OcrModel>(modelId);
+
+    const QString fallback = defaultId();
+    qWarning() << "OcrModel: unknown model id" << modelId << "— falling back to" << fallback;
+    return std::make_unique<OcrModel>(fallback);
+}
+
+QString OcrModel::defaultId()
+{
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
+}
+
+QStringList OcrModel::registeredIds()
+{
+    return ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
+}
+
 QString OcrModel::displayName() const
 {
     if (const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), m_id))
