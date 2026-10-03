@@ -2,6 +2,7 @@
 
 #include <QElapsedTimer>
 #include <QFile>
+#include <QJsonArray>
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
@@ -57,6 +58,8 @@ public:
     int restartCount() const;
     int resolvedPort() const;
     static int pickFreePort();
+
+    static bool parseModelsResponse(const QByteArray &body, QJsonArray &models, QString *error = nullptr);
 
 signals:
     void stateChanged();

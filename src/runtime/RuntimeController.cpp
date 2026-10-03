@@ -576,14 +576,13 @@ void RuntimeController::onModelsReply(QNetworkReply *reply)
         return;
     }
 
-    QJsonParseError perr;
-    const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &perr);
-    if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
+    QJsonArray data;
+    QString parseError;
+    if (!LlamaServerProcess::parseModelsResponse(reply->readAll(), data, &parseError)) {
         setBusyState(AppBusyState::Idle);
-        failResolve(tr("Server returned a malformed /v1/models response: %1").arg(perr.errorString()));
+        failResolve(tr("Server returned a malformed /v1/models response: %1").arg(parseError));
         return;
     }
-    const QJsonArray data = doc.object().value(QStringLiteral("data")).toArray();
     if (data.isEmpty()) {
         setBusyState(AppBusyState::Idle);
         failResolve(tr("Server advertised no models via /v1/models. "

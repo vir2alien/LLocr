@@ -44,6 +44,28 @@ int LlamaServerProcess::pickFreePort()
     return 0;
 }
 
+bool LlamaServerProcess::parseModelsResponse(const QByteArray &body, QJsonArray &models, QString *error)
+{
+    models = QJsonArray();
+    if (error)
+        error->clear();
+
+    QJsonParseError parseError{};
+    const QJsonDocument doc = QJsonDocument::fromJson(body, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        if (error)
+            *error = parseError.errorString();
+        return false;
+    }
+    if (!doc.object().contains(QStringLiteral("data"))) {
+        if (error)
+            *error = QObject::tr("the response has no \"data\" member");
+        return false;
+    }
+    models = doc.object().value(QStringLiteral("data")).toArray();
+    return true;
+}
+
 LlamaServerProcess::LlamaServerProcess(const Options &opts, QObject *parent) : QObject(parent), m_opts(opts)
 {
     m_process.setProcessChannelMode(QProcess::MergedChannels);
@@ -202,9 +224,8 @@ void LlamaServerProcess::tryModelsFallback()
             qWarning() << "/v1/models fallback failed:" << reply->errorString();
             return;
         }
-        QJsonParseError perr;
-        const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &perr);
-        if (perr.error != QJsonParseError::NoError || !doc.isObject() || !doc.object().contains(QStringLiteral("data"))) {
+        QJsonArray models;
+        if (!parseModelsResponse(reply->readAll(), models)) {
             qWarning() << "/v1/models fallback returned a malformed body";
             return;
         }
