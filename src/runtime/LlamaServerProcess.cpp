@@ -343,6 +343,8 @@ void LlamaServerProcess::onProcessFinished(int /*exitCode*/, QProcess::ExitStatu
 {
     if (m_healthTimer)
         m_healthTimer->stop();
+    if (m_killTimer)
+        m_killTimer->stop();
 
     clearOwnerJson();
 

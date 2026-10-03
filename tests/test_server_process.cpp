@@ -22,6 +22,7 @@ private slots:
     void crashAndAutoRestartRecovery();
     void crashWindowReportsRestarting();
     void stopDuringStartupIsSafe();
+    void restartAfterGracefulStopSurvivesStaleKillTimer();
     void reportsTensorLoadPercent();
 };
 
@@ -136,6 +137,28 @@ void TestServerProcess::stopDuringStartupIsSafe()
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Starting, 3000);
     m->stop();
     QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 5000);
+}
+
+void TestServerProcess::restartAfterGracefulStopSurvivesStaleKillTimer()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    // A role switch is stop() → start() on the same object within the kill
+    // grace; the stale m_killTimer armed by stop() must not kill the respawn.
+    QScopedPointer<LlamaServerProcess> m(makeServer({}, 60000, true, dir, logFile));
+    QVERIFY(m->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 12000);
+    m->stop(1500);
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
+    QVERIFY(m->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 12000);
+    QCOMPARE(m->startCount(), 2);
+    QTest::qWait(2500);  // outlive the grace armed by stop(1500)
+    QVERIFY(m->isRunning());
+    QCOMPARE(m->restartCount(), 0);
+    QCOMPARE(int(m->state()), int(RuntimeState::Ready));
+    m->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
 }
 
 void TestServerProcess::reportsTensorLoadPercent()
