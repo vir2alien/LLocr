@@ -4,7 +4,7 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+361"/>
+        <location filename="../../src/app/AppController.cpp" line="+356"/>
         <source>No files selected.</source>
         <translation type="unfinished">Не выбрано ни одного файла</translation>
     </message>
@@ -320,7 +320,7 @@
 <context>
     <name>DocumentModel</name>
     <message>
-        <location filename="../../src/app/DocumentModel.cpp" line="+118"/>
+        <location filename="../../src/app/DocumentModel.cpp" line="+123"/>
         <source>Failed to read DjVu %1, page %2.</source>
         <translation>Не удалось прочитать DjVu %1, страницу %2.</translation>
     </message>
@@ -336,17 +336,17 @@
         <translation>Не удалось открыть DjVu %1: %2</translation>
     </message>
     <message>
-        <location line="-42"/>
+        <location line="-53"/>
         <source>Failed to open %1.</source>
         <translation>Не удалось открыть %1.</translation>
     </message>
     <message>
-        <location line="+48"/>
+        <location line="+59"/>
         <source>DjVu support is not available in this build. Install DjVuLibre and rebuild LLocr (see docs/06-dev-setup.md), or convert the document to PDF.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+122"/>
+        <location line="+111"/>
         <location line="+70"/>
         <source>DjVu document is not open: %1</source>
         <translation>Документ DjVu не открыт: %1</translation>
@@ -539,7 +539,7 @@
         <translation>Скрыть</translation>
     </message>
     <message>
-        <location line="+171"/>
+        <location line="+165"/>
         <source>Stop server</source>
         <translation>Остановить сервер</translation>
     </message>
@@ -554,7 +554,7 @@
         <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location line="-273"/>
+        <location line="-267"/>
         <source>The local runtime is owned by another LLocr instance.</source>
         <translation>Локальный рантайм занят другим экземпляром LLocr.</translation>
     </message>
@@ -640,7 +640,6 @@
     </message>
     <message>
         <location line="+25"/>
-        <location line="+6"/>
         <source>Stop</source>
         <translation>Стоп</translation>
     </message>
@@ -701,12 +700,12 @@
 <context>
     <name>Header</name>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="+44"/>
+        <location filename="../qml/MainWindow/Header.qml" line="+124"/>
         <source>Open…</source>
         <translation>Открыть…</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="-72"/>
         <source>Recognize</source>
         <translation>Распознать</translation>
     </message>
@@ -716,22 +715,27 @@
         <translation>Распознать всё</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+20"/>
         <source>Stop</source>
         <translation>Стоп</translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="+51"/>
         <source>Export…</source>
         <translation>Экспорт…</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="-14"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="-70"/>
+        <source>File</source>
+        <translation>Файл</translation>
+    </message>
+    <message>
+        <location line="+100"/>
         <source>Setup wizard</source>
         <translation>Мастер настройки</translation>
     </message>
@@ -751,7 +755,7 @@
         <translation>Проверка</translation>
     </message>
     <message>
-        <location line="-74"/>
+        <location line="-91"/>
         <source>Check page</source>
         <translation>Проверить страницу</translation>
     </message>
@@ -761,7 +765,7 @@
         <translation>Проверить всё</translation>
     </message>
     <message>
-        <location line="+72"/>
+        <location line="+89"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
@@ -1303,7 +1307,7 @@
         <translation type="vanished">Расположение</translation>
     </message>
     <message>
-        <location line="+76"/>
+        <location line="+74"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
@@ -1336,7 +1340,7 @@
 <context>
     <name>OcrModel</name>
     <message>
-        <location filename="../../src/models/OcrModel.cpp" line="+135"/>
+        <location filename="../../src/models/OcrModel.cpp" line="+155"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный JSON-ответ</translation>
     </message>
@@ -1445,7 +1449,7 @@
 <context>
     <name>ParamsTableEditor</name>
     <message>
-        <location filename="../qml/Common/ParamsTableEditor.qml" line="+20"/>
+        <location filename="../qml/Common/ParamsTableEditor.qml" line="+15"/>
         <source>value</source>
         <translation type="unfinished">значение</translation>
     </message>
@@ -1648,7 +1652,7 @@
         <translation>Отказ следовать перенаправлению не по https</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+29"/>
         <source>Unable to read %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1669,7 +1673,7 @@
         <translation>Скачивание прервано</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/InstallTransaction.cpp" line="+67"/>
+        <location filename="../../src/runtime/InstallTransaction.cpp" line="+78"/>
         <source>Downloaded archive missing: %1</source>
         <translation>Скачанный архив отсутствует: %1</translation>
     </message>
@@ -1727,8 +1731,7 @@
         <translation>Не удалось атомарно переименовать установку</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/LlamaServerProcess.cpp" line="+45"/>
-        <location line="+61"/>
+        <location filename="../../src/runtime/LlamaServerProcess.cpp" line="+126"/>
         <source>Unable to allocate a free loopback port</source>
         <translation>Не удалось выделить свободный порт loopback</translation>
     </message>
@@ -1738,18 +1741,23 @@
         <translation>Сервер уже запущен</translation>
     </message>
     <message>
-        <location line="+28"/>
-        <location line="+308"/>
+        <location line="-48"/>
+        <source>the response has no &quot;data&quot; member</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+76"/>
+        <location line="+309"/>
         <source>Starting server (attempt %1)</source>
         <translation>Запуск сервера (попытка %1)</translation>
     </message>
     <message>
-        <location line="-267"/>
+        <location line="-268"/>
         <source>Server did not answer /health within %1 ms</source>
         <translation>Сервер не ответил на /health в течение %1 мс</translation>
     </message>
     <message>
-        <location line="+173"/>
+        <location line="+174"/>
         <location line="+45"/>
         <location line="+39"/>
         <location line="+16"/>
@@ -1778,13 +1786,13 @@
         <translation>Остановка…</translation>
     </message>
     <message>
-        <location line="-152"/>
-        <location line="+147"/>
+        <location line="-154"/>
+        <location line="+149"/>
         <source>Loading model… %1%</source>
         <translation>Загрузка модели… %1%</translation>
     </message>
     <message>
-        <location line="-142"/>
+        <location line="-144"/>
         <source>Preparing context…</source>
         <translation>Подготовка контекста…</translation>
     </message>
@@ -1869,7 +1877,7 @@
         <translation type="vanished">Нет ответа</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/SelfTestController.cpp" line="+68"/>
+        <location filename="../../src/runtime/SelfTestController.cpp" line="+67"/>
         <source>Recognition failed</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1954,18 +1962,18 @@
         <translation type="vanished">Не удалось сделать бинарник исполняемым</translation>
     </message>
     <message>
-        <location filename="../../src/config/RuntimePaths.cpp" line="+83"/>
+        <location filename="../../src/config/RuntimePaths.cpp" line="+89"/>
         <source>Unable to create directory: %1</source>
         <translation>Не удалось создать папку: %1</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ModelRegistry.cpp" line="+171"/>
-        <location line="+81"/>
+        <location filename="../../src/runtime/ModelRegistry.cpp" line="+185"/>
+        <location line="+74"/>
         <source>Unable to read model registry: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-76"/>
+        <location line="-69"/>
         <source>Model index is corrupt; rescanning models directory</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1975,7 +1983,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="+37"/>
         <location line="+13"/>
         <source>Model registry is locked by another LLocr instance</source>
         <translation>Реестр моделей заблокирован другим экземпляром LLocr</translation>
@@ -1986,7 +1994,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+18"/>
         <source>Unable to open model index for writing: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2071,7 +2079,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+167"/>
+        <location line="+169"/>
         <source>Unable to keep the existing file %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2440,30 +2448,55 @@
 <context>
     <name>RuntimeBuildsList</name>
     <message>
-        <location filename="../qml/Common/RuntimeBuildsList.qml" line="+66"/>
+        <location filename="../qml/Common/RuntimeBuildsList.qml" line="+108"/>
         <source>%1 — binary missing</source>
         <translation>%1 — бинарник отсутствует</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="-71"/>
+        <location line="+93"/>
         <source>Active</source>
         <translation>Активна</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="-92"/>
+        <location line="+92"/>
         <source>Activate</source>
         <translation>Активировать</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+51"/>
+        <location line="+36"/>
         <source>Open folder</source>
         <translation>Открыть папку</translation>
+    </message>
+    <message>
+        <location line="-36"/>
+        <location line="+58"/>
+        <location line="+12"/>
+        <source>Delete build</source>
+        <translation>Удалить сборку</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>%1 will be deleted from disk.</source>
+        <translation>Сборка %1 будет удалена с диска.</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Delete</source>
+        <translation>Удалить</translation>
     </message>
 </context>
 <context>
     <name>RuntimeNoteWarning</name>
     <message>
-        <location filename="../qml/Common/RuntimeNoteWarning.qml" line="+14"/>
+        <location filename="../qml/Common/RuntimeNoteWarning.qml" line="+12"/>
         <source>The managed runtime cannot run this model. %1</source>
         <translation type="unfinished">Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
@@ -2661,7 +2694,7 @@
         <translation type="vanished">Активировать</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+45"/>
         <source>A newer build %1 is available%2</source>
         <translation>Доступна новая сборка %1%2</translation>
     </message>
@@ -3475,7 +3508,7 @@
         <translation type="vanished">Активировать</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+33"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -4310,7 +4343,7 @@
 <context>
     <name>llocr::ModelInstallTransaction</name>
     <message>
-        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="-200"/>
+        <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="-202"/>
         <source>Looking up %1 …</source>
         <translation>Поиск %1 …</translation>
     </message>
@@ -4327,7 +4360,7 @@
     </message>
     <message>
         <location line="-102"/>
-        <location line="+138"/>
+        <location line="+140"/>
         <source>Downloading %1 …</source>
         <translation>Скачивание %1 …</translation>
     </message>
@@ -4342,7 +4375,7 @@
         <translation>В репозитории есть файлы с одинаковыми именами в разных подкаталогах; установка невозможна</translation>
     </message>
     <message>
-        <location line="+136"/>
+        <location line="+134"/>
         <source>Download failed — check your connection and try again</source>
         <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
     </message>
@@ -4541,7 +4574,7 @@
         <translation>Уже запущен другой экземпляр LLocr</translation>
     </message>
     <message>
-        <location line="+291"/>
+        <location line="+290"/>
         <source>Probing %1…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4556,7 +4589,7 @@
         <translation>Остановка…</translation>
     </message>
     <message>
-        <location line="-514"/>
+        <location line="-513"/>
         <source>Managed server is not configured</source>
         <translation>Управляемый сервер не настроен</translation>
     </message>
@@ -4616,7 +4649,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+5"/>
         <source>Server advertised no models via /v1/models. Select a model in Settings → Models</source>
         <translation>Сервер не вернул модели в /v1/models. Выберите модель в Settings → Models</translation>
     </message>
@@ -4671,8 +4704,8 @@
         <translation>Бинарник сервера не выбран</translation>
     </message>
     <message>
-        <location line="-379"/>
-        <location line="+382"/>
+        <location line="-378"/>
+        <location line="+381"/>
         <source>File not found: %1</source>
         <translation>Файл не найден: %1</translation>
     </message>
@@ -4687,12 +4720,12 @@
         <translation>Сервер уже запущен</translation>
     </message>
     <message>
-        <location line="-370"/>
+        <location line="-369"/>
         <source>Model is not selected — pick a model in Settings → Models or in the Setup wizard</source>
         <translation>Модель не выбрана — выберите модель в Settings → Models или в мастере настройки</translation>
     </message>
     <message>
-        <location line="+567"/>
+        <location line="+566"/>
         <source>Server start cancelled</source>
         <translation>Запуск сервера отменён</translation>
     </message>
@@ -4702,7 +4735,7 @@
         <translation>Остановлен</translation>
     </message>
     <message>
-        <location line="-358"/>
+        <location line="-357"/>
         <source>Switching to the check model…</source>
         <translation>Переключение на модель проверки…</translation>
     </message>
@@ -4790,8 +4823,23 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-222"/>
-        <location line="+240"/>
+        <location line="+221"/>
+        <source>This build is active — activate another build first</source>
+        <translation>Эта сборка активна — сначала активируйте другую</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Unable to remove %1</source>
+        <translation>Не удалось удалить %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Removed %1</source>
+        <translation>Удалена сборка %1</translation>
+    </message>
+    <message>
+        <location line="-461"/>
+        <location line="+236"/>
         <source>Installing %1 …</source>
         <translation>Установка %1 …</translation>
     </message>
@@ -4827,17 +4875,19 @@
     </message>
     <message>
         <location line="+7"/>
+        <location line="+24"/>
         <source>An install is in progress</source>
         <translation>Идёт установка</translation>
     </message>
     <message>
-        <location line="-13"/>
+        <location line="-37"/>
         <location line="+15"/>
+        <location line="+27"/>
         <source>No such build</source>
         <translation>Сборка не найдена</translation>
     </message>
     <message>
-        <location line="-12"/>
+        <location line="-39"/>
         <location line="+15"/>
         <source>The build directory contains no llama-server binary</source>
         <translation>В каталоге сборки нет бинарника llama-server</translation>

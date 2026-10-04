@@ -50,6 +50,17 @@ QString locateServer(const QString &root)
     return QString();
 }
 
+qint64 directorySize(const QString &root)
+{
+    qint64 total = 0;
+    QDirIterator it(root, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        total += it.fileInfo().size();
+    }
+    return total;
+}
+
 ProbeResult probeInstalledBinary(const QString &serverAbs)
 {
     constexpr int kInstallProbeTimeoutMs = 120000;
@@ -190,6 +201,7 @@ QList<InstalledBuildInfo> InstallTransaction::scanInstalledBuilds(const RuntimeP
         const QString server = locateServer(runtime.filePath(name));
         if (!server.isEmpty())
             info.serverPath = server;
+        info.sizeBytes = directorySize(runtime.filePath(name));
         result.append(info);
     }
 

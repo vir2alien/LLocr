@@ -288,12 +288,6 @@ Item {
                     Layout.preferredHeight: 28
                 }
                 LLOButton {
-                    visible: Controller.checkBusy
-                    enabled: Controller.checkBusy
-                    text: qsTr("Stop")
-                    onClicked: Controller.stopCheck()
-                }
-                LLOButton {
                     visible: Controller.importing
                     enabled: Controller.importing
                     text: qsTr("Stop")

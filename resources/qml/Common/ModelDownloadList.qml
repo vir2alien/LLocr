@@ -344,6 +344,7 @@ ListView {
                     text: ""
                     enabled: row.selectedInstalled
                     onTriggered: {
+                        rowMenu.close()
                         const err = ModelInstaller.openQuantFolder(row.key, row.selectedLabel,
                                                                    root.isVerifyModelRole)
                         if (err.length)
@@ -367,6 +368,7 @@ ListView {
                     text: ""
                     enabled: row.selectedInstalled && !ModelInstaller.busy
                     onTriggered: {
+                        rowMenu.close()
                         const err = ModelInstaller.removeQuant(row.key, row.selectedLabel,
                                                                root.isVerifyModelRole)
                         if (err.length)
@@ -390,6 +392,7 @@ ListView {
                     text: ""
                     enabled: row.anyInstalled && !ModelInstaller.busy
                     onTriggered: {
+                        rowMenu.close()
                         deleteModelDialog.pendingKey = row.key
                         deleteModelDialog.pendingTitle = row.title
                         deleteModelDialog.open()

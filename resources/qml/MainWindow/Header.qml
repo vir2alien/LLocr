@@ -41,9 +41,9 @@ ToolBar {
         spacing: Theme.spacingSmall
 
         ToolButton {
-            text: qsTr("Open…")
-            enabled: !Controller.busy && !Controller.importing && !Controller.exporting
-            onClicked: headerRoot.openFileRequested()
+            id: fileButton
+            text: qsTr("File")
+            onClicked: fileMenu.popup(fileButton, 0, fileButton.height + 2)
         }
 
         ToolSeparator {}
@@ -61,11 +61,6 @@ ToolBar {
                      && Controller.canRecognize
             onClicked: Controller.recognizeAll()
         }
-        ToolButton {
-            text: qsTr("Stop")
-            enabled: Controller.busy
-            onClicked: Controller.stop()
-        }
 
         ToolButton {
             text: qsTr("Check page")
@@ -78,6 +73,16 @@ ToolBar {
             enabled: Controller.hasImage && !Controller.busy
                      && Controller.allPageVerificationSupported
             onClicked: Controller.checkAllEnabledBlocks()
+        }
+        ToolButton {
+            text: qsTr("Stop")
+            enabled: Controller.busy || Controller.checkBusy
+            onClicked: {
+                if (Controller.busy)
+                    Controller.stop()
+                else
+                    Controller.stopCheck()
+            }
         }
 
         ToolSeparator { visible: Controller.pageCount > 1 }
@@ -103,20 +108,6 @@ ToolBar {
             }
         }
 
-        ToolSeparator {}
-
-        ToolButton {
-            text: qsTr("Export…")
-            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-            onClicked: {
-                if (Controller.pageCount > 1) {
-                    headerRoot.exportRequested(true)
-                } else {
-                    headerRoot.exportRequested(false)
-                }
-            }
-        }
-
         Item { Layout.fillWidth: true }
 
         ToolButton {
@@ -125,6 +116,27 @@ ToolBar {
             onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
         }
     }//RowLayout
+
+    Menu {
+        id: fileMenu
+
+        MenuItem {
+            text: qsTr("Open…")
+            enabled: !Controller.busy && !Controller.importing && !Controller.exporting
+            onTriggered: headerRoot.openFileRequested()
+        }
+        MenuItem {
+            text: qsTr("Export…")
+            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
+            onTriggered: {
+                if (Controller.pageCount > 1) {
+                    headerRoot.exportRequested(true)
+                } else {
+                    headerRoot.exportRequested(false)
+                }
+            }
+        }
+    }
 
     Menu {
         id: settingsMenu

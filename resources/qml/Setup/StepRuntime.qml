@@ -96,7 +96,16 @@ Item {
                     id: wizardBuildsList
                     Layout.fillWidth: true
                     Layout.preferredHeight: wizardBuildsList.implicitHeight
-                    rowHeight: 34
+                    onActionError: (msg) => buildsError.text = msg
+                }
+
+                LLOLabel {
+                    id: buildsError
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    wrapMode: Text.WordWrap
+                    font.pointSize: Theme.captionSize
+                    color: Theme.error
                 }
 
                 ProgressBar {

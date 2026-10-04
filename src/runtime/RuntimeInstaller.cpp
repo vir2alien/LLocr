@@ -572,6 +572,42 @@ QString RuntimeInstaller::activateBuild(int index)
     return QString();
 }
 
+QString RuntimeInstaller::removeBuild(int index)
+{
+    if (m_busy) {
+        const QString msg = tr("An install is in progress");
+        setStatusMessage(msg);
+        return msg;
+    }
+    if (index < 0 || index >= m_installedBuilds->rowCount())
+        return tr("No such build");
+    const InstalledBuildInfo &b = m_installedBuilds->builds().at(index);
+    if (!b.serverPath.isEmpty() && RuntimePaths::normalized(b.serverPath) == RuntimePaths::normalized(m_settings.serverPath())) {
+        const QString msg = tr("This build is active — activate another build first");
+        setStatusMessage(msg);
+        return msg;
+    }
+
+    QString lockError;
+    if (!acquireInstallLock(lockError)) {
+        setStatusMessage(lockError);
+        return lockError;
+    }
+
+    if (!QDir(m_installState.paths().installDir(b.tag)).removeRecursively()) {
+        const QString msg = tr("Unable to remove %1").arg(b.tag);
+        setStatusMessage(msg);
+        releaseInstallLock();
+        return msg;
+    }
+
+    setStatusMessage(tr("Removed %1").arg(b.tag));
+    rescanInstalledBuilds();
+    recomputeHasUpdate();
+    releaseInstallLock();
+    return QString();
+}
+
 ReleaseAsset RuntimeInstaller::pickAsset(const ReleaseInfo &release, const QString &backend, bool wantCudart) const
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();

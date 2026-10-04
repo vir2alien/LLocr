@@ -11,12 +11,13 @@
 namespace llocr {
 
 struct InstalledBuildInfo {
-    QString tag;         // install directory name, e.g. "llama.cpp-b10594-cuda-cu12-win-x64"
-    QString build;       // parsed build token, e.g. "b10594"
-    QString backend;     // parsed backend token ("cuda-cu12"), empty when unparsable
-    QString serverPath;  // absolute llama-server path; empty when not found
+    QString tag;            // install directory name, e.g. "llama.cpp-b10594-cuda-cu12-win-x64"
+    QString build;          // parsed build token, e.g. "b10594"
+    QString backend;        // parsed backend token ("cuda-cu12"), empty when unparsable
+    QString serverPath;     // absolute llama-server path; empty when not found
+    qint64 sizeBytes = -1;  // recursive directory size; -1 when not computed
 
-    bool operator==(const InstalledBuildInfo &o) const { return tag == o.tag && build == o.build && backend == o.backend && serverPath == o.serverPath; }
+    bool operator==(const InstalledBuildInfo &o) const { return tag == o.tag && build == o.build && backend == o.backend && serverPath == o.serverPath && sizeBytes == o.sizeBytes; }
 };
 
 struct InstallOutput {

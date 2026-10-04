@@ -26,6 +26,7 @@ QHash<int, QByteArray> InstalledBuildsModel::roleNames() const
         {ServerPathRole, "serverPath"},
         {BinaryFoundRole, "binaryFound"},
         {ActiveRole, "active"},
+        {SizeRole, "sizeBytes"},
     };
 }
 
@@ -49,6 +50,8 @@ QVariant InstalledBuildsModel::data(const QModelIndex &index, int role) const
         return !build.serverPath.isEmpty();
     case ActiveRole:
         return isActive(build);
+    case SizeRole:
+        return build.sizeBytes;
     default:
         return {};
     }

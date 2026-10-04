@@ -93,6 +93,16 @@ ScrollView {
             Layout.preferredHeight: buildsList.implicitHeight
             maxVisibleRows: -1
             scrollable: false
+            onActionError: (msg) => buildsError.text = msg
+        }
+
+        LLOLabel {
+            id: buildsError
+            Layout.fillWidth: true
+            visible: text.length > 0
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.error
         }
 
         Rectangle {

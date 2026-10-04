@@ -79,6 +79,7 @@ public:
     Q_INVOKABLE void rescanInstalledBuilds();
     Q_INVOKABLE QString activateBuild(int index);
     Q_INVOKABLE QString openBuildFolder(int index);
+    Q_INVOKABLE QString removeBuild(int index);
     Q_INVOKABLE static QString backendDisplayName(const QString &backend);
 
     Q_INVOKABLE QString updateBuild() const;
