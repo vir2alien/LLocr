@@ -165,6 +165,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/RuntimeInstaller.cpp
     runtime/ArchiveExtractor.h
     runtime/ArchiveExtractor.cpp
+    runtime/ZipWriter.h
+    runtime/ZipWriter.cpp
     runtime/InstallTransaction.h
     runtime/InstallTransaction.cpp
     runtime/ModelPreset.h
@@ -230,6 +232,8 @@ qt_add_library(llocr_app STATIC
     app/PageIndex.h
     app/ProblemLog.h
     app/ProblemLog.cpp
+    app/ProjectStore.h
+    app/ProjectStore.cpp
     app/RecognitionController.h
     app/RecognitionController.cpp
     app/CheckController.h

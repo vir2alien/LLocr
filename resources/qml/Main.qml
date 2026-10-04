@@ -18,7 +18,9 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 600
     visible: true
-    title: qsTr("LLM OCR")
+    title: Controller.projectFileName !== ""
+           ? qsTr("LLM OCR — %1").arg(Controller.projectFileName)
+           : qsTr("LLM OCR")
 
     color: Theme.background
 
@@ -26,8 +28,19 @@ ApplicationWindow {
         window: mainWindow
     }
 
+    function saveCurrentProject()
+    {
+        if (Controller.projectPath && Controller.projectPath.toString() !== "")
+            Controller.saveProject(Controller.projectPath)
+        else
+            saveProjectDialog.open()
+    }
+
     header: Header {
         onOpenFileRequested: fileDialog.open()
+        onOpenProjectRequested: openProjectDialog.open()
+        onSaveProjectRequested: mainWindow.saveCurrentProject()
+        onSaveProjectAsRequested: saveProjectDialog.open()
         onExportRequested: (multiPage) => {
             if (multiPage) {
                 exportOptionsDialog.open()
@@ -148,6 +161,38 @@ ApplicationWindow {
                                            exportDialog.scope,
                                            exportDialog.fromPage,
                                            exportDialog.toPage)
+    }
+
+    FileDialog {
+        id: openProjectDialog
+        title: qsTr("Open project")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("LLocr project (*.llocr)")]
+        onAccepted: Controller.openProject(selectedFile)
+    }
+
+    FileDialog {
+        id: saveProjectDialog
+        title: qsTr("Save project")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "llocr"
+        nameFilters: [qsTr("LLocr project (*.llocr)")]
+        onAccepted: Controller.saveProject(selectedFile)
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Open]
+        onActivated: fileDialog.open()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Save]
+        onActivated: mainWindow.saveCurrentProject()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.SaveAs]
+        onActivated: saveProjectDialog.open()
     }
 
     footer: Footer {

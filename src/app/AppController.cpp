@@ -7,6 +7,7 @@
 
 #include <QBuffer>
 #include <QCoreApplication>
+#include <QDir>
 #include <QFileInfo>
 #include <QFutureWatcher>
 #include <QHash>
@@ -980,6 +981,308 @@ QString AppController::resolveImagesForPreview(const QString &markdown)
     m_previewCacheText = markdown;
     m_previewCacheResult = result;
     return result;
+}
+
+QString AppController::projectFileName() const
+{
+    return m_projectPath.isEmpty() ? QString() : QFileInfo(m_projectPath.toLocalFile()).fileName();
+}
+
+bool AppController::projectGuardsBusy() const
+{
+    return m_recognition.busy() || m_importing || m_export.exporting() || m_projectBusy || m_verify.queueActive() || m_verify.checkBusy();
+}
+
+bool AppController::collectProjectData(ProjectData *data, QString *error)
+{
+    QWriteLocker locker(&m_documentLock);
+    data->currentPage = m_currentPage;
+
+    QHash<QString, int> sourceIds;
+    for (int i = 0; i < m_document.pageCount(); ++i) {
+        const DocumentPage &page = m_document.page(i);
+        const QString key = QDir::fromNativeSeparators(QFileInfo(page.sourcePath).absoluteFilePath());
+        int id = sourceIds.value(key, -1);
+        if (id < 0) {
+            ProjectSource source;
+            source.id = data->sources.size();
+            source.originalName = QFileInfo(key).fileName();
+            source.typeName = ProjectStore::sourceTypeKey(page.sourceType);
+            if (QFileInfo::exists(key)) {
+                source.sourcePath = key;
+            } else if (!page.image.isNull()) {
+                // The source file is gone (a temp-dir import, a removed file);
+                // embed the rendered copy the page still holds.
+                source.fallbackImage = page.image;
+            } else {
+                if (error)
+                    *error = QCoreApplication::translate("AppController", "The source file %1 is gone, and the page has no rendered copy to embed.").arg(source.originalName);
+                return false;
+            }
+            id = source.id;
+            sourceIds.insert(key, id);
+            data->sources.append(source);
+        }
+
+        ProjectPageData entry;
+        entry.sourceId = id;
+        entry.sourcePageIndex = page.sourcePageIndex;
+        entry.recognized = page.recognized;
+        entry.hasDuplicates = !page.result.pages.isEmpty() && page.result.pages.first().hasDuplicates;
+        entry.text = page.result.text;
+        entry.parseNote = page.parseNote;
+        entry.boxes = page.result.pages.isEmpty() ? QList<BoundingBox>() : page.result.pages.first().boxes;
+        if (page.recognized) {
+            entry.baseline = m_editStore.baseline(i);
+            entry.edited = m_editStore.isEdited(i);
+        }
+        data->pages.append(entry);
+    }
+    return true;
+}
+
+void AppController::applyProjectData(const ProjectData &data)
+{
+    {
+        QWriteLocker locker(&m_documentLock);
+        m_document.clear();
+    }
+    m_editStore.clear();
+    m_pageModel.clear();
+    m_boxModel.setBoxes({});
+    m_selectedBox = -1;
+    m_currentPage = 0;
+
+    struct Occurrence {
+        int first = 0;
+        int count = 0;
+        QSet<int> used;
+    };
+    QHash<int, QList<Occurrence>> occurrences;
+    QList<int> mapped(data.pages.size(), -1);
+
+    QHash<int, int> sourceIndexById;
+    for (int i = 0; i < data.sources.size(); ++i)
+        sourceIndexById.insert(data.sources.at(i).id, i);
+
+    QStringList skipped;
+    for (int p = 0; p < data.pages.size(); ++p) {
+        const ProjectPageData &entry = data.pages.at(p);
+        const int sourceIndex = sourceIndexById.value(entry.sourceId, -1);
+        if (sourceIndex < 0) {
+            skipped.append(QString::number(p + 1));
+            continue;
+        }
+        const ProjectSource &source = data.sources.at(sourceIndex);
+        if (!source.available) {
+            skipped.append(QString::number(p + 1));
+            continue;
+        }
+
+        int index = -1;
+        for (Occurrence &range : occurrences[sourceIndex]) {
+            const int slot = entry.sourcePageIndex >= 0 ? entry.sourcePageIndex : 0;
+            if (slot < range.count && !range.used.contains(slot)) {
+                range.used.insert(slot);
+                index = range.first + slot;
+                break;
+            }
+        }
+        if (index < 0) {
+            const int before = m_document.pageCount();
+            QString appendError;
+            {
+                QWriteLocker locker(&m_documentLock);
+                m_document.appendFile(source.extractedPath, &appendError);
+            }
+            const int added = m_document.pageCount() - before;
+            if (added <= 0) {
+                skipped.append(QString::number(p + 1));
+                reportProblem(StatusMessage::literal(appendError));
+                continue;
+            }
+            Occurrence range;
+            range.first = before;
+            range.count = added;
+            const int slot = entry.sourcePageIndex >= 0 ? entry.sourcePageIndex : 0;
+            if (slot < added) {
+                range.used.insert(slot);
+                index = before + slot;
+            }
+            occurrences[sourceIndex].append(range);
+        }
+        mapped[p] = index;
+    }
+
+    QList<int> kept;
+    QList<int> savedIndexForSlot;
+    for (int p = 0; p < mapped.size(); ++p) {
+        if (mapped.at(p) >= 0) {
+            kept.append(mapped.at(p));
+            savedIndexForSlot.append(p);
+        }
+    }
+    const QSet<int> keepSet(kept.cbegin(), kept.cend());
+    {
+        QWriteLocker locker(&m_documentLock);
+        for (int i = m_document.pageCount() - 1; i >= 0; --i) {
+            if (!keepSet.contains(i))
+                m_document.removePage(i);
+        }
+    }
+    QList<int> sortedKept = kept;
+    std::sort(sortedKept.begin(), sortedKept.end());
+    QHash<int, int> reindex;
+    for (int i = 0; i < sortedKept.size(); ++i)
+        reindex.insert(sortedKept.at(i), i);
+    for (int &k : kept)
+        k = reindex.value(k, -1);
+    {
+        QWriteLocker locker(&m_documentLock);
+        for (int slot = 0; slot < kept.size(); ++slot) {
+            const int from = kept.at(slot);
+            if (from == slot)
+                continue;
+            m_document.movePage(from, slot);
+            for (int q = 0; q < kept.size(); ++q) {
+                if (q != slot && kept.at(q) >= slot && kept.at(q) < from)
+                    ++kept[q];
+            }
+            kept[slot] = slot;
+        }
+    }
+
+    m_pageModel.appendPages(kept.size());
+    for (int slot = 0; slot < kept.size(); ++slot) {
+        const ProjectPageData &entry = data.pages.at(savedIndexForSlot.at(slot));
+        DocumentPage &page = m_document.page(slot);
+        page.recognized = entry.recognized;
+        page.parseNote = entry.parseNote;
+        OcrResult result;
+        result.success = true;
+        OcrPage structured;
+        structured.text = entry.text;
+        structured.boxes = entry.boxes;
+        structured.hasDuplicates = entry.hasDuplicates;
+        result.text = entry.text;
+        result.pages.append(structured);
+        page.result = result;
+
+        m_editStore.reset(slot, entry.baseline);
+        if (entry.edited)
+            m_editStore.setEdited(slot, true);
+        m_pageModel.setRecognized(slot, entry.recognized);
+        m_pageModel.setEdited(slot, entry.edited);
+        m_pageModel.setHasDuplicates(slot, entry.hasDuplicates);
+    }
+
+    m_pageModel.setCurrent(0);
+    m_currentPage = data.pages.isEmpty() ? 0 : qBound(0, data.currentPage, m_document.pageCount() - 1);
+    m_pageModel.setCurrent(m_currentPage);
+    updateBoxesForCurrent();
+
+    if (!skipped.isEmpty())
+        reportProblem(StatusMessage::translate("AppController", "Project pages %1 could not be restored — see the problem log.").arg(skipped.join(QStringLiteral(", "))));
+    if (data.pages.isEmpty() || m_document.isEmpty())
+        setStatus(StatusMessage::translate("AppController", "The project contains no pages."));
+    else if (skipped.isEmpty())
+        setStatus(StatusMessage::translate("AppController", "Project opened: %1 page(s).").arg(m_document.pageCount()));
+    else
+        setStatus(StatusMessage::translate("AppController", "Project opened: %1 page(s), %2 skipped.").arg(m_document.pageCount()).arg(skipped.size()));
+
+    notifyDocumentChanged();
+}
+
+void AppController::openProject(const QUrl &fileUrl)
+{
+    if (projectGuardsBusy())
+        return;
+    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
+    if (path.isEmpty()) {
+        setStatus(StatusMessage::translate("AppController", "No project selected."));
+        return;
+    }
+
+    auto sessionDir = std::make_shared<QTemporaryDir>();
+    if (!sessionDir->isValid()) {
+        setStatus(StatusMessage::translate("AppController", "Cannot create a temporary directory for the project."));
+        return;
+    }
+
+    m_projectBusy = true;
+    emit projectBusyChanged();
+    setStatus(StatusMessage::translate("AppController", "Opening project…"));
+
+    auto *watcher = new QFutureWatcher<ProjectStore::LoadResult>(this);
+    connect(watcher, &QFutureWatcher<ProjectStore::LoadResult>::finished, this, [this, watcher, path, sessionDir]() {
+        watcher->deleteLater();
+        ProjectStore::LoadResult result = watcher->result();
+        m_projectBusy = false;
+        emit projectBusyChanged();
+
+        for (const QString &warning : std::as_const(result.warnings))
+            reportProblem(StatusMessage::literal(warning));
+        if (!result.error.isEmpty()) {
+            setStatus(StatusMessage::translate("AppController", "Cannot open the project: %1").arg(result.error));
+            reportProblem(StatusMessage::literal(result.error), ProblemLog::Error);
+            return;
+        }
+
+        applyProjectData(result.data);
+        m_projectSessionDir = sessionDir;
+        m_projectPath = QUrl::fromLocalFile(path);
+        emit projectPathChanged();
+    });
+    const QString extractDir = sessionDir->path();
+    watcher->setFuture(QtConcurrent::run([path, extractDir]() { return ProjectStore::load(path, extractDir); }));
+}
+
+void AppController::saveProject(const QUrl &fileUrl)
+{
+    if (projectGuardsBusy())
+        return;
+    if (m_document.isEmpty()) {
+        setStatus(StatusMessage::translate("AppController", "Nothing to save — no pages are open."));
+        return;
+    }
+    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
+    if (path.isEmpty()) {
+        setStatus(StatusMessage::translate("AppController", "No project selected."));
+        return;
+    }
+
+    ProjectData data;
+    QString error;
+    if (!collectProjectData(&data, &error)) {
+        setStatus(StatusMessage::translate("AppController", "Cannot save the project: %1").arg(error));
+        reportProblem(StatusMessage::literal(error), ProblemLog::Error);
+        return;
+    }
+
+    m_projectBusy = true;
+    emit projectBusyChanged();
+    setStatus(StatusMessage::translate("AppController", "Saving project…"));
+
+    auto *watcher = new QFutureWatcher<QPair<bool, QString>>(this);
+    connect(watcher, &QFutureWatcher<QPair<bool, QString>>::finished, this, [this, watcher, path]() {
+        watcher->deleteLater();
+        const auto outcome = watcher->result();
+        m_projectBusy = false;
+        emit projectBusyChanged();
+        if (!outcome.first) {
+            setStatus(StatusMessage::translate("AppController", "Cannot save the project: %1").arg(outcome.second));
+            reportProblem(StatusMessage::literal(outcome.second), ProblemLog::Error);
+            return;
+        }
+        m_projectPath = QUrl::fromLocalFile(path);
+        emit projectPathChanged();
+        setStatus(StatusMessage::translate("AppController", "Project saved: %1").arg(QFileInfo(path).fileName()));
+    });
+    watcher->setFuture(QtConcurrent::run([path, data]() {
+        QString saveError;
+        const bool ok = ProjectStore::save(path, data, &saveError);
+        return qMakePair(ok, saveError);
+    }));
 }
 
 }  // namespace llocr

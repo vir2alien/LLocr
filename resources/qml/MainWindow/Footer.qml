@@ -282,6 +282,7 @@ Item {
                 BusyIndicator {
                     running: Controller.busy || Controller.importing
                                                  || Controller.checkBusy
+                                                 || Controller.projectBusy
                                                  || Runtime.busyState === Runtime.StartingRuntime
                     visible: running
                     Layout.preferredWidth: 28

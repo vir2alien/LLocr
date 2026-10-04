@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QReadWriteLock>
 #include <QSet>
+#include <QTemporaryDir>
 #include <QUrl>
 #include <QVariant>
 
@@ -19,6 +20,7 @@
 #include "app/PageEditStore.h"
 #include "app/PageListModel.h"
 #include "app/ProblemLog.h"
+#include "app/ProjectStore.h"
 #include "app/RecognitionController.h"
 #include "app/VerificationPromptStore.h"
 #include "app/VerificationQueueController.h"
@@ -77,6 +79,9 @@ class AppController : public QObject
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters NOTIFY retranslateRequested)
 
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged)
+    Q_PROPERTY(bool projectBusy READ projectBusy NOTIFY projectBusyChanged)
+    Q_PROPERTY(QUrl projectPath READ projectPath NOTIFY projectPathChanged)
+    Q_PROPERTY(QString projectFileName READ projectFileName NOTIFY projectPathChanged)
 
     Q_PROPERTY(QObject *pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject *boxModel READ boxModel CONSTANT)
@@ -99,6 +104,9 @@ public:
 
     bool busy() const { return m_recognition.busy(); }
     bool exporting() const { return m_export.exporting(); }
+    bool projectBusy() const { return m_projectBusy; }
+    QUrl projectPath() const { return m_projectPath; }
+    QString projectFileName() const;
     bool importing() const { return m_importing; }
     int importProgressDone() const { return m_importDone; }
     int importProgressTotal() const { return m_importTotal; }
@@ -175,6 +183,9 @@ signals:
 
     void retranslateRequested();
 
+    void projectBusyChanged();
+    void projectPathChanged();
+
 public slots:
     Q_INVOKABLE void openFiles(const QVariantList &fileUrls);
     Q_INVOKABLE void recognizeCurrent();
@@ -194,6 +205,8 @@ public slots:
     Q_INVOKABLE void checkAllEnabledBlocks(bool onlyUnchecked = false);
     Q_INVOKABLE void stopCheck();
     Q_INVOKABLE void cancelImport();
+    Q_INVOKABLE void openProject(const QUrl &fileUrl);
+    Q_INVOKABLE void saveProject(const QUrl &fileUrl);
 
 private:
     struct ImportState;
@@ -215,6 +228,10 @@ private:
     const BoundingBox *selectedBox() const;
 
     void applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result);
+
+    bool collectProjectData(ProjectData *data, QString *error);
+    void applyProjectData(const ProjectData &data);
+    bool projectGuardsBusy() const;
 
 private:
     SettingsStore &m_settings;
@@ -252,6 +269,10 @@ private:
     QMutex m_thumbnailMutex;
     LruImageCache m_thumbnailCache{kThumbnailCacheBudgetBytes};
     QSet<QString> m_reportedUnrenderablePages;
+
+    bool m_projectBusy = false;
+    QUrl m_projectPath;
+    std::shared_ptr<QTemporaryDir> m_projectSessionDir;
 
     void notifyPageListGrown();
     void markPageEdited(int index);

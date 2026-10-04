@@ -9,6 +9,71 @@
         <translation type="unfinished">Не выбрано ни одного файла</translation>
     </message>
     <message>
+        <location line="+860"/>
+        <source>No project selected.</source>
+        <translation>Проект не выбран</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Cannot create a temporary directory for the project.</source>
+        <translation>Не удалось создать временную папку для проекта</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Opening project…</source>
+        <translation>Открытие проекта…</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Cannot open the project: %1</source>
+        <translation>Не удалось открыть проект: %1</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Nothing to save — no pages are open.</source>
+        <translation>Нечего сохранять — нет открытых страниц</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>The source file %1 is gone, and the page has no rendered copy to embed.</source>
+        <translation>Исходный файл %1 отсутствует, и у страницы нет копии изображения для встраивания</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Saving project…</source>
+        <translation>Сохранение проекта…</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Cannot save the project: %1</source>
+        <translation>Не удалось сохранить проект: %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Project saved: %1</source>
+        <translation>Проект сохранён: %1</translation>
+    </message>
+    <message>
+        <location line="-142"/>
+        <source>Project pages %1 could not be restored — see the problem log.</source>
+        <translation>Страницы проекта %1 не удалось восстановить — подробности в журнале проблем</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>The project contains no pages.</source>
+        <translation>Проект не содержит страниц</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Project opened: %1 page(s).</source>
+        <translation>Проект открыт: страниц: %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Project opened: %1 page(s), %2 skipped.</source>
+        <translation>Проект открыт: страниц: %1, пропущено: %2</translation>
+    </message>
+    <message>
         <location line="+29"/>
         <source>Importing %1 (%2/%3)…</source>
         <translation type="unfinished">Импорт %1 (%2/%3)…</translation>
@@ -705,6 +770,21 @@
         <translation>Открыть…</translation>
     </message>
     <message>
+        <location line="+5"/>
+        <source>Open project…</source>
+        <translation>Открыть проект…</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Save project</source>
+        <translation>Сохранить проект</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Save project as…</source>
+        <translation>Сохранить проект как…</translation>
+    </message>
+    <message>
         <location line="-72"/>
         <source>Recognize</source>
         <translation>Распознать</translation>
@@ -1188,6 +1268,26 @@
         <source>Export recognized text</source>
         <translation>Экспорт распознанного текста</translation>
     </message>
+    <message>
+        <location filename="../qml/Main.qml" line="+2"/>
+        <source>LLM OCR — %1</source>
+        <translation>LLM OCR — %1</translation>
+    </message>
+    <message>
+        <location line="+170"/>
+        <source>Open project</source>
+        <translation>Открытие проекта</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>LLocr project (*.llocr)</source>
+        <translation>Проект LLocr (*.llocr)</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Save project</source>
+        <translation>Сохранение проекта</translation>
+    </message>
 </context>
 <context>
     <name>ModelDownloadList</name>
@@ -1547,6 +1647,54 @@
         <location line="+6"/>
         <source>%1 entr(y/ies)</source>
         <translation>Записей: %1</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectStore</name>
+    <message>
+        <location filename="../../src/app/ProjectStore.cpp" line="+62"/>
+        <source>Cannot overwrite %1.</source>
+        <translation>Не удалось перезаписать %1</translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>Cannot read %1.</source>
+        <translation>Не удалось прочитать %1</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Cannot encode the image of %1.</source>
+        <translation>Не удалось закодировать изображение %1</translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>Cannot write %1.</source>
+        <translation>Не удалось записать %1</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>The project has no manifest.</source>
+        <translation>В проекте нет манифеста</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>The project manifest is malformed.</source>
+        <translation>Манифест проекта повреждён</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>%1 is not an LLocr project.</source>
+        <translation>%1 не является проектом LLocr</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The project format version (%1) is not supported by this version of the app.</source>
+        <translation>Версия формата проекта (%1) не поддерживается этой версией приложения</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Embedded file %1 is missing from the project.</source>
+        <translation>Файл %1 отсутствует в проекте</translation>
     </message>
 </context>
 <context>

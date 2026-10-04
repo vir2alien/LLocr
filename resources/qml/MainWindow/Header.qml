@@ -12,6 +12,9 @@ ToolBar {
     id: headerRoot
 
     signal openFileRequested()
+    signal openProjectRequested()
+    signal saveProjectRequested()
+    signal saveProjectAsRequested()
     signal exportRequested(bool multiPage)
     signal setupWizardRequested()
     signal openUiSettingsRequested()
@@ -125,6 +128,28 @@ ToolBar {
             enabled: !Controller.busy && !Controller.importing && !Controller.exporting
             onTriggered: headerRoot.openFileRequested()
         }
+        MenuItem {
+            text: qsTr("Open project…")
+            enabled: !Controller.busy && !Controller.importing && !Controller.exporting
+                         && !Controller.projectBusy && !Controller.checkRunning
+            onTriggered: headerRoot.openProjectRequested()
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: qsTr("Save project")
+            enabled: Controller.hasImage && !Controller.busy && !Controller.importing
+                         && !Controller.exporting && !Controller.projectBusy
+                         && !Controller.checkRunning
+            onTriggered: headerRoot.saveProjectRequested()
+        }
+        MenuItem {
+            text: qsTr("Save project as…")
+            enabled: Controller.hasImage && !Controller.busy && !Controller.importing
+                         && !Controller.exporting && !Controller.projectBusy
+                         && !Controller.checkRunning
+            onTriggered: headerRoot.saveProjectAsRequested()
+        }
+        MenuSeparator {}
         MenuItem {
             text: qsTr("Export…")
             enabled: Controller.hasResult && !Controller.exporting && !Controller.importing

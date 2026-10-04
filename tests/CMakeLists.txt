@@ -122,6 +122,16 @@ target_link_libraries(test_box_model PRIVATE
 )
 add_test(NAME test_box_model COMMAND test_box_model)
 
+# The project container (.llocr): ZipWriter <-> ArchiveExtractor round-trip and
+# the ProjectStore serialization (sources, boxes, edits, verification state).
+qt_add_executable(test_project_store test_project_store.cpp)
+
+target_link_libraries(test_project_store PRIVATE
+    Qt6::Test
+    llocr_app
+)
+add_test(NAME test_project_store COMMAND test_project_store)
+
 # DjVu input is optional (ADR 69): llocr_app compiles DjVuDocument.cpp and
 # publishes LLOCR_HAVE_DJVU, so this target needs no per-test wiring — the
 # define and the library now travel together (ADR 95).

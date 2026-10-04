@@ -206,7 +206,8 @@
   `test_capabilities`, `test_server_process`, `test_ensure_connection`,
   (`test_download_manager`, `test_release_catalog`, `test_archive_extractor`,
   `test_install_transaction`, `test_model_catalog`, `test_model_registry`,
-  `test_model_memory_estimator`, `test_install_lock`) and the helper
+  `test_model_memory_estimator`, `test_install_lock`), the project-file suite
+  `test_project_store` (`.llocr` save/open, ADR 131) and the helper
   `mock_llama_server`.
   
   ## Current status
@@ -219,9 +220,11 @@
     (keychain).
   - Also done: PDF input, batch/multi-page processing, HTML/DOCX/PDF export,
     editable text panel, page reordering, image-block editing, Markdown
-    preview, i18n. Unit tests: four base targets + fifteen local-runtime
+    preview, i18n, **project save/open** (self-contained `.llocr` ZIP with the
+    embedded sources — pages, blocks, verification state, manual edits; ADR
+    131). Unit tests: four base targets + fifteen local-runtime
     targets under `tests/` (the OCR-model suite `test_ocr_models` guards the
-    model ↔ parser link).
+    model ↔ parser link; `test_project_store` covers the project container).
   - Local-runtime plan progress:
     - **A** (skeleton, `ConnectionMode`, resolver, settings groups,
       `SingleInstanceGuard`) ✅
@@ -329,7 +332,10 @@
     toggle a **Markdown preview** (Qt WebEngine + marked + KaTeX) → **edit
     image/chart blocks** (move / resize / delete) directly on the preview →
     **export** to TXT / MD / HTML / DOCX (Pandoc) / PDF (Pandoc or built-in
-    writer), with **All / Current / page-range** scope, and — in
+    writer), with **All / Current / page-range** scope, **save** the whole
+    working state to a self-contained **`.llocr`** project (pages + sources,
+    recognized blocks, verification results, manual edits) and **open** it
+    again (File menu; `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S`; ADR 131), and — in
     **Settings → Runtime** — install a local llama.cpp runtime, and in
     **Settings → Models** — install GGUF models from Hugging Face. That list is
     **one row per model** with the quantization picked on the row

@@ -476,3 +476,35 @@ Once the runtime is wired, the main window surfaces its state:
 - **Settings → Runtime** carries Start/Stop/Restart, probe status, Show log,
   and the stage-D installer; the model windows (OCR/Check) carry the model
   table/presets/HF (Location tab). ✅
+
+## 4.20 Project file (`.llocr`)
+The whole working state can be saved to and reopened from a single
+self-contained **`.llocr`** file (File menu: «Open project…», «Save project»
+`Ctrl+S`, «Save project as…» `Ctrl+Shift+S`; ADR 131). ✅
+
+- **Format** — a store-only ZIP holding `project.json` (schema version 1,
+  `format`/`version` envelope like the profile stores) and the **embedded
+  original sources** under `sources/` (a multi-page PDF/DjVu is stored once
+  for all of its pages). Written by `runtime/ZipWriter`, read by
+  `ArchiveExtractor`.
+- **Per page** — the effective text (manual edits included), the recognized
+  baseline and the edited flag (ADR 102/103), the boxes with
+  `checkStatus`/`correctedText`/rects (verification results and image-block
+  edits), `parseNote`, `hasDuplicates`, plus the source reference
+  (file id + page index). The current page is restored. App-level settings
+  (connection, models, parser, verification prompts) are *not* project state.
+- **Save** (`AppController::saveProject`) snapshots on the GUI thread and
+  writes in a worker (`projectBusy` feeds the footer spinner); the file is
+  written to a `.tmp` and renamed atomically. A source file that no longer
+  exists falls back to the page's resident rendered image; if there is none,
+  the save refuses and names the file.
+- **Open** (`AppController::openProject`) extracts in a worker into a session
+  `QTemporaryDir` owned by the controller (the extracted sources live as long
+  as the document), then rebuilds the document through the public
+  `DocumentModel` API (`appendFile`/`removePage`/`movePage`) — the same lazy
+  rendering, eviction and re-recognition path as a fresh import. A file that
+  was imported twice is reconstructed by consuming `(source, page index)`
+  slots of appended ranges in order.
+- **Tests** — `test_project_store` (container round-trip, schema validation,
+  fallbacks) and `TestAppImport::projectSaveAndReopenRestoresTheWorkingState`
+  (end-to-end: recognize → edit → reorder → save → reopen).

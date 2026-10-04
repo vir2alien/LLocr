@@ -1088,6 +1088,82 @@ private slots:
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("1. Introduction")));
     }
 
+    // The project file is the whole working state: pages (with their sources),
+    // recognized blocks, verification results, manual edits and the current
+    // page. Saving and reopening it must restore all of that and keep the
+    // document fully functional (re-rendering, further saves).
+    void projectSaveAndReopenRestoresTheWorkingState()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY(controller.hasResult());
+        QVERIFY(controller.removeBlock(1));
+        QVERIFY(controller.currentPageEdited());
+        controller.setCurrentPageText(controller.resultText() + QStringLiteral("\nhand-added line"));
+
+        // A different page becomes current, and the pages are reordered.
+        controller.setCurrentPage(2);
+        QVERIFY(controller.movePage(0, 3));
+        QCOMPARE(controller.currentPage(), 1);
+
+        const QString projectPath = m_dir.filePath(QStringLiteral("saved.llocr"));
+        QSignalSpy busySpy(&controller, &AppController::projectBusyChanged);
+        controller.saveProject(QUrl::fromLocalFile(projectPath));
+        QVERIFY(busySpy.count() >= 1);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+        QCOMPARE(controller.projectPath().toLocalFile(), projectPath);
+        QCOMPARE(controller.projectFileName(), QStringLiteral("saved.llocr"));
+        QVERIFY(QFile::exists(projectPath));
+
+        // Reopen into the same controller: the whole state must come back.
+        controller.openProject(QUrl::fromLocalFile(projectPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+        QCOMPARE(controller.pageCount(), 4);
+        QCOMPARE(controller.currentPage(), 1);
+
+        // Page 0 after the move is the former PDF page 1; page 3 is the
+        // recognized raster with its edit.
+        QVERIFY(!controller.currentPageEditable());
+        controller.setCurrentPage(3);
+        QVERIFY(controller.currentPageEditable());
+        QVERIFY(controller.currentPageEdited());
+        const QString restored = controller.resultText();
+        QVERIFY(restored.contains(QStringLiteral("1. Introduction")));
+        QVERIFY(restored.contains(QStringLiteral("hand-added line")));
+        QVERIFY(!restored.contains(QStringLiteral("Second block text")));  // the removed block stays removed
+        QCOMPARE(qobject_cast<QAbstractItemModel *>(controller.boxModel())->rowCount(), 1);
+
+        // Revert lands on the recognized baseline, not on the empty page text.
+        controller.revertCurrentPageEdits();
+        QVERIFY(!controller.currentPageEdited());
+        QVERIFY(controller.resultText().contains(QStringLiteral("Second block text")));
+
+        // The embedded sources still render: the raster page keeps its colour.
+        const QImage rasterPage = controller.pageImage(3);
+        compareQuadrants(rasterPage.scaled(32, 32, Qt::KeepAspectRatio), {Qt::yellow, Qt::yellow, Qt::yellow, Qt::yellow});
+
+        // Saving the reopened project works again (sources come from the
+        // session directory), and a second open replaces the session.
+        const QString secondPath = m_dir.filePath(QStringLiteral("again.llocr"));
+        controller.saveProject(QUrl::fromLocalFile(secondPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+        controller.openProject(QUrl::fromLocalFile(secondPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+        QCOMPARE(controller.pageCount(), 4);
+        QCOMPARE(controller.projectPath().toLocalFile(), secondPath);
+    }
+
     void failedImportsClearStateAndAllowRetry_data()
     {
         QTest::addColumn<QString>("kind");
