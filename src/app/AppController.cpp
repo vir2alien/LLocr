@@ -38,9 +38,16 @@ AppController::AppController(
                                                     requestProfiles,
                                                     [this](int index, QString &error) { return pageImage(index, &error); },
                                                     nullptr,
-                                                    [this](int index) {
+                                                    [this](int index, bool batch) {
                                                         QReadLocker locker(&m_documentLock);
-                                                        return m_document.isValidIndex(index) && !m_document.page(index).sourceError.isEmpty();
+                                                        if (!m_document.isValidIndex(index))
+                                                            return PageSkip::Unreadable;
+                                                        const DocumentPage &page = m_document.page(index);
+                                                        if (!page.sourceError.isEmpty())
+                                                            return PageSkip::Unreadable;
+                                                        if (batch && page.recognized)
+                                                            return PageSkip::AlreadyRecognized;
+                                                        return PageSkip::None;
                                                     }),
       m_verify({m_document, verification, checkRequestProfiles, runtime, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_recognition.busy(); }},
                this),

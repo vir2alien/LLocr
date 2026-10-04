@@ -20,6 +20,7 @@
 #include <QThread>
 #include <QThreadPool>
 #include <QTimer>
+#include <set>
 
 #include "app/AppController.h"
 #include "app/BoxListModel.h"
@@ -360,9 +361,9 @@ private slots:
                 return image;
             },
             nullptr,
-            [&skippedPages](int index) {
+            [&skippedPages](int index, bool) {
                 skippedPages.append(index);
-                return true;
+                return PageSkip::Unreadable;
             });
         QSignalSpy resultSpy(&recognition, &RecognitionController::rawResultReady);
         QSignalSpy statusSpy(&recognition, &RecognitionController::statusRequested);
@@ -390,9 +391,102 @@ private slots:
         QCOMPARE(providerCalls, 0);
         QCOMPARE(skippedPages, QList<int>({0, 1, 2}));
         QCOMPARE(resultSpy.count(), 0);
-        QCOMPARE(busySpy.count(), 2);
+        // Nothing was left to recognize, so the run ends without ever becoming
+        // busy: resolving a connection here would start the managed server and
+        // load a model for no page.
+        QCOMPARE(busySpy.count(), 0);
         QCOMPARE(statusSpy.count(), 1);
-        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Recognition finished. Skipped 3 unreadable page(s)."));
+        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Nothing to recognize: 3 unreadable page(s)"));
+    }
+
+    // A batch run must not redo pages that already have a result, and a run with
+    // nothing left to do must not even resolve a connection (that would start the
+    // managed server and load a model for no work). The single-page run keeps the
+    // opposite meaning: re-running the OCR for the page you are looking at.
+    void recognizeAllSkipsPagesThatAlreadyHaveAResult()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.recognizeAll();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
+        const QString allFinished = controller.statusMessage();
+        QVERIFY(!allFinished.contains(QStringLiteral("already recognized")));
+
+        // All four pages now carry a result, so a second batch has no work.
+        QSignalSpy busySpy(&controller, &AppController::busyChanged);
+        QSignalSpy statusSpy(&controller, &AppController::statusChanged);
+        controller.recognizeAll();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QCOMPARE(busySpy.count(), 0);  // never went busy: no connection was resolved
+        QVERIFY(controller.statusMessage().contains(QStringLiteral("Nothing to recognize")));
+        QVERIFY(controller.statusMessage().contains(QStringLiteral("4 page(s) already recognized")));
+        QVERIFY(statusSpy.count() > 0);
+
+        // Recognizing the current page explicitly re-runs it despite the result.
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QCOMPARE(busySpy.count(), 2);
+        QVERIFY(controller.resultText().contains(QStringLiteral("1. Introduction")));
+    }
+
+    // The skip rule itself, isolated from the document: a batch run sends only the
+    // pages without a result, a single-page run sends its page whatever its
+    // state, and a batch with nothing left never reaches the model at all.
+    void theBatchSkipRuleOnlySkipsPagesWithAResult()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        std::set<int> withResult{0, 2, 3};
+        QList<int> askedFor;
+        RecognitionController recognition(
+            *m_settings,
+            *m_runtime,
+            *m_requestProfiles,
+            [&askedFor](int index, QString &) {
+                askedFor.append(index);
+                return QImage(20, 20, QImage::Format_RGB32);
+            },
+            nullptr,
+            [&withResult](int index, bool batch) { return batch && withResult.contains(index) ? PageSkip::AlreadyRecognized : PageSkip::None; });
+
+        // Pages 0, 2 and 3 already have a result, so only page 1 is sent.
+        recognition.startAll(4);
+        QTRY_VERIFY_WITH_TIMEOUT(!recognition.busy(), kImportTimeoutMs);
+        QCOMPARE(askedFor, QList<int>({1}));
+
+        // The single-page run ignores the rule: page 2 is recognized again.
+        askedFor.clear();
+        recognition.startCurrent(2, 4);
+        QTRY_VERIFY_WITH_TIMEOUT(!recognition.busy(), kImportTimeoutMs);
+        QCOMPARE(askedFor, QList<int>({2}));
+
+        // Nothing left to do: the run must end without asking for a single page
+        // (and without resolving a connection, which is what would start the
+        // managed server for work there is none).
+        withResult = {0, 1, 2, 3};
+        askedFor.clear();
+        QSignalSpy statusSpy(&recognition, &RecognitionController::statusRequested);
+        QSignalSpy busySpy(&recognition, &RecognitionController::busyChanged);
+        recognition.startAll(4);
+        QVERIFY(!recognition.busy());
+        QCOMPARE(askedFor, QList<int>());
+        QCOMPARE(busySpy.count(), 0);
+        QCOMPARE(statusSpy.count(), 1);
+        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Nothing to recognize: 4 page(s) already recognized"));
     }
 
     // Cancelling a batch: the files already committed stay, the rest are not

@@ -20,15 +20,22 @@ namespace llocr {
 class SettingsStore;
 class RequestProfileStore;
 
+enum class PageSkip {
+    None,
+    Unreadable,  ///< a blank replacement for a page the source could not decode
+    AlreadyRecognized,
+};
+
 class RecognitionController : public QObject
 {
     Q_OBJECT
 
 public:
     using ImageProvider = std::function<QImage(int pageIndex, QString &error)>;
+    using SkipResolver = std::function<PageSkip(int pageIndex, bool batch)>;
 
     explicit RecognitionController(
-        SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, ImageProvider imageProvider, QObject *parent = nullptr, std::function<bool(int)> skipPage = {});
+        SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, ImageProvider imageProvider, QObject *parent = nullptr, SkipResolver skipPage = {});
 
     bool busy() const { return m_busy; }
     void startCurrent(int index, int totalPages);
@@ -47,18 +54,21 @@ private slots:
 private:
     void ensureConnectionReady();
     void resolveModel();
+    int firstPageToRecognize(int from);
     void recognizePage(int index);
     void finishRun();
     void setBusy(bool busy);
     QString promptText() const;
+    StatusMessage skipReport() const;
     OcrRequest buildRequest(const QImage &image, const ResolvedConnection &conn) const;
 
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
     RequestProfileStore &m_requestProfiles;
     ImageProvider m_imageProvider;
-    std::function<bool(int)> m_skipPage;
-    int m_skippedPages = 0;
+    SkipResolver m_skipPage;
+    int m_skippedUnreadable = 0;
+    int m_skippedRecognized = 0;
 
     ResolvedConnection m_connection;
 

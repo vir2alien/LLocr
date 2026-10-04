@@ -2466,9 +2466,20 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+66"/>
         <source>Recognition finished. Skipped %1 unreadable page(s).</source>
-        <translation type="unfinished">Распознавание закончено. Пропущено нечитаемых страниц: %1.</translation>
+        <translation type="vanished">Распознавание закончено. Пропущено нечитаемых страниц: %1.</translation>
+    </message>
+    <message>
+        <source>Nothing to recognize:</source>
+        <translation>Распознавать нечего:</translation>
+    </message>
+    <message>
+        <source>%1 page(s) already recognized</source>
+        <translation>уже распознано страниц: %1</translation>
+    </message>
+    <message>
+        <source>%1 unreadable page(s)</source>
+        <translation>нечитаемых страниц: %1</translation>
     </message>
     <message>
         <location line="-59"/>

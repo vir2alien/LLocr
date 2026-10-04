@@ -11,7 +11,7 @@
 namespace llocr {
 
 RecognitionController::RecognitionController(
-    SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, ImageProvider imageProvider, QObject *parent, std::function<bool(int)> skipPage)
+    SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, ImageProvider imageProvider, QObject *parent, SkipResolver skipPage)
     : QObject(parent), m_settings(settings), m_runtime(runtime), m_requestProfiles(requestProfiles), m_imageProvider(imageProvider), m_skipPage(std::move(skipPage))
 {
     connect(&m_watcher, &QFutureWatcher<OcrResult>::finished, this, &RecognitionController::onRecognitionFinished);
@@ -39,18 +39,55 @@ void RecognitionController::startAll(int totalPages)
     m_stopRequested = false;
     m_recognizeAll = true;
     resolveModel();
+
+    m_startIndex = firstPageToRecognize(0);
+    if (m_startIndex < 0) {
+        emit statusRequested(StatusMessage::join({StatusMessage::translate("RecognitionController", "Nothing to recognize:"), skipReport()}, QStringLiteral(" ")));
+        m_recognizeAll = false;
+        return;
+    }
+
     setBusy(true);
     ensureConnectionReady();
 }
 
 void RecognitionController::resolveModel()
 {
-    m_skippedPages = 0;
+    m_skippedUnreadable = 0;
+    m_skippedRecognized = 0;
     const QString recipeId = m_settings.modelRecipeId();
     if (m_model && m_modelId == recipeId)
         return;
     m_model = OcrModel::create(recipeId);
     m_modelId = recipeId;
+}
+
+StatusMessage RecognitionController::skipReport() const
+{
+    QList<StatusMessage> parts;
+    if (m_skippedRecognized > 0) {
+        parts.append(StatusMessage::translate("RecognitionController", "%1 page(s) already recognized").arg(m_skippedRecognized));
+    }
+    if (m_skippedUnreadable > 0) {
+        parts.append(StatusMessage::translate("RecognitionController", "%1 unreadable page(s)").arg(m_skippedUnreadable));
+    }
+    return StatusMessage::join(parts, QStringLiteral(", "));
+}
+
+int RecognitionController::firstPageToRecognize(int from)
+{
+    m_skippedUnreadable = 0;
+    m_skippedRecognized = 0;
+    for (int index = from; index < m_totalPages; ++index) {
+        const PageSkip skip = m_skipPage ? m_skipPage(index, m_recognizeAll) : PageSkip::None;
+        if (skip == PageSkip::None)
+            return index;
+        if (skip == PageSkip::Unreadable)
+            ++m_skippedUnreadable;
+        else
+            ++m_skippedRecognized;
+    }
+    return -1;
 }
 
 QString RecognitionController::promptText() const
@@ -81,8 +118,14 @@ void RecognitionController::ensureConnectionReady()
 
 void RecognitionController::recognizePage(int index)
 {
-    while (index >= 0 && index < m_totalPages && m_skipPage && m_skipPage(index)) {
-        ++m_skippedPages;
+    while (index >= 0 && index < m_totalPages) {
+        const PageSkip skip = m_skipPage ? m_skipPage(index, m_recognizeAll) : PageSkip::None;
+        if (skip == PageSkip::None)
+            break;
+        if (skip == PageSkip::Unreadable)
+            ++m_skippedUnreadable;
+        else
+            ++m_skippedRecognized;
         if (!m_recognizeAll) {
             emit statusRequested(StatusMessage::translate("RecognitionController",
                                                           "Page %1 is a blank replacement for an unreadable page; "
@@ -93,9 +136,8 @@ void RecognitionController::recognizePage(int index)
         }
         ++index;
     }
-    if (index == m_totalPages && m_skippedPages > 0)
-        emit statusRequested(StatusMessage::translate("RecognitionController", "Recognition finished. Skipped %1 unreadable page(s).").arg(m_skippedPages));
     if (index < 0 || index >= m_totalPages) {
+        emit statusRequested(StatusMessage::join({StatusMessage::translate("RecognitionController", "Recognition finished."), skipReport()}, QStringLiteral(" ")));
         finishRun();
         return;
     }
@@ -160,8 +202,7 @@ void RecognitionController::onRecognitionFinished()
         }
     }
 
-    emit statusRequested(m_skippedPages > 0 ? StatusMessage::translate("RecognitionController", "Recognition finished. Skipped %1 unreadable page(s).").arg(m_skippedPages)
-                                            : StatusMessage::translate("RecognitionController", "Recognition finished."));
+    emit statusRequested(StatusMessage::join({StatusMessage::translate("RecognitionController", "Recognition finished."), skipReport()}, QStringLiteral(" ")));
     finishRun();
 }
 
