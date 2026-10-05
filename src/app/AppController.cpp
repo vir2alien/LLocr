@@ -55,7 +55,7 @@ AppController::AppController(
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
         if (!m_recognition.busy() && !m_recognitionStopped && m_settings.autoCheck())
-            QTimer::singleShot(0, this, [this]() { checkAllEnabledBlocks(true); });
+            QTimer::singleShot(0, this, [this]() { checkAllEnabledBlocks(); });
         emit busyChanged();
     });
     connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
@@ -805,9 +805,9 @@ void AppController::checkEnabledBlocksOnPage()
     m_verify.checkPageEnabledBlocks(m_currentPage);
 }
 
-void AppController::checkAllEnabledBlocks(bool onlyUnchecked)
+void AppController::checkAllEnabledBlocks()
 {
-    m_verify.checkAllEnabledBlocks(onlyUnchecked);
+    m_verify.checkAllEnabledBlocks();
 }
 
 void AppController::stopCheck()

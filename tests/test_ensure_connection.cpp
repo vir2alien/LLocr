@@ -9,6 +9,7 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "app/CheckController.h"
 #include "config/RequestProfileStore.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
@@ -740,6 +741,60 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(done == 1, 5000);
         QVERIFY(resolved.baseUrl.isEmpty());
         QVERIFY(resolved.error.contains(QStringLiteral("cancel")));
+
+        runtime.stopServer();
+    }
+
+    // Stopping a check stops the check, not the server it borrowed. The managed
+    // runtime is app-wide state: a start or role switch the check triggered keeps
+    // running after the job is abandoned (ADR 133), so the check only reports the
+    // stop once the resolve lands.
+    void stoppingACheckLeavesTheManagedServerRunning()
+    {
+        QTemporaryDir dir;
+        QFile model(dir.filePath(QStringLiteral("ocr.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("ocr");
+        model.close();
+        QFile checkModel(dir.filePath(QStringLiteral("check.gguf")));
+        QVERIFY(checkModel.open(QIODevice::WriteOnly));
+        checkModel.write("check");
+        checkModel.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(model.fileName());
+        store.setCheckLaunchModelPath(checkModel.fileName());
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        // The socket bind is delayed, so the resolve the check asks for is still
+        // in Starting when the job is stopped — the window the cancel used to hit.
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("delay-start"), QStringLiteral("2000")));
+        launchProfiles.saveDraft();
+        store.setStartupTimeoutMs(30000);
+
+        RuntimeController runtime(store, launchProfiles);
+        RequestProfileStore checkProfiles(store);
+        CheckController check(checkProfiles, runtime);
+        QSignalSpy finishedSpy(&check, &CheckController::checkFinished);
+
+        QList<int> states;
+        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() { states.append(int(runtime.state())); });
+
+        QImage block(24, 16, QImage::Format_RGB32);
+        block.fill(Qt::white);
+        check.checkBlock(block, QStringLiteral("recognized text"), QString(), QString());
+        QTRY_VERIFY_WITH_TIMEOUT(runtime.state() == RuntimeState::Starting, 5000);
+
+        check.stop();
+
+        QTRY_VERIFY_WITH_TIMEOUT(!check.busy(), 20000);
+        QVERIFY2(finishedSpy.isEmpty(), "a stopped check must not report a result for the abandoned block");
+        QTRY_COMPARE_WITH_TIMEOUT(runtime.state(), RuntimeState::Ready, 20000);
+        QVERIFY2(!states.contains(int(RuntimeState::Stopped)), "stopping the check must not stop the managed server");
 
         runtime.stopServer();
     }

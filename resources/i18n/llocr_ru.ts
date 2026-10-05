@@ -2448,6 +2448,18 @@
     </message>
 </context>
 <context>
+    <name>VerificationQueueController</name>
+    <message>
+        <location filename="../../src/app/VerificationQueueController.cpp" line="+99"/>
+        <source>Nothing to check:</source>
+        <translation>Проверять нечего:</translation>
+    </message>
+    <message>
+        <source>%1 block(s) already verified</source>
+        <translation>уже проверенных блоков: %1</translation>
+    </message>
+</context>
+<context>
     <name>RecognitionController</name>
     <message>
         <location filename="../../src/app/RecognitionController.cpp" line="+71"/>

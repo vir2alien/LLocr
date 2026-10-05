@@ -202,7 +202,7 @@ public slots:
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();
     Q_INVOKABLE void checkEnabledBlocksOnPage();
-    Q_INVOKABLE void checkAllEnabledBlocks(bool onlyUnchecked = false);
+    Q_INVOKABLE void checkAllEnabledBlocks();
     Q_INVOKABLE void stopCheck();
     Q_INVOKABLE void cancelImport();
     Q_INVOKABLE void openProject(const QUrl &fileUrl);

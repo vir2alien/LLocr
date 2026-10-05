@@ -49,18 +49,6 @@ Item {
         root.bannerDismissed = false
     }
 
-    function requestStop() {
-        if (Controller.busy) {
-            stopConfirmDialog.open()
-            return
-        }
-        doStop()
-    }
-
-    function doStop() {
-        Runtime.stopServer()
-    }
-
     function toggleToolTipText() {
         if (Runtime.lockedOut)
             return qsTr("The local runtime is owned by another LLocr instance.")
@@ -304,10 +292,14 @@ Item {
                                  || (Runtime.configValid
                                      && Runtime.state !== Runtime.Stopping))
                     onClicked: {
-                        if (root.serverActive)
-                            root.requestStop()
-                        else
+                        if (!root.serverActive) {
                             Runtime.startServer()
+                            return
+                        }
+                        if (Controller.busy)
+                            serverStopConfirmDialog.open()
+                        else
+                            Runtime.stopServer()
                     }
 
                     ToolTip {
@@ -373,10 +365,10 @@ Item {
     }
 
     InterruptConfirmDialog {
-        id: stopConfirmDialog
+        id: serverStopConfirmDialog
         title: qsTr("Stop server?")
         prompt: qsTr("Recognition is in progress. Stopping the server will "
                      + "interrupt the current job. Continue?")
-        onConfirmed: root.doStop()
+        onConfirmed: Runtime.stopServer()
     }
 }

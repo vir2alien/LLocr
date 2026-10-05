@@ -344,9 +344,12 @@ qt_add_resources(test_ensure_connection "ensure_connection_profiles"
     FILES ${LLOCR_MODEL_PROFILE_FILES}
 )
 
+# llocr_app also carries CheckController: the check-stop contract is about what
+# a job must NOT do to the runtime, so it belongs next to the resolve tests.
 target_link_libraries(test_ensure_connection PRIVATE
     Qt6::Test
     llocr_runtime
+    llocr_app
 )
 add_test(NAME test_ensure_connection COMMAND test_ensure_connection)
 

@@ -38,31 +38,35 @@ void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
     if (!m_deps.document.isValidIndex(pageIndex))
         return;
 
+    int answered = 0;
     QList<int> candidates;
-    collectEnabledBoxes(pageIndex, candidates, false);
+    collectEnabledBoxes(pageIndex, candidates, answered);
 
     QList<VerifyTask> tasks;
     for (const int box : std::as_const(candidates))
         tasks.append({pageIndex, box});
-    startVerifyQueue(tasks);
+    startOrReportAnswered(tasks, answered);
 }
 
-void VerificationQueueController::checkAllEnabledBlocks(bool onlyUnchecked)
+void VerificationQueueController::checkAllEnabledBlocks()
 {
     if (m_deps.recognitionBusy() || m_check.busy() || m_verifyQueueActive)
         return;
 
     QList<VerifyTask> tasks;
+    int answered = 0;
     for (int p = 0; p < m_deps.document.pageCount(); ++p) {
         QList<int> candidates;
-        collectEnabledBoxes(p, candidates, onlyUnchecked);
+        int pageAnswered = 0;
+        collectEnabledBoxes(p, candidates, pageAnswered);
+        answered += pageAnswered;
         for (const int box : std::as_const(candidates))
             tasks.append({p, box});
     }
-    startVerifyQueue(tasks);
+    startOrReportAnswered(tasks, answered);
 }
 
-void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, bool onlyUnchecked) const
+void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const
 {
     if (!m_deps.document.isValidIndex(pageIndex))
         return;
@@ -76,10 +80,25 @@ void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> 
             continue;
         if (box.text.isEmpty())
             continue;
-        if (onlyUnchecked && box.checkStatus != BoxCheckStatus::NotChecked)
+        if (box.checkStatus != BoxCheckStatus::NotChecked) {
+            ++answered;
             continue;
+        }
         out.append(i);
     }
+}
+
+void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered)
+{
+    if (!tasks.isEmpty()) {
+        startVerifyQueue(tasks);
+        return;
+    }
+    if (answered == 0)
+        return;
+    emit statusRequested(StatusMessage::join(
+        {StatusMessage::translate("VerificationQueueController", "Nothing to check:"), StatusMessage::translate("VerificationQueueController", "%1 block(s) already verified").arg(answered)},
+        QStringLiteral(" ")));
 }
 
 void VerificationQueueController::stop()

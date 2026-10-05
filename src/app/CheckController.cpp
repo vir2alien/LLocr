@@ -29,7 +29,6 @@ void CheckController::stop()
     m_stopRequested = true;
     if (m_model)
         m_model->abort();
-    m_runtime.cancelPendingStart();
     emit statusRequested(StatusMessage::translate("CheckController", "Stopping…"));
 }
 

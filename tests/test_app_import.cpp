@@ -220,6 +220,11 @@ public:
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
 // fixed det-token reply, so the real recognition pipeline produces real boxes.
 // Used to drive the AppController-level block-removal contract end to end.
+// It speaks both protocols the app sends to a chat endpoint: the wrapped
+// <|det|>…<|/det|> stream the OCR models emit, and the verifier protocol —
+// only the check request carries a system message, which is how the two are told
+// apart. Request counting is what makes "this block was not asked again"
+// observable.
 class DetTokenChatServer : public QObject
 {
 public:
@@ -229,15 +234,34 @@ public:
 
     QString baseUrl() const { return QStringLiteral("http://127.0.0.1:%1").arg(m_server.serverPort()); }
 
+    int requests() const { return m_requests; }
+
 private:
+    // The body says which protocol the caller speaks, so the head alone cannot
+    // route the request.
+    static bool requestComplete(const QByteArray &buffer)
+    {
+        static const QByteArrayView kContentLength = "Content-Length:";
+        const qsizetype headEnd = buffer.indexOf("\r\n\r\n");
+        if (headEnd < 0)
+            return false;
+        const QByteArray head = buffer.left(headEnd);
+        const qsizetype at = head.indexOf(kContentLength);
+        if (at < 0)
+            return true;
+        const int length = head.mid(at + kContentLength.size()).trimmed().split('\r').first().toInt();
+        return buffer.size() - headEnd - 4 >= length;
+    }
+
     void onNewConnection()
     {
         while (QTcpSocket *socket = m_server.nextPendingConnection()) {
             connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
                 m_buffers[socket] += socket->readAll();
-                if (!m_buffers[socket].contains("\r\n\r\n"))
+                if (!requestComplete(m_buffers[socket]))
                     return;
-                socket->write(reply());
+                ++m_requests;
+                socket->write(reply(m_buffers[socket]));
                 socket->flush();
                 socket->disconnectFromHost();
                 m_buffers.remove(socket);
@@ -246,12 +270,13 @@ private:
         }
     }
 
-    QByteArray reply() const
+    QByteArray reply(const QByteArray &request) const
     {
         // The wrapped <|det|>…<|/det|> stream the current models emit; the model
         // streams newlines as the two characters `\n`.
-        static const QString content = QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
-                                                      "<|det|>text [112, 132, 884, 309]<|/det|>Second block text");
+        const QString content = request.contains("\"role\":\"system\"") ? QStringLiteral("OK")
+                                                                        : QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
+                                                                                         "<|det|>text [112, 132, 884, 309]<|/det|>Second block text");
         const QByteArray body = QJsonDocument(QJsonObject{
                                                   {"id", "cmpl-test"},
                                                   {"object", "chat.completion"},
@@ -263,6 +288,7 @@ private:
 
     QTcpServer m_server;
     QHash<QTcpSocket *, QByteArray> m_buffers;
+    int m_requests = 0;
 };
 
 class TestAppImport : public QObject
@@ -1130,6 +1156,75 @@ private slots:
         QVERIFY(m_controller->removeBlock(0));
         QCOMPARE(boxes->rowCount(), 0);
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("Introduction")));
+    }
+
+    // ADR 134: a block that already carries an answer is not asked again. Both
+    // header buttons used to re-run the whole set, so a second «Check all» paid
+    // for every block a second time and overwrote a stored FIX with a fresh
+    // guess; the request count is the proof, since «nothing happened» and «it was
+    // re-checked and agreed» look identical in the box model.
+    void theQueueAsksOnlyForBlocksWithoutAnAnswer()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setAutoCheck(false);
+
+        // A box needs at least a pixel in both directions to become a crop, and
+        // the det-token boxes are normalized: on the shared 39x27 fixture the
+        // title box is 0.4 px tall and the queue drops it before sending
+        // anything. A page-sized raster keeps both boxes verifiable.
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("verify-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
+        QCOMPARE(server.requests(), 1);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+        const int statusRole = BoxListModel::CheckStatusRole;
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
+
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->checkProgressTotal(), 2, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 3);
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Ok));
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Ok));
+
+        // Answered: neither entry point sends anything, and the status line says
+        // why instead of leaving the button looking broken.
+        m_controller->checkEnabledBlocksOnPage();
+        QVERIFY(!m_controller->checkRunning());
+        QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("already verified")), qPrintable(m_controller->statusMessage()));
+        m_controller->checkAllEnabledBlocks();
+        QVERIFY(!m_controller->checkRunning());
+        QCOMPARE(server.requests(), 3);
+
+        // The per-block «Verify» button is the one way back in.
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->checkSelectedBlock();
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 4, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+
+        // A re-recognized block is asked again: the fresh OCR text has no answer.
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        m_controller->checkAllEnabledBlocks();
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->checkProgressTotal(), 2, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 7);
     }
 
     // Regression (ADR 102): the page owns its text, so re-typing what the page

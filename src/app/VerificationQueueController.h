@@ -45,7 +45,7 @@ public:
 public slots:
     void checkBlock(int pageIndex, int boxIndex);
     void checkPageEnabledBlocks(int pageIndex);
-    void checkAllEnabledBlocks(bool onlyUnchecked = false);
+    void checkAllEnabledBlocks();
     void stop();
 
 signals:
@@ -61,9 +61,10 @@ private:
     };
 
     void startVerifyQueue(const QList<VerifyTask> &tasks);
+    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered);
     void startNextVerify();
     void finishVerifyQueue();
-    void collectEnabledBoxes(int pageIndex, QList<int> &out, bool onlyUnchecked) const;
+    void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const;
 
     Deps m_deps;
     CheckController m_check;
