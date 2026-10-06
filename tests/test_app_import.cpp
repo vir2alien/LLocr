@@ -1163,8 +1163,9 @@ private slots:
     }
 
     // The block ↔ text mapping the selection sync builds on: after a det-token
-    // recognition every box maps to its character range in the page text, a
-    // manual edit invalidates the mapping and Revert restores it.
+    // recognition every box maps to its character range in the page text; a
+    // manual edit switches the mapping to best-effort (intact blocks stay
+    // tracked, the edited block drops out) and Revert restores exact ranges.
     void blockTextRangesTrackBoxesAndManualEdits()
     {
         DetTokenChatServer server;
@@ -1201,14 +1202,20 @@ private slots:
         QCOMPARE(controller.boxIndexForTextPosition(20), 1);
         QCOMPARE(controller.boxIndexForTextPosition(controller.resultText().length()), 1);
 
-        controller.setCurrentPageText(controller.resultText() + QStringLiteral(" appended"));
-        QVERIFY(!controller.blockTextMapped());
+        // A manual edit keeps the mapping in best-effort mode: the intact
+        // block stays tracked (shifted), the edited block drops out.
+        controller.setCurrentPageText(QStringLiteral("## 1. Preface\n\nSecond block text"));
+        QVERIFY(controller.blockTextMapped());
         QVERIFY(controller.blockTextRange(0).isEmpty());
+        QCOMPARE(controller.blockTextRange(1), QList<int>({15, 17}));
         QCOMPARE(controller.boxIndexForTextPosition(0), -1);
+        QCOMPARE(controller.boxIndexForTextPosition(15), 1);
+        QCOMPARE(controller.boxIndexForTextPosition(controller.resultText().length()), 1);
 
         controller.revertCurrentPageEdits();
         QVERIFY(controller.blockTextMapped());
         QCOMPARE(controller.blockTextRange(0), QList<int>({0, 18}));
+        QCOMPARE(controller.blockTextRange(1), QList<int>({20, 17}));
     }
 
     // The model must refuse a verbatim copy of another page's text — that is
@@ -1288,7 +1295,8 @@ private slots:
         QCOMPARE(paintedRanges(document), (QList<QPair<int, int>>({{20, 17}})));
 
         controller.setCurrentPageText(controller.resultText() + QStringLiteral(" appended"));
-        QVERIFY(paintedRanges(document).isEmpty());
+        // Best-effort re-anchoring: the selected block keeps its paint.
+        QCOMPARE(paintedRanges(document), (QList<QPair<int, int>>({{20, 17}})));
 
         controller.revertCurrentPageEdits();
         // The selection still points at block 1; the paint comes back with it.

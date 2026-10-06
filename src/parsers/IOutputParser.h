@@ -23,7 +23,6 @@ public:
 
     virtual QString id() const = 0;
 
-    // Human-readable name for the Settings → Output list.
     virtual QString displayName() const = 0;
 };
 

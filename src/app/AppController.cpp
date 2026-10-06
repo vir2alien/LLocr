@@ -144,9 +144,26 @@ IOutputParser::RebuiltPageText AppController::currentPageRebuild() const
     if (!parser)
         return {};
     IOutputParser::RebuiltPageText rebuild = parser->rebuildTextWithRanges(page.result.pages.first());
-    if (rebuild.ranges.isEmpty() || rebuild.text != pageText(m_currentPage))
+    if (rebuild.ranges.isEmpty())
         return {};
-    return rebuild;
+
+    const QString shown = pageText(m_currentPage);
+    if (rebuild.text == shown)
+        return rebuild;
+
+    QList<BlockTextRange> reanchored;
+    int searchFrom = 0;
+    for (const BlockTextRange &range : rebuild.ranges) {
+        const QString blockText = rebuild.text.mid(range.start, range.length);
+        if (blockText.isEmpty())
+            continue;
+        const int pos = shown.indexOf(blockText, searchFrom);
+        if (pos < 0)
+            continue;
+        reanchored.append({range.boxIndex, pos, range.length});
+        searchFrom = pos + range.length;
+    }
+    return {shown, reanchored};
 }
 
 bool AppController::blockTextMapped() const
@@ -173,7 +190,6 @@ int AppController::boxIndexForTextPosition(int position) const
         if (position >= range.start && position < range.start + range.length)
             return range.boxIndex;
     }
-    // The cursor parked after the last character counts as the last block.
     if (position == rebuild.text.length())
         return rebuild.ranges.last().boxIndex;
     return -1;
