@@ -733,6 +733,9 @@ void AppController::setCurrentPageText(const QString &text)
         }
     }
 
+    // First edit on this page remembers the pre-edit text for Revert.
+    if (!m_editStore.isEdited(index))
+        m_editStore.reset(index, pageText(index));
     setPageText(index, text);
     markPageEdited(index);
     emit resultChanged();
@@ -786,7 +789,9 @@ bool AppController::removeBlock(int boxIndex)
     ++m_cropRevision;
     m_boxModel.removeBox(boxIndex);
 
-    setPageText(m_currentPage, rebuildPageText(page.result.pages[0]));
+    const QString rebuilt = rebuildPageText(page.result.pages[0]);
+    setPageText(m_currentPage, rebuilt);
+    m_editStore.reset(m_currentPage, rebuilt);
     markPageEdited(m_currentPage);
 
     if (m_selectedBox == boxIndex)
@@ -890,12 +895,13 @@ void AppController::revertBlockCorrection()
         box.correctedText.clear();
 
         const QString rebuilt = rebuildPageText(page.result.pages[0]);
+        setPageText(m_currentPage, rebuilt);
         if (rebuilt == m_editStore.baseline(m_currentPage)) {
-            setPageText(m_currentPage, rebuilt);
             m_editStore.revert(m_currentPage);
             m_pageModel.setEdited(m_currentPage, false);
         } else {
-            setPageText(m_currentPage, rebuilt);
+            // Structural change: rebase the baseline (see removeBlock).
+            m_editStore.reset(m_currentPage, rebuilt);
             markPageEdited(m_currentPage);
         }
         ++m_cropRevision;
@@ -974,7 +980,9 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
         corrected = box.correctedText;
 
         if (box.checkStatus == BoxCheckStatus::Fixed) {
-            setPageText(pageIndex, rebuildPageText(page.result.pages[0]));
+            const QString rebuilt = rebuildPageText(page.result.pages[0]);
+            setPageText(pageIndex, rebuilt);
+            m_editStore.reset(pageIndex, rebuilt);
             markPageEdited(pageIndex);
             textChanged = true;
         }

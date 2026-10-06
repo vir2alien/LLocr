@@ -1402,9 +1402,10 @@ private slots:
         QVERIFY(m_controller->currentPageEdited());
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("Second block text")));
 
-        // A real user edit goes through and is reverted back to the recognized
-        // text. Revert means "what the OCR produced", so the removed block comes
-        // back — that is the explicit undo, unlike typing the visible text.
+        // A real user edit goes through; Revert rolls the text back to the last
+        // structurally-consistent state — the removed block stays removed (its
+        // box is gone, so its text must not come back), and the page can never
+        // regress to a text/boxes mismatch.
         m_controller->setCurrentPageText(QStringLiteral("typed by hand"));
         QCOMPARE(m_controller->resultText(), QStringLiteral("typed by hand"));
         QVERIFY(m_controller->currentPageEdited());
@@ -1412,7 +1413,7 @@ private slots:
         m_controller->revertCurrentPageEdits();
         QVERIFY(!m_controller->currentPageEdited());
         QVERIFY(m_controller->resultText().contains(QStringLiteral("1. Introduction")));
-        QVERIFY(m_controller->resultText().contains(QStringLiteral("Second block text")));
+        QVERIFY(!m_controller->resultText().contains(QStringLiteral("Second block text")));
 
         // The structural edit is still reproducible afterwards: the text edits
         // and the revert did not touch the boxes, so the remaining block can be
@@ -1420,6 +1421,43 @@ private slots:
         QCOMPARE(qobject_cast<QAbstractItemModel *>(m_controller->boxModel())->rowCount(), 1);
         QVERIFY2(m_controller->removeBlock(0), qPrintable(QStringLiteral("pages=%2 hasResult=%3").arg(m_controller->pageCount()).arg(m_controller->hasResult())));
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("1. Introduction")));
+    }
+
+    // The remove → Revert cycle used to consume the edit baseline: the first
+    // Revert restored the pre-removal text (resurrecting removed blocks), the
+    // second removal ran without a baseline and the next Revert wiped the page
+    // text entirely. Structural changes now rebase the baseline, so Revert
+    // only undoes manual text edits.
+    void structuralEditsRebaseTheEditBaseline()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY(m_controller->hasResult());
+
+        QVERIFY(m_controller->removeBlock(1));
+        QCOMPARE(m_controller->resultText(), QStringLiteral("## 1. Introduction"));
+        QVERIFY(m_controller->currentPageEdited());
+
+        // Revert must not resurrect the removed block's text.
+        m_controller->revertCurrentPageEdits();
+        QCOMPARE(m_controller->resultText(), QStringLiteral("## 1. Introduction"));
+        QCOMPARE(m_controller->currentPageEdited(), false);
+
+        // A second removal + Revert cycle must not wipe the page either.
+        m_controller->setSelectedBoxIndex(0);
+        QVERIFY(m_controller->removeBlock(0));
+        QCOMPARE(m_controller->resultText(), QString());
+        m_controller->revertCurrentPageEdits();
+        QCOMPARE(m_controller->resultText(), QString());
+        QCOMPARE(m_controller->currentPageEdited(), false);
     }
 
     // The project file is the whole working state: pages (with their sources),
@@ -1478,10 +1516,12 @@ private slots:
         QVERIFY(!restored.contains(QStringLiteral("Second block text")));  // the removed block stays removed
         QCOMPARE(qobject_cast<QAbstractItemModel *>(controller.boxModel())->rowCount(), 1);
 
-        // Revert lands on the recognized baseline, not on the empty page text.
+        // Revert undoes the manual text edit and lands on the last
+        // structurally-consistent state — the removed block stays removed.
         controller.revertCurrentPageEdits();
         QVERIFY(!controller.currentPageEdited());
-        QVERIFY(controller.resultText().contains(QStringLiteral("Second block text")));
+        QVERIFY(!controller.resultText().contains(QStringLiteral("Second block text")));
+        QVERIFY(!controller.resultText().contains(QStringLiteral("hand-added line")));
 
         // The embedded sources still render: the raster page keeps its colour.
         const QImage rasterPage = controller.pageImage(3);

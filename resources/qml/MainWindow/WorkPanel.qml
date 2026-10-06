@@ -101,11 +101,13 @@ Rectangle {
                     background: null
 
                     property bool syncing: false
+                    // The text the model last served: a panel change that
+                    // still matches it is an echo, not a user edit.
+                    property string modelText: ""
 
                     function reload() {
                         var t = Controller.resultText
-                        if (text === t)
-                            return
+                        modelText = t
                         syncing = true
                         text = t
                         syncing = false
@@ -113,7 +115,7 @@ Rectangle {
 
                     onTextChanged: {
                         previewDebounce.restart()
-                        if (syncing || !activeFocus)
+                        if (syncing || !activeFocus || text === modelText)
                             return
                         Controller.setCurrentPageText(text)
                     }
