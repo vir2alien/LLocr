@@ -16,6 +16,7 @@ public:
 
     OcrResult parse(const QString &rawText) const override;
     QString rebuildText(const OcrPage &page) const override;
+    RebuiltPageText rebuildTextWithRanges(const OcrPage &page) const override;
 
     virtual const QRegularExpression &tokenRegex(const QString &preparedText) const = 0;
 

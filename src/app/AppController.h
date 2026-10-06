@@ -36,6 +36,7 @@
 namespace llocr {
 
 class RequestProfileStore;
+class BlockTextHighlighter;
 
 constexpr qint64 kPreviewCacheBudgetBytes = 64ll * 1024 * 1024;
 constexpr qint64 kThumbnailCacheBudgetBytes = 48ll * 1024 * 1024;
@@ -66,6 +67,7 @@ class AppController : public QObject
     Q_PROPERTY(QString selectedBlockLabel READ selectedBlockLabel NOTIFY selectedBoxChanged)
     Q_PROPERTY(int selectedBlockCheckStatus READ selectedBlockCheckStatus NOTIFY selectedBoxChanged)
     Q_PROPERTY(QString selectedBlockCorrected READ selectedBlockCorrected NOTIFY selectedBoxChanged)
+    Q_PROPERTY(QVariantList selectedBlockTextRange READ selectedBlockTextRange NOTIFY blockTextRangeChanged)
 
     Q_PROPERTY(bool checkBusy READ checkBusy NOTIFY checkStateChanged)
     Q_PROPERTY(bool checkRunning READ checkRunning NOTIFY checkStateChanged)
@@ -135,6 +137,7 @@ public:
     QString selectedBlockLabel() const;
     int selectedBlockCheckStatus() const;
     QString selectedBlockCorrected() const;
+    QVariantList selectedBlockTextRange() const;
     void setSelectedBoxIndex(int index);
 
     bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive(); }
@@ -177,6 +180,7 @@ signals:
     void pageImageReady(int index);
 
     void selectedBoxChanged();
+    void blockTextRangeChanged();
     void checkStateChanged();
 
     void editStateChanged();
@@ -201,6 +205,10 @@ public slots:
     Q_INVOKABLE QString resolveImagesForPreview(const QString &markdown);
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();
+    Q_INVOKABLE bool blockTextMapped() const;
+    Q_INVOKABLE QList<int> blockTextRange(int boxIndex) const;
+    Q_INVOKABLE int boxIndexForTextPosition(int position) const;
+    Q_INVOKABLE void attachBlockTextHighlighter(QObject *textDocument, const QColor &color);
     Q_INVOKABLE void checkEnabledBlocksOnPage();
     Q_INVOKABLE void checkAllEnabledBlocks();
     Q_INVOKABLE void stopCheck();
@@ -224,6 +232,8 @@ private:
     void setPageText(int index, const QString &text);
     QString pageText(int index) const;
     QString rebuildPageText(const OcrPage &page) const;
+    IOutputParser::RebuiltPageText currentPageRebuild() const;
+    void updateBlockHighlight();
     void updateBoxesForCurrent();
     const BoundingBox *selectedBox() const;
 
@@ -260,6 +270,7 @@ private:
     mutable QReadWriteLock m_documentLock;
 
     int m_selectedBox = -1;
+    BlockTextHighlighter *m_blockHighlighter = nullptr;  ///< owned; created on first attach
     bool m_recognitionStopped = false;
 
     LruImageCache m_previewCache{kPreviewCacheBudgetBytes};

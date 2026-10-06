@@ -1153,6 +1153,101 @@ private slots:
         QCOMPARE(map.styleForLabel(QStringLiteral("code_caption"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::Italic);
         QCOMPARE(map.styleForLabel(QStringLiteral("table"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::Table);
     }
+
+    // --- Block ↔ text ranges (block-text selection sync) ---------------------
+
+    void rebuildTextWithRangesMatchesTheJoinedText()
+    {
+        const QString raw = QStringLiteral(R"(<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\n)"
+                                           R"(<|det|>text [112, 132, 884, 309]<|/det|>Humans are remarkably adept\n)"
+                                           R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3\n)"
+                                           R"(<|det|>text [141, 484, 884, 581]<|/det|>- We introduce R-SWA\n)");
+
+        UnlimitedOcrParser parser;
+        const OcrPage page = parser.parse(raw).pages.first();
+        const auto rebuilt = parser.rebuildTextWithRanges(page);
+
+        QCOMPARE(rebuilt.text, parser.rebuildText(page));
+        QCOMPARE(rebuilt.text, page.text);
+        QCOMPARE(rebuilt.ranges.size(), 4);
+
+        QStringList joined;
+        for (int i = 0; i < rebuilt.ranges.size(); ++i) {
+            const BlockTextRange &range = rebuilt.ranges.at(i);
+            QCOMPARE(range.boxIndex, i);
+            joined << rebuilt.text.mid(range.start, range.length);
+        }
+        QCOMPARE(joined, QStringList({QStringLiteral("## 1. Introduction"), QStringLiteral("Humans are remarkably adept"), QStringLiteral("*3*"), QStringLiteral("- We introduce R-SWA")}));
+        QCOMPARE(joined.join(QStringLiteral("\n\n")), rebuilt.text);
+    }
+
+    void rebuildTextWithRangesDropsFilteredAndEmptyBlocks()
+    {
+        const QString raw = QStringLiteral(R"(<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\n)"
+                                           R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3\n)"
+                                           R"(<|det|>text [112, 132, 884, 309]<|/det|>Body paragraph\n)");
+
+        UnlimitedOcrParser parser(ParserOptions{false, false});
+        const OcrPage page = parser.parse(raw).pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+
+        // The page still carries a page_number box (recognized before the
+        // setting was changed): filtered blocks get no range at all.
+        OcrPage withNumber = page;
+        BoundingBox numberBox;
+        numberBox.label = QStringLiteral("page_number");
+        numberBox.text = QStringLiteral("3");
+        withNumber.boxes.append(numberBox);
+        const auto withFilter = parser.rebuildTextWithRanges(withNumber);
+        QCOMPARE(withFilter.ranges.size(), 2);
+        QCOMPARE(withFilter.ranges.at(0).boxIndex, 0);
+        QCOMPARE(withFilter.ranges.at(1).boxIndex, 1);  // the appended number (index 2) is filtered out
+
+        // An empty non-image block is skipped too, and a corrected block is
+        // ranged by its corrected rendering.
+        OcrPage withEmpty = page;
+        BoundingBox empty;
+        empty.label = QStringLiteral("text");
+        withEmpty.boxes.insert(1, empty);
+        BoundingBox corrected;
+        corrected.label = QStringLiteral("text");
+        corrected.text = QStringLiteral("wrong");
+        corrected.correctedText = QStringLiteral("fixed body");
+        withEmpty.boxes.append(corrected);
+        const auto rebuilt = parser.rebuildTextWithRanges(withEmpty);
+        QCOMPARE(rebuilt.ranges.size(), 3);
+        const BlockTextRange &last = rebuilt.ranges.last();
+        QCOMPARE(last.boxIndex, 3);
+        QCOMPARE(rebuilt.text.mid(last.start, last.length), QStringLiteral("fixed body"));
+    }
+
+    void rebuildTextWithRangesCoversImagePlaceholders()
+    {
+        OcrPage page;
+        BoundingBox image;
+        image.label = QStringLiteral("image");
+        image.text = QStringLiteral("Figure 1: the plot");
+        BoundingBox body;
+        body.label = QStringLiteral("text");
+        body.text = QStringLiteral("Body text");
+        page.boxes = {image, body};
+
+        const auto rebuilt = UnlimitedOcrParser().rebuildTextWithRanges(page);
+        QCOMPARE(rebuilt.ranges.size(), 2);
+        QCOMPARE(rebuilt.text.mid(rebuilt.ranges.first().start, rebuilt.ranges.first().length), QStringLiteral("![Figure 1: the plot](image://ocr/crop/0)"));
+        QCOMPARE(rebuilt.text.mid(rebuilt.ranges.last().start, rebuilt.ranges.last().length), QStringLiteral("Body text"));
+    }
+
+    // The raw parser keeps no fragments: the page text is the whole truth and
+    // the sync has nothing to map.
+    void rawParserKeepsNoRanges()
+    {
+        OcrPage page;
+        page.text = QStringLiteral("whatever the model said");
+        const auto rebuilt = RawParser().rebuildTextWithRanges(page);
+        QCOMPARE(rebuilt.text, page.text);
+        QVERIFY(rebuilt.ranges.isEmpty());
+    }
 };
 
 QTEST_MAIN(TestDetParser)

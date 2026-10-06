@@ -193,7 +193,14 @@ QString DetTokenParserBase::prepareText(const QString &rawText) const
 
 QString DetTokenParserBase::rebuildText(const OcrPage &page) const
 {
+    return rebuildTextWithRanges(page).text;
+}
+
+IOutputParser::RebuiltPageText DetTokenParserBase::rebuildTextWithRanges(const OcrPage &page) const
+{
     QStringList blocks;
+    QList<BlockTextRange> ranges;
+    int offset = 0;
     for (int i = 0; i < page.boxes.size(); ++i) {
         const BoundingBox &box = page.boxes.at(i);
         if (!m_options.keepPageNumbers && box.label == QLatin1String("page_number"))
@@ -204,9 +211,12 @@ QString DetTokenParserBase::rebuildText(const OcrPage &page) const
         const QString text = box.correctedText.isEmpty() ? box.text : box.correctedText;
         if (text.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
             continue;
-        blocks << applyStyle(text, style, m_options);
+        const QString rendered = applyStyle(text, style, m_options);
+        ranges.append({i, offset, static_cast<int>(rendered.size())});
+        blocks << rendered;
+        offset += rendered.size() + 2;  // blocks.join("\n\n") separator
     }
-    return blocks.join(QStringLiteral("\n\n"));
+    return {blocks.join(QStringLiteral("\n\n")), ranges};
 }
 
 OcrResult DetTokenParserBase::parse(const QString &rawText) const

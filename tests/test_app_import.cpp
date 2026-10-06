@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include <QAbstractItemModelTester>
+#include <QColor>
 #include <QDateTime>
 #include <QFile>
 #include <QGuiApplication>
@@ -17,6 +18,9 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
+#include <QTextBlock>
+#include <QTextDocument>
+#include <QTextLayout>
 #include <QThread>
 #include <QThreadPool>
 #include <QTimer>
@@ -1156,6 +1160,139 @@ private slots:
         QVERIFY(m_controller->removeBlock(0));
         QCOMPARE(boxes->rowCount(), 0);
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("Introduction")));
+    }
+
+    // The block ↔ text mapping the selection sync builds on: after a det-token
+    // recognition every box maps to its character range in the page text, a
+    // manual edit invalidates the mapping and Revert restores it.
+    void blockTextRangesTrackBoxesAndManualEdits()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
+
+        QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text"));
+        QVERIFY(controller.blockTextMapped());
+
+        QCOMPARE(controller.blockTextRange(0), QList<int>({0, 18}));
+        QCOMPARE(controller.blockTextRange(1), QList<int>({20, 17}));
+        QVERIFY(controller.blockTextRange(2).isEmpty());
+
+        controller.setSelectedBoxIndex(0);
+        QCOMPARE(controller.selectedBlockTextRange(), QVariantList({0, 18}));
+        controller.setSelectedBoxIndex(1);
+        QCOMPARE(controller.selectedBlockTextRange(), QVariantList({20, 17}));
+        controller.setSelectedBoxIndex(-1);
+        QVERIFY(controller.selectedBlockTextRange().isEmpty());
+
+        QCOMPARE(controller.boxIndexForTextPosition(0), 0);
+        QCOMPARE(controller.boxIndexForTextPosition(17), 0);
+        QCOMPARE(controller.boxIndexForTextPosition(19), -1);  // the blank separator line
+        QCOMPARE(controller.boxIndexForTextPosition(20), 1);
+        QCOMPARE(controller.boxIndexForTextPosition(controller.resultText().length()), 1);
+
+        controller.setCurrentPageText(controller.resultText() + QStringLiteral(" appended"));
+        QVERIFY(!controller.blockTextMapped());
+        QVERIFY(controller.blockTextRange(0).isEmpty());
+        QCOMPARE(controller.boxIndexForTextPosition(0), -1);
+
+        controller.revertCurrentPageEdits();
+        QVERIFY(controller.blockTextMapped());
+        QCOMPARE(controller.blockTextRange(0), QList<int>({0, 18}));
+    }
+
+    // The model must refuse a verbatim copy of another page's text — that is
+    // cross-page contamination (a stale panel), not a user edit.
+    void setCurrentPageTextRefusesAnotherPagesText()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        // The mock server answers every page with the same content, so both
+        // pages end up holding identical recognized text.
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        controller.recognizeAll();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
+        QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text"));
+
+        // Identical to the neighbors: refused, the page keeps its edited text.
+        controller.setCurrentPageText(QStringLiteral("## 1. Introduction\n\nSecond block text edited"));
+        QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text edited"));  // unique text passes
+        controller.setCurrentPageText(QStringLiteral("## 1. Introduction\n\nSecond block text"));
+        QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text edited"));
+        QCOMPARE(controller.currentPageEdited(), true);
+
+        // Clearing the page is still allowed even though other pages exist.
+        controller.setCurrentPageText(QString());
+        QCOMPARE(controller.resultText(), QString());
+    }
+
+    // The plain-text panel paints the selected block's range through the
+    // controller-owned highlighter; a manual edit clears the paint and Revert
+    // brings it back.
+    void blockHighlighterPaintsTheSelectedRange()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
+
+        QTextDocument document;
+        controller.attachBlockTextHighlighter(&document, QColor(Qt::yellow));
+
+        // Layout formats are where QSyntaxHighlighter lands its ranges.
+        const auto paintedRanges = [](const QTextDocument &document) {
+            QList<QPair<int, int>> out;
+            int offset = 0;
+            for (QTextBlock block = document.firstBlock(); block.isValid(); block = block.next()) {
+                for (const QTextLayout::FormatRange &range : block.layout()->formats())
+                    out.append({offset + range.start, range.length});
+                offset += block.length();
+            }
+            return out;
+        };
+
+        // The test owns the document text (QML's TextArea normally does).
+        document.setPlainText(controller.resultText());
+
+        controller.setSelectedBoxIndex(0);
+        QCOMPARE(paintedRanges(document), (QList<QPair<int, int>>({{0, 18}})));
+
+        controller.setSelectedBoxIndex(1);
+        QCOMPARE(paintedRanges(document), (QList<QPair<int, int>>({{20, 17}})));
+
+        controller.setCurrentPageText(controller.resultText() + QStringLiteral(" appended"));
+        QVERIFY(paintedRanges(document).isEmpty());
+
+        controller.revertCurrentPageEdits();
+        // The selection still points at block 1; the paint comes back with it.
+        QCOMPARE(paintedRanges(document), (QList<QPair<int, int>>({{20, 17}})));
     }
 
     // ADR 134: a block that already carries an answer is not asked again. Both

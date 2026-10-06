@@ -165,6 +165,7 @@ qt_add_executable(test_app_import test_app_import.cpp)
 
 target_link_libraries(test_app_import PRIVATE
     Qt6::Test
+    Qt6::Quick
     llocr_app
 )
 qt_add_resources(test_app_import "app_import_profiles"

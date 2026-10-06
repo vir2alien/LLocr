@@ -13,6 +13,8 @@ Rectangle {
 
     property string previewMarkdown: ""
 
+    readonly property var selectedRange: Controller.selectedBlockTextRange
+
     Timer {
         id: previewDebounce
         interval: 250
@@ -75,9 +77,22 @@ Rectangle {
             Layout.fillHeight: true
             currentIndex: previewSwitch.checked ? 1 : 0
 
-            ScrollView {
+            Flickable {
+                id: textFlickable
+                contentWidth: textArea.contentWidth
+                contentHeight: textArea.contentHeight
+                clip: true
+
+                function ensureVisible(rect) {
+                    if (rect.y < contentY)
+                        contentY = rect.y
+                    else if (rect.y + rect.height > contentY + height)
+                        contentY = rect.y + rect.height - height
+                }
+
                 TextArea {
                     id: textArea
+                    width: textFlickable.width
                     readOnly: !Controller.currentPageEditable
                     wrapMode: TextArea.Wrap
                     selectByMouse: true
@@ -97,12 +112,26 @@ Rectangle {
                     }
 
                     onTextChanged: {
-                        if (!syncing)
-                            Controller.setCurrentPageText(text)
                         previewDebounce.restart()
+                        if (syncing || !activeFocus)
+                            return
+                        Controller.setCurrentPageText(text)
                     }
 
-                    Component.onCompleted: reload()
+                    Component.onCompleted: {
+                        reload()
+                        Controller.attachBlockTextHighlighter(textArea.textDocument, Theme.selected)
+                    }
+
+                    TapHandler {
+                        acceptedButtons: Qt.LeftButton
+                        onTapped: (eventPoint) => {
+                            const position = textArea.positionAt(eventPoint.position.x, eventPoint.position.y)
+                            const boxIndex = Controller.boxIndexForTextPosition(position)
+                            if (boxIndex >= 0)
+                                Controller.selectedBoxIndex = boxIndex
+                        }
+                    }
 
                     Connections {
                         target: Controller
@@ -116,8 +145,20 @@ Rectangle {
                 onActiveChanged: if (active) previewDebounce.restart()
                 sourceComponent: previewComponent
             }
-        }
+        }//StackLayout
     }//ColumnLayout
+
+    Connections {
+        target: Controller
+        function onSelectedBoxChanged() {
+            const range = root.selectedRange
+            if (range.length !== 2 || previewSwitch.checked)
+                return
+            if (textArea.activeFocus)
+                return
+            textFlickable.ensureVisible(textArea.positionToRectangle(range[0]))
+        }
+    }
 
     Component {
         id: previewComponent

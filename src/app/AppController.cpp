@@ -1,4 +1,5 @@
 #include "app/AppController.h"
+#include "app/BlockTextHighlighter.h"
 #include "app/LruImageCache.h"
 #include "app/PageIndex.h"
 
@@ -15,6 +16,7 @@
 #include <QMutex>
 #include <QPageLayout>
 #include <QPageSize>
+#include <QQuickTextDocument>
 #include <QReadWriteLock>
 #include <QRegularExpression>
 #include <QStringView>
@@ -86,6 +88,9 @@ AppController::AppController(
     connect(&m_runtime, &RuntimeController::stateChanged, this, [this]() { emit configChanged(); });
     connect(&m_runtime, &RuntimeController::busyStateChanged, this, [this]() { emit configChanged(); });
     connect(&m_runtime, &RuntimeController::configValidChanged, this, [this]() { emit configChanged(); });
+    connect(this, &AppController::resultChanged, this, &AppController::blockTextRangeChanged);
+    connect(this, &AppController::editStateChanged, this, &AppController::blockTextRangeChanged);
+    connect(this, &AppController::selectedBoxChanged, this, &AppController::blockTextRangeChanged);
 }
 
 AppController::~AppController() = default;
@@ -126,6 +131,79 @@ QString AppController::rebuildPageText(const OcrPage &page) const
 {
     const auto parser = makeParser();
     return parser ? parser->rebuildText(page) : page.text;
+}
+
+IOutputParser::RebuiltPageText AppController::currentPageRebuild() const
+{
+    if (!m_document.isValidIndex(m_currentPage))
+        return {};
+    const DocumentPage &page = m_document.page(m_currentPage);
+    if (page.result.pages.isEmpty())
+        return {};
+    const auto parser = makeParser();
+    if (!parser)
+        return {};
+    IOutputParser::RebuiltPageText rebuild = parser->rebuildTextWithRanges(page.result.pages.first());
+    if (rebuild.ranges.isEmpty() || rebuild.text != pageText(m_currentPage))
+        return {};
+    return rebuild;
+}
+
+bool AppController::blockTextMapped() const
+{
+    return !currentPageRebuild().ranges.isEmpty();
+}
+
+QList<int> AppController::blockTextRange(int boxIndex) const
+{
+    const auto rebuild = currentPageRebuild();
+    for (const BlockTextRange &range : rebuild.ranges) {
+        if (range.boxIndex == boxIndex)
+            return {range.start, range.length};
+    }
+    return {};
+}
+
+int AppController::boxIndexForTextPosition(int position) const
+{
+    const auto rebuild = currentPageRebuild();
+    if (rebuild.ranges.isEmpty())
+        return -1;
+    for (const BlockTextRange &range : rebuild.ranges) {
+        if (position >= range.start && position < range.start + range.length)
+            return range.boxIndex;
+    }
+    // The cursor parked after the last character counts as the last block.
+    if (position == rebuild.text.length())
+        return rebuild.ranges.last().boxIndex;
+    return -1;
+}
+
+void AppController::attachBlockTextHighlighter(QObject *textDocument, const QColor &color)
+{
+    QTextDocument *document = nullptr;
+    if (auto *wrapper = qobject_cast<QQuickTextDocument *>(textDocument))
+        document = wrapper->textDocument();
+    else if (auto *plain = qobject_cast<QTextDocument *>(textDocument))
+        document = plain;
+    if (!document)
+        return;
+    if (!m_blockHighlighter) {
+        m_blockHighlighter = new BlockTextHighlighter(this);
+        connect(this, &AppController::blockTextRangeChanged, this, &AppController::updateBlockHighlight);
+    }
+    m_blockHighlighter->setColor(color);
+    m_blockHighlighter->setDocument(document);
+    updateBlockHighlight();
+}
+
+void AppController::updateBlockHighlight()
+{
+    if (!m_blockHighlighter)
+        return;
+    const QList<int> range = blockTextRange(m_selectedBox);
+    m_blockHighlighter->setStart(range.isEmpty() ? -1 : range.at(0));
+    m_blockHighlighter->setLength(range.isEmpty() ? 0 : range.at(1));
 }
 
 void AppController::setPageText(int index, const QString &text)
@@ -629,10 +707,19 @@ void AppController::setCurrentPageText(const QString &text)
     if (text == pageText(index))
         return;
 
+    if (!text.isEmpty()) {
+        for (int i = 0; i < m_document.pageCount(); ++i) {
+            if (i != index && m_document.page(i).recognized && pageText(i) == text) {
+                qWarning().noquote() << "Panel text matches page" << i + 1 << "while saving page" << index + 1 << "— write refused";
+                emit resultChanged();  // snap the panel back to the stored text
+                return;
+            }
+        }
+    }
+
     setPageText(index, text);
     markPageEdited(index);
     emit resultChanged();
-    emit editStateChanged();
 }
 
 void AppController::revertCurrentPageEdits()
@@ -731,6 +818,14 @@ QString AppController::selectedBlockCorrected() const
 {
     const BoundingBox *box = selectedBox();
     return box ? box->correctedText : QString();
+}
+
+QVariantList AppController::selectedBlockTextRange() const
+{
+    const QList<int> range = blockTextRange(m_selectedBox);
+    if (range.isEmpty())
+        return {};
+    return {range.at(0), range.at(1)};
 }
 
 void AppController::setSelectedBoxIndex(int index)

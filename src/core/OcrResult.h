@@ -31,6 +31,12 @@ struct OcrPage {
     bool hasDuplicates = false;  ///< True when at least one duplicate bbox was detected & replaced.
 };
 
+struct BlockTextRange {
+    int boxIndex = -1;
+    int start = 0;
+    int length = 0;
+};
+
 struct OcrResult {
     bool success = false;
     QString text;          ///< Flat text of all pages (joined).

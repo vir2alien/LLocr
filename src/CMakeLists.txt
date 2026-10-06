@@ -212,6 +212,8 @@ qt_add_library(llocr_app STATIC
     app/AppController.cpp
     app/BlockGroupFilterModel.h
     app/BlockGroupFilterModel.cpp
+    app/BlockTextHighlighter.h
+    app/BlockTextHighlighter.cpp
     app/DocumentModel.h
     app/DocumentModel.cpp
     app/Exporter.h
@@ -253,7 +255,7 @@ target_include_directories(llocr_app PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_app
     # Qt6::Qml is PUBLIC for the same reason as in llocr_runtime (UiController.h).
     PUBLIC llocr_runtime llocr_config llocr_core llocr_models llocr_parsers Qt6::Qml
-    PRIVATE Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent Qt6::Pdf
+    PRIVATE Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent Qt6::Pdf Qt6::Quick
             Qt6::WebEngineCore ZLIB::ZLIB
 )
 
