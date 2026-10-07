@@ -980,14 +980,83 @@ private slots:
         QCOMPARE(page.boxes.size(), 3);
 
         QCOMPARE(page.boxes.at(1).text, QStringLiteral("Correct continuation text."));
+        QVERIFY(page.boxes.at(1).duplicateSuspect);
 
         QVERIFY(page.boxes.at(2).text.contains(QStringLiteral("tag{4}")));
+        QVERIFY(page.boxes.at(2).duplicateSuspect);
+        QVERIFY(!page.boxes.at(0).duplicateSuspect);
 
         QVERIFY(page.hasDuplicates);
 
         const QString md = page.text;
         QVERIFY(!md.contains(QStringLiteral("Garbled duplicate")));
         QVERIFY(md.contains(QStringLiteral("Correct continuation")));
+    }
+
+    // The model re-emits a whole paragraph with shifted coordinates — the
+    // bbox no longer matches, but the text is a verbatim repeat.
+    void dropsTextDuplicatesAtShiftedCoordinates()
+    {
+        const QString paragraph = QStringLiteral("Therefore, for long-sequence decoding, R-SWA reduces the KV cache requirement from linear "
+                                                 "growth in T to a bounded quantity, yielding a substantial memory saving.");
+        const QString raw = QStringLiteral("<|det|>text [112, 503, 884, 569]<|/det|>%1\n"
+                                           "<|det|>title [114, 587, 274, 603]<|/det|>3.4.3. Kernel study\n"
+                                           "<|det|>text [112, 612, 884, 681]<|/det|>%1\n"
+                                           "<|det|>text [112, 613, 481, 681]<|/det|>%1\n")
+                                .arg(paragraph);
+
+        UnlimitedOcrParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+        QCOMPARE(page.boxes.at(0).text, paragraph);
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("title"));
+        QVERIFY(page.boxes.at(0).duplicateSuspect);
+        QVERIFY(!page.boxes.at(1).duplicateSuspect);
+        QVERIFY(page.hasDuplicates);
+        QCOMPARE(page.text.count(paragraph), 1);
+    }
+
+    // A block that resumes mid-sentence from the previous one (the shared run
+    // covers most of the shorter block) is a partial duplicate: its unique
+    // tail is glued onto the earlier block instead of being dropped.
+    void dropsPartialTextDuplicates()
+    {
+        const QString shared = QStringLiteral("growing latency with each successive decoding step, whereas in Unlimited OCR the duration "
+                                              "remains constant, a direct benefit of adopting R-SWA across all layers of the decoder. The "
+                                              "spike occurs when the cache length crosses a boundary, causing an abrupt drop; this issue");
+        const QString raw = QStringLiteral("<|det|>text [112, 613, 481, 716]<|/det|>As shown in Figure 3, we plot the per-call duration of the Flash Attention kernel. %1\n"
+                                           "<|det|>text [112, 717, 481, 853]<|/det|>%1 also does not arise with R-SWA.\n")
+                                .arg(shared);
+
+        UnlimitedOcrParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QVERIFY(page.text.contains(QStringLiteral("also does not arise with R-SWA.")));
+        QVERIFY(page.hasDuplicates);
+        QVERIFY(page.boxes.at(0).duplicateSuspect);
+    }
+
+    // Adjacent and slightly overlapping blocks with different text are normal
+    // layout and must survive.
+    void keepsOverlappingBlocksWithDistinctText()
+    {
+        const QString raw = QStringLiteral("<|det|>text [112, 100, 884, 200]<|/det|>The first paragraph talks about attention kernels and latency.\n"
+                                           "<|det|>text [112, 190, 884, 300]<|/det|>The second paragraph continues with memory usage during inference.\n"
+                                           "<|det|>text [300, 250, 884, 400]<|/det|>A third block slightly overlaps the second one but says something else.");
+
+        UnlimitedOcrParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+        QVERIFY(!page.hasDuplicates);
     }
 
     // --- Parser options (ADR 88) ---------------------------------------------

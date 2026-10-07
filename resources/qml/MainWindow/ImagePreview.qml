@@ -62,6 +62,7 @@ Image {
                 required property string boxText
                 required property string boxLabel
                 required property int boxCheckStatus
+                required property bool boxSuspect
 
                 property bool isImage: boxLabel === "image" || boxLabel === "chart"
                 property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
@@ -104,7 +105,7 @@ Image {
                     }
                     Rectangle {
                         id: statusDot
-                        visible: boxCheckStatus !== 0
+                        visible: boxCheckStatus !== 0 || boxSuspect
                         x: labelText.x + labelText.width + 3
                         anchors.verticalCenter: parent.verticalCenter
                         width: 8
@@ -112,7 +113,8 @@ Image {
                         radius: 4
                         color: boxCheckStatus === 1 ? Theme.success
                              : boxCheckStatus === 2 ? Theme.warning
-                             : Theme.error
+                             : boxCheckStatus === 3 ? Theme.error
+                             : Theme.nothing
                     }
                 }
 

@@ -20,6 +20,7 @@ public:
         LabelRole,
         CheckStatusRole,
         CorrectedRole,
+        SuspectRole,
     };
 
     explicit BoxListModel(QObject *parent = nullptr);

@@ -19,6 +19,101 @@ constexpr int kDiagnosticMinLength = 32;
 
 constexpr double kDuplicateTolerance = 0.01;
 
+constexpr int kMinRepeatChars = 16;
+constexpr int kMinRepeatWords = 8;
+constexpr double kRepeatCoverage = 0.6;
+constexpr int kMinTailChars = 8;
+
+struct BlockFingerprint {
+    QString simplified;
+    QStringList words;
+};
+
+QStringList wordsForDuplicateCheck(const QString &simplified)
+{
+    QStringList words;
+    QString current;
+    for (const QChar ch : simplified) {
+        if (ch.isLetterOrNumber()) {
+            current += ch.toLower();
+        } else if (!current.isEmpty()) {
+            words.append(current);
+            current.clear();
+        }
+    }
+    if (!current.isEmpty())
+        words.append(current);
+    return words;
+}
+
+BlockFingerprint fingerprintForDuplicateCheck(const QString &text)
+{
+    BlockFingerprint fingerprint;
+    fingerprint.simplified = text.simplified();
+    fingerprint.words = wordsForDuplicateCheck(fingerprint.simplified);
+    return fingerprint;
+}
+
+int longestCommonWordRun(const QStringList &a, const QStringList &b)
+{
+    QVector<int> previous(b.size() + 1, 0);
+    QVector<int> current(b.size() + 1, 0);
+    int best = 0;
+    for (int i = 1; i <= a.size(); ++i) {
+        for (int j = 1; j <= b.size(); ++j) {
+            current[j] = (a.at(i - 1) == b.at(j - 1)) ? previous.at(j - 1) + 1 : 0;
+            best = std::max(best, current.at(j));
+        }
+        std::swap(previous, current);
+        current.fill(0);
+    }
+    return best;
+}
+
+bool repeatsEarlierText(const BlockFingerprint &candidate, const BlockFingerprint &previous)
+{
+    if (candidate.simplified.size() < kMinRepeatChars || previous.simplified.size() < kMinRepeatChars)
+        return false;
+    if (candidate.simplified == previous.simplified)
+        return true;
+    if (candidate.words.size() < kMinRepeatWords || previous.words.size() < kMinRepeatWords)
+        return false;
+    const int run = longestCommonWordRun(candidate.words, previous.words);
+    if (run < kMinRepeatWords)
+        return false;
+    const int shorter = std::min(candidate.words.size(), previous.words.size());
+    return run >= kRepeatCoverage * shorter;
+}
+
+int charOffsetAfterWords(const QString &simplified, int wordCount)
+{
+    int words = 0;
+    int i = 0;
+    while (i < simplified.size() && words < wordCount) {
+        if (simplified.at(i).isLetterOrNumber()) {
+            while (i < simplified.size() && simplified.at(i).isLetterOrNumber())
+                ++i;
+            ++words;
+        } else {
+            ++i;
+        }
+    }
+    return i;
+}
+
+int keptPrefixWords(const BlockFingerprint &candidate, const BlockFingerprint &previous)
+{
+    if (candidate.words.size() < kMinRepeatWords || previous.words.isEmpty())
+        return 0;
+    const QString haystack = QLatin1Char(' ') + previous.words.join(QLatin1Char(' ')) + QLatin1Char(' ');
+    for (int k = candidate.words.size(); k >= kMinRepeatWords; --k) {
+        const QString needle = QLatin1Char(' ') + QStringList(candidate.words.constBegin(), candidate.words.constBegin() + k).join(QLatin1Char(' ')) + QLatin1Char(' ');
+        if (haystack.contains(needle))
+            return k;
+    }
+    return 0;
+}
+
 QString formatTable(const QString &text, bool tablesAsHtml)
 {
     const QString trimmed = text.trimmed();
@@ -319,10 +414,50 @@ OcrResult DetTokenParserBase::parse(const QString &rawText) const
         if (dupIndex >= 0) {
             page.hasDuplicates = true;
             page.boxes[dupIndex] = box;
+            page.boxes[dupIndex].duplicateSuspect = true;
             continue;
         }
 
         page.boxes.append(box);
+    }
+
+    // The model sometimes re-emits already recognized blocks with shifted or
+    // partially overlapping coordinates, so exact bbox matching alone misses
+    // them. A re-emission that mostly repeats an earlier block is a duplicate:
+    // its unique tail is glued onto the earlier block, otherwise the more
+    // complete copy wins. The survivor gets duplicateSuspect so the verifier
+    // re-checks it regardless of the label filter.
+    QList<BlockFingerprint> fingerprints;
+    fingerprints.reserve(page.boxes.size());
+    for (const BoundingBox &b : page.boxes)
+        fingerprints.append(fingerprintForDuplicateCheck(b.text));
+
+    for (int i = 1; i < page.boxes.size(); ++i) {
+        for (int j = 0; j < i; ++j) {
+            if (!repeatsEarlierText(fingerprints.at(i), fingerprints.at(j)))
+                continue;
+            page.hasDuplicates = true;
+
+            const BlockFingerprint &candidate = fingerprints.at(i);
+            const int kept = keptPrefixWords(candidate, fingerprints.at(j));
+            const QString tail = candidate.simplified.mid(charOffsetAfterWords(candidate.simplified, kept)).trimmed();
+            if (kept >= kMinRepeatWords && kept >= kRepeatCoverage * candidate.words.size() && tail.size() >= kMinTailChars) {
+                BoundingBox &earlier = page.boxes[j];
+                if (earlier.text.endsWith(QLatin1Char('-')))
+                    earlier.text += tail;
+                else
+                    earlier.text += QLatin1Char(' ') + tail;
+                fingerprints[j] = fingerprintForDuplicateCheck(earlier.text);
+            } else if (page.boxes.at(j).text.size() < page.boxes.at(i).text.size()) {
+                page.boxes[j] = page.boxes.at(i);
+                fingerprints[j] = fingerprints.at(i);
+            }
+            page.boxes[j].duplicateSuspect = true;
+            page.boxes.removeAt(i);
+            fingerprints.removeAt(i);
+            --i;
+            break;
+        }
     }
 
     page.text = rebuildText(page);

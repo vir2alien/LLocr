@@ -63,6 +63,7 @@ QJsonObject boxToJson(const BoundingBox &box)
         {"w", box.rect.width()},
         {"h", box.rect.height()},
         {"positioned", box.positioned},
+        {"duplicateSuspect", box.duplicateSuspect},
     };
 }
 
@@ -76,6 +77,7 @@ BoundingBox boxFromJson(const QJsonObject &object)
     box.label = object.value("label").toString();
     box.rect = QRectF(object.value("x").toDouble(), object.value("y").toDouble(), object.value("w").toDouble(), object.value("h").toDouble());
     box.positioned = object.value("positioned").toBool(true);
+    box.duplicateSuspect = object.value("duplicateSuspect").toBool(false);
     return box;
 }
 

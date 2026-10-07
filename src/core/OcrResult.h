@@ -23,6 +23,9 @@ struct BoundingBox {
     QString label;  ///< Block type reported by the model (title, text, table...).
     QRectF rect;    ///< Normalized rectangle: x, y, width, height in [0, 1].
     bool positioned = true;
+    bool duplicateSuspect = false;  ///< A duplicate was merged into this block —
+                                    ///< included in verification regardless of the
+                                    ///< label filter.
 };
 
 struct OcrPage {

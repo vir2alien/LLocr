@@ -42,14 +42,15 @@ Rectangle {
                 Layout.maximumWidth: root.width - 90
             }
             Rectangle {
-                visible: Controller.selectedBlockCheckStatus !== 0
+                visible: Controller.selectedBlockCheckStatus !== 0 || Controller.selectedBlockSuspect
                 Layout.preferredWidth: 8
                 Layout.preferredHeight: 8
                 Layout.alignment: Qt.AlignVCenter
                 radius: 4
                 color: Controller.selectedBlockCheckStatus === 1 ? Theme.success
                      : Controller.selectedBlockCheckStatus === 2 ? Theme.warning
-                     : Theme.error
+                     : Controller.selectedBlockCheckStatus === 3 ? Theme.error
+                     : Theme.nothing
             }
             Item { Layout.fillWidth: true }
             LLOButton {

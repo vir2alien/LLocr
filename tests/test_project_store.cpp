@@ -68,6 +68,7 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     box.text = QStringLiteral("block text");
     box.correctedText = QStringLiteral("corrected text");
     box.checkStatus = BoxCheckStatus::Fixed;
+    box.duplicateSuspect = true;
     box.label = QStringLiteral("text");
     box.rect = QRectF(0.1, 0.2, 0.5, 0.25);
     imagePage.boxes.append(box);
@@ -189,7 +190,9 @@ private slots:
         QCOMPARE(imagePage.boxes.at(0).label, QStringLiteral("text"));
         QCOMPARE(imagePage.boxes.at(0).rect, QRectF(0.1, 0.2, 0.5, 0.25));
         QVERIFY(imagePage.boxes.at(0).positioned);
+        QVERIFY(imagePage.boxes.at(0).duplicateSuspect);
         QVERIFY(!imagePage.boxes.at(1).positioned);
+        QVERIFY(!imagePage.boxes.at(1).duplicateSuspect);
 
         const ProjectPageData &pdfPage = loaded.data.pages.at(1);
         QCOMPARE(pdfPage.sourceId, 1);

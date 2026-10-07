@@ -835,6 +835,12 @@ int AppController::selectedBlockCheckStatus() const
     return box ? static_cast<int>(box->checkStatus) : 0;
 }
 
+bool AppController::selectedBlockSuspect() const
+{
+    const BoundingBox *box = selectedBox();
+    return box && box->duplicateSuspect;
+}
+
 QString AppController::selectedBlockCorrected() const
 {
     const BoundingBox *box = selectedBox();

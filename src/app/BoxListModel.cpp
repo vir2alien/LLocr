@@ -36,6 +36,8 @@ QVariant BoxListModel::data(const QModelIndex &index, int role) const
         return static_cast<int>(box.checkStatus);
     case CorrectedRole:
         return box.correctedText;
+    case SuspectRole:
+        return box.duplicateSuspect;
     default:
         return {};
     }
@@ -52,6 +54,7 @@ QHash<int, QByteArray> BoxListModel::roleNames() const
         {LabelRole, "boxLabel"},
         {CheckStatusRole, "boxCheckStatus"},
         {CorrectedRole, "boxCorrectedText"},
+        {SuspectRole, "boxSuspect"},
     };
     return roles;
 }

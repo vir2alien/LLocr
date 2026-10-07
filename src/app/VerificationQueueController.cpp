@@ -76,7 +76,7 @@ void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> 
     const OcrPage &page = docPage.result.pages.first();
     for (int i = 0; i < page.boxes.size(); ++i) {
         const BoundingBox &box = page.boxes.at(i);
-        if (!m_deps.verification.isTypeEnabled(box.label))
+        if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
             continue;
         if (box.text.isEmpty())
             continue;
@@ -122,7 +122,7 @@ bool VerificationQueueController::pageVerificationSupported(int pageIndex) const
         return false;
     const OcrPage &page = m_deps.document.page(pageIndex).result.pages.first();
     for (const BoundingBox &box : std::as_const(page.boxes)) {
-        if (m_deps.verification.isTypeEnabled(box.label) && !box.text.isEmpty())
+        if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !box.text.isEmpty())
             return true;
     }
     return false;
@@ -138,7 +138,7 @@ bool VerificationQueueController::allPageVerificationSupported() const
             continue;
         const OcrPage &page = docPage.result.pages.first();
         for (const BoundingBox &box : std::as_const(page.boxes)) {
-            if (m_deps.verification.isTypeEnabled(box.label) && !box.text.isEmpty())
+            if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !box.text.isEmpty())
                 return true;
         }
     }
