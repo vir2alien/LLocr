@@ -116,11 +116,22 @@ QString formatEquation(const QString &text)
     // The model often nests inline \(…\) inside the display \[…\] wrapper —
     // strip the redundant delimiters (bare parens are left untouched).
     static const QRegularExpression innerDelimRe(QStringLiteral(R"(\\\(|\\\))"));
+    // The model also writes equations already wrapped in $…$ (or $$…$$), with
+    // the formula number outside the dollars: "$C(T) = L_m + T$. (5)". The
+    // inner dollars corrupt the $$…$$ display block, and the number becomes
+    // \tag, matching the \[…\] … \tag{n} style.
+    static const QRegularExpression dollarRe(QStringLiteral(R"(^\s*\$\$?\s*([\s\S]*?)\s*\$\$?\s*(?:\.\s*)?(?:\((\d+)\)\s*)?$)"));
 
     QString body = text.trimmed();
     const QRegularExpressionMatch m = wrapperRe.match(body);
     if (m.hasMatch())
         body = m.captured(1).trimmed();
+    const QRegularExpressionMatch dm = dollarRe.match(body);
+    if (dm.hasMatch()) {
+        body = dm.captured(1).trimmed();
+        if (!dm.captured(2).isEmpty())
+            body += QStringLiteral(" \\tag{%1}").arg(dm.captured(2));
+    }
     body.remove(innerDelimRe);
 
     return QStringLiteral("$$\n%1\n$$").arg(body.trimmed());

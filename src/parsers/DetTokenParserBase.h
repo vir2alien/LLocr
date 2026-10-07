@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QRect>
 #include <QRegularExpression>
 
 #include "parsers/IOutputParser.h"
@@ -23,6 +24,10 @@ public:
     virtual bool escapesLineBreaks(const QString &preparedText) const = 0;
 
     virtual QString prepareText(const QString &rawText) const;
+
+    // Compensation of a model-wide systematic coordinate bias; identity for
+    // models whose [0, bboxRange] coordinates are already page-accurate.
+    virtual QRectF calibrateRect(const QRectF &rect) const;
 
     ParserOptions m_options;
 };

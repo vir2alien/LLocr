@@ -265,6 +265,82 @@ private slots:
         QVERIFY(!md.contains("image_index"));
     }
 
+    // The model letterboxes the page into a 3:2 grounding canvas, so an A4
+    // page arrives with y centered and compressed (x exact); the parser maps
+    // the rects back out using the page's aspect (ADR 136).
+    void calibratesInsetCoordinates()
+    {
+        const QString raw = QStringLiteral("text [113, 149, 884, 194]Body paragraph");
+
+        Lfm25VlParser parser;  // default options assume the A4 aspect
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QRectF rect = r.pages.first().boxes.first().rect;
+        QVERIFY(qFuzzyCompare(rect.x(), 0.113));
+        QVERIFY(qFuzzyCompare(rect.width(), 0.771));
+        const qreal yScale = 1.4142 / 1.5;
+        QVERIFY(qFuzzyCompare(rect.y(), (0.149 - (1.0 - yScale) / 2.0) / yScale));
+        QVERIFY(qFuzzyCompare(rect.height(), 0.045 / yScale));
+    }
+
+    // A page already 3:2 tall fills the grounding canvas exactly — identity;
+    // a wider page letterboxes the height, a taller one the width.
+    void calibrationFollowsThePageAspect()
+    {
+        const QString raw = QStringLiteral("text [300, 300, 600, 400]Body paragraph");
+
+        ParserOptions square;
+        square.pageAspect = 1.5;
+        const OcrResult r = Lfm25VlParser(square).parse(raw);
+        QVERIFY(r.success);
+        const QRectF rect = r.pages.first().boxes.first().rect;
+        QVERIFY(qFuzzyCompare(rect.x(), 0.3));
+        QVERIFY(qFuzzyCompare(rect.y(), 0.3));
+        QVERIFY(qFuzzyCompare(rect.width(), 0.3));
+        QVERIFY(qFuzzyCompare(rect.height(), 0.1));
+
+        ParserOptions wide;
+        wide.pageAspect = 0.75;
+        const OcrResult r2 = Lfm25VlParser(wide).parse(raw);
+        QVERIFY(r2.success);
+        const QRectF rect2 = r2.pages.first().boxes.first().rect;
+        QVERIFY(qFuzzyCompare(rect2.x(), 0.3));
+        QVERIFY(qFuzzyCompare(rect2.width(), 0.3));
+        QVERIFY(qFuzzyCompare(rect2.y(), (0.3 - 0.25) / 0.5));
+        QVERIFY(qFuzzyCompare(rect2.height(), (0.4 - 0.3) / 0.5));
+
+        ParserOptions tall;
+        tall.pageAspect = 3.0;
+        const OcrResult r3 = Lfm25VlParser(tall).parse(raw);
+        QVERIFY(r3.success);
+        const QRectF rect3 = r3.pages.first().boxes.first().rect;
+        QVERIFY(qFuzzyCompare(rect3.x(), (0.3 - 0.25) / 0.5));
+        QVERIFY(qFuzzyCompare(rect3.width(), (0.6 - 0.3) / 0.5));
+        QVERIFY(qFuzzyCompare(rect3.y(), 0.3));
+        QVERIFY(qFuzzyCompare(rect3.height(), 0.1));
+    }
+
+    // Real-world LFM2.5-VL equation style: the formula arrives wrapped in
+    // $…$ with the number outside the dollars. The dollars must not survive
+    // into the $$…$$ display block (they break KaTeX rendering), and the
+    // number becomes \tag — matching the \[…\] … \tag{n} style.
+    void stripsDollarWrappersInEquations()
+    {
+        const QString raw = QStringLiteral("equation [422, 202, 884, 217]$C_{MHA}(T) = L_m + T$. (5)\n"
+                                           "\n"
+                                           "equation [438, 402, 884, 431]$\\rho(T) = \\frac{L_m + n}{L_m + T}$");
+
+        Lfm25VlParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("$$\nC_{MHA}(T) = L_m + T \\tag{5}\n$$")));
+        QVERIFY(md.contains(QStringLiteral("$$\n\\rho(T) = \\frac{L_m + n}{L_m + T}\n$$")));
+        QVERIFY(!md.contains(QStringLiteral("$$\n$")));
+    }
+
     // LFM2.5-VL serializes tables in OTSL (TableFormer vocabulary): <fcel>
     // opens a cell, <lcel>/<ucel>/<xcel> are cells covered by a span (rendered
     // empty — the value is written once, ADR 19), <nl> ends a row.
@@ -702,7 +778,8 @@ private slots:
         QVERIFY(rect.y() >= 0.0);
         QVERIFY(rect.width() >= 0.0);
         QVERIFY(rect.height() >= 0.0);
-        // x = min(200,100)/1000 = 0.1, width = (200-100)/1000 = 0.1
+        // x = min(200,100)/1000 = 0.1, width = (200-100)/1000 = 0.1 — the x
+        // axis is untouched by the letterbox calibration for an A4 page.
         QVERIFY(qFuzzyCompare(rect.x(), 0.1));
         QVERIFY(qFuzzyCompare(rect.width(), 0.1));
     }
@@ -1097,22 +1174,24 @@ private slots:
     }
 
     // bboxRange is the model's coordinate scale: 0-10000 coordinates must
-    // normalize into the same [0, 1] rects as the usual 0-1000 space.
+    // normalize into the same [0, 1] rects as the usual 0-1000 space. The
+    // page aspect matches the grounding canvas, so calibration is identity.
     void honorsBboxRange()
     {
-        const QString raw = QStringLiteral("text [100, 200, 4000, 3000]Wide scale body text.\n");
+        const QString raw = QStringLiteral("text [1000, 2000, 4000, 3000]Wide scale body text.\n");
 
         ParserOptions wide;
         wide.bboxRange = 10000;
+        wide.pageAspect = 1.5;
         const OcrResult r = Lfm25VlParser(wide).parse(raw);
 
         QVERIFY(r.success);
         const OcrPage &page = r.pages.first();
         QCOMPARE(page.boxes.size(), 1);
-        QVERIFY(qFuzzyCompare(page.boxes.first().rect.x(), 0.01));
-        QVERIFY(qFuzzyCompare(page.boxes.first().rect.y(), 0.02));
-        QVERIFY(qFuzzyCompare(page.boxes.first().rect.width(), 0.39));
-        QVERIFY(qFuzzyCompare(page.boxes.first().rect.height(), 0.28));
+        QVERIFY(qFuzzyCompare(page.boxes.first().rect.x(), 0.1));
+        QVERIFY(qFuzzyCompare(page.boxes.first().rect.y(), 0.2));
+        QVERIFY(qFuzzyCompare(page.boxes.first().rect.width(), 0.3));
+        QVERIFY(qFuzzyCompare(page.boxes.first().rect.height(), 0.1));
     }
 
     // rebuildText is the parser's own contract: the raw parser has no

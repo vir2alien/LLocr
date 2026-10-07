@@ -679,8 +679,13 @@ void AppController::applyRawResult(int index, const OcrResult &rawResult)
     if (!m_document.isValidIndex(index))
         return;
 
+    ParserOptions options = parserOptions();
+    const QSize pixelSize = m_document.page(index).pixelSize;
+    if (pixelSize.isValid() && pixelSize.width() > 0)
+        options.pageAspect = qreal(pixelSize.height()) / pixelSize.width();
+
     OcrResult parsed = rawResult;
-    if (auto parser = makeParser())
+    if (auto parser = ParserFactory::create(effectiveParserId(), options))
         parsed = parser->parse(rawResult.text);
 
     DocumentPage &page = m_document.page(index);

@@ -18,6 +18,7 @@ protected:
     const QRegularExpression &tokenRegex(const QString &preparedText) const override;
     bool escapesLineBreaks(const QString &preparedText) const override;
     QString prepareText(const QString &rawText) const override;
+    QRectF calibrateRect(const QRectF &rect) const override;
 };
 
 }  // namespace llocr

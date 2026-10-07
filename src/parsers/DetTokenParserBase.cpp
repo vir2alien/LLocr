@@ -286,6 +286,11 @@ QString DetTokenParserBase::prepareText(const QString &rawText) const
     return rawText;
 }
 
+QRectF DetTokenParserBase::calibrateRect(const QRectF &rect) const
+{
+    return rect;
+}
+
 QString DetTokenParserBase::rebuildText(const OcrPage &page) const
 {
     return rebuildTextWithRanges(page).text;
@@ -394,7 +399,7 @@ OcrResult DetTokenParserBase::parse(const QString &rawText) const
         BoundingBox box;
         box.label = t.label;
         box.text = boxText;
-        box.rect = QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1);
+        box.rect = calibrateRect(QRectF(nx1, ny1, nx2 - nx1, ny2 - ny1));
         box.positioned = t.hasBbox;
 
         int dupIndex = -1;
@@ -403,8 +408,8 @@ OcrResult DetTokenParserBase::parse(const QString &rawText) const
                 if (!page.boxes.at(j).positioned)
                     continue;
                 const QRectF &other = page.boxes.at(j).rect;
-                if (qAbs(other.x() - nx1) <= kDuplicateTolerance && qAbs(other.y() - ny1) <= kDuplicateTolerance && qAbs(other.width() - (nx2 - nx1)) <= kDuplicateTolerance &&
-                    qAbs(other.height() - (ny2 - ny1)) <= kDuplicateTolerance) {
+                if (qAbs(other.x() - box.rect.x()) <= kDuplicateTolerance && qAbs(other.y() - box.rect.y()) <= kDuplicateTolerance && qAbs(other.width() - box.rect.width()) <= kDuplicateTolerance &&
+                    qAbs(other.height() - box.rect.height()) <= kDuplicateTolerance) {
                     dupIndex = j;
                     break;
                 }
