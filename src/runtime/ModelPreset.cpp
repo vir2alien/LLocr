@@ -20,6 +20,9 @@ ModelPreset ModelPreset::fromJson(const QJsonObject &o)
     p.revision = o.value(QStringLiteral("revision")).toString();
     p.model = o.value(QStringLiteral("model")).toString();
     p.mmproj = o.value(QStringLiteral("mmproj")).toString();
+    p.mtp = o.value(QStringLiteral("mtp")).toString();
+    p.mtpRepo = o.value(QStringLiteral("mtpRepo")).toString();
+    p.mtpRevision = o.value(QStringLiteral("mtpRevision")).toString();
     p.ctxSize = o.value(QStringLiteral("ctxSize")).toInt(8192);
     p.minBuild = o.value(QStringLiteral("minBuild")).toString();
     p.license = o.value(QStringLiteral("license")).toString();
@@ -46,6 +49,12 @@ QJsonObject ModelPreset::toJson() const
         o.insert(QStringLiteral("model"), model);
     if (!mmproj.isEmpty())
         o.insert(QStringLiteral("mmproj"), mmproj);
+    if (!mtp.isEmpty())
+        o.insert(QStringLiteral("mtp"), mtp);
+    if (!mtpRepo.isEmpty())
+        o.insert(QStringLiteral("mtpRepo"), mtpRepo);
+    if (!mtpRevision.isEmpty())
+        o.insert(QStringLiteral("mtpRevision"), mtpRevision);
     if (ctxSize != 8192)
         o.insert(QStringLiteral("ctxSize"), ctxSize);
     if (!minBuild.isEmpty())

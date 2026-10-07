@@ -4549,6 +4549,10 @@
         <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
     </message>
     <message>
+        <source>Draft module %1 not found in %2</source>
+        <translation>Модуль черновика %1 не найден в %2</translation>
+    </message>
+    <message>
         <location line="+20"/>
         <source>Unable to read downloaded file %1</source>
         <translation>Не удалось прочитать скачанный файл %1</translation>

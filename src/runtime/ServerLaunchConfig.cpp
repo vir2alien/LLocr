@@ -18,11 +18,13 @@ ServerLaunchConfig ServerLaunchConfig::fromSettings(const SettingsStore &s, cons
     if (role == ConnectionRole::Check) {
         cfg.modelPath = s.checkLaunchModelPath();
         cfg.mmprojPath = s.checkLaunchMmprojPath();
+        cfg.draftPath = s.checkLaunchDraftPath();
         modelId = s.checkRequestProfileId();
         roleName = QStringLiteral("check");
     } else {
         cfg.modelPath = s.launchModelPath();
         cfg.mmprojPath = s.launchMmprojPath();
+        cfg.draftPath = s.launchDraftPath();
         modelId = s.modelRecipeId();
         roleName = QStringLiteral("ocr");
     }
@@ -36,8 +38,8 @@ ServerLaunchConfig ServerLaunchConfig::fromSettings(const SettingsStore &s, cons
 
 bool ServerLaunchConfig::operator==(const ServerLaunchConfig &other) const
 {
-    return program == other.program && modelPath == other.modelPath && mmprojPath == other.mmprojPath && modelAlias == other.modelAlias && host == other.host && port == other.port &&
-           parameters == other.parameters;
+    return program == other.program && modelPath == other.modelPath && mmprojPath == other.mmprojPath && draftPath == other.draftPath && modelAlias == other.modelAlias && host == other.host &&
+           port == other.port && parameters == other.parameters;
 }
 
 namespace {
@@ -81,6 +83,9 @@ QStringList ServerLaunchConfig::toArguments(const ServerCapabilities &caps) cons
 
     if (!mmprojPath.isEmpty())
         appendPair(args, QStringLiteral("--mmproj"), mmprojPath);
+
+    if (!draftPath.isEmpty())
+        appendPair(args, QStringLiteral("--model-draft"), draftPath);
 
     if (caps.supportsAlias && !modelAlias.isEmpty())
         appendPair(args, QStringLiteral("--alias"), modelAlias);

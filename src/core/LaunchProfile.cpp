@@ -31,6 +31,7 @@ const QStringList &LaunchProfile::reservedArgNames()
     static const QStringList names = {
         QStringLiteral("model"),
         QStringLiteral("mmproj"),
+        QStringLiteral("model-draft"),
         QStringLiteral("alias"),
         QStringLiteral("host"),
         QStringLiteral("port"),

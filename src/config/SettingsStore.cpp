@@ -52,10 +52,12 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kLaunchProfileId, "launchProfileId", QVariant(QString())},
         {kLaunchModelPath, "launchModelPath", QVariant(QString())},
         {kLaunchMmprojPath, "launchMmprojPath", QVariant(QString())},
+        {kLaunchDraftPath, "launchDraftPath", QVariant(QString())},
         {kLaunchHost, "launchHost", QVariant(QString::fromUtf8(kDefaultHost))},
         {kLaunchPort, "launchPort", QVariant(kDefaultPort)},
         {kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString())},
         {kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString())},
+        {kCheckLaunchDraftPath, "checkLaunchDraftPath", QVariant(QString())},
         {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultCheckRequestProfileId())},
         {kCheckModelName, "checkModelName", QVariant(QString())},
         {kAutoCheck, "autoCheck", QVariant(false)},
@@ -690,6 +692,19 @@ void SettingsStore::setLaunchMmprojPath(const QString &path)
     emit launchMmprojPathChanged();
 }
 
+QString SettingsStore::launchDraftPath() const
+{
+    return m_settings.value(kLaunchDraftPath).toString();
+}
+
+void SettingsStore::setLaunchDraftPath(const QString &path)
+{
+    if (launchDraftPath() == path)
+        return;
+    m_settings.setValue(kLaunchDraftPath, path);
+    emit launchDraftPathChanged();
+}
+
 QString SettingsStore::launchHost() const
 {
     return m_settings.value(kLaunchHost, QString::fromUtf8(kDefaultHost)).toString();
@@ -740,6 +755,19 @@ void SettingsStore::setCheckLaunchMmprojPath(const QString &path)
         return;
     m_settings.setValue(kCheckLaunchMmprojPath, path);
     emit checkLaunchMmprojPathChanged();
+}
+
+QString SettingsStore::checkLaunchDraftPath() const
+{
+    return m_settings.value(kCheckLaunchDraftPath).toString();
+}
+
+void SettingsStore::setCheckLaunchDraftPath(const QString &path)
+{
+    if (checkLaunchDraftPath() == path)
+        return;
+    m_settings.setValue(kCheckLaunchDraftPath, path);
+    emit checkLaunchDraftPathChanged();
 }
 
 QString SettingsStore::checkRequestProfileId() const

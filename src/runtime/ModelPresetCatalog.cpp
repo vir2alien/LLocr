@@ -99,15 +99,20 @@ QList<ModelPreset> ModelPresetCatalog::expand(const QList<ModelProfiles::Profile
             preset.revision = profile.files.revision;
             preset.model = quant.file;
             preset.mmproj = profile.files.mmproj.file;
+            if (!profile.files.mtp.file.isEmpty()) {
+                preset.mtp = profile.files.mtp.file;
+                preset.mtpRepo = profile.files.mtp.repo.isEmpty() ? profile.files.repo : profile.files.mtp.repo;
+                preset.mtpRevision = profile.files.mtp.revision;
+            }
             preset.minBuild = profile.minBuild;
             preset.license = profile.license;
             preset.ctxSize = 8192;
             if (!quant.sha256.isEmpty())
-                preset.sha256.insert(ModelCatalog::leafName(quant.file), quant.sha256);
+                preset.sha256.insert(ModelCatalog::leafName(quant.file).toLower(), quant.sha256);
             if (!profile.files.mmproj.sha256.isEmpty())
-                preset.sha256.insert(ModelCatalog::leafName(profile.files.mmproj.file), profile.files.mmproj.sha256);
+                preset.sha256.insert(ModelCatalog::leafName(profile.files.mmproj.file).toLower(), profile.files.mmproj.sha256);
             if (!profile.files.mtp.sha256.isEmpty())
-                preset.sha256.insert(ModelCatalog::leafName(profile.files.mtp.file), profile.files.mtp.sha256);
+                preset.sha256.insert(ModelCatalog::leafName(profile.files.mtp.file).toLower(), profile.files.mtp.sha256);
             out.append(preset);
         }
     }

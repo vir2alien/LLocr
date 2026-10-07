@@ -72,6 +72,7 @@ private slots:
     void dropsEntriesWhoseFilesAreGone();
     void keepsIndexMetadataAndRefreshesFileFacts();
     void keepsProjectorPairingAndRecordsItsAbsence();
+    void scanAttachesDraftAndDoesNotListItAsAModel();
     void reportsStaleSelectionsWithoutDroppingThem();
     void anUnreadableModelsDirectoryIsNotAnEmptyOne();
     void reportsWhatItReconciled();
@@ -512,6 +513,40 @@ void TestModelRegistry::keepsProjectorPairingAndRecordsItsAbsence()
     QCOMPARE(result.models.size(), 2);
     QCOMPARE(result.models.at(0).mmprojPath, mmproj);
     QVERIFY(result.models.at(1).mmprojPath.isEmpty());
+}
+
+// A DSpark/MTP sidecar is not runnable on its own: the scan must not grow a
+// model entry for it, and the reconcile keeps the recorded draft pairing the
+// same way it keeps the projector's.
+void TestModelRegistry::scanAttachesDraftAndDoesNotListItAsAModel()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString repo = QDir(dir.path()).filePath(QStringLiteral("org__repo"));
+    QVERIFY(QDir().mkpath(repo));
+    const QString model = writeFile(repo, QStringLiteral("LFM2.5-VL-3B-Q8_0.gguf"));
+    const QString draft = writeFile(repo, QStringLiteral("LFM2.5-VL-3B-DSpark-F16.gguf"));
+    QVERIFY(!model.isEmpty() && !draft.isEmpty());
+
+    const QList<ModelEntry> scanned = ModelRegistry::scanModelsDir(dir.path());
+    QCOMPARE(scanned.size(), 1);
+    QCOMPARE(scanned.at(0).draftPath, draft);
+
+    ModelEntry recorded;
+    recorded.id = QStringLiteral("org__repo");
+    recorded.dir = repo;
+    recorded.modelPath = model;
+    recorded.draftPath = draft;
+    recorded.byteSize = QFileInfo(model).size();
+    recorded.origin = ModelOrigin::Managed;
+
+    ReconcileInput input;
+    input.index = {recorded};
+    input.disk = scanned;
+    const ReconcileResult result = reconcileInstalled(input);
+    QCOMPARE(result.models.size(), 1);
+    QCOMPARE(result.models.at(0).draftPath, draft);
+    QVERIFY(!result.indexChanged);
 }
 
 // The settings are pointers, not membership: a model that is selected but gone

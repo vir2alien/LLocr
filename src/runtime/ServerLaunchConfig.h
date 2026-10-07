@@ -23,6 +23,7 @@ public:
     QString program;
     QString modelPath;
     QString mmprojPath;
+    QString draftPath;
     QString modelAlias;
     QString host = QStringLiteral("127.0.0.1");
     int port = 0;  // 0 = auto-pick (no --port passed / caller allocates)

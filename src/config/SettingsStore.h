@@ -55,11 +55,13 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString launchProfileId READ launchProfileId WRITE setLaunchProfileId NOTIFY launchProfileIdChanged)
     Q_PROPERTY(QString launchModelPath READ launchModelPath WRITE setLaunchModelPath NOTIFY launchModelPathChanged)
     Q_PROPERTY(QString launchMmprojPath READ launchMmprojPath WRITE setLaunchMmprojPath NOTIFY launchMmprojPathChanged)
+    Q_PROPERTY(QString launchDraftPath READ launchDraftPath WRITE setLaunchDraftPath NOTIFY launchDraftPathChanged)
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
 
     Q_PROPERTY(QString checkLaunchModelPath READ checkLaunchModelPath WRITE setCheckLaunchModelPath NOTIFY checkLaunchModelPathChanged)
     Q_PROPERTY(QString checkLaunchMmprojPath READ checkLaunchMmprojPath WRITE setCheckLaunchMmprojPath NOTIFY checkLaunchMmprojPathChanged)
+    Q_PROPERTY(QString checkLaunchDraftPath READ checkLaunchDraftPath WRITE setCheckLaunchDraftPath NOTIFY checkLaunchDraftPathChanged)
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
     Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
@@ -170,6 +172,8 @@ public:
     void setLaunchModelPath(const QString &path);
     QString launchMmprojPath() const;
     void setLaunchMmprojPath(const QString &path);
+    QString launchDraftPath() const;
+    void setLaunchDraftPath(const QString &path);
     QString launchHost() const;
     void setLaunchHost(const QString &host);
     int launchPort() const;
@@ -181,6 +185,8 @@ public:
     void setCheckLaunchModelPath(const QString &path);
     QString checkLaunchMmprojPath() const;
     void setCheckLaunchMmprojPath(const QString &path);
+    QString checkLaunchDraftPath() const;
+    void setCheckLaunchDraftPath(const QString &path);
     QString checkRequestProfileId() const;
     void setCheckRequestProfileId(const QString &id);
     QString checkModelName() const;
@@ -232,10 +238,12 @@ signals:
     void launchProfileIdChanged();
     void launchModelPathChanged();
     void launchMmprojPathChanged();
+    void launchDraftPathChanged();
     void launchHostChanged();
     void launchPortChanged();
     void checkLaunchModelPathChanged();
     void checkLaunchMmprojPathChanged();
+    void checkLaunchDraftPathChanged();
     void checkRequestProfileIdChanged();
     void checkModelNameChanged();
     void autoCheckChanged();
@@ -318,6 +326,7 @@ private:
     static constexpr const char *kLaunchProfileId = "launch/profileId";
     static constexpr const char *kLaunchModelPath = "launch/modelPath";
     static constexpr const char *kLaunchMmprojPath = "launch/mmprojPath";
+    static constexpr const char *kLaunchDraftPath = "launch/draftPath";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
     static constexpr const char *kRetiredAlias = "launch/modelAlias";
@@ -326,6 +335,7 @@ private:
     // Verification (check) model
     static constexpr const char *kCheckLaunchModelPath = "check/modelPath";
     static constexpr const char *kCheckLaunchMmprojPath = "check/mmprojPath";
+    static constexpr const char *kCheckLaunchDraftPath = "check/draftPath";
     static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
     static constexpr const char *kCheckModelName = "check/modelName";
     static constexpr const char *kAutoCheck = "check/autoCheck";

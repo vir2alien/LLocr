@@ -220,6 +220,7 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
         m_settings.setCheckLaunchModelPath(e.modelPath);
         if (!e.mmprojPath.isEmpty())
             m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
+        m_settings.setCheckLaunchDraftPath(e.draftPath);
         m_settings.selectModelProfile(e.repo, QStringLiteral("check"), true);
         m_settings.forceSave();
         publishInstalled();
@@ -229,6 +230,7 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
     m_settings.setLaunchModelPath(e.modelPath);
     if (!e.mmprojPath.isEmpty())
         m_settings.setLaunchMmprojPath(e.mmprojPath);
+    m_settings.setLaunchDraftPath(e.draftPath);
     m_settings.selectModelProfile(e.repo, QStringLiteral("ocr"), false);
     m_settings.forceSave();
     publishInstalled();
@@ -354,6 +356,19 @@ QString ModelInstaller::removeModel(int index)
             }
             if (!mmprojShared)
                 owned << e.mmprojPath;
+        }
+        bool draftShared = false;
+        if (!e.draftPath.isEmpty()) {
+            for (const ModelEntry &x : std::as_const(m_installed)) {
+                if (&x == &e)
+                    continue;
+                if (QFileInfo(x.dir).canonicalFilePath() == QFileInfo(e.dir).canonicalFilePath() && x.draftPath == e.draftPath) {
+                    draftShared = true;
+                    break;
+                }
+            }
+            if (!draftShared)
+                owned << e.draftPath;
         }
         for (const QString &path : std::as_const(owned)) {
             QFile f(path);

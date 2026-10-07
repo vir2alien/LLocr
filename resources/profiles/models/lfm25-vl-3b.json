@@ -11,7 +11,13 @@
       { "id": "q4_k_m", "file": "LFM2.5-VL-3B-Q4_K_M.gguf", "sha256": "" },
       { "id": "q8_0", "file": "LFM2.5-VL-3B-Q8_0.gguf", "sha256": "" }
     ],
-    "mmproj": { "id": "f16", "file": "mmproj-LFM2.5-VL-3B-F16.gguf", "sha256": "" }
+    "mmproj": { "id": "f16", "file": "mmproj-LFM2.5-VL-3B-F16.gguf", "sha256": "" },
+    "mtp": {
+      "id": "dspark-f16",
+      "file": "LFM2.5-VL-3B-DSpark-F16.gguf",
+      "sha256": "4eb314404b7b4c0033799faf5662f8277cf3d94163b8d791a22363165e294821",
+      "repo": "LiquidAI/LFM2.5-VL-3B-DSpark-GGUF"
+    }
   },
   "roles": {
     "ocr": {
@@ -41,7 +47,12 @@
           "phonetic": "text"
         }
       },
-      "launch": [ { "order": 1, "name": "special", "description": "Emit special tokens in the server output; the det-token parser needs them." } ],
+      "launch": [
+        { "order": 1, "name": "special", "description": "Emit special tokens in the server output; the det-token parser needs them." },
+        { "order": 2, "name": "spec-type", "value": "draft-dspark", "description": "Speculative decoding with the DSpark drafter (downloaded with the model); exact under greedy decoding." },
+        { "order": 3, "name": "spec-draft-n-max", "value": 8, "description": "Draft tokens per step; the drafter was trained with block size 9, 8 is recommended for Apple silicon." },
+        { "order": 4, "name": "spec-draft-n-min", "value": 0, "description": "Minimum draft tokens per step; 0 lets the drafter skip low-confidence steps." }
+      ],
       "request": [
         { "order": 1, "name": "temperature", "value": 0.2, "description": "Sampling randomness; LiquidAI recommends 0.2 with top_k 50 for LFM2.5-VL." },
         { "order": 2, "name": "top_k", "value": 50, "description": "Sample only from the 50 most likely tokens (LiquidAI recommendation)." },

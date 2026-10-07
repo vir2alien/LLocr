@@ -26,6 +26,8 @@ ModelProfiles::Module readModule(const QJsonObject &object, QString &error)
     module.id = object.value(QStringLiteral("id")).toString();
     module.file = object.value(QStringLiteral("file")).toString();
     module.sha256 = object.value(QStringLiteral("sha256")).toString().toLower();
+    module.repo = object.value(QStringLiteral("repo")).toString();
+    module.revision = object.value(QStringLiteral("revision")).toString();
     if (module.file.isEmpty()) {
         error = QObject::tr("Model profile %1 has a module without a file name").arg(module.id);
         return module;

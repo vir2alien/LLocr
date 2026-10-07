@@ -181,6 +181,8 @@ void TestModelCatalog::detectsRoles()
 {
     QCOMPARE(ModelCatalog::fileKind(QStringLiteral("model-Q4_K_M.gguf")), ModelFileKind::Model);
     QCOMPARE(ModelCatalog::fileKind(QStringLiteral("mmproj-F16.gguf")), ModelFileKind::Vision);
+    QCOMPARE(ModelCatalog::fileKind(QStringLiteral("LFM2.5-VL-3B-DSpark-F16.gguf")), ModelFileKind::Draft);
+    QCOMPARE(ModelCatalog::fileKind(QStringLiteral("Qwen3.5-4B-MTP-Q4_K_M.gguf")), ModelFileKind::Draft);
     QCOMPARE(ModelCatalog::fileKind(QStringLiteral("readme.md")), ModelFileKind::NotModel);
     QCOMPARE(ModelCatalog::fileKind(QStringLiteral("mmproj.bin")), ModelFileKind::NotModel);
 }

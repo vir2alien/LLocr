@@ -39,6 +39,8 @@ public:
         QString id;
         QString file;
         QString sha256;
+        QString repo;      // empty = files.repo; the DSpark/MTP draft lives in its own repo
+        QString revision;  // empty = pin the repo head at install time
     };
 
     struct Files {
@@ -46,7 +48,7 @@ public:
         QString revision;  // may be empty; the install pins the repo head
         QList<Quant> quants;
         Module mmproj;
-        Module mtp;  // optional speculative-decoding / draft module
+        Module mtp;  // optional speculative-decoding draft module (DSpark / MTP)
     };
 
     struct Profile {

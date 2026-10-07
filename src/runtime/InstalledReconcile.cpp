@@ -23,6 +23,8 @@ bool entryIsPresent(const ModelEntry &entry)
         }
         if (!entry.mmprojPath.isEmpty() && !QFileInfo::exists(entry.mmprojPath))
             return false;
+        if (!entry.draftPath.isEmpty() && !QFileInfo::exists(entry.draftPath))
+            return false;
         return true;
     }
     return !entry.dir.isEmpty() && QFileInfo(entry.dir).isDir();

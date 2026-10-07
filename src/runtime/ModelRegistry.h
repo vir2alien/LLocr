@@ -24,6 +24,7 @@ struct ModelEntry {
     QString modelPath;   // absolute path to the main .gguf
     QStringList parts;   // extra absolute part paths (multi-file split)
     QString mmprojPath;  // absolute path to the vision projector, or empty
+    QString draftPath;   // absolute path to the speculative-decoding draft, or empty
     QString dir;         // containing directory
     ModelOrigin origin = ModelOrigin::External;
     qint64 byteSize = 0;
@@ -40,8 +41,9 @@ struct ModelEntry {
     bool operator==(const ModelEntry &other) const
     {
         return id == other.id && title == other.title && repo == other.repo && revision == other.revision && modelPath == other.modelPath && parts == other.parts && mmprojPath == other.mmprojPath &&
-               dir == other.dir && origin == other.origin && byteSize == other.byteSize && quantization == other.quantization && license == other.license && sha256 == other.sha256 &&
-               parser == other.parser && ctxSize == other.ctxSize && ctxSizeSet == other.ctxSizeSet && addedAt == other.addedAt && repoId == other.repoId && roles == other.roles;
+               draftPath == other.draftPath && dir == other.dir && origin == other.origin && byteSize == other.byteSize && quantization == other.quantization && license == other.license &&
+               sha256 == other.sha256 && parser == other.parser && ctxSize == other.ctxSize && ctxSizeSet == other.ctxSizeSet && addedAt == other.addedAt && repoId == other.repoId &&
+               roles == other.roles;
     }
     bool operator!=(const ModelEntry &other) const { return !(*this == other); }
 };

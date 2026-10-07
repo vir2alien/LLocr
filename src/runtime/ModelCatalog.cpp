@@ -132,6 +132,8 @@ ModelFileKind ModelCatalog::fileKind(const QString &name)
         return ModelFileKind::NotModel;
     if (name.contains(QLatin1String("mmproj"), Qt::CaseInsensitive))
         return ModelFileKind::Vision;
+    if (name.contains(QLatin1String("dspark"), Qt::CaseInsensitive) || name.contains(QLatin1String("mtp"), Qt::CaseInsensitive) || name.contains(QLatin1String("draft"), Qt::CaseInsensitive))
+        return ModelFileKind::Draft;
     return ModelFileKind::Model;
 }
 

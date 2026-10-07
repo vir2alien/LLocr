@@ -24,6 +24,7 @@ enum class ModelFileKind {
     NotModel,  // not a .gguf
     Model,     // main vision model (or one part of a multi-file split)
     Vision,    // mmproj projector
+    Draft,     // speculative-decoding sidecar (DSpark / MTP); not runnable on its own
 };
 
 class ModelCatalog

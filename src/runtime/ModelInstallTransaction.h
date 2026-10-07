@@ -52,6 +52,7 @@ public:
     static QString repoDirName(const QString &repo);
     static void selectModelFiles(const QList<HfFile> &tree, const QString &prefer, const QString &preferMmproj, QStringList *modelPaths, QString &mmprojRel);
     static bool preserveExistingFiles(const QString &finalDir, const QString &stagingDir, const QStringList &writtenNames, QString *error = nullptr);
+    static bool moduleAlreadyOnDisk(const QString &dir, const QString &relPath, const QString &expected, const QString &revision, const QList<ModelEntry> &installed, QString ModelEntry::*which);
 
 signals:
     void stateChanged(int state);
@@ -72,6 +73,9 @@ private:
         QString dir;                         // <modelsDir>/<org>__<repo>
         QString modelPath;                   // absolute first part after install
         QString mmprojRel;                   // repo-relative projector path, or empty
+        QString mtpRel;                      // repo-relative draft path, or empty
+        QString mtpRepo;                     // the draft's repo (differs from repo for DSpark)
+        QString mtpRevision;                 // pinned draft-repo commit, or empty
         QStringList modelNames;              // repo-relative model file paths (all parts)
         QHash<QString, QString> fileSha256;  // preset-pinned digest per file name (lowercased)
         QList<HfFile> files;                 // full candidate file list for the repo
@@ -85,10 +89,9 @@ private:
     void beginPrepare(const ModelPreset &preset);
     void onPrepareDone(const InstallPlan &p, const QString &err);
     void beginDownload();
-    void enqueueModelFiles(bool mmprojOnDisk);
+    void enqueueModelFiles(bool mmprojOnDisk, bool mtpOnDisk);
     void enqueueFile(const QString &repoPath, const QString &repo, const QString &commitSha);
     QString expectedShaFor(const QString &repoPath) const;
-    static bool mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel, const QString &expected, const QString &revision, const QList<ModelEntry> &installed);
     bool preservePendingFiles(QString *error);
     void maybeFinishDownloads();
     void completeInstall();

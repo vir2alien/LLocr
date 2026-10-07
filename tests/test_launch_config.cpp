@@ -24,6 +24,7 @@ class TestLaunchConfig : public QObject
 
 private slots:
     void argvCoreFirstThenProfileRows();
+    void argvPassesTheDraftModelPath();
     void argvFlagRowsHaveNoValue();
     void argvSkipsReservedNames();
     void argvNumericFormatting();
@@ -95,6 +96,24 @@ void TestLaunchConfig::argvCoreFirstThenProfileRows()
                           QStringLiteral("--no-warmup"),
                           QStringLiteral("--cache-type-k"),
                           QStringLiteral("f32")}));
+}
+
+// The draft path is a core field like --model/--mmproj: it points at an
+// installed file, so a launch profile row must never be able to override it.
+void TestLaunchConfig::argvPassesTheDraftModelPath()
+{
+    ServerLaunchConfig cfg;
+    cfg.modelPath = QStringLiteral("/m.gguf");
+    cfg.draftPath = QStringLiteral("/m-DSpark-F16.gguf");
+    cfg.parameters.append(makeParameter(QStringLiteral("model-draft"), LaunchValueKind::Text, QVariant(QStringLiteral("evil.gguf")), 1));
+
+    const QStringList args = cfg.toArguments(modernCaps());
+    QCOMPARE(args.count(QStringLiteral("--model-draft")), 1);
+    QCOMPARE(args.at(args.indexOf(QStringLiteral("--model-draft")) + 1), QStringLiteral("/m-DSpark-F16.gguf"));
+
+    ServerLaunchConfig withoutDraft = cfg;
+    withoutDraft.draftPath.clear();
+    QVERIFY(!withoutDraft.toArguments(modernCaps()).contains(QStringLiteral("--model-draft")));
 }
 
 void TestLaunchConfig::argvFlagRowsHaveNoValue()
@@ -316,6 +335,7 @@ void TestLaunchConfig::modelAppendValidation()
     QVERIFY(!model.appendRow(QStringLiteral(""), QString()));
     QVERIFY(!model.appendRow(QStringLiteral("model"), QString()));
     QVERIFY(!model.appendRow(QStringLiteral("mmproj"), QString()));
+    QVERIFY(!model.appendRow(QStringLiteral("model-draft"), QString()));
     QVERIFY(!model.appendRow(QStringLiteral("alias"), QString()));
     QVERIFY(!model.appendRow(QStringLiteral("host"), QString()));
     QVERIFY(!model.appendRow(QStringLiteral("port"), QString()));

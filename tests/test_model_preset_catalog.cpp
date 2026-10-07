@@ -22,6 +22,7 @@ private slots:
     // parameter lists are what make a model recognisable, so both are checked
     // against the values the model card and the launcher actually document.
     void shippedProfilesAreTheOnesTheDocsDescribe();
+    void draftModuleReachesThePresets();
     void checkModelBlockPromptsOverridePerType();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
@@ -77,7 +78,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     // profiles of serverLaunch.json (ADR 126).
     const QList<Expected> expected = {
         {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
-        {"lfm25-vl-3b", "ocr", "b8000", "q4_k_m,q8_0", "special"},
+        {"lfm25-vl-3b", "ocr", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
         {"qwen3.5-4b", "check", "b4000", "q8_0,q4_k_xl", ""},
         {"teleocr", "ocr,check", "b4000", "q4_k_m,q8_0", ""},
     };
@@ -124,6 +125,26 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
 // it — while a type it says nothing about still gets verifyPrompts.json. The
 // types are the labels the OCR parsers emit, so a typo here would silently
 // disable the override.
+// The DSpark draft ships in its own repo, so the preset has to carry both the
+// file name and the repo — otherwise the install downloads nothing to run
+// --model-draft with.
+void TestModelPresetCatalog::draftModuleReachesThePresets()
+{
+    const QList<ModelPreset> presets = ModelPresetCatalog::expand(ModelProfiles::instance());
+    const ModelPreset *lfm = nullptr;
+    for (const ModelPreset &p : presets) {
+        if (p.profileId == QStringLiteral("lfm25-vl-3b")) {
+            lfm = &p;
+            break;
+        }
+    }
+    QVERIFY2(lfm, "the lfm25-vl-3b preset is in the built-in catalog");
+    QCOMPARE(lfm->mtp, QStringLiteral("LFM2.5-VL-3B-DSpark-F16.gguf"));
+    QCOMPARE(lfm->mtpRepo, QStringLiteral("LiquidAI/LFM2.5-VL-3B-DSpark-GGUF"));
+    QVERIFY(!lfm->sha256.value(QStringLiteral("lfm2.5-vl-3b-dspark-f16.gguf")).isEmpty());
+    QVERIFY(lfm->mtpRepo != lfm->repo);  // a different repo is the whole point of the test
+}
+
 void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
 {
     const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("check"));

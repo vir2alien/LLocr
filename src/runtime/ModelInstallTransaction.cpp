@@ -251,6 +251,34 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
         if (modelNames.isEmpty())
             return {InstallPlan{}, QObject::tr("No usable model file found in %1").arg(repo)};
 
+        QString mtpRel;
+        QString mtpRepo;
+        QString mtpRevision;
+        if (!preset.mtp.isEmpty()) {
+            mtpRepo = preset.mtpRepo.isEmpty() ? repo : preset.mtpRepo;
+            if (!preset.mtpRevision.isEmpty()) {
+                mtpRevision = preset.mtpRevision;
+            } else if (mtpRepo == repo) {
+                mtpRevision = rev;
+            } else {
+                mtpRevision = ModelCatalog::fetchHeadSha(&nam, mtpRepo, err, auth);
+                if (mtpRevision.isEmpty())
+                    return {InstallPlan{}, err.isEmpty() ? QObject::tr("Could not resolve repository %1").arg(mtpRepo) : err};
+            }
+            const QList<HfFile> mtpTree = mtpRepo == repo ? tree : ModelCatalog::fetchTree(&nam, mtpRepo, mtpRevision, err, auth);
+            if (mtpTree.isEmpty())
+                return {InstallPlan{}, err.isEmpty() ? QObject::tr("No files found in %1").arg(mtpRepo) : err};
+            const QString wantLeaf = ModelCatalog::leafName(preset.mtp);
+            for (const HfFile &f : mtpTree) {
+                if (!f.isDir && ModelCatalog::leafName(f.path) == wantLeaf) {
+                    mtpRel = f.path;
+                    break;
+                }
+            }
+            if (mtpRel.isEmpty())
+                return {InstallPlan{}, QObject::tr("Draft module %1 not found in %2").arg(preset.mtp, mtpRepo)};
+        }
+
         InstallPlan p;
         p.repo = repo;
         p.revision = rev;
@@ -261,6 +289,9 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
         p.presetId = preset.id;
         p.dir = QDir(modelsDir).filePath(repoDirName(repo));
         p.mmprojRel = mmprojRel;
+        p.mtpRel = mtpRel;
+        p.mtpRepo = mtpRepo;
+        p.mtpRevision = mtpRevision;
         p.modelNames = modelNames;
         p.fileSha256 = preset.sha256;
         p.files = tree;
@@ -336,34 +367,43 @@ void ModelInstallTransaction::beginDownload()
 
     m_group->begin();
 
-    if (m_pending.mmprojRel.isEmpty()) {
-        enqueueModelFiles(false);
+    if (m_pending.mmprojRel.isEmpty() && m_pending.mtpRel.isEmpty()) {
+        enqueueModelFiles(false, false);
         return;
     }
     const QString dir = m_installDir;
     const QString mmprojRel = m_pending.mmprojRel;
-    const QString expected = expectedShaFor(mmprojRel);
+    const QString mtpRel = m_pending.mtpRel;
+    const QString expectedMmproj = mmprojRel.isEmpty() ? QString() : expectedShaFor(mmprojRel);
+    const QString expectedMtp = mtpRel.isEmpty() ? QString() : expectedShaFor(mtpRel);
     const QString revision = m_pending.revision;
     const QList<ModelEntry> installed = m_installed;
-    auto *watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, dir, mmprojRel, expected, revision, installed]() {
-        const bool onDisk = watcher->result();
+    auto *watcher = new QFutureWatcher<QPair<bool, bool>>(this);
+    connect(watcher, &QFutureWatcher<QPair<bool, bool>>::finished, this, [this, watcher, dir, mmprojRel, mtpRel, expectedMmproj, expectedMtp, revision, installed]() {
+        const QPair<bool, bool> onDisk = watcher->result();
         watcher->deleteLater();
         if (m_state != State::Downloading)
             return;  // cancelled meanwhile
-        enqueueModelFiles(onDisk);
+        enqueueModelFiles(onDisk.first, onDisk.second);
     });
-    watcher->setFuture(QtConcurrent::run([dir, mmprojRel, expected, revision, installed]() { return mmprojAlreadyOnDisk(dir, mmprojRel, expected, revision, installed); }));
+    watcher->setFuture(QtConcurrent::run([dir, mmprojRel, mtpRel, expectedMmproj, expectedMtp, revision, installed]() {
+        const bool mmproj = !mmprojRel.isEmpty() && moduleAlreadyOnDisk(dir, mmprojRel, expectedMmproj, revision, installed, &ModelEntry::mmprojPath);
+        const bool mtp = !mtpRel.isEmpty() && moduleAlreadyOnDisk(dir, mtpRel, expectedMtp, revision, installed, &ModelEntry::draftPath);
+        return qMakePair(mmproj, mtp);
+    }));
 }
 
-void ModelInstallTransaction::enqueueModelFiles(bool mmprojOnDisk)
+void ModelInstallTransaction::enqueueModelFiles(bool mmprojOnDisk, bool mtpOnDisk)
 {
     QSet<QString> leaves;
     for (const QString &path : std::as_const(m_pending.modelNames))
         leaves.insert(ModelCatalog::leafName(path));
     if (!m_pending.mmprojRel.isEmpty())
         leaves.insert(ModelCatalog::leafName(m_pending.mmprojRel));
-    if (leaves.size() < m_pending.modelNames.size() + (m_pending.mmprojRel.isEmpty() ? 0 : 1)) {
+    if (!m_pending.mtpRel.isEmpty())
+        leaves.insert(ModelCatalog::leafName(m_pending.mtpRel));
+    const int expectedCount = m_pending.modelNames.size() + (m_pending.mmprojRel.isEmpty() ? 0 : 1) + (m_pending.mtpRel.isEmpty() ? 0 : 1);
+    if (leaves.size() < expectedCount) {
         setBusy(false);
         setStatusMessage(tr("Repository contains identically named files in "
                             "different subdirectories; cannot install"));
@@ -380,6 +420,8 @@ void ModelInstallTransaction::enqueueModelFiles(bool mmprojOnDisk)
     }
     if (m_state == State::Downloading && !m_pending.mmprojRel.isEmpty() && !mmprojOnDisk)
         enqueueFile(m_pending.mmprojRel, repo, rev);
+    if (m_state == State::Downloading && !m_pending.mtpRel.isEmpty() && !mtpOnDisk)
+        enqueueFile(m_pending.mtpRel, m_pending.mtpRepo, m_pending.mtpRevision);
 }
 
 void ModelInstallTransaction::enqueueFile(const QString &repoPath, const QString &repo, const QString &commitSha)
@@ -465,16 +507,17 @@ bool ModelInstallTransaction::preservePendingFiles(QString *error)
     return preserveExistingFiles(m_pending.dir, m_staging->stagingPath(), written, error);
 }
 
-bool ModelInstallTransaction::mmprojAlreadyOnDisk(const QString &dir, const QString &mmprojRel, const QString &expected, const QString &revision, const QList<ModelEntry> &installed)
+bool ModelInstallTransaction::moduleAlreadyOnDisk(
+    const QString &dir, const QString &relPath, const QString &expected, const QString &revision, const QList<ModelEntry> &installed, QString ModelEntry::*which)
 {
-    const QString target = QDir(dir).filePath(ModelCatalog::leafName(mmprojRel));
+    const QString target = QDir(dir).filePath(ModelCatalog::leafName(relPath));
     const QFileInfo fi(target);
     if (!fi.exists() || fi.size() <= 0)
         return false;
 
     if (!revision.isEmpty()) {
         for (const ModelEntry &x : std::as_const(installed)) {
-            if (x.revision == revision && x.mmprojPath == target)
+            if (x.revision == revision && (x.*which) == target)
                 return true;
         }
     }
@@ -550,6 +593,8 @@ void ModelInstallTransaction::completeInstall()
     }
     if (!m_pending.mmprojRel.isEmpty())
         e.mmprojPath = installedPath(m_pending.mmprojRel);
+    if (!m_pending.mtpRel.isEmpty())
+        e.draftPath = installedPath(m_pending.mtpRel);
     e.quantization = ModelCatalog::quantizationFromName(ModelCatalog::leafName(m_pending.modelNames.first()));
     e.license = m_pending.license;
     e.parser = m_pending.parser;
@@ -573,6 +618,8 @@ void ModelInstallTransaction::completeInstall()
         total += QFileInfo(localPath(path)).size();
     if (!m_pending.mmprojRel.isEmpty())
         total += QFileInfo(localPath(m_pending.mmprojRel)).size();
+    if (!m_pending.mtpRel.isEmpty())
+        total += QFileInfo(localPath(m_pending.mtpRel)).size();
     e.byteSize = total;
 
     if (m_staging) {
@@ -615,10 +662,12 @@ void ModelInstallTransaction::completeInstall()
         m_settings.setCheckLaunchModelPath(e.modelPath);
         if (!e.mmprojPath.isEmpty())
             m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
+        m_settings.setCheckLaunchDraftPath(e.draftPath);
     } else {
         m_settings.setLaunchModelPath(e.modelPath);
         if (!e.mmprojPath.isEmpty())
             m_settings.setLaunchMmprojPath(e.mmprojPath);
+        m_settings.setLaunchDraftPath(e.draftPath);
     }
     m_settings.selectModelProfile(m_pending.repo, m_pendingForCheck ? QStringLiteral("check") : QStringLiteral("ocr"), m_pendingForCheck);
     m_settings.forceSave();

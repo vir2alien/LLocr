@@ -69,6 +69,7 @@ ModelEntry entryFromJson(const QJsonObject &o)
     e.revision = o.value(QStringLiteral("revision")).toString();
     e.modelPath = o.value(QStringLiteral("modelPath")).toString();
     e.mmprojPath = o.value(QStringLiteral("mmprojPath")).toString();
+    e.draftPath = o.value(QStringLiteral("draftPath")).toString();
     e.dir = o.value(QStringLiteral("dir")).toString();
     e.origin = originFromString(o.value(QStringLiteral("managed")).toString());
     e.byteSize = static_cast<qint64>(o.value(QStringLiteral("byteSize")).toDouble(0));
@@ -120,6 +121,8 @@ QJsonObject entryToJson(const ModelEntry &e)
     o.insert(QStringLiteral("modelPath"), e.modelPath);
     if (!e.mmprojPath.isEmpty())
         o.insert(QStringLiteral("mmprojPath"), e.mmprojPath);
+    if (!e.draftPath.isEmpty())
+        o.insert(QStringLiteral("draftPath"), e.draftPath);
     if (!e.dir.isEmpty())
         o.insert(QStringLiteral("dir"), e.dir);
     o.insert(QStringLiteral("managed"), originToString(e.origin));
@@ -305,11 +308,16 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
             continue;
 
         QString mmprojRel;
+        QString draftRel;
         QHash<QString, QStringList> byStem;
         for (const QString &name : gguFs) {
-            if (ModelCatalog::fileKind(name) == ModelFileKind::Vision) {
+            const ModelFileKind kind = ModelCatalog::fileKind(name);
+            if (kind == ModelFileKind::Vision) {
                 if (mmprojRel.isEmpty())
                     mmprojRel = name;
+            } else if (kind == ModelFileKind::Draft) {
+                if (draftRel.isEmpty())
+                    draftRel = name;
             } else {
                 byStem[modelStem(name)].append(name);
             }
@@ -320,6 +328,7 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
         const QString dirName = subdirInfo.fileName();
         const QString dirPath = subdirInfo.canonicalFilePath();
         const QString mmprojPath = mmprojRel.isEmpty() ? QString() : d.filePath(mmprojRel);
+        const QString draftPath = draftRel.isEmpty() ? QString() : d.filePath(draftRel);
 
         QStringList stems = byStem.keys();
         stems.sort();
@@ -343,6 +352,7 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
             if (modelParts.size() > 1)
                 e.parts = {modelParts.cbegin() + 1, modelParts.cend()};
             e.mmprojPath = mmprojPath;
+            e.draftPath = draftPath;
             e.quantization = quant;
             qint64 total = 0;
             for (const QString &name : modelParts)
