@@ -476,6 +476,12 @@ private slots:
         QCOMPARE(review.status, CheckStatus::Review);
         QVERIFY(review.text.isEmpty());
 
+        // A bare FIX — the verdict without the payload — needs human eyes, not
+        // a protocol error (small models stop after the keyword).
+        const CheckResult bareFix = model.parse("{\"choices\":[{\"message\":{\"content\":\"FIX\"}}]}");
+        QCOMPARE(bareFix.status, CheckStatus::Review);
+        QVERIFY(bareFix.text.isEmpty());
+
         // Marker-only output (thinking model that never answered) is an error,
         // not an empty "success" that would wipe the block text.
         const CheckResult markerOnly = model.parse("{\"choices\":[{\"message\":{\"content\":"

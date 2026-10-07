@@ -204,10 +204,11 @@ void VerificationQueueController::startNextVerify()
     const BoundingBox &box = boxes.at(m_verifyBoxIndex);
     // The check model's own wording for this block type wins; a type it says
     // nothing about — and every block of a model without such prompts — is
-    // served by verifyPrompts.json.
-    const QString typePrompt =
-        ModelProfiles::blockPromptFor(ModelProfiles::instance(), m_deps.checkRequestProfiles.activeProfileId(), QStringLiteral("check"), box.label, m_deps.verification.promptForType(box.label));
-    m_check.checkBlock(crop, text, m_deps.verification.systemPrompt(), typePrompt);
+    // served by verifyPrompts.json. The system prompt follows the same rule.
+    const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
+    const QString typePrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("check"), box.label, m_deps.verification.promptForType(box.label));
+    const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("check"), m_deps.verification.systemPrompt());
+    m_check.checkBlock(crop, text, systemPrompt, typePrompt);
 }
 
 void VerificationQueueController::finishVerifyQueue()

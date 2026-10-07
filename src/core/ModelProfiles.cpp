@@ -99,6 +99,7 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.alias = roleObject.value(QStringLiteral("alias")).toString();
         role.parser = roleObject.value(QStringLiteral("parser")).toString();
         role.maxOutput = roleObject.value(QStringLiteral("maxOutput")).toInt(0);
+        role.systemPrompt = roleObject.value(QStringLiteral("systemPrompt")).toString();
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
         if (!error.isEmpty())
             return profile;
@@ -303,6 +304,15 @@ QString ModelProfiles::blockPromptFor(const QList<Profile> &profiles, const QStr
         if (!own.isEmpty())
             return own;
     }
+    return fallback;
+}
+
+QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &fallback)
+{
+    const Profile *profile = find(profiles, modelId);
+    const Role *found = profile ? roleFor(*profile, role) : nullptr;
+    if (found && !found->systemPrompt.isEmpty())
+        return found->systemPrompt;
     return fallback;
 }
 

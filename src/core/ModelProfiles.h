@@ -22,6 +22,7 @@ public:
         QString alias;
         QString parser;
         int maxOutput = 0;
+        QString systemPrompt;  // check-role override of the shared verifier system prompt
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
@@ -86,6 +87,8 @@ public:
     static QList<Prompt> promptsFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type, const QString &fallback);
+
+    static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &fallback);
 
     static QString runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId);
 

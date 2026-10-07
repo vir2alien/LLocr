@@ -367,7 +367,7 @@ private slots:
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(checkKeys, QStringList({QStringLiteral("qwen3.5-4b"), QStringLiteral("teleocr")}));
+        QCOMPARE(checkKeys, QStringList({QStringLiteral("lfm25-vl-3b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("teleocr")}));
 
         // TeleOCR answers both roles and offers the quantizations its profile
         // declares — the shipped file is the source here, not a copy of it, so an
@@ -624,8 +624,8 @@ private slots:
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 3);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), -1);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_verify")), -1);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 2);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 3);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 4);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_ocr")), ocrPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), true), textPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), true), verifierPath);
@@ -638,7 +638,7 @@ private slots:
         // active OCR model and must appear in the OCR list too.
         settings.setLaunchModelPath(textPath);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 4);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 2);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
     }
 
     // A list model with named roles: a QML delegate that misspells a role name

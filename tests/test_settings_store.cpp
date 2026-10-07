@@ -399,14 +399,23 @@ private slots:
         QCOMPARE(pre.value(QStringLiteral("check/requestProfileId")).toString(), checkModels.constFirst());
         QCOMPARE(pre.value(QStringLiteral("model/recipeId")).toString(), ocrModel);
 
-        // A real choice survives: the check role has one model, the ocr role
-        // three, so the two resolve to different ids and both are kept.
+        // A real choice survives: the check role does not include every model
+        // the ocr role has, so the two resolve to different ids and both are kept.
+        const QString ocrChoice = QStringLiteral("lfm25-vl-3b");
+        QString checkChoice;
+        for (const QString &id : checkModels) {
+            if (id != ocrChoice) {
+                checkChoice = id;
+                break;
+            }
+        }
+        QVERIFY2(!checkChoice.isEmpty(), "no check model outside the ocr fixture id");
         QSettings other;
-        other.setValue(QStringLiteral("check/requestProfileId"), checkModels.constFirst());
-        other.setValue(QStringLiteral("model/recipeId"), QStringLiteral("lfm25-vl-3b"));
+        other.setValue(QStringLiteral("check/requestProfileId"), checkChoice);
+        other.setValue(QStringLiteral("model/recipeId"), ocrChoice);
         const SettingsStore kept;
-        QCOMPARE(kept.checkRequestProfileId(), checkModels.constFirst());
-        QCOMPARE(kept.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(kept.checkRequestProfileId(), checkChoice);
+        QCOMPARE(kept.modelRecipeId(), ocrChoice);
     }
 
     // Activating a model of a known family has to pick that family's profile:
@@ -422,11 +431,18 @@ private slots:
         store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("ocr"), false);
         QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
 
-        // The same family does not answer the check role.
+        // The same family also answers the check role — LFM2.5-VL is a
+        // general-purpose VL model, so activation as the verifier follows its
+        // own profile just the same.
         store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("check"), true);
-        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
 
         store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("check"), true);
+        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+
+        // A family that does not answer the check role (OCR-only) leaves the
+        // selection alone.
+        store.selectModelProfile(QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"), QStringLiteral("check"), true);
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
         // A hand-picked GGUF joins to nothing.

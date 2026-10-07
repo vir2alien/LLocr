@@ -759,7 +759,7 @@
     <message>
         <location line="-7"/>
         <source>The model returned FIX without the corrected text.</source>
-        <translation>Модель вернула FIX без исправленного текста.</translation>
+        <translation type="vanished">Модель вернула FIX без исправленного текста.</translation>
     </message>
 </context>
 <context>

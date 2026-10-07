@@ -110,8 +110,14 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
         // Accept both "FIX: ..." and "FIX\n..." spellings.
         if (fixed.startsWith(QLatin1Char(':')))
             fixed = fixed.mid(1).trimmed();
-        if (fixed.isEmpty())
-            return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "The model returned FIX without the corrected text."));
+        if (fixed.isEmpty()) {
+            // The verdict is explicit but the payload is missing (small models
+            // sometimes stop after the keyword): the block needs human eyes,
+            // not a protocol error.
+            CheckResult review;
+            review.status = CheckStatus::Review;
+            return review;
+        }
         CheckResult fix;
         fix.status = CheckStatus::Fixed;
         fix.text = fixed;

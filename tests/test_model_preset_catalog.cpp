@@ -23,6 +23,7 @@ private slots:
     // against the values the model card and the launcher actually document.
     void shippedProfilesAreTheOnesTheDocsDescribe();
     void draftModuleReachesThePresets();
+    void verifierSystemPromptFollowsTheModel();
     void checkModelBlockPromptsOverridePerType();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
@@ -78,7 +79,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     // profiles of serverLaunch.json (ADR 126).
     const QList<Expected> expected = {
         {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
-        {"lfm25-vl-3b", "ocr", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
+        {"lfm25-vl-3b", "ocr,check", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
         {"qwen3.5-4b", "check", "b4000", "q8_0,q4_k_xl", ""},
         {"teleocr", "ocr,check", "b4000", "q4_k_m,q8_0", ""},
     };
@@ -143,6 +144,25 @@ void TestModelPresetCatalog::draftModuleReachesThePresets()
     QCOMPARE(lfm->mtpRepo, QStringLiteral("LiquidAI/LFM2.5-VL-3B-DSpark-GGUF"));
     QVERIFY(!lfm->sha256.value(QStringLiteral("lfm2.5-vl-3b-dspark-f16.gguf")).isEmpty());
     QVERIFY(lfm->mtpRepo != lfm->repo);  // a different repo is the whole point of the test
+}
+
+// The check role can override the shared verifier system prompt (the LFM one
+// reinforces the reply contract in the model's own idiom); a role without an
+// override keeps serving verifyPrompts.json verbatim.
+void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const QString fallback = QStringLiteral("You verify OCR against an image.");
+
+    const QString lfm = ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("check"), fallback);
+    QVERIFY(lfm != fallback);
+    QVERIFY(lfm.contains(QStringLiteral("reply with FIX on the first line")));
+    QVERIFY(lfm.contains(QStringLiteral("reply with the single line OK")));
+
+    // A model without an override — and any OCR role — gets the shared prompt.
+    QCOMPARE(ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("check"), fallback), fallback);
+    QCOMPARE(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"), fallback), fallback);
+    QCOMPARE(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("check"), fallback), fallback);
 }
 
 void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
