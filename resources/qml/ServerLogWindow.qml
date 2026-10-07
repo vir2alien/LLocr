@@ -19,8 +19,11 @@ ApplicationWindow {
     }
 
     onVisibleChanged: {
-        if (visible)
+        if (visible) {
+            logScroll.autoScroll = true
             logArea.text = logText()
+            logScroll.scrollToBottom()
+        }
     }
 
     background: Rectangle {
@@ -28,50 +31,6 @@ ApplicationWindow {
         radius: Theme.dialogRadius
         border.color: Theme.border
         border.width: 1
-    }
-
-    header: Rectangle {
-        implicitHeight: headerRow.implicitHeight + 2 * 10
-        color: Theme.surface
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: 1
-            color: Theme.divider
-        }
-
-        RowLayout {
-            id: headerRow
-            anchors.fill: parent
-            anchors.leftMargin: Theme.paddingWindow
-            anchors.rightMargin: Theme.paddingWindow
-            anchors.topMargin: 10
-            anchors.bottomMargin: 10
-            spacing: Theme.spacingSmall
-
-            LLOLabel {
-                text: qsTr("llama-server log")
-                font.bold: true
-                color: Theme.textPrimary
-            }
-            Item { Layout.fillWidth: true }
-
-            Rectangle {
-                id: liveDot
-                Layout.preferredWidth: 8
-                Layout.preferredHeight: 8
-                Layout.alignment: Qt.AlignVCenter
-                radius: 4
-                color: Theme.textMuted
-                opacity: 0.5
-            }
-            LLOLabel {
-                text: qsTr("live")
-                color: Theme.textMuted
-            }
-        }
     }
 
     footer: Rectangle {
@@ -132,11 +91,32 @@ ApplicationWindow {
         contentWidth: logArea.contentWidth
         contentHeight: logArea.contentHeight
 
+        property bool autoScroll: true
+
+        function isAtBottom() {
+            return contentHeight - height - contentY < 24
+        }
+
         function scrollToBottom() {
             Qt.callLater(function () {
                 logScroll.contentY =
                     Math.max(0, logScroll.contentHeight - logScroll.height)
             })
+        }
+
+        onContentYChanged: {
+            if (dragging || moving)
+                autoScroll = isAtBottom()
+        }
+
+        onContentHeightChanged: {
+            if (autoScroll)
+                scrollToBottom()
+        }
+
+        onHeightChanged: {
+            if (autoScroll)
+                scrollToBottom()
         }
 
         TextArea.flickable: TextArea {
@@ -150,13 +130,8 @@ ApplicationWindow {
             selectByMouse: true
 
             onTextChanged: {
-                if (logScroll.atYEnd)
+                if (logScroll.autoScroll)
                     logScroll.scrollToBottom()
-                if (liveDot && liveFlash) {
-                    liveDot.color = Theme.success
-                    liveDot.opacity = 1.0
-                    liveFlash.restart()
-                }
             }
         }
 
@@ -168,16 +143,6 @@ ApplicationWindow {
         function onServerLogChanged() {
             if (root.visible)
                 logArea.text = root.logText()
-        }
-    }
-
-    Timer {
-        id: liveFlash
-        interval: 500
-        repeat: false
-        onTriggered: {
-            liveDot.color = Qt.binding(function() { return Theme.textMuted; })
-            liveDot.opacity = Qt.binding(function() { return 0.5; })
         }
     }
 }

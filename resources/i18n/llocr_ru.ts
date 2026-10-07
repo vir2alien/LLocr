@@ -2994,7 +2994,6 @@
     <name>ServerLogWindow</name>
     <message>
         <location filename="../qml/ServerLogWindow.qml" line="+12"/>
-        <location line="+43"/>
         <source>llama-server log</source>
         <translation>Журнал llama-server</translation>
     </message>
@@ -3024,9 +3023,8 @@
         <translation>%1 строка(и)</translation>
     </message>
     <message>
-        <location line="-41"/>
         <source>live</source>
-        <translation>вживую</translation>
+        <translation type="vanished">вживую</translation>
     </message>
 </context>
 <context>
