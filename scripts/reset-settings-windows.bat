@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 rem Полный сброс настроек LLocr на Windows (Qt: org "llocr", app "LLM OCR").
-rem Удаляет: QSettings (HKCU\Software\llocr), корень рантайма с моделями,
+rem Удаляет: QSettings (HKCU\Software\llocr*), корень рантайма с моделями,
 rem кэши, данные WebEngine и следы тестовых org-идентификаторов.
 rem
 rem Использование: reset-settings-windows.bat [-y]
@@ -23,11 +23,11 @@ if not "%~1"=="" if not "%ASSUME_YES%"=="1" (
 )
 
 echo Будут удалены (настройки, кэши, скачанный рантайм и модели):
-echo   HKCU\Software\%ORG%
-echo   HKCU\Software\%ORG%_test
-echo   HKCU\Software\%ORG%-tests
-echo   %APPDATA%\%ORG%
-echo   %LOCALAPPDATA%\%ORG%
+for %%K in ("%ORG%" "%ORG%_test" "%ORG%-test" "%ORG%-tests") do (
+    reg query "HKCU\Software\%%~K" >nul 2>&1 && echo   HKCU\Software\%%~K
+)
+for /D %%D in ("%APPDATA%\%ORG%*") do echo   %%D
+for /D %%D in ("%LOCALAPPDATA%\%ORG%*") do echo   %%D
 
 if "%ASSUME_YES%"=="1" goto :do_reset
 
@@ -38,14 +38,14 @@ if errorlevel 2 (
 )
 
 :do_reset
-for %%K in ("%ORG%" "%ORG%_test" "%ORG%-tests") do (
+for %%K in ("%ORG%" "%ORG%_test" "%ORG%-test" "%ORG%-tests") do (
     reg delete "HKCU\Software\%%~K" /f >nul 2>&1 && echo Удалено: HKCU\Software\%%~K
 )
 
-for %%D in ("%APPDATA%\%ORG%" "%LOCALAPPDATA%\%ORG%") do (
-    if exist "%%~D" (
-        rmdir /S /Q "%%~D"
-        echo Удалено: %%~D
+for %%D in ("%APPDATA%" "%LOCALAPPDATA%") do (
+    for /D %%D2 in ("%%~D\%ORG%*") do (
+        rmdir /S /Q "%%~D2"
+        echo Удалено: %%~D2
     )
 )
 
