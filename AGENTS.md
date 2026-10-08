@@ -41,6 +41,7 @@
   |                           | remediation plan (stages 0–7)              |
   | `docs/TODO.md`            | Short backlog of open items                 |
   | `docs/UnlimitedOCR.md`    | Reference: the Unlimited-OCR model (baidu) |
+  | `docs/13-lfm25-vl-3b.md`  | Model manual: LFM2.5-VL-3B (launch, requests, 2:3 calibration, links); Russian mirror in `13-lfm25-vl-3b.ru.md` |
   
   ## Rules for the agent
   

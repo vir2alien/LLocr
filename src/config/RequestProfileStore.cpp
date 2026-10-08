@@ -36,7 +36,6 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QOb
         connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
     } else {
         connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
-        connect(&m_settings, &SettingsStore::requestProfileIdChanged, this, [this] { followActiveProfile(); });
     }
 }
 
@@ -67,7 +66,7 @@ bool RequestProfileStore::hasUserProfile() const
 
 QString RequestProfileStore::activeProfileId() const
 {
-    const QString id = m_role == Role::Check ? m_settings.checkRequestProfileId() : m_settings.requestProfileId().isEmpty() ? m_settings.modelRecipeId() : m_settings.requestProfileId();
+    const QString id = m_role == Role::Check ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
     if (m_profiles->isKnown(id))
         return id;
     if (!m_profiles->builtIn().isEmpty())
@@ -96,11 +95,6 @@ void RequestProfileStore::followActiveProfile()
 bool RequestProfileStore::setDraftValue(int row, const QString &text)
 {
     return m_model->setValue(row, text);
-}
-
-bool RequestProfileStore::appendDraftRow(const QString &name, const QString &text)
-{
-    return m_model->appendRow(name, text);
 }
 
 void RequestProfileStore::saveDraft()

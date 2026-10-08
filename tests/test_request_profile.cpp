@@ -439,7 +439,6 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         // QSettings is process-wide here, so a previous test's choice would leak.
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
-        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
         RequestProfileStore store(settings);
         store.setModelProfiles({makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters())});
@@ -508,7 +507,6 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         // QSettings is process-wide here, so a previous test's choice would leak.
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
-        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
         QVERIFY(QDir().mkpath(QDir(dir.path()).filePath("profiles")));
         QFile userFile(QDir(dir.path()).filePath("profiles/request.json"));
@@ -539,10 +537,12 @@ private slots:
         QVERIFY(!store.hasUserProfile());
     }
 
-    // The OCR role's sampling profile has an id of its own (ADR 110): it used to
-    // be the model's id, so switching the model silently replaced the profile
-    // and a combo could show a different model than recognition used.
-    void activeProfileIsIndependentOfTheModel()
+    // The OCR sampling profile has no selector of its own: the model id is what
+    // resolves it (ADR 141's cleanup retired model/requestProfileId — a stored
+    // one pinned the profile while the model moved on). An unknown model id
+    // falls back to the profile the picker would offer first: the recommended
+    // one (ModelProfiles::forRole), then the rest by title.
+    void activeProfileFollowsTheModel()
     {
         QTemporaryDir dir;
 
@@ -551,10 +551,7 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         // QSettings is process-wide here, so a previous test's choice would leak.
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
-        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("unlimited-ocr"));
-        // The startup migration adopted the legacy model id as the profile id.
-        QCOMPARE(settings.requestProfileId(), QStringLiteral("unlimited-ocr"));
 
         RequestProfileStore store(settings);
         store.setModelProfiles(twoModels());
@@ -562,22 +559,18 @@ private slots:
         QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 2);
 
+        // Switching the model switches the sampling profile with it.
         settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
-        QCOMPARE(store.activeProfileId(), QStringLiteral("unlimited-ocr"));
-        QCOMPARE(store.activeProfile().parameters.size(), 2);
-
-        settings.setRequestProfileId(QStringLiteral("deepseek-ocr"));
         QCOMPARE(store.activeProfileId(), QStringLiteral("deepseek-ocr"));
         QCOMPARE(store.activeProfile().parameters.size(), 1);
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("deepseek-ocr"));
         const RequestProfile deepseek = store.activeProfile();
         const RequestParameter *gamma = findParameter(deepseek, "gamma");
         QVERIFY(gamma);
         QCOMPARE(gamma->value.toDouble(), 1.0);
 
-        // An unknown profile id falls back to the model the picker offers first:
+        // An unknown model id falls back to the model the picker offers first:
         // the recommended one (ModelProfiles::forRole), then the rest by title.
-        settings.setRequestProfileId(QStringLiteral("unknown-profile"));
+        settings.setModelRecipeId(QStringLiteral("unknown-profile"));
         QList<ModelProfiles::Profile> withRecommendation = twoModels();
         withRecommendation[1].isDefault = true;
         RequestProfileStore recommended(settings);
@@ -648,8 +641,8 @@ private slots:
     }
 
     // The draft follows the model selection with no picker in between: the
-    // settings id change reloads it, edits are committed for the edited
-    // profile only, and the profile id stays a setting of its own (ADR 110).
+    // model id is the profile's selector, edits are committed for the edited
+    // profile only, and switching models never carries an edit across.
     void draftFollowsTheModelSelection()
     {
         QTemporaryDir dir;
@@ -659,7 +652,6 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         // QSettings is process-wide here, so a previous test's choice would leak.
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
-        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
         RequestProfileStore store(settings);
         store.setModelProfiles(twoModels());
@@ -670,7 +662,6 @@ private slots:
         // Selecting another model (Settings → Model, the wizard, a finished
         // install) reloads the draft from that model's profile automatically.
         settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
-        settings.setRequestProfileId(QStringLiteral("deepseek-ocr"));
         QCOMPARE(store.draftProfileId(), QStringLiteral("deepseek-ocr"));
         QCOMPARE(store.draftModel()->rowCount(), 1);
 
@@ -684,16 +675,15 @@ private slots:
         QVERIFY(store.hasUserProfile());
 
         // Switching back to the first model reloads its untouched profile —
-        // the deepseek edit stays with deepseek (ADR 110: the profile id is
-        // its own setting).
-        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
+        // the deepseek edit stays with deepseek.
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
         QCOMPARE(store.draftModel()->rowCount(), 2);
         const RequestProfile unlimitedView = store.activeProfile();
         QVERIFY(!findParameter(unlimitedView, "gamma"));
 
         // Switching to deepseek again shows the user copy…
-        settings.setRequestProfileId(QStringLiteral("deepseek-ocr"));
+        settings.setModelRecipeId(QStringLiteral("deepseek-ocr"));
         const RequestProfile backView = store.activeProfile();
         QCOMPARE(findParameter(backView, "gamma")->value.toDouble(), 2.0);
         // …and reset drops only that user copy.
@@ -713,7 +703,6 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         // QSettings is process-wide here, so a previous test's choice would leak.
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
-        settings.setRequestProfileId(QStringLiteral("unlimited-ocr"));
 
         const QString userPath = QDir(dir.path()).filePath(QStringLiteral("profiles/request.json"));
         QVERIFY(QDir().mkpath(QFileInfo(userPath).absolutePath()));

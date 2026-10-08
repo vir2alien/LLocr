@@ -30,7 +30,6 @@ public:
 
     void resetFrom(const QList<RequestParameter> &parameters);
     bool setValue(int row, const QString &text);
-    bool appendRow(const QString &name, const QString &text);
 
 private:
     QList<RequestParameter> m_parameters;

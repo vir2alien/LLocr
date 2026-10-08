@@ -37,8 +37,6 @@ private slots:
     void parseErrors();
 
     void modelEditKindSwitching();
-    void modelAppendValidation();
-    void modelRemoveRow();
 };
 
 static ServerCapabilities modernCaps()
@@ -322,48 +320,6 @@ void TestLaunchConfig::modelEditKindSwitching()
 
     // No-op edit still succeeds.
     QVERIFY(model.setValue(2, "none"));
-}
-
-void TestLaunchConfig::modelAppendValidation()
-{
-    LaunchParametersModel model;
-    QList<LaunchParameter> rows;
-    rows.append(makeParameter(QStringLiteral("ctx-size"), LaunchValueKind::Number, QVariant(16384.0), 1));
-    model.resetFrom(rows);
-
-    // Empty / reserved / duplicate names are refused.
-    QVERIFY(!model.appendRow(QStringLiteral(""), QString()));
-    QVERIFY(!model.appendRow(QStringLiteral("model"), QString()));
-    QVERIFY(!model.appendRow(QStringLiteral("mmproj"), QString()));
-    QVERIFY(!model.appendRow(QStringLiteral("model-draft"), QString()));
-    QVERIFY(!model.appendRow(QStringLiteral("alias"), QString()));
-    QVERIFY(!model.appendRow(QStringLiteral("host"), QString()));
-    QVERIFY(!model.appendRow(QStringLiteral("port"), QString()));
-    QVERIFY(!model.appendRow(QStringLiteral("ctx-size"), QString()));
-
-    // A flag row and a text row are appended.
-    QVERIFY(model.appendRow(QStringLiteral("--no-warmup"), QString()));
-    QVERIFY(model.appendRow(QStringLiteral("flash-attn"), QStringLiteral("off")));
-    QCOMPARE(model.rowCount(), 3);
-    QCOMPARE(model.data(model.index(1), LaunchParametersModel::NameRole),
-             QStringLiteral("no-warmup"));  // leading dashes stripped
-    QCOMPARE(model.data(model.index(1), LaunchParametersModel::KindRole), int(LaunchValueKind::Flag));
-    QCOMPARE(model.data(model.index(2), LaunchParametersModel::KindRole), int(LaunchValueKind::Text));
-}
-
-void TestLaunchConfig::modelRemoveRow()
-{
-    LaunchParametersModel model;
-    QList<LaunchParameter> rows;
-    rows.append(makeParameter(QStringLiteral("a"), LaunchValueKind::Flag, QVariant(), 1));
-    rows.append(makeParameter(QStringLiteral("b"), LaunchValueKind::Flag, QVariant(), 2));
-    model.resetFrom(rows);
-
-    model.removeRow(0);
-    QCOMPARE(model.rowCount(), 1);
-    QCOMPARE(model.data(model.index(0), LaunchParametersModel::NameRole), QStringLiteral("b"));
-    model.removeRow(5);  // out of range: no-op
-    QCOMPARE(model.rowCount(), 1);
 }
 
 QTEST_MAIN(TestLaunchConfig)

@@ -20,7 +20,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(int connectionTimeoutMs READ connectionTimeoutMs WRITE setConnectionTimeoutMs NOTIFY connectionTimeoutMsChanged)
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
     Q_PROPERTY(QString modelRecipeId READ modelRecipeId WRITE setModelRecipeId NOTIFY modelRecipeIdChanged)
-    Q_PROPERTY(QString requestProfileId READ requestProfileId WRITE setRequestProfileId NOTIFY requestProfileIdChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(bool splitPages READ splitPages WRITE setSplitPages NOTIFY splitPagesChanged)
     Q_PROPERTY(bool keepPageNumbers READ keepPageNumbers WRITE setKeepPageNumbers NOTIFY keepPageNumbersChanged)
@@ -99,9 +98,6 @@ public:
 
     QString modelRecipeId() const;
     void setModelRecipeId(const QString &recipeId);
-
-    QString requestProfileId() const;
-    void setRequestProfileId(const QString &id);
 
     void selectModelProfile(const QString &repo, const QString &role, bool forCheck);
 
@@ -206,7 +202,6 @@ signals:
     void connectionTimeoutMsChanged();
     void modelNameChanged();
     void modelRecipeIdChanged();
-    void requestProfileIdChanged();
     void parserIdChanged();
     void splitPagesChanged();
     void keepPageNumbersChanged();
@@ -285,7 +280,6 @@ private:
 
     static constexpr const char *kModelName = "model/name";
     static constexpr const char *kModelRecipeId = "model/recipeId";
-    static constexpr const char *kRequestProfileId = "model/requestProfileId";
     static constexpr const char *kParserId = "parser/id";
 
     // Output / export
@@ -331,6 +325,7 @@ private:
     static constexpr const char *kLaunchPort = "launch/port";
     static constexpr const char *kRetiredAlias = "launch/modelAlias";
     static constexpr const char *kRetiredLaunchSourceDownload = "launch/sourceDownload";
+    static constexpr const char *kRetiredModelRequestProfileId = "model/requestProfileId";
 
     // Verification (check) model
     static constexpr const char *kCheckLaunchModelPath = "check/modelPath";

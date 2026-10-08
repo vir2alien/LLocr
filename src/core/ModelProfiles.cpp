@@ -100,6 +100,7 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.parser = roleObject.value(QStringLiteral("parser")).toString();
         role.maxOutput = roleObject.value(QStringLiteral("maxOutput")).toInt(0);
         role.systemPrompt = roleObject.value(QStringLiteral("systemPrompt")).toString();
+        role.promptBeforeImage = roleObject.value(QStringLiteral("promptBeforeImage")).toBool(false);
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
         if (!error.isEmpty())
             return profile;
@@ -335,7 +336,7 @@ QList<RequestParameter> ModelProfiles::requestWithMaxOutput(const QList<Profile>
     maxTokens.name = QStringLiteral("max_tokens");
     maxTokens.kind = RequestValueKind::Number;
     maxTokens.value = QVariant(maxOutput);
-    maxTokens.description = QObject::tr("Maximum tokens the model may generate for one page. Shares its value with the server's n-predict.");
+    maxTokens.description = QObject::tr("Maximum tokens the model may generate for one page.");
     for (RequestParameter &parameter : out) {
         if (parameter.name == maxTokens.name) {
             parameter = maxTokens;

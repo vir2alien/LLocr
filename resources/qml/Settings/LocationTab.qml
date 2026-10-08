@@ -21,8 +21,7 @@ Item {
         ? RequestProfilesValidate.profileModel : RequestProfilesOcr.profileModel
     readonly property string activeProfileId: isVerifyModelRole
         ? Settings.checkRequestProfileId
-        : (Settings.requestProfileId.length
-           ? Settings.requestProfileId : Settings.modelRecipeId)
+        : Settings.modelRecipeId
 
     function syncProfileBox() {
         const row = profileList.rowOfId(root.activeProfileId)
@@ -69,16 +68,13 @@ Item {
                     Connections {
                         target: Settings
                         function onModelRecipeIdChanged() { root.syncProfileBox() }
-                        function onRequestProfileIdChanged() { root.syncProfileBox() }
                         function onCheckRequestProfileIdChanged() { root.syncProfileBox() }
                     }
                     onActivated: {
-                        if (root.isVerifyModelRole) {
+                        if (root.isVerifyModelRole)
                             Settings.checkRequestProfileId = profileBox.currentValue
-                        } else {
+                        else
                             Settings.modelRecipeId = profileBox.currentValue
-                            Settings.requestProfileId = profileBox.currentValue
-                        }
                     }
                 }
 

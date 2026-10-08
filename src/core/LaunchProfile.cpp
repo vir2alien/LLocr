@@ -22,7 +22,6 @@ constexpr const char *kOrderKey = "order";
 constexpr const char *kValueKey = "value";
 constexpr const char *kParametersKey = "parameters";
 constexpr const char *kPolicyKey = "policy";
-constexpr const char *kFallbackKey = "fallback";
 
 }  // namespace
 
@@ -151,11 +150,6 @@ QList<LaunchParameter> LaunchProfile::parseParameters(const QJsonArray &array, Q
         out.append(parameter);
     }
     return out;
-}
-
-QList<LaunchParameter> LaunchProfile::parseFallback(const QJsonObject &root, QString &error)
-{
-    return parseParameters(root.value(QLatin1String(kFallbackKey)).toObject().value(QLatin1String(kParametersKey)).toArray(), error, QObject::tr("Launch fallback"));
 }
 
 QList<LaunchParameter> LaunchProfile::parsePolicy(const QJsonObject &root, QString &error)

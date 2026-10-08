@@ -353,8 +353,9 @@ private slots:
     }
 
     // The alias is the model's, per role: one stored alias could only ever name
-    // one of the two servers. The three flags below lost their reader when the
-    // path pickers went away; a stored value nobody reads is not harmless
+    // one of the two servers. The flags lost their reader when the path pickers
+    // went away, and the request-profile id lost its reader when the model id
+    // became the only selector; a stored value nobody reads is not harmless
     // either — it is a leftover the next reader would trust.
     void migrationDropsTheRetiredKeys()
     {
@@ -363,6 +364,7 @@ private slots:
             QStringLiteral("runtime/serverPathIsManaged"),
             QStringLiteral("launch/sourceDownload"),
             QStringLiteral("check/sourceDownload"),
+            QStringLiteral("model/requestProfileId"),
         };
 
         QSettings pre;
@@ -370,6 +372,7 @@ private slots:
         pre.setValue(QStringLiteral("runtime/serverPathIsManaged"), true);
         pre.setValue(QStringLiteral("launch/sourceDownload"), true);
         pre.setValue(QStringLiteral("check/sourceDownload"), true);
+        pre.setValue(QStringLiteral("model/requestProfileId"), QStringLiteral("unlimited-ocr"));
 
         const SettingsStore store;
         for (const QString &key : retired)
@@ -386,7 +389,6 @@ private slots:
         QSettings pre;
         pre.setValue(QStringLiteral("check/requestProfileId"), QStringLiteral("ocr-verifier"));
         pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("ocr-verifier"));
-        pre.setValue(QStringLiteral("model/requestProfileId"), QStringLiteral("ocr-verifier"));
 
         const SettingsStore store;
         const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("check"));

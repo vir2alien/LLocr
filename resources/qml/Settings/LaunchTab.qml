@@ -17,16 +17,12 @@ Item {
 
     readonly property var profiles: LaunchProfiles
 
-    readonly property bool modelProfileMissing: role === "check"
-        ? profiles.checkModelProfileMissing
-        : profiles.modelProfileMissing
-
     readonly property string runtimeNote: role === "check"
         ? profiles.checkModelRuntimeNote
         : profiles.modelRuntimeNote
 
     function loadValues() {
-        root.profiles.reloadDraft(root.role)
+        root.profiles.reloadDraft()
     }
 
     function saveValues() {
@@ -47,15 +43,6 @@ Item {
 
         Item { implicitHeight: 4 }
 
-        LLOLabel {
-            Layout.fillWidth: true
-            visible: root.modelProfileMissing
-            wrapMode: Text.WordWrap
-            font.pointSize: Theme.captionSize
-            color: Theme.warning
-            text: qsTr("This model is not in the catalog, so its launch parameters come from the fallback set instead of the model's own. The context window may be wrong for it — check the log if a page comes out truncated.")
-        }
-
         RuntimeNoteWarning {
             note: root.runtimeNote
         }
@@ -66,11 +53,8 @@ Item {
             model: root.profiles.draftModel
             nameWidth: root.nameWidth
             valueWidth: root.valueWidth
-            removable: true
             valuePlaceholder: qsTr("(flag)")
             setValue: (row, text) => root.profiles.setDraftValue(row, text)
-            addRow: (name, value) => root.profiles.appendDraftParameter(name, value)
-            removeRow: (row) => root.profiles.removeDraftRow(row)
         }
 
         LLOLabel {
@@ -78,7 +62,7 @@ Item {
             wrapMode: Text.WordWrap
             font.pointSize: Theme.captionSize
             color: Theme.helpColor
-            text: qsTr("llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows belong to a layer: the shared server policy, this machine's build, or the model itself — they are what the server is started with, and the profile owns them.")
+            text: qsTr("The machine's parameters: how much of the model goes to the GPU, flash attention, and the context window. Everything else — the server policy and the model's own parameters — is tuned by the app and its model profiles.")
         }
     }
 

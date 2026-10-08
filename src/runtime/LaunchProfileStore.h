@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QHash>
 #include <QList>
 #include <QObject>
 #include <QString>
@@ -44,10 +43,8 @@ public:
     void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     Q_INVOKABLE bool hasUserProfile() const;
-    Q_INVOKABLE void reloadDraft(const QString &role = QString());
+    Q_INVOKABLE void reloadDraft();
     Q_INVOKABLE bool setDraftValue(int row, const QString &text);
-    Q_INVOKABLE bool appendDraftParameter(const QString &name, const QString &text);
-    Q_INVOKABLE void removeDraftRow(int row);
     Q_INVOKABLE void saveDraft();
     Q_INVOKABLE void loadDefaultDraft();
     Q_INVOKABLE void resetToDefaults();
@@ -68,18 +65,13 @@ private:
     QString targetBackend() const;
 
     QString modelIdForRole(const QString &role) const;
-    QSet<QString> m_policyNames() const;
-    QSet<QString> profileOwnedNames(const QString &role) const;
     void composeDraft();
-    void modelChangedForRole(const QString &role);
 
     SettingsStore &m_settings;
     ProfileStore<LaunchProfile> *m_profiles;
     QList<LaunchParameter> m_policy;
-    QList<LaunchParameter> m_fallback;
     QList<ModelProfiles::Profile> m_modelProfiles;
     QString m_draftProfileId;
-    QString m_draftRole = QStringLiteral("ocr");
     LaunchParametersModel *m_model = nullptr;
 };
 

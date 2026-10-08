@@ -11,6 +11,8 @@
 #include "core/ModelProfiles.h"
 #include "runtime/ReleaseCatalog.h"
 
+#include <algorithm>
+
 namespace llocr {
 
 namespace {
@@ -28,26 +30,23 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
     QFile builtIn(builtInPath);
     if (builtIn.open(QIODevice::ReadOnly)) {
         const QJsonDocument doc = QJsonDocument::fromJson(builtIn.readAll(), &parseError);
-        if (parseError.error == QJsonParseError::NoError && doc.isObject()) {
+        if (parseError.error == QJsonParseError::NoError && doc.isObject())
             m_policy = LaunchProfile::parsePolicy(doc.object(), readError);
-            if (readError.isEmpty())
-                m_fallback = LaunchProfile::parseFallback(doc.object(), readError);
-        } else {
+        else
             readError = parseError.errorString();
-        }
     } else {
         readError = builtIn.errorString();
     }
     if (!readError.isEmpty())
         qWarning("LaunchProfileStore: cannot load the launch profiles %s: %s", qUtf8Printable(builtInPath), qUtf8Printable(readError));
 
-    m_model->setLockedPrefix(m_policy.size());
-
     m_profiles->reloadUserProfiles();
 
+    // The draft (and the user copy) is the platform layer alone: the settings
+    // table edits the machine's hardware parameters, everything else the app
+    // and the model profiles own. A user copy carrying any other name — a
+    // leftover of an older shape, or a hand edit — is dropped wholesale.
     QSet<QString> known;
-    for (const LaunchParameter &p : m_policy)
-        known.insert(p.name);
     for (const LaunchProfile &preset : m_profiles->builtIn()) {
         for (const LaunchParameter &p : preset.parameters)
             known.insert(p.name);
@@ -60,24 +59,19 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
         return false;
     });
     if (dropped > 0)
-        qWarning("LaunchProfileStore: %d user launch profile(s) carried parameters the layers no longer own (they now come from the model); the stale rows were dropped", dropped);
+        qWarning("LaunchProfileStore: %d user launch profile(s) carried parameters outside the platform layer (policy, model and generation values are not the user's to store); the stale copies were "
+                 "dropped",
+                 dropped);
 
     const QString legacy = QFileInfo(m_profiles->userPath()).absoluteDir().filePath(kLegacyCheckFileName);
     if (QFile::exists(legacy) && !QFile::remove(legacy))
         qWarning("LaunchProfileStore: cannot remove the obsolete %s", qUtf8Printable(legacy));
 
     connect(&m_settings, &SettingsStore::runtimeBackendChanged, this, &LaunchProfileStore::ensureProfileResolved);
-    connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { modelChangedForRole(QStringLiteral("ocr")); });
-    connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { modelChangedForRole(QStringLiteral("check")); });
+    connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { emit profileChanged(); });
+    connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     ensureProfileResolved();
     reloadDraft();
-}
-
-void LaunchProfileStore::modelChangedForRole(const QString &role)
-{
-    emit profileChanged();
-    if (role == m_draftRole)
-        composeDraft();
 }
 
 bool LaunchProfileStore::hasUserProfile() const
@@ -121,19 +115,6 @@ LaunchProfile LaunchProfileStore::compose(const LaunchProfile &profile, const QS
             }
             if (!replaced)
                 combined.append(p);
-        }
-        if (modelLayer.isEmpty()) {
-            for (const LaunchParameter &p : std::as_const(m_fallback)) {
-                bool present = false;
-                for (const LaunchParameter &existing : std::as_const(combined)) {
-                    if (existing.name == p.name) {
-                        present = true;
-                        break;
-                    }
-                }
-                if (!present)
-                    combined.append(p);
-            }
         }
     }
 
@@ -214,35 +195,13 @@ QString LaunchProfileStore::modelIdForRole(const QString &role) const
     return role == QLatin1String("check") ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
 }
 
-QSet<QString> LaunchProfileStore::profileOwnedNames(const QString &role) const
-{
-    QSet<QString> names = m_policyNames();
-    QList<LaunchParameter> owned = ModelProfiles::launchFor(m_modelProfiles, modelIdForRole(role), role);
-    if (owned.isEmpty()) {
-        const LaunchProfile platform = m_profiles->merged(m_draftProfileId);
-        for (const LaunchParameter &p : m_fallback) {
-            if (platform.find(p.name) == nullptr)
-                owned.append(p);
-        }
-    }
-    for (const LaunchParameter &p : owned)
-        names.insert(p.name);
-    return names;
-}
-
-QSet<QString> LaunchProfileStore::m_policyNames() const
-{
-    QSet<QString> names;
-    for (const LaunchParameter &p : m_policy)
-        names.insert(p.name);
-    return names;
-}
-
 void LaunchProfileStore::composeDraft()
 {
-    const QString modelId = modelIdForRole(m_draftRole);
-    m_model->resetFrom(compose(m_profiles->merged(m_draftProfileId), modelId, m_draftRole).parameters);
-    m_model->setLockedNames(profileOwnedNames(m_draftRole));
+    // The table shows the platform layer alone: the machine's hardware
+    // parameters, every row editable. The policy and the model's own rows are
+    // the app's and the weights' — they reach the server through compose(),
+    // not through the settings.
+    m_model->resetFrom(m_profiles->merged(m_draftProfileId).parameters);
 }
 
 LaunchProfile LaunchProfileStore::activeProfile() const
@@ -255,10 +214,8 @@ LaunchProfile LaunchProfileStore::activeProfile(const QString &modelId, const QS
     return compose(m_profiles->merged(activeProfileId()), modelId, role);
 }
 
-void LaunchProfileStore::reloadDraft(const QString &role)
+void LaunchProfileStore::reloadDraft()
 {
-    if (!role.isEmpty())
-        m_draftRole = role;
     m_draftProfileId = activeProfileId();
     composeDraft();
     emit draftProfileChanged();
@@ -269,34 +226,14 @@ bool LaunchProfileStore::setDraftValue(int row, const QString &text)
     return m_model->setValue(row, text);
 }
 
-bool LaunchProfileStore::appendDraftParameter(const QString &name, const QString &text)
-{
-    return m_model->appendRow(name, text);
-}
-
-void LaunchProfileStore::removeDraftRow(int row)
-{
-    m_model->removeRow(row);
-}
-
 void LaunchProfileStore::saveDraft()
 {
     if (m_draftProfileId.isEmpty())
         return;
 
-    const int policyRows = m_policy.size();
-    QList<LaunchParameter> rows = m_model->parameters().mid(policyRows);
-
-    // The model layer is composed into the draft so it can be read, not so it
-    // can be written back: a user copy of a platform profile that carried
-    // ctx-size would freeze one model's values for every model on this machine,
-    // and the constructor's pruning drops exactly such rows at the next start.
-    const QSet<QString> modelOwned = profileOwnedNames(m_draftRole) - QSet<QString>(m_policyNames());
-    rows.erase(std::remove_if(rows.begin(), rows.end(), [&modelOwned](const LaunchParameter &p) { return modelOwned.contains(p.name); }), rows.end());
-
     LaunchProfile draft;
     draft.id = m_draftProfileId;
-    draft.parameters = rows;
+    draft.parameters = m_model->parameters();
     draft.sortByOrder();
     if (const LaunchProfile *preset = findPreset(m_draftProfileId)) {
         draft.name = preset->name;
@@ -322,8 +259,7 @@ void LaunchProfileStore::loadDefaultDraft()
         m_model->resetFrom(QList<LaunchParameter>());
         return;
     }
-    m_model->resetFrom(compose(*preset, modelIdForRole(m_draftRole), m_draftRole).parameters);
-    m_model->setLockedNames(profileOwnedNames(m_draftRole));
+    m_model->resetFrom(preset->parameters);
 }
 
 void LaunchProfileStore::resetToDefaults()

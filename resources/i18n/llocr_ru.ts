@@ -975,18 +975,20 @@
         <translation type="vanished">Добавить</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows belong to a layer: the shared server policy, this machine&apos;s build, or the model itself — they are what the server is started with, and the profile owns them.</source>
-        <translation>Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки принадлежат какому-то слою: общей политике сервера, сборке этой машины или самой модели — это то, с чем сервер реально запускается, и принадлежит профилю</translation>
+        <translation type="vanished">Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки принадлежат какому-то слою: общей политике сервера, сборке этой машины или самой модели — это то, с чем сервер реально запускается, и принадлежит профилю</translation>
+    </message>
+    <message>
+        <source>The machine&apos;s parameters: how much of the model goes to the GPU, flash attention, and the context window. Everything else — the server policy and the model&apos;s own parameters — is tuned by the app and its model profiles.</source>
+        <translation>Параметры машины: сколько слоёв модели на GPU, flash attention и размер контекста. Всё остальное — политика сервера и собственные параметры модели — подобрано приложением и профилями моделей</translation>
     </message>
     <message>
         <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows are the shared server policy and apply to every model on this machine.</source>
         <translation type="vanished">Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки — общая политика сервера, она действует для любой модели на этой машине</translation>
     </message>
     <message>
-        <location line="-25"/>
         <source>This model is not in the catalog, so its launch parameters come from the fallback set instead of the model&apos;s own. The context window may be wrong for it — check the log if a page comes out truncated.</source>
-        <translation>Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора, а не из её собственных. Размер контекста может ей не подходить — если страница обрезается, посмотрите журнал</translation>
+        <translation type="vanished">Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора, а не из её собственных. Размер контекста может ей не подходить — если страница обрезается, посмотрите журнал</translation>
     </message>
     <message>
         <source>The managed runtime cannot run this model. %1</source>
@@ -1569,14 +1571,12 @@
         <translation type="unfinished">Описание</translation>
     </message>
     <message>
-        <location line="+93"/>
         <source>New parameter name</source>
-        <translation type="unfinished">Имя нового параметра</translation>
+        <translation type="vanished">Имя нового параметра</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Add</source>
-        <translation type="unfinished">Добавить</translation>
+        <translation type="vanished">Добавить</translation>
     </message>
 </context>
 <context>
@@ -2310,8 +2310,8 @@
     </message>
     <message>
         <location line="+151"/>
-        <source>Maximum tokens the model may generate for one page. Shares its value with the server&apos;s n-predict.</source>
-        <translation type="unfinished"></translation>
+        <source>Maximum tokens the model may generate for one page.</source>
+        <translation>Максимум токенов, которые модель может сгенерировать для одной страницы.</translation>
     </message>
     <message>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+9"/>
@@ -2606,14 +2606,20 @@
         <translation type="vanished">Добавить</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/RequestTab.qml" line="+53"/>
         <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
-        <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
+        <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
     </message>
     <message>
-        <location line="-1"/>
+        <source>Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания. Набор задаёт профиль модели — меняйте значения, а не список</translation>
+    </message>
+    <message>
         <source>Advanced request parameters sent to llama.cpp alongside the check prompt; see the llama.cpp server documentation</source>
-        <translation>Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом проверки; см. документацию llama-server</translation>
+        <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом проверки; см. документацию llama-server</translation>
+    </message>
+    <message>
+        <source>Sampling parameters sent with every check request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры сэмплирования, отправляемые с каждым запросом проверки. Набор задаёт профиль модели — меняйте значения, а не список</translation>
     </message>
 </context>
 <context>
@@ -3304,9 +3310,12 @@
         <translation type="vanished">Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено. В списке профилей только то, что может запустить эта система с установленным бэкендом</translation>
     </message>
     <message>
-        <location line="-20"/>
         <source>This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.</source>
-        <translation type="unfinished">Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора. Если страница обрезается, прежде всего стоит проверить размер контекста</translation>
+        <translation type="vanished">Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора. Если страница обрезается, прежде всего стоит проверить размер контекста</translation>
+    </message>
+    <message>
+        <source>This model is not in the catalog. The server starts with the platform defaults only — if a page comes out truncated, the context window is the first thing to look at.</source>
+        <translation>Этой модели нет в каталоге. Сервер запускается только с платформенными параметрами — если страница обрезается, прежде всего стоит проверить размер контекста</translation>
     </message>
     <message>
         <source>The managed runtime cannot run this model. %1</source>

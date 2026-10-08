@@ -41,7 +41,6 @@ Item {
             nameWidth: root.nameWidth
             valueWidth: root.valueWidth
             setValue: (row, text) => root.profiles.setDraftValue(row, text)
-            addRow: (name, value) => root.profiles.appendDraftRow(name, value)
         }
 
         LLOLabel {
@@ -49,8 +48,8 @@ Item {
             font.pointSize: Theme.captionSize
             color: Theme.helpColor
             text: checkRole
-                ? qsTr("Advanced request parameters sent to llama.cpp alongside the check prompt; see the llama.cpp server documentation")
-                : qsTr("Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation")
+                ? qsTr("Sampling parameters sent with every check request. The set comes from the model profile — edit the values, not the list.")
+                : qsTr("Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.")
         }
     }
 }

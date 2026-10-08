@@ -40,7 +40,6 @@ struct LaunchProfile {
     static QList<LaunchProfile> profilesFromJson(const QJsonObject &root, QString &error) { return parseFile(root, error); }
     static LaunchProfile merge(const LaunchProfile &defaults, const LaunchProfile &user);
     static QList<LaunchParameter> parsePolicy(const QJsonObject &root, QString &error);
-    static QList<LaunchParameter> parseFallback(const QJsonObject &root, QString &error);
     static QList<LaunchParameter> parseParameters(const QJsonArray &array, QString &error, const QString &what);
 
     QJsonObject toJson() const;

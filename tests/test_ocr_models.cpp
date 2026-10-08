@@ -34,6 +34,14 @@ public:
     CheckResult parse(const QByteArray &responseData) { return parseResponse(responseData); }
 };
 
+class ExposedOcrModel : public OcrModel
+{
+public:
+    explicit ExposedOcrModel(const QString &modelId) : OcrModel(modelId) {}
+
+    QByteArray build(const OcrRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
+};
+
 class RecordingServer : public QObject
 {
 public:
@@ -201,6 +209,39 @@ private slots:
         QVERIFY(variants.first().text.contains(QStringLiteral("[0, 1000]")));
         QVERIFY(!variants.first().id.isEmpty());
         QVERIFY(!variants.first().title.isEmpty());
+        // The wire shape follows the model card: text, then the image.
+        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        QVERIFY(ocrRole);
+        QCOMPARE(ocrRole->promptBeforeImage, true);
+    }
+
+    // The message layout is the model's trained shape: the LFM2.5 card documents
+    // text-then-image, the Qwen-family models document image-then-text. The
+    // order travels in the profile, so one shipped entry can deviate without a
+    // wire-shape fork in C++.
+    void ocrBodyFollowsTheTrainedPartOrder()
+    {
+        OcrRequest request;
+        request.prompt = QStringLiteral("Parse this document.");
+        request.image = QImage(4, 4, QImage::Format_RGB32);
+
+        request.modelId = QStringLiteral("lfm25-vl-3b");
+        const QByteArray lfmBody = ExposedOcrModel(QStringLiteral("lfm25-vl-3b")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonDocument lfmDoc = QJsonDocument::fromJson(lfmBody);
+        const QJsonArray lfmContent = lfmDoc.object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(lfmContent.size(), 2);
+        QCOMPARE(lfmContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+        QCOMPARE(lfmContent.last().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        // One user message, no system message: the card allows the instruction
+        // as a system or a user prompt, and the user prompt is what we use.
+        QCOMPARE(lfmDoc.object().value(QStringLiteral("messages")).toArray().size(), 1);
+        QCOMPARE(lfmDoc.object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("role")).toString(), QStringLiteral("user"));
+
+        request.modelId = QStringLiteral("unlimited-ocr");
+        const QByteArray unlimitedBody = ExposedOcrModel(QStringLiteral("unlimited-ocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray unlimitedContent = QJsonDocument::fromJson(unlimitedBody).object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(unlimitedContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(unlimitedContent.last().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
     }
 
     // Every label the LFM prompt advertises must be resolvable, otherwise the
@@ -424,9 +465,14 @@ private slots:
         QCOMPARE(systemMessage.value(QStringLiteral("role")).toString(), QStringLiteral("system"));
         QVERIFY(systemMessage.value(QStringLiteral("content")).toString().startsWith(QStringLiteral("You are an OCR verifier.")));
 
-        // User message: type prompt, then image, then the OCR candidate.
+        // User message: type prompt, then image, then the OCR candidate — the
+        // Qwen-family order (the model id is not in the catalog, so the default
+        // wire shape applies).
         const QJsonArray content = messages.at(1).toObject().value(QStringLiteral("content")).toArray();
         QCOMPARE(content.size(), 3);
+        QCOMPARE(content.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+        QCOMPARE(content.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(content.at(2).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
 
         QStringList textParts;
         QString imageUrl;
@@ -444,6 +490,29 @@ private slots:
         QVERIFY(textParts.at(1).endsWith(QStringLiteral("\n</ocr_candidate>")));
         QVERIFY(textParts.at(1).contains(QStringLiteral("hello wor1d")));
         QCOMPARE(imageUrl, QStringLiteral("data:image/png;base64,AAAA"));
+    }
+
+    // A model trained text-then-image (LFM2.5) gets the whole text before the
+    // image: the type prompt, the candidate, and the image closing the message.
+    void checkBodyPartOrderFollowsTheProfile()
+    {
+        ExposedGeneralPurposeModel model;
+        CheckRequest request;
+        request.image = QImage(4, 4, QImage::Format_ARGB32);
+        request.image.fill(Qt::gray);
+        request.recognizedText = QStringLiteral("hello wor1d");
+        request.systemPrompt = QStringLiteral("You are an OCR verifier.");
+        request.typePrompt = QStringLiteral("Verify the text block.");
+        request.modelId = QStringLiteral("lfm25-vl-3b");
+
+        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray content = QJsonDocument::fromJson(body).object().value(QStringLiteral("messages")).toArray().at(1).toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(content.size(), 3);
+        QCOMPARE(content.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+        QCOMPARE(content.at(0).toObject().value(QStringLiteral("text")).toString(), QStringLiteral("Verify the text block."));
+        QCOMPARE(content.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+        QVERIFY(content.at(1).toObject().value(QStringLiteral("text")).toString().startsWith(QStringLiteral("OCR candidate:")));
+        QCOMPARE(content.at(2).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
     }
 
     void checkResponseParsing()

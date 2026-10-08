@@ -132,7 +132,8 @@ QByteArray OcrModel::buildRequestBody(const OcrRequest &request, const QByteArra
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
 
-    QJsonArray content{imagePart, textPart};
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("ocr"));
+    QJsonArray content = role && role->promptBeforeImage ? QJsonArray{textPart, imagePart} : QJsonArray{imagePart, textPart};
 
     QJsonObject message{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
 

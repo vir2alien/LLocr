@@ -30,8 +30,6 @@ QVariant LaunchParametersModel::data(const QModelIndex &index, int role) const
         return int(p.kind);
     case DescriptionRole:
         return p.description;
-    case EditableRole:
-        return isEditable(index.row());
     default:
         return QVariant();
     }
@@ -44,31 +42,8 @@ QHash<int, QByteArray> LaunchParametersModel::roleNames() const
         {ValueTextRole, "valueText"},
         {KindRole, "kind"},
         {DescriptionRole, "description"},
-        {EditableRole, "editable"},
     };
     return roles;
-}
-
-void LaunchParametersModel::setLockedPrefix(int rows)
-{
-    m_lockedPrefix = qMax(0, rows);
-    if (!m_parameters.isEmpty()) {
-        const QModelIndex first = index(m_lockedPrefix > 0 ? m_lockedPrefix - 1 : 0);
-        const QModelIndex last = index(m_parameters.size() - 1);
-        emit dataChanged(first, last, {EditableRole});
-    }
-}
-
-bool LaunchParametersModel::isEditable(int row) const
-{
-    return row >= m_lockedPrefix && !m_lockedNames.contains(m_parameters.at(row).name);
-}
-
-void LaunchParametersModel::setLockedNames(const QSet<QString> &names)
-{
-    m_lockedNames = names;
-    if (!m_parameters.isEmpty())
-        emit dataChanged(index(0), index(m_parameters.size() - 1), {EditableRole});
 }
 
 void LaunchParametersModel::resetFrom(const QList<LaunchParameter> &parameters)
@@ -84,8 +59,6 @@ void LaunchParametersModel::resetFrom(const QList<LaunchParameter> &parameters)
 bool LaunchParametersModel::setValue(int row, const QString &text)
 {
     if (row < 0 || row >= m_parameters.size())
-        return false;
-    if (!isEditable(row))
         return false;
 
     LaunchParameter &p = m_parameters[row];
@@ -113,51 +86,6 @@ bool LaunchParametersModel::setValue(int row, const QString &text)
     const QModelIndex idx = index(row);
     emit dataChanged(idx, idx, {ValueTextRole, KindRole});
     return true;
-}
-
-bool LaunchParametersModel::appendRow(const QString &name, const QString &text)
-{
-    QString clean = name.trimmed();
-    while (clean.startsWith(u'-'))
-        clean.remove(0, 1);
-    if (clean.isEmpty())
-        return false;
-    if (LaunchProfile::reservedArgNames().contains(clean))
-        return false;
-    if (m_lockedNames.contains(clean))
-        return false;
-    for (const LaunchParameter &p : std::as_const(m_parameters))
-        if (p.name == clean)
-            return false;
-
-    LaunchParameter parameter;
-    parameter.name = clean;
-    parameter.order = m_parameters.isEmpty() ? 1 : m_parameters.last().order + 1;
-    if (text.trimmed().isEmpty()) {
-        parameter.kind = LaunchValueKind::Flag;
-    } else if (const auto number = toFiniteNumber(text)) {
-        parameter.kind = LaunchValueKind::Number;
-        parameter.value = QVariant(*number);
-    } else {
-        parameter.kind = LaunchValueKind::Text;
-        parameter.value = QVariant(text);
-    }
-
-    beginInsertRows(QModelIndex(), m_parameters.size(), m_parameters.size());
-    m_parameters.append(parameter);
-    endInsertRows();
-    return true;
-}
-
-void LaunchParametersModel::removeRow(int row)
-{
-    if (row < 0 || row >= m_parameters.size())
-        return;
-    if (!isEditable(row))
-        return;
-    beginRemoveRows(QModelIndex(), row, row);
-    m_parameters.removeAt(row);
-    endRemoveRows();
 }
 
 }  // namespace llocr

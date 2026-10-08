@@ -1,12 +1,6 @@
 {
   "schemaVersion": 1,
-  "_comment": "Launch parameters in three layers. 'policy' does not depend on the model or the platform: how the server is driven. 'profiles' is the platform layer, keyed by os+backend, and it owns what belongs to the machine — how many layers go on the GPU, and the context window and the generation budget, because those are the two values that follow the memory the machine has. 'fallback' is used only when no layer above it names a parameter (a hand-picked GGUF, a model the catalog does not know) — llama.cpp's own 4096-token default would otherwise truncate a page carrying a table. Model parameters (image-*-tokens, dry-sequence-breaker, special) live in models/<id>.json: what the weights need, which the machine cannot decide. See docs/10-model-profiles.md.",
-  "fallback": {
-    "parameters": [
-      { "order": 1, "name": "ctx-size",  "value": 16384, "description": "Model context window in tokens. Last resort for a model outside the catalog." },
-      { "order": 2, "name": "n-predict", "value": 8192,  "description": "Maximum tokens to generate per completion." }
-    ]
-  },
+  "_comment": "Launch parameters in two layers. 'policy' does not depend on the model or the platform: how the server is driven — the app owns it, and the settings UI does not show it. 'profiles' is the platform layer, keyed by os+backend, and it owns what belongs to the machine — the three hardware parameters (n-gpu-layers, flash-attn, ctx-size) — and it is the only layer the settings table shows and the user edits. Everything else lives in models/<id>.json: what the weights need (spec decoding, image-*-tokens, special) the machine cannot decide, and the request profile carries max_tokens per role. A user copy of a platform profile that carries any other name is dropped at startup.",
   "policy": {
     "parameters": [
       {
@@ -57,12 +51,6 @@
           "name": "ctx-size",
           "value": 16384,
           "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
-        },
-        {
-          "order": 4,
-          "name": "n-predict",
-          "value": 8192,
-          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -89,12 +77,6 @@
           "name": "ctx-size",
           "value": 16384,
           "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
-        },
-        {
-          "order": 4,
-          "name": "n-predict",
-          "value": 8192,
-          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -121,12 +103,6 @@
           "name": "ctx-size",
           "value": 16384,
           "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
-        },
-        {
-          "order": 4,
-          "name": "n-predict",
-          "value": 8192,
-          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -153,12 +129,6 @@
           "name": "ctx-size",
           "value": 16384,
           "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
-        },
-        {
-          "order": 4,
-          "name": "n-predict",
-          "value": 8192,
-          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -185,12 +155,6 @@
           "name": "ctx-size",
           "value": 16384,
           "description": "Model context window in tokens (prompt + image + output). The machine's memory decides this — lower it if a page comes out truncated."
-        },
-        {
-          "order": 4,
-          "name": "n-predict",
-          "value": 8192,
-          "description": "Maximum tokens to generate per completion."
         }
       ]
     },
@@ -211,12 +175,6 @@
           "name": "ctx-size",
           "value": 8192,
           "description": "Model context window in tokens (prompt + image + output). A CPU build has the least memory to spend on it."
-        },
-        {
-          "order": 3,
-          "name": "n-predict",
-          "value": 8192,
-          "description": "Maximum tokens to generate per completion."
         }
       ]
     }

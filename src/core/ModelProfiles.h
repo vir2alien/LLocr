@@ -28,6 +28,7 @@ public:
         QList<RequestParameter> request;
         QHash<QString, QString> blockStyles;
         QHash<QString, QString> blockPrompts;
+        bool promptBeforeImage = false;  // wire order: prompt text first, then the image (LFM2.5 trains text-then-image)
     };
 
     struct Quant {

@@ -102,7 +102,7 @@ Item {
             wrapMode: Text.WordWrap
             font.pointSize: Theme.captionSize
             color: Theme.warning
-            text: qsTr("This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.")
+            text: qsTr("This model is not in the catalog. The server starts with the platform defaults only — if a page comes out truncated, the context window is the first thing to look at.")
         }
 
         RuntimeNoteWarning {

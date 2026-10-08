@@ -34,14 +34,16 @@ namespace {
 // Launch-profile catalog for tests (test binaries embed no resources): one
 // preset with an empty backend tag (matches any installed backend) so the
 // store can persist user copies for it. The mock server only needs the core
-// argv; individual tests append flags to the preset's user copy.
-QString writeTestLaunchCatalog(const QTemporaryDir &dir)
+// argv; a test that needs extra server flags declares them as the preset's
+// own platform rows — the only place flags survive the startup pruning now.
+QString writeTestLaunchCatalog(const QTemporaryDir &dir, const QByteArray &parametersJson = QByteArrayLiteral("[]"))
 {
     const QString path = QDir(dir.path()).filePath(QStringLiteral("launch-presets.json"));
     QSaveFile f(path);
     if (f.open(QIODevice::WriteOnly)) {
         f.write(QByteArrayLiteral("{ \"schemaVersion\": 1, \"profiles\": ["
-                                  "{ \"id\": \"test\", \"parameters\": [] }] }"));
+                                  "{ \"id\": \"test\", \"parameters\": ") +
+                parametersJson + QByteArrayLiteral(" }] }"));
         f.commit();
     }
     return path;
@@ -331,6 +333,84 @@ private slots:
         QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
         QCOMPARE(runtime.state(), RuntimeState::Ready);
         QVERIFY2(states.contains(int(RuntimeState::Stopped)), "the check role kept the OCR role's launch flags instead of restarting the server");
+
+        runtime.stopServer();
+    }
+
+    // The model layer is part of the launch configuration, so switching the OCR
+    // model changes what the server should be started with even though the
+    // Launch tab (the platform layer alone) looks untouched: the running server
+    // must be flagged for a restart, and switching back must clear it.
+    void switchingTheOcrModelRaisesTheRestartBanner()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile model(dir.filePath(QStringLiteral("a-Q4_K_M.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("a");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("a-Q4_K_M.gguf")));
+        store.setModelRecipeId(QStringLiteral("a"));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        // Model "a" carries a row of its own (the Unlimited-OCR shape); model
+        // "b" does not (the LFM2.5-VL shape). The launch path deliberately
+        // stays on the same file: the model layer is what varies here.
+        ModelProfiles::Profile a;
+        a.id = QStringLiteral("a");
+        a.title = QStringLiteral("A");
+        ModelProfiles::Role aRole;
+        aRole.alias = QStringLiteral("llocr-a");
+        LaunchParameter ctx;
+        ctx.name = QStringLiteral("ctx-size");
+        ctx.kind = LaunchValueKind::Number;
+        ctx.value = 16384;
+        ctx.order = 1;
+        aRole.launch.append(ctx);
+        LaunchParameter vision;
+        vision.name = QStringLiteral("image-min-tokens");
+        vision.kind = LaunchValueKind::Number;
+        vision.value = 456;
+        vision.order = 2;
+        aRole.launch.append(vision);
+        a.roles.insert(QStringLiteral("ocr"), aRole);
+
+        ModelProfiles::Profile b;
+        b.id = QStringLiteral("b");
+        b.title = QStringLiteral("B");
+        ModelProfiles::Role bRole;
+        bRole.alias = QStringLiteral("llocr-b");
+        bRole.launch.append(ctx);
+        b.roles.insert(QStringLiteral("ocr"), bRole);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        launchProfiles.setModelProfiles({a, b});
+        QVERIFY(launchProfiles.activeProfile(QStringLiteral("a"), QStringLiteral("ocr")).find(QStringLiteral("image-min-tokens")) != nullptr);
+        QVERIFY(launchProfiles.activeProfile(QStringLiteral("b"), QStringLiteral("ocr")).find(QStringLiteral("image-min-tokens")) == nullptr);
+
+        RuntimeController runtime(store, launchProfiles);
+        int finished = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++finished; });
+        QTRY_VERIFY_WITH_TIMEOUT(finished == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY(!runtime.launchConfigDirty());
+
+        // Switching to a model whose launch layer differs flags the running
+        // server for a restart — the Launch tab did not change, but what the
+        // server should be started with did.
+        store.setModelRecipeId(QStringLiteral("b"));
+        QVERIFY(runtime.launchConfigDirty());
+
+        // …and switching back resolves it without a restart.
+        store.setModelRecipeId(QStringLiteral("a"));
+        QVERIFY(!runtime.launchConfigDirty());
 
         runtime.stopServer();
     }
@@ -718,12 +798,9 @@ private slots:
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
-        // Delay the socket bind so the resolve stays in Starting. With launch
-        // settings gone from QSettings the delay goes through the launch
-        // profile's user copy (a valueless flag row).
-        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("delay-start"), QStringLiteral("4000")));
-        launchProfiles.saveDraft();
+        // Delay the socket bind so the resolve stays in Starting. The delay is
+        // a platform row of the test preset.
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir, QByteArrayLiteral("[ { \"order\": 1, \"name\": \"delay-start\", \"value\": 4000 } ]")));
         store.setStartupTimeoutMs(30000);
 
         RuntimeController runtime(store, launchProfiles);
@@ -771,9 +848,7 @@ private slots:
         store.setStartOnDemand(true);
         // The socket bind is delayed, so the resolve the check asks for is still
         // in Starting when the job is stopped — the window the cancel used to hit.
-        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("delay-start"), QStringLiteral("2000")));
-        launchProfiles.saveDraft();
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir, QByteArrayLiteral("[ { \"order\": 1, \"name\": \"delay-start\", \"value\": 2000 } ]")));
         store.setStartupTimeoutMs(30000);
 
         RuntimeController runtime(store, launchProfiles);
@@ -818,12 +893,9 @@ private slots:
         store.setStartupTimeoutMs(1200);
         // --never-healthy alone is rescued by the /v1/models fallback (the mock
         // answers it with 200); --no-models disables that fallback so the
-        // health watchdog truly hits the startup timeout. Both flags go
-        // through the launch profile's user copy.
-        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
-        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("never-healthy"), QString()));
-        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("no-models"), QString()));
-        launchProfiles.saveDraft();
+        // health watchdog truly hits the startup timeout. Both flags are
+        // platform rows of the test preset.
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir, QByteArrayLiteral("[ { \"order\": 1, \"name\": \"never-healthy\" }, { \"order\": 2, \"name\": \"no-models\" } ]")));
 
         RuntimeController runtime(store, launchProfiles);
         ResolvedConnection resolved;
@@ -1131,10 +1203,11 @@ private slots:
         store.setWindowWidth(store.windowWidth() + 40);
         QVERIFY(!runtime.launchConfigDirty());
 
-        // A launch parameter the old list did not cover: a saved user profile.
-        // ctx-size is no longer addable here — it belongs to the model layer.
-        launchProfiles.setModelProfiles({});
-        QVERIFY(launchProfiles.appendDraftParameter(QStringLiteral("cache-type-k"), QStringLiteral("f16")));
+        // A launch parameter the old list did not cover: a saved user profile —
+        // the exact path the Launch tab takes (edit the draft, save it).
+        const QAbstractListModel *draft = launchProfiles.draftModel();
+        QVERIFY(draft->rowCount() > 0);
+        QVERIFY(launchProfiles.setDraftValue(0, QStringLiteral("4096")));
         launchProfiles.saveDraft();
         QVERIFY(runtime.launchConfigDirty());
 

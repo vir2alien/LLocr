@@ -28,7 +28,6 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs)},
         {kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName))},
         {kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
-        {kRequestProfileId, "requestProfileId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
         {kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId))},
         {kSplitPages, "splitPages", QVariant(kDefaultSplitPages)},
         {kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers)},
@@ -100,17 +99,10 @@ void SettingsStore::applyStartupMigration()
             m_settings.setValue(kBaseUrl, saved);
     }
 
-    if (!m_settings.contains(kRequestProfileId)) {
-        const QString legacy = modelRecipeId();
-        if (!legacy.isEmpty())
-            m_settings.setValue(kRequestProfileId, legacy);
-    }
-
-    for (const char *retired : {kRetiredAlias, kRetiredServerPathIsManaged, kRetiredLaunchSourceDownload, kRetiredCheckSourceDownload})
+    for (const char *retired : {kRetiredAlias, kRetiredServerPathIsManaged, kRetiredLaunchSourceDownload, kRetiredCheckSourceDownload, kRetiredModelRequestProfileId})
         m_settings.remove(QString::fromLatin1(retired));
 
     resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
-    resolveStoredModelId(kRequestProfileId, QStringLiteral("ocr"));
     resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("check"));
 
     if (m_settings.value(kParserId).toString() == QLatin1String("det_tokens")) {
@@ -236,19 +228,6 @@ void SettingsStore::setModelName(const QString &modelName)
 QString SettingsStore::modelRecipeId() const
 {
     return m_settings.value(kModelRecipeId, QString::fromUtf8(kDefaultModelRecipeId)).toString();
-}
-
-QString SettingsStore::requestProfileId() const
-{
-    return m_settings.value(kRequestProfileId, QString::fromUtf8(kDefaultModelRecipeId)).toString();
-}
-
-void SettingsStore::setRequestProfileId(const QString &id)
-{
-    if (requestProfileId() == id)
-        return;
-    m_settings.setValue(kRequestProfileId, id);
-    emit requestProfileIdChanged();
 }
 
 void SettingsStore::setModelRecipeId(const QString &recipeId)
