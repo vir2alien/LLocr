@@ -122,10 +122,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     }
 }
 
-// A check model can carry its own wording per block type — it was trained with
-// it — while a type it says nothing about still gets verifyPrompts.json. The
-// types are the labels the OCR parsers emit, so a typo here would silently
-// disable the override.
+// A check model carries its own wording per block type and its own system
+// prompt — the profile is the only source of the verifier's wording.
 // The DSpark draft ships in its own repo, so the preset has to carry both the
 // file name and the repo — otherwise the install downloads nothing to run
 // --model-draft with.
@@ -146,23 +144,22 @@ void TestModelPresetCatalog::draftModuleReachesThePresets()
     QVERIFY(lfm->mtpRepo != lfm->repo);  // a different repo is the whole point of the test
 }
 
-// The check role can override the shared verifier system prompt (the LFM one
-// reinforces the reply contract in the model's own idiom); a role without an
-// override keeps serving verifyPrompts.json verbatim.
+// Every check profile ships the verifier system prompt in the model's own
+// idiom; a role without one — and an unknown model — resolves to nothing.
 void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    const QString fallback = QStringLiteral("You verify OCR against an image.");
 
-    const QString lfm = ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("check"), fallback);
-    QVERIFY(lfm != fallback);
+    const QString lfm = ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("check"));
     QVERIFY(lfm.contains(QStringLiteral("reply with FIX on the first line")));
     QVERIFY(lfm.contains(QStringLiteral("reply with the single line OK")));
 
-    // A model without an override — and any OCR role — gets the shared prompt.
-    QCOMPARE(ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("check"), fallback), fallback);
-    QCOMPARE(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"), fallback), fallback);
-    QCOMPARE(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("check"), fallback), fallback);
+    const QString qwen = ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("check"));
+    QVERIFY(qwen.contains(QStringLiteral("Output exactly one of:")));
+
+    // An OCR role has no system prompt, and neither has an unknown model.
+    QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr")).isEmpty());
+    QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("check")).isEmpty());
 }
 
 void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
@@ -183,16 +180,15 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     // must not ask for the format the parser cannot use.
     QVERIFY(!role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("OTSL format")));
 
-    // An unknown type, a model without prompts and a model outside the catalog
-    // all fall back to what the caller passes.
+    // An unknown type, a type the profile says nothing about, and a model
+    // outside the catalog resolve to nothing.
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    const QString fallback = QStringLiteral("from verifyPrompts.json");
-    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("check"), QStringLiteral("list"), fallback), fallback);
-    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("check"), QStringLiteral("formula"), fallback).isEmpty(), false);
-    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("check"), QStringLiteral("formula"), fallback), fallback);
-    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("check"), QStringLiteral("formula"), fallback), fallback);
+    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("check"), QStringLiteral("list")).isEmpty());
+    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("check"), QStringLiteral("formula")).isEmpty());
+    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("check"), QStringLiteral("formula")).isEmpty());
+    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("check"), QStringLiteral("formula")).isEmpty());
     // The ocr role of the same model has no block prompts at all.
-    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"), QStringLiteral("formula"), fallback), fallback);
+    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"), QStringLiteral("formula")).isEmpty());
 }
 
 // A model the managed runtime cannot load says so in its profile, and the note

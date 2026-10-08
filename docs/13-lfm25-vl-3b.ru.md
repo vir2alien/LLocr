@@ -210,7 +210,7 @@ llama-server \
 | Профиль модели (промпт, launch-слой, параметры запроса, check-роль, модуль DSpark, `promptBeforeImage`) | `resources/profiles/models/lfm25-vl-3b.json` |
 | Парсер (`lfm2.5-vl`): конвертация OTSL, калибровка, правки формул | `src/parsers/` (`Lfm25VlParser`, база `DetTokensParser`) |
 | Карта «метка → стиль» (включая `image_block`, `code`) | `resources/profiles/labels.json` |
-| System-промпт и промпты блоков верификатора | check-роль профиля (переопределяет `resources/profiles/verifyPrompts.json`) |
+| System-промпт и промпты блоков верификатора | check-роль профиля (единственный источник; общего файла промптов больше нет) |
 | Скачивание/установка DSpark | `ModelInstallTransaction` (любая модель с `files.mtp`) |
 | Композиция флагов запуска | `ServerLaunchConfig` + `LaunchProfileStore` (таблица запуска показывает только `n-gpu-layers`, `flash-attn`, `ctx-size`) |
 

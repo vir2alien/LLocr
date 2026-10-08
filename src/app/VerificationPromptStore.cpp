@@ -3,12 +3,10 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
-#include <QSaveFile>
 
 #include "app/BlockGroupFilterModel.h"
 #include "config/ProfileStorage.h"
@@ -20,41 +18,30 @@ namespace llocr {
 namespace {
 
 constexpr int kSchemaVersion = 1;
-constexpr const char kBuiltInPath[] = ":/profiles/verifyPrompts.json";
 constexpr const char kUserFileName[] = "verifyPrompts.json";
 
-bool readBuiltInDocument(QList<VerificationBlock> &blocks, QString &systemPrompt)
+QList<VerificationBlock> builtInBlocks()
 {
-    QFile builtIn(QString::fromUtf8(kBuiltInPath));
-    if (!builtIn.open(QIODevice::ReadOnly)) {
-        qWarning("VerificationPromptStore: cannot open built-in prompts %s: %s", qUtf8Printable(QString::fromUtf8(kBuiltInPath)), qUtf8Printable(builtIn.errorString()));
-        return false;
-    }
-
-    QJsonParseError parseError{};
-    const QJsonDocument doc = QJsonDocument::fromJson(builtIn.readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        qWarning("VerificationPromptStore: cannot parse built-in prompts: %s", qUtf8Printable(parseError.errorString()));
-        return false;
-    }
-
-    const QJsonObject root = doc.object();
-    systemPrompt = root.value(QStringLiteral("systemPrompt")).toString();
-
-    blocks.clear();
-    const QJsonArray array = root.value(QStringLiteral("blocks")).toArray();
-    for (const QJsonValue &value : array) {
-        const QJsonObject obj = value.toObject();
-        VerificationBlock block;
-        block.type = obj.value(QStringLiteral("type")).toString();
-        block.name = obj.value(QStringLiteral("name")).toString();
-        block.group = obj.value(QStringLiteral("group")).toString(QStringLiteral("content"));
-        block.enabled = obj.value(QStringLiteral("enabled")).toBool(true);
-        block.prompt = obj.value(QStringLiteral("prompt")).toString();
-        if (!block.type.isEmpty())
-            blocks.append(block);
-    }
-    return true;
+    return {
+        {QStringLiteral("text"), QStringLiteral("Text"), QStringLiteral("content"), true},
+        {QStringLiteral("title"), QStringLiteral("Title"), QStringLiteral("content"), true},
+        {QStringLiteral("table"), QStringLiteral("Table"), QStringLiteral("content"), true},
+        {QStringLiteral("equation"), QStringLiteral("Equation"), QStringLiteral("content"), true},
+        {QStringLiteral("formula"), QStringLiteral("Formula"), QStringLiteral("content"), true},
+        {QStringLiteral("list"), QStringLiteral("List"), QStringLiteral("content"), true},
+        {QStringLiteral("code"), QStringLiteral("Code"), QStringLiteral("content"), true},
+        {QStringLiteral("abstract"), QStringLiteral("Abstract"), QStringLiteral("content"), true},
+        {QStringLiteral("image_caption"), QStringLiteral("Image caption"), QStringLiteral("captions"), true},
+        {QStringLiteral("table_caption"), QStringLiteral("Table caption"), QStringLiteral("captions"), true},
+        {QStringLiteral("figure_footnote"), QStringLiteral("Figure footnote"), QStringLiteral("captions"), true},
+        {QStringLiteral("table_footnote"), QStringLiteral("Table footnote"), QStringLiteral("captions"), true},
+        {QStringLiteral("ref_text"), QStringLiteral("Reference text"), QStringLiteral("captions"), true},
+        {QStringLiteral("reference"), QStringLiteral("Reference"), QStringLiteral("captions"), true},
+        {QStringLiteral("header"), QStringLiteral("Header"), QStringLiteral("service"), false},
+        {QStringLiteral("footer"), QStringLiteral("Footer"), QStringLiteral("service"), false},
+        {QStringLiteral("page_number"), QStringLiteral("Page number"), QStringLiteral("service"), false},
+        {QStringLiteral("seal"), QStringLiteral("Seal"), QStringLiteral("service"), false},
+    };
 }
 
 }  // namespace
@@ -81,8 +68,6 @@ QVariant VerificationBlocksModel::data(const QModelIndex &index, int role) const
         return block.group;
     case EnabledRole:
         return block.enabled;
-    case PromptRole:
-        return block.prompt;
     default:
         return QVariant();
     }
@@ -95,7 +80,6 @@ QHash<int, QByteArray> VerificationBlocksModel::roleNames() const
         {NameRole, "name"},
         {GroupRole, "group"},
         {EnabledRole, "enabled"},
-        {PromptRole, "prompt"},
     };
     return roles;
 }
@@ -145,16 +129,6 @@ int VerificationBlocksModel::enabledCount() const
     return count;
 }
 
-void VerificationBlocksModel::setPrompt(int row, const QString &text)
-{
-    if (row < 0 || row >= m_blocks.size() || m_blocks[row].prompt == text)
-        return;
-    m_blocks[row].prompt = text;
-    emit dataChanged(index(row), index(row), {PromptRole});
-    ++m_revision;
-    emit countsChanged();
-}
-
 QString VerificationBlocksModel::typeAt(int row) const
 {
     return row >= 0 && row < m_blocks.size() ? m_blocks.at(row).type : QString();
@@ -168,11 +142,6 @@ QString VerificationBlocksModel::nameAt(int row) const
 bool VerificationBlocksModel::enabledAt(int row) const
 {
     return row >= 0 && row < m_blocks.size() && m_blocks.at(row).enabled;
-}
-
-QString VerificationBlocksModel::promptAt(int row) const
-{
-    return row >= 0 && row < m_blocks.size() ? m_blocks.at(row).prompt : QString();
 }
 
 int VerificationBlocksModel::rowOfType(const QString &type) const
@@ -220,14 +189,6 @@ QAbstractItemModel *VerificationPromptStore::blockModelService() const
     return m_serviceModel;
 }
 
-void VerificationPromptStore::setSystemPrompt(const QString &text)
-{
-    if (m_systemPrompt == text)
-        return;
-    m_systemPrompt = text;
-    emit systemPromptChanged();
-}
-
 int VerificationPromptStore::indexOfType(const QString &type) const
 {
     for (int i = 0; i < m_blocks.size(); ++i) {
@@ -237,51 +198,21 @@ int VerificationPromptStore::indexOfType(const QString &type) const
     return -1;
 }
 
-const VerificationBlock *VerificationPromptStore::findBlock(const QString &type) const
-{
-    const int i = indexOfType(type);
-    return i >= 0 ? &m_blocks.at(i) : nullptr;
-}
-
 VerificationBlock *VerificationPromptStore::findBlock(const QString &type)
 {
     const int i = indexOfType(type);
     return i >= 0 ? &m_blocks[i] : nullptr;
 }
 
-QString VerificationPromptStore::promptForType(const QString &type) const
-{
-    const VerificationBlock *block = findBlock(type);
-    return block ? block->prompt : QString();
-}
-
 bool VerificationPromptStore::isTypeEnabled(const QString &type) const
 {
-    const VerificationBlock *block = findBlock(type);
-    return block && block->enabled;
+    const int i = indexOfType(type);
+    return i >= 0 && m_blocks.at(i).enabled;
 }
 
 void VerificationPromptStore::loadBuiltIn()
 {
-    m_originalPrompts.clear();
-
-    QList<VerificationBlock> blocks;
-    QString systemPrompt;
-    if (!readBuiltInDocument(blocks, systemPrompt))
-        return;
-
-    m_systemPrompt = systemPrompt;
-    m_originalSystemPrompt = systemPrompt;
-    for (const VerificationBlock &block : std::as_const(blocks))
-        m_originalPrompts.insert(block.type, block.prompt);
-    m_blocks = blocks;
-}
-
-QString VerificationPromptStore::originalPromptAt(int row) const
-{
-    if (row < 0 || row >= m_blocks.size())
-        return QString();
-    return m_originalPrompts.value(m_blocks.at(row).type);
+    m_blocks = builtInBlocks();
 }
 
 void VerificationPromptStore::loadUser()
@@ -298,7 +229,7 @@ void VerificationPromptStore::loadUser()
     const QJsonDocument doc = QJsonDocument::fromJson(userFile.readAll(), &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         qWarning("VerificationPromptStore: cannot parse user prompts %s: %s "
-                 "(falling back to the built-in prompts)",
+                 "(falling back to the built-in defaults)",
                  qUtf8Printable(userPath()),
                  qUtf8Printable(parseError.errorString()));
         return;
@@ -315,8 +246,6 @@ void VerificationPromptStore::loadUser()
                      kSchemaVersion);
         }
     }
-    if (root.contains(QStringLiteral("systemPrompt")))
-        m_systemPrompt = root.value(QStringLiteral("systemPrompt")).toString();
 
     const QJsonArray array = root.value(QStringLiteral("blocks")).toArray();
     for (const QJsonValue &value : array) {
@@ -333,8 +262,6 @@ void VerificationPromptStore::loadUser()
         }
         if (obj.contains(QStringLiteral("enabled")))
             block->enabled = obj.value(QStringLiteral("enabled")).toBool(true);
-        if (obj.contains(QStringLiteral("prompt")))
-            block->prompt = obj.value(QStringLiteral("prompt")).toString();
     }
 }
 
@@ -349,35 +276,29 @@ void VerificationPromptStore::loadValues()
     loadBuiltIn();
     loadUser();
     rebuildModel();
-    emit systemPromptChanged();
 }
 
 void VerificationPromptStore::save()
 {
-    QList<VerificationBlock> builtIn;
-    QString builtInSystem;
-    readBuiltInDocument(builtIn, builtInSystem);
+    const QList<VerificationBlock> builtIn = builtInBlocks();
 
-    const bool systemChanged = m_systemPrompt != builtInSystem;
     QJsonArray changedBlocks;
     for (const VerificationBlock &block : m_model->blocks()) {
         bool differs = true;
-        for (const VerificationBlock &base : std::as_const(builtIn)) {
+        for (const VerificationBlock &base : builtIn) {
             if (base.type != block.type)
                 continue;
-            differs = base.enabled != block.enabled || base.prompt != block.prompt;
+            differs = base.enabled != block.enabled;
             break;
         }
         if (differs) {
             QJsonObject obj{{QStringLiteral("type"), block.type}};
             obj.insert(QStringLiteral("enabled"), block.enabled);
-            obj.insert(QStringLiteral("prompt"), block.prompt);
-            obj.insert(QStringLiteral("name"), block.name);
             changedBlocks.append(obj);
         }
     }
 
-    if (!systemChanged && changedBlocks.isEmpty()) {
+    if (changedBlocks.isEmpty()) {
         QString error;
         if (!ProfileStorage::removeFileIfExists(userPath(), &error))
             qWarning("VerificationPromptStore: cannot remove user prompts %s: %s", qUtf8Printable(userPath()), qUtf8Printable(error));
@@ -386,10 +307,7 @@ void VerificationPromptStore::save()
 
     QJsonObject root;
     root.insert(QStringLiteral("schemaVersion"), kSchemaVersion);
-    if (systemChanged)
-        root.insert(QStringLiteral("systemPrompt"), m_systemPrompt);
-    if (!changedBlocks.isEmpty())
-        root.insert(QStringLiteral("blocks"), changedBlocks);
+    root.insert(QStringLiteral("blocks"), changedBlocks);
 
     QString error;
     if (!ProfileStorage::writeJsonAtomic(userPath(), root, &error))

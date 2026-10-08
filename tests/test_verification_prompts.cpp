@@ -1,6 +1,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -56,12 +57,10 @@ private slots:
         QCoreApplication::setApplicationName(QStringLiteral("test_verification_prompts"));
     }
 
-    void builtInHasBlocksAndSystemPrompt()
+    void builtInHasBlockTypes()
     {
         auto store = makeStore();
         QVERIFY(store);
-        QVERIFY(!store->systemPrompt().isEmpty());
-        QVERIFY(store->systemPrompt().contains(QStringLiteral("FIX")));
 
         const VerificationBlocksModel *model = dynamic_cast<VerificationBlocksModel *>(store->blockModel());
         QVERIFY(model);
@@ -78,14 +77,14 @@ private slots:
         QVERIFY(types.contains(QStringLiteral("table")));
         QVERIFY(types.contains(QStringLiteral("equation")));
 
-        // Each type has a prompt and a default enablement.
-        QVERIFY(!store->promptForType(QStringLiteral("text")).isEmpty());
+        // Content types ship enabled; service types do not.
         QVERIFY(store->isTypeEnabled(QStringLiteral("text")));
+        QVERIFY(!store->isTypeEnabled(QStringLiteral("page_number")));
 
         QCOMPARE(model->rowCount(), types.size());
     }
 
-    void savePersistsChangedPromptAndEnablement()
+    void savePersistsChangedEnablement()
     {
         auto store = makeStore();
         QVERIFY(store);
@@ -95,16 +94,12 @@ private slots:
         auto *model = dynamic_cast<VerificationBlocksModel *>(store->blockModel());
         QVERIFY(model);
 
-        const int textRow = model->rowOfType(QStringLiteral("text"));
         const int titleRow = model->rowOfType(QStringLiteral("title"));
-        QVERIFY(textRow >= 0 && titleRow >= 0);
-
-        const QString builtInTextPrompt = store->promptForType(QStringLiteral("text"));
-        QVERIFY(!builtInTextPrompt.isEmpty());
+        const int pageNumberRow = model->rowOfType(QStringLiteral("page_number"));
+        QVERIFY(titleRow >= 0 && pageNumberRow >= 0);
 
         model->setEnabled(titleRow, false);
-        model->setPrompt(textRow, QStringLiteral("Custom prompt for text."));
-        store->setSystemPrompt(QStringLiteral("Custom system prompt."));
+        model->setEnabled(pageNumberRow, true);
 
         store->save();
         QVERIFY(QFile::exists(userPath));
@@ -114,17 +109,15 @@ private slots:
         QVERIFY(settings2);
         VerificationPromptStore reloaded(*settings2);
         QVERIFY(!reloaded.isTypeEnabled(QStringLiteral("title")));
-        QCOMPARE(reloaded.promptForType(QStringLiteral("text")), QStringLiteral("Custom prompt for text."));
-        QCOMPARE(reloaded.systemPrompt(), QStringLiteral("Custom system prompt."));
+        QVERIFY(reloaded.isTypeEnabled(QStringLiteral("page_number")));
 
-        // Unchanged types keep their built-in values.
+        // Unchanged types keep their built-in enablement.
         QVERIFY(reloaded.isTypeEnabled(QStringLiteral("table")));
-        QVERIFY(!reloaded.promptForType(QStringLiteral("table")).isEmpty());
 
         // Restoring defaults removes the user file and re-reads built-ins.
         reloaded.resetToDefaults();
         QVERIFY(reloaded.isTypeEnabled(QStringLiteral("title")));
-        QCOMPARE(reloaded.promptForType(QStringLiteral("text")), builtInTextPrompt);
+        QVERIFY(!reloaded.isTypeEnabled(QStringLiteral("page_number")));
     }
 
     void saveMatchingDefaultsRemovesUserFile()
@@ -134,6 +127,37 @@ private slots:
         // Nothing changed; save() must not leave a user file behind.
         store->save();
         QVERIFY(!QFile::exists(userPromptsPath(m_dir)));
+    }
+
+    void legacyPromptFieldsAreIgnored()
+    {
+        // A user file written by an older build carries systemPrompt and
+        // per-block prompt fields; only the enablement may be applied.
+        const QString userPath = userPromptsPath(m_dir);
+        QDir().mkpath(QFileInfo(userPath).absolutePath());
+        QFile legacy(userPath);
+        QVERIFY(legacy.open(QIODevice::WriteOnly));
+        legacy.write("{\n"
+                     "  \"schemaVersion\": 1,\n"
+                     "  \"systemPrompt\": \"Legacy shared prompt.\",\n"
+                     "  \"blocks\": [\n"
+                     "    {\"type\": \"title\", \"enabled\": false, \"prompt\": \"Legacy title prompt.\"},\n"
+                     "    {\"type\": \"page_number\", \"enabled\": true}\n"
+                     "  ]\n"
+                     "}\n");
+        legacy.close();
+
+        auto store = makeStore();
+        QVERIFY(store);
+        QVERIFY(!store->isTypeEnabled(QStringLiteral("title")));
+        QVERIFY(store->isTypeEnabled(QStringLiteral("page_number")));
+
+        // Saving rewrites the file with enablement only.
+        store->save();
+        QFile rewritten(userPath);
+        QVERIFY(rewritten.open(QIODevice::ReadOnly));
+        const QByteArray contents = rewritten.readAll();
+        QVERIFY(!contents.contains("prompt\""));
     }
 
     // --- Group-filtered proxies (VerificationBlocksTab columns) ---

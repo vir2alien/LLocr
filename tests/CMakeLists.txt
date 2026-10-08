@@ -69,12 +69,6 @@ target_link_libraries(test_verification_prompts PRIVATE
     Qt6::Test
     llocr_app
 )
-qt_add_resources(test_verification_prompts "verify_prompts_resources"
-    PREFIX "/profiles"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
-    FILES
-        "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
-)
 add_test(NAME test_verification_prompts COMMAND test_verification_prompts)
 
 qt_add_executable(test_ocr_models test_ocr_models.cpp)
@@ -172,7 +166,6 @@ qt_add_resources(test_app_import "app_import_profiles"
     PREFIX "/profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
     FILES
-        "${CMAKE_SOURCE_DIR}/resources/profiles/verifyPrompts.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )

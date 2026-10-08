@@ -296,25 +296,18 @@ QList<ModelProfiles::Prompt> ModelProfiles::promptsFor(const QList<Profile> &pro
     return {};
 }
 
-QString ModelProfiles::blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type, const QString &fallback)
+QString ModelProfiles::blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type)
 {
     const Profile *profile = find(profiles, modelId);
     const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    if (found) {
-        const QString own = found->blockPrompts.value(type);
-        if (!own.isEmpty())
-            return own;
-    }
-    return fallback;
+    return found ? found->blockPrompts.value(type) : QString();
 }
 
-QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &fallback)
+QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
 {
     const Profile *profile = find(profiles, modelId);
     const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    if (found && !found->systemPrompt.isEmpty())
-        return found->systemPrompt;
-    return fallback;
+    return found ? found->systemPrompt : QString();
 }
 
 QString ModelProfiles::runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId)

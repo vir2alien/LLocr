@@ -233,7 +233,7 @@ can be picked as the block verifier:
 | Model profile (prompt, launch layer, request params, check role, DSpark module, `promptBeforeImage`) | `resources/profiles/models/lfm25-vl-3b.json` |
 | Parser (`lfm2.5-vl`): OTSL conversion, calibration, equation fixes | `src/parsers/` (`Lfm25VlParser`, `DetTokensParser` base) |
 | Label → style map (incl. `image_block`, `code` overrides) | `resources/profiles/labels.json` |
-| Verifier system prompt + block prompts | the check role of the profile (overrides `resources/profiles/verifyPrompts.json`) |
+| Verifier system prompt + block prompts | the check role of the profile (the only source; there is no shared prompt file) |
 | DSpark download/install | `ModelInstallTransaction` (any model with `files.mtp`) |
 | Launch/flag composition | `ServerLaunchConfig` + `LaunchProfileStore` (platform table shows only `n-gpu-layers`, `flash-attn`, `ctx-size`) |
 

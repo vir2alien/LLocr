@@ -87,9 +87,9 @@ public:
     static QList<RequestParameter> requestFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
     static QList<Prompt> promptsFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
-    static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type, const QString &fallback);
+    static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type);
 
-    static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &fallback);
+    static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId);
 

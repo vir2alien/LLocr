@@ -53,12 +53,10 @@ ApplicationWindow {
 
     function loadAll() {
         Verification.loadValues()
-        systemTab.loadValues()
         blocksTab.loadValues()
     }
 
     function saveAll() {
-        systemTab.saveValues()
         blocksTab.saveValues()
     }
 
@@ -107,30 +105,11 @@ ApplicationWindow {
         anchors.margins: Theme.paddingWindow
         spacing: Theme.spacing
 
-        SettingsTabBar {
-            id: tabBar
-            Layout.fillWidth: true
-            titles: [qsTr("Block checking"), qsTr("System prompt"), qsTr("Block prompts")]
-        }
-
-        StackLayout {
+        VerificationBlocksTab {
+            id: blocksTab
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: tabBar.currentIndex
-
-            VerificationBlocksTab {
-                id: blocksTab
-                onEdited: window.unsavedChanges = true
-            }
-
-            VerificationSystemTab {
-                id: systemTab
-                onEdited: window.unsavedChanges = true
-            }
-
-            VerificationPromptsTab {
-                onEdited: window.unsavedChanges = true
-            }
+            onEdited: window.unsavedChanges = true
         }
     }//ColumnLayout
 }

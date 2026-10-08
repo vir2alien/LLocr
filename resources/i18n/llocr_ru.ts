@@ -4109,12 +4109,12 @@
     <message>
         <location filename="../qml/Settings/VerificationPromptsTab.qml" line="+175"/>
         <source>Prompt differs from the built-in one</source>
-        <translation>Промпт отличается от исходного</translation>
+        <translation type="vanished">Промпт отличается от исходного</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>Select a block type</source>
-        <translation>Выберите тип блока</translation>
+        <translation type="vanished">Выберите тип блока</translation>
     </message>
     <message>
         <source>Unsaved changes</source>
@@ -4131,42 +4131,42 @@
     <message>
         <location line="+20"/>
         <source>Selected for checking</source>
-        <translation>Выбран для проверки</translation>
+        <translation type="vanished">Выбран для проверки</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Not selected for checking</source>
-        <translation>Не выбран для проверки</translation>
+        <translation type="vanished">Не выбран для проверки</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>Answer format: OK / FIX / REVIEW</source>
-        <translation>Формат ответа: OK / FIX / REVIEW</translation>
+        <translation type="vanished">Формат ответа: OK / FIX / REVIEW</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>OK — the block matches the image. FIX — the block was corrected: on the next line output the complete corrected block, it replaces the original. REVIEW — the block is unreadable, cropped or ambiguous.</source>
-        <translation>OK — блок соответствует изображению. FIX — блок был исправлен: на следующей строке выведите полностью исправленный блок, он заменяет исходный. REVIEW — блок нечитаем, обрезан или неоднозначен.</translation>
+        <translation type="vanished">OK — блок соответствует изображению. FIX — блок был исправлен: на следующей строке выведите полностью исправленный блок, он заменяет исходный. REVIEW — блок нечитаем, обрезан или неоднозначен.</translation>
     </message>
     <message>
         <location line="+13"/>
         <source>Prompt</source>
-        <translation>Промпт</translation>
+        <translation type="vanished">Промпт</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Restore original prompt</source>
-        <translation>Восстановить исходный промпт</translation>
+        <translation type="vanished">Восстановить исходный промпт</translation>
     </message>
     <message>
         <location line="+45"/>
         <source>Restore original prompt?</source>
-        <translation>Восстановить исходный промпт?</translation>
+        <translation type="vanished">Восстановить исходный промпт?</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>The customized prompt for this block type will be replaced by the built-in one. The change is applied to the window draft and is stored only after Save.</source>
-        <translation>Пользовательский промпт для этого типа блока будет заменён встроенным. Изменение попадёт в черновик окна и сохранится только после «Сохранить».</translation>
+        <translation type="vanished">Пользовательский промпт для этого типа блока будет заменён встроенным. Изменение попадёт в черновик окна и сохранится только после «Сохранить».</translation>
     </message>
     <message>
         <source>Ask the verifier to check this kind of block against the image and answer with OK, FIX followed by the corrected block, or REVIEW.</source>
@@ -4175,7 +4175,7 @@
     <message>
         <location line="-23"/>
         <source>Prompt for the selected block type</source>
-        <translation>Промпт для выбранного типа блока</translation>
+        <translation type="vanished">Промпт для выбранного типа блока</translation>
     </message>
 </context>
 <context>
@@ -4205,19 +4205,16 @@
         <translation>Есть несохранённые изменения. Закрыть без сохранения?</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>Block checking</source>
-        <translation>Проверка блоков</translation>
+        <translation type="vanished">Проверка блоков</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>System prompt</source>
-        <translation>Системный промпт</translation>
+        <translation type="vanished">Системный промпт</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Block prompts</source>
-        <translation>Промпты блоков</translation>
+        <translation type="vanished">Промпты блоков</translation>
     </message>
     <message>
         <source>Restore defaults</source>
@@ -4239,7 +4236,7 @@
     <message>
         <location filename="../qml/Settings/VerificationSystemTab.qml" line="+40"/>
         <source>The system prompt sets the verification protocol. The verifier model answers with one of: OK — the block is correct; FIX followed by a newline and the complete corrected block; or REVIEW — the block is unreadable.</source>
-        <translation>Системный промпт задаёт протокол проверки. Модель-верификатор отвечает одним из: OK — блок верен; FIX, за которым на новой строке полный исправленный блок; или REVIEW — блок нечитаем.</translation>
+        <translation type="vanished">Системный промпт задаёт протокол проверки. Модель-верификатор отвечает одним из: OK — блок верен; FIX, за которым на новой строке полный исправленный блок; или REVIEW — блок нечитаем.</translation>
     </message>
     <message>
         <source>Customized</source>
@@ -4252,22 +4249,22 @@
     <message>
         <location line="+13"/>
         <source>Restore original prompt</source>
-        <translation>Восстановить исходный промпт</translation>
+        <translation type="vanished">Восстановить исходный промпт</translation>
     </message>
     <message>
         <location line="+27"/>
         <source>System prompt for the verification model</source>
-        <translation>Системный промпт для модели проверки</translation>
+        <translation type="vanished">Системный промпт для модели проверки</translation>
     </message>
     <message>
         <location line="+17"/>
         <source>Restore original system prompt?</source>
-        <translation>Восстановить исходный системный промпт?</translation>
+        <translation type="vanished">Восстановить исходный системный промпт?</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>The customized system prompt will be replaced by the built-in one. The change is applied to the window draft and is stored only after Save.</source>
-        <translation>Пользовательский системный промпт будет заменён встроенным. Изменение попадёт в черновик окна и сохранится только после «Сохранить».</translation>
+        <translation type="vanished">Пользовательский системный промпт будет заменён встроенным. Изменение попадёт в черновик окна и сохранится только после «Сохранить».</translation>
     </message>
 </context>
 <context>
