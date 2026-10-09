@@ -65,6 +65,7 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultCheckRequestProfileId())},
         {kCheckModelName, "checkModelName", QVariant(QString())},
         {kAutoCheck, "autoCheck", QVariant(false)},
+        {kAutoRecheck, "autoRecheck", QVariant(false)},
         {kDecisionLaunchModelPath, "decisionLaunchModelPath", QVariant(QString())},
         {kDecisionLaunchMmprojPath, "decisionLaunchMmprojPath", QVariant(QString())},
         {kDecisionLaunchDraftPath, "decisionLaunchDraftPath", QVariant(QString())},
@@ -801,6 +802,19 @@ void SettingsStore::setAutoCheck(bool on)
         return;
     m_settings.setValue(kAutoCheck, on);
     emit autoCheckChanged();
+}
+
+bool SettingsStore::autoRecheck() const
+{
+    return m_settings.value(kAutoRecheck, false).toBool();
+}
+
+void SettingsStore::setAutoRecheck(bool on)
+{
+    if (autoRecheck() == on)
+        return;
+    m_settings.setValue(kAutoRecheck, on);
+    emit autoRecheckChanged();
 }
 
 QString SettingsStore::decisionLaunchModelPath() const

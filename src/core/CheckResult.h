@@ -7,10 +7,11 @@
 namespace llocr {
 
 enum class CheckStatus : int {
-    Failed = 0,  ///< Network/parse error — errorMessage describes it.
-    Ok = 1,      ///< The verifier returned "OK" — the recognized text is correct.
-    Fixed = 2,   ///< The verifier returned "FIX\n…" — text holds the corrected block.
-    Review = 3,  ///< The verifier returned "REVIEW" — the block is not readable.
+    Failed = 0,    ///< Network/parse error — errorMessage describes it.
+    Ok = 1,        ///< The decision model confirmed the match (or the verifier's old OK).
+    Fixed = 2,     ///< The re-recognition returned the block text — text holds it.
+    Review = 3,    ///< The block is unreadable — needs human eyes.
+    Mismatch = 4,  ///< The decision model rejected the match (below the threshold).
 };
 
 struct CheckResult {

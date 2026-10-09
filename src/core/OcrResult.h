@@ -11,9 +11,11 @@ namespace llocr {
 
 enum class BoxCheckStatus : int {
     NotChecked = 0,  ///< Verification has not run for this block yet.
-    Ok = 1,          ///< Verification passed — the recognized text is correct.
-    Fixed = 2,       ///< The verifier returned a FIX; correctedText holds the result.
-    Review = 3,      ///< The verifier returned REVIEW — the block is unreadable.
+    Ok = 1,          ///< The decision model confirmed the text matches the image.
+    Fixed = 2,       ///< The block was re-recognized; correctedText holds the result.
+    Review = 3,      ///< The block is unreadable — needs human eyes.
+    Mismatch = 4,    ///< The decision model rejected the text; waiting for (or skipped)
+                     ///< re-recognition.
 };
 
 struct BoundingBox {

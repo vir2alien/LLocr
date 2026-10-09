@@ -40,12 +40,10 @@ QString stripControlTokens(const QString &text)
 
 QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
 {
-    // The verifier protocol: the model must answer with exactly one of
-    //   OK
-    //   FIX\n<the complete corrected block>
-    //   REVIEW
-    // The system message carries the shared contract; the user message lists
-    // the type prompt, the block image and the OCR candidate to verify.
+    // The block-recognition protocol: the model transcribes the crop and the
+    // reply itself is the block text. The system message carries the shared
+    // contract; the user message lists the type prompt, the block image and
+    // the OCR candidate — kept as a markup hint for tables and formulas.
 
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
@@ -86,47 +84,17 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
     const QString content = stripControlTokens(message.value(QStringLiteral("content")).toString());
 
-    if (content.isEmpty())
-        return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel",
-                                                               "The model returned no corrected text, only end-of-sentence markers. "
-                                                               "Check that the selected model can process images."));
-
-    const QString trimmed = content.trimmed();
-    const QString upper = trimmed.toUpper();
-
-    if (upper.startsWith(QStringLiteral("OK"))) {
-        CheckResult ok;
-        ok.status = CheckStatus::Ok;
-        // Recognition is already correct — do not touch the original text.
-        return ok;
+    // The block-recognition contract: the reply IS the block text. An empty
+    // reply (nothing but end-of-sentence markers, or the model refusing) means
+    // the block could not be transcribed — that is a verdict, not an error.
+    CheckResult result;
+    if (content.isEmpty()) {
+        result.status = CheckStatus::Review;
+        return result;
     }
-
-    if (upper.startsWith(QStringLiteral("REVIEW"))) {
-        CheckResult review;
-        review.status = CheckStatus::Review;
-        return review;
-    }
-
-    if (upper.startsWith(QStringLiteral("FIX"))) {
-        QString fixed = trimmed.mid(3).trimmed();
-        // Accept both "FIX: ..." and "FIX\n..." spellings.
-        if (fixed.startsWith(QLatin1Char(':')))
-            fixed = fixed.mid(1).trimmed();
-        if (fixed.isEmpty()) {
-            // The verdict is explicit but the payload is missing (small models
-            // sometimes stop after the keyword): the block needs human eyes,
-            // not a protocol error.
-            CheckResult review;
-            review.status = CheckStatus::Review;
-            return review;
-        }
-        CheckResult fix;
-        fix.status = CheckStatus::Fixed;
-        fix.text = fixed;
-        return fix;
-    }
-
-    return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "Unexpected verifier response\u2014expected OK, FIX or REVIEW. Received: %1").arg(content.left(120)));
+    result.status = CheckStatus::Fixed;
+    result.text = content.trimmed();
+    return result;
 }
 
 QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request, const ConnectionConfig &config)

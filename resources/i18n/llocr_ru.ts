@@ -164,13 +164,17 @@
     </message>
     <message>
         <location line="+50"/>
-        <source>Corrected by the verifier:</source>
-        <translation>Исправлено верификатором:</translation>
+        <source>Re-recognized text:</source>
+        <translation>Распознанный заново текст:</translation>
     </message>
     <message>
         <location line="+27"/>
         <source>Verify</source>
         <translation>Проверить</translation>
+    </message>
+    <message>
+        <source>Recognize</source>
+        <translation>Распознать</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -695,8 +699,13 @@
     </message>
     <message>
         <location line="+38"/>
-        <source>Check %1 / %2</source>
+        <source>Checking %1 / %2</source>
         <translation>Проверка %1 / %2</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Re-recognizing %1 / %2</source>
+        <translation>Распознавание %1 / %2</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -863,6 +872,14 @@
         <location line="+2"/>
         <source>Decision model</source>
         <translation>Модель decision</translation>
+    </message>
+    <message>
+        <source>Recognize problem blocks on the page</source>
+        <translation>Распознать проблемные блоки на странице</translation>
+    </message>
+    <message>
+        <source>Recognize all problem blocks</source>
+        <translation>Распознать все проблемные блоки</translation>
     </message>
 </context>
 <context>
@@ -4026,6 +4043,14 @@
         <translation>Автоматическая проверка</translation>
     </message>
     <message>
+        <source>Automatic re-recognition</source>
+        <translation>Автоматическое повторное распознавание</translation>
+    </message>
+    <message>
+        <source>Re-runs the blocks the decision model rejected through the block OCR model, right after the check.</source>
+        <translation>Повторно распознаёт блоки, отклонённые decision-моделью, моделью OCR блока — сразу после проверки.</translation>
+    </message>
+    <message>
         <location line="+10"/>
         <source>Runs after recognition. Already checked blocks are skipped.</source>
         <translation>Запускается после распознавания. Уже проверенные блоки пропускаются.</translation>
@@ -4037,8 +4062,8 @@
     </message>
     <message>
         <location line="+11"/>
-        <source>When on, verification starts automatically as soon as recognition finishes. The managed runtime switches its loaded model from OCR to the block OCR model; an external runtime just starts checking.</source>
-        <translation>Когда включено, проверка запускается автоматически сразу после распознавания. Управляемый рантайм переключает загруженную модель с OCR на модель OCR блока; внешний рантайм просто начинает проверку.</translation>
+        <source>Checking is fast: the decision model only answers how likely the text matches the image, block by block. Matching blocks turn green; rejected ones turn red. When re-recognition is on, the red blocks are transcribed from scratch by the block OCR model. The managed runtime switches its loaded model between the two stages; an external runtime serves both.</source>
+        <translation>Проверка быстрая: decision-модель лишь оценивает по блокам, насколько вероятно, что текст соответствует изображению. Совпавшие блоки становятся зелёными, отклонённые — красными. Когда включено повторное распознавание, красные блоки заново распознаёт модель OCR блока. Управляемый рантайм переключает загруженную модель между двумя стадиями; внешний обслуживает обе.</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -5160,4 +5185,12 @@
         <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
     </message>
 </context>
+<context>
+    <name>llocr::VerificationQueueController</name>
+    <message>
+        <source>The state is a text fragment recognized from the attached image by an OCR model. Does the image show exactly this text?</source>
+        <translation>State — это фрагмент текста, распознанный из приложенного изображения OCR-моделью. Изображение показывает ровно этот текст?</translation>
+    </message>
+</context>
 </TS>
+

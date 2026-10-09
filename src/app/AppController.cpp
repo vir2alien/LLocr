@@ -51,7 +51,13 @@ AppController::AppController(
                                                             return PageSkip::AlreadyRecognized;
                                                         return PageSkip::None;
                                                     }),
-      m_verify({m_document, verification, checkRequestProfiles, runtime, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_recognition.busy(); }},
+      m_verify({m_document,
+                verification,
+                checkRequestProfiles,
+                settings,
+                runtime,
+                [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
+                [this]() { return m_recognition.busy(); }},
                this),
       m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this), QObject(parent)
 {
@@ -943,6 +949,21 @@ void AppController::stopCheck()
     m_verify.stop();
 }
 
+void AppController::recognizeSelectedBlock()
+{
+    m_verify.recheckBlock(m_currentPage, m_selectedBox);
+}
+
+void AppController::recognizeProblemBlocksOnPage()
+{
+    m_verify.recheckPageProblemBlocks(m_currentPage);
+}
+
+void AppController::recognizeAllProblemBlocks()
+{
+    m_verify.recheckAllProblemBlocks();
+}
+
 bool AppController::pageVerificationSupported() const
 {
     return m_verify.pageVerificationSupported(m_currentPage);
@@ -951,6 +972,16 @@ bool AppController::pageVerificationSupported() const
 bool AppController::allPageVerificationSupported() const
 {
     return m_verify.allPageVerificationSupported();
+}
+
+bool AppController::pageProblemRecognitionSupported() const
+{
+    return m_verify.pageRecheckSupported(m_currentPage);
+}
+
+bool AppController::allProblemRecognitionSupported() const
+{
+    return m_verify.allPageRecheckSupported();
 }
 
 void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result)
@@ -979,6 +1010,10 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
         case CheckStatus::Fixed:
             box.checkStatus = BoxCheckStatus::Fixed;
             box.correctedText = result.text;
+            break;
+        case CheckStatus::Mismatch:
+            box.checkStatus = BoxCheckStatus::Mismatch;
+            box.correctedText.clear();
             break;
         case CheckStatus::Review:
             box.checkStatus = BoxCheckStatus::Review;

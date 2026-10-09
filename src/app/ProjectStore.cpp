@@ -73,7 +73,7 @@ BoundingBox boxFromJson(const QJsonObject &object)
     box.text = object.value("text").toString();
     box.correctedText = object.value("correctedText").toString();
     const int status = object.value("checkStatus").toInt(int(BoxCheckStatus::NotChecked));
-    box.checkStatus = status >= int(BoxCheckStatus::NotChecked) && status <= int(BoxCheckStatus::Review) ? BoxCheckStatus(status) : BoxCheckStatus::NotChecked;
+    box.checkStatus = status >= int(BoxCheckStatus::NotChecked) && status <= int(BoxCheckStatus::Mismatch) ? BoxCheckStatus(status) : BoxCheckStatus::NotChecked;
     box.label = object.value("label").toString();
     box.rect = QRectF(object.value("x").toDouble(), object.value("y").toDouble(), object.value("w").toDouble(), object.value("h").toDouble());
     box.positioned = object.value("positioned").toBool(true);

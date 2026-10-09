@@ -110,6 +110,7 @@ private slots:
         QCOMPARE(store.parserId(), QStringLiteral("auto"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.autoCheck(), false);
+        QCOMPARE(store.autoRecheck(), false);
         QCOMPARE(store.decisionMatchThreshold(), 0.5);
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
@@ -545,6 +546,20 @@ private slots:
         QCOMPARE(store.autoCheck(), true);
         store.setAutoCheck(false);
         QCOMPARE(store.autoCheck(), false);
+    }
+
+    // The re-recognition option is independent of autoCheck: it also governs
+    // what a manual «Check all» does after the decision phase.
+    void autoRecheckRoundTrip()
+    {
+        SettingsStore store;
+        QCOMPARE(store.autoRecheck(), false);
+        store.setAutoRecheck(true);
+        QCOMPARE(store.autoRecheck(), true);
+        store.setAutoRecheck(true);  // no-op, no signal spam
+        QCOMPARE(store.autoRecheck(), true);
+        store.setAutoRecheck(false);
+        QCOMPARE(store.autoRecheck(), false);
     }
 
     void migrationConfiguredProfileKeepsExternal()

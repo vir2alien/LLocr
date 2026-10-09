@@ -72,6 +72,12 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     box.label = QStringLiteral("text");
     box.rect = QRectF(0.1, 0.2, 0.5, 0.25);
     imagePage.boxes.append(box);
+    BoundingBox mismatched;
+    mismatched.text = QStringLiteral("misread block");
+    mismatched.checkStatus = BoxCheckStatus::Mismatch;
+    mismatched.label = QStringLiteral("text");
+    mismatched.rect = QRectF(0.6, 0.2, 0.3, 0.25);
+    imagePage.boxes.append(mismatched);
     BoundingBox unpositioned;
     unpositioned.text = QStringLiteral("preamble");
     unpositioned.positioned = false;
@@ -183,7 +189,7 @@ private slots:
         QCOMPARE(imagePage.text, QStringLiteral("edited text"));
         QCOMPARE(imagePage.baseline, QStringLiteral("recognized text"));
         QCOMPARE(imagePage.parseNote, QStringLiteral("no layout tokens"));
-        QCOMPARE(imagePage.boxes.size(), 2);
+        QCOMPARE(imagePage.boxes.size(), 3);
         QCOMPARE(imagePage.boxes.at(0).text, QStringLiteral("block text"));
         QCOMPARE(imagePage.boxes.at(0).correctedText, QStringLiteral("corrected text"));
         QCOMPARE(imagePage.boxes.at(0).checkStatus, BoxCheckStatus::Fixed);
@@ -191,8 +197,12 @@ private slots:
         QCOMPARE(imagePage.boxes.at(0).rect, QRectF(0.1, 0.2, 0.5, 0.25));
         QVERIFY(imagePage.boxes.at(0).positioned);
         QVERIFY(imagePage.boxes.at(0).duplicateSuspect);
-        QVERIFY(!imagePage.boxes.at(1).positioned);
-        QVERIFY(!imagePage.boxes.at(1).duplicateSuspect);
+        // The decision-stage status survives the container round-trip.
+        QCOMPARE(imagePage.boxes.at(1).text, QStringLiteral("misread block"));
+        QCOMPARE(imagePage.boxes.at(1).checkStatus, BoxCheckStatus::Mismatch);
+        QVERIFY(imagePage.boxes.at(2).text == QStringLiteral("preamble"));
+        QVERIFY(!imagePage.boxes.at(2).positioned);
+        QVERIFY(!imagePage.boxes.at(2).duplicateSuspect);
 
         const ProjectPageData &pdfPage = loaded.data.pages.at(1);
         QCOMPARE(pdfPage.sourceId, 1);

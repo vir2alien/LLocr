@@ -153,12 +153,14 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
 
+    // The block-recognition contract: transcribe the crop, reply with the
+    // block text alone.
     const QString lfm = ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("blockRecognition"));
-    QVERIFY(lfm.contains(QStringLiteral("reply with FIX on the first line")));
-    QVERIFY(lfm.contains(QStringLiteral("reply with the single line OK")));
+    QVERIFY(lfm.contains(QStringLiteral("transcribe one block")));
+    QVERIFY(lfm.contains(QStringLiteral("the block text and nothing else")));
 
     const QString qwen = ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"));
-    QVERIFY(qwen.contains(QStringLiteral("Output exactly one of:")));
+    QVERIFY(qwen.contains(QStringLiteral("Output format: the block text and nothing else")));
 
     // The decision role carries its own question wording (the /v1/systemone
     // instruction), phrased as a yes/no question about the image.
@@ -180,10 +182,10 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     for (const QString &type : expected)
         QVERIFY2(!role->blockPrompts.value(type).isEmpty(), qPrintable(type));
 
-    // Every override has to keep the answer protocol's output format: the block
+    // Every override has to keep the transcription output format: the block
     // prompt is the only place it is stated, the system prompt carries the rest.
-    QCOMPARE(role->blockPrompts.value(QStringLiteral("formula")).contains(QStringLiteral("Output format after FIX: LaTeX.")), true);
-    QCOMPARE(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("Output format after FIX: HTML table")), true);
+    QCOMPARE(role->blockPrompts.value(QStringLiteral("formula")).contains(QStringLiteral("Output format: LaTeX.")), true);
+    QCOMPARE(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("Output format: HTML table")), true);
     // Tables: the model card asks for OTSL, the app compares HTML — the override
     // must not ask for the format the parser cannot use.
     QVERIFY(!role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("OTSL format")));

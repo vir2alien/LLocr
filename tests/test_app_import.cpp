@@ -224,11 +224,11 @@ public:
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
 // fixed det-token reply, so the real recognition pipeline produces real boxes.
 // Used to drive the AppController-level block-removal contract end to end.
-// It speaks both protocols the app sends to a chat endpoint: the wrapped
-// <|det|>…<|/det|> stream the OCR models emit, and the verifier protocol —
-// only the check request carries a system message, which is how the two are told
-// apart. Request counting is what makes "this block was not asked again"
-// observable.
+// It speaks all three protocols the app sends: the wrapped <|det|>…<|/det|>
+// stream the OCR models emit, the decision model's /v1/systemone (probability
+// is configurable — below the 0.5 default threshold every block mismatches),
+// and the block-recognition transcription (identified by its system message).
+// Request counting is what makes "this block was not asked again" observable.
 class DetTokenChatServer : public QObject
 {
 public:
@@ -239,6 +239,12 @@ public:
     QString baseUrl() const { return QStringLiteral("http://127.0.0.1:%1").arg(m_server.serverPort()); }
 
     int requests() const { return m_requests; }
+
+    int systemoneRequests() const { return m_systemoneRequests; }
+
+    qreal systemoneProbability = 0.97;
+    bool systemoneBroken = false;  // reply without an "answers" object → every judge fails
+    QString transcription = QStringLiteral("Re-recognized block text");
 
 private:
     // The body says which protocol the caller speaks, so the head alone cannot
@@ -276,23 +282,36 @@ private:
 
     QByteArray reply(const QByteArray &request) const
     {
-        // The wrapped <|det|>…<|/det|> stream the current models emit; the model
-        // streams newlines as the two characters `\n`.
-        const QString content = request.contains("\"role\":\"system\"") ? QStringLiteral("OK")
-                                                                        : QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
-                                                                                         "<|det|>text [112, 132, 884, 309]<|/det|>Second block text");
-        const QByteArray body = QJsonDocument(QJsonObject{
-                                                  {"id", "cmpl-test"},
-                                                  {"object", "chat.completion"},
-                                                  {"choices", QJsonArray{QJsonObject{{"index", 0}, {"message", QJsonObject{{"role", "assistant"}, {"content", content}}}}}},
-                                              })
-                                    .toJson(QJsonDocument::Compact);
+        QByteArray body;
+        if (request.contains("POST /v1/systemone")) {
+            // The decision answer: P(match) in the {"noul": x} spelling.
+            ++const_cast<DetTokenChatServer *>(this)->m_systemoneRequests;
+            body =
+                systemoneBroken
+                    ? QJsonDocument(QJsonObject{{"error", QJsonObject{{"message", "no such endpoint"}}}}).toJson(QJsonDocument::Compact)
+                    : QJsonDocument(QJsonObject{{"answers", QJsonObject{{"match", QJsonObject{{"noul", systemoneProbability}}}}}, {"usage", QJsonObject{{"input_tokens", 42}, {"output_tokens", 0}}}})
+                          .toJson(QJsonDocument::Compact);
+        } else {
+            // Chat completions: the wrapped <|det|>…<|/det|> stream for the OCR
+            // prompt (no system message), the block transcription otherwise;
+            // the model streams newlines as the two characters `\n`.
+            const QString content = request.contains("\"role\":\"system\"") ? transcription
+                                                                            : QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
+                                                                                             "<|det|>text [112, 132, 884, 309]<|/det|>Second block text");
+            body = QJsonDocument(QJsonObject{
+                                     {"id", "cmpl-test"},
+                                     {"object", "chat.completion"},
+                                     {"choices", QJsonArray{QJsonObject{{"index", 0}, {"message", QJsonObject{{"role", "assistant"}, {"content", content}}}}}},
+                                 })
+                       .toJson(QJsonDocument::Compact);
+        }
         return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
     }
 
     QTcpServer m_server;
     QHash<QTcpSocket *, QByteArray> m_buffers;
     int m_requests = 0;
+    int m_systemoneRequests = 0;
 };
 
 class TestAppImport : public QObject
@@ -1370,6 +1389,190 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->checkProgressTotal(), 2, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(server.requests(), 7);
+    }
+
+    // The decision phase runs first for every queued block; with automatic
+    // re-recognition on, the mismatches go straight to the block-recognition
+    // model in a second phase of the same run, and the transcription becomes
+    // the block text.
+    void decisionMismatchFeedsRecheckWhenEnabled()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // below the 0.5 threshold: every block mismatches
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setAutoCheck(false);
+        m_settings->setAutoRecheck(true);
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("recheck-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const int statusRole = BoxListModel::CheckStatusRole;
+        const int correctedRole = BoxListModel::CorrectedRole;
+
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        // 1 recognition + 2 decision requests + 2 re-recognition requests.
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);
+        QCOMPARE(server.systemoneRequests(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Fixed));
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Fixed));
+        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), server.transcription);
+        QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), server.transcription);
+
+        // Answered: a second run asks nothing.
+        m_controller->checkEnabledBlocksOnPage();
+        QVERIFY(!m_controller->checkRunning());
+        QCOMPARE(server.requests(), 5);
+    }
+
+    // Without the re-recognition option the run ends after the decision phase:
+    // the rejected blocks keep their red mark for the user to act on.
+    void decisionMismatchStaysWithoutRecheck()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setAutoCheck(false);
+        m_settings->setAutoRecheck(false);
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("norecheck-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const int statusRole = BoxListModel::CheckStatusRole;
+
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 3);  // 1 recognition + 2 decision, no phase 2
+        QCOMPARE(server.systemoneRequests(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QString());
+    }
+
+    // The block-recognition entry points: the selected block is re-run through
+    // the transcription model whatever its status, and the problem-block
+    // commands pick only the Mismatch/Review marks. A block that is already
+    // Fixed is not asked again.
+    void recognizeBlockCommandsReRunOnlyTheMarkedBlocks()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setAutoCheck(false);
+        m_settings->setAutoRecheck(false);
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("recognize-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const int statusRole = BoxListModel::CheckStatusRole;
+
+        // The per-block button works on an unchecked block too.
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->recognizeSelectedBlock();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 2, kImportTimeoutMs);
+        QCOMPARE(server.systemoneRequests(), 0);  // straight to the transcription stage
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Fixed));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), server.transcription);
+
+        // The check run asks only the block left unchecked (ADR 134), and it
+        // mismatches — no automatic re-recognition.
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 3);
+        QCOMPARE(server.systemoneRequests(), 1);
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+
+        // The problem-block command re-runs exactly the marked one.
+        QVERIFY(m_controller->pageProblemRecognitionSupported());
+        m_controller->recognizeProblemBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 4);
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Fixed));
+
+        // Nothing is marked anymore: the command has nothing to do and asks
+        // no server.
+        QVERIFY(!m_controller->pageProblemRecognitionSupported());
+        QVERIFY(!m_controller->allProblemRecognitionSupported());
+        m_controller->recognizeAllProblemBlocks();
+        QVERIFY(!m_controller->checkRunning());
+        QCOMPARE(server.requests(), 4);
+    }
+
+    // A failed decision request is not a verdict: the block stays unchecked
+    // (so a later run retries it) and the error is reported.
+    void decisionErrorLeavesBlockUnchecked()
+    {
+        DetTokenChatServer server;
+        server.systemoneBroken = true;  // the endpoint answers, but not with a decision
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setAutoCheck(false);
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("deverr-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const int statusRole = BoxListModel::CheckStatusRole;
+
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 3);  // both blocks were asked
+        QCOMPARE(server.systemoneRequests(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QVERIFY2(m_controller->checkErrorMessage().contains(QStringLiteral("answers")), qPrintable(m_controller->checkErrorMessage()));
     }
 
     // Regression (ADR 102): the page owns its text, so re-typing what the page

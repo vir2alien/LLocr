@@ -52,18 +52,55 @@ ToolBar {
 
         ToolSeparator {}
 
-        ToolButton {
-            text: qsTr("Recognize")
-            enabled: Controller.hasImage && !Controller.busy
-                     && Controller.canRecognize
-            onClicked: Controller.recognizeCurrent()
+        Row {
+            spacing: 0
+            ToolButton {
+                text: qsTr("Recognize")
+                enabled: Controller.hasImage && !Controller.busy
+                         && Controller.canRecognize
+                onClicked: Controller.recognizeCurrent()
+            }
+            ToolButton {
+                id: recognizeExtraButton
+                text: "\u25be"
+                enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                onClicked: recognizeExtraMenu.popup(recognizeExtraButton, 0, recognizeExtraButton.height + 2)
+            }
+            Menu {
+                id: recognizeExtraMenu
+                MenuItem {
+                    text: qsTr("Recognize problem blocks on the page")
+                    enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                             && Controller.pageProblemRecognitionSupported
+                    onTriggered: Controller.recognizeProblemBlocksOnPage()
+                }
+            }
         }
-        ToolButton {
-            text: qsTr("Recognize all")
-            enabled: Controller.hasImage && !Controller.busy
-                     && Controller.pageCount > 1
-                     && Controller.canRecognize
-            onClicked: Controller.recognizeAll()
+
+        Row {
+            spacing: 0
+            ToolButton {
+                text: qsTr("Recognize all")
+                enabled: Controller.hasImage && !Controller.busy
+                         && Controller.pageCount > 1
+                         && Controller.canRecognize
+                onClicked: Controller.recognizeAll()
+            }
+            ToolButton {
+                id: recognizeAllExtraButton
+                text: "\u25be"
+                enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                onClicked: recognizeAllExtraMenu.popup(recognizeAllExtraButton, 0, recognizeAllExtraButton.height + 2)
+            }
+            Menu {
+                id: recognizeAllExtraMenu
+                MenuItem {
+                    text: qsTr("Recognize all problem blocks")
+                    enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                             && Controller.allProblemRecognitionSupported
+                    onTriggered: Controller.recognizeAllProblemBlocks()
+                }
+            }
         }
 
         ToolButton {

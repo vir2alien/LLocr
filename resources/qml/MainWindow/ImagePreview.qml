@@ -113,7 +113,7 @@ Image {
                         radius: 4
                         color: boxCheckStatus === 1 ? Theme.success
                              : boxCheckStatus === 2 ? Theme.warning
-                             : boxCheckStatus === 3 ? Theme.error
+                             : boxCheckStatus >= 3 ? Theme.error
                              : Theme.nothing
                     }
                 }

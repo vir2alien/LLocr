@@ -18,11 +18,13 @@ Item {
     function loadValues() {
         loading = true
         autoCheckBox.checked = Settings.autoCheck
+        autoRecheckBox.checked = Settings.autoRecheck
         loading = false
     }
 
     function saveValues() {
         Settings.autoCheck = autoCheckBox.checked
+        Settings.autoRecheck = autoRecheckBox.checked
     }
 
     component BlockTypeRow: Item {
@@ -127,6 +129,23 @@ Item {
             text: qsTr("Runs after recognition. Already checked blocks are skipped.")
         }
 
+        LLOCheckBox {
+            id: autoRecheckBox
+            Layout.fillWidth: true
+            Layout.topMargin: Theme.spacingSmall
+            text: qsTr("Automatic re-recognition")
+            font.pointSize: Theme.bodySmallSize
+            onToggled: if (!loading) root.edited()
+        }
+        LLOLabel {
+            Layout.fillWidth: true
+            Layout.leftMargin: 4
+            font.pointSize: Theme.footnoteSize
+            color: Theme.helpColor
+            wrapMode: Text.WordWrap
+            text: qsTr("Re-runs the blocks the decision model rejected through the block OCR model, right after the check.")
+        }
+
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: detailsLabel.implicitHeight
@@ -151,10 +170,12 @@ Item {
             font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             wrapMode: Text.WordWrap
-            text: qsTr("When on, verification starts automatically as soon as "
-                       + "recognition finishes. The managed runtime switches its "
-                       + "loaded model from OCR to the block OCR model; an external "
-                       + "runtime just starts checking.")
+            text: qsTr("Checking is fast: the decision model only answers how likely "
+                       + "the text matches the image, block by block. Matching blocks turn "
+                       + "green; rejected ones turn red. When re-recognition is on, the red "
+                       + "blocks are transcribed from scratch by the block OCR model. The "
+                       + "managed runtime switches its loaded model between the two stages; "
+                       + "an external runtime serves both.")
         }
 
         RowLayout {

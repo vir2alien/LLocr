@@ -519,62 +519,43 @@ private slots:
     {
         ExposedGeneralPurposeModel model;
 
-        // OK — the recognized block is correct, no correction is needed.
-        const CheckResult ok = model.parse("{\"choices\":[{\"message\":{\"role\":\"assistant\","
-                                           "\"content\":\"OK\"}}]}");
-        QCOMPARE(ok.status, CheckStatus::Ok);
-        QVERIFY(ok.text.isEmpty());
+        // The block-recognition contract: the reply itself is the block text.
+        const CheckResult text = model.parse("{\"choices\":[{\"message\":{\"role\":\"assistant\","
+                                             "\"content\":\"1. Introduction\"}}]}");
+        QCOMPARE(text.status, CheckStatus::Fixed);
+        QCOMPARE(text.text, QStringLiteral("1. Introduction"));
 
-        // Trailing whitespace / punctuation must not confuse the detector.
-        const CheckResult okPunct = model.parse("{\"choices\":[{\"message\":{\"content\":\"  OK  \"}}]}");
-        QCOMPARE(okPunct.status, CheckStatus::Ok);
+        // Whitespace around the transcription is trimmed, nothing else.
+        const CheckResult padded = model.parse("{\"choices\":[{\"message\":{\"content\":\"  hello world\\n  \"}}]}");
+        QCOMPARE(padded.status, CheckStatus::Fixed);
+        QCOMPARE(padded.text, QStringLiteral("hello world"));
 
-        // FIX — the corrected block follows the marker.
-        const CheckResult fix = model.parse("{\"choices\":[{\"message\":{\"content\":"
-                                            "\"FIX\\nhello world\"}}]}");
-        QCOMPARE(fix.status, CheckStatus::Fixed);
-        QCOMPARE(fix.text, QStringLiteral("hello world"));
+        // A multi-line block (a table, a list) is transcribed as-is.
+        const CheckResult multi = model.parse("{\"choices\":[{\"message\":{\"content\":\"<table>\\n<tr></tr>\\n</table>\"}}]}");
+        QCOMPARE(multi.status, CheckStatus::Fixed);
+        QCOMPARE(multi.text, QStringLiteral("<table>\n<tr></tr>\n</table>"));
 
-        // "FIX: <block>" spelling is accepted too.
-        const CheckResult fixColon = model.parse("{\"choices\":[{\"message\":{\"content\":\"FIX: hello world\"}}]}");
-        QCOMPARE(fixColon.status, CheckStatus::Fixed);
-        QCOMPARE(fixColon.text, QStringLiteral("hello world"));
-
-        // REVIEW — the block is unreadable.
-        const CheckResult review = model.parse("{\"choices\":[{\"message\":{\"content\":\"REVIEW\"}}]}");
-        QCOMPARE(review.status, CheckStatus::Review);
-        QVERIFY(review.text.isEmpty());
-
-        // A bare FIX — the verdict without the payload — needs human eyes, not
-        // a protocol error (small models stop after the keyword).
-        const CheckResult bareFix = model.parse("{\"choices\":[{\"message\":{\"content\":\"FIX\"}}]}");
-        QCOMPARE(bareFix.status, CheckStatus::Review);
-        QVERIFY(bareFix.text.isEmpty());
-
-        // Marker-only output (thinking model that never answered) is an error,
-        // not an empty "success" that would wipe the block text.
+        // An empty reply — nothing but end-of-sentence markers — means the
+        // block could not be transcribed: a verdict (needs human eyes), not a
+        // protocol error.
         const CheckResult markerOnly = model.parse("{\"choices\":[{\"message\":{\"content\":"
                                                    "\"<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
-        QCOMPARE(markerOnly.status, CheckStatus::Failed);
-        QVERIFY(!markerOnly.errorMessage.isEmpty());
+        QCOMPARE(markerOnly.status, CheckStatus::Review);
+        QVERIFY(markerOnly.text.isEmpty());
 
         // A think block must be dropped; only the final answer remains.
         const CheckResult withThink = model.parse("{\"choices\":[{\"message\":{\"content\":"
-                                                  "\" thinkingreasoning response\\nFIX\\nfixed text\"}}]}");
+                                                  "\" thinkingreasoning response\\nrecognized text\"}}]}");
         QVERIFY2(withThink.status == CheckStatus::Fixed, withThink.errorMessage.text().toUtf8().constData());
-        QCOMPARE(withThink.text, QStringLiteral("fixed text"));
+        QCOMPARE(withThink.text, QStringLiteral("recognized text"));
 
         // Trailing end-of-sentence markers must be stripped (ADR 18 parity).
-        const CheckResult fixMarker = model.parse("{\"choices\":[{\"message\":{\"content\":"
-                                                  "\"FIX\\ncorrected\\n<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
-        QCOMPARE(fixMarker.status, CheckStatus::Fixed);
-        QCOMPARE(fixMarker.text, QStringLiteral("corrected"));
+        const CheckResult withMarker = model.parse("{\"choices\":[{\"message\":{\"content\":"
+                                                   "\"recognized\\n<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
+        QCOMPARE(withMarker.status, CheckStatus::Fixed);
+        QCOMPARE(withMarker.text, QStringLiteral("recognized"));
 
-        // Unexpected answers are failures, not silent successes.
-        const CheckResult unexpected = model.parse("{\"choices\":[{\"message\":{\"content\":\"The text is fine.\"}}]}");
-        QCOMPARE(unexpected.status, CheckStatus::Failed);
-        QVERIFY(!unexpected.errorMessage.isEmpty());
-
+        // Broken transports stay failures, not silent verdicts.
         const CheckResult emptyChoices = model.parse("{\"choices\":[]}");
         QCOMPARE(emptyChoices.status, CheckStatus::Failed);
         QVERIFY(!emptyChoices.errorMessage.isEmpty());
@@ -608,7 +589,9 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(server.gotRequest);
         QVERIFY2(future.result().status != CheckStatus::Failed, future.result().errorMessage.text().toUtf8().constData());
-        QCOMPARE(future.result().status, CheckStatus::Ok);
+        // The reply body ("ok") IS the block text under the transcription contract.
+        QCOMPARE(future.result().status, CheckStatus::Fixed);
+        QCOMPARE(future.result().text, QStringLiteral("ok"));
     }
 };
 

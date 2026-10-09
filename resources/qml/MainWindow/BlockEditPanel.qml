@@ -49,7 +49,7 @@ Rectangle {
                 radius: 4
                 color: Controller.selectedBlockCheckStatus === 1 ? Theme.success
                      : Controller.selectedBlockCheckStatus === 2 ? Theme.warning
-                     : Controller.selectedBlockCheckStatus === 3 ? Theme.error
+                     : Controller.selectedBlockCheckStatus >= 3 ? Theme.error
                      : Theme.nothing
             }
             Item { Layout.fillWidth: true }
@@ -81,11 +81,11 @@ Rectangle {
             }
         }
 
-        // Corrected (FIX) result, kept separate from the recognized text.
+        // Re-recognized (block OCR) result, kept separate from the original text.
         LLOLabel {
             visible: root.isTextBlock
                      && Controller.selectedBlockCheckStatus === 2
-            text: qsTr("Corrected by the verifier:")
+            text: qsTr("Re-recognized text:")
             color: Theme.textMuted
         }
         ScrollView {
@@ -118,8 +118,15 @@ Rectangle {
                 onClicked: Controller.checkSelectedBlock()
             }
             LLOButton {
+                text: qsTr("Recognize")
+                visible: root.isTextBlock
+                enabled: !Controller.checkBusy && !Controller.busy
+                onClicked: Controller.recognizeSelectedBlock()
+            }
+            LLOButton {
                 text: qsTr("Revert correction")
-                visible: Controller.selectedBlockCheckStatus !== 0
+                // Only a re-recognized block has a correction to revert.
+                visible: root.isTextBlock && Controller.selectedBlockCheckStatus === 2
                 enabled: !Controller.checkBusy && !Controller.busy
                 onClicked: Controller.revertBlockCorrection()
             }

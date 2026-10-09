@@ -251,8 +251,10 @@ Item {
                 LLOLabel {//Check status
                     visible: Controller.checkRunning || Controller.checkFinished
                     text: Controller.checkRunning
-                          ? qsTr("Check %1 / %2").arg(Controller.checkProgressDone)
-                                                   .arg(Controller.checkProgressTotal)
+                          ? Controller.checkDecisionPhase ? qsTr("Checking %1 / %2").arg(Controller.checkProgressDone)
+                                                                 .arg(Controller.checkProgressTotal)
+                                                          : qsTr("Re-recognizing %1 / %2").arg(Controller.checkProgressDone)
+                                                                 .arg(Controller.checkProgressTotal)
                           : qsTr("Check finished")
                     color: Theme.textMuted
                     elide: Text.ElideRight

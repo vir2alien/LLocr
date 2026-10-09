@@ -75,9 +75,12 @@ class AppController : public QObject
     Q_PROPERTY(bool checkFinished READ checkFinished NOTIFY checkStateChanged)
     Q_PROPERTY(int checkProgressDone READ checkProgressDone NOTIFY checkStateChanged)
     Q_PROPERTY(int checkProgressTotal READ checkProgressTotal NOTIFY checkStateChanged)
+    Q_PROPERTY(bool checkDecisionPhase READ checkDecisionPhase NOTIFY checkStateChanged)
     Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
     Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY checkStateChanged)
     Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY checkStateChanged)
+    Q_PROPERTY(bool pageProblemRecognitionSupported READ pageProblemRecognitionSupported NOTIFY checkStateChanged)
+    Q_PROPERTY(bool allProblemRecognitionSupported READ allProblemRecognitionSupported NOTIFY checkStateChanged)
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters NOTIFY retranslateRequested)
 
@@ -147,9 +150,12 @@ public:
     bool checkFinished() const { return m_verify.finished(); }
     int checkProgressDone() const { return m_verify.progressDone(); }
     int checkProgressTotal() const { return m_verify.progressTotal(); }
+    bool checkDecisionPhase() const { return m_verify.decisionPhase(); }
     QString checkErrorMessage() const { return m_verify.errorMessage(); }
     bool pageVerificationSupported() const;
     bool allPageVerificationSupported() const;
+    bool pageProblemRecognitionSupported() const;
+    bool allProblemRecognitionSupported() const;
 
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
     QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
@@ -214,6 +220,11 @@ public slots:
     Q_INVOKABLE void checkEnabledBlocksOnPage();
     Q_INVOKABLE void checkAllEnabledBlocks();
     Q_INVOKABLE void stopCheck();
+    // Block (re-)recognition through the blockRecognition role: the selected
+    // block regardless of status, or only the problem blocks (Mismatch/Review).
+    Q_INVOKABLE void recognizeSelectedBlock();
+    Q_INVOKABLE void recognizeProblemBlocksOnPage();
+    Q_INVOKABLE void recognizeAllProblemBlocks();
     Q_INVOKABLE void cancelImport();
     Q_INVOKABLE void openProject(const QUrl &fileUrl);
     Q_INVOKABLE void saveProject(const QUrl &fileUrl);

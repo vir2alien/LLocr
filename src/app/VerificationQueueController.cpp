@@ -3,12 +3,49 @@
 #include <QTimer>
 
 #include "config/RequestProfileStore.h"
+#include "config/SettingsStore.h"
 #include "core/ModelProfiles.h"
 
 namespace llocr {
 
-VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent) : QObject(parent), m_deps(std::move(deps)), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr)
+namespace {
+// The generic yes/no question when the decision profile ships none (the
+// shipped d1-3b profile carries its own wording).
+constexpr const char *kFallbackQuestion = "The state is a text fragment recognized from the attached image by an OCR "
+                                          "model. Does the image show exactly this text?";
+}  // namespace
+
+VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
+    : QObject(parent), m_deps(std::move(deps)), m_decision(m_deps.runtime, this), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr)
 {
+    connect(&m_decision, &DecisionController::judgeFinished, this, [this](const DecisionResult &result) {
+        CheckResult verdict;
+        if (!result.ok) {
+            // A failed decision request is not a verdict: the block stays
+            // unchecked and the error is reported, instead of the block being
+            // silently re-recognized on a broken stage.
+            verdict = CheckResult::makeError(result.errorMessage);
+            if (!result.errorMessage.isEmpty() && result.errorMessage != m_checkError) {
+                m_checkError = result.errorMessage;
+                emit problemReported(result.errorMessage);
+            }
+        } else if (result.probability >= m_matchThreshold) {
+            verdict.status = CheckStatus::Ok;
+        } else {
+            verdict.status = CheckStatus::Mismatch;
+        }
+        const int page = m_verifyPage;
+        const int box = m_verifyBoxIndex;
+        emit blockChecked(page, box, verdict);
+        ++m_verifyDone;
+        if (verdict.status == CheckStatus::Mismatch && m_autoRecheck)
+            m_recheckQueue.append({page, box});
+        emit stateChanged();
+        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+    });
+    connect(&m_decision, &DecisionController::busyChanged, this, &VerificationQueueController::stateChanged);
+    connect(&m_decision, &DecisionController::statusRequested, this, &VerificationQueueController::statusRequested);
+
     connect(&m_check, &CheckController::checkFinished, this, [this](const CheckResult &result) {
         if (result.status == CheckStatus::Failed && !result.errorMessage.isEmpty() && result.errorMessage != m_checkError) {
             m_checkError = result.errorMessage;
@@ -50,7 +87,7 @@ void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
 
 void VerificationQueueController::checkAllEnabledBlocks()
 {
-    if (m_deps.recognitionBusy() || m_check.busy() || m_verifyQueueActive)
+    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
         return;
 
     QList<VerifyTask> tasks;
@@ -88,6 +125,21 @@ void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> 
     }
 }
 
+void VerificationQueueController::collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return;
+    const DocumentPage &docPage = m_deps.document.page(pageIndex);
+    if (!docPage.recognized || docPage.result.pages.isEmpty())
+        return;
+    const OcrPage &page = docPage.result.pages.first();
+    for (int i = 0; i < page.boxes.size(); ++i) {
+        const BoxCheckStatus status = page.boxes.at(i).checkStatus;
+        if (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review)
+            out.append({pageIndex, i});
+    }
+}
+
 void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered)
 {
     if (!tasks.isEmpty()) {
@@ -104,12 +156,15 @@ void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> 
 void VerificationQueueController::stop()
 {
     m_verifyQueue.clear();
+    m_recheckQueue.clear();
     if (m_verifyQueueActive) {
         m_verifyQueueActive = false;
         m_verifyPage = -1;
         m_verifyBoxIndex = -1;
         emit stateChanged();
     }
+    if (m_decision.busy())
+        m_decision.stop();
     if (m_check.busy())
         m_check.stop();
 }
@@ -145,16 +200,87 @@ bool VerificationQueueController::allPageVerificationSupported() const
     return false;
 }
 
+bool VerificationQueueController::pageRecheckSupported(int pageIndex) const
+{
+    QList<VerifyTask> tasks;
+    collectProblemBoxes(pageIndex, tasks);
+    return !tasks.isEmpty();
+}
+
+bool VerificationQueueController::allPageRecheckSupported() const
+{
+    for (int p = 0; p < m_deps.document.pageCount(); ++p) {
+        QList<VerifyTask> tasks;
+        collectProblemBoxes(p, tasks);
+        if (!tasks.isEmpty())
+            return true;
+    }
+    return false;
+}
+
 void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &tasks)
 {
-    if (m_deps.recognitionBusy() || m_check.busy() || m_verifyQueueActive)
+    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
         return;
     if (tasks.isEmpty())
         return;
 
     m_checkError = StatusMessage();
     m_checkFinished = false;
+    m_phase = Phase::Decision;
+    m_matchThreshold = m_deps.settings.decisionMatchThreshold();
+    m_autoRecheck = m_deps.settings.autoRecheck();
     m_verifyQueue = tasks;
+    m_recheckQueue.clear();
+    m_verifyPage = -1;
+    m_verifyBoxIndex = -1;
+    m_verifyTotal = tasks.size();
+    m_verifyDone = 0;
+    m_verifyQueueActive = true;
+    emit stateChanged();
+
+    QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+}
+
+void VerificationQueueController::recheckBlock(int pageIndex, int boxIndex)
+{
+    if (!m_deps.document.isValidIndex(pageIndex) || !m_deps.document.page(pageIndex).recognized) {
+        return;
+    }
+    startRecheckQueue({{pageIndex, boxIndex}});
+}
+
+void VerificationQueueController::recheckPageProblemBlocks(int pageIndex)
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return;
+    QList<VerifyTask> tasks;
+    collectProblemBoxes(pageIndex, tasks);
+    startRecheckQueue(tasks);
+}
+
+void VerificationQueueController::recheckAllProblemBlocks()
+{
+    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+        return;
+    QList<VerifyTask> tasks;
+    for (int p = 0; p < m_deps.document.pageCount(); ++p)
+        collectProblemBoxes(p, tasks);
+    startRecheckQueue(tasks);
+}
+
+void VerificationQueueController::startRecheckQueue(const QList<VerifyTask> &tasks)
+{
+    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+        return;
+    if (tasks.isEmpty())
+        return;
+
+    m_checkError = StatusMessage();
+    m_checkFinished = false;
+    m_phase = Phase::Recheck;
+    m_verifyQueue = tasks;
+    m_recheckQueue.clear();
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     m_verifyTotal = tasks.size();
@@ -171,8 +297,22 @@ void VerificationQueueController::startNextVerify()
         return;
 
     if (m_verifyQueue.isEmpty()) {
-        finishVerifyQueue();
-        return;
+        if (m_phase == Phase::Decision && !m_recheckQueue.isEmpty()) {
+            // Phase 2: the mismatches go to the block-recognition role. The
+            // server is already on the decision model, so this reuses the
+            // switch — one switch back instead of per-block restarts.
+            m_phase = Phase::Recheck;
+            m_verifyQueue = m_recheckQueue;
+            m_recheckQueue.clear();
+            m_verifyTotal = m_verifyQueue.size();
+            m_verifyDone = 0;
+            m_verifyPage = -1;
+            m_verifyBoxIndex = -1;
+            emit stateChanged();
+        } else {
+            finishVerifyQueue();
+            return;
+        }
     }
 
     const VerifyTask task = m_verifyQueue.takeFirst();
@@ -201,13 +341,24 @@ void VerificationQueueController::startNextVerify()
         return;
     }
 
+    if (m_phase == Phase::Decision) {
+        m_decision.judgeBlock(crop, text, decisionQuestion());
+        return;
+    }
+
     const BoundingBox &box = boxes.at(m_verifyBoxIndex);
-    // The verifier's wording lives entirely in the model's profile
+    // The transcription wording lives entirely in the model's profile
     // (systemPrompt + blockPrompts on the blockRecognition role).
     const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
     const QString typePrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"), box.label);
     const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"));
     m_check.checkBlock(crop, text, systemPrompt, typePrompt);
+}
+
+QString VerificationQueueController::decisionQuestion() const
+{
+    const QString question = ModelProfiles::systemPromptFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
+    return question.isEmpty() ? StatusMessage::translate("VerificationQueueController", kFallbackQuestion).text() : question;
 }
 
 void VerificationQueueController::finishVerifyQueue()
@@ -216,6 +367,7 @@ void VerificationQueueController::finishVerifyQueue()
         return;
     m_verifyQueueActive = false;
     m_verifyQueue.clear();
+    m_recheckQueue.clear();
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     m_checkFinished = true;

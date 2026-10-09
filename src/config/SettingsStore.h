@@ -64,6 +64,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
     Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
+    Q_PROPERTY(bool autoRecheck READ autoRecheck WRITE setAutoRecheck NOTIFY autoRecheckChanged)
 
     Q_PROPERTY(QString decisionLaunchModelPath READ decisionLaunchModelPath WRITE setDecisionLaunchModelPath NOTIFY decisionLaunchModelPathChanged)
     Q_PROPERTY(QString decisionLaunchMmprojPath READ decisionLaunchMmprojPath WRITE setDecisionLaunchMmprojPath NOTIFY decisionLaunchMmprojPathChanged)
@@ -196,6 +197,8 @@ public:
     void setCheckModelName(const QString &name);
     bool autoCheck() const;
     void setAutoCheck(bool on);
+    bool autoRecheck() const;
+    void setAutoRecheck(bool on);
 
     QString decisionLaunchModelPath() const;
     void setDecisionLaunchModelPath(const QString &path);
@@ -273,6 +276,7 @@ signals:
     void checkRequestProfileIdChanged();
     void checkModelNameChanged();
     void autoCheckChanged();
+    void autoRecheckChanged();
     void decisionLaunchModelPathChanged();
     void decisionLaunchMmprojPathChanged();
     void decisionLaunchDraftPathChanged();
@@ -372,6 +376,7 @@ private:
     static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
     static constexpr const char *kCheckModelName = "check/modelName";
     static constexpr const char *kAutoCheck = "check/autoCheck";
+    static constexpr const char *kAutoRecheck = "check/autoRecheck";
     static constexpr const char *kRetiredCheckSourceDownload = "check/sourceDownload";
 
     // Decision model
