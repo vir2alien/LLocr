@@ -55,6 +55,7 @@ ApplicationWindow {
         onOpenVerificationSettingsRequested: verificationSettingsWindow.show()
         onOpenRuntimeSettingsRequested: runtimeSettingsWindow.show()
         onOpenOcrModelSettingsRequested: ocrModelSettingsWindow.show()
+        onOpenDecisionModelSettingsRequested: decisionModelSettingsWindow.show()
         onOpenCheckModelSettingsRequested: checkModelSettingsWindow.show()
     }
 
@@ -231,8 +232,14 @@ ApplicationWindow {
     }
 
     ModelSettingsWindow {
+        id: decisionModelSettingsWindow
+        role: "decision"
+        runtimeSettingsRef: runtimeSettingsWindow
+    }
+
+    ModelSettingsWindow {
         id: checkModelSettingsWindow
-        role: "check"
+        role: "blockRecognition"
         runtimeSettingsRef: runtimeSettingsWindow
     }
 

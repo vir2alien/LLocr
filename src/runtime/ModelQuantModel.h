@@ -55,7 +55,7 @@ public:
     };
     Q_ENUM(Roles)
 
-    ModelQuantModel(ModelInstaller &installer, SettingsStore &settings, bool forCheck, QObject *parent = nullptr);
+    ModelQuantModel(ModelInstaller &installer, SettingsStore &settings, QString role, QObject *parent = nullptr);
 
     int rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role) const override;
@@ -68,7 +68,7 @@ public:
     int presetIndexFor(const QString &key, const QString &quantId) const;
     bool hasQuant(const QString &key, const QString &quantId) const { return quantFor(key, quantId) != nullptr; }
 
-    static bool matchesRole(const ModelEntry &entry, const SettingsStore &settings, bool forCheck);
+    static bool matchesRole(const ModelEntry &entry, const SettingsStore &settings, const QString &role);
     static QString displayTitle(const ModelEntry &entry);
 
 signals:
@@ -85,7 +85,7 @@ private:
 
     ModelInstaller &m_installer;
     SettingsStore &m_settings;
-    bool m_forCheck = false;
+    QString m_role;  // model-profile role id this list serves
     QList<Row> m_rows;
     QString m_signature;
 };

@@ -2,17 +2,19 @@
 
 ## Terms
 - **OCR** — recognizing text from images.
-- **OCR**, **Block recognition** — the two recognition-adjacent roles. The
+- **OCR**, **Block recognition**, **Decision** — the three model roles. The
   block-recognition role was renamed **check → blockRecognition** (ADR 146):
   the profile files, the registry role tags and the enums say
   **blockRecognition** (`roles.blockRecognition`, `ConnectionRole::
   BlockRecognition`, `RequestProfileStore::Role::BlockRecognition`). The
-  legacy vocabulary survives where renaming would cost user data or churn:
-  the `check/*` settings keys, `CheckController`/`CheckRequest`/`CheckResult`,
-  `requestValidate.json`, `RequestProfilesValidate`, and the old
-  `serverLaunchValidate.json`/`defaultLlmPresetsValidate.json` names it
-  inherited from ADR 71/72. The registry index migrates `"check"` role tags
-  to `"blockRecognition"` on load.
+  **decision** role is the fast yes/no gate (`roles.decision`,
+  `ConnectionRole::Decision`, `/v1/systemone`, ADR 145/147). The legacy
+  vocabulary survives where renaming would cost user data or churn: the
+  `check/*` settings keys, `CheckController`/`CheckRequest`/`CheckResult`,
+  `requestValidate.json`, `RequestProfilesValidate`. The registry index
+  migrates `"check"` role tags to `"blockRecognition"` on load. Installer
+  APIs take the role as a string ("ocr" / "blockRecognition" / "decision");
+  the `bool forCheck` parameters they replaced are gone.
 - **OCR model (adapter)** — the per-model recipe (`models/OcrModel.h`): how to
   talk to a specific OCR LLM — prompt variants, the default output parser, and
   (via the base class) the OpenAI-style chat-completions request body and

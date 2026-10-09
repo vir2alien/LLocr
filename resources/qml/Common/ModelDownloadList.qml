@@ -11,7 +11,8 @@ ListView {
 
     property int rowHeight: 46
     property int maxVisibleRows: 6
-    property bool isVerifyModelRole: false
+    // Model-profile role id this list serves: "ocr", "blockRecognition" or "decision".
+    property string role: "ocr"
 
     signal actionError(string message)
     signal downloadRequested(string title, string quantId, string license, string runtimeNote)
@@ -47,7 +48,9 @@ ListView {
     implicitHeight: count <= 0
                     ? 0
                     : (maxVisibleRows > 0 ? Math.min(count, maxVisibleRows) : count) * rowHeight
-    model: isVerifyModelRole ? ModelInstaller.checkQuantModels : ModelInstaller.quantModels
+    model: role === "blockRecognition" ? ModelInstaller.checkQuantModels
+         : role === "decision" ? ModelInstaller.decisionQuantModels
+         : ModelInstaller.quantModels
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
     delegate: Rectangle {
@@ -171,13 +174,13 @@ ListView {
                     onClicked: {
                         if (row.selectedInstalled) {
                             const err = ModelInstaller.useQuant(row.key, row.selectedLabel,
-                                                                root.isVerifyModelRole)
+                                                                root.role)
                             if (err.length)
                                 root.actionError(err)
                             return
                         }
                         ModelInstaller.downloadQuant(row.key, row.selectedLabel,
-                                                     root.isVerifyModelRole)
+                                                     root.role)
                         root.downloadRequested(row.title, row.selectedLabel, row.license,
                                                row.runtimeNote)
                     }
@@ -346,7 +349,7 @@ ListView {
                     onTriggered: {
                         rowMenu.close()
                         const err = ModelInstaller.openQuantFolder(row.key, row.selectedLabel,
-                                                                   root.isVerifyModelRole)
+                                                                   root.role)
                         if (err.length)
                             root.actionError(err)
                     }
@@ -370,7 +373,7 @@ ListView {
                     onTriggered: {
                         rowMenu.close()
                         const err = ModelInstaller.removeQuant(row.key, row.selectedLabel,
-                                                               root.isVerifyModelRole)
+                                                               root.role)
                         if (err.length)
                             root.actionError(err)
                     }
@@ -459,7 +462,7 @@ ListView {
                     Keys.onEscapePressed: deleteModelDialog.close()
                     onClicked: {
                         const err = ModelInstaller.removeModelRow(deleteModelDialog.pendingKey,
-                                                          root.isVerifyModelRole)
+                                                          root.role)
                         deleteModelDialog.close()
                         if (err.length)
                             root.actionError(err)

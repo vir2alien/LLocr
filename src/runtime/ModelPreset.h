@@ -22,7 +22,7 @@ struct ModelPreset {
     QString license;   // URL or short license name
     QHash<QString, QString> sha256;
 
-    QString parserFor(bool forCheck) const;
+    QString parserFor(const QString &role) const;
 
     static ModelPreset fromJson(const QJsonObject &o);
     QJsonObject toJson() const;

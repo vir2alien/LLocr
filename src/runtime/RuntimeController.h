@@ -80,7 +80,7 @@ public:
     QString orphanInfo() const;
     Q_INVOKABLE QString terminateOrphan();
 
-    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, bool forCheck = false);
+    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("ocr"));
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved);

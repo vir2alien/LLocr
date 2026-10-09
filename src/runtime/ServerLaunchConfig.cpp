@@ -13,21 +13,11 @@ namespace llocr {
 ServerLaunchConfig ServerLaunchConfig::fromSettings(const SettingsStore &s, const LaunchProfileStore &launchProfiles, ConnectionRole role)
 {
     ServerLaunchConfig cfg;
-    QString modelId;
-    QString roleName;
-    if (role == ConnectionRole::BlockRecognition) {
-        cfg.modelPath = s.checkLaunchModelPath();
-        cfg.mmprojPath = s.checkLaunchMmprojPath();
-        cfg.draftPath = s.checkLaunchDraftPath();
-        modelId = s.checkRequestProfileId();
-        roleName = QStringLiteral("blockRecognition");
-    } else {
-        cfg.modelPath = s.launchModelPath();
-        cfg.mmprojPath = s.launchMmprojPath();
-        cfg.draftPath = s.launchDraftPath();
-        modelId = s.modelRecipeId();
-        roleName = QStringLiteral("ocr");
-    }
+    const QString roleName = connectionRoleName(role);
+    cfg.modelPath = s.launchModelPathForRole(roleName);
+    cfg.mmprojPath = s.launchMmprojPathForRole(roleName);
+    cfg.draftPath = s.launchDraftPathForRole(roleName);
+    const QString modelId = s.requestProfileIdForRole(roleName);
     if (const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(modelId, roleName))
         cfg.modelAlias = modelRole->alias;
     cfg.host = s.launchHost();

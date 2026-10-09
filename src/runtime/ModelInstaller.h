@@ -34,9 +34,11 @@ class ModelInstaller : public QObject
 
     Q_PROPERTY(QObject *quantModels READ quantModels CONSTANT)
     Q_PROPERTY(QObject *checkQuantModels READ checkQuantModels CONSTANT)
+    Q_PROPERTY(QObject *decisionQuantModels READ decisionQuantModels CONSTANT)
 
     Q_PROPERTY(QString activeTitle READ activeTitle NOTIFY installedChanged)
     Q_PROPERTY(QString checkActiveTitle READ checkActiveTitle NOTIFY installedChanged)
+    Q_PROPERTY(QString decisionActiveTitle READ decisionActiveTitle NOTIFY installedChanged)
 
 public:
     enum State {
@@ -62,14 +64,17 @@ public:
     int installedCount() const { return m_installed.size(); }
     QObject *quantModels() const;
     QObject *checkQuantModels() const;
+    QObject *decisionQuantModels() const;
     QString activeTitle() const;
     QString checkActiveTitle() const;
+    QString decisionActiveTitle() const;
 
-    const QList<ModelPreset> &presetsForRole(bool forCheck) const { return forCheck ? m_presetsValidate : m_presets; }
+    // role is a model-profile role id: "ocr", "blockRecognition" or "decision".
+    const QList<ModelPreset> &presetsForRole(const QString &role) const;
     const QList<ModelEntry> &installedEntries() const { return m_installed; }
 
     Q_INVOKABLE void reloadPresets();
-    Q_INVOKABLE QString setActiveModel(int index, bool forCheck = false);
+    Q_INVOKABLE QString setActiveModel(int index, const QString &role = QStringLiteral("ocr"));
     Q_INVOKABLE QString removeModel(int index);
     Q_INVOKABLE QString openModelFolder(int index);
 
@@ -77,11 +82,11 @@ public:
     Q_INVOKABLE void rescanRegistry();
 
     Q_INVOKABLE void selectQuant(const QString &key, const QString &quantId);
-    Q_INVOKABLE QString useQuant(const QString &key, const QString &quantId, bool forCheck = false);
-    Q_INVOKABLE void downloadQuant(const QString &key, const QString &quantId, bool forCheck = false);
-    Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, bool forCheck = false);
-    Q_INVOKABLE QString removeModelRow(const QString &key, bool forCheck = false);
-    Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, bool forCheck = false);
+    Q_INVOKABLE QString useQuant(const QString &key, const QString &quantId, const QString &role = QStringLiteral("ocr"));
+    Q_INVOKABLE void downloadQuant(const QString &key, const QString &quantId, const QString &role = QStringLiteral("ocr"));
+    Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, const QString &role = QStringLiteral("ocr"));
+    Q_INVOKABLE QString removeModelRow(const QString &key, const QString &role = QStringLiteral("ocr"));
+    Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, const QString &role = QStringLiteral("ocr"));
 
     Q_INVOKABLE void installPrepared();
 
@@ -99,8 +104,9 @@ private:
 
     void syncProfileToActiveModel();
 
-    ModelQuantModel *quantModel(bool forCheck) const;
-    int installedIndexFor(const QString &key, const QString &quantId, bool forCheck) const;
+    ModelQuantModel *quantModel(const QString &role) const;
+    QString activeTitleFor(const QString &role) const;
+    int installedIndexFor(const QString &key, const QString &quantId, const QString &role) const;
     void publishInstalled();
 
     SettingsStore &m_settings;
@@ -115,9 +121,11 @@ private:
 
     QList<ModelPreset> m_presets;
     QList<ModelPreset> m_presetsValidate;
+    QList<ModelPreset> m_presetsDecision;
     QList<ModelEntry> m_installed;
     ModelQuantModel *m_ocrModels = nullptr;
     ModelQuantModel *m_checkModels = nullptr;
+    ModelQuantModel *m_decisionModels = nullptr;
 
 signals:
     void stateChanged();

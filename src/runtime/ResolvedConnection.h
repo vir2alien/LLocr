@@ -9,12 +9,26 @@ namespace llocr {
 enum class ConnectionRole {
     Ocr,
     BlockRecognition,
+    Decision,
 };
+
+inline QString connectionRoleName(ConnectionRole role)
+{
+    switch (role) {
+    case ConnectionRole::Ocr:
+        return QStringLiteral("ocr");
+    case ConnectionRole::BlockRecognition:
+        return QStringLiteral("blockRecognition");
+    case ConnectionRole::Decision:
+        return QStringLiteral("decision");
+    }
+    return QStringLiteral("ocr");
+}
 
 struct ResolvedConnection {
     QString baseUrl;  // http://127.0.0.1:<port> or the external URL
     QString apiKey;   // from settings (External) or empty (Managed)
-    QString modelId;  // alias (Managed) or model/name / check/modelName (External, per ConnectionRole)
+    QString modelId;  // alias (Managed) or model/name / check/modelName / decision/modelName (External, per ConnectionRole)
     int timeoutMs = 0;
 
     QString error;

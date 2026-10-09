@@ -24,7 +24,8 @@ namespace llocr {
 
 ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime, InstalledState &state, QObject *parent)
     : QObject(parent), m_settings(settings), m_installState(state), m_runtime(runtime), m_transaction(new ModelInstallTransaction(settings, m_installState, this)),
-      m_ocrModels(new ModelQuantModel(*this, settings, false, this)), m_checkModels(new ModelQuantModel(*this, settings, true, this))
+      m_ocrModels(new ModelQuantModel(*this, settings, QStringLiteral("ocr"), this)), m_checkModels(new ModelQuantModel(*this, settings, QStringLiteral("blockRecognition"), this)),
+      m_decisionModels(new ModelQuantModel(*this, settings, QStringLiteral("decision"), this))
 {
     connect(m_transaction, &ModelInstallTransaction::stateChanged, this, [this](int state) { setState(static_cast<State>(state)); });
     connect(m_transaction, &ModelInstallTransaction::busyChanged, this, [this](bool busy) { setBusy(busy); });
@@ -36,6 +37,7 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     });
     connect(&m_settings, &SettingsStore::launchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::checkLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
+    connect(&m_settings, &SettingsStore::decisionLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
 
     reloadPresetsInternal();
     refreshInstalled();
@@ -51,15 +53,25 @@ QObject *ModelInstaller::checkQuantModels() const
     return m_checkModels;
 }
 
-ModelQuantModel *ModelInstaller::quantModel(bool forCheck) const
+QObject *ModelInstaller::decisionQuantModels() const
 {
-    return forCheck ? m_checkModels : m_ocrModels;
+    return m_decisionModels;
+}
+
+ModelQuantModel *ModelInstaller::quantModel(const QString &role) const
+{
+    if (role == QLatin1String("blockRecognition"))
+        return m_checkModels;
+    if (role == QLatin1String("decision"))
+        return m_decisionModels;
+    return m_ocrModels;
 }
 
 void ModelInstaller::publishInstalled()
 {
     m_ocrModels->refresh();
     m_checkModels->refresh();
+    m_decisionModels->refresh();
     emit installedChanged();
 }
 
@@ -109,7 +121,22 @@ void ModelInstaller::retranslate()
 
 QString ModelInstaller::activeTitle() const
 {
-    const QString active = m_settings.launchModelPath();
+    return activeTitleFor(QStringLiteral("ocr"));
+}
+
+QString ModelInstaller::checkActiveTitle() const
+{
+    return activeTitleFor(QStringLiteral("blockRecognition"));
+}
+
+QString ModelInstaller::decisionActiveTitle() const
+{
+    return activeTitleFor(QStringLiteral("decision"));
+}
+
+QString ModelInstaller::activeTitleFor(const QString &role) const
+{
+    const QString active = m_settings.launchModelPathForRole(role);
     for (const ModelEntry &e : m_installed) {
         if (!e.modelPath.isEmpty() && e.modelPath == active)
             return e.title;
@@ -117,14 +144,13 @@ QString ModelInstaller::activeTitle() const
     return QString();
 }
 
-QString ModelInstaller::checkActiveTitle() const
+const QList<ModelPreset> &ModelInstaller::presetsForRole(const QString &role) const
 {
-    const QString active = m_settings.checkLaunchModelPath();
-    for (const ModelEntry &e : m_installed) {
-        if (!e.modelPath.isEmpty() && e.modelPath == active)
-            return e.title;
-    }
-    return QString();
+    if (role == QLatin1String("blockRecognition"))
+        return m_presetsValidate;
+    if (role == QLatin1String("decision"))
+        return m_presetsDecision;
+    return m_presets;
 }
 
 void ModelInstaller::reloadPresets()
@@ -143,16 +169,20 @@ void ModelInstaller::reloadPresetsInternal()
 
     m_presets.clear();
     m_presetsValidate.clear();
+    m_presetsDecision.clear();
     for (const ModelPreset &preset : all) {
         const QString profileId = preset.profileId.isEmpty() ? preset.id : preset.profileId;
         if (ModelProfiles::roleFor(profileId, QStringLiteral("ocr")))
             m_presets.append(preset);
         if (ModelProfiles::roleFor(profileId, QStringLiteral("blockRecognition")))
             m_presetsValidate.append(preset);
+        if (ModelProfiles::roleFor(profileId, QStringLiteral("decision")))
+            m_presetsDecision.append(preset);
     }
 
     m_ocrModels->refresh();
     m_checkModels->refresh();
+    m_decisionModels->refresh();
     emit presetsChanged();
 }
 
@@ -164,6 +194,7 @@ void ModelInstaller::refreshInstalled()
     ReconcileSelections selections;
     selections.modelPath = m_settings.launchModelPath();
     selections.checkModelPath = m_settings.checkLaunchModelPath();
+    selections.decisionModelPath = m_settings.decisionLaunchModelPath();
     selections.serverPath = m_settings.serverPath();
     selections.serverExists = QFileInfo::exists(m_settings.serverPath());
     m_installed = ModelRegistry::load(m_installState.paths().modelsDir(), rebuilt, err, &report, selections);
@@ -181,7 +212,7 @@ void ModelInstaller::syncProfileToActiveModel()
     for (const ModelEntry &e : m_installed) {
         if (e.modelPath.isEmpty() || e.modelPath != active || e.repo.isEmpty())
             continue;
-        m_settings.selectModelProfile(e.repo, QStringLiteral("ocr"), false);
+        m_settings.selectModelProfile(e.repo, QStringLiteral("ocr"));
         break;
     }
 }
@@ -208,7 +239,7 @@ void ModelInstaller::rescanRegistry()
     refreshInstalled();
 }
 
-QString ModelInstaller::setActiveModel(int index, bool forCheck)
+QString ModelInstaller::setActiveModel(int index, const QString &role)
 {
     if (index < 0 || index >= m_installed.size())
         return tr("Invalid model selection");
@@ -216,22 +247,11 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
     if (e.modelPath.isEmpty())
         return tr("This model has no model file selected");
 
-    if (forCheck) {
-        m_settings.setCheckLaunchModelPath(e.modelPath);
-        if (!e.mmprojPath.isEmpty())
-            m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
-        m_settings.setCheckLaunchDraftPath(e.draftPath);
-        m_settings.selectModelProfile(e.repo, QStringLiteral("blockRecognition"), true);
-        m_settings.forceSave();
-        publishInstalled();
-        return QString();
-    }
-
-    m_settings.setLaunchModelPath(e.modelPath);
+    m_settings.setLaunchModelPathForRole(role, e.modelPath);
     if (!e.mmprojPath.isEmpty())
-        m_settings.setLaunchMmprojPath(e.mmprojPath);
-    m_settings.setLaunchDraftPath(e.draftPath);
-    m_settings.selectModelProfile(e.repo, QStringLiteral("ocr"), false);
+        m_settings.setLaunchMmprojPathForRole(role, e.mmprojPath);
+    m_settings.setLaunchDraftPathForRole(role, e.draftPath);
+    m_settings.selectModelProfile(e.repo, role);
     m_settings.forceSave();
     publishInstalled();
     return QString();
@@ -241,51 +261,52 @@ void ModelInstaller::selectQuant(const QString &key, const QString &quantId)
 {
     if (quantId.isEmpty())
         return;
-    if (!m_ocrModels->hasQuant(key, quantId) && !m_checkModels->hasQuant(key, quantId))
+    if (!m_ocrModels->hasQuant(key, quantId) && !m_checkModels->hasQuant(key, quantId) && !m_decisionModels->hasQuant(key, quantId))
         return;
     m_settings.setSelectedQuant(key, quantId);
     m_ocrModels->refresh();
     m_checkModels->refresh();
+    m_decisionModels->refresh();
 }
 
-int ModelInstaller::installedIndexFor(const QString &key, const QString &quantId, bool forCheck) const
+int ModelInstaller::installedIndexFor(const QString &key, const QString &quantId, const QString &role) const
 {
-    return quantModel(forCheck)->entryIndexFor(key, quantId);
+    return quantModel(role)->entryIndexFor(key, quantId);
 }
 
-QString ModelInstaller::useQuant(const QString &key, const QString &quantId, bool forCheck)
+QString ModelInstaller::useQuant(const QString &key, const QString &quantId, const QString &role)
 {
-    const int index = installedIndexFor(key, quantId, forCheck);
+    const int index = installedIndexFor(key, quantId, role);
     if (index < 0)
         return tr("This quantization is not installed");
-    return setActiveModel(index, forCheck);
+    return setActiveModel(index, role);
 }
 
-void ModelInstaller::downloadQuant(const QString &key, const QString &quantId, bool forCheck)
+void ModelInstaller::downloadQuant(const QString &key, const QString &quantId, const QString &role)
 {
     if (m_busy)
         return;
-    const QList<ModelPreset> &presets = presetsForRole(forCheck);
-    const int preset = quantModel(forCheck)->presetIndexFor(key, quantId);
+    const QList<ModelPreset> &presets = presetsForRole(role);
+    const int preset = quantModel(role)->presetIndexFor(key, quantId);
     if (preset < 0 || preset >= presets.size()) {
         setStatusMessage(tr("This quantization is not available for download"));
         setState(State::Error);
         return;
     }
-    m_transaction->prepare(presets.at(preset), forCheck);
+    m_transaction->prepare(presets.at(preset), role);
 }
 
-QString ModelInstaller::removeQuant(const QString &key, const QString &quantId, bool forCheck)
+QString ModelInstaller::removeQuant(const QString &key, const QString &quantId, const QString &role)
 {
-    const int index = installedIndexFor(key, quantId, forCheck);
+    const int index = installedIndexFor(key, quantId, role);
     if (index < 0)
         return tr("This quantization is not installed");
     return removeModel(index);
 }
 
-QString ModelInstaller::removeModelRow(const QString &key, bool forCheck)
+QString ModelInstaller::removeModelRow(const QString &key, const QString &role)
 {
-    QList<int> targets = quantModel(forCheck)->entryIndexesFor(key);
+    QList<int> targets = quantModel(role)->entryIndexesFor(key);
     if (targets.isEmpty())
         return tr("This model is not installed");
 
@@ -293,7 +314,8 @@ QString ModelInstaller::removeModelRow(const QString &key, bool forCheck)
     const bool ready = m_runtime.state() == RuntimeState::Ready;
     for (int index : std::as_const(targets)) {
         const ModelEntry &entry = m_installed.at(index);
-        const bool active = !entry.modelPath.isEmpty() && (entry.modelPath == m_settings.launchModelPath() || entry.modelPath == m_settings.checkLaunchModelPath());
+        const bool active = !entry.modelPath.isEmpty() &&
+                            (entry.modelPath == m_settings.launchModelPath() || entry.modelPath == m_settings.checkLaunchModelPath() || entry.modelPath == m_settings.decisionLaunchModelPath());
         const QString guard = ModelRegistry::removalError(entry, paths.modelsDir(), active, ready);
         if (!guard.isEmpty())
             return guard;
@@ -309,9 +331,9 @@ QString ModelInstaller::removeModelRow(const QString &key, bool forCheck)
     return firstError;
 }
 
-QString ModelInstaller::openQuantFolder(const QString &key, const QString &quantId, bool forCheck)
+QString ModelInstaller::openQuantFolder(const QString &key, const QString &quantId, const QString &role)
 {
-    const int index = installedIndexFor(key, quantId, forCheck);
+    const int index = installedIndexFor(key, quantId, role);
     if (index < 0)
         return tr("This quantization is not installed");
     return openModelFolder(index);
@@ -322,7 +344,8 @@ QString ModelInstaller::removeModel(int index)
     if (index < 0 || index >= m_installed.size())
         return tr("Invalid model selection");
     const ModelEntry &e = m_installed.at(index);
-    const bool active = !e.modelPath.isEmpty() && (e.modelPath == m_settings.launchModelPath() || e.modelPath == m_settings.checkLaunchModelPath());
+    const bool active =
+        !e.modelPath.isEmpty() && (e.modelPath == m_settings.launchModelPath() || e.modelPath == m_settings.checkLaunchModelPath() || e.modelPath == m_settings.decisionLaunchModelPath());
     const bool ready = m_runtime.state() == RuntimeState::Ready;
     const RuntimePaths currentPaths = m_installState.paths();
     const QString guard = ModelRegistry::removalError(e, currentPaths.modelsDir(), active, ready);

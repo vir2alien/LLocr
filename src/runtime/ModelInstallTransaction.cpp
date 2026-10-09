@@ -204,11 +204,11 @@ void ModelInstallTransaction::retranslate()
     }
 }
 
-void ModelInstallTransaction::prepare(const ModelPreset &preset, bool forCheck)
+void ModelInstallTransaction::prepare(const ModelPreset &preset, const QString &role)
 {
     if (m_busy)
         return;
-    m_pendingForCheck = forCheck;
+    m_pendingRole = role;
     beginPrepare(preset);
 }
 
@@ -225,7 +225,7 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
 
     const QString token = m_settings.hfToken();
     const QString modelsDir = m_installState.paths().modelsDir();
-    const QString parser = preset.parserFor(m_pendingForCheck);
+    const QString parser = preset.parserFor(m_pendingRole);
 
     QFuture<QPair<InstallPlan, QString>> future = QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, parser, token, modelsDir]() -> QPair<InstallPlan, QString> {
         QNetworkAccessManager nam;
@@ -609,7 +609,7 @@ void ModelInstallTransaction::completeInstall()
             if (!e.roles.contains(r))
                 e.roles.append(r);
     }
-    const QString installRole = m_pendingForCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr");
+    const QString installRole = m_pendingRole;
     if (!e.roles.contains(installRole))
         e.roles.append(installRole);
 
@@ -658,18 +658,11 @@ void ModelInstallTransaction::completeInstall()
     }
     m_installed = updated;
 
-    if (m_pendingForCheck) {
-        m_settings.setCheckLaunchModelPath(e.modelPath);
-        if (!e.mmprojPath.isEmpty())
-            m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
-        m_settings.setCheckLaunchDraftPath(e.draftPath);
-    } else {
-        m_settings.setLaunchModelPath(e.modelPath);
-        if (!e.mmprojPath.isEmpty())
-            m_settings.setLaunchMmprojPath(e.mmprojPath);
-        m_settings.setLaunchDraftPath(e.draftPath);
-    }
-    m_settings.selectModelProfile(m_pending.repo, m_pendingForCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr"), m_pendingForCheck);
+    m_settings.setLaunchModelPathForRole(m_pendingRole, e.modelPath);
+    if (!e.mmprojPath.isEmpty())
+        m_settings.setLaunchMmprojPathForRole(m_pendingRole, e.mmprojPath);
+    m_settings.setLaunchDraftPathForRole(m_pendingRole, e.draftPath);
+    m_settings.selectModelProfile(m_pending.repo, m_pendingRole);
     m_settings.forceSave();
 
     setBusy(false);

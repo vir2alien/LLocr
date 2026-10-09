@@ -9,12 +9,12 @@ import "../Common"
 
 ApplicationWindow {
     id: window
+    // Model-profile role id: "ocr", "blockRecognition" or "decision".
     property string role: "ocr"
 
-    readonly property bool isVerifyModelRole: role === "check"
-
-    title: role === "check" ? qsTr("Block OCR model settings")
-                            : qsTr("OCR model settings")
+    title: role === "blockRecognition" ? qsTr("Block OCR model settings")
+         : role === "decision" ? qsTr("Decision model settings")
+         : qsTr("OCR model settings")
     width: 560
     height: 680
     modality: Qt.NonModal
@@ -97,7 +97,7 @@ ApplicationWindow {
 
             LocationTab {
                 id: locationTab
-                isVerifyModelRole: window.isVerifyModelRole
+                role: window.role
                 runtimeSettingsRef: window.runtimeSettingsRef
             }
 
@@ -109,7 +109,7 @@ ApplicationWindow {
 
             RequestTab {
                 id: requestTab
-                checkRole: window.isVerifyModelRole
+                role: window.role
             }
         }
     }//ColumnLayout

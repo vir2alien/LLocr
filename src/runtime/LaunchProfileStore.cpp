@@ -180,6 +180,11 @@ bool LaunchProfileStore::checkModelProfileMissing() const
     return modelNotInCatalog(modelIdForRole(QStringLiteral("blockRecognition")));
 }
 
+bool LaunchProfileStore::decisionModelProfileMissing() const
+{
+    return modelNotInCatalog(modelIdForRole(QStringLiteral("decision")));
+}
+
 QString LaunchProfileStore::modelRuntimeNote() const
 {
     return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("ocr")));
@@ -190,9 +195,18 @@ QString LaunchProfileStore::checkModelRuntimeNote() const
     return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("blockRecognition")));
 }
 
+QString LaunchProfileStore::decisionModelRuntimeNote() const
+{
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("decision")));
+}
+
 QString LaunchProfileStore::modelIdForRole(const QString &role) const
 {
-    return role == QLatin1String("blockRecognition") ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
+    if (role == QLatin1String("blockRecognition"))
+        return m_settings.checkRequestProfileId();
+    if (role == QLatin1String("decision"))
+        return m_settings.decisionRequestProfileId();
+    return m_settings.modelRecipeId();
 }
 
 void LaunchProfileStore::composeDraft()

@@ -63,6 +63,7 @@ Item {
                         id: rolePane
                         required property int index
                         readonly property bool forCheck: index === 1
+                        readonly property string role: forCheck ? "blockRecognition" : "ocr"
 
                         contentWidth: availableWidth
                         contentHeight: paneLayout.implicitHeight
@@ -103,7 +104,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: downloadList.implicitHeight
                                 maxVisibleRows: -1
-                                isVerifyModelRole: rolePane.forCheck
+                                role: rolePane.role
                                 onActionError: (msg) => statusLabel.text = msg
                                 onDownloadRequested: (title, quantId, license, runtimeNote) =>
                                         pickDialog.showFor(title, quantId, license, runtimeNote)

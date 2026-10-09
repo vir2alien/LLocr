@@ -16,6 +16,7 @@ ColumnLayout {
 
     function loadValues() {
         ocrModelNameField.text = Settings.modelName
+        decisionModelNameField.text = Settings.decisionModelName
         checkModelNameField.text = Settings.checkModelName
         baseUrlField.text = Settings.baseUrl
         apiKeyField.text  = Settings.apiKey
@@ -24,6 +25,7 @@ ColumnLayout {
 
     function saveValues() {
         Settings.modelName = ocrModelNameField.text;
+        Settings.decisionModelName = decisionModelNameField.text;
         Settings.checkModelName = checkModelNameField.text;
         Settings.baseUrl = baseUrlField.text;
         Settings.apiKey = apiKeyField.text;
@@ -50,6 +52,17 @@ ColumnLayout {
         implicitHeight: Theme.controlHeight
         selectByMouse: true
         placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
+    }
+
+    LLOLabel {
+        text: qsTr("Model name (decision)")
+    }
+    TextField {
+        id: decisionModelNameField
+        Layout.fillWidth: true
+        implicitHeight: Theme.controlHeight
+        selectByMouse: true
+        placeholderText: qsTr("e.g. d1-3b, or the id your server exposes")
     }
 
     LLOLabel {

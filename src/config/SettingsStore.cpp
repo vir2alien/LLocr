@@ -13,6 +13,11 @@ QString defaultCheckRequestProfileId()
     return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
 }
 
+QString defaultDecisionRequestProfileId()
+{
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("decision"));
+}
+
 }  // namespace
 
 const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
@@ -60,6 +65,12 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultCheckRequestProfileId())},
         {kCheckModelName, "checkModelName", QVariant(QString())},
         {kAutoCheck, "autoCheck", QVariant(false)},
+        {kDecisionLaunchModelPath, "decisionLaunchModelPath", QVariant(QString())},
+        {kDecisionLaunchMmprojPath, "decisionLaunchMmprojPath", QVariant(QString())},
+        {kDecisionLaunchDraftPath, "decisionLaunchDraftPath", QVariant(QString())},
+        {kDecisionRequestProfileId, "decisionRequestProfileId", QVariant(defaultDecisionRequestProfileId())},
+        {kDecisionModelName, "decisionModelName", QVariant(QString())},
+        {kDecisionMatchThreshold, "decisionMatchThreshold", QVariant(kDefaultDecisionMatchThreshold)},
         {kHfToken, "hfToken", QVariant(QString())},
         {kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString())},
     };
@@ -104,6 +115,7 @@ void SettingsStore::applyStartupMigration()
 
     resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
     resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("blockRecognition"));
+    resolveStoredModelId(kDecisionRequestProfileId, QStringLiteral("decision"));
 
     if (m_settings.value(kParserId).toString() == QLatin1String("det_tokens")) {
         QString resolved = QString::fromUtf8(kDefaultParserId);
@@ -159,7 +171,7 @@ void SettingsStore::resetRuntimeDefaults()
 {
     resetGroup([](const QString &key) {
         return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/apiKey") || key == QLatin1String("provider/timeoutMs") ||
-               key == QLatin1String("model/name") || key == QLatin1String("check/modelName") || key == QLatin1String("runtime/serverPath");
+               key == QLatin1String("model/name") || key == QLatin1String("check/modelName") || key == QLatin1String("decision/modelName") || key == QLatin1String("runtime/serverPath");
     });
 }
 
@@ -238,13 +250,15 @@ void SettingsStore::setModelRecipeId(const QString &recipeId)
     emit modelRecipeIdChanged();
 }
 
-void SettingsStore::selectModelProfile(const QString &repo, const QString &role, bool forCheck)
+void SettingsStore::selectModelProfile(const QString &repo, const QString &role)
 {
     const QString profileId = ModelProfiles::idForRepo(ModelProfiles::instance(), repo);
     if (profileId.isEmpty() || !ModelProfiles::roleFor(profileId, role))
         return;
-    if (forCheck)
+    if (role == QLatin1String("blockRecognition"))
         setCheckRequestProfileId(profileId);
+    else if (role == QLatin1String("decision"))
+        setDecisionRequestProfileId(profileId);
     else
         setModelRecipeId(profileId);
 }
@@ -787,6 +801,162 @@ void SettingsStore::setAutoCheck(bool on)
         return;
     m_settings.setValue(kAutoCheck, on);
     emit autoCheckChanged();
+}
+
+QString SettingsStore::decisionLaunchModelPath() const
+{
+    return m_settings.value(kDecisionLaunchModelPath).toString();
+}
+
+void SettingsStore::setDecisionLaunchModelPath(const QString &path)
+{
+    if (decisionLaunchModelPath() == path)
+        return;
+    m_settings.setValue(kDecisionLaunchModelPath, path);
+    emit decisionLaunchModelPathChanged();
+}
+
+QString SettingsStore::decisionLaunchMmprojPath() const
+{
+    return m_settings.value(kDecisionLaunchMmprojPath).toString();
+}
+
+void SettingsStore::setDecisionLaunchMmprojPath(const QString &path)
+{
+    if (decisionLaunchMmprojPath() == path)
+        return;
+    m_settings.setValue(kDecisionLaunchMmprojPath, path);
+    emit decisionLaunchMmprojPathChanged();
+}
+
+QString SettingsStore::decisionLaunchDraftPath() const
+{
+    return m_settings.value(kDecisionLaunchDraftPath).toString();
+}
+
+void SettingsStore::setDecisionLaunchDraftPath(const QString &path)
+{
+    if (decisionLaunchDraftPath() == path)
+        return;
+    m_settings.setValue(kDecisionLaunchDraftPath, path);
+    emit decisionLaunchDraftPathChanged();
+}
+
+QString SettingsStore::decisionRequestProfileId() const
+{
+    const QString stored = m_settings.value(kDecisionRequestProfileId).toString();
+    return stored.isEmpty() ? defaultDecisionRequestProfileId() : stored;
+}
+
+void SettingsStore::setDecisionRequestProfileId(const QString &id)
+{
+    if (decisionRequestProfileId() == id)
+        return;
+    m_settings.setValue(kDecisionRequestProfileId, id);
+    emit decisionRequestProfileIdChanged();
+}
+
+QString SettingsStore::decisionModelName() const
+{
+    return m_settings.value(kDecisionModelName).toString();
+}
+
+void SettingsStore::setDecisionModelName(const QString &name)
+{
+    if (decisionModelName() == name)
+        return;
+    m_settings.setValue(kDecisionModelName, name);
+    emit decisionModelNameChanged();
+}
+
+double SettingsStore::decisionMatchThreshold() const
+{
+    const double v = m_settings.value(kDecisionMatchThreshold, kDefaultDecisionMatchThreshold).toDouble();
+    return qBound(0.0, v, 1.0);
+}
+
+void SettingsStore::setDecisionMatchThreshold(double threshold)
+{
+    threshold = qBound(0.0, threshold, 1.0);
+    if (decisionMatchThreshold() == threshold)
+        return;
+    m_settings.setValue(kDecisionMatchThreshold, threshold);
+    emit decisionMatchThresholdChanged();
+}
+
+QString SettingsStore::launchModelPathForRole(const QString &role) const
+{
+    if (role == QLatin1String("blockRecognition"))
+        return checkLaunchModelPath();
+    if (role == QLatin1String("decision"))
+        return decisionLaunchModelPath();
+    return launchModelPath();
+}
+
+void SettingsStore::setLaunchModelPathForRole(const QString &role, const QString &path)
+{
+    if (role == QLatin1String("blockRecognition"))
+        setCheckLaunchModelPath(path);
+    else if (role == QLatin1String("decision"))
+        setDecisionLaunchModelPath(path);
+    else
+        setLaunchModelPath(path);
+}
+
+QString SettingsStore::launchMmprojPathForRole(const QString &role) const
+{
+    if (role == QLatin1String("blockRecognition"))
+        return checkLaunchMmprojPath();
+    if (role == QLatin1String("decision"))
+        return decisionLaunchMmprojPath();
+    return launchMmprojPath();
+}
+
+void SettingsStore::setLaunchMmprojPathForRole(const QString &role, const QString &path)
+{
+    if (role == QLatin1String("blockRecognition"))
+        setCheckLaunchMmprojPath(path);
+    else if (role == QLatin1String("decision"))
+        setDecisionLaunchMmprojPath(path);
+    else
+        setLaunchMmprojPath(path);
+}
+
+QString SettingsStore::launchDraftPathForRole(const QString &role) const
+{
+    if (role == QLatin1String("blockRecognition"))
+        return checkLaunchDraftPath();
+    if (role == QLatin1String("decision"))
+        return decisionLaunchDraftPath();
+    return launchDraftPath();
+}
+
+void SettingsStore::setLaunchDraftPathForRole(const QString &role, const QString &path)
+{
+    if (role == QLatin1String("blockRecognition"))
+        setCheckLaunchDraftPath(path);
+    else if (role == QLatin1String("decision"))
+        setDecisionLaunchDraftPath(path);
+    else
+        setLaunchDraftPath(path);
+}
+
+QString SettingsStore::requestProfileIdForRole(const QString &role) const
+{
+    if (role == QLatin1String("blockRecognition"))
+        return checkRequestProfileId();
+    if (role == QLatin1String("decision"))
+        return decisionRequestProfileId();
+    return modelRecipeId();
+}
+
+QString SettingsStore::modelNameForRole(const QString &role) const
+{
+    if (role == QLatin1String("blockRecognition"))
+        return checkModelName();
+    if (role == QLatin1String("decision"))
+        return decisionModelName();
+    return modelName();
 }
 
 QString SettingsStore::launchProfileId() const

@@ -152,9 +152,11 @@ private:
 
     // The file a row points at, read back through the installer's own list — the
     // row is a model, the registry index belongs to one of its quantizations.
-    static QString pathOf(ModelInstaller &installer, const QString &key, bool forCheck = false)
+    static QString pathOf(ModelInstaller &installer, const QString &key, const QString &role = QStringLiteral("ocr"))
     {
-        auto *model = qobject_cast<ModelQuantModel *>(forCheck ? installer.checkQuantModels() : installer.quantModels());
+        auto *model = qobject_cast<ModelQuantModel *>(role == QLatin1String("blockRecognition") ? installer.checkQuantModels()
+                                                      : role == QLatin1String("decision")       ? installer.decisionQuantModels()
+                                                                                                : installer.quantModels());
         const QList<int> indexes = model->entryIndexesFor(key);
         return indexes.isEmpty() ? QString() : installer.installedEntries().at(indexes.first()).modelPath;
     }
@@ -358,6 +360,7 @@ private slots:
 
         auto *ocr = ocrModels(*s->installer);
         auto *check = checkModels(*s->installer);
+        auto *decision = qobject_cast<ModelQuantModel *>(s->installer->decisionQuantModels());
 
         QStringList ocrKeys;
         for (int i = 0; i < ocr->rowCount(); ++i)
@@ -368,6 +371,13 @@ private slots:
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
         QCOMPARE(checkKeys, QStringList({QStringLiteral("lfm25-vl-3b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("teleocr")}));
+
+        // The decision list serves the decision role only.
+        QStringList decisionKeys;
+        for (int i = 0; i < decision->rowCount(); ++i)
+            decisionKeys.append(roleAt(decision, i, ModelQuantModel::KeyRole).toString());
+        QCOMPARE(decisionKeys, QStringList({QStringLiteral("d1-3b")}));
+        QVERIFY(pathOf(*s->installer, QStringLiteral("d1-3b"), QStringLiteral("decision")).isEmpty());
 
         // TeleOCR answers both roles and offers the quantizations its profile
         // declares — the shipped file is the source here, not a copy of it, so an
@@ -627,8 +637,8 @@ private slots:
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 4);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_ocr")), ocrPath);
-        QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), true), textPath);
-        QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), true), verifierPath);
+        QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), QStringLiteral("blockRecognition")), textPath);
+        QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), QStringLiteral("blockRecognition")), verifierPath);
 
         // A quantization of a model the user brought resolves back to the
         // installer's own index, which is what activate / delete act on.
@@ -835,15 +845,15 @@ private slots:
         RuntimeController runtime(settings, launchProfiles);
         ModelInstaller installer(settings, runtime, installed);
 
-        QVERIFY(installer.setActiveModel(0, true).isEmpty());
+        QVERIFY(installer.setActiveModel(0, QStringLiteral("blockRecognition")).isEmpty());
         QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
         // The same family does not answer the ocr role, so the ocr selection
         // stays where it was rather than following the file.
-        QVERIFY(installer.setActiveModel(0, false).isEmpty());
+        QVERIFY(installer.setActiveModel(0).isEmpty());
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("unlimited-ocr"));
 
-        QVERIFY(installer.setActiveModel(1, false).isEmpty());
+        QVERIFY(installer.setActiveModel(1).isEmpty());
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
     }
 

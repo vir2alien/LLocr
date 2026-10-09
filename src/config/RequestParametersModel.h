@@ -10,6 +10,7 @@ namespace llocr {
 class RequestParametersModel : public QAbstractListModel
 {
     Q_OBJECT
+    Q_PROPERTY(int count READ rowCount NOTIFY countChanged)
 
 public:
     enum Roles {
@@ -30,6 +31,9 @@ public:
 
     void resetFrom(const QList<RequestParameter> &parameters);
     bool setValue(int row, const QString &text);
+
+signals:
+    void countChanged();
 
 private:
     QList<RequestParameter> m_parameters;

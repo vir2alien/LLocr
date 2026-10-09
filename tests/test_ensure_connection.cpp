@@ -123,16 +123,19 @@ private slots:
         settings.setBaseUrl(QStringLiteral("http://custom.example:9000"));
         settings.setModelName(QStringLiteral("ocr-model"));
         settings.setCheckModelName(QStringLiteral("check-model"));
+        settings.setDecisionModelName(QStringLiteral("decision-model"));
 
         RuntimeController runtime(settings, launchProfiles);
-        ResolvedConnection ocr, check;
+        ResolvedConnection ocr, check, decision;
         runtime.ensureConnectionReady(ConnectionRole::Ocr, [&](const ResolvedConnection &c) { ocr = c; });
         runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { check = c; });
+        runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) { decision = c; });
         QCOMPARE(ocr.modelId, QStringLiteral("ocr-model"));
         QCOMPARE(check.modelId, QStringLiteral("check-model"));
-        QCOMPARE(check.baseUrl, ocr.baseUrl);
-        QCOMPARE(check.apiKey, ocr.apiKey);
-        QCOMPARE(check.timeoutMs, ocr.timeoutMs);
+        QCOMPARE(decision.modelId, QStringLiteral("decision-model"));
+        QCOMPARE(decision.baseUrl, ocr.baseUrl);
+        QCOMPARE(decision.apiKey, ocr.apiKey);
+        QCOMPARE(decision.timeoutMs, ocr.timeoutMs);
 
         // An empty check/modelName is sent as-is: single-model servers (e.g.
         // llama-server) ignore the model field entirely, and a multi-model
@@ -142,6 +145,70 @@ private slots:
         ResolvedConnection empty;
         runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { empty = c; });
         QVERIFY(empty.modelId.isEmpty());
+    }
+
+    // The decision model has its own weights, so a resolve for the decision
+    // role stops the server the OCR role started and restarts it with the
+    // decision model (ADR 74, per-role config).
+    void managedDecisionRoleSwitchesServer()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile ocrModel(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        QVERIFY(ocrModel.open(QIODevice::WriteOnly));
+        ocrModel.write("ocr");
+        ocrModel.close();
+        QFile decisionModel(dir.filePath(QStringLiteral("decision-Q8_0.gguf")));
+        QVERIFY(decisionModel.open(QIODevice::WriteOnly));
+        decisionModel.write("decision");
+        decisionModel.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        store.setDecisionLaunchModelPath(dir.filePath(QStringLiteral("decision-Q8_0.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        int first = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
+        QTRY_VERIFY_WITH_TIMEOUT(first == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+
+        QList<int> states;
+        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() { states.append(int(runtime.state())); });
+
+        int done = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+        QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
+        QVERIFY(!resolved.baseUrl.isEmpty());
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)), "expected the server to be stopped for the role switch");
+
+        states.clear();
+        int done2 = 0;
+        ResolvedConnection resolved2;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            resolved2 = c;
+            ++done2;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(done2 == 1, 15000);
+        QVERIFY2(resolved2.error.isEmpty(), qPrintable(resolved2.error));
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)), "expected a restart switching back to the OCR model");
+
+        runtime.stopServer();
     }
 
     // Model per task (ADR 74): when the live managed server carries another
@@ -514,6 +581,11 @@ private slots:
         ResolvedConnection resolved2;
         runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { resolved2 = c; });
         QVERIFY2(resolved2.error.contains(QStringLiteral("gone.gguf")), qPrintable(resolved2.error));
+
+        // The decision role refuses the same way, naming its own window.
+        ResolvedConnection resolved3;
+        runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) { resolved3 = c; });
+        QVERIFY2(resolved3.error.contains(QStringLiteral("Decision model"), Qt::CaseInsensitive), qPrintable(resolved3.error));
     }
 
     // The probe spawns the binary and waits for it — up to two minutes on a

@@ -78,8 +78,8 @@ quantOf(const QList<ModelEntry> &installed, const QList<ModelPreset> &presets, c
 
 }  // namespace
 
-ModelQuantModel::ModelQuantModel(ModelInstaller &installer, SettingsStore &settings, bool forCheck, QObject *parent)
-    : QAbstractListModel(parent), m_installer(installer), m_settings(settings), m_forCheck(forCheck)
+ModelQuantModel::ModelQuantModel(ModelInstaller &installer, SettingsStore &settings, QString role, QObject *parent)
+    : QAbstractListModel(parent), m_installer(installer), m_settings(settings), m_role(std::move(role))
 {
 }
 
@@ -188,12 +188,11 @@ void ModelQuantModel::refresh()
 
 QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
 {
-    const QString role = m_forCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr");
-    const QString activePath = m_forCheck ? m_settings.checkLaunchModelPath() : m_settings.launchModelPath();
-    const QList<ModelPreset> &presets = m_installer.presetsForRole(m_forCheck);
+    const QString activePath = m_settings.launchModelPathForRole(m_role);
+    const QList<ModelPreset> &presets = m_installer.presetsForRole(m_role);
     const QList<ModelEntry> &installed = m_installer.installedEntries();
 
-    const QList<ModelProfiles::Profile> profiles = ModelProfiles::forRole(ModelProfiles::instance(), role);
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::forRole(ModelProfiles::instance(), m_role);
     QList<Row> rows;
     for (const ModelProfiles::Profile &profile : std::as_const(profiles)) {
         Row row;
@@ -215,7 +214,7 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
             const QString stem = modelStem(entry.modelPath);
             if (entry.repo != profile.files.repo || covered.contains(stem))
                 continue;
-            if (!matchesRole(entry, m_settings, m_forCheck))
+            if (!matchesRole(entry, m_settings, m_role))
                 continue;
             row.quants.append(quantOf(installed, presets, profile.id, profile.files.repo, stem, quantLabelOf(entry), activePath));
             covered.insert(stem);
@@ -228,7 +227,7 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
         const ModelEntry &entry = installed.at(i);
         if (!entry.repo.isEmpty() && !ModelProfiles::idForRepo(ModelProfiles::instance(), entry.repo).isEmpty())
             continue;
-        if (!matchesRole(entry, m_settings, m_forCheck))
+        if (!matchesRole(entry, m_settings, m_role))
             continue;
         Row row;
         row.key = entry.id;
@@ -341,19 +340,22 @@ int ModelQuantModel::presetIndexFor(const QString &key, const QString &quantId) 
     return quant ? quant->presetIndex : -1;
 }
 
-bool ModelQuantModel::matchesRole(const ModelEntry &entry, const SettingsStore &settings, bool forCheck)
+bool ModelQuantModel::matchesRole(const ModelEntry &entry, const SettingsStore &settings, const QString &role)
 {
-    const bool ocrActive = !entry.modelPath.isEmpty() && entry.modelPath == settings.launchModelPath();
-    const bool checkActive = !entry.modelPath.isEmpty() && entry.modelPath == settings.checkLaunchModelPath();
-
-    if (forCheck ? checkActive : ocrActive)
+    const bool active = !entry.modelPath.isEmpty() && entry.modelPath == settings.launchModelPathForRole(role);
+    if (active)
         return true;
     if (!entry.roles.isEmpty())
-        return entry.roles.contains(forCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr"));
+        return entry.roles.contains(role);
+    // Legacy entries carry no role tags; they predate the decision role, so
+    // only the two recognition roles get the vision-capability heuristic.
+    if (role != QLatin1String("ocr") && role != QLatin1String("blockRecognition"))
+        return false;
+    const bool checkActive = !entry.modelPath.isEmpty() && entry.modelPath == settings.checkLaunchModelPath();
     if (checkActive)
         return false;
     const bool vision = !entry.mmprojPath.isEmpty();
-    return forCheck ? !vision : vision;
+    return role == QLatin1String("blockRecognition") ? !vision : vision;
 }
 
 QString ModelQuantModel::displayTitle(const ModelEntry &entry)

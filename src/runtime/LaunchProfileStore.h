@@ -23,8 +23,10 @@ class LaunchProfileStore : public QObject
     Q_PROPERTY(QString activeProfileId READ activeProfileId NOTIFY activeProfileChanged)
     Q_PROPERTY(bool modelProfileMissing READ modelProfileMissing NOTIFY profileChanged)
     Q_PROPERTY(bool checkModelProfileMissing READ checkModelProfileMissing NOTIFY profileChanged)
+    Q_PROPERTY(bool decisionModelProfileMissing READ decisionModelProfileMissing NOTIFY profileChanged)
     Q_PROPERTY(QString modelRuntimeNote READ modelRuntimeNote NOTIFY profileChanged)
     Q_PROPERTY(QString checkModelRuntimeNote READ checkModelRuntimeNote NOTIFY profileChanged)
+    Q_PROPERTY(QString decisionModelRuntimeNote READ decisionModelRuntimeNote NOTIFY profileChanged)
 
 public:
     explicit LaunchProfileStore(SettingsStore &settings, const QString &builtInPath = QString::fromUtf8(LaunchProfile::kBuiltInPath), QObject *parent = nullptr);
@@ -37,9 +39,11 @@ public:
 
     bool modelProfileMissing() const;
     bool checkModelProfileMissing() const;
+    bool decisionModelProfileMissing() const;
 
     QString modelRuntimeNote() const;
     QString checkModelRuntimeNote() const;
+    QString decisionModelRuntimeNote() const;
     void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     Q_INVOKABLE bool hasUserProfile() const;

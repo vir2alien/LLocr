@@ -15,14 +15,30 @@ constexpr int kSchemaVersion = 2;
 
 QString userFileName(RequestProfileStore::Role role)
 {
-    // The file name predates the role rename (check → blockRecognition); it
-    // stays so existing user profiles survive the update.
-    return role == RequestProfileStore::Role::BlockRecognition ? QStringLiteral("requestValidate.json") : QStringLiteral("request.json");
+    // The check file name predates the role rename (check → blockRecognition);
+    // it stays so existing user profiles survive the update.
+    switch (role) {
+    case RequestProfileStore::Role::BlockRecognition:
+        return QStringLiteral("requestValidate.json");
+    case RequestProfileStore::Role::Decision:
+        return QStringLiteral("requestDecision.json");
+    case RequestProfileStore::Role::Ocr:
+        break;
+    }
+    return QStringLiteral("request.json");
 }
 
 QString roleName(RequestProfileStore::Role role)
 {
-    return role == RequestProfileStore::Role::BlockRecognition ? QStringLiteral("blockRecognition") : QStringLiteral("ocr");
+    switch (role) {
+    case RequestProfileStore::Role::BlockRecognition:
+        return QStringLiteral("blockRecognition");
+    case RequestProfileStore::Role::Decision:
+        return QStringLiteral("decision");
+    case RequestProfileStore::Role::Ocr:
+        break;
+    }
+    return QStringLiteral("ocr");
 }
 }  // namespace
 
@@ -36,6 +52,8 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QOb
 
     if (m_role == Role::BlockRecognition) {
         connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
+    } else if (m_role == Role::Decision) {
+        connect(&m_settings, &SettingsStore::decisionRequestProfileIdChanged, this, [this] { followActiveProfile(); });
     } else {
         connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
     }
@@ -68,7 +86,18 @@ bool RequestProfileStore::hasUserProfile() const
 
 QString RequestProfileStore::activeProfileId() const
 {
-    const QString id = m_role == Role::BlockRecognition ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
+    QString id;
+    switch (m_role) {
+    case Role::BlockRecognition:
+        id = m_settings.checkRequestProfileId();
+        break;
+    case Role::Decision:
+        id = m_settings.decisionRequestProfileId();
+        break;
+    case Role::Ocr:
+        id = m_settings.modelRecipeId();
+        break;
+    }
     if (m_profiles->isKnown(id))
         return id;
     if (!m_profiles->builtIn().isEmpty())

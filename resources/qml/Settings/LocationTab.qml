@@ -9,19 +9,22 @@ import "../Common"
 
 Item {
     id: root
-    property bool isVerifyModelRole: false
+    // Model-profile role id: "ocr", "blockRecognition" or "decision".
+    property string role: "ocr"
     property var runtimeSettingsRef: null
 
     readonly property bool externalMode: Settings.connectionMode === "external"
 
-    readonly property string activeTitleText: isVerifyModelRole
-        ? ModelInstaller.checkActiveTitle : ModelInstaller.activeTitle
+    readonly property string activeTitleText: role === "blockRecognition" ? ModelInstaller.checkActiveTitle
+                                            : role === "decision" ? ModelInstaller.decisionActiveTitle
+                                            : ModelInstaller.activeTitle
 
-    readonly property var profileList: isVerifyModelRole
-        ? RequestProfilesValidate.profileModel : RequestProfilesOcr.profileModel
-    readonly property string activeProfileId: isVerifyModelRole
-        ? Settings.checkRequestProfileId
-        : Settings.modelRecipeId
+    readonly property var profileList: role === "blockRecognition" ? RequestProfilesValidate.profileModel
+                                     : role === "decision" ? RequestProfilesDecision.profileModel
+                                     : RequestProfilesOcr.profileModel
+    readonly property string activeProfileId: role === "blockRecognition" ? Settings.checkRequestProfileId
+                                            : role === "decision" ? Settings.decisionRequestProfileId
+                                            : Settings.modelRecipeId
 
     function syncProfileBox() {
         const row = profileList.rowOfId(root.activeProfileId)
@@ -69,10 +72,13 @@ Item {
                         target: Settings
                         function onModelRecipeIdChanged() { root.syncProfileBox() }
                         function onCheckRequestProfileIdChanged() { root.syncProfileBox() }
+                        function onDecisionRequestProfileIdChanged() { root.syncProfileBox() }
                     }
                     onActivated: {
-                        if (root.isVerifyModelRole)
+                        if (root.role === "blockRecognition")
                             Settings.checkRequestProfileId = profileBox.currentValue
+                        else if (root.role === "decision")
+                            Settings.decisionRequestProfileId = profileBox.currentValue
                         else
                             Settings.modelRecipeId = profileBox.currentValue
                     }
@@ -128,7 +134,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: downloadList.implicitHeight
                     maxVisibleRows: -1
-                    isVerifyModelRole: root.isVerifyModelRole
+                    role: root.role
                     onActionError: (msg) => statusMsg.text = msg
                     onDownloadRequested: (title, quantId, license, runtimeNote) =>
                         pickDialog.showFor(title, quantId, license, runtimeNote)

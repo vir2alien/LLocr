@@ -13,9 +13,10 @@ struct ReconcileInput {
     QList<ModelEntry> disk;   ///< what a scan of the models directory found
     bool diskAvailable = true;
 
-    QString selectedModelPath;       ///< settings: launch/launchModelPath
-    QString selectedCheckModelPath;  ///< settings: launch/checkLaunchModelPath
-    QString selectedServerPath;      ///< settings: launch/serverPath
+    QString selectedModelPath;          ///< settings: launch/launchModelPath
+    QString selectedCheckModelPath;     ///< settings: launch/checkLaunchModelPath
+    QString selectedDecisionModelPath;  ///< settings: decision/modelPath
+    QString selectedServerPath;         ///< settings: launch/serverPath
     bool selectedServerExists = false;
 };
 
@@ -35,6 +36,7 @@ struct ReconcileResult {
 struct ReconcileSelections {
     QString modelPath;
     QString checkModelPath;
+    QString decisionModelPath;
     QString serverPath;
     bool serverExists = false;
 };

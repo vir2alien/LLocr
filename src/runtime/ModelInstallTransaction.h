@@ -44,7 +44,7 @@ public:
 
     void setInstalled(const QList<ModelEntry> &installed) { m_installed = installed; }
 
-    void prepare(const ModelPreset &preset, bool forCheck);
+    void prepare(const ModelPreset &preset, const QString &role);
     void installPrepared();
     void cancel();
     void retranslate();
@@ -111,7 +111,7 @@ private:
     QString m_installDir;
     std::unique_ptr<StagedInstall> m_staging;
     std::unique_ptr<InstallLockGuard> m_lock;
-    bool m_pendingForCheck = false;  // install auto-activates the check model
+    QString m_pendingRole = QStringLiteral("ocr");  // install auto-activates this role
     int m_prepareGeneration = 0;
     QList<ModelEntry> m_installed;
 };

@@ -105,10 +105,12 @@ private slots:
         QCOMPARE(store.connectionTimeoutMs(), 120000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.checkModelName(), QString());
+        QCOMPARE(store.decisionModelName(), QString());
         // "auto" — the OCR model adapter declares its parser (ADR 88).
         QCOMPARE(store.parserId(), QStringLiteral("auto"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.autoCheck(), false);
+        QCOMPARE(store.decisionMatchThreshold(), 0.5);
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
         QCOMPARE(store.splitPages(), true);
@@ -319,6 +321,46 @@ private slots:
         QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
     }
 
+    // Same fallback rule as the check role: the decision profile id is the id
+    // of its model profile, and nothing is stored until the user picks one.
+    void decisionRoleResolvesAModelProfileWithoutOneStored()
+    {
+        QSettings pre;
+        pre.remove(QStringLiteral("decision/requestProfileId"));
+
+        const SettingsStore store;
+        const QStringList decisionModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("decision"));
+        QVERIFY(!decisionModels.isEmpty());
+        QCOMPARE(store.decisionRequestProfileId(), decisionModels.constFirst());
+        QVERIFY(!store.contains(QStringLiteral("decision/requestProfileId")));
+
+        SettingsStore chosen;
+        chosen.setDecisionRequestProfileId(decisionModels.constFirst());
+        QCOMPARE(chosen.decisionRequestProfileId(), decisionModels.constFirst());
+    }
+
+    // The threshold arrives from a 0–100 spin box and an INI that can be
+    // hand-edited: values outside [0, 1] are clamped wherever they come from.
+    void decisionMatchThresholdClampsAndRoundTrips()
+    {
+        SettingsStore store;
+        QCOMPARE(store.decisionMatchThreshold(), 0.5);
+
+        store.setDecisionMatchThreshold(0.75);
+        QCOMPARE(store.decisionMatchThreshold(), 0.75);
+        store.setDecisionMatchThreshold(0.75);  // no-op, no signal spam
+
+        store.setDecisionMatchThreshold(-1.0);
+        QCOMPARE(store.decisionMatchThreshold(), 0.0);
+        store.setDecisionMatchThreshold(2.0);
+        QCOMPARE(store.decisionMatchThreshold(), 1.0);
+
+        QSettings pre;
+        pre.setValue(QStringLiteral("decision/matchThreshold"), 7.0);
+        const SettingsStore reopened;
+        QCOMPARE(reopened.decisionMatchThreshold(), 1.0);
+    }
+
     // The parser family split into one parser per model, so the id that named
     // the shared parser is retired. A stored one is resolved to the parser the
     // selected model declares — after the model id itself is normalized, so a
@@ -430,27 +472,27 @@ private slots:
         store.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
         store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
 
-        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("ocr"), false);
+        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("ocr"));
         QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
 
         // The same family also answers the check role — LFM2.5-VL is a
         // general-purpose VL model, so activation as the verifier follows its
         // own profile just the same.
-        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("blockRecognition"), true);
+        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("blockRecognition"));
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
 
-        store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("blockRecognition"), true);
+        store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("blockRecognition"));
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
         // A family that does not answer the check role (OCR-only) leaves the
         // selection alone.
-        store.selectModelProfile(QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"), QStringLiteral("blockRecognition"), true);
+        store.selectModelProfile(QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"), QStringLiteral("blockRecognition"));
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
         // A hand-picked GGUF joins to nothing.
         store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
-        store.selectModelProfile(QString(), QStringLiteral("ocr"), false);
-        store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("ocr"), false);
+        store.selectModelProfile(QString(), QStringLiteral("ocr"));
+        store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("ocr"));
         QCOMPARE(store.modelRecipeId(), QStringLiteral("unlimited-ocr"));
     }
 

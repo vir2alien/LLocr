@@ -859,6 +859,11 @@
         <source>Block OCR model</source>
         <translation>Модель OCR блока</translation>
     </message>
+    <message>
+        <location line="+2"/>
+        <source>Decision model</source>
+        <translation>Модель decision</translation>
+    </message>
 </context>
 <context>
     <name>HfSearchList</name>
@@ -1403,6 +1408,10 @@
         <location line="-1"/>
         <source>Block OCR model settings</source>
         <translation>Настройки модели OCR блока</translation>
+    </message>
+    <message>
+        <source>Decision model settings</source>
+        <translation>Настройки модели decision</translation>
     </message>
     <message>
         <source>Location</source>
@@ -2618,8 +2627,24 @@
         <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом проверки; см. документацию llama-server</translation>
     </message>
     <message>
-        <source>Sampling parameters sent with every check request. The set comes from the model profile — edit the values, not the list.</source>
-        <translation>Параметры сэмплирования, отправляемые с каждым запросом проверки. Набор задаёт профиль модели — меняйте значения, а не список</translation>
+        <source>Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания блока. Набор задаёт профиль модели — меняйте значения, а не список</translation>
+    </message>
+    <message>
+        <source>Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры запроса к decision-эндпоинту. Набор задаёт профиль модели — меняйте значения, а не список</translation>
+    </message>
+    <message>
+        <source>Match threshold (%)</source>
+        <translation>Порог совпадения (%)</translation>
+    </message>
+    <message>
+        <source>The decision model answers with the probability that the text matches the image. A block counts as correct when the probability reaches this threshold; the rest are re-recognized when automatic re-recognition is on.</source>
+        <translation>Модель decision отвечает вероятностью того, что текст соответствует изображению. Блок считается правильным, если вероятность достигла порога; остальные повторно распознаются, если включено автоматическое повторное распознавание.</translation>
+    </message>
+    <message>
+        <source>The decision model answers in a single forward pass and generates no text, so it has no sampling parameters — the threshold above is its only setting here.</source>
+        <translation>Модель decision отвечает за один проход и не генерирует текста, поэтому параметров сэмплирования у неё нет — порог выше является единственной настройкой здесь.</translation>
     </message>
 </context>
 <context>
@@ -2748,6 +2773,14 @@
         <location line="+4"/>
         <source>Model name (block OCR)</source>
         <translation>Название модели OCR блока</translation>
+    </message>
+    <message>
+        <source>Model name (decision)</source>
+        <translation>Название модели decision</translation>
+    </message>
+    <message>
+        <source>e.g. d1-3b, or the id your server exposes</source>
+        <translation>например, d1-3b или id, который отдаёт ваш сервер</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -4919,6 +4952,10 @@
         <translation>Переключение на модель OCR блока…</translation>
     </message>
     <message>
+        <source>Switching to the decision model…</source>
+        <translation>Переключение на модель decision…</translation>
+    </message>
+    <message>
         <location line="+0"/>
         <source>Switching to the OCR model…</source>
         <translation>Переключение на OCR-модель…</translation>
@@ -4932,6 +4969,14 @@
         <location line="+2"/>
         <source>Block OCR model file not found: %1 — re-select the model in Settings → Block OCR model</source>
         <translation>Файл модели OCR блока не найден: %1 — выберите модель заново в Settings → Модель OCR блока</translation>
+    </message>
+    <message>
+        <source>Decision model is not selected — pick a model in Settings → Decision model</source>
+        <translation>Модель decision не выбрана — выберите её в Settings → Модель decision</translation>
+    </message>
+    <message>
+        <source>Decision model file not found: %1 — re-select the model in Settings → Decision model</source>
+        <translation>Файл модели decision не найден: %1 — выберите модель заново в Settings → Модель decision</translation>
     </message>
 </context>
 <context>

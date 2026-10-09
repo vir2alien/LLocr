@@ -65,6 +65,13 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
     Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
 
+    Q_PROPERTY(QString decisionLaunchModelPath READ decisionLaunchModelPath WRITE setDecisionLaunchModelPath NOTIFY decisionLaunchModelPathChanged)
+    Q_PROPERTY(QString decisionLaunchMmprojPath READ decisionLaunchMmprojPath WRITE setDecisionLaunchMmprojPath NOTIFY decisionLaunchMmprojPathChanged)
+    Q_PROPERTY(QString decisionLaunchDraftPath READ decisionLaunchDraftPath WRITE setDecisionLaunchDraftPath NOTIFY decisionLaunchDraftPathChanged)
+    Q_PROPERTY(QString decisionRequestProfileId READ decisionRequestProfileId WRITE setDecisionRequestProfileId NOTIFY decisionRequestProfileIdChanged)
+    Q_PROPERTY(QString decisionModelName READ decisionModelName WRITE setDecisionModelName NOTIFY decisionModelNameChanged)
+    Q_PROPERTY(double decisionMatchThreshold READ decisionMatchThreshold WRITE setDecisionMatchThreshold NOTIFY decisionMatchThresholdChanged)
+
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
 
 public:
@@ -99,7 +106,7 @@ public:
     QString modelRecipeId() const;
     void setModelRecipeId(const QString &recipeId);
 
-    void selectModelProfile(const QString &repo, const QString &role, bool forCheck);
+    void selectModelProfile(const QString &repo, const QString &role);
 
     QString parserId() const;
     void setParserId(const QString &parserName);
@@ -190,6 +197,30 @@ public:
     bool autoCheck() const;
     void setAutoCheck(bool on);
 
+    QString decisionLaunchModelPath() const;
+    void setDecisionLaunchModelPath(const QString &path);
+    QString decisionLaunchMmprojPath() const;
+    void setDecisionLaunchMmprojPath(const QString &path);
+    QString decisionLaunchDraftPath() const;
+    void setDecisionLaunchDraftPath(const QString &path);
+    QString decisionRequestProfileId() const;
+    void setDecisionRequestProfileId(const QString &id);
+    QString decisionModelName() const;
+    void setDecisionModelName(const QString &name);
+    double decisionMatchThreshold() const;
+    void setDecisionMatchThreshold(double threshold);
+
+    // Role-generic views over the per-role launch/request/model-name settings.
+    // role is a model-profile role id: "ocr", "blockRecognition" or "decision".
+    QString launchModelPathForRole(const QString &role) const;
+    void setLaunchModelPathForRole(const QString &role, const QString &path);
+    QString launchMmprojPathForRole(const QString &role) const;
+    void setLaunchMmprojPathForRole(const QString &role, const QString &path);
+    QString launchDraftPathForRole(const QString &role) const;
+    void setLaunchDraftPathForRole(const QString &role, const QString &path);
+    QString requestProfileIdForRole(const QString &role) const;
+    QString modelNameForRole(const QString &role) const;
+
     QString hfToken() const;
     void setHfToken(const QString &token);
 
@@ -242,6 +273,12 @@ signals:
     void checkRequestProfileIdChanged();
     void checkModelNameChanged();
     void autoCheckChanged();
+    void decisionLaunchModelPathChanged();
+    void decisionLaunchMmprojPathChanged();
+    void decisionLaunchDraftPathChanged();
+    void decisionRequestProfileIdChanged();
+    void decisionModelNameChanged();
+    void decisionMatchThresholdChanged();
     void hfTokenChanged();
 
 public:
@@ -265,6 +302,7 @@ public:
     static constexpr const char *kDefaultHost = "127.0.0.1";
     static constexpr int kDefaultPort = 0;  // 0 = auto-pick
     static constexpr int kDefaultStartupTimeoutMs = 180000;
+    static constexpr double kDefaultDecisionMatchThreshold = 0.5;
 
 private:
     static QSettings makeSettings();
@@ -335,6 +373,14 @@ private:
     static constexpr const char *kCheckModelName = "check/modelName";
     static constexpr const char *kAutoCheck = "check/autoCheck";
     static constexpr const char *kRetiredCheckSourceDownload = "check/sourceDownload";
+
+    // Decision model
+    static constexpr const char *kDecisionLaunchModelPath = "decision/modelPath";
+    static constexpr const char *kDecisionLaunchMmprojPath = "decision/mmprojPath";
+    static constexpr const char *kDecisionLaunchDraftPath = "decision/draftPath";
+    static constexpr const char *kDecisionRequestProfileId = "decision/requestProfileId";
+    static constexpr const char *kDecisionModelName = "decision/modelName";
+    static constexpr const char *kDecisionMatchThreshold = "decision/matchThreshold";
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";

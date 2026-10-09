@@ -101,6 +101,10 @@ int main(int argc, char *argv[])
     requestProfilesValidate.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesValidate", &requestProfilesValidate);
 
+    llocr::RequestProfileStore requestProfilesDecision(settingsStore, llocr::RequestProfileStore::Role::Decision);
+    requestProfilesDecision.setModelProfiles(modelProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesDecision", &requestProfilesDecision);
+
     llocr::VerificationPromptStore verificationPrompts(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Verification", &verificationPrompts);
 

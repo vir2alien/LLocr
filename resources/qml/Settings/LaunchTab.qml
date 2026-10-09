@@ -17,9 +17,9 @@ Item {
 
     readonly property var profiles: LaunchProfiles
 
-    readonly property string runtimeNote: role === "check"
-        ? profiles.checkModelRuntimeNote
-        : profiles.modelRuntimeNote
+    readonly property string runtimeNote: role === "blockRecognition" ? profiles.checkModelRuntimeNote
+                                        : role === "decision" ? profiles.decisionModelRuntimeNote
+                                        : profiles.modelRuntimeNote
 
     function loadValues() {
         root.profiles.reloadDraft()

@@ -48,9 +48,12 @@ void RequestParametersModel::resetFrom(const QList<RequestParameter> &parameters
     RequestProfile profile;
     profile.parameters = parameters;
     profile.sortByOrder();
+    const int previousCount = m_parameters.size();
     beginResetModel();
     m_parameters = profile.parameters;
     endResetModel();
+    if (m_parameters.size() != previousCount)
+        emit countChanged();
 }
 
 bool RequestParametersModel::setValue(int row, const QString &text)

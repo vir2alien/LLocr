@@ -47,14 +47,16 @@ void TestModelPresetCatalog::builtInCatalogParses()
         QVERIFY(!p.repo.isEmpty());
         QVERIFY(!p.model.isEmpty());  // at least a main model file
         QVERIFY(p.ctxSize > 0);
-        QVERIFY(!p.minBuild.isEmpty());
+        // minBuild is optional: a model the catalog does not gate on a build
+        // (d1-3b, whose endpoint is newer than any pinned build) ships none.
         QVERIFY(!p.license.isEmpty());
         // Every entry names a model profile, and that profile answers at least
         // one role — otherwise the entry could never be offered in a window.
         QVERIFY(!p.profileId.isEmpty());
         const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), p.profileId);
         QVERIFY2(profile, qPrintable(QStringLiteral("preset %1 names unknown profile %2").arg(p.id, p.profileId)));
-        QVERIFY(ModelProfiles::roleFor(*profile, QStringLiteral("ocr")) || ModelProfiles::roleFor(*profile, QStringLiteral("blockRecognition")));
+        QVERIFY(ModelProfiles::roleFor(*profile, QStringLiteral("ocr")) || ModelProfiles::roleFor(*profile, QStringLiteral("blockRecognition")) ||
+                ModelProfiles::roleFor(*profile, QStringLiteral("decision")));
     }
 
     // A model that serves one role is offered only there, and the catalog does
@@ -82,6 +84,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"lfm25-vl-3b", "ocr,blockRecognition", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
         {"qwen3.5-4b", "blockRecognition", "b4000", "q8_0,q4_k_xl", ""},
         {"teleocr", "ocr,blockRecognition", "b4000", "q4_k_m,q8_0", ""},
+        {"d1-3b", "decision", "", "q4_k_m,q8_0", "ctx-size"},
     };
 
     for (const Expected &e : expected) {
@@ -156,6 +159,11 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
 
     const QString qwen = ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"));
     QVERIFY(qwen.contains(QStringLiteral("Output exactly one of:")));
+
+    // The decision role carries its own question wording (the /v1/systemone
+    // instruction), phrased as a yes/no question about the image.
+    const QString decision = ModelProfiles::systemPromptFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision"));
+    QVERIFY(decision.contains(QStringLiteral("exactly this text")));
 
     // An OCR role has no system prompt, and neither has an unknown model.
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr")).isEmpty());
