@@ -3222,6 +3222,10 @@
         <translation>Модель OCR блока:</translation>
     </message>
     <message>
+        <source>Decision model:</source>
+        <translation>Модель decision:</translation>
+    </message>
+    <message>
         <location line="+11"/>
         <source>Auto-start:</source>
         <translation>Автозапуск:</translation>
@@ -3533,6 +3537,10 @@
         <location line="+1"/>
         <source>Block OCR model</source>
         <translation>Модель OCR блока</translation>
+    </message>
+    <message>
+        <source>Decision model</source>
+        <translation>Модель decision</translation>
     </message>
     <message>
         <location line="+32"/>

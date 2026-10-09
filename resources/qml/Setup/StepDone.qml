@@ -91,6 +91,16 @@ Item {
                 }
                 RowLayout {
                     spacing: 8
+                    LLOLabel { text: qsTr("Decision model:"); font.pointSize: Theme.captionSize }
+                    LLOLabel {
+                        font.pointSize: Theme.captionSize; color: Theme.textPrimary; elide: Text.ElideMiddle; Layout.fillWidth: true
+                        text: Settings.connectionMode === "external"
+                              ? root.summaryValue(Settings.decisionModelName)
+                              : root.summaryValue(Settings.decisionLaunchModelPath)
+                    }
+                }
+                RowLayout {
+                    spacing: 8
                     LLOLabel { text: qsTr("Block OCR model:"); font.pointSize: Theme.captionSize }
                     LLOLabel {
                         font.pointSize: Theme.captionSize; color: Theme.textPrimary; elide: Text.ElideMiddle; Layout.fillWidth: true

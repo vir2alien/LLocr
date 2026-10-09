@@ -48,6 +48,7 @@ Item {
                 id: modelTabBar
                 Layout.fillWidth: true
                 TabButton { text: qsTr("OCR model") }
+                TabButton { text: qsTr("Decision model") }
                 TabButton { text: qsTr("Block OCR model") }
             }
 
@@ -57,13 +58,12 @@ Item {
                 currentIndex: modelTabBar.currentIndex
 
                 Repeater {
-                    model: 2
+                    model: 3
 
                     delegate: ScrollView {
                         id: rolePane
                         required property int index
-                        readonly property bool forCheck: index === 1
-                        readonly property string role: forCheck ? "blockRecognition" : "ocr"
+                        readonly property string role: index === 0 ? "ocr" : index === 1 ? "decision" : "blockRecognition"
 
                         contentWidth: availableWidth
                         contentHeight: paneLayout.implicitHeight
