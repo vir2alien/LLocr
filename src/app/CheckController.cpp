@@ -37,7 +37,7 @@ QList<RequestParameter> CheckController::requestParameters() const
     return m_requestProfiles.activeProfile().parameters;
 }
 
-void CheckController::checkBlock(const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt)
+void CheckController::checkBlock(const QImage &image, const QString &systemPrompt, const QString &typePrompt)
 {
     if (m_busy || image.isNull())
         return;
@@ -45,7 +45,7 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
     setBusy(true);
     m_stopRequested = false;
 
-    m_runtime.ensureConnectionReady(this, ConnectionRole::BlockRecognition, [this, image, recognizedText, systemPrompt, typePrompt](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, ConnectionRole::BlockRecognition, [this, image, systemPrompt, typePrompt](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
         if (m_stopRequested) {
@@ -63,7 +63,6 @@ void CheckController::checkBlock(const QImage &image, const QString &recognizedT
 
         CheckRequest request;
         request.image = image;
-        request.recognizedText = recognizedText;
         request.systemPrompt = systemPrompt;
         request.typePrompt = typePrompt;
         request.modelId = conn.modelId;

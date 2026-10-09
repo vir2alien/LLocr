@@ -27,7 +27,7 @@ public:
     explicit CheckController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent = nullptr);
 
     bool busy() const { return m_busy; }
-    void checkBlock(const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt);
+    void checkBlock(const QImage &image, const QString &systemPrompt, const QString &typePrompt);
     void stop();
 
 signals:

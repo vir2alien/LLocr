@@ -348,11 +348,12 @@ void VerificationQueueController::startNextVerify()
 
     const BoundingBox &box = boxes.at(m_verifyBoxIndex);
     // The transcription wording lives entirely in the model's profile
-    // (systemPrompt + blockPrompts on the blockRecognition role).
+    // (systemPrompt + blockPrompts on the blockRecognition role); the block
+    // is recognized from scratch, the old text is not part of the request.
     const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
     const QString typePrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"), box.label);
     const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"));
-    m_check.checkBlock(crop, text, systemPrompt, typePrompt);
+    m_check.checkBlock(crop, systemPrompt, typePrompt);
 }
 
 QString VerificationQueueController::decisionQuestion() const

@@ -933,7 +933,7 @@ private slots:
 
         QImage block(24, 16, QImage::Format_RGB32);
         block.fill(Qt::white);
-        check.checkBlock(block, QStringLiteral("recognized text"), QString(), QString());
+        check.checkBlock(block, QString(), QString());
         QTRY_VERIFY_WITH_TIMEOUT(runtime.state() == RuntimeState::Starting, 5000);
 
         check.stop();

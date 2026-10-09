@@ -9,8 +9,7 @@
 namespace llocr {
 
 struct CheckRequest {
-    QImage image;                        ///< Crop of the selected block being verified.
-    QString recognizedText;              ///< Text previously recognized by the OCR model.
+    QImage image;                        ///< Crop of the selected block being recognized.
     QString systemPrompt;                ///< System-level instruction for the checking model.
     QString typePrompt;                  ///< Instruction for this block's type (from the verification prompts).
     QString modelId;                     ///< Model to route the request to (from the connection).

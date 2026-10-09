@@ -421,13 +421,12 @@ private slots:
         QVERIFY(!result.errorMessage.isEmpty());
     }
 
-    void checkRequestBodyContainsImagePromptAndRecognizedText()
+    void checkRequestBodyCarriesPromptAndImageOnly()
     {
         ExposedGeneralPurposeModel model;
         CheckRequest request;
         request.image = QImage(4, 4, QImage::Format_ARGB32);
         request.image.fill(Qt::gray);
-        request.recognizedText = QStringLiteral("hello wor1d");
         request.systemPrompt = QStringLiteral("You are an OCR verifier. Answer OK, FIX, or REVIEW.");
         request.typePrompt = QStringLiteral("Verify the text block.");
         request.modelId = QStringLiteral("ocr-verifier");
@@ -465,54 +464,18 @@ private slots:
         QCOMPARE(systemMessage.value(QStringLiteral("role")).toString(), QStringLiteral("system"));
         QVERIFY(systemMessage.value(QStringLiteral("content")).toString().startsWith(QStringLiteral("You are an OCR verifier.")));
 
-        // User message: type prompt, then image, then the OCR candidate — the
-        // Qwen-family order (the model id is not in the catalog, so the default
-        // wire shape applies).
+        // User message: the type prompt and the image only — the block is
+        // recognized from scratch, the previously recognized text is not sent.
         const QJsonArray content = messages.at(1).toObject().value(QStringLiteral("content")).toArray();
-        QCOMPARE(content.size(), 3);
+        QCOMPARE(content.size(), 2);
         QCOMPARE(content.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
         QCOMPARE(content.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
-        QCOMPARE(content.at(2).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
 
-        QStringList textParts;
-        QString imageUrl;
-        for (const QJsonValue &part : content) {
-            const QJsonObject obj = part.toObject();
-            const QString type = obj.value(QStringLiteral("type")).toString();
-            if (type == QStringLiteral("text"))
-                textParts.append(obj.value(QStringLiteral("text")).toString());
-            else if (type == QStringLiteral("image_url"))
-                imageUrl = obj.value(QStringLiteral("image_url")).toObject().value(QStringLiteral("url")).toString();
-        }
-        QCOMPARE(textParts.size(), 2);
-        QCOMPARE(textParts.at(0), QStringLiteral("Verify the text block."));
-        QVERIFY(textParts.at(1).startsWith(QStringLiteral("OCR candidate:\n<ocr_candidate>\n")));
-        QVERIFY(textParts.at(1).endsWith(QStringLiteral("\n</ocr_candidate>")));
-        QVERIFY(textParts.at(1).contains(QStringLiteral("hello wor1d")));
-        QCOMPARE(imageUrl, QStringLiteral("data:image/png;base64,AAAA"));
-    }
+        const QString bodyText = QString::fromUtf8(body);
+        QVERIFY(!bodyText.contains(QStringLiteral("ocr_candidate")));
 
-    // A model trained text-then-image (LFM2.5) gets the whole text before the
-    // image: the type prompt, the candidate, and the image closing the message.
-    void checkBodyPartOrderFollowsTheProfile()
-    {
-        ExposedGeneralPurposeModel model;
-        CheckRequest request;
-        request.image = QImage(4, 4, QImage::Format_ARGB32);
-        request.image.fill(Qt::gray);
-        request.recognizedText = QStringLiteral("hello wor1d");
-        request.systemPrompt = QStringLiteral("You are an OCR verifier.");
-        request.typePrompt = QStringLiteral("Verify the text block.");
-        request.modelId = QStringLiteral("lfm25-vl-3b");
-
-        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
-        const QJsonArray content = QJsonDocument::fromJson(body).object().value(QStringLiteral("messages")).toArray().at(1).toObject().value(QStringLiteral("content")).toArray();
-        QCOMPARE(content.size(), 3);
-        QCOMPARE(content.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
         QCOMPARE(content.at(0).toObject().value(QStringLiteral("text")).toString(), QStringLiteral("Verify the text block."));
-        QCOMPARE(content.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
-        QVERIFY(content.at(1).toObject().value(QStringLiteral("text")).toString().startsWith(QStringLiteral("OCR candidate:")));
-        QCOMPARE(content.at(2).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(content.at(1).toObject().value(QStringLiteral("image_url")).toObject().value(QStringLiteral("url")).toString(), QStringLiteral("data:image/png;base64,AAAA"));
     }
 
     void checkResponseParsing()
@@ -575,7 +538,6 @@ private slots:
 
         CheckRequest request;
         request.image = image;
-        request.recognizedText = QStringLiteral("hello wor1d");
         request.systemPrompt = QStringLiteral("System");
         request.typePrompt = QStringLiteral("Verify.");
         request.modelId = QStringLiteral("ocr-verifier");

@@ -162,6 +162,11 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     const QString qwen = ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"));
     QVERIFY(qwen.contains(QStringLiteral("Output format: the block text and nothing else")));
 
+    // teleocr ships the card's minimal per-block prompts, so the reply
+    // contract lives in its system prompt.
+    const QString tele = ModelProfiles::systemPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"));
+    QVERIFY(tele.contains(QStringLiteral("the block text and nothing else")));
+
     // The decision role carries its own question wording (the /v1/systemone
     // instruction), phrased as a yes/no question about the image.
     const QString decision = ModelProfiles::systemPromptFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision"));
@@ -178,22 +183,42 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(role);
     QVERIFY(!role->blockPrompts.isEmpty());
 
-    const QStringList expected = {QStringLiteral("text"), QStringLiteral("title"), QStringLiteral("table"), QStringLiteral("code"), QStringLiteral("formula"), QStringLiteral("equation")};
+    const QStringList expected = {QStringLiteral("text"),
+                                  QStringLiteral("title"),
+                                  QStringLiteral("list"),
+                                  QStringLiteral("table"),
+                                  QStringLiteral("table_caption"),
+                                  QStringLiteral("image_caption"),
+                                  QStringLiteral("table_footnote"),
+                                  QStringLiteral("figure_footnote"),
+                                  QStringLiteral("equation"),
+                                  QStringLiteral("formula"),
+                                  QStringLiteral("code"),
+                                  QStringLiteral("abstract"),
+                                  QStringLiteral("ref_text"),
+                                  QStringLiteral("reference"),
+                                  QStringLiteral("header"),
+                                  QStringLiteral("footer"),
+                                  QStringLiteral("page_number"),
+                                  QStringLiteral("seal")};
     for (const QString &type : expected)
         QVERIFY2(!role->blockPrompts.value(type).isEmpty(), qPrintable(type));
 
-    // Every override has to keep the transcription output format: the block
-    // prompt is the only place it is stated, the system prompt carries the rest.
-    QCOMPARE(role->blockPrompts.value(QStringLiteral("formula")).contains(QStringLiteral("Output format: LaTeX.")), true);
-    QCOMPARE(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("Output format: HTML table")), true);
-    // Tables: the model card asks for OTSL, the app compares HTML — the override
-    // must not ask for the format the parser cannot use.
+    // The per-type prompts are the model card's own request examples (text,
+    // table, formula, code); types without a card prompt use the text one.
+    QCOMPARE(role->blockPrompts.value(QStringLiteral("text")), QStringLiteral("Please output the text content from the image."));
+    QCOMPARE(role->blockPrompts.value(QStringLiteral("formula")), QStringLiteral("Please write out the expression of the formula in the image using LaTeX format."));
+    QCOMPARE(role->blockPrompts.value(QStringLiteral("code")), QStringLiteral("The image contains a code snippet, please output the parsing result."));
+    // Tables: the model card asks for OTSL and converts client-side, but the
+    // block-recognition reply IS the block text and no parser handles OTSL —
+    // the override must ask for the format the app can use.
+    QVERIFY(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("HTML format")));
     QVERIFY(!role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("OTSL format")));
 
-    // An unknown type, a type the profile says nothing about, and a model
-    // outside the catalog resolve to nothing.
+    // A type outside the catalog, and a model outside the catalog, resolve
+    // to nothing.
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"), QStringLiteral("list")).isEmpty());
+    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"), QStringLiteral("unknown-type")).isEmpty());
     QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
     QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());

@@ -12,7 +12,6 @@
 #include <QPromise>
 #include <QtConcurrent/QtConcurrentRun>
 
-#include "core/ModelProfiles.h"
 #include "core/ServiceMarkers.h"
 
 #include <algorithm>
@@ -40,19 +39,16 @@ QString stripControlTokens(const QString &text)
 
 QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
 {
-    // The block-recognition protocol: the model transcribes the crop and the
-    // reply itself is the block text. The system message carries the shared
-    // contract; the user message lists the type prompt, the block image and
-    // the OCR candidate — kept as a markup hint for tables and formulas.
+    // The block-recognition protocol: the model transcribes the crop from
+    // scratch and the reply itself is the block text. The system message
+    // carries the shared contract; the user message is the type prompt and
+    // the block image — the previously recognized text is not sent.
 
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
     QJsonObject typePromptPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.typePrompt}};
-    QJsonObject ocrPart{{QStringLiteral("type"), QStringLiteral("text")},
-                        {QStringLiteral("text"), QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>").arg(request.recognizedText)}};
 
-    const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(request.modelId, QStringLiteral("blockRecognition"));
-    QJsonArray content = modelRole && modelRole->promptBeforeImage ? QJsonArray{typePromptPart, ocrPart, imagePart} : QJsonArray{typePromptPart, imagePart, ocrPart};
+    QJsonArray content{typePromptPart, imagePart};
 
     QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")}, {QStringLiteral("content"), request.systemPrompt}};
     QJsonObject userMessage{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
