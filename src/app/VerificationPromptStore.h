@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QList>
 #include <QObject>
+#include <QSet>
 #include <QString>
 #include <QStringList>
 
@@ -85,6 +86,10 @@ public:
     QAbstractItemModel *blockModelService() const;
 
     bool isTypeEnabled(const QString &type) const;
+
+    // The enabled type names, straight from the live model: while the settings
+    // window is open its edits are the truth, before any save.
+    QSet<QString> enabledTypes() const;
 
     Q_INVOKABLE void loadValues();       // re-read built-in defaults + user file (discard edits)
     Q_INVOKABLE void save();             // persist user overrides

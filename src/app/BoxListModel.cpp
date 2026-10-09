@@ -38,6 +38,8 @@ QVariant BoxListModel::data(const QModelIndex &index, int role) const
         return box.correctedText;
     case SuspectRole:
         return box.duplicateSuspect;
+    case PlannedRole:
+        return isPlanned(box);
     default:
         return {};
     }
@@ -55,8 +57,17 @@ QHash<int, QByteArray> BoxListModel::roleNames() const
         {CheckStatusRole, "boxCheckStatus"},
         {CorrectedRole, "boxCorrectedText"},
         {SuspectRole, "boxSuspect"},
+        {PlannedRole, "boxVerificationPlanned"},
     };
     return roles;
+}
+
+// Mirrors what the verification queue would pick up: a text block the user's
+// filter enables (or a duplicate suspect, which is always asked) that has no
+// answer yet. Drives the gray "planned" dot.
+bool BoxListModel::isPlanned(const BoundingBox &box) const
+{
+    return box.checkStatus == BoxCheckStatus::NotChecked && !box.text.isEmpty() && (box.duplicateSuspect || m_plannedTypes.contains(box.label));
 }
 
 void BoxListModel::setBoxes(const QList<BoundingBox> &boxes)
@@ -73,6 +84,16 @@ void BoxListModel::setFromResult(const OcrResult &result)
     } else {
         setBoxes(result.pages.first().boxes);
     }
+}
+
+void BoxListModel::setPlannedTypes(const QSet<QString> &types)
+{
+    if (m_plannedTypes == types)
+        return;
+    m_plannedTypes = types;
+    if (m_boxes.isEmpty())
+        return;
+    emit dataChanged(index(0), index(m_boxes.size() - 1), {PlannedRole});
 }
 
 void BoxListModel::updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height)
@@ -99,7 +120,8 @@ void BoxListModel::updateBoxCheck(int index, int status, const QString &correcte
     box.checkStatus = next;
     box.correctedText = correctedText;
     const QModelIndex mi = createIndex(index, 0);
-    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole});
+    // Leaving NotChecked flips the gray "planned" dot off.
+    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole, PlannedRole});
 }
 
 void BoxListModel::removeBox(int index)

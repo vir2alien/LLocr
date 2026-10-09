@@ -43,6 +43,7 @@ Rectangle {
             }
             Rectangle {
                 visible: Controller.selectedBlockCheckStatus !== 0 || Controller.selectedBlockSuspect
+                         || Controller.selectedBlockPlanned
                 Layout.preferredWidth: 8
                 Layout.preferredHeight: 8
                 Layout.alignment: Qt.AlignVCenter

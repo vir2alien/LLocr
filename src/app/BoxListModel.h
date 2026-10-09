@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QSet>
 
 #include "core/OcrResult.h"
 
@@ -21,6 +22,7 @@ public:
         CheckStatusRole,
         CorrectedRole,
         SuspectRole,
+        PlannedRole,
     };
 
     explicit BoxListModel(QObject *parent = nullptr);
@@ -33,13 +35,21 @@ public:
 
     void setFromResult(const OcrResult &result);
 
+    // The block types the verification queue would pick up (the user's filter
+    // in the verification settings). A change re-evaluates PlannedRole for
+    // every row.
+    void setPlannedTypes(const QSet<QString> &types);
+
     Q_INVOKABLE void updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height);
     Q_INVOKABLE void updateBoxCheck(int index, int status, const QString &correctedText);
     void removeBox(int index);
     Q_INVOKABLE bool isImageBox(int index) const;
 
 private:
+    bool isPlanned(const BoundingBox &box) const;
+
     QList<BoundingBox> m_boxes;
+    QSet<QString> m_plannedTypes;
 };
 
 }  // namespace llocr

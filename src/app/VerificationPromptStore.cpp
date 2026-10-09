@@ -206,8 +206,23 @@ VerificationBlock *VerificationPromptStore::findBlock(const QString &type)
 
 bool VerificationPromptStore::isTypeEnabled(const QString &type) const
 {
-    const int i = indexOfType(type);
-    return i >= 0 && m_blocks.at(i).enabled;
+    // The model is the single source of truth: the settings window edits it
+    // live, and loadValues()/save() keep it in step with the user file.
+    for (const VerificationBlock &block : m_model->blocks()) {
+        if (block.type == type)
+            return block.enabled;
+    }
+    return false;
+}
+
+QSet<QString> VerificationPromptStore::enabledTypes() const
+{
+    QSet<QString> out;
+    for (const VerificationBlock &block : m_model->blocks()) {
+        if (block.enabled)
+            out.insert(block.type);
+    }
+    return out;
 }
 
 void VerificationPromptStore::loadBuiltIn()

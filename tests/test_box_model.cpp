@@ -133,6 +133,54 @@ private slots:
         model.setFromResult(empty);
         QCOMPARE(model.rowCount(), 0);
     }
+
+    // The gray "planned" dot mirrors what the verification queue would pick
+    // up: a text block whose type the filter enables (or a duplicate suspect)
+    // with a non-empty text and no answer yet.
+    void plannedRoleFollowsFilterAndStatus()
+    {
+        BoxListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        BoundingBox suspect = makeBox(QStringLiteral("text"), QRectF(0, 0, 0.2, 0.1), QStringLiteral("dup"));
+        suspect.duplicateSuspect = true;
+        BoundingBox empty = makeBox(QStringLiteral("table"), QRectF(0, 0, 0.2, 0.1), QString());
+        model.setBoxes({
+            makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1)),
+            makeBox(QStringLiteral("table"), QRectF(0, 0, 0.15, 0.1)),
+            suspect,
+            empty,
+        });
+
+        // Without the filter only the duplicate suspect is planned: it is
+        // always asked regardless of the type list.
+        QCOMPARE(model.data(model.index(0), BoxListModel::PlannedRole).toBool(), false);
+        QCOMPARE(model.data(model.index(2), BoxListModel::PlannedRole).toBool(), true);
+
+        model.setPlannedTypes({QStringLiteral("text")});
+        QCOMPARE(model.data(model.index(0), BoxListModel::PlannedRole).toBool(), true);
+        QCOMPARE(model.data(model.index(1), BoxListModel::PlannedRole).toBool(), false);
+        // A duplicate suspect is planned regardless of the filter.
+        QCOMPARE(model.data(model.index(2), BoxListModel::PlannedRole).toBool(), true);
+        // An empty block has nothing to verify.
+        QCOMPARE(model.data(model.index(3), BoxListModel::PlannedRole).toBool(), false);
+
+        // An answered block loses the dot.
+        model.updateBoxCheck(0, int(BoxCheckStatus::Ok), QString());
+        QCOMPARE(model.data(model.index(0), BoxListModel::PlannedRole).toBool(), false);
+        model.updateBoxCheck(0, int(BoxCheckStatus::NotChecked), QString());
+        QCOMPARE(model.data(model.index(0), BoxListModel::PlannedRole).toBool(), true);
+
+        // Switching the filter off re-evaluates every row, suspects included.
+        model.setPlannedTypes({QStringLiteral("table")});
+        QCOMPARE(model.data(model.index(0), BoxListModel::PlannedRole).toBool(), false);
+        QCOMPARE(model.data(model.index(1), BoxListModel::PlannedRole).toBool(), true);
+        QCOMPARE(model.data(model.index(2), BoxListModel::PlannedRole).toBool(), true);
+
+        // A setBoxes reset keeps the filter: fresh results are planned too.
+        model.setBoxes({makeBox(QStringLiteral("table"), QRectF(0, 0, 0.1, 0.1))});
+        QCOMPARE(model.data(model.index(0), BoxListModel::PlannedRole).toBool(), true);
+    }
 };
 
 QTEST_MAIN(TestBoxModel)

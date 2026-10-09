@@ -63,6 +63,7 @@ Image {
                 required property string boxLabel
                 required property int boxCheckStatus
                 required property bool boxSuspect
+                required property bool boxVerificationPlanned
 
                 property bool isImage: boxLabel === "image" || boxLabel === "chart"
                 property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
@@ -105,7 +106,10 @@ Image {
                     }
                     Rectangle {
                         id: statusDot
-                        visible: boxCheckStatus !== 0 || boxSuspect
+                        // Gray = planned for verification (filter-enabled type or
+                        // a duplicate suspect, no answer yet); green = matched,
+                        // amber = re-recognized, red = mismatched/unreadable.
+                        visible: boxCheckStatus !== 0 || boxSuspect || boxVerificationPlanned
                         x: labelText.x + labelText.width + 3
                         anchors.verticalCenter: parent.verticalCenter
                         width: 8

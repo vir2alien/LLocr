@@ -34,23 +34,23 @@ namespace llocr {
 
 AppController::AppController(
     SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, RequestProfileStore &checkRequestProfiles, VerificationPromptStore &verification, QObject *parent)
-    : m_settings(settings), m_runtime(runtime), m_recognition(
-                                                    settings,
-                                                    runtime,
-                                                    requestProfiles,
-                                                    [this](int index, QString &error) { return pageImage(index, &error); },
-                                                    nullptr,
-                                                    [this](int index, bool batch) {
-                                                        QReadLocker locker(&m_documentLock);
-                                                        if (!m_document.isValidIndex(index))
-                                                            return PageSkip::Unreadable;
-                                                        const DocumentPage &page = m_document.page(index);
-                                                        if (!page.sourceError.isEmpty())
-                                                            return PageSkip::Unreadable;
-                                                        if (batch && page.recognized)
-                                                            return PageSkip::AlreadyRecognized;
-                                                        return PageSkip::None;
-                                                    }),
+    : m_settings(settings), m_runtime(runtime), m_verification(verification), m_recognition(
+                                                                                  settings,
+                                                                                  runtime,
+                                                                                  requestProfiles,
+                                                                                  [this](int index, QString &error) { return pageImage(index, &error); },
+                                                                                  nullptr,
+                                                                                  [this](int index, bool batch) {
+                                                                                      QReadLocker locker(&m_documentLock);
+                                                                                      if (!m_document.isValidIndex(index))
+                                                                                          return PageSkip::Unreadable;
+                                                                                      const DocumentPage &page = m_document.page(index);
+                                                                                      if (!page.sourceError.isEmpty())
+                                                                                          return PageSkip::Unreadable;
+                                                                                      if (batch && page.recognized)
+                                                                                          return PageSkip::AlreadyRecognized;
+                                                                                      return PageSkip::None;
+                                                                                  }),
       m_verify({m_document,
                 verification,
                 checkRequestProfiles,
@@ -68,6 +68,18 @@ AppController::AppController(
     });
     connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_recognition, &RecognitionController::rawResultReady, this, &AppController::applyRawResult);
+
+    // The gray "planned" dots follow the verification filter live: the model
+    // signal covers edits in the settings window, the store's modelChanged
+    // covers load/reset (discard, reopen). selectedBoxChanged refreshes the
+    // edit-panel dot for the block under the cursor.
+    const auto updatePlannedTypes = [this]() {
+        m_boxModel.setPlannedTypes(m_verification.enabledTypes());
+        emit selectedBoxChanged();
+    };
+    updatePlannedTypes();
+    connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, updatePlannedTypes);
+    connect(&verification, &VerificationPromptStore::modelChanged, this, updatePlannedTypes);
 
     connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::checkStateChanged);
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
@@ -850,6 +862,14 @@ bool AppController::selectedBlockSuspect() const
 {
     const BoundingBox *box = selectedBox();
     return box && box->duplicateSuspect;
+}
+
+bool AppController::selectedBlockPlanned() const
+{
+    const BoundingBox *box = selectedBox();
+    if (!box)
+        return false;
+    return box->checkStatus == BoxCheckStatus::NotChecked && !box->text.isEmpty() && (box->duplicateSuspect || m_verification.isTypeEnabled(box->label));
 }
 
 QString AppController::selectedBlockCorrected() const
