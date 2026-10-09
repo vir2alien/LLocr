@@ -20,7 +20,6 @@ ColumnLayout {
         checkModelNameField.text = Settings.checkModelName
         baseUrlField.text = Settings.baseUrl
         apiKeyField.text  = Settings.apiKey
-        timeoutField.text = Settings.connectionTimeoutMs.toString()
     }
 
     function saveValues() {
@@ -29,7 +28,6 @@ ColumnLayout {
         Settings.checkModelName = checkModelNameField.text;
         Settings.baseUrl = baseUrlField.text;
         Settings.apiKey = apiKeyField.text;
-        Settings.connectionTimeoutMs = parseInt(timeoutField.text) || 120000;
     }
 
     LLOLabel {
@@ -102,20 +100,6 @@ ColumnLayout {
             text: qsTr("Show")
             font.pointSize: Theme.captionSize
         }
-    }
-
-    Item { implicitHeight: 4 }
-
-    LLOLabel {
-        text: qsTr("Request timeout (ms)")
-    }
-    TextField {
-        id: timeoutField
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        inputMethodHints: Qt.ImhDigitsOnly
-        validator: IntValidator { bottom: 1000; top: 3600000 }
     }
 
     Item { implicitHeight: 6 }

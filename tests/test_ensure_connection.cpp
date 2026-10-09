@@ -98,6 +98,7 @@ private slots:
         settings.setApiKey(QStringLiteral("k"));
         settings.setModelName(QStringLiteral("my-model"));
         settings.setConnectionTimeoutMs(5000);
+        settings.setResponseTimeoutMs(15000);
 
         RuntimeController runtime(settings, launchProfiles);
         ResolvedConnection conn;
@@ -110,7 +111,8 @@ private slots:
         QCOMPARE(conn.baseUrl, QStringLiteral("http://custom.example:9000"));
         QCOMPARE(conn.apiKey, QStringLiteral("k"));
         QCOMPARE(conn.modelId, QStringLiteral("my-model"));
-        QCOMPARE(conn.timeoutMs, 5000);
+        QCOMPARE(conn.connectionTimeoutMs, 5000);
+        QCOMPARE(conn.responseTimeoutMs, 15000);
         QVERIFY(conn.error.isEmpty());
     }
 
@@ -135,7 +137,8 @@ private slots:
         QCOMPARE(decision.modelId, QStringLiteral("decision-model"));
         QCOMPARE(decision.baseUrl, ocr.baseUrl);
         QCOMPARE(decision.apiKey, ocr.apiKey);
-        QCOMPARE(decision.timeoutMs, ocr.timeoutMs);
+        QCOMPARE(decision.connectionTimeoutMs, ocr.connectionTimeoutMs);
+        QCOMPARE(decision.responseTimeoutMs, ocr.responseTimeoutMs);
 
         // An empty check/modelName is sent as-is: single-model servers (e.g.
         // llama-server) ignore the model field entirely, and a multi-model

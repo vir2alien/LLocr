@@ -29,7 +29,8 @@ struct ResolvedConnection {
     QString baseUrl;  // http://127.0.0.1:<port> or the external URL
     QString apiKey;   // from settings (External) or empty (Managed)
     QString modelId;  // alias (Managed) or model/name / check/modelName / decision/modelName (External, per ConnectionRole)
-    int timeoutMs = 0;
+    int connectionTimeoutMs = 0;
+    int responseTimeoutMs = 0;
 
     QString error;
 
@@ -38,7 +39,8 @@ struct ResolvedConnection {
         ConnectionConfig config;
         config.apiKey = apiKey;
         config.baseUrl = baseUrl;
-        config.timeoutMs = timeoutMs;
+        config.connectionTimeoutMs = connectionTimeoutMs;
+        config.responseTimeoutMs = responseTimeoutMs;
         return config;
     }
 };

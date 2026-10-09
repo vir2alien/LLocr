@@ -350,7 +350,8 @@ ResolvedConnection RuntimeController::resolveExternal(ConnectionRole role) const
     conn.baseUrl = m_settings.baseUrl();
     conn.apiKey = m_settings.apiKey();
     conn.modelId = m_settings.modelNameForRole(connectionRoleName(role));
-    conn.timeoutMs = m_settings.connectionTimeoutMs();
+    conn.connectionTimeoutMs = m_settings.connectionTimeoutMs();
+    conn.responseTimeoutMs = m_settings.responseTimeoutMs();
     return conn;
 }
 
@@ -557,7 +558,8 @@ ResolvedConnection RuntimeController::buildManagedConnection() const
         conn.modelId = role->alias;
     if (conn.modelId.isEmpty())
         conn.modelId = QStringLiteral("llocr-local");
-    conn.timeoutMs = m_settings.connectionTimeoutMs();
+    conn.connectionTimeoutMs = m_settings.connectionTimeoutMs();
+    conn.responseTimeoutMs = m_settings.responseTimeoutMs();
     return conn;
 }
 

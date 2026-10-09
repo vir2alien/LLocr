@@ -102,7 +102,8 @@ private slots:
         SettingsStore store;
         QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
         QCOMPARE(store.apiKey(), QStringLiteral(""));
-        QCOMPARE(store.connectionTimeoutMs(), 120000);
+        QCOMPARE(store.connectionTimeoutMs(), 5000);
+        QCOMPARE(store.responseTimeoutMs(), 300000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.decisionModelName(), QString());
@@ -125,7 +126,8 @@ private slots:
         SettingsStore store;
         store.setBaseUrl(QStringLiteral("http://custom:1234"));
         store.setApiKey(QStringLiteral("secret-token"));
-        store.setConnectionTimeoutMs(5000);
+        store.setConnectionTimeoutMs(8000);
+        store.setResponseTimeoutMs(60000);
         store.setModelName(QStringLiteral("custom-model"));
         store.setCheckModelName(QStringLiteral("check-model"));
         store.setParserId(QStringLiteral("raw"));
@@ -134,7 +136,8 @@ private slots:
 
         QCOMPARE(store.baseUrl(), QStringLiteral("http://custom:1234"));
         QCOMPARE(store.apiKey(), QStringLiteral("secret-token"));
-        QCOMPARE(store.connectionTimeoutMs(), 5000);
+        QCOMPARE(store.connectionTimeoutMs(), 8000);
+        QCOMPARE(store.responseTimeoutMs(), 60000);
         QCOMPARE(store.modelName(), QStringLiteral("custom-model"));
         QCOMPARE(store.parserId(), QStringLiteral("raw"));
         QCOMPARE(store.themeMode(), 1);
@@ -144,7 +147,8 @@ private slots:
 
         QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
         QCOMPARE(store.apiKey(), QStringLiteral(""));
-        QCOMPARE(store.connectionTimeoutMs(), 120000);
+        QCOMPARE(store.connectionTimeoutMs(), 5000);
+        QCOMPARE(store.responseTimeoutMs(), 300000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.checkModelName(), QString());
         // "auto" — the OCR model adapter declares its parser (ADR 88).
@@ -187,7 +191,8 @@ private slots:
         store.setConnectionMode(QStringLiteral("managed"));
         store.setBaseUrl(QStringLiteral("http://custom:9000"));
         store.setApiKey(QStringLiteral("k"));
-        store.setConnectionTimeoutMs(5000);
+        store.setConnectionTimeoutMs(8000);
+        store.setResponseTimeoutMs(60000);
         store.setModelName(QStringLiteral("ocr-model"));
         store.setCheckModelName(QStringLiteral("check-model"));
         store.setServerPath(QStringLiteral("/opt/llama-server"));
@@ -198,13 +203,33 @@ private slots:
         QCOMPARE(store.connectionMode(), QStringLiteral("external"));
         QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
         QCOMPARE(store.apiKey(), QString());
-        QCOMPARE(store.connectionTimeoutMs(), 120000);
+        QCOMPARE(store.connectionTimeoutMs(), 5000);
+        QCOMPARE(store.responseTimeoutMs(), 300000);
         QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.serverPath(), QString());
         // Outside the group — untouched.
         QCOMPARE(store.themeMode(), 1);
         QCOMPARE(store.language(), QStringLiteral("system"));
+    }
+
+    // `provider/timeoutMs` capped the whole request, so its stored value
+    // becomes the response timeout (ADR 148); the connection timeout is new.
+    void legacyTimeoutKeyMigratesToResponseTimeout()
+    {
+        {
+            QSettings settings;
+            settings.setValue("provider/timeoutMs", 90000);
+        }
+
+        SettingsStore store;
+        QCOMPARE(store.connectionTimeoutMs(), 5000);
+        QCOMPARE(store.responseTimeoutMs(), 90000);
+        QVERIFY(!QSettings().contains(QStringLiteral("provider/timeoutMs")));
+
+        // A second start is a no-op — the retired key is gone.
+        SettingsStore again;
+        QCOMPARE(again.responseTimeoutMs(), 90000);
     }
 
     void startupMigrationRestoresWipedExternalEndpoint()

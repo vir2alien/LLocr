@@ -30,7 +30,8 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kThemeMode, "themeMode", QVariant(kDefaultThemeMode)},
         {kBaseUrl, "baseUrl", QVariant(QString::fromUtf8(kDefaultBaseUrl))},
         {kApiKey, "apiKey", QVariant(QString::fromUtf8(kDefaultApiKey))},
-        {kTimeoutMs, "connectionTimeoutMs", QVariant(kDefaultTimeoutMs)},
+        {kConnectionTimeoutKey, "connectionTimeoutMs", QVariant(kDefaultConnectionTimeoutMs)},
+        {kResponseTimeoutKey, "responseTimeoutMs", QVariant(kDefaultResponseTimeoutMs)},
         {kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName))},
         {kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
         {kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId))},
@@ -114,6 +115,15 @@ void SettingsStore::applyStartupMigration()
     for (const char *retired : {kRetiredAlias, kRetiredServerPathIsManaged, kRetiredLaunchSourceDownload, kRetiredCheckSourceDownload, kRetiredModelRequestProfileId})
         m_settings.remove(QString::fromLatin1(retired));
 
+    // `provider/timeoutMs` capped the whole request, so its value lives on as
+    // the response timeout; the connection timeout starts from its own default.
+    if (!m_settings.contains(kResponseTimeoutKey) && m_settings.contains(kRetiredTimeoutMs)) {
+        const int legacy = m_settings.value(kRetiredTimeoutMs).toInt();
+        if (legacy > 0)
+            m_settings.setValue(kResponseTimeoutKey, legacy);
+    }
+    m_settings.remove(QString::fromUtf8(kRetiredTimeoutMs));
+
     resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
     resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("blockRecognition"));
     resolveStoredModelId(kDecisionRequestProfileId, QStringLiteral("decision"));
@@ -171,8 +181,9 @@ void SettingsStore::resetOutputDefaults()
 void SettingsStore::resetRuntimeDefaults()
 {
     resetGroup([](const QString &key) {
-        return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/apiKey") || key == QLatin1String("provider/timeoutMs") ||
-               key == QLatin1String("model/name") || key == QLatin1String("check/modelName") || key == QLatin1String("decision/modelName") || key == QLatin1String("runtime/serverPath");
+        return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/apiKey") || key == QLatin1String("provider/connectionTimeoutMs") ||
+               key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String("check/modelName") || key == QLatin1String("decision/modelName") ||
+               key == QLatin1String("runtime/serverPath");
     });
 }
 
@@ -214,15 +225,28 @@ void SettingsStore::setApiKey(const QString &key)
 
 int SettingsStore::connectionTimeoutMs() const
 {
-    return m_settings.value(kTimeoutMs, kDefaultTimeoutMs).toInt();
+    return m_settings.value(kConnectionTimeoutKey, kDefaultConnectionTimeoutMs).toInt();
 }
 
-void SettingsStore::setConnectionTimeoutMs(int timeOut)
+void SettingsStore::setConnectionTimeoutMs(int ms)
 {
-    if (connectionTimeoutMs() == timeOut)
+    if (connectionTimeoutMs() == ms)
         return;
-    m_settings.setValue(kTimeoutMs, timeOut);
+    m_settings.setValue(kConnectionTimeoutKey, ms);
     emit connectionTimeoutMsChanged();
+}
+
+int SettingsStore::responseTimeoutMs() const
+{
+    return m_settings.value(kResponseTimeoutKey, kDefaultResponseTimeoutMs).toInt();
+}
+
+void SettingsStore::setResponseTimeoutMs(int ms)
+{
+    if (responseTimeoutMs() == ms)
+        return;
+    m_settings.setValue(kResponseTimeoutKey, ms);
+    emit responseTimeoutMsChanged();
 }
 
 QString SettingsStore::modelName() const

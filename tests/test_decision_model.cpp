@@ -178,7 +178,7 @@ private slots:
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
-        config.timeoutMs = 10000;
+        config.responseTimeoutMs = 10000;
 
         DecisionModel model;
         QFuture<DecisionResult> future = model.judge(testRequest(), config);
@@ -206,7 +206,7 @@ private slots:
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
-        config.timeoutMs = 10000;
+        config.responseTimeoutMs = 10000;
 
         DecisionModel model;
         const auto future = model.judge(testRequest(), config);
@@ -223,7 +223,7 @@ private slots:
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
-        config.timeoutMs = 10000;
+        config.responseTimeoutMs = 10000;
 
         DecisionModel model;
         const auto future = model.judge(testRequest(), config);

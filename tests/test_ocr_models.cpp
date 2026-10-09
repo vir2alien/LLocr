@@ -137,7 +137,7 @@ private slots:
         QVERIFY(server.start());
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
-        config.timeoutMs = 10000;
+        config.responseTimeoutMs = 10000;
 
         OcrRequest request;
         QImage image(8, 8, QImage::Format_RGB32);
@@ -283,7 +283,7 @@ private slots:
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
-        config.timeoutMs = 10000;
+        config.responseTimeoutMs = 10000;
 
         const auto model = OcrModel::create(OcrModel::defaultId());
         QVERIFY(model != nullptr);
@@ -333,7 +333,7 @@ private slots:
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
-        config.timeoutMs = 10000;
+        config.responseTimeoutMs = 10000;
 
         auto model = OcrModel::create(OcrModel::defaultId());
         QFuture<OcrResult> future = model->recognize(request, config);
@@ -372,7 +372,7 @@ private slots:
         QVERIFY(server.start());
         LlamaClient client;
         const auto url = LlamaClient::endpointUrl(QStringLiteral("http://127.0.0.1:%1").arg(server.port()));
-        const auto future = client.postJson(url, "{}", {}, 200);
+        const auto future = client.postJson(url, "{}", {}, 5000, 200);
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 5000);
         QVERIFY(server.gotRequest);
         QVERIFY(!future.result().success);
@@ -381,7 +381,7 @@ private slots:
 
         // A timeout must not leak into the next request on the same client.
         server.holdResponse = false;
-        const auto next = client.postJson(url, "{}", {}, 5000);
+        const auto next = client.postJson(url, "{}", {}, 5000, 5000);
         QTRY_VERIFY_WITH_TIMEOUT(next.isFinished(), 10000);
         QVERIFY2(next.result().success, qPrintable(next.result().error));
     }
@@ -392,7 +392,7 @@ private slots:
         server.holdResponse = true;
         QVERIFY(server.start());
         LlamaClient client;
-        const auto future = client.postJson(LlamaClient::endpointUrl(QStringLiteral("http://127.0.0.1:%1").arg(server.port())), "{}", {}, 10000);
+        const auto future = client.postJson(LlamaClient::endpointUrl(QStringLiteral("http://127.0.0.1:%1").arg(server.port())), "{}", {}, 5000, 10000);
         QTRY_VERIFY_WITH_TIMEOUT(server.gotRequest, 5000);
         client.abort();
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 5000);
@@ -409,7 +409,8 @@ private slots:
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:1");
-        config.timeoutMs = 1000;
+        config.connectionTimeoutMs = 1000;
+        config.responseTimeoutMs = 1000;
 
         const auto model = OcrModel::create(OcrModel::defaultId());
         QVERIFY(model != nullptr);
@@ -560,7 +561,7 @@ private slots:
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
-        config.timeoutMs = 10000;
+        config.responseTimeoutMs = 10000;
 
         const auto model = std::make_unique<GeneralPurposeModel>();
         QFuture<CheckResult> future = model->check(request, config);

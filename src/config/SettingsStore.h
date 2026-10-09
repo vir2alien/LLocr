@@ -18,6 +18,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
     Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
     Q_PROPERTY(int connectionTimeoutMs READ connectionTimeoutMs WRITE setConnectionTimeoutMs NOTIFY connectionTimeoutMsChanged)
+    Q_PROPERTY(int responseTimeoutMs READ responseTimeoutMs WRITE setResponseTimeoutMs NOTIFY responseTimeoutMsChanged)
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
     Q_PROPERTY(QString modelRecipeId READ modelRecipeId WRITE setModelRecipeId NOTIFY modelRecipeIdChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
@@ -99,7 +100,9 @@ public:
     QString apiKey() const;
     void setApiKey(const QString &key);
     int connectionTimeoutMs() const;
-    void setConnectionTimeoutMs(int timeOut);
+    void setConnectionTimeoutMs(int ms);
+    int responseTimeoutMs() const;
+    void setResponseTimeoutMs(int ms);
 
     QString modelName() const;
     void setModelName(const QString &modelName);
@@ -234,6 +237,7 @@ signals:
     void baseUrlChanged();
     void apiKeyChanged();
     void connectionTimeoutMsChanged();
+    void responseTimeoutMsChanged();
     void modelNameChanged();
     void modelRecipeIdChanged();
     void parserIdChanged();
@@ -291,7 +295,8 @@ public:
     static constexpr int kCurrentSetupVersion = 1;
     static constexpr const char *kDefaultBaseUrl = "http://localhost:8080";
     static constexpr const char *kDefaultApiKey = "";
-    static constexpr int kDefaultTimeoutMs = 120000;
+    static constexpr int kDefaultConnectionTimeoutMs = 5000;
+    static constexpr int kDefaultResponseTimeoutMs = 300000;
     static constexpr const char *kDefaultModelName = "Unlimited-OCR";
     static constexpr const char *kDefaultModelRecipeId = "unlimited-ocr";
     static constexpr const char *kDefaultParserId = "auto";
@@ -318,7 +323,9 @@ private:
 
     static constexpr const char *kBaseUrl = "provider/baseUrl";
     static constexpr const char *kApiKey = "provider/apiKey";
-    static constexpr const char *kTimeoutMs = "provider/timeoutMs";
+    static constexpr const char *kConnectionTimeoutKey = "provider/connectionTimeoutMs";
+    static constexpr const char *kResponseTimeoutKey = "provider/responseTimeoutMs";
+    static constexpr const char *kRetiredTimeoutMs = "provider/timeoutMs";
 
     static constexpr const char *kModelName = "model/name";
     static constexpr const char *kModelRecipeId = "model/recipeId";

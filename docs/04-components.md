@@ -11,11 +11,13 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   `UnlimitedOcrModel` supplies its single prompt variant ("document parsing.")
   and the default parser (`unlimited-ocr`); new LLMs are added as new subclasses
   registered in `OcrModelFactory` (ADR 58).
-- **LlamaClient** ✅ (`core/LlamaClient.h`): thin transport — POSTs JSON to
-  `/v1/chat/completions` with an optional bearer token, per-request timeout and
-  `abort()`; surfaces the server's error message. Former provider layer reduced
-  to exactly this.
-- Configuration ✅: base URL, API key (optional), timeout — in `ConnectionConfig`;
+- **LlamaClient** ✅ (`core/LlamaClient.h`): thin transport — pre-flights the
+  TCP connect (connection timeout), POSTs JSON to `/v1/chat/completions` with
+  an optional bearer token, caps the whole request with the response timeout
+  (ADR 148) and supports `abort()`; surfaces the server's error message.
+  Former provider layer reduced to exactly this.
+- Configuration ✅: base URL, API key (optional), connection and response
+  timeouts — in `ConnectionConfig`;
   the OCR model adapter (`model/recipeId`, default `unlimited-ocr`), model name
   and the request-body parameters — one **request profile per OCR model**
   (DRY params, temperature, max tokens; ADR 59). The recognition **prompt**

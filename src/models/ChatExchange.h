@@ -43,7 +43,7 @@ QFuture<Result> runChatExchange(BuildBody buildBody,
             promise->finish();
             watcher->deleteLater();
         });
-        watcher->setFuture(client->postJson(LlamaClient::endpointUrl(config.baseUrl, endpointPath), body, config.apiKey, config.timeoutMs));
+        watcher->setFuture(client->postJson(LlamaClient::endpointUrl(config.baseUrl, endpointPath), body, config.apiKey, config.connectionTimeoutMs, config.responseTimeoutMs));
     });
     encodeWatcher->setFuture(QtConcurrent::run(std::move(buildBody)));
 

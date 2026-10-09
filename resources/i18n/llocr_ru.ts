@@ -1046,6 +1046,14 @@
         <source>Request timed out after %1 ms</source>
         <translation>Превышено время ожидания запроса (%1 мс)</translation>
     </message>
+    <message>
+        <source>Connection to %1 timed out after %2 ms</source>
+        <translation>Превышено время ожидания подключения к %1 (%2 мс)</translation>
+    </message>
+    <message>
+        <source>Connection to %1 failed: %2</source>
+        <translation>Не удалось подключиться к %1: %2</translation>
+    </message>
 </context>
 <context>
     <name>LocationTab</name>
@@ -2768,6 +2776,18 @@
         <source>Managed local server</source>
         <translation>Управляемый локальный сервер</translation>
     </message>
+    <message>
+        <source>Connection timeout (ms)</source>
+        <translation>Таймаут подключения (мс)</translation>
+    </message>
+    <message>
+        <source>Request timeout (ms)</source>
+        <translation>Время ожидания ответа (мс)</translation>
+    </message>
+    <message>
+        <source>Connection timeout — how long to wait for the server to accept a connection. Request timeout — how long to wait for the model's response; raise it if long recognitions are cut off.</source>
+        <translation>Таймаут подключения — сколько ждать установления соединения с сервером. Время ожидания ответа — сколько ждать ответ модели; увеличьте его, если длинные распознавания обрываются.</translation>
+    </message>
 </context>
 <context>
     <name>RuntimeTabExternal</name>
@@ -2820,9 +2840,8 @@
         <translation>Показать</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Request timeout (ms)</source>
-        <translation>Время ожидания запроса (мс)</translation>
+        <translation type="vanished">Время ожидания запроса (мс)</translation>
     </message>
     <message>
         <location line="+17"/>
