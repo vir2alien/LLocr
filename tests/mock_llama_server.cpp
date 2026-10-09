@@ -27,6 +27,7 @@
 #include <QThread>
 #include <QTimer>
 
+#include <cmath>
 #include <cstdlib>
 
 int main(int argc, char *argv[])
@@ -164,6 +165,39 @@ int main(int argc, char *argv[])
                 return;
             }
             const QByteArray body = QJsonDocument(QJsonObject{{"object", "list"}, {"data", QJsonArray{{QJsonObject{{"id", "llocr-local"}, {"object", "model"}}}}}}).toJson(QJsonDocument::Compact);
+            s->write("HTTP/1.1 200 OK\r\n"
+                     "Content-Type: application/json\r\n"
+                     "Content-Length: " +
+                     QByteArray::number(body.size()) +
+                     "\r\n"
+                     "Connection: close\r\n\r\n" +
+                     body);
+            s->flush();
+        } else if (req.contains("POST /v1/systemone")) {
+            // Decision-model endpoint (ADR 147). LLOCR_MOCK_SYSTEMONE_PROB
+            // drives the answer: a number is the probability (spellings:
+            // "flat" sends a bare number, default is the {"noul": x} object);
+            // "invalid" sends a malformed body; "nomatch" omits the match
+            // answer; "404" answers like a runtime without the endpoint.
+            const QString mode = QString::fromUtf8(::getenv("LLOCR_MOCK_SYSTEMONE_PROB"));
+            if (mode == QLatin1String("404")) {
+                s->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                s->flush();
+                return;
+            }
+            QByteArray body;
+            if (mode == QLatin1String("invalid")) {
+                body = "{\"answers\": {";
+            } else if (mode == QLatin1String("nomatch")) {
+                body = "{\"answers\": {\"other\": {\"noul\": 0.9}}, \"usage\": {\"input_tokens\": 42, \"output_tokens\": 0}}";
+            } else if (mode == QLatin1String("flat")) {
+                body = "{\"answers\": {\"match\": 0.97}, \"usage\": {\"input_tokens\": 42, \"output_tokens\": 0}}";
+            } else {
+                const double prob = mode.toDouble();
+                body = QJsonDocument(QJsonObject{{"answers", QJsonObject{{"match", QJsonObject{{"noul", std::isfinite(prob) && prob >= 0.0 && prob <= 1.0 ? prob : 0.97}}}}},
+                                                 {"usage", QJsonObject{{"input_tokens", 42}, {"output_tokens", 0}}}})
+                           .toJson(QJsonDocument::Compact);
+            }
             s->write("HTTP/1.1 200 OK\r\n"
                      "Content-Type: application/json\r\n"
                      "Content-Length: " +

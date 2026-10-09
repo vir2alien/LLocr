@@ -117,6 +117,17 @@ target_link_libraries(test_box_model PRIVATE
 )
 add_test(NAME test_box_model COMMAND test_box_model)
 
+# The decision-model client: /v1/systemone request build, the answer
+# spellings, and the failure matrix — against a loopback double, no mock
+# server needed.
+qt_add_executable(test_decision_model test_decision_model.cpp)
+
+target_link_libraries(test_decision_model PRIVATE
+    Qt6::Test
+    llocr_models
+)
+add_test(NAME test_decision_model COMMAND test_decision_model)
+
 # The project container (.llocr): ZipWriter <-> ArchiveExtractor round-trip and
 # the ProjectStore serialization (sources, boxes, edits, verification state).
 qt_add_executable(test_project_store test_project_store.cpp)

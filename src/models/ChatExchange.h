@@ -16,14 +16,19 @@
 namespace llocr {
 
 template <typename Result, typename BuildBody, typename ParseResponse>
-QFuture<Result> runChatExchange(BuildBody buildBody, const ConnectionConfig &config, const std::shared_ptr<LlamaClient> &client, ParseResponse parseResponse, QString encodeError)
+QFuture<Result> runChatExchange(BuildBody buildBody,
+                                const ConnectionConfig &config,
+                                const std::shared_ptr<LlamaClient> &client,
+                                ParseResponse parseResponse,
+                                QString encodeError,
+                                const QString &endpointPath = QStringLiteral("/v1/chat/completions"))
 {
     auto promise = std::make_shared<QPromise<Result>>();
     promise->start();
     QFuture<Result> future = promise->future();
 
     auto *encodeWatcher = new QFutureWatcher<QByteArray>();
-    QObject::connect(encodeWatcher, &QFutureWatcher<QByteArray>::finished, encodeWatcher, [promise, encodeWatcher, client, config, parseResponse, encodeError]() {
+    QObject::connect(encodeWatcher, &QFutureWatcher<QByteArray>::finished, encodeWatcher, [promise, encodeWatcher, client, config, parseResponse, encodeError, endpointPath]() {
         encodeWatcher->deleteLater();
         const QByteArray body = encodeWatcher->future().resultCount() > 0 ? encodeWatcher->result() : QByteArray();
         if (body.isEmpty()) {
@@ -38,7 +43,7 @@ QFuture<Result> runChatExchange(BuildBody buildBody, const ConnectionConfig &con
             promise->finish();
             watcher->deleteLater();
         });
-        watcher->setFuture(client->postJson(LlamaClient::endpointUrl(config.baseUrl), body, config.apiKey, config.timeoutMs));
+        watcher->setFuture(client->postJson(LlamaClient::endpointUrl(config.baseUrl, endpointPath), body, config.apiKey, config.timeoutMs));
     });
     encodeWatcher->setFuture(QtConcurrent::run(std::move(buildBody)));
 

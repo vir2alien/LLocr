@@ -24,7 +24,7 @@ class LlamaClient
 public:
     LlamaClient() = default;
 
-    static QUrl endpointUrl(const QString &baseUrl);
+    static QUrl endpointUrl(const QString &baseUrl, const QString &endpointPath = QStringLiteral("/v1/chat/completions"));
 
     QFuture<HttpResponse> postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, int timeoutMs);
 

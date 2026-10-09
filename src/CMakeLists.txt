@@ -29,6 +29,8 @@ qt_add_library(llocr_core STATIC
     core/OcrRequest.h
     core/CheckRequest.h
     core/CheckResult.h
+    core/DecisionRequest.h
+    core/DecisionResult.h
     core/ConnectionConfig.h
     core/LlamaClient.h
     core/LlamaClient.cpp
@@ -82,6 +84,8 @@ qt_add_library(llocr_models STATIC
     models/ImageDataUrl.cpp
     models/GeneralPurposeModel.h
     models/GeneralPurposeModel.cpp
+    models/DecisionModel.h
+    models/DecisionModel.cpp
 )
 target_include_directories(llocr_models PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_models PUBLIC llocr_core Qt6::Core Qt6::Gui)
@@ -240,6 +244,8 @@ qt_add_library(llocr_app STATIC
     app/RecognitionController.cpp
     app/CheckController.h
     app/CheckController.cpp
+    app/DecisionController.h
+    app/DecisionController.cpp
     app/VerificationPromptStore.h
     app/VerificationPromptStore.cpp
     app/VerificationQueueController.h

@@ -12,12 +12,12 @@
 
 namespace llocr {
 
-QUrl LlamaClient::endpointUrl(const QString &baseUrl)
+QUrl LlamaClient::endpointUrl(const QString &baseUrl, const QString &endpointPath)
 {
     QString base = baseUrl;
     while (base.endsWith('/'))
         base.chop(1);
-    return QUrl(base + QStringLiteral("/v1/chat/completions"));
+    return QUrl(base + endpointPath);
 }
 
 QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, int timeoutMs)
