@@ -292,7 +292,7 @@ private slots:
         pre.remove(QStringLiteral("check/requestProfileId"));
 
         const SettingsStore store;
-        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("check"));
+        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
         QVERIFY(!checkModels.isEmpty());
         QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
         // Nothing is written: the default is a fallback, not a stored choice.
@@ -314,7 +314,7 @@ private slots:
         pre.setValue(QStringLiteral("check/requestProfileId"), QString());
 
         const SettingsStore store;
-        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("check"));
+        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
         QVERIFY(!checkModels.isEmpty());
         QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
     }
@@ -391,7 +391,7 @@ private slots:
         pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("ocr-verifier"));
 
         const SettingsStore store;
-        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("check"));
+        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
         const QString ocrModel = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
         QVERIFY(!checkModels.isEmpty());
         QVERIFY(!ocrModel.isEmpty());
@@ -436,15 +436,15 @@ private slots:
         // The same family also answers the check role — LFM2.5-VL is a
         // general-purpose VL model, so activation as the verifier follows its
         // own profile just the same.
-        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("check"), true);
+        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("blockRecognition"), true);
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
 
-        store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("check"), true);
+        store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("blockRecognition"), true);
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
         // A family that does not answer the check role (OCR-only) leaves the
         // selection alone.
-        store.selectModelProfile(QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"), QStringLiteral("check"), true);
+        store.selectModelProfile(QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"), QStringLiteral("blockRecognition"), true);
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
         // A hand-picked GGUF joins to nothing.

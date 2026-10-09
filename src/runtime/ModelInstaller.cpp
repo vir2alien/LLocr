@@ -147,7 +147,7 @@ void ModelInstaller::reloadPresetsInternal()
         const QString profileId = preset.profileId.isEmpty() ? preset.id : preset.profileId;
         if (ModelProfiles::roleFor(profileId, QStringLiteral("ocr")))
             m_presets.append(preset);
-        if (ModelProfiles::roleFor(profileId, QStringLiteral("check")))
+        if (ModelProfiles::roleFor(profileId, QStringLiteral("blockRecognition")))
             m_presetsValidate.append(preset);
     }
 
@@ -221,7 +221,7 @@ QString ModelInstaller::setActiveModel(int index, bool forCheck)
         if (!e.mmprojPath.isEmpty())
             m_settings.setCheckLaunchMmprojPath(e.mmprojPath);
         m_settings.setCheckLaunchDraftPath(e.draftPath);
-        m_settings.selectModelProfile(e.repo, QStringLiteral("check"), true);
+        m_settings.selectModelProfile(e.repo, QStringLiteral("blockRecognition"), true);
         m_settings.forceSave();
         publishInstalled();
         return QString();

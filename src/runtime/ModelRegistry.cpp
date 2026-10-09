@@ -32,6 +32,12 @@ ModelOrigin originFromString(const QString &s)
     return s == QLatin1String("managed") ? ModelOrigin::Managed : ModelOrigin::External;
 }
 
+QString roleFromIndex(const QString &s)
+{
+    // Index files written before the role rename carry "check".
+    return s == QLatin1String("check") ? QStringLiteral("blockRecognition") : s;
+}
+
 bool isSubpathOf(const QString &path, const QString &dir)
 {
     if (dir.isEmpty())
@@ -85,7 +91,7 @@ ModelEntry entryFromJson(const QJsonObject &o)
     e.repoId = o.value(QStringLiteral("repoId")).toString();
     const QJsonArray roles = o.value(QStringLiteral("roles")).toArray();
     for (const QJsonValue &v : roles)
-        e.roles << v.toString();
+        e.roles << roleFromIndex(v.toString());
     const QJsonArray parts = o.value(QStringLiteral("parts")).toArray();
     for (const QJsonValue &v : parts)
         e.parts << v.toString();

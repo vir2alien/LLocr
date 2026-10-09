@@ -54,7 +54,7 @@ void TestModelPresetCatalog::builtInCatalogParses()
         QVERIFY(!p.profileId.isEmpty());
         const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), p.profileId);
         QVERIFY2(profile, qPrintable(QStringLiteral("preset %1 names unknown profile %2").arg(p.id, p.profileId)));
-        QVERIFY(ModelProfiles::roleFor(*profile, QStringLiteral("ocr")) || ModelProfiles::roleFor(*profile, QStringLiteral("check")));
+        QVERIFY(ModelProfiles::roleFor(*profile, QStringLiteral("ocr")) || ModelProfiles::roleFor(*profile, QStringLiteral("blockRecognition")));
     }
 
     // A model that serves one role is offered only there, and the catalog does
@@ -79,9 +79,9 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     // profiles of serverLaunch.json (ADR 126).
     const QList<Expected> expected = {
         {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
-        {"lfm25-vl-3b", "ocr,check", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
-        {"qwen3.5-4b", "check", "b4000", "q8_0,q4_k_xl", ""},
-        {"teleocr", "ocr,check", "b4000", "q4_k_m,q8_0", ""},
+        {"lfm25-vl-3b", "ocr,blockRecognition", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
+        {"qwen3.5-4b", "blockRecognition", "b4000", "q8_0,q4_k_xl", ""},
+        {"teleocr", "ocr,blockRecognition", "b4000", "q4_k_m,q8_0", ""},
     };
 
     for (const Expected &e : expected) {
@@ -116,7 +116,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         // runtime unload and reload the very model the user picked once.
         if (declared.size() == 2) {
             const ModelProfiles::Role *ocr = ModelProfiles::roleFor(*profile, QStringLiteral("ocr"));
-            const ModelProfiles::Role *check = ModelProfiles::roleFor(*profile, QStringLiteral("check"));
+            const ModelProfiles::Role *check = ModelProfiles::roleFor(*profile, QStringLiteral("blockRecognition"));
             QVERIFY2(ocr->launch == check->launch, qPrintable(QStringLiteral("%1: the two roles declare different launch parameters, so switching task reloads the model").arg(id)));
         }
     }
@@ -150,21 +150,21 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
 
-    const QString lfm = ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("check"));
+    const QString lfm = ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("blockRecognition"));
     QVERIFY(lfm.contains(QStringLiteral("reply with FIX on the first line")));
     QVERIFY(lfm.contains(QStringLiteral("reply with the single line OK")));
 
-    const QString qwen = ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("check"));
+    const QString qwen = ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"));
     QVERIFY(qwen.contains(QStringLiteral("Output exactly one of:")));
 
     // An OCR role has no system prompt, and neither has an unknown model.
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr")).isEmpty());
-    QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("check")).isEmpty());
+    QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("blockRecognition")).isEmpty());
 }
 
 void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
 {
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("check"));
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("blockRecognition"));
     QVERIFY(role);
     QVERIFY(!role->blockPrompts.isEmpty());
 
@@ -183,10 +183,10 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     // An unknown type, a type the profile says nothing about, and a model
     // outside the catalog resolve to nothing.
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("check"), QStringLiteral("list")).isEmpty());
-    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("check"), QStringLiteral("formula")).isEmpty());
-    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("check"), QStringLiteral("formula")).isEmpty());
-    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("check"), QStringLiteral("formula")).isEmpty());
+    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"), QStringLiteral("list")).isEmpty());
+    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
+    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
+    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
     // The ocr role of the same model has no block prompts at all.
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"), QStringLiteral("formula")).isEmpty());
 }

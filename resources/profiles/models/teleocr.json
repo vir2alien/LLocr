@@ -80,7 +80,7 @@
         }
       ]
     },
-    "check": {
+    "blockRecognition": {
       "alias": "llocr-verify",
       "maxOutput": 8192,
       "launch": [],

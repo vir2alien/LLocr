@@ -62,7 +62,7 @@
         { "order": 4, "name": "cache_prompt", "value": true, "description": "Stream tokens as they arrive; false gives the parser one complete response." }
       ]
     },
-    "check": {
+    "blockRecognition": {
       "alias": "llocr-verify",
       "promptBeforeImage": true,
       "maxOutput": 8192,

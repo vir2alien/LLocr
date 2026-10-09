@@ -13,7 +13,7 @@ ApplicationWindow {
 
     readonly property bool isVerifyModelRole: role === "check"
 
-    title: role === "check" ? qsTr("Check model settings")
+    title: role === "check" ? qsTr("Block OCR model settings")
                             : qsTr("OCR model settings")
     width: 560
     height: 680

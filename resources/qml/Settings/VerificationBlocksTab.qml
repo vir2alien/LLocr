@@ -153,7 +153,7 @@ Item {
             wrapMode: Text.WordWrap
             text: qsTr("When on, verification starts automatically as soon as "
                        + "recognition finishes. The managed runtime switches its "
-                       + "loaded model from OCR to the check model; an external "
+                       + "loaded model from OCR to the block OCR model; an external "
                        + "runtime just starts checking.")
         }
 

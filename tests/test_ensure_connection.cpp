@@ -127,7 +127,7 @@ private slots:
         RuntimeController runtime(settings, launchProfiles);
         ResolvedConnection ocr, check;
         runtime.ensureConnectionReady(ConnectionRole::Ocr, [&](const ResolvedConnection &c) { ocr = c; });
-        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { check = c; });
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { check = c; });
         QCOMPARE(ocr.modelId, QStringLiteral("ocr-model"));
         QCOMPARE(check.modelId, QStringLiteral("check-model"));
         QCOMPARE(check.baseUrl, ocr.baseUrl);
@@ -140,7 +140,7 @@ private slots:
         // which is surfaced verbatim (§7.5). No silent fallback to the OCR name.
         settings.setCheckModelName(QString());
         ResolvedConnection empty;
-        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { empty = c; });
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { empty = c; });
         QVERIFY(empty.modelId.isEmpty());
     }
 
@@ -183,7 +183,7 @@ private slots:
 
         int done = 0;
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) {
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
             resolved = c;
             ++done;
         });
@@ -215,7 +215,7 @@ private slots:
         ModelProfiles::Profile profile;
         profile.id = id;
         profile.title = id;
-        for (const QString &roleName : {QStringLiteral("ocr"), QStringLiteral("check")}) {
+        for (const QString &roleName : {QStringLiteral("ocr"), QStringLiteral("blockRecognition")}) {
             ModelProfiles::Role role;
             role.alias = QStringLiteral("llocr-%1-%2").arg(id, roleName);
             LaunchParameter ctx;
@@ -271,7 +271,7 @@ private slots:
 
         int done = 0;
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) {
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
             resolved = c;
             ++done;
         });
@@ -325,7 +325,7 @@ private slots:
 
         int done = 0;
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) {
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
             resolved = c;
             ++done;
         });
@@ -458,7 +458,7 @@ private slots:
             events.append(QStringLiteral("ocr"));
         });
         // Issued while the first resolve is still in flight.
-        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) {
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
             checkConn = c;
             events.append(QStringLiteral("check"));
         });
@@ -503,8 +503,8 @@ private slots:
         RuntimeController runtime(store, launchProfiles);
 
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { resolved = c; });
-        QVERIFY2(resolved.error.contains(QStringLiteral("Check model"), Qt::CaseInsensitive), qPrintable(resolved.error));
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { resolved = c; });
+        QVERIFY2(resolved.error.contains(QStringLiteral("Block OCR model"), Qt::CaseInsensitive), qPrintable(resolved.error));
         QVERIFY(resolved.baseUrl.isEmpty());
         QVERIFY(runtime.state() != RuntimeState::Starting);
         QVERIFY(runtime.state() != RuntimeState::Ready);
@@ -512,7 +512,7 @@ private slots:
         // A stale check-model path is named in the error.
         store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("gone.gguf")));
         ResolvedConnection resolved2;
-        runtime.ensureConnectionReady(ConnectionRole::Check, [&](const ResolvedConnection &c) { resolved2 = c; });
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { resolved2 = c; });
         QVERIFY2(resolved2.error.contains(QStringLiteral("gone.gguf")), qPrintable(resolved2.error));
     }
 

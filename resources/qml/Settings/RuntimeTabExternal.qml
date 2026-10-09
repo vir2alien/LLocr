@@ -53,7 +53,7 @@ ColumnLayout {
     }
 
     LLOLabel {
-        text: qsTr("Model name (validator)")
+        text: qsTr("Model name (block OCR)")
     }
     TextField {
         id: checkModelNameField

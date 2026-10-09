@@ -8,7 +8,7 @@ namespace llocr {
 
 enum class ConnectionRole {
     Ocr,
-    Check,
+    BlockRecognition,
 };
 
 struct ResolvedConnection {

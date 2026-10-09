@@ -15,12 +15,14 @@ constexpr int kSchemaVersion = 2;
 
 QString userFileName(RequestProfileStore::Role role)
 {
-    return role == RequestProfileStore::Role::Check ? QStringLiteral("requestValidate.json") : QStringLiteral("request.json");
+    // The file name predates the role rename (check → blockRecognition); it
+    // stays so existing user profiles survive the update.
+    return role == RequestProfileStore::Role::BlockRecognition ? QStringLiteral("requestValidate.json") : QStringLiteral("request.json");
 }
 
 QString roleName(RequestProfileStore::Role role)
 {
-    return role == RequestProfileStore::Role::Check ? QStringLiteral("check") : QStringLiteral("ocr");
+    return role == RequestProfileStore::Role::BlockRecognition ? QStringLiteral("blockRecognition") : QStringLiteral("ocr");
 }
 }  // namespace
 
@@ -32,7 +34,7 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QOb
     m_profiles->setUserPath(QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(userFileName(role)));
     setModelProfiles(ModelProfiles::instance());
 
-    if (m_role == Role::Check) {
+    if (m_role == Role::BlockRecognition) {
         connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
     } else {
         connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
@@ -66,7 +68,7 @@ bool RequestProfileStore::hasUserProfile() const
 
 QString RequestProfileStore::activeProfileId() const
 {
-    const QString id = m_role == Role::Check ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
+    const QString id = m_role == Role::BlockRecognition ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
     if (m_profiles->isKnown(id))
         return id;
     if (!m_profiles->builtIn().isEmpty())

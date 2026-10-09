@@ -856,8 +856,8 @@
     </message>
     <message>
         <location line="+4"/>
-        <source>Check model</source>
-        <translation>Модель проверки</translation>
+        <source>Block OCR model</source>
+        <translation>Модель OCR блока</translation>
     </message>
 </context>
 <context>
@@ -1401,8 +1401,8 @@
     </message>
     <message>
         <location line="-1"/>
-        <source>Check model settings</source>
-        <translation>Настройки модели проверки</translation>
+        <source>Block OCR model settings</source>
+        <translation>Настройки модели OCR блока</translation>
     </message>
     <message>
         <source>Location</source>
@@ -2746,8 +2746,8 @@
     </message>
     <message>
         <location line="+4"/>
-        <source>Model name (validator)</source>
-        <translation>Название модели валидатора</translation>
+        <source>Model name (block OCR)</source>
+        <translation>Название модели OCR блока</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -3168,8 +3168,8 @@
     </message>
     <message>
         <location line="+10"/>
-        <source>Check model:</source>
-        <translation>Модель проверки:</translation>
+        <source>Block OCR model:</source>
+        <translation>Модель OCR блока:</translation>
     </message>
     <message>
         <location line="+11"/>
@@ -3481,8 +3481,8 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Check model</source>
-        <translation>Модель проверки</translation>
+        <source>Block OCR model</source>
+        <translation>Модель OCR блока</translation>
     </message>
     <message>
         <location line="+32"/>
@@ -4004,8 +4004,8 @@
     </message>
     <message>
         <location line="+11"/>
-        <source>When on, verification starts automatically as soon as recognition finishes. The managed runtime switches its loaded model from OCR to the check model; an external runtime just starts checking.</source>
-        <translation>Когда включено, проверка запускается автоматически сразу после распознавания. Управляемый рантайм переключает загруженную модель с OCR на модель проверки; внешний рантайм просто начинает проверку.</translation>
+        <source>When on, verification starts automatically as soon as recognition finishes. The managed runtime switches its loaded model from OCR to the block OCR model; an external runtime just starts checking.</source>
+        <translation>Когда включено, проверка запускается автоматически сразу после распознавания. Управляемый рантайм переключает загруженную модель с OCR на модель OCR блока; внешний рантайм просто начинает проверку.</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -4915,8 +4915,8 @@
     </message>
     <message>
         <location line="-357"/>
-        <source>Switching to the check model…</source>
-        <translation>Переключение на модель проверки…</translation>
+        <source>Switching to the block OCR model…</source>
+        <translation>Переключение на модель OCR блока…</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -4925,13 +4925,13 @@
     </message>
     <message>
         <location line="-233"/>
-        <source>Check model is not selected — pick a model in Settings → Check model</source>
-        <translation>Модель проверки не выбрана — выберите её в Settings → Модель проверки</translation>
+        <source>Block OCR model is not selected — pick a model in Settings → Block OCR model</source>
+        <translation>Модель OCR блока не выбрана — выберите её в Settings → Модель OCR блока</translation>
     </message>
     <message>
         <location line="+2"/>
-        <source>Check model file not found: %1 — re-select the model in Settings → Check model</source>
-        <translation>Файл модели проверки не найден: %1 — выберите модель заново в Settings → Модель проверки</translation>
+        <source>Block OCR model file not found: %1 — re-select the model in Settings → Block OCR model</source>
+        <translation>Файл модели OCR блока не найден: %1 — выберите модель заново в Settings → Модель OCR блока</translation>
     </message>
 </context>
 <context>

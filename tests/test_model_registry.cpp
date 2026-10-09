@@ -58,6 +58,7 @@ private slots:
     void rebuildsOnCorruptIndex();
     void atomicWriteRoundtrip();
     void persistsRoles();
+    void migratesLegacyCheckRole();
     void persistsExplicitDefaultCtxSize();
     void recoversFromTruncatedIndex();
     void assertsRegistryLock();
@@ -154,7 +155,7 @@ void TestModelRegistry::rebuildsOnCorruptIndex()
     QCOMPARE(entries.size(), 1);
 }
 
-// The role tags ("ocr" / "check") recorded at install time survive a
+// The role tags ("ocr" / "blockRecognition") recorded at install time survive a
 // save/load roundtrip — the role-filtered installed lists rely on them.
 void TestModelRegistry::persistsRoles()
 {
@@ -166,7 +167,7 @@ void TestModelRegistry::persistsRoles()
     e.dir = makeRepoDir(dir.path(), QStringLiteral("org__repo"));
     e.modelPath = QDir(e.dir).filePath(QStringLiteral("model-Q4_K_M.gguf"));
     e.origin = ModelOrigin::Managed;
-    e.roles = {QStringLiteral("ocr"), QStringLiteral("check")};
+    e.roles = {QStringLiteral("ocr"), QStringLiteral("blockRecognition")};
 
     QString err;
     QVERIFY(ModelRegistry::save(dir.path(), {e}, err));
@@ -176,7 +177,7 @@ void TestModelRegistry::persistsRoles()
     const QList<ModelEntry> loaded = ModelRegistry::load(dir.path(), rebuilt, err);
     QVERIFY(!rebuilt);
     QCOMPARE(loaded.size(), 1);
-    QCOMPARE(loaded.at(0).roles, QStringList({QStringLiteral("ocr"), QStringLiteral("check")}));
+    QCOMPARE(loaded.at(0).roles, QStringList({QStringLiteral("ocr"), QStringLiteral("blockRecognition")}));
 
     // A legacy entry without roles stays empty (visible in both lists). Its
     // file has to exist: the reconciliation drops an entry whose files are gone
@@ -199,8 +200,42 @@ void TestModelRegistry::persistsRoles()
         if (x.id == QStringLiteral("legacy"))
             QVERIFY(x.roles.isEmpty());
         else
-            QCOMPARE(x.roles, QStringList({QStringLiteral("ocr"), QStringLiteral("check")}));
+            QCOMPARE(x.roles, QStringList({QStringLiteral("ocr"), QStringLiteral("blockRecognition")}));
     }
+}
+
+// An index written before the blockRecognition rename records the role as
+// "check"; loading maps it to the current name so the role-filtered lists
+// keep working without a rescan.
+void TestModelRegistry::migratesLegacyCheckRole()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString repoDir = makeRepoDir(dir.path(), QStringLiteral("org__repo"));
+    const QString model = QDir(repoDir).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+
+    QJsonObject entry;
+    entry.insert(QStringLiteral("id"), QStringLiteral("org__repo"));
+    entry.insert(QStringLiteral("title"), QStringLiteral("Repo"));
+    entry.insert(QStringLiteral("modelPath"), model);
+    entry.insert(QStringLiteral("dir"), repoDir);
+    entry.insert(QStringLiteral("managed"), QStringLiteral("managed"));
+    entry.insert(QStringLiteral("roles"), QJsonArray{QStringLiteral("ocr"), QStringLiteral("check")});
+    QJsonObject root;
+    root.insert(QStringLiteral("schemaVersion"), ModelRegistry::kSchemaVersion);
+    root.insert(QStringLiteral("models"), QJsonArray{entry});
+    QFile f(ModelRegistry::indexPathFor(dir.path()));
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    f.close();
+
+    bool rebuilt = false;
+    QString err;
+    const QList<ModelEntry> loaded = ModelRegistry::load(dir.path(), rebuilt, err);
+    QVERIFY2(err.isEmpty(), qPrintable(err));
+    QVERIFY(!rebuilt);
+    QCOMPARE(loaded.size(), 1);
+    QCOMPARE(loaded.at(0).roles, QStringList({QStringLiteral("ocr"), QStringLiteral("blockRecognition")}));
 }
 
 void TestModelRegistry::atomicWriteRoundtrip()
@@ -444,7 +479,7 @@ void TestModelRegistry::keepsIndexMetadataAndRefreshesFileFacts()
     recorded.dir = dir.path();
     recorded.revision = QStringLiteral("deadbeef");
     recorded.license = QStringLiteral("apache-2.0");
-    recorded.roles = {QStringLiteral("check")};
+    recorded.roles = {QStringLiteral("blockRecognition")};
     recorded.parser = QStringLiteral("det_tokens");
     recorded.addedAt = QStringLiteral("2026-01-01T00:00:00Z");
     recorded.byteSize = 999999;  // stale on purpose
@@ -465,7 +500,7 @@ void TestModelRegistry::keepsIndexMetadataAndRefreshesFileFacts()
     // …and only for what it can actually know.
     QCOMPARE(merged.revision, QStringLiteral("deadbeef"));
     QCOMPARE(merged.license, QStringLiteral("apache-2.0"));
-    QCOMPARE(merged.roles, QStringList({QStringLiteral("check")}));
+    QCOMPARE(merged.roles, QStringList({QStringLiteral("blockRecognition")}));
     QCOMPARE(merged.parser, QStringLiteral("det_tokens"));
     QCOMPARE(merged.addedAt, QStringLiteral("2026-01-01T00:00:00Z"));
     QCOMPARE(result.refreshed, 1);

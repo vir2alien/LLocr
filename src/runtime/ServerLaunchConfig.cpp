@@ -15,12 +15,12 @@ ServerLaunchConfig ServerLaunchConfig::fromSettings(const SettingsStore &s, cons
     ServerLaunchConfig cfg;
     QString modelId;
     QString roleName;
-    if (role == ConnectionRole::Check) {
+    if (role == ConnectionRole::BlockRecognition) {
         cfg.modelPath = s.checkLaunchModelPath();
         cfg.mmprojPath = s.checkLaunchMmprojPath();
         cfg.draftPath = s.checkLaunchDraftPath();
         modelId = s.checkRequestProfileId();
-        roleName = QStringLiteral("check");
+        roleName = QStringLiteral("blockRecognition");
     } else {
         cfg.modelPath = s.launchModelPath();
         cfg.mmprojPath = s.launchMmprojPath();

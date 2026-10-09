@@ -94,7 +94,7 @@ constexpr const char *kCheckProfileJson = R"({
     "schemaVersion": 1,
     "id": "qwen3.5-4b",
     "title": "Qwen3.5-4B",
-    "roles": { "check": { "launch": [
+    "roles": { "blockRecognition": { "launch": [
         { "order": 1, "name": "ctx-size", "value": 8192 },
         { "order": 2, "name": "cache-type-k", "value": "q8_0" }
     ] } }
@@ -309,7 +309,7 @@ private slots:
         store.setModelProfiles(loaded);
 
         // The check role gets the verifier's own values.
-        const LaunchProfile check = store.activeProfile(QStringLiteral("qwen3.5-4b"), QStringLiteral("check"));
+        const LaunchProfile check = store.activeProfile(QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"));
         QCOMPARE(check.find(QStringLiteral("cache-type-k"))->value.toString(), QStringLiteral("q8_0"));
         QCOMPARE(check.find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
 

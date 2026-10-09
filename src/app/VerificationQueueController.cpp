@@ -202,11 +202,11 @@ void VerificationQueueController::startNextVerify()
     }
 
     const BoundingBox &box = boxes.at(m_verifyBoxIndex);
-    // The verifier's wording lives entirely in the check model's profile
-    // (systemPrompt + blockPrompts on the check role).
+    // The verifier's wording lives entirely in the model's profile
+    // (systemPrompt + blockPrompts on the blockRecognition role).
     const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
-    const QString typePrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("check"), box.label);
-    const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("check"));
+    const QString typePrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"), box.label);
+    const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"));
     m_check.checkBlock(crop, text, systemPrompt, typePrompt);
 }
 

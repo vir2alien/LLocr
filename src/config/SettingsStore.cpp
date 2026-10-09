@@ -10,7 +10,7 @@ namespace {
 
 QString defaultCheckRequestProfileId()
 {
-    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("check"));
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
 }
 
 }  // namespace
@@ -103,7 +103,7 @@ void SettingsStore::applyStartupMigration()
         m_settings.remove(QString::fromLatin1(retired));
 
     resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
-    resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("check"));
+    resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("blockRecognition"));
 
     if (m_settings.value(kParserId).toString() == QLatin1String("det_tokens")) {
         QString resolved = QString::fromUtf8(kDefaultParserId);

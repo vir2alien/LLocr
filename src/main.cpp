@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
     requestProfilesOcr.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesOcr", &requestProfilesOcr);
 
-    llocr::RequestProfileStore requestProfilesValidate(settingsStore, llocr::RequestProfileStore::Role::Check);
+    llocr::RequestProfileStore requestProfilesValidate(settingsStore, llocr::RequestProfileStore::Role::BlockRecognition);
     requestProfilesValidate.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesValidate", &requestProfilesValidate);
 

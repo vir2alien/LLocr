@@ -240,12 +240,12 @@ ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings
 
 QString RuntimeController::roleModelPath(ConnectionRole role) const
 {
-    return role == ConnectionRole::Check ? m_settings.checkLaunchModelPath().trimmed() : m_settings.launchModelPath().trimmed();
+    return role == ConnectionRole::BlockRecognition ? m_settings.checkLaunchModelPath().trimmed() : m_settings.launchModelPath().trimmed();
 }
 
 QString RuntimeController::roleMmprojPath(ConnectionRole role) const
 {
-    return role == ConnectionRole::Check ? m_settings.checkLaunchMmprojPath().trimmed() : m_settings.launchMmprojPath().trimmed();
+    return role == ConnectionRole::BlockRecognition ? m_settings.checkLaunchMmprojPath().trimmed() : m_settings.launchMmprojPath().trimmed();
 }
 
 bool RuntimeController::serverRunsRole(ConnectionRole role) const
@@ -285,12 +285,12 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
     const QString model = roleModelPath(role);
     if (const QString buildError = modelBuildError(role); !buildError.isEmpty())
         return buildError;
-    if (role == ConnectionRole::Check) {
+    if (role == ConnectionRole::BlockRecognition) {
         if (model.isEmpty())
-            return tr("Check model is not selected — pick a model in Settings → Check model");
+            return tr("Block OCR model is not selected — pick a model in Settings → Block OCR model");
         if (!QFileInfo(model).isFile())
-            return tr("Check model file not found: %1 — re-select the model in "
-                      "Settings → Check model")
+            return tr("Block OCR model file not found: %1 — re-select the model in "
+                      "Settings → Block OCR model")
                 .arg(model);
         return QString();
     }
@@ -304,8 +304,8 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
 
 QString RuntimeController::modelBuildError(ConnectionRole role) const
 {
-    const QString modelId = role == ConnectionRole::Check ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
-    const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(modelId, role == ConnectionRole::Check ? QStringLiteral("check") : QStringLiteral("ocr"));
+    const QString modelId = role == ConnectionRole::BlockRecognition ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
+    const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(modelId, role == ConnectionRole::BlockRecognition ? QStringLiteral("blockRecognition") : QStringLiteral("ocr"));
     const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), modelId);
     const QString minBuild = profile ? profile->minBuild : QString();
     if (minBuild.isEmpty())
@@ -339,7 +339,7 @@ ResolvedConnection RuntimeController::resolveExternal(ConnectionRole role) const
     ResolvedConnection conn;
     conn.baseUrl = m_settings.baseUrl();
     conn.apiKey = m_settings.apiKey();
-    conn.modelId = role == ConnectionRole::Check ? m_settings.checkModelName() : m_settings.modelName();
+    conn.modelId = role == ConnectionRole::BlockRecognition ? m_settings.checkModelName() : m_settings.modelName();
     conn.timeoutMs = m_settings.connectionTimeoutMs();
     return conn;
 }
@@ -520,7 +520,7 @@ void RuntimeController::beginRoleSwitch()
     m_switching = true;
     setBusyState(AppBusyState::StartingRuntime);
     setLoadProgressPercent(-1);
-    setStatusMessage(m_resolveRole == ConnectionRole::Check ? tr("Switching to the check model…") : tr("Switching to the OCR model…"));
+    setStatusMessage(m_resolveRole == ConnectionRole::BlockRecognition ? tr("Switching to the block OCR model…") : tr("Switching to the OCR model…"));
     if (!m_server) {
         m_switching = false;
         beginManagedResolve();
@@ -541,8 +541,8 @@ ResolvedConnection RuntimeController::buildManagedConnection() const
     conn.apiKey.clear();  // Managed server is loopback-only, no auth
     if (!m_startedConfig.modelAlias.isEmpty())
         conn.modelId = m_startedConfig.modelAlias;
-    else if (const ModelProfiles::Role *role = ModelProfiles::roleFor(m_startedRole == ConnectionRole::Check ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId(),
-                                                                      m_startedRole == ConnectionRole::Check ? QStringLiteral("check") : QStringLiteral("ocr")))
+    else if (const ModelProfiles::Role *role = ModelProfiles::roleFor(m_startedRole == ConnectionRole::BlockRecognition ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId(),
+                                                                      m_startedRole == ConnectionRole::BlockRecognition ? QStringLiteral("blockRecognition") : QStringLiteral("ocr")))
         conn.modelId = role->alias;
     if (conn.modelId.isEmpty())
         conn.modelId = QStringLiteral("llocr-local");
@@ -826,8 +826,8 @@ QString RuntimeController::launchCommandPreview()
 QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, bool forCheck)
 {
     QVariantMap out;
-    const LaunchProfile profile =
-        forCheck ? m_launchProfiles.activeProfile(m_settings.checkRequestProfileId(), QStringLiteral("check")) : m_launchProfiles.activeProfile(m_settings.modelRecipeId(), QStringLiteral("ocr"));
+    const LaunchProfile profile = forCheck ? m_launchProfiles.activeProfile(m_settings.checkRequestProfileId(), QStringLiteral("blockRecognition"))
+                                           : m_launchProfiles.activeProfile(m_settings.modelRecipeId(), QStringLiteral("ocr"));
     int ctxSize = 8192;
     QString cacheTypeK;
     QString cacheTypeV;

@@ -188,7 +188,7 @@ void ModelQuantModel::refresh()
 
 QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
 {
-    const QString role = m_forCheck ? QStringLiteral("check") : QStringLiteral("ocr");
+    const QString role = m_forCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr");
     const QString activePath = m_forCheck ? m_settings.checkLaunchModelPath() : m_settings.launchModelPath();
     const QList<ModelPreset> &presets = m_installer.presetsForRole(m_forCheck);
     const QList<ModelEntry> &installed = m_installer.installedEntries();
@@ -349,7 +349,7 @@ bool ModelQuantModel::matchesRole(const ModelEntry &entry, const SettingsStore &
     if (forCheck ? checkActive : ocrActive)
         return true;
     if (!entry.roles.isEmpty())
-        return entry.roles.contains(forCheck ? QStringLiteral("check") : QStringLiteral("ocr"));
+        return entry.roles.contains(forCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr"));
     if (checkActive)
         return false;
     const bool vision = !entry.mmprojPath.isEmpty();

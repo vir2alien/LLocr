@@ -177,7 +177,7 @@ bool LaunchProfileStore::modelProfileMissing() const
 
 bool LaunchProfileStore::checkModelProfileMissing() const
 {
-    return modelNotInCatalog(modelIdForRole(QStringLiteral("check")));
+    return modelNotInCatalog(modelIdForRole(QStringLiteral("blockRecognition")));
 }
 
 QString LaunchProfileStore::modelRuntimeNote() const
@@ -187,12 +187,12 @@ QString LaunchProfileStore::modelRuntimeNote() const
 
 QString LaunchProfileStore::checkModelRuntimeNote() const
 {
-    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("check")));
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("blockRecognition")));
 }
 
 QString LaunchProfileStore::modelIdForRole(const QString &role) const
 {
-    return role == QLatin1String("check") ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
+    return role == QLatin1String("blockRecognition") ? m_settings.checkRequestProfileId() : m_settings.modelRecipeId();
 }
 
 void LaunchProfileStore::composeDraft()

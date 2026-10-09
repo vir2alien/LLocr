@@ -91,7 +91,7 @@ Item {
                 }
                 RowLayout {
                     spacing: 8
-                    LLOLabel { text: qsTr("Check model:"); font.pointSize: Theme.captionSize }
+                    LLOLabel { text: qsTr("Block OCR model:"); font.pointSize: Theme.captionSize }
                     LLOLabel {
                         font.pointSize: Theme.captionSize; color: Theme.textPrimary; elide: Text.ElideMiddle; Layout.fillWidth: true
                         text: Settings.connectionMode === "external"

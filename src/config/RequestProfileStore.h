@@ -26,7 +26,7 @@ class RequestProfileStore : public QObject
 public:
     enum class Role {
         Ocr,
-        Check,
+        BlockRecognition,
     };
 
     explicit RequestProfileStore(SettingsStore &settings, Role role = Role::Ocr, QObject *parent = nullptr);

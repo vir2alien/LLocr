@@ -48,7 +48,7 @@ Item {
                 id: modelTabBar
                 Layout.fillWidth: true
                 TabButton { text: qsTr("OCR model") }
-                TabButton { text: qsTr("Check model") }
+                TabButton { text: qsTr("Block OCR model") }
             }
 
             StackLayout {

@@ -604,7 +604,7 @@ private slots:
         check.title = QStringLiteral("Verifier");
         ModelProfiles::Role checkRole;
         checkRole.request = {makeParameter(1, QStringLiteral("gamma"), 1)};
-        check.roles.insert(QStringLiteral("check"), checkRole);
+        check.roles.insert(QStringLiteral("blockRecognition"), checkRole);
         profiles.append(check);
 
         // The recommended model first: the picker and the models list agree.
@@ -622,7 +622,7 @@ private slots:
         QCOMPARE(qobject_cast<RequestProfileListModel *>(ocrList)->rowOfId(QStringLiteral("verifier")), -1);
         QCOMPARE(qobject_cast<RequestProfileListModel *>(ocrList)->rowOfId(QStringLiteral("no-such-model")), -1);
 
-        RequestProfileStore checkStore(settings, RequestProfileStore::Role::Check);
+        RequestProfileStore checkStore(settings, RequestProfileStore::Role::BlockRecognition);
         checkStore.setModelProfiles(profiles);
         auto *checkList = checkStore.profileModel();
         QAbstractItemModelTester checkTester(checkList, QAbstractItemModelTester::FailureReportingMode::Fatal);

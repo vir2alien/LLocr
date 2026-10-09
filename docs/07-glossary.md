@@ -2,14 +2,17 @@
 
 ## Terms
 - **OCR** — recognizing text from images.
-- **Check = Validate** — one role, two vocabularies. C++ and the settings keys
-  say **Check** (`ConnectionRole::Check`, `check/*` keys, `CheckController`,
-  the «Модель проверки» window); the profile files and the QML singletons say
-  **Validate** (`requestValidate.json`, `serverLaunchValidate.json`,
-  `defaultLlmPresetsValidate.json`, `RequestProfilesValidate`,
-  `LaunchProfilesValidate`). Deliberate (ADR 71/72): both map 1:1 (false=Ocr,
-  true=Check); do not invent a third word — when adding code prefer Check,
-  when touching the profile resources keep Validate.
+- **OCR**, **Block recognition** — the two recognition-adjacent roles. The
+  block-recognition role was renamed **check → blockRecognition** (ADR 146):
+  the profile files, the registry role tags and the enums say
+  **blockRecognition** (`roles.blockRecognition`, `ConnectionRole::
+  BlockRecognition`, `RequestProfileStore::Role::BlockRecognition`). The
+  legacy vocabulary survives where renaming would cost user data or churn:
+  the `check/*` settings keys, `CheckController`/`CheckRequest`/`CheckResult`,
+  `requestValidate.json`, `RequestProfilesValidate`, and the old
+  `serverLaunchValidate.json`/`defaultLlmPresetsValidate.json` names it
+  inherited from ADR 71/72. The registry index migrates `"check"` role tags
+  to `"blockRecognition"` on load.
 - **OCR model (adapter)** — the per-model recipe (`models/OcrModel.h`): how to
   talk to a specific OCR LLM — prompt variants, the default output parser, and
   (via the base class) the OpenAI-style chat-completions request body and

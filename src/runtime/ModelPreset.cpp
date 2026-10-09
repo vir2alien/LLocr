@@ -6,7 +6,7 @@ namespace llocr {
 
 QString ModelPreset::parserFor(bool forCheck) const
 {
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(profileId, forCheck ? QStringLiteral("check") : QStringLiteral("ocr"));
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(profileId, forCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr"));
     return role ? role->parser : QString();
 }
 

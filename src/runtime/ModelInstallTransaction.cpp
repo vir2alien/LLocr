@@ -609,7 +609,7 @@ void ModelInstallTransaction::completeInstall()
             if (!e.roles.contains(r))
                 e.roles.append(r);
     }
-    const QString installRole = m_pendingForCheck ? QStringLiteral("check") : QStringLiteral("ocr");
+    const QString installRole = m_pendingForCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr");
     if (!e.roles.contains(installRole))
         e.roles.append(installRole);
 
@@ -669,7 +669,7 @@ void ModelInstallTransaction::completeInstall()
             m_settings.setLaunchMmprojPath(e.mmprojPath);
         m_settings.setLaunchDraftPath(e.draftPath);
     }
-    m_settings.selectModelProfile(m_pending.repo, m_pendingForCheck ? QStringLiteral("check") : QStringLiteral("ocr"), m_pendingForCheck);
+    m_settings.selectModelProfile(m_pending.repo, m_pendingForCheck ? QStringLiteral("blockRecognition") : QStringLiteral("ocr"), m_pendingForCheck);
     m_settings.forceSave();
 
     setBusy(false);

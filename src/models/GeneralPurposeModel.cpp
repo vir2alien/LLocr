@@ -53,7 +53,7 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, co
     QJsonObject ocrPart{{QStringLiteral("type"), QStringLiteral("text")},
                         {QStringLiteral("text"), QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>").arg(request.recognizedText)}};
 
-    const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(request.modelId, QStringLiteral("check"));
+    const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(request.modelId, QStringLiteral("blockRecognition"));
     QJsonArray content = modelRole && modelRole->promptBeforeImage ? QJsonArray{typePromptPart, ocrPart, imagePart} : QJsonArray{typePromptPart, imagePart, ocrPart};
 
     QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")}, {QStringLiteral("content"), request.systemPrompt}};

@@ -191,7 +191,7 @@ ToolBar {
             onTriggered: headerRoot.openOcrModelSettingsRequested()
         }
         MenuItem {
-            text: qsTr("Check model")
+            text: qsTr("Block OCR model")
             onTriggered: headerRoot.openCheckModelSettingsRequested()
         }
     }

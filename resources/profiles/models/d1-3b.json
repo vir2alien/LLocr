@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "d1-3b",
+  "title": "LiquidAI d1-3B (decision)",
+  "license": "https://huggingface.co/LiquidAI/d1-3B-GGUF",
+  "files": {
+    "repo": "LiquidAI/d1-3B-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q4_k_m",
+        "file": "d1-3B-Q4_K_M.gguf",
+        "sha256": ""
+      },
+      {
+        "id": "q8_0",
+        "file": "d1-3B-Q8_0.gguf",
+        "sha256": ""
+      }
+    ],
+    "mmproj": {
+      "id": "q8_0",
+      "file": "mmproj-d1-3B-Q8_0.gguf",
+      "sha256": ""
+    }
+  },
+  "roles": {
+    "decision": {
+      "alias": "llocr-decision",
+      "systemPrompt": "The state is a text fragment recognized from the attached image by an OCR model. Does the image show exactly this text?",
+      "launch": [
+        {
+          "order": 1,
+          "name": "ctx-size",
+          "value": 8192,
+          "description": "Context for the state text and the image embeddings; the decision model reads the state and the image in one pass."
+        }
+      ],
+      "request": []
+    }
+  }
+}
