@@ -498,6 +498,22 @@ private slots:
         QCOMPARE(multi.status, CheckStatus::Fixed);
         QCOMPARE(multi.text, QStringLiteral("<table>\n<tr></tr>\n</table>"));
 
+        // A reply that is one Markdown code fence — VL models do this to
+        // tables — carries packaging, not block text: the fence is unwrapped
+        // and the table kept verbatim, with or without a language tag.
+        const CheckResult fenced = model.parse("{\"choices\":[{\"message\":{\"content\":\"```html\\n<table>\\n<tr><td>x</td></tr>\\n</table>\\n```\"}}]}");
+        QCOMPARE(fenced.status, CheckStatus::Fixed);
+        QCOMPARE(fenced.text, QStringLiteral("<table>\n<tr><td>x</td></tr>\n</table>"));
+
+        const CheckResult bareFence = model.parse("{\"choices\":[{\"message\":{\"content\":\"```\\nplain text\\n```\"}}]}");
+        QCOMPARE(bareFence.status, CheckStatus::Fixed);
+        QCOMPARE(bareFence.text, QStringLiteral("plain text"));
+
+        // A fence around only part of the reply is content, not packaging.
+        const CheckResult partialFence = model.parse("{\"choices\":[{\"message\":{\"content\":\"Before.\\n```html\\n<table></table>\\n```\\nAfter.\"}}]}");
+        QCOMPARE(partialFence.status, CheckStatus::Fixed);
+        QCOMPARE(partialFence.text, QStringLiteral("Before.\n```html\n<table></table>\n```\nAfter."));
+
         // An empty reply — nothing but end-of-sentence markers — means the
         // block could not be transcribed: a verdict (needs human eyes), not a
         // protocol error.

@@ -43,7 +43,7 @@
   | `docs/UnlimitedOCR.md`    | Reference: the Unlimited-OCR model (baidu) |
   | `docs/13-lfm25-vl-3b.md`  | Model manual: LFM2.5-VL-3B (launch, requests, 2:3 calibration, links); Russian mirror in `13-lfm25-vl-3b.ru.md` |
   | `docs/14-d1-3b.md`        | Model manual: LiquidAI d1-3B decision model (`/v1/systemone`, threshold, pipeline role); Russian mirror in `14-d1-3b.ru.md` |
-  | `docs/15-decision-pipeline-plan.md` | The work plan that introduced the decision pipeline (steps, accepted decisions); historical |
+  | `docs/15-teleocr.md`      | Model manual: TeleOCR/NaviDC-OCR (block-recognition prompts, GGUF quants, roles); Russian mirror in `15-teleocr.ru.md` |
   
   ## Rules for the agent
   

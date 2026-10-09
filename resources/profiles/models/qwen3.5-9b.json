@@ -1,21 +1,16 @@
 {
   "schemaVersion": 1,
-  "id": "qwen3.5-4b",
-  "title": "Qwen3.5-4B",
-  "license": "https://huggingface.co/unsloth/Qwen3.5-4B-MTP-GGUF",
+  "id": "qwen3.5-9b",
+  "title": "Qwen3.5-9B",
+  "license": "https://huggingface.co/unsloth/Qwen3.5-9B-MTP-GGUF",
   "minBuild": "b4000",
   "files": {
-    "repo": "unsloth/Qwen3.5-4B-MTP-GGUF",
+    "repo": "unsloth/Qwen3.5-9B-MTP-GGUF",
     "revision": "",
     "quants": [
       {
-        "id": "q8_0",
-        "file": "Qwen3.5-4B-Q8_0.gguf",
-        "sha256": ""
-      },
-      {
         "id": "q4_k_xl",
-        "file": "Qwen3.5-4B-UD-Q4_K_XL.gguf",
+        "file": "Qwen3.5-9B-UD-Q4_K_XL.gguf",
         "sha256": ""
       }
     ],

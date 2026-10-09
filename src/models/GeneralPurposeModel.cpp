@@ -35,6 +35,27 @@ QString stripControlTokens(const QString &text)
     return out.trimmed();
 }
 
+// Small VL models wrap whole replies — tables above all — in a Markdown code
+// fence. The fence is packaging, not block text: when it is the entire reply,
+// unwrap it. A fence that covers only part of the reply is content and stays.
+QString stripOuterCodeFence(const QString &text)
+{
+    const QString trimmed = text.trimmed();
+    if (!trimmed.startsWith(QStringLiteral("```")))
+        return text;
+    const int openEnd = trimmed.indexOf(QLatin1Char('\n'));
+    if (openEnd < 0)
+        return text;
+    const int closeStart = trimmed.lastIndexOf(QLatin1Char('\n'));
+    if (closeStart <= openEnd)
+        return text;
+    if (trimmed.mid(closeStart + 1).trimmed() != QStringLiteral("```"))
+        return text;
+    if (trimmed.left(openEnd).mid(3).trimmed().contains(QLatin1Char('`')))
+        return text;
+    return trimmed.mid(openEnd + 1, closeStart - openEnd - 1).trimmed();
+}
+
 }  // namespace
 
 QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
@@ -78,7 +99,7 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
         return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "No choices in response"));
 
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
-    const QString content = stripControlTokens(message.value(QStringLiteral("content")).toString());
+    const QString content = stripOuterCodeFence(stripControlTokens(message.value(QStringLiteral("content")).toString()));
 
     // The block-recognition contract: the reply IS the block text. An empty
     // reply (nothing but end-of-sentence markers, or the model refusing) means

@@ -82,7 +82,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     const QList<Expected> expected = {
         {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
         {"lfm25-vl-3b", "ocr,blockRecognition", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
-        {"qwen3.5-4b", "blockRecognition", "b4000", "q8_0,q4_k_xl", ""},
+        {"qwen3.5-4b", "blockRecognition", "b4000", "q8_0,q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn"},
+        {"qwen3.5-9b", "blockRecognition", "b4000", "q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn"},
         {"teleocr", "ocr,blockRecognition", "b4000", "q4_k_m,q8_0", ""},
         {"d1-3b", "decision", "", "q4_k_m,q8_0", "ctx-size"},
     };
@@ -214,6 +215,14 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     // the override must ask for the format the app can use.
     QVERIFY(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("HTML format")));
     QVERIFY(!role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("OTSL format")));
+
+    // The qwen table prompt pins the plain-markup contract: this family wraps
+    // tables in ```html fences and decorates the tags with border/style/data-*
+    // attributes unless told not to, and neither survives into the block text.
+    const QString qwenTable = ModelProfiles::blockPromptFor(ModelProfiles::instance(), QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"), QStringLiteral("table"));
+    QVERIFY(qwenTable.contains(QStringLiteral("<table>")));
+    QVERIFY(qwenTable.contains(QStringLiteral("code fence")));
+    QVERIFY(qwenTable.contains(QStringLiteral("data-*")));
 
     // A type outside the catalog, and a model outside the catalog, resolve
     // to nothing.
