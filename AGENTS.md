@@ -42,6 +42,8 @@
   | `docs/TODO.md`            | Short backlog of open items                 |
   | `docs/UnlimitedOCR.md`    | Reference: the Unlimited-OCR model (baidu) |
   | `docs/13-lfm25-vl-3b.md`  | Model manual: LFM2.5-VL-3B (launch, requests, 2:3 calibration, links); Russian mirror in `13-lfm25-vl-3b.ru.md` |
+  | `docs/14-d1-3b.md`        | Model manual: LiquidAI d1-3B decision model (`/v1/systemone`, threshold, pipeline role); Russian mirror in `14-d1-3b.ru.md` |
+  | `docs/15-decision-pipeline-plan.md` | The work plan that introduced the decision pipeline (steps, accepted decisions); historical |
   
   ## Rules for the agent
   
@@ -348,6 +350,17 @@
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
+  - **Decision pipeline (ADR 145–147, Oct 2026)** — verification runs in two
+    stages: a fast **decision model** (d1-3B via `/v1/systemone`, its own
+    settings window/menu «Модель decision», threshold `decision/matchThreshold`)
+    judges every queued block — Ok (green) or the new **Mismatch** (red); with
+    «Автоматическое повторное распознавание» (`check/autoRecheck`) the
+    mismatches are re-run through the **blockRecognition** role (renamed from
+    `check`, ADR 146) in the same run, the transcription becoming the block
+    text. Block-recognition entry points: per-block «Распознать», header
+    ▾ menus «Распознать проблемные блоки». Planned blocks (filter-enabled type
+    or duplicate suspect, unanswered) show the gray dot
+    (`boxVerificationPlanned`). Model manual: `docs/14-d1-3b.md`.
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
     (update-check opt-in) done; **H.4 closed** (watchdog-helper not shipped),
