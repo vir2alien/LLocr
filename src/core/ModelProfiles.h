@@ -22,7 +22,8 @@ public:
         QString alias;
         QString parser;
         int maxOutput = 0;
-        QString systemPrompt;  // check-role override of the shared verifier system prompt
+        bool isDefault = false;  // the role's recommended model, replacing the first-in-catalog fallback
+        QString systemPrompt;    // check-role override of the shared verifier system prompt
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;

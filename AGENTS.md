@@ -44,6 +44,7 @@
   | `docs/13-lfm25-vl-3b.md`  | Model manual: LFM2.5-VL-3B (launch, requests, 2:3 calibration, links); Russian mirror in `13-lfm25-vl-3b.ru.md` |
   | `docs/14-d1-3b.md`        | Model manual: LiquidAI d1-3B decision model (`/v1/systemone`, threshold, pipeline role); Russian mirror in `14-d1-3b.ru.md` |
   | `docs/15-teleocr.md`      | Model manual: TeleOCR/NaviDC-OCR (block-recognition prompts, GGUF quants, roles); Russian mirror in `15-teleocr.ru.md` |
+  | `docs/16-gemma-4.md`      | Model manual: Gemma 4 E4B/12B QAT (MTP drafter in the model repo, image token budgets 70–1120, per-card flash-attn split); Russian mirror in `16-gemma-4.ru.md` |
   
   ## Rules for the agent
   

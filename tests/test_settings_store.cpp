@@ -320,9 +320,9 @@ private slots:
         pre.remove(QStringLiteral("check/requestProfileId"));
 
         const SettingsStore store;
-        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
-        QVERIFY(!checkModels.isEmpty());
-        QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
+        const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
+        QVERIFY(!checkDefault.isEmpty());
+        QCOMPARE(store.checkRequestProfileId(), checkDefault);
         // Nothing is written: the default is a fallback, not a stored choice.
         QVERIFY(!store.contains(QStringLiteral("check/requestProfileId")));
 
@@ -342,9 +342,9 @@ private slots:
         pre.setValue(QStringLiteral("check/requestProfileId"), QString());
 
         const SettingsStore store;
-        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
-        QVERIFY(!checkModels.isEmpty());
-        QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
+        const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
+        QVERIFY(!checkDefault.isEmpty());
+        QCOMPARE(store.checkRequestProfileId(), checkDefault);
     }
 
     // Same fallback rule as the check role: the decision profile id is the id
@@ -459,21 +459,21 @@ private slots:
         pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("ocr-verifier"));
 
         const SettingsStore store;
-        const QStringList checkModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
+        const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
         const QString ocrModel = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
-        QVERIFY(!checkModels.isEmpty());
+        QVERIFY(!checkDefault.isEmpty());
         QVERIFY(!ocrModel.isEmpty());
-        QCOMPARE(store.checkRequestProfileId(), checkModels.constFirst());
+        QCOMPARE(store.checkRequestProfileId(), checkDefault);
         QCOMPARE(store.modelRecipeId(), ocrModel);
         // Written back, not just answered differently on every read.
-        QCOMPARE(pre.value(QStringLiteral("check/requestProfileId")).toString(), checkModels.constFirst());
+        QCOMPARE(pre.value(QStringLiteral("check/requestProfileId")).toString(), checkDefault);
         QCOMPARE(pre.value(QStringLiteral("model/recipeId")).toString(), ocrModel);
 
         // A real choice survives: the check role does not include every model
         // the ocr role has, so the two resolve to different ids and both are kept.
         const QString ocrChoice = QStringLiteral("lfm25-vl-3b");
         QString checkChoice;
-        for (const QString &id : checkModels) {
+        for (const QString &id : ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"))) {
             if (id != ocrChoice) {
                 checkChoice = id;
                 break;

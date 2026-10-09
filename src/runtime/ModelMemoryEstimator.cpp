@@ -287,7 +287,7 @@ ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, c
     qint64 nLayer = 0, nKvHead = 0, headCount = 0, nEmbd = 0;
     qint64 headDim = 0;
     if (e.valid) {
-        for (const QString &arch : {QStringLiteral("llama"), QStringLiteral("qwen2"), QStringLiteral("gptneox")}) {
+        for (const QString &arch : {QStringLiteral("llama"), QStringLiteral("qwen2"), QStringLiteral("gptneox"), QStringLiteral("gemma4")}) {
             if (!nLayer)
                 readIntMeta(meta, arch + ".block_count", arch + ".n_layer", nLayer);
             if (!nKvHead)

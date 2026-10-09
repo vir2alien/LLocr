@@ -99,6 +99,7 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.alias = roleObject.value(QStringLiteral("alias")).toString();
         role.parser = roleObject.value(QStringLiteral("parser")).toString();
         role.maxOutput = roleObject.value(QStringLiteral("maxOutput")).toInt(0);
+        role.isDefault = roleObject.value(QStringLiteral("default")).toBool(false);
         role.systemPrompt = roleObject.value(QStringLiteral("systemPrompt")).toString();
         role.promptBeforeImage = roleObject.value(QStringLiteral("promptBeforeImage")).toBool(false);
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
@@ -237,6 +238,11 @@ QString ModelProfiles::idForRepo(const QList<Profile> &profiles, const QString &
 QString ModelProfiles::defaultIdForRole(const QList<Profile> &profiles, const QString &role)
 {
     for (const Profile &profile : profiles) {
+        const Role *modelRole = roleFor(profile, role);
+        if (modelRole && modelRole->isDefault)
+            return profile.id;
+    }
+    for (const Profile &profile : profiles) {
         if (profile.isDefault && roleFor(profile, role))
             return profile.id;
     }
@@ -261,9 +267,13 @@ QList<ModelProfiles::Profile> ModelProfiles::forRole(const QList<Profile> &profi
         if (roleFor(p, role))
             out.append(p);
     }
-    std::stable_sort(out.begin(), out.end(), [](const Profile &a, const Profile &b) {
-        if (a.isDefault != b.isDefault)
-            return a.isDefault;
+    const auto recommended = [&role](const Profile &profile) {
+        const Role *modelRole = roleFor(profile, role);
+        return profile.isDefault || (modelRole && modelRole->isDefault);
+    };
+    std::stable_sort(out.begin(), out.end(), [&recommended](const Profile &a, const Profile &b) {
+        if (recommended(a) != recommended(b))
+            return recommended(a);
         return a.title.compare(b.title, Qt::CaseInsensitive) < 0;
     });
     return out;

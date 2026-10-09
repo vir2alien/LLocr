@@ -467,16 +467,43 @@ private slots:
 
         // User message: the type prompt and the image only — the block is
         // recognized from scratch, the previously recognized text is not sent.
+        // An unknown model has no profile, so the Gemma 4 / Qwen family order
+        // (image before text) applies.
         const QJsonArray content = messages.at(1).toObject().value(QStringLiteral("content")).toArray();
         QCOMPARE(content.size(), 2);
-        QCOMPARE(content.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
-        QCOMPARE(content.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(content.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(content.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
 
         const QString bodyText = QString::fromUtf8(body);
         QVERIFY(!bodyText.contains(QStringLiteral("ocr_candidate")));
 
-        QCOMPARE(content.at(0).toObject().value(QStringLiteral("text")).toString(), QStringLiteral("Verify the text block."));
-        QCOMPARE(content.at(1).toObject().value(QStringLiteral("image_url")).toObject().value(QStringLiteral("url")).toString(), QStringLiteral("data:image/png;base64,AAAA"));
+        QCOMPARE(content.at(0).toObject().value(QStringLiteral("image_url")).toObject().value(QStringLiteral("url")).toString(), QStringLiteral("data:image/png;base64,AAAA"));
+        QCOMPARE(content.at(1).toObject().value(QStringLiteral("text")).toString(), QStringLiteral("Verify the text block."));
+    }
+
+    // The modality order is the model's trained shape: the Gemma 4 card puts
+    // the image before the text, LFM2.5 trains text-then-image — and the
+    // profile's promptBeforeImage flag is what the block-recognition body
+    // follows, same as the OCR body does.
+    void checkBodyOrderFollowsTheModelProfile()
+    {
+        ExposedGeneralPurposeModel model;
+        CheckRequest request;
+        request.image = QImage(4, 4, QImage::Format_RGB32);
+        request.systemPrompt = QStringLiteral("You transcribe one block.");
+        request.typePrompt = QStringLiteral("Block type: text.");
+
+        request.modelId = QStringLiteral("gemma-4-e4b");
+        const QByteArray gemmaBody = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray gemmaContent = QJsonDocument::fromJson(gemmaBody).object().value(QStringLiteral("messages")).toArray().at(1).toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(gemmaContent.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(gemmaContent.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+
+        request.modelId = QStringLiteral("lfm25-vl-3b");
+        const QByteArray lfmBody = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray lfmContent = QJsonDocument::fromJson(lfmBody).object().value(QStringLiteral("messages")).toArray().at(1).toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(lfmContent.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+        QCOMPARE(lfmContent.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
     }
 
     void checkResponseParsing()

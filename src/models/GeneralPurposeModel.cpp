@@ -1,5 +1,6 @@
 #include "models/GeneralPurposeModel.h"
 
+#include "core/ModelProfiles.h"
 #include "models/ChatExchange.h"
 #include "models/ImageDataUrl.h"
 
@@ -69,7 +70,8 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, co
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
     QJsonObject typePromptPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.typePrompt}};
 
-    QJsonArray content{typePromptPart, imagePart};
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("blockRecognition"));
+    QJsonArray content = role && role->promptBeforeImage ? QJsonArray{typePromptPart, imagePart} : QJsonArray{imagePart, typePromptPart};
 
     QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")}, {QStringLiteral("content"), request.systemPrompt}};
     QJsonObject userMessage{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};

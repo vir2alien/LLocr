@@ -23,6 +23,7 @@ private slots:
     // against the values the model card and the launcher actually document.
     void shippedProfilesAreTheOnesTheDocsDescribe();
     void draftModuleReachesThePresets();
+    void roleDefaultsFollowTheShippedProfiles();
     void verifierSystemPromptFollowsTheModel();
     void checkModelBlockPromptsOverridePerType();
     void runtimeNoteReachesTheSettings();
@@ -84,6 +85,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"lfm25-vl-3b", "ocr,blockRecognition", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
         {"qwen3.5-4b", "blockRecognition", "b4000", "q8_0,q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"qwen3.5-9b", "blockRecognition", "b4000", "q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
+        {"gemma-4-e4b", "blockRecognition", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,flash-attn,image-min-tokens"},
+        {"gemma-4-12b", "blockRecognition", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens"},
         {"teleocr", "ocr,blockRecognition", "b4000", "q4_k_m,q8_0", ""},
         {"d1-3b", "decision", "", "q4_k_m,q8_0", "ctx-size"},
     };
@@ -146,6 +149,36 @@ void TestModelPresetCatalog::draftModuleReachesThePresets()
     QCOMPARE(lfm->mtpRepo, QStringLiteral("LiquidAI/LFM2.5-VL-3B-DSpark-GGUF"));
     QVERIFY(!lfm->sha256.value(QStringLiteral("lfm2.5-vl-3b-dspark-f16.gguf")).isEmpty());
     QVERIFY(lfm->mtpRepo != lfm->repo);  // a different repo is the whole point of the test
+
+    // The Gemma 4 drafter is the opposite case: it ships inside the model's own
+    // repository (repo-root mtp-*.gguf), so the preset must resolve the draft's
+    // repo to the model's — a mtpRepo left empty is fine only because the
+    // install pipeline makes that substitution.
+    const ModelPreset *gemma = nullptr;
+    for (const ModelPreset &p : presets) {
+        if (p.profileId == QStringLiteral("gemma-4-e4b")) {
+            gemma = &p;
+            break;
+        }
+    }
+    QVERIFY2(gemma, "the gemma-4-e4b preset is in the built-in catalog");
+    QCOMPARE(gemma->mtp, QStringLiteral("mtp-gemma-4-E4B-it.gguf"));
+    QCOMPARE(gemma->mtpRepo, gemma->repo);
+}
+
+// The role's default model is a shipped-profile fact: the alphabetically first
+// profile serving the role is only the fallback, so a new model whose id sorts
+// early (gemma-4-12b) must not silently move the default the settings and the
+// wizard fall back to.
+void TestModelPresetCatalog::roleDefaultsFollowTheShippedProfiles()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("ocr")), QStringLiteral("unlimited-ocr"));
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("blockRecognition")), QStringLiteral("lfm25-vl-3b"));
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("decision")), QStringLiteral("d1-3b"));
+
+    // The installer's picker sorts the role's recommended model first.
+    QCOMPARE(ModelProfiles::forRole(profiles, QStringLiteral("blockRecognition")).constFirst().id, QStringLiteral("lfm25-vl-3b"));
 }
 
 // Every check profile ships the verifier system prompt in the model's own
