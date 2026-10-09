@@ -81,6 +81,12 @@
           "name": "flash-attn",
           "value": "on",
           "description": "Flash attention kernels; required for the vision stack."
+        },
+        {
+          "order": 10,
+          "name": "image-min-tokens",
+          "value": 1024,
+          "description": "Vision budget floor; llama.cpp warns that Qwen-VL needs at least 1024 image tokens for grounding tasks."
         }
       ],
       "request": [
@@ -117,8 +123,8 @@
         {
           "order": 6,
           "name": "cache_prompt",
-          "value": true,
-          "description": "Cache the prompt (image embeddings, system message) between blocks."
+          "value": false,
+          "description": "Reuse the prompt cache; false avoids the recurring-state position warnings Qwen3.5 logs when blocks share a prefix."
         }
       ],
       "blockPrompts": {

@@ -82,8 +82,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     const QList<Expected> expected = {
         {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
         {"lfm25-vl-3b", "ocr,blockRecognition", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
-        {"qwen3.5-4b", "blockRecognition", "b4000", "q8_0,q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn"},
-        {"qwen3.5-9b", "blockRecognition", "b4000", "q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn"},
+        {"qwen3.5-4b", "blockRecognition", "b4000", "q8_0,q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
+        {"qwen3.5-9b", "blockRecognition", "b4000", "q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"teleocr", "ocr,blockRecognition", "b4000", "q4_k_m,q8_0", ""},
         {"d1-3b", "decision", "", "q4_k_m,q8_0", "ctx-size"},
     };
