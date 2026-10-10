@@ -35,10 +35,12 @@ class ModelInstaller : public QObject
     Q_PROPERTY(QObject *quantModels READ quantModels CONSTANT)
     Q_PROPERTY(QObject *checkQuantModels READ checkQuantModels CONSTANT)
     Q_PROPERTY(QObject *decisionQuantModels READ decisionQuantModels CONSTANT)
+    Q_PROPERTY(QObject *layoutQuantModels READ layoutQuantModels CONSTANT)
 
     Q_PROPERTY(QString activeTitle READ activeTitle NOTIFY installedChanged)
     Q_PROPERTY(QString checkActiveTitle READ checkActiveTitle NOTIFY installedChanged)
     Q_PROPERTY(QString decisionActiveTitle READ decisionActiveTitle NOTIFY installedChanged)
+    Q_PROPERTY(QString layoutActiveTitle READ layoutActiveTitle NOTIFY installedChanged)
 
 public:
     enum State {
@@ -65,11 +67,14 @@ public:
     QObject *quantModels() const;
     QObject *checkQuantModels() const;
     QObject *decisionQuantModels() const;
+    QObject *layoutQuantModels() const;
     QString activeTitle() const;
     QString checkActiveTitle() const;
     QString decisionActiveTitle() const;
+    QString layoutActiveTitle() const;
 
-    // role is a model-profile role id: "ocr", "blockRecognition" or "decision".
+    // role is a model-profile role id: "ocr", "blockRecognition", "decision"
+    // or "layout".
     const QList<ModelPreset> &presetsForRole(const QString &role) const;
     const QList<ModelEntry> &installedEntries() const { return m_installed; }
 
@@ -122,10 +127,12 @@ private:
     QList<ModelPreset> m_presets;
     QList<ModelPreset> m_presetsValidate;
     QList<ModelPreset> m_presetsDecision;
+    QList<ModelPreset> m_presetsLayout;
     QList<ModelEntry> m_installed;
     ModelQuantModel *m_ocrModels = nullptr;
     ModelQuantModel *m_checkModels = nullptr;
     ModelQuantModel *m_decisionModels = nullptr;
+    ModelQuantModel *m_layoutModels = nullptr;
 
 signals:
     void stateChanged();

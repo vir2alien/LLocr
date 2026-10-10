@@ -302,6 +302,15 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
                 .arg(model);
         return QString();
     }
+    if (role == ConnectionRole::Layout) {
+        if (model.isEmpty())
+            return tr("Layout model is not selected — pick a model in Settings → Layout model");
+        if (!QFileInfo(model).isFile())
+            return tr("Layout model file not found: %1 — re-select the model in "
+                      "Settings → Layout model")
+                .arg(model);
+        return QString();
+    }
     if (model.isEmpty())
         return tr("Block OCR model is not selected — pick a model in Settings → Block OCR model");
     if (!QFileInfo(model).isFile())
@@ -533,6 +542,7 @@ void RuntimeController::beginRoleSwitch()
     setLoadProgressPercent(-1);
     setStatusMessage(m_resolveRole == ConnectionRole::Ocr        ? tr("Switching to the OCR model…")
                      : m_resolveRole == ConnectionRole::Decision ? tr("Switching to the decision model…")
+                     : m_resolveRole == ConnectionRole::Layout   ? tr("Switching to the layout model…")
                                                                  : tr("Switching to the block OCR model…"));
     if (!m_server) {
         m_switching = false;

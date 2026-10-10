@@ -640,6 +640,42 @@ private slots:
         QCOMPARE(checkStore.activeProfile().parameters.size(), 1);
     }
 
+    // The layout store is the fourth role: its built-ins are the models
+    // declaring the layout role, and its active profile follows the layout
+    // key — not the check selection it was derived from before ADR 150.
+    void layoutStoreFollowsItsOwnSetting()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        SettingsStore settings;
+        settings.setRuntimeRootDir(dir.path());
+        settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+
+        QList<ModelProfiles::Profile> profiles = twoModels();
+        ModelProfiles::Profile markup;
+        markup.id = QStringLiteral("marker");
+        markup.title = QStringLiteral("Marker");
+        ModelProfiles::Role markupRole;
+        markupRole.request = {makeParameter(1, QStringLiteral("temperature"), 0.0)};
+        markup.roles.insert(QStringLiteral("layout"), markupRole);
+        profiles.append(markup);
+
+        RequestProfileStore layoutStore(settings, RequestProfileStore::Role::Layout);
+        layoutStore.setModelProfiles(profiles);
+
+        auto *layoutList = layoutStore.profileModel();
+        QAbstractItemModelTester layoutTester(layoutList, QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QCOMPARE(layoutList->rowCount(), 1);
+        QCOMPARE(layoutList->data(layoutList->index(0, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("marker"));
+
+        settings.setCheckRequestProfileId(QStringLiteral("unlimited-ocr"));
+        settings.setLayoutRequestProfileId(QStringLiteral("marker"));
+        layoutStore.reloadDraft();
+        QCOMPARE(layoutStore.activeProfileId(), QStringLiteral("marker"));
+        QCOMPARE(layoutStore.activeProfile().parameters.size(), 1);
+    }
+
     // The draft follows the model selection with no picker in between: the
     // model id is the profile's selector, edits are committed for the edited
     // profile only, and switching models never carries an edit across.

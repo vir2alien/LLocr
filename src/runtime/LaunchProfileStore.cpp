@@ -70,6 +70,8 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
     connect(&m_settings, &SettingsStore::runtimeBackendChanged, this, &LaunchProfileStore::ensureProfileResolved);
     connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { emit profileChanged(); });
     connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { emit profileChanged(); });
+    connect(&m_settings, &SettingsStore::decisionRequestProfileIdChanged, this, [this] { emit profileChanged(); });
+    connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     ensureProfileResolved();
     reloadDraft();
 }
@@ -185,6 +187,11 @@ bool LaunchProfileStore::decisionModelProfileMissing() const
     return modelNotInCatalog(modelIdForRole(QStringLiteral("decision")));
 }
 
+bool LaunchProfileStore::layoutModelProfileMissing() const
+{
+    return modelNotInCatalog(modelIdForRole(QStringLiteral("layout")));
+}
+
 QString LaunchProfileStore::modelRuntimeNote() const
 {
     return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("ocr")));
@@ -200,12 +207,19 @@ QString LaunchProfileStore::decisionModelRuntimeNote() const
     return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("decision")));
 }
 
+QString LaunchProfileStore::layoutModelRuntimeNote() const
+{
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("layout")));
+}
+
 QString LaunchProfileStore::modelIdForRole(const QString &role) const
 {
     if (role == QLatin1String("blockRecognition"))
         return m_settings.checkRequestProfileId();
     if (role == QLatin1String("decision"))
         return m_settings.decisionRequestProfileId();
+    if (role == QLatin1String("layout"))
+        return m_settings.layoutRequestProfileId();
     return m_settings.modelRecipeId();
 }
 

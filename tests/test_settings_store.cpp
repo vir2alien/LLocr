@@ -365,6 +365,25 @@ private slots:
         QCOMPARE(chosen.decisionRequestProfileId(), decisionModels.constFirst());
     }
 
+    // The layout role resolves like the others: the role's recommended model
+    // until the user stores a pick of its own, and an activation for the role
+    // writes the layout key — not the check one it followed before ADR 150.
+    void layoutRoleResolvesAModelProfileWithoutOneStored()
+    {
+        QSettings pre;
+        pre.remove(QStringLiteral("layout/requestProfileId"));
+
+        const SettingsStore store;
+        QCOMPARE(store.layoutRequestProfileId(), ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("layout")));
+        QVERIFY(!store.contains(QStringLiteral("layout/requestProfileId")));
+
+        SettingsStore chosen;
+        chosen.setCheckRequestProfileId(QStringLiteral("teleocr"));
+        chosen.selectModelProfile(QStringLiteral("konradjr007/NaviDC-OCR-GGUF"), QStringLiteral("layout"));
+        QCOMPARE(chosen.layoutRequestProfileId(), QStringLiteral("teleocr"));
+        QCOMPARE(chosen.checkRequestProfileId(), QStringLiteral("teleocr"));
+    }
+
     // The threshold arrives from a 0–100 spin box and an INI that can be
     // hand-edited: values outside [0, 1] are clamped wherever they come from.
     void decisionMatchThresholdClampsAndRoundTrips()

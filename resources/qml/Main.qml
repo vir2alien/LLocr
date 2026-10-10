@@ -57,6 +57,7 @@ ApplicationWindow {
         onOpenOcrModelSettingsRequested: ocrModelSettingsWindow.bringToFront()
         onOpenDecisionModelSettingsRequested: decisionModelSettingsWindow.bringToFront()
         onOpenCheckModelSettingsRequested: checkModelSettingsWindow.bringToFront()
+        onOpenLayoutModelSettingsRequested: layoutModelSettingsWindow.bringToFront()
     }
 
     SplitView {
@@ -240,6 +241,12 @@ ApplicationWindow {
     ModelSettingsWindow {
         id: checkModelSettingsWindow
         role: "blockRecognition"
+        runtimeSettingsRef: runtimeSettingsWindow
+    }
+
+    ModelSettingsWindow {
+        id: layoutModelSettingsWindow
+        role: "layout"
         runtimeSettingsRef: runtimeSettingsWindow
     }
 

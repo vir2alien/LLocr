@@ -50,6 +50,7 @@ ListView {
                     : (maxVisibleRows > 0 ? Math.min(count, maxVisibleRows) : count) * rowHeight
     model: role === "blockRecognition" ? ModelInstaller.checkQuantModels
          : role === "decision" ? ModelInstaller.decisionQuantModels
+         : role === "layout" ? ModelInstaller.layoutQuantModels
          : ModelInstaller.quantModels
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 

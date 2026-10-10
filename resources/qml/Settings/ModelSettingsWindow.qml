@@ -9,11 +9,12 @@ import "../Common"
 
 ApplicationWindow {
     id: window
-    // Model-profile role id: "ocr", "blockRecognition" or "decision".
+    // Model-profile role id: "ocr", "blockRecognition", "decision" or "layout".
     property string role: "ocr"
 
     title: role === "blockRecognition" ? qsTr("Block OCR model settings")
          : role === "decision" ? qsTr("Decision model settings")
+         : role === "layout" ? qsTr("Layout model settings")
          : qsTr("OCR model settings")
     width: 560
     height: 680

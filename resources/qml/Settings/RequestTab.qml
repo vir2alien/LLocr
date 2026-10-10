@@ -10,7 +10,7 @@ import "../Common"
 Item {
     id: root
 
-    // Model-profile role id: "ocr", "blockRecognition" or "decision".
+    // Model-profile role id: "ocr", "blockRecognition", "decision" or "layout".
     property string role: "ocr"
     readonly property bool decisionRole: role === "decision"
     readonly property bool hasParams: profiles.draftModel.count > 0
@@ -18,6 +18,7 @@ Item {
     readonly property real valueWidth: 0.26
     readonly property var profiles: role === "blockRecognition" ? RequestProfilesValidate
                                   : role === "decision" ? RequestProfilesDecision
+                                  : role === "layout" ? RequestProfilesLayout
                                   : RequestProfilesOcr
 
     function loadValues() {
@@ -99,6 +100,8 @@ Item {
                 ? qsTr("Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.")
                 : role === "blockRecognition"
                 ? qsTr("Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.")
+                : role === "layout"
+                ? qsTr("Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.")
                 : qsTr("Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.")
         }
 

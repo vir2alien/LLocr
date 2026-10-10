@@ -24,6 +24,7 @@ ToolBar {
     signal openOcrModelSettingsRequested()
     signal openDecisionModelSettingsRequested()
     signal openCheckModelSettingsRequested()
+    signal openLayoutModelSettingsRequested()
 
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
@@ -272,6 +273,10 @@ ToolBar {
         MenuItem {
             text: qsTr("Block OCR model")
             onTriggered: headerRoot.openCheckModelSettingsRequested()
+        }
+        MenuItem {
+            text: qsTr("Layout model")
+            onTriggered: headerRoot.openLayoutModelSettingsRequested()
         }
     }
 

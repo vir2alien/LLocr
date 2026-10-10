@@ -113,7 +113,7 @@ ReconcileResult reconcileInstalled(const ReconcileInput &input)
     result.models = merged;
     result.indexChanged = merged != input.index;
 
-    for (const QString &selected : {input.selectedModelPath, input.selectedCheckModelPath, input.selectedDecisionModelPath}) {
+    for (const QString &selected : {input.selectedModelPath, input.selectedCheckModelPath, input.selectedDecisionModelPath, input.selectedLayoutModelPath}) {
         if (selected.isEmpty())
             continue;
         const bool resolved = std::any_of(merged.cbegin(), merged.cend(), [&](const ModelEntry &entry) { return selectsPath(entry, selected); });

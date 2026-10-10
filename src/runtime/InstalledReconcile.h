@@ -16,6 +16,7 @@ struct ReconcileInput {
     QString selectedModelPath;          ///< settings: launch/launchModelPath
     QString selectedCheckModelPath;     ///< settings: launch/checkLaunchModelPath
     QString selectedDecisionModelPath;  ///< settings: decision/modelPath
+    QString selectedLayoutModelPath;    ///< settings: layout/modelPath
     QString selectedServerPath;         ///< settings: launch/serverPath
     bool selectedServerExists = false;
 };
@@ -37,6 +38,7 @@ struct ReconcileSelections {
     QString modelPath;
     QString checkModelPath;
     QString decisionModelPath;
+    QString layoutModelPath;
     QString serverPath;
     bool serverExists = false;
 };

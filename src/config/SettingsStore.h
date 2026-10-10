@@ -74,6 +74,12 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString decisionModelName READ decisionModelName WRITE setDecisionModelName NOTIFY decisionModelNameChanged)
     Q_PROPERTY(double decisionMatchThreshold READ decisionMatchThreshold WRITE setDecisionMatchThreshold NOTIFY decisionMatchThresholdChanged)
 
+    Q_PROPERTY(QString layoutLaunchModelPath READ layoutLaunchModelPath WRITE setLayoutLaunchModelPath NOTIFY layoutLaunchModelPathChanged)
+    Q_PROPERTY(QString layoutLaunchMmprojPath READ layoutLaunchMmprojPath WRITE setLayoutLaunchMmprojPath NOTIFY layoutLaunchMmprojPathChanged)
+    Q_PROPERTY(QString layoutLaunchDraftPath READ layoutLaunchDraftPath WRITE setLayoutLaunchDraftPath NOTIFY layoutLaunchDraftPathChanged)
+    Q_PROPERTY(QString layoutRequestProfileId READ layoutRequestProfileId WRITE setLayoutRequestProfileId NOTIFY layoutRequestProfileIdChanged)
+    Q_PROPERTY(QString layoutModelName READ layoutModelName WRITE setLayoutModelName NOTIFY layoutModelNameChanged)
+
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
 
 public:
@@ -216,9 +222,20 @@ public:
     double decisionMatchThreshold() const;
     void setDecisionMatchThreshold(double threshold);
 
+    QString layoutLaunchModelPath() const;
+    void setLayoutLaunchModelPath(const QString &path);
+    QString layoutLaunchMmprojPath() const;
+    void setLayoutLaunchMmprojPath(const QString &path);
+    QString layoutLaunchDraftPath() const;
+    void setLayoutLaunchDraftPath(const QString &path);
+    QString layoutRequestProfileId() const;
+    void setLayoutRequestProfileId(const QString &id);
+    QString layoutModelName() const;
+    void setLayoutModelName(const QString &name);
+
     // Role-generic views over the per-role launch/request/model-name settings.
     // role is a model-profile role id: "ocr", "blockRecognition", "decision"
-    // or "layout" (layout shares the blockRecognition model).
+    // or "layout".
     QString launchModelPathForRole(const QString &role) const;
     void setLaunchModelPathForRole(const QString &role, const QString &path);
     QString launchMmprojPathForRole(const QString &role) const;
@@ -288,6 +305,11 @@ signals:
     void decisionRequestProfileIdChanged();
     void decisionModelNameChanged();
     void decisionMatchThresholdChanged();
+    void layoutLaunchModelPathChanged();
+    void layoutLaunchMmprojPathChanged();
+    void layoutLaunchDraftPathChanged();
+    void layoutRequestProfileIdChanged();
+    void layoutModelNameChanged();
     void hfTokenChanged();
 
 public:
@@ -394,6 +416,13 @@ private:
     static constexpr const char *kDecisionRequestProfileId = "decision/requestProfileId";
     static constexpr const char *kDecisionModelName = "decision/modelName";
     static constexpr const char *kDecisionMatchThreshold = "decision/matchThreshold";
+
+    // Layout (page markup) model
+    static constexpr const char *kLayoutLaunchModelPath = "layout/modelPath";
+    static constexpr const char *kLayoutLaunchMmprojPath = "layout/mmprojPath";
+    static constexpr const char *kLayoutLaunchDraftPath = "layout/draftPath";
+    static constexpr const char *kLayoutRequestProfileId = "layout/requestProfileId";
+    static constexpr const char *kLayoutModelName = "layout/modelName";
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";

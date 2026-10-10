@@ -81,7 +81,7 @@ void LayoutController::startNext()
         return;
     }
 
-    m_runtime.ensureConnectionReady(this, ConnectionRole::BlockRecognition, [this, image](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, ConnectionRole::Layout, [this, image](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
         if (m_stopRequested) {

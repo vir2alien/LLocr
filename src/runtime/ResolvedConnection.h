@@ -10,6 +10,7 @@ enum class ConnectionRole {
     Ocr,
     BlockRecognition,
     Decision,
+    Layout,
 };
 
 inline QString connectionRoleName(ConnectionRole role)
@@ -21,6 +22,8 @@ inline QString connectionRoleName(ConnectionRole role)
         return QStringLiteral("blockRecognition");
     case ConnectionRole::Decision:
         return QStringLiteral("decision");
+    case ConnectionRole::Layout:
+        return QStringLiteral("layout");
     }
     return QStringLiteral("ocr");
 }
@@ -28,7 +31,7 @@ inline QString connectionRoleName(ConnectionRole role)
 struct ResolvedConnection {
     QString baseUrl;  // http://127.0.0.1:<port> or the external URL
     QString apiKey;   // from settings (External) or empty (Managed)
-    QString modelId;  // alias (Managed) or model/name / check/modelName / decision/modelName (External, per ConnectionRole)
+    QString modelId;  // alias (Managed) or model/name / check/modelName / decision/modelName / layout/modelName (External, per ConnectionRole)
     int connectionTimeoutMs = 0;
     int responseTimeoutMs = 0;
 

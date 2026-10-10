@@ -362,18 +362,21 @@
     ▾ menus «Распознать проблемные блоки». Planned blocks (filter-enabled type
     or duplicate suspect, unanswered) show the gray dot
     (`boxVerificationPlanned`). Model manual: `docs/14-d1-3b.md`.
-  - **Manual page markup (ADR 149, Oct 2026)** — the header button
+  - **Manual page markup (ADR 149–150, Oct 2026)** — the header button
     «Разметить» (+ ▾ «Разметить все страницы») runs the **layout role**
     (`roles.layout` in a model profile — TeleOCR ships it): the page goes to
-    the block-recognition model with the card's layout prompt, the reply's
+    the layout model with the card's layout prompt, the reply's
     `<box:…><label:…><orientation>` lines become **text-less** positioned
     blocks (parser `teleocr-layout`), and the text is then filled in through
     blockRecognition — per-block «Распознать» or the new
     «Распознать все блоки страницы» menu item (queues every NotChecked
     text-less box). The markup pass replaces the page's blocks (confirmation
-    if the page has results), runs on the blockRecognition connection (no
-    separate settings window; `layoutAvailable` = the active check model
-    declares a layout role), and the 1036² page squash mirrors the upstream
+    if the page has results). Since **ADR 150** the layout model has its own
+    settings — a fourth full role: `layout/*` keys, `ConnectionRole::Layout`,
+    the Settings → Layout model window (Model / Launch / Request tabs;
+    deliberately absent from the setup wizard), a fourth installer list
+    (`layoutQuantModels`), the request profile `layout/requestProfileId` +
+    `requestLayout.json`. The 1036² page squash mirrors the upstream
     calibration. Manual only — not wired into the automatic pipeline.
     Model manual: `docs/15-teleocr.md`.
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate

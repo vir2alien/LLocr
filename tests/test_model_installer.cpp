@@ -382,6 +382,17 @@ private slots:
         QCOMPARE(decisionKeys, QStringList({QStringLiteral("d1-3b")}));
         QVERIFY(pathOf(*s->installer, QStringLiteral("d1-3b"), QStringLiteral("decision")).isEmpty());
 
+        // The layout list serves the layout role only (ADR 150): one shipped
+        // profile declares it.
+        auto *layout = qobject_cast<ModelQuantModel *>(s->installer->layoutQuantModels());
+        QVERIFY(layout);
+        QStringList layoutKeys;
+        for (int i = 0; i < layout->rowCount(); ++i)
+            layoutKeys.append(roleAt(layout, i, ModelQuantModel::KeyRole).toString());
+        QCOMPARE(layoutKeys, QStringList({QStringLiteral("teleocr")}));
+        QVERIFY(pathOf(*s->installer, QStringLiteral("teleocr"), QStringLiteral("layout")).isEmpty());
+        QVERIFY(s->installer->layoutActiveTitle().isEmpty());
+
         // TeleOCR answers both roles and offers the quantizations its profile
         // declares — the shipped file is the source here, not a copy of it, so an
         // edit to the catalog is what this follows.

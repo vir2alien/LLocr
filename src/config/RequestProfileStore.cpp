@@ -59,10 +59,7 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QOb
     } else if (m_role == Role::Decision) {
         connect(&m_settings, &SettingsStore::decisionRequestProfileIdChanged, this, [this] { followActiveProfile(); });
     } else if (m_role == Role::Layout) {
-        // The layout pass runs on the block-recognition model (the profile's
-        // layout role describes the same model), so its active profile follows
-        // the check selection.
-        connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
+        connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, [this] { followActiveProfile(); });
     } else {
         connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
     }
@@ -104,7 +101,7 @@ QString RequestProfileStore::activeProfileId() const
         id = m_settings.decisionRequestProfileId();
         break;
     case Role::Layout:
-        id = m_settings.checkRequestProfileId();
+        id = m_settings.layoutRequestProfileId();
         break;
     case Role::Ocr:
         id = m_settings.modelRecipeId();

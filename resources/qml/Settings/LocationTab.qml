@@ -9,7 +9,7 @@ import "../Common"
 
 Item {
     id: root
-    // Model-profile role id: "ocr", "blockRecognition" or "decision".
+    // Model-profile role id: "ocr", "blockRecognition", "decision" or "layout".
     property string role: "ocr"
     property var runtimeSettingsRef: null
 
@@ -17,13 +17,16 @@ Item {
 
     readonly property string activeTitleText: role === "blockRecognition" ? ModelInstaller.checkActiveTitle
                                             : role === "decision" ? ModelInstaller.decisionActiveTitle
+                                            : role === "layout" ? ModelInstaller.layoutActiveTitle
                                             : ModelInstaller.activeTitle
 
     readonly property var profileList: role === "blockRecognition" ? RequestProfilesValidate.profileModel
                                      : role === "decision" ? RequestProfilesDecision.profileModel
+                                     : role === "layout" ? RequestProfilesLayout.profileModel
                                      : RequestProfilesOcr.profileModel
     readonly property string activeProfileId: role === "blockRecognition" ? Settings.checkRequestProfileId
                                             : role === "decision" ? Settings.decisionRequestProfileId
+                                            : role === "layout" ? Settings.layoutRequestProfileId
                                             : Settings.modelRecipeId
 
     function syncProfileBox() {
@@ -73,12 +76,15 @@ Item {
                         function onModelRecipeIdChanged() { root.syncProfileBox() }
                         function onCheckRequestProfileIdChanged() { root.syncProfileBox() }
                         function onDecisionRequestProfileIdChanged() { root.syncProfileBox() }
+                        function onLayoutRequestProfileIdChanged() { root.syncProfileBox() }
                     }
                     onActivated: {
                         if (root.role === "blockRecognition")
                             Settings.checkRequestProfileId = profileBox.currentValue
                         else if (root.role === "decision")
                             Settings.decisionRequestProfileId = profileBox.currentValue
+                        else if (root.role === "layout")
+                            Settings.layoutRequestProfileId = profileBox.currentValue
                         else
                             Settings.modelRecipeId = profileBox.currentValue
                     }

@@ -97,7 +97,7 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::layoutStateChanged);
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
-    connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
+    connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
 
     connect(&m_export, &ExportController::exportingChanged, this, &AppController::exportingChanged);
     connect(&m_export, &ExportController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
@@ -1006,7 +1006,7 @@ void AppController::recognizeAllBlocksOnPage()
 
 const ModelProfiles::Role *AppController::layoutRole() const
 {
-    return ModelProfiles::roleFor(m_checkRequestProfiles.activeProfileId(), QStringLiteral("layout"));
+    return ModelProfiles::roleFor(m_layoutRequestProfiles.activeProfileId(), QStringLiteral("layout"));
 }
 
 bool AppController::layoutAvailable() const
@@ -1043,7 +1043,7 @@ void AppController::startLayout(const QList<int> &pages)
         return;
     const ModelProfiles::Role *role = layoutRole();
     if (!role) {
-        setStatus(StatusMessage::translate("AppController", "The block-recognition model does not support page markup."));
+        setStatus(StatusMessage::translate("AppController", "The layout model does not support page markup."));
         return;
     }
     const QString prompt = role->prompts.isEmpty() ? QString() : role->prompts.constFirst().text;
@@ -1064,7 +1064,7 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
         return;
 
     ParserOptions options;
-    options.modelId = m_checkRequestProfiles.activeProfileId();
+    options.modelId = m_layoutRequestProfiles.activeProfileId();
     options.keepPageNumbers = true;
     OcrResult parsed;
     if (auto parser = ParserFactory::create(role->parser, options))

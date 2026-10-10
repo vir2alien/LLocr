@@ -19,6 +19,7 @@ Item {
 
     readonly property string runtimeNote: role === "blockRecognition" ? profiles.checkModelRuntimeNote
                                         : role === "decision" ? profiles.decisionModelRuntimeNote
+                                        : role === "layout" ? profiles.layoutModelRuntimeNote
                                         : profiles.modelRuntimeNote
 
     function loadValues() {

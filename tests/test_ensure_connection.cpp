@@ -589,6 +589,63 @@ private slots:
         ResolvedConnection resolved3;
         runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) { resolved3 = c; });
         QVERIFY2(resolved3.error.contains(QStringLiteral("Decision model"), Qt::CaseInsensitive), qPrintable(resolved3.error));
+
+        // The layout role refuses the same way, naming its own window.
+        ResolvedConnection resolved4;
+        runtime.ensureConnectionReady(ConnectionRole::Layout, [&](const ResolvedConnection &c) { resolved4 = c; });
+        QVERIFY2(resolved4.error.contains(QStringLiteral("Layout model"), Qt::CaseInsensitive), qPrintable(resolved4.error));
+        QVERIFY(resolved4.baseUrl.isEmpty());
+    }
+
+    // The layout role owns its model selection: pointing it at weights other
+    // than the running server's reloads them, exactly like the check role.
+    void managedLayoutRoleSwitchesServer()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile ocrModel(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        QVERIFY(ocrModel.open(QIODevice::WriteOnly));
+        ocrModel.write("ocr");
+        ocrModel.close();
+        QFile layoutModel(dir.filePath(QStringLiteral("layout-Q4_K_M.gguf")));
+        QVERIFY(layoutModel.open(QIODevice::WriteOnly));
+        layoutModel.write("layout");
+        layoutModel.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        store.setLayoutLaunchModelPath(dir.filePath(QStringLiteral("layout-Q4_K_M.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        int first = 0;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &) { ++first; });
+        QTRY_VERIFY_WITH_TIMEOUT(first == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+
+        QList<int> states;
+        connect(&runtime, &RuntimeController::stateChanged, &runtime, [&]() { states.append(int(runtime.state())); });
+
+        int done = 0;
+        ResolvedConnection resolved;
+        runtime.ensureConnectionReady(ConnectionRole::Layout, [&](const ResolvedConnection &c) {
+            resolved = c;
+            ++done;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+        QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
+        QVERIFY(!resolved.baseUrl.isEmpty());
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)), "expected the server to be stopped for the layout role switch");
+
+        runtime.stopServer();
     }
 
     // The probe spawns the binary and waits for it — up to two minutes on a

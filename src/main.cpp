@@ -105,10 +105,9 @@ int main(int argc, char *argv[])
     requestProfilesDecision.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesDecision", &requestProfilesDecision);
 
-    // The layout role has no settings window: it runs on the block-recognition
-    // model, its request profile is derived from the model's layout role.
     llocr::RequestProfileStore requestProfilesLayout(settingsStore, llocr::RequestProfileStore::Role::Layout);
     requestProfilesLayout.setModelProfiles(modelProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesLayout", &requestProfilesLayout);
 
     llocr::VerificationPromptStore verificationPrompts(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Verification", &verificationPrompts);

@@ -19,10 +19,11 @@ namespace llocr {
 class RequestProfileStore;
 
 // The manual page-markup pass ("layout" role in the model profile): a full
-// page image per request, the reply parsed into boxes by the caller. Runs on
-// the block-recognition connection — the models that ship a layout role
-// (TeleOCR) use the same model for layout and block recognition, only the
-// prompt differs.
+// page image per request, the reply parsed into boxes by the caller. Resolves
+// its own ConnectionRole::Layout — the layout model is configured separately
+// in Settings → Layout model, and for the models that ship a layout role
+// (TeleOCR) it is the same weights as block recognition, only the prompt
+// differs.
 class LayoutController : public QObject
 {
     Q_OBJECT

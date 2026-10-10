@@ -117,8 +117,9 @@ gives you its layout dump as text; as a box-producing OCR model use
 
 ### The layout prompt (page markup)
 
-The markup pass (Settings: no window — it runs on the block-recognition model;
-ADR 149) sends the full page image with one of the card's two layout prompts,
+The markup pass (its own Settings → Layout model window since ADR 150; the
+model is configured there, not in the setup wizard) sends the full page image
+with one of the card's two layout prompts,
 shipped verbatim in `roles.layout.prompts`:
 
 ```text
@@ -241,7 +242,7 @@ TeleOCR can serve both roles of the two-phase pipeline (ADR 145–147):
 | Markup pass (queue, 1036² page squash) | `LayoutController` (`src/app/`), driven from `Header.qml` |
 | Launch composition (no model layer for this model) | `ServerLaunchConfig` + `LaunchProfileStore` |
 | Download/install (quants + mmproj) | `ModelInstaller`, `ModelInstallTransaction` |
-| Installer UI rows | `ModelQuantModel` (three role lists: OCR / block OCR / decision) |
+| Installer UI rows | `ModelQuantModel` (four role lists: OCR / block OCR / decision / layout) |
 
 Design decisions: ADR 124 (the weights moved to
 `konradjr007/NaviDC-OCR-GGUF`, which a stock llama.cpp loads — the old

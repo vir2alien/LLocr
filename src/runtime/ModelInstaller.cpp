@@ -25,7 +25,7 @@ namespace llocr {
 ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime, InstalledState &state, QObject *parent)
     : QObject(parent), m_settings(settings), m_installState(state), m_runtime(runtime), m_transaction(new ModelInstallTransaction(settings, m_installState, this)),
       m_ocrModels(new ModelQuantModel(*this, settings, QStringLiteral("ocr"), this)), m_checkModels(new ModelQuantModel(*this, settings, QStringLiteral("blockRecognition"), this)),
-      m_decisionModels(new ModelQuantModel(*this, settings, QStringLiteral("decision"), this))
+      m_decisionModels(new ModelQuantModel(*this, settings, QStringLiteral("decision"), this)), m_layoutModels(new ModelQuantModel(*this, settings, QStringLiteral("layout"), this))
 {
     connect(m_transaction, &ModelInstallTransaction::stateChanged, this, [this](int state) { setState(static_cast<State>(state)); });
     connect(m_transaction, &ModelInstallTransaction::busyChanged, this, [this](bool busy) { setBusy(busy); });
@@ -38,6 +38,7 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     connect(&m_settings, &SettingsStore::launchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::checkLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::decisionLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
+    connect(&m_settings, &SettingsStore::layoutLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
 
     reloadPresetsInternal();
     refreshInstalled();
@@ -58,12 +59,19 @@ QObject *ModelInstaller::decisionQuantModels() const
     return m_decisionModels;
 }
 
+QObject *ModelInstaller::layoutQuantModels() const
+{
+    return m_layoutModels;
+}
+
 ModelQuantModel *ModelInstaller::quantModel(const QString &role) const
 {
     if (role == QLatin1String("blockRecognition"))
         return m_checkModels;
     if (role == QLatin1String("decision"))
         return m_decisionModels;
+    if (role == QLatin1String("layout"))
+        return m_layoutModels;
     return m_ocrModels;
 }
 
@@ -72,6 +80,7 @@ void ModelInstaller::publishInstalled()
     m_ocrModels->refresh();
     m_checkModels->refresh();
     m_decisionModels->refresh();
+    m_layoutModels->refresh();
     emit installedChanged();
 }
 
@@ -134,6 +143,11 @@ QString ModelInstaller::decisionActiveTitle() const
     return activeTitleFor(QStringLiteral("decision"));
 }
 
+QString ModelInstaller::layoutActiveTitle() const
+{
+    return activeTitleFor(QStringLiteral("layout"));
+}
+
 QString ModelInstaller::activeTitleFor(const QString &role) const
 {
     const QString active = m_settings.launchModelPathForRole(role);
@@ -150,6 +164,8 @@ const QList<ModelPreset> &ModelInstaller::presetsForRole(const QString &role) co
         return m_presetsValidate;
     if (role == QLatin1String("decision"))
         return m_presetsDecision;
+    if (role == QLatin1String("layout"))
+        return m_presetsLayout;
     return m_presets;
 }
 
@@ -170,6 +186,7 @@ void ModelInstaller::reloadPresetsInternal()
     m_presets.clear();
     m_presetsValidate.clear();
     m_presetsDecision.clear();
+    m_presetsLayout.clear();
     for (const ModelPreset &preset : all) {
         const QString profileId = preset.profileId.isEmpty() ? preset.id : preset.profileId;
         if (ModelProfiles::roleFor(profileId, QStringLiteral("ocr")))
@@ -178,11 +195,14 @@ void ModelInstaller::reloadPresetsInternal()
             m_presetsValidate.append(preset);
         if (ModelProfiles::roleFor(profileId, QStringLiteral("decision")))
             m_presetsDecision.append(preset);
+        if (ModelProfiles::roleFor(profileId, QStringLiteral("layout")))
+            m_presetsLayout.append(preset);
     }
 
     m_ocrModels->refresh();
     m_checkModels->refresh();
     m_decisionModels->refresh();
+    m_layoutModels->refresh();
     emit presetsChanged();
 }
 
@@ -195,6 +215,7 @@ void ModelInstaller::refreshInstalled()
     selections.modelPath = m_settings.launchModelPath();
     selections.checkModelPath = m_settings.checkLaunchModelPath();
     selections.decisionModelPath = m_settings.decisionLaunchModelPath();
+    selections.layoutModelPath = m_settings.layoutLaunchModelPath();
     selections.serverPath = m_settings.serverPath();
     selections.serverExists = QFileInfo::exists(m_settings.serverPath());
     m_installed = ModelRegistry::load(m_installState.paths().modelsDir(), rebuilt, err, &report, selections);
@@ -261,12 +282,13 @@ void ModelInstaller::selectQuant(const QString &key, const QString &quantId)
 {
     if (quantId.isEmpty())
         return;
-    if (!m_ocrModels->hasQuant(key, quantId) && !m_checkModels->hasQuant(key, quantId) && !m_decisionModels->hasQuant(key, quantId))
+    if (!m_ocrModels->hasQuant(key, quantId) && !m_checkModels->hasQuant(key, quantId) && !m_decisionModels->hasQuant(key, quantId) && !m_layoutModels->hasQuant(key, quantId))
         return;
     m_settings.setSelectedQuant(key, quantId);
     m_ocrModels->refresh();
     m_checkModels->refresh();
     m_decisionModels->refresh();
+    m_layoutModels->refresh();
 }
 
 int ModelInstaller::installedIndexFor(const QString &key, const QString &quantId, const QString &role) const
@@ -314,8 +336,8 @@ QString ModelInstaller::removeModelRow(const QString &key, const QString &role)
     const bool ready = m_runtime.state() == RuntimeState::Ready;
     for (int index : std::as_const(targets)) {
         const ModelEntry &entry = m_installed.at(index);
-        const bool active = !entry.modelPath.isEmpty() &&
-                            (entry.modelPath == m_settings.launchModelPath() || entry.modelPath == m_settings.checkLaunchModelPath() || entry.modelPath == m_settings.decisionLaunchModelPath());
+        const bool active = !entry.modelPath.isEmpty() && (entry.modelPath == m_settings.launchModelPath() || entry.modelPath == m_settings.checkLaunchModelPath() ||
+                                                           entry.modelPath == m_settings.decisionLaunchModelPath() || entry.modelPath == m_settings.layoutLaunchModelPath());
         const QString guard = ModelRegistry::removalError(entry, paths.modelsDir(), active, ready);
         if (!guard.isEmpty())
             return guard;
@@ -344,8 +366,8 @@ QString ModelInstaller::removeModel(int index)
     if (index < 0 || index >= m_installed.size())
         return tr("Invalid model selection");
     const ModelEntry &e = m_installed.at(index);
-    const bool active =
-        !e.modelPath.isEmpty() && (e.modelPath == m_settings.launchModelPath() || e.modelPath == m_settings.checkLaunchModelPath() || e.modelPath == m_settings.decisionLaunchModelPath());
+    const bool active = !e.modelPath.isEmpty() && (e.modelPath == m_settings.launchModelPath() || e.modelPath == m_settings.checkLaunchModelPath() ||
+                                                   e.modelPath == m_settings.decisionLaunchModelPath() || e.modelPath == m_settings.layoutLaunchModelPath());
     const bool ready = m_runtime.state() == RuntimeState::Ready;
     const RuntimePaths currentPaths = m_installState.paths();
     const QString guard = ModelRegistry::removalError(e, currentPaths.modelsDir(), active, ready);

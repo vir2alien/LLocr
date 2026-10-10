@@ -4,12 +4,17 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+483"/>
+        <location filename="../../src/app/AppController.cpp" line="+489"/>
         <source>No files selected.</source>
         <translation type="unfinished">Не выбрано ни одного файла</translation>
     </message>
     <message>
-        <location line="+1036"/>
+        <location line="+557"/>
+        <source>The layout model does not support page markup.</source>
+        <translation type="unfinished">Модель разметки не поддерживает разметку страниц.</translation>
+    </message>
+    <message>
+        <location line="+479"/>
         <location line="+48"/>
         <source>No project selected.</source>
         <translation>Проект не выбран</translation>
@@ -132,12 +137,11 @@
         <translation type="unfinished">Сначала укажите название модели в настройках.</translation>
     </message>
     <message>
-        <location line="+346"/>
         <source>The block-recognition model does not support page markup.</source>
-        <translation type="unfinished">Модель blockRecognition не поддерживает разметку страниц.</translation>
+        <translation type="obsolete">Модель blockRecognition не поддерживает разметку страниц.</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+351"/>
         <source>The model profile has no markup prompt.</source>
         <translation type="unfinished">В профиле модели нет промпта разметки.</translation>
     </message>
@@ -851,7 +855,7 @@
 <context>
     <name>Header</name>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="+202"/>
+        <location filename="../qml/MainWindow/Header.qml" line="+203"/>
         <source>Open…</source>
         <translation>Открыть…</translation>
     </message>
@@ -936,7 +940,12 @@
         <translation>Проверка</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+20"/>
+        <source>Layout model</source>
+        <translation type="unfinished">Модель разметки</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <source>Mark up?</source>
         <translation type="unfinished">Разметить?</translation>
     </message>
@@ -951,7 +960,7 @@
         <translation type="unfinished">Разметка заменит распознанные блоки и текст на этой странице. Продолжить?</translation>
     </message>
     <message>
-        <location line="-149"/>
+        <location line="-153"/>
         <source>Check page</source>
         <translation>Проверить страницу</translation>
     </message>
@@ -1093,7 +1102,7 @@
         <translation type="vanished">Описание</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/LaunchTab.qml" line="+56"/>
+        <location filename="../qml/Settings/LaunchTab.qml" line="+57"/>
         <source>(flag)</source>
         <translation>(флаг)</translation>
     </message>
@@ -1211,7 +1220,7 @@
         <translation type="vanished">Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/LocationTab.qml" line="+61"/>
+        <location filename="../qml/Settings/LocationTab.qml" line="+64"/>
         <source>Model profile</source>
         <translation>Профиль модели</translation>
     </message>
@@ -1237,7 +1246,7 @@
         <translation>Моделью управляет внешний сервер. Настройки расположения и скачивания модели в этом режиме недоступны.</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+34"/>
         <source>Configure runtime…</source>
         <translation>Настроить рантайм…</translation>
     </message>
@@ -1421,7 +1430,7 @@
         <translation>LLM OCR</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+112"/>
         <source>Drop to open</source>
         <translation>Перетащите чтобы открыть</translation>
     </message>
@@ -1446,12 +1455,12 @@
         <translation>Экспорт распознанного текста</translation>
     </message>
     <message>
-        <location line="-131"/>
+        <location line="-132"/>
         <source>LLM OCR — %1</source>
         <translation>LLM OCR — %1</translation>
     </message>
     <message>
-        <location line="+147"/>
+        <location line="+148"/>
         <source>Open project</source>
         <translation>Открытие проекта</translation>
     </message>
@@ -1471,19 +1480,19 @@
     <name>ModelDownloadList</name>
     <message>
         <location filename="../qml/Common/ModelDownloadList.qml" line="+43"/>
-        <location line="+127"/>
+        <location line="+128"/>
         <source>Active</source>
         <translation>Активна</translation>
     </message>
     <message>
-        <location line="-129"/>
-        <location line="+130"/>
+        <location line="-130"/>
+        <location line="+131"/>
         <source>Use</source>
         <translation>Использовать</translation>
     </message>
     <message>
-        <location line="-129"/>
-        <location line="+129"/>
+        <location line="-130"/>
+        <location line="+130"/>
         <source>Download</source>
         <translation>Скачать</translation>
     </message>
@@ -1571,12 +1580,12 @@
 <context>
     <name>ModelSettingsWindow</name>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="+17"/>
+        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="+18"/>
         <source>OCR model settings</source>
         <translation>Настройки модели OCR</translation>
     </message>
     <message>
-        <location line="-2"/>
+        <location line="-3"/>
         <source>Block OCR model settings</source>
         <translation>Настройки модели OCR блока</translation>
     </message>
@@ -1590,7 +1599,7 @@
         <translation type="vanished">Расположение</translation>
     </message>
     <message>
-        <location line="+82"/>
+        <location line="+83"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
@@ -1610,7 +1619,12 @@
         <translation>Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="-22"/>
+        <source>Layout model settings</source>
+        <translation type="unfinished">Настройки модели разметки</translation>
+    </message>
+    <message>
+        <location line="+39"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
@@ -2298,12 +2312,12 @@
     </message>
     <message>
         <location filename="../../src/runtime/ModelRegistry.cpp" line="+194"/>
-        <location line="+74"/>
+        <location line="+76"/>
         <source>Unable to read model registry: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-69"/>
+        <location line="-71"/>
         <source>Model index is corrupt; rescanning models directory</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2313,7 +2327,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+37"/>
+        <location line="+39"/>
         <location line="+13"/>
         <source>Model registry is locked by another LLocr instance</source>
         <translation>Реестр моделей заблокирован другим экземпляром LLocr</translation>
@@ -2785,7 +2799,7 @@
         <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/RequestTab.qml" line="+102"/>
+        <location filename="../qml/Settings/RequestTab.qml" line="+105"/>
         <source>Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.</source>
         <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания. Набор задаёт профиль модели — меняйте значения, а не список</translation>
     </message>
@@ -2794,7 +2808,7 @@
         <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом проверки; см. документацию llama-server</translation>
     </message>
     <message>
-        <location line="-1"/>
+        <location line="-3"/>
         <source>Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.</source>
         <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания блока. Набор задаёт профиль модели — меняйте значения, а не список</translation>
     </message>
@@ -2817,6 +2831,11 @@
         <location line="+19"/>
         <source>The decision model answers in a single forward pass and generates no text, so it has no sampling parameters — the threshold above is its only setting here.</source>
         <translation>Модель decision отвечает за один проход и не генерирует текста, поэтому параметров сэмплирования у неё нет — порог выше является единственной настройкой здесь.</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation type="unfinished">Параметры сэмплирования для каждого запроса разметки страницы. Набор приходит из профиля модели — правьте значения, а не список.</translation>
     </message>
 </context>
 <context>
@@ -4826,19 +4845,19 @@
 <context>
     <name>llocr::ModelInstaller</name>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="+245"/>
-        <location line="+100"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="+266"/>
+        <location line="+101"/>
         <location line="+85"/>
         <source>Invalid model selection</source>
         <translation>Неверный выбор модели</translation>
     </message>
     <message>
-        <location line="-182"/>
+        <location line="-183"/>
         <source>This model has no model file selected</source>
         <translation>У этой модели не выбран файл модели</translation>
     </message>
     <message>
-        <location line="+151"/>
+        <location line="+152"/>
         <source>Unable to remove model file: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4863,7 +4882,7 @@
         <translation>Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="-194"/>
+        <location line="-195"/>
         <source>The selected model is no longer on disk: %1 — pick another one in Settings → Models.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4876,7 +4895,7 @@
         <translation type="vanished">Пресет не установлен</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+57"/>
         <location line="+22"/>
         <location line="+35"/>
         <source>This quantization is not installed</source>
@@ -4987,12 +5006,12 @@
 <context>
     <name>llocr::RuntimeController</name>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="+402"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="+411"/>
         <source>Another LLocr instance is already running</source>
         <translation>Уже запущен другой экземпляр LLocr</translation>
     </message>
     <message>
-        <location line="+292"/>
+        <location line="+293"/>
         <source>Probing %1…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5007,7 +5026,7 @@
         <translation>Остановка…</translation>
     </message>
     <message>
-        <location line="-526"/>
+        <location line="-536"/>
         <source>Managed server is not configured</source>
         <translation>Управляемый сервер не настроен</translation>
     </message>
@@ -5042,7 +5061,17 @@
         <translation>Файл модели не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
-        <location line="+38"/>
+        <location line="+14"/>
+        <source>Layout model is not selected — pick a model in Settings → Layout model</source>
+        <translation type="unfinished">Модель разметки не выбрана — выберите модель в Настройки → Модель разметки</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Layout model file not found: %1 — re-select the model in Settings → Layout model</source>
+        <translation type="unfinished">Файл модели разметки не найден: %1 — выберите модель заново в Настройки → Модель разметки</translation>
+    </message>
+    <message>
+        <location line="+31"/>
         <source>%1 needs llama.cpp %2 or newer (this build is %3) — update the runtime in Settings → Runtime</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5057,7 +5086,12 @@
         <translation>Сервер остановлен</translation>
     </message>
     <message>
-        <location line="+63"/>
+        <location line="+11"/>
+        <source>Switching to the layout model…</source>
+        <translation type="unfinished">Переключение на модель разметки…</translation>
+    </message>
+    <message>
+        <location line="+53"/>
         <source>Failed to query /v1/models: %1</source>
         <translation>Не удалось получить список моделей (/v1/models): %1</translation>
     </message>
@@ -5122,8 +5156,8 @@
         <translation>Бинарник сервера не выбран</translation>
     </message>
     <message>
-        <location line="-391"/>
-        <location line="+394"/>
+        <location line="-401"/>
+        <location line="+404"/>
         <source>File not found: %1</source>
         <translation>Файл не найден: %1</translation>
     </message>
@@ -5138,12 +5172,12 @@
         <translation>Сервер уже запущен</translation>
     </message>
     <message>
-        <location line="-390"/>
+        <location line="-400"/>
         <source>Model is not selected — pick a model in Settings → Models or in the Setup wizard</source>
         <translation>Модель не выбрана — выберите модель в Settings → Models или в мастере настройки</translation>
     </message>
     <message>
-        <location line="+586"/>
+        <location line="+596"/>
         <source>Server start cancelled</source>
         <translation>Запуск сервера отменён</translation>
     </message>
@@ -5158,7 +5192,7 @@
         <translation>Переключение на модель OCR блока…</translation>
     </message>
     <message>
-        <location line="-1"/>
+        <location line="-2"/>
         <source>Switching to the decision model…</source>
         <translation>Переключение на модель decision…</translation>
     </message>
@@ -5178,7 +5212,7 @@
         <translation>Файл модели OCR блока не найден: %1 — выберите модель заново в Settings → Модель OCR блока</translation>
     </message>
     <message>
-        <location line="-10"/>
+        <location line="-19"/>
         <source>Decision model is not selected — pick a model in Settings → Decision model</source>
         <translation>Модель decision не выбрана — выберите её в Settings → Модель decision</translation>
     </message>

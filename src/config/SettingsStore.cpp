@@ -18,6 +18,11 @@ QString defaultDecisionRequestProfileId()
     return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("decision"));
 }
 
+QString defaultLayoutRequestProfileId()
+{
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("layout"));
+}
+
 }  // namespace
 
 const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
@@ -73,6 +78,11 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kDecisionRequestProfileId, "decisionRequestProfileId", QVariant(defaultDecisionRequestProfileId())},
         {kDecisionModelName, "decisionModelName", QVariant(QString())},
         {kDecisionMatchThreshold, "decisionMatchThreshold", QVariant(kDefaultDecisionMatchThreshold)},
+        {kLayoutLaunchModelPath, "layoutLaunchModelPath", QVariant(QString())},
+        {kLayoutLaunchMmprojPath, "layoutLaunchMmprojPath", QVariant(QString())},
+        {kLayoutLaunchDraftPath, "layoutLaunchDraftPath", QVariant(QString())},
+        {kLayoutRequestProfileId, "layoutRequestProfileId", QVariant(defaultLayoutRequestProfileId())},
+        {kLayoutModelName, "layoutModelName", QVariant(QString())},
         {kHfToken, "hfToken", QVariant(QString())},
         {kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString())},
     };
@@ -127,6 +137,7 @@ void SettingsStore::applyStartupMigration()
     resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
     resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("blockRecognition"));
     resolveStoredModelId(kDecisionRequestProfileId, QStringLiteral("decision"));
+    resolveStoredModelId(kLayoutRequestProfileId, QStringLiteral("layout"));
 
     if (m_settings.value(kParserId).toString() == QLatin1String("det_tokens")) {
         QString resolved = QString::fromUtf8(kDefaultParserId);
@@ -183,7 +194,7 @@ void SettingsStore::resetRuntimeDefaults()
     resetGroup([](const QString &key) {
         return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/apiKey") || key == QLatin1String("provider/connectionTimeoutMs") ||
                key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String("check/modelName") || key == QLatin1String("decision/modelName") ||
-               key == QLatin1String("runtime/serverPath");
+               key == QLatin1String("layout/modelName") || key == QLatin1String("runtime/serverPath");
     });
 }
 
@@ -284,6 +295,8 @@ void SettingsStore::selectModelProfile(const QString &repo, const QString &role)
         setCheckRequestProfileId(profileId);
     else if (role == QLatin1String("decision"))
         setDecisionRequestProfileId(profileId);
+    else if (role == QLatin1String("layout"))
+        setLayoutRequestProfileId(profileId);
     else
         setModelRecipeId(profileId);
 }
@@ -922,12 +935,80 @@ void SettingsStore::setDecisionMatchThreshold(double threshold)
     emit decisionMatchThresholdChanged();
 }
 
+QString SettingsStore::layoutLaunchModelPath() const
+{
+    return m_settings.value(kLayoutLaunchModelPath).toString();
+}
+
+void SettingsStore::setLayoutLaunchModelPath(const QString &path)
+{
+    if (layoutLaunchModelPath() == path)
+        return;
+    m_settings.setValue(kLayoutLaunchModelPath, path);
+    emit layoutLaunchModelPathChanged();
+}
+
+QString SettingsStore::layoutLaunchMmprojPath() const
+{
+    return m_settings.value(kLayoutLaunchMmprojPath).toString();
+}
+
+void SettingsStore::setLayoutLaunchMmprojPath(const QString &path)
+{
+    if (layoutLaunchMmprojPath() == path)
+        return;
+    m_settings.setValue(kLayoutLaunchMmprojPath, path);
+    emit layoutLaunchMmprojPathChanged();
+}
+
+QString SettingsStore::layoutLaunchDraftPath() const
+{
+    return m_settings.value(kLayoutLaunchDraftPath).toString();
+}
+
+void SettingsStore::setLayoutLaunchDraftPath(const QString &path)
+{
+    if (layoutLaunchDraftPath() == path)
+        return;
+    m_settings.setValue(kLayoutLaunchDraftPath, path);
+    emit layoutLaunchDraftPathChanged();
+}
+
+QString SettingsStore::layoutRequestProfileId() const
+{
+    const QString stored = m_settings.value(kLayoutRequestProfileId).toString();
+    return stored.isEmpty() ? defaultLayoutRequestProfileId() : stored;
+}
+
+void SettingsStore::setLayoutRequestProfileId(const QString &id)
+{
+    if (layoutRequestProfileId() == id)
+        return;
+    m_settings.setValue(kLayoutRequestProfileId, id);
+    emit layoutRequestProfileIdChanged();
+}
+
+QString SettingsStore::layoutModelName() const
+{
+    return m_settings.value(kLayoutModelName).toString();
+}
+
+void SettingsStore::setLayoutModelName(const QString &name)
+{
+    if (layoutModelName() == name)
+        return;
+    m_settings.setValue(kLayoutModelName, name);
+    emit layoutModelNameChanged();
+}
+
 QString SettingsStore::launchModelPathForRole(const QString &role) const
 {
     if (role == QLatin1String("blockRecognition"))
         return checkLaunchModelPath();
     if (role == QLatin1String("decision"))
         return decisionLaunchModelPath();
+    if (role == QLatin1String("layout"))
+        return layoutLaunchModelPath();
     return launchModelPath();
 }
 
@@ -937,6 +1018,8 @@ void SettingsStore::setLaunchModelPathForRole(const QString &role, const QString
         setCheckLaunchModelPath(path);
     else if (role == QLatin1String("decision"))
         setDecisionLaunchModelPath(path);
+    else if (role == QLatin1String("layout"))
+        setLayoutLaunchModelPath(path);
     else
         setLaunchModelPath(path);
 }
@@ -947,6 +1030,8 @@ QString SettingsStore::launchMmprojPathForRole(const QString &role) const
         return checkLaunchMmprojPath();
     if (role == QLatin1String("decision"))
         return decisionLaunchMmprojPath();
+    if (role == QLatin1String("layout"))
+        return layoutLaunchMmprojPath();
     return launchMmprojPath();
 }
 
@@ -956,6 +1041,8 @@ void SettingsStore::setLaunchMmprojPathForRole(const QString &role, const QStrin
         setCheckLaunchMmprojPath(path);
     else if (role == QLatin1String("decision"))
         setDecisionLaunchMmprojPath(path);
+    else if (role == QLatin1String("layout"))
+        setLayoutLaunchMmprojPath(path);
     else
         setLaunchMmprojPath(path);
 }
@@ -966,6 +1053,8 @@ QString SettingsStore::launchDraftPathForRole(const QString &role) const
         return checkLaunchDraftPath();
     if (role == QLatin1String("decision"))
         return decisionLaunchDraftPath();
+    if (role == QLatin1String("layout"))
+        return layoutLaunchDraftPath();
     return launchDraftPath();
 }
 
@@ -975,6 +1064,8 @@ void SettingsStore::setLaunchDraftPathForRole(const QString &role, const QString
         setCheckLaunchDraftPath(path);
     else if (role == QLatin1String("decision"))
         setDecisionLaunchDraftPath(path);
+    else if (role == QLatin1String("layout"))
+        setLayoutLaunchDraftPath(path);
     else
         setLaunchDraftPath(path);
 }
@@ -985,9 +1076,8 @@ QString SettingsStore::requestProfileIdForRole(const QString &role) const
         return checkRequestProfileId();
     if (role == QLatin1String("decision"))
         return decisionRequestProfileId();
-    // Layout runs on the block-recognition model, so it follows its selection.
     if (role == QLatin1String("layout"))
-        return checkRequestProfileId();
+        return layoutRequestProfileId();
     return modelRecipeId();
 }
 
@@ -997,6 +1087,8 @@ QString SettingsStore::modelNameForRole(const QString &role) const
         return checkModelName();
     if (role == QLatin1String("decision"))
         return decisionModelName();
+    if (role == QLatin1String("layout"))
+        return layoutModelName();
     return modelName();
 }
 

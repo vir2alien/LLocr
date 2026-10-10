@@ -214,6 +214,8 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt, Q
     input.disk = input.diskAvailable ? scanModelsDir(modelsDir) : QList<ModelEntry>();
     input.selectedModelPath = selections.modelPath;
     input.selectedCheckModelPath = selections.checkModelPath;
+    input.selectedDecisionModelPath = selections.decisionModelPath;
+    input.selectedLayoutModelPath = selections.layoutModelPath;
     input.selectedServerPath = selections.serverPath;
     input.selectedServerExists = selections.serverExists;
 
