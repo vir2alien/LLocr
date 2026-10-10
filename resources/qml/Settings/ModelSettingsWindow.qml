@@ -21,6 +21,14 @@ ApplicationWindow {
 
     property var runtimeSettingsRef: null
 
+    function bringToFront() {
+        if (visibility === Window.Minimized)
+            showNormal()
+        show()
+        raise()
+        requestActivate()
+    }
+
     background: SettingsSurface {
     }
 

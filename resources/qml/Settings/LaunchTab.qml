@@ -83,7 +83,7 @@ Item {
             text: qsTr("Configure runtime…")
             onClicked: {
                 if (root.runtimeSettingsRef)
-                    root.runtimeSettingsRef.show()
+                    root.runtimeSettingsRef.bringToFront()
             }
         }
 

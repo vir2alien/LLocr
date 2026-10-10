@@ -14,6 +14,14 @@ ApplicationWindow {
     height: 540
     modality: Qt.NonModal
 
+    function bringToFront() {
+        if (visibility === Window.Minimized)
+            showNormal()
+        show()
+        raise()
+        requestActivate()
+    }
+
     background: SettingsSurface {
     }
 

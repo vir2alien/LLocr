@@ -18,6 +18,14 @@ ApplicationWindow {
         return Log.count > 0 ? Log.logText : qsTr("Nothing went wrong so far.")
     }
 
+    function bringToFront() {
+        if (visibility === Window.Minimized)
+            showNormal()
+        show()
+        raise()
+        requestActivate()
+    }
+
     onVisibleChanged: {
         if (visible)
             logArea.text = logText()

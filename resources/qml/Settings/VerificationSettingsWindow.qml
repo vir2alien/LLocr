@@ -14,6 +14,14 @@ ApplicationWindow {
     height: 620
     modality: Qt.NonModal
 
+    function bringToFront() {
+        if (visibility === Window.Minimized)
+            showNormal()
+        show()
+        raise()
+        requestActivate()
+    }
+
     property bool unsavedChanges: false
     property bool forceClose: false
 

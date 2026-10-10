@@ -18,6 +18,14 @@ ApplicationWindow {
         return RuntimeLog.serverLog || qsTr("No log output yet.")
     }
 
+    function bringToFront() {
+        if (visibility === Window.Minimized)
+            showNormal()
+        show()
+        raise()
+        requestActivate()
+    }
+
     onVisibleChanged: {
         if (visible) {
             logScroll.autoScroll = true

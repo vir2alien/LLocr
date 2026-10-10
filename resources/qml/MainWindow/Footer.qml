@@ -216,7 +216,7 @@ Item {
                     text: qsTr("Details…")
                     onClicked: {
                         if (root.problemWindow)
-                            root.problemWindow.show()
+                            root.problemWindow.bringToFront()
                     }
                 }
             }
@@ -320,7 +320,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (root.logWindow)
-                            root.logWindow.show()
+                            root.logWindow.bringToFront()
                     }
 
                     ToolTip {

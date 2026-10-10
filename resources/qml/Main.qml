@@ -50,13 +50,13 @@ ApplicationWindow {
             }
         }
         onSetupWizardRequested: setupWizard.startWizard()
-        onOpenUiSettingsRequested: uiSettingsWindow.show()
-        onOpenOutputSettingsRequested: outputSettingsWindow.show()
-        onOpenVerificationSettingsRequested: verificationSettingsWindow.show()
-        onOpenRuntimeSettingsRequested: runtimeSettingsWindow.show()
-        onOpenOcrModelSettingsRequested: ocrModelSettingsWindow.show()
-        onOpenDecisionModelSettingsRequested: decisionModelSettingsWindow.show()
-        onOpenCheckModelSettingsRequested: checkModelSettingsWindow.show()
+        onOpenUiSettingsRequested: uiSettingsWindow.bringToFront()
+        onOpenOutputSettingsRequested: outputSettingsWindow.bringToFront()
+        onOpenVerificationSettingsRequested: verificationSettingsWindow.bringToFront()
+        onOpenRuntimeSettingsRequested: runtimeSettingsWindow.bringToFront()
+        onOpenOcrModelSettingsRequested: ocrModelSettingsWindow.bringToFront()
+        onOpenDecisionModelSettingsRequested: decisionModelSettingsWindow.bringToFront()
+        onOpenCheckModelSettingsRequested: checkModelSettingsWindow.bringToFront()
     }
 
     SplitView {
