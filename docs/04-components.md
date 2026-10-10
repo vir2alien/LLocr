@@ -139,6 +139,12 @@ Three options handled by `UiController` (a QML singleton), selected in
   keeps its text and records a diagnostic. Coordinates are normalized to [0,1] by
   `ParserOptions::bboxRange` (1000 by default, the usual 0–1000 model space).
 - `raw` ✅ — text as-is (`RawParser`).
+- `teleocr-layout` ✅ — the manual markup pass (ADR 149): the TeleOCR layout
+  reply's `<box:…><label:…><orientation>` lines are rewritten into the
+  canonical tokens by `prepareText()` (polygons collapse to their bounding
+  box, everything else in the reply is dropped) and parsed into
+  **text-less** positioned boxes; page numbers are always kept — the layout
+  pass describes the page, the output filter belongs to the text.
 - `auto` ✅ — **default** (`parser/id = auto`, ADR 88). Not a parser: it
   resolves to the selected model's `OcrModel::defaultParserId()` in
   `AppController::effectiveParserId()`, so switching the OCR model can never

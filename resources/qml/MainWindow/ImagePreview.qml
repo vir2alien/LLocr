@@ -65,7 +65,7 @@ Image {
                 required property bool boxSuspect
                 required property bool boxVerificationPlanned
 
-                property bool isImage: boxLabel === "image" || boxLabel === "chart"
+                property bool isImage: Controller.boxModel.isImageBox(boxDelegate.index)
                 property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
 
                 color: isImage ? Theme.overlayImageFill : "transparent"

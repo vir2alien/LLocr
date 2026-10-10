@@ -22,6 +22,8 @@ QString userFileName(RequestProfileStore::Role role)
         return QStringLiteral("requestValidate.json");
     case RequestProfileStore::Role::Decision:
         return QStringLiteral("requestDecision.json");
+    case RequestProfileStore::Role::Layout:
+        return QStringLiteral("requestLayout.json");
     case RequestProfileStore::Role::Ocr:
         break;
     }
@@ -35,6 +37,8 @@ QString roleName(RequestProfileStore::Role role)
         return QStringLiteral("blockRecognition");
     case RequestProfileStore::Role::Decision:
         return QStringLiteral("decision");
+    case RequestProfileStore::Role::Layout:
+        return QStringLiteral("layout");
     case RequestProfileStore::Role::Ocr:
         break;
     }
@@ -54,6 +58,11 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QOb
         connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
     } else if (m_role == Role::Decision) {
         connect(&m_settings, &SettingsStore::decisionRequestProfileIdChanged, this, [this] { followActiveProfile(); });
+    } else if (m_role == Role::Layout) {
+        // The layout pass runs on the block-recognition model (the profile's
+        // layout role describes the same model), so its active profile follows
+        // the check selection.
+        connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
     } else {
         connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
     }
@@ -93,6 +102,9 @@ QString RequestProfileStore::activeProfileId() const
         break;
     case Role::Decision:
         id = m_settings.decisionRequestProfileId();
+        break;
+    case Role::Layout:
+        id = m_settings.checkRequestProfileId();
         break;
     case Role::Ocr:
         id = m_settings.modelRecipeId();

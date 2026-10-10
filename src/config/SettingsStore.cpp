@@ -985,6 +985,9 @@ QString SettingsStore::requestProfileIdForRole(const QString &role) const
         return checkRequestProfileId();
     if (role == QLatin1String("decision"))
         return decisionRequestProfileId();
+    // Layout runs on the block-recognition model, so it follows its selection.
+    if (role == QLatin1String("layout"))
+        return checkRequestProfileId();
     return modelRecipeId();
 }
 

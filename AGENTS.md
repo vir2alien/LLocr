@@ -362,6 +362,20 @@
     ▾ menus «Распознать проблемные блоки». Planned blocks (filter-enabled type
     or duplicate suspect, unanswered) show the gray dot
     (`boxVerificationPlanned`). Model manual: `docs/14-d1-3b.md`.
+  - **Manual page markup (ADR 149, Oct 2026)** — the header button
+    «Разметить» (+ ▾ «Разметить все страницы») runs the **layout role**
+    (`roles.layout` in a model profile — TeleOCR ships it): the page goes to
+    the block-recognition model with the card's layout prompt, the reply's
+    `<box:…><label:…><orientation>` lines become **text-less** positioned
+    blocks (parser `teleocr-layout`), and the text is then filled in through
+    blockRecognition — per-block «Распознать» or the new
+    «Распознать все блоки страницы» menu item (queues every NotChecked
+    text-less box). The markup pass replaces the page's blocks (confirmation
+    if the page has results), runs on the blockRecognition connection (no
+    separate settings window; `layoutAvailable` = the active check model
+    declares a layout role), and the 1036² page squash mirrors the upstream
+    calibration. Manual only — not wired into the automatic pipeline.
+    Model manual: `docs/15-teleocr.md`.
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
     (update-check opt-in) done; **H.4 closed** (watchdog-helper not shipped),

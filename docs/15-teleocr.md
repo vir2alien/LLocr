@@ -14,11 +14,14 @@ A Russian mirror of this document lives in
 - **TeleOCR** (repo `XingChen-AGI/TeleOCR`, until September 2026 released as
   **NaviDC-OCR**) — a ~1.2B-parameter document-parsing VLM built on the
   **Qwen2.5-VL** architecture, license **Apache-2.0**.
-- One model, two jobs, both prompt-switched (no extra flags):
+- One model, three jobs, all prompt-switched (no extra flags):
   - **layout analysis** — the prompt «Analyze the image layout.» makes it emit
     document blocks with type / bbox / angle / content;
   - **block transcription** — one block crop in, one block of text out:
-    plain text, **OTSL** tables, **LaTeX** formulas, or code.
+    plain text, **OTSL** tables, **LaTeX** formulas, or code;
+  - **page markup** (LLocr's manual «Mark up» feature, ADR 149) — the same
+    layout request, parsed into positioned blocks: the two-request pipeline
+    for a model that cannot answer coordinates and text in one shot.
 - Languages per the card: **Chinese and English**. Anything else (Russian
   included) is outside the declared language set — for Russian documents
   prefer `lfm25-vl-3b` or `qwen3.5-4b`.
@@ -112,6 +115,50 @@ pipeline does not apply to this model. Practically: TeleOCR as the OCR model
 gives you its layout dump as text; as a box-producing OCR model use
 `lfm25-vl-3b` or `unlimited-ocr`.
 
+### The layout prompt (page markup)
+
+The markup pass (Settings: no window — it runs on the block-recognition model;
+ADR 149) sends the full page image with one of the card's two layout prompts,
+shipped verbatim in `roles.layout.prompts`:
+
+```text
+Analyze the image layout.
+```
+
+and the distorted-document variant «Multi-point Layout Segmentation
+Analysis.». The reply format is not documented anywhere; it is measured from
+the upstream pipeline code (`TeleOCR/vlm_utils/TeleOCR_client.py`,
+`parse_layout_output`):
+
+```text
+<box:x1 y1 x2 y2><label:type><orientation>
+<box:34 56 789 123><label:title><up>
+```
+
+- one line per block; the orientation word (`up` / `right` / `down` / `left`)
+  in the third tag is the block's rotation, which LLocr ignores (the crop is
+  taken unrotated);
+- coordinates are integers on a **0–1000 scale**, divided by 1000 into the
+  app's normalized 0–1 rects — the same range the det-token models use;
+- the label vocabulary is the upstream `BLOCK_TYPES` (text, title, table,
+  image, code, algorithm, header, footer, page_number, page_footnote,
+  aside_text, equation, equation_block, ref_text, list, phonetic, captions,
+  unknown, seal, char) — every label is styled data-driven in
+  `roles.ocr.blocks.styles` and every non-image one has a block-recognition
+  prompt, so the markup can flow straight into per-block recognition;
+- upstream may emit **polygons** (any even count of coordinates); the parser
+  takes their bounding box;
+- upstream hard-resizes the page to a **1036×1036 square** before the layout
+  request (the model is calibrated on that input); `LayoutController` does the
+  same — normalized coordinates are invariant to the squeeze.
+
+The reply is parsed by the registered **`teleocr-layout`** parser (a
+`DetTokenParserBase` subclass); its `prepareText` rewrites the lines into the
+canonical `label [x1,y1,x2,y2]` tokens. The blocks are created **without
+text** — the block content the layout dump may carry is deliberately ignored;
+the text arrives through the block-recognition pass («Recognize», or the
+header menu's «Recognize all blocks on the page»).
+
 ### The block-recognition prompts
 
 The card gives one official request example per content type; the profile
@@ -158,8 +205,9 @@ Two deliberate deviations from the card:
   prompts steer it to HTML instead (see §4). Formulas: LaTeX, which the
   card's own post-processing wraps into `$$…$$` — LLocr keeps the model's
   delimiters as generated.
-- **Layout**: blocks with type / bbox / angle / content — passed through
-  `raw` (§4).
+- **Layout**: blocks with type / bbox / angle / content. In the OCR role this
+  passes through `raw` (§4); the markup pass parses it properly instead
+  (§4, «The layout prompt»).
 - Control tokens / end-of-sentence markers in replies are stripped by the
   shared `GeneralPurposeModel::parseResponse`; an empty reply maps to
   `Review`, not to an error.
@@ -172,6 +220,11 @@ TeleOCR can serve both roles of the two-phase pipeline (ADR 145–147):
   model marks a block as mismatched (or on the manual «Recognize»
   commands), the crop goes to the `blockRecognition` role with the §4
   prompts; the transcription becomes the new block text.
+- **manual page markup** — the `layout` role (ADR 149): the header «Mark up»
+  button (page / all pages) sends the page image with the layout prompt and
+  replaces the page's blocks with the reply's boxes; the text is then filled
+  in block by block through the entry above. Not wired into the automatic
+  pipeline.
 - **phase 1 upstream, OCR** — possible but raw (§4): no boxes, one text
   block per page.
 - **decision (phase 1)** — not applicable: d1-3B is the decision model
@@ -181,9 +234,11 @@ TeleOCR can serve both roles of the two-phase pipeline (ADR 145–147):
 
 | Piece | Location |
 | --- | --- |
-| Model profile (both roles, prompts, request params, files) | `resources/profiles/models/teleocr.json` |
+| Model profile (roles, prompts, request params, files) | `resources/profiles/models/teleocr.json` |
 | Block-recognition request/response | `GeneralPurposeModel::buildRequestBody` / `parseResponse` (`src/models/`) |
 | OCR-role parsing (pass-through) | `RawParser` (`src/parsers/`) |
+| Layout reply parsing | `TeleOcrLayoutParser` (`src/parsers/`, id `teleocr-layout`) |
+| Markup pass (queue, 1036² page squash) | `LayoutController` (`src/app/`), driven from `Header.qml` |
 | Launch composition (no model layer for this model) | `ServerLaunchConfig` + `LaunchProfileStore` |
 | Download/install (quants + mmproj) | `ModelInstaller`, `ModelInstallTransaction` |
 | Installer UI rows | `ModelQuantModel` (three role lists: OCR / block OCR / decision) |
@@ -193,7 +248,7 @@ Design decisions: ADR 124 (the weights moved to
 runtime warning is gone), 126 (launch parameters belong to the machine, not
 to the weights — the profile's launch layer stays empty), 145–147 (the
 two-phase pipeline and the `blockRecognition` role), 140 (per-model prompt
-wording).
+wording), 149 (the manual markup pass and the `layout` role).
 
 ## 8. Links
 

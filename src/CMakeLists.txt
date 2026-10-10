@@ -104,6 +104,8 @@ qt_add_library(llocr_parsers STATIC
     parsers/UnlimitedOcrParser.cpp
     parsers/Lfm25VlParser.h
     parsers/Lfm25VlParser.cpp
+    parsers/TeleOcrLayoutParser.h
+    parsers/TeleOcrLayoutParser.cpp
     parsers/DetTokenFormat.h
     parsers/DetTokenFormat.cpp
     parsers/OtslTable.h
@@ -246,6 +248,8 @@ qt_add_library(llocr_app STATIC
     app/CheckController.cpp
     app/DecisionController.h
     app/DecisionController.cpp
+    app/LayoutController.h
+    app/LayoutController.cpp
     app/VerificationPromptStore.h
     app/VerificationPromptStore.cpp
     app/VerificationQueueController.h

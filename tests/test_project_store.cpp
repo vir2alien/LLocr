@@ -82,6 +82,13 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     unpositioned.text = QStringLiteral("preamble");
     unpositioned.positioned = false;
     imagePage.boxes.append(unpositioned);
+    // The layout pass creates text blocks with no text; they must round-trip
+    // like any other box.
+    BoundingBox markup;
+    markup.label = QStringLiteral("text");
+    markup.rect = QRectF(0.05, 0.7, 0.4, 0.1);
+    markup.positioned = true;
+    imagePage.boxes.append(markup);
     data.pages.append(imagePage);
 
     ProjectPageData pdfPage;
@@ -189,7 +196,7 @@ private slots:
         QCOMPARE(imagePage.text, QStringLiteral("edited text"));
         QCOMPARE(imagePage.baseline, QStringLiteral("recognized text"));
         QCOMPARE(imagePage.parseNote, QStringLiteral("no layout tokens"));
-        QCOMPARE(imagePage.boxes.size(), 3);
+        QCOMPARE(imagePage.boxes.size(), 4);
         QCOMPARE(imagePage.boxes.at(0).text, QStringLiteral("block text"));
         QCOMPARE(imagePage.boxes.at(0).correctedText, QStringLiteral("corrected text"));
         QCOMPARE(imagePage.boxes.at(0).checkStatus, BoxCheckStatus::Fixed);
@@ -203,6 +210,12 @@ private slots:
         QVERIFY(imagePage.boxes.at(2).text == QStringLiteral("preamble"));
         QVERIFY(!imagePage.boxes.at(2).positioned);
         QVERIFY(!imagePage.boxes.at(2).duplicateSuspect);
+        // A markup-only block: positioned, empty, still unchecked.
+        QVERIFY(imagePage.boxes.at(3).text.isEmpty());
+        QVERIFY(imagePage.boxes.at(3).correctedText.isEmpty());
+        QCOMPARE(imagePage.boxes.at(3).checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(imagePage.boxes.at(3).rect, QRectF(0.05, 0.7, 0.4, 0.1));
+        QVERIFY(imagePage.boxes.at(3).positioned);
 
         const ProjectPageData &pdfPage = loaded.data.pages.at(1);
         QCOMPARE(pdfPage.sourceId, 1);

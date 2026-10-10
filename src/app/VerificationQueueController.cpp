@@ -5,6 +5,7 @@
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
 #include "core/ModelProfiles.h"
+#include "parsers/BlockStyle.h"
 
 namespace llocr {
 
@@ -140,6 +141,28 @@ void VerificationQueueController::collectProblemBoxes(int pageIndex, QList<Verif
     }
 }
 
+// The layout pass creates text blocks with no text; a re-recognition that
+// already answered leaves the text in correctedText. Image placeholders are
+// never transcribed.
+void VerificationQueueController::collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return;
+    const DocumentPage &docPage = m_deps.document.page(pageIndex);
+    if (!docPage.recognized || docPage.result.pages.isEmpty())
+        return;
+    const OcrPage &page = docPage.result.pages.first();
+    const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
+    for (int i = 0; i < page.boxes.size(); ++i) {
+        const BoundingBox &box = page.boxes.at(i);
+        if (box.checkStatus != BoxCheckStatus::NotChecked || !box.text.isEmpty() || !box.correctedText.isEmpty())
+            continue;
+        if (blockStyleForLabel(box.label, modelId).style == BlockStyle::ImagePlaceholder)
+            continue;
+        out.append({pageIndex, i});
+    }
+}
+
 void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered)
 {
     if (!tasks.isEmpty()) {
@@ -207,6 +230,15 @@ bool VerificationQueueController::pageRecheckSupported(int pageIndex) const
     return !tasks.isEmpty();
 }
 
+bool VerificationQueueController::pageBlocksRecognitionSupported(int pageIndex) const
+{
+    if (m_deps.recognitionBusy())
+        return false;
+    QList<VerifyTask> tasks;
+    collectUnrecognizedBoxes(pageIndex, tasks);
+    return !tasks.isEmpty();
+}
+
 bool VerificationQueueController::allPageRecheckSupported() const
 {
     for (int p = 0; p < m_deps.document.pageCount(); ++p) {
@@ -256,6 +288,15 @@ void VerificationQueueController::recheckPageProblemBlocks(int pageIndex)
         return;
     QList<VerifyTask> tasks;
     collectProblemBoxes(pageIndex, tasks);
+    startRecheckQueue(tasks);
+}
+
+void VerificationQueueController::recheckPageBlocks(int pageIndex)
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return;
+    QList<VerifyTask> tasks;
+    collectUnrecognizedBoxes(pageIndex, tasks);
     startRecheckQueue(tasks);
 }
 

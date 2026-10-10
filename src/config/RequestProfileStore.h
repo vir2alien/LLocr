@@ -28,6 +28,7 @@ public:
         Ocr,
         BlockRecognition,
         Decision,
+        Layout,
     };
 
     explicit RequestProfileStore(SettingsStore &settings, Role role = Role::Ocr, QObject *parent = nullptr);

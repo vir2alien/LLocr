@@ -7,6 +7,7 @@
 #include "parsers/ParserFactory.h"
 #include "parsers/ParserOptions.h"
 #include "parsers/RawParser.h"
+#include "parsers/TeleOcrLayoutParser.h"
 #include "parsers/UnlimitedOcrParser.h"
 
 #include <QFile>
@@ -1395,6 +1396,105 @@ private slots:
         const auto rebuilt = RawParser().rebuildTextWithRanges(page);
         QCOMPARE(rebuilt.text, page.text);
         QVERIFY(rebuilt.ranges.isEmpty());
+    }
+
+    // --- TeleOCR layout pass (the manual markup feature) ----------------------
+
+    // One "<box:…><label:…><orientation>" line per block, coordinates on the
+    // 0–1000 scale, no block content: the markup pass only positions blocks,
+    // the text arrives later through blockRecognition. The orientation tag and
+    // the surrounding chatter are dropped.
+    void parsesTeleOcrLayoutLines()
+    {
+        const QString raw = QStringLiteral("Sure, here is the layout of the page:\n"
+                                           "<box:34 56 789 123><label:title><up>\n"
+                                           "<box:100 200 900 800><label:text><down>\n"
+                                           "<box:481 923 511 935><label:page_number><left>\n");
+
+        TeleOcrLayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+
+        const BoundingBox &title = page.boxes.at(0);
+        QCOMPARE(title.label, QStringLiteral("title"));
+        QVERIFY(title.text.isEmpty());
+        QVERIFY(title.positioned);
+        QVERIFY(qFuzzyCompare(title.rect.x(), 0.034));
+        QVERIFY(qFuzzyCompare(title.rect.y(), 0.056));
+        QVERIFY(qFuzzyCompare(title.rect.width(), (789.0 - 34.0) / 1000.0));
+        QVERIFY(qFuzzyCompare(title.rect.height(), (123.0 - 56.0) / 1000.0));
+
+        const BoundingBox &text = page.boxes.at(1);
+        QCOMPARE(text.label, QStringLiteral("text"));
+        QVERIFY(text.text.isEmpty());
+        QVERIFY(qFuzzyCompare(text.rect.width(), 0.8));
+        QVERIFY(qFuzzyCompare(text.rect.height(), 0.6));
+
+        // The markup pass keeps page numbers: the block belongs to the page
+        // layout even when the output setting filters it from the text.
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("page_number"));
+
+        // Nothing is rendered yet — no blocks with text.
+        QVERIFY(page.text.isEmpty());
+        QVERIFY(r.notes.isEmpty());
+    }
+
+    // The upstream parser accepts polygons (any even count of coordinates); a
+    // rectangle-only model becomes their bounding box.
+    void teleOcrLayoutPolygonBecomesItsBoundingBox()
+    {
+        const QString raw = QStringLiteral("<box:900 100 20 480 400 900><label:table><right>\n");
+
+        TeleOcrLayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 1);
+        const BoundingBox &box = r.pages.first().boxes.at(0);
+        QCOMPARE(box.label, QStringLiteral("table"));
+        QVERIFY(qFuzzyCompare(box.rect.x(), 0.02));
+        QVERIFY(qFuzzyCompare(box.rect.y(), 0.1));
+        QVERIFY(qFuzzyCompare(box.rect.width(), 0.88));
+        QVERIFY(qFuzzyCompare(box.rect.height(), 0.8));
+    }
+
+    // A reply without a single block line leaves no positioned boxes — the
+    // markup pass reports it instead of wiping the page.
+    void teleOcrLayoutReplyWithoutBlockLinesYieldsNoBoxes()
+    {
+        const QString raw = QStringLiteral("The image contains a nicely formatted document with several paragraphs.");
+
+        TeleOcrLayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QVERIFY(r.pages.first().boxes.isEmpty());
+        QCOMPARE(r.notes.size(), 1);
+        QVERIFY(r.notes.first().contains(QStringLiteral("No layout tokens")));
+    }
+
+    // TeleOCR image-ish labels must style as image placeholders, so the markup
+    // result renders them as crops and the block-recognition pass skips them.
+    void teleOcrLayoutImageLabelsStyleAsImages()
+    {
+        const QString raw = QStringLiteral("<box:10 10 500 200><label:char><up>\n"
+                                           "<box:10 300 500 400><label:figure><up>\n"
+                                           "<box:10 500 500 600><label:image><up>\n");
+
+        TeleOcrLayoutParser parser(ParserOptions{});
+        parser.m_options.modelId = QStringLiteral("teleocr");
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 3);
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
+        QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/1)")));
+        QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/2)")));
     }
 };
 

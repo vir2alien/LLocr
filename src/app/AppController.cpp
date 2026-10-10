@@ -27,30 +27,37 @@
 #include "parsers/ParserFactory.h"
 
 #include "config/RequestProfileStore.h"
+#include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"
 #include "models/OcrModel.h"
 
 namespace llocr {
 
-AppController::AppController(
-    SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, RequestProfileStore &checkRequestProfiles, VerificationPromptStore &verification, QObject *parent)
-    : m_settings(settings), m_runtime(runtime), m_verification(verification), m_recognition(
-                                                                                  settings,
-                                                                                  runtime,
-                                                                                  requestProfiles,
-                                                                                  [this](int index, QString &error) { return pageImage(index, &error); },
-                                                                                  nullptr,
-                                                                                  [this](int index, bool batch) {
-                                                                                      QReadLocker locker(&m_documentLock);
-                                                                                      if (!m_document.isValidIndex(index))
-                                                                                          return PageSkip::Unreadable;
-                                                                                      const DocumentPage &page = m_document.page(index);
-                                                                                      if (!page.sourceError.isEmpty())
-                                                                                          return PageSkip::Unreadable;
-                                                                                      if (batch && page.recognized)
-                                                                                          return PageSkip::AlreadyRecognized;
-                                                                                      return PageSkip::None;
-                                                                                  }),
+AppController::AppController(SettingsStore &settings,
+                             RuntimeController &runtime,
+                             RequestProfileStore &requestProfiles,
+                             RequestProfileStore &checkRequestProfiles,
+                             RequestProfileStore &layoutRequestProfiles,
+                             VerificationPromptStore &verification,
+                             QObject *parent)
+    : m_settings(settings), m_runtime(runtime), m_verification(verification), m_checkRequestProfiles(checkRequestProfiles), m_layoutRequestProfiles(layoutRequestProfiles),
+      m_recognition(
+          settings,
+          runtime,
+          requestProfiles,
+          [this](int index, QString &error) { return pageImage(index, &error); },
+          nullptr,
+          [this](int index, bool batch) {
+              QReadLocker locker(&m_documentLock);
+              if (!m_document.isValidIndex(index))
+                  return PageSkip::Unreadable;
+              const DocumentPage &page = m_document.page(index);
+              if (!page.sourceError.isEmpty())
+                  return PageSkip::Unreadable;
+              if (batch && page.recognized)
+                  return PageSkip::AlreadyRecognized;
+              return PageSkip::None;
+          }),
       m_verify({m_document,
                 verification,
                 checkRequestProfiles,
@@ -59,6 +66,7 @@ AppController::AppController(
                 [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
                 [this]() { return m_recognition.busy(); }},
                this),
+      m_layout(layoutRequestProfiles, runtime, this),
       m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this), QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
@@ -85,6 +93,11 @@ AppController::AppController(
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::blockChecked, this, &AppController::applyCheckResultToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
+
+    connect(&m_layout, &LayoutController::busyChanged, this, &AppController::layoutStateChanged);
+    connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+    connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
+    connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
 
     connect(&m_export, &ExportController::exportingChanged, this, &AppController::exportingChanged);
     connect(&m_export, &ExportController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
@@ -271,7 +284,7 @@ bool AppController::hasResult() const
 
 bool AppController::canRecognize() const
 {
-    if (m_document.isEmpty() || m_recognition.busy() || m_importing || m_verify.checkBusy())
+    if (m_document.isEmpty() || m_recognition.busy() || m_layout.busy() || m_importing || m_verify.checkBusy())
         return false;
     return m_runtime.canRecognize(true);
 }
@@ -797,7 +810,7 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width
 
 bool AppController::removeBlock(int boxIndex)
 {
-    if (m_recognition.busy() || m_importing)
+    if (m_recognition.busy() || m_layout.busy() || m_importing)
         return false;
     if (!m_document.isValidIndex(m_currentPage))
         return false;
@@ -982,6 +995,124 @@ void AppController::recognizeProblemBlocksOnPage()
 void AppController::recognizeAllProblemBlocks()
 {
     m_verify.recheckAllProblemBlocks();
+}
+
+void AppController::recognizeAllBlocksOnPage()
+{
+    if (m_layout.busy())
+        return;
+    m_verify.recheckPageBlocks(m_currentPage);
+}
+
+const ModelProfiles::Role *AppController::layoutRole() const
+{
+    return ModelProfiles::roleFor(m_checkRequestProfiles.activeProfileId(), QStringLiteral("layout"));
+}
+
+bool AppController::layoutAvailable() const
+{
+    return layoutRole() != nullptr;
+}
+
+bool AppController::pageBlocksRecognitionSupported() const
+{
+    return m_verify.pageBlocksRecognitionSupported(m_currentPage);
+}
+
+void AppController::layoutCurrentPage()
+{
+    startLayout({m_currentPage});
+}
+
+void AppController::layoutAllPages()
+{
+    QList<int> pages;
+    for (int i = 0; i < m_document.pageCount(); ++i)
+        pages.append(i);
+    startLayout(pages);
+}
+
+void AppController::stopLayout()
+{
+    m_layout.stop();
+}
+
+void AppController::startLayout(const QList<int> &pages)
+{
+    if (pages.isEmpty() || m_layout.busy() || m_recognition.busy() || m_importing || checkBusy())
+        return;
+    const ModelProfiles::Role *role = layoutRole();
+    if (!role) {
+        setStatus(StatusMessage::translate("AppController", "The block-recognition model does not support page markup."));
+        return;
+    }
+    const QString prompt = role->prompts.isEmpty() ? QString() : role->prompts.constFirst().text;
+    if (prompt.isEmpty()) {
+        setStatus(StatusMessage::translate("AppController", "The model profile has no markup prompt."));
+        return;
+    }
+    m_layout.layoutPages(pages, [this](int index) { return pageImage(index); }, role->systemPrompt, prompt);
+}
+
+void AppController::applyLayout(int pageIndex, const QString &rawText)
+{
+    if (!m_document.isValidIndex(pageIndex) || rawText.isEmpty())
+        return;
+
+    const ModelProfiles::Role *role = layoutRole();
+    if (!role || role->parser.isEmpty())
+        return;
+
+    ParserOptions options;
+    options.modelId = m_checkRequestProfiles.activeProfileId();
+    options.keepPageNumbers = true;
+    OcrResult parsed;
+    if (auto parser = ParserFactory::create(role->parser, options))
+        parsed = parser->parse(rawText);
+    if (!parsed.success || parsed.pages.isEmpty())
+        return;
+
+    bool hasPositioned = false;
+    for (const BoundingBox &box : parsed.pages.first().boxes) {
+        if (box.positioned) {
+            hasPositioned = true;
+            break;
+        }
+    }
+    if (!hasPositioned) {
+        const StatusMessage message = StatusMessage::translate("AppController", "The model returned no layout blocks for page %1.").arg(pageIndex + 1);
+        setStatus(message);
+        reportProblem(message, ProblemLog::Warning);
+        return;
+    }
+
+    const OcrPage &pageData = parsed.pages.first();
+    const int blockCount = pageData.boxes.size();
+    {
+        QWriteLocker locker(&m_documentLock);
+        DocumentPage &page = m_document.page(pageIndex);
+        page.result = parsed;
+        page.recognized = true;
+        page.parseNote = parsed.notes.isEmpty() ? QString() : parsed.notes.join(QLatin1String(" "));
+    }
+
+    m_pageModel.setRecognized(pageIndex, true);
+    if (pageData.hasDuplicates)
+        m_pageModel.setHasDuplicates(pageIndex, true);
+
+    const bool droppedEdit = m_editStore.reset(pageIndex, parsed.text);
+    if (droppedEdit)
+        m_pageModel.setEdited(pageIndex, false);
+
+    ++m_cropRevision;
+
+    if (pageIndex == m_currentPage)
+        updateBoxesForCurrent();
+    emit resultChanged();
+    if (droppedEdit)
+        emit editStateChanged();
+
+    setStatus(StatusMessage::translate("AppController", "Page %1 marked up: %2 block(s).").arg(pageIndex + 1).arg(blockCount));
 }
 
 bool AppController::pageVerificationSupported() const
@@ -1182,7 +1313,7 @@ QString AppController::projectFileName() const
 
 bool AppController::projectGuardsBusy() const
 {
-    return m_recognition.busy() || m_importing || m_export.exporting() || m_projectBusy || m_verify.queueActive() || m_verify.checkBusy();
+    return m_recognition.busy() || m_layout.busy() || m_importing || m_export.exporting() || m_projectBusy || m_verify.queueActive() || m_verify.checkBusy();
 }
 
 bool AppController::collectProjectData(ProjectData *data, QString *error)

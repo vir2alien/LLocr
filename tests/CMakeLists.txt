@@ -131,6 +131,18 @@ target_link_libraries(test_decision_model PRIVATE
 )
 add_test(NAME test_decision_model COMMAND test_decision_model)
 
+# The manual markup pass (layout role): the request shape it sends through the
+# block-recognition transport and the reply the layout parser consumes.
+qt_add_executable(test_layout test_layout.cpp)
+
+target_link_libraries(test_layout PRIVATE
+    Qt6::Test
+    llocr_models
+    llocr_parsers
+)
+add_test(NAME test_layout COMMAND test_layout)
+set_tests_properties(test_layout PROPERTIES TIMEOUT 60)
+
 # The project container (.llocr): ZipWriter <-> ArchiveExtractor round-trip and
 # the ProjectStore serialization (sources, boxes, edits, verification state).
 qt_add_executable(test_project_store test_project_store.cpp)

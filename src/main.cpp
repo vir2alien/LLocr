@@ -105,6 +105,11 @@ int main(int argc, char *argv[])
     requestProfilesDecision.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesDecision", &requestProfilesDecision);
 
+    // The layout role has no settings window: it runs on the block-recognition
+    // model, its request profile is derived from the model's layout role.
+    llocr::RequestProfileStore requestProfilesLayout(settingsStore, llocr::RequestProfileStore::Role::Layout);
+    requestProfilesLayout.setModelProfiles(modelProfiles);
+
     llocr::VerificationPromptStore verificationPrompts(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Verification", &verificationPrompts);
 
@@ -143,7 +148,7 @@ int main(int argc, char *argv[])
 
     connectShutdownHandlers(app, instanceGuard, runtimeController, runtimeInstaller, modelInstaller);
 
-    llocr::AppController appController(settingsStore, runtimeController, requestProfilesOcr, requestProfilesValidate, verificationPrompts);
+    llocr::AppController appController(settingsStore, runtimeController, requestProfilesOcr, requestProfilesValidate, requestProfilesLayout, verificationPrompts);
     llocr::ProblemLog problemLog;
     appController.setProblemLog(&problemLog);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Log", &problemLog);

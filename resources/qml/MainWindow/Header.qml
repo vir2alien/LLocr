@@ -63,7 +63,7 @@ ToolBar {
             ToolButton {
                 id: recognizeExtraButton
                 text: "\u25be"
-                enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
                 onClicked: recognizeExtraMenu.popup(recognizeExtraButton, 0, recognizeExtraButton.height + 2)
             }
             Menu {
@@ -73,6 +73,14 @@ ToolBar {
                     enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
                              && Controller.pageProblemRecognitionSupported
                     onTriggered: Controller.recognizeProblemBlocksOnPage()
+                }
+                MenuItem {
+                    // The layout-pass blocks: no text yet, waiting for their
+                    // blockRecognition request.
+                    text: qsTr("Recognize all blocks on the page")
+                    enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
+                             && Controller.pageBlocksRecognitionSupported
+                    onTriggered: Controller.recognizeAllBlocksOnPage()
                 }
             }
         }
@@ -89,38 +97,67 @@ ToolBar {
             ToolButton {
                 id: recognizeAllExtraButton
                 text: "\u25be"
-                enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
                 onClicked: recognizeAllExtraMenu.popup(recognizeAllExtraButton, 0, recognizeAllExtraButton.height + 2)
             }
             Menu {
                 id: recognizeAllExtraMenu
                 MenuItem {
                     text: qsTr("Recognize all problem blocks")
-                    enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                    enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
                              && Controller.allProblemRecognitionSupported
                     onTriggered: Controller.recognizeAllProblemBlocks()
                 }
             }
         }
 
+        Row {
+            spacing: 0
+            ToolButton {
+                text: qsTr("Mark up")
+                enabled: Controller.hasImage && !Controller.busy
+                         && !Controller.checkBusy && !Controller.layoutBusy
+                         && Controller.layoutAvailable
+                onClicked: markupConfirmDialog.requestMarkup(false)
+            }
+            ToolButton {
+                id: markupExtraButton
+                text: "\u25be"
+                enabled: Controller.hasImage && !Controller.busy
+                         && !Controller.checkBusy && !Controller.layoutBusy
+                         && Controller.layoutAvailable
+                onClicked: markupExtraMenu.popup(markupExtraButton, 0, markupExtraButton.height + 2)
+            }
+            Menu {
+                id: markupExtraMenu
+                MenuItem {
+                    text: qsTr("Mark up all pages")
+                    enabled: Controller.pageCount > 1
+                    onTriggered: markupConfirmDialog.requestMarkup(true)
+                }
+            }
+        }
+
         ToolButton {
             text: qsTr("Check page")
-            enabled: Controller.hasImage && !Controller.busy
+            enabled: Controller.hasImage && !Controller.busy && !Controller.layoutBusy
                      && Controller.pageVerificationSupported
             onClicked: Controller.checkEnabledBlocksOnPage()
         }
         ToolButton {
             text: qsTr("Check all")
-            enabled: Controller.hasImage && !Controller.busy
+            enabled: Controller.hasImage && !Controller.busy && !Controller.layoutBusy
                      && Controller.allPageVerificationSupported
             onClicked: Controller.checkAllEnabledBlocks()
         }
         ToolButton {
             text: qsTr("Stop")
-            enabled: Controller.busy || Controller.checkBusy
+            enabled: Controller.busy || Controller.checkBusy || Controller.layoutBusy
             onClicked: {
                 if (Controller.busy)
                     Controller.stop()
+                else if (Controller.layoutBusy)
+                    Controller.stopLayout()
                 else
                     Controller.stopCheck()
             }
@@ -235,6 +272,36 @@ ToolBar {
         MenuItem {
             text: qsTr("Block OCR model")
             onTriggered: headerRoot.openCheckModelSettingsRequested()
+        }
+    }
+
+    // The markup pass replaces the page's blocks (and drops its text), so a
+    // page that already carries results asks first.
+    InterruptConfirmDialog {
+        id: markupConfirmDialog
+
+        property bool allPages: false
+
+        function requestMarkup(allPages) {
+            markupConfirmDialog.allPages = allPages
+            const hasContent = allPages ? Controller.hasResult : Controller.currentPageEditable
+            if (hasContent) {
+                title = qsTr("Mark up?")
+                prompt = allPages ? qsTr("Marking up replaces the recognized blocks and text on every page. Continue?")
+                                  : qsTr("Marking up replaces the recognized blocks and text on this page. Continue?")
+                open()
+            } else if (allPages) {
+                Controller.layoutAllPages()
+            } else {
+                Controller.layoutCurrentPage()
+            }
+        }
+
+        onConfirmed: {
+            if (allPages)
+                Controller.layoutAllPages()
+            else
+                Controller.layoutCurrentPage()
         }
     }
 } // ToolBar

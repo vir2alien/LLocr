@@ -6,6 +6,7 @@
 #include "parsers/Lfm25VlParser.h"
 #include "parsers/ParserOptions.h"
 #include "parsers/RawParser.h"
+#include "parsers/TeleOcrLayoutParser.h"
 #include "parsers/UnlimitedOcrParser.h"
 
 namespace llocr {
@@ -14,7 +15,7 @@ const QString ParserFactory::kAutoId = QStringLiteral("auto");
 
 QStringList ParserFactory::registeredIds()
 {
-    return {QStringLiteral("raw"), QStringLiteral("unlimited-ocr"), QStringLiteral("lfm2.5-vl")};
+    return {QStringLiteral("raw"), QStringLiteral("unlimited-ocr"), QStringLiteral("lfm2.5-vl"), QStringLiteral("teleocr-layout")};
 }
 
 QStringList ParserFactory::selectableIds()
@@ -39,6 +40,8 @@ std::unique_ptr<IOutputParser> ParserFactory::create(const QString &parserId, co
         return std::make_unique<UnlimitedOcrParser>(options);
     if (parserId == QLatin1String("lfm2.5-vl"))
         return std::make_unique<Lfm25VlParser>(options);
+    if (parserId == QLatin1String("teleocr-layout"))
+        return std::make_unique<TeleOcrLayoutParser>(options);
     if (parserId == QLatin1String("raw"))
         return std::make_unique<RawParser>(options);
 

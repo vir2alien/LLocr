@@ -325,6 +325,7 @@ private:
     std::unique_ptr<LaunchProfileStore> m_launchProfiles;
     std::unique_ptr<RequestProfileStore> m_requestProfiles;
     std::unique_ptr<RequestProfileStore> m_checkRequestProfiles;
+    std::unique_ptr<RequestProfileStore> m_layoutRequestProfiles;
     std::unique_ptr<VerificationPromptStore> m_verification;
     std::unique_ptr<RuntimeController> m_runtime;
     std::unique_ptr<ProblemLog> m_problems;
@@ -351,10 +352,11 @@ private slots:
         m_launchProfiles = std::make_unique<LaunchProfileStore>(*m_settings);
         m_requestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
         m_checkRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
+        m_layoutRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, RequestProfileStore::Role::Layout);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_problems = std::make_unique<ProblemLog>();
-        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_verification);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_verification);
         m_controller->setProblemLog(m_problems.get());
 
         // Fixtures that exist in every build: a raster, a generated multi-page
@@ -1823,7 +1825,7 @@ private slots:
         QCOMPARE(observations.importingStates, QList<bool>({true}));
         QVERIFY(observations.committedCounts.isEmpty());
         QVERIFY(!observations.wrongThread.load());
-        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_verification);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_verification);
         m_controller->openFiles({QUrl::fromLocalFile(m_multipage)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
         QCOMPARE(m_controller->pageCount(), 3);

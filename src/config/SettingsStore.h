@@ -217,7 +217,8 @@ public:
     void setDecisionMatchThreshold(double threshold);
 
     // Role-generic views over the per-role launch/request/model-name settings.
-    // role is a model-profile role id: "ocr", "blockRecognition" or "decision".
+    // role is a model-profile role id: "ocr", "blockRecognition", "decision"
+    // or "layout" (layout shares the blockRecognition model).
     QString launchModelPathForRole(const QString &role) const;
     void setLaunchModelPathForRole(const QString &role, const QString &path);
     QString launchMmprojPathForRole(const QString &role) const;

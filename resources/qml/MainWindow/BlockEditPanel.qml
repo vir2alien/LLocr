@@ -15,8 +15,8 @@ Rectangle {
     border.color: Theme.divider
     border.width: 1
 
-    readonly property bool isTextBlock: Controller.selectedBlockLabel !== "image"
-                                        && Controller.selectedBlockLabel !== "chart"
+    readonly property bool isTextBlock: Controller.selectedBoxIndex < 0
+                                        || !Controller.boxModel.isImageBox(Controller.selectedBoxIndex)
 
     implicitHeight: checkColumn.implicitHeight + 2 * Theme.spacingSmall
     visible: Controller.selectedBoxIndex >= 0 && Controller.hasResult

@@ -16,6 +16,7 @@
 #include "app/DocumentModel.h"
 #include "app/ExportController.h"
 #include "app/Exporter.h"
+#include "app/LayoutController.h"
 #include "app/LruImageCache.h"
 #include "app/PageEditStore.h"
 #include "app/PageListModel.h"
@@ -82,6 +83,10 @@ class AppController : public QObject
     Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY checkStateChanged)
     Q_PROPERTY(bool pageProblemRecognitionSupported READ pageProblemRecognitionSupported NOTIFY checkStateChanged)
     Q_PROPERTY(bool allProblemRecognitionSupported READ allProblemRecognitionSupported NOTIFY checkStateChanged)
+    Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY checkStateChanged)
+
+    Q_PROPERTY(bool layoutBusy READ layoutBusy NOTIFY layoutStateChanged)
+    Q_PROPERTY(bool layoutAvailable READ layoutAvailable NOTIFY layoutAvailableChanged)
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters NOTIFY retranslateRequested)
 
@@ -105,6 +110,7 @@ public:
                            RuntimeController &runtime,
                            RequestProfileStore &requestProfiles,
                            RequestProfileStore &checkRequestProfiles,
+                           RequestProfileStore &layoutRequestProfiles,
                            VerificationPromptStore &verification,
                            QObject *parent = nullptr);
     ~AppController() override;
@@ -158,6 +164,10 @@ public:
     bool allPageVerificationSupported() const;
     bool pageProblemRecognitionSupported() const;
     bool allProblemRecognitionSupported() const;
+    bool pageBlocksRecognitionSupported() const;
+
+    bool layoutBusy() const { return m_layout.busy(); }
+    bool layoutAvailable() const;
 
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
     QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
@@ -188,6 +198,8 @@ signals:
     void docRevisionChanged();
     void configChanged();
     void pageImageReady(int index);
+    void layoutStateChanged();
+    void layoutAvailableChanged();
 
     void selectedBoxChanged();
     void blockTextRangeChanged();
@@ -227,6 +239,13 @@ public slots:
     Q_INVOKABLE void recognizeSelectedBlock();
     Q_INVOKABLE void recognizeProblemBlocksOnPage();
     Q_INVOKABLE void recognizeAllProblemBlocks();
+    Q_INVOKABLE void recognizeAllBlocksOnPage();
+    // Manual page markup through the layout role (TeleOCR-style two-phase
+    // models): the reply replaces the page blocks, the text stays empty until
+    // each block goes through blockRecognition.
+    Q_INVOKABLE void layoutCurrentPage();
+    Q_INVOKABLE void layoutAllPages();
+    Q_INVOKABLE void stopLayout();
     Q_INVOKABLE void cancelImport();
     Q_INVOKABLE void openProject(const QUrl &fileUrl);
     Q_INVOKABLE void saveProject(const QUrl &fileUrl);
@@ -241,6 +260,9 @@ private:
     void notifyDocumentChanged();
     void notifyPageChanged();
     void applyRawResult(int index, const OcrResult &rawResult);
+    void applyLayout(int pageIndex, const QString &rawText);
+    void startLayout(const QList<int> &pages);
+    const ModelProfiles::Role *layoutRole() const;
     QString effectiveParserId() const;
     ParserOptions parserOptions() const;
     std::unique_ptr<IOutputParser> makeParser() const;
@@ -262,11 +284,14 @@ private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
     VerificationPromptStore &m_verification;
+    RequestProfileStore &m_checkRequestProfiles;
+    RequestProfileStore &m_layoutRequestProfiles;
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
     RecognitionController m_recognition;
     VerificationQueueController m_verify;
+    LayoutController m_layout;
     bool m_importing = false;
     int m_importDone = 0;
     int m_importTotal = 0;

@@ -58,6 +58,10 @@ public:
     bool pageRecheckSupported(int pageIndex) const;
     bool allPageRecheckSupported() const;
 
+    // Blocks created by the layout pass have no text yet; this collects them
+    // for their block-recognition pass.
+    bool pageBlocksRecognitionSupported(int pageIndex) const;
+
 public slots:
     void checkBlock(int pageIndex, int boxIndex);
     void checkPageEnabledBlocks(int pageIndex);
@@ -67,6 +71,9 @@ public slots:
     void recheckBlock(int pageIndex, int boxIndex);
     void recheckPageProblemBlocks(int pageIndex);
     void recheckAllProblemBlocks();
+    // Recognize every block of the page that has no text yet (the layout-pass
+    // blocks); image placeholders are skipped.
+    void recheckPageBlocks(int pageIndex);
     void stop();
 
 signals:
@@ -93,6 +100,7 @@ private:
     void finishVerifyQueue();
     void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const;
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
+    void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;
     QString decisionQuestion() const;
 
     Deps m_deps;

@@ -25,6 +25,8 @@ private slots:
     void draftModuleReachesThePresets();
     void roleDefaultsFollowTheShippedProfiles();
     void verifierSystemPromptFollowsTheModel();
+    void layoutRoleShipsTheMarkupContract();
+    void teleOcrBlockPromptsCoverTheLayoutVocabulary();
     void checkModelBlockPromptsOverridePerType();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
@@ -87,7 +89,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"qwen3.5-9b", "blockRecognition", "b4000", "q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"gemma-4-e4b", "blockRecognition", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,flash-attn,image-min-tokens"},
         {"gemma-4-12b", "blockRecognition", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens"},
-        {"teleocr", "ocr,blockRecognition", "b4000", "q4_k_m,q8_0", ""},
+        {"teleocr", "ocr,blockRecognition,layout", "b4000", "q4_k_m,q8_0", ""},
         {"d1-3b", "decision", "", "q4_k_m,q8_0", "ctx-size"},
     };
 
@@ -176,6 +178,7 @@ void TestModelPresetCatalog::roleDefaultsFollowTheShippedProfiles()
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("ocr")), QStringLiteral("unlimited-ocr"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("blockRecognition")), QStringLiteral("lfm25-vl-3b"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("decision")), QStringLiteral("d1-3b"));
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("layout")), QStringLiteral("teleocr"));
 
     // The installer's picker sorts the role's recommended model first.
     QCOMPARE(ModelProfiles::forRole(profiles, QStringLiteral("blockRecognition")).constFirst().id, QStringLiteral("lfm25-vl-3b"));
@@ -209,6 +212,45 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     // An OCR role has no system prompt, and neither has an unknown model.
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr")).isEmpty());
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("blockRecognition")).isEmpty());
+}
+
+// The layout role is what the manual markup pass drives: its parser id must be
+// the registered TeleOCR layout parser, the prompt is the card's layout
+// request, and the system prompt pins the reply contract the parser expects.
+void TestModelPresetCatalog::layoutRoleShipsTheMarkupContract()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("layout"));
+    QVERIFY2(role, "teleocr declares the layout role");
+    QCOMPARE(role->parser, QStringLiteral("teleocr-layout"));
+    QVERIFY(!role->prompts.isEmpty());
+    QVERIFY(role->prompts.constFirst().text.contains(QStringLiteral("Analyze the image layout.")));
+    QVERIFY(role->systemPrompt.contains(QStringLiteral("<box:")));
+    QVERIFY(role->systemPrompt.contains(QStringLiteral("<label:")));
+
+    // Every other shipped model serves the one-shot reply shape and hides the
+    // markup button.
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("unlimited-ocr"), QStringLiteral("layout")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("layout")));
+}
+
+// After the markup pass every non-image block goes through blockRecognition,
+// and its type prompt comes from this map: a label the layout styles but the
+// block-recognition role does not name would send an empty prompt.
+void TestModelPresetCatalog::teleOcrBlockPromptsCoverTheLayoutVocabulary()
+{
+    // The label→style map lives on the ocr role (BlockStyleMap reads it there).
+    const ModelProfiles::Role *ocr = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("ocr"));
+    const ModelProfiles::Role *check = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("blockRecognition"));
+    QVERIFY(ocr);
+    QVERIFY(check);
+    for (auto it = ocr->blockStyles.constBegin(); it != ocr->blockStyles.constEnd(); ++it) {
+        if (it.value() == QLatin1String("image"))
+            continue;  // image placeholders are never transcribed
+        QVERIFY2(check->blockPrompts.contains(it.key()), qPrintable(QStringLiteral("no block prompt for %1").arg(it.key())));
+        QVERIFY2(!check->blockPrompts.value(it.key()).isEmpty(), qPrintable(QStringLiteral("empty block prompt for %1").arg(it.key())));
+    }
 }
 
 void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
