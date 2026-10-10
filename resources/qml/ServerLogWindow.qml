@@ -21,7 +21,7 @@ ApplicationWindow {
     onVisibleChanged: {
         if (visible) {
             logScroll.autoScroll = true
-            logArea.text = logText()
+            logScroll.showText()
             logScroll.scrollToBottom()
         }
     }
@@ -104,6 +104,22 @@ ApplicationWindow {
             })
         }
 
+        function showText() {
+            if (autoScroll) {
+                logArea.text = root.logText()
+                return
+            }
+            const x = contentX
+            const y = contentY
+            logArea.text = root.logText()
+            // Assigning text resets the cursor to the start and TextArea.flickable
+            // follows the cursor, scrolling the view to the top.
+            Qt.callLater(function () {
+                logScroll.contentX = x
+                logScroll.contentY = y
+            })
+        }
+
         onContentYChanged: {
             if (dragging || moving)
                 autoScroll = isAtBottom()
@@ -142,7 +158,7 @@ ApplicationWindow {
         target: RuntimeLog
         function onServerLogChanged() {
             if (root.visible)
-                logArea.text = root.logText()
+                logScroll.showText()
         }
     }
 }
