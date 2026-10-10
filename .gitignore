@@ -60,6 +60,9 @@ compile_commands.json
 # Zed
 .zed/keymap.json
 
+# Zcode
+.zcode
+
 # OS
 .DS_Store
 .DS_Store?
