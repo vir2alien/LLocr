@@ -59,6 +59,7 @@ class AppController : public QObject
     Q_PROPERTY(int currentPage READ currentPage WRITE setCurrentPage NOTIFY pageChanged)
     Q_PROPERTY(int imageRevision READ imageRevision NOTIFY imageRevisionChanged)
     Q_PROPERTY(int docRevision READ docRevision NOTIFY docRevisionChanged)
+    Q_PROPERTY(int previewRenderingPage READ previewRenderingPage NOTIFY previewRenderingChanged)
     Q_PROPERTY(bool hasResult READ hasResult NOTIFY resultChanged)
 
     Q_PROPERTY(bool currentPageEditable READ currentPageEditable NOTIFY resultChanged)
@@ -177,6 +178,7 @@ public:
     QImage pageImage(int index, QString *error = nullptr);
     QImage pageThumbnail(int index);
     QImage previewImage(int index);
+    int previewRenderingPage() const { return m_previewRendering.load(); }
     Q_INVOKABLE bool previewRendering(int index) const;
 
     QImage croppedImage(int pageIndex, int boxIndex);
@@ -195,6 +197,7 @@ signals:
     void docRevisionChanged();
     void configChanged();
     void pageImageReady(int index);
+    void previewRenderingChanged();
     void layoutStateChanged();
     void layoutAvailableChanged();
 

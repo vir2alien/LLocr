@@ -25,14 +25,23 @@ ScrollView {
         for (var bi = 0; bi < RuntimeInstaller.availableBackends.length; bi++)
             b.push(RuntimeInstaller.backendDisplayName(RuntimeInstaller.availableBackends[bi]))
         backendOptions = b
-        if (backendBox && backendBox.currentIndex >= 0)
-            RuntimeInstaller.backend =
-                RuntimeInstaller.availableBackends[backendBox.currentIndex]
+        // Reassigning the model resets the ComboBox to index 0, so the box is
+        // synced from the source of truth — pushing its post-reset index back
+        // into the installer pinned the first available backend on every
+        // window open.
+        syncBackendBox()
 
         var r = []
         for (var ri = 0; ri < RuntimeInstaller.releaseCount; ri++)
             r.push(RuntimeInstaller.releaseLabel(ri))
         releaseOptions = r
+    }
+
+    function syncBackendBox() {
+        if (!backendBox)
+            return
+        const idx = RuntimeInstaller.availableBackends.indexOf(RuntimeInstaller.backend)
+        backendBox.currentIndex = idx >= 0 ? idx : 0
     }
 
     Connections {
@@ -46,10 +55,7 @@ ScrollView {
                 releaseBox.currentIndex = RuntimeInstaller.selectedRelease
         }
         function onBackendChanged() {
-            if (backendBox) {
-                var idx = RuntimeInstaller.availableBackends.indexOf(RuntimeInstaller.backend)
-                backendBox.currentIndex = idx >= 0 ? idx : 0
-            }
+            syncBackendBox()
         }
     }
 
@@ -126,9 +132,9 @@ ScrollView {
                     font.bold: true
                     color: Theme.textPrimary
                     text: qsTr("A newer build %1 is available%2")
-                        .arg(RuntimeInstaller.updateBuild())
-                        .arg(RuntimeInstaller.updateTimestampLabel().length
-                             ? qsTr(" (checked %1)").arg(RuntimeInstaller.updateTimestampLabel())
+                        .arg(RuntimeInstaller.updateBuild)
+                        .arg(RuntimeInstaller.updateTimestampLabel.length
+                             ? qsTr(" (checked %1)").arg(RuntimeInstaller.updateTimestampLabel)
                              : "")
                 }
                 LLOLabel {

@@ -17,7 +17,7 @@ Image {
 
     LLOLabel {
         anchors.centerIn: parent
-        visible: Controller.previewRendering(Controller.currentPage)
+        visible: Controller.previewRenderingPage === Controller.currentPage
         text: qsTr("Rendering page…")
         font.pointSize: Theme.captionSize
         color: Theme.textMuted

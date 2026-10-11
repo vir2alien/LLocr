@@ -42,6 +42,8 @@ class RuntimeInstaller : public QObject
     Q_PROPERTY(QString installedBuild READ installedBuild NOTIFY installedChanged)
     Q_PROPERTY(QString installedBackend READ installedBackend NOTIFY installedChanged)
     Q_PROPERTY(bool hasUpdate READ hasUpdate NOTIFY hasUpdateChanged)
+    Q_PROPERTY(QString updateBuild READ updateBuild NOTIFY catalogChanged)
+    Q_PROPERTY(QString updateTimestampLabel READ updateTimestampLabel NOTIFY catalogChanged)
 
     Q_PROPERTY(int installedBuildCount READ installedBuildCount NOTIFY installedBuildsChanged)
 
@@ -82,8 +84,8 @@ public:
     Q_INVOKABLE QString removeBuild(int index);
     Q_INVOKABLE static QString backendDisplayName(const QString &backend);
 
-    Q_INVOKABLE QString updateBuild() const;
-    Q_INVOKABLE QString updateTimestampLabel() const;
+    QString updateBuild() const;
+    QString updateTimestampLabel() const;
     Q_INVOKABLE void openReleasePage();
     Q_INVOKABLE void installUpdate();
 

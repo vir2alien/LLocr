@@ -398,6 +398,7 @@ QImage AppController::previewImage(int index)
     if (m_previewRendering.load() == index)
         return {};
     m_previewRendering.store(index);
+    emit previewRenderingChanged();
     const quint64 generation = m_previewGeneration.load();
 
     auto *watcher = new QFutureWatcher<QImage>(this);
@@ -406,8 +407,10 @@ QImage AppController::previewImage(int index)
         watcher->deleteLater();
         if (generation != m_previewGeneration.load())
             return;
-        if (m_previewRendering.load() == index)
+        if (m_previewRendering.load() == index) {
             m_previewRendering.store(-1);
+            emit previewRenderingChanged();
+        }
         if (rendered.isNull())
             return;
         {
@@ -1271,7 +1274,8 @@ void AppController::notifyDocumentChanged()
         QMutexLocker locker(&m_previewMutex);
         m_previewCache.clear();
     }
-    m_previewRendering.store(-1);
+    if (m_previewRendering.exchange(-1) != -1)
+        emit previewRenderingChanged();
     {
         QMutexLocker locker(&m_thumbnailMutex);
         m_thumbnailCache.clear();

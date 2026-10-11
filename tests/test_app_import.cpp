@@ -1102,11 +1102,15 @@ private slots:
         maxGapMs = 0;
 
         QSignalSpy readySpy(&controller, &AppController::pageImageReady);
+        QSignalSpy renderingSpy(&controller, &AppController::previewRenderingChanged);
         // The first call cannot have a full image yet — that is the point.
         QVERIFY(controller.previewImage(0).isNull());
         QVERIFY(controller.previewRendering(0));
+        QCOMPARE(controller.previewRenderingPage(), 0);
 
         QTRY_VERIFY_WITH_TIMEOUT(!controller.previewRendering(0), 20000);
+        QCOMPARE(controller.previewRenderingPage(), -1);
+        QCOMPARE(renderingSpy.count(), 2);  // start + finish, both notify the QML binding
         QVERIFY2(readySpy.count() >= 1, "the worker never published a page image");
         const QImage rendered = controller.previewImage(0);
         QVERIFY(!rendered.isNull());
