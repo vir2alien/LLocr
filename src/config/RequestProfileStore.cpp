@@ -47,11 +47,10 @@ QString roleName(RequestProfileStore::Role role)
 }  // namespace
 
 RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QObject *parent)
-    : QObject(parent), m_settings(settings), m_role(role),
-      m_profiles(new ProfileStore<RequestProfile>(QString(), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId))),
+    : QObject(parent), m_settings(settings), m_role(role), m_profiles(QString(), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId)),
       m_model(new RequestParametersModel(this)), m_profileModels(new RequestProfileListModel(this))
 {
-    m_profiles->setUserPath(QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(userFileName(role)));
+    m_profiles.setUserPath(QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(userFileName(role)));
     setModelProfiles(ModelProfiles::instance());
 
     if (m_role == Role::BlockRecognition) {
@@ -80,14 +79,14 @@ void RequestProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &
     }
 
     m_profileModels->resetFrom(roleProfiles);
-    m_profiles->setBuiltIn(builtIn);
-    m_profiles->reloadUserProfiles();
+    m_profiles.setBuiltIn(builtIn);
+    m_profiles.reloadUserProfiles();
     reloadDraft();
 }
 
 bool RequestProfileStore::hasUserProfile() const
 {
-    return m_profiles->hasUserProfile();
+    return m_profiles.hasUserProfile();
 }
 
 QString RequestProfileStore::activeProfileId() const
@@ -107,22 +106,22 @@ QString RequestProfileStore::activeProfileId() const
         id = m_settings.modelRecipeId();
         break;
     }
-    if (m_profiles->isKnown(id))
+    if (m_profiles.isKnown(id))
         return id;
-    if (!m_profiles->builtIn().isEmpty())
-        return m_profiles->builtIn().constFirst().id;
+    if (!m_profiles.builtIn().isEmpty())
+        return m_profiles.builtIn().constFirst().id;
     return id;
 }
 
 RequestProfile RequestProfileStore::activeProfile() const
 {
-    return m_profiles->merged(activeProfileId());
+    return m_profiles.merged(activeProfileId());
 }
 
 void RequestProfileStore::reloadDraft()
 {
     m_draftProfileId = activeProfileId();
-    m_model->resetFrom(m_profiles->merged(m_draftProfileId).parameters);
+    m_model->resetFrom(m_profiles.merged(m_draftProfileId).parameters);
     emit draftProfileChanged();
 }
 
@@ -147,14 +146,14 @@ void RequestProfileStore::saveDraft()
     draft.parameters = m_model->parameters();
     draft.sortByOrder();
 
-    if (!m_profiles->putUserProfile(draft))
+    if (!m_profiles.putUserProfile(draft))
         return;
     emit profileChanged();
 }
 
 void RequestProfileStore::loadDefaultDraft()
 {
-    if (const RequestProfile *builtIn = m_profiles->findBuiltIn(m_draftProfileId))
+    if (const RequestProfile *builtIn = m_profiles.findBuiltIn(m_draftProfileId))
         m_model->resetFrom(builtIn->parameters);
     else
         m_model->resetFrom(QList<RequestParameter>());
@@ -162,7 +161,7 @@ void RequestProfileStore::loadDefaultDraft()
 
 void RequestProfileStore::resetToDefaults()
 {
-    m_profiles->removeUserProfile(m_draftProfileId);
+    m_profiles.removeUserProfile(m_draftProfileId);
     reloadDraft();
     emit profileChanged();
 }

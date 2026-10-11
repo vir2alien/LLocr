@@ -21,9 +21,9 @@ const QString kLegacyCheckFileName = QStringLiteral("serverLaunchValidate.json")
 }  // namespace
 
 LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &builtInPath, QObject *parent)
-    : QObject(parent), m_settings(settings), m_profiles(new ProfileStore<LaunchProfile>(builtInPath, kSchemaVersion, QStringLiteral("LaunchProfileStore"))), m_model(new LaunchParametersModel(this))
+    : QObject(parent), m_settings(settings), m_profiles(builtInPath, kSchemaVersion, QStringLiteral("LaunchProfileStore")), m_model(new LaunchParametersModel(this))
 {
-    m_profiles->setUserPath(QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(kUserFileName));
+    m_profiles.setUserPath(QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(kUserFileName));
 
     QString readError;
     QJsonParseError parseError{};
@@ -40,18 +40,18 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
     if (!readError.isEmpty())
         qWarning("LaunchProfileStore: cannot load the launch profiles %s: %s", qUtf8Printable(builtInPath), qUtf8Printable(readError));
 
-    m_profiles->reloadUserProfiles();
+    m_profiles.reloadUserProfiles();
 
     // The draft (and the user copy) is the platform layer alone: the settings
     // table edits the machine's hardware parameters, everything else the app
     // and the model profiles own. A user copy carrying any other name — a
     // leftover of an older shape, or a hand edit — is dropped wholesale.
     QSet<QString> known;
-    for (const LaunchProfile &preset : m_profiles->builtIn()) {
+    for (const LaunchProfile &preset : m_profiles.builtIn()) {
         for (const LaunchParameter &p : preset.parameters)
             known.insert(p.name);
     }
-    const int dropped = m_profiles->dropUserProfiles([&known](const QString &, const LaunchProfile &profile) {
+    const int dropped = m_profiles.dropUserProfiles([&known](const QString &, const LaunchProfile &profile) {
         for (const LaunchParameter &p : profile.parameters) {
             if (!known.contains(p.name))
                 return true;
@@ -63,7 +63,7 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
                  "dropped",
                  dropped);
 
-    const QString legacy = QFileInfo(m_profiles->userPath()).absoluteDir().filePath(kLegacyCheckFileName);
+    const QString legacy = QFileInfo(m_profiles.userPath()).absoluteDir().filePath(kLegacyCheckFileName);
     if (QFile::exists(legacy) && !QFile::remove(legacy))
         qWarning("LaunchProfileStore: cannot remove the obsolete %s", qUtf8Printable(legacy));
 
@@ -78,7 +78,7 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
 
 bool LaunchProfileStore::hasUserProfile() const
 {
-    return m_profiles->hasUserProfile();
+    return m_profiles.hasUserProfile();
 }
 
 QString LaunchProfileStore::targetBackend() const
@@ -89,7 +89,7 @@ QString LaunchProfileStore::targetBackend() const
 
 const LaunchProfile *LaunchProfileStore::findPreset(const QString &id) const
 {
-    return m_profiles->findBuiltIn(id);
+    return m_profiles.findBuiltIn(id);
 }
 
 bool LaunchProfileStore::presetMatches(const LaunchProfile &preset, const QString &backend, const QString &osTag) const
@@ -150,11 +150,11 @@ QString LaunchProfileStore::activeProfileId() const
     if (const LaunchProfile *storedPreset = findPreset(stored); storedPreset && presetMatches(*storedPreset, backend, osTag))
         return stored;
 
-    for (const LaunchProfile &p : m_profiles->builtIn()) {
+    for (const LaunchProfile &p : m_profiles.builtIn()) {
         if (presetMatches(p, backend, osTag))
             return p.id;
     }
-    for (const LaunchProfile &p : m_profiles->builtIn()) {
+    for (const LaunchProfile &p : m_profiles.builtIn()) {
         if (p.backend.isEmpty() || p.backend == backend)
             return p.id;
     }
@@ -229,7 +229,7 @@ void LaunchProfileStore::composeDraft()
     // parameters, every row editable. The policy and the model's own rows are
     // the app's and the weights' — they reach the server through compose(),
     // not through the settings.
-    m_model->resetFrom(m_profiles->merged(m_draftProfileId).parameters);
+    m_model->resetFrom(m_profiles.merged(m_draftProfileId).parameters);
 }
 
 LaunchProfile LaunchProfileStore::activeProfile() const
@@ -239,7 +239,7 @@ LaunchProfile LaunchProfileStore::activeProfile() const
 
 LaunchProfile LaunchProfileStore::activeProfile(const QString &modelId, const QString &role) const
 {
-    return compose(m_profiles->merged(activeProfileId()), modelId, role);
+    return compose(m_profiles.merged(activeProfileId()), modelId, role);
 }
 
 void LaunchProfileStore::reloadDraft()
@@ -270,7 +270,7 @@ void LaunchProfileStore::saveDraft()
         draft.description = preset->description;
     }
 
-    const bool fileChanged = m_profiles->putUserProfile(draft);
+    const bool fileChanged = m_profiles.putUserProfile(draft);
 
     if (m_settings.launchProfileId() != m_draftProfileId) {
         m_settings.setLaunchProfileId(m_draftProfileId);
@@ -292,7 +292,7 @@ void LaunchProfileStore::loadDefaultDraft()
 
 void LaunchProfileStore::resetToDefaults()
 {
-    m_profiles->resetToBuiltIn();
+    m_profiles.resetToBuiltIn();
     m_settings.setLaunchProfileId(QString());
     ensureProfileResolved();
     reloadDraft();

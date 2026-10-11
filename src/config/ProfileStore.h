@@ -56,7 +56,7 @@ public:
 
     bool putUserProfile(const T &profile)
     {
-        if (profile.id.isEmpty())
+        if (profile.id.isEmpty() || m_userFileTooNew)
             return false;
         const T *defaults = findBuiltIn(profile.id);
         if (defaults && profile == *defaults) {
@@ -68,20 +68,20 @@ public:
                 return false;
             m_userProfiles.insert(profile.id, profile);
         }
-        persistUserProfiles();
-        return true;
+        return persistUserProfiles();
     }
 
     bool removeUserProfile(const QString &id)
     {
-        if (!m_userProfiles.remove(id))
+        if (m_userFileTooNew || !m_userProfiles.remove(id))
             return false;
-        persistUserProfiles();
-        return true;
+        return persistUserProfiles();
     }
 
     int dropUserProfiles(const std::function<bool(const QString &, const T &)> &reject)
     {
+        if (m_userFileTooNew)
+            return 0;
         QHash<QString, T> kept;
         int dropped = 0;
         for (auto it = m_userProfiles.constBegin(); it != m_userProfiles.constEnd(); ++it) {
@@ -99,7 +99,7 @@ public:
 
     void resetToBuiltIn()
     {
-        if (m_userProfiles.isEmpty())
+        if (m_userFileTooNew || m_userProfiles.isEmpty())
             return;
         m_userProfiles.clear();
         persistUserProfiles();
@@ -130,11 +130,14 @@ private:
     void reloadUserProfilesImpl()
     {
         m_userProfiles.clear();
+        m_userFileTooNew = false;
         if (m_userPath.isEmpty() || !QFile::exists(m_userPath))
             return;
         QString error;
         bool ok = false;
-        const QJsonDocument doc = ProfileStorage::readEnvelope(m_userPath, m_schemaVersion, m_storeName, &ok, &error);
+        bool tooNew = false;
+        const QJsonDocument doc = ProfileStorage::readEnvelope(m_userPath, m_schemaVersion, m_storeName, &ok, &error, &tooNew);
+        m_userFileTooNew = tooNew;
         if (ok && doc.isObject()) {
             for (const T &profile : T::profilesFromJson(doc.object(), error)) {
                 T copy = profile;
@@ -144,9 +147,9 @@ private:
                     continue;  // an id is the key; without one it cannot be saved
                 m_userProfiles.insert(copy.id, copy);
             }
-        } else if (!ok) {
+        } else if (!ok && error.isEmpty()) {
             error = QStringLiteral("cannot read the file");
-        } else if (!doc.isObject()) {
+        } else if (ok && !doc.isObject()) {
             error = QStringLiteral("not a JSON object");
         }
         if (!error.isEmpty()) {
@@ -158,16 +161,21 @@ private:
         }
     }
 
-    void persistUserProfiles()
+    bool persistUserProfiles()
     {
         if (m_userPath.isEmpty())
-            return;
+            return true;
+        if (m_userFileTooNew) {
+            qWarning("%s: user profiles %s were written by a newer app version; keeping the file untouched", qUtf8Printable(m_storeName), qUtf8Printable(m_userPath));
+            return false;
+        }
         if (m_userProfiles.isEmpty()) {
             QString error;
             if (!ProfileStorage::removeFileIfExists(m_userPath, &error)) {
                 qWarning("%s: cannot remove user profiles %s: %s", qUtf8Printable(m_storeName), qUtf8Printable(m_userPath), qUtf8Printable(error));
+                return false;
             }
-            return;
+            return true;
         }
         QJsonObject body;
         QJsonArray profiles;
@@ -178,7 +186,9 @@ private:
         QString error;
         if (!ProfileStorage::writeEnvelope(m_userPath, m_schemaVersion, body, &error)) {
             qWarning("%s: cannot write user profiles %s: %s", qUtf8Printable(m_storeName), qUtf8Printable(m_userPath), qUtf8Printable(error));
+            return false;
         }
+        return true;
     }
 
     static constexpr const char *kProfilesKey = "profiles";
@@ -190,6 +200,7 @@ private:
     QString m_userPath;
     QList<T> m_builtIn;
     QHash<QString, T> m_userProfiles;
+    bool m_userFileTooNew = false;  ///< the user file carries a newer schemaVersion and must not be rewritten
 };
 
 }  // namespace llocr

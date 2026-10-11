@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 
+#include "config/ProfileStore.h"
 #include "core/LaunchProfile.h"
 #include "core/ModelProfiles.h"
 #include "runtime/LaunchParametersModel.h"
@@ -13,7 +14,6 @@ class QAbstractListModel;
 namespace llocr {
 
 class SettingsStore;
-template <typename T> class ProfileStore;
 
 class LaunchProfileStore : public QObject
 {
@@ -76,7 +76,7 @@ private:
     void composeDraft();
 
     SettingsStore &m_settings;
-    ProfileStore<LaunchProfile> *m_profiles;
+    ProfileStore<LaunchProfile> m_profiles;
     QList<LaunchParameter> m_policy;
     QList<ModelProfiles::Profile> m_modelProfiles;
     QString m_draftProfileId;

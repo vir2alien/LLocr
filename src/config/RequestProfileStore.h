@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QString>
 
+#include "config/ProfileStore.h"
 #include "config/RequestParametersModel.h"
 #include "config/RequestProfileListModel.h"
 #include "core/ModelProfiles.h"
@@ -14,7 +15,6 @@ class QAbstractListModel;
 namespace llocr {
 
 class SettingsStore;
-template <typename T> class ProfileStore;
 
 class RequestProfileStore : public QObject
 {
@@ -56,7 +56,7 @@ signals:
 private:
     SettingsStore &m_settings;
     Role m_role;
-    ProfileStore<RequestProfile> *m_profiles;
+    ProfileStore<RequestProfile> m_profiles;
     QList<ModelProfiles::Profile> m_modelProfiles;
     QString m_draftProfileId;
     RequestParametersModel *m_model = nullptr;

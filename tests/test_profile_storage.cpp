@@ -6,8 +6,37 @@
 #include <QtTest>
 
 #include "config/ProfileStorage.h"
+#include "config/ProfileStore.h"
 
 using namespace llocr;
+
+namespace {
+
+// The smallest profile type ProfileStore's contract needs: an id key, JSON
+// round-trip, equality and the merge hook (never invoked without built-ins).
+struct FakeProfile {
+    QString id;
+    int value = 0;
+
+    bool operator==(const FakeProfile &o) const { return id == o.id && value == o.value; }
+    static FakeProfile merge(const FakeProfile &, const FakeProfile &user) { return user; }
+    static QList<FakeProfile> profilesFromJson(const QJsonObject &root, QString &)
+    {
+        QList<FakeProfile> out;
+        const QJsonArray arr = root.value(QStringLiteral("profiles")).toArray();
+        for (const auto &v : arr) {
+            const QJsonObject o = v.toObject();
+            FakeProfile p;
+            p.id = o.value(QStringLiteral("id")).toString();
+            p.value = o.value(QStringLiteral("value")).toInt();
+            out.append(p);
+        }
+        return out;
+    }
+    QJsonObject toJson() const { return QJsonObject{{QStringLiteral("id"), id}, {QStringLiteral("value"), value}}; }
+};
+
+}  // namespace
 
 class TestProfileStorage : public QObject
 {
@@ -98,6 +127,102 @@ private slots:
         QVERIFY(ok);
         QVERIFY(error.isEmpty());
         QCOMPARE(doc.object().value(QStringLiteral("k")).toString(), QStringLiteral("v"));
+    }
+
+    void readEnvelopeRejectsMissingAndNewerVersions()
+    {
+        const QString noVersion = path(QStringLiteral("noversion.json"));
+        QVERIFY(ProfileStorage::writeJsonAtomic(noVersion, QJsonObject{}));
+        bool ok = true;
+        bool tooNew = true;
+        QString error;
+        ProfileStorage::readEnvelope(noVersion, 2, QStringLiteral("Test"), &ok, &error, &tooNew);
+        QVERIFY(!ok);
+        QVERIFY(!tooNew);
+        QCOMPARE(error, QStringLiteral("no schemaVersion"));
+
+        const QString newer = path(QStringLiteral("newer.json"));
+        QJsonObject newerBody;
+        newerBody.insert(QStringLiteral("schemaVersion"), 3);
+        QVERIFY(ProfileStorage::writeJsonAtomic(newer, newerBody));
+        ok = true;
+        tooNew = false;
+        error.clear();
+        ProfileStorage::readEnvelope(newer, 2, QStringLiteral("Test"), &ok, &error, &tooNew);
+        QVERIFY(!ok);
+        QVERIFY(tooNew);
+        QVERIFY2(error.contains(QStringLiteral("newer")), qPrintable(error));
+
+        ok = false;
+        tooNew = true;
+        error.clear();
+        ProfileStorage::readEnvelope(newer, 3, QStringLiteral("Test"), &ok, &error, &tooNew);
+        QVERIFY(ok);
+        QVERIFY(!tooNew);
+        QVERIFY(error.isEmpty());
+    }
+
+    // A user file written by a newer app version is neither loaded nor
+    // overwritten: a save (or a reset) in the old format would silently
+    // destroy whatever the newer version stored there.
+    void storeRefusesToOverwriteNewerSchemaFile()
+    {
+        const QString userPath = path(QStringLiteral("profiles.json"));
+        QJsonObject body;
+        body.insert(QStringLiteral("schemaVersion"), 99);
+        body.insert(QStringLiteral("profiles"), QJsonArray{QJsonObject{{QStringLiteral("id"), QStringLiteral("p1")}, {QStringLiteral("value"), 7}}});
+        QVERIFY(ProfileStorage::writeJsonAtomic(userPath, body));
+
+        ProfileStore<FakeProfile> store(QString(), 2, QStringLiteral("TestStore"));
+        store.setUserPath(userPath);
+        store.reloadUserProfiles();
+        QVERIFY(store.merged(QStringLiteral("p1")).id.isEmpty());
+
+        FakeProfile p;
+        p.id = QStringLiteral("p1");
+        p.value = 8;
+        QVERIFY(!store.putUserProfile(p));
+        QVERIFY(!store.removeUserProfile(QStringLiteral("p1")));
+        store.resetToBuiltIn();
+
+        bool ok = false;
+        QString error;
+        ProfileStorage::readEnvelope(userPath, 99, QStringLiteral("Test"), &ok, &error);
+        QVERIFY(ok);  // still version 99 — the store did not touch the file
+    }
+
+    void storePersistsAndReloadsUserProfiles()
+    {
+        const QString userPath = path(QStringLiteral("normal.json"));
+        ProfileStore<FakeProfile> store(QString(), 2, QStringLiteral("TestStore"));
+        store.setUserPath(userPath);
+
+        FakeProfile p;
+        p.id = QStringLiteral("p1");
+        p.value = 5;
+        QVERIFY(store.putUserProfile(p));
+        QVERIFY(QFile::exists(userPath));
+
+        ProfileStore<FakeProfile> again(QString(), 2, QStringLiteral("TestStore"));
+        again.setUserPath(userPath);
+        again.reloadUserProfiles();
+        QCOMPARE(again.merged(QStringLiteral("p1")).value, 5);
+        QVERIFY(again.removeUserProfile(QStringLiteral("p1")));
+        QVERIFY(!QFile::exists(userPath));
+    }
+
+    // A write failure reaches the caller instead of a faked success: the
+    // target here is a directory, so QSaveFile cannot commit.
+    void putUserProfileReportsWriteFailure()
+    {
+        const QString userPath = path(QStringLiteral("blocker"));
+        QVERIFY(QDir().mkpath(userPath));
+        ProfileStore<FakeProfile> store(QString(), 2, QStringLiteral("TestStore"));
+        store.setUserPath(userPath);
+
+        FakeProfile p;
+        p.id = QStringLiteral("p1");
+        QVERIFY(!store.putUserProfile(p));
     }
 };
 

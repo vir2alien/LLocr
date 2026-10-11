@@ -70,17 +70,23 @@ QJsonDocument readJson(const QString &path, bool *ok, QString *error)
     return doc;
 }
 
-QJsonDocument readEnvelope(const QString &path, int expectedSchemaVersion, const QString &storeName, bool *ok, QString *error)
+QJsonDocument readEnvelope(const QString &path, int expectedSchemaVersion, const QString &storeName, bool *ok, QString *error, bool *tooNew)
 {
     QJsonDocument doc = readJson(path, ok, error);
     if (!*ok || !doc.isObject())
         return doc;
 
+    if (tooNew)
+        *tooNew = false;
     const int version = doc.object().value(QLatin1String(kSchemaVersionKey)).toInt(-1);
     if (version < 0) {
+        *ok = false;
         if (error)
             *error = QStringLiteral("no schemaVersion");
     } else if (version > expectedSchemaVersion) {
+        *ok = false;
+        if (tooNew)
+            *tooNew = true;
         if (error) {
             *error = QStringLiteral("%1: schema version %2 is newer than the supported %3").arg(storeName).arg(version).arg(expectedSchemaVersion);
         }
