@@ -264,6 +264,7 @@ void AppController::setPageText(int index, const QString &text)
 {
     if (!m_document.isValidIndex(index))
         return;
+    QWriteLocker locker(&m_documentLock);
     OcrResult &result = m_document.page(index).result;
     if (!result.pages.isEmpty())
         result.pages[0].text = text;
@@ -373,44 +374,46 @@ QImage AppController::pageThumbnail(int index)
 
 bool AppController::previewRendering(int index) const
 {
-    return m_previewRendering == index;
+    return m_previewRendering.load() == index;
 }
 
 QImage AppController::previewImage(int index)
 {
+    {
+        QMutexLocker locker(&m_previewMutex);
+        if (const QImage *hit = m_previewCache.find(index)) {
+            m_previewCache.touch(index);
+            return *hit;
+        }
+    }
+
     DocumentModel::RenderRequest request;
-    bool cached = false;
     {
         QReadLocker locker(&m_documentLock);
         if (!m_document.isValidIndex(index))
             return {};
-        const QImage *hit = m_previewCache.find(index);
-        cached = hit != nullptr;
-        if (!cached)
-            request = m_document.renderRequestFor(index);
-    }
-    if (cached) {
-        m_previewCache.touch(index);
-        const QImage *image = m_previewCache.find(index);
-        return image ? *image : QImage();
+        request = m_document.renderRequestFor(index);
     }
 
-    if (m_previewRendering == index)
+    if (m_previewRendering.load() == index)
         return {};
-    m_previewRendering = index;
-    const quint64 generation = m_previewGeneration;
+    m_previewRendering.store(index);
+    const quint64 generation = m_previewGeneration.load();
 
     auto *watcher = new QFutureWatcher<QImage>(this);
     connect(watcher, &QFutureWatcher<QImage>::finished, this, [this, watcher, index, generation]() {
         const QImage rendered = watcher->result();
         watcher->deleteLater();
-        if (generation != m_previewGeneration)
+        if (generation != m_previewGeneration.load())
             return;
-        if (m_previewRendering == index)
-            m_previewRendering = -1;
+        if (m_previewRendering.load() == index)
+            m_previewRendering.store(-1);
         if (rendered.isNull())
             return;
-        m_previewCache.insert(index, rendered);
+        {
+            QMutexLocker locker(&m_previewMutex);
+            m_previewCache.insert(index, rendered);
+        }
         emit pageImageReady(index);
         ++m_imageRevision;
         emit imageRevisionChanged();
@@ -727,10 +730,13 @@ void AppController::applyRawResult(int index, const OcrResult &rawResult)
         parsed = parser->parse(rawResult.text);
     m_boxModel.setStyleModelId(options.modelId);
 
-    DocumentPage &page = m_document.page(index);
-    page.result = parsed;
-    page.recognized = true;
-    page.parseNote = parsed.success && !parsed.notes.isEmpty() ? parsed.notes.join(QLatin1String(" ")) : QString();
+    {
+        QWriteLocker locker(&m_documentLock);
+        DocumentPage &page = m_document.page(index);
+        page.result = parsed;
+        page.recognized = true;
+        page.parseNote = parsed.success && !parsed.notes.isEmpty() ? parsed.notes.join(QLatin1String(" ")) : QString();
+    }
 
     m_pageModel.setRecognized(index, true);
 
@@ -800,15 +806,18 @@ void AppController::revertCurrentPageEdits()
 
 void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height)
 {
-    if (!m_document.isValidIndex(m_currentPage))
-        return;
-    DocumentPage &page = m_document.page(m_currentPage);
-    if (!page.recognized || page.result.pages.isEmpty())
-        return;
-    QList<BoundingBox> &boxes = page.result.pages[0].boxes;
-    if (boxIndex < 0 || boxIndex >= boxes.size())
-        return;
-    boxes[boxIndex].rect = QRectF(x, y, width, height);
+    {
+        QWriteLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(m_currentPage))
+            return;
+        DocumentPage &page = m_document.page(m_currentPage);
+        if (!page.recognized || page.result.pages.isEmpty())
+            return;
+        QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+        if (boxIndex < 0 || boxIndex >= boxes.size())
+            return;
+        boxes[boxIndex].rect = QRectF(x, y, width, height);
+    }
     ++m_cropRevision;
 
     m_boxModel.updateBoxRect(boxIndex, x, y, width, height);
@@ -820,20 +829,23 @@ bool AppController::removeBlock(int boxIndex)
 {
     if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy())
         return false;
-    if (!m_document.isValidIndex(m_currentPage))
-        return false;
-    DocumentPage &page = m_document.page(m_currentPage);
-    if (!page.recognized || page.result.pages.isEmpty())
-        return false;
-    QList<BoundingBox> &boxes = page.result.pages[0].boxes;
-    if (boxIndex < 0 || boxIndex >= boxes.size())
-        return false;
+    {
+        QWriteLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(m_currentPage))
+            return false;
+        DocumentPage &page = m_document.page(m_currentPage);
+        if (!page.recognized || page.result.pages.isEmpty())
+            return false;
+        QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+        if (boxIndex < 0 || boxIndex >= boxes.size())
+            return false;
 
-    boxes.removeAt(boxIndex);
-    ++m_cropRevision;
+        boxes.removeAt(boxIndex);
+        ++m_cropRevision;
+    }
     m_boxModel.removeBox(boxIndex);
 
-    const QString rebuilt = rebuildPageText(page.result.pages[0]);
+    const QString rebuilt = rebuildPageText(m_document.page(m_currentPage).result.pages[0]);
     setPageText(m_currentPage, rebuilt);
     m_editStore.reset(m_currentPage, rebuilt);
     markPageEdited(m_currentPage);
@@ -921,8 +933,8 @@ void AppController::revertBlockCorrection()
     if (m_selectedBox < 0 || !m_document.isValidIndex(m_currentPage))
         return;
 
-    bool textChanged = false;
     QString boxText;
+    QString rebuilt;
     {
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(m_currentPage);
@@ -939,28 +951,25 @@ void AppController::revertBlockCorrection()
         box.checkStatus = BoxCheckStatus::NotChecked;
         box.correctedText.clear();
         boxText = box.text;
-
-        const QString rebuilt = rebuildPageText(page.result.pages[0]);
-        setPageText(m_currentPage, rebuilt);
-        if (rebuilt == m_editStore.baseline(m_currentPage)) {
-            m_editStore.revert(m_currentPage);
-            m_pageModel.setEdited(m_currentPage, false);
-        } else {
-            // Structural change: rebase the baseline (see removeBlock).
-            m_editStore.reset(m_currentPage, rebuilt);
-            markPageEdited(m_currentPage);
-        }
+        rebuilt = rebuildPageText(page.result.pages[0]);
         ++m_cropRevision;
-        textChanged = true;
+    }
+
+    setPageText(m_currentPage, rebuilt);
+    if (rebuilt == m_editStore.baseline(m_currentPage)) {
+        m_editStore.revert(m_currentPage);
+        m_pageModel.setEdited(m_currentPage, false);
+    } else {
+        // Structural change: rebase the baseline (see removeBlock).
+        m_editStore.reset(m_currentPage, rebuilt);
+        markPageEdited(m_currentPage);
     }
 
     m_boxModel.updateBoxCheck(m_selectedBox, static_cast<int>(BoxCheckStatus::NotChecked), QString(), boxText);
     emit selectedBoxChanged();
     emit checkStateChanged();
-    if (textChanged) {
-        emit resultChanged();
-        emit editStateChanged();
-    }
+    emit resultChanged();
+    emit editStateChanged();
 }
 
 void AppController::checkEnabledBlocksOnPage(int recheck)
@@ -1140,6 +1149,7 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
     BoxCheckStatus status = BoxCheckStatus::NotChecked;
     QString corrected;
     QString text;
+    QString rebuilt;
     bool textChanged = false;
     {
         QWriteLocker locker(&m_documentLock);
@@ -1188,13 +1198,16 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
         text = box.text;
 
         if (result.status == CheckStatus::ReRecognized) {
-            const QString rebuilt = rebuildPageText(page.result.pages[0]);
-            setPageText(pageIndex, rebuilt);
-            m_editStore.reset(pageIndex, rebuilt);
-            markPageEdited(pageIndex);
+            rebuilt = rebuildPageText(page.result.pages[0]);
             textChanged = true;
         }
         ++m_cropRevision;
+    }
+
+    if (textChanged) {
+        setPageText(pageIndex, rebuilt);
+        m_editStore.reset(pageIndex, rebuilt);
+        markPageEdited(pageIndex);
     }
 
     const bool onCurrentPage = pageIndex == m_currentPage;
@@ -1254,8 +1267,11 @@ void AppController::notifyPageListGrown()
 void AppController::notifyDocumentChanged()
 {
     ++m_previewGeneration;
-    m_previewCache.clear();
-    m_previewRendering = -1;
+    {
+        QMutexLocker locker(&m_previewMutex);
+        m_previewCache.clear();
+    }
+    m_previewRendering.store(-1);
     {
         QMutexLocker locker(&m_thumbnailMutex);
         m_thumbnailCache.clear();
@@ -1487,21 +1503,27 @@ void AppController::applyProjectData(const ProjectData &data)
     }
 
     m_pageModel.appendPages(kept.size());
+    {
+        QWriteLocker locker(&m_documentLock);
+        for (int slot = 0; slot < kept.size(); ++slot) {
+            const ProjectPageData &entry = data.pages.at(savedIndexForSlot.at(slot));
+            DocumentPage &page = m_document.page(slot);
+            page.recognized = entry.recognized;
+            page.parseNote = entry.parseNote;
+            OcrResult result;
+            result.success = true;
+            OcrPage structured;
+            structured.text = entry.text;
+            structured.boxes = entry.boxes;
+            structured.hasDuplicates = entry.hasDuplicates;
+            result.text = entry.text;
+            result.pages.append(structured);
+            page.result = result;
+        }
+    }
+
     for (int slot = 0; slot < kept.size(); ++slot) {
         const ProjectPageData &entry = data.pages.at(savedIndexForSlot.at(slot));
-        DocumentPage &page = m_document.page(slot);
-        page.recognized = entry.recognized;
-        page.parseNote = entry.parseNote;
-        OcrResult result;
-        result.success = true;
-        OcrPage structured;
-        structured.text = entry.text;
-        structured.boxes = entry.boxes;
-        structured.hasDuplicates = entry.hasDuplicates;
-        result.text = entry.text;
-        result.pages.append(structured);
-        page.result = result;
-
         m_editStore.reset(slot, entry.baseline);
         if (entry.edited)
             m_editStore.setEdited(slot, true);

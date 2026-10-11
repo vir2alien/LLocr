@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <QHash>
 #include <QImage>
@@ -316,8 +317,9 @@ private:
     bool m_recognitionStopped = false;
 
     LruImageCache m_previewCache{kPreviewCacheBudgetBytes};
-    int m_previewRendering = -1;      ///< page index a worker is busy with, -1 = idle
-    quint64 m_previewGeneration = 0;  ///< bumped when the document changes
+    mutable QMutex m_previewMutex;
+    std::atomic<int> m_previewRendering = -1;      ///< page index a worker is busy with, -1 = idle
+    std::atomic<quint64> m_previewGeneration = 0;  ///< bumped when the document changes
 
     QMutex m_thumbnailMutex;
     LruImageCache m_thumbnailCache{kThumbnailCacheBudgetBytes};

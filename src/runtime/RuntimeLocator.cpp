@@ -4,6 +4,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMutex>
 #include <QProcess>
 #include <QSaveFile>
 #include <QStringList>
@@ -123,7 +124,10 @@ struct ProbeCacheSlot {
     ProbeResult result;
     bool valid = false;
 };
+// probedCached() runs inside QtConcurrent workers while the GUI thread reads
+// the same slot through cachedProbe(); the slot itself must stay exclusive.
 ProbeCacheSlot s_probeCache;
+QMutex s_probeCacheMutex;
 
 }  // namespace
 
@@ -133,6 +137,7 @@ bool RuntimeLocator::probeFromCache(const QString &binaryPath, ProbeResult &out)
     if (!fi.exists() || !fi.isFile())
         return false;
     const ProbeKey key{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(), fi.size()};
+    const QMutexLocker locker(&s_probeCacheMutex);
     if (s_probeCache.valid && s_probeCache.key == key) {
         out = s_probeCache.result;
         return true;
@@ -145,6 +150,7 @@ void RuntimeLocator::cacheProbe(const QString &binaryPath, const ProbeResult &re
     const QFileInfo fi(binaryPath);
     if (!fi.exists() || !fi.isFile())
         return;
+    const QMutexLocker locker(&s_probeCacheMutex);
     s_probeCache.key = ProbeKey{fi.absoluteFilePath(), fi.lastModified().toMSecsSinceEpoch(), fi.size()};
     s_probeCache.result = result;
     s_probeCache.valid = true;
