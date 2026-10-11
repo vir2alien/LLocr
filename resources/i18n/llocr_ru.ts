@@ -1024,6 +1024,10 @@
         <source>Rendering page…</source>
         <translation>Рендер страницы…</translation>
     </message>
+    <message>
+        <source>Could not load the page image</source>
+        <translation>Не удалось загрузить изображение страницы</translation>
+    </message>
 </context>
 <context>
     <name>InstallModelDialog</name>
@@ -4108,6 +4112,10 @@
         <location line="+1"/>
         <source>Delete page %1</source>
         <translation>Удалить страницу %1</translation>
+    </message>
+    <message>
+        <source>Load error</source>
+        <translation>Ошибка загрузки</translation>
     </message>
 </context>
 <context>

@@ -10,6 +10,7 @@ Dialog {
     signal confirmed()
 
     parent: Overlay.overlay
+    anchors.centerIn: parent
     modal: true
     width: 420
     standardButtons: Dialog.Cancel | Dialog.Ok

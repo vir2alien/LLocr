@@ -43,6 +43,7 @@ Item {
             spacing: 3
 
             Image {
+                id: pageThumb
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 fillMode: Image.PreserveAspectFit
@@ -50,6 +51,14 @@ Item {
                 cache: true
                 source: "image://ocr/page/" + pageIndex
                         + "?r=" + Controller.docRevision
+
+                LLOLabel {
+                    anchors.centerIn: parent
+                    visible: pageThumb.status === Image.Error
+                    text: qsTr("Load error")
+                    font.pointSize: Theme.captionSize
+                    color: Theme.error
+                }
             }
 
             RowLayout {

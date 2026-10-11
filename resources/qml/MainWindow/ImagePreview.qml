@@ -30,6 +30,21 @@ Image {
         padding: 6
     }
 
+    LLOLabel {
+        anchors.centerIn: parent
+        visible: previewImage.status === Image.Error
+        text: qsTr("Could not load the page image")
+        font.pointSize: Theme.captionSize
+        color: Theme.error
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.radius
+            border.color: Theme.error
+            border.width: 1
+        }
+        padding: 6
+    }
+
     Item {
         id: imageArea
         width: previewImage.paintedWidth
