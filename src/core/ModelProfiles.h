@@ -25,6 +25,8 @@ public:
         bool isDefault = false;  // the role's recommended model, replacing the first-in-catalog fallback
         QString systemPrompt;    // check-role override of the shared verifier system prompt
         QString recheckPrompt;   // blockRecognition: instruction appended when the block already has text; {text} is the placeholder
+        QString criteriaTrue;    // decision role: the "true" side of the noul question (what counts as a match)
+        QString criteriaFalse;   // decision role: the "false" side (what counts as a difference)
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
@@ -94,6 +96,9 @@ public:
     static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString recheckPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
+
+    static QString criteriaTrueFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
+    static QString criteriaFalseFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId);
 

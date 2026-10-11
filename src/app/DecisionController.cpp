@@ -28,7 +28,7 @@ void DecisionController::stop()
     emit statusRequested(StatusMessage::translate("DecisionController", "Stopping…"));
 }
 
-void DecisionController::judgeBlock(const QImage &image, const QString &recognizedText, const QString &question)
+void DecisionController::judgeBlock(const QImage &image, const QString &recognizedText, const QString &question, const QString &criteriaTrue, const QString &criteriaFalse)
 {
     if (m_busy || image.isNull())
         return;
@@ -36,7 +36,7 @@ void DecisionController::judgeBlock(const QImage &image, const QString &recogniz
     setBusy(true);
     m_stopRequested = false;
 
-    m_runtime.ensureConnectionReady(this, ConnectionRole::Decision, [this, image, recognizedText, question](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, ConnectionRole::Decision, [this, image, recognizedText, question, criteriaTrue, criteriaFalse](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
         if (m_stopRequested) {
@@ -56,6 +56,8 @@ void DecisionController::judgeBlock(const QImage &image, const QString &recogniz
         request.image = image;
         request.stateText = recognizedText;
         request.question = question;
+        request.criteriaTrue = criteriaTrue;
+        request.criteriaFalse = criteriaFalse;
 
         m_watcher.setFuture(m_model->judge(request, conn.toConnectionConfig()));
     });

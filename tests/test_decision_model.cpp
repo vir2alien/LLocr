@@ -122,8 +122,25 @@ private slots:
         const QJsonObject match = root.value(QStringLiteral("questions")).toObject().value(QStringLiteral("match")).toObject();
         QCOMPARE(match.value(QStringLiteral("type")).toString(), QStringLiteral("noul"));
         QCOMPARE(match.value(QStringLiteral("instructions")).toString(), QStringLiteral("Does the image show exactly this text?"));
+        // No criteria in the request when the profile ships none: the
+        // endpoint's default sides apply.
+        QVERIFY(!match.contains(QStringLiteral("criteria")));
         QVERIFY(!root.contains(QStringLiteral("model")));
         QVERIFY(!root.contains(QStringLiteral("messages")));
+    }
+
+    void requestBodyCarriesNoulCriteria()
+    {
+        ExposedDecisionModel model;
+        DecisionRequest request = testRequest();
+        request.criteriaTrue = QStringLiteral("The image shows the same characters as the state.");
+        request.criteriaFalse = QStringLiteral("The image shows at least one different character.");
+        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonObject match = QJsonDocument::fromJson(body).object().value(QStringLiteral("questions")).toObject().value(QStringLiteral("match")).toObject();
+        // The card's noul criteria: both sides travel under their own key.
+        const QJsonObject criteria = match.value(QStringLiteral("criteria")).toObject();
+        QCOMPARE(criteria.value(QStringLiteral("true")).toString(), QStringLiteral("The image shows the same characters as the state."));
+        QCOMPARE(criteria.value(QStringLiteral("false")).toString(), QStringLiteral("The image shows at least one different character."));
     }
 
     void responseParsingAcceptsAllSpellings()

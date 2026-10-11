@@ -110,6 +110,9 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.isDefault = roleObject.value(QStringLiteral("default")).toBool(false);
         role.systemPrompt = roleObject.value(QStringLiteral("systemPrompt")).toString();
         role.recheckPrompt = roleObject.value(QStringLiteral("recheckPrompt")).toString();
+        const QJsonObject criteria = roleObject.value(QStringLiteral("criteria")).toObject();
+        role.criteriaTrue = criteria.value(QStringLiteral("true")).toString();
+        role.criteriaFalse = criteria.value(QStringLiteral("false")).toString();
         role.promptBeforeImage = roleObject.value(QStringLiteral("promptBeforeImage")).toBool(false);
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
         if (!error.isEmpty())
@@ -336,6 +339,20 @@ QString ModelProfiles::recheckPromptFor(const QList<Profile> &profiles, const QS
     if (!found || found->recheckPrompt.isEmpty())
         return QString::fromUtf8(kFallbackRecheckPrompt);
     return found->recheckPrompt;
+}
+
+QString ModelProfiles::criteriaTrueFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
+{
+    const Profile *profile = find(profiles, modelId);
+    const Role *found = profile ? roleFor(*profile, role) : nullptr;
+    return found ? found->criteriaTrue : QString();
+}
+
+QString ModelProfiles::criteriaFalseFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
+{
+    const Profile *profile = find(profiles, modelId);
+    const Role *found = profile ? roleFor(*profile, role) : nullptr;
+    return found ? found->criteriaFalse : QString();
 }
 
 QString ModelProfiles::runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId)

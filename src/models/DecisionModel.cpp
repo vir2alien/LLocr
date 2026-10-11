@@ -15,9 +15,18 @@ namespace llocr {
 QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl)
 {
     // The state is the OCR candidate — data, never an instruction. LLocr asks
-    // exactly one question, "match", of the yes/no kind; its wording travels
-    // in the model profile's decision role.
+    // exactly one question, "match", of the yes/no kind; the wording travels
+    // in the model profile's decision role, and the profile's criteria (what
+    // each side of the answer means) rides along when it ships one.
     QJsonObject question{{QStringLiteral("type"), QStringLiteral("noul")}, {QStringLiteral("instructions"), request.question}};
+    if (!request.criteriaTrue.isEmpty() || !request.criteriaFalse.isEmpty()) {
+        QJsonObject criteria;
+        if (!request.criteriaTrue.isEmpty())
+            criteria.insert(QStringLiteral("true"), request.criteriaTrue);
+        if (!request.criteriaFalse.isEmpty())
+            criteria.insert(QStringLiteral("false"), request.criteriaFalse);
+        question.insert(QStringLiteral("criteria"), criteria);
+    }
     QJsonObject questions{{QStringLiteral("match"), question}};
 
     QJsonObject root;

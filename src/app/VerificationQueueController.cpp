@@ -13,7 +13,7 @@ namespace {
 // The generic yes/no question when the decision profile ships none (the
 // shipped d1-3b profile carries its own wording).
 constexpr const char *kFallbackQuestion = "The state is a text fragment recognized from the attached image by an OCR "
-                                          "model. Does the image show exactly this text?";
+                                          "model. Does the image show the same text?";
 
 // The text the decision stage judges: a re-recognized block answers for its
 // corrected variant, everything else for the recognized text.
@@ -401,12 +401,16 @@ void VerificationQueueController::startNextVerify()
         return;
     }
 
+    const BoundingBox &box = boxes.at(m_verifyBoxIndex);
+
     if (m_phase == Phase::Decision) {
-        m_decision.judgeBlock(crop, text, decisionQuestion());
+        // The wording is per block type, like blockRecognition's: the role's
+        // question with the type's check list appended, and the profile's
+        // criteria (what each side of the yes/no answer means) riding along.
+        m_decision.judgeBlock(crop, text, decisionQuestion(box.label), decisionCriteriaTrue(), decisionCriteriaFalse());
         return;
     }
 
-    const BoundingBox &box = boxes.at(m_verifyBoxIndex);
     // The transcription wording lives entirely in the model's profile
     // (systemPrompt + blockPrompts on the blockRecognition role). A block
     // that was already recognized also sends its original text, framed by the
@@ -420,10 +424,27 @@ void VerificationQueueController::startNextVerify()
     m_check.checkBlock(crop, systemPrompt, userPrompt);
 }
 
-QString VerificationQueueController::decisionQuestion() const
+QString VerificationQueueController::decisionQuestion(const QString &blockType) const
 {
-    const QString question = ModelProfiles::systemPromptFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
-    return question.isEmpty() ? StatusMessage::translate("VerificationQueueController", kFallbackQuestion).text() : question;
+    const QString modelId = m_deps.settings.decisionRequestProfileId();
+    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
+    QString question = ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("decision"));
+    if (question.isEmpty())
+        question = StatusMessage::translate("VerificationQueueController", kFallbackQuestion).text();
+    const QString typePrompt = ModelProfiles::blockPromptFor(profiles, modelId, QStringLiteral("decision"), blockType);
+    if (!typePrompt.isEmpty())
+        question += QStringLiteral("\n\n") + typePrompt;
+    return question;
+}
+
+QString VerificationQueueController::decisionCriteriaTrue() const
+{
+    return ModelProfiles::criteriaTrueFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
+}
+
+QString VerificationQueueController::decisionCriteriaFalse() const
+{
+    return ModelProfiles::criteriaFalseFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
 }
 
 void VerificationQueueController::finishVerifyQueue()

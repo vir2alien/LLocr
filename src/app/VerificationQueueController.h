@@ -115,7 +115,9 @@ private:
     void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const;
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;
-    QString decisionQuestion() const;
+    QString decisionQuestion(const QString &blockType) const;
+    QString decisionCriteriaTrue() const;
+    QString decisionCriteriaFalse() const;
 
     Deps m_deps;
     DecisionController m_decision;

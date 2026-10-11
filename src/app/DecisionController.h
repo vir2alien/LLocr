@@ -27,7 +27,7 @@ public:
     explicit DecisionController(RuntimeController &runtime, QObject *parent = nullptr);
 
     bool busy() const { return m_busy; }
-    void judgeBlock(const QImage &image, const QString &recognizedText, const QString &question);
+    void judgeBlock(const QImage &image, const QString &recognizedText, const QString &question, const QString &criteriaTrue = QString(), const QString &criteriaFalse = QString());
     void stop();
 
 signals:

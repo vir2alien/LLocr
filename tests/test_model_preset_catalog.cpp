@@ -28,6 +28,7 @@ private slots:
     void layoutRoleShipsTheMarkupContract();
     void teleOcrBlockPromptsCoverTheLayoutVocabulary();
     void checkModelBlockPromptsOverridePerType();
+    void decisionRoleShipsPerBlockPrompts();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
     void importToJsonRoundTrips();
@@ -205,9 +206,12 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     QVERIFY(tele.contains(QStringLiteral("the block text and nothing else")));
 
     // The decision role carries its own question wording (the /v1/systemone
-    // instruction), phrased as a yes/no question about the image.
+    // instruction): the framing and the admission rules travel in the prompt,
+    // in the model's own idiom.
     const QString decision = ModelProfiles::systemPromptFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision"));
-    QVERIFY(decision.contains(QStringLiteral("exactly this text")));
+    QVERIFY(decision.contains(QStringLiteral("is the only source of truth")));
+    QVERIFY(decision.contains(QStringLiteral("Count as a difference")));
+    QVERIFY(decision.contains(QStringLiteral("Do not count as a difference")));
 
     // An OCR role has no system prompt, and neither has an unknown model.
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr")).isEmpty());
@@ -308,6 +312,51 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
     // The ocr role of the same model has no block prompts at all.
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"), QStringLiteral("formula")).isEmpty());
+}
+
+// The decision gate asks one wording per block type, like blockRecognition:
+// the profile carries a check list per routed type. The admission rules live
+// in the system prompt's Count/Do-not-count lists, so the shipped profile
+// carries no criteria and the request omits the field.
+void TestModelPresetCatalog::decisionRoleShipsPerBlockPrompts()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("d1-3b"), QStringLiteral("decision"));
+    QVERIFY2(role, "d1-3b declares the decision role");
+
+    // No criteria shipped: the request goes out without the field, and the
+    // endpoint's default sides apply.
+    QVERIFY(role->criteriaTrue.isEmpty());
+    QVERIFY(role->criteriaFalse.isEmpty());
+    QVERIFY(ModelProfiles::criteriaTrueFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision")).isEmpty());
+    QVERIFY(ModelProfiles::criteriaFalseFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision")).isEmpty());
+
+    // Every type the verify panel routes has its own check list; the table
+    // and formula wordings carry the checks a wrong edit drops first.
+    const QStringList expected = {QStringLiteral("text"),
+                                  QStringLiteral("title"),
+                                  QStringLiteral("table"),
+                                  QStringLiteral("equation"),
+                                  QStringLiteral("formula"),
+                                  QStringLiteral("list"),
+                                  QStringLiteral("code"),
+                                  QStringLiteral("abstract"),
+                                  QStringLiteral("image_caption"),
+                                  QStringLiteral("table_caption"),
+                                  QStringLiteral("figure_footnote"),
+                                  QStringLiteral("table_footnote"),
+                                  QStringLiteral("ref_text"),
+                                  QStringLiteral("reference"),
+                                  QStringLiteral("header"),
+                                  QStringLiteral("footer"),
+                                  QStringLiteral("page_number"),
+                                  QStringLiteral("seal")};
+    for (const QString &type : expected)
+        QVERIFY2(!role->blockPrompts.value(type).isEmpty(), qPrintable(type));
+    QVERIFY(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("cell")));
+    QVERIFY(role->blockPrompts.value(QStringLiteral("formula")).contains(QStringLiteral("bound")));
+    // A type the profile does not name falls back to the bare question.
+    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision"), QStringLiteral("aside_text")).isEmpty());
 }
 
 // A model the managed runtime cannot load says so in its profile, and the note
