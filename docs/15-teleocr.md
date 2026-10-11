@@ -220,7 +220,11 @@ TeleOCR can serve both roles of the two-phase pipeline (ADR 145–147):
 - **phase 2, block recognition** — its main LLocr use: after the decision
   model marks a block as mismatched (or on the manual «Recognize»
   commands), the crop goes to the `blockRecognition` role with the §4
-  prompts; the transcription becomes the new block text.
+  prompts; the transcription becomes the new block text. A block that
+  already carries text is additionally framed by the role's `recheckPrompt`
+  — the §4 wording wrapped around the block's original text, asking the
+  model to verify and correct it instead of transcribing from scratch
+  (ADR 152); text-less markup blocks keep the plain transcription request.
 - **manual page markup** — the `layout` role (ADR 149): the header «Mark up»
   button (page / all pages) sends the page image with the layout prompt and
   replaces the page's blocks with the reply's boxes; the text is then filled
@@ -249,7 +253,8 @@ Design decisions: ADR 124 (the weights moved to
 runtime warning is gone), 126 (launch parameters belong to the machine, not
 to the weights — the profile's launch layer stays empty), 145–147 (the
 two-phase pipeline and the `blockRecognition` role), 140 (per-model prompt
-wording), 149 (the manual markup pass and the `layout` role).
+wording), 149 (the manual markup pass and the `layout` role), 152 (the
+verify-and-correct `recheckPrompt` for re-recognition).
 
 ## 8. Links
 

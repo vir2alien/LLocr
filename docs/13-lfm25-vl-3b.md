@@ -208,23 +208,27 @@ can be read while debugging (`LLOCR_RAW_DEBUG=1` dumps every request/reply):
 
 ## 7. Using it as the verification model
 
-The profile declares a `check` role next to `ocr` (ADR 138), so LFM2.5-VL-3B
-can be picked as the block verifier:
+The profile declares a `blockRecognition` role next to `ocr` (ADR 138; the
+role was renamed from `check` in ADR 146), so LFM2.5-VL-3B can be picked as
+the block transcription model:
 
-- Same weights, same launch layer — switching OCR ↔ verification never
-  reloads the server, and the DSpark drafter accelerates verification.
-- The structured protocol: the reply must be exactly `OK`, `FIX` + newline +
-  the complete corrected block, or `REVIEW`. The profile carries its own
-  system prompt and per-block prompts whose first paragraph is a mandatory
-  reply-format contract — a 3B direct-answer model follows the format much
-  better when it is restated in the request and shaped like its trained
-  header-line-then-content layouts (ADR 139/140).
-- Known degenerate output: a bare `FIX` with no corrected block. LLocr maps
-  that to `REVIEW` (needs human eyes) instead of an error. Corrected text
-  without the `FIX` line stays an error — it cannot be told apart from
-  commentary.
-- Message layout: type prompt, then the OCR candidate, then the image
-  (`promptBeforeImage` applies to the check role too).
+- Same weights, same launch layer — switching OCR ↔ block recognition never
+  reloads the server, and the DSpark drafter accelerates that stage.
+- Plain-transcription contract (ADR 145): the reply IS the block text and
+  nothing else. The profile carries its own system prompt and per-block
+  prompts whose first paragraph is a mandatory reply-format contract — a 3B
+  direct-answer model follows the format much better when it is restated in
+  the request and shaped like its trained header-line-then-content layouts
+  (ADR 140). An empty reply marks the block as needing human eyes instead of
+  failing the run.
+- Verify-and-correct re-runs (ADR 152): a block that already carries text is
+  sent again with that original text framed by the role's `recheckPrompt` —
+  the profile's own wording asks the model to verify it against the crop and
+  return it unchanged or corrected. A text-less block (layout markup) is
+  transcribed from scratch.
+- Message layout: the composed type prompt (the block prompt, then the
+  recheck framing when re-checking), then the image (`promptBeforeImage`
+  applies to the blockRecognition role too).
 
 ## 8. Where things live in LLocr
 

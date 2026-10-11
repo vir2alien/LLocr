@@ -61,10 +61,11 @@ QString stripOuterCodeFence(const QString &text)
 
 QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
 {
-    // The block-recognition protocol: the model transcribes the crop from
-    // scratch and the reply itself is the block text. The system message
-    // carries the shared contract; the user message is the type prompt and
-    // the block image — the previously recognized text is not sent.
+    // The block-recognition protocol: the reply itself is the block text. The
+    // system message carries the shared contract; the user message is the
+    // composed type prompt and the block image. A previously recognized block
+    // sends its text framed by the role's recheckPrompt (composed upstream in
+    // VerificationQueueController); a fresh block is transcribed from scratch.
 
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};

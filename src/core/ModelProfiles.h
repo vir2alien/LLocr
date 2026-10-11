@@ -24,6 +24,7 @@ public:
         int maxOutput = 0;
         bool isDefault = false;  // the role's recommended model, replacing the first-in-catalog fallback
         QString systemPrompt;    // check-role override of the shared verifier system prompt
+        QString recheckPrompt;   // blockRecognition: instruction appended when the block already has text; {text} is the placeholder
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
@@ -91,6 +92,8 @@ public:
     static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type);
 
     static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
+
+    static QString recheckPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId);
 

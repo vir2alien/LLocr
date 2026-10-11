@@ -16,6 +16,15 @@ constexpr const char *kFallbackQuestion = "The state is a text fragment recogniz
                                           "model. Does the image show exactly this text?";
 }  // namespace
 
+QString VerificationQueueController::composeBlockUserPrompt(const QString &typePrompt, const QString &recheckPrompt, const QString &existingText)
+{
+    if (existingText.isEmpty())
+        return typePrompt;
+    QString recheck = recheckPrompt;
+    recheck.replace(QStringLiteral("{text}"), existingText);
+    return typePrompt.isEmpty() ? recheck : typePrompt + QStringLiteral("\n\n") + recheck;
+}
+
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
     : QObject(parent), m_deps(std::move(deps)), m_decision(m_deps.runtime, this), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr)
 {
@@ -390,12 +399,16 @@ void VerificationQueueController::startNextVerify()
 
     const BoundingBox &box = boxes.at(m_verifyBoxIndex);
     // The transcription wording lives entirely in the model's profile
-    // (systemPrompt + blockPrompts on the blockRecognition role); the block
-    // is recognized from scratch, the old text is not part of the request.
+    // (systemPrompt + blockPrompts on the blockRecognition role). A block
+    // that was already recognized also sends its original text, framed by the
+    // role's recheckPrompt, so the model verifies and corrects it instead of
+    // transcribing from scratch; a text-less block (layout markup) goes out
+    // as before.
     const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
     const QString typePrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"), box.label);
+    const QString userPrompt = composeBlockUserPrompt(typePrompt, ModelProfiles::recheckPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition")), box.text);
     const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"));
-    m_check.checkBlock(crop, systemPrompt, typePrompt);
+    m_check.checkBlock(crop, systemPrompt, userPrompt);
 }
 
 QString VerificationQueueController::decisionQuestion() const

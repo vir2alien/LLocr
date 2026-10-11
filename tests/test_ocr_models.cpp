@@ -175,6 +175,29 @@ private slots:
         }
     }
 
+    // The re-recognition framing (verify-and-correct instead of from-scratch
+    // transcription) needs a recheck prompt with the {text} placeholder. Every
+    // shipped blockRecognition profile declares its own wording, and the
+    // getter falls back to the built-in template for a model without the role.
+    void blockRecognitionRecheckPrompts()
+    {
+        for (const ModelProfiles::Profile &profile : ModelProfiles::instance()) {
+            const ModelProfiles::Role *role = ModelProfiles::roleFor(profile, QStringLiteral("blockRecognition"));
+            if (!role)
+                continue;
+            const QString prompt = ModelProfiles::recheckPromptFor(ModelProfiles::instance(), profile.id, QStringLiteral("blockRecognition"));
+            QCOMPARE(prompt, role->recheckPrompt);
+            QVERIFY2(!prompt.isEmpty(), qPrintable(profile.id));
+            QVERIFY2(prompt.contains(QStringLiteral("{text}")), qPrintable(QStringLiteral("%1: recheckPrompt without the {text} placeholder").arg(profile.id)));
+            QVERIFY2(prompt.contains(QStringLiteral("Previously recognized text:")), qPrintable(profile.id));
+        }
+        QVERIFY(ModelProfiles::roleFor(QStringLiteral("unlimited-ocr"), QStringLiteral("blockRecognition")) == nullptr);
+        const QString fallback = ModelProfiles::recheckPromptFor(ModelProfiles::instance(), QStringLiteral("unlimited-ocr"), QStringLiteral("blockRecognition"));
+        QVERIFY(!fallback.isEmpty());
+        QVERIFY(fallback.contains(QStringLiteral("{text}")));
+        QVERIFY(fallback.contains(QStringLiteral("Previously recognized text:")));
+    }
+
     // The model contract now lives in resources/profiles/models/<id>.json: a
     // model is added as data, so the tests read the shipped file rather than a
     // C++ subclass.

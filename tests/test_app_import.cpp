@@ -31,6 +31,7 @@
 #include "app/ProblemLog.h"
 #include "app/RecognitionController.h"
 #include "app/VerificationPromptStore.h"
+#include "app/VerificationQueueController.h"
 #include "config/RequestProfileStore.h"
 #include "core/StatusMessage.h"
 #include "runtime/LaunchProfileStore.h"
@@ -242,6 +243,10 @@ public:
 
     int systemoneRequests() const { return m_systemoneRequests; }
 
+    // The raw request buffers of every chat-completions call, in arrival
+    // order — what the recheck framing assertions read.
+    const QList<QByteArray> &chatRequests() const { return m_chatRequests; }
+
     qreal systemoneProbability = 0.97;
     bool systemoneBroken = false;  // reply without an "answers" object → every judge fails
     QString transcription = QStringLiteral("Re-recognized block text");
@@ -271,6 +276,8 @@ private:
                 if (!requestComplete(m_buffers[socket]))
                     return;
                 ++m_requests;
+                if (!m_buffers[socket].contains("POST /v1/systemone"))
+                    m_chatRequests.append(m_buffers[socket]);
                 socket->write(reply(m_buffers[socket]));
                 socket->flush();
                 socket->disconnectFromHost();
@@ -310,6 +317,7 @@ private:
 
     QTcpServer m_server;
     QHash<QTcpSocket *, QByteArray> m_buffers;
+    QList<QByteArray> m_chatRequests;
     int m_requests = 0;
     int m_systemoneRequests = 0;
 };
@@ -1393,6 +1401,19 @@ private slots:
         QCOMPARE(server.requests(), 7);
     }
 
+    // The block-recognition user message: a text-less block (layout markup)
+    // travels as the plain type prompt, a recognized block gets the recheck
+    // framing with its text substituted for {text}.
+    void blockPromptComposition()
+    {
+        using Queue = VerificationQueueController;
+        QCOMPARE(Queue::composeBlockUserPrompt(QStringLiteral("Block type: text."), QStringLiteral("Verify:\n{text}"), QString()), QStringLiteral("Block type: text."));
+        QCOMPARE(Queue::composeBlockUserPrompt(QStringLiteral("Block type: text."), QStringLiteral("Verify:\n{text}"), QStringLiteral("1. Intro")),
+                 QStringLiteral("Block type: text.\n\nVerify:\n1. Intro"));
+        // A type the profile says nothing about still frames the recheck.
+        QCOMPARE(Queue::composeBlockUserPrompt(QString(), QStringLiteral("Verify:\n{text}"), QStringLiteral("1. Intro")), QStringLiteral("Verify:\n1. Intro"));
+    }
+
     // The decision phase runs first for every queued block; with automatic
     // re-recognition on, the mismatches go straight to the block-recognition
     // model in a second phase of the same run, and the transcription becomes
@@ -1435,10 +1456,33 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), server.transcription);
         QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), server.transcription);
 
+        // The re-recognition request frames the block's original text as the
+        // thing to verify and correct; the fresh-recognition request (the OCR
+        // role) goes out without that framing. The check model here is not a
+        // profile id, so the built-in fallback wording applies.
+        QCOMPARE(server.chatRequests().size(), 3);
+        QVERIFY(!server.chatRequests().at(0).contains("Previously recognized text:"));
+        QVERIFY(server.chatRequests().at(1).contains("Previously recognized text:"));
+        QVERIFY(server.chatRequests().at(1).contains("1. Introduction"));
+        QVERIFY(!server.chatRequests().at(1).contains("Second block text"));
+        QVERIFY(server.chatRequests().at(2).contains("Previously recognized text:"));
+        QVERIFY(server.chatRequests().at(2).contains("Second block text"));
+        QVERIFY(!server.chatRequests().at(2).contains("1. Introduction"));
+
+        // Re-recognizing the answered block frames its ORIGINAL OCR text, not
+        // the last correction stored in correctedText.
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->recognizeSelectedBlock();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 6, kImportTimeoutMs);
+        QCOMPARE(server.chatRequests().size(), 4);
+        QVERIFY(server.chatRequests().at(3).contains("1. Introduction"));
+        QVERIFY(!server.chatRequests().at(3).contains("Re-recognized block text"));
+
         // Answered: a second run asks nothing.
         m_controller->checkEnabledBlocksOnPage();
         QVERIFY(!m_controller->checkRunning());
-        QCOMPARE(server.requests(), 5);
+        QCOMPARE(server.requests(), 6);
     }
 
     // Without the re-recognition option the run ends after the decision phase:
@@ -1516,6 +1560,10 @@ private slots:
         QCOMPARE(server.systemoneRequests(), 0);  // straight to the transcription stage
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Fixed));
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), server.transcription);
+        // The block came from OCR with text, so the re-recognition request
+        // carries it framed for verify-and-correct.
+        QVERIFY(server.chatRequests().last().contains("Previously recognized text:"));
+        QVERIFY(server.chatRequests().last().contains("1. Introduction"));
 
         // The check run asks only the block left unchecked (ADR 134), and it
         // mismatches — no automatic re-recognition.

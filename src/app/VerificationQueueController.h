@@ -57,6 +57,11 @@ public:
     int progressTotal() const { return m_verifyTotal; }
     QString errorMessage() const { return m_checkError.text(); }
 
+    // The block-recognition user message: a block that already carries text is
+    // not transcribed from scratch — the recheck template (with {text}
+    // substituted) is appended so the model verifies and corrects it.
+    static QString composeBlockUserPrompt(const QString &typePrompt, const QString &recheckPrompt, const QString &existingText);
+
     bool pageVerificationSupported(int pageIndex) const;
     bool allPageVerificationSupported() const;
 
