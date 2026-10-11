@@ -104,6 +104,10 @@ Rectangle {
                     // The text the model last served: a panel change that
                     // still matches it is an echo, not a user edit.
                     property string modelText: ""
+                    // A rebuild that lands mid-edit (background re-check)
+                    // must not clobber the panel: the reload waits until
+                    // the field loses focus.
+                    property bool pendingReload: false
 
                     function reload() {
                         var t = Controller.resultText
@@ -118,6 +122,13 @@ Rectangle {
                         if (syncing || !activeFocus || text === modelText)
                             return
                         Controller.setCurrentPageText(text)
+                    }
+
+                    onActiveFocusChanged: {
+                        if (!activeFocus && pendingReload) {
+                            pendingReload = false
+                            reload()
+                        }
                     }
 
                     Component.onCompleted: {
@@ -137,7 +148,16 @@ Rectangle {
 
                     Connections {
                         target: Controller
-                        function onResultChanged() { textArea.reload() }
+                        function onResultChanged() {
+                            if (textArea.activeFocus)
+                                textArea.pendingReload = true
+                            else
+                                textArea.reload()
+                        }
+                        function onPageChanged() {
+                            textArea.pendingReload = false
+                            textArea.reload()
+                        }
                     }
                 }
             }

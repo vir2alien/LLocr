@@ -17,11 +17,14 @@ Dialog {
     property string license: ""
     property string runtimeNote: ""
 
+    // The plan is prepared asynchronously after the click; confirming while
+    // it is still fetching would start the previous (or no) plan.
+    readonly property bool planReady: ModelInstaller.state === ModelInstaller.ReadyToDownload
+
     modal: true
     anchors.centerIn: parent
     width: 420
     title: qsTr("Install model")
-    standardButtons: Dialog.Ok | Dialog.Cancel
 
     function showFor(title, quant, licenseText, note) {
         modelTitle = title
@@ -31,6 +34,8 @@ Dialog {
         open()
     }
 
+    onOpened: installButton.forceActiveFocus()
+
     ColumnLayout {
         width: parent.width
         spacing: 6
@@ -39,6 +44,22 @@ Dialog {
             font.pointSize: Theme.captionSize
             color: Theme.textPrimary
             text: [root.modelTitle, root.quantId].join(" ").trim()
+        }
+        LLOLabel {
+            Layout.fillWidth: true
+            visible: ModelInstaller.state === ModelInstaller.Fetching
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.textMuted
+            text: qsTr("Preparing the download…")
+        }
+        LLOLabel {
+            Layout.fillWidth: true
+            visible: ModelInstaller.state === ModelInstaller.Error
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.error
+            text: ModelInstaller.statusMessage
         }
         LLOLabel {
             Layout.fillWidth: true
@@ -68,5 +89,37 @@ Dialog {
         }
     }
 
-    onAccepted: ModelInstaller.installPrepared()
+    footer: Item {
+        implicitHeight: buttons.implicitHeight + Theme.spacingLarge
+
+        RowLayout {
+            id: buttons
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: Theme.spacingLarge
+            anchors.rightMargin: Theme.spacingLarge
+            anchors.bottomMargin: Theme.spacing
+            spacing: Theme.spacing
+
+            Item { Layout.fillWidth: true }
+            LLOButton {
+                text: qsTr("Cancel")
+                onClicked: root.close()
+            }
+            LLOButton {
+                id: installButton
+                text: qsTr("Install")
+                emphasis: true
+                enabled: root.planReady
+                Keys.onEscapePressed: root.close()
+                onClicked: root.accept()
+            }
+        }
+    }
+
+    onAccepted: {
+        if (root.planReady)
+            ModelInstaller.installPrepared()
+    }
 }

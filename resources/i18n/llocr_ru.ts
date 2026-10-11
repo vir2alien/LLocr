@@ -1043,6 +1043,18 @@
         <source>License: %1</source>
         <translation type="unfinished">Лицензия: %1</translation>
     </message>
+    <message>
+        <source>Preparing the download…</source>
+        <translation>Подготовка загрузки…</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Установить</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
 </context>
 <context>
     <name>InstallerProgressRow</name>
