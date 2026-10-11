@@ -14,6 +14,26 @@ ApplicationWindow {
     height: 680
     modality: Qt.NonModal
 
+    // The combos in this window (mode, backend, release) apply immediately;
+    // the snapshot makes Cancel able to undo them, like the text fields.
+    property var applySnapshot: null
+
+    function takeApplySnapshot() {
+        applySnapshot = {
+            connectionMode: Settings.connectionMode,
+            backend: RuntimeInstaller.backend,
+            selectedRelease: RuntimeInstaller.selectedRelease
+        }
+    }
+
+    function restoreApplySnapshot() {
+        if (!applySnapshot)
+            return
+        Settings.connectionMode = applySnapshot.connectionMode
+        RuntimeInstaller.backend = applySnapshot.backend
+        RuntimeInstaller.selectedRelease = applySnapshot.selectedRelease
+    }
+
     function bringToFront() {
         if (visibility === Window.Minimized)
             showNormal()
@@ -38,6 +58,7 @@ ApplicationWindow {
         LLOButton {
             text: qsTr("Cancel")
             onClicked: {
+                window.restoreApplySnapshot()
                 rtTab.loadValues()
                 window.close()
             }
@@ -55,6 +76,7 @@ ApplicationWindow {
 
     onVisibleChanged: {
         if (visible) {
+            window.takeApplySnapshot()
             Runtime.refreshSingleInstanceLock()
             rtTab.loadValues()
         }

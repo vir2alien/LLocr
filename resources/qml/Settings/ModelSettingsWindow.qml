@@ -22,6 +22,28 @@ ApplicationWindow {
 
     property var runtimeSettingsRef: null
 
+    // The profile combo in LocationTab applies immediately; the snapshot
+    // makes Cancel able to undo it, like the text fields of the other tabs.
+    property string profileSnapshot: ""
+
+    function activeProfileId() {
+        return role === "blockRecognition" ? Settings.checkRequestProfileId
+             : role === "decision" ? Settings.decisionRequestProfileId
+             : role === "layout" ? Settings.layoutRequestProfileId
+             : Settings.modelRecipeId
+    }
+
+    function restoreProfileSnapshot() {
+        if (role === "blockRecognition")
+            Settings.checkRequestProfileId = profileSnapshot
+        else if (role === "decision")
+            Settings.decisionRequestProfileId = profileSnapshot
+        else if (role === "layout")
+            Settings.layoutRequestProfileId = profileSnapshot
+        else
+            Settings.modelRecipeId = profileSnapshot
+    }
+
     function bringToFront() {
         if (visibility === Window.Minimized)
             showNormal()
@@ -46,6 +68,7 @@ ApplicationWindow {
         LLOButton {
             text: qsTr("Cancel")
             onClicked: {
+                window.restoreProfileSnapshot()
                 launchTab.loadValues()
                 requestTab.loadValues()
                 window.close()
@@ -70,6 +93,7 @@ ApplicationWindow {
 
     onVisibleChanged: {
         if (visible) {
+            window.profileSnapshot = window.activeProfileId()
             window.loadValues()
             ModelInstaller.refreshInstalled()
             ModelInstaller.reloadPresets()
