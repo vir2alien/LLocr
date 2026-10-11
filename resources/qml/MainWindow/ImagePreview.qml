@@ -43,7 +43,7 @@ Image {
 
         Keys.onDeletePressed: (event) => {
             const index = Controller.selectedBoxIndex
-            if (index >= 0 && Controller.boxModel.isImageBox(index)
+            if (index >= 0 && !Controller.checkBusy && Controller.boxModel.isImageBox(index)
                     && Controller.removeBlock(index)) {
                 // removeBlock() clears the selection itself
                 event.accepted = true

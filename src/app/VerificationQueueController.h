@@ -111,6 +111,7 @@ private:
     void startRecheckQueue(const QList<VerifyTask> &tasks);
     void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int recheck = RecheckFromSetting);
     void startNextVerify();
+    void skipCurrentTask();
     void finishVerifyQueue();
     void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const;
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;

@@ -99,8 +99,8 @@ Item {
         implicitWidth: 20
         implicitHeight: 20
         padding: 0
-        visible: thumbHover.hovered && !Controller.busy && !Controller.importing && listView.draggedIndex === -1
-        enabled: !Controller.busy && !Controller.importing
+        visible: thumbHover.hovered && !Controller.busy && !Controller.importing && !Controller.checkBusy && listView.draggedIndex === -1
+        enabled: !Controller.busy && !Controller.importing && !Controller.checkBusy
         opacity: visible ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 100 } }
         text: "\u2715"
@@ -127,7 +127,7 @@ Item {
         anchors.margins: 2
         radius: 3
         z: 2
-        visible: (thumbHover.hovered || dragActive) && !Controller.busy && !Controller.importing
+        visible: (thumbHover.hovered || dragActive) && !Controller.busy && !Controller.importing && !Controller.checkBusy
         opacity: visible ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 100 } }
         color: dragActive ? Theme.accent : Theme.surfaceAlt
@@ -144,7 +144,7 @@ Item {
         DragHandler {
             id: dragHandler
             target: delegateRoot
-            enabled: !Controller.busy && !Controller.importing
+            enabled: !Controller.busy && !Controller.importing && !Controller.checkBusy
             cursorShape: Qt.SizeVerCursor
 
             yAxis.enabled: true

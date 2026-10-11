@@ -618,7 +618,7 @@ bool AppController::reportProblem(const StatusMessage &message, ProblemLog::Seve
 
 bool AppController::removePage(int index)
 {
-    if (m_recognition.busy() || m_importing)
+    if (m_recognition.busy() || m_importing || checkBusy())
         return false;
     if (!m_document.isValidIndex(index))
         return false;
@@ -660,7 +660,7 @@ bool AppController::removePage(int index)
 
 bool AppController::movePage(int from, int to)
 {
-    if (m_recognition.busy() || m_importing)
+    if (m_recognition.busy() || m_importing || checkBusy())
         return false;
     if (!m_document.isValidIndex(from) || !m_document.isValidIndex(to))
         return false;
@@ -818,7 +818,7 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width
 
 bool AppController::removeBlock(int boxIndex)
 {
-    if (m_recognition.busy() || m_layout.busy() || m_importing)
+    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy())
         return false;
     if (!m_document.isValidIndex(m_currentPage))
         return false;

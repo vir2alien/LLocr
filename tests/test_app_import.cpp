@@ -1412,6 +1412,39 @@ private slots:
         QCOMPARE(server.requests(), 7);
     }
 
+    // The queue holds (page, box) pairs captured at enqueue time, so a page or
+    // block removed mid-run would shift every pending index: structural edits
+    // are refused until the run is over (the header Stop is the way out), and
+    // go through again once the queue has drained.
+    void checkRunGuardsStructuralEdits()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        controller.recognizeAll();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
+
+        controller.checkAllEnabledBlocks();
+        QVERIFY(controller.checkRunning());
+        QVERIFY(!controller.removePage(0));
+        QVERIFY(!controller.movePage(0, 1));
+        QVERIFY(!controller.removeBlock(0));
+        QCOMPARE(controller.pageCount(), 4);
+
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.checkRunning(), kImportTimeoutMs);
+        QVERIFY(controller.movePage(2, 0));
+        QVERIFY(controller.removePage(0));
+        QCOMPARE(controller.pageCount(), 3);
+    }
+
     // The block-recognition user message: a text-less block (layout markup)
     // travels as the plain type prompt, a recognized block gets the recheck
     // framing with its text substituted for {text}.

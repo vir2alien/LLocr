@@ -378,26 +378,24 @@ void VerificationQueueController::startNextVerify()
     const VerifyTask task = m_verifyQueue.takeFirst();
     m_verifyPage = task.page;
     m_verifyBoxIndex = task.box;
+    if (!m_deps.document.isValidIndex(m_verifyPage)) {
+        skipCurrentTask();
+        return;
+    }
     const DocumentPage &docPage = m_deps.document.page(m_verifyPage);
     if (!docPage.recognized || docPage.result.pages.isEmpty()) {
-        ++m_verifyDone;
-        emit stateChanged();
-        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+        skipCurrentTask();
         return;
     }
     const QList<BoundingBox> &boxes = docPage.result.pages.first().boxes;
     if (m_verifyBoxIndex < 0 || m_verifyBoxIndex >= boxes.size()) {
-        ++m_verifyDone;
-        emit stateChanged();
-        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+        skipCurrentTask();
         return;
     }
     const QString text = effectiveBoxText(boxes.at(m_verifyBoxIndex));
     const QImage crop = m_deps.cropProvider(m_verifyPage, m_verifyBoxIndex);
     if (crop.isNull()) {
-        ++m_verifyDone;
-        emit stateChanged();
-        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+        skipCurrentTask();
         return;
     }
 
@@ -445,6 +443,13 @@ QString VerificationQueueController::decisionCriteriaTrue() const
 QString VerificationQueueController::decisionCriteriaFalse() const
 {
     return ModelProfiles::criteriaFalseFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
+}
+
+void VerificationQueueController::skipCurrentTask()
+{
+    ++m_verifyDone;
+    emit stateChanged();
+    QTimer::singleShot(0, this, [this]() { startNextVerify(); });
 }
 
 void VerificationQueueController::finishVerifyQueue()
