@@ -235,6 +235,32 @@ private slots:
         // Unknown types resolve to -1.
         QCOMPARE(src->rowOfType(QStringLiteral("no-such-type")), -1);
     }
+
+    // The check-state role must not be named "enabled": the QML delegate
+    // declares roles as required properties, and a required `enabled` writes
+    // the role value into Item::enabled — an unchecked row would disable
+    // itself and could no longer be clicked to re-enable it.
+    void checkEnabledRoleDoesNotShadowItemEnabled()
+    {
+        auto store = makeStore();
+        QVERIFY(store);
+        auto *src = qobject_cast<VerificationBlocksModel *>(store->blockModel());
+        QVERIFY(src);
+        QVERIFY(src->roleNames().values().contains(QByteArrayLiteral("checkEnabled")));
+        QVERIFY(!src->roleNames().values().contains(QByteArrayLiteral("enabled")));
+
+        // The role still round-trips the state and the targeted dataChanged.
+        const int checkRole = src->roleNames().key(QByteArrayLiteral("checkEnabled"), -1);
+        QVERIFY(checkRole != -1);
+        const int serviceRow = src->rowOfType(QStringLiteral("page_number"));
+        QVERIFY(serviceRow >= 0);
+        const bool before = src->index(serviceRow, 0).data(checkRole).toBool();
+        QSignalSpy changed(src, &QAbstractListModel::dataChanged);
+        QVERIFY(changed.isValid());
+        src->setEnabled(serviceRow, !before);
+        QCOMPARE(src->index(serviceRow, 0).data(checkRole).toBool(), !before);
+        QCOMPARE(changed.count(), 1);
+    }
 };
 
 QTEST_MAIN(TestVerificationPrompts)

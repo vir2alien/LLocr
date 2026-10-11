@@ -32,10 +32,13 @@ Item {
 
         // Note: the Repeater model is a group-filtered proxy, so there is no
         // `required property int index` here — the source-model row is
-        // resolved from the unique `type` (see the TapHandler below).
+        // resolved from the unique `type` (see the TapHandler below). The
+        // check-state role arrives as `checkEnabled`, not `enabled`: a
+        // required `enabled` would shadow Item::enabled and disable the whole
+        // row exactly when its type is unchecked.
         required property string type
         required property string name
-        required property bool enabled
+        required property bool checkEnabled
 
         Layout.fillWidth: true
         Layout.preferredHeight: Theme.rowHeightLarge
@@ -53,14 +56,14 @@ Item {
             width: 16
             height: 16
             radius: Theme.controlRadius
-            color: typeRow.enabled ? Theme.accent : Theme.surface
-            border.color: typeRow.enabled ? Theme.accent : Theme.border
+            color: typeRow.checkEnabled ? Theme.accent : Theme.surface
+            border.color: typeRow.checkEnabled ? Theme.accent : Theme.border
             border.width: 1
 
             Text {
                 anchors.centerIn: parent
                 text: "\u2713"
-                visible: typeRow.enabled
+                visible: typeRow.checkEnabled
                 font.pointSize: Theme.footnoteSize
                 font.bold: true
                 color: Theme.dark ? "#1c1c1c" : "#ffffff"
@@ -100,7 +103,7 @@ Item {
                 // unique block type instead.
                 const sourceRow = Verification.blockModel.rowOfType(typeRow.type)
                 if (sourceRow >= 0)
-                    Verification.blockModel.setEnabled(sourceRow, !typeRow.enabled)
+                    Verification.blockModel.setEnabled(sourceRow, !typeRow.checkEnabled)
             }
         }
 

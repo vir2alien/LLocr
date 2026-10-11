@@ -75,11 +75,15 @@ QVariant VerificationBlocksModel::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> VerificationBlocksModel::roleNames() const
 {
+    // The check-state role must not be named "enabled": the QML delegate
+    // declares roles as required properties, and a required `enabled` writes
+    // the role value into Item::enabled — an unchecked row would disable
+    // itself and could no longer be clicked to re-enable it.
     static const QHash<int, QByteArray> roles = {
         {TypeRole, "type"},
         {NameRole, "name"},
         {GroupRole, "group"},
-        {EnabledRole, "enabled"},
+        {EnabledRole, "checkEnabled"},
     };
     return roles;
 }
