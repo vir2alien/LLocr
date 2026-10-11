@@ -83,11 +83,21 @@ Rectangle {
         }
 
         // Re-recognized (block OCR) result, kept separate from the original text.
-        LLOLabel {
+        RowLayout {
             visible: root.isTextBlock
                      && Controller.selectedBlockCheckStatus === 2
-            text: qsTr("Re-recognized text:")
-            color: Theme.textMuted
+            Layout.fillWidth: true
+            spacing: Theme.spacingSmall
+            LLOLabel {
+                text: qsTr("Re-recognized text:")
+                color: Theme.textMuted
+            }
+            Item { Layout.fillWidth: true }
+            LLOButton {
+                text: qsTr("Revert correction")
+                enabled: !Controller.checkBusy && !Controller.busy
+                onClicked: Controller.revertBlockCorrection()
+            }
         }
         ScrollView {
             visible: root.isTextBlock
@@ -107,37 +117,6 @@ Rectangle {
                 bottomPadding: 0
                 text: Controller.selectedBlockCorrected
             }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spacingSmall
-            LLOButton {
-                text: qsTr("Verify")
-                visible: root.isTextBlock
-                enabled: !Controller.checkBusy && !Controller.busy
-                onClicked: Controller.checkSelectedBlock()
-            }
-            LLOButton {
-                text: qsTr("Recognize")
-                visible: root.isTextBlock
-                enabled: !Controller.checkBusy && !Controller.busy
-                onClicked: Controller.recognizeSelectedBlock()
-            }
-            LLOButton {
-                text: qsTr("Revert correction")
-                // Only a re-recognized block has a correction to revert.
-                visible: root.isTextBlock && Controller.selectedBlockCheckStatus === 2
-                enabled: !Controller.checkBusy && !Controller.busy
-                onClicked: Controller.revertBlockCorrection()
-            }
-            LLOButton {
-                text: qsTr("Delete block")
-                enabled: !Controller.checkBusy && !Controller.busy
-                         && Controller.selectedBoxIndex >= 0
-                onClicked: Controller.removeBlock(Controller.selectedBoxIndex)
-            }
-            Item { Layout.fillWidth: true }
         }
     }
 }

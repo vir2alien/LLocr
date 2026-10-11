@@ -79,11 +79,11 @@ class AppController : public QObject
     Q_PROPERTY(int checkProgressTotal READ checkProgressTotal NOTIFY checkStateChanged)
     Q_PROPERTY(bool checkDecisionPhase READ checkDecisionPhase NOTIFY checkStateChanged)
     Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
-    Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY checkStateChanged)
-    Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY checkStateChanged)
-    Q_PROPERTY(bool pageProblemRecognitionSupported READ pageProblemRecognitionSupported NOTIFY checkStateChanged)
-    Q_PROPERTY(bool allProblemRecognitionSupported READ allProblemRecognitionSupported NOTIFY checkStateChanged)
-    Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY checkStateChanged)
+    Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY verificationSupportChanged)
+    Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY verificationSupportChanged)
+    Q_PROPERTY(bool pageProblemRecognitionSupported READ pageProblemRecognitionSupported NOTIFY verificationSupportChanged)
+    Q_PROPERTY(bool allProblemRecognitionSupported READ allProblemRecognitionSupported NOTIFY verificationSupportChanged)
+    Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY verificationSupportChanged)
 
     Q_PROPERTY(bool layoutBusy READ layoutBusy NOTIFY layoutStateChanged)
     Q_PROPERTY(bool layoutAvailable READ layoutAvailable NOTIFY layoutAvailableChanged)
@@ -204,6 +204,10 @@ signals:
     void selectedBoxChanged();
     void blockTextRangeChanged();
     void checkStateChanged();
+    // The page/all "supported" flags fold in the current page, the page
+    // content and the recognition activity, so they are re-announced on those
+    // too — not only when the check queue itself moves.
+    void verificationSupportChanged();
 
     void editStateChanged();
 
@@ -231,8 +235,8 @@ public slots:
     Q_INVOKABLE QList<int> blockTextRange(int boxIndex) const;
     Q_INVOKABLE int boxIndexForTextPosition(int position) const;
     Q_INVOKABLE void attachBlockTextHighlighter(QObject *textDocument, const QColor &color);
-    Q_INVOKABLE void checkEnabledBlocksOnPage();
-    Q_INVOKABLE void checkAllEnabledBlocks();
+    Q_INVOKABLE void checkEnabledBlocksOnPage(int recheck = VerificationQueueController::RecheckFromSetting);
+    Q_INVOKABLE void checkAllEnabledBlocks(int recheck = VerificationQueueController::RecheckFromSetting);
     Q_INVOKABLE void stopCheck();
     // Block (re-)recognition through the blockRecognition role: the selected
     // block regardless of status, or only the problem blocks (Mismatch/Review).

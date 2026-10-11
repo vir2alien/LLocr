@@ -53,104 +53,46 @@ ToolBar {
 
         ToolSeparator {}
 
-        Row {
-            spacing: 0
-            ToolButton {
-                text: qsTr("Recognize")
-                enabled: Controller.hasImage && !Controller.busy
-                         && Controller.canRecognize
-                onClicked: Controller.recognizeCurrent()
-            }
-            ToolButton {
-                id: recognizeExtraButton
-                text: "\u25be"
-                enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
-                onClicked: recognizeExtraMenu.popup(recognizeExtraButton, 0, recognizeExtraButton.height + 2)
-            }
-            Menu {
-                id: recognizeExtraMenu
-                MenuItem {
-                    text: qsTr("Recognize problem blocks on the page")
-                    enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
-                             && Controller.pageProblemRecognitionSupported
-                    onTriggered: Controller.recognizeProblemBlocksOnPage()
-                }
-                MenuItem {
-                    // The layout-pass blocks: no text yet, waiting for their
-                    // blockRecognition request.
-                    text: qsTr("Recognize all blocks on the page")
-                    enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
-                             && Controller.pageBlocksRecognitionSupported
-                    onTriggered: Controller.recognizeAllBlocksOnPage()
-                }
-            }
-        }
-
-        Row {
-            spacing: 0
-            ToolButton {
-                text: qsTr("Recognize all")
-                enabled: Controller.hasImage && !Controller.busy
-                         && Controller.pageCount > 1
-                         && Controller.canRecognize
-                onClicked: Controller.recognizeAll()
-            }
-            ToolButton {
-                id: recognizeAllExtraButton
-                text: "\u25be"
-                enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
-                onClicked: recognizeAllExtraMenu.popup(recognizeAllExtraButton, 0, recognizeAllExtraButton.height + 2)
-            }
-            Menu {
-                id: recognizeAllExtraMenu
-                MenuItem {
-                    text: qsTr("Recognize all problem blocks")
-                    enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
-                             && Controller.allProblemRecognitionSupported
-                    onTriggered: Controller.recognizeAllProblemBlocks()
-                }
-            }
-        }
-
-        Row {
-            spacing: 0
-            ToolButton {
-                text: qsTr("Mark up")
-                enabled: Controller.hasImage && !Controller.busy
-                         && !Controller.checkBusy && !Controller.layoutBusy
-                         && Controller.layoutAvailable
-                onClicked: markupConfirmDialog.requestMarkup(false)
-            }
-            ToolButton {
-                id: markupExtraButton
-                text: "\u25be"
-                enabled: Controller.hasImage && !Controller.busy
-                         && !Controller.checkBusy && !Controller.layoutBusy
-                         && Controller.layoutAvailable
-                onClicked: markupExtraMenu.popup(markupExtraButton, 0, markupExtraButton.height + 2)
-            }
-            Menu {
-                id: markupExtraMenu
-                MenuItem {
-                    text: qsTr("Mark up all pages")
-                    enabled: Controller.pageCount > 1
-                    onTriggered: markupConfirmDialog.requestMarkup(true)
-                }
-            }
-        }
-
         ToolButton {
-            text: qsTr("Check page")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.layoutBusy
-                     && Controller.pageVerificationSupported
-            onClicked: Controller.checkEnabledBlocksOnPage()
+            text: qsTr("Recognize")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Recognize every page of the document")
+            enabled: Controller.hasImage && !Controller.busy && Controller.canRecognize
+            onClicked: Controller.recognizeAll()
         }
         ToolButton {
-            text: qsTr("Check all")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.layoutBusy
+            text: qsTr("Verify")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Verify the recognized blocks on every page")
+            enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                     && !Controller.layoutBusy
                      && Controller.allPageVerificationSupported
             onClicked: Controller.checkAllEnabledBlocks()
         }
+        ToolButton {
+            text: qsTr("Fix")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Re-recognize the problem blocks in the whole document")
+            enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+                     && !Controller.layoutBusy && Controller.allProblemRecognitionSupported
+            onClicked: Controller.recognizeAllProblemBlocks()
+        }
+        ToolButton {
+            text: qsTr("Mark up")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Mark up every page of the document")
+            enabled: Controller.hasImage && !Controller.busy
+                     && !Controller.checkBusy && !Controller.layoutBusy
+                     && Controller.layoutAvailable
+            onClicked: markupConfirmDialog.requestMarkup()
+        }
+        ToolButton {
+            text: qsTr("Export")
+            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
+                     && !Controller.checkBusy
+            onClicked: headerRoot.exportRequested(Controller.pageCount > 1)
+        }
+
         ToolButton {
             text: qsTr("Stop")
             enabled: Controller.busy || Controller.checkBusy || Controller.layoutBusy
@@ -202,6 +144,7 @@ ToolBar {
         MenuItem {
             text: qsTr("Open…")
             enabled: !Controller.busy && !Controller.importing && !Controller.exporting
+                     && !Controller.checkBusy
             onTriggered: headerRoot.openFileRequested()
         }
         MenuItem {
@@ -229,13 +172,8 @@ ToolBar {
         MenuItem {
             text: qsTr("Export…")
             enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-            onTriggered: {
-                if (Controller.pageCount > 1) {
-                    headerRoot.exportRequested(true)
-                } else {
-                    headerRoot.exportRequested(false)
-                }
-            }
+                     && !Controller.checkBusy
+            onTriggered: headerRoot.exportRequested(Controller.pageCount > 1)
         }
     }
 
@@ -280,33 +218,21 @@ ToolBar {
         }
     }
 
-    // The markup pass replaces the page's blocks (and drops its text), so a
-    // page that already carries results asks first.
+    // The markup pass replaces the pages' blocks (and drops their text), so a
+    // document that already carries results asks first.
     InterruptConfirmDialog {
         id: markupConfirmDialog
 
-        property bool allPages: false
-
-        function requestMarkup(allPages) {
-            markupConfirmDialog.allPages = allPages
-            const hasContent = allPages ? Controller.hasResult : Controller.currentPageEditable
-            if (hasContent) {
+        function requestMarkup() {
+            if (Controller.hasResult) {
                 title = qsTr("Mark up?")
-                prompt = allPages ? qsTr("Marking up replaces the recognized blocks and text on every page. Continue?")
-                                  : qsTr("Marking up replaces the recognized blocks and text on this page. Continue?")
+                prompt = qsTr("Marking up replaces the recognized blocks and text on every page. Continue?")
                 open()
-            } else if (allPages) {
-                Controller.layoutAllPages()
             } else {
-                Controller.layoutCurrentPage()
+                Controller.layoutAllPages()
             }
         }
 
-        onConfirmed: {
-            if (allPages)
-                Controller.layoutAllPages()
-            else
-                Controller.layoutCurrentPage()
-        }
+        onConfirmed: Controller.layoutAllPages()
     }
 } // ToolBar

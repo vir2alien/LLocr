@@ -196,12 +196,11 @@
     <message>
         <location line="+27"/>
         <source>Verify</source>
-        <translation>Проверить</translation>
+        <translation type="vanished">Проверить</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Recognize</source>
-        <translation>Распознать</translation>
+        <translation type="vanished">Распознать</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -209,9 +208,8 @@
         <translation>Отменить исправление</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Delete block</source>
-        <translation>Удалить блок</translation>
+        <translation type="vanished">Удалить блок</translation>
     </message>
 </context>
 <context>
@@ -880,124 +878,128 @@
         <translation>Распознать</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <source>Recognize every page of the document</source>
+        <translation>Распознать все страницы документа</translation>
+    </message>
+    <message>
+        <source>Verify</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <source>Verify the recognized blocks on every page</source>
+        <translation>Проверить распознанные блоки на всех страницах</translation>
+    </message>
+    <message>
+        <source>Fix</source>
+        <translation>Исправить</translation>
+    </message>
+    <message>
+        <source>Re-recognize the problem blocks in the whole document</source>
+        <translation>Повторно распознать проблемные блоки во всём документе</translation>
+    </message>
+    <message>
+        <source>Mark up</source>
+        <translation>Разметить</translation>
+    </message>
+    <message>
+        <source>Mark up every page of the document</source>
+        <translation>Разметить все страницы документа</translation>
+    </message>
+    <message>
+        <source>Mark up?</source>
+        <translation>Разметить?</translation>
+    </message>
+    <message>
+        <source>Marking up replaces the recognized blocks and text on every page. Continue?</source>
+        <translation>Разметка заменит распознанные блоки и текст на всех страницах. Продолжить?</translation>
+    </message>
+    <message>
+        <source>Export</source>
+        <translation>Экспортировать</translation>
+    </message>
+    <message>
         <source>Recognize all</source>
-        <translation>Распознать всё</translation>
+        <translation type="vanished">Распознать всё</translation>
     </message>
     <message>
-        <location line="+63"/>
-        <source>Stop</source>
-        <translation>Стоп</translation>
+        <source>Recognize problem blocks on the page</source>
+        <translation type="vanished">Распознать проблемные блоки на странице</translation>
     </message>
     <message>
-        <location line="+75"/>
-        <source>Export…</source>
-        <translation>Экспорт…</translation>
+        <source>Recognize all blocks on the page</source>
+        <translation type="vanished">Распознать все блоки страницы</translation>
     </message>
     <message>
-        <location line="-36"/>
-        <source>Settings</source>
-        <translation>Настройки</translation>
+        <source>Recognize all problem blocks</source>
+        <translation type="vanished">Распознать все проблемные блоки</translation>
     </message>
     <message>
-        <location line="-144"/>
+        <source>Mark up all pages</source>
+        <translation type="vanished">Разметить все страницы</translation>
+    </message>
+    <message>
+        <source>Check page</source>
+        <translation type="vanished">Проверить страницу</translation>
+    </message>
+    <message>
+        <source>Check all</source>
+        <translation type="vanished">Проверить всё</translation>
+    </message>
+    <message>
+        <source>Marking up replaces the recognized blocks and text on this page. Continue?</source>
+        <translation type="vanished">Разметка заменит распознанные блоки и текст на этой странице. Продолжить?</translation>
+    </message>
+    <message>
         <source>File</source>
         <translation>Файл</translation>
     </message>
     <message>
-        <location line="+31"/>
-        <source>Recognize all blocks on the page</source>
-        <translation type="unfinished">Распознать все блоки страницы</translation>
+        <source>Stop</source>
+        <translation>Стоп</translation>
     </message>
     <message>
-        <location line="+37"/>
-        <source>Mark up</source>
-        <translation type="unfinished">Разметить</translation>
+        <source>Export…</source>
+        <translation>Экспорт…</translation>
     </message>
     <message>
-        <location line="+17"/>
-        <source>Mark up all pages</source>
-        <translation type="unfinished">Разметить все страницы</translation>
+        <source>Settings</source>
+        <translation>Настройки</translation>
     </message>
     <message>
-        <location line="+111"/>
         <source>Setup wizard</source>
         <translation>Мастер настройки</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Interface</source>
         <translation>Интерфейс</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Output</source>
         <translation>Вывод</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Verification</source>
         <translation>Проверка</translation>
     </message>
     <message>
-        <location line="+20"/>
-        <source>Layout model</source>
-        <translation type="unfinished">Модель разметки</translation>
-    </message>
-    <message>
-        <location line="+16"/>
-        <source>Mark up?</source>
-        <translation type="unfinished">Разметить?</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Marking up replaces the recognized blocks and text on every page. Continue?</source>
-        <translation type="unfinished">Разметка заменит распознанные блоки и текст на всех страницах. Продолжить?</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Marking up replaces the recognized blocks and text on this page. Continue?</source>
-        <translation type="unfinished">Разметка заменит распознанные блоки и текст на этой странице. Продолжить?</translation>
-    </message>
-    <message>
-        <location line="-153"/>
-        <source>Check page</source>
-        <translation>Проверить страницу</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Check all</source>
-        <translation>Проверить всё</translation>
-    </message>
-    <message>
-        <location line="+113"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>OCR model</source>
         <translation>Модель OCR</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Block OCR model</source>
-        <translation>Модель OCR блока</translation>
-    </message>
-    <message>
-        <location line="-4"/>
         <source>Decision model</source>
         <translation>Модель decision</translation>
     </message>
     <message>
-        <location line="-197"/>
-        <source>Recognize problem blocks on the page</source>
-        <translation>Распознать проблемные блоки на странице</translation>
+        <source>Block OCR model</source>
+        <translation>Модель OCR блока</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Recognize all problem blocks</source>
-        <translation>Распознать все проблемные блоки</translation>
+        <source>Layout model</source>
+        <translation type="unfinished">Модель разметки</translation>
     </message>
 </context>
 <context>
@@ -5408,6 +5410,80 @@
     <message>
         <source>The state is a text fragment recognized from the attached image by an OCR model. Does the image show exactly this text?</source>
         <translation type="vanished">State — это фрагмент текста, распознанный из приложенного изображения OCR-моделью. Изображение показывает ровно этот текст?</translation>
+    </message>
+</context>
+<context>
+    <name>PageToolBar</name>
+    <message>
+        <source>Recognize page</source>
+        <translation>Распознать страницу</translation>
+    </message>
+    <message>
+        <source>Recognize problem blocks on the page</source>
+        <translation type="vanished">Распознать проблемные блоки страницы</translation>
+    </message>
+    <message>
+        <source>Problem blocks</source>
+        <translation>Проблемные блоки</translation>
+    </message>
+    <message>
+        <source>Recognize all blocks on the page</source>
+        <translation type="vanished">Распознать все блоки страницы</translation>
+    </message>
+    <message>
+        <source>All blocks</source>
+        <translation>Все блоки</translation>
+    </message>
+    <message>
+        <source>Verify</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <source>Verify only</source>
+        <translation>Только проверить</translation>
+    </message>
+    <message>
+        <source>Verify and fix</source>
+        <translation>Проверить и исправить</translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation>Сохранить страницу</translation>
+    </message>
+    <message>
+        <source>Mark up page</source>
+        <translation>Разметить страницу</translation>
+    </message>
+    <message>
+        <source>Mark up all pages</source>
+        <translation type="vanished">Разметить все страницы</translation>
+    </message>
+    <message>
+        <source>Mark up?</source>
+        <translation>Разметить?</translation>
+    </message>
+    <message>
+        <source>Marking up replaces the recognized blocks and text on this page. Continue?</source>
+        <translation>Разметка заменит распознанные блоки и текст на этой странице. Продолжить?</translation>
+    </message>
+    <message>
+        <source>Not implemented yet</source>
+        <translation>Функция пока не реализована</translation>
+    </message>
+</context>
+<context>
+    <name>BlockMiniToolbar</name>
+    <message>
+        <source>Recognize block</source>
+        <translation>Распознать блок</translation>
+    </message>
+    <message>
+        <source>Verify block</source>
+        <translation>Проверить блок</translation>
+    </message>
+    <message>
+        <source>Delete block</source>
+        <translation>Удалить блок</translation>
     </message>
 </context>
 </TS>

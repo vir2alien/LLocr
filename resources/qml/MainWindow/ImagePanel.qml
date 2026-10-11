@@ -9,11 +9,26 @@ import LLocr
 import "../Common"
 
 Rectangle {
+    id: imagePanelRoot
+
+    signal savePageRequested()
+
     color: Theme.surfaceSunken
 
-    ImagePreview {
+    ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacingLarge
+        spacing: 0
+
+        PageToolBar {
+            Layout.fillWidth: true
+            onSavePageRequested: imagePanelRoot.savePageRequested()
+        }
+
+        ImagePreview {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.margins: Theme.spacingLarge
+        }
     }
 
     LLOLabel {

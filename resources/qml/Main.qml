@@ -88,6 +88,10 @@ ApplicationWindow {
         ImagePanel {
             SplitView.preferredWidth: parent.width * 0.45
             SplitView.minimumWidth: 300
+            onSavePageRequested: {
+                exportOptionsDialog.presetScope = 1
+                exportOptionsDialog.open()
+            }
         }
 
         WorkPanel {

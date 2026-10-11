@@ -71,8 +71,9 @@ AppController::AppController(SettingsStore &settings,
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
         if (!m_recognition.busy() && !m_recognitionStopped && m_settings.autoCheck())
-            QTimer::singleShot(0, this, [this]() { checkAllEnabledBlocks(); });
+            QTimer::singleShot(0, this, [this]() { m_verify.checkAllEnabledBlocks(); });
         emit busyChanged();
+        emit verificationSupportChanged();
     });
     connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_recognition, &RecognitionController::rawResultReady, this, &AppController::applyRawResult);
@@ -84,15 +85,23 @@ AppController::AppController(SettingsStore &settings,
     const auto updatePlannedTypes = [this]() {
         m_boxModel.setPlannedTypes(m_verification.enabledTypes());
         emit selectedBoxChanged();
+        emit verificationSupportChanged();
     };
     updatePlannedTypes();
     connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, updatePlannedTypes);
     connect(&verification, &VerificationPromptStore::modelChanged, this, updatePlannedTypes);
 
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::checkStateChanged);
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, [this]() {
+        emit checkStateChanged();
+        emit verificationSupportChanged();
+    });
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::blockChecked, this, &AppController::applyCheckResultToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
+
+    connect(this, &AppController::pageChanged, this, &AppController::verificationSupportChanged);
+    connect(this, &AppController::documentChanged, this, &AppController::verificationSupportChanged);
+    connect(this, &AppController::resultChanged, this, &AppController::verificationSupportChanged);
 
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::layoutStateChanged);
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
@@ -967,14 +976,14 @@ void AppController::revertBlockCorrection()
     }
 }
 
-void AppController::checkEnabledBlocksOnPage()
+void AppController::checkEnabledBlocksOnPage(int recheck)
 {
-    m_verify.checkPageEnabledBlocks(m_currentPage);
+    m_verify.checkPageEnabledBlocks(m_currentPage, recheck);
 }
 
-void AppController::checkAllEnabledBlocks()
+void AppController::checkAllEnabledBlocks(int recheck)
 {
-    m_verify.checkAllEnabledBlocks();
+    m_verify.checkAllEnabledBlocks(recheck);
 }
 
 void AppController::stopCheck()

@@ -39,7 +39,7 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
         const int box = m_verifyBoxIndex;
         emit blockChecked(page, box, verdict);
         ++m_verifyDone;
-        if (verdict.status == CheckStatus::Mismatch && m_autoRecheck)
+        if (verdict.status == CheckStatus::Mismatch && (m_runRecheck == RecheckForce || (m_runRecheck == RecheckFromSetting && m_autoRecheck)))
             m_recheckQueue.append({page, box});
         emit stateChanged();
         QTimer::singleShot(0, this, [this]() { startNextVerify(); });
@@ -71,7 +71,7 @@ void VerificationQueueController::checkBlock(int pageIndex, int boxIndex)
     startVerifyQueue({{pageIndex, boxIndex}});
 }
 
-void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
+void VerificationQueueController::checkPageEnabledBlocks(int pageIndex, int recheck)
 {
     if (!m_deps.document.isValidIndex(pageIndex))
         return;
@@ -83,10 +83,10 @@ void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
     QList<VerifyTask> tasks;
     for (const int box : std::as_const(candidates))
         tasks.append({pageIndex, box});
-    startOrReportAnswered(tasks, answered);
+    startOrReportAnswered(tasks, answered, recheck);
 }
 
-void VerificationQueueController::checkAllEnabledBlocks()
+void VerificationQueueController::checkAllEnabledBlocks(int recheck)
 {
     if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
         return;
@@ -101,7 +101,7 @@ void VerificationQueueController::checkAllEnabledBlocks()
         for (const int box : std::as_const(candidates))
             tasks.append({p, box});
     }
-    startOrReportAnswered(tasks, answered);
+    startOrReportAnswered(tasks, answered, recheck);
 }
 
 void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const
@@ -163,10 +163,10 @@ void VerificationQueueController::collectUnrecognizedBoxes(int pageIndex, QList<
     }
 }
 
-void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered)
+void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int recheck)
 {
     if (!tasks.isEmpty()) {
-        startVerifyQueue(tasks);
+        startVerifyQueue(tasks, recheck);
         return;
     }
     if (answered == 0)
@@ -250,7 +250,7 @@ bool VerificationQueueController::allPageRecheckSupported() const
     return false;
 }
 
-void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &tasks)
+void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &tasks, int recheck)
 {
     if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
         return;
@@ -262,6 +262,7 @@ void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &task
     m_phase = Phase::Decision;
     m_matchThreshold = m_deps.settings.decisionMatchThreshold();
     m_autoRecheck = m_deps.settings.autoRecheck();
+    m_runRecheck = recheck;
     m_verifyQueue = tasks;
     m_recheckQueue.clear();
     m_verifyPage = -1;

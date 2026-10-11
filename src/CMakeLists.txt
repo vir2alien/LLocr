@@ -411,6 +411,17 @@ qt_add_resources(llocr "app_icons"
         "${CMAKE_SOURCE_DIR}/resources/icons/app-icon.svg"
 )
 
+# --- UI icon set (Lucide, ISC) --------------------------------------------------
+# Monochrome 24x24 stroke SVGs, colorized at runtime by Common/Icon.qml.
+file(GLOB UI_ICON_FILES
+    "${CMAKE_SOURCE_DIR}/resources/icons/ui/*.svg")
+
+qt_add_resources(llocr "ui_icons"
+    PREFIX "/icons/ui"
+    BASE "${CMAKE_SOURCE_DIR}/resources/icons/ui"
+    FILES ${UI_ICON_FILES}
+)
+
 # --- Windows: embed the .ico as the executable resource icon -------------------
 if(WIN32)
     target_sources(llocr PRIVATE

@@ -15,6 +15,7 @@ the licenses that govern it. Each component's full license text is kept in the
 | DOMPurify      | HTML sanitization in the preview        | Apache-2.0 OR MPL-2.0 | [`licenses/DOMPurify-LICENSE.txt`](licenses/DOMPurify-LICENSE.txt) |
 | zlib           | ZIP/gzip decompression + CRC-32 in the runtime installer (`ArchiveExtractor`) | zlib License | [`licenses/zlib-LICENSE.txt`](licenses/zlib-LICENSE.txt) |
 | DjVuLibre      | DjVu document decoding through `ddjvuapi` | GPL-2.0-or-later | [`licenses/DjVuLibre-COPYING`](licenses/DjVuLibre-COPYING) |
+| Lucide icons   | Toolbar/block UI icons (`resources/icons/ui/`) | ISC (with MIT portions) | [`licenses/Lucide-LICENSE.txt`](licenses/Lucide-LICENSE.txt) |
 
 ---
 
@@ -141,3 +142,20 @@ the licenses that govern it. Each component's full license text is kept in the
   and build scripts. Also inventory and comply with licenses for any bundled
   transitive libraries (e.g. JPEG); Qt deployment tools alone do not complete
   native-library deployment or license compliance.
+
+---
+
+## Lucide icons
+
+- **Project:** Lucide (https://lucide.dev/), via the `lucide-static` package
+  v0.553.0.
+- **License:** ISC, with portions derived from Feather under the MIT license.
+- **Usage:** A subset of 11 monochrome 24×24 stroke SVG icons
+  (`type`, `image`, `table`, `sigma`, `code`, `layout-grid`, `rotate-ccw`,
+  `rotate-cw`, `scan-text`, `circle-check`, `trash-2`) shipped in
+  `resources/icons/ui/` and embedded through the `ui_icons` qrc resource;
+  they are colorized at runtime by `resources/qml/Common/Icon.qml`
+  (ADR 151).
+- **License text:** [`licenses/Lucide-LICENSE.txt`](licenses/Lucide-LICENSE.txt),
+  from upstream `LICENSE`. The upstream `<!-- @license lucide-static ... -->`
+  notice at the top of each SVG file is preserved.

@@ -358,12 +358,14 @@
     «Автоматическое повторное распознавание» (`check/autoRecheck`) the
     mismatches are re-run through the **blockRecognition** role (renamed from
     `check`, ADR 146) in the same run, the transcription becoming the block
-    text. Block-recognition entry points: per-block «Распознать», header
-    ▾ menus «Распознать проблемные блоки». Planned blocks (filter-enabled type
+    text. Block-recognition entry points: per-block «Распознать», the page
+    toolbar's «Распознать страницу ▾» (problem blocks / all blocks of the
+    page), and the header «Исправить» (whole document). Planned blocks
+    (filter-enabled type
     or duplicate suspect, unanswered) show the gray dot
     (`boxVerificationPlanned`). Model manual: `docs/14-d1-3b.md`.
-  - **Manual page markup (ADR 149–150, Oct 2026)** — the header button
-    «Разметить» (+ ▾ «Разметить все страницы») runs the **layout role**
+  - **Manual page markup (ADR 149–150, Oct 2026)** — the page toolbar's
+    «Разметить страницу» (+ ▾ «Разметить все страницы») runs the **layout role**
     (`roles.layout` in a model profile — TeleOCR ships it): the page goes to
     the layout model with the card's layout prompt, the reply's
     `<box:…><label:…><orientation>` lines become **text-less** positioned
@@ -379,6 +381,21 @@
     `requestLayout.json`. The 1036² page squash mirrors the upstream
     calibration. Manual only — not wired into the automatic pipeline.
     Model manual: `docs/15-teleocr.md`.
+  - **Interface rework (ADR 151, Oct 2026)** — the header is «Файл ▾» +
+    book-wide «Распознать» / «Проверить» / «Исправить» / «Разметить» /
+    «Экспортировать» (Stop, page nav, Настройки stay); the per-page actions
+    live in the two-row **page toolbar** (`MainWindow/PageToolBar.qml` above
+    the image, a 2×2 action grid: Распознать страницу ▾ (dropdown
+    «Проблемные блоки» / «Все блоки») over Разметить страницу, Проверить ▾ —
+    main click = verify + fix via the `RecheckMode` override of
+    `check/autoRecheck` — over Сохранить страницу → the export dialog
+    preselected to the current page; plus disabled stubs for block-add
+    (2×3 icon grid, the ▾ lists all
+    `BlockNames` types) and page rotation); the selected block carries a
+    floating **mini-toolbar** (`MainWindow/BlockMiniToolbar.qml`: recognize /
+    verify / delete) and `BlockEditPanel` keeps only the texts + «Отменить
+    исправление». Icons: Lucide SVGs in `resources/icons/ui/` (qrc
+    `/icons/ui`, `ui_icons` CMake resource) colorized by `Common/Icon.qml`.
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
     (update-check opt-in) done; **H.4 closed** (watchdog-helper not shipped),

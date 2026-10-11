@@ -17,6 +17,10 @@ Dialog {
 
     signal exportRequested(int scope, int fromPage, int toPage)
 
+    // When set (0 = all, 1 = current, 2 = range), the dialog opens with that
+    // scope preselected instead of the default; consumed on the first show.
+    property int presetScope: -1
+
     background: Rectangle {
         color: Theme.surface
         radius: Theme.dialogRadius
@@ -72,7 +76,13 @@ Dialog {
     }
 
     onAboutToShow: {
-        scopeAll.checked = true
+        if (exportOptionsDialog.presetScope === 1)
+            scopeCurrent.checked = true
+        else if (exportOptionsDialog.presetScope === 2)
+            scopeRange.checked = true
+        else
+            scopeAll.checked = true
+        exportOptionsDialog.presetScope = -1
         fromSpin.value = 1
         toSpin.value = Controller.pageCount
     }

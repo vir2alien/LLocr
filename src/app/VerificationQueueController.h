@@ -41,6 +41,14 @@ public:
 
     explicit VerificationQueueController(Deps deps, QObject *parent = nullptr);
 
+    // Per-run override of check/autoRecheck for the decision phase: follow the
+    // setting (default), never re-recognize the mismatches, or always do.
+    enum RecheckMode {
+        RecheckFromSetting = -1,
+        RecheckSkip = 0,
+        RecheckForce = 1,
+    };
+
     bool checkBusy() const { return m_check.busy() || m_decision.busy(); }
     bool queueActive() const { return m_verifyQueueActive; }
     bool finished() const { return m_checkFinished; }
@@ -64,8 +72,8 @@ public:
 
 public slots:
     void checkBlock(int pageIndex, int boxIndex);
-    void checkPageEnabledBlocks(int pageIndex);
-    void checkAllEnabledBlocks();
+    void checkPageEnabledBlocks(int pageIndex, int recheck = RecheckFromSetting);
+    void checkAllEnabledBlocks(int recheck = RecheckFromSetting);
     // Re-recognition runs the queue straight in its second phase. The single
     // block form takes any status; the page/all forms pick the problem blocks.
     void recheckBlock(int pageIndex, int boxIndex);
@@ -93,9 +101,9 @@ private:
         int box;
     };
 
-    void startVerifyQueue(const QList<VerifyTask> &tasks);
+    void startVerifyQueue(const QList<VerifyTask> &tasks, int recheck = RecheckFromSetting);
     void startRecheckQueue(const QList<VerifyTask> &tasks);
-    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered);
+    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int recheck = RecheckFromSetting);
     void startNextVerify();
     void finishVerifyQueue();
     void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const;
@@ -118,6 +126,7 @@ private:
     int m_verifyDone = 0;
     double m_matchThreshold = 0.5;
     bool m_autoRecheck = false;
+    int m_runRecheck = RecheckFromSetting;
     StatusMessage m_checkError;
 };
 

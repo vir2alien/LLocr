@@ -69,6 +69,9 @@ Image {
                 property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
 
                 color: isImage ? Theme.overlayImageFill : "transparent"
+                // Keep the selected frame and its mini toolbar on top of the
+                // neighboring blocks.
+                z: isSelected ? 2 : 0
                 border.color: isSelected ? Theme.accent
                                          : (isImage ? Theme.overlayImageOuter : Theme.overlayTextOuter)
                 border.width: isSelected ? 2 : 1
@@ -76,8 +79,6 @@ Image {
                 y: boxY * imageArea.height
                 width: boxWidth * imageArea.width
                 height: boxHeight * imageArea.height
-
-                HoverHandler { id: boxHover }
 
                 Rectangle {
                     anchors.fill: parent
@@ -165,17 +166,19 @@ Image {
                     }
                 }//MouseArea
 
-                ToolButton {//delete button
-                    visible: boxHover.hovered && boxDelegate.isImage
-                    text: "\u2715"
-                    width: 18
-                    height: 18
-                    padding: 0
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.margins: 1
-                    font.pointSize: Theme.captionSize
-                    onClicked: Controller.removeBlock(boxDelegate.index)
+                BlockMiniToolbar {
+                    visible: boxDelegate.isSelected
+                    isTextBlock: !boxDelegate.isImage
+
+                    x: {
+                        const centered = (boxDelegate.width - width) / 2
+                        const minX = -boxDelegate.x
+                        const maxX = imageArea.width - boxDelegate.x - width
+                        return Math.max(minX, Math.min(centered, maxX))
+                    }
+                    y: boxDelegate.y >= height + Theme.spacingLarge
+                       ? -height - Theme.spacingSmall
+                       : boxDelegate.height + Theme.spacingSmall
                 }
 
                 function resizeRect(mode, ox, oy, ow, oh, dx, dy) {
