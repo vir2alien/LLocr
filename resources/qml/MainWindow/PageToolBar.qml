@@ -13,12 +13,6 @@ ToolBar {
 
     signal savePageRequested()
 
-    // RecheckMode overrides of check/autoRecheck for the verification run
-    // (VerificationQueueController): 0 = decision phase only, 1 = also
-    // re-recognize the mismatches.
-    readonly property int recheckSkip: 0
-    readonly property int recheckFix: 1
-
     visible: Controller.hasImage
 
     leftPadding: Theme.spacing
@@ -49,26 +43,24 @@ ToolBar {
 
             SplitToolButton {
                 text: qsTr("Recognize page")
-                mainEnabled: Controller.hasImage && !Controller.busy && Controller.canRecognize
-                arrowEnabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
+                mainEnabled: Controller.hasImage && Controller.actionsIdle && Controller.canRecognize
+                arrowEnabled: Controller.hasImage && Controller.actionsIdle
                 onMainActivated: Controller.recognizeCurrent()
                 onMenuRequested: (anchor) => recognizePageMenu.popup(anchor, 0, anchor.height + 2)
             }
 
             SplitToolButton {
                 text: qsTr("Verify")
-                mainEnabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
-                             && !Controller.layoutBusy
+                mainEnabled: Controller.hasImage && Controller.actionsIdle
                              && Controller.pageVerificationSupported
                 arrowEnabled: mainEnabled
-                onMainActivated: Controller.checkEnabledBlocksOnPage(pageToolBarRoot.recheckFix)
+                onMainActivated: Controller.checkEnabledBlocksOnPage(VerificationQueueController.RecheckForce)
                 onMenuRequested: (anchor) => verifyPageMenu.popup(anchor, 0, anchor.height + 2)
             }
 
             ToolButton {
                 text: qsTr("Mark up page")
-                enabled: Controller.hasImage && !Controller.busy
-                         && !Controller.checkBusy && !Controller.layoutBusy
+                enabled: Controller.hasImage && Controller.actionsIdle
                          && Controller.layoutAvailable
                 onClicked: markupConfirmDialog.requestMarkup()
             }
@@ -135,13 +127,13 @@ ToolBar {
 
         MenuItem {
             text: qsTr("Problem blocks")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
+            enabled: Controller.hasImage && Controller.actionsIdle
                      && Controller.pageProblemRecognitionSupported
             onTriggered: Controller.recognizeProblemBlocksOnPage()
         }
         MenuItem {
             text: qsTr("All blocks")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy && !Controller.layoutBusy
+            enabled: Controller.hasImage && Controller.actionsIdle
                      && Controller.pageBlocksRecognitionSupported
             onTriggered: Controller.recognizeAllBlocksOnPage()
         }
@@ -152,15 +144,15 @@ ToolBar {
 
         MenuItem {
             text: qsTr("Verify only")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
-                     && !Controller.layoutBusy && Controller.pageVerificationSupported
-            onTriggered: Controller.checkEnabledBlocksOnPage(pageToolBarRoot.recheckSkip)
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.pageVerificationSupported
+            onTriggered: Controller.checkEnabledBlocksOnPage(VerificationQueueController.RecheckSkip)
         }
         MenuItem {
             text: qsTr("Verify and fix")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
-                     && !Controller.layoutBusy && Controller.pageVerificationSupported
-            onTriggered: Controller.checkEnabledBlocksOnPage(pageToolBarRoot.recheckFix)
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.pageVerificationSupported
+            onTriggered: Controller.checkEnabledBlocksOnPage(VerificationQueueController.RecheckForce)
         }
     }
 

@@ -97,6 +97,7 @@ AppController::AppController(SettingsStore &settings,
     connect(this, &AppController::documentChanged, this, &AppController::availabilityChanged);
     connect(this, &AppController::resultChanged, this, &AppController::availabilityChanged);
     connect(this, &AppController::configChanged, this, &AppController::availabilityChanged);
+    connect(this, &AppController::importingChanged, this, &AppController::availabilityChanged);
 
     connect(&m_layout, &LayoutController::busyChanged, this, [this]() {
         emit layoutStateChanged();
@@ -694,7 +695,7 @@ bool AppController::movePage(int from, int to)
 
 void AppController::recognizeCurrent()
 {
-    if (m_recognition.busy() || m_importing || m_document.isEmpty())
+    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
         return;
     if (!canRecognize()) {
         setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
@@ -707,7 +708,7 @@ void AppController::recognizeCurrent()
 
 void AppController::recognizeAll()
 {
-    if (m_recognition.busy() || m_importing || m_document.isEmpty())
+    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
         return;
     if (!canRecognize()) {
         setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));

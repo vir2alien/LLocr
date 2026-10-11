@@ -99,6 +99,11 @@ class AppController : public QObject
     Q_PROPERTY(QObject *boxModel READ boxModel CONSTANT)
 
     Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY availabilityChanged)
+    // The one busy-gate every "act on the document" button folds in: the
+    // recognition, layout and verification stages are mutually exclusive, and
+    // each toolbar spelling this set by hand is how the mini toolbar lost
+    // layoutBusy.
+    Q_PROPERTY(bool actionsIdle READ actionsIdle NOTIFY availabilityChanged)
 
     Q_PROPERTY(QStringList parserNames READ parserNames NOTIFY retranslateRequested)
     Q_PROPERTY(QStringList parserLabels READ parserLabels NOTIFY retranslateRequested)
@@ -135,6 +140,7 @@ public:
     int docRevision() const { return m_docRevision; }
 
     bool canRecognize() const;
+    bool actionsIdle() const { return !m_recognition.busy() && !m_layout.busy() && !checkBusy() && !m_importing; }
     QStringList parserNames() const;
     QStringList parserLabels() const;
 

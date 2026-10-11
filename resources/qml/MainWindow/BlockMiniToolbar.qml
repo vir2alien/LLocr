@@ -59,20 +59,20 @@ Rectangle {
             visible: miniRoot.isTextBlock
             iconName: "scan-text"
             tip: qsTr("Recognize block")
-            enabled: !Controller.checkBusy && !Controller.busy
+            enabled: Controller.actionsIdle
             onClicked: Controller.recognizeSelectedBlock()
         }
         MiniButton {
             visible: miniRoot.isTextBlock
             iconName: "circle-check"
             tip: qsTr("Verify block")
-            enabled: !Controller.checkBusy && !Controller.busy
+            enabled: Controller.actionsIdle && Controller.pageVerificationSupported
             onClicked: Controller.checkSelectedBlock()
         }
         MiniButton {
             iconName: "trash-2"
             tip: qsTr("Delete block")
-            enabled: !Controller.checkBusy && !Controller.busy
+            enabled: Controller.actionsIdle
                      && Controller.selectedBoxIndex >= 0
             onClicked: Controller.removeBlock(Controller.selectedBoxIndex)
         }

@@ -48,6 +48,7 @@ public:
         RecheckSkip = 0,
         RecheckForce = 1,
     };
+    Q_ENUM(RecheckMode)
 
     bool checkBusy() const { return m_check.busy() || m_decision.busy(); }
     bool queueActive() const { return m_verifyQueueActive; }

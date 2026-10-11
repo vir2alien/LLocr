@@ -57,7 +57,7 @@ ToolBar {
             text: qsTr("Recognize")
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Recognize every page of the document")
-            enabled: Controller.hasImage && !Controller.busy && Controller.canRecognize
+            enabled: Controller.hasImage && Controller.actionsIdle && Controller.canRecognize
             onClicked: Controller.recognizeAll()
         }
         ToolButton {

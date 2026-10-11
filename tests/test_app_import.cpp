@@ -1442,6 +1442,13 @@ private slots:
         QVERIFY(!controller.movePage(0, 1));
         QVERIFY(!controller.removeBlock(0));
         QCOMPARE(controller.pageCount(), 4);
+        // Recognition is mutually exclusive with the queue as well: the
+        // header/page-toolbar buttons and the C++ guards agree.
+        QSignalSpy busySpy(&controller, &AppController::busyChanged);
+        controller.recognizeCurrent();
+        controller.recognizeAll();
+        QVERIFY(!controller.busy());
+        QCOMPARE(busySpy.count(), 0);
 
         QTRY_VERIFY_WITH_TIMEOUT(!controller.checkRunning(), kImportTimeoutMs);
         QVERIFY(controller.movePage(2, 0));
