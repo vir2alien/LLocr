@@ -60,20 +60,31 @@ Image {
                 required property real boxWidth
                 required property real boxHeight
                 required property string boxText
-                required property string boxLabel
                 required property int boxCheckStatus
-                required property bool boxSuspect
-                required property bool boxVerificationPlanned
+                required property int boxKind
 
                 property bool isImage: Controller.boxModel.isImageBox(boxDelegate.index)
                 property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
 
-                color: isImage ? Theme.overlayImageFill : "transparent"
+                // One hue per block kind; selection overrides the frame.
+                readonly property color kindOuter: boxKind == 1 ? Theme.overlayImageOuter
+                                                                 : boxKind == 2 ? Theme.overlayTableOuter
+                                                                 : boxKind == 3 ? Theme.overlayFormulaOuter
+                                                                 : Theme.overlayTextOuter
+                readonly property color kindInner: boxKind == 1 ? Theme.overlayImageInner
+                                                                  : boxKind == 2 ? Theme.overlayTableInner
+                                                                  : boxKind == 3 ? Theme.overlayFormulaInner
+                                                                  : Theme.overlayTextInner
+                readonly property color kindFill: boxKind == 1 ? Theme.overlayImageFill
+                                                                 : boxKind == 2 ? Theme.overlayTableFill
+                                                                 : boxKind == 3 ? Theme.overlayFormulaFill
+                                                                 : Theme.overlayTextFill
+
+                color: kindFill
                 // Keep the selected frame and its mini toolbar on top of the
                 // neighboring blocks.
                 z: isSelected ? 2 : 0
-                border.color: isSelected ? Theme.accent
-                                         : (isImage ? Theme.overlayImageOuter : Theme.overlayTextOuter)
+                border.color: isSelected ? Theme.accent : kindOuter
                 border.width: isSelected ? 2 : 1
                 x: boxX * imageArea.width
                 y: boxY * imageArea.height
@@ -84,43 +95,27 @@ Image {
                     anchors.fill: parent
                     anchors.margins: 1
                     color: "transparent"
-                    border.color: isSelected ? Theme.accent
-                                             : (isImage ? Theme.overlayImageInner : Theme.overlayTextInner)
+                    border.color: isSelected ? Theme.accent : kindInner
                     border.width: 1
                 }
 
                 Rectangle {
-                    id: labelChip
-                    visible: boxLabel.length > 0
-                    color: isImage ? Theme.overlayImageOuter : Theme.overlayTextOuter
-                    radius: 2
-                    height: labelText.height + 2
-                    width: labelText.width + 6
-                           + (statusDot.visible ? statusDot.width + 3 : 0)
-                    Text {
-                        id: labelText
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: 3
-                        text: boxLabel
-                        font.pointSize: Theme.captionSize
-                        color: isImage ? Theme.overlayImageInner : Theme.overlayTextInner
-                    }
-                    Rectangle {
-                        id: statusDot
-                        // Gray = planned for verification (filter-enabled type or
-                        // a duplicate suspect, no answer yet); green = matched,
-                        // amber = re-recognized, red = mismatched/unreadable.
-                        visible: boxCheckStatus !== 0 || boxSuspect || boxVerificationPlanned
-                        x: labelText.x + labelText.width + 3
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 8
-                        height: 8
-                        radius: 4
-                        color: boxCheckStatus === 1 ? Theme.success
-                             : boxCheckStatus === 2 ? Theme.warning
-                             : boxCheckStatus >= 3 ? Theme.error
-                             : Theme.nothing
-                    }
+                    id: statusDot
+                    // Outside the block, to the left: gray = recognized (by
+                    // page OCR or block recognition, no verdict yet), green =
+                    // verified Ok, amber = re-recognized (two text variants),
+                    // red = Mismatch/Review. A markup block without text shows
+                    // no dot.
+                    visible: boxCheckStatus !== 0 || boxText.length > 0
+                    x: boxDelegate.x < 14 ? 2 : -12
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: boxCheckStatus === 1 ? Theme.success
+                         : boxCheckStatus === 2 ? Theme.warning
+                         : boxCheckStatus >= 3 ? Theme.error
+                         : Theme.nothing
                 }
 
                 MouseArea {

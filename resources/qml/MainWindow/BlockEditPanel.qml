@@ -42,8 +42,8 @@ Rectangle {
                 Layout.maximumWidth: root.width - 90
             }
             Rectangle {
-                visible: Controller.selectedBlockCheckStatus !== 0 || Controller.selectedBlockSuspect
-                         || Controller.selectedBlockPlanned
+                visible: Controller.selectedBlockCheckStatus !== 0
+                         || Controller.selectedBlockText.length > 0
                 Layout.preferredWidth: 8
                 Layout.preferredHeight: 8
                 Layout.alignment: Qt.AlignVCenter
@@ -82,10 +82,12 @@ Rectangle {
             }
         }
 
-        // Re-recognized (block OCR) result, kept separate from the original text.
+        // Second text variant (the block was re-recognized while it already
+        // had one) — visible for the amber two-variant state and for the red
+        // states that keep both variants side by side.
         RowLayout {
             visible: root.isTextBlock
-                     && Controller.selectedBlockCheckStatus === 2
+                     && Controller.selectedBlockCorrected.length > 0
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
             LLOLabel {
@@ -101,7 +103,7 @@ Rectangle {
         }
         ScrollView {
             visible: root.isTextBlock
-                     && Controller.selectedBlockCheckStatus === 2
+                     && Controller.selectedBlockCorrected.length > 0
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(correctedText.contentHeight, 96)
             contentWidth: availableWidth

@@ -67,7 +67,8 @@ public:
 
     // Problem blocks = the statuses that ask for a re-run: the decision stage
     // rejected the text (Mismatch) or the block could not be transcribed
-    // (Review). Fixed blocks were already re-recognized.
+    // (Review). Re-recognized blocks keep both variants and are re-judged by
+    // the next verification run instead.
     bool pageRecheckSupported(int pageIndex) const;
     bool allPageRecheckSupported() const;
 

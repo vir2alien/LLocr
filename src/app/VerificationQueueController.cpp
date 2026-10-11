@@ -14,6 +14,13 @@ namespace {
 // shipped d1-3b profile carries its own wording).
 constexpr const char *kFallbackQuestion = "The state is a text fragment recognized from the attached image by an OCR "
                                           "model. Does the image show exactly this text?";
+
+// The text the decision stage judges: a re-recognized block answers for its
+// corrected variant, everything else for the recognized text.
+QString effectiveBoxText(const BoundingBox &box)
+{
+    return box.correctedText.isEmpty() ? box.text : box.correctedText;
+}
 }  // namespace
 
 QString VerificationQueueController::composeBlockUserPrompt(const QString &typePrompt, const QString &recheckPrompt, const QString &existingText)
@@ -125,12 +132,14 @@ void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> 
         const BoundingBox &box = page.boxes.at(i);
         if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
             continue;
-        if (box.text.isEmpty())
-            continue;
-        if (box.checkStatus != BoxCheckStatus::NotChecked) {
+        // A re-recognized block (two text variants) is judged again on its
+        // corrected text by the next run; Ok/Mismatch/Review have a verdict.
+        if (box.checkStatus != BoxCheckStatus::NotChecked && box.checkStatus != BoxCheckStatus::ReRecognized) {
             ++answered;
             continue;
         }
+        if (effectiveBoxText(box).isEmpty())
+            continue;
         out.append(i);
     }
 }
@@ -209,7 +218,7 @@ bool VerificationQueueController::pageVerificationSupported(int pageIndex) const
         return false;
     const OcrPage &page = m_deps.document.page(pageIndex).result.pages.first();
     for (const BoundingBox &box : std::as_const(page.boxes)) {
-        if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !box.text.isEmpty())
+        if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !effectiveBoxText(box).isEmpty())
             return true;
     }
     return false;
@@ -225,7 +234,7 @@ bool VerificationQueueController::allPageVerificationSupported() const
             continue;
         const OcrPage &page = docPage.result.pages.first();
         for (const BoundingBox &box : std::as_const(page.boxes)) {
-            if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !box.text.isEmpty())
+            if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !effectiveBoxText(box).isEmpty())
                 return true;
         }
     }
@@ -383,7 +392,7 @@ void VerificationQueueController::startNextVerify()
         QTimer::singleShot(0, this, [this]() { startNextVerify(); });
         return;
     }
-    const QString text = boxes.at(m_verifyBoxIndex).text;
+    const QString text = effectiveBoxText(boxes.at(m_verifyBoxIndex));
     const QImage crop = m_deps.cropProvider(m_verifyPage, m_verifyBoxIndex);
     if (crop.isNull()) {
         ++m_verifyDone;

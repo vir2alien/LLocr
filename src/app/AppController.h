@@ -67,8 +67,6 @@ class AppController : public QObject
     Q_PROPERTY(QString selectedBlockText READ selectedBlockText NOTIFY selectedBoxChanged)
     Q_PROPERTY(QString selectedBlockLabel READ selectedBlockLabel NOTIFY selectedBoxChanged)
     Q_PROPERTY(int selectedBlockCheckStatus READ selectedBlockCheckStatus NOTIFY selectedBoxChanged)
-    Q_PROPERTY(bool selectedBlockSuspect READ selectedBlockSuspect NOTIFY selectedBoxChanged)
-    Q_PROPERTY(bool selectedBlockPlanned READ selectedBlockPlanned NOTIFY selectedBoxChanged)
     Q_PROPERTY(QString selectedBlockCorrected READ selectedBlockCorrected NOTIFY selectedBoxChanged)
     Q_PROPERTY(QVariantList selectedBlockTextRange READ selectedBlockTextRange NOTIFY blockTextRangeChanged)
 
@@ -147,8 +145,6 @@ public:
     QString selectedBlockText() const;
     QString selectedBlockLabel() const;
     int selectedBlockCheckStatus() const;
-    bool selectedBlockSuspect() const;
-    bool selectedBlockPlanned() const;
     QString selectedBlockCorrected() const;
     QVariantList selectedBlockTextRange() const;
     void setSelectedBoxIndex(int index);

@@ -67,7 +67,7 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     BoundingBox box;
     box.text = QStringLiteral("block text");
     box.correctedText = QStringLiteral("corrected text");
-    box.checkStatus = BoxCheckStatus::Fixed;
+    box.checkStatus = BoxCheckStatus::ReRecognized;
     box.duplicateSuspect = true;
     box.label = QStringLiteral("text");
     box.rect = QRectF(0.1, 0.2, 0.5, 0.25);
@@ -199,7 +199,7 @@ private slots:
         QCOMPARE(imagePage.boxes.size(), 4);
         QCOMPARE(imagePage.boxes.at(0).text, QStringLiteral("block text"));
         QCOMPARE(imagePage.boxes.at(0).correctedText, QStringLiteral("corrected text"));
-        QCOMPARE(imagePage.boxes.at(0).checkStatus, BoxCheckStatus::Fixed);
+        QCOMPARE(imagePage.boxes.at(0).checkStatus, BoxCheckStatus::ReRecognized);
         QCOMPARE(imagePage.boxes.at(0).label, QStringLiteral("text"));
         QCOMPARE(imagePage.boxes.at(0).rect, QRectF(0.1, 0.2, 0.5, 0.25));
         QVERIFY(imagePage.boxes.at(0).positioned);

@@ -112,7 +112,7 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
         result.status = CheckStatus::Review;
         return result;
     }
-    result.status = CheckStatus::Fixed;
+    result.status = CheckStatus::ReRecognized;
     result.text = content.trimmed();
     return result;
 }

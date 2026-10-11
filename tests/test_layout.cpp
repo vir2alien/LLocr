@@ -157,7 +157,7 @@ private slots:
         QCOMPARE(server.requestPath, QStringLiteral("/v1/chat/completions"));
 
         const CheckResult result = future.result();
-        QCOMPARE(result.status, CheckStatus::Fixed);
+        QCOMPARE(result.status, CheckStatus::ReRecognized);
         QVERIFY(result.text.contains(QStringLiteral("<label:title>")));
 
         const OcrResult parsed = TeleOcrLayoutParser().parse(result.text);

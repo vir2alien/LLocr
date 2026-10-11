@@ -10,17 +10,19 @@
 namespace llocr {
 
 enum class BoxCheckStatus : int {
-    NotChecked = 0,  ///< Verification has not run for this block yet.
-    Ok = 1,          ///< The decision model confirmed the text matches the image.
-    Fixed = 2,       ///< The block was re-recognized; correctedText holds the result.
-    Review = 3,      ///< The block is unreadable — needs human eyes.
-    Mismatch = 4,    ///< The decision model rejected the text; waiting for (or skipped)
-                     ///< re-recognition.
+    NotChecked = 0,    ///< No verdict yet. With text: recognized (gray dot);
+                       ///< without text: layout markup (no dot).
+    Ok = 1,            ///< The decision model confirmed the text matches the image.
+    ReRecognized = 2,  ///< The block was re-recognized while it already had
+                       ///< text; correctedText holds the second variant.
+    Review = 3,        ///< The block is unreadable — needs human eyes.
+    Mismatch = 4,      ///< The decision model rejected the text; waiting for (or skipped)
+                       ///< re-recognition.
 };
 
 struct BoundingBox {
     QString text;           ///< Recognized text of this fragment.
-    QString correctedText;  ///< Verified text (when checkStatus == Fixed); kept separate from text.
+    QString correctedText;  ///< Second text variant (checkStatus == ReRecognized); kept separate from text.
     BoxCheckStatus checkStatus = BoxCheckStatus::NotChecked;
     QString label;  ///< Block type reported by the model (title, text, table...).
     QRectF rect;    ///< Normalized rectangle: x, y, width, height in [0, 1].

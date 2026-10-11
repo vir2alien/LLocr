@@ -1,5 +1,7 @@
 #include "app/BoxListModel.h"
 
+#include "parsers/BlockStyle.h"
+
 namespace llocr {
 
 BoxListModel::BoxListModel(QObject *parent) : QAbstractListModel(parent) {}
@@ -36,10 +38,8 @@ QVariant BoxListModel::data(const QModelIndex &index, int role) const
         return static_cast<int>(box.checkStatus);
     case CorrectedRole:
         return box.correctedText;
-    case SuspectRole:
-        return box.duplicateSuspect;
-    case PlannedRole:
-        return isPlanned(box);
+    case KindRole:
+        return static_cast<int>(kindFor(box));
     default:
         return {};
     }
@@ -56,18 +56,23 @@ QHash<int, QByteArray> BoxListModel::roleNames() const
         {LabelRole, "boxLabel"},
         {CheckStatusRole, "boxCheckStatus"},
         {CorrectedRole, "boxCorrectedText"},
-        {SuspectRole, "boxSuspect"},
-        {PlannedRole, "boxVerificationPlanned"},
+        {KindRole, "boxKind"},
     };
     return roles;
 }
 
-// Mirrors what the verification queue would pick up: a text block the user's
-// filter enables (or a duplicate suspect, which is always asked) that has no
-// answer yet. Drives the gray "planned" dot.
-bool BoxListModel::isPlanned(const BoundingBox &box) const
+BoxListModel::BoxKind BoxListModel::kindFor(const BoundingBox &box) const
 {
-    return box.checkStatus == BoxCheckStatus::NotChecked && !box.text.isEmpty() && (box.duplicateSuspect || m_plannedTypes.contains(box.label));
+    switch (blockStyleForLabel(box.label, m_styleModelId).style) {
+    case BlockStyle::ImagePlaceholder:
+        return BoxKind::Image;
+    case BlockStyle::Table:
+        return BoxKind::Table;
+    case BlockStyle::Equation:
+        return BoxKind::Formula;
+    default:
+        return BoxKind::Text;
+    }
 }
 
 void BoxListModel::setBoxes(const QList<BoundingBox> &boxes)
@@ -86,14 +91,14 @@ void BoxListModel::setFromResult(const OcrResult &result)
     }
 }
 
-void BoxListModel::setPlannedTypes(const QSet<QString> &types)
+void BoxListModel::setStyleModelId(const QString &modelId)
 {
-    if (m_plannedTypes == types)
+    if (m_styleModelId == modelId)
         return;
-    m_plannedTypes = types;
+    m_styleModelId = modelId;
     if (m_boxes.isEmpty())
         return;
-    emit dataChanged(index(0), index(m_boxes.size() - 1), {PlannedRole});
+    emit dataChanged(index(0), index(m_boxes.size() - 1), {KindRole});
 }
 
 void BoxListModel::updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height)
@@ -109,19 +114,19 @@ void BoxListModel::updateBoxRect(int index, qreal x, qreal y, qreal width, qreal
     emit dataChanged(mi, mi, {XRole, YRole, WidthRole, HeightRole});
 }
 
-void BoxListModel::updateBoxCheck(int index, int status, const QString &correctedText)
+void BoxListModel::updateBoxCheck(int index, int status, const QString &correctedText, const QString &text)
 {
     if (index < 0 || index >= m_boxes.size())
         return;
     BoundingBox &box = m_boxes[index];
     const BoxCheckStatus next = static_cast<BoxCheckStatus>(status);
-    if (box.checkStatus == next && box.correctedText == correctedText)
+    if (box.checkStatus == next && box.correctedText == correctedText && box.text == text)
         return;
     box.checkStatus = next;
     box.correctedText = correctedText;
+    box.text = text;
     const QModelIndex mi = createIndex(index, 0);
-    // Leaving NotChecked flips the gray "planned" dot off.
-    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole, PlannedRole});
+    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole, TextRole});
 }
 
 void BoxListModel::removeBox(int index)

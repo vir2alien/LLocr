@@ -32,8 +32,17 @@ QtObject {
     readonly property color helpColor: textSecondary
 
     // --- Overlay (bounding boxes on the image preview) ---
-    readonly property color overlayTextOuter: "#1a1a1a"
-    readonly property color overlayTextInner: "#f5f5f5"
+    // One hue per block kind; fill = ~6% translucency, outer/inner = the
+    // double frame around the box.
+    readonly property color overlayTextOuter: "#2E7D32"
+    readonly property color overlayTextInner: "#E8F5E9"
+    readonly property color overlayTextFill: "#102E7D32"
+    readonly property color overlayTableOuter: "#8E24AA"
+    readonly property color overlayTableInner: "#F3E5F5"
+    readonly property color overlayTableFill: "#108E24AA"
+    readonly property color overlayFormulaOuter: "#EF6C00"
+    readonly property color overlayFormulaInner: "#FFF3E0"
+    readonly property color overlayFormulaFill: "#10EF6C00"
     readonly property color overlayImageOuter: "#2196F3"
     readonly property color overlayImageInner: "#FFFFFF"
     readonly property color overlayImageFill: "#102194F3"

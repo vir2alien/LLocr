@@ -7,16 +7,16 @@
 namespace llocr {
 
 enum class CheckStatus : int {
-    Failed = 0,    ///< Network/parse error — errorMessage describes it.
-    Ok = 1,        ///< The decision model confirmed the match (or the verifier's old OK).
-    Fixed = 2,     ///< The re-recognition returned the block text — text holds it.
-    Review = 3,    ///< The block is unreadable — needs human eyes.
-    Mismatch = 4,  ///< The decision model rejected the match (below the threshold).
+    Failed = 0,        ///< Network/parse error — errorMessage describes it.
+    Ok = 1,            ///< The decision model confirmed the match (or the verifier's old OK).
+    ReRecognized = 2,  ///< The block-recognition reply is the block text — text holds it.
+    Review = 3,        ///< The block is unreadable — needs human eyes.
+    Mismatch = 4,      ///< The decision model rejected the match (below the threshold).
 };
 
 struct CheckResult {
     CheckStatus status = CheckStatus::Failed;
-    QString text;  ///< Corrected block text when status == Fixed.
+    QString text;  ///< Recognized block text when status == ReRecognized.
     StatusMessage errorMessage;
 
     static CheckResult makeError(const StatusMessage &message)

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QAbstractListModel>
-#include <QSet>
 
 #include "core/OcrResult.h"
 
@@ -12,6 +11,15 @@ class BoxListModel : public QAbstractListModel
     Q_OBJECT
 
 public:
+    // The overlay hue a box renders as (Theme.qml carries one per kind),
+    // resolved from the label map of the model that produced the boxes.
+    enum class BoxKind {
+        Text = 0,
+        Image = 1,
+        Table = 2,
+        Formula = 3,
+    };
+
     enum Roles {
         XRole = Qt::UserRole + 1,
         YRole,
@@ -21,8 +29,7 @@ public:
         LabelRole,
         CheckStatusRole,
         CorrectedRole,
-        SuspectRole,
-        PlannedRole,
+        KindRole,
     };
 
     explicit BoxListModel(QObject *parent = nullptr);
@@ -35,21 +42,20 @@ public:
 
     void setFromResult(const OcrResult &result);
 
-    // The block types the verification queue would pick up (the user's filter
-    // in the verification settings). A change re-evaluates PlannedRole for
-    // every row.
-    void setPlannedTypes(const QSet<QString> &types);
+    // The label map follows the OCR/layout model the page was parsed with; an
+    // empty id resolves the default vocabulary.
+    void setStyleModelId(const QString &modelId);
 
     Q_INVOKABLE void updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height);
-    Q_INVOKABLE void updateBoxCheck(int index, int status, const QString &correctedText);
+    Q_INVOKABLE void updateBoxCheck(int index, int status, const QString &correctedText, const QString &text);
     void removeBox(int index);
     Q_INVOKABLE bool isImageBox(int index) const;
 
 private:
-    bool isPlanned(const BoundingBox &box) const;
+    BoxKind kindFor(const BoundingBox &box) const;
 
     QList<BoundingBox> m_boxes;
-    QSet<QString> m_plannedTypes;
+    QString m_styleModelId;
 };
 
 }  // namespace llocr

@@ -34,7 +34,7 @@ LayoutController::LayoutController(RequestProfileStore &requestProfiles, Runtime
         } else {
             // An empty reply means the model produced no usable markup; the
             // caller reports it as a failed page instead of wiping the blocks.
-            emit layoutFinished(m_currentPage, result.status == CheckStatus::Fixed ? result.text : QString());
+            emit layoutFinished(m_currentPage, result.status == CheckStatus::ReRecognized ? result.text : QString());
         }
         startNext();
     });

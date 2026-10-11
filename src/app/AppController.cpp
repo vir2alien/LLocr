@@ -78,18 +78,12 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_recognition, &RecognitionController::rawResultReady, this, &AppController::applyRawResult);
 
-    // The gray "planned" dots follow the verification filter live: the model
-    // signal covers edits in the settings window, the store's modelChanged
-    // covers load/reset (discard, reopen). selectedBoxChanged refreshes the
-    // edit-panel dot for the block under the cursor.
-    const auto updatePlannedTypes = [this]() {
-        m_boxModel.setPlannedTypes(m_verification.enabledTypes());
-        emit selectedBoxChanged();
-        emit availabilityChanged();
-    };
-    updatePlannedTypes();
-    connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, updatePlannedTypes);
-    connect(&verification, &VerificationPromptStore::modelChanged, this, updatePlannedTypes);
+    // The verification filter changes which blocks «Проверить» would pick up,
+    // so the availability flags follow it live: the model signal covers edits
+    // in the settings window, the store's modelChanged covers load/reset.
+    const auto verificationFilterChanged = [this]() { emit availabilityChanged(); };
+    connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, verificationFilterChanged);
+    connect(&verification, &VerificationPromptStore::modelChanged, this, verificationFilterChanged);
 
     connect(&m_verify, &VerificationQueueController::stateChanged, this, [this]() {
         emit checkStateChanged();
@@ -731,6 +725,7 @@ void AppController::applyRawResult(int index, const OcrResult &rawResult)
     OcrResult parsed = rawResult;
     if (auto parser = ParserFactory::create(effectiveParserId(), options))
         parsed = parser->parse(rawResult.text);
+    m_boxModel.setStyleModelId(options.modelId);
 
     DocumentPage &page = m_document.page(index);
     page.result = parsed;
@@ -884,20 +879,6 @@ int AppController::selectedBlockCheckStatus() const
     return box ? static_cast<int>(box->checkStatus) : 0;
 }
 
-bool AppController::selectedBlockSuspect() const
-{
-    const BoundingBox *box = selectedBox();
-    return box && box->duplicateSuspect;
-}
-
-bool AppController::selectedBlockPlanned() const
-{
-    const BoundingBox *box = selectedBox();
-    if (!box)
-        return false;
-    return box->checkStatus == BoxCheckStatus::NotChecked && !box->text.isEmpty() && (box->duplicateSuspect || m_verification.isTypeEnabled(box->label));
-}
-
 QString AppController::selectedBlockCorrected() const
 {
     const BoundingBox *box = selectedBox();
@@ -941,6 +922,7 @@ void AppController::revertBlockCorrection()
         return;
 
     bool textChanged = false;
+    QString boxText;
     {
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(m_currentPage);
@@ -956,6 +938,7 @@ void AppController::revertBlockCorrection()
         }
         box.checkStatus = BoxCheckStatus::NotChecked;
         box.correctedText.clear();
+        boxText = box.text;
 
         const QString rebuilt = rebuildPageText(page.result.pages[0]);
         setPageText(m_currentPage, rebuilt);
@@ -971,7 +954,7 @@ void AppController::revertBlockCorrection()
         textChanged = true;
     }
 
-    m_boxModel.updateBoxCheck(m_selectedBox, static_cast<int>(BoxCheckStatus::NotChecked), QString());
+    m_boxModel.updateBoxCheck(m_selectedBox, static_cast<int>(BoxCheckStatus::NotChecked), QString(), boxText);
     emit selectedBoxChanged();
     emit checkStateChanged();
     if (textChanged) {
@@ -1079,6 +1062,7 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
     ParserOptions options;
     options.modelId = m_layoutRequestProfiles.activeProfileId();
     options.keepPageNumbers = true;
+    m_boxModel.setStyleModelId(options.modelId);
     OcrResult parsed;
     if (auto parser = ParserFactory::create(role->parser, options))
         parsed = parser->parse(rawText);
@@ -1155,6 +1139,7 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
 
     BoxCheckStatus status = BoxCheckStatus::NotChecked;
     QString corrected;
+    QString text;
     bool textChanged = false;
     {
         QWriteLocker locker(&m_documentLock);
@@ -1168,28 +1153,41 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
         BoundingBox &box = boxes[boxIndex];
         switch (result.status) {
         case CheckStatus::Ok:
+            // The decision confirmed the re-recognized variant: it becomes
+            // the block text — the original it replaced was already rejected
+            // by the pass that triggered the re-recognition.
+            if (!box.correctedText.isEmpty()) {
+                box.text = box.correctedText;
+                box.correctedText.clear();
+            }
             box.checkStatus = BoxCheckStatus::Ok;
-            box.correctedText.clear();
             break;
-        case CheckStatus::Fixed:
-            box.checkStatus = BoxCheckStatus::Fixed;
-            box.correctedText = result.text;
+        case CheckStatus::ReRecognized:
+            if (box.text.isEmpty() && box.correctedText.isEmpty()) {
+                // First recognition (e.g. a layout-markup block): the text
+                // lands where page OCR puts it and the block stays gray.
+                box.text = result.text;
+                box.checkStatus = BoxCheckStatus::NotChecked;
+            } else {
+                box.checkStatus = BoxCheckStatus::ReRecognized;
+                box.correctedText = result.text;
+            }
             break;
         case CheckStatus::Mismatch:
+            // The variants stay side by side for the human verdict.
             box.checkStatus = BoxCheckStatus::Mismatch;
-            box.correctedText.clear();
             break;
         case CheckStatus::Review:
             box.checkStatus = BoxCheckStatus::Review;
-            box.correctedText.clear();
             break;
         case CheckStatus::Failed:
             break;
         }
         status = box.checkStatus;
         corrected = box.correctedText;
+        text = box.text;
 
-        if (box.checkStatus == BoxCheckStatus::Fixed) {
+        if (result.status == CheckStatus::ReRecognized) {
             const QString rebuilt = rebuildPageText(page.result.pages[0]);
             setPageText(pageIndex, rebuilt);
             m_editStore.reset(pageIndex, rebuilt);
@@ -1201,7 +1199,7 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
 
     const bool onCurrentPage = pageIndex == m_currentPage;
     if (onCurrentPage)
-        m_boxModel.updateBoxCheck(boxIndex, static_cast<int>(status), corrected);
+        m_boxModel.updateBoxCheck(boxIndex, static_cast<int>(status), corrected, text);
     if (onCurrentPage && m_selectedBox == boxIndex)
         emit selectedBoxChanged();
     if (textChanged) {
@@ -1515,6 +1513,9 @@ void AppController::applyProjectData(const ProjectData &data)
     m_pageModel.setCurrent(0);
     m_currentPage = data.pages.isEmpty() ? 0 : qBound(0, data.currentPage, m_document.pageCount() - 1);
     m_pageModel.setCurrent(m_currentPage);
+    // Project labels come from whatever model created the file; the default
+    // vocabulary is the only safe overlay mapping here.
+    m_boxModel.setStyleModelId(QString());
     updateBoxesForCurrent();
 
     if (!skipped.isEmpty())
