@@ -69,8 +69,12 @@ ApplicationWindow {
     }
 
     onVisibleChanged: {
-        if (visible)
+        if (visible) {
+            // The one-shot pass spent on a confirmed discard must not leak
+            // into the next session with the window.
+            window.forceClose = false
             window.loadAll()
+        }
     }
 
     onClosing: (close) => {
@@ -102,6 +106,9 @@ ApplicationWindow {
         }
 
         onAccepted: {
+            // The block-type toggles write through to the C++ singleton
+            // immediately; discarding reverts them like Cancel does.
+            window.loadAll()
             window.unsavedChanges = false
             window.forceClose = true
             window.close()
