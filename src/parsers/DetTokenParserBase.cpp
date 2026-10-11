@@ -24,6 +24,11 @@ constexpr int kMinRepeatWords = 8;
 constexpr double kRepeatCoverage = 0.6;
 constexpr int kMinTailChars = 8;
 
+// A hallucinating model can repeat span attributes with huge values; the grid
+// is bounded so one reply cannot drive the formatter into a multi-GB
+// allocation or a GUI hang.
+constexpr int kMaxTableColumns = 512;
+
 struct BlockFingerprint {
     QString simplified;
     QStringList words;
@@ -150,7 +155,7 @@ QString formatTable(const QString &text, bool tablesAsHtml)
             QRegularExpressionMatchIterator attrsIt = attrRe.globalMatch(cm.captured(2));
             while (attrsIt.hasNext()) {
                 const QRegularExpressionMatch am = attrsIt.next();
-                const int v = std::max(1, am.captured(2).toInt());
+                const int v = std::clamp(am.captured(2).toInt(), 1, kMaxTableColumns);
                 if (am.captured(1) == QLatin1String("rowspan"))
                     cell.rowspan = v;
                 else
@@ -173,6 +178,7 @@ QString formatTable(const QString &text, bool tablesAsHtml)
             width += c.colspan;
         cols = std::max(cols, width);
     }
+    cols = std::min(cols, kMaxTableColumns);
 
     QVector<QVector<QString>> grid;
     QVector<QVector<bool>> occupied;
@@ -208,7 +214,9 @@ QString formatTable(const QString &text, bool tablesAsHtml)
             if (colspan < 1)
                 break;
 
-            for (int dr = 0; dr < cell.rowspan; ++dr) {
+            // A span cannot run past the table the reply actually declares.
+            const int rowspan = std::min(cell.rowspan, static_cast<int>(rows.size()));
+            for (int dr = 0; dr < rowspan; ++dr) {
                 ensureCell(r + dr, col + colspan - 1);
                 for (int dc = 0; dc < colspan; ++dc) {
                     if (occupied.at(r + dr).at(col + dc) && !sectionHeader)

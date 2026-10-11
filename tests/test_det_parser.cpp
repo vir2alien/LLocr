@@ -392,6 +392,42 @@ private slots:
         QVERIFY(!md.contains("<nl>"));
     }
 
+    // A hallucinating model can repeat span attributes with huge values; the
+    // HTML-table formatter must bound the grid instead of allocating it.
+    void capsHtmlTableSpans()
+    {
+        UnlimitedOcrParser parser;
+
+        const QString colspanBomb = QStringLiteral("<|det|>table [0, 0, 500, 200]<|/det|>"
+                                                   "<table><tr><td colspan=\"99999999\">wide</td><td>next</td></tr></table>");
+        const OcrResult r1 = parser.parse(colspanBomb);
+        QVERIFY(r1.success);
+        QVERIFY(r1.pages.first().text.contains(QStringLiteral("wide")));
+        const int colspanColumns = r1.pages.first().text.count(QStringLiteral("--- |"));
+        QVERIFY(colspanColumns > 2);
+        QVERIFY(colspanColumns <= 512);
+
+        const QString rowspanBomb = QStringLiteral("<|det|>table [0, 0, 500, 200]<|/det|>"
+                                                   "<table><tr><td rowspan=\"99999999\">a</td><td>b</td></tr>"
+                                                   "<tr><td>c</td></tr></table>");
+        const OcrResult r2 = parser.parse(rowspanBomb);
+        QVERIFY(r2.success);
+        const QString md2 = r2.pages.first().text;
+        // Two declared rows stay two output rows: the span cannot invent more.
+        QCOMPARE(md2.count(QLatin1Char('\n')), 2);
+        QVERIFY(md2.contains(QStringLiteral("| a | b |")));
+        QVERIFY(md2.contains(QStringLiteral("|  | c |")));
+
+        // A row of very many ordinary cells caps the grid width as well.
+        QString manyCells = QStringLiteral("<|det|>table [0, 0, 500, 200]<|/det|><table><tr>");
+        for (int i = 0; i < 2000; ++i)
+            manyCells += QStringLiteral("<td>%1</td>").arg(i);
+        manyCells += QStringLiteral("</tr></table>");
+        const OcrResult r3 = parser.parse(manyCells);
+        QVERIFY(r3.success);
+        QVERIFY(r3.pages.first().text.count(QStringLiteral("--- |")) <= 512);
+    }
+
     // LFM2.5-VL formula artifacts: a formula truncated without the closing
     // "\)" still becomes inline math, and the "~" spacing artifact inside
     // \mathrm{...} is dropped (only within math spans).
