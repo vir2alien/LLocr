@@ -26,9 +26,12 @@ QLockFile &InstalledState::installLock()
 {
     // A lock held by a moved runtime directory must not keep guarding the old
     // one, and the lock file name must never point somewhere we no longer
-    // install. QLockFile cannot be renamed, so it is recreated.
+    // install. QLockFile cannot be renamed, so it is recreated; the old one is
+    // unlocked explicitly, deterministically, before it is destroyed.
     const QString wanted = paths().installLockPath();
     if (wanted != m_lockPath) {
+        if (m_installLock)
+            m_installLock->unlock();
         m_installLock.reset();
         m_lockPath = wanted;
         m_installLock = std::make_unique<QLockFile>(wanted);

@@ -10,6 +10,7 @@
 #include "config/SettingsStore.h"
 #include "runtime/InstalledBuildsModel.h"
 #include "runtime/InstalledState.h"
+#include "runtime/InstallLockGuard.h"
 #include "runtime/RuntimeInstaller.h"
 #include "testsettings.h"
 
@@ -130,6 +131,63 @@ private slots:
         a.unlock();
         QVERIFY(b.tryLock(0));
         b.unlock();
+    }
+
+    // Moving the runtime root recreates the QLockFile (it cannot be renamed);
+    // a guard held across that rebind must follow the new file instead of
+    // touching the destroyed one, and the old lock must be gone.
+    void guardFollowsRecreatedLockFile()
+    {
+        QTemporaryDir rootA;
+        QTemporaryDir rootB;
+        SettingsStore settings;
+        pointAtTempDir(settings, rootA.path());
+        InstalledState installed(settings);
+        installed.ensureDirectories();  // QLockFile cannot create its parent dir
+
+        InstallLockGuard guard([&installed]() -> QLockFile & { return installed.installLock(); });
+        QVERIFY(guard.tryLock());
+        QVERIFY(guard.held());
+        const QString oldLockPath = makePaths(rootA.path()).installLockPath();
+        QVERIFY(QFileInfo::exists(oldLockPath));
+
+        pointAtTempDir(settings, rootB.path());
+        installed.ensureDirectories();
+        const QString newLockPath = makePaths(rootB.path()).installLockPath();
+        QVERIFY(!QFileInfo::exists(oldLockPath));
+        QVERIFY(!guard.held());
+
+        QVERIFY(guard.tryLock());
+        QVERIFY(guard.held());
+        QLockFile probe(newLockPath);
+        QVERIFY(!probe.tryLock(0));  // a second instance cannot take the new lock
+        guard.release();
+        QVERIFY(probe.tryLock(0));
+        probe.unlock();
+    }
+
+    // The installer's guard is constructed once, so a runtime-root move between
+    // two locked operations must not leave it locking (or dereferencing) a
+    // destroyed QLockFile.
+    void installerWorksAfterRuntimeRootMove()
+    {
+        QTemporaryDir rootA;
+        QTemporaryDir rootB;
+        SettingsStore settings;
+        pointAtTempDir(settings, rootA.path());
+        InstalledState installed(settings);
+        RuntimeInstaller installer(settings, installed);
+
+        makeBuild(rootA.path(), QStringLiteral("llama.cpp-b100-cpu-win-x64"));
+        settings.setInstalledBuild(QStringLiteral("b100"));
+        QVERIFY2(!installer.cleanupUnusedBuilds().contains(QStringLiteral("installing"), Qt::CaseInsensitive), qPrintable(installer.statusMessage()));
+
+        pointAtTempDir(settings, rootB.path());
+        makeBuild(rootB.path(), QStringLiteral("llama.cpp-b200-cpu-win-x64"));
+        settings.setInstalledBuild(QStringLiteral("b200"));
+        installer.rescanInstalledBuilds();
+        QCOMPARE(installer.installedBuildCount(), 1);
+        QVERIFY2(!installer.cleanupUnusedBuilds().contains(QStringLiteral("installing"), Qt::CaseInsensitive), qPrintable(installer.statusMessage()));
     }
 
     // The settings-reset scenario: the active-build keys are wiped, but the

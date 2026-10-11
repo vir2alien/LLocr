@@ -347,7 +347,7 @@ void ModelInstallTransaction::beginDownload()
     }
     if (!m_lock || !m_lock->held()) {
         if (!m_lock)
-            m_lock = std::make_unique<InstallLockGuard>(m_installState.installLock());
+            m_lock = std::make_unique<InstallLockGuard>([this]() -> QLockFile & { return m_installState.installLock(); });
         if (!m_lock->tryLock()) {
             setBusy(false);
             setStatusMessage(tr("Another LLocr instance is installing a model right "
@@ -547,7 +547,12 @@ void ModelInstallTransaction::maybeFinishDownloads()
         releaseInstallLock();
         return;
     }
+    // The lock is held since beginDownload(); this is the terminal transition,
+    // so it is released on every exit of completeInstall() — success, GGUF
+    // validation and registry-save failures alike (the guard otherwise stays
+    // with the session-long transaction object and blocks later installs).
     completeInstall();
+    releaseInstallLock();
 }
 
 void ModelInstallTransaction::completeInstall()
@@ -628,7 +633,6 @@ void ModelInstallTransaction::completeInstall()
             setBusy(false);
             setStatusMessage(commitError);
             setState(State::Error);
-            releaseInstallLock();
             return;
         }
         m_staging.reset();

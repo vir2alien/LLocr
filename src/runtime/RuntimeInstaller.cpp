@@ -47,7 +47,7 @@ bool backendMatches(const QString &assetBackend, const QString &requested)
 
 RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent)
     : QObject(parent), m_settings(settings), m_installState(state), m_downloads(new DownloadManager(this)), m_group(new DownloadGroup(m_downloads, this)),
-      m_installedBuilds(new InstalledBuildsModel(settings, this)), m_installLock(m_installState.installLock())
+      m_installedBuilds(new InstalledBuildsModel(settings, this)), m_installLock([this]() -> QLockFile & { return m_installState.installLock(); })
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
     m_platformLabel = QStringLiteral("%1 %2").arg(osLabel(info), info.arch);
