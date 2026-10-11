@@ -79,11 +79,11 @@ class AppController : public QObject
     Q_PROPERTY(int checkProgressTotal READ checkProgressTotal NOTIFY checkStateChanged)
     Q_PROPERTY(bool checkDecisionPhase READ checkDecisionPhase NOTIFY checkStateChanged)
     Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
-    Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY verificationSupportChanged)
-    Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY verificationSupportChanged)
-    Q_PROPERTY(bool pageProblemRecognitionSupported READ pageProblemRecognitionSupported NOTIFY verificationSupportChanged)
-    Q_PROPERTY(bool allProblemRecognitionSupported READ allProblemRecognitionSupported NOTIFY verificationSupportChanged)
-    Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY verificationSupportChanged)
+    Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY availabilityChanged)
+    Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY availabilityChanged)
+    Q_PROPERTY(bool pageProblemRecognitionSupported READ pageProblemRecognitionSupported NOTIFY availabilityChanged)
+    Q_PROPERTY(bool allProblemRecognitionSupported READ allProblemRecognitionSupported NOTIFY availabilityChanged)
+    Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY availabilityChanged)
 
     Q_PROPERTY(bool layoutBusy READ layoutBusy NOTIFY layoutStateChanged)
     Q_PROPERTY(bool layoutAvailable READ layoutAvailable NOTIFY layoutAvailableChanged)
@@ -98,7 +98,7 @@ class AppController : public QObject
     Q_PROPERTY(QObject *pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject *boxModel READ boxModel CONSTANT)
 
-    Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY configChanged)
+    Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY availabilityChanged)
 
     Q_PROPERTY(QStringList parserNames READ parserNames NOTIFY retranslateRequested)
     Q_PROPERTY(QStringList parserLabels READ parserLabels NOTIFY retranslateRequested)
@@ -204,10 +204,11 @@ signals:
     void selectedBoxChanged();
     void blockTextRangeChanged();
     void checkStateChanged();
-    // The page/all "supported" flags fold in the current page, the page
-    // content and the recognition activity, so they are re-announced on those
-    // too — not only when the check queue itself moves.
-    void verificationSupportChanged();
+    // The availability flags (canRecognize and the page/all "supported"
+    // properties) fold in the current page, the page content, the recognition
+    // activity and the runtime config, so they are re-announced on all of
+    // those — a single NOTIFY per property cannot cover them.
+    void availabilityChanged();
 
     void editStateChanged();
 

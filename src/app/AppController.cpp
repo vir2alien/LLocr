@@ -73,7 +73,7 @@ AppController::AppController(SettingsStore &settings,
         if (!m_recognition.busy() && !m_recognitionStopped && m_settings.autoCheck())
             QTimer::singleShot(0, this, [this]() { m_verify.checkAllEnabledBlocks(); });
         emit busyChanged();
-        emit verificationSupportChanged();
+        emit availabilityChanged();
     });
     connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_recognition, &RecognitionController::rawResultReady, this, &AppController::applyRawResult);
@@ -85,7 +85,7 @@ AppController::AppController(SettingsStore &settings,
     const auto updatePlannedTypes = [this]() {
         m_boxModel.setPlannedTypes(m_verification.enabledTypes());
         emit selectedBoxChanged();
-        emit verificationSupportChanged();
+        emit availabilityChanged();
     };
     updatePlannedTypes();
     connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, updatePlannedTypes);
@@ -93,17 +93,21 @@ AppController::AppController(SettingsStore &settings,
 
     connect(&m_verify, &VerificationQueueController::stateChanged, this, [this]() {
         emit checkStateChanged();
-        emit verificationSupportChanged();
+        emit availabilityChanged();
     });
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::blockChecked, this, &AppController::applyCheckResultToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
 
-    connect(this, &AppController::pageChanged, this, &AppController::verificationSupportChanged);
-    connect(this, &AppController::documentChanged, this, &AppController::verificationSupportChanged);
-    connect(this, &AppController::resultChanged, this, &AppController::verificationSupportChanged);
+    connect(this, &AppController::pageChanged, this, &AppController::availabilityChanged);
+    connect(this, &AppController::documentChanged, this, &AppController::availabilityChanged);
+    connect(this, &AppController::resultChanged, this, &AppController::availabilityChanged);
+    connect(this, &AppController::configChanged, this, &AppController::availabilityChanged);
 
-    connect(&m_layout, &LayoutController::busyChanged, this, &AppController::layoutStateChanged);
+    connect(&m_layout, &LayoutController::busyChanged, this, [this]() {
+        emit layoutStateChanged();
+        emit availabilityChanged();
+    });
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
     connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
