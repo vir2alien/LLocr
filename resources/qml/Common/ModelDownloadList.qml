@@ -11,7 +11,7 @@ ListView {
 
     property int rowHeight: 46
     property int maxVisibleRows: 6
-    // Model-profile role id this list serves: "ocr", "blockRecognition" or "decision".
+    // Model-profile role id this list serves: "ocr", "blockRecognition", "decision" or "layout".
     property string role: "ocr"
 
     signal actionError(string message)
@@ -76,10 +76,7 @@ ListView {
     implicitHeight: count <= 0
                     ? 0
                     : (maxVisibleRows > 0 ? Math.min(count, maxVisibleRows) : count) * rowHeight
-    model: role === "blockRecognition" ? ModelInstaller.checkQuantModels
-         : role === "decision" ? ModelInstaller.decisionQuantModels
-         : role === "layout" ? ModelInstaller.layoutQuantModels
-         : ModelInstaller.quantModels
+    model: RoleProfiles.quantModels(role)
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
     delegate: Rectangle {

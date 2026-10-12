@@ -16,10 +16,7 @@ Item {
     readonly property bool hasParams: profiles.draftModel.count > 0
     readonly property real nameWidth: 0.28
     readonly property real valueWidth: 0.26
-    readonly property var profiles: role === "blockRecognition" ? RequestProfilesValidate
-                                  : role === "decision" ? RequestProfilesDecision
-                                  : role === "layout" ? RequestProfilesLayout
-                                  : RequestProfilesOcr
+    readonly property var profiles: RoleProfiles.profiles(role)
 
     function loadValues() {
         root.profiles.reloadDraft()
@@ -96,13 +93,7 @@ Item {
             font.pointSize: Theme.captionSize
             color: Theme.helpColor
             wrapMode: Text.WordWrap
-            text: root.decisionRole
-                ? qsTr("Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.")
-                : role === "blockRecognition"
-                ? qsTr("Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.")
-                : role === "layout"
-                ? qsTr("Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.")
-                : qsTr("Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.")
+            text: RoleProfiles.samplingHint(role)
         }
 
         // Without the parameter table there is nothing to absorb the free

@@ -32,6 +32,7 @@ qt_add_library(llocr_core STATIC
     core/DecisionRequest.h
     core/DecisionResult.h
     core/ConnectionConfig.h
+    core/ConnectionRole.h
     core/LlamaClient.h
     core/LlamaClient.cpp
     core/ServiceMarkers.h
@@ -229,6 +230,8 @@ qt_add_library(llocr_app STATIC
     app/ExportRenderer.cpp
     app/I18n.h
     app/I18n.cpp
+    app/ModelRequestController.h
+    app/ModelRequestController.cpp
     app/OcrImageProvider.h
     app/OcrImageProvider.cpp
     app/BoxListModel.h
@@ -342,15 +345,15 @@ foreach(_qml IN LISTS LLOCR_QML_FILES)
     set_source_files_properties("${_qml}" PROPERTIES QT_RESOURCE_ALIAS "${_alias}")
 endforeach()
 
-# The two QML singletons must be marked as such for the build system too:
+# The QML singletons must be marked as such for the build system too:
 # without QT_QML_SINGLETON_TYPE the generated qmldir lists them as ordinary
 # component types, and `Theme.accent` then reads a property off the *type*
 # (undefined) instead of off the singleton instance. `pragma Singleton` in the
 # file is what the engine sees; this property is what qmldir/qmllint see.
-# BlockNames lives in the module root, not in Common/, because qmllint resolves
-# a singleton through the *nearest* qmldir and Common/qmldir (generated per
-# directory) does not declare it.
-foreach(_singleton Theme.qml BlockNames.qml)
+# BlockNames and RoleProfiles live in the module root, not in a subdirectory,
+# because qmllint resolves a singleton through the *nearest* qmldir and a
+# subdirectory qmldir (generated per directory) does not declare it.
+foreach(_singleton Theme.qml BlockNames.qml RoleProfiles.qml)
     set_source_files_properties("${CMAKE_SOURCE_DIR}/resources/qml/${_singleton}"
         PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 endforeach()

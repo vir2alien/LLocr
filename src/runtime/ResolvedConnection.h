@@ -3,30 +3,9 @@
 #include <QString>
 
 #include "core/ConnectionConfig.h"
+#include "core/ConnectionRole.h"
 
 namespace llocr {
-
-enum class ConnectionRole {
-    Ocr,
-    BlockRecognition,
-    Decision,
-    Layout,
-};
-
-inline QString connectionRoleName(ConnectionRole role)
-{
-    switch (role) {
-    case ConnectionRole::Ocr:
-        return QStringLiteral("ocr");
-    case ConnectionRole::BlockRecognition:
-        return QStringLiteral("blockRecognition");
-    case ConnectionRole::Decision:
-        return QStringLiteral("decision");
-    case ConnectionRole::Layout:
-        return QStringLiteral("layout");
-    }
-    return QStringLiteral("ocr");
-}
 
 struct ResolvedConnection {
     QString baseUrl;  // http://127.0.0.1:<port> or the external URL

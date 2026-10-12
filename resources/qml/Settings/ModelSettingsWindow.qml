@@ -12,10 +12,7 @@ ApplicationWindow {
     // Model-profile role id: "ocr", "blockRecognition", "decision" or "layout".
     property string role: "ocr"
 
-    title: role === "blockRecognition" ? qsTr("Block OCR model settings")
-         : role === "decision" ? qsTr("Decision model settings")
-         : role === "layout" ? qsTr("Layout model settings")
-         : qsTr("OCR model settings")
+    title: RoleProfiles.title(role)
     width: 560
     height: 680
     modality: Qt.NonModal
@@ -27,21 +24,11 @@ ApplicationWindow {
     property string profileSnapshot: ""
 
     function activeProfileId() {
-        return role === "blockRecognition" ? Settings.checkRequestProfileId
-             : role === "decision" ? Settings.decisionRequestProfileId
-             : role === "layout" ? Settings.layoutRequestProfileId
-             : Settings.modelRecipeId
+        return RoleProfiles.requestProfileId(role)
     }
 
     function restoreProfileSnapshot() {
-        if (role === "blockRecognition")
-            Settings.checkRequestProfileId = profileSnapshot
-        else if (role === "decision")
-            Settings.decisionRequestProfileId = profileSnapshot
-        else if (role === "layout")
-            Settings.layoutRequestProfileId = profileSnapshot
-        else
-            Settings.modelRecipeId = profileSnapshot
+        RoleProfiles.setRequestProfileId(role, profileSnapshot)
     }
 
     function bringToFront() {

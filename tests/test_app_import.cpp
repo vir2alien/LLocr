@@ -371,7 +371,7 @@ private slots:
         m_launchProfiles = std::make_unique<LaunchProfileStore>(*m_settings);
         m_requestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
         m_checkRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
-        m_layoutRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, RequestProfileStore::Role::Layout);
+        m_layoutRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Layout);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_problems = std::make_unique<ProblemLog>();

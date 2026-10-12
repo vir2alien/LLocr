@@ -622,7 +622,7 @@ private slots:
         QCOMPARE(qobject_cast<RequestProfileListModel *>(ocrList)->rowOfId(QStringLiteral("verifier")), -1);
         QCOMPARE(qobject_cast<RequestProfileListModel *>(ocrList)->rowOfId(QStringLiteral("no-such-model")), -1);
 
-        RequestProfileStore checkStore(settings, RequestProfileStore::Role::BlockRecognition);
+        RequestProfileStore checkStore(settings, ConnectionRole::BlockRecognition);
         checkStore.setModelProfiles(profiles);
         auto *checkList = checkStore.profileModel();
         QAbstractItemModelTester checkTester(checkList, QAbstractItemModelTester::FailureReportingMode::Fatal);
@@ -661,7 +661,7 @@ private slots:
         markup.roles.insert(QStringLiteral("layout"), markupRole);
         profiles.append(markup);
 
-        RequestProfileStore layoutStore(settings, RequestProfileStore::Role::Layout);
+        RequestProfileStore layoutStore(settings, ConnectionRole::Layout);
         layoutStore.setModelProfiles(profiles);
 
         auto *layoutList = layoutStore.profileModel();

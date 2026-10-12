@@ -8,6 +8,7 @@
 #include "config/ProfileStore.h"
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
 #include "runtime/ReleaseCatalog.h"
 
@@ -214,12 +215,16 @@ QString LaunchProfileStore::layoutModelRuntimeNote() const
 
 QString LaunchProfileStore::modelIdForRole(const QString &role) const
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         return m_settings.checkRequestProfileId();
-    if (role == QLatin1String("decision"))
+    case ConnectionRole::Decision:
         return m_settings.decisionRequestProfileId();
-    if (role == QLatin1String("layout"))
+    case ConnectionRole::Layout:
         return m_settings.layoutRequestProfileId();
+    case ConnectionRole::Ocr:
+        break;
+    }
     return m_settings.modelRecipeId();
 }
 

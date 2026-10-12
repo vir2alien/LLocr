@@ -12,6 +12,7 @@
 
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
 #include "runtime/InstalledReconcile.h"
 #include "runtime/LaunchProfileStore.h"
@@ -66,12 +67,16 @@ QObject *ModelInstaller::layoutQuantModels() const
 
 ModelQuantModel *ModelInstaller::quantModel(const QString &role) const
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         return m_checkModels;
-    if (role == QLatin1String("decision"))
+    case ConnectionRole::Decision:
         return m_decisionModels;
-    if (role == QLatin1String("layout"))
+    case ConnectionRole::Layout:
         return m_layoutModels;
+    case ConnectionRole::Ocr:
+        break;
+    }
     return m_ocrModels;
 }
 
@@ -160,12 +165,16 @@ QString ModelInstaller::activeTitleFor(const QString &role) const
 
 const QList<ModelPreset> &ModelInstaller::presetsForRole(const QString &role) const
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         return m_presetsValidate;
-    if (role == QLatin1String("decision"))
+    case ConnectionRole::Decision:
         return m_presetsDecision;
-    if (role == QLatin1String("layout"))
+    case ConnectionRole::Layout:
         return m_presetsLayout;
+    case ConnectionRole::Ocr:
+        break;
+    }
     return m_presets;
 }
 

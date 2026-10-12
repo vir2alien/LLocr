@@ -100,15 +100,15 @@ int main(int argc, char *argv[])
     requestProfilesOcr.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesOcr", &requestProfilesOcr);
 
-    llocr::RequestProfileStore requestProfilesValidate(settingsStore, llocr::RequestProfileStore::Role::BlockRecognition);
+    llocr::RequestProfileStore requestProfilesValidate(settingsStore, llocr::ConnectionRole::BlockRecognition);
     requestProfilesValidate.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesValidate", &requestProfilesValidate);
 
-    llocr::RequestProfileStore requestProfilesDecision(settingsStore, llocr::RequestProfileStore::Role::Decision);
+    llocr::RequestProfileStore requestProfilesDecision(settingsStore, llocr::ConnectionRole::Decision);
     requestProfilesDecision.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesDecision", &requestProfilesDecision);
 
-    llocr::RequestProfileStore requestProfilesLayout(settingsStore, llocr::RequestProfileStore::Role::Layout);
+    llocr::RequestProfileStore requestProfilesLayout(settingsStore, llocr::ConnectionRole::Layout);
     requestProfilesLayout.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesLayout", &requestProfilesLayout);
 

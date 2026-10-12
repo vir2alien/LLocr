@@ -1,4 +1,6 @@
 #include "config/SettingsStore.h"
+
+#include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
 
 #include <QCoreApplication>
@@ -291,14 +293,20 @@ void SettingsStore::selectModelProfile(const QString &repo, const QString &role)
     const QString profileId = ModelProfiles::idForRepo(ModelProfiles::instance(), repo);
     if (profileId.isEmpty() || !ModelProfiles::roleFor(profileId, role))
         return;
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         setCheckRequestProfileId(profileId);
-    else if (role == QLatin1String("decision"))
+        break;
+    case ConnectionRole::Decision:
         setDecisionRequestProfileId(profileId);
-    else if (role == QLatin1String("layout"))
+        break;
+    case ConnectionRole::Layout:
         setLayoutRequestProfileId(profileId);
-    else
+        break;
+    case ConnectionRole::Ocr:
         setModelRecipeId(profileId);
+        break;
+    }
 }
 
 QString SettingsStore::parserId() const
@@ -1003,92 +1011,130 @@ void SettingsStore::setLayoutModelName(const QString &name)
 
 QString SettingsStore::launchModelPathForRole(const QString &role) const
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         return checkLaunchModelPath();
-    if (role == QLatin1String("decision"))
+    case ConnectionRole::Decision:
         return decisionLaunchModelPath();
-    if (role == QLatin1String("layout"))
+    case ConnectionRole::Layout:
         return layoutLaunchModelPath();
+    case ConnectionRole::Ocr:
+        break;
+    }
     return launchModelPath();
 }
 
 void SettingsStore::setLaunchModelPathForRole(const QString &role, const QString &path)
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         setCheckLaunchModelPath(path);
-    else if (role == QLatin1String("decision"))
+        break;
+    case ConnectionRole::Decision:
         setDecisionLaunchModelPath(path);
-    else if (role == QLatin1String("layout"))
+        break;
+    case ConnectionRole::Layout:
         setLayoutLaunchModelPath(path);
-    else
+        break;
+    case ConnectionRole::Ocr:
         setLaunchModelPath(path);
+        break;
+    }
 }
 
 QString SettingsStore::launchMmprojPathForRole(const QString &role) const
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         return checkLaunchMmprojPath();
-    if (role == QLatin1String("decision"))
+    case ConnectionRole::Decision:
         return decisionLaunchMmprojPath();
-    if (role == QLatin1String("layout"))
+    case ConnectionRole::Layout:
         return layoutLaunchMmprojPath();
+    case ConnectionRole::Ocr:
+        break;
+    }
     return launchMmprojPath();
 }
 
 void SettingsStore::setLaunchMmprojPathForRole(const QString &role, const QString &path)
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         setCheckLaunchMmprojPath(path);
-    else if (role == QLatin1String("decision"))
+        break;
+    case ConnectionRole::Decision:
         setDecisionLaunchMmprojPath(path);
-    else if (role == QLatin1String("layout"))
+        break;
+    case ConnectionRole::Layout:
         setLayoutLaunchMmprojPath(path);
-    else
+        break;
+    case ConnectionRole::Ocr:
         setLaunchMmprojPath(path);
+        break;
+    }
 }
 
 QString SettingsStore::launchDraftPathForRole(const QString &role) const
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         return checkLaunchDraftPath();
-    if (role == QLatin1String("decision"))
+    case ConnectionRole::Decision:
         return decisionLaunchDraftPath();
-    if (role == QLatin1String("layout"))
+    case ConnectionRole::Layout:
         return layoutLaunchDraftPath();
+    case ConnectionRole::Ocr:
+        break;
+    }
     return launchDraftPath();
 }
 
 void SettingsStore::setLaunchDraftPathForRole(const QString &role, const QString &path)
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         setCheckLaunchDraftPath(path);
-    else if (role == QLatin1String("decision"))
+        break;
+    case ConnectionRole::Decision:
         setDecisionLaunchDraftPath(path);
-    else if (role == QLatin1String("layout"))
+        break;
+    case ConnectionRole::Layout:
         setLayoutLaunchDraftPath(path);
-    else
+        break;
+    case ConnectionRole::Ocr:
         setLaunchDraftPath(path);
+        break;
+    }
 }
 
 QString SettingsStore::requestProfileIdForRole(const QString &role) const
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         return checkRequestProfileId();
-    if (role == QLatin1String("decision"))
+    case ConnectionRole::Decision:
         return decisionRequestProfileId();
-    if (role == QLatin1String("layout"))
+    case ConnectionRole::Layout:
         return layoutRequestProfileId();
+    case ConnectionRole::Ocr:
+        break;
+    }
     return modelRecipeId();
 }
 
 QString SettingsStore::modelNameForRole(const QString &role) const
 {
-    if (role == QLatin1String("blockRecognition"))
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
         return checkModelName();
-    if (role == QLatin1String("decision"))
+    case ConnectionRole::Decision:
         return decisionModelName();
-    if (role == QLatin1String("layout"))
+    case ConnectionRole::Layout:
         return layoutModelName();
+    case ConnectionRole::Ocr:
+        break;
+    }
     return modelName();
 }
 

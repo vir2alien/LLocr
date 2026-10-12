@@ -15,19 +15,10 @@ Item {
 
     readonly property bool externalMode: Settings.connectionMode === "external"
 
-    readonly property string activeTitleText: role === "blockRecognition" ? ModelInstaller.checkActiveTitle
-                                            : role === "decision" ? ModelInstaller.decisionActiveTitle
-                                            : role === "layout" ? ModelInstaller.layoutActiveTitle
-                                            : ModelInstaller.activeTitle
+    readonly property string activeTitleText: RoleProfiles.activeTitle(role)
 
-    readonly property var profileList: role === "blockRecognition" ? RequestProfilesValidate.profileModel
-                                     : role === "decision" ? RequestProfilesDecision.profileModel
-                                     : role === "layout" ? RequestProfilesLayout.profileModel
-                                     : RequestProfilesOcr.profileModel
-    readonly property string activeProfileId: role === "blockRecognition" ? Settings.checkRequestProfileId
-                                            : role === "decision" ? Settings.decisionRequestProfileId
-                                            : role === "layout" ? Settings.layoutRequestProfileId
-                                            : Settings.modelRecipeId
+    readonly property var profileList: RoleProfiles.profiles(role).profileModel
+    readonly property string activeProfileId: RoleProfiles.requestProfileId(role)
 
     function syncProfileBox() {
         const row = profileList.rowOfId(root.activeProfileId)
@@ -78,16 +69,7 @@ Item {
                         function onDecisionRequestProfileIdChanged() { root.syncProfileBox() }
                         function onLayoutRequestProfileIdChanged() { root.syncProfileBox() }
                     }
-                    onActivated: {
-                        if (root.role === "blockRecognition")
-                            Settings.checkRequestProfileId = profileBox.currentValue
-                        else if (root.role === "decision")
-                            Settings.decisionRequestProfileId = profileBox.currentValue
-                        else if (root.role === "layout")
-                            Settings.layoutRequestProfileId = profileBox.currentValue
-                        else
-                            Settings.modelRecipeId = profileBox.currentValue
-                    }
+                    onActivated: RoleProfiles.setRequestProfileId(root.role, profileBox.currentValue)
                 }
 
                 LLOButton {

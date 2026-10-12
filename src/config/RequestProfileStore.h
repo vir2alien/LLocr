@@ -8,6 +8,7 @@
 #include "config/ProfileStore.h"
 #include "config/RequestParametersModel.h"
 #include "config/RequestProfileListModel.h"
+#include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
 
 class QAbstractListModel;
@@ -24,14 +25,7 @@ class RequestProfileStore : public QObject
     Q_PROPERTY(QString draftProfileId READ draftProfileId NOTIFY draftProfileChanged)
 
 public:
-    enum class Role {
-        Ocr,
-        BlockRecognition,
-        Decision,
-        Layout,
-    };
-
-    explicit RequestProfileStore(SettingsStore &settings, Role role = Role::Ocr, QObject *parent = nullptr);
+    explicit RequestProfileStore(SettingsStore &settings, ConnectionRole role = ConnectionRole::Ocr, QObject *parent = nullptr);
     void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     QAbstractListModel *draftModel() const { return m_model; }
@@ -55,7 +49,7 @@ signals:
 
 private:
     SettingsStore &m_settings;
-    Role m_role;
+    ConnectionRole m_role;
     ProfileStore<RequestProfile> m_profiles;
     QList<ModelProfiles::Profile> m_modelProfiles;
     QString m_draftProfileId;

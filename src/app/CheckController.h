@@ -4,47 +4,35 @@
 
 #include <QFutureWatcher>
 #include <QImage>
-#include <QObject>
-#include <QString>
 
+#include "app/ModelRequestController.h"
 #include "core/CheckRequest.h"
 #include "core/CheckResult.h"
-#include "core/ConnectionConfig.h"
-#include "core/StatusMessage.h"
 #include "models/GeneralPurposeModel.h"
-#include "runtime/ResolvedConnection.h"
-#include "runtime/RuntimeController.h"
 
 namespace llocr {
 
 class RequestProfileStore;
 
-class CheckController : public QObject
+class CheckController : public ModelRequestController
 {
     Q_OBJECT
 
 public:
     explicit CheckController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent = nullptr);
 
-    bool busy() const { return m_busy; }
     void checkBlock(const QImage &image, const QString &systemPrompt, const QString &typePrompt);
-    void stop();
 
 signals:
-    void busyChanged();
     void checkFinished(const CheckResult &result);
-    void statusRequested(const StatusMessage &message);
 
 private:
+    void abortRequest() override;
     QList<RequestParameter> requestParameters() const;
-    void setBusy(bool busy);
 
     RequestProfileStore &m_requestProfiles;
-    RuntimeController &m_runtime;
     std::unique_ptr<GeneralPurposeModel> m_model;
     QFutureWatcher<CheckResult> m_watcher;
-    bool m_busy = false;
-    bool m_stopRequested = false;
 };
 
 }  // namespace llocr

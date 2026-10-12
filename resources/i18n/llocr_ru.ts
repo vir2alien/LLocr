@@ -1602,21 +1602,6 @@
 <context>
     <name>ModelSettingsWindow</name>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="+18"/>
-        <source>OCR model settings</source>
-        <translation>Настройки модели OCR</translation>
-    </message>
-    <message>
-        <location line="-3"/>
-        <source>Block OCR model settings</source>
-        <translation>Настройки модели OCR блока</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Decision model settings</source>
-        <translation>Настройки модели decision</translation>
-    </message>
-    <message>
         <source>Location</source>
         <translation type="vanished">Расположение</translation>
     </message>
@@ -1639,11 +1624,6 @@
         <location line="-60"/>
         <source>Restore defaults</source>
         <translation>Вернуть настройки по умолчанию</translation>
-    </message>
-    <message>
-        <location line="-22"/>
-        <source>Layout model settings</source>
-        <translation type="unfinished">Настройки модели разметки</translation>
     </message>
     <message>
         <location line="+39"/>
@@ -2845,23 +2825,8 @@
         <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/RequestTab.qml" line="+105"/>
-        <source>Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.</source>
-        <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания. Набор задаёт профиль модели — меняйте значения, а не список</translation>
-    </message>
-    <message>
         <source>Advanced request parameters sent to llama.cpp alongside the check prompt; see the llama.cpp server documentation</source>
         <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом проверки; см. документацию llama-server</translation>
-    </message>
-    <message>
-        <location line="-3"/>
-        <source>Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.</source>
-        <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания блока. Набор задаёт профиль модели — меняйте значения, а не список</translation>
-    </message>
-    <message>
-        <location line="-2"/>
-        <source>Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.</source>
-        <translation>Параметры запроса к decision-эндпоинту. Набор задаёт профиль модели — меняйте значения, а не список</translation>
     </message>
     <message>
         <location line="-48"/>
@@ -2878,10 +2843,40 @@
         <source>The decision model answers in a single forward pass and generates no text, so it has no sampling parameters — the threshold above is its only setting here.</source>
         <translation>Модель decision отвечает за один проход и не генерирует текста, поэтому параметров сэмплирования у неё нет — порог выше является единственной настройкой здесь.</translation>
     </message>
+</context>
+<context>
+    <name>RoleProfiles</name>
     <message>
-        <location line="+14"/>
+        <source>Block OCR model settings</source>
+        <translation>Настройки модели OCR блока</translation>
+    </message>
+    <message>
+        <source>Decision model settings</source>
+        <translation>Настройки модели decision</translation>
+    </message>
+    <message>
+        <source>Layout model settings</source>
+        <translation type="unfinished">Настройки модели разметки</translation>
+    </message>
+    <message>
+        <source>OCR model settings</source>
+        <translation>Настройки модели OCR</translation>
+    </message>
+    <message>
+        <source>Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания блока. Набор задаёт профиль модели — меняйте значения, а не список</translation>
+    </message>
+    <message>
         <source>Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.</source>
         <translation type="unfinished">Параметры сэмплирования для каждого запроса разметки страницы. Набор приходит из профиля модели — правьте значения, а не список.</translation>
+    </message>
+    <message>
+        <source>Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания. Набор задаёт профиль модели — меняйте значения, а не список</translation>
+    </message>
+    <message>
+        <source>Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры запроса к decision-эндпоинту. Набор задаёт профиль модели — меняйте значения, а не список</translation>
     </message>
 </context>
 <context>

@@ -13,54 +13,44 @@ namespace llocr {
 namespace {
 constexpr int kSchemaVersion = 2;
 
-QString userFileName(RequestProfileStore::Role role)
+QString userFileName(ConnectionRole role)
 {
     // The check file name predates the role rename (check → blockRecognition);
     // it stays so existing user profiles survive the update.
     switch (role) {
-    case RequestProfileStore::Role::BlockRecognition:
+    case ConnectionRole::BlockRecognition:
         return QStringLiteral("requestValidate.json");
-    case RequestProfileStore::Role::Decision:
+    case ConnectionRole::Decision:
         return QStringLiteral("requestDecision.json");
-    case RequestProfileStore::Role::Layout:
+    case ConnectionRole::Layout:
         return QStringLiteral("requestLayout.json");
-    case RequestProfileStore::Role::Ocr:
+    case ConnectionRole::Ocr:
         break;
     }
     return QStringLiteral("request.json");
 }
-
-QString roleName(RequestProfileStore::Role role)
-{
-    switch (role) {
-    case RequestProfileStore::Role::BlockRecognition:
-        return QStringLiteral("blockRecognition");
-    case RequestProfileStore::Role::Decision:
-        return QStringLiteral("decision");
-    case RequestProfileStore::Role::Layout:
-        return QStringLiteral("layout");
-    case RequestProfileStore::Role::Ocr:
-        break;
-    }
-    return QStringLiteral("ocr");
-}
 }  // namespace
 
-RequestProfileStore::RequestProfileStore(SettingsStore &settings, Role role, QObject *parent)
+RequestProfileStore::RequestProfileStore(SettingsStore &settings, ConnectionRole role, QObject *parent)
     : QObject(parent), m_settings(settings), m_role(role), m_profiles(QString(), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId)),
       m_model(new RequestParametersModel(this)), m_profileModels(new RequestProfileListModel(this))
 {
     m_profiles.setUserPath(QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(userFileName(role)));
     setModelProfiles(ModelProfiles::instance());
 
-    if (m_role == Role::BlockRecognition) {
+    switch (m_role) {
+    case ConnectionRole::BlockRecognition:
         connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
-    } else if (m_role == Role::Decision) {
+        break;
+    case ConnectionRole::Decision:
         connect(&m_settings, &SettingsStore::decisionRequestProfileIdChanged, this, [this] { followActiveProfile(); });
-    } else if (m_role == Role::Layout) {
+        break;
+    case ConnectionRole::Layout:
         connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, [this] { followActiveProfile(); });
-    } else {
+        break;
+    case ConnectionRole::Ocr:
         connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
+        break;
     }
 }
 
@@ -68,12 +58,12 @@ void RequestProfileStore::setModelProfiles(const QList<ModelProfiles::Profile> &
 {
     m_modelProfiles = profiles;
 
-    const QList<ModelProfiles::Profile> roleProfiles = ModelProfiles::forRole(profiles, roleName(m_role));
+    const QList<ModelProfiles::Profile> roleProfiles = ModelProfiles::forRole(profiles, connectionRoleName(m_role));
     QList<RequestProfile> builtIn;
     for (const ModelProfiles::Profile &profile : roleProfiles) {
         RequestProfile request;
         request.id = profile.id;
-        request.parameters = ModelProfiles::requestWithMaxOutput(profiles, profile.id, roleName(m_role));
+        request.parameters = ModelProfiles::requestWithMaxOutput(profiles, profile.id, connectionRoleName(m_role));
         request.sortByOrder();
         builtIn.append(request);
     }
@@ -93,16 +83,16 @@ QString RequestProfileStore::activeProfileId() const
 {
     QString id;
     switch (m_role) {
-    case Role::BlockRecognition:
+    case ConnectionRole::BlockRecognition:
         id = m_settings.checkRequestProfileId();
         break;
-    case Role::Decision:
+    case ConnectionRole::Decision:
         id = m_settings.decisionRequestProfileId();
         break;
-    case Role::Layout:
+    case ConnectionRole::Layout:
         id = m_settings.layoutRequestProfileId();
         break;
-    case Role::Ocr:
+    case ConnectionRole::Ocr:
         id = m_settings.modelRecipeId();
         break;
     }
