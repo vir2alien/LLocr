@@ -24,6 +24,34 @@ ListView {
         return (bytes / 1024).toFixed(1) + " KiB"
     }
 
+    // One popup pair for the whole list (QML-9): per-row instances cost
+    // 40–80 eager objects per row. activeRow is the delegate whose button
+    // opened the current popup.
+    property var activeRow: null
+
+    function showPopup(popup, button) {
+        const margin = Theme.spacing
+        const anchor = button.mapToItem(popup.parent, 0, button.height + 2)
+        popup.x = Math.max(margin,
+                           Math.min(anchor.x, popup.parent.width - popup.width - margin))
+        popup.y = anchor.y + popup.height + margin < popup.parent.height
+                ? anchor.y
+                : Math.max(margin, button.mapToItem(popup.parent, 0, -popup.height - 2).y)
+        popup.open()
+    }
+
+    function openQuantPopup(rowItem, button) {
+        activeRow = rowItem
+        quantPopup.measureColumns()
+        showPopup(quantPopup, button)
+    }
+
+    function openRowMenu(rowItem, button) {
+        activeRow = rowItem
+        rowMenu.measureLabels()
+        showPopup(rowMenu, button)
+    }
+
     Text {
         id: fontProbe
         visible: false
@@ -78,17 +106,6 @@ ListView {
                     return true
             }
             return false
-        }
-
-        function showPopup(popup, button) {
-            const margin = Theme.spacing
-            const anchor = button.mapToItem(popup.parent, 0, button.height + 2)
-            popup.x = Math.max(margin,
-                               Math.min(anchor.x, popup.parent.width - popup.width - margin))
-            popup.y = anchor.y + popup.height + margin < popup.parent.height
-                    ? anchor.y
-                    : Math.max(margin, button.mapToItem(popup.parent, 0, -popup.height - 2).y)
-            popup.open()
         }
 
         width: root.width
@@ -151,10 +168,7 @@ ListView {
                     text: row.selectedLabel
                     enabled: quants.length > 1 && !ModelInstaller.busy
                     rightPadding: 18
-                    onClicked: {
-                        quantPopup.measureColumns()
-                        row.showPopup(quantPopup, quantButton)
-                    }
+                    onClicked: root.openQuantPopup(row, quantButton)
 
                     Text {
                         anchors.right: parent.right
@@ -193,10 +207,7 @@ ListView {
                     text: ""
                     subtle: true
                     enabled: !ModelInstaller.busy
-                    onClicked: {
-                        rowMenu.measureLabels()
-                        row.showPopup(rowMenu, menuButton)
-                    }
+                    onClicked: root.openRowMenu(row, menuButton)
 
                     Column {
                         anchors.centerIn: parent
@@ -215,206 +226,208 @@ ListView {
                 }
             }//RowLayout
         }
-
-        Popup {
-            id: quantPopup
-            parent: Overlay.overlay
-            padding: 2
-            width: chrome + nameColumn + sizeColumn + 2 * padding
-            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-            property real nameColumn: 0
-            property real sizeColumn: 0
-            readonly property int chrome: 10 + 4 * Theme.spacingSmall
-
-            background: Rectangle {
-                color: Theme.surface
-                border.color: Theme.border
-                border.width: 1
-                radius: Theme.controlRadius
-            }
-
-            function measureColumns() {
-                let name = 0
-                let size = 0
-                for (let i = 0; i < row.quants.length; ++i) {
-                    const quant = row.quants[i]
-                    name = Math.max(name, metrics.advanceWidth(quant.id))
-                    if (quant.size > 0)
-                        size = Math.max(size, metrics.advanceWidth(root.fmtBytes(quant.size)))
-                }
-                nameColumn = name
-                sizeColumn = size
-            }
-
-            contentItem: Column {
-                spacing: 0
-
-                Repeater {
-                    id: quantRepeater
-                    model: row.quants
-                    delegate: MenuItem {
-                        required property var modelData
-
-                        text: ""
-                        height: Theme.controlHeight
-                        width: quantPopup.chrome + quantPopup.nameColumn
-                               + quantPopup.sizeColumn
-                        onTriggered: {
-                            ModelInstaller.selectQuant(row.key, modelData.id)
-                            quantPopup.close()
-                        }
-
-                        Item {
-                            id: entryRow
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.leftMargin: Theme.spacingSmall
-                            anchors.rightMargin: Theme.spacingSmall
-
-                            Text {
-                                id: entryMark
-                                x: 0
-                                width: 10
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: modelData.id === row.selectedLabel
-                                horizontalAlignment: Text.AlignHCenter
-                                text: "✓"
-                                font.pointSize: Theme.captionSize
-                                color: Theme.accent
-                            }
-                            LLOLabel {
-                                id: entryName
-                                x: 10 + Theme.spacingSmall
-                                width: Math.min(quantPopup.nameColumn, 200)
-                                anchors.verticalCenter: parent.verticalCenter
-                                elide: Text.ElideRight
-                                wrapMode: Text.NoWrap
-                                font.pointSize: Theme.captionSize
-                                color: Theme.textPrimary
-                                text: modelData.id
-                            }
-                            LLOLabel {
-                                id: entrySize
-                                x: 10 + 2 * Theme.spacingSmall + quantPopup.nameColumn
-                                width: Math.min(quantPopup.sizeColumn, 120)
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: modelData.size > 0
-                                horizontalAlignment: Text.AlignRight
-                                elide: Text.ElideRight
-                                wrapMode: Text.NoWrap
-                                font.pointSize: Theme.captionSize
-                                color: Theme.textMuted
-                                text: root.fmtBytes(modelData.size)
-                            }
-                        }
-                    }
-                }//Repeater
-            }//ContentItem
-        }//Popup
-
-        Popup {
-            id: rowMenu
-            parent: Overlay.overlay
-            padding: 2
-            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-            property real labelColumn: 0
-
-            function measureLabels() {
-                let w = 0
-                for (const label of [qsTr("Open folder"), qsTr("Delete quantization"),
-                                      qsTr("Delete model")]) {
-                    w = Math.max(w, metrics.advanceWidth(label))
-                }
-                labelColumn = w
-            }
-
-            width: labelColumn + 2 * Theme.spacing + 2 * padding
-
-            background: Rectangle {
-                color: Theme.surface
-                border.color: Theme.border
-                border.width: 1
-                radius: Theme.controlRadius
-            }
-
-            contentItem: Column {
-                spacing: 0
-
-                MenuItem {
-                    width: rowMenu.availableWidth
-                    height: Theme.controlHeight
-                    text: ""
-                    enabled: row.selectedInstalled
-                    onTriggered: {
-                        rowMenu.close()
-                        const err = ModelInstaller.openQuantFolder(row.key, row.selectedLabel,
-                                                                   root.role)
-                        if (err.length)
-                            root.actionError(err)
-                    }
-
-                    LLOLabel {
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.spacing
-                        anchors.verticalCenter: parent.verticalCenter
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: parent.enabled ? Theme.textPrimary : Theme.textMuted
-                        text: qsTr("Open folder")
-                    }
-                }
-                MenuItem {
-                    width: rowMenu.availableWidth
-                    height: Theme.controlHeight
-                    visible: row.profile
-                    text: ""
-                    enabled: row.selectedInstalled && !ModelInstaller.busy
-                    onTriggered: {
-                        rowMenu.close()
-                        const err = ModelInstaller.removeQuant(row.key, row.selectedLabel,
-                                                               root.role)
-                        if (err.length)
-                            root.actionError(err)
-                    }
-
-                    LLOLabel {
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.spacing
-                        anchors.verticalCenter: parent.verticalCenter
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: parent.enabled ? Theme.textPrimary : Theme.textMuted
-                        text: qsTr("Delete quantization")
-                    }
-                }
-                MenuItem {
-                    width: rowMenu.availableWidth
-                    height: Theme.controlHeight
-                    visible: row.profile
-                    text: ""
-                    enabled: row.anyInstalled && !ModelInstaller.busy
-                    onTriggered: {
-                        rowMenu.close()
-                        deleteModelDialog.pendingKey = row.key
-                        deleteModelDialog.pendingTitle = row.title
-                        deleteModelDialog.open()
-                    }
-
-                    LLOLabel {
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.spacing
-                        anchors.verticalCenter: parent.verticalCenter
-                        wrapMode: Text.NoWrap
-                        font.pointSize: Theme.captionSize
-                        color: parent.enabled ? Theme.textPrimary : Theme.textMuted
-                        text: qsTr("Delete model")
-                    }
-                }
-            }//contentItem
-        }//Popup
     }//delegate
+
+    Popup {
+        id: quantPopup
+        parent: Overlay.overlay
+        padding: 2
+        width: chrome + nameColumn + sizeColumn + 2 * padding
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        property real nameColumn: 0
+        property real sizeColumn: 0
+        readonly property int chrome: 10 + 4 * Theme.spacingSmall
+
+        background: Rectangle {
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+            radius: Theme.controlRadius
+        }
+
+        function measureColumns() {
+            const quants = root.activeRow ? root.activeRow.quants : []
+            let name = 0
+            let size = 0
+            for (let i = 0; i < quants.length; ++i) {
+                const quant = quants[i]
+                name = Math.max(name, metrics.advanceWidth(quant.id))
+                if (quant.size > 0)
+                    size = Math.max(size, metrics.advanceWidth(root.fmtBytes(quant.size)))
+            }
+            nameColumn = name
+            sizeColumn = size
+        }
+
+        contentItem: Column {
+            spacing: 0
+
+            Repeater {
+                id: quantRepeater
+                model: root.activeRow ? root.activeRow.quants : []
+                delegate: MenuItem {
+                    id: quantEntry
+                    required property var modelData
+
+                    text: ""
+                    height: Theme.controlHeight
+                    width: quantPopup.chrome + quantPopup.nameColumn
+                           + quantPopup.sizeColumn
+                    onTriggered: {
+                        ModelInstaller.selectQuant(root.activeRow.key, quantEntry.modelData.id)
+                        quantPopup.close()
+                    }
+
+                    Item {
+                        id: entryRow
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: Theme.spacingSmall
+                        anchors.rightMargin: Theme.spacingSmall
+
+                        Text {
+                            x: 0
+                            width: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: root.activeRow
+                                     && quantEntry.modelData.id === root.activeRow.selectedLabel
+                            horizontalAlignment: Text.AlignHCenter
+                            text: "✓"
+                            font.pointSize: Theme.captionSize
+                            color: Theme.accent
+                        }
+                        LLOLabel {
+                            x: 10 + Theme.spacingSmall
+                            width: Math.min(quantPopup.nameColumn, 200)
+                            anchors.verticalCenter: parent.verticalCenter
+                            elide: Text.ElideRight
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textPrimary
+                            text: quantEntry.modelData.id
+                        }
+                        LLOLabel {
+                            x: 10 + 2 * Theme.spacingSmall + quantPopup.nameColumn
+                            width: Math.min(quantPopup.sizeColumn, 120)
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: quantEntry.modelData.size > 0
+                            horizontalAlignment: Text.AlignRight
+                            elide: Text.ElideRight
+                            wrapMode: Text.NoWrap
+                            font.pointSize: Theme.captionSize
+                            color: Theme.textMuted
+                            text: root.fmtBytes(quantEntry.modelData.size)
+                        }
+                    }
+                }
+            }//Repeater
+        }//ContentItem
+    }//Popup
+
+    Popup {
+        id: rowMenu
+        parent: Overlay.overlay
+        padding: 2
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        property real labelColumn: 0
+
+        function measureLabels() {
+            let w = 0
+            for (const label of [qsTr("Open folder"), qsTr("Delete quantization"),
+                                  qsTr("Delete model")]) {
+                w = Math.max(w, metrics.advanceWidth(label))
+            }
+            labelColumn = w
+        }
+
+        width: labelColumn + 2 * Theme.spacing + 2 * padding
+
+        background: Rectangle {
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+            radius: Theme.controlRadius
+        }
+
+        contentItem: Column {
+            spacing: 0
+
+            MenuItem {
+                width: rowMenu.availableWidth
+                height: Theme.controlHeight
+                text: ""
+                enabled: root.activeRow ? root.activeRow.selectedInstalled : false
+                onTriggered: {
+                    rowMenu.close()
+                    const err = ModelInstaller.openQuantFolder(root.activeRow.key,
+                                                               root.activeRow.selectedLabel,
+                                                               root.role)
+                    if (err.length)
+                        root.actionError(err)
+                }
+
+                LLOLabel {
+                    anchors.left: parent.left
+                    anchors.leftMargin: Theme.spacing
+                    anchors.verticalCenter: parent.verticalCenter
+                    wrapMode: Text.NoWrap
+                    font.pointSize: Theme.captionSize
+                    color: parent.enabled ? Theme.textPrimary : Theme.textMuted
+                    text: qsTr("Open folder")
+                }
+            }
+            MenuItem {
+                width: rowMenu.availableWidth
+                height: Theme.controlHeight
+                visible: root.activeRow ? root.activeRow.profile : false
+                text: ""
+                enabled: root.activeRow ? root.activeRow.selectedInstalled && !ModelInstaller.busy : false
+                onTriggered: {
+                    rowMenu.close()
+                    const err = ModelInstaller.removeQuant(root.activeRow.key,
+                                                           root.activeRow.selectedLabel,
+                                                           root.role)
+                    if (err.length)
+                        root.actionError(err)
+                }
+
+                LLOLabel {
+                    anchors.left: parent.left
+                    anchors.leftMargin: Theme.spacing
+                    anchors.verticalCenter: parent.verticalCenter
+                    wrapMode: Text.NoWrap
+                    font.pointSize: Theme.captionSize
+                    color: parent.enabled ? Theme.textPrimary : Theme.textMuted
+                    text: qsTr("Delete quantization")
+                }
+            }
+            MenuItem {
+                width: rowMenu.availableWidth
+                height: Theme.controlHeight
+                visible: root.activeRow ? root.activeRow.profile : false
+                text: ""
+                enabled: root.activeRow ? root.activeRow.anyInstalled && !ModelInstaller.busy : false
+                onTriggered: {
+                    rowMenu.close()
+                    deleteModelDialog.pendingKey = root.activeRow.key
+                    deleteModelDialog.pendingTitle = root.activeRow.title
+                    deleteModelDialog.open()
+                }
+
+                LLOLabel {
+                    anchors.left: parent.left
+                    anchors.leftMargin: Theme.spacing
+                    anchors.verticalCenter: parent.verticalCenter
+                    wrapMode: Text.NoWrap
+                    font.pointSize: Theme.captionSize
+                    color: parent.enabled ? Theme.textPrimary : Theme.textMuted
+                    text: qsTr("Delete model")
+                }
+            }
+        }//contentItem
+    }//Popup
 
     Dialog {
         id: deleteModelDialog

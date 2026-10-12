@@ -66,6 +66,7 @@ Image {
         }
 
         Repeater {
+            id: boxRepeater
             model: Controller.boxModel
             delegate: Rectangle {
                 id: boxDelegate
@@ -175,113 +176,136 @@ Image {
                                                     boxWidth, boxHeight)
                     }
                 }//MouseArea
+            }//delegate: Rectangle
+        }//Repeater
 
-                BlockMiniToolbar {
-                    visible: boxDelegate.isSelected
-                    isTextBlock: !boxDelegate.isImage
+        // One floating toolbar and one handle set for the selected block
+        // (QML-8): per-delegate instances cost ~30 live objects per box and
+        // were recreated on every page change. z above the selected box's z:2.
+        readonly property var selectedDelegate: Controller.selectedBoxIndex >= 0
+                                                ? boxRepeater.itemAt(Controller.selectedBoxIndex)
+                                                : null
 
-                    x: {
-                        const centered = (boxDelegate.width - width) / 2
-                        const minX = -boxDelegate.x
-                        const maxX = imageArea.width - boxDelegate.x - width
-                        return Math.max(minX, Math.min(centered, maxX))
-                    }
-                    y: boxDelegate.y >= height + Theme.spacingLarge
-                       ? -height - Theme.spacingSmall
-                       : boxDelegate.height + Theme.spacingSmall
+        function resizeRect(mode, ox, oy, ow, oh, dx, dy) {
+            const minS = 0.01
+            var nx = ox, ny = oy, nw = ow, nh = oh
+            if (mode === "W" || mode === "NW" || mode === "SW") {
+                nx = Math.max(0, Math.min(ox + ow - minS, ox + dx))
+                nw = ox + ow - nx
+            }
+            if (mode === "E" || mode === "NE" || mode === "SE")
+                nw = Math.max(minS, Math.min(1 - ox, ow + dx))
+            if (mode === "N" || mode === "NW" || mode === "NE") {
+                ny = Math.max(0, Math.min(oy + oh - minS, oy + dy))
+                nh = oy + oh - ny
+            }
+            if (mode === "S" || mode === "SW" || mode === "SE")
+                nh = Math.max(minS, Math.min(1 - oy, oh + dy))
+            return { x: nx, y: ny, w: nw, h: nh }
+        }
+
+        BlockMiniToolbar {
+            z: 3
+            visible: imageArea.selectedDelegate !== null
+            isTextBlock: imageArea.selectedDelegate
+                         ? !imageArea.selectedDelegate.isImage : true
+
+            x: {
+                const sel = imageArea.selectedDelegate
+                if (!sel)
+                    return 0
+                const centered = sel.x + (sel.width - width) / 2
+                return Math.max(0, Math.min(centered, imageArea.width - width))
+            }
+            y: {
+                const sel = imageArea.selectedDelegate
+                if (!sel)
+                    return 0
+                return sel.y >= height + Theme.spacingLarge
+                       ? sel.y - height - Theme.spacingSmall
+                       : sel.y + sel.height + Theme.spacingSmall
+            }
+        }
+
+        Repeater {
+            model: [
+                { mode: "NW", cursor: Qt.SizeFDiagCursor },
+                { mode: "N",  cursor: Qt.SizeVerCursor },
+                { mode: "NE", cursor: Qt.SizeBDiagCursor },
+                { mode: "E",  cursor: Qt.SizeHorCursor },
+                { mode: "SE", cursor: Qt.SizeFDiagCursor },
+                { mode: "S",  cursor: Qt.SizeVerCursor },
+                { mode: "SW", cursor: Qt.SizeBDiagCursor },
+                { mode: "W",  cursor: Qt.SizeHorCursor }
+            ]
+            delegate: Rectangle {
+                id: handle
+                required property var modelData
+
+                z: 3
+                width: 10
+                height: 10
+                radius: 2
+                color: Theme.surfaceAlt
+                border.color: Theme.overlayImageOuter
+                border.width: 1
+                visible: imageArea.selectedDelegate !== null
+                         && imageArea.selectedDelegate.isImage
+
+                x: {
+                    const sel = imageArea.selectedDelegate
+                    if (!sel)
+                        return 0
+                    const m = modelData.mode
+                    if (m === "NW" || m === "W" || m === "SW")
+                        return sel.x - 5
+                    if (m === "N" || m === "S")
+                        return sel.x + (sel.width - width) / 2
+                    return sel.x + sel.width - 5
+                }
+                y: {
+                    const sel = imageArea.selectedDelegate
+                    if (!sel)
+                        return 0
+                    const m = modelData.mode
+                    if (m === "NW" || m === "N" || m === "NE")
+                        return sel.y - 5
+                    if (m === "W" || m === "E")
+                        return sel.y + (sel.height - height) / 2
+                    return sel.y + sel.height - 5
                 }
 
-                function resizeRect(mode, ox, oy, ow, oh, dx, dy) {
-                    const minS = 0.01
-                    var nx = ox, ny = oy, nw = ow, nh = oh
-                    if (mode === "W" || mode === "NW" || mode === "SW") {
-                        nx = Math.max(0, Math.min(ox + ow - minS, ox + dx))
-                        nw = ox + ow - nx
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: handle.modelData.cursor
+
+                    property real startX: 0
+                    property real startY: 0
+                    property real startW: 0
+                    property real startH: 0
+                    property real grabX: 0
+                    property real grabY: 0
+
+                    onPressed: (mouse) => {
+                        const sel = imageArea.selectedDelegate
+                        startX = sel.boxX
+                        startY = sel.boxY
+                        startW = sel.boxWidth
+                        startH = sel.boxHeight
+                        const p = mapToItem(imageArea, mouse.x, mouse.y)
+                        grabX = p.x
+                        grabY = p.y
                     }
-                    if (mode === "E" || mode === "NE" || mode === "SE")
-                        nw = Math.max(minS, Math.min(1 - ox, ow + dx))
-                    if (mode === "N" || mode === "NW" || mode === "NE") {
-                        ny = Math.max(0, Math.min(oy + oh - minS, oy + dy))
-                        nh = oy + oh - ny
+                    onPositionChanged: (mouse) => {
+                        const sel = imageArea.selectedDelegate
+                        const p = mapToItem(imageArea, mouse.x, mouse.y)
+                        const r = imageArea.resizeRect(handle.modelData.mode,
+                            startX, startY, startW, startH,
+                            (p.x - grabX) / imageArea.width,
+                            (p.y - grabY) / imageArea.height)
+                        Controller.onBoxRectChanged(sel.index, r.x, r.y, r.w, r.h)
                     }
-                    if (mode === "S" || mode === "SW" || mode === "SE")
-                        nh = Math.max(minS, Math.min(1 - oy, oh + dy))
-                    return { x: nx, y: ny, w: nw, h: nh }
-                }
-
-                Repeater {
-                    model: [
-                        { mode: "NW", cursor: Qt.SizeFDiagCursor },
-                        { mode: "N",  cursor: Qt.SizeVerCursor },
-                        { mode: "NE", cursor: Qt.SizeBDiagCursor },
-                        { mode: "E",  cursor: Qt.SizeHorCursor },
-                        { mode: "SE", cursor: Qt.SizeFDiagCursor },
-                        { mode: "S",  cursor: Qt.SizeVerCursor },
-                        { mode: "SW", cursor: Qt.SizeBDiagCursor },
-                        { mode: "W",  cursor: Qt.SizeHorCursor }
-                    ]
-                    delegate: Rectangle {
-                        id: handle
-                        required property var modelData
-
-                        width: 10
-                        height: 10
-                        radius: 2
-                        color: Theme.surfaceAlt
-                        border.color: Theme.overlayImageOuter
-                        border.width: 1
-                        visible: Controller.selectedBoxIndex === boxDelegate.index
-                                 && boxDelegate.isImage
-
-                        x: {
-                            const m = modelData.mode
-                            if (m === "NW" || m === "W" || m === "SW")
-                                return -5
-                            if (m === "N" || m === "S")
-                                return (boxDelegate.width - width) / 2
-                            return boxDelegate.width - 5
-                        }
-                        y: {
-                            const m = modelData.mode
-                            if (m === "NW" || m === "N" || m === "NE")
-                                return -5
-                            if (m === "W" || m === "E")
-                                return (boxDelegate.height - height) / 2
-                            return boxDelegate.height - 5
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: modelData.cursor
-
-                            property real startX: 0
-                            property real startY: 0
-                            property real startW: 0
-                            property real startH: 0
-                            property real grabX: 0
-                            property real grabY: 0
-
-                            onPressed: (mouse) => {
-                                startX = boxDelegate.boxX
-                                startY = boxDelegate.boxY
-                                startW = boxDelegate.boxWidth
-                                startH = boxDelegate.boxHeight
-                                const p = mapToItem(imageArea, mouse.x, mouse.y)
-                                grabX = p.x
-                                grabY = p.y
-                            }
-                            onPositionChanged: (mouse) => {
-                                const p = mapToItem(imageArea, mouse.x, mouse.y)
-                                const r = boxDelegate.resizeRect(modelData.mode,
-                                    startX, startY, startW, startH,
-                                    (p.x - grabX) / imageArea.width,
-                                    (p.y - grabY) / imageArea.height)
-                                Controller.onBoxRectChanged(boxDelegate.index,
-                                                            r.x, r.y, r.w, r.h)
-                            }
-                        }//MouseArea
-                    }//delegate: Rectangle
-                }//Repeater
+                }//MouseArea
             }//delegate: Rectangle
         }//Repeater
     }//Item
