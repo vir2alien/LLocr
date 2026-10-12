@@ -6,12 +6,12 @@
     <message>
         <location filename="../../src/app/AppController.cpp" line="+489"/>
         <source>No files selected.</source>
-        <translation type="unfinished">Не выбрано ни одного файла</translation>
+        <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
         <location line="+557"/>
         <source>The layout model does not support page markup.</source>
-        <translation type="unfinished">Модель разметки не поддерживает разметку страниц.</translation>
+        <translation>Модель разметки не поддерживает разметку страниц.</translation>
     </message>
     <message>
         <location line="+479"/>
@@ -83,22 +83,22 @@
     <message>
         <location line="-996"/>
         <source>Importing %1 (%2/%3)…</source>
-        <translation type="unfinished">Импорт %1 (%2/%3)…</translation>
+        <translation>Импорт %1 (%2/%3)…</translation>
     </message>
     <message>
         <location line="+51"/>
         <source>None of the selected files could be added.</source>
-        <translation type="unfinished">Ни один из выбранных файлов не удалось добавить</translation>
+        <translation>Ни один из выбранных файлов не удалось добавить</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Added %1 file(s), %2 page(s); %3 file(s) skipped.</source>
-        <translation type="unfinished">Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
+        <translation>Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Added %1 file(s), %2 page(s).</source>
-        <translation type="unfinished">Добавлено файлов: %1, страниц: %2</translation>
+        <translation>Добавлено файлов: %1, страниц: %2</translation>
     </message>
     <message>
         <source>Warning: %1 page(s) replaced with blank pages. %2</source>
@@ -123,18 +123,18 @@
         <location line="+273"/>
         <location line="+18"/>
         <source>Page %1 deleted.</source>
-        <translation type="unfinished">Страница %1 удалена</translation>
+        <translation>Страница %1 удалена</translation>
     </message>
     <message>
         <location line="+28"/>
         <source>Moved page %1 to position %2.</source>
-        <translation type="unfinished">Страница %1 перемещена на позицию %2.</translation>
+        <translation>Страница %1 перемещена на позицию %2.</translation>
     </message>
     <message>
         <location line="+11"/>
         <location line="+13"/>
         <source>Set a model name in Settings first.</source>
-        <translation type="unfinished">Сначала укажите название модели в настройках.</translation>
+        <translation>Сначала укажите название модели в настройках.</translation>
     </message>
     <message>
         <source>The block-recognition model does not support page markup.</source>
@@ -143,42 +143,42 @@
     <message>
         <location line="+351"/>
         <source>The model profile has no markup prompt.</source>
-        <translation type="unfinished">В профиле модели нет промпта разметки.</translation>
+        <translation>В профиле модели нет промпта разметки.</translation>
     </message>
     <message>
         <location line="+32"/>
         <source>The model returned no layout blocks for page %1.</source>
-        <translation type="unfinished">Модель не вернула блоки разметки для страницы %1.</translation>
+        <translation>Модель не вернула блоки разметки для страницы %1.</translation>
     </message>
     <message>
         <location line="+32"/>
         <source>Page %1 marked up: %2 block(s).</source>
-        <translation type="unfinished">Страница %1 размечена: блоков — %2.</translation>
+        <translation>Страница %1 размечена: блоков — %2.</translation>
     </message>
     <message>
         <location line="+93"/>
         <source>Markdown (*.md)</source>
-        <translation type="unfinished">Markdown (*.md)</translation>
+        <translation>Markdown (*.md)</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>Plain text (*.txt)</source>
-        <translation type="unfinished">Обычный текст (*.txt)</translation>
+        <translation>Обычный текст (*.txt)</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>HTML (*.html)</source>
-        <translation type="unfinished">HTML (*.html)</translation>
+        <translation>HTML (*.html)</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Word document (*.docx)</source>
-        <translation type="unfinished">Документ Word (*.docx)</translation>
+        <translation>Документ Word (*.docx)</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>PDF (*.pdf)</source>
-        <translation type="unfinished">PDF (*.pdf)</translation>
+        <translation>PDF (*.pdf)</translation>
     </message>
 </context>
 <context>
@@ -335,27 +335,27 @@
     <message>
         <location filename="../../src/app/CheckController.cpp" line="+15"/>
         <source>Check stopped.</source>
-        <translation type="unfinished"></translation>
+        <translation>Проверка остановлена.</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>No response</source>
-        <translation type="unfinished">Нет ответа</translation>
+        <translation>Нет ответа</translation>
     </message>
     <message>
         <location line="+13"/>
         <source>Stopping…</source>
-        <translation type="unfinished">Остановка…</translation>
+        <translation>Остановка…</translation>
     </message>
     <message>
         <location line="+20"/>
         <source>Stopped before check started.</source>
-        <translation type="unfinished"></translation>
+        <translation>Проверка остановлена до запуска.</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Connection is not configured.</source>
-        <translation type="unfinished">Подключение не настроено.</translation>
+        <translation>Подключение не настроено.</translation>
     </message>
 </context>
 <context>
@@ -363,27 +363,27 @@
     <message>
         <location filename="../../src/app/DecisionController.cpp" line="+11"/>
         <source>Decision check stopped.</source>
-        <translation type="unfinished"></translation>
+        <translation>Decision-проверка остановлена.</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>No response</source>
-        <translation type="unfinished">Нет ответа</translation>
+        <translation>Нет ответа</translation>
     </message>
     <message>
         <location line="+13"/>
         <source>Stopping…</source>
-        <translation type="unfinished">Остановка…</translation>
+        <translation>Остановка…</translation>
     </message>
     <message>
         <location line="+15"/>
         <source>Stopped before the decision check started.</source>
-        <translation type="unfinished"></translation>
+        <translation>Decision-проверка остановлена до запуска.</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Connection is not configured.</source>
-        <translation type="unfinished">Подключение не настроено.</translation>
+        <translation>Подключение не настроено.</translation>
     </message>
 </context>
 <context>
@@ -391,28 +391,28 @@
     <message>
         <location filename="../../src/models/DecisionModel.cpp" line="+36"/>
         <source>Invalid JSON response</source>
-        <translation type="unfinished"></translation>
+        <translation>Некорректный JSON-ответ</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>No answers in response</source>
-        <translation type="unfinished"></translation>
+        <translation>В ответе отсутствуют ответы</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>No match answer in response</source>
-        <translation type="unfinished"></translation>
+        <translation>В ответе отсутствует ответ о совпадении</translation>
     </message>
     <message>
         <location line="+12"/>
         <location line="+3"/>
         <source>Unsupported decision answer format</source>
-        <translation type="unfinished"></translation>
+        <translation>Неподдерживаемый формат ответа decision</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>Failed to encode the block image</source>
-        <translation type="unfinished">Не удалось закодировать изображение блока</translation>
+        <translation>Не удалось закодировать изображение блока</translation>
     </message>
 </context>
 <context>
@@ -494,7 +494,7 @@
     <message>
         <location line="+59"/>
         <source>DjVu support is not available in this build. Install DjVuLibre and rebuild LLocr (see docs/06-dev-setup.md), or convert the document to PDF.</source>
-        <translation type="unfinished"></translation>
+        <translation>Поддержка DjVu в этой сборке недоступна. Установите DjVuLibre и пересоберите LLocr (см. docs/06-dev-setup.md) или преобразуйте документ в PDF.</translation>
     </message>
     <message>
         <location line="+111"/>
@@ -508,32 +508,32 @@
     <message>
         <location filename="../../src/app/ExportController.cpp" line="+19"/>
         <source>Exporting… (%1/%2)</source>
-        <translation type="unfinished">Экспорт… (%1/%2)</translation>
+        <translation>Экспорт… (%1/%2)</translation>
     </message>
     <message>
         <location line="+43"/>
         <source>No output path.</source>
-        <translation type="unfinished">Не указан путь для сохранения.</translation>
+        <translation>Не указан путь для сохранения.</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>An export is already in progress.</source>
-        <translation type="unfinished">Экспорт уже выполняется.</translation>
+        <translation>Экспорт уже выполняется.</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Nothing to export for the selected pages (no recognized pages in that selection).</source>
-        <translation type="unfinished">Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
+        <translation>Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>Exporting…</source>
-        <translation type="unfinished">Экспорт…</translation>
+        <translation>Экспорт…</translation>
     </message>
     <message>
         <location line="+39"/>
         <source>%1 (%2 page(s)).</source>
-        <translation type="unfinished">%1 (%2 стр.).</translation>
+        <translation>%1 (%2 стр.).</translation>
     </message>
 </context>
 <context>
@@ -626,7 +626,7 @@
     <message>
         <location line="+8"/>
         <source>Cannot write file: %1 (%2)</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось записать файл: %1 (%2)</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -767,7 +767,7 @@
     <message>
         <location line="+66"/>
         <source>Stop it</source>
-        <translation type="unfinished"></translation>
+        <translation>Остановить</translation>
     </message>
     <message numerus="yes">
         <location line="+56"/>
@@ -1003,7 +1003,7 @@
     </message>
     <message>
         <source>Layout model</source>
-        <translation type="unfinished">Модель разметки</translation>
+        <translation>Модель разметки</translation>
     </message>
 </context>
 <context>
@@ -1038,18 +1038,18 @@
     <message>
         <location filename="../qml/Common/InstallModelDialog.qml" line="+23"/>
         <source>Install model</source>
-        <translation type="unfinished">Установка модели</translation>
+        <translation>Установка модели</translation>
     </message>
     <message>
         <location line="+25"/>
         <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
-        <translation type="unfinished">Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
+        <translation>Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
     </message>
     <message>
         <location line="+15"/>
         <location line="+2"/>
         <source>License: %1</source>
-        <translation type="unfinished">Лицензия: %1</translation>
+        <translation>Лицензия: %1</translation>
     </message>
     <message>
         <source>Preparing the download…</source>
@@ -1077,28 +1077,28 @@
     <message>
         <location filename="../qml/Common/InterfaceSettings.qml" line="+16"/>
         <source>Language</source>
-        <translation type="unfinished">Язык</translation>
+        <translation>Язык</translation>
     </message>
     <message>
         <location line="+6"/>
         <location line="+26"/>
         <source>System</source>
-        <translation type="unfinished">Как в ОС</translation>
+        <translation>Как в ОС</translation>
     </message>
     <message>
         <location line="-6"/>
         <source>Theme</source>
-        <translation type="unfinished">Тема</translation>
+        <translation>Тема</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Light</source>
-        <translation type="unfinished">Светлая</translation>
+        <translation>Светлая</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>Dark</source>
-        <translation type="unfinished">Тёмная</translation>
+        <translation>Тёмная</translation>
     </message>
 </context>
 <context>
@@ -1185,32 +1185,32 @@
     <message>
         <location filename="../../src/app/LayoutController.cpp" line="+26"/>
         <source>Markup stopped.</source>
-        <translation type="unfinished">Разметка остановлена.</translation>
+        <translation>Разметка остановлена.</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>No response</source>
-        <translation type="unfinished">Нет ответа</translation>
+        <translation>Нет ответа</translation>
     </message>
     <message>
         <location line="+35"/>
         <source>Stopping…</source>
-        <translation type="unfinished">Остановка…</translation>
+        <translation>Остановка…</translation>
     </message>
     <message>
         <location line="+13"/>
         <source>Page %1 could not be rendered for markup.</source>
-        <translation type="unfinished">Страницу %1 не удалось отрисовать для разметки.</translation>
+        <translation>Страницу %1 не удалось отрисовать для разметки.</translation>
     </message>
     <message>
         <location line="+10"/>
         <source>Stopped before markup started.</source>
-        <translation type="unfinished">Разметка остановлена до запуска.</translation>
+        <translation>Разметка остановлена до запуска.</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Connection is not configured.</source>
-        <translation type="unfinished">Подключение не настроено.</translation>
+        <translation>Подключение не настроено.</translation>
     </message>
 </context>
 <context>
@@ -1651,7 +1651,7 @@
     <message>
         <location line="+22"/>
         <source>Failed to encode the page image</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось закодировать изображение страницы</translation>
     </message>
 </context>
 <context>
@@ -1750,22 +1750,22 @@
     <message>
         <location filename="../qml/Common/ParamsTableEditor.qml" line="+14"/>
         <source>value</source>
-        <translation type="unfinished">значение</translation>
+        <translation>значение</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>Parameter</source>
-        <translation type="unfinished">Параметр</translation>
+        <translation>Параметр</translation>
     </message>
     <message>
         <location line="+8"/>
         <source>Value</source>
-        <translation type="unfinished">Значение</translation>
+        <translation>Значение</translation>
     </message>
     <message>
         <location line="+7"/>
         <source>Description</source>
-        <translation type="unfinished">Описание</translation>
+        <translation>Описание</translation>
     </message>
     <message>
         <source>New parameter name</source>
@@ -1912,7 +1912,7 @@
     <message>
         <location filename="../../src/runtime/ArchiveExtractor.cpp" line="+167"/>
         <source>Unsupported archive type: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Неподдерживаемый тип архива: %1</translation>
     </message>
     <message>
         <location line="+9"/>
@@ -1925,7 +1925,7 @@
         <location line="+273"/>
         <location line="+40"/>
         <source>unable to create directory for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>не удалось создать каталог для %1</translation>
     </message>
     <message>
         <location line="-308"/>
@@ -1940,27 +1940,27 @@
         <location line="-165"/>
         <location line="+138"/>
         <source>archive total uncompressed size exceeds limit</source>
-        <translation type="unfinished"></translation>
+        <translation>полный распакованный размер архива превышает лимит</translation>
     </message>
     <message>
         <location line="-41"/>
         <source>Skipped unsafe symlink %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Пропущена небезопасная символическая ссылка %1</translation>
     </message>
     <message>
         <location line="+21"/>
         <source>Unable to create symlink %1 (skipped)</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось создать символическую ссылку %1 (пропущено)</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Skipped hardlink %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Пропущена жёсткая ссылка %1</translation>
     </message>
     <message>
         <location line="+12"/>
         <source>archive contains too many files</source>
-        <translation type="unfinished"></translation>
+        <translation>архив содержит слишком много файлов</translation>
     </message>
     <message>
         <location filename="../../src/runtime/DownloadTask.cpp" line="+174"/>
@@ -2012,7 +2012,7 @@
     <message>
         <location line="+29"/>
         <source>Unable to read %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось прочитать %1</translation>
     </message>
     <message>
         <location line="+21"/>
@@ -2083,12 +2083,12 @@
     <message>
         <location filename="../../src/runtime/StagedInstall.cpp" line="+13"/>
         <source>Unable to create the staging directory %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось создать промежуточный каталог %1</translation>
     </message>
     <message>
         <location line="+25"/>
         <source>The install was already committed</source>
-        <translation type="unfinished"></translation>
+        <translation>Установка уже зафиксирована</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -2113,7 +2113,7 @@
     <message>
         <location line="-48"/>
         <source>the response has no &quot;data&quot; member</source>
-        <translation type="unfinished"></translation>
+        <translation>в ответе нет элемента "data"</translation>
     </message>
     <message>
         <location line="+76"/>
@@ -2142,7 +2142,7 @@
     <message>
         <location line="+17"/>
         <source>Server crashed — restarting…</source>
-        <translation type="unfinished"></translation>
+        <translation>Сервер упал — перезапуск…</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -2220,7 +2220,7 @@
     <message>
         <location line="+0"/>
         <source>GitHub request failed: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось выполнить запрос к GitHub: %1</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -2240,7 +2240,7 @@
     <message>
         <location line="+5"/>
         <source>Metal backend recommended on Apple silicon; fall back to CPU on Intel</source>
-        <translation type="unfinished"></translation>
+        <translation>На Apple Silicon рекомендуется бэкенд Metal; на Intel используется CPU</translation>
     </message>
     <message>
         <source>No response</source>
@@ -2249,7 +2249,7 @@
     <message>
         <location filename="../../src/runtime/SelfTestController.cpp" line="+67"/>
         <source>Recognition failed</source>
-        <translation type="unfinished"></translation>
+        <translation>Ошибка распознавания</translation>
     </message>
     <message>
         <location filename="../../src/runtime/RuntimeLocator.cpp" line="+74"/>
@@ -2282,7 +2282,7 @@
     <message>
         <location line="+60"/>
         <source>skipped (probe budget exhausted)</source>
-        <translation type="unfinished"></translation>
+        <translation>пропущено (бюджет пробных запусков исчерпан)</translation>
     </message>
     <message>
         <location line="+9"/>
@@ -2340,17 +2340,17 @@
         <location filename="../../src/runtime/ModelRegistry.cpp" line="+194"/>
         <location line="+76"/>
         <source>Unable to read model registry: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось прочитать реестр моделей: %1</translation>
     </message>
     <message>
         <location line="-71"/>
         <source>Model index is corrupt; rescanning models directory</source>
-        <translation type="unfinished"></translation>
+        <translation>Индекс моделей повреждён; выполняется повторное сканирование каталога моделей</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Model index version mismatch; rescanning</source>
-        <translation type="unfinished"></translation>
+        <translation>Несовместимая версия индекса моделей; выполняется повторное сканирование</translation>
     </message>
     <message>
         <location line="+39"/>
@@ -2361,17 +2361,17 @@
     <message>
         <location line="+23"/>
         <source>Model index is corrupt</source>
-        <translation type="unfinished"></translation>
+        <translation>Индекс моделей повреждён</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>Unable to open model index for writing: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось открыть индекс моделей для записи: %1</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Unable to commit model index: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось зафиксировать индекс моделей: %1</translation>
     </message>
     <message>
         <location line="+79"/>
@@ -2391,151 +2391,151 @@
     <message>
         <location filename="../../src/runtime/ModelCatalog.cpp" line="+53"/>
         <source>request timed out</source>
-        <translation type="unfinished"></translation>
+        <translation>истекло время ожидания запроса</translation>
     </message>
     <message>
         <location line="+39"/>
         <source>The Hugging Face tree response contained no files</source>
-        <translation type="unfinished"></translation>
+        <translation>Ответ дерева Hugging Face не содержит файлов</translation>
     </message>
     <message>
         <location line="+99"/>
         <source>Hugging Face API returned HTTP %1 for %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Hugging Face API вернул HTTP %1 для %2</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>Hugging Face request failed for %1: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось выполнить запрос к Hugging Face для %1: %2</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Malformed model info from Hugging Face</source>
-        <translation type="unfinished"></translation>
+        <translation>Некорректные данные модели от Hugging Face</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Hugging Face response has no commit SHA for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>В ответе Hugging Face нет commit SHA для %1</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>Hugging Face API returned HTTP %1 for tree of %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Hugging Face API вернул HTTP %1 для дерева %2</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Hugging Face request failed for tree of %1: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось выполнить запрос к Hugging Face для дерева %1: %2</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Malformed tree response from Hugging Face</source>
-        <translation type="unfinished"></translation>
+        <translation>Некорректный ответ дерева от Hugging Face</translation>
     </message>
     <message>
         <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="+242"/>
         <location line="+24"/>
         <source>Could not resolve repository %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось определить репозиторий %1</translation>
     </message>
     <message>
         <location line="-20"/>
         <location line="+24"/>
         <source>No files found in %1</source>
-        <translation type="unfinished"></translation>
+        <translation>В %1 не найдено файлов</translation>
     </message>
     <message>
         <location line="-18"/>
         <source>No usable model file found in %1</source>
-        <translation type="unfinished"></translation>
+        <translation>В %1 не найдено подходящего файла модели</translation>
     </message>
     <message>
         <location line="+27"/>
         <source>Draft module %1 not found in %2</source>
-        <translation type="unfinished">Модуль черновика %1 не найден в %2</translation>
+        <translation>Модуль черновика %1 не найден в %2</translation>
     </message>
     <message>
         <location line="+184"/>
         <source>Unable to keep the existing file %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось сохранить существующий файл %1</translation>
     </message>
     <message>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+25"/>
         <source>%1 not found: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 не найден: %2</translation>
     </message>
     <message>
         <location filename="../../src/core/ModelProfiles.cpp" line="+32"/>
         <source>Model profile %1 has a module without a file name</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль модели %1 содержит модуль без имени файла</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>Model profile %1 has files without a repo</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль модели %1 содержит файлы без репозитория</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Model profile %1 has a quantization without an id or a file name</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль модели %1 содержит квантизацию без id или имени файла</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Model profile %1 has no quantizations</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль модели %1 не содержит квантизаций</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>A model profile has an empty id</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль модели имеет пустой id</translation>
     </message>
     <message>
         <location line="+24"/>
         <source>Model profile</source>
-        <translation type="unfinished">Профиль модели</translation>
+        <translation>Профиль модели</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Model profile request</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль запросов модели</translation>
     </message>
     <message>
         <location line="+13"/>
         <source>Model profile %1 has a prompt without an id or text</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль модели %1 содержит промпт без id или текста</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>Model profile %1 has a block prompt without a block type or text</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль модели %1 содержит блочный промпт без типа блока или текста</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>Model profile directory not found: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Каталог профилей моделей не найден: %1</translation>
     </message>
     <message>
         <location line="+9"/>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+4"/>
         <source>Unable to read %1: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось прочитать %1: %2</translation>
     </message>
     <message>
         <location line="+6"/>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+6"/>
         <source>%1 is malformed: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Некорректный формат %1: %2</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>%1: %2</source>
-        <translation type="unfinished">%1: %2</translation>
+        <translation>%1: %2</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Duplicate model profile id: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Дублирующийся id профиля модели: %1</translation>
     </message>
     <message>
         <location line="+162"/>
@@ -2545,122 +2545,122 @@
     <message>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+9"/>
         <source>%1 uses an unsupported schema version (%2; supported: %3)</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 использует неподдерживаемую версию схемы (%2; поддерживается: %3)</translation>
     </message>
     <message>
         <location line="+8"/>
         <source>%1 has an unexpected shape</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 имеет неожиданную структуру</translation>
     </message>
     <message>
         <location line="+20"/>
         <source>The preset catalog contained no usable presets</source>
-        <translation type="unfinished"></translation>
+        <translation>Каталог пресетов не содержит пригодных пресетов</translation>
     </message>
     <message>
         <location line="+53"/>
         <source>user preset catalog</source>
-        <translation type="unfinished"></translation>
+        <translation>пользовательский каталог пресетов</translation>
     </message>
     <message>
         <location line="+30"/>
         <source>Unable to write preset catalog: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось записать каталог пресетов: %1</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Unable to commit preset catalog: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось зафиксировать каталог пресетов: %1</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Unable to remove user catalog: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось удалить пользовательский каталог: %1</translation>
     </message>
     <message>
         <location filename="../../src/core/RequestProfile.cpp" line="+194"/>
         <source>Request profile has no parameters array</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль запроса не содержит массива параметров</translation>
     </message>
     <message>
         <location line="-40"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+138"/>
         <source>%1 parameter is not an object</source>
-        <translation type="unfinished"></translation>
+        <translation>%1: параметр не является объектом</translation>
     </message>
     <message>
         <location line="+7"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="-47"/>
         <source>%1 parameter has an empty name</source>
-        <translation type="unfinished"></translation>
+        <translation>%1: у параметра пустое имя</translation>
     </message>
     <message>
         <location line="+6"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+8"/>
         <source>%1 parameter %2 has an invalid order</source>
-        <translation type="unfinished"></translation>
+        <translation>%1: параметр %2 имеет некорректный порядок</translation>
     </message>
     <message>
         <location line="+9"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+22"/>
         <source>%1 parameter %2 has an unsupported value</source>
-        <translation type="unfinished"></translation>
+        <translation>%1: параметр %2 имеет неподдерживаемое значение</translation>
     </message>
     <message>
         <location line="+6"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+25"/>
         <source>%1 has a duplicate parameter: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>%1: дублирующийся параметр: %2</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>Request profile</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль запроса</translation>
     </message>
     <message>
         <location line="+35"/>
         <source>Request profile is not an object</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль запроса не является объектом</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Request profile has an empty id</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль запроса имеет пустой id</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Request profile file has a duplicate profile: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Файл профилей запроса содержит дубликат профиля: %1</translation>
     </message>
     <message>
         <location line="+20"/>
         <source>Request profile file has neither profiles nor parameters</source>
-        <translation type="unfinished"></translation>
+        <translation>Файл профилей запроса не содержит ни профилей, ни параметров</translation>
     </message>
     <message>
         <location filename="../../src/core/LaunchProfile.cpp" line="+11"/>
         <source>Launch policy</source>
-        <translation type="unfinished"></translation>
+        <translation>Политика запуска</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Launch profile is not an object</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль запуска не является объектом</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Launch profile has an empty id</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль запуска имеет пустой id</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Launch profile file has a duplicate profile: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Файл профилей запуска содержит дубликат профиля: %1</translation>
     </message>
     <message>
         <location line="+24"/>
         <source>Launch profile %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Профиль запуска %1</translation>
     </message>
 </context>
 <context>
@@ -2676,17 +2676,17 @@
     <message>
         <location filename="../../src/app/RecognitionController.cpp" line="+108"/>
         <source>Stopped before recognition started.</source>
-        <translation type="unfinished">Остановлено до начала распознавания.</translation>
+        <translation>Остановлено до начала распознавания.</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Connection is not configured.</source>
-        <translation type="unfinished">Подключение не настроено.</translation>
+        <translation>Подключение не настроено.</translation>
     </message>
     <message>
         <location line="+20"/>
         <source>Page %1 is a blank replacement for an unreadable page; recognition skipped.</source>
-        <translation type="unfinished">Страница %1 — пустая замена нечитаемой страницы; распознавание пропущено.</translation>
+        <translation>Страница %1 — пустая замена нечитаемой страницы; распознавание пропущено.</translation>
     </message>
     <message>
         <source>Recognition finished. Skipped %1 unreadable page(s).</source>
@@ -2710,44 +2710,44 @@
     <message>
         <location line="+74"/>
         <source>Recognizing page %1 of %2…</source>
-        <translation type="unfinished">Распознавание страницы %1 из %2…</translation>
+        <translation>Распознавание страницы %1 из %2…</translation>
     </message>
     <message>
         <location line="+5"/>
         <location line="+32"/>
         <source>Error on page %1: %2</source>
-        <translation type="unfinished">Ошибка на странице %1: %2</translation>
+        <translation>Ошибка на странице %1: %2</translation>
     </message>
     <message>
         <location line="-30"/>
         <source>the page has no image to recognize</source>
-        <translation type="unfinished"></translation>
+        <translation>у страницы нет изображения для распознавания</translation>
     </message>
     <message>
         <location line="+23"/>
         <source>No response</source>
-        <translation type="unfinished">Нет ответа</translation>
+        <translation>Нет ответа</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Stopped at page %1.</source>
-        <translation type="unfinished">Остановлено на странице %1.</translation>
+        <translation>Остановлено на странице %1.</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Stopped after page %1.</source>
-        <translation type="unfinished">Остановлено после страницы %1.</translation>
+        <translation>Остановлено после страницы %1.</translation>
     </message>
     <message>
         <location line="-52"/>
         <location line="+65"/>
         <source>Recognition finished.</source>
-        <translation type="unfinished">Распознавание закончено.</translation>
+        <translation>Распознавание закончено.</translation>
     </message>
     <message>
         <location line="+12"/>
         <source>Stopping…</source>
-        <translation type="unfinished">Остановка…</translation>
+        <translation>Остановка…</translation>
     </message>
 </context>
 <context>
@@ -2856,7 +2856,7 @@
     </message>
     <message>
         <source>Layout model settings</source>
-        <translation type="unfinished">Настройки модели разметки</translation>
+        <translation>Настройки модели разметки</translation>
     </message>
     <message>
         <source>OCR model settings</source>
@@ -2868,7 +2868,7 @@
     </message>
     <message>
         <source>Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.</source>
-        <translation type="unfinished">Параметры сэмплирования для каждого запроса разметки страницы. Набор приходит из профиля модели — правьте значения, а не список.</translation>
+        <translation>Параметры сэмплирования для каждого запроса разметки страницы. Набор приходит из профиля модели — правьте значения, а не список.</translation>
     </message>
     <message>
         <source>Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.</source>
@@ -2932,7 +2932,7 @@
     <message>
         <location filename="../qml/Common/RuntimeNoteWarning.qml" line="+12"/>
         <source>The managed runtime cannot run this model. %1</source>
-        <translation type="unfinished">Управляемый рантайм не может запустить эту модель. %1</translation>
+        <translation>Управляемый рантайм не может запустить эту модель. %1</translation>
     </message>
 </context>
 <context>
@@ -3274,7 +3274,7 @@
     <message>
         <location filename="../../src/runtime/SelfTestController.cpp" line="-7"/>
         <source>No response</source>
-        <translation type="unfinished">Нет ответа</translation>
+        <translation>Нет ответа</translation>
     </message>
 </context>
 <context>
@@ -4095,12 +4095,12 @@
     <message>
         <location filename="../../tests/test_app_import.cpp" line="+966"/>
         <source>Broken page %1.</source>
-        <translation type="unfinished"></translation>
+        <translation>Повреждённая страница %1.</translation>
     </message>
     <message>
         <location line="+31"/>
         <source>Page %1 is blank.</source>
-        <translation type="unfinished"></translation>
+        <translation>Страница %1 пустая.</translation>
     </message>
 </context>
 <context>
@@ -4819,7 +4819,7 @@
     <message>
         <location filename="../../src/runtime/InstallTransaction.cpp" line="+40"/>
         <source>Cannot tell which build is in use — nothing was removed. Install or activate a build first.</source>
-        <translation type="unfinished">Не удалось определить, какая сборка используется — ничего не удалено. Сначала установите или активируйте сборку.</translation>
+        <translation>Не удалось определить, какая сборка используется — ничего не удалено. Сначала установите или активируйте сборку.</translation>
     </message>
 </context>
 <context>
@@ -4849,7 +4849,7 @@
     <message>
         <location line="-13"/>
         <source>Another LLocr instance is installing a model right now; try again in a moment.</source>
-        <translation type="unfinished"></translation>
+        <translation>Другой экземпляр LLocr сейчас устанавливает модель; повторите попытку чуть позже.</translation>
     </message>
     <message>
         <location line="+55"/>
@@ -4908,7 +4908,7 @@
     <message>
         <location line="+152"/>
         <source>Unable to remove model file: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось удалить файл модели: %1</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -4933,7 +4933,7 @@
     <message>
         <location line="-195"/>
         <source>The selected model is no longer on disk: %1 — pick another one in Settings → Models.</source>
-        <translation type="unfinished"></translation>
+        <translation>Выбранной модели больше нет на диске: %1 — выберите другую в Настройки → Модели.</translation>
     </message>
     <message>
         <source>No preset selected</source>
@@ -5062,7 +5062,7 @@
     <message>
         <location line="+293"/>
         <source>Probing %1…</source>
-        <translation type="unfinished"></translation>
+        <translation>Проверка %1…</translation>
     </message>
     <message>
         <location line="+85"/>
@@ -5082,27 +5082,27 @@
     <message>
         <location line="-186"/>
         <source>A llama-server from a previous LLocr run is still running (pid %1, port %2).</source>
-        <translation type="unfinished"></translation>
+        <translation>Остался запущенным llama-server от предыдущего запуска LLocr (pid %1, порт %2).</translation>
     </message>
     <message>
         <location line="+26"/>
         <source>No orphaned server to terminate</source>
-        <translation type="unfinished"></translation>
+        <translation>Оставшийся сервер не найден</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>The orphaned server is already gone</source>
-        <translation type="unfinished"></translation>
+        <translation>Оставшийся сервер уже завершился</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Unable to terminate the process (pid %1)</source>
-        <translation type="unfinished"></translation>
+        <translation>Не удалось завершить процесс (pid %1)</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>Another LLocr instance is already running; local server operations are disabled.</source>
-        <translation type="unfinished">Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
+        <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
     </message>
     <message>
         <location line="+152"/>
@@ -5112,17 +5112,17 @@
     <message>
         <location line="+14"/>
         <source>Layout model is not selected — pick a model in Settings → Layout model</source>
-        <translation type="unfinished">Модель разметки не выбрана — выберите модель в Настройки → Модель разметки</translation>
+        <translation>Модель разметки не выбрана — выберите модель в Настройки → Модель разметки</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Layout model file not found: %1 — re-select the model in Settings → Layout model</source>
-        <translation type="unfinished">Файл модели разметки не найден: %1 — выберите модель заново в Настройки → Модель разметки</translation>
+        <translation>Файл модели разметки не найден: %1 — выберите модель заново в Настройки → Модель разметки</translation>
     </message>
     <message>
         <location line="+31"/>
         <source>%1 needs llama.cpp %2 or newer (this build is %3) — update the runtime in Settings → Runtime</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 требует llama.cpp %2 или новее (эта сборка — %3) — обновите рантайм в Настройки → Рантайм</translation>
     </message>
     <message>
         <location line="+85"/>
@@ -5137,7 +5137,7 @@
     <message>
         <location line="+11"/>
         <source>Switching to the layout model…</source>
-        <translation type="unfinished">Переключение на модель разметки…</translation>
+        <translation>Переключение на модель разметки…</translation>
     </message>
     <message>
         <location line="+53"/>
@@ -5147,7 +5147,7 @@
     <message>
         <location line="+8"/>
         <source>Server returned a malformed /v1/models response: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Сервер вернул некорректный ответ /v1/models: %1</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -5336,7 +5336,7 @@
     <message>
         <location line="+14"/>
         <source>Another LLocr instance is installing a runtime right now; try again in a moment.</source>
-        <translation type="unfinished"></translation>
+        <translation>Другой экземпляр LLocr сейчас устанавливает рантайм; повторите попытку чуть позже.</translation>
     </message>
     <message>
         <location line="+221"/>
@@ -5420,12 +5420,12 @@
         <location filename="../../src/runtime/SelfTestController.cpp" line="-32"/>
         <location line="+61"/>
         <source>Self-test is available only in Managed mode</source>
-        <translation type="unfinished"></translation>
+        <translation>Самопроверка доступна только в управляемом режиме</translation>
     </message>
     <message>
         <location line="-52"/>
         <source>Server not available</source>
-        <translation type="unfinished"></translation>
+        <translation>Сервер недоступен</translation>
     </message>
     <message>
         <location line="+17"/>
@@ -5441,7 +5441,7 @@
     <message>
         <location line="+9"/>
         <source>Recognition failed</source>
-        <translation type="unfinished"></translation>
+        <translation>Ошибка распознавания</translation>
     </message>
 </context>
 <context>
