@@ -14,10 +14,6 @@ ApplicationWindow {
     height: 420
     modality: Qt.NonModal
 
-    function logText() {
-        return RuntimeLog.serverLog || qsTr("No log output yet.")
-    }
-
     function bringToFront() {
         if (visibility === Window.Minimized)
             showNormal()
@@ -29,7 +25,6 @@ ApplicationWindow {
     onVisibleChanged: {
         if (visible) {
             logScroll.autoScroll = true
-            logScroll.showText()
             logScroll.scrollToBottom()
         }
     }
@@ -76,7 +71,7 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
             LLOLabel {
-                text: qsTr("%n line(s)", "", logArea.lineCount)
+                text: qsTr("%n line(s)", "", RuntimeLog.lineCount)
                 color: Theme.textMuted
             }
         }
@@ -112,22 +107,6 @@ ApplicationWindow {
             })
         }
 
-        function showText() {
-            if (autoScroll) {
-                logArea.text = root.logText()
-                return
-            }
-            const x = contentX
-            const y = contentY
-            logArea.text = root.logText()
-            // Assigning text resets the cursor to the start and TextArea.flickable
-            // follows the cursor, scrolling the view to the top.
-            Qt.callLater(function () {
-                logScroll.contentX = x
-                logScroll.contentY = y
-            })
-        }
-
         onContentYChanged: {
             if (dragging || moving)
                 autoScroll = isAtBottom()
@@ -153,21 +132,17 @@ ApplicationWindow {
             color: Theme.textPrimary
             selectByMouse: true
 
-            onTextChanged: {
-                if (logScroll.autoScroll)
-                    logScroll.scrollToBottom()
-            }
+            Component.onCompleted: RuntimeLog.attachLogView(textDocument)
         }
 
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
     }
 
-    Connections {
-        target: RuntimeLog
-        function onServerLogChanged() {
-            if (root.visible)
-                logScroll.showText()
-        }
+    LLOLabel {
+        anchors.centerIn: parent
+        visible: RuntimeLog.lineCount === 0
+        text: qsTr("No log output yet.")
+        color: Theme.textMuted
     }
 }

@@ -194,13 +194,15 @@ qt_add_library(llocr_runtime STATIC
     runtime/LaunchProfileStore.cpp
     runtime/LaunchParametersModel.h
     runtime/LaunchParametersModel.cpp
+    runtime/LogDocumentSync.h
+    runtime/LogDocumentSync.cpp
 )
 target_include_directories(llocr_runtime PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_runtime
     # Qt6::Qml is PUBLIC: SelfTestController.h / ModelInstaller.h include
     # <QQmlEngine>, so consumers need the include path
     PUBLIC llocr_config llocr_core llocr_models Qt6::Qml
-    PRIVATE Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent ZLIB::ZLIB
+    PRIVATE Qt6::Core Qt6::Gui Qt6::Network Qt6::Concurrent Qt6::Quick ZLIB::ZLIB
 )
 
 # One ProcessGuard implementation per platform; the other two are stubs, so the

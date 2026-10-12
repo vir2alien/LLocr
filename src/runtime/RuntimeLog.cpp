@@ -2,6 +2,8 @@
 #include <QDesktopServices>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QQmlEngine>
+#include <QQuickTextDocument>
 #include <QUrl>
 
 #include "config/RuntimePaths.h"
@@ -15,7 +17,7 @@ RuntimeLog::RuntimeLog(SettingsStore &settings, QObject *parent) : QObject(paren
 {
     m_flushTimer.setSingleShot(true);
     m_flushTimer.setInterval(200);
-    connect(&m_flushTimer, &QTimer::timeout, this, [this]() { emit serverLogChanged(); });
+    connect(&m_flushTimer, &QTimer::timeout, this, [this]() { flushToView(); });
 }
 
 void RuntimeLog::setServer(LlamaServerProcess *server)
@@ -26,18 +28,35 @@ void RuntimeLog::setServer(LlamaServerProcess *server)
         disconnect(m_server, nullptr, this, nullptr);
     m_server = server;
     m_flushTimer.stop();
+    m_lines.clear();
+    m_pendingDropped = 0;
     if (m_server) {
-        connect(m_server, &LlamaServerProcess::logLineAppended, this, [this](const QString &) { m_flushTimer.start(); });
+        m_lines = m_server->ringBuffer(kMaxLines);
+        connect(m_server, &LlamaServerProcess::logLineAppended, this, [this](const QString &line) {
+            // appendLine() skips blank lines, so an empty payload can only be
+            // clearLog()'s reset marker.
+            if (line.isEmpty()) {
+                m_lines.clear();
+                m_pendingDropped = 0;
+                m_flushTimer.stop();
+                flushToView();
+                return;
+            }
+            m_lines.append(line);
+            if (m_lines.size() > kMaxLines) {
+                m_pendingDropped += m_lines.size() - kMaxLines;
+                m_lines.remove(0, m_lines.size() - kMaxLines);
+            }
+            m_flushTimer.start();
+        });
         connect(m_server, &QObject::destroyed, this, [this]() { m_server = nullptr; });
     }
-    emit serverLogChanged();
+    flushToView();
 }
 
 QString RuntimeLog::serverLog() const
 {
-    if (!m_server)
-        return QString();
-    return m_server->ringBuffer(2000).join(QStringLiteral("\n"));
+    return m_lines.join(QLatin1Char('\n'));
 }
 
 QString RuntimeLog::serverLogPath() const
@@ -65,8 +84,7 @@ void RuntimeLog::clearServerLog()
 {
     if (m_server)
         m_server->clearLog();
-    m_flushTimer.stop();
-    emit serverLogChanged();
+    // The empty-line marker from clearLog() resets the mirror synchronously.
 }
 
 void RuntimeLog::openServerLogFolder()
@@ -74,6 +92,19 @@ void RuntimeLog::openServerLogFolder()
     const QString dir = serverLogDir();
     if (!dir.isEmpty())
         QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+}
+
+void RuntimeLog::attachLogView(QQuickTextDocument *view)
+{
+    m_sync.attach(view ? view->textDocument() : nullptr);
+    flushToView();
+}
+
+void RuntimeLog::flushToView()
+{
+    m_sync.apply(m_lines, m_pendingDropped, QString());
+    m_pendingDropped = 0;
+    emit serverLogChanged();
 }
 
 }  // namespace llocr

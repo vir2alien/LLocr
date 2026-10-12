@@ -3,9 +3,13 @@
 #include <QList>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QTimer>
 
 #include "core/StatusMessage.h"
+#include "runtime/LogDocumentSync.h"
+
+class QQuickTextDocument;
 
 namespace llocr {
 
@@ -13,7 +17,6 @@ class ProblemLog : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(QString logText READ logText NOTIFY logChanged)
     Q_PROPERTY(int count READ count NOTIFY logChanged)
     Q_PROPERTY(int errorCount READ errorCount NOTIFY logChanged)
     Q_PROPERTY(int warningCount READ warningCount NOTIFY logChanged)
@@ -36,6 +39,7 @@ public:
 
     Q_INVOKABLE void clear();
     Q_INVOKABLE void copyLog();
+    Q_INVOKABLE void attachLogView(QQuickTextDocument *view);
 
     void retranslate();
 
@@ -50,11 +54,16 @@ private:
 
     static constexpr int kMaxEntries = 2000;
 
-    void flush();
+    QString formatEntry(const Entry &entry) const;
+    QString headerLine() const;
+    void flushToView(bool forceFull = false);
 
     QList<Entry> m_entries;
     QTimer m_flushTimer;
-    int m_dropped = 0;  ///< entries fallen off the front, announced in logText()
+    int m_dropped = 0;  ///< entries fallen off the front, announced in headerLine()
+    QStringList m_lines;
+    int m_pendingDropped = 0;
+    LogDocumentSync m_sync;
 };
 
 }  // namespace llocr

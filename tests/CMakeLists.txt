@@ -519,6 +519,16 @@ target_link_libraries(test_llama_client PRIVATE
 )
 add_test(NAME test_llama_client COMMAND test_llama_client)
 
+# ---- Log view sync: incremental QTextDocument mirroring (QML-I3) ------------
+qt_add_executable(test_log_document_sync test_log_document_sync.cpp)
+
+target_link_libraries(test_log_document_sync PRIVATE
+    Qt6::Test
+    Qt6::Gui
+    llocr_runtime
+)
+add_test(NAME test_log_document_sync COMMAND test_log_document_sync)
+
 get_property(_llocr_all_tests DIRECTORY PROPERTY TESTS)
 foreach(_llocr_test IN LISTS _llocr_all_tests)
     get_property(_llocr_timeout TEST ${_llocr_test} PROPERTY TIMEOUT)

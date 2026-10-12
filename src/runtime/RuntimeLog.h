@@ -2,9 +2,14 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QTimer>
 
 #include <QQmlEngine>
+
+#include "runtime/LogDocumentSync.h"
+
+class QQuickTextDocument;
 
 namespace llocr {
 
@@ -17,18 +22,20 @@ class RuntimeLog : public QObject
     // See UiController.h: registered by hand in main.cpp until the module
     // singletons get their create() factories (stage 4).
 
-    Q_PROPERTY(QString serverLog READ serverLog NOTIFY serverLogChanged)
+    Q_PROPERTY(int lineCount READ lineCount NOTIFY serverLogChanged)
 
 public:
     explicit RuntimeLog(SettingsStore &settings, QObject *parent = nullptr);
 
     QString serverLog() const;
+    int lineCount() const { return m_lines.size(); }
 
     Q_INVOKABLE QString serverLogPath() const;
     Q_INVOKABLE QString serverLogDir() const;
     Q_INVOKABLE void copyServerLog();
     Q_INVOKABLE void clearServerLog();
     Q_INVOKABLE void openServerLogFolder();
+    Q_INVOKABLE void attachLogView(QQuickTextDocument *view);
 
     void setServer(LlamaServerProcess *server);
 
@@ -36,9 +43,16 @@ signals:
     void serverLogChanged();
 
 private:
+    static constexpr int kMaxLines = 2000;
+
+    void flushToView();
+
     SettingsStore &m_settings;
     LlamaServerProcess *m_server = nullptr;
     QTimer m_flushTimer;
+    QStringList m_lines;
+    int m_pendingDropped = 0;
+    LogDocumentSync m_sync;
 };
 
 }  // namespace llocr

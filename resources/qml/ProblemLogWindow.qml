@@ -14,10 +14,6 @@ ApplicationWindow {
     height: 460
     modality: Qt.NonModal
 
-    function logText() {
-        return Log.count > 0 ? Log.logText : qsTr("Nothing went wrong so far.")
-    }
-
     function bringToFront() {
         if (visibility === Window.Minimized)
             showNormal()
@@ -27,8 +23,10 @@ ApplicationWindow {
     }
 
     onVisibleChanged: {
-        if (visible)
-            logArea.text = logText()
+        if (visible) {
+            logScroll.autoScroll = true
+            logScroll.scrollToBottom()
+        }
     }
 
     background: Rectangle {
@@ -135,6 +133,34 @@ ApplicationWindow {
         contentWidth: logArea.contentWidth
         contentHeight: logArea.contentHeight
 
+        property bool autoScroll: true
+
+        function isAtBottom() {
+            return contentHeight - height - contentY < 24
+        }
+
+        function scrollToBottom() {
+            Qt.callLater(function () {
+                logScroll.contentY =
+                    Math.max(0, logScroll.contentHeight - logScroll.height)
+            })
+        }
+
+        onContentYChanged: {
+            if (dragging || moving)
+                autoScroll = isAtBottom()
+        }
+
+        onContentHeightChanged: {
+            if (autoScroll)
+                scrollToBottom()
+        }
+
+        onHeightChanged: {
+            if (autoScroll)
+                scrollToBottom()
+        }
+
         TextArea.flickable: TextArea {
             id: logArea
             readOnly: true
@@ -146,22 +172,17 @@ ApplicationWindow {
             font.preferShaping: false
             color: Theme.textPrimary
             selectByMouse: true
+
+            Component.onCompleted: Log.attachLogView(textDocument)
         }
 
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
     }
 
-    Connections {
-        target: Log
-        function onLogChanged() {
-            if (!root.visible)
-                return
-            // Keep the view pinned to the end while it is already there, so a
-            // batch of new entries does not yank a line the user is reading.
-            const atEnd = logScroll.atYEnd
-            logArea.text = root.logText()
-            if (atEnd)
-                logScroll.contentY = Math.max(0, logScroll.contentHeight - logScroll.height)
-        }
+    LLOLabel {
+        anchors.centerIn: parent
+        visible: Log.count === 0
+        text: qsTr("Nothing went wrong so far.")
+        color: Theme.textMuted
     }
 }
