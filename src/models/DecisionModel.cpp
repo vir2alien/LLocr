@@ -76,12 +76,9 @@ DecisionResult DecisionModel::parseResponse(const QByteArray &responseData)
 
 QFuture<DecisionResult> DecisionModel::judge(const DecisionRequest &request, const ConnectionConfig &config)
 {
-    auto client = std::make_shared<LlamaClient>();
-    m_activeClient = client;
-
     return runChatExchange<DecisionResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
                                            config,
-                                           client,
+                                           m_activeClient,
                                            [](const QByteArray &body) { return parseResponse(body); },
                                            QCoreApplication::translate("DecisionModel", "Failed to encode the block image"),
                                            QStringLiteral("/v1/systemone"));

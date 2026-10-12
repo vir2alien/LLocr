@@ -287,6 +287,21 @@ private:
 
     void applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result);
 
+    // The values behind NOTIFY availabilityChanged; the signal fires only when
+    // one of them actually flips, so a per-block queue update does not make
+    // QML rescan the document (C++-21).
+    struct AvailabilityFlags {
+        bool pageVerification = false;
+        bool allPageVerification = false;
+        bool pageProblemRecognition = false;
+        bool allProblemRecognition = false;
+        bool pageBlocksRecognition = false;
+        bool canRecognize = false;
+        bool actionsIdle = false;
+        bool operator==(const AvailabilityFlags &) const = default;
+    };
+    void updateAvailability();
+
     bool collectProjectData(ProjectData *data, QString *error);
     void applyProjectData(const ProjectData &data);
     bool projectGuardsBusy() const;
@@ -337,6 +352,7 @@ private:
     bool m_projectBusy = false;
     QUrl m_projectPath;
     std::shared_ptr<QTemporaryDir> m_projectSessionDir;
+    AvailabilityFlags m_availability;
 
     void notifyPageListGrown();
     void markPageEdited(int index);

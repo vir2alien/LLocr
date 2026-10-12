@@ -73,7 +73,7 @@ AppController::AppController(SettingsStore &settings,
         if (!m_recognition.busy() && !m_recognitionStopped && m_settings.autoCheck())
             QTimer::singleShot(0, this, [this]() { m_verify.checkAllEnabledBlocks(); });
         emit busyChanged();
-        emit availabilityChanged();
+        updateAvailability();
     });
     connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_recognition, &RecognitionController::rawResultReady, this, &AppController::applyRawResult);
@@ -81,27 +81,27 @@ AppController::AppController(SettingsStore &settings,
     // The verification filter changes which blocks «Проверить» would pick up,
     // so the availability flags follow it live: the model signal covers edits
     // in the settings window, the store's modelChanged covers load/reset.
-    const auto verificationFilterChanged = [this]() { emit availabilityChanged(); };
+    const auto verificationFilterChanged = [this]() { updateAvailability(); };
     connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, verificationFilterChanged);
     connect(&verification, &VerificationPromptStore::modelChanged, this, verificationFilterChanged);
 
     connect(&m_verify, &VerificationQueueController::stateChanged, this, [this]() {
         emit checkStateChanged();
-        emit availabilityChanged();
+        updateAvailability();
     });
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::blockChecked, this, &AppController::applyCheckResultToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
 
-    connect(this, &AppController::pageChanged, this, &AppController::availabilityChanged);
-    connect(this, &AppController::documentChanged, this, &AppController::availabilityChanged);
-    connect(this, &AppController::resultChanged, this, &AppController::availabilityChanged);
-    connect(this, &AppController::configChanged, this, &AppController::availabilityChanged);
-    connect(this, &AppController::importingChanged, this, &AppController::availabilityChanged);
+    connect(this, &AppController::pageChanged, this, &AppController::updateAvailability);
+    connect(this, &AppController::documentChanged, this, &AppController::updateAvailability);
+    connect(this, &AppController::resultChanged, this, &AppController::updateAvailability);
+    connect(this, &AppController::configChanged, this, &AppController::updateAvailability);
+    connect(this, &AppController::importingChanged, this, &AppController::updateAvailability);
 
     connect(&m_layout, &LayoutController::busyChanged, this, [this]() {
         emit layoutStateChanged();
-        emit availabilityChanged();
+        updateAvailability();
     });
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
@@ -1133,6 +1133,23 @@ bool AppController::pageVerificationSupported() const
 bool AppController::allPageVerificationSupported() const
 {
     return m_verify.allPageVerificationSupported();
+}
+
+void AppController::updateAvailability()
+{
+    const AvailabilityFlags current{
+        pageVerificationSupported(),
+        allPageVerificationSupported(),
+        pageProblemRecognitionSupported(),
+        allProblemRecognitionSupported(),
+        pageBlocksRecognitionSupported(),
+        canRecognize(),
+        actionsIdle(),
+    };
+    if (current == m_availability)
+        return;
+    m_availability = current;
+    emit availabilityChanged();
 }
 
 bool AppController::pageProblemRecognitionSupported() const

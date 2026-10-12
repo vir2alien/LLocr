@@ -7,6 +7,7 @@
 #include <QVariant>
 
 #include <functional>
+#include <map>
 #include <vector>
 
 #include "config/RuntimePaths.h"
@@ -117,6 +118,7 @@ private:
 private slots:
     void recomputeConfigValid();
     void recomputeLaunchConfigDirty();
+    void invalidateResolvedCache();
 
 private:
     QString roleModelPath(ConnectionRole role) const;
@@ -172,6 +174,10 @@ private:
     std::vector<PendingResolve> m_resolveCallbacks;
     std::vector<PendingResolve> m_deferredResolves;
     ConnectionRole m_resolveRole = ConnectionRole::Ocr;
+    // Per-role resolved connections of a Ready server that runs the role;
+    // served without the /v1/models round-trip until a state transition or
+    // any settings change clears them.
+    std::map<ConnectionRole, ResolvedConnection> m_resolvedCache;
     bool m_switching = false;
     bool m_resolveInProgress = false;
     QNetworkAccessManager *m_modelsNet = nullptr;

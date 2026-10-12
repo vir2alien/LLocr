@@ -873,6 +873,90 @@ private slots:
         runtime.stopServer();
     }
 
+    // Per-block verification calls must not redo the /v1/models round-trip
+    // while the server is Ready and nothing changed (C++-19): the cache answers
+    // synchronously, without an event-loop turn.
+    void repeatedResolveOnReadyServerIsSynchronous()
+    {
+        QTemporaryDir dir;
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        int done = 0;
+        ResolvedConnection first;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            first = c;
+            ++done;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+        QVERIFY(!first.baseUrl.isEmpty());
+
+        ResolvedConnection second;
+        bool secondCalled = false;
+        runtime.ensureConnectionReady([&second, &secondCalled](const ResolvedConnection &c) {
+            second = c;
+            secondCalled = true;
+        });
+        QVERIFY(secondCalled);
+        QCOMPARE(second.baseUrl, first.baseUrl);
+        QCOMPARE(second.modelId, first.modelId);
+
+        runtime.stopServer();
+    }
+
+    // A settings change must drop the cached connection: the next resolve goes
+    // through /v1/models again (delivered asynchronously).
+    void resolveCacheInvalidatesOnSettingsChange()
+    {
+        QTemporaryDir dir;
+        QFile model(dir.filePath(QStringLiteral("m.gguf")));
+        QVERIFY(model.open(QIODevice::WriteOnly));
+        model.write("x");
+        model.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        int done = 0;
+        runtime.ensureConnectionReady([&done](const ResolvedConnection &) { ++done; });
+        QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
+
+        store.setConnectionTimeoutMs(store.connectionTimeoutMs() + 1000);
+
+        bool called = false;
+        runtime.ensureConnectionReady([&called](const ResolvedConnection &c) {
+            QVERIFY(!c.baseUrl.isEmpty());
+            called = true;
+        });
+        QVERIFY(!called);  // not served from the invalidated cache
+        QTRY_VERIFY_WITH_TIMEOUT(called, 15000);
+
+        runtime.stopServer();
+    }
+
     void concurrentCallersShareFuture()
     {
         QTemporaryDir dir;

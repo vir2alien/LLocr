@@ -79,6 +79,7 @@ RuntimeController::RuntimeController(SettingsStore &settings, LaunchProfileStore
     recomputeLaunchConfigDirty();
     connectEveryChangeSignal(&m_settings, this, "recomputeConfigValid");
     connectEveryChangeSignal(&m_settings, this, "recomputeLaunchConfigDirty");
+    connectEveryChangeSignal(&m_settings, this, "invalidateResolvedCache");
     connect(&m_settings, &SettingsStore::runtimeRootDirChanged, this, &RuntimeController::scanForOrphanedServer);
     connect(&m_settings, &SettingsStore::runtimeModelsDirChanged, this, &RuntimeController::scanForOrphanedServer);
     // A saved launch profile is a launch-setting change like any other.
@@ -167,6 +168,7 @@ void RuntimeController::setState(RuntimeState next)
     if (m_state == next)
         return;
     m_state = next;
+    m_resolvedCache.clear();
     if (next != RuntimeState::Starting && next != RuntimeState::Ready) {
         m_hasStartedConfig = false;
         if (m_launchConfigDirty) {
@@ -231,6 +233,11 @@ void RuntimeController::recomputeLaunchConfigDirty()
         return;
     m_launchConfigDirty = dirty;
     emit launchConfigDirtyChanged();
+}
+
+void RuntimeController::invalidateResolvedCache()
+{
+    m_resolvedCache.clear();
 }
 
 ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings)
@@ -386,6 +393,19 @@ void RuntimeController::ensureConnectionReady(QObject *context, ConnectionRole r
         return;
     }
 
+    // Steady state: the server is Ready on this role and nothing that feeds
+    // the connection has changed since the last resolve. Answering the
+    // per-block verification calls from the cache keeps them off the
+    // /v1/models round-trip; every state transition or settings change
+    // clears it, and an in-flight resolve follows the queue below.
+    if (!m_resolveInProgress && !m_switching && m_state == RuntimeState::Ready && !m_lockedOut && serverRunsRole(role)) {
+        const auto cached = m_resolvedCache.find(role);
+        if (cached != m_resolvedCache.end()) {
+            onResolved(cached->second);
+            return;
+        }
+    }
+
     PendingResolve pending;
     pending.context = context;
     pending.guarded = context != nullptr;
@@ -480,6 +500,8 @@ void RuntimeController::completeResolve(ResolvedConnection conn)
     if (!m_resolveInProgress)
         return;
     m_resolveInProgress = false;
+    if (conn.error.isEmpty() && !conn.baseUrl.isEmpty())
+        m_resolvedCache[m_resolveRole] = conn;
     const auto callbacks = std::move(m_resolveCallbacks);
     m_resolveCallbacks.clear();
     deliverCallbacks(callbacks, conn);

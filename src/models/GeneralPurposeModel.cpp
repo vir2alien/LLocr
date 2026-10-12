@@ -119,12 +119,9 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
 
 QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request, const ConnectionConfig &config)
 {
-    auto client = std::make_shared<LlamaClient>();
-    m_activeClient = client;
-
     return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
                                         config,
-                                        client,
+                                        m_activeClient,
                                         [](const QByteArray &body) { return parseResponse(body); },
                                         QCoreApplication::translate("GeneralPurposeModel", "Failed to encode the block image"));
 }

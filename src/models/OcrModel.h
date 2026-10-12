@@ -42,7 +42,10 @@ protected:
 
 private:
     QString m_id;
-    std::shared_ptr<LlamaClient> m_activeClient;
+    // One client (and its QNAM) for the model's lifetime: the per-request
+    // client dropped the HTTP keep-alive, so every page/block opened a fresh
+    // TCP connection. Requests on one model are serial (busy-gated).
+    std::shared_ptr<LlamaClient> m_activeClient = std::make_shared<LlamaClient>();
 };
 
 }  // namespace llocr
