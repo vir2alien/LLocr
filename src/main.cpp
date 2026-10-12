@@ -121,11 +121,13 @@ int main(int argc, char *argv[])
 
     llocr::InstalledState installedState(settingsStore);
 
-    llocr::RuntimeController runtimeController(settingsStore, launchProfiles, &installedState);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
-
+    // Loggers outlive their owners by construction: declared first so the
+    // owners' teardown cannot touch a dead log target.
     llocr::RuntimeLog runtimeLog(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeLog", &runtimeLog);
+
+    llocr::RuntimeController runtimeController(settingsStore, launchProfiles, &installedState);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
     runtimeController.setLogTarget(&runtimeLog);
 
     llocr::SelfTestController selfTestController(settingsStore, runtimeController, requestProfilesOcr);
@@ -150,8 +152,8 @@ int main(int argc, char *argv[])
 
     connectShutdownHandlers(app, instanceGuard, runtimeController, runtimeInstaller, modelInstaller);
 
-    llocr::AppController appController(settingsStore, runtimeController, requestProfilesOcr, requestProfilesValidate, requestProfilesLayout, verificationPrompts);
     llocr::ProblemLog problemLog;
+    llocr::AppController appController(settingsStore, runtimeController, requestProfilesOcr, requestProfilesValidate, requestProfilesLayout, verificationPrompts);
     appController.setProblemLog(&problemLog);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Log", &problemLog);
     llocr::UiController uiController(settingsStore);

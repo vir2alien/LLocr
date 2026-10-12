@@ -73,6 +73,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString decisionRequestProfileId READ decisionRequestProfileId WRITE setDecisionRequestProfileId NOTIFY decisionRequestProfileIdChanged)
     Q_PROPERTY(QString decisionModelName READ decisionModelName WRITE setDecisionModelName NOTIFY decisionModelNameChanged)
     Q_PROPERTY(double decisionMatchThreshold READ decisionMatchThreshold WRITE setDecisionMatchThreshold NOTIFY decisionMatchThresholdChanged)
+    Q_PROPERTY(double defaultDecisionMatchThreshold READ defaultDecisionMatchThreshold CONSTANT)
 
     Q_PROPERTY(QString layoutLaunchModelPath READ layoutLaunchModelPath WRITE setLayoutLaunchModelPath NOTIFY layoutLaunchModelPathChanged)
     Q_PROPERTY(QString layoutLaunchMmprojPath READ layoutLaunchMmprojPath WRITE setLayoutLaunchMmprojPath NOTIFY layoutLaunchMmprojPathChanged)
@@ -220,6 +221,7 @@ public:
     QString decisionModelName() const;
     void setDecisionModelName(const QString &name);
     double decisionMatchThreshold() const;
+    double defaultDecisionMatchThreshold() const;
     void setDecisionMatchThreshold(double threshold);
 
     QString layoutLaunchModelPath() const;

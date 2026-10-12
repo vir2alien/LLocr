@@ -67,7 +67,7 @@ Item {
 
                         ColumnLayout {
                             id: paneLayout
-                            width: rolePane.width
+                            width: rolePane.availableWidth
                             spacing: 6
 
                             InstallerStatusLabel {

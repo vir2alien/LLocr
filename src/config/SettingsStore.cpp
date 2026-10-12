@@ -933,6 +933,11 @@ void SettingsStore::setDecisionModelName(const QString &name)
     emit decisionModelNameChanged();
 }
 
+double SettingsStore::defaultDecisionMatchThreshold() const
+{
+    return kDefaultDecisionMatchThreshold;
+}
+
 double SettingsStore::decisionMatchThreshold() const
 {
     const double v = m_settings.value(kDecisionMatchThreshold, kDefaultDecisionMatchThreshold).toDouble();

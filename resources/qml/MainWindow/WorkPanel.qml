@@ -136,6 +136,16 @@ Rectangle {
                         Controller.attachBlockTextHighlighter(textArea.textDocument, Theme.selected)
                     }
 
+                    // The attach is idempotent (setColor on the existing
+                    // highlighter): re-push on theme switches, whose color the
+                    // one-shot attach would otherwise freeze.
+                    Connections {
+                        target: Theme
+                        function onDarkChanged() {
+                            Controller.attachBlockTextHighlighter(textArea.textDocument, Theme.selected)
+                        }
+                    }
+
                     TapHandler {
                         acceptedButtons: Qt.LeftButton
                         onTapped: (eventPoint) => {

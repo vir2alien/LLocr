@@ -32,7 +32,7 @@ Item {
     function resetValues() {
         root.profiles.loadDefaultDraft()
         if (root.decisionRole)
-            thresholdSpin.value = Math.round(Settings.decisionMatchThreshold * 100)
+            thresholdSpin.value = Math.round(Settings.defaultDecisionMatchThreshold * 100)
     }
 
     ColumnLayout {

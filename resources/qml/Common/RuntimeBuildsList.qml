@@ -233,7 +233,7 @@ ListView {
                 enabled: root.activeRow ? !root.activeRow.active && !RuntimeInstaller.busy : false
                 onTriggered: {
                     rowMenu.close()
-                    deleteBuildDialog.pendingIndex = root.activeRow.index
+                    deleteBuildDialog.pendingTag = root.activeRow.tag
                     deleteBuildDialog.pendingLabel = root.activeRow.build.length
                             ? root.activeRow.build : root.activeRow.tag
                     deleteBuildDialog.open()
@@ -260,7 +260,7 @@ ListView {
         width: 380
         title: qsTr("Delete build")
 
-        property int pendingIndex: -1
+        property string pendingTag: ""
         property string pendingLabel: ""
 
         onOpened: deleteButton.forceActiveFocus()
@@ -297,7 +297,7 @@ ListView {
                     emphasis: true
                     Keys.onEscapePressed: deleteBuildDialog.close()
                     onClicked: {
-                        const err = RuntimeInstaller.removeBuild(deleteBuildDialog.pendingIndex)
+                        const err = RuntimeInstaller.removeBuild(deleteBuildDialog.pendingTag)
                         deleteBuildDialog.close()
                         if (err.length)
                             root.actionError(err)

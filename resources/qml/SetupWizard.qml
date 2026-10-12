@@ -146,7 +146,13 @@ Dialog {
             LLOButton {
                 text: qsTr("Back")
                 visible: wizard.current > 0 && wizard.current < wizard.lastStep
-                onClicked: wizard.current = Math.max(0, wizard.current - 1)
+                onClicked: {
+                    // Going back reconsiders the mode choice: the endpoint
+                    // typed on the external step is abandoned, not saved.
+                    if (wizard.currentStep === stepExternal)
+                        stepExternal.revertValues()
+                    wizard.current = Math.max(0, wizard.current - 1)
+                }
             }
             LLOButton {
                 text: wizard.current === wizard.lastStep ? qsTr("Finish") : qsTr("Next")

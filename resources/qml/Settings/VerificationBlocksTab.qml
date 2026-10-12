@@ -239,7 +239,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.topMargin: Theme.spacing
-            contentWidth: width
+            contentWidth: availableWidth
             contentHeight: columnsRow.implicitHeight
 
             RowLayout {

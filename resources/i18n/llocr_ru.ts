@@ -1499,6 +1499,13 @@
     </message>
 </context>
 <context>
+    <name>MarkdownPreview</name>
+    <message>
+        <source>Failed to load the preview page (%1).</source>
+        <translation>Не удалось загрузить страницу предпросмотра (%1).</translation>
+    </message>
+</context>
+<context>
     <name>ModelDownloadList</name>
     <message>
         <location filename="../qml/Common/ModelDownloadList.qml" line="+43"/>

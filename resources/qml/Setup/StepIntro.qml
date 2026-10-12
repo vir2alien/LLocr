@@ -35,6 +35,7 @@ Item {
         Item { implicitHeight: 6 }
 
         InterfaceSettings {
+            Layout.fillWidth: true
             Layout.fillHeight: true
         }
     }

@@ -574,6 +574,16 @@ QString RuntimeInstaller::activateBuild(int index)
     return QString();
 }
 
+QString RuntimeInstaller::removeBuild(const QString &tag)
+{
+    const QList<InstalledBuildInfo> &builds = m_installedBuilds->builds();
+    for (int i = 0; i < builds.size(); ++i) {
+        if (builds.at(i).tag == tag)
+            return removeBuild(i);
+    }
+    return tr("No such build");
+}
+
 QString RuntimeInstaller::removeBuild(int index)
 {
     if (m_busy) {

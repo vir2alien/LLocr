@@ -14,6 +14,13 @@ Item {
     property bool complete: rtExternal.baseUrlText.trim().length > 0
     property bool valuesLoaded: false
 
+    // Called by the wizard's Back: hides the step without committing the
+    // typed endpoint, so re-entering the step shows the saved settings again.
+    function revertValues() {
+        valuesLoaded = false
+        rtExternal.loadValues()
+    }
+
     onVisibleChanged: {
         if (visible) {
             rtExternal.loadValues()

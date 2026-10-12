@@ -82,6 +82,9 @@ public:
     Q_INVOKABLE QString activateBuild(int index);
     Q_INVOKABLE QString openBuildFolder(int index);
     Q_INVOKABLE QString removeBuild(int index);
+    // Tag-based lookup for QML: a row number captured when a dialog opened can
+    // go stale if the model rescan shifts rows before the confirmation.
+    Q_INVOKABLE QString removeBuild(const QString &tag);
     Q_INVOKABLE static QString backendDisplayName(const QString &backend);
 
     QString updateBuild() const;
