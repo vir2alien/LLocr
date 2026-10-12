@@ -130,6 +130,12 @@ AppController::AppController(SettingsStore &settings,
     connect(this, &AppController::resultChanged, this, &AppController::blockTextRangeChanged);
     connect(this, &AppController::editStateChanged, this, &AppController::blockTextRangeChanged);
     connect(this, &AppController::selectedBoxChanged, this, &AppController::blockTextRangeChanged);
+    // The parser options shape the block-to-text mapping; the memoized rebuild
+    // has no revision to key on for them.
+    connect(&m_settings, &SettingsStore::parserIdChanged, this, &AppController::invalidateRebuildCache);
+    connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, &AppController::invalidateRebuildCache);
+    connect(&m_settings, &SettingsStore::keepPageNumbersChanged, this, &AppController::invalidateRebuildCache);
+    connect(&m_settings, &SettingsStore::tablesAsHtmlChanged, this, &AppController::invalidateRebuildCache);
 }
 
 AppController::~AppController() = default;
@@ -179,30 +185,38 @@ IOutputParser::RebuiltPageText AppController::currentPageRebuild() const
     const DocumentPage &page = m_document.page(m_currentPage);
     if (page.result.pages.isEmpty())
         return {};
+    const QString shown = pageText(m_currentPage);
+    if (m_rebuildCachePage == m_currentPage && m_rebuildCacheDocRevision == m_docRevision && m_rebuildCacheCropRevision == m_cropRevision && m_rebuildCacheText == shown)
+        return m_rebuildCache;
+
     const auto parser = makeParser();
     if (!parser)
         return {};
     IOutputParser::RebuiltPageText rebuild = parser->rebuildTextWithRanges(page.result.pages.first());
-    if (rebuild.ranges.isEmpty())
-        return {};
 
-    const QString shown = pageText(m_currentPage);
-    if (rebuild.text == shown)
-        return rebuild;
-
-    QList<BlockTextRange> reanchored;
-    int searchFrom = 0;
-    for (const BlockTextRange &range : rebuild.ranges) {
-        const QString blockText = rebuild.text.mid(range.start, range.length);
-        if (blockText.isEmpty())
-            continue;
-        const int pos = shown.indexOf(blockText, searchFrom);
-        if (pos < 0)
-            continue;
-        reanchored.append({range.boxIndex, pos, range.length});
-        searchFrom = pos + range.length;
+    if (!rebuild.ranges.isEmpty() && rebuild.text != shown) {
+        QList<BlockTextRange> reanchored;
+        int searchFrom = 0;
+        for (const BlockTextRange &range : rebuild.ranges) {
+            const QString blockText = rebuild.text.mid(range.start, range.length);
+            if (blockText.isEmpty())
+                continue;
+            const int pos = shown.indexOf(blockText, searchFrom);
+            if (pos < 0)
+                continue;
+            reanchored.append({range.boxIndex, pos, range.length});
+            searchFrom = pos + range.length;
+        }
+        rebuild.text = shown;
+        rebuild.ranges = reanchored;
     }
-    return {shown, reanchored};
+
+    m_rebuildCachePage = m_currentPage;
+    m_rebuildCacheDocRevision = m_docRevision;
+    m_rebuildCacheCropRevision = m_cropRevision;
+    m_rebuildCacheText = shown;
+    m_rebuildCache = rebuild;
+    return rebuild;
 }
 
 bool AppController::blockTextMapped() const
@@ -252,10 +266,31 @@ void AppController::attachBlockTextHighlighter(QObject *textDocument, const QCol
     updateBlockHighlight();
 }
 
+void AppController::invalidateRebuildCache()
+{
+    if (m_rebuildCachePage == -1)
+        return;  // nothing memoized — the mapping cannot have changed
+    m_rebuildCachePage = -1;
+    m_rebuildCacheDocRevision = -1;
+    m_rebuildCacheCropRevision = -1;
+    m_rebuildCacheText.clear();
+    m_rebuildCache = {};
+    // The ranges the QML property and the highlighter see come from the memo;
+    // without this announcement they would wait for the next edit.
+    emit blockTextRangeChanged();
+}
+
 void AppController::updateBlockHighlight()
 {
     if (!m_blockHighlighter)
         return;
+    if (m_selectedBox < 0) {
+        // No selected block — the highlight is off; do not pay a page rebuild
+        // for it on every keystroke.
+        m_blockHighlighter->setStart(-1);
+        m_blockHighlighter->setLength(0);
+        return;
+    }
     const QList<int> range = blockTextRange(m_selectedBox);
     m_blockHighlighter->setStart(range.isEmpty() ? -1 : range.at(0));
     m_blockHighlighter->setLength(range.isEmpty() ? 0 : range.at(1));

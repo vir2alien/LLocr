@@ -1262,6 +1262,39 @@ private slots:
         QCOMPARE(controller.blockTextRange(1), QList<int>({20, 17}));
     }
 
+    // The rebuild memo must follow its key: an unrecognized page cannot serve
+    // the previous page's cached mapping, and a parser-option change drops the
+    // memo and re-announces the ranges.
+    void blockTextMemoFollowsThePageAndParserOptions()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
+        QVERIFY(controller.blockTextMapped());
+
+        controller.setCurrentPage(1);
+        QVERIFY(!controller.blockTextMapped());
+
+        controller.setCurrentPage(0);
+        QVERIFY(controller.blockTextMapped());
+        QCOMPARE(controller.blockTextRange(0), QList<int>({0, 18}));
+
+        QSignalSpy rangeSpy(&controller, &AppController::blockTextRangeChanged);
+        m_settings->setTablesAsHtml(!m_settings->tablesAsHtml());
+        QCOMPARE(rangeSpy.count(), 1);
+        QVERIFY(controller.blockTextMapped());
+    }
+
     // The model must refuse a verbatim copy of another page's text — that is
     // cross-page contamination (a stale panel), not a user edit.
     void setCurrentPageTextRefusesAnotherPagesText()

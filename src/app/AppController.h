@@ -281,6 +281,7 @@ private:
     QString pageText(int index) const;
     QString rebuildPageText(const OcrPage &page) const;
     IOutputParser::RebuiltPageText currentPageRebuild() const;
+    void invalidateRebuildCache();
     void updateBlockHighlight();
     void updateBoxesForCurrent();
     const BoundingBox *selectedBox() const;
@@ -339,6 +340,16 @@ private:
     int m_selectedBox = -1;
     BlockTextHighlighter *m_blockHighlighter = nullptr;  ///< owned; created on first attach
     bool m_recognitionStopped = false;
+
+    // Memo of currentPageRebuild() keyed by its inputs (page, the structural
+    // revisions, the shown text) plus parser options: a keystroke re-reads the
+    // rebuild several times (highlight, QML range property), and the regex
+    // pass over the blocks must not run per read.
+    mutable IOutputParser::RebuiltPageText m_rebuildCache;
+    mutable int m_rebuildCachePage = -1;
+    mutable int m_rebuildCacheDocRevision = -1;
+    mutable int m_rebuildCacheCropRevision = -1;
+    mutable QString m_rebuildCacheText;
 
     LruImageCache m_previewCache{kPreviewCacheBudgetBytes};
     mutable QMutex m_previewMutex;
