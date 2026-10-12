@@ -29,6 +29,14 @@ ToolBar {
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
 
+    // Fusion's MenuItem draws no shortcut text, so each item with a shortcut
+    // carries its own caption; on macOS the stored "Ctrl+" is really Cmd.
+    function shortcutDisplayText(sequence) {
+        if (Qt.platform.os !== "osx")
+            return sequence
+        return String(sequence).replace("Ctrl+Shift+", "⇧⌘").replace("Ctrl+", "⌘")
+    }
+
     background: Rectangle {
         color: Theme.surface
 
@@ -142,10 +150,28 @@ ToolBar {
         id: fileMenu
 
         MenuItem {
-            text: qsTr("Open…")
-            enabled: !Controller.busy && !Controller.importing && !Controller.exporting
-                     && !Controller.checkBusy
-            onTriggered: headerRoot.openFileRequested()
+            id: openItem
+
+            action: Action {
+                id: openAction
+                text: qsTr("Open…")
+                shortcut: "Ctrl+O"
+                enabled: !Controller.busy && !Controller.importing && !Controller.exporting
+                         && !Controller.checkBusy
+                onTriggered: headerRoot.openFileRequested()
+            }
+
+            rightPadding: padding + spacing + openShortcutLabel.implicitWidth
+
+            Label {
+                id: openShortcutLabel
+                anchors.right: parent.right
+                anchors.rightMargin: openItem.padding
+                anchors.verticalCenter: parent.verticalCenter
+                font: Theme.caption
+                color: Theme.textMuted
+                text: headerRoot.shortcutDisplayText(openAction.shortcut)
+            }
         }
         MenuItem {
             text: qsTr("Open project…")
@@ -155,18 +181,54 @@ ToolBar {
         }
         MenuSeparator {}
         MenuItem {
-            text: qsTr("Save project")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.importing
+            id: saveItem
+
+            action: Action {
+                id: saveAction
+                text: qsTr("Save project")
+                shortcut: "Ctrl+S"
+                enabled: Controller.hasImage && !Controller.busy && !Controller.importing
                          && !Controller.exporting && !Controller.projectBusy
                          && !Controller.checkRunning
-            onTriggered: headerRoot.saveProjectRequested()
+                onTriggered: headerRoot.saveProjectRequested()
+            }
+
+            rightPadding: padding + spacing + saveShortcutLabel.implicitWidth
+
+            Label {
+                id: saveShortcutLabel
+                anchors.right: parent.right
+                anchors.rightMargin: saveItem.padding
+                anchors.verticalCenter: parent.verticalCenter
+                font: Theme.caption
+                color: Theme.textMuted
+                text: headerRoot.shortcutDisplayText(saveAction.shortcut)
+            }
         }
         MenuItem {
-            text: qsTr("Save project as…")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.importing
+            id: saveAsItem
+
+            action: Action {
+                id: saveAsAction
+                text: qsTr("Save project as…")
+                shortcut: "Ctrl+Shift+S"
+                enabled: Controller.hasImage && !Controller.busy && !Controller.importing
                          && !Controller.exporting && !Controller.projectBusy
                          && !Controller.checkRunning
-            onTriggered: headerRoot.saveProjectAsRequested()
+                onTriggered: headerRoot.saveProjectAsRequested()
+            }
+
+            rightPadding: padding + spacing + saveAsShortcutLabel.implicitWidth
+
+            Label {
+                id: saveAsShortcutLabel
+                anchors.right: parent.right
+                anchors.rightMargin: saveAsItem.padding
+                anchors.verticalCenter: parent.verticalCenter
+                font: Theme.caption
+                color: Theme.textMuted
+                text: headerRoot.shortcutDisplayText(saveAsAction.shortcut)
+            }
         }
         MenuSeparator {}
         MenuItem {
@@ -200,6 +262,7 @@ ToolBar {
             text: qsTr("Runtime")
             onTriggered: headerRoot.openRuntimeSettingsRequested()
         }
+        MenuSeparator {}
         MenuItem {
             text: qsTr("OCR model")
             onTriggered: headerRoot.openOcrModelSettingsRequested()

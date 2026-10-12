@@ -28,6 +28,10 @@ ApplicationWindow {
         window: mainWindow
     }
 
+    // The secondary windows are top-level and non-modal: closing the main
+    // window must take the process (and the managed llama-server) with it.
+    onClosing: Qt.quit()
+
     function saveCurrentProject()
     {
         if (Controller.projectPath && Controller.projectPath.toString() !== "")
@@ -184,21 +188,6 @@ ApplicationWindow {
         defaultSuffix: "llocr"
         nameFilters: [qsTr("LLocr project (*.llocr)")]
         onAccepted: Controller.saveProject(selectedFile)
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Open]
-        onActivated: fileDialog.open()
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Save]
-        onActivated: mainWindow.saveCurrentProject()
-    }
-
-    Shortcut {
-        sequences: [StandardKey.SaveAs]
-        onActivated: saveProjectDialog.open()
     }
 
     footer: Footer {
