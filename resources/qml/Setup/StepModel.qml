@@ -20,12 +20,6 @@ Item {
         ModelInstaller.rescanRegistry()
     }
 
-    Component.onCompleted: {
-        ModelInstaller.refreshInstalled()
-        ModelInstaller.reloadPresets()
-        ModelInstaller.rescanRegistry()
-    }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 20

@@ -40,6 +40,26 @@ ApplicationWindow {
             saveProjectDialog.open()
     }
 
+    // The secondary windows are created on first use (QML-13): a Loader is the
+    // window's handle, and windowProxy() keeps the consumers' bringToFront()
+    // API (the footer and the runtimeSettingsRef tabs) without pre-creating
+    // anything.
+    function showWindow(loader) {
+        if (!loader.active)
+            loader.active = true
+        loader.item.bringToFront()
+    }
+
+    function windowProxy(loader) {
+        return { bringToFront: function() { showWindow(loader) } }
+    }
+
+    function openSetupWizard() {
+        setupWizardLoader.active = true
+        const wizard = setupWizardLoader.item as SetupWizard
+        wizard.startWizard()
+    }
+
     header: Header {
         onOpenFileRequested: fileDialog.open()
         onOpenProjectRequested: openProjectDialog.open()
@@ -53,15 +73,15 @@ ApplicationWindow {
                 exportDialog.open()
             }
         }
-        onSetupWizardRequested: setupWizard.startWizard()
-        onOpenUiSettingsRequested: uiSettingsWindow.bringToFront()
-        onOpenOutputSettingsRequested: outputSettingsWindow.bringToFront()
-        onOpenVerificationSettingsRequested: verificationSettingsWindow.bringToFront()
-        onOpenRuntimeSettingsRequested: runtimeSettingsWindow.bringToFront()
-        onOpenOcrModelSettingsRequested: ocrModelSettingsWindow.bringToFront()
-        onOpenDecisionModelSettingsRequested: decisionModelSettingsWindow.bringToFront()
-        onOpenCheckModelSettingsRequested: checkModelSettingsWindow.bringToFront()
-        onOpenLayoutModelSettingsRequested: layoutModelSettingsWindow.bringToFront()
+        onSetupWizardRequested: mainWindow.openSetupWizard()
+        onOpenUiSettingsRequested: showWindow(uiSettingsLoader)
+        onOpenOutputSettingsRequested: showWindow(outputSettingsLoader)
+        onOpenVerificationSettingsRequested: showWindow(verificationSettingsLoader)
+        onOpenRuntimeSettingsRequested: showWindow(runtimeSettingsLoader)
+        onOpenOcrModelSettingsRequested: showWindow(ocrModelSettingsLoader)
+        onOpenDecisionModelSettingsRequested: showWindow(decisionModelSettingsLoader)
+        onOpenCheckModelSettingsRequested: showWindow(checkModelSettingsLoader)
+        onOpenLayoutModelSettingsRequested: showWindow(layoutModelSettingsLoader)
     }
 
     SplitView {
@@ -191,56 +211,80 @@ ApplicationWindow {
     }
 
     footer: Footer {
-        logWindow: serverLogWindow
-        problemWindow: problemLogWindow
+        logWindow: windowProxy(serverLogLoader)
+        problemWindow: windowProxy(problemLogLoader)
     }
 
-    ServerLogWindow {
-        id: serverLogWindow
+    Loader {
+        id: serverLogLoader
+        active: false
+        sourceComponent: ServerLogWindow {}
     }
 
-    ProblemLogWindow {
-        id: problemLogWindow
+    Loader {
+        id: problemLogLoader
+        active: false
+        sourceComponent: ProblemLogWindow {}
     }
 
-    UiSettingsWindow {
-        id: uiSettingsWindow
+    Loader {
+        id: uiSettingsLoader
+        active: false
+        sourceComponent: UiSettingsWindow {}
     }
 
-    OutputSettingsWindow {
-        id: outputSettingsWindow
+    Loader {
+        id: outputSettingsLoader
+        active: false
+        sourceComponent: OutputSettingsWindow {}
     }
 
-    VerificationSettingsWindow {
-        id: verificationSettingsWindow
+    Loader {
+        id: verificationSettingsLoader
+        active: false
+        sourceComponent: VerificationSettingsWindow {}
     }
 
-    RuntimeSettingsWindow {
-        id: runtimeSettingsWindow
+    Loader {
+        id: runtimeSettingsLoader
+        active: false
+        sourceComponent: RuntimeSettingsWindow {}
     }
 
-    ModelSettingsWindow {
-        id: ocrModelSettingsWindow
-        role: "ocr"
-        runtimeSettingsRef: runtimeSettingsWindow
+    Loader {
+        id: ocrModelSettingsLoader
+        active: false
+        sourceComponent: ModelSettingsWindow {
+            role: "ocr"
+            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
+        }
     }
 
-    ModelSettingsWindow {
-        id: decisionModelSettingsWindow
-        role: "decision"
-        runtimeSettingsRef: runtimeSettingsWindow
+    Loader {
+        id: decisionModelSettingsLoader
+        active: false
+        sourceComponent: ModelSettingsWindow {
+            role: "decision"
+            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
+        }
     }
 
-    ModelSettingsWindow {
-        id: checkModelSettingsWindow
-        role: "blockRecognition"
-        runtimeSettingsRef: runtimeSettingsWindow
+    Loader {
+        id: checkModelSettingsLoader
+        active: false
+        sourceComponent: ModelSettingsWindow {
+            role: "blockRecognition"
+            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
+        }
     }
 
-    ModelSettingsWindow {
-        id: layoutModelSettingsWindow
-        role: "layout"
-        runtimeSettingsRef: runtimeSettingsWindow
+    Loader {
+        id: layoutModelSettingsLoader
+        active: false
+        sourceComponent: ModelSettingsWindow {
+            role: "layout"
+            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
+        }
     }
 
     ExportDialog {
@@ -253,8 +297,10 @@ ApplicationWindow {
         }
     }
 
-    SetupWizard {
-        id: setupWizard
+    Loader {
+        id: setupWizardLoader
+        active: false
+        sourceComponent: SetupWizard {}
     }
 
     Timer {
@@ -263,7 +309,7 @@ ApplicationWindow {
         repeat: false
         onTriggered: {
             if (Settings.setupVersion === 0 && !Settings.setupDismissed)
-                setupWizard.startWizard()
+                mainWindow.openSetupWizard()
         }
     }
     Component.onCompleted: {

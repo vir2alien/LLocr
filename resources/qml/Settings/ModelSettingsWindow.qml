@@ -101,17 +101,6 @@ ApplicationWindow {
         }
     }
 
-    Connections {
-        target: tabBar
-        function onCurrentIndexChanged() {
-            if (tabBar.currentIndex === 0) {
-                ModelInstaller.refreshInstalled()
-                ModelInstaller.reloadPresets()
-                ModelInstaller.rescanRegistry()
-            }
-        }
-    }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.paddingWindow

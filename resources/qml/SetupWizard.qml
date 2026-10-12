@@ -12,6 +12,10 @@ import "Common"
 Dialog {
     id: wizard
     modal: true
+    // Created through a zero-size Loader (QML-13): without the explicit
+    // overlay parent "parent" is the Loader, and centerIn pins the dialog
+    // to the window's top-left corner.
+    parent: Overlay.overlay
     anchors.centerIn: parent
     width: 660
     height: 560
