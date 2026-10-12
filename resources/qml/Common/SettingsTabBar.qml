@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 
@@ -21,8 +23,12 @@ TabBar {
 
     component TabItem: TabButton {
         id: tabItem
+
+        required property string modelData
+
         implicitHeight: 32
         padding: 12
+        text: tabItem.modelData
 
         background: Rectangle { color: "transparent" }
 
@@ -49,6 +55,6 @@ TabBar {
 
     Repeater {
         model: root.titles
-        TabItem { text: modelData }
+        TabItem {}
     }
 }

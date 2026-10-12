@@ -77,6 +77,16 @@ LlamaServerProcess::LlamaServerProcess(const Options &opts, QObject *parent) : Q
 
     connect(&m_process, &QProcess::readyReadStandardOutput, this, &LlamaServerProcess::onReadyRead);
     connect(&m_process, &QProcess::finished, this, &LlamaServerProcess::onProcessFinished);
+    connect(&m_process, &QProcess::started, this, &LlamaServerProcess::onProcessStarted);
+    connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
+        // Crashes and kills arrive through finished(); FailedToStart has no
+        // finished() follow-up, so it carries the spawn-failure path that
+        // waitForStarted() used to handle.
+        if (error != QProcess::FailedToStart)
+            return;
+        m_lastError = m_process.errorString();
+        onProcessFinished(0, QProcess::CrashExit);
+    });
 }
 
 void LlamaServerProcess::closeLogFile()
@@ -171,12 +181,14 @@ void LlamaServerProcess::spawn()
         m_process.setWorkingDirectory(m_opts.workingDirectory);
 
     m_lineBuffer.clear();
+    ProcessGuard::install(m_process);
     m_process.start(QIODevice::ReadOnly);
-    if (!m_process.waitForStarted(5000)) {
-        m_lastError = m_process.errorString();
-        onProcessFinished(0, QProcess::CrashExit);
-        return;
-    }
+}
+
+// The child reported a successful exec: only now does a pid exist, so the
+// parent attachments, the owner record and the health polling start here.
+void LlamaServerProcess::onProcessStarted()
+{
     ProcessGuard::attachParent(m_process);
 
     if (!m_opts.logFile.isEmpty())
@@ -578,11 +590,9 @@ void LlamaServerProcess::markFailed(const QString &reason)
         m_healthTimer->stop();
     setState(RuntimeState::Failed);
     setStatus(reason);
-    if (m_process.state() != QProcess::NotRunning) {
-        m_process.kill();
-        m_process.waitForFinished(2000);
-    }
-    appendLine(reason);  // ring + log + emit
+    if (m_process.state() != QProcess::NotRunning)
+        m_process.kill();  // finished() cleans up; Failed blocks the restart path
+    appendLine(reason);    // ring + log + emit
 }
 
 }  // namespace llocr

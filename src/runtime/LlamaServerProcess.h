@@ -72,6 +72,7 @@ private:
     void classifyLine(const QString &line);
     static int parseLoadPercent(const QString &line);
     void armHealthPolling();
+    void onProcessStarted();
     void onHealthReply(QNetworkReply *reply);
     void tryModelsFallback();
     void onReadyRead();

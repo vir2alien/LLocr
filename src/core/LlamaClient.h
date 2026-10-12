@@ -37,15 +37,16 @@ public:
 
 private:
     void startPost(const std::shared_ptr<QPromise<HttpResponse>> &promise, const QUrl &url, const QByteArray &body, const QString &apiKey, int responseTimeoutMs);
-    void finishConnectPhase(const HttpResponse &response);
 
     static QString extractServerError(const QByteArray &responseData);
 
 private:
     QNetworkAccessManager m_network;
     QPointer<QNetworkReply> m_currentReply;
+    // The request state itself lives in the postJson lambdas; these two only
+    // let abort() reach the newest connect phase.
     QPointer<QTcpSocket> m_connectSocket;
-    std::shared_ptr<QPromise<HttpResponse>> m_connectPromise;
+    std::weak_ptr<QPromise<HttpResponse>> m_connectPromise;
 };
 
 }  // namespace llocr

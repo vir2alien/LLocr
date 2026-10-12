@@ -510,6 +510,15 @@ add_test(NAME test_install_lock COMMAND test_install_lock)
 # hung waitForStarted() fails the run instead of blocking ctest forever. An
 # explicit entry wins: the loop only appends a platform that is not set yet,
 # and test_app_import's own 90 s above is kept.
+# ---- Core transport: LlamaClient reentrancy (C++-I4) ------------------------
+qt_add_executable(test_llama_client test_llama_client.cpp)
+
+target_link_libraries(test_llama_client PRIVATE
+    Qt6::Test
+    llocr_core
+)
+add_test(NAME test_llama_client COMMAND test_llama_client)
+
 get_property(_llocr_all_tests DIRECTORY PROPERTY TESTS)
 foreach(_llocr_test IN LISTS _llocr_all_tests)
     get_property(_llocr_timeout TEST ${_llocr_test} PROPERTY TIMEOUT)

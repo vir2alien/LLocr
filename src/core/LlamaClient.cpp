@@ -30,22 +30,34 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
     auto *socket = new QTcpSocket(&m_network);
     m_connectSocket = socket;
     m_connectPromise = promise;
+    // Per-request completion: the promise and socket travel with the lambdas,
+    // so an overlapping second postJson cannot strand this future (C++-I4).
+    const auto finish = [this, socket, promise](HttpResponse response) {
+        if (m_connectSocket == socket)
+            m_connectPromise.reset();
+        socket->disconnect();
+        socket->deleteLater();
+        promise->addResult(std::move(response));
+        promise->finish();
+    };
     auto *timer = new QTimer(socket);
     timer->setSingleShot(true);
     const bool https = url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0;
     const quint16 port = quint16(url.port(https ? 443 : 80));
 
-    QObject::connect(timer, &QTimer::timeout, socket, [this, url, connectionTimeoutMs]() {
-        finishConnectPhase(HttpResponse{false, {}, QCoreApplication::translate("LlamaClient", "Connection to %1 timed out after %2 ms").arg(url.toString()).arg(connectionTimeoutMs)});
+    QObject::connect(timer, &QTimer::timeout, socket, [finish, url, connectionTimeoutMs]() {
+        finish(HttpResponse{false, {}, QCoreApplication::translate("LlamaClient", "Connection to %1 timed out after %2 ms").arg(url.toString()).arg(connectionTimeoutMs)});
     });
-    QObject::connect(socket, &QTcpSocket::errorOccurred, socket, [this, url](QAbstractSocket::SocketError) {
-        QString error = QCoreApplication::translate("LlamaClient", "Connection to %1 failed: %2").arg(url.toString(), m_connectSocket ? m_connectSocket->errorString() : QString());
-        finishConnectPhase(HttpResponse{false, {}, std::move(error)});
+    QObject::connect(socket, &QTcpSocket::errorOccurred, socket, [finish, socket, url](QAbstractSocket::SocketError) {
+        finish(HttpResponse{false, {}, QCoreApplication::translate("LlamaClient", "Connection to %1 failed: %2").arg(url.toString(), socket->errorString())});
     });
     QObject::connect(socket, &QTcpSocket::connected, socket, [this, socket, timer, promise, url, body, apiKey, responseTimeoutMs]() {
         timer->stop();
-        m_connectPromise.reset();
-        m_connectSocket.clear();
+        socket->disconnect();  // the connect-phase handlers must not see abort()'s error
+        if (m_connectSocket == socket) {
+            m_connectSocket.clear();
+            m_connectPromise.reset();
+        }
         socket->abort();
         socket->deleteLater();
         startPost(promise, url, body, apiKey, responseTimeoutMs);
@@ -54,20 +66,6 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
     timer->start(connectionTimeoutMs);
     socket->connectToHost(url.host(), port);
     return future;
-}
-
-void LlamaClient::finishConnectPhase(const HttpResponse &response)
-{
-    if (m_connectSocket) {
-        m_connectSocket->disconnect();
-        m_connectSocket->deleteLater();
-    }
-    m_connectSocket.clear();
-    if (!m_connectPromise)
-        return;
-    m_connectPromise->addResult(response);
-    m_connectPromise->finish();
-    m_connectPromise.reset();
 }
 
 void LlamaClient::startPost(const std::shared_ptr<QPromise<HttpResponse>> &promise, const QUrl &url, const QByteArray &body, const QString &apiKey, int responseTimeoutMs)
@@ -116,8 +114,16 @@ void LlamaClient::abort()
 {
     if (m_currentReply)
         m_currentReply->abort();
-    if (m_connectSocket)
-        finishConnectPhase(HttpResponse{false, {}, QStringLiteral("Operation canceled")});
+    if (m_connectSocket) {
+        m_connectSocket->disconnect();
+        m_connectSocket->deleteLater();
+    }
+    m_connectSocket.clear();
+    if (auto promise = m_connectPromise.lock()) {
+        promise->addResult(HttpResponse{false, {}, QStringLiteral("Operation canceled")});
+        promise->finish();
+    }
+    m_connectPromise.reset();
 }
 
 QString LlamaClient::extractServerError(const QByteArray &responseData)
