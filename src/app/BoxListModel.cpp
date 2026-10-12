@@ -119,7 +119,7 @@ void BoxListModel::updateBoxCheck(int index, int status, const QString &correcte
     if (index < 0 || index >= m_boxes.size())
         return;
     BoundingBox &box = m_boxes[index];
-    const BoxCheckStatus next = static_cast<BoxCheckStatus>(status);
+    const BoxCheckStatus next = boxCheckStatusFromInt(status);
     if (box.checkStatus == next && box.correctedText == correctedText && box.text == text)
         return;
     box.checkStatus = next;

@@ -89,7 +89,16 @@ private:
 private:
     Options m_opts;
 
-    QProcess m_process;
+    // ~QProcess() kills the child unconditionally; with stopOnExit = false the
+    // server must outlive this object, so the destructor detaches it instead.
+    class Process : public QProcess
+    {
+    public:
+        using QProcess::QProcess;
+        void detachFromProcess() { setProcessState(QProcess::NotRunning); }
+    };
+
+    Process m_process;
     QNetworkAccessManager *m_net = nullptr;
     QTimer *m_healthTimer = nullptr;
     QTimer *m_killTimer = nullptr;

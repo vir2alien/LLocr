@@ -30,16 +30,20 @@ namespace llocr {
 
 namespace {
 
-void flushToDisk(QFile &file)
+bool flushToDisk(QFile &file)
 {
 #ifdef Q_OS_WIN
     const HANDLE h = reinterpret_cast<HANDLE>(_get_osfhandle(file.handle()));
-    if (h != INVALID_HANDLE_VALUE && !FlushFileBuffers(h))
+    if (h == INVALID_HANDLE_VALUE)
+        return false;
+    if (!FlushFileBuffers(h)) {
         qWarning("FlushFileBuffers failed for download file (error %lu)", static_cast<unsigned long>(GetLastError()));
+        return false;
+    }
+    return true;
 #else
     const int fd = static_cast<int>(file.handle());
-    if (fd >= 0)
-        ::fsync(fd);
+    return fd >= 0 && ::fsync(fd) == 0;
 #endif
 }
 
@@ -432,7 +436,16 @@ void DownloadTask::onFinished(QNetworkReply *reply)
         return;
     }
 
-    closeFile();
+    // The fresh-stream verification trusts the in-memory hash; a failed
+    // flush/fsync means the bytes on disk are not what was hashed, and a
+    // truncated archive must not be renamed into place as Completed.
+    const bool closeFileResult = closeFile();
+    if (!closeFileResult) {
+        m_error = QObject::tr("Unable to write %1").arg(m_fileName);
+        setState(State::Failed);
+        emit downloadFinished(false);
+        return;
+    }
     setState(State::Verifying);
     verifySha256();
 }
@@ -527,14 +540,16 @@ void DownloadTask::finishVerification(bool ok, const QString &readError)
     emit downloadFinished(true);
 }
 
-void DownloadTask::closeFile()
+bool DownloadTask::closeFile()
 {
+    bool ok = true;
     if (m_file.isOpen()) {
-        m_file.flush();
-        flushToDisk(m_file);
+        ok = m_file.flush();
+        ok = flushToDisk(m_file) && ok;
         m_file.close();
     }
     m_fileOpen = false;
+    return ok;
 }
 
 void DownloadTask::persistMeta()

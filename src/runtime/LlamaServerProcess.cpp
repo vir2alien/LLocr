@@ -89,11 +89,22 @@ void LlamaServerProcess::closeLogFile()
 LlamaServerProcess::~LlamaServerProcess()
 {
     closeLogFile();
-    if (m_process.state() != QProcess::NotRunning) {
-        m_process.terminate();
-        if (!m_process.waitForFinished(2000))
-            m_process.kill();
+    if (m_process.state() == QProcess::NotRunning)
+        return;
+    // shutdownSync() honors stopOnExit = false — the server is meant to
+    // outlive the app (owner.json lets the next run adopt or stop it), so
+    // the destructor must neither kill it nor leave ~QProcess() to do that
+    // behind the promise. It only fires here when the object dies without a
+    // shutdownSync; when killing, do not leave an owner.json pointing at a
+    // doomed pid.
+    if (!m_opts.stopOnExit) {
+        m_process.detachFromProcess();
+        return;
     }
+    m_process.terminate();
+    if (!m_process.waitForFinished(2000))
+        m_process.kill();
+    clearOwnerJson();
 }
 
 void LlamaServerProcess::setOptions(const Options &opts)
@@ -138,6 +149,16 @@ void LlamaServerProcess::spawn()
     setStatus(QObject::tr("Starting server (attempt %1)").arg(m_attemptsTotal));
 
     ProcessGuard::install(m_process);
+    if (!m_opts.stopOnExit) {
+        // A server meant to outlive the app cannot hold our stdout pipe: once
+        // the app dies, the write end closes and the next log line would kill
+        // it with SIGPIPE. The log goes to the file instead; the app tracks
+        // startup through health polling and /v1/models, without the streamed
+        // progress lines (only matters while this non-default option is set).
+        m_process.setStandardOutputFile(m_opts.logFile, QIODevice::Append | QIODevice::Text);
+    } else {
+        m_process.setStandardOutputFile(QString());  // the option may have been switched back
+    }
 
     QStringList args = m_opts.arguments;
     if (!args.contains(QStringLiteral("--port")) && m_port > 0) {

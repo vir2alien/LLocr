@@ -200,6 +200,23 @@ private slots:
         QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(), QStringLiteral("transcribed"));
     }
+
+    // The QML entry point must pass through the same int->enum gate as the
+    // project load: an out-of-range value coerces to NotChecked instead of
+    // reaching the model and later project.json.
+    void updateBoxCheckClampsOutOfRangeStatus()
+    {
+        BoxListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1), QStringLiteral("original"))});
+
+        model.updateBoxCheck(0, 99, QStringLiteral("bogus"), QStringLiteral("text"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("bogus"));
+        model.updateBoxCheck(0, -3, QString(), QStringLiteral("text"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+    }
 };
 
 QTEST_MAIN(TestBoxModel)

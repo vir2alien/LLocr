@@ -87,7 +87,7 @@ private:
     void openForFresh();
     void openForAppend();
     void restartFresh(QNetworkReply *reply);
-    void closeFile();
+    bool closeFile();
     void updateProgress();
     void verifySha256();
     void persistMeta();

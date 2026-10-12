@@ -215,11 +215,12 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
     const QByteArray payload = response.body;
     const int status = response.status;
 
-    const auto failWithCache = [&fromCache](const QString &message) { return fromCache.isEmpty() ? QList<ReleaseInfo>() : fromCache; };
+    // Callers assign `error` first; the helper only picks cache-vs-empty.
+    const auto failWithCache = [&fromCache]() { return fromCache.isEmpty() ? QList<ReleaseInfo>() : fromCache; };
 
     if (response.timedOut) {
         error = QObject::tr("Timed out fetching release list");
-        return failWithCache(error);
+        return failWithCache();
     }
 
     qint64 resetEpoch = 0;
@@ -235,18 +236,18 @@ QList<ReleaseInfo> ReleaseCatalog::fetchReleasesLocal(QNetworkAccessManager *nam
             when = QDateTime::fromSecsSinceEpoch(resetEpoch).toLocalTime().toString(Qt::ISODate);
         }
         error = QObject::tr("GitHub rate limit reached; retry around %1").arg(when);
-        return failWithCache(error);
+        return failWithCache();
     }
     if (status != 200) {
         error = status > 0 ? QObject::tr("GitHub API returned HTTP %1").arg(status) : QObject::tr("GitHub request failed: %1").arg(transportError);
-        return failWithCache(error);
+        return failWithCache();
     }
 
     QJsonParseError perr;
     const QJsonDocument doc = QJsonDocument::fromJson(payload, &perr);
     if (perr.error != QJsonParseError::NoError || !doc.isArray()) {
         error = QObject::tr("Malformed release list from GitHub");
-        return failWithCache(error);
+        return failWithCache();
     }
     const QList<ReleaseInfo> parsed = parseReleasesJson(doc.array(), error);
     if (parsed.isEmpty() && error.isEmpty())

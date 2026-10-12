@@ -20,6 +20,14 @@ enum class BoxCheckStatus : int {
                        ///< re-recognition.
 };
 
+// The single int->enum gate: project load and the QML write path must not
+// drift into accepting different ranges (an out-of-range value would reach
+// project.json and silently coerce back to NotChecked on the next open).
+inline BoxCheckStatus boxCheckStatusFromInt(int value)
+{
+    return value >= int(BoxCheckStatus::NotChecked) && value <= int(BoxCheckStatus::Mismatch) ? BoxCheckStatus(value) : BoxCheckStatus::NotChecked;
+}
+
 struct BoundingBox {
     QString text;           ///< Recognized text of this fragment.
     QString correctedText;  ///< Second text variant (checkStatus == ReRecognized); kept separate from text.

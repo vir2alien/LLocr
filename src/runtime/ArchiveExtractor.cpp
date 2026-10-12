@@ -377,10 +377,13 @@ qint64 parseOctalField(const QByteArray &field)
     return ok ? v : -1;
 }
 
+// String fields (name/prefix/linkname) are NUL-padded and legally contain
+// spaces — stopping at a space would silently truncate "my data.bin" to "my".
+// Only the numeric fields are space-padded, and parseOctalField trims those.
 QString fieldString(const QByteArray &field)
 {
     int len = 0;
-    while (len < field.size() && field.at(len) != 0 && field.at(len) != ' ')
+    while (len < field.size() && field.at(len) != 0)
         ++len;
     return QString::fromLatin1(field.constData(), len);
 }

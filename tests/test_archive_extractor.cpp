@@ -459,6 +459,21 @@ private slots:
         QVERIFY(!r.warning.isEmpty());
     }
 
+    // ustar name fields are NUL-padded and legally contain spaces; stopping
+    // the field scan at a space silently truncated "my data.bin" to "my".
+    void tarKeepsSpacesInNames()
+    {
+        QTemporaryDir dir;
+        QList<TEntry> entries;
+        entries << tarEntry(QStringLiteral("my data.bin"), QByteArrayLiteral("payload"));
+        const QString archive = writeZip(dir, QStringLiteral("sp.tar.gz"), gzipBytes(buildTar(entries)));
+        const QString out = QDir(dir.path()).filePath("out");
+        const ExtractResult r = ArchiveExtractor::extractTarGz(archive, out);
+        QVERIFY(r.ok);
+        QVERIFY(QFileInfo::exists(QDir(out).filePath(QStringLiteral("my data.bin"))));
+        QVERIFY(!QFileInfo::exists(QDir(out).filePath(QStringLiteral("my"))));
+    }
+
     void tarRejectsNonGzip()
     {
         QTemporaryDir dir;

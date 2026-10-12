@@ -2046,6 +2046,10 @@
         <translation>Не удалось завершить %1</translation>
     </message>
     <message>
+        <source>Unable to write %1</source>
+        <translation>Не удалось записать %1</translation>
+    </message>
+    <message>
         <location line="+85"/>
         <source>Download interrupted</source>
         <translation>Скачивание прервано</translation>
@@ -2063,6 +2067,14 @@
         <location line="+4"/>
         <source>Downloaded archive size mismatch (expected %1, got %2)</source>
         <translation>Несовпадение размера скачанного архива (ожидалось %1, получено %2)</translation>
+    </message>
+    <message>
+        <source>Unable to read the downloaded archive: %1</source>
+        <translation>Не удалось прочитать скачанный архив: %1</translation>
+    </message>
+    <message>
+        <source>sha256 mismatch for the downloaded archive</source>
+        <translation>Несовпадение sha256 для скачанного архива</translation>
     </message>
     <message>
         <location line="+10"/>

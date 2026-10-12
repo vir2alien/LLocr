@@ -83,9 +83,14 @@ InstallOutput InstallTransaction::start(const QString &archivePath, const Releas
         return out;
     }
     if (!asset.sha256.isEmpty()) {
-        const QString actual = QString::fromLatin1(sha256File(archivePath));
+        bool hashRead = false;
+        const QString actual = QString::fromLatin1(sha256File(archivePath, &hashRead));
+        if (!hashRead) {
+            out.error = QObject::tr("Unable to read the downloaded archive: %1").arg(archivePath);
+            return out;
+        }
         if (actual != asset.sha256) {
-            out.error = QStringLiteral("sha256 mismatch for the downloaded archive");
+            out.error = QObject::tr("sha256 mismatch for the downloaded archive");
             return out;
         }
     } else {
