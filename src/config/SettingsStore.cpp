@@ -239,11 +239,12 @@ void SettingsStore::setApiKey(const QString &key)
 
 int SettingsStore::connectionTimeoutMs() const
 {
-    return m_settings.value(kConnectionTimeoutKey, kDefaultConnectionTimeoutMs).toInt();
+    return std::clamp(m_settings.value(kConnectionTimeoutKey, kDefaultConnectionTimeoutMs).toInt(), kMinTimeoutMs, kMaxConnectionTimeoutMs);
 }
 
 void SettingsStore::setConnectionTimeoutMs(int ms)
 {
+    ms = std::clamp(ms, kMinTimeoutMs, kMaxConnectionTimeoutMs);
     if (connectionTimeoutMs() == ms)
         return;
     m_settings.setValue(kConnectionTimeoutKey, ms);
@@ -252,11 +253,12 @@ void SettingsStore::setConnectionTimeoutMs(int ms)
 
 int SettingsStore::responseTimeoutMs() const
 {
-    return m_settings.value(kResponseTimeoutKey, kDefaultResponseTimeoutMs).toInt();
+    return std::clamp(m_settings.value(kResponseTimeoutKey, kDefaultResponseTimeoutMs).toInt(), kMinTimeoutMs, kMaxResponseTimeoutMs);
 }
 
 void SettingsStore::setResponseTimeoutMs(int ms)
 {
+    ms = std::clamp(ms, kMinTimeoutMs, kMaxResponseTimeoutMs);
     if (responseTimeoutMs() == ms)
         return;
     m_settings.setValue(kResponseTimeoutKey, ms);
@@ -674,11 +676,12 @@ void SettingsStore::setAutoRestart(bool on)
 
 int SettingsStore::startupTimeoutMs() const
 {
-    return m_settings.value(kStartupTimeoutMs, kDefaultStartupTimeoutMs).toInt();
+    return std::clamp(m_settings.value(kStartupTimeoutMs, kDefaultStartupTimeoutMs).toInt(), kMinTimeoutMs, kMaxStartupTimeoutMs);
 }
 
 void SettingsStore::setStartupTimeoutMs(int ms)
 {
+    ms = std::clamp(ms, kMinTimeoutMs, kMaxStartupTimeoutMs);
     if (startupTimeoutMs() == ms)
         return;
     m_settings.setValue(kStartupTimeoutMs, ms);
@@ -760,11 +763,12 @@ void SettingsStore::setLaunchHost(const QString &host)
 
 int SettingsStore::launchPort() const
 {
-    return m_settings.value(kLaunchPort, kDefaultPort).toInt();
+    return std::clamp(m_settings.value(kLaunchPort, kDefaultPort).toInt(), 0, kMaxPort);
 }
 
 void SettingsStore::setLaunchPort(int port)
 {
+    port = std::clamp(port, 0, kMaxPort);
     if (launchPort() == port)
         return;
     m_settings.setValue(kLaunchPort, port);

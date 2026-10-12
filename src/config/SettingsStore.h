@@ -334,6 +334,11 @@ public:
     static constexpr const char *kDefaultHost = "127.0.0.1";
     static constexpr int kDefaultPort = 0;  // 0 = auto-pick
     static constexpr int kDefaultStartupTimeoutMs = 180000;
+    static constexpr int kMinTimeoutMs = 1000;
+    static constexpr int kMaxConnectionTimeoutMs = 600000;
+    static constexpr int kMaxResponseTimeoutMs = 3600000;
+    static constexpr int kMaxStartupTimeoutMs = 3600000;
+    static constexpr int kMaxPort = 65535;
     static constexpr double kDefaultDecisionMatchThreshold = 0.5;
 
 private:

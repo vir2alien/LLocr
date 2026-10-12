@@ -6,6 +6,7 @@
 #include "core/ServiceMarkers.h"
 
 #include <QCoreApplication>
+#include <QSet>
 #include <QStringList>
 #include <QVector>
 
@@ -32,6 +33,11 @@ constexpr int kMaxTableColumns = 512;
 struct BlockFingerprint {
     QString simplified;
     QStringList words;
+    // Hashes of all kMinRepeatWords-word windows. A common word run of
+    // kMinRepeatWords (the LCS gate in repeatsEarlierText) implies a shared
+    // window, so an empty intersection rules the pair out without the
+    // quadratic LCS — the O(blocks²) pair loop on the GUI thread stays cheap.
+    QSet<size_t> windows;
 };
 
 QStringList wordsForDuplicateCheck(const QString &simplified)
@@ -56,6 +62,14 @@ BlockFingerprint fingerprintForDuplicateCheck(const QString &text)
     BlockFingerprint fingerprint;
     fingerprint.simplified = text.simplified();
     fingerprint.words = wordsForDuplicateCheck(fingerprint.simplified);
+    if (fingerprint.words.size() >= kMinRepeatWords) {
+        for (int start = 0; start + kMinRepeatWords <= fingerprint.words.size(); ++start) {
+            size_t h = 0;
+            for (int w = 0; w < kMinRepeatWords; ++w)
+                h = h * 1000003ull + qHash(fingerprint.words.at(start + w));
+            fingerprint.windows.insert(h);
+        }
+    }
     return fingerprint;
 }
 
@@ -82,6 +96,8 @@ bool repeatsEarlierText(const BlockFingerprint &candidate, const BlockFingerprin
     if (candidate.simplified == previous.simplified)
         return true;
     if (candidate.words.size() < kMinRepeatWords || previous.words.size() < kMinRepeatWords)
+        return false;
+    if (!candidate.windows.intersects(previous.windows))
         return false;
     const int run = longestCommonWordRun(candidate.words, previous.words);
     if (run < kMinRepeatWords)

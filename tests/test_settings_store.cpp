@@ -311,6 +311,47 @@ private slots:
         QCOMPARE(store.hfToken(), QStringLiteral(""));
     }
 
+    void timeoutAndPortClamps()
+    {
+        SettingsStore store;
+        store.setConnectionTimeoutMs(0);
+        QCOMPARE(store.connectionTimeoutMs(), 1000);
+        store.setConnectionTimeoutMs(-500);
+        QCOMPARE(store.connectionTimeoutMs(), 1000);
+        store.setConnectionTimeoutMs(10 * 60 * 1000 + 1);
+        QCOMPARE(store.connectionTimeoutMs(), 600000);
+        store.setConnectionTimeoutMs(8000);
+        QCOMPARE(store.connectionTimeoutMs(), 8000);
+
+        store.setResponseTimeoutMs(0);
+        QCOMPARE(store.responseTimeoutMs(), 1000);
+        store.setResponseTimeoutMs(2 * 60 * 60 * 1000);
+        QCOMPARE(store.responseTimeoutMs(), 3600000);
+        store.setResponseTimeoutMs(60000);
+        QCOMPARE(store.responseTimeoutMs(), 60000);
+
+        store.setStartupTimeoutMs(-1);
+        QCOMPARE(store.startupTimeoutMs(), 1000);
+        store.setStartupTimeoutMs(7200000);
+        QCOMPARE(store.startupTimeoutMs(), 3600000);
+        store.setStartupTimeoutMs(10000);
+        QCOMPARE(store.startupTimeoutMs(), 10000);
+
+        // 0 stays 0: it means auto-pick.
+        store.setLaunchPort(-1);
+        QCOMPARE(store.launchPort(), 0);
+        store.setLaunchPort(70000);
+        QCOMPARE(store.launchPort(), 65535);
+        store.setLaunchPort(8081);
+        QCOMPARE(store.launchPort(), 8081);
+
+        store.resetToDefaults();
+        QCOMPARE(store.connectionTimeoutMs(), 5000);
+        QCOMPARE(store.responseTimeoutMs(), 300000);
+        QCOMPARE(store.startupTimeoutMs(), 180000);
+        QCOMPARE(store.launchPort(), 0);
+    }
+
     // The check role's request profile is the id of its model profile. A
     // profile written before the split has nothing stored, and the verifier
     // would resolve to no sampling parameters at all.
