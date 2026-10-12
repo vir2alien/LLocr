@@ -165,12 +165,14 @@ Item {
                 if (active) {
                     fromIndex = index
                     listView.draggedIndex = index
+                    listView.draggedItem = delegateRoot
                 } else {
                     const centerY = delegateRoot.y + delegateRoot.height / 2
                     let toIndex = Math.floor(centerY / (delegateRoot.height + listView.spacing))
                     toIndex = Math.max(0, Math.min(listView.count - 1, toIndex))
 
                     listView.draggedIndex = -1
+                    listView.draggedItem = null
 
                     if (fromIndex !== -1 && fromIndex !== toIndex)
                         Controller.movePage(fromIndex, toIndex)

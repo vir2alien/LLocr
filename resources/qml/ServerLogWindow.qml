@@ -76,7 +76,7 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
             LLOLabel {
-                text: qsTr("%1 line(s)").arg(logArea.lineCount)
+                text: qsTr("%n line(s)", "", logArea.lineCount)
                 color: Theme.textMuted
             }
         }

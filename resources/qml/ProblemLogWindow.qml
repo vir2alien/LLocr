@@ -68,12 +68,12 @@ ApplicationWindow {
 
             LLOLabel {
                 visible: Log.errorCount > 0
-                text: qsTr("%1 error(s)").arg(Log.errorCount)
+                text: qsTr("%n error(s)", "", Log.errorCount)
                 color: Theme.error
             }
             LLOLabel {
                 visible: Log.warningCount > 0
-                text: qsTr("%1 warning(s)").arg(Log.warningCount)
+                text: qsTr("%n warning(s)", "", Log.warningCount)
                 color: Theme.warning
             }
         }
@@ -112,7 +112,7 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
             LLOLabel {
-                text: qsTr("%1 entr(y/ies)").arg(Log.count)
+                text: qsTr("%n entr(y/ies)", "", Log.count)
                 color: Theme.textMuted
             }
         }

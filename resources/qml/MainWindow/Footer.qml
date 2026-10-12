@@ -205,7 +205,7 @@ Item {
                 LLOLabel {
                     Layout.alignment: Qt.AlignVCenter
                     visible: root.currentDiagnostic.length === 0 && Log.count > 0
-                    text: qsTr("%1 problem(s) logged").arg(Log.count)
+                    text: qsTr("%n problem(s) logged", "", Log.count)
                     font.pointSize: Theme.captionSize
                     color: Theme.textMuted
                 }

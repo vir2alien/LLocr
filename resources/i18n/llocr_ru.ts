@@ -769,10 +769,14 @@
         <source>Stop it</source>
         <translation type="unfinished"></translation>
     </message>
-    <message>
+    <message numerus="yes">
         <location line="+56"/>
-        <source>%1 problem(s) logged</source>
-        <translation>В журнале проблем: %1</translation>
+        <source>%n problem(s) logged</source>
+        <translation>
+            <numerusform>В журнале: %n проблема</numerusform>
+            <numerusform>В журнале: %n проблемы</numerusform>
+            <numerusform>В журнале: %n проблем</numerusform>
+        </translation>
     </message>
     <message>
         <location line="+8"/>
@@ -1836,15 +1840,23 @@
         <source>Nothing went wrong so far.</source>
         <translation>Пока ничего не произошло.</translation>
     </message>
-    <message>
+    <message numerus="yes">
         <location line="+53"/>
-        <source>%1 error(s)</source>
-        <translation>Ошибок: %1</translation>
+        <source>%n error(s)</source>
+        <translation>
+            <numerusform>%n ошибка</numerusform>
+            <numerusform>%n ошибки</numerusform>
+            <numerusform>%n ошибок</numerusform>
+        </translation>
     </message>
-    <message>
+    <message numerus="yes">
         <location line="+5"/>
-        <source>%1 warning(s)</source>
-        <translation>Предупреждений: %1</translation>
+        <source>%n warning(s)</source>
+        <translation>
+            <numerusform>%n предупреждение</numerusform>
+            <numerusform>%n предупреждения</numerusform>
+            <numerusform>%n предупреждений</numerusform>
+        </translation>
     </message>
     <message>
         <location line="+28"/>
@@ -1856,10 +1868,14 @@
         <source>Clear log</source>
         <translation>Очистить журнал</translation>
     </message>
-    <message>
+    <message numerus="yes">
         <location line="+6"/>
-        <source>%1 entr(y/ies)</source>
-        <translation>Записей: %1</translation>
+        <source>%n entr(y/ies)</source>
+        <translation>
+            <numerusform>%n запись</numerusform>
+            <numerusform>%n записи</numerusform>
+            <numerusform>%n записей</numerusform>
+        </translation>
     </message>
 </context>
 <context>
@@ -3281,10 +3297,14 @@
         <source>Clear view</source>
         <translation>Очистить вид</translation>
     </message>
-    <message>
+    <message numerus="yes">
         <location line="+5"/>
-        <source>%1 line(s)</source>
-        <translation>%1 строка(и)</translation>
+        <source>%n line(s)</source>
+        <translation>
+            <numerusform>%n строка</numerusform>
+            <numerusform>%n строки</numerusform>
+            <numerusform>%n строк</numerusform>
+        </translation>
     </message>
     <message>
         <source>live</source>
