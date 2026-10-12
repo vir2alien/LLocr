@@ -128,7 +128,7 @@ QString LlamaServerProcess::start()
 
 void LlamaServerProcess::spawn()
 {
-    m_modelsProbed = false;
+    m_modelsProbeInFlight = false;
     m_healthInFlight = false;
     if (m_opts.port == 0)
         m_port = pickFreePort();
@@ -226,31 +226,27 @@ void LlamaServerProcess::onHealthReply(QNetworkReply *reply)
         setStatus(QStringLiteral("Ready"));
         return;
     }
-    if (!m_modelsProbed) {
-        m_modelsProbed = true;
+    if (!m_modelsProbeInFlight)
         tryModelsFallback();
-    }
 }
 
 void LlamaServerProcess::tryModelsFallback()
 {
+    m_modelsProbeInFlight = true;
     QNetworkRequest req(QUrl(m_healthUrl + QStringLiteral("/v1/models")));
     req.setTransferTimeout(3000);
     QNetworkReply *reply = m_net->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
+        m_modelsProbeInFlight = false;
         if (m_state != RuntimeState::Starting)
             return;
         const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (reply->error() != QNetworkReply::NoError || (code < 200 || code >= 300)) {
-            qWarning() << "/v1/models fallback failed:" << reply->errorString();
-            return;
-        }
+        if (reply->error() != QNetworkReply::NoError || (code < 200 || code >= 300))
+            return;  // a failed probe is just polled again on the next health tick
         QJsonArray models;
-        if (!parseModelsResponse(reply->readAll(), models)) {
-            qWarning() << "/v1/models fallback returned a malformed body";
+        if (!parseModelsResponse(reply->readAll(), models))
             return;
-        }
         m_healthTimer->stop();
         setState(RuntimeState::Ready);
         setStatus(QStringLiteral("Ready"));

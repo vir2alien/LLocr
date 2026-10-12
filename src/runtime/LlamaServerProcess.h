@@ -102,7 +102,7 @@ private:
     QNetworkAccessManager *m_net = nullptr;
     QTimer *m_healthTimer = nullptr;
     QTimer *m_killTimer = nullptr;
-    bool m_modelsProbed = false;
+    bool m_modelsProbeInFlight = false;
 
     QFile m_logFile;
     QTextStream m_logStream;

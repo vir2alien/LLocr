@@ -19,6 +19,7 @@ private slots:
     void reachesReadyAndStops();
     void ringBufferCapturesOutput();
     void healthyTimeout();
+    void modelsFallbackRetriedAfterLateBind();
     void crashAndAutoRestartRecovery();
     void crashWindowReportsRestarting();
     void stopDuringStartupIsSafe();
@@ -81,6 +82,23 @@ void TestServerProcess::healthyTimeout()
     QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--never-healthy"), QStringLiteral("--no-models")}, 1500, false, dir, logFile));
     QVERIFY(m->start().isEmpty());
     QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Failed, 10000);
+    m->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
+}
+
+void TestServerProcess::modelsFallbackRetriedAfterLateBind()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    // C++-I5: with a late port bind the first health polls are connection
+    // refusals; the one-shot /v1/models fallback used to burn on the first of
+    // them, so a server without a working /health (but with /v1/models) never
+    // became Ready. --never-healthy keeps /health at 503 while --delay-start
+    // keeps the socket unbound for 1.5 s; readiness must still arrive through
+    // the retried fallback.
+    QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--never-healthy"), QStringLiteral("--delay-start"), QStringLiteral("1500")}, 60000, false, dir, logFile));
+    QVERIFY(m->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 15000);
     m->stop();
     QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
 }
