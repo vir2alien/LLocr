@@ -61,7 +61,10 @@ Item {
         refreshAll()
     }
 
+    implicitHeight: contentColumn.implicitHeight + 40
+
     ColumnLayout {
+        id: contentColumn
         anchors.fill: parent
         anchors.margins: 20
         spacing: 10

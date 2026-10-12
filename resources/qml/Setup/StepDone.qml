@@ -21,7 +21,10 @@ Item {
         return text.trim().length > 0 ? text.trim() : qsTr("not set")
     }
 
+    implicitHeight: contentColumn.implicitHeight + 40
+
     ColumnLayout {
+        id: contentColumn
         anchors.fill: parent
         anchors.margins: 20
         spacing: 12

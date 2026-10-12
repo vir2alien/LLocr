@@ -116,11 +116,13 @@ Item {
                 }
                 LLOButton {
                     text: qsTr("Restart")
+                    Layout.minimumWidth: implicitWidth
                     enabled: !Runtime.lockedOut
                     onClicked: root.requestRestart()
                 }
                 LLOButton {
                     text: qsTr("Hide")
+                    Layout.minimumWidth: implicitWidth
                     flat: true
                     onClicked: root.bannerDismissed = true
                 }
@@ -150,6 +152,7 @@ Item {
                 }
                 LLOButton {
                     text: qsTr("Stop it")
+                    Layout.minimumWidth: implicitWidth
                     onClicked: Runtime.terminateOrphan()
                 }
             }
@@ -212,6 +215,7 @@ Item {
 
                 LLOButton {
                     visible: Log.count > 0
+                    Layout.minimumWidth: implicitWidth
                     flat: true
                     text: qsTr("Details…")
                     onClicked: {
@@ -280,12 +284,14 @@ Item {
                 }
                 LLOButton {
                     visible: Controller.importing
+                    Layout.minimumWidth: implicitWidth
                     enabled: Controller.importing
                     text: qsTr("Stop")
                     onClicked: Controller.cancelImport()
                 }
                 LLOButton {
                     id: runtimeToggleButton
+                    Layout.minimumWidth: implicitWidth
                     visible: Settings.connectionMode === "managed"
                     hoverEnabled: true
                     text: root.serverActive ? qsTr("Stop server") : qsTr("Start server")

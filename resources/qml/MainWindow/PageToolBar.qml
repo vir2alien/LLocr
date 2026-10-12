@@ -60,6 +60,7 @@ ToolBar {
 
             ToolButton {
                 text: qsTr("Mark up page")
+                Layout.minimumWidth: implicitWidth
                 enabled: Controller.hasImage && Controller.actionsIdle
                          && Controller.layoutAvailable
                 onClicked: markupConfirmDialog.requestMarkup()
@@ -67,6 +68,7 @@ ToolBar {
 
             ToolButton {
                 text: qsTr("Save page")
+                Layout.minimumWidth: implicitWidth
                 enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
                          && !Controller.checkBusy
                 onClicked: pageToolBarRoot.savePageRequested()
@@ -91,6 +93,7 @@ ToolBar {
                 id: allBlocksButton
                 implicitWidth: 32
                 implicitHeight: 28
+                Layout.minimumWidth: implicitWidth
                 padding: 0
                 Row {
                     anchors.centerIn: parent
@@ -192,6 +195,11 @@ ToolBar {
     component SplitToolButton: Row {
         id: splitRoot
 
+        // The toolbar may shrink a layout child below its implicit width
+        // (QML-I7): pin the cell so labels clip on the right instead of the
+        // caption being squeezed out.
+        Layout.minimumWidth: implicitWidth
+
         spacing: 0
 
         property string text: ""
@@ -221,6 +229,7 @@ ToolBar {
 
         implicitWidth: 32
         implicitHeight: 28
+        Layout.minimumWidth: implicitWidth
         padding: 0
         enabled: false
 

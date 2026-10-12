@@ -56,6 +56,7 @@ ToolBar {
         ToolButton {
             id: fileButton
             text: qsTr("File")
+            Layout.minimumWidth: implicitWidth
             onClicked: fileMenu.popup(fileButton, 0, fileButton.height + 2)
         }
 
@@ -63,6 +64,7 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Recognize")
+            Layout.minimumWidth: implicitWidth
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Recognize every page of the document")
             enabled: Controller.hasImage && Controller.actionsIdle && Controller.canRecognize
@@ -70,6 +72,7 @@ ToolBar {
         }
         ToolButton {
             text: qsTr("Verify")
+            Layout.minimumWidth: implicitWidth
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Verify the recognized blocks on every page")
             enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
@@ -79,6 +82,7 @@ ToolBar {
         }
         ToolButton {
             text: qsTr("Fix")
+            Layout.minimumWidth: implicitWidth
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Re-recognize the problem blocks in the whole document")
             enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
@@ -87,6 +91,7 @@ ToolBar {
         }
         ToolButton {
             text: qsTr("Mark up")
+            Layout.minimumWidth: implicitWidth
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Mark up every page of the document")
             enabled: Controller.hasImage && !Controller.busy
@@ -96,6 +101,7 @@ ToolBar {
         }
         ToolButton {
             text: qsTr("Export")
+            Layout.minimumWidth: implicitWidth
             enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
                      && !Controller.checkBusy
             onClicked: headerRoot.exportRequested(Controller.pageCount > 1)
@@ -103,6 +109,7 @@ ToolBar {
 
         ToolButton {
             text: qsTr("Stop")
+            Layout.minimumWidth: implicitWidth
             enabled: Controller.busy || Controller.checkBusy || Controller.layoutBusy
             onClicked: {
                 if (Controller.busy)
@@ -122,6 +129,7 @@ ToolBar {
 
             ToolButton {
                 text: "\u2039"
+                Layout.minimumWidth: implicitWidth
                 enabled: Controller.currentPage > 0
                 onClicked: Controller.currentPage = Controller.currentPage - 1
             }
@@ -132,6 +140,7 @@ ToolBar {
             }
             ToolButton {
                 text: "\u203a"
+                Layout.minimumWidth: implicitWidth
                 enabled: Controller.currentPage < Controller.pageCount - 1
                 onClicked: Controller.currentPage = Controller.currentPage + 1
             }
@@ -142,6 +151,7 @@ ToolBar {
         ToolButton {
             id: settingsButton
             text: qsTr("Settings")
+            Layout.minimumWidth: implicitWidth
             onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
         }
     }//RowLayout

@@ -18,7 +18,11 @@ Dialog {
     parent: Overlay.overlay
     anchors.centerIn: parent
     width: 660
-    height: 560
+    // Each step reports its content height (implicitHeight + margins); the
+    // dialog grows past 560 when a long localized step needs it — wrapped
+    // Russian hints otherwise clip — and never exceeds the screen.
+    height: Math.max(560, Math.min(Overlay.overlay ? Overlay.overlay.height - 24 : 560,
+                                   implicitHeight))
     title: qsTr("Setup")
 
     property int current: 0
@@ -62,8 +66,9 @@ Dialog {
 
     Component.onCompleted: rebuildSteps()
 
-    Item {
-        anchors.fill: parent
+    contentItem: Item {
+        id: stepArea
+        implicitHeight: wizard.currentStep ? wizard.currentStep.implicitHeight : 0
 
         // Each step fills the area; exactly one (steps[current]) is visible.
         StepIntro {
