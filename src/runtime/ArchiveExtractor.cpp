@@ -184,7 +184,7 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
     }
 
     qint64 eocd = -1;
-    const qint64 searchFrom = std::max<qint64>(0, size - 65557);
+    const qint64 searchFrom = (std::max)(qint64(0), size - 65557);
     for (qint64 i = size - 22; i >= searchFrom; --i) {
         if (static_cast<quint8>(data.at(i)) != 0x50)
             continue;
@@ -328,7 +328,7 @@ ExtractResult ArchiveExtractor::extractZip(const QString &zipPath, const QString
         QString extractionError;
         if (entry.method == 0) {
             for (qint64 offset = 0; offset < entry.compSize; offset += kChunkSize) {
-                const qint64 count = std::min(kChunkSize, entry.compSize - offset);
+                const qint64 count = (std::min)(kChunkSize, entry.compSize - offset);
                 if (!sink(data.constData() + dataOffset + offset, count)) {
                     extractionError = QStringLiteral("unable to write extracted file");
                     break;

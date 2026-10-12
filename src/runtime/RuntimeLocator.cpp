@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -22,7 +23,7 @@ QString RuntimeLocator::runProbe(const QString &binaryPath, QStringList args, in
     proc.setProcessChannelMode(QProcess::MergedChannels);
     proc.start(QIODevice::ReadOnly);
 
-    const int spawnBudget = qMin(2500, timeoutMs);
+    const int spawnBudget = (std::min)(2500, timeoutMs);
     if (!proc.waitForStarted(spawnBudget)) {
         error = QObject::tr("Failed to start the binary: %1").arg(proc.errorString());
         return QString();
@@ -85,7 +86,7 @@ ProbeResult RuntimeLocator::probeImpl(const QString &binaryPath, int timeoutMs)
     budget.start();
     QString errVersion, errHelp;
     const QString versionText = runProbe(binaryPath, {QStringLiteral("--version")}, timeoutMs, errVersion);
-    const int remaining = qMax(0, timeoutMs - int(budget.elapsed()));
+    const int remaining = (std::max)(0, timeoutMs - int(budget.elapsed()));
     QString helpText;
     if (remaining > 0) {
         helpText = runProbe(binaryPath, {QStringLiteral("--help")}, remaining, errHelp);

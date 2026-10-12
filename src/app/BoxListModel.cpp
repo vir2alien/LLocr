@@ -40,9 +40,8 @@ QVariant BoxListModel::data(const QModelIndex &index, int role) const
         return box.correctedText;
     case KindRole:
         return static_cast<int>(kindFor(box));
-    default:
-        return {};
     }
+    return {};
 }
 
 QHash<int, QByteArray> BoxListModel::roleNames() const

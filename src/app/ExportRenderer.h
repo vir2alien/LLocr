@@ -1,14 +1,15 @@
 #pragma once
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <QObject>
 #include <QString>
 #include <QVariant>
+#include <utility>
 
 #include <QList>
 #include <QPageLayout>
-#include <QPair>
 
 class QTimer;
 class QUrl;
@@ -23,7 +24,7 @@ class ExportRenderer : public QObject
 public:
     enum class Output { Html, Pdf };
 
-    using PageInput = QPair<int, QString>;
+    using PageInput = std::pair<int, QString>;
     using ResultCallback = std::function<void(bool success, const QString &html, const QString &error)>;
 
     struct Request {

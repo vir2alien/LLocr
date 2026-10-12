@@ -10,7 +10,7 @@ class PageListModel : public QAbstractListModel
     Q_OBJECT
 
 public:
-    enum Roles {
+    enum Roles : int {
         PageIndexRole = Qt::UserRole + 1,
         RecognizedRole,
         CurrentRole,

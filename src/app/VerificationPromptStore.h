@@ -28,7 +28,7 @@ class VerificationBlocksModel : public QAbstractListModel
     Q_PROPERTY(int revision READ revision NOTIFY countsChanged)
 
 public:
-    enum Roles {
+    enum Roles : int {
         TypeRole = Qt::UserRole + 1,
         NameRole,
         GroupRole,

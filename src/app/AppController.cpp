@@ -243,7 +243,7 @@ int AppController::boxIndexForTextPosition(int position) const
         if (position >= range.start && position < range.start + range.length)
             return range.boxIndex;
     }
-    if (position == rebuild.text.length())
+    if (position == rebuild.text.size())
         return rebuild.ranges.last().boxIndex;
     return -1;
 }
@@ -1590,7 +1590,7 @@ void AppController::applyProjectData(const ProjectData &data)
     }
 
     m_pageModel.setCurrent(0);
-    m_currentPage = data.pages.isEmpty() ? 0 : qBound(0, data.currentPage, m_document.pageCount() - 1);
+    m_currentPage = data.pages.isEmpty() ? 0 : std::clamp(data.currentPage, 0, m_document.pageCount() - 1);
     m_pageModel.setCurrent(m_currentPage);
     // Project labels come from whatever model created the file; the default
     // vocabulary is the only safe overlay mapping here.
@@ -1679,8 +1679,8 @@ void AppController::saveProject(const QUrl &fileUrl)
     emit projectBusyChanged();
     setStatus(StatusMessage::translate("AppController", "Saving project…"));
 
-    auto *watcher = new QFutureWatcher<QPair<bool, QString>>(this);
-    connect(watcher, &QFutureWatcher<QPair<bool, QString>>::finished, this, [this, watcher, path]() {
+    auto *watcher = new QFutureWatcher<std::pair<bool, QString>>(this);
+    connect(watcher, &QFutureWatcher<std::pair<bool, QString>>::finished, this, [this, watcher, path]() {
         watcher->deleteLater();
         const auto outcome = watcher->result();
         m_projectBusy = false;
@@ -1697,7 +1697,7 @@ void AppController::saveProject(const QUrl &fileUrl)
     watcher->setFuture(QtConcurrent::run([path, data]() {
         QString saveError;
         const bool ok = ProjectStore::save(path, data, &saveError);
-        return qMakePair(ok, saveError);
+        return std::make_pair(ok, saveError);
     }));
 }
 

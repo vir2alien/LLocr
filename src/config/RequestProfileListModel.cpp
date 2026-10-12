@@ -18,9 +18,8 @@ QVariant RequestProfileListModel::data(const QModelIndex &index, int role) const
         return m_ids.at(index.row());
     case DisplayRole:
         return m_names.at(index.row());
-    default:
-        return {};
     }
+    return {};
 }
 
 QHash<int, QByteArray> RequestProfileListModel::roleNames() const

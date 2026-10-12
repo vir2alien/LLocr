@@ -43,7 +43,7 @@ class ModelInstaller : public QObject
     Q_PROPERTY(QString layoutActiveTitle READ layoutActiveTitle NOTIFY installedChanged)
 
 public:
-    enum State {
+    enum State : int {
         Idle = 0,
         Fetching = 1,
         ReadyToDownload = 2,

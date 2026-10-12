@@ -1,11 +1,12 @@
 #pragma once
 
+#include <algorithm>
 #include <functional>
+#include <utility>
 
 #include <QImage>
 #include <QList>
 #include <QPageLayout>
-#include <QPair>
 #include <QString>
 #include <QStringList>
 
@@ -57,7 +58,7 @@ public:
     static QPageLayout defaultPdfLayout();
     static Result writePdfFallback(const QList<Page> &pages, const QString &path, const CropProvider &crop, const QPageLayout &layout = defaultPdfLayout(), bool splitPages = true);
 
-    static QList<QPair<int, int>> referencedCrops(const QList<Page> &pages);
+    static QList<std::pair<int, int>> referencedCrops(const QList<Page> &pages);
     Result exportToFile(const QList<Page> &pages, const QString &filePath, const CropProvider &crop = {}, const ExportOptions &options = ExportOptions()) const;
     static ResolvedImages resolveImageReferences(const QString &markdown, int pageIndex, const std::function<QImage(int boxIndex)> &crop, const QString &mediaDir, const QString &referencePrefix = {});
 

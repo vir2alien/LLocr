@@ -43,7 +43,7 @@ public:
 
     // Per-run override of check/autoRecheck for the decision phase: follow the
     // setting (default), never re-recognize the mismatches, or always do.
-    enum RecheckMode {
+    enum RecheckMode : int {
         RecheckFromSetting = -1,
         RecheckSkip = 0,
         RecheckForce = 1,

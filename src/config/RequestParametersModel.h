@@ -13,7 +13,7 @@ class RequestParametersModel : public QAbstractListModel
     Q_PROPERTY(int count READ rowCount NOTIFY countChanged)
 
 public:
-    enum Roles {
+    enum Roles : int {
         NameRole = Qt::UserRole + 1,
         ValueTextRole,
         KindRole,

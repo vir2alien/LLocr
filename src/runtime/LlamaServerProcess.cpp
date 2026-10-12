@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -343,7 +344,7 @@ int LlamaServerProcess::parseLoadPercent(const QString &line)
     const double value = token.toDouble(&ok);
     if (!ok)
         return -1;
-    return qBound(0, int(qRound(value)), 100);
+    return std::clamp(int(qRound(value)), 0, 100);
 }
 
 bool LlamaServerProcess::rotateLogIfNeeded()

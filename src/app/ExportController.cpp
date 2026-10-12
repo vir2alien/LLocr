@@ -76,8 +76,8 @@ bool ExportController::exportPages(const QUrl &fileUrl, int scope, int currentPa
         return false;
     }
 
-    QHash<QPair<int, int>, QImage> crops;
-    const QList<QPair<int, int>> refs = Exporter::referencedCrops(pages);
+    QHash<std::pair<int, int>, QImage> crops;
+    const QList<std::pair<int, int>> refs = Exporter::referencedCrops(pages);
     for (const auto &ref : refs)
         crops.insert(ref, m_deps.cropProvider(ref.first - 1, ref.second));
 
@@ -132,7 +132,7 @@ void ExportController::finishExport(const Exporter::Result &result, int pageCoun
 
 QPageLayout ExportController::pdfPageLayout() const
 {
-    const int marginMm = qBound(0, m_deps.settings.pdfMarginMm(), 50);
+    const int marginMm = std::clamp(m_deps.settings.pdfMarginMm(), 0, 50);
     return QPageLayout(
         QPageSize(QPageSize::A4), m_deps.settings.pdfLandscape() ? QPageLayout::Landscape : QPageLayout::Portrait, QMarginsF(marginMm, marginMm, marginMm, marginMm), QPageLayout::Millimeter);
 }

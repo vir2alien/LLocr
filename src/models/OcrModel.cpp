@@ -3,9 +3,9 @@
 #include "models/ChatExchange.h"
 #include "models/ImageDataUrl.h"
 
+#include <atomic>
 #include <memory>
 
-#include <QAtomicInteger>
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -48,10 +48,10 @@ void dumpRawRequest(const QByteArray &requestBody)
     if (!rawDebugEnabled())
         return;
 
-    static QAtomicInt sequence;
-    const int n = sequence.fetchAndAddRelaxed(1) + 1;
+    static std::atomic<int> sequence;
+    const int n = sequence.fetch_add(1, std::memory_order_relaxed) + 1;
 
-    const QString base = QStringLiteral("raw-%1-%2-request").arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"))).arg(n, 4, 10, QLatin1Char('0'));
+    const QString base = QStringLiteral("raw-%1-%2-request").arg(QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd-HHmmss"))).arg(n, 4, 10, QLatin1Char('0'));
     QFile file(rawDebugDir().filePath(base + QStringLiteral(".json")));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         qWarning() << "[raw-debug] cannot write" << file.fileName();
@@ -66,12 +66,12 @@ void dumpRawResponse(const QByteArray &responseData, const QString &content, boo
     if (!rawDebugEnabled())
         return;
 
-    static QAtomicInt sequence;
-    const int n = sequence.fetchAndAddRelaxed(1) + 1;
+    static std::atomic<int> sequence;
+    const int n = sequence.fetch_add(1, std::memory_order_relaxed) + 1;
 
     const QDir dir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/raw-debug"));
 
-    const QString base = QStringLiteral("raw-%1-%2").arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"))).arg(n, 4, 10, QLatin1Char('0'));
+    const QString base = QStringLiteral("raw-%1-%2").arg(QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd-HHmmss"))).arg(n, 4, 10, QLatin1Char('0'));
     // Parsed replies store the verbatim model text; anything the JSON layer
     // could not read stores the full envelope for diagnosis.
     QFile file(dir.filePath(base + (parsed ? QStringLiteral(".txt") : QStringLiteral(".invalid.json"))));

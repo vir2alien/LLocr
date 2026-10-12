@@ -147,7 +147,7 @@ bool ProjectStore::save(const QString &path, const ProjectData &data, QString *e
     const QJsonObject root{
         {"format", kFormatId.toString()},
         {"version", kSchemaVersion},
-        {"createdAt", QDateTime::currentDateTime().toString(Qt::ISODate)},
+        {"createdAt", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)},
         {"currentPage", data.currentPage},
         {"sources", sourcesJson},
         {"pages", pagesJson},

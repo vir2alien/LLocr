@@ -16,7 +16,7 @@ class InstalledBuildsModel : public QAbstractListModel
     Q_PROPERTY(int count READ rowCount NOTIFY countChanged)
 
 public:
-    enum Roles {
+    enum Roles : int {
         TagRole = Qt::UserRole + 1,
         BuildRole,
         BackendRole,

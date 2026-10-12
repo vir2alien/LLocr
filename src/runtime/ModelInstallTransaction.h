@@ -29,7 +29,7 @@ class ModelInstallTransaction : public QObject
     Q_OBJECT
 
 public:
-    enum State { Idle = 0, Fetching = 1, ReadyToDownload = 2, Downloading = 3, Error = 4 };
+    enum State : int { Idle = 0, Fetching = 1, ReadyToDownload = 2, Downloading = 3, Error = 4 };
     Q_ENUM(State)
 
     explicit ModelInstallTransaction(SettingsStore &settings, InstalledState &state, QObject *parent = nullptr);

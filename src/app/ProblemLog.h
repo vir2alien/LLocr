@@ -19,7 +19,7 @@ class ProblemLog : public QObject
     Q_PROPERTY(int warningCount READ warningCount NOTIFY logChanged)
 
 public:
-    enum Severity {
+    enum Severity : int {
         Warning = 0,
         Error = 1,
     };

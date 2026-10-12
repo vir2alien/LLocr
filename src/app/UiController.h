@@ -15,7 +15,7 @@ class UiController : public QObject
     Q_PROPERTY(bool dark READ dark NOTIFY darkChanged)
 
 public:
-    enum Mode {
+    enum Mode : int {
         System = 0,
         Light = 1,
         Dark = 2,

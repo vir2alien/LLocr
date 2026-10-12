@@ -1,5 +1,6 @@
 #include "app/Exporter.h"
 
+#include <algorithm>
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QDir>
@@ -12,6 +13,7 @@
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QUrl>
+#include <utility>
 
 #include <QMarginsF>
 #include <QPageLayout>
@@ -148,11 +150,11 @@ QRegularExpression Exporter::imageRefRegex()
     return re;
 }
 
-QList<QPair<int, int>> Exporter::referencedCrops(const QList<Page> &pages)
+QList<std::pair<int, int>> Exporter::referencedCrops(const QList<Page> &pages)
 {
     const QRegularExpression re = imageRefRegex();
-    QList<QPair<int, int>> refs;
-    QSet<QPair<int, int>> seen;
+    QList<std::pair<int, int>> refs;
+    QSet<std::pair<int, int>> seen;
     for (const Page &page : pages) {
         QRegularExpressionMatchIterator it = re.globalMatch(page.text);
         while (it.hasNext()) {
@@ -161,7 +163,7 @@ QList<QPair<int, int>> Exporter::referencedCrops(const QList<Page> &pages)
             const int box = m.captured(2).toInt(&ok);
             if (!ok)
                 continue;
-            const QPair<int, int> key{page.number, box};
+            const std::pair<int, int> key{page.number, box};
             if (!seen.contains(key)) {
                 seen.insert(key);
                 refs.append(key);

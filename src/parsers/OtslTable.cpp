@@ -142,7 +142,7 @@ QString formatOtslTable(QString text, bool tablesAsHtml)
 
     int cols = 1;
     for (const QStringList &r : std::as_const(rows))
-        cols = std::max(cols, static_cast<int>(r.size()));
+        cols = (std::max)(cols, static_cast<int>(r.size()));
 
     if (cols == 1) {
         QStringList lines;

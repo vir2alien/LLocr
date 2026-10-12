@@ -37,7 +37,7 @@ public:
         int selected = 0;
     };
 
-    enum Roles {
+    enum Roles : int {
         KeyRole = Qt::UserRole + 1,
         TitleRole,
         SubtitleRole,

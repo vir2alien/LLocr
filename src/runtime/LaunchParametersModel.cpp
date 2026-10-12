@@ -30,9 +30,8 @@ QVariant LaunchParametersModel::data(const QModelIndex &index, int role) const
         return int(p.kind);
     case DescriptionRole:
         return p.description;
-    default:
-        return QVariant();
     }
+    return QVariant();
 }
 
 QHash<int, QByteArray> LaunchParametersModel::roleNames() const

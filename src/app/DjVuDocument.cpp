@@ -1,5 +1,6 @@
 #include "app/DjVuDocument.h"
 
+#include <algorithm>
 #include <cmath>
 #include <libdjvu/ddjvuapi.h>
 #include <memory>
@@ -149,7 +150,7 @@ QSize DjVuDocument::pageSize(int index, QString *error)
         size.scale(kMaxRenderSide, kMaxRenderSide, Qt::KeepAspectRatio);
     if (qint64(size.width()) * size.height() > kMaxRenderPixels) {
         const double scale = std::sqrt(double(kMaxRenderPixels) / (double(size.width()) * size.height()));
-        size = QSize(qMax(1, int(size.width() * scale)), qMax(1, int(size.height() * scale)));
+        size = QSize((std::max)(1, int(size.width() * scale)), (std::max)(1, int(size.height() * scale)));
     }
     return size;
 }

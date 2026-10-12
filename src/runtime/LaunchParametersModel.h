@@ -12,7 +12,7 @@ class LaunchParametersModel : public QAbstractListModel
     Q_OBJECT
 
 public:
-    enum Roles {
+    enum Roles : int {
         NameRole = Qt::UserRole + 1,
         ValueTextRole,
         KindRole,

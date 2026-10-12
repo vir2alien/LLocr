@@ -3,6 +3,7 @@
 #include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
 
+#include <algorithm>
 #include <QCoreApplication>
 #include <QMetaProperty>
 
@@ -381,7 +382,7 @@ int SettingsStore::pdfMarginMm() const
 
 void SettingsStore::setPdfMarginMm(int mm)
 {
-    mm = qBound(0, mm, kMaxPdfMarginMm);
+    mm = std::clamp(mm, 0, kMaxPdfMarginMm);
     if (pdfMarginMm() == mm)
         return;
     m_settings.setValue(kPdfMarginMm, mm);
@@ -931,12 +932,12 @@ void SettingsStore::setDecisionModelName(const QString &name)
 double SettingsStore::decisionMatchThreshold() const
 {
     const double v = m_settings.value(kDecisionMatchThreshold, kDefaultDecisionMatchThreshold).toDouble();
-    return qBound(0.0, v, 1.0);
+    return std::clamp(v, 0.0, 1.0);
 }
 
 void SettingsStore::setDecisionMatchThreshold(double threshold)
 {
-    threshold = qBound(0.0, threshold, 1.0);
+    threshold = std::clamp(threshold, 0.0, 1.0);
     if (decisionMatchThreshold() == threshold)
         return;
     m_settings.setValue(kDecisionMatchThreshold, threshold);

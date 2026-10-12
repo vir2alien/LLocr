@@ -392,7 +392,7 @@ void DownloadTask::updateProgress()
         emit progressChanged();
         return;
     }
-    const qint64 elapsedMs = qMax<qint64>(1, m_speedClock.elapsed());
+    const qint64 elapsedMs = (std::max)(qint64(1), m_speedClock.elapsed());
     if (elapsedMs >= 200) {
         emit progressChanged();
         const qint64 delta = m_receivedBytes - m_speedSampleBytes;
@@ -483,8 +483,8 @@ void DownloadTask::verifySha256()
     const QString expected = m_request.sha256.trimmed().toLower();
     if (!expected.isEmpty() && m_hashFileOnDisk) {
         const QString partPath = m_partPath;
-        auto *watcher = new QFutureWatcher<QPair<QByteArray, bool>>(this);
-        connect(watcher, &QFutureWatcher<QPair<QByteArray, bool>>::finished, this, [this, watcher, expected, partPath]() {
+        auto *watcher = new QFutureWatcher<std::pair<QByteArray, bool>>(this);
+        connect(watcher, &QFutureWatcher<std::pair<QByteArray, bool>>::finished, this, [this, watcher, expected, partPath]() {
             const auto result = watcher->result();
             watcher->deleteLater();
             if (m_partPath != partPath || m_state != State::Verifying)
@@ -498,7 +498,7 @@ void DownloadTask::verifySha256()
         watcher->setFuture(QtConcurrent::run([partPath]() {
             bool ok = false;
             const QByteArray digest = sha256File(partPath, &ok);
-            return qMakePair(digest, ok);
+            return std::make_pair(digest, ok);
         }));
         return;
     }

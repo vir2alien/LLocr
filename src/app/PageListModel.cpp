@@ -29,9 +29,8 @@ QVariant PageListModel::data(const QModelIndex &index, int role) const
         return (row < m_edited.size()) ? m_edited.at(row) : false;
     case HasDuplicatesRole:
         return (row < m_hasDuplicates.size()) ? m_hasDuplicates.at(row) : false;
-    default:
-        return {};
     }
+    return {};
 }
 
 QHash<int, QByteArray> PageListModel::roleNames() const

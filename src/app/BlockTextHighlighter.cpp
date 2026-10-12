@@ -1,5 +1,7 @@
 #include "app/BlockTextHighlighter.h"
 
+#include <algorithm>
+
 namespace llocr {
 
 BlockTextHighlighter::BlockTextHighlighter(QObject *parent) : QSyntaxHighlighter(parent) {}
@@ -38,8 +40,8 @@ void BlockTextHighlighter::highlightBlock(const QString &)
 
     const QTextBlock block = currentBlock();
     const int blockStart = block.position();
-    const int from = qMax(m_start, blockStart);
-    const int to = qMin(m_start + m_length, blockStart + block.length());
+    const int from = (std::max)(m_start, blockStart);
+    const int to = (std::min)(m_start + m_length, blockStart + block.length());
     if (from >= to)
         return;
 

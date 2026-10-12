@@ -54,7 +54,7 @@ class RuntimeInstaller : public QObject
     Q_PROPERTY(bool canInstall READ canInstall NOTIFY stateChanged)
 
 public:
-    enum State {
+    enum State : int {
         Idle = 0,         // nothing loaded yet
         Fetching = 1,     // fetching the release catalog
         Ready = 2,        // catalog loaded, awaiting a user action

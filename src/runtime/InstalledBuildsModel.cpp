@@ -52,9 +52,8 @@ QVariant InstalledBuildsModel::data(const QModelIndex &index, int role) const
         return isActive(build);
     case SizeRole:
         return build.sizeBytes;
-    default:
-        return {};
     }
+    return {};
 }
 
 void InstalledBuildsModel::setBuilds(const QList<InstalledBuildInfo> &builds)

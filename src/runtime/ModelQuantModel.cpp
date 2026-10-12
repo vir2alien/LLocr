@@ -160,9 +160,8 @@ QVariant ModelQuantModel::data(const QModelIndex &index, int role) const
         }
         return false;
     }
-    default:
-        return {};
     }
+    return {};
 }
 
 void ModelQuantModel::refresh()

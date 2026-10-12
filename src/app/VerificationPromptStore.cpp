@@ -68,9 +68,8 @@ QVariant VerificationBlocksModel::data(const QModelIndex &index, int role) const
         return block.group;
     case EnabledRole:
         return block.enabled;
-    default:
-        return QVariant();
     }
+    return QVariant();
 }
 
 QHash<int, QByteArray> VerificationBlocksModel::roleNames() const

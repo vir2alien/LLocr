@@ -25,12 +25,12 @@ namespace llocr {
 QString ModelInstallTransaction::repoDirName(const QString &repo)
 {
     QStringList parts;
+    static const QRegularExpression hostile(QStringLiteral("[^A-Za-z0-9._-]"));
     for (const QString &seg : repo.split(QLatin1Char('/'))) {
         QString s = seg.trimmed();
         if (s.isEmpty() || s == QLatin1String(".") || s == QLatin1String(".."))
             continue;
         s.replace(QLatin1Char('\\'), QStringLiteral("_"));
-        static const QRegularExpression hostile(QStringLiteral("[^A-Za-z0-9._-]"));
         s.replace(hostile, QStringLiteral("_"));
         if (!s.isEmpty())
             parts.append(s);
@@ -45,8 +45,8 @@ void ModelInstallTransaction::selectModelFiles(const QList<HfFile> &tree, const 
     modelPaths->clear();
     mmprojRel.clear();
 
-    QStringList singles;                                // repo-relative paths
-    QHash<QString, QPair<QStringList, qint64>> groups;  // key -> (paths,size)
+    QStringList singles;                                    // repo-relative paths
+    QHash<QString, std::pair<QStringList, qint64>> groups;  // key -> (paths,size)
     QStringList projectors;
     QHash<QString, qint64> sizeByPath;
 
@@ -227,7 +227,7 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
     const QString modelsDir = m_installState.paths().modelsDir();
     const QString parser = preset.parserFor(m_pendingRole);
 
-    QFuture<QPair<InstallPlan, QString>> future = QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, parser, token, modelsDir]() -> QPair<InstallPlan, QString> {
+    QFuture<std::pair<InstallPlan, QString>> future = QtConcurrent::run([repo, pin, prefer, preferMmproj, preset, parser, token, modelsDir]() -> std::pair<InstallPlan, QString> {
         QNetworkAccessManager nam;
         QString err;
         QByteArray auth;
@@ -300,7 +300,7 @@ void ModelInstallTransaction::beginPrepare(const ModelPreset &preset)
 
     const int generation = ++m_prepareGeneration;
 
-    future.then(this, [this, generation](const QPair<InstallPlan, QString> &res) {
+    future.then(this, [this, generation](const std::pair<InstallPlan, QString> &res) {
         if (generation != m_prepareGeneration)
             return;
         setBusy(false);
@@ -378,9 +378,9 @@ void ModelInstallTransaction::beginDownload()
     const QString expectedMtp = mtpRel.isEmpty() ? QString() : expectedShaFor(mtpRel);
     const QString revision = m_pending.revision;
     const QList<ModelEntry> installed = m_installed;
-    auto *watcher = new QFutureWatcher<QPair<bool, bool>>(this);
-    connect(watcher, &QFutureWatcher<QPair<bool, bool>>::finished, this, [this, watcher, dir, mmprojRel, mtpRel, expectedMmproj, expectedMtp, revision, installed]() {
-        const QPair<bool, bool> onDisk = watcher->result();
+    auto *watcher = new QFutureWatcher<std::pair<bool, bool>>(this);
+    connect(watcher, &QFutureWatcher<std::pair<bool, bool>>::finished, this, [this, watcher, dir, mmprojRel, mtpRel, expectedMmproj, expectedMtp, revision, installed]() {
+        const std::pair<bool, bool> onDisk = watcher->result();
         watcher->deleteLater();
         if (m_state != State::Downloading)
             return;  // cancelled meanwhile
@@ -389,7 +389,7 @@ void ModelInstallTransaction::beginDownload()
     watcher->setFuture(QtConcurrent::run([dir, mmprojRel, mtpRel, expectedMmproj, expectedMtp, revision, installed]() {
         const bool mmproj = !mmprojRel.isEmpty() && moduleAlreadyOnDisk(dir, mmprojRel, expectedMmproj, revision, installed, &ModelEntry::mmprojPath);
         const bool mtp = !mtpRel.isEmpty() && moduleAlreadyOnDisk(dir, mtpRel, expectedMtp, revision, installed, &ModelEntry::draftPath);
-        return qMakePair(mmproj, mtp);
+        return std::make_pair(mmproj, mtp);
     }));
 }
 

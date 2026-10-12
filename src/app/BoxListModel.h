@@ -20,7 +20,7 @@ public:
         Formula = 3,
     };
 
-    enum Roles {
+    enum Roles : int {
         XRole = Qt::UserRole + 1,
         YRole,
         WidthRole,

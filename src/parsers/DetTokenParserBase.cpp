@@ -67,7 +67,7 @@ int longestCommonWordRun(const QStringList &a, const QStringList &b)
     for (int i = 1; i <= a.size(); ++i) {
         for (int j = 1; j <= b.size(); ++j) {
             current[j] = (a.at(i - 1) == b.at(j - 1)) ? previous.at(j - 1) + 1 : 0;
-            best = std::max(best, current.at(j));
+            best = (std::max)(best, current.at(j));
         }
         std::swap(previous, current);
         current.fill(0);
@@ -86,7 +86,7 @@ bool repeatsEarlierText(const BlockFingerprint &candidate, const BlockFingerprin
     const int run = longestCommonWordRun(candidate.words, previous.words);
     if (run < kMinRepeatWords)
         return false;
-    const int shorter = std::min(candidate.words.size(), previous.words.size());
+    const int shorter = (std::min)(candidate.words.size(), previous.words.size());
     return run >= kRepeatCoverage * shorter;
 }
 
@@ -176,9 +176,9 @@ QString formatTable(const QString &text, bool tablesAsHtml)
         int width = 0;
         for (const Cell &c : std::as_const(row))
             width += c.colspan;
-        cols = std::max(cols, width);
+        cols = (std::max)(cols, width);
     }
-    cols = std::min(cols, kMaxTableColumns);
+    cols = (std::min)(cols, kMaxTableColumns);
 
     QVector<QVector<QString>> grid;
     QVector<QVector<bool>> occupied;
@@ -209,13 +209,13 @@ QString formatTable(const QString &text, bool tablesAsHtml)
             } else {
                 while (col < cols && occupied.at(r).at(col))
                     ++col;
-                colspan = std::min(colspan, cols - col);
+                colspan = (std::min)(colspan, cols - col);
             }
             if (colspan < 1)
                 break;
 
             // A span cannot run past the table the reply actually declares.
-            const int rowspan = std::min(cell.rowspan, static_cast<int>(rows.size()));
+            const int rowspan = (std::min)(cell.rowspan, static_cast<int>(rows.size()));
             for (int dr = 0; dr < rowspan; ++dr) {
                 ensureCell(r + dr, col + colspan - 1);
                 for (int dc = 0; dc < colspan; ++dc) {
@@ -369,7 +369,7 @@ OcrResult DetTokenParserBase::parse(const QString &rawText) const
         result.text = page.text;
         result.pages.append(page);
         result.success = true;
-        if (page.text.length() > kDiagnosticMinLength)
+        if (page.text.size() > kDiagnosticMinLength)
             result.notes.append(QCoreApplication::translate("DetTokenParser",
                                                             "No layout tokens found in the model reply — the text was kept as "
                                                             "one block. Check that the OCR model and the output parser match."));

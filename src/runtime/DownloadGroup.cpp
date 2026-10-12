@@ -2,6 +2,8 @@
 
 #include "runtime/DownloadManager.h"
 
+#include <algorithm>
+
 namespace llocr {
 
 DownloadGroup::DownloadGroup(DownloadManager *manager, QObject *parent) : QObject(parent), m_manager(manager)
@@ -39,7 +41,7 @@ double DownloadGroup::progress() const
         if (taskTotal <= 0)
             continue;  // size still unknown (not started yet)
         total += taskTotal;
-        received += qMin(task->receivedBytes(), taskTotal);
+        received += (std::min)(task->receivedBytes(), taskTotal);
     }
     if (total <= 0)
         return 0.0;

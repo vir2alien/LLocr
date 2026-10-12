@@ -122,7 +122,7 @@ bool ZipWriter::streamEntry(const QString &entryName, QIODevice &device)
     entry.name = entryName;
     entry.offset = m_out.pos();
 
-    const QDateTime now = QDateTime::currentDateTime();
+    const QDateTime now = QDateTime::currentDateTimeUtc();
     QByteArray header;
     header.reserve(30);
     putU32(&header, kLocalSig);
@@ -197,7 +197,7 @@ bool ZipWriter::finish(QString *error)
         return false;
     }
 
-    const QDateTime now = QDateTime::currentDateTime();
+    const QDateTime now = QDateTime::currentDateTimeUtc();
     const qint64 centralOffset = m_out.pos();
     for (const Entry &entry : std::as_const(m_entries)) {
         const QByteArray name = entry.name.toUtf8();

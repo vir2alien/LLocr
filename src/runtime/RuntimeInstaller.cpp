@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <QDate>
 #include <QDesktopServices>
 #include <QDir>
@@ -5,6 +6,7 @@
 #include <QFileInfo>
 #include <QNetworkAccessManager>
 #include <QUrl>
+#include <utility>
 
 #include <QtConcurrent>
 
@@ -220,14 +222,14 @@ void RuntimeInstaller::startCatalogFetch()
     setStatusMessage(tr("Checking for updates…"));
 
     const QString cacheDir = m_installState.paths().cacheDir();
-    auto future = QtConcurrent::run([cacheDir]() -> QPair<QList<ReleaseInfo>, QString> {
+    auto future = QtConcurrent::run([cacheDir]() -> std::pair<QList<ReleaseInfo>, QString> {
         QNetworkAccessManager nam;
         QString error;
         QList<ReleaseInfo> rels = ReleaseCatalog::fetchReleasesLocal(&nam, cacheDir, error);
         return {rels, error};
     });
 
-    future.then(this, [this](const QPair<QList<ReleaseInfo>, QString> &res) { onCatalogLoaded(res.first, res.second); });
+    future.then(this, [this](const std::pair<QList<ReleaseInfo>, QString> &res) { onCatalogLoaded(res.first, res.second); });
 }
 
 void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const QString &error)
@@ -240,7 +242,7 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
     }
 
     m_releases = releases;
-    m_lastCatalogAt = QDateTime::currentDateTime();
+    m_lastCatalogAt = QDateTime::currentDateTimeUtc();
     if (m_selectedRelease >= m_releases.size())
         setSelectedRelease(0);
 
@@ -385,13 +387,13 @@ void RuntimeInstaller::runInstallAsync()
     const bool hasCudart = m_pendingHasCudart;
     const RuntimePaths paths = currentPaths;
 
-    QFuture<QPair<InstallOutput, QString>> future = QtConcurrent::run([mainZip, mainAsset, paths]() -> QPair<InstallOutput, QString> {
+    QFuture<std::pair<InstallOutput, QString>> future = QtConcurrent::run([mainZip, mainAsset, paths]() -> std::pair<InstallOutput, QString> {
         InstallOutput out = InstallTransaction::start(mainZip, mainAsset, paths);
         return {out, out.warning};
     });
 
     future
-        .then([cudartZip, hasCudart](QPair<InstallOutput, QString> res) -> QPair<InstallOutput, QString> {
+        .then([cudartZip, hasCudart](std::pair<InstallOutput, QString> res) -> std::pair<InstallOutput, QString> {
             InstallOutput out = res.first;
             QString warning = res.second;
             if (out.ok && hasCudart) {
@@ -402,7 +404,7 @@ void RuntimeInstaller::runInstallAsync()
             }
             return {out, warning};
         })
-        .then(this, [this, currentPaths](const QPair<InstallOutput, QString> &res) {
+        .then(this, [this, currentPaths](const std::pair<InstallOutput, QString> &res) {
             const InstallOutput out = res.first;
             const QString warning = res.second;
             m_downloadedMainZip = QDir(currentPaths.runtimeDir()).filePath(m_pendingMain.fileName);

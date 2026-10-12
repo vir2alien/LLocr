@@ -3,6 +3,7 @@
 #include "models/ChatExchange.h"
 #include "models/ImageDataUrl.h"
 
+#include <algorithm>
 #include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -70,7 +71,7 @@ DecisionResult DecisionModel::parseResponse(const QByteArray &responseData)
 
     DecisionResult result;
     result.ok = true;
-    result.probability = qBound(0.0, probability, 1.0);
+    result.probability = std::clamp(probability, 0.0, 1.0);
     return result;
 }
 
