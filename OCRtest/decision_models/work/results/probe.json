@@ -1,0 +1,60 @@
+{
+  "noul": {
+    "model": "clef-flash",
+    "answers": {
+      "t": {
+        "type": "noul",
+        "noul": 0.050584657485691666
+      }
+    },
+    "usage": {
+      "input_tokens": 161,
+      "output_tokens": 0
+    },
+    "_latency_s": 1.541
+  },
+  "choice": {
+    "model": "clef-flash",
+    "answers": {
+      "c": {
+        "type": "choice",
+        "choice": "hello",
+        "probabilities": {
+          "hello": 0.924069399810311,
+          "world": 0.07593060018968896
+        },
+        "confidence": 0.848138799620622
+      }
+    },
+    "usage": {
+      "input_tokens": 146,
+      "output_tokens": 0
+    },
+    "_latency_s": 0.995
+  },
+  "score": {
+    "model": "clef-flash",
+    "answers": {
+      "s": {
+        "type": "score",
+        "score": 0.9902440465271697,
+        "legend": {
+          "0": "1",
+          "1": "2",
+          "2": "3"
+        },
+        "probabilities": {
+          "0": 0.04947927023842606,
+          "1": 0.9107974129959779,
+          "2": 0.03972331676559586
+        },
+        "confidence": 0.8661961194939671
+      }
+    },
+    "usage": {
+      "input_tokens": 158,
+      "output_tokens": 0
+    },
+    "_latency_s": 1.046
+  }
+}
