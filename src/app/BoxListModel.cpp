@@ -40,6 +40,8 @@ QVariant BoxListModel::data(const QModelIndex &index, int role) const
         return box.correctedText;
     case KindRole:
         return static_cast<int>(kindFor(box));
+    case ConfidenceRole:
+        return box.confidence;
     }
     return {};
 }
@@ -56,6 +58,7 @@ QHash<int, QByteArray> BoxListModel::roleNames() const
         {CheckStatusRole, "boxCheckStatus"},
         {CorrectedRole, "boxCorrectedText"},
         {KindRole, "boxKind"},
+        {ConfidenceRole, "boxConfidence"},
     };
     return roles;
 }
@@ -113,19 +116,20 @@ void BoxListModel::updateBoxRect(int index, qreal x, qreal y, qreal width, qreal
     emit dataChanged(mi, mi, {XRole, YRole, WidthRole, HeightRole});
 }
 
-void BoxListModel::updateBoxCheck(int index, int status, const QString &correctedText, const QString &text)
+void BoxListModel::updateBoxCheck(int index, int status, const QString &correctedText, const QString &text, double confidence)
 {
     if (index < 0 || index >= m_boxes.size())
         return;
     BoundingBox &box = m_boxes[index];
     const BoxCheckStatus next = boxCheckStatusFromInt(status);
-    if (box.checkStatus == next && box.correctedText == correctedText && box.text == text)
+    if (box.checkStatus == next && box.correctedText == correctedText && box.text == text && box.confidence == confidence)
         return;
     box.checkStatus = next;
     box.correctedText = correctedText;
     box.text = text;
+    box.confidence = confidence;
     const QModelIndex mi = createIndex(index, 0);
-    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole, TextRole});
+    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole, TextRole, ConfidenceRole});
 }
 
 void BoxListModel::removeBox(int index)

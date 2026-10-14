@@ -75,6 +75,7 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kCheckModelName, "checkModelName", QVariant(QString())},
         {kAutoCheck, "autoCheck", QVariant(false)},
         {kAutoRecheck, "autoRecheck", QVariant(false)},
+        {kShowConfidence, "showConfidence", QVariant(false)},
         {kDecisionLaunchModelPath, "decisionLaunchModelPath", QVariant(QString())},
         {kDecisionLaunchMmprojPath, "decisionLaunchMmprojPath", QVariant(QString())},
         {kDecisionLaunchDraftPath, "decisionLaunchDraftPath", QVariant(QString())},
@@ -865,6 +866,19 @@ void SettingsStore::setAutoRecheck(bool on)
         return;
     m_settings.setValue(kAutoRecheck, on);
     emit autoRecheckChanged();
+}
+
+bool SettingsStore::showConfidence() const
+{
+    return m_settings.value(kShowConfidence, false).toBool();
+}
+
+void SettingsStore::setShowConfidence(bool on)
+{
+    if (showConfidence() == on)
+        return;
+    m_settings.setValue(kShowConfidence, on);
+    emit showConfidenceChanged();
 }
 
 QString SettingsStore::decisionLaunchModelPath() const

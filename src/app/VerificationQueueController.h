@@ -118,6 +118,7 @@ private:
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;
     QString decisionQuestion(const QString &blockType) const;
+    QString decisionNotation() const;
     QString decisionCriteriaTrue() const;
     QString decisionCriteriaFalse() const;
 

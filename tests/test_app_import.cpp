@@ -1578,6 +1578,9 @@ private slots:
         QVERIFY(server.systemoneBodies().at(2).contains("Re-recognized block text"));
         QVERIFY(!server.systemoneBodies().at(2).contains("1. Introduction"));
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::ReRecognized));
+        // The recheck verdict replaces the decision one, so the confidence is
+        // gone again — the block has no P(match) until the next run.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::ConfidenceRole).toDouble(), -1.0);
     }
 
     // Without the re-recognition option the run ends after the decision phase:
@@ -1615,6 +1618,10 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
         QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QString());
+        // The decision probability travels with the verdict for the
+        // confidence badge.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::ConfidenceRole).toDouble(), 0.1);
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::ConfidenceRole).toDouble(), 0.1);
     }
 
     // The first recognition of a text-less block (layout markup) writes the

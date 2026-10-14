@@ -273,11 +273,11 @@ void TestInstallTransaction::installsSuccessfully()
     const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
     ReleaseAsset asset;
-    asset.fileName = QStringLiteral("llama-b10594-bin-macos-arm64.zip");
+    asset.fileName = QStringLiteral("llama-b11600-bin-macos-arm64.zip");
     asset.os = QStringLiteral("macos");
     asset.backend = QStringLiteral("metal");
     asset.arch = QStringLiteral("arm64");
-    asset.build = QStringLiteral("b10594");
+    asset.build = QStringLiteral("b11600");
     asset.size = QFileInfo(zipPath).size();
     asset.sha256 = QString();
 
@@ -291,9 +291,9 @@ void TestInstallTransaction::installsSuccessfully()
     const InstallOutput out = InstallTransaction::start(zipPath, asset, paths, commit);
 
     QVERIFY2(out.ok, qPrintable(out.error));
-    QCOMPARE(out.build, QStringLiteral("b10594"));
+    QCOMPARE(out.build, QStringLiteral("b11600"));
 
-    const QString expectedTag = QStringLiteral("llama.cpp-b10594-metal-macos-arm64");
+    const QString expectedTag = QStringLiteral("llama.cpp-b11600-metal-macos-arm64");
     QCOMPARE(out.tag, expectedTag);
     QVERIFY(QFile::exists(out.serverPath));
     QVERIFY(QDir(paths.installDir(out.tag)).exists());
@@ -352,14 +352,14 @@ void TestInstallTransaction::installsFromTarGz()
     const InstallOutput out = InstallTransaction::start(archivePath, asset, paths, commit);
 
     QVERIFY2(out.ok, qPrintable(out.error));
-    // The probe reports the mock's own build (b10594), which wins over the
+    // The probe reports the mock's own build (b11600), which wins over the
     // asset-derived build number.
-    QCOMPARE(out.build, QStringLiteral("b10594"));
+    QCOMPARE(out.build, QStringLiteral("b11600"));
     QVERIFY(QFile::exists(out.serverPath));
     QVERIFY(QDir(paths.installDir(out.tag)).exists());
     // The macOS tarball carries no backend token, and the tag has to name what
     // it is: the release has no CPU variant for Apple silicon.
-    QCOMPARE(out.tag, QStringLiteral("llama.cpp-b10594-metal-macos-arm64"));
+    QCOMPARE(out.tag, QStringLiteral("llama.cpp-b11600-metal-macos-arm64"));
     QVERIFY(committed);
     QVERIFY(stagingEmpty(paths));
 }
@@ -373,9 +373,9 @@ void TestInstallTransaction::legacyCpuNamedMacosBuildIsRelabelled()
     const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
     const QString runtimeDir = paths.runtimeDir();
     QVERIFY(QDir().mkpath(runtimeDir));
-    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b10594-cpu-macos-arm64/llama-b10594"))));
-    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b10594-cpu-linux-x64/llama-b10594"))));
-    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b10594-cpu-macos-x64/llama-b10594"))));
+    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b11600-cpu-macos-arm64/llama-b11600"))));
+    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b11600-cpu-linux-x64/llama-b11600"))));
+    QVERIFY(QDir().mkpath(QDir(runtimeDir).filePath(QStringLiteral("llama.cpp-b11600-cpu-macos-x64/llama-b11600"))));
 
     const QList<InstalledBuildInfo> builds = InstallTransaction::scanInstalledBuilds(paths);
     QCOMPARE(builds.size(), 3);
@@ -396,7 +396,7 @@ void TestInstallTransaction::installedBackendFollowsTheTagOnDisk()
     QVERIFY(root.isValid());
     const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
 
-    const QString buildDir = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b10594-cpu-macos-arm64/llama-b10594"));
+    const QString buildDir = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b11600-cpu-macos-arm64/llama-b11600"));
     QVERIFY(QDir().mkpath(buildDir));
     const QString server = QDir(buildDir).filePath(serverEntryName());
     QFile mock(server);
@@ -409,7 +409,7 @@ void TestInstallTransaction::installedBackendFollowsTheTagOnDisk()
     settings.setRuntimeRootDir(paths.rootDir());
     settings.setRuntimeModelsDir(paths.modelsDir());
     settings.setServerPath(server);
-    settings.setInstalledBuild(QStringLiteral("b10594"));
+    settings.setInstalledBuild(QStringLiteral("b11600"));
     settings.setRuntimeBackend(QStringLiteral("cpu"));
     QCOMPARE(settings.runtimeBackend(), QStringLiteral("cpu"));
 
@@ -425,7 +425,7 @@ void TestInstallTransaction::installedBackendFollowsTheTagOnDisk()
     // The sweep keeps the directory that is running even though its name still
     // spells the old backend: a prefix guessed from the settings (now "metal")
     // would not match it, and the running build would be swept away too.
-    const QString running = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b10594-cpu-macos-arm64"));
+    const QString running = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b11600-cpu-macos-arm64"));
     const QString spare = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b10599-metal-macos-arm64"));
     QVERIFY(QDir().mkpath(QDir(spare).filePath(QStringLiteral("llama-b10599"))));
     installer.cleanupUnusedBuilds();
@@ -434,7 +434,7 @@ void TestInstallTransaction::installedBackendFollowsTheTagOnDisk()
     installer.shutdown();
 
     // A build of another platform keeps the backend it was activated with.
-    const QString linuxDir = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b10594-cpu-linux-x64/llama-b10594"));
+    const QString linuxDir = QDir(paths.runtimeDir()).filePath(QStringLiteral("llama.cpp-b11600-cpu-linux-x64/llama-b11600"));
     QVERIFY(QDir().mkpath(linuxDir));
     const QString linuxServer = QDir(linuxDir).filePath(serverEntryName());
     QFile linuxFile(linuxServer);

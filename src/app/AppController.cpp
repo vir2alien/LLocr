@@ -989,6 +989,7 @@ void AppController::revertBlockCorrection()
         }
         box.checkStatus = BoxCheckStatus::NotChecked;
         box.correctedText.clear();
+        box.confidence = -1.0;
         boxText = box.text;
         rebuilt = rebuildPageText(page.result.pages[0]);
         ++m_cropRevision;
@@ -1205,6 +1206,7 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
     BoxCheckStatus status = BoxCheckStatus::NotChecked;
     QString corrected;
     QString text;
+    double confidence = -1.0;
     QString rebuilt;
     bool textChanged = false;
     {
@@ -1252,6 +1254,11 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
         status = box.checkStatus;
         corrected = box.correctedText;
         text = box.text;
+        // A failed request is not a verdict: like the status, the confidence
+        // of the last real verdict stays.
+        if (result.status != CheckStatus::Failed)
+            box.confidence = result.confidence;
+        confidence = box.confidence;
 
         if (result.status == CheckStatus::ReRecognized) {
             rebuilt = rebuildPageText(page.result.pages[0]);
@@ -1268,7 +1275,7 @@ void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const Che
 
     const bool onCurrentPage = pageIndex == m_currentPage;
     if (onCurrentPage)
-        m_boxModel.updateBoxCheck(boxIndex, static_cast<int>(status), corrected, text);
+        m_boxModel.updateBoxCheck(boxIndex, static_cast<int>(status), corrected, text, confidence);
     if (onCurrentPage && m_selectedBox == boxIndex)
         emit selectedBoxChanged();
     if (textChanged) {

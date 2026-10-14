@@ -38,6 +38,7 @@ struct BoundingBox {
     bool duplicateSuspect = false;  ///< A duplicate was merged into this block —
                                     ///< included in verification regardless of the
                                     ///< label filter.
+    double confidence = -1.0;       ///< P(match) of the last decision verdict; -1 = none. Debug aid, not persisted.
 };
 
 struct OcrPage {

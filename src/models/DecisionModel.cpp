@@ -15,10 +15,16 @@ namespace llocr {
 
 QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl)
 {
-    // The state is the OCR candidate — data, never an instruction. LLocr asks
+    // The state is a JSON object: the candidate text sits in a named field, so
+    // the model reads it as content to compare against the crop — a raw string
+    // answers "is there text on the image" instead (docs/17, §4). LLocr asks
     // exactly one question, "match", of the yes/no kind; the wording travels
     // in the model profile's decision role, and the profile's criteria (what
     // each side of the answer means) rides along when it ships one.
+    QJsonObject state{{QStringLiteral("block_type"), request.blockType}, {QStringLiteral("recognized_text"), request.recognizedText}};
+    if (!request.notation.isEmpty())
+        state.insert(QStringLiteral("notation"), request.notation);
+
     QJsonObject question{{QStringLiteral("type"), QStringLiteral("noul")}, {QStringLiteral("instructions"), request.question}};
     if (!request.criteriaTrue.isEmpty() || !request.criteriaFalse.isEmpty()) {
         QJsonObject criteria;
@@ -31,7 +37,7 @@ QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const
     QJsonObject questions{{QStringLiteral("match"), question}};
 
     QJsonObject root;
-    root.insert(QStringLiteral("state"), request.stateText);
+    root.insert(QStringLiteral("state"), state);
     root.insert(QStringLiteral("images"), QJsonArray{QString::fromUtf8(imageDataUrl)});
     root.insert(QStringLiteral("questions"), questions);
 

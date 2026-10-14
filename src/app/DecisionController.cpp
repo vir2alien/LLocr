@@ -21,7 +21,8 @@ void DecisionController::abortRequest()
         m_model->abort();
 }
 
-void DecisionController::judgeBlock(const QImage &image, const QString &recognizedText, const QString &question, const QString &criteriaTrue, const QString &criteriaFalse)
+void DecisionController::judgeBlock(
+    const QImage &image, const QString &blockType, const QString &recognizedText, const QString &notation, const QString &question, const QString &criteriaTrue, const QString &criteriaFalse)
 {
     if (busy() || image.isNull())
         return;
@@ -31,10 +32,12 @@ void DecisionController::judgeBlock(const QImage &image, const QString &recogniz
     beginRequest(
         ConnectionRole::Decision,
         StatusMessage::translate(trContext(), "Stopped before the decision check started."),
-        [this, image, recognizedText, question, criteriaTrue, criteriaFalse](const ResolvedConnection &conn) {
+        [this, image, blockType, recognizedText, notation, question, criteriaTrue, criteriaFalse](const ResolvedConnection &conn) {
             DecisionRequest request;
             request.image = image;
-            request.stateText = recognizedText;
+            request.blockType = blockType;
+            request.recognizedText = recognizedText;
+            request.notation = notation;
             request.question = question;
             request.criteriaTrue = criteriaTrue;
             request.criteriaFalse = criteriaFalse;

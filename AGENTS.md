@@ -42,9 +42,10 @@
   | `docs/TODO.md`            | Short backlog of open items                 |
   | `docs/UnlimitedOCR.md`    | Reference: the Unlimited-OCR model (baidu) |
   | `docs/13-lfm25-vl-3b.md`  | Model manual: LFM2.5-VL-3B (launch, requests, 2:3 calibration, links); Russian mirror in `13-lfm25-vl-3b.ru.md` |
-  | `docs/14-d1-3b.md`        | Model manual: LiquidAI d1-3B decision model (`/v1/systemone`, threshold, pipeline role); Russian mirror in `14-d1-3b.ru.md` |
   | `docs/15-teleocr.md`      | Model manual: TeleOCR/NaviDC-OCR (block-recognition prompts, GGUF quants, roles); Russian mirror in `15-teleocr.ru.md` |
   | `docs/16-gemma-4.md`      | Model manual: Gemma 4 E4B/12B QAT (MTP drafter in the model repo, image token budgets 70–1120, per-card flash-attn split); Russian mirror in `16-gemma-4.ru.md` |
+  | `docs/17-d1-verification-study.md` | Study: decision models as OCR verifiers (d1-3B vs clef-flash) — methodology, request schemes v0–v9, calibration, why clef-flash replaces d1-3B |
+  | `docs/18-clef-flash.md`   | Model manual: Cloudflare clef-flash decision model (launch, recommended v5 request scheme, thresholds); Russian mirror in `18-clef-flash.ru.md` |
   
   ## Rules for the agent
   
@@ -351,10 +352,15 @@
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
-  - **Decision pipeline (ADR 145–147, Oct 2026)** — verification runs in two
-    stages: a fast **decision model** (d1-3B via `/v1/systemone`, its own
+  - **Decision pipeline (ADR 145–147, 161; Oct 2026)** — verification runs in two
+    stages: a fast **decision model** (clef-flash via `/v1/systemone`, its own
     settings window/menu «Модель decision», threshold `decision/matchThreshold`)
-    judges every queued block — Ok (green) or the new **Mismatch** (red); with
+    judges every queued block — Ok (green) or the new **Mismatch** (red). The
+    request is scheme v5: the state is a JSON object
+    (`block_type`/`recognized_text`/`notation` from the profile) plus one noul
+    question — a raw-string state collapses the yes/no separation
+    (`docs/17-d1-verification-study.md`); d1-3B failed the task in every
+    phrasing and was removed (ADR 161). With
     «Автоматическое повторное распознавание» (`check/autoRecheck`) the
     mismatches are re-run through the **blockRecognition** role (renamed from
     `check`, ADR 146) in the same run, the transcription becoming the block
@@ -363,7 +369,7 @@
     page), and the header «Исправить» (whole document). Planned blocks
     (filter-enabled type
     or duplicate suspect, unanswered) show the gray dot
-    (`boxVerificationPlanned`). Model manual: `docs/14-d1-3b.md`.
+    (`boxVerificationPlanned`). Model manual: `docs/18-clef-flash.md`.
   - **Manual page markup (ADR 149–150, Oct 2026)** — the page toolbar's
     «Разметить страницу» (+ ▾ «Разметить все страницы») runs the **layout role**
     (`roles.layout` in a model profile — TeleOCR ships it): the page goes to

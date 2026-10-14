@@ -379,8 +379,8 @@ private slots:
         QStringList decisionKeys;
         for (int i = 0; i < decision->rowCount(); ++i)
             decisionKeys.append(roleAt(decision, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(decisionKeys, QStringList({QStringLiteral("d1-3b")}));
-        QVERIFY(pathOf(*s->installer, QStringLiteral("d1-3b"), QStringLiteral("decision")).isEmpty());
+        QCOMPARE(decisionKeys, QStringList({QStringLiteral("clef-flash")}));
+        QVERIFY(pathOf(*s->installer, QStringLiteral("clef-flash"), QStringLiteral("decision")).isEmpty());
 
         // The layout list serves the layout role only (ADR 150): one shipped
         // profile declares it.

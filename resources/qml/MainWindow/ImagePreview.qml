@@ -78,6 +78,7 @@ Image {
                 required property string boxText
                 required property int boxCheckStatus
                 required property int boxKind
+                required property real boxConfidence
 
                 property bool isImage: Controller.boxModel.isImageBox(boxDelegate.index)
                 property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
@@ -120,18 +121,32 @@ Image {
                     // Outside the block, to the left: gray = recognized (by
                     // page OCR or block recognition, no verdict yet), green =
                     // verified Ok, amber = re-recognized (two text variants),
-                    // red = Mismatch/Review. A markup block without text shows
-                    // no dot.
+                    // red = Mismatch/Review. With the confidence option on, a
+                    // decision verdict (green/red) renders as its probability
+                    // in percent inside a circle of the verdict's color. A
+                    // markup block without text shows nothing.
+                    readonly property bool confidenceBadge: Settings.showConfidence
+                                                            && (boxCheckStatus === 1 || boxCheckStatus === 4)
+                                                            && boxConfidence >= 0
                     visible: boxCheckStatus !== 0 || boxText.length > 0
-                    x: boxDelegate.x < 14 ? 2 : -12
+                    x: boxDelegate.x < 14 ? 2 : (confidenceBadge ? -24 : -12)
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 8
-                    height: 8
-                    radius: 4
+                    width: confidenceBadge ? 20 : 8
+                    height: confidenceBadge ? 20 : 8
+                    radius: width / 2
                     color: boxCheckStatus === 1 ? Theme.success
                          : boxCheckStatus === 2 ? Theme.warning
                          : boxCheckStatus >= 3 ? Theme.error
                          : Theme.nothing
+
+                    Text {
+                        anchors.centerIn: parent
+                        visible: parent.confidenceBadge
+                        text: Math.round(boxConfidence * 100)
+                        font.pointSize: Theme.captionSize
+                        font.bold: true
+                        color: "#ffffff"
+                    }
                 }
 
                 MouseArea {

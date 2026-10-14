@@ -109,6 +109,8 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.maxOutput = roleObject.value(QStringLiteral("maxOutput")).toInt(0);
         role.isDefault = roleObject.value(QStringLiteral("default")).toBool(false);
         role.systemPrompt = roleObject.value(QStringLiteral("systemPrompt")).toString();
+        role.statePrompt = roleObject.value(QStringLiteral("statePrompt")).toString();
+        role.question = roleObject.value(QStringLiteral("question")).toString();
         role.recheckPrompt = roleObject.value(QStringLiteral("recheckPrompt")).toString();
         const QJsonObject criteria = roleObject.value(QStringLiteral("criteria")).toObject();
         role.criteriaTrue = criteria.value(QStringLiteral("true")).toString();
@@ -150,6 +152,16 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
                 return profile;
             }
             role.blockPrompts.insert(prompt.key(), text);
+        }
+
+        const QJsonObject blockAliases = roleObject.value(QStringLiteral("blockAliases")).toObject();
+        for (auto alias = blockAliases.constBegin(); alias != blockAliases.constEnd(); ++alias) {
+            const QString target = alias.value().toString();
+            if (alias.key().isEmpty() || target.isEmpty()) {
+                error = QObject::tr("Model profile %1 has a block alias without a block type or target").arg(profile.id);
+                return profile;
+            }
+            role.blockAliases.insert(alias.key(), target);
         }
 
         profile.roles.insert(it.key(), role);
@@ -322,7 +334,12 @@ QString ModelProfiles::blockPromptFor(const QList<Profile> &profiles, const QStr
 {
     const Profile *profile = find(profiles, modelId);
     const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    return found ? found->blockPrompts.value(type) : QString();
+    if (!found)
+        return QString();
+    const QString direct = found->blockPrompts.value(type);
+    if (!direct.isEmpty())
+        return direct;
+    return found->blockPrompts.value(found->blockAliases.value(type));
 }
 
 QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
@@ -330,6 +347,20 @@ QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QSt
     const Profile *profile = find(profiles, modelId);
     const Role *found = profile ? roleFor(*profile, role) : nullptr;
     return found ? found->systemPrompt : QString();
+}
+
+QString ModelProfiles::statePromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
+{
+    const Profile *profile = find(profiles, modelId);
+    const Role *found = profile ? roleFor(*profile, role) : nullptr;
+    return found ? found->statePrompt : QString();
+}
+
+QString ModelProfiles::questionFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
+{
+    const Profile *profile = find(profiles, modelId);
+    const Role *found = profile ? roleFor(*profile, role) : nullptr;
+    return found ? found->question : QString();
 }
 
 QString ModelProfiles::recheckPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)

@@ -19,12 +19,14 @@ Item {
         loading = true
         autoCheckBox.checked = Settings.autoCheck
         autoRecheckBox.checked = Settings.autoRecheck
+        showConfidenceCheckBox.checked = Settings.showConfidence
         loading = false
     }
 
     function saveValues() {
         Settings.autoCheck = autoCheckBox.checked
         Settings.autoRecheck = autoRecheckBox.checked
+        Settings.showConfidence = showConfidenceCheckBox.checked
     }
 
     component BlockTypeRow: Item {
@@ -147,6 +149,23 @@ Item {
             color: Theme.helpColor
             wrapMode: Text.WordWrap
             text: qsTr("Re-runs the blocks the decision model rejected through the block OCR model, right after the check.")
+        }
+
+        LLOCheckBox {
+            id: showConfidenceCheckBox
+            Layout.fillWidth: true
+            Layout.topMargin: Theme.spacingSmall
+            text: qsTr("Show model confidence")
+            font.pointSize: Theme.bodySmallSize
+            onToggled: if (!loading) root.edited()
+        }
+        LLOLabel {
+            Layout.fillWidth: true
+            Layout.leftMargin: 4
+            font.pointSize: Theme.footnoteSize
+            color: Theme.helpColor
+            wrapMode: Text.WordWrap
+            text: qsTr("Instead of the status dot, verified blocks show the decision model's probability in percent inside a colored circle. A debugging aid for the decision model.")
         }
 
         Item {

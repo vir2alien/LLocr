@@ -102,8 +102,8 @@ constexpr const char *kCheckProfileJson = R"({
 
 constexpr const char *kDecisionProfileJson = R"json({
     "schemaVersion": 1,
-    "id": "d1-3b",
-    "title": "LiquidAI d1-3B (decision)",
+    "id": "sample-decision",
+    "title": "Sample decision model",
     "roles": { "decision": { "launch": [
         { "order": 1, "name": "ctx-size", "value": 8192 }
     ] } }
@@ -344,7 +344,7 @@ private slots:
     }
 
     // The decision role composes like any other: the model's own rows replace
-    // the platform's same-name rows, so d1-3b's pinned ctx-size wins over the
+    // the platform's same-name rows, so the decision model's pinned ctx-size wins over the
     // machine's — and asking the same model for another role does not.
     void decisionModelLayerComposesPerRole()
     {
@@ -352,7 +352,7 @@ private slots:
         const QString presetsPath = writeProfileFile(dir, "presets.json", kLayeredPresetsJson);
         const QString modelDir = QDir(dir.path()).filePath(QStringLiteral("models"));
         QVERIFY(QDir().mkpath(modelDir));
-        QFile file(QDir(modelDir).filePath(QStringLiteral("d1-3b.json")));
+        QFile file(QDir(modelDir).filePath(QStringLiteral("sample-decision.json")));
         QVERIFY(file.open(QIODevice::WriteOnly));
         QCOMPARE(file.write(QByteArray(kDecisionProfileJson)), qint64(QByteArray(kDecisionProfileJson).size()));
         file.close();
@@ -368,10 +368,10 @@ private slots:
         QVERIFY2(error.isEmpty(), qPrintable(error));
         store.setModelProfiles(loaded);
 
-        const LaunchProfile decision = store.activeProfile(QStringLiteral("d1-3b"), QStringLiteral("decision"));
+        const LaunchProfile decision = store.activeProfile(QStringLiteral("sample-decision"), QStringLiteral("decision"));
         QCOMPARE(decision.find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
 
-        const LaunchProfile ocr = store.activeProfile(QStringLiteral("d1-3b"), QStringLiteral("ocr"));
+        const LaunchProfile ocr = store.activeProfile(QStringLiteral("sample-decision"), QStringLiteral("ocr"));
         QCOMPARE(ocr.find(QStringLiteral("ctx-size"))->value.toDouble(), 16384.0);
     }
 

@@ -48,7 +48,9 @@ int main(int argc, char *argv[])
     }
 
     int port = 0;
-    QString versionOut = QStringLiteral("build: 10594 (b10594)");
+    // A modern build: shipped model profiles pin minBuild (clef-flash wants
+    // b11430), so an old fake version would fail every role-switch test.
+    QString versionOut = QStringLiteral("build: 11600 (b11600)");
     bool neverHealthy = false;
     bool noModels = false;
     int delayStartMs = 0;

@@ -1,5 +1,6 @@
 #include "app/VerificationQueueController.h"
 
+#include <QStringList>
 #include <QTimer>
 
 #include "config/RequestProfileStore.h"
@@ -11,7 +12,7 @@ namespace llocr {
 
 namespace {
 // The generic yes/no question when the decision profile ships none (the
-// shipped d1-3b profile carries its own wording).
+// shipped clef-flash profile carries its own wording).
 constexpr const char *kFallbackQuestion = "The state is a text fragment recognized from the attached image by an OCR "
                                           "model. Does the image show the same text?";
 
@@ -46,10 +47,9 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
                 m_checkError = result.errorMessage;
                 emit problemReported(result.errorMessage);
             }
-        } else if (result.probability >= m_matchThreshold) {
-            verdict.status = CheckStatus::Ok;
         } else {
-            verdict.status = CheckStatus::Mismatch;
+            verdict.status = result.probability >= m_matchThreshold ? CheckStatus::Ok : CheckStatus::Mismatch;
+            verdict.confidence = result.probability;
         }
         const int page = m_verifyPage;
         const int box = m_verifyBoxIndex;
@@ -402,10 +402,12 @@ void VerificationQueueController::startNextVerify()
     const BoundingBox &box = boxes.at(m_verifyBoxIndex);
 
     if (m_phase == Phase::Decision) {
-        // The wording is per block type, like blockRecognition's: the role's
-        // question with the type's check list appended, and the profile's
-        // criteria (what each side of the yes/no answer means) riding along.
-        m_decision.judgeBlock(crop, text, decisionQuestion(box.label), decisionCriteriaTrue(), decisionCriteriaFalse());
+        // The state carries the block's type, the candidate text and the
+        // notation disclaimer; the wording is the role's question, with the
+        // type's check list appended when the profile ships one, and the
+        // profile's criteria (what each side of the yes/no answer means)
+        // riding along.
+        m_decision.judgeBlock(crop, box.label, text, decisionNotation(), decisionQuestion(box.label), decisionCriteriaTrue(), decisionCriteriaFalse());
         return;
     }
 
@@ -426,13 +428,32 @@ QString VerificationQueueController::decisionQuestion(const QString &blockType) 
 {
     const QString modelId = m_deps.settings.decisionRequestProfileId();
     const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
-    QString question = ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("decision"));
+    // The ask itself; profiles predating the field fall back to the generic
+    // question. The admission framing travels in the state (decisionNotation),
+    // not here — a long instruction over a raw-string state was measured to
+    // collapse the yes/no separation (docs/17).
+    QString question = ModelProfiles::questionFor(profiles, modelId, QStringLiteral("decision"));
     if (question.isEmpty())
         question = StatusMessage::translate("VerificationQueueController", kFallbackQuestion).text();
+
+    QStringList parts;
+    parts.append(question);
     const QString typePrompt = ModelProfiles::blockPromptFor(profiles, modelId, QStringLiteral("decision"), blockType);
     if (!typePrompt.isEmpty())
-        question += QStringLiteral("\n\n") + typePrompt;
-    return question;
+        parts.append(typePrompt);
+    return parts.join(QStringLiteral("\n\n"));
+}
+
+QString VerificationQueueController::decisionNotation() const
+{
+    const QString modelId = m_deps.settings.decisionRequestProfileId();
+    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
+    // The state's notation disclaimer; profiles predating statePrompt fall
+    // back to their system prompt.
+    QString notation = ModelProfiles::statePromptFor(profiles, modelId, QStringLiteral("decision"));
+    if (notation.isEmpty())
+        notation = ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("decision"));
+    return notation;
 }
 
 QString VerificationQueueController::decisionCriteriaTrue() const

@@ -28,7 +28,7 @@ private slots:
     void layoutRoleShipsTheMarkupContract();
     void teleOcrBlockPromptsCoverTheLayoutVocabulary();
     void checkModelBlockPromptsOverridePerType();
-    void decisionRoleShipsPerBlockPrompts();
+    void decisionRoleShipsTheStructuredStateWording();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
     void importToJsonRoundTrips();
@@ -52,7 +52,7 @@ void TestModelPresetCatalog::builtInCatalogParses()
         QVERIFY(!p.model.isEmpty());  // at least a main model file
         QVERIFY(p.ctxSize > 0);
         // minBuild is optional: a model the catalog does not gate on a build
-        // (d1-3b, whose endpoint is newer than any pinned build) ships none.
+        // ships none.
         QVERIFY(!p.license.isEmpty());
         // Every entry names a model profile, and that profile answers at least
         // one role — otherwise the entry could never be offered in a window.
@@ -91,7 +91,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"gemma-4-e4b", "blockRecognition", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,flash-attn,image-min-tokens"},
         {"gemma-4-12b", "blockRecognition", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens"},
         {"teleocr", "ocr,blockRecognition,layout", "b4000", "q4_k_m,q8_0", ""},
-        {"d1-3b", "decision", "", "q4_k_m,q8_0", "ctx-size"},
+        {"clef-flash", "decision", "b11430", "q4_k_m", "ctx-size,batch-size,ubatch-size"},
     };
 
     for (const Expected &e : expected) {
@@ -178,7 +178,7 @@ void TestModelPresetCatalog::roleDefaultsFollowTheShippedProfiles()
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("ocr")), QStringLiteral("unlimited-ocr"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("blockRecognition")), QStringLiteral("lfm25-vl-3b"));
-    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("decision")), QStringLiteral("d1-3b"));
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("decision")), QStringLiteral("clef-flash"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("layout")), QStringLiteral("teleocr"));
 
     // The installer's picker sorts the role's recommended model first.
@@ -205,13 +205,12 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     const QString tele = ModelProfiles::systemPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"));
     QVERIFY(tele.contains(QStringLiteral("the block text and nothing else")));
 
-    // The decision role carries its own question wording (the /v1/systemone
-    // instruction): the framing and the admission rules travel in the prompt,
-    // in the model's own idiom.
-    const QString decision = ModelProfiles::systemPromptFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision"));
-    QVERIFY(decision.contains(QStringLiteral("is the only source of truth")));
-    QVERIFY(decision.contains(QStringLiteral("Count as a difference")));
-    QVERIFY(decision.contains(QStringLiteral("Do not count as a difference")));
+    // The decision role carries its own wording (the /v1/systemone
+    // instruction): the state's notation disclaimer travels in statePrompt,
+    // the ask in question.
+    const QString decision = ModelProfiles::statePromptFor(profiles, QStringLiteral("clef-flash"), QStringLiteral("decision"));
+    QVERIFY(decision.contains(QStringLiteral("carrier, not content")));
+    QVERIFY(ModelProfiles::questionFor(profiles, QStringLiteral("clef-flash"), QStringLiteral("decision")).contains(QStringLiteral("exactly the same characters, words, numbers and symbols")));
 
     // An OCR role has no system prompt, and neither has an unknown model.
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr")).isEmpty());
@@ -314,49 +313,24 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"), QStringLiteral("formula")).isEmpty());
 }
 
-// The decision gate asks one wording per block type, like blockRecognition:
-// the profile carries a check list per routed type. The admission rules live
-// in the system prompt's Count/Do-not-count lists, so the shipped profile
-// carries no criteria and the request omits the field.
-void TestModelPresetCatalog::decisionRoleShipsPerBlockPrompts()
+// The decision gate asks one question over a structured state (docs/17): the
+// profile carries the state's notation disclaimer in statePrompt and the ask
+// in question. The measured scheme ships neither the noul answer sides nor
+// per-type check lists — neither improved the separation — and the mechanisms
+// stay available to profiles that want them.
+void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("d1-3b"), QStringLiteral("decision"));
-    QVERIFY2(role, "d1-3b declares the decision role");
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("clef-flash"), QStringLiteral("decision"));
+    QVERIFY2(role, "clef-flash declares the decision role");
 
-    // No criteria shipped: the request goes out without the field, and the
-    // endpoint's default sides apply.
+    QVERIFY(role->statePrompt.contains(QStringLiteral("carrier, not content")));
+    QVERIFY(role->question.contains(QStringLiteral("exactly the same characters, words, numbers and symbols")));
     QVERIFY(role->criteriaTrue.isEmpty());
     QVERIFY(role->criteriaFalse.isEmpty());
-    QVERIFY(ModelProfiles::criteriaTrueFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision")).isEmpty());
-    QVERIFY(ModelProfiles::criteriaFalseFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision")).isEmpty());
-
-    // Every type the verify panel routes has its own check list; the table
-    // and formula wordings carry the checks a wrong edit drops first.
-    const QStringList expected = {QStringLiteral("text"),
-                                  QStringLiteral("title"),
-                                  QStringLiteral("table"),
-                                  QStringLiteral("equation"),
-                                  QStringLiteral("formula"),
-                                  QStringLiteral("list"),
-                                  QStringLiteral("code"),
-                                  QStringLiteral("abstract"),
-                                  QStringLiteral("image_caption"),
-                                  QStringLiteral("table_caption"),
-                                  QStringLiteral("figure_footnote"),
-                                  QStringLiteral("table_footnote"),
-                                  QStringLiteral("ref_text"),
-                                  QStringLiteral("reference"),
-                                  QStringLiteral("header"),
-                                  QStringLiteral("footer"),
-                                  QStringLiteral("page_number"),
-                                  QStringLiteral("seal")};
-    for (const QString &type : expected)
-        QVERIFY2(!role->blockPrompts.value(type).isEmpty(), qPrintable(type));
-    QVERIFY(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("cell")));
-    QVERIFY(role->blockPrompts.value(QStringLiteral("formula")).contains(QStringLiteral("bound")));
-    // A type the profile does not name falls back to the bare question.
-    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("d1-3b"), QStringLiteral("decision"), QStringLiteral("aside_text")).isEmpty());
+    QVERIFY(role->blockPrompts.isEmpty());
+    QCOMPARE(ModelProfiles::criteriaTrueFor(profiles, QStringLiteral("clef-flash"), QStringLiteral("decision")), QString());
+    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("clef-flash"), QStringLiteral("decision"), QStringLiteral("formula")), QString());
 }
 
 // A model the managed runtime cannot load says so in its profile, and the note

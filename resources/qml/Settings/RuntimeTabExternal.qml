@@ -60,7 +60,7 @@ ColumnLayout {
         Layout.fillWidth: true
         implicitHeight: Theme.controlHeight
         selectByMouse: true
-        placeholderText: qsTr("e.g. d1-3b, or the id your server exposes")
+        placeholderText: qsTr("e.g. clef-flash, or the id your server exposes")
     }
 
     LLOLabel {

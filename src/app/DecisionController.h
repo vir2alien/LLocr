@@ -22,7 +22,13 @@ class DecisionController : public ModelRequestController
 public:
     explicit DecisionController(RuntimeController &runtime, QObject *parent = nullptr);
 
-    void judgeBlock(const QImage &image, const QString &recognizedText, const QString &question, const QString &criteriaTrue = QString(), const QString &criteriaFalse = QString());
+    void judgeBlock(const QImage &image,
+                    const QString &blockType,
+                    const QString &recognizedText,
+                    const QString &notation,
+                    const QString &question,
+                    const QString &criteriaTrue = QString(),
+                    const QString &criteriaFalse = QString());
 
 signals:
     void judgeFinished(const llocr::DecisionResult &result);

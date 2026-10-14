@@ -92,7 +92,9 @@ DecisionRequest testRequest()
     DecisionRequest request;
     request.image = QImage(8, 8, QImage::Format_ARGB32);
     request.image.fill(Qt::gray);
-    request.stateText = QStringLiteral("1. Intr0duction");
+    request.blockType = QStringLiteral("title");
+    request.recognizedText = QStringLiteral("1. Intr0duction");
+    request.notation = QStringLiteral("Markup is a carrier, not content.");
     request.question = QStringLiteral("Does the image show exactly this text?");
     return request;
 }
@@ -112,10 +114,15 @@ private slots:
         QVERIFY(doc.isObject());
 
         const QJsonObject root = doc.object();
-        // The state is data, the images array carries one data URL, and the
-        // single question is the profile's yes/no wording. No model field:
-        // a llama-server serves exactly one model.
-        QCOMPARE(root.value(QStringLiteral("state")).toString(), QStringLiteral("1. Intr0duction"));
+        // The state is a JSON object — the candidate text in a named field
+        // (block type, text, the profile's notation line), which is what makes
+        // the model compare it against the crop. The images array carries one
+        // data URL, and the single question is the profile's yes/no wording.
+        // No model field: a llama-server serves exactly one model.
+        const QJsonObject state = root.value(QStringLiteral("state")).toObject();
+        QCOMPARE(state.value(QStringLiteral("block_type")).toString(), QStringLiteral("title"));
+        QCOMPARE(state.value(QStringLiteral("recognized_text")).toString(), QStringLiteral("1. Intr0duction"));
+        QCOMPARE(state.value(QStringLiteral("notation")).toString(), QStringLiteral("Markup is a carrier, not content."));
         const QJsonArray images = root.value(QStringLiteral("images")).toArray();
         QCOMPARE(images.size(), 1);
         QCOMPARE(images.first().toString(), QStringLiteral("data:image/png;base64,AAAA"));
@@ -207,7 +214,7 @@ private slots:
         QCOMPARE(server.requestPath, QStringLiteral("/v1/systemone"));
 
         const QJsonObject body = QJsonDocument::fromJson(server.requestBody).object();
-        QCOMPARE(body.value(QStringLiteral("state")).toString(), QStringLiteral("1. Intr0duction"));
+        QCOMPARE(body.value(QStringLiteral("state")).toObject().value(QStringLiteral("recognized_text")).toString(), QStringLiteral("1. Intr0duction"));
         QVERIFY(!server.requestBody.contains("\"messages\""));
 
         const DecisionResult result = future.result();

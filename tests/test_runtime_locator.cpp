@@ -50,7 +50,7 @@ void TestRuntimeLocator::probeValidBinary()
     QVERIFY(r.ok);
     QVERIFY(r.capabilities.ok);
     QVERIFY(!r.capabilities.belowMinimum);
-    QCOMPARE(r.capabilities.build, QStringLiteral("b10594"));
+    QCOMPARE(r.capabilities.build, QStringLiteral("b11600"));
     QVERIFY(r.error.isEmpty());
 }
 
@@ -69,7 +69,7 @@ void TestRuntimeLocator::probeAcceptsRenamedBinary()
 
     // If the binary is runnable here the mock build is detected.
     if (r.ok)
-        QCOMPARE(r.capabilities.build, QStringLiteral("b10594"));
+        QCOMPARE(r.capabilities.build, QStringLiteral("b11600"));
 }
 
 void TestRuntimeLocator::missingFileReports()

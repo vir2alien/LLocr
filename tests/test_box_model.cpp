@@ -201,6 +201,36 @@ private slots:
         QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(), QStringLiteral("transcribed"));
     }
 
+    // The decision verdict's P(match) rides along with the status: the
+    // confidence role mirrors it, and a verdict without one (re-recognition,
+    // revert) resets it to "none".
+    void updateBoxCheckCarriesConfidence()
+    {
+        BoxListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1), QStringLiteral("original"))});
+        QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), -1.0);
+
+        QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
+        model.updateBoxCheck(0, int(BoxCheckStatus::Mismatch), QString(), QStringLiteral("original"), 0.38);
+        QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), 0.38);
+        QCOMPARE(spy.count(), 1);
+
+        // Same-value update must not emit anything.
+        model.updateBoxCheck(0, int(BoxCheckStatus::Mismatch), QString(), QStringLiteral("original"), 0.38);
+        QCOMPARE(spy.count(), 1);
+
+        // The recheck phase answers with no probability: the stale confidence
+        // of the rejected text does not survive to the new variant.
+        model.updateBoxCheck(0, int(BoxCheckStatus::ReRecognized), QStringLiteral("second"), QStringLiteral("original"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), -1.0);
+
+        // ... and the next decision attaches it to the confirmed text.
+        model.updateBoxCheck(0, int(BoxCheckStatus::Ok), QString(), QStringLiteral("second"), 0.97);
+        QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), 0.97);
+    }
+
     // The QML entry point must pass through the same int->enum gate as the
     // project load: an out-of-range value coerces to NotChecked instead of
     // reaching the model and later project.json.

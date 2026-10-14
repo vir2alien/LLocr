@@ -3035,8 +3035,8 @@
     </message>
     <message>
         <location line="+7"/>
-        <source>e.g. d1-3b, or the id your server exposes</source>
-        <translation>например, d1-3b или id, который отдаёт ваш сервер</translation>
+        <source>e.g. clef-flash, or the id your server exposes</source>
+        <translation>например, clef-flash или id, который отдаёт ваш сервер</translation>
     </message>
     <message>
         <location line="+11"/>
@@ -4308,6 +4308,14 @@
         <location line="+10"/>
         <source>Re-runs the blocks the decision model rejected through the block OCR model, right after the check.</source>
         <translation>Повторно распознаёт блоки, отклонённые decision-моделью, моделью OCR блока — сразу после проверки.</translation>
+    </message>
+    <message>
+        <source>Show model confidence</source>
+        <translation>Показывать уверенность модели</translation>
+    </message>
+    <message>
+        <source>Instead of the status dot, verified blocks show the decision model&apos;s probability in percent inside a colored circle. A debugging aid for the decision model.</source>
+        <translation>Вместо точки состояния проверенные блоки показывают вероятность decision-модели в процентах в цветном кружке. Отладочный инструмент для decision-модели.</translation>
     </message>
     <message>
         <location line="-17"/>

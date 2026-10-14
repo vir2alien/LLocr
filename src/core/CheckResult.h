@@ -18,6 +18,7 @@ struct CheckResult {
     CheckStatus status = CheckStatus::Failed;
     QString text;  ///< Recognized block text when status == ReRecognized.
     StatusMessage errorMessage;
+    double confidence = -1.0;  ///< P(match) of the decision verdict; -1 when the verdict carries none.
 
     static CheckResult makeError(const StatusMessage &message)
     {
