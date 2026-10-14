@@ -1242,6 +1242,33 @@ private slots:
         QCOMPARE(parser.displayName(), QStringLiteral("Raw text"));
     }
 
+    // Layout-marked pages carry boxes even under a raw-parser model
+    // (GLM-OCR, TeleOCR): the rebuild joins the blocks' effective texts, so a
+    // block filled or re-recognized by «Исправить» reaches the preview instead
+    // of the stale markup text.
+    void rawParserRebuildsMarkupBoxes()
+    {
+        const RawParser parser;
+        OcrPage page;
+        page.text = QStringLiteral("stale markup text");
+
+        BoundingBox plain;
+        plain.label = QStringLiteral("text");
+        plain.text = QStringLiteral("first block");
+        page.boxes.append(plain);
+
+        BoundingBox reRecognized = plain;
+        reRecognized.text = QStringLiteral("original text");
+        reRecognized.correctedText = QStringLiteral("corrected text");
+        page.boxes.append(reRecognized);
+
+        BoundingBox unfilled;
+        unfilled.label = QStringLiteral("text");
+        page.boxes.append(unfilled);
+
+        QCOMPARE(parser.rebuildText(page), QStringLiteral("first block\n\ncorrected text"));
+    }
+
     // Every registered id must resolve to a parser that exists.
     void registeredParsersAreCreatable()
     {

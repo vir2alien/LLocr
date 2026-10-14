@@ -19,8 +19,18 @@ OcrResult RawParser::parse(const QString &rawText) const
 
 QString RawParser::rebuildText(const OcrPage &page) const
 {
-    // The raw parser keeps no fragments, so the page text is the whole truth.
-    return page.text;
+    if (page.boxes.isEmpty())
+        return page.text;
+    // Boxes reach a raw page only through layout markup: the joined effective
+    // texts are the page, so a block filled by re-recognition reaches the
+    // preview instead of the stale markup text.
+    QStringList blocks;
+    for (const BoundingBox &box : page.boxes) {
+        const QString text = box.correctedText.isEmpty() ? box.text : box.correctedText;
+        if (!text.isEmpty())
+            blocks.append(text);
+    }
+    return blocks.join(QStringLiteral("\n\n"));
 }
 
 QString RawParser::id() const

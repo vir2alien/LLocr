@@ -45,6 +45,22 @@ private slots:
         QCOMPARE(plain(doc), QStringLiteral("d\ne"));
     }
 
+    // A clear empties the mirror with no dropped counter; the window must not
+    // keep the stale lines.
+    void clearEmptiesTheDocument()
+    {
+        QTextDocument doc;
+        LogDocumentSync sync;
+        sync.attach(&doc);
+
+        sync.apply({QStringLiteral("a"), QStringLiteral("b"), QStringLiteral("c")}, 0, QString());
+        sync.apply({}, 0, QString());
+        QCOMPARE(plain(doc), QString());
+
+        sync.apply({QStringLiteral("d")}, 0, QString());
+        QCOMPARE(plain(doc), QStringLiteral("d"));
+    }
+
     void headerAppearsUpdatesAndVanishes()
     {
         QTextDocument doc;

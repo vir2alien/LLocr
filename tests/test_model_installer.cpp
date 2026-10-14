@@ -365,15 +365,19 @@ private slots:
         QStringList ocrKeys;
         for (int i = 0; i < ocr->rowCount(); ++i)
             ocrKeys.append(roleAt(ocr, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(ocrKeys, QStringList({QStringLiteral("unlimited-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("teleocr")}));
+        QCOMPARE(ocrKeys, QStringList({QStringLiteral("unlimited-ocr"), QStringLiteral("glm-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("teleocr")}));
 
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(
-            checkKeys,
-            QStringList(
-                {QStringLiteral("lfm25-vl-3b"), QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b"), QStringLiteral("teleocr")}));
+        QCOMPARE(checkKeys,
+                 QStringList({QStringLiteral("lfm25-vl-3b"),
+                              QStringLiteral("gemma-4-12b"),
+                              QStringLiteral("gemma-4-e4b"),
+                              QStringLiteral("glm-ocr"),
+                              QStringLiteral("qwen3.5-4b"),
+                              QStringLiteral("qwen3.5-9b"),
+                              QStringLiteral("teleocr")}));
 
         // The decision list serves the decision role only.
         QStringList decisionKeys;
@@ -645,11 +649,11 @@ private slots:
         auto *checkList = checkModels(mi);
         QVERIFY(ocrList);
         QVERIFY(checkList);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 3);
+        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 4);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), -1);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_verify")), -1);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 6);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 7);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 7);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 8);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_ocr")), ocrPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), QStringLiteral("blockRecognition")), textPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), QStringLiteral("blockRecognition")), verifierPath);
@@ -661,8 +665,8 @@ private slots:
         // The role's active model is always listed: the text model becomes the
         // active OCR model and must appear in the OCR list too.
         settings.setLaunchModelPath(textPath);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 4);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 6);
+        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 5);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 7);
     }
 
     // A list model with named roles: a QML delegate that misspells a role name
@@ -703,7 +707,7 @@ private slots:
         auto *models = ocrModels(installer);
         QVERIFY(models);
         // The models of the role, and the one the user brought themselves.
-        QCOMPARE(models->rowCount(), 4);
+        QCOMPARE(models->rowCount(), 5);
 
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(ModelQuantModel::KeyRole), QByteArray("key"));
@@ -726,7 +730,7 @@ private slots:
         QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
         installer.refreshInstalled();
         QCOMPARE(resetSpy.count(), 0);
-        QCOMPARE(models->rowCount(), 4);
+        QCOMPARE(models->rowCount(), 5);
 
         // Activating the model re-reads the highlight from the settings.
         QVERIFY(installer.setActiveModel(0).isEmpty());

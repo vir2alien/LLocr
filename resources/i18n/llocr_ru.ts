@@ -795,6 +795,11 @@
     </message>
     <message>
         <location line="+2"/>
+        <source>Markup %1 / %2</source>
+        <translation>Разметка %1 / %2</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>Check finished</source>
         <translation>Проверка закончена</translation>
     </message>

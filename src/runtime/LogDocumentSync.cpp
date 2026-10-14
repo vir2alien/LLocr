@@ -72,6 +72,13 @@ void LogDocumentSync::apply(const QStringList &lines, int dropped, const QString
         m_headerText = header;
     }
 
+    // A reset (clear) empties the mirror without a dropped counter — the one
+    // shrink the append path cannot express, so fall back to a rebuild.
+    if (lines.size() < m_inDoc) {
+        rebuild(*doc, lines, header);
+        return;
+    }
+
     QTextCursor cur(doc);
     cur.movePosition(QTextCursor::End);
     for (int i = m_inDoc; i < lines.size(); ++i) {

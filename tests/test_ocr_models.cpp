@@ -238,6 +238,38 @@ private slots:
         QCOMPARE(ocrRole->promptBeforeImage, true);
     }
 
+    // GLM-OCR ships one trained prompt per task kind; the profile maps the
+    // app's block kinds onto the prefixes and leaves the page-level prompt at
+    // the text one. The reply has no layout tokens, so the parser is raw.
+    void glmOcrModelContract()
+    {
+        const OcrModel model(QStringLiteral("glm-ocr"));
+
+        QCOMPARE(model.id(), QStringLiteral("glm-ocr"));
+        QCOMPARE(model.displayName(), QStringLiteral("GLM-OCR"));
+        QCOMPARE(model.defaultParserId(), QStringLiteral("raw"));
+
+        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
+        QCOMPARE(variants.size(), 1);
+        QCOMPARE(variants.first().text, QStringLiteral("Text Recognition:"));
+        QVERIFY(!variants.first().id.isEmpty());
+        QVERIFY(!variants.first().title.isEmpty());
+
+        // The card's message layout is image-then-text (the Gemma/Qwen family
+        // order), so no promptBeforeImage override.
+        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("glm-ocr"), QStringLiteral("ocr"));
+        QVERIFY(ocrRole);
+        QCOMPARE(ocrRole->promptBeforeImage, false);
+
+        // The block prompts are the trained prefixes: text kinds transcribe,
+        // tables come out as a table, formulas as LaTeX.
+        const ModelProfiles::Role *checkRole = ModelProfiles::roleFor(QStringLiteral("glm-ocr"), QStringLiteral("blockRecognition"));
+        QVERIFY(checkRole);
+        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("text")), QStringLiteral("Text Recognition:"));
+        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("table")), QStringLiteral("Table Recognition:"));
+        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
+    }
+
     // The message layout is the model's trained shape: the LFM2.5 card documents
     // text-then-image, the Qwen-family models document image-then-text. The
     // order travels in the profile, so one shipped entry can deviate without a

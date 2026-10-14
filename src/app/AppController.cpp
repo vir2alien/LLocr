@@ -104,6 +104,7 @@ AppController::AppController(SettingsStore &settings,
         updateAvailability();
     });
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+    connect(&m_layout, &LayoutController::progressChanged, this, &AppController::layoutProgressChanged);
     connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
     connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
 

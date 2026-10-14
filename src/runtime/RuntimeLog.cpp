@@ -82,9 +82,17 @@ void RuntimeLog::copyServerLog()
 
 void RuntimeLog::clearServerLog()
 {
-    if (m_server)
+    if (m_server) {
+        // The empty-line marker from clearLog() resets the mirror synchronously.
         m_server->clearLog();
-    // The empty-line marker from clearLog() resets the mirror synchronously.
+        return;
+    }
+    // No live process to emit the marker (stopped or external runtime) —
+    // reset the mirror directly or the window would keep the stale lines.
+    m_lines.clear();
+    m_pendingDropped = 0;
+    m_flushTimer.stop();
+    flushToView();
 }
 
 void RuntimeLog::openServerLogFolder()

@@ -46,6 +46,7 @@
   | `docs/16-gemma-4.md`      | Model manual: Gemma 4 E4B/12B QAT (MTP drafter in the model repo, image token budgets 70–1120, per-card flash-attn split); Russian mirror in `16-gemma-4.ru.md` |
   | `docs/17-d1-verification-study.md` | Study: decision models as OCR verifiers (d1-3B vs clef-flash) — methodology, request schemes v0–v9, calibration, why clef-flash replaces d1-3B |
   | `docs/18-clef-flash.md`   | Model manual: Cloudflare clef-flash decision model (launch, recommended v5 request scheme, thresholds); Russian mirror in `18-clef-flash.ru.md` |
+  | `docs/19-glm-ocr.md`      | Model manual: GLM-OCR (trained task prefixes, no layout/coordinates, `raw` parser, glm4 metadata); Russian mirror in `19-glm-ocr.ru.md` |
   
   ## Rules for the agent
   

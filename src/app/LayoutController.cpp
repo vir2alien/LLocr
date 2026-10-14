@@ -20,6 +20,8 @@ LayoutController::LayoutController(RequestProfileStore &requestProfiles, Runtime
     : ModelRequestController(runtime, "LayoutController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<GeneralPurposeModel>())
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
+        ++m_progressDone;
+        emit progressChanged();
         if (stopRequested()) {
             emit statusRequested(StatusMessage::translate(trContext(), "Markup stopped."));
             finish();
@@ -47,6 +49,9 @@ void LayoutController::layoutPages(const QList<int> &pages, const ImageProvider 
     m_systemPrompt = systemPrompt;
     m_prompt = prompt;
     m_queue = pages;
+    m_progressDone = 0;
+    m_progressTotal = pages.size();
+    emit progressChanged();
     setBusy(true);
     startNext();
 }
@@ -67,6 +72,8 @@ void LayoutController::startNext()
 
     const QImage image = m_imageProvider(m_currentPage);
     if (image.isNull()) {
+        ++m_progressDone;
+        emit progressChanged();
         emit statusRequested(StatusMessage::translate(trContext(), "Page %1 could not be rendered for markup.").arg(m_currentPage + 1));
         emit layoutFinished(m_currentPage, QString());
         QTimer::singleShot(0, this, [this]() { startNext(); });
@@ -87,6 +94,8 @@ void LayoutController::startNext()
             m_watcher.setFuture(m_model->check(request, conn.toConnectionConfig()));
         },
         [this](const StatusMessage &) {
+            ++m_progressDone;
+            emit progressChanged();
             emit layoutFinished(m_currentPage, QString());
             QTimer::singleShot(0, this, [this]() { startNext(); });
         });

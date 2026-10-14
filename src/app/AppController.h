@@ -86,6 +86,8 @@ class AppController : public QObject
     Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY availabilityChanged)
 
     Q_PROPERTY(bool layoutBusy READ layoutBusy NOTIFY layoutStateChanged)
+    Q_PROPERTY(int layoutProgressDone READ layoutProgressDone NOTIFY layoutProgressChanged)
+    Q_PROPERTY(int layoutProgressTotal READ layoutProgressTotal NOTIFY layoutProgressChanged)
     Q_PROPERTY(bool layoutAvailable READ layoutAvailable NOTIFY layoutAvailableChanged)
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters NOTIFY retranslateRequested)
@@ -171,6 +173,8 @@ public:
     bool pageBlocksRecognitionSupported() const;
 
     bool layoutBusy() const { return m_layout.busy(); }
+    int layoutProgressDone() const { return m_layout.progressDone(); }
+    int layoutProgressTotal() const { return m_layout.progressTotal(); }
     bool layoutAvailable() const;
 
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
@@ -205,6 +209,7 @@ signals:
     void pageImageReady(int index);
     void previewRenderingChanged();
     void layoutStateChanged();
+    void layoutProgressChanged();
     void layoutAvailableChanged();
 
     void selectedBoxChanged();

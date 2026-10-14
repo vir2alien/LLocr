@@ -32,8 +32,12 @@ public:
     void layoutPages(const QList<int> &pages, const ImageProvider &imageProvider, const QString &systemPrompt, const QString &prompt);
     void stop();
 
+    int progressDone() const { return m_progressDone; }
+    int progressTotal() const { return m_progressTotal; }
+
 signals:
     void layoutFinished(int pageIndex, const QString &rawText);
+    void progressChanged();
 
 private:
     void startNext();
@@ -48,6 +52,8 @@ private:
     QString m_systemPrompt;
     QString m_prompt;
     int m_currentPage = -1;
+    int m_progressDone = 0;
+    int m_progressTotal = 0;
 };
 
 }  // namespace llocr

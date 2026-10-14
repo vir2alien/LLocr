@@ -89,6 +89,25 @@ Item {
 
     readonly property bool launchDirty: Runtime.launchConfigDirty
 
+    // One line, one task: the busiest active stage wins, the last status
+    // message only shows when nothing is running.
+    readonly property string taskStatus: {
+        if (Controller.importing)
+            return qsTr("Opening %1 / %2").arg(Controller.importProgressDone)
+                                        .arg(Controller.importProgressTotal)
+        if (Controller.checkRunning)
+            return Controller.checkDecisionPhase ? qsTr("Checking %1 / %2").arg(Controller.checkProgressDone)
+                                                                     .arg(Controller.checkProgressTotal)
+                                                 : qsTr("Re-recognizing %1 / %2").arg(Controller.checkProgressDone)
+                                                                                  .arg(Controller.checkProgressTotal)
+        if (Controller.layoutBusy)
+            return qsTr("Markup %1 / %2").arg(Controller.layoutProgressDone)
+                                          .arg(Controller.layoutProgressTotal)
+        if (Controller.checkFinished)
+            return qsTr("Check finished")
+        return Controller.statusMessage
+    }
+
     ColumnLayout {
         id: column
         width: parent.width
@@ -245,29 +264,9 @@ Item {
                 anchors.rightMargin: Theme.spacing * 2
                 spacing: Theme.spacingSmall
 
-                LLOLabel {//Recognition status
-                    text: Controller.statusMessage
+                LLOLabel {//Current task
+                    text: root.taskStatus
                     textFormat: Text.PlainText
-                    color: Theme.textMuted
-                    elide: Text.ElideRight
-                    wrapMode: Text.NoWrap
-                }
-                LLOLabel {//Check status
-                    visible: Controller.checkRunning || Controller.checkFinished
-                    text: Controller.checkRunning
-                          ? Controller.checkDecisionPhase ? qsTr("Checking %1 / %2").arg(Controller.checkProgressDone)
-                                                                 .arg(Controller.checkProgressTotal)
-                                                          : qsTr("Re-recognizing %1 / %2").arg(Controller.checkProgressDone)
-                                                                 .arg(Controller.checkProgressTotal)
-                          : qsTr("Check finished")
-                    color: Theme.textMuted
-                    elide: Text.ElideRight
-                    wrapMode: Text.NoWrap
-                }
-                LLOLabel {//Import progress
-                    visible: Controller.importing
-                    text: qsTr("Opening %1 / %2").arg(Controller.importProgressDone)
-                                                .arg(Controller.importProgressTotal)
                     color: Theme.textMuted
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
@@ -276,6 +275,7 @@ Item {
                 BusyIndicator {
                     running: Controller.busy || Controller.importing
                                                  || Controller.checkBusy
+                                                 || Controller.layoutBusy
                                                  || Controller.projectBusy
                                                  || Runtime.busyState === Runtime.StartingRuntime
                     visible: running

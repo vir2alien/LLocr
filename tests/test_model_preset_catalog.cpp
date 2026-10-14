@@ -91,6 +91,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"gemma-4-e4b", "blockRecognition", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,flash-attn,image-min-tokens"},
         {"gemma-4-12b", "blockRecognition", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens"},
         {"teleocr", "ocr,blockRecognition,layout", "b4000", "q4_k_m,q8_0", ""},
+        {"glm-ocr", "ocr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"clef-flash", "decision", "b11430", "q4_k_m", "ctx-size,batch-size,ubatch-size"},
     };
 
