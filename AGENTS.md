@@ -47,6 +47,7 @@
   | `docs/17-d1-verification-study.md` | Study: decision models as OCR verifiers (d1-3B vs clef-flash) — methodology, request schemes v0–v9, calibration, why clef-flash replaces d1-3B |
   | `docs/18-clef-flash.md`   | Model manual: Cloudflare clef-flash decision model (launch, recommended v5 request scheme, thresholds); Russian mirror in `18-clef-flash.ru.md` |
   | `docs/19-glm-ocr.md`      | Model manual: GLM-OCR (trained task prefixes, no layout/coordinates, `raw` parser, glm4 metadata); Russian mirror in `19-glm-ocr.ru.md` |
+  | `docs/20-model-task-rework.md` | Rework plan: six tasks instead of four roles, two-layer verification, the OK/FIX/REVIEW fix pipeline, page statuses, new settings windows (Oct 2026); stage table with statuses |
   
   ## Rules for the agent
   
@@ -416,3 +417,14 @@
     `auto` parser id, the data-driven label map and parse diagnostics, ADR 88;
     its stage-4 pipeline split is deferred as ADR 89). Next: the
     remaining roadmap items (see `docs/09-local-runtime-plan.md`).
+  - **Model/task rework started (Oct 2026)** — the staged program in
+    `docs/20-model-task-rework.md`: six tasks instead of four roles
+    (`pageOcr`/`rawPageOcr`/`blockRecognition`/`decision`/`layout`/`fix`),
+    two-layer block verification (ADR 164), the OK/FIX/REVIEW fix protocol
+    for universal models (ADR 163), page statuses (ADR 165), the new
+    settings windows (ADR 166). **Stage 0 done** — ADR 162–166 recorded in
+    `docs/07-glossary.md`. Stages 1–9 are pending: one stage = one session =
+    one commit, current statuses live in the plan's stage table; the two
+    branches after stage 1 (core 2→3→4→5, settings 6→7) share
+    `SettingsStore`/`RoleProfiles.qml` — coordinate with stage 1, don't
+    rewrite each other.
