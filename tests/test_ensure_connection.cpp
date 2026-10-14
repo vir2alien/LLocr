@@ -129,7 +129,7 @@ private slots:
 
         RuntimeController runtime(settings, launchProfiles);
         ResolvedConnection ocr, check, decision;
-        runtime.ensureConnectionReady(ConnectionRole::Ocr, [&](const ResolvedConnection &c) { ocr = c; });
+        runtime.ensureConnectionReady(ConnectionRole::PageOcr, [&](const ResolvedConnection &c) { ocr = c; });
         runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { check = c; });
         runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) { decision = c; });
         QCOMPARE(ocr.modelId, QStringLiteral("ocr-model"));
@@ -285,13 +285,13 @@ private slots:
         ModelProfiles::Profile profile;
         profile.id = id;
         profile.title = id;
-        for (const QString &roleName : {QStringLiteral("ocr"), QStringLiteral("blockRecognition")}) {
+        for (const QString &roleName : {QStringLiteral("pageOcr"), QStringLiteral("blockRecognition")}) {
             ModelProfiles::Role role;
             role.alias = QStringLiteral("llocr-%1-%2").arg(id, roleName);
             LaunchParameter ctx;
             ctx.name = QStringLiteral("ctx-size");
             ctx.kind = LaunchValueKind::Number;
-            ctx.value = roleName == QLatin1String("ocr") ? ocrCtxSize : checkCtxSize;
+            ctx.value = roleName == QLatin1String("pageOcr") ? ocrCtxSize : checkCtxSize;
             ctx.order = 1;
             role.launch.append(ctx);
             profile.roles.insert(roleName, role);
@@ -450,7 +450,7 @@ private slots:
         vision.value = 456;
         vision.order = 2;
         aRole.launch.append(vision);
-        a.roles.insert(QStringLiteral("ocr"), aRole);
+        a.roles.insert(QStringLiteral("pageOcr"), aRole);
 
         ModelProfiles::Profile b;
         b.id = QStringLiteral("b");
@@ -458,12 +458,12 @@ private slots:
         ModelProfiles::Role bRole;
         bRole.alias = QStringLiteral("llocr-b");
         bRole.launch.append(ctx);
-        b.roles.insert(QStringLiteral("ocr"), bRole);
+        b.roles.insert(QStringLiteral("pageOcr"), bRole);
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
         launchProfiles.setModelProfiles({a, b});
-        QVERIFY(launchProfiles.activeProfile(QStringLiteral("a"), QStringLiteral("ocr")).find(QStringLiteral("image-min-tokens")) != nullptr);
-        QVERIFY(launchProfiles.activeProfile(QStringLiteral("b"), QStringLiteral("ocr")).find(QStringLiteral("image-min-tokens")) == nullptr);
+        QVERIFY(launchProfiles.activeProfile(QStringLiteral("a"), QStringLiteral("pageOcr")).find(QStringLiteral("image-min-tokens")) != nullptr);
+        QVERIFY(launchProfiles.activeProfile(QStringLiteral("b"), QStringLiteral("pageOcr")).find(QStringLiteral("image-min-tokens")) == nullptr);
 
         RuntimeController runtime(store, launchProfiles);
         int finished = 0;
@@ -1156,7 +1156,7 @@ private slots:
         selfTestRole.request = {RequestParameter{QStringLiteral("temperature"), 1, RequestValueKind::Number, 0.0, QString()},
                                 RequestParameter{QStringLiteral("max_tokens"), 2, RequestValueKind::Number, 1024.0, QString()},
                                 RequestParameter{QStringLiteral("stream"), 3, RequestValueKind::Boolean, false, QString()}};
-        selfTestProfile.roles.insert(QStringLiteral("ocr"), selfTestRole);
+        selfTestProfile.roles.insert(QStringLiteral("pageOcr"), selfTestRole);
         RequestProfileStore profiles(store);
         profiles.setModelProfiles({selfTestProfile});
         SelfTestController selfTest(store, runtime, profiles);

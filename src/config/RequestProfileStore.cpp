@@ -15,19 +15,34 @@ constexpr int kSchemaVersion = 2;
 
 QString userFileName(ConnectionRole role)
 {
-    // The check file name predates the role rename (check → blockRecognition);
-    // it stays so existing user profiles survive the update.
     switch (role) {
+    case ConnectionRole::PageOcr:
+        return QStringLiteral("requestPage.json");
+    case ConnectionRole::RawPageOcr:
+        return QStringLiteral("requestRawPage.json");
     case ConnectionRole::BlockRecognition:
-        return QStringLiteral("requestValidate.json");
+        return QStringLiteral("requestBlock.json");
     case ConnectionRole::Decision:
         return QStringLiteral("requestDecision.json");
     case ConnectionRole::Layout:
         return QStringLiteral("requestLayout.json");
-    case ConnectionRole::Ocr:
-        break;
+    case ConnectionRole::Fix:
+        return QStringLiteral("requestFix.json");
     }
-    return QStringLiteral("request.json");
+    return QStringLiteral("requestPage.json");
+}
+
+// User copies written before the task rework carry the old names.
+QString legacyFileName(ConnectionRole role)
+{
+    switch (role) {
+    case ConnectionRole::PageOcr:
+        return QStringLiteral("request.json");
+    case ConnectionRole::BlockRecognition:
+        return QStringLiteral("requestValidate.json");
+    default:
+        return QString();
+    }
 }
 }  // namespace
 
@@ -35,7 +50,15 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, ConnectionRole
     : QObject(parent), m_settings(settings), m_role(role), m_profiles(QString(), kSchemaVersion, QStringLiteral("RequestProfileStore"), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId)),
       m_model(new RequestParametersModel(this)), m_profileModels(new RequestProfileListModel(this))
 {
-    m_profiles.setUserPath(QDir(RuntimePaths::fromSettings(m_settings).profilesDir()).filePath(userFileName(role)));
+    const QString dir = RuntimePaths::fromSettings(m_settings).profilesDir();
+    const QString legacy = legacyFileName(m_role);
+    if (!legacy.isEmpty()) {
+        const QString legacyPath = QDir(dir).filePath(legacy);
+        const QString userPath = QDir(dir).filePath(userFileName(m_role));
+        if (QFile::exists(legacyPath) && !QFile::exists(userPath))
+            QFile::rename(legacyPath, userPath);
+    }
+    m_profiles.setUserPath(QDir(dir).filePath(userFileName(m_role)));
     setModelProfiles(ModelProfiles::instance());
 
     switch (m_role) {
@@ -48,7 +71,13 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, ConnectionRole
     case ConnectionRole::Layout:
         connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, [this] { followActiveProfile(); });
         break;
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        connect(&m_settings, &SettingsStore::rawPageOcrRequestProfileIdChanged, this, [this] { followActiveProfile(); });
+        break;
+    case ConnectionRole::Fix:
+        connect(&m_settings, &SettingsStore::fixRequestProfileIdChanged, this, [this] { followActiveProfile(); });
+        break;
+    case ConnectionRole::PageOcr:
         connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
         break;
     }
@@ -92,7 +121,13 @@ QString RequestProfileStore::activeProfileId() const
     case ConnectionRole::Layout:
         id = m_settings.layoutRequestProfileId();
         break;
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        id = m_settings.rawPageOcrRequestProfileId();
+        break;
+    case ConnectionRole::Fix:
+        id = m_settings.fixRequestProfileId();
+        break;
+    case ConnectionRole::PageOcr:
         id = m_settings.modelRecipeId();
         break;
     }

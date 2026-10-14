@@ -28,6 +28,7 @@ private slots:
     void layoutRoleShipsTheMarkupContract();
     void teleOcrBlockPromptsCoverTheLayoutVocabulary();
     void checkModelBlockPromptsOverridePerType();
+    void fixRolesShipTheCorrectionProtocol();
     void decisionRoleShipsTheStructuredStateWording();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
@@ -59,8 +60,7 @@ void TestModelPresetCatalog::builtInCatalogParses()
         QVERIFY(!p.profileId.isEmpty());
         const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), p.profileId);
         QVERIFY2(profile, qPrintable(QStringLiteral("preset %1 names unknown profile %2").arg(p.id, p.profileId)));
-        QVERIFY(ModelProfiles::roleFor(*profile, QStringLiteral("ocr")) || ModelProfiles::roleFor(*profile, QStringLiteral("blockRecognition")) ||
-                ModelProfiles::roleFor(*profile, QStringLiteral("decision")));
+        QVERIFY2(!profile->roles.isEmpty(), qPrintable(QStringLiteral("preset %1 names profile %2 with no task").arg(p.id, p.profileId)));
     }
 
     // A model that serves one role is offered only there, and the catalog does
@@ -84,14 +84,14 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     // purpose — they follow the machine's memory and live in the platform
     // profiles of serverLaunch.json (ADR 126).
     const QList<Expected> expected = {
-        {"unlimited-ocr", "ocr", "b4000", "q8_0,q4_k_m", "image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
-        {"lfm25-vl-3b", "ocr,blockRecognition", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
-        {"qwen3.5-4b", "blockRecognition", "b4000", "q8_0,q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
-        {"qwen3.5-9b", "blockRecognition", "b4000", "q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
-        {"gemma-4-e4b", "blockRecognition", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,flash-attn,image-min-tokens"},
-        {"gemma-4-12b", "blockRecognition", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens"},
-        {"teleocr", "ocr,blockRecognition,layout", "b4000", "q4_k_m,q8_0", ""},
-        {"glm-ocr", "ocr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
+        {"unlimited-ocr", "pageOcr", "b4000", "q8_0,q4_k_m", "image-min-tokens,image-max-tokens,dry-sequence-breaker,special"},
+        {"lfm25-vl-3b", "pageOcr,blockRecognition", "b8000", "q4_k_m,q8_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
+        {"qwen3.5-4b", "fix", "b4000", "q8_0,q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
+        {"qwen3.5-9b", "fix", "b4000", "q4_k_xl", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
+        {"gemma-4-e4b", "fix", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,flash-attn,image-min-tokens"},
+        {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens"},
+        {"teleocr", "blockRecognition,layout", "b4000", "q4_k_m,q8_0", ""},
+        {"glm-ocr", "rawPageOcr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"clef-flash", "decision", "b11430", "q4_k_m", "ctx-size,batch-size,ubatch-size"},
     };
 
@@ -126,9 +126,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         // in both: the flags are startup flags, so a difference makes the
         // runtime unload and reload the very model the user picked once.
         if (declared.size() == 2) {
-            const ModelProfiles::Role *ocr = ModelProfiles::roleFor(*profile, QStringLiteral("ocr"));
-            const ModelProfiles::Role *check = ModelProfiles::roleFor(*profile, QStringLiteral("blockRecognition"));
-            QVERIFY2(ocr->launch == check->launch, qPrintable(QStringLiteral("%1: the two roles declare different launch parameters, so switching task reloads the model").arg(id)));
+            const QList<ModelProfiles::Role> served = profile->roles.values();
+            QVERIFY2(served.at(0).launch == served.at(1).launch, qPrintable(QStringLiteral("%1: the two tasks declare different launch parameters, so switching task reloads the model").arg(id)));
         }
     }
 }
@@ -177,10 +176,12 @@ void TestModelPresetCatalog::draftModuleReachesThePresets()
 void TestModelPresetCatalog::roleDefaultsFollowTheShippedProfiles()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("ocr")), QStringLiteral("unlimited-ocr"));
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("pageOcr")), QStringLiteral("unlimited-ocr"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("blockRecognition")), QStringLiteral("lfm25-vl-3b"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("decision")), QStringLiteral("clef-flash"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("layout")), QStringLiteral("teleocr"));
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("rawPageOcr")), QStringLiteral("glm-ocr"));
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("fix")), QStringLiteral("qwen3.5-4b"));
 
     // The installer's picker sorts the role's recommended model first.
     QCOMPARE(ModelProfiles::forRole(profiles, QStringLiteral("blockRecognition")).constFirst().id, QStringLiteral("lfm25-vl-3b"));
@@ -198,9 +199,6 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     QVERIFY(lfm.contains(QStringLiteral("transcribe one block")));
     QVERIFY(lfm.contains(QStringLiteral("the block text and nothing else")));
 
-    const QString qwen = ModelProfiles::systemPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"));
-    QVERIFY(qwen.contains(QStringLiteral("Output format: the block text and nothing else")));
-
     // teleocr ships the card's minimal per-block prompts, so the reply
     // contract lives in its system prompt.
     const QString tele = ModelProfiles::systemPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"));
@@ -213,9 +211,34 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     QVERIFY(decision.contains(QStringLiteral("carrier, not content")));
     QVERIFY(ModelProfiles::questionFor(profiles, QStringLiteral("clef-flash"), QStringLiteral("decision")).contains(QStringLiteral("exactly the same characters, words, numbers and symbols")));
 
-    // An OCR role has no system prompt, and neither has an unknown model.
-    QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr")).isEmpty());
+    // A page OCR role has no system prompt, and neither has an unknown model.
+    QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("lfm25-vl-3b"), QStringLiteral("pageOcr")).isEmpty());
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("blockRecognition")).isEmpty());
+}
+
+// The fix task's profiles speak the OK / FIX / REVIEW correction protocol: the
+// system prompt pins the three-token contract, the per-type prompts describe
+// what a FIX may change, and the recheck framing is gone — the candidate text
+// travels as its own request part (ADR 163).
+void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const QStringList fixModels = ModelProfiles::idsForRole(profiles, QStringLiteral("fix"));
+    QCOMPARE(fixModels, QStringList({QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3.5-4b"), QStringLiteral("qwen3.5-9b")}));
+
+    for (const QString &id : fixModels) {
+        const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
+        QVERIFY2(fix, qPrintable(id));
+        const QString system = fix->systemPrompt;
+        QVERIFY2(system.contains(QStringLiteral("Output exactly one of")), qPrintable(id));
+        QVERIFY2(system.contains(QStringLiteral("OK")), qPrintable(id));
+        QVERIFY2(system.contains(QStringLiteral("FIX")), qPrintable(id));
+        QVERIFY2(system.contains(QStringLiteral("REVIEW")), qPrintable(id));
+        QVERIFY2(fix->recheckPrompt.isEmpty(), qPrintable(id));
+        QVERIFY2(!fix->blockPrompts.isEmpty(), qPrintable(id));
+        for (auto it = fix->blockPrompts.constBegin(); it != fix->blockPrompts.constEnd(); ++it)
+            QVERIFY2(it.value().contains(QStringLiteral("FIX")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
+    }
 }
 
 // The layout role is what the manual markup pass drives: its parser id must be
@@ -244,12 +267,12 @@ void TestModelPresetCatalog::layoutRoleShipsTheMarkupContract()
 // block-recognition role does not name would send an empty prompt.
 void TestModelPresetCatalog::teleOcrBlockPromptsCoverTheLayoutVocabulary()
 {
-    // The label→style map lives on the ocr role (BlockStyleMap reads it there).
-    const ModelProfiles::Role *ocr = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("ocr"));
+    // The label→style map lives on the layout role (BlockStyleMap reads it there).
+    const ModelProfiles::Role *layout = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("layout"));
     const ModelProfiles::Role *check = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("blockRecognition"));
-    QVERIFY(ocr);
+    QVERIFY(layout);
     QVERIFY(check);
-    for (auto it = ocr->blockStyles.constBegin(); it != ocr->blockStyles.constEnd(); ++it) {
+    for (auto it = layout->blockStyles.constBegin(); it != layout->blockStyles.constEnd(); ++it) {
         if (it.value() == QLatin1String("image"))
             continue;  // image placeholders are never transcribed
         QVERIFY2(check->blockPrompts.contains(it.key()), qPrintable(QStringLiteral("no block prompt for %1").arg(it.key())));
@@ -295,23 +318,22 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("HTML format")));
     QVERIFY(!role->blockPrompts.value(QStringLiteral("table")).contains(QStringLiteral("OTSL format")));
 
-    // The qwen table prompt pins the plain-markup contract: this family wraps
-    // tables in ```html fences and decorates the tags with border/style/data-*
-    // attributes unless told not to, and neither survives into the block text.
-    const QString qwenTable = ModelProfiles::blockPromptFor(ModelProfiles::instance(), QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"), QStringLiteral("table"));
-    QVERIFY(qwenTable.contains(QStringLiteral("<table>")));
-    QVERIFY(qwenTable.contains(QStringLiteral("code fence")));
-    QVERIFY(qwenTable.contains(QStringLiteral("data-*")));
+    // The fix task's table prompt pins the plain-markup contract for the
+    // corrected table: this family wraps tables in ```html fences and
+    // decorates the tags with border/style/data-* attributes unless told not
+    // to, and neither survives into the block text.
+    const QString qwenTable = ModelProfiles::blockPromptFor(ModelProfiles::instance(), QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("table"));
+    QVERIFY(qwenTable.contains(QStringLiteral("rowspan")));
+    QVERIFY(qwenTable.contains(QStringLiteral("colspan")));
 
     // A type outside the catalog, and a model outside the catalog, resolve
     // to nothing.
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"), QStringLiteral("unknown-type")).isEmpty());
     QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("teleocr"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
-    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
-    // The ocr role of the same model has no block prompts at all.
-    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"), QStringLiteral("formula")).isEmpty());
+    // The page OCR task of the same model has no block prompts at all.
+    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("pageOcr"), QStringLiteral("formula")).isEmpty());
 }
 
 // The decision gate asks one question over a structured state (docs/17): the

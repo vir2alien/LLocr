@@ -34,8 +34,12 @@ ModelOrigin originFromString(const QString &s)
 
 QString roleFromIndex(const QString &s)
 {
-    // Index files written before the role rename carry "check".
-    return s == QLatin1String("check") ? QStringLiteral("blockRecognition") : s;
+    // Index files written before the role renames carry the old tags.
+    if (s == QLatin1String("check"))
+        return QStringLiteral("blockRecognition");
+    if (s == QLatin1String("ocr"))
+        return QStringLiteral("pageOcr");
+    return s;
 }
 
 bool isSubpathOf(const QString &path, const QString &dir)

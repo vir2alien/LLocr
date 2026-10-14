@@ -346,12 +346,13 @@ bool ModelQuantModel::matchesRole(const ModelEntry &entry, const SettingsStore &
         return true;
     if (!entry.roles.isEmpty())
         return entry.roles.contains(role);
-    // Legacy entries carry no role tags; they predate the decision role, so
-    // only the two recognition roles get the vision-capability heuristic.
-    if (role != QLatin1String("ocr") && role != QLatin1String("blockRecognition"))
+    // Legacy entries carry no task tags; they predate the task rework, so only
+    // the two recognition tasks get the vision-capability heuristic (a page
+    // OCR model needs an mmproj projector, a block model does not).
+    if (role != QLatin1String("pageOcr") && role != QLatin1String("blockRecognition"))
         return false;
-    const bool checkActive = !entry.modelPath.isEmpty() && entry.modelPath == settings.checkLaunchModelPath();
-    if (checkActive)
+    const bool blockActive = !entry.modelPath.isEmpty() && entry.modelPath == settings.checkLaunchModelPath();
+    if (blockActive)
         return false;
     const bool vision = !entry.mmprojPath.isEmpty();
     return role == QLatin1String("blockRecognition") ? !vision : vision;

@@ -292,15 +292,15 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
     const QString model = roleModelPath(role);
     if (const QString buildError = modelBuildError(role); !buildError.isEmpty())
         return buildError;
-    if (role == ConnectionRole::Ocr) {
+    switch (role) {
+    case ConnectionRole::PageOcr:
         if (model.isEmpty())
             return tr("Model is not selected — pick a model in Settings → Models "
                       "or in the Setup wizard");
         if (!QFileInfo(model).isFile())
             return tr("Model file not found: %1 — re-select the model in Settings → Models").arg(model);
         return QString();
-    }
-    if (role == ConnectionRole::Decision) {
+    case ConnectionRole::Decision:
         if (model.isEmpty())
             return tr("Decision model is not selected — pick a model in Settings → Decision model");
         if (!QFileInfo(model).isFile())
@@ -308,8 +308,7 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
                       "Settings → Decision model")
                 .arg(model);
         return QString();
-    }
-    if (role == ConnectionRole::Layout) {
+    case ConnectionRole::Layout:
         if (model.isEmpty())
             return tr("Layout model is not selected — pick a model in Settings → Layout model");
         if (!QFileInfo(model).isFile())
@@ -317,6 +316,24 @@ QString RuntimeController::roleConfigError(ConnectionRole role) const
                       "Settings → Layout model")
                 .arg(model);
         return QString();
+    case ConnectionRole::RawPageOcr:
+        if (model.isEmpty())
+            return tr("Raw OCR model is not selected — pick a model in Settings → Models");
+        if (!QFileInfo(model).isFile())
+            return tr("Raw OCR model file not found: %1 — re-select the model in "
+                      "Settings → Models")
+                .arg(model);
+        return QString();
+    case ConnectionRole::Fix:
+        if (model.isEmpty())
+            return tr("Fix model is not selected — pick a model in Settings → Models");
+        if (!QFileInfo(model).isFile())
+            return tr("Fix model file not found: %1 — re-select the model in "
+                      "Settings → Models")
+                .arg(model);
+        return QString();
+    case ConnectionRole::BlockRecognition:
+        break;
     }
     if (model.isEmpty())
         return tr("Block OCR model is not selected — pick a model in Settings → Block OCR model");
@@ -373,12 +390,12 @@ ResolvedConnection RuntimeController::resolveExternal(ConnectionRole role) const
 
 void RuntimeController::ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved)
 {
-    ensureConnectionReady(nullptr, ConnectionRole::Ocr, onResolved);
+    ensureConnectionReady(nullptr, ConnectionRole::PageOcr, onResolved);
 }
 
 void RuntimeController::ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved)
 {
-    ensureConnectionReady(context, ConnectionRole::Ocr, onResolved);
+    ensureConnectionReady(context, ConnectionRole::PageOcr, onResolved);
 }
 
 void RuntimeController::ensureConnectionReady(ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved)
@@ -562,10 +579,12 @@ void RuntimeController::beginRoleSwitch()
     m_switching = true;
     setBusyState(AppBusyState::StartingRuntime);
     setLoadProgressPercent(-1);
-    setStatusMessage(m_resolveRole == ConnectionRole::Ocr        ? tr("Switching to the OCR model…")
-                     : m_resolveRole == ConnectionRole::Decision ? tr("Switching to the decision model…")
-                     : m_resolveRole == ConnectionRole::Layout   ? tr("Switching to the layout model…")
-                                                                 : tr("Switching to the block OCR model…"));
+    setStatusMessage(m_resolveRole == ConnectionRole::PageOcr      ? tr("Switching to the OCR model…")
+                     : m_resolveRole == ConnectionRole::RawPageOcr ? tr("Switching to the raw OCR model…")
+                     : m_resolveRole == ConnectionRole::Decision   ? tr("Switching to the decision model…")
+                     : m_resolveRole == ConnectionRole::Layout     ? tr("Switching to the layout model…")
+                     : m_resolveRole == ConnectionRole::Fix        ? tr("Switching to the fix model…")
+                                                                   : tr("Switching to the block OCR model…"));
     if (!m_server) {
         m_switching = false;
         beginManagedResolve();
@@ -689,7 +708,7 @@ QString RuntimeController::translateServerLine(const QString &line)
 
 QString RuntimeController::startServer()
 {
-    return startServer(ConnectionRole::Ocr);
+    return startServer(ConnectionRole::PageOcr);
 }
 
 QString RuntimeController::startServer(ConnectionRole role)

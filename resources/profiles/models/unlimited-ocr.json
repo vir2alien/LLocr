@@ -27,7 +27,7 @@
     }
   },
   "roles": {
-    "ocr": {
+    "pageOcr": {
       "alias": "llocr-unlimited-ocr",
       "parser": "unlimited-ocr",
       "maxOutput": 8192,

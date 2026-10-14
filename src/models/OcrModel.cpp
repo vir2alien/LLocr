@@ -99,12 +99,12 @@ std::unique_ptr<OcrModel> OcrModel::create(const QString &modelId)
 
 QString OcrModel::defaultId()
 {
-    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("pageOcr"));
 }
 
 QStringList OcrModel::registeredIds()
 {
-    return ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
+    return ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("pageOcr"));
 }
 
 QString OcrModel::displayName() const
@@ -114,14 +114,27 @@ QString OcrModel::displayName() const
     return m_id;
 }
 
+namespace {
+// The adapter serves the page-recognition task the model declares: page OCR
+// with layout tokens, or — for models like GLM-OCR — the raw-text variant.
+const ModelProfiles::Role *pageRoleFor(const QString &modelId)
+{
+    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, QStringLiteral("pageOcr")))
+        return role;
+    return ModelProfiles::roleFor(modelId, QStringLiteral("rawPageOcr"));
+}
+}  // namespace
+
 QList<ModelProfiles::Prompt> OcrModel::promptVariants() const
 {
-    return ModelProfiles::promptsFor(ModelProfiles::instance(), m_id, QStringLiteral("ocr"));
+    if (const ModelProfiles::Role *role = pageRoleFor(m_id))
+        return role->prompts;
+    return {};
 }
 
 QString OcrModel::defaultParserId() const
 {
-    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(m_id, QStringLiteral("ocr")))
+    if (const ModelProfiles::Role *role = pageRoleFor(m_id))
         return role->parser;
     return QStringLiteral("raw");
 }
@@ -132,7 +145,7 @@ QByteArray OcrModel::buildRequestBody(const OcrRequest &request, const QByteArra
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
 
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("ocr"));
+    const ModelProfiles::Role *role = pageRoleFor(request.modelId);
     QJsonArray content = role && role->promptBeforeImage ? QJsonArray{textPart, imagePart} : QJsonArray{imagePart, textPart};
 
     QJsonObject message{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};

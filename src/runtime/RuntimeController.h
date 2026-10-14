@@ -81,7 +81,7 @@ public:
     QString orphanInfo() const;
     Q_INVOKABLE QString terminateOrphan();
 
-    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("ocr"));
+    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("pageOcr"));
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved);
@@ -128,7 +128,7 @@ private:
     QString modelBuildError(ConnectionRole role) const;
     void beginRoleSwitch();
 
-    ResolvedConnection resolveExternal(ConnectionRole role = ConnectionRole::Ocr) const;
+    ResolvedConnection resolveExternal(ConnectionRole role = ConnectionRole::PageOcr) const;
     ResolvedConnection buildManagedConnection() const;
 
     void beginManagedResolve();
@@ -168,12 +168,12 @@ private:
     struct PendingResolve {
         QPointer<QObject> context;
         bool guarded = false;
-        ConnectionRole role = ConnectionRole::Ocr;
+        ConnectionRole role = ConnectionRole::PageOcr;
         std::function<void(const ResolvedConnection &)> onResolved;
     };
     std::vector<PendingResolve> m_resolveCallbacks;
     std::vector<PendingResolve> m_deferredResolves;
-    ConnectionRole m_resolveRole = ConnectionRole::Ocr;
+    ConnectionRole m_resolveRole = ConnectionRole::PageOcr;
     // Per-role resolved connections of a Ready server that runs the role;
     // served without the /v1/models round-trip until a state transition or
     // any settings change clears them.
@@ -183,7 +183,7 @@ private:
     QNetworkAccessManager *m_modelsNet = nullptr;
     QString m_modelsBaseUrl;
     ServerLaunchConfig m_startedConfig;
-    ConnectionRole m_startedRole = ConnectionRole::Ocr;
+    ConnectionRole m_startedRole = ConnectionRole::PageOcr;
     bool m_hasStartedConfig = false;
     RuntimeState m_state = RuntimeState::NotConfigured;
     AppBusyState m_busyState = AppBusyState::Idle;

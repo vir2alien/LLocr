@@ -26,76 +26,6 @@
     }
   },
   "roles": {
-    "ocr": {
-      "alias": "llocr-glm-ocr",
-      "parser": "raw",
-      "maxOutput": 8192,
-      "prompts": [
-        {
-          "id": "text-recognition",
-          "title": "Text Recognition",
-          "text": "Text Recognition:"
-        }
-      ],
-      "launch": [
-        {
-          "order": 1,
-          "name": "flash-attn",
-          "value": "on",
-          "description": "Flash attention on; without it the attention graph at the machine's ctx-size materializes ~17 GB at 16384 and Metal refuses the allocation."
-        },
-        {
-          "order": 2,
-          "name": "image-min-tokens",
-          "value": 456,
-          "description": "Visual token budget floor; the native minimum is 16 tokens, too coarse for small block crops."
-        },
-        {
-          "order": 3,
-          "name": "image-max-tokens",
-          "value": 6144,
-          "description": "Visual token budget ceiling; the native dynamic range reaches 12288 tokens, which would overflow the machine's 16384 context together with max_tokens."
-        }
-      ],
-      "request": [
-        {
-          "order": 1,
-          "name": "temperature",
-          "value": 0.0,
-          "description": "Sampling randomness; 0 = deterministic greedy decoding."
-        },
-        {
-          "order": 2,
-          "name": "repeat_penalty",
-          "value": 1.0,
-          "description": "Penalty for repeating tokens; 1.0 disables it."
-        },
-        {
-          "order": 3,
-          "name": "presence_penalty",
-          "value": 0.0,
-          "description": "Penalty for tokens already present in the prompt; 0 disables it."
-        },
-        {
-          "order": 4,
-          "name": "frequency_penalty",
-          "value": 0.0,
-          "description": "Penalty proportional to token frequency; 0 disables it."
-        },
-        {
-          "order": 5,
-          "name": "stream",
-          "value": false,
-          "description": "Stream tokens as they arrive; false gives the parser one complete response."
-        },
-        {
-          "order": 6,
-          "name": "cache_prompt",
-          "value": true,
-          "description": "Cache the prompt (image embeddings, system message) between pages."
-        }
-      ]
-    },
     "blockRecognition": {
       "alias": "llocr-verify",
       "maxOutput": 8192,
@@ -187,6 +117,77 @@
         "algorithm": "Text Recognition:",
         "equation_block": "Formula Recognition:"
       }
+    },
+    "rawPageOcr": {
+      "alias": "llocr-glm-ocr",
+      "parser": "raw",
+      "maxOutput": 8192,
+      "prompts": [
+        {
+          "id": "text-recognition",
+          "title": "Text Recognition",
+          "text": "Text Recognition:"
+        }
+      ],
+      "launch": [
+        {
+          "order": 1,
+          "name": "flash-attn",
+          "value": "on",
+          "description": "Flash attention on; without it the attention graph at the machine's ctx-size materializes ~17 GB at 16384 and Metal refuses the allocation."
+        },
+        {
+          "order": 2,
+          "name": "image-min-tokens",
+          "value": 456,
+          "description": "Visual token budget floor; the native minimum is 16 tokens, too coarse for small block crops."
+        },
+        {
+          "order": 3,
+          "name": "image-max-tokens",
+          "value": 6144,
+          "description": "Visual token budget ceiling; the native dynamic range reaches 12288 tokens, which would overflow the machine's 16384 context together with max_tokens."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 3,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 6,
+          "name": "cache_prompt",
+          "value": true,
+          "description": "Cache the prompt (image embeddings, system message) between pages."
+        }
+      ],
+      "default": true
     }
   }
 }

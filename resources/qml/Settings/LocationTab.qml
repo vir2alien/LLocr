@@ -9,8 +9,8 @@ import "../Common"
 
 Item {
     id: root
-    // Model-profile role id: "ocr", "blockRecognition", "decision" or "layout".
-    property string role: "ocr"
+    // Model task id: "pageOcr", "blockRecognition", "decision" or "layout".
+    property string role: "pageOcr"
     property var runtimeSettingsRef: null
 
     readonly property bool externalMode: Settings.connectionMode === "external"

@@ -36,11 +36,15 @@ class ModelInstaller : public QObject
     Q_PROPERTY(QObject *checkQuantModels READ checkQuantModels CONSTANT)
     Q_PROPERTY(QObject *decisionQuantModels READ decisionQuantModels CONSTANT)
     Q_PROPERTY(QObject *layoutQuantModels READ layoutQuantModels CONSTANT)
+    Q_PROPERTY(QObject *rawPageOcrQuantModels READ rawPageOcrQuantModels CONSTANT)
+    Q_PROPERTY(QObject *fixQuantModels READ fixQuantModels CONSTANT)
 
     Q_PROPERTY(QString activeTitle READ activeTitle NOTIFY installedChanged)
     Q_PROPERTY(QString checkActiveTitle READ checkActiveTitle NOTIFY installedChanged)
     Q_PROPERTY(QString decisionActiveTitle READ decisionActiveTitle NOTIFY installedChanged)
     Q_PROPERTY(QString layoutActiveTitle READ layoutActiveTitle NOTIFY installedChanged)
+    Q_PROPERTY(QString rawPageOcrActiveTitle READ rawPageOcrActiveTitle NOTIFY installedChanged)
+    Q_PROPERTY(QString fixActiveTitle READ fixActiveTitle NOTIFY installedChanged)
 
 public:
     enum State : int {
@@ -68,18 +72,22 @@ public:
     QObject *checkQuantModels() const;
     QObject *decisionQuantModels() const;
     QObject *layoutQuantModels() const;
+    QObject *rawPageOcrQuantModels() const;
+    QObject *fixQuantModels() const;
     QString activeTitle() const;
     QString checkActiveTitle() const;
     QString decisionActiveTitle() const;
     QString layoutActiveTitle() const;
+    QString rawPageOcrActiveTitle() const;
+    QString fixActiveTitle() const;
 
-    // role is a model-profile role id: "ocr", "blockRecognition", "decision"
-    // or "layout".
-    const QList<ModelPreset> &presetsForRole(const QString &role) const;
+    // task is a task id: "pageOcr", "rawPageOcr", "blockRecognition",
+    // "decision", "layout" or "fix".
+    const QList<ModelPreset> &presetsForRole(const QString &task) const;
     const QList<ModelEntry> &installedEntries() const { return m_installed; }
 
     Q_INVOKABLE void reloadPresets();
-    Q_INVOKABLE QString setActiveModel(int index, const QString &role = QStringLiteral("ocr"));
+    Q_INVOKABLE QString setActiveModel(int index, const QString &task = QStringLiteral("pageOcr"));
     Q_INVOKABLE QString removeModel(int index);
     Q_INVOKABLE QString openModelFolder(int index);
 
@@ -87,11 +95,11 @@ public:
     Q_INVOKABLE void rescanRegistry();
 
     Q_INVOKABLE void selectQuant(const QString &key, const QString &quantId);
-    Q_INVOKABLE QString useQuant(const QString &key, const QString &quantId, const QString &role = QStringLiteral("ocr"));
-    Q_INVOKABLE void downloadQuant(const QString &key, const QString &quantId, const QString &role = QStringLiteral("ocr"));
-    Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, const QString &role = QStringLiteral("ocr"));
-    Q_INVOKABLE QString removeModelRow(const QString &key, const QString &role = QStringLiteral("ocr"));
-    Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, const QString &role = QStringLiteral("ocr"));
+    Q_INVOKABLE QString useQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
+    Q_INVOKABLE void downloadQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
+    Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
+    Q_INVOKABLE QString removeModelRow(const QString &key, const QString &task = QStringLiteral("pageOcr"));
+    Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
 
     Q_INVOKABLE void installPrepared();
 
@@ -109,8 +117,9 @@ private:
 
     void syncProfileToActiveModel();
 
-    ModelQuantModel *quantModel(const QString &role) const;
-    QString activeTitleFor(const QString &role) const;
+    ModelQuantModel *quantModel(const QString &task) const;
+    bool isActiveForAnyTask(const ModelEntry &entry) const;
+    QString activeTitleFor(const QString &task) const;
     int installedIndexFor(const QString &key, const QString &quantId, const QString &role) const;
     void publishInstalled();
 
@@ -128,11 +137,15 @@ private:
     QList<ModelPreset> m_presetsValidate;
     QList<ModelPreset> m_presetsDecision;
     QList<ModelPreset> m_presetsLayout;
+    QList<ModelPreset> m_presetsRawPageOcr;
+    QList<ModelPreset> m_presetsFix;
     QList<ModelEntry> m_installed;
-    ModelQuantModel *m_ocrModels = nullptr;
+    ModelQuantModel *m_pageOcrModels = nullptr;
     ModelQuantModel *m_checkModels = nullptr;
     ModelQuantModel *m_decisionModels = nullptr;
     ModelQuantModel *m_layoutModels = nullptr;
+    ModelQuantModel *m_rawPageOcrModels = nullptr;
+    ModelQuantModel *m_fixModels = nullptr;
 
 signals:
     void stateChanged();

@@ -152,10 +152,13 @@ private:
 
     // The file a row points at, read back through the installer's own list — the
     // row is a model, the registry index belongs to one of its quantizations.
-    static QString pathOf(ModelInstaller &installer, const QString &key, const QString &role = QStringLiteral("ocr"))
+    static QString pathOf(ModelInstaller &installer, const QString &key, const QString &role = QStringLiteral("pageOcr"))
     {
         auto *model = qobject_cast<ModelQuantModel *>(role == QLatin1String("blockRecognition") ? installer.checkQuantModels()
                                                       : role == QLatin1String("decision")       ? installer.decisionQuantModels()
+                                                      : role == QLatin1String("layout")         ? installer.layoutQuantModels()
+                                                      : role == QLatin1String("rawPageOcr")     ? installer.rawPageOcrQuantModels()
+                                                      : role == QLatin1String("fix")            ? installer.fixQuantModels()
                                                                                                 : installer.quantModels());
         const QList<int> indexes = model->entryIndexesFor(key);
         return indexes.isEmpty() ? QString() : installer.installedEntries().at(indexes.first()).modelPath;
@@ -361,32 +364,27 @@ private slots:
         auto *ocr = ocrModels(*s->installer);
         auto *check = checkModels(*s->installer);
         auto *decision = qobject_cast<ModelQuantModel *>(s->installer->decisionQuantModels());
+        auto *rawPage = qobject_cast<ModelQuantModel *>(s->installer->rawPageOcrQuantModels());
+        auto *fix = qobject_cast<ModelQuantModel *>(s->installer->fixQuantModels());
 
         QStringList ocrKeys;
         for (int i = 0; i < ocr->rowCount(); ++i)
             ocrKeys.append(roleAt(ocr, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(ocrKeys, QStringList({QStringLiteral("unlimited-ocr"), QStringLiteral("glm-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("teleocr")}));
+        QCOMPARE(ocrKeys, QStringList({QStringLiteral("unlimited-ocr"), QStringLiteral("lfm25-vl-3b")}));
 
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(checkKeys,
-                 QStringList({QStringLiteral("lfm25-vl-3b"),
-                              QStringLiteral("gemma-4-12b"),
-                              QStringLiteral("gemma-4-e4b"),
-                              QStringLiteral("glm-ocr"),
-                              QStringLiteral("qwen3.5-4b"),
-                              QStringLiteral("qwen3.5-9b"),
-                              QStringLiteral("teleocr")}));
+        QCOMPARE(checkKeys, QStringList({QStringLiteral("lfm25-vl-3b"), QStringLiteral("glm-ocr"), QStringLiteral("teleocr")}));
 
-        // The decision list serves the decision role only.
+        // The decision list serves the decision task only.
         QStringList decisionKeys;
         for (int i = 0; i < decision->rowCount(); ++i)
             decisionKeys.append(roleAt(decision, i, ModelQuantModel::KeyRole).toString());
         QCOMPARE(decisionKeys, QStringList({QStringLiteral("clef-flash")}));
         QVERIFY(pathOf(*s->installer, QStringLiteral("clef-flash"), QStringLiteral("decision")).isEmpty());
 
-        // The layout list serves the layout role only (ADR 150): one shipped
+        // The layout list serves the layout task only (ADR 150): one shipped
         // profile declares it.
         auto *layout = qobject_cast<ModelQuantModel *>(s->installer->layoutQuantModels());
         QVERIFY(layout);
@@ -397,18 +395,30 @@ private slots:
         QVERIFY(pathOf(*s->installer, QStringLiteral("teleocr"), QStringLiteral("layout")).isEmpty());
         QVERIFY(s->installer->layoutActiveTitle().isEmpty());
 
-        // TeleOCR answers both roles and offers the quantizations its profile
+        // The two tasks without a settings window of their own (rawPageOcr,
+        // fix) still expose their lists — the task window (stage 6) reads them.
+        QStringList rawPageKeys;
+        for (int i = 0; i < rawPage->rowCount(); ++i)
+            rawPageKeys.append(roleAt(rawPage, i, ModelQuantModel::KeyRole).toString());
+        QCOMPARE(rawPageKeys, QStringList({QStringLiteral("glm-ocr")}));
+
+        QStringList fixKeys;
+        for (int i = 0; i < fix->rowCount(); ++i)
+            fixKeys.append(roleAt(fix, i, ModelQuantModel::KeyRole).toString());
+        QCOMPARE(fixKeys, QStringList({QStringLiteral("qwen3.5-4b"), QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3.5-9b")}));
+
+        // TeleOCR answers two tasks and offers the quantizations its profile
         // declares — the shipped file is the source here, not a copy of it, so an
         // edit to the catalog is what this follows.
-        const int teleocr = rowOfKey(ocr, QStringLiteral("teleocr"));
+        const int teleocr = rowOfKey(check, QStringLiteral("teleocr"));
         QVERIFY(teleocr >= 0);
         const ModelProfiles::Profile *teleocrProfile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("teleocr"));
         QVERIFY(teleocrProfile);
-        const QVariantList quants = roleAt(ocr, teleocr, ModelQuantModel::QuantsRole).toList();
+        const QVariantList quants = roleAt(check, teleocr, ModelQuantModel::QuantsRole).toList();
         QCOMPARE(quants.size(), teleocrProfile->files.quants.size());
         QCOMPARE(quants.first().toMap().value(QStringLiteral("id")).toString(), teleocrProfile->files.quants.first().id.toUpper());
-        QVERIFY(!roleAt(ocr, teleocr, ModelQuantModel::SelectedInstalledRole).toBool());
-        QVERIFY(roleAt(ocr, teleocr, ModelQuantModel::SelectedDownloadableRole).toBool());
+        QVERIFY(!roleAt(check, teleocr, ModelQuantModel::SelectedInstalledRole).toBool());
+        QVERIFY(roleAt(check, teleocr, ModelQuantModel::SelectedDownloadableRole).toBool());
     }
 
     // A quantization the profile does not list — hand-downloaded, or left behind
@@ -433,7 +443,7 @@ private slots:
         odd.modelPath = oddPath;
         odd.origin = ModelOrigin::Managed;
         odd.quantization = QStringLiteral("Q6_K");
-        odd.roles = {QStringLiteral("ocr")};
+        odd.roles = {QStringLiteral("pageOcr")};
 
         QString err;
         QVERIFY2(ModelRegistry::save(modelsDir, {odd}, err), qPrintable(err));
@@ -461,7 +471,7 @@ private slots:
         external.modelPath = externalPath;
         external.dir = elsewhere;
         external.origin = ModelOrigin::External;
-        external.roles = {QStringLiteral("ocr")};
+        external.roles = {QStringLiteral("pageOcr")};
         QVERIFY2(ModelRegistry::save(modelsDir, {odd, external}, err), qPrintable(err));
 
         s->installer->refreshInstalled();
@@ -506,7 +516,7 @@ private slots:
         entry.modelPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_K_M.gguf"));
         entry.origin = ModelOrigin::Managed;
         entry.quantization = QStringLiteral("Q4_K_M");
-        entry.roles = {QStringLiteral("ocr")};
+        entry.roles = {QStringLiteral("pageOcr")};
 
         QString err;
         QVERIFY2(ModelRegistry::save(modelsDir, {entry}, err), qPrintable(err));
@@ -558,7 +568,7 @@ private slots:
         q8.mmprojPath = mmproj;
         q8.origin = ModelOrigin::Managed;
         q8.quantization = QStringLiteral("Q8_0");
-        q8.roles = {QStringLiteral("ocr")};
+        q8.roles = {QStringLiteral("pageOcr")};
 
         ModelEntry q4 = q8;
         q4.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_K_M");
@@ -649,11 +659,11 @@ private slots:
         auto *checkList = checkModels(mi);
         QVERIFY(ocrList);
         QVERIFY(checkList);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 4);
+        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 2);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), -1);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_verify")), -1);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 7);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 8);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 4);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_ocr")), ocrPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), QStringLiteral("blockRecognition")), textPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), QStringLiteral("blockRecognition")), verifierPath);
@@ -665,8 +675,8 @@ private slots:
         // The role's active model is always listed: the text model becomes the
         // active OCR model and must appear in the OCR list too.
         settings.setLaunchModelPath(textPath);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 5);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 7);
+        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 3);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
     }
 
     // A list model with named roles: a QML delegate that misspells a role name
@@ -706,8 +716,8 @@ private slots:
 
         auto *models = ocrModels(installer);
         QVERIFY(models);
-        // The models of the role, and the one the user brought themselves.
-        QCOMPARE(models->rowCount(), 5);
+        // The models of the task, and the one the user brought themselves.
+        QCOMPARE(models->rowCount(), 3);
 
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(ModelQuantModel::KeyRole), QByteArray("key"));
@@ -730,7 +740,7 @@ private slots:
         QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
         installer.refreshInstalled();
         QCOMPARE(resetSpy.count(), 0);
-        QCOMPARE(models->rowCount(), 5);
+        QCOMPARE(models->rowCount(), 3);
 
         // Activating the model re-reads the highlight from the settings.
         QVERIFY(installer.setActiveModel(0).isEmpty());
@@ -856,18 +866,24 @@ private slots:
 
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
-        settings.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        settings.setFixRequestProfileId(QStringLiteral("gemma-4-e4b"));
+        settings.setCheckRequestProfileId(QStringLiteral("teleocr"));
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles);
         ModelInstaller installer(settings, runtime, installed);
 
-        QVERIFY(installer.setActiveModel(0, QStringLiteral("blockRecognition")).isEmpty());
-        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+        QVERIFY(installer.setActiveModel(0, QStringLiteral("fix")).isEmpty());
+        QCOMPARE(settings.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
-        // The same family does not answer the ocr role, so the ocr selection
-        // stays where it was rather than following the file.
+        // The same family answers the block recognition task too — LFM2.5-VL is
+        // a general-purpose VL model — so the block selection follows its file.
+        QVERIFY(installer.setActiveModel(1, QStringLiteral("blockRecognition")).isEmpty());
+        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
+
+        // The qwen family does not answer the page OCR task, so the page
+        // selection stays where it was rather than following the file.
         QVERIFY(installer.setActiveModel(0).isEmpty());
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("unlimited-ocr"));
 
@@ -883,16 +899,16 @@ private slots:
         QTemporaryDir root;
         QVERIFY(root.isValid());
         const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("konradjr007__NaviDC-OCR-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
         ModelEntry entry;
-        entry.id = QStringLiteral("konradjr007__NaviDC-OCR-GGUF_Q8_0");
-        entry.title = QStringLiteral("NaviDC");
-        entry.repo = QStringLiteral("konradjr007/NaviDC-OCR-GGUF");
+        entry.id = QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF_Q8_0");
+        entry.title = QStringLiteral("LFM2.5-VL-3B");
+        entry.repo = QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF");
         entry.dir = sub;
-        entry.modelPath = writeGguf(sub, QStringLiteral("NaviDC-OCR-Q8_0.gguf"));
-        entry.mmprojPath = writeGguf(sub, QStringLiteral("NaviDC-OCR-mmproj-q8_0.gguf"));
+        entry.modelPath = writeGguf(sub, QStringLiteral("LFM2.5-VL-3B-Q8_0.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-LFM2.5-VL-3B-F16.gguf"));
         entry.origin = ModelOrigin::Managed;
         entry.quantization = QStringLiteral("Q8_0");
         QVERIFY(!entry.modelPath.isEmpty());
@@ -902,7 +918,7 @@ private slots:
 
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
-        // The state a renamed profile leaves behind: another model's id stored
+        // The state a stale profile leaves behind: another model's id stored
         // next to this model's file.
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
         settings.setLaunchModelPath(entry.modelPath);
@@ -911,7 +927,7 @@ private slots:
         RuntimeController runtime(settings, launchProfiles, &installed);
 
         ModelInstaller installer(settings, runtime, installed);
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("teleocr"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
     }
 };
 

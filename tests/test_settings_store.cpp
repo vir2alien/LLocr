@@ -358,14 +358,14 @@ private slots:
     void checkRoleResolvesAModelProfileWithoutOneStored()
     {
         QSettings pre;
-        pre.remove(QStringLiteral("check/requestProfileId"));
+        pre.remove(QStringLiteral("tasks/blockRecognition/requestProfileId"));
 
         const SettingsStore store;
         const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
         QVERIFY(!checkDefault.isEmpty());
         QCOMPARE(store.checkRequestProfileId(), checkDefault);
         // Nothing is written: the default is a fallback, not a stored choice.
-        QVERIFY(!store.contains(QStringLiteral("check/requestProfileId")));
+        QVERIFY(!store.contains(QStringLiteral("tasks/blockRecognition/requestProfileId")));
 
         // An explicit choice still wins.
         SettingsStore chosen;
@@ -380,7 +380,7 @@ private slots:
     void anEmptyStoredCheckProfileIsNotAChoice()
     {
         QSettings pre;
-        pre.setValue(QStringLiteral("check/requestProfileId"), QString());
+        pre.setValue(QStringLiteral("tasks/blockRecognition/requestProfileId"), QString());
 
         const SettingsStore store;
         const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
@@ -393,13 +393,13 @@ private slots:
     void decisionRoleResolvesAModelProfileWithoutOneStored()
     {
         QSettings pre;
-        pre.remove(QStringLiteral("decision/requestProfileId"));
+        pre.remove(QStringLiteral("tasks/decision/requestProfileId"));
 
         const SettingsStore store;
         const QStringList decisionModels = ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("decision"));
         QVERIFY(!decisionModels.isEmpty());
         QCOMPARE(store.decisionRequestProfileId(), decisionModels.constFirst());
-        QVERIFY(!store.contains(QStringLiteral("decision/requestProfileId")));
+        QVERIFY(!store.contains(QStringLiteral("tasks/decision/requestProfileId")));
 
         SettingsStore chosen;
         chosen.setDecisionRequestProfileId(decisionModels.constFirst());
@@ -412,11 +412,11 @@ private slots:
     void layoutRoleResolvesAModelProfileWithoutOneStored()
     {
         QSettings pre;
-        pre.remove(QStringLiteral("layout/requestProfileId"));
+        pre.remove(QStringLiteral("tasks/layout/requestProfileId"));
 
         const SettingsStore store;
         QCOMPARE(store.layoutRequestProfileId(), ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("layout")));
-        QVERIFY(!store.contains(QStringLiteral("layout/requestProfileId")));
+        QVERIFY(!store.contains(QStringLiteral("tasks/layout/requestProfileId")));
 
         SettingsStore chosen;
         chosen.setCheckRequestProfileId(QStringLiteral("teleocr"));
@@ -465,6 +465,7 @@ private slots:
             QSettings pre;
             pre.setValue(QStringLiteral("parser/id"), QStringLiteral("det_tokens"));
             pre.remove(QStringLiteral("model/recipeId"));
+            pre.remove(QStringLiteral("tasks/pageOcr/requestProfileId"));
 
             const SettingsStore store;
             QCOMPARE(store.parserId(), QStringLiteral("unlimited-ocr"));
@@ -493,14 +494,35 @@ private slots:
             QStringLiteral("launch/sourceDownload"),
             QStringLiteral("check/sourceDownload"),
             QStringLiteral("model/requestProfileId"),
+            QStringLiteral("launch/modelPath"),
+            QStringLiteral("launch/mmprojPath"),
+            QStringLiteral("launch/draftPath"),
+            QStringLiteral("model/recipeId"),
+            QStringLiteral("check/modelPath"),
+            QStringLiteral("check/mmprojPath"),
+            QStringLiteral("check/draftPath"),
+            QStringLiteral("check/requestProfileId"),
+            QStringLiteral("check/modelName"),
+            QStringLiteral("check/autoRecheck"),
+            QStringLiteral("decision/modelPath"),
+            QStringLiteral("decision/mmprojPath"),
+            QStringLiteral("decision/draftPath"),
+            QStringLiteral("decision/requestProfileId"),
+            QStringLiteral("decision/modelName"),
+            QStringLiteral("layout/modelPath"),
+            QStringLiteral("layout/mmprojPath"),
+            QStringLiteral("layout/draftPath"),
+            QStringLiteral("layout/requestProfileId"),
+            QStringLiteral("layout/modelName"),
         };
 
         QSettings pre;
-        pre.setValue(QStringLiteral("launch/modelAlias"), QStringLiteral("stale-alias"));
+        for (const QString &key : retired)
+            pre.setValue(key, QStringLiteral("legacy"));
         pre.setValue(QStringLiteral("runtime/serverPathIsManaged"), true);
         pre.setValue(QStringLiteral("launch/sourceDownload"), true);
         pre.setValue(QStringLiteral("check/sourceDownload"), true);
-        pre.setValue(QStringLiteral("model/requestProfileId"), QStringLiteral("unlimited-ocr"));
+        pre.setValue(QStringLiteral("check/autoRecheck"), true);
 
         const SettingsStore store;
         for (const QString &key : retired)
@@ -520,17 +542,20 @@ private slots:
 
         const SettingsStore store;
         const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
-        const QString ocrModel = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("ocr"));
+        const QString ocrModel = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("pageOcr"));
         QVERIFY(!checkDefault.isEmpty());
         QVERIFY(!ocrModel.isEmpty());
         QCOMPARE(store.checkRequestProfileId(), checkDefault);
         QCOMPARE(store.modelRecipeId(), ocrModel);
-        // Written back, not just answered differently on every read.
-        QCOMPARE(pre.value(QStringLiteral("check/requestProfileId")).toString(), checkDefault);
-        QCOMPARE(pre.value(QStringLiteral("model/recipeId")).toString(), ocrModel);
+        // The legacy key is gone and the resolved id is written under the task
+        // namespace — not just answered differently on every read.
+        QVERIFY(!pre.contains(QStringLiteral("check/requestProfileId")));
+        QVERIFY(!pre.contains(QStringLiteral("model/recipeId")));
+        QCOMPARE(pre.value(QStringLiteral("tasks/blockRecognition/requestProfileId")).toString(), checkDefault);
+        QCOMPARE(pre.value(QStringLiteral("tasks/pageOcr/requestProfileId")).toString(), ocrModel);
 
-        // A real choice survives: the check role does not include every model
-        // the ocr role has, so the two resolve to different ids and both are kept.
+        // A real choice survives: the check task does not include every model
+        // the pageOcr task has, so the two resolve to different ids and both are kept.
         const QString ocrChoice = QStringLiteral("lfm25-vl-3b");
         QString checkChoice;
         for (const QString &id : ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"))) {
@@ -539,13 +564,63 @@ private slots:
                 break;
             }
         }
-        QVERIFY2(!checkChoice.isEmpty(), "no check model outside the ocr fixture id");
+        QVERIFY2(!checkChoice.isEmpty(), "no check model outside the pageOcr fixture id");
         QSettings other;
+        other.remove(QStringLiteral("tasks/blockRecognition/requestProfileId"));
+        other.remove(QStringLiteral("tasks/pageOcr/requestProfileId"));
         other.setValue(QStringLiteral("check/requestProfileId"), checkChoice);
         other.setValue(QStringLiteral("model/recipeId"), ocrChoice);
         const SettingsStore kept;
         QCOMPARE(kept.checkRequestProfileId(), checkChoice);
         QCOMPARE(kept.modelRecipeId(), ocrChoice);
+    }
+
+    // The per-task model keys of the four ex-roles move into tasks/<task>/ on
+    // the first start of the reworked build: the values survive under the new
+    // keys and the legacy keys are removed.
+    void modelKeysMigrateIntoTheTaskNamespace()
+    {
+        QSettings pre;
+        pre.setValue(QStringLiteral("launch/modelPath"), QStringLiteral("/models/page.gguf"));
+        pre.setValue(QStringLiteral("launch/mmprojPath"), QStringLiteral("/models/page.mmproj"));
+        pre.setValue(QStringLiteral("launch/draftPath"), QStringLiteral("/models/page-draft.gguf"));
+        pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("lfm25-vl-3b"));
+        pre.setValue(QStringLiteral("check/modelPath"), QStringLiteral("/models/block.gguf"));
+        pre.setValue(QStringLiteral("check/modelName"), QStringLiteral("block-name"));
+        pre.setValue(QStringLiteral("decision/modelPath"), QStringLiteral("/models/decision.gguf"));
+        pre.setValue(QStringLiteral("layout/requestProfileId"), QStringLiteral("teleocr"));
+
+        const SettingsStore store;
+        QCOMPARE(store.launchModelPath(), QStringLiteral("/models/page.gguf"));
+        QCOMPARE(store.launchMmprojPath(), QStringLiteral("/models/page.mmproj"));
+        QCOMPARE(store.launchDraftPath(), QStringLiteral("/models/page-draft.gguf"));
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(store.checkLaunchModelPath(), QStringLiteral("/models/block.gguf"));
+        QCOMPARE(store.checkModelName(), QStringLiteral("block-name"));
+        QCOMPARE(store.decisionLaunchModelPath(), QStringLiteral("/models/decision.gguf"));
+        QCOMPARE(store.layoutRequestProfileId(), QStringLiteral("teleocr"));
+        // The generic view reaches every task through the same namespace,
+        // including the two tasks without a legacy key group.
+        QCOMPARE(store.launchModelPathForRole(QStringLiteral("pageOcr")), QStringLiteral("/models/page.gguf"));
+        QCOMPARE(store.launchModelPathForRole(QStringLiteral("blockRecognition")), QStringLiteral("/models/block.gguf"));
+        QCOMPARE(store.fixRequestProfileId(), ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("fix")));
+        QCOMPARE(store.rawPageOcrRequestProfileId(), ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("rawPageOcr")));
+        for (const char *legacy :
+             {"launch/modelPath", "launch/mmprojPath", "launch/draftPath", "model/recipeId", "check/modelPath", "check/modelName", "decision/modelPath", "layout/requestProfileId"})
+            QVERIFY2(!store.contains(QString::fromLatin1(legacy)), legacy);
+    }
+
+    // The re-stage toggle is now the fix task's switch: the stored value moves
+    // to check/autoFix and the old key is removed.
+    void autoRecheckKeyMigratesToAutoFix()
+    {
+        QSettings pre;
+        pre.setValue(QStringLiteral("check/autoRecheck"), true);
+
+        const SettingsStore store;
+        QCOMPARE(store.autoRecheck(), true);
+        QVERIFY(!store.contains(QStringLiteral("check/autoRecheck")));
+        QCOMPARE(pre.value(QStringLiteral("check/autoFix")).toBool(), true);
     }
 
     // Activating a model of a known family has to pick that family's profile:
@@ -555,30 +630,34 @@ private slots:
     void activatingAModelSelectsItsFamilyProfile()
     {
         SettingsStore store;
-        store.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
+        store.setCheckRequestProfileId(QStringLiteral("teleocr"));
+        store.setFixRequestProfileId(QStringLiteral("gemma-4-e4b"));
         store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
 
-        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("ocr"));
+        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("pageOcr"));
         QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
 
-        // The same family also answers the check role — LFM2.5-VL is a
-        // general-purpose VL model, so activation as the verifier follows its
-        // own profile just the same.
+        // The same family also answers the block recognition task — LFM2.5-VL
+        // is a general-purpose VL model, so activation for it follows its own
+        // profile just the same.
         store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("blockRecognition"));
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
 
-        store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("blockRecognition"));
-        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+        store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("fix"));
+        QCOMPARE(store.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
-        // A family that does not answer the check role (OCR-only) leaves the
-        // selection alone.
-        store.selectModelProfile(QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"), QStringLiteral("blockRecognition"));
-        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+        // A family that does not answer the task leaves the selection alone:
+        // the OCR-only family is no fix model, the fix-only families are no
+        // block models.
+        store.selectModelProfile(QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"), QStringLiteral("fix"));
+        QCOMPARE(store.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+        store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("blockRecognition"));
+        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
 
         // A hand-picked GGUF joins to nothing.
         store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
-        store.selectModelProfile(QString(), QStringLiteral("ocr"));
-        store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("ocr"));
+        store.selectModelProfile(QString(), QStringLiteral("pageOcr"));
+        store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("pageOcr"));
         QCOMPARE(store.modelRecipeId(), QStringLiteral("unlimited-ocr"));
     }
 

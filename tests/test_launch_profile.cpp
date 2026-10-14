@@ -74,7 +74,7 @@ constexpr const char *kUnlimitedProfileJson = R"({
     "schemaVersion": 1,
     "id": "unlimited-ocr",
     "title": "Unlimited-OCR",
-    "roles": { "ocr": { "launch": [
+    "roles": { "pageOcr": { "launch": [
         { "order": 1, "name": "ctx-size", "value": 16384 },
         { "order": 2, "name": "image-min-tokens", "value": 456 },
         { "order": 3, "name": "dry-sequence-breaker", "value": "none" }
@@ -85,7 +85,7 @@ constexpr const char *kLfmProfileJson = R"({
     "schemaVersion": 1,
     "id": "lfm25-vl-3b",
     "title": "LFM2.5-VL-3B",
-    "roles": { "ocr": { "launch": [
+    "roles": { "pageOcr": { "launch": [
         { "order": 1, "name": "ctx-size", "value": 16384 }
     ] } }
 })";
@@ -267,14 +267,14 @@ private slots:
         store.setModelProfiles(profiles);
 
         // Unlimited-OCR carries the vision budget and the DRY reset.
-        const LaunchProfile unlimited = store.activeProfile(QStringLiteral("unlimited-ocr"), QStringLiteral("ocr"));
+        const LaunchProfile unlimited = store.activeProfile(QStringLiteral("unlimited-ocr"), QStringLiteral("pageOcr"));
         QVERIFY(unlimited.find(QStringLiteral("image-min-tokens")) != nullptr);
         QVERIFY(unlimited.find(QStringLiteral("dry-sequence-breaker")) != nullptr);
         QCOMPARE(unlimited.find(QStringLiteral("image-min-tokens"))->value.toDouble(), 456.0);
 
         // LFM2.5-VL names neither: a parameter it does not declare must be
         // absent, not inherited and not left at a stale value.
-        const LaunchProfile lfm = store.activeProfile(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        const LaunchProfile lfm = store.activeProfile(QStringLiteral("lfm25-vl-3b"), QStringLiteral("pageOcr"));
         QVERIFY(lfm.find(QStringLiteral("image-min-tokens")) == nullptr);
         QVERIFY(lfm.find(QStringLiteral("dry-sequence-breaker")) == nullptr);
         // …and the layers it does share are all present.
@@ -284,7 +284,7 @@ private slots:
 
         // A model with no profile at all — a hand-picked GGUF — still gets the
         // machine's parameters, and nothing of any other model's.
-        const LaunchProfile unknown = store.activeProfile(QStringLiteral("some-other-model"), QStringLiteral("ocr"));
+        const LaunchProfile unknown = store.activeProfile(QStringLiteral("some-other-model"), QStringLiteral("pageOcr"));
         QVERIFY(unknown.find(QStringLiteral("ctx-size")) != nullptr);
         QCOMPARE(unknown.find(QStringLiteral("ctx-size"))->value.toDouble(), 16384.0);
         QVERIFY(unknown.find(QStringLiteral("parallel")) != nullptr);
@@ -325,7 +325,7 @@ private slots:
         // Asking the same model for the ocr role does not hand over the check
         // role's rows — the model simply does not answer that role, and the
         // platform layer covers the ground instead.
-        const LaunchProfile ocr = store.activeProfile(QStringLiteral("qwen3.5-4b"), QStringLiteral("ocr"));
+        const LaunchProfile ocr = store.activeProfile(QStringLiteral("qwen3.5-4b"), QStringLiteral("pageOcr"));
         QVERIFY(ocr.find(QStringLiteral("cache-type-k")) == nullptr);
         QVERIFY(ocr.find(QStringLiteral("cache_prompt")) == nullptr);
         QCOMPARE(ocr.find(QStringLiteral("ctx-size"))->value.toDouble(), 16384.0);
@@ -337,10 +337,10 @@ private slots:
         settings.setModelRecipeId(QStringLiteral("qwen3.5-4b"));
         settings.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
         QVERIFY(!store.modelProfileMissing());
-        QVERIFY(!store.checkModelProfileMissing());
+        QVERIFY(!store.modelProfileMissingForRole(QStringLiteral("blockRecognition")));
         settings.setModelRecipeId(QStringLiteral("some-hand-picked-gguf"));
         QVERIFY(store.modelProfileMissing());
-        QVERIFY(!store.checkModelProfileMissing());
+        QVERIFY(!store.modelProfileMissingForRole(QStringLiteral("blockRecognition")));
     }
 
     // The decision role composes like any other: the model's own rows replace
@@ -371,7 +371,7 @@ private slots:
         const LaunchProfile decision = store.activeProfile(QStringLiteral("sample-decision"), QStringLiteral("decision"));
         QCOMPARE(decision.find(QStringLiteral("ctx-size"))->value.toDouble(), 8192.0);
 
-        const LaunchProfile ocr = store.activeProfile(QStringLiteral("sample-decision"), QStringLiteral("ocr"));
+        const LaunchProfile ocr = store.activeProfile(QStringLiteral("sample-decision"), QStringLiteral("pageOcr"));
         QCOMPARE(ocr.find(QStringLiteral("ctx-size"))->value.toDouble(), 16384.0);
     }
 
@@ -401,7 +401,7 @@ private slots:
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
         QVERIFY(!store.modelProfileMissing());
         // The check role has no profile at all — it is a different model.
-        QVERIFY(store.checkModelProfileMissing());
+        QVERIFY(store.modelProfileMissingForRole(QStringLiteral("blockRecognition")));
 
         settings.setModelRecipeId(QStringLiteral("some-other-model"));
         QVERIFY(store.modelProfileMissing());

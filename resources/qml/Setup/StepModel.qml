@@ -60,7 +60,7 @@ Item {
                     delegate: ScrollView {
                         id: rolePane
                         required property int index
-                        readonly property string role: index === 0 ? "ocr" : index === 1 ? "decision" : "blockRecognition"
+                        readonly property string role: index === 0 ? "pageOcr" : index === 1 ? "decision" : "blockRecognition"
 
                         contentWidth: availableWidth
                         contentHeight: paneLayout.implicitHeight

@@ -26,79 +26,6 @@
     }
   },
   "roles": {
-    "ocr": {
-      "alias": "llocr-teleocr",
-      "parser": "raw",
-      "maxOutput": 4096,
-      "prompts": [
-        {
-          "id": "document-parsing",
-          "title": "Document parsing",
-          "text": "Analyze the image layout."
-        }
-      ],
-      "blocks": {
-        "styles": {
-          "image": "image",
-          "char": "image",
-          "figure": "image",
-          "equation": "equation",
-          "equation_block": "equation",
-          "formula": "equation",
-          "algorithm": "text",
-          "code": "text",
-          "list": "text",
-          "unknown": "text",
-          "aside_text": "text",
-          "phonetic": "text",
-          "header": "italic",
-          "footer": "italic",
-          "page_footnote": "italic",
-          "code_caption": "italic",
-          "image_footnote": "italic",
-          "seal": "italic"
-        }
-      },
-      "launch": [],
-      "request": [
-        {
-          "order": 1,
-          "name": "temperature",
-          "value": 0.0,
-          "description": "Sampling randomness; 0 = deterministic greedy decoding."
-        },
-        {
-          "order": 2,
-          "name": "repeat_penalty",
-          "value": 1.0,
-          "description": "Penalty for repeating tokens; 1.0 disables it."
-        },
-        {
-          "order": 3,
-          "name": "presence_penalty",
-          "value": 0.0,
-          "description": "Penalty for tokens already present in the prompt; 0 disables it."
-        },
-        {
-          "order": 4,
-          "name": "frequency_penalty",
-          "value": 0.0,
-          "description": "Penalty proportional to token frequency; 0 disables it."
-        },
-        {
-          "order": 5,
-          "name": "stream",
-          "value": false,
-          "description": "Stream tokens as they arrive; false gives the parser one complete response."
-        },
-        {
-          "order": 6,
-          "name": "cache_prompt",
-          "value": true,
-          "description": "Cache the prompt (image embeddings, system message) between requests."
-        }
-      ]
-    },
     "blockRecognition": {
       "alias": "llocr-verify",
       "maxOutput": 2048,
@@ -228,7 +155,29 @@
           "value": true,
           "description": "Cache the prompt (image embeddings, system message) between pages."
         }
-      ]
+      ],
+      "blocks": {
+        "styles": {
+          "image": "image",
+          "char": "image",
+          "figure": "image",
+          "equation": "equation",
+          "equation_block": "equation",
+          "formula": "equation",
+          "algorithm": "text",
+          "code": "text",
+          "list": "text",
+          "unknown": "text",
+          "aside_text": "text",
+          "phonetic": "text",
+          "header": "italic",
+          "footer": "italic",
+          "page_footnote": "italic",
+          "code_caption": "italic",
+          "image_footnote": "italic",
+          "seal": "italic"
+        }
+      }
     }
   }
 }

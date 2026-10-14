@@ -4,67 +4,81 @@ import QtQml
 
 import LLocr
 
-// Role-keyed dispatch for the four model-profile roles ("ocr",
-// "blockRecognition", "decision", "layout"): every role-conditional binding
-// goes through here, so a new role is one edit in one file. The reads stay
-// inside the functions, which is what keeps the callers' bindings reactive.
+// Task-keyed dispatch for the six model tasks ("pageOcr", "rawPageOcr",
+// "blockRecognition", "decision", "layout", "fix"): every task-conditional
+// binding goes through here, so a new task is one edit in one file. The reads
+// stay inside the functions, which is what keeps the callers' bindings
+// reactive.
 QtObject {
-    function title(role) {
-        return role === "blockRecognition" ? qsTr("Block OCR model settings")
-             : role === "decision" ? qsTr("Decision model settings")
-             : role === "layout" ? qsTr("Layout model settings")
-             : qsTr("OCR model settings")
+    function title(task) {
+        return task === "rawPageOcr" ? qsTr("Recognition without markup")
+             : task === "pageOcr" ? qsTr("Recognition with markup")
+             : task === "blockRecognition" ? qsTr("Block recognition")
+             : task === "decision" ? qsTr("Verification")
+             : task === "layout" ? qsTr("Markup")
+             : qsTr("Block fix")
     }
 
-    function samplingHint(role) {
-        return role === "decision" ? qsTr("Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.")
-             : role === "blockRecognition" ? qsTr("Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.")
-             : role === "layout" ? qsTr("Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.")
+    function samplingHint(task) {
+        return task === "decision" ? qsTr("Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.")
+             : task === "blockRecognition" ? qsTr("Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.")
+             : task === "layout" ? qsTr("Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.")
+             : task === "rawPageOcr" ? qsTr("Sampling parameters sent with every plain-text page recognition request. The set comes from the model profile — edit the values, not the list.")
+             : task === "fix" ? qsTr("Sampling parameters sent with every block fix request. The set comes from the model profile — edit the values, not the list.")
              : qsTr("Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.")
     }
 
-    function activeTitle(role) {
-        return role === "blockRecognition" ? ModelInstaller.checkActiveTitle
-             : role === "decision" ? ModelInstaller.decisionActiveTitle
-             : role === "layout" ? ModelInstaller.layoutActiveTitle
+    function activeTitle(task) {
+        return task === "blockRecognition" ? ModelInstaller.checkActiveTitle
+             : task === "decision" ? ModelInstaller.decisionActiveTitle
+             : task === "layout" ? ModelInstaller.layoutActiveTitle
+             : task === "rawPageOcr" ? ModelInstaller.rawPageOcrActiveTitle
+             : task === "fix" ? ModelInstaller.fixActiveTitle
              : ModelInstaller.activeTitle
     }
 
-    function quantModels(role) {
-        return role === "blockRecognition" ? ModelInstaller.checkQuantModels
-             : role === "decision" ? ModelInstaller.decisionQuantModels
-             : role === "layout" ? ModelInstaller.layoutQuantModels
+    function quantModels(task) {
+        return task === "blockRecognition" ? ModelInstaller.checkQuantModels
+             : task === "decision" ? ModelInstaller.decisionQuantModels
+             : task === "layout" ? ModelInstaller.layoutQuantModels
+             : task === "rawPageOcr" ? ModelInstaller.rawPageOcrQuantModels
+             : task === "fix" ? ModelInstaller.fixQuantModels
              : ModelInstaller.quantModels
     }
 
-    function runtimeNote(role) {
-        return role === "blockRecognition" ? LaunchProfiles.checkModelRuntimeNote
-             : role === "decision" ? LaunchProfiles.decisionModelRuntimeNote
-             : role === "layout" ? LaunchProfiles.layoutModelRuntimeNote
-             : LaunchProfiles.modelRuntimeNote
+    function runtimeNote(task) {
+        return LaunchProfiles.modelRuntimeNoteForRole(task)
     }
 
-    function profiles(role) {
-        return role === "blockRecognition" ? RequestProfilesValidate
-             : role === "decision" ? RequestProfilesDecision
-             : role === "layout" ? RequestProfilesLayout
-             : RequestProfilesOcr
+    function profiles(task) {
+        return task === "blockRecognition" ? RequestProfilesBlock
+             : task === "decision" ? RequestProfilesDecision
+             : task === "layout" ? RequestProfilesLayout
+             : task === "rawPageOcr" ? RequestProfilesRawPageOcr
+             : task === "fix" ? RequestProfilesFix
+             : RequestProfilesPageOcr
     }
 
-    function requestProfileId(role) {
-        return role === "blockRecognition" ? Settings.checkRequestProfileId
-             : role === "decision" ? Settings.decisionRequestProfileId
-             : role === "layout" ? Settings.layoutRequestProfileId
+    function requestProfileId(task) {
+        return task === "blockRecognition" ? Settings.checkRequestProfileId
+             : task === "decision" ? Settings.decisionRequestProfileId
+             : task === "layout" ? Settings.layoutRequestProfileId
+             : task === "rawPageOcr" ? Settings.rawPageOcrRequestProfileId
+             : task === "fix" ? Settings.fixRequestProfileId
              : Settings.modelRecipeId
     }
 
-    function setRequestProfileId(role, profileId) {
-        if (role === "blockRecognition")
+    function setRequestProfileId(task, profileId) {
+        if (task === "blockRecognition")
             Settings.checkRequestProfileId = profileId
-        else if (role === "decision")
+        else if (task === "decision")
             Settings.decisionRequestProfileId = profileId
-        else if (role === "layout")
+        else if (task === "layout")
             Settings.layoutRequestProfileId = profileId
+        else if (task === "rawPageOcr")
+            Settings.rawPageOcrRequestProfileId = profileId
+        else if (task === "fix")
+            Settings.fixRequestProfileId = profileId
         else
             Settings.modelRecipeId = profileId
     }

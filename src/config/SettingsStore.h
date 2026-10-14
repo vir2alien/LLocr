@@ -82,6 +82,18 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString layoutRequestProfileId READ layoutRequestProfileId WRITE setLayoutRequestProfileId NOTIFY layoutRequestProfileIdChanged)
     Q_PROPERTY(QString layoutModelName READ layoutModelName WRITE setLayoutModelName NOTIFY layoutModelNameChanged)
 
+    Q_PROPERTY(QString rawPageOcrLaunchModelPath READ rawPageOcrLaunchModelPath WRITE setRawPageOcrLaunchModelPath NOTIFY rawPageOcrLaunchModelPathChanged)
+    Q_PROPERTY(QString rawPageOcrLaunchMmprojPath READ rawPageOcrLaunchMmprojPath WRITE setRawPageOcrLaunchMmprojPath NOTIFY rawPageOcrLaunchMmprojPathChanged)
+    Q_PROPERTY(QString rawPageOcrLaunchDraftPath READ rawPageOcrLaunchDraftPath WRITE setRawPageOcrLaunchDraftPath NOTIFY rawPageOcrLaunchDraftPathChanged)
+    Q_PROPERTY(QString rawPageOcrRequestProfileId READ rawPageOcrRequestProfileId WRITE setRawPageOcrRequestProfileId NOTIFY rawPageOcrRequestProfileIdChanged)
+    Q_PROPERTY(QString rawPageOcrModelName READ rawPageOcrModelName WRITE setRawPageOcrModelName NOTIFY rawPageOcrModelNameChanged)
+
+    Q_PROPERTY(QString fixLaunchModelPath READ fixLaunchModelPath WRITE setFixLaunchModelPath NOTIFY fixLaunchModelPathChanged)
+    Q_PROPERTY(QString fixLaunchMmprojPath READ fixLaunchMmprojPath WRITE setFixLaunchMmprojPath NOTIFY fixLaunchMmprojPathChanged)
+    Q_PROPERTY(QString fixLaunchDraftPath READ fixLaunchDraftPath WRITE setFixLaunchDraftPath NOTIFY fixLaunchDraftPathChanged)
+    Q_PROPERTY(QString fixRequestProfileId READ fixRequestProfileId WRITE setFixRequestProfileId NOTIFY fixRequestProfileIdChanged)
+    Q_PROPERTY(QString fixModelName READ fixModelName WRITE setFixModelName NOTIFY fixModelNameChanged)
+
     Q_PROPERTY(QString hfToken READ hfToken WRITE setHfToken NOTIFY hfTokenChanged)
 
 public:
@@ -238,9 +250,31 @@ public:
     QString layoutModelName() const;
     void setLayoutModelName(const QString &name);
 
-    // Role-generic views over the per-role launch/request/model-name settings.
-    // role is a model-profile role id: "ocr", "blockRecognition", "decision"
-    // or "layout".
+    QString rawPageOcrLaunchModelPath() const;
+    void setRawPageOcrLaunchModelPath(const QString &path);
+    QString rawPageOcrLaunchMmprojPath() const;
+    void setRawPageOcrLaunchMmprojPath(const QString &path);
+    QString rawPageOcrLaunchDraftPath() const;
+    void setRawPageOcrLaunchDraftPath(const QString &path);
+    QString rawPageOcrRequestProfileId() const;
+    void setRawPageOcrRequestProfileId(const QString &id);
+    QString rawPageOcrModelName() const;
+    void setRawPageOcrModelName(const QString &name);
+
+    QString fixLaunchModelPath() const;
+    void setFixLaunchModelPath(const QString &path);
+    QString fixLaunchMmprojPath() const;
+    void setFixLaunchMmprojPath(const QString &path);
+    QString fixLaunchDraftPath() const;
+    void setFixLaunchDraftPath(const QString &path);
+    QString fixRequestProfileId() const;
+    void setFixRequestProfileId(const QString &id);
+    QString fixModelName() const;
+    void setFixModelName(const QString &name);
+
+    // Task-generic views over the per-task model settings. role is a task id:
+    // "pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout" or
+    // "fix" (the legacy "ocr" maps to "pageOcr").
     QString launchModelPathForRole(const QString &role) const;
     void setLaunchModelPathForRole(const QString &role, const QString &path);
     QString launchMmprojPathForRole(const QString &role) const;
@@ -316,6 +350,16 @@ signals:
     void layoutLaunchDraftPathChanged();
     void layoutRequestProfileIdChanged();
     void layoutModelNameChanged();
+    void rawPageOcrLaunchModelPathChanged();
+    void rawPageOcrLaunchMmprojPathChanged();
+    void rawPageOcrLaunchDraftPathChanged();
+    void rawPageOcrRequestProfileIdChanged();
+    void rawPageOcrModelNameChanged();
+    void fixLaunchModelPathChanged();
+    void fixLaunchMmprojPathChanged();
+    void fixLaunchDraftPathChanged();
+    void fixRequestProfileIdChanged();
+    void fixModelNameChanged();
     void hfTokenChanged();
 
 public:
@@ -362,7 +406,6 @@ private:
     static constexpr const char *kRetiredTimeoutMs = "provider/timeoutMs";
 
     static constexpr const char *kModelName = "model/name";
-    static constexpr const char *kModelRecipeId = "model/recipeId";
     static constexpr const char *kParserId = "parser/id";
 
     // Output / export
@@ -399,42 +442,84 @@ private:
     static constexpr const char *kStartupTimeoutMs = "runtime/startupTimeoutMs";
     static constexpr const char *kAllowNonLoopback = "runtime/allowNonLoopback";
 
-    // Launch
+    // Launch (shared server launch profile + host/port; the per-task model
+    // files live in the tasks/* group below)
     static constexpr const char *kLaunchProfileId = "launch/profileId";
-    static constexpr const char *kLaunchModelPath = "launch/modelPath";
-    static constexpr const char *kLaunchMmprojPath = "launch/mmprojPath";
-    static constexpr const char *kLaunchDraftPath = "launch/draftPath";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
     static constexpr const char *kRetiredAlias = "launch/modelAlias";
     static constexpr const char *kRetiredLaunchSourceDownload = "launch/sourceDownload";
     static constexpr const char *kRetiredModelRequestProfileId = "model/requestProfileId";
 
-    // Verification (check) model
-    static constexpr const char *kCheckLaunchModelPath = "check/modelPath";
-    static constexpr const char *kCheckLaunchMmprojPath = "check/mmprojPath";
-    static constexpr const char *kCheckLaunchDraftPath = "check/draftPath";
-    static constexpr const char *kCheckRequestProfileId = "check/requestProfileId";
-    static constexpr const char *kCheckModelName = "check/modelName";
-    static constexpr const char *kAutoCheck = "check/autoCheck";
-    static constexpr const char *kAutoRecheck = "check/autoRecheck";
-    static constexpr const char *kShowConfidence = "check/showConfidence";
+    // Models per task. The ex-role keys (launch/* model files, check/*,
+    // decision/*, layout/* model keys, model/recipeId, check/autoRecheck)
+    // migrate into this namespace and the check/autoFix key on startup.
+    static constexpr const char *kModelRecipeId = "tasks/pageOcr/requestProfileId";
+    static constexpr const char *kLaunchModelPath = "tasks/pageOcr/modelPath";
+    static constexpr const char *kLaunchMmprojPath = "tasks/pageOcr/mmprojPath";
+    static constexpr const char *kLaunchDraftPath = "tasks/pageOcr/draftPath";
+    static constexpr const char *kRetiredPageOcrModelPath = "launch/modelPath";
+    static constexpr const char *kRetiredPageOcrMmprojPath = "launch/mmprojPath";
+    static constexpr const char *kRetiredPageOcrDraftPath = "launch/draftPath";
+    static constexpr const char *kRetiredPageOcrRequestProfileId = "model/recipeId";
+
+    // Block recognition (ex check group) model keys
+    static constexpr const char *kCheckLaunchModelPath = "tasks/blockRecognition/modelPath";
+    static constexpr const char *kCheckLaunchMmprojPath = "tasks/blockRecognition/mmprojPath";
+    static constexpr const char *kCheckLaunchDraftPath = "tasks/blockRecognition/draftPath";
+    static constexpr const char *kCheckRequestProfileId = "tasks/blockRecognition/requestProfileId";
+    static constexpr const char *kCheckModelName = "tasks/blockRecognition/modelName";
+    static constexpr const char *kRetiredCheckModelPath = "check/modelPath";
+    static constexpr const char *kRetiredCheckMmprojPath = "check/mmprojPath";
+    static constexpr const char *kRetiredCheckDraftPath = "check/draftPath";
+    static constexpr const char *kRetiredCheckRequestProfileId = "check/requestProfileId";
+    static constexpr const char *kRetiredCheckModelName = "check/modelName";
     static constexpr const char *kRetiredCheckSourceDownload = "check/sourceDownload";
 
-    // Decision model
-    static constexpr const char *kDecisionLaunchModelPath = "decision/modelPath";
-    static constexpr const char *kDecisionLaunchMmprojPath = "decision/mmprojPath";
-    static constexpr const char *kDecisionLaunchDraftPath = "decision/draftPath";
-    static constexpr const char *kDecisionRequestProfileId = "decision/requestProfileId";
-    static constexpr const char *kDecisionModelName = "decision/modelName";
+    // Verification behavior
+    static constexpr const char *kAutoCheck = "check/autoCheck";
+    static constexpr const char *kAutoFix = "check/autoFix";
+    static constexpr const char *kRetiredAutoRecheck = "check/autoRecheck";
+    static constexpr const char *kShowConfidence = "check/showConfidence";
+
+    // Decision model keys
+    static constexpr const char *kDecisionLaunchModelPath = "tasks/decision/modelPath";
+    static constexpr const char *kDecisionLaunchMmprojPath = "tasks/decision/mmprojPath";
+    static constexpr const char *kDecisionLaunchDraftPath = "tasks/decision/draftPath";
+    static constexpr const char *kDecisionRequestProfileId = "tasks/decision/requestProfileId";
+    static constexpr const char *kDecisionModelName = "tasks/decision/modelName";
+    static constexpr const char *kRetiredDecisionModelPath = "decision/modelPath";
+    static constexpr const char *kRetiredDecisionMmprojPath = "decision/mmprojPath";
+    static constexpr const char *kRetiredDecisionDraftPath = "decision/draftPath";
+    static constexpr const char *kRetiredDecisionRequestProfileId = "decision/requestProfileId";
+    static constexpr const char *kRetiredDecisionModelName = "decision/modelName";
     static constexpr const char *kDecisionMatchThreshold = "decision/matchThreshold";
 
-    // Layout (page markup) model
-    static constexpr const char *kLayoutLaunchModelPath = "layout/modelPath";
-    static constexpr const char *kLayoutLaunchMmprojPath = "layout/mmprojPath";
-    static constexpr const char *kLayoutLaunchDraftPath = "layout/draftPath";
-    static constexpr const char *kLayoutRequestProfileId = "layout/requestProfileId";
-    static constexpr const char *kLayoutModelName = "layout/modelName";
+    // Layout (page markup) model keys
+    static constexpr const char *kLayoutLaunchModelPath = "tasks/layout/modelPath";
+    static constexpr const char *kLayoutLaunchMmprojPath = "tasks/layout/mmprojPath";
+    static constexpr const char *kLayoutLaunchDraftPath = "tasks/layout/draftPath";
+    static constexpr const char *kLayoutRequestProfileId = "tasks/layout/requestProfileId";
+    static constexpr const char *kLayoutModelName = "tasks/layout/modelName";
+    static constexpr const char *kRetiredLayoutModelPath = "layout/modelPath";
+    static constexpr const char *kRetiredLayoutMmprojPath = "layout/mmprojPath";
+    static constexpr const char *kRetiredLayoutDraftPath = "layout/draftPath";
+    static constexpr const char *kRetiredLayoutRequestProfileId = "layout/requestProfileId";
+    static constexpr const char *kRetiredLayoutModelName = "layout/modelName";
+
+    // Raw page OCR (page recognition without markup)
+    static constexpr const char *kRawPageOcrLaunchModelPath = "tasks/rawPageOcr/modelPath";
+    static constexpr const char *kRawPageOcrLaunchMmprojPath = "tasks/rawPageOcr/mmprojPath";
+    static constexpr const char *kRawPageOcrLaunchDraftPath = "tasks/rawPageOcr/draftPath";
+    static constexpr const char *kRawPageOcrRequestProfileId = "tasks/rawPageOcr/requestProfileId";
+    static constexpr const char *kRawPageOcrModelName = "tasks/rawPageOcr/modelName";
+
+    // Fix (block correction by a universal model)
+    static constexpr const char *kFixLaunchModelPath = "tasks/fix/modelPath";
+    static constexpr const char *kFixLaunchMmprojPath = "tasks/fix/mmprojPath";
+    static constexpr const char *kFixLaunchDraftPath = "tasks/fix/draftPath";
+    static constexpr const char *kFixRequestProfileId = "tasks/fix/requestProfileId";
+    static constexpr const char *kFixModelName = "tasks/fix/modelName";
 
     // Hugging Face
     static constexpr const char *kHfToken = "hf/token";

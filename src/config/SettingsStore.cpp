@@ -11,7 +11,12 @@ namespace llocr {
 
 namespace {
 
-QString defaultCheckRequestProfileId()
+QString defaultPageOcrRequestProfileId()
+{
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("pageOcr"));
+}
+
+QString defaultBlockRecognitionRequestProfileId()
 {
     return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
 }
@@ -24,6 +29,16 @@ QString defaultDecisionRequestProfileId()
 QString defaultLayoutRequestProfileId()
 {
     return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("layout"));
+}
+
+QString defaultRawPageOcrRequestProfileId()
+{
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("rawPageOcr"));
+}
+
+QString defaultFixRequestProfileId()
+{
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("fix"));
 }
 
 }  // namespace
@@ -71,10 +86,10 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kCheckLaunchModelPath, "checkLaunchModelPath", QVariant(QString())},
         {kCheckLaunchMmprojPath, "checkLaunchMmprojPath", QVariant(QString())},
         {kCheckLaunchDraftPath, "checkLaunchDraftPath", QVariant(QString())},
-        {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultCheckRequestProfileId())},
+        {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultBlockRecognitionRequestProfileId())},
         {kCheckModelName, "checkModelName", QVariant(QString())},
         {kAutoCheck, "autoCheck", QVariant(false)},
-        {kAutoRecheck, "autoRecheck", QVariant(false)},
+        {kAutoFix, "autoRecheck", QVariant(false)},
         {kShowConfidence, "showConfidence", QVariant(false)},
         {kDecisionLaunchModelPath, "decisionLaunchModelPath", QVariant(QString())},
         {kDecisionLaunchMmprojPath, "decisionLaunchMmprojPath", QVariant(QString())},
@@ -87,6 +102,16 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kLayoutLaunchDraftPath, "layoutLaunchDraftPath", QVariant(QString())},
         {kLayoutRequestProfileId, "layoutRequestProfileId", QVariant(defaultLayoutRequestProfileId())},
         {kLayoutModelName, "layoutModelName", QVariant(QString())},
+        {kRawPageOcrLaunchModelPath, "rawPageOcrLaunchModelPath", QVariant(QString())},
+        {kRawPageOcrLaunchMmprojPath, "rawPageOcrLaunchMmprojPath", QVariant(QString())},
+        {kRawPageOcrLaunchDraftPath, "rawPageOcrLaunchDraftPath", QVariant(QString())},
+        {kRawPageOcrRequestProfileId, "rawPageOcrRequestProfileId", QVariant(defaultRawPageOcrRequestProfileId())},
+        {kRawPageOcrModelName, "rawPageOcrModelName", QVariant(QString())},
+        {kFixLaunchModelPath, "fixLaunchModelPath", QVariant(QString())},
+        {kFixLaunchMmprojPath, "fixLaunchMmprojPath", QVariant(QString())},
+        {kFixLaunchDraftPath, "fixLaunchDraftPath", QVariant(QString())},
+        {kFixRequestProfileId, "fixRequestProfileId", QVariant(defaultFixRequestProfileId())},
+        {kFixModelName, "fixModelName", QVariant(QString())},
         {kHfToken, "hfToken", QVariant(QString())},
         {kLastExternalBaseUrl, "lastExternalBaseUrl", QVariant(QString())},
     };
@@ -138,14 +163,55 @@ void SettingsStore::applyStartupMigration()
     }
     m_settings.remove(QString::fromUtf8(kRetiredTimeoutMs));
 
-    resolveStoredModelId(kModelRecipeId, QStringLiteral("ocr"));
+    // The ex-role model keys move into the tasks/<task> namespace; the value
+    // survives under the new key and the legacy key is removed. The pageOcr
+    // launch profile id (launch/profileId) and host/port stay shared.
+    const QList<std::pair<const char *, const char *>> taskKeyMoves = {
+        {kRetiredPageOcrModelPath, kLaunchModelPath},
+        {kRetiredPageOcrMmprojPath, kLaunchMmprojPath},
+        {kRetiredPageOcrDraftPath, kLaunchDraftPath},
+        {kRetiredPageOcrRequestProfileId, kModelRecipeId},
+        {kRetiredCheckModelPath, kCheckLaunchModelPath},
+        {kRetiredCheckMmprojPath, kCheckLaunchMmprojPath},
+        {kRetiredCheckDraftPath, kCheckLaunchDraftPath},
+        {kRetiredCheckRequestProfileId, kCheckRequestProfileId},
+        {kRetiredCheckModelName, kCheckModelName},
+        {kRetiredDecisionModelPath, kDecisionLaunchModelPath},
+        {kRetiredDecisionMmprojPath, kDecisionLaunchMmprojPath},
+        {kRetiredDecisionDraftPath, kDecisionLaunchDraftPath},
+        {kRetiredDecisionRequestProfileId, kDecisionRequestProfileId},
+        {kRetiredDecisionModelName, kDecisionModelName},
+        {kRetiredLayoutModelPath, kLayoutLaunchModelPath},
+        {kRetiredLayoutMmprojPath, kLayoutLaunchMmprojPath},
+        {kRetiredLayoutDraftPath, kLayoutLaunchDraftPath},
+        {kRetiredLayoutRequestProfileId, kLayoutRequestProfileId},
+        {kRetiredLayoutModelName, kLayoutModelName},
+    };
+    for (const auto &move : taskKeyMoves) {
+        const QString from = QString::fromLatin1(move.first);
+        const QString to = QString::fromLatin1(move.second);
+        if (!m_settings.contains(from))
+            continue;
+        if (!m_settings.contains(to))
+            m_settings.setValue(to, m_settings.value(from));
+        m_settings.remove(from);
+    }
+
+    // The auto-stage-after-verification toggle is now the fix task's switch.
+    if (!m_settings.contains(kAutoFix) && m_settings.contains(kRetiredAutoRecheck))
+        m_settings.setValue(kAutoFix, m_settings.value(kRetiredAutoRecheck));
+    m_settings.remove(QString::fromLatin1(kRetiredAutoRecheck));
+
+    resolveStoredModelId(kModelRecipeId, QStringLiteral("pageOcr"));
     resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("blockRecognition"));
     resolveStoredModelId(kDecisionRequestProfileId, QStringLiteral("decision"));
     resolveStoredModelId(kLayoutRequestProfileId, QStringLiteral("layout"));
+    resolveStoredModelId(kRawPageOcrRequestProfileId, QStringLiteral("rawPageOcr"));
+    resolveStoredModelId(kFixRequestProfileId, QStringLiteral("fix"));
 
     if (m_settings.value(kParserId).toString() == QLatin1String("det_tokens")) {
         QString resolved = QString::fromUtf8(kDefaultParserId);
-        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelRecipeId(), QStringLiteral("ocr"))) {
+        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelRecipeId(), QStringLiteral("pageOcr"))) {
             if (!role->parser.isEmpty())
                 resolved = role->parser;
         }
@@ -197,8 +263,9 @@ void SettingsStore::resetRuntimeDefaults()
 {
     resetGroup([](const QString &key) {
         return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/apiKey") || key == QLatin1String("provider/connectionTimeoutMs") ||
-               key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String("check/modelName") || key == QLatin1String("decision/modelName") ||
-               key == QLatin1String("layout/modelName") || key == QLatin1String("runtime/serverPath");
+               key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String("tasks/blockRecognition/modelName") ||
+               key == QLatin1String("tasks/decision/modelName") || key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/rawPageOcr/modelName") ||
+               key == QLatin1String("tasks/fix/modelName") || key == QLatin1String("runtime/serverPath");
     });
 }
 
@@ -307,7 +374,13 @@ void SettingsStore::selectModelProfile(const QString &repo, const QString &role)
     case ConnectionRole::Layout:
         setLayoutRequestProfileId(profileId);
         break;
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        setRawPageOcrRequestProfileId(profileId);
+        break;
+    case ConnectionRole::Fix:
+        setFixRequestProfileId(profileId);
+        break;
+    case ConnectionRole::PageOcr:
         setModelRecipeId(profileId);
         break;
     }
@@ -818,7 +891,7 @@ void SettingsStore::setCheckLaunchDraftPath(const QString &path)
 QString SettingsStore::checkRequestProfileId() const
 {
     const QString stored = m_settings.value(kCheckRequestProfileId).toString();
-    return stored.isEmpty() ? defaultCheckRequestProfileId() : stored;
+    return stored.isEmpty() ? defaultBlockRecognitionRequestProfileId() : stored;
 }
 
 void SettingsStore::setCheckRequestProfileId(const QString &id)
@@ -857,14 +930,14 @@ void SettingsStore::setAutoCheck(bool on)
 
 bool SettingsStore::autoRecheck() const
 {
-    return m_settings.value(kAutoRecheck, false).toBool();
+    return m_settings.value(kAutoFix, false).toBool();
 }
 
 void SettingsStore::setAutoRecheck(bool on)
 {
     if (autoRecheck() == on)
         return;
-    m_settings.setValue(kAutoRecheck, on);
+    m_settings.setValue(kAutoFix, on);
     emit autoRecheckChanged();
 }
 
@@ -1033,6 +1106,138 @@ void SettingsStore::setLayoutModelName(const QString &name)
     emit layoutModelNameChanged();
 }
 
+QString SettingsStore::rawPageOcrLaunchModelPath() const
+{
+    return m_settings.value(kRawPageOcrLaunchModelPath).toString();
+}
+
+void SettingsStore::setRawPageOcrLaunchModelPath(const QString &path)
+{
+    if (rawPageOcrLaunchModelPath() == path)
+        return;
+    m_settings.setValue(kRawPageOcrLaunchModelPath, path);
+    emit rawPageOcrLaunchModelPathChanged();
+}
+
+QString SettingsStore::rawPageOcrLaunchMmprojPath() const
+{
+    return m_settings.value(kRawPageOcrLaunchMmprojPath).toString();
+}
+
+void SettingsStore::setRawPageOcrLaunchMmprojPath(const QString &path)
+{
+    if (rawPageOcrLaunchMmprojPath() == path)
+        return;
+    m_settings.setValue(kRawPageOcrLaunchMmprojPath, path);
+    emit rawPageOcrLaunchMmprojPathChanged();
+}
+
+QString SettingsStore::rawPageOcrLaunchDraftPath() const
+{
+    return m_settings.value(kRawPageOcrLaunchDraftPath).toString();
+}
+
+void SettingsStore::setRawPageOcrLaunchDraftPath(const QString &path)
+{
+    if (rawPageOcrLaunchDraftPath() == path)
+        return;
+    m_settings.setValue(kRawPageOcrLaunchDraftPath, path);
+    emit rawPageOcrLaunchDraftPathChanged();
+}
+
+QString SettingsStore::rawPageOcrRequestProfileId() const
+{
+    const QString stored = m_settings.value(kRawPageOcrRequestProfileId).toString();
+    return stored.isEmpty() ? defaultRawPageOcrRequestProfileId() : stored;
+}
+
+void SettingsStore::setRawPageOcrRequestProfileId(const QString &id)
+{
+    if (rawPageOcrRequestProfileId() == id)
+        return;
+    m_settings.setValue(kRawPageOcrRequestProfileId, id);
+    emit rawPageOcrRequestProfileIdChanged();
+}
+
+QString SettingsStore::rawPageOcrModelName() const
+{
+    return m_settings.value(kRawPageOcrModelName).toString();
+}
+
+void SettingsStore::setRawPageOcrModelName(const QString &name)
+{
+    if (rawPageOcrModelName() == name)
+        return;
+    m_settings.setValue(kRawPageOcrModelName, name);
+    emit rawPageOcrModelNameChanged();
+}
+
+QString SettingsStore::fixLaunchModelPath() const
+{
+    return m_settings.value(kFixLaunchModelPath).toString();
+}
+
+void SettingsStore::setFixLaunchModelPath(const QString &path)
+{
+    if (fixLaunchModelPath() == path)
+        return;
+    m_settings.setValue(kFixLaunchModelPath, path);
+    emit fixLaunchModelPathChanged();
+}
+
+QString SettingsStore::fixLaunchMmprojPath() const
+{
+    return m_settings.value(kFixLaunchMmprojPath).toString();
+}
+
+void SettingsStore::setFixLaunchMmprojPath(const QString &path)
+{
+    if (fixLaunchMmprojPath() == path)
+        return;
+    m_settings.setValue(kFixLaunchMmprojPath, path);
+    emit fixLaunchMmprojPathChanged();
+}
+
+QString SettingsStore::fixLaunchDraftPath() const
+{
+    return m_settings.value(kFixLaunchDraftPath).toString();
+}
+
+void SettingsStore::setFixLaunchDraftPath(const QString &path)
+{
+    if (fixLaunchDraftPath() == path)
+        return;
+    m_settings.setValue(kFixLaunchDraftPath, path);
+    emit fixLaunchDraftPathChanged();
+}
+
+QString SettingsStore::fixRequestProfileId() const
+{
+    const QString stored = m_settings.value(kFixRequestProfileId).toString();
+    return stored.isEmpty() ? defaultFixRequestProfileId() : stored;
+}
+
+void SettingsStore::setFixRequestProfileId(const QString &id)
+{
+    if (fixRequestProfileId() == id)
+        return;
+    m_settings.setValue(kFixRequestProfileId, id);
+    emit fixRequestProfileIdChanged();
+}
+
+QString SettingsStore::fixModelName() const
+{
+    return m_settings.value(kFixModelName).toString();
+}
+
+void SettingsStore::setFixModelName(const QString &name)
+{
+    if (fixModelName() == name)
+        return;
+    m_settings.setValue(kFixModelName, name);
+    emit fixModelNameChanged();
+}
+
 QString SettingsStore::launchModelPathForRole(const QString &role) const
 {
     switch (connectionRoleFromName(role)) {
@@ -1042,7 +1247,11 @@ QString SettingsStore::launchModelPathForRole(const QString &role) const
         return decisionLaunchModelPath();
     case ConnectionRole::Layout:
         return layoutLaunchModelPath();
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        return rawPageOcrLaunchModelPath();
+    case ConnectionRole::Fix:
+        return fixLaunchModelPath();
+    case ConnectionRole::PageOcr:
         break;
     }
     return launchModelPath();
@@ -1060,7 +1269,13 @@ void SettingsStore::setLaunchModelPathForRole(const QString &role, const QString
     case ConnectionRole::Layout:
         setLayoutLaunchModelPath(path);
         break;
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        setRawPageOcrLaunchModelPath(path);
+        break;
+    case ConnectionRole::Fix:
+        setFixLaunchModelPath(path);
+        break;
+    case ConnectionRole::PageOcr:
         setLaunchModelPath(path);
         break;
     }
@@ -1075,7 +1290,11 @@ QString SettingsStore::launchMmprojPathForRole(const QString &role) const
         return decisionLaunchMmprojPath();
     case ConnectionRole::Layout:
         return layoutLaunchMmprojPath();
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        return rawPageOcrLaunchMmprojPath();
+    case ConnectionRole::Fix:
+        return fixLaunchMmprojPath();
+    case ConnectionRole::PageOcr:
         break;
     }
     return launchMmprojPath();
@@ -1093,7 +1312,13 @@ void SettingsStore::setLaunchMmprojPathForRole(const QString &role, const QStrin
     case ConnectionRole::Layout:
         setLayoutLaunchMmprojPath(path);
         break;
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        setRawPageOcrLaunchMmprojPath(path);
+        break;
+    case ConnectionRole::Fix:
+        setFixLaunchMmprojPath(path);
+        break;
+    case ConnectionRole::PageOcr:
         setLaunchMmprojPath(path);
         break;
     }
@@ -1108,7 +1333,11 @@ QString SettingsStore::launchDraftPathForRole(const QString &role) const
         return decisionLaunchDraftPath();
     case ConnectionRole::Layout:
         return layoutLaunchDraftPath();
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        return rawPageOcrLaunchDraftPath();
+    case ConnectionRole::Fix:
+        return fixLaunchDraftPath();
+    case ConnectionRole::PageOcr:
         break;
     }
     return launchDraftPath();
@@ -1126,7 +1355,13 @@ void SettingsStore::setLaunchDraftPathForRole(const QString &role, const QString
     case ConnectionRole::Layout:
         setLayoutLaunchDraftPath(path);
         break;
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        setRawPageOcrLaunchDraftPath(path);
+        break;
+    case ConnectionRole::Fix:
+        setFixLaunchDraftPath(path);
+        break;
+    case ConnectionRole::PageOcr:
         setLaunchDraftPath(path);
         break;
     }
@@ -1141,7 +1376,11 @@ QString SettingsStore::requestProfileIdForRole(const QString &role) const
         return decisionRequestProfileId();
     case ConnectionRole::Layout:
         return layoutRequestProfileId();
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        return rawPageOcrRequestProfileId();
+    case ConnectionRole::Fix:
+        return fixRequestProfileId();
+    case ConnectionRole::PageOcr:
         break;
     }
     return modelRecipeId();
@@ -1156,7 +1395,11 @@ QString SettingsStore::modelNameForRole(const QString &role) const
         return decisionModelName();
     case ConnectionRole::Layout:
         return layoutModelName();
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        return rawPageOcrModelName();
+    case ConnectionRole::Fix:
+        return fixModelName();
+    case ConnectionRole::PageOcr:
         break;
     }
     return modelName();

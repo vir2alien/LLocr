@@ -20,7 +20,7 @@
     }
   },
   "roles": {
-    "ocr": {
+    "pageOcr": {
       "alias": "llocr-lfm25-vl-3b",
       "promptBeforeImage": true,
       "parser": "lfm2.5-vl",

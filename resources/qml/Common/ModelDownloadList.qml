@@ -11,8 +11,8 @@ ListView {
 
     property int rowHeight: 46
     property int maxVisibleRows: 6
-    // Model-profile role id this list serves: "ocr", "blockRecognition", "decision" or "layout".
-    property string role: "ocr"
+    // Model task id this list serves: "pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout" or "fix".
+    property string role: "pageOcr"
 
     signal actionError(string message)
     signal downloadRequested(string title, string quantId, string license, string runtimeNote)

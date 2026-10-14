@@ -46,7 +46,7 @@ ModelProfiles::Profile makeProfile(const QString &id, const QList<RequestParamet
     profile.title = id;
     ModelProfiles::Role role;
     role.request = parameters;
-    profile.roles.insert(QStringLiteral("ocr"), role);
+    profile.roles.insert(QStringLiteral("pageOcr"), role);
     return profile;
 }
 
@@ -62,7 +62,7 @@ QList<ModelProfiles::Profile> twoModels()
     second.title = second.id;
     ModelProfiles::Role secondRole;
     secondRole.request = {makeParameter(1, QStringLiteral("gamma"), 1)};
-    second.roles.insert(QStringLiteral("ocr"), secondRole);
+    second.roles.insert(QStringLiteral("pageOcr"), secondRole);
     return {makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters()), second};
 }
 
@@ -465,7 +465,7 @@ private slots:
         QCOMPARE(savedAlpha->value.toDouble(), 0.1);
 
         // The user file is a profiles array keyed by the profile id.
-        QFile userFile(QDir(dir.path()).filePath(QStringLiteral("profiles/request.json")));
+        QFile userFile(QDir(dir.path()).filePath(QStringLiteral("profiles/requestPage.json")));
         QVERIFY(userFile.open(QIODevice::ReadOnly));
         const QJsonObject root = QJsonDocument::fromJson(userFile.readAll()).object();
         userFile.close();

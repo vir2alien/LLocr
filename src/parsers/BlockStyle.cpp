@@ -95,10 +95,27 @@ void BlockStyleMap::applyJson(const QJsonObject &root)
         m_default = tableFromJson(defaults);
 }
 
+namespace {
+
+// Block styles are the profile's label vocabulary, not a task behavior, so a
+// model may ship them under any task it serves (pageOcr for one-shot OCR,
+// layout for the markup pass). The first role that knows the label wins.
+const ModelProfiles::Role *styledRoleFor(const QString &modelId)
+{
+    static const char *kStyledRoles[] = {"pageOcr", "layout", "blockRecognition"};
+    for (const char *role : kStyledRoles) {
+        if (const ModelProfiles::Role *found = ModelProfiles::roleFor(modelId, QLatin1String(role)))
+            return found;
+    }
+    return nullptr;
+}
+
+}  // namespace
+
 bool BlockStyleMap::knowsLabel(const QString &label, const QString &modelId) const
 {
     if (!modelId.isEmpty()) {
-        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, QStringLiteral("ocr"))) {
+        if (const ModelProfiles::Role *role = styledRoleFor(modelId)) {
             if (role->blockStyles.contains(label))
                 return true;
         }
@@ -109,7 +126,7 @@ bool BlockStyleMap::knowsLabel(const QString &label, const QString &modelId) con
 BlockStyleInfo BlockStyleMap::styleForLabel(const QString &label, const QString &modelId) const
 {
     if (!modelId.isEmpty()) {
-        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, QStringLiteral("ocr"))) {
+        if (const ModelProfiles::Role *role = styledRoleFor(modelId)) {
             const auto styleIt = role->blockStyles.constFind(label);
             if (styleIt != role->blockStyles.constEnd()) {
                 BlockStyleInfo info;

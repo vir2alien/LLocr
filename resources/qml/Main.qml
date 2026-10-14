@@ -255,7 +255,7 @@ ApplicationWindow {
         id: ocrModelSettingsLoader
         active: false
         sourceComponent: ModelSettingsWindow {
-            role: "ocr"
+            role: "pageOcr"
             runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
         }
     }

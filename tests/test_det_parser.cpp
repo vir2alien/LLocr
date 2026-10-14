@@ -1315,7 +1315,7 @@ private slots:
     // labels.json, so the base document carries no per-model section at all.
     void modelStylesDoNotBleedIntoOtherModels()
     {
-        const ModelProfiles::Role *lfm = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        const ModelProfiles::Role *lfm = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("pageOcr"));
         QVERIFY(lfm);
         QCOMPARE(lfm->blockStyles.value(QStringLiteral("image_block")), QStringLiteral("image"));
         QCOMPARE(lfm->blockStyles.value(QStringLiteral("code_caption")), QStringLiteral("italic"));
@@ -1348,7 +1348,7 @@ private slots:
 
         // Every label the LFM2.5-VL prompt advertises must be named explicitly —
         // a typo must not degrade it to plain text.
-        const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("pageOcr"));
         QVERIFY(role);
         const QStringList lfmLabels{QStringLiteral("text"),           QStringLiteral("title"),          QStringLiteral("list"),         QStringLiteral("table"),
                                     QStringLiteral("table_caption"),  QStringLiteral("table_footnote"), QStringLiteral("image"),        QStringLiteral("image_block"),

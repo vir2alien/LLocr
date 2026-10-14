@@ -73,6 +73,8 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
     connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     connect(&m_settings, &SettingsStore::decisionRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, [this] { emit profileChanged(); });
+    connect(&m_settings, &SettingsStore::rawPageOcrRequestProfileIdChanged, this, [this] { emit profileChanged(); });
+    connect(&m_settings, &SettingsStore::fixRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     ensureProfileResolved();
     reloadDraft();
 }
@@ -175,57 +177,27 @@ bool LaunchProfileStore::modelNotInCatalog(const QString &modelId) const
 
 bool LaunchProfileStore::modelProfileMissing() const
 {
-    return modelNotInCatalog(modelIdForRole(QStringLiteral("ocr")));
-}
-
-bool LaunchProfileStore::checkModelProfileMissing() const
-{
-    return modelNotInCatalog(modelIdForRole(QStringLiteral("blockRecognition")));
-}
-
-bool LaunchProfileStore::decisionModelProfileMissing() const
-{
-    return modelNotInCatalog(modelIdForRole(QStringLiteral("decision")));
-}
-
-bool LaunchProfileStore::layoutModelProfileMissing() const
-{
-    return modelNotInCatalog(modelIdForRole(QStringLiteral("layout")));
+    return modelProfileMissingForRole(QStringLiteral("pageOcr"));
 }
 
 QString LaunchProfileStore::modelRuntimeNote() const
 {
-    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("ocr")));
+    return modelRuntimeNoteForRole(QStringLiteral("pageOcr"));
 }
 
-QString LaunchProfileStore::checkModelRuntimeNote() const
+bool LaunchProfileStore::modelProfileMissingForRole(const QString &task) const
 {
-    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("blockRecognition")));
+    return modelNotInCatalog(modelIdForRole(task));
 }
 
-QString LaunchProfileStore::decisionModelRuntimeNote() const
+QString LaunchProfileStore::modelRuntimeNoteForRole(const QString &task) const
 {
-    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("decision")));
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(task));
 }
 
-QString LaunchProfileStore::layoutModelRuntimeNote() const
+QString LaunchProfileStore::modelIdForRole(const QString &task) const
 {
-    return ModelProfiles::runtimeNoteFor(m_modelProfiles, modelIdForRole(QStringLiteral("layout")));
-}
-
-QString LaunchProfileStore::modelIdForRole(const QString &role) const
-{
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        return m_settings.checkRequestProfileId();
-    case ConnectionRole::Decision:
-        return m_settings.decisionRequestProfileId();
-    case ConnectionRole::Layout:
-        return m_settings.layoutRequestProfileId();
-    case ConnectionRole::Ocr:
-        break;
-    }
-    return m_settings.modelRecipeId();
+    return m_settings.requestProfileIdForRole(task);
 }
 
 void LaunchProfileStore::composeDraft()
@@ -239,7 +211,7 @@ void LaunchProfileStore::composeDraft()
 
 LaunchProfile LaunchProfileStore::activeProfile() const
 {
-    return activeProfile(m_settings.modelRecipeId(), QStringLiteral("ocr"));
+    return activeProfile(m_settings.modelRecipeId(), QStringLiteral("pageOcr"));
 }
 
 LaunchProfile LaunchProfileStore::activeProfile(const QString &modelId, const QString &role) const

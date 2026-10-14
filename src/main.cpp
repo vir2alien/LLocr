@@ -96,13 +96,17 @@ int main(int argc, char *argv[])
 
     const QList<llocr::ModelProfiles::Profile> modelProfiles = llocr::ModelProfiles::instance();
 
-    llocr::RequestProfileStore requestProfilesOcr(settingsStore);
-    requestProfilesOcr.setModelProfiles(modelProfiles);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesOcr", &requestProfilesOcr);
+    llocr::RequestProfileStore requestProfilesPageOcr(settingsStore, llocr::ConnectionRole::PageOcr);
+    requestProfilesPageOcr.setModelProfiles(modelProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesPageOcr", &requestProfilesPageOcr);
 
-    llocr::RequestProfileStore requestProfilesValidate(settingsStore, llocr::ConnectionRole::BlockRecognition);
-    requestProfilesValidate.setModelProfiles(modelProfiles);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesValidate", &requestProfilesValidate);
+    llocr::RequestProfileStore requestProfilesRawPageOcr(settingsStore, llocr::ConnectionRole::RawPageOcr);
+    requestProfilesRawPageOcr.setModelProfiles(modelProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesRawPageOcr", &requestProfilesRawPageOcr);
+
+    llocr::RequestProfileStore requestProfilesBlock(settingsStore, llocr::ConnectionRole::BlockRecognition);
+    requestProfilesBlock.setModelProfiles(modelProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesBlock", &requestProfilesBlock);
 
     llocr::RequestProfileStore requestProfilesDecision(settingsStore, llocr::ConnectionRole::Decision);
     requestProfilesDecision.setModelProfiles(modelProfiles);
@@ -111,6 +115,10 @@ int main(int argc, char *argv[])
     llocr::RequestProfileStore requestProfilesLayout(settingsStore, llocr::ConnectionRole::Layout);
     requestProfilesLayout.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesLayout", &requestProfilesLayout);
+
+    llocr::RequestProfileStore requestProfilesFix(settingsStore, llocr::ConnectionRole::Fix);
+    requestProfilesFix.setModelProfiles(modelProfiles);
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesFix", &requestProfilesFix);
 
     llocr::VerificationPromptStore verificationPrompts(settingsStore);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Verification", &verificationPrompts);
@@ -130,7 +138,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
     runtimeController.setLogTarget(&runtimeLog);
 
-    llocr::SelfTestController selfTestController(settingsStore, runtimeController, requestProfilesOcr);
+    llocr::SelfTestController selfTestController(settingsStore, runtimeController, requestProfilesPageOcr);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);
 
     llocr::RuntimeInstaller runtimeInstaller(settingsStore, installedState);
@@ -153,7 +161,7 @@ int main(int argc, char *argv[])
     connectShutdownHandlers(app, instanceGuard, runtimeController, runtimeInstaller, modelInstaller);
 
     llocr::ProblemLog problemLog;
-    llocr::AppController appController(settingsStore, runtimeController, requestProfilesOcr, requestProfilesValidate, requestProfilesLayout, verificationPrompts);
+    llocr::AppController appController(settingsStore, runtimeController, requestProfilesPageOcr, requestProfilesBlock, requestProfilesLayout, verificationPrompts);
     appController.setProblemLog(&problemLog);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Log", &problemLog);
     llocr::UiController uiController(settingsStore);

@@ -9,8 +9,8 @@ import "../Common"
 
 ApplicationWindow {
     id: window
-    // Model-profile role id: "ocr", "blockRecognition", "decision" or "layout".
-    property string role: "ocr"
+    // Model task id: "pageOcr", "blockRecognition", "decision" or "layout".
+    property string role: "pageOcr"
 
     title: RoleProfiles.title(role)
     width: 560

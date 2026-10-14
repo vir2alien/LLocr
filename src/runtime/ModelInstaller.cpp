@@ -25,8 +25,9 @@ namespace llocr {
 
 ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime, InstalledState &state, QObject *parent)
     : QObject(parent), m_settings(settings), m_installState(state), m_runtime(runtime), m_transaction(new ModelInstallTransaction(settings, m_installState, this)),
-      m_ocrModels(new ModelQuantModel(*this, settings, QStringLiteral("ocr"), this)), m_checkModels(new ModelQuantModel(*this, settings, QStringLiteral("blockRecognition"), this)),
-      m_decisionModels(new ModelQuantModel(*this, settings, QStringLiteral("decision"), this)), m_layoutModels(new ModelQuantModel(*this, settings, QStringLiteral("layout"), this))
+      m_pageOcrModels(new ModelQuantModel(*this, settings, QStringLiteral("pageOcr"), this)), m_checkModels(new ModelQuantModel(*this, settings, QStringLiteral("blockRecognition"), this)),
+      m_decisionModels(new ModelQuantModel(*this, settings, QStringLiteral("decision"), this)), m_layoutModels(new ModelQuantModel(*this, settings, QStringLiteral("layout"), this)),
+      m_rawPageOcrModels(new ModelQuantModel(*this, settings, QStringLiteral("rawPageOcr"), this)), m_fixModels(new ModelQuantModel(*this, settings, QStringLiteral("fix"), this))
 {
     connect(m_transaction, &ModelInstallTransaction::stateChanged, this, [this](int state) { setState(static_cast<State>(state)); });
     connect(m_transaction, &ModelInstallTransaction::busyChanged, this, [this](bool busy) { setBusy(busy); });
@@ -40,6 +41,8 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     connect(&m_settings, &SettingsStore::checkLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::decisionLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::layoutLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
+    connect(&m_settings, &SettingsStore::rawPageOcrLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
+    connect(&m_settings, &SettingsStore::fixLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
 
     reloadPresetsInternal();
     refreshInstalled();
@@ -47,7 +50,7 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
 
 QObject *ModelInstaller::quantModels() const
 {
-    return m_ocrModels;
+    return m_pageOcrModels;
 }
 
 QObject *ModelInstaller::checkQuantModels() const
@@ -65,27 +68,39 @@ QObject *ModelInstaller::layoutQuantModels() const
     return m_layoutModels;
 }
 
-ModelQuantModel *ModelInstaller::quantModel(const QString &role) const
+QObject *ModelInstaller::rawPageOcrQuantModels() const
 {
-    switch (connectionRoleFromName(role)) {
+    return m_rawPageOcrModels;
+}
+
+QObject *ModelInstaller::fixQuantModels() const
+{
+    return m_fixModels;
+}
+
+ModelQuantModel *ModelInstaller::quantModel(const QString &task) const
+{
+    switch (connectionRoleFromName(task)) {
     case ConnectionRole::BlockRecognition:
         return m_checkModels;
     case ConnectionRole::Decision:
         return m_decisionModels;
     case ConnectionRole::Layout:
         return m_layoutModels;
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        return m_rawPageOcrModels;
+    case ConnectionRole::Fix:
+        return m_fixModels;
+    case ConnectionRole::PageOcr:
         break;
     }
-    return m_ocrModels;
+    return m_pageOcrModels;
 }
 
 void ModelInstaller::publishInstalled()
 {
-    m_ocrModels->refresh();
-    m_checkModels->refresh();
-    m_decisionModels->refresh();
-    m_layoutModels->refresh();
+    for (ModelQuantModel *model : {m_pageOcrModels, m_checkModels, m_decisionModels, m_layoutModels, m_rawPageOcrModels, m_fixModels})
+        model->refresh();
     emit installedChanged();
 }
 
@@ -135,7 +150,7 @@ void ModelInstaller::retranslate()
 
 QString ModelInstaller::activeTitle() const
 {
-    return activeTitleFor(QStringLiteral("ocr"));
+    return activeTitleFor(QStringLiteral("pageOcr"));
 }
 
 QString ModelInstaller::checkActiveTitle() const
@@ -153,9 +168,19 @@ QString ModelInstaller::layoutActiveTitle() const
     return activeTitleFor(QStringLiteral("layout"));
 }
 
-QString ModelInstaller::activeTitleFor(const QString &role) const
+QString ModelInstaller::rawPageOcrActiveTitle() const
 {
-    const QString active = m_settings.launchModelPathForRole(role);
+    return activeTitleFor(QStringLiteral("rawPageOcr"));
+}
+
+QString ModelInstaller::fixActiveTitle() const
+{
+    return activeTitleFor(QStringLiteral("fix"));
+}
+
+QString ModelInstaller::activeTitleFor(const QString &task) const
+{
+    const QString active = m_settings.launchModelPathForRole(task);
     for (const ModelEntry &e : m_installed) {
         if (!e.modelPath.isEmpty() && e.modelPath == active)
             return e.title;
@@ -163,16 +188,20 @@ QString ModelInstaller::activeTitleFor(const QString &role) const
     return QString();
 }
 
-const QList<ModelPreset> &ModelInstaller::presetsForRole(const QString &role) const
+const QList<ModelPreset> &ModelInstaller::presetsForRole(const QString &task) const
 {
-    switch (connectionRoleFromName(role)) {
+    switch (connectionRoleFromName(task)) {
     case ConnectionRole::BlockRecognition:
         return m_presetsValidate;
     case ConnectionRole::Decision:
         return m_presetsDecision;
     case ConnectionRole::Layout:
         return m_presetsLayout;
-    case ConnectionRole::Ocr:
+    case ConnectionRole::RawPageOcr:
+        return m_presetsRawPageOcr;
+    case ConnectionRole::Fix:
+        return m_presetsFix;
+    case ConnectionRole::PageOcr:
         break;
     }
     return m_presets;
@@ -196,9 +225,11 @@ void ModelInstaller::reloadPresetsInternal()
     m_presetsValidate.clear();
     m_presetsDecision.clear();
     m_presetsLayout.clear();
+    m_presetsRawPageOcr.clear();
+    m_presetsFix.clear();
     for (const ModelPreset &preset : all) {
         const QString profileId = preset.profileId.isEmpty() ? preset.id : preset.profileId;
-        if (ModelProfiles::roleFor(profileId, QStringLiteral("ocr")))
+        if (ModelProfiles::roleFor(profileId, QStringLiteral("pageOcr")))
             m_presets.append(preset);
         if (ModelProfiles::roleFor(profileId, QStringLiteral("blockRecognition")))
             m_presetsValidate.append(preset);
@@ -206,12 +237,13 @@ void ModelInstaller::reloadPresetsInternal()
             m_presetsDecision.append(preset);
         if (ModelProfiles::roleFor(profileId, QStringLiteral("layout")))
             m_presetsLayout.append(preset);
+        if (ModelProfiles::roleFor(profileId, QStringLiteral("rawPageOcr")))
+            m_presetsRawPageOcr.append(preset);
+        if (ModelProfiles::roleFor(profileId, QStringLiteral("fix")))
+            m_presetsFix.append(preset);
     }
 
-    m_ocrModels->refresh();
-    m_checkModels->refresh();
-    m_decisionModels->refresh();
-    m_layoutModels->refresh();
+    publishInstalled();
     emit presetsChanged();
 }
 
@@ -242,7 +274,7 @@ void ModelInstaller::syncProfileToActiveModel()
     for (const ModelEntry &e : m_installed) {
         if (e.modelPath.isEmpty() || e.modelPath != active || e.repo.isEmpty())
             continue;
-        m_settings.selectModelProfile(e.repo, QStringLiteral("ocr"));
+        m_settings.selectModelProfile(e.repo, QStringLiteral("pageOcr"));
         break;
     }
 }
@@ -291,18 +323,28 @@ void ModelInstaller::selectQuant(const QString &key, const QString &quantId)
 {
     if (quantId.isEmpty())
         return;
-    if (!m_ocrModels->hasQuant(key, quantId) && !m_checkModels->hasQuant(key, quantId) && !m_decisionModels->hasQuant(key, quantId) && !m_layoutModels->hasQuant(key, quantId))
+    const QList<ModelQuantModel *> models = {m_pageOcrModels, m_checkModels, m_decisionModels, m_layoutModels, m_rawPageOcrModels, m_fixModels};
+    const bool known = std::any_of(models.cbegin(), models.cend(), [&](const ModelQuantModel *model) { return model->hasQuant(key, quantId); });
+    if (!known)
         return;
     m_settings.setSelectedQuant(key, quantId);
-    m_ocrModels->refresh();
-    m_checkModels->refresh();
-    m_decisionModels->refresh();
-    m_layoutModels->refresh();
+    publishInstalled();
 }
 
 int ModelInstaller::installedIndexFor(const QString &key, const QString &quantId, const QString &role) const
 {
     return quantModel(role)->entryIndexFor(key, quantId);
+}
+
+bool ModelInstaller::isActiveForAnyTask(const ModelEntry &entry) const
+{
+    if (entry.modelPath.isEmpty())
+        return false;
+    for (const ConnectionRole role : {ConnectionRole::PageOcr, ConnectionRole::RawPageOcr, ConnectionRole::BlockRecognition, ConnectionRole::Decision, ConnectionRole::Layout, ConnectionRole::Fix}) {
+        if (entry.modelPath == m_settings.launchModelPathForRole(connectionRoleName(role)))
+            return true;
+    }
+    return false;
 }
 
 QString ModelInstaller::useQuant(const QString &key, const QString &quantId, const QString &role)
@@ -345,8 +387,7 @@ QString ModelInstaller::removeModelRow(const QString &key, const QString &role)
     const bool ready = m_runtime.state() == RuntimeState::Ready;
     for (int index : std::as_const(targets)) {
         const ModelEntry &entry = m_installed.at(index);
-        const bool active = !entry.modelPath.isEmpty() && (entry.modelPath == m_settings.launchModelPath() || entry.modelPath == m_settings.checkLaunchModelPath() ||
-                                                           entry.modelPath == m_settings.decisionLaunchModelPath() || entry.modelPath == m_settings.layoutLaunchModelPath());
+        const bool active = isActiveForAnyTask(entry);
         const QString guard = ModelRegistry::removalError(entry, paths.modelsDir(), active, ready);
         if (!guard.isEmpty())
             return guard;
@@ -375,8 +416,7 @@ QString ModelInstaller::removeModel(int index)
     if (index < 0 || index >= m_installed.size())
         return tr("Invalid model selection");
     const ModelEntry &e = m_installed.at(index);
-    const bool active = !e.modelPath.isEmpty() && (e.modelPath == m_settings.launchModelPath() || e.modelPath == m_settings.checkLaunchModelPath() ||
-                                                   e.modelPath == m_settings.decisionLaunchModelPath() || e.modelPath == m_settings.layoutLaunchModelPath());
+    const bool active = isActiveForAnyTask(e);
     const bool ready = m_runtime.state() == RuntimeState::Ready;
     const RuntimePaths currentPaths = m_installState.paths();
     const QString guard = ModelRegistry::removalError(e, currentPaths.modelsDir(), active, ready);

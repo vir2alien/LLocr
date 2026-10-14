@@ -2859,28 +2859,44 @@
 <context>
     <name>RoleProfiles</name>
     <message>
-        <source>Block OCR model settings</source>
-        <translation>Настройки модели OCR блока</translation>
+        <source>Block fix</source>
+        <translation>Исправление блока</translation>
     </message>
     <message>
-        <source>Decision model settings</source>
-        <translation>Настройки модели decision</translation>
+        <source>Block recognition</source>
+        <translation>Распознавание блока</translation>
     </message>
     <message>
-        <source>Layout model settings</source>
-        <translation>Настройки модели разметки</translation>
+        <source>Markup</source>
+        <translation>Разметка</translation>
     </message>
     <message>
-        <source>OCR model settings</source>
-        <translation>Настройки модели OCR</translation>
+        <source>Recognition with markup</source>
+        <translation>Распознавание с разметкой</translation>
+    </message>
+    <message>
+        <source>Recognition without markup</source>
+        <translation>Распознавание без разметки</translation>
+    </message>
+    <message>
+        <source>Verification</source>
+        <translation>Проверка</translation>
     </message>
     <message>
         <source>Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.</source>
         <translation>Параметры сэмплирования, отправляемые с каждым запросом распознавания блока. Набор задаёт профиль модели — меняйте значения, а не список</translation>
     </message>
     <message>
+        <source>Sampling parameters sent with every block fix request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры сэмплирования для каждого запроса исправления блока. Набор приходит из профиля модели — правьте значения, а не список.</translation>
+    </message>
+    <message>
         <source>Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.</source>
         <translation>Параметры сэмплирования для каждого запроса разметки страницы. Набор приходит из профиля модели — правьте значения, а не список.</translation>
+    </message>
+    <message>
+        <source>Sampling parameters sent with every plain-text page recognition request. The set comes from the model profile — edit the values, not the list.</source>
+        <translation>Параметры сэмплирования для каждого запроса распознавания страницы сплошным текстом. Набор приходит из профиля модели — правьте значения, а не список.</translation>
     </message>
     <message>
         <source>Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.</source>
@@ -5158,6 +5174,30 @@
         <location line="+11"/>
         <source>Switching to the layout model…</source>
         <translation>Переключение на модель разметки…</translation>
+    </message>
+    <message>
+        <source>Switching to the raw OCR model…</source>
+        <translation>Переключение на модель raw OCR…</translation>
+    </message>
+    <message>
+        <source>Switching to the fix model…</source>
+        <translation>Переключение на модель исправления…</translation>
+    </message>
+    <message>
+        <source>Raw OCR model is not selected — pick a model in Settings → Models</source>
+        <translation>Модель raw OCR не выбрана — выберите модель в Settings → Models</translation>
+    </message>
+    <message>
+        <source>Raw OCR model file not found: %1 — re-select the model in Settings → Models</source>
+        <translation>Файл модели raw OCR не найден: %1 — выберите модель заново в Settings → Models</translation>
+    </message>
+    <message>
+        <source>Fix model is not selected — pick a model in Settings → Models</source>
+        <translation>Модель исправления не выбрана — выберите модель в Settings → Models</translation>
+    </message>
+    <message>
+        <source>Fix model file not found: %1 — re-select the model in Settings → Models</source>
+        <translation>Файл модели исправления не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
         <location line="+53"/>

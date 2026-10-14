@@ -423,8 +423,19 @@
     two-layer block verification (ADR 164), the OK/FIX/REVIEW fix protocol
     for universal models (ADR 163), page statuses (ADR 165), the new
     settings windows (ADR 166). **Stage 0 done** — ADR 162–166 recorded in
-    `docs/07-glossary.md`. Stages 1–9 are pending: one stage = one session =
-    one commit, current statuses live in the plan's stage table; the two
-    branches after stage 1 (core 2→3→4→5, settings 6→7) share
-    `SettingsStore`/`RoleProfiles.qml` — coordinate with stage 1, don't
-    rewrite each other.
+    `docs/07-glossary.md`. **Stage 1 done** — six tasks on every data layer:
+    `ConnectionRole{PageOcr, RawPageOcr, BlockRecognition, Decision, Layout,
+    Fix}` (legacy `"ocr"` maps to `PageOcr`), the nine model profiles
+    reshaped to the task matrix (universal models carry the OK/FIX/REVIEW
+    `fix` role; TeleOCR's label styles moved to its `layout` role), settings
+    under `tasks/<task>/*` with the one-time startup migration from
+    `launch/*`/`check/*`/`decision/*`/`layout/*` model keys and
+    `check/autoRecheck` → `check/autoFix` (the C++ property is still
+    `autoRecheck` until stage 3), `RequestProfileStore` ×6 with the renamed
+    QML singletons (`RequestProfilesPageOcr/RawPageOcr/Block/Decision/
+    Layout/Fix`), `ModelInstaller` exposing six per-task quant lists, and
+    `RoleProfiles.qml` dispatching all six tasks. Stages 2–9 are pending:
+    one stage = one session = one commit, current statuses live in the
+    plan's stage table; the two branches after stage 1 (core 2→3→4→5,
+    settings 6→7) share `SettingsStore`/`RoleProfiles.qml` — coordinate with
+    stage 1, don't rewrite each other.

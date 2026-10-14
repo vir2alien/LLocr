@@ -25,7 +25,7 @@ class RequestProfileStore : public QObject
     Q_PROPERTY(QString draftProfileId READ draftProfileId NOTIFY draftProfileChanged)
 
 public:
-    explicit RequestProfileStore(SettingsStore &settings, ConnectionRole role = ConnectionRole::Ocr, QObject *parent = nullptr);
+    explicit RequestProfileStore(SettingsStore &settings, ConnectionRole role = ConnectionRole::PageOcr, QObject *parent = nullptr);
     void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);
 
     QAbstractListModel *draftModel() const { return m_model; }

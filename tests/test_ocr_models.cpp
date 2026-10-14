@@ -233,7 +233,7 @@ private slots:
         QVERIFY(!variants.first().id.isEmpty());
         QVERIFY(!variants.first().title.isEmpty());
         // The wire shape follows the model card: text, then the image.
-        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("ocr"));
+        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("pageOcr"));
         QVERIFY(ocrRole);
         QCOMPARE(ocrRole->promptBeforeImage, true);
     }
@@ -257,7 +257,7 @@ private slots:
 
         // The card's message layout is image-then-text (the Gemma/Qwen family
         // order), so no promptBeforeImage override.
-        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("glm-ocr"), QStringLiteral("ocr"));
+        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("glm-ocr"), QStringLiteral("rawPageOcr"));
         QVERIFY(ocrRole);
         QCOMPARE(ocrRole->promptBeforeImage, false);
 

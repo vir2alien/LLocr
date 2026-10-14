@@ -10,7 +10,7 @@ import "../Common"
 Item {
     id: root
 
-    property string role: "ocr"
+    property string role: "pageOcr"
     property var runtimeSettingsRef: null
 
     readonly property bool externalMode: Settings.connectionMode === "external"

@@ -111,7 +111,7 @@ private:
     QString m_installDir;
     std::unique_ptr<StagedInstall> m_staging;
     std::unique_ptr<InstallLockGuard> m_lock;
-    QString m_pendingRole = QStringLiteral("ocr");  // install auto-activates this role
+    QString m_pendingRole = QStringLiteral("pageOcr");  // install auto-activates this task
     int m_prepareGeneration = 0;
     QList<ModelEntry> m_installed;
 };

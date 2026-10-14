@@ -155,7 +155,7 @@ void TestModelRegistry::rebuildsOnCorruptIndex()
     QCOMPARE(entries.size(), 1);
 }
 
-// The role tags ("ocr" / "blockRecognition") recorded at install time survive a
+// The task tags ("pageOcr" / "blockRecognition") recorded at install time survive a
 // save/load roundtrip — the role-filtered installed lists rely on them.
 void TestModelRegistry::persistsRoles()
 {
@@ -167,7 +167,7 @@ void TestModelRegistry::persistsRoles()
     e.dir = makeRepoDir(dir.path(), QStringLiteral("org__repo"));
     e.modelPath = QDir(e.dir).filePath(QStringLiteral("model-Q4_K_M.gguf"));
     e.origin = ModelOrigin::Managed;
-    e.roles = {QStringLiteral("ocr"), QStringLiteral("blockRecognition")};
+    e.roles = {QStringLiteral("pageOcr"), QStringLiteral("blockRecognition")};
 
     QString err;
     QVERIFY(ModelRegistry::save(dir.path(), {e}, err));
@@ -177,7 +177,7 @@ void TestModelRegistry::persistsRoles()
     const QList<ModelEntry> loaded = ModelRegistry::load(dir.path(), rebuilt, err);
     QVERIFY(!rebuilt);
     QCOMPARE(loaded.size(), 1);
-    QCOMPARE(loaded.at(0).roles, QStringList({QStringLiteral("ocr"), QStringLiteral("blockRecognition")}));
+    QCOMPARE(loaded.at(0).roles, QStringList({QStringLiteral("pageOcr"), QStringLiteral("blockRecognition")}));
 
     // A legacy entry without roles stays empty (visible in both lists). Its
     // file has to exist: the reconciliation drops an entry whose files are gone
@@ -200,13 +200,13 @@ void TestModelRegistry::persistsRoles()
         if (x.id == QStringLiteral("legacy"))
             QVERIFY(x.roles.isEmpty());
         else
-            QCOMPARE(x.roles, QStringList({QStringLiteral("ocr"), QStringLiteral("blockRecognition")}));
+            QCOMPARE(x.roles, QStringList({QStringLiteral("pageOcr"), QStringLiteral("blockRecognition")}));
     }
 }
 
-// An index written before the blockRecognition rename records the role as
-// "check"; loading maps it to the current name so the role-filtered lists
-// keep working without a rescan.
+// An index written before the role renames records the tags as "ocr" and
+// "check"; loading maps them to the current task names so the role-filtered
+// lists keep working without a rescan.
 void TestModelRegistry::migratesLegacyCheckRole()
 {
     QTemporaryDir dir;
@@ -235,7 +235,7 @@ void TestModelRegistry::migratesLegacyCheckRole()
     QVERIFY2(err.isEmpty(), qPrintable(err));
     QVERIFY(!rebuilt);
     QCOMPARE(loaded.size(), 1);
-    QCOMPARE(loaded.at(0).roles, QStringList({QStringLiteral("ocr"), QStringLiteral("blockRecognition")}));
+    QCOMPARE(loaded.at(0).roles, QStringList({QStringLiteral("pageOcr"), QStringLiteral("blockRecognition")}));
 }
 
 void TestModelRegistry::atomicWriteRoundtrip()
