@@ -379,7 +379,7 @@ private slots:
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(checkKeys, QStringList({QStringLiteral("lfm25-vl-3b"), QStringLiteral("glm-ocr"), QStringLiteral("teleocr")}));
+        QCOMPARE(checkKeys, QStringList({QStringLiteral("glm-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("teleocr")}));
 
         // The decision list serves the decision task only.
         QStringList decisionKeys;

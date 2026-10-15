@@ -443,7 +443,12 @@
     `unlimited-ocr` → pageOcr; `lfm25-vl-3b` → pageOcr + blockRecognition;
     `glm-ocr` → rawPageOcr + blockRecognition; `teleocr` → layout +
     blockRecognition; `clef-flash` → decision; `qwen3.5-4b/9b`,
-    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW). Block verification is two-layer
+    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW). Task defaults (ADR 169,
+    `roles.<task>.default: true` in the profile JSONs, exactly one per
+    task, read by the upcoming auto-selection): pageOcr = `unlimited-ocr`,
+    rawPageOcr = `glm-ocr`, blockRecognition = `glm-ocr`,
+    decision = `clef-flash`, layout = `teleocr`, fix = `qwen3.5-4b`.
+    Block verification is two-layer
     (ADR 164: `box.text` + `box.correctedText`, independent verdicts; the
     amber re-recognized state is gone), pages carry a persisted recognition
     mode plus a computed verification aggregate (ADR 165), and the model

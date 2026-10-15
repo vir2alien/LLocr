@@ -2,7 +2,6 @@
   "schemaVersion": 1,
   "id": "unlimited-ocr",
   "title": "Unlimited-OCR",
-  "default": true,
   "license": "https://huggingface.co/sahilchachra/Unlimited-OCR-GGUF",
   "minBuild": "b4000",
   "files": {
@@ -50,6 +49,7 @@
     "pageOcr": {
       "alias": "llocr-unlimited-ocr",
       "parser": "unlimited-ocr",
+      "default": true,
       "maxOutput": 8192,
       "prompts": [
         {

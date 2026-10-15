@@ -177,14 +177,29 @@ void TestModelPresetCatalog::roleDefaultsFollowTheShippedProfiles()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("pageOcr")), QStringLiteral("unlimited-ocr"));
-    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("blockRecognition")), QStringLiteral("lfm25-vl-3b"));
+    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("blockRecognition")), QStringLiteral("glm-ocr"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("decision")), QStringLiteral("clef-flash"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("layout")), QStringLiteral("teleocr"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("rawPageOcr")), QStringLiteral("glm-ocr"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("fix")), QStringLiteral("qwen3.5-4b"));
 
+    // Exactly one default per task: the auto-pipeline of the next step picks
+    // "the default model for the role" and must never face a tie or a gap
+    // that would silently fall back to the first-in-list.
+    const QList<const char *> tasks = {"pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout", "fix"};
+    for (const char *task : tasks) {
+        const QString role = QString::fromUtf8(task);
+        int flagged = 0;
+        for (const ModelProfiles::Profile &profile : profiles) {
+            const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(profile, role);
+            if ((modelRole && modelRole->isDefault) || (profile.isDefault && modelRole))
+                ++flagged;
+        }
+        QCOMPARE(flagged, 1);
+    }
+
     // The installer's picker sorts the role's recommended model first.
-    QCOMPARE(ModelProfiles::forRole(profiles, QStringLiteral("blockRecognition")).constFirst().id, QStringLiteral("lfm25-vl-3b"));
+    QCOMPARE(ModelProfiles::forRole(profiles, QStringLiteral("blockRecognition")).constFirst().id, QStringLiteral("glm-ocr"));
 }
 
 // Every check profile ships the verifier system prompt in the model's own
