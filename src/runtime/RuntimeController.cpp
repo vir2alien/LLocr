@@ -77,9 +77,11 @@ RuntimeController::RuntimeController(SettingsStore &settings, LaunchProfileStore
 {
     recomputeConfigValid();
     recomputeLaunchConfigDirty();
+    recomputeTaskModels();
     connectEveryChangeSignal(&m_settings, this, "recomputeConfigValid");
     connectEveryChangeSignal(&m_settings, this, "recomputeLaunchConfigDirty");
     connectEveryChangeSignal(&m_settings, this, "invalidateResolvedCache");
+    connectEveryChangeSignal(&m_settings, this, "recomputeTaskModels");
     connect(&m_settings, &SettingsStore::runtimeRootDirChanged, this, &RuntimeController::scanForOrphanedServer);
     connect(&m_settings, &SettingsStore::runtimeModelsDirChanged, this, &RuntimeController::scanForOrphanedServer);
     // A saved launch profile is a launch-setting change like any other.
@@ -375,6 +377,29 @@ bool RuntimeController::canRecognize(bool documentLoaded) const
     if (m_state == RuntimeState::Ready)
         return true;
     return m_state == RuntimeState::Stopped && m_configValid && (m_settings.autoStart() || m_settings.startOnDemand());
+}
+
+bool RuntimeController::taskModelAvailable(const QString &task) const
+{
+    return taskModelAvailable(connectionRoleFromName(task));
+}
+
+bool RuntimeController::taskModelAvailable(ConnectionRole role) const
+{
+    if (modeFromSettings(m_settings) == ConnectionMode::Managed)
+        return QFileInfo::exists(m_settings.launchModelPathForRole(connectionRoleName(role)));
+    return !m_settings.modelNameForRole(connectionRoleName(role)).trimmed().isEmpty();
+}
+
+void RuntimeController::recomputeTaskModels()
+{
+    bool fresh[6];
+    for (int i = 0; i < 6; ++i)
+        fresh[i] = taskModelAvailable(static_cast<ConnectionRole>(i));
+    if (std::equal(fresh, fresh + 6, m_taskModels))
+        return;
+    std::copy(fresh, fresh + 6, m_taskModels);
+    emit taskModelsChanged();
 }
 
 ResolvedConnection RuntimeController::resolveExternal(ConnectionRole role) const

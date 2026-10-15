@@ -10,17 +10,24 @@
 
 namespace llocr {
 
-RecognitionController::RecognitionController(
-    SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, ImageProvider imageProvider, QObject *parent, SkipResolver skipPage)
-    : QObject(parent), m_settings(settings), m_runtime(runtime), m_requestProfiles(requestProfiles), m_imageProvider(imageProvider), m_skipPage(std::move(skipPage))
+RecognitionController::RecognitionController(SettingsStore &settings,
+                                             RuntimeController &runtime,
+                                             RequestProfileStore &requestProfiles,
+                                             RequestProfileStore &rawPageOcrProfiles,
+                                             ImageProvider imageProvider,
+                                             QObject *parent,
+                                             SkipResolver skipPage)
+    : QObject(parent), m_settings(settings), m_runtime(runtime), m_requestProfiles(requestProfiles), m_rawPageOcrProfiles(rawPageOcrProfiles), m_imageProvider(imageProvider),
+      m_skipPage(std::move(skipPage))
 {
     connect(&m_watcher, &QFutureWatcher<OcrResult>::finished, this, &RecognitionController::onRecognitionFinished);
 }
 
-void RecognitionController::startCurrent(int index, int totalPages)
+void RecognitionController::startCurrent(int index, int totalPages, ConnectionRole task)
 {
     if (m_busy)
         return;
+    m_task = task;
     m_totalPages = totalPages;
     m_startIndex = index;
     m_stopRequested = false;
@@ -30,10 +37,11 @@ void RecognitionController::startCurrent(int index, int totalPages)
     ensureConnectionReady();
 }
 
-void RecognitionController::startAll(int totalPages)
+void RecognitionController::startAll(int totalPages, ConnectionRole task)
 {
     if (m_busy)
         return;
+    m_task = task;
     m_totalPages = totalPages;
     m_startIndex = 0;
     m_stopRequested = false;
@@ -55,7 +63,7 @@ void RecognitionController::resolveModel()
 {
     m_skippedUnreadable = 0;
     m_skippedRecognized = 0;
-    const QString recipeId = m_settings.modelRecipeId();
+    const QString recipeId = m_settings.requestProfileIdForRole(connectionRoleName(m_task));
     if (m_model && m_modelId == recipeId)
         return;
     m_model = OcrModel::create(recipeId);
@@ -100,7 +108,7 @@ QString RecognitionController::promptText() const
 
 void RecognitionController::ensureConnectionReady()
 {
-    m_runtime.ensureConnectionReady(this, [this](const ResolvedConnection &conn) {
+    m_runtime.ensureConnectionReady(this, m_task, [this](const ResolvedConnection &conn) {
         if (!m_busy)
             return;  // stopped while resolving
         if (conn.baseUrl.isEmpty()) {
@@ -164,7 +172,7 @@ OcrRequest RecognitionController::buildRequest(const QImage &image, const Resolv
     request.image = image;
     request.prompt = promptText();
     request.modelId = conn.modelId;
-    request.parameters = m_requestProfiles.activeProfile().parameters;
+    request.parameters = (m_task == ConnectionRole::RawPageOcr ? m_rawPageOcrProfiles : m_requestProfiles).activeProfile().parameters;
     return request;
 }
 
@@ -186,7 +194,7 @@ void RecognitionController::onRecognitionFinished()
         return;
     }
 
-    emit rawResultReady(index, ConnectionRole::PageOcr, raw);
+    emit rawResultReady(index, m_task, raw);
 
     if (m_stopRequested) {
         emit statusRequested(StatusMessage::translate("RecognitionController", "Stopped after page %1.").arg(index + 1));

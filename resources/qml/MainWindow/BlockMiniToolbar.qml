@@ -60,21 +60,23 @@ Rectangle {
             visible: miniRoot.isTextBlock
             iconName: "scan-text"
             tip: qsTr("Recognize block")
-            enabled: Controller.actionsIdle
+            enabled: Controller.actionsIdle && Controller.blockRecognitionModelAvailable
             onClicked: Controller.recognizeSelectedBlock()
         }
         MiniButton {
             visible: miniRoot.isTextBlock
             iconName: "circle-check"
             tip: qsTr("Verify block")
-            enabled: Controller.actionsIdle && Controller.pageVerificationSupported
+            enabled: Controller.actionsIdle && Controller.decisionModelAvailable
+                     && miniRoot.blockText.length > 0
             onClicked: Controller.checkSelectedBlock()
         }
         MiniButton {
             visible: miniRoot.isTextBlock
             iconName: "wand-sparkles"
             tip: qsTr("Fix block")
-            enabled: Controller.actionsIdle && miniRoot.blockText.length > 0
+            enabled: Controller.actionsIdle && Controller.fixModelAvailable
+                     && miniRoot.blockText.length > 0
             onClicked: Controller.fixSelectedBlock()
         }
         MiniButton {

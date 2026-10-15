@@ -150,6 +150,40 @@ private slots:
         QVERIFY(empty.modelId.isEmpty());
     }
 
+    // The §7 availability: managed — the task's model file exists on disk,
+    // external — the task's model name is set. A change announces itself.
+    void taskModelAvailabilityFollowsTheTaskSettings()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setConnectionMode(QStringLiteral("external"));
+        settings.setModelName(QStringLiteral("page-model"));
+
+        RuntimeController runtime(settings, launchProfiles);
+        QSignalSpy changedSpy(&runtime, &RuntimeController::taskModelsChanged);
+        QVERIFY(runtime.taskModelAvailable(QStringLiteral("pageOcr")));
+        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("rawPageOcr")));
+        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("decision")));
+
+        settings.setDecisionModelName(QStringLiteral("decision-model"));
+        QVERIFY(runtime.taskModelAvailable(QStringLiteral("decision")));
+        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("rawPageOcr")));
+        QVERIFY(!changedSpy.isEmpty());
+
+        settings.setConnectionMode(QStringLiteral("managed"));
+        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("pageOcr")));
+        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("decision")));
+        const QString model = dir.filePath(QStringLiteral("page-Q4_K_M.gguf"));
+        QFile modelFile(model);
+        QVERIFY(modelFile.open(QIODevice::WriteOnly));
+        modelFile.write("gguf");
+        modelFile.close();
+        settings.setLaunchModelPathForRole(QStringLiteral("pageOcr"), model);
+        QVERIFY(runtime.taskModelAvailable(QStringLiteral("pageOcr")));
+        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("decision")));
+    }
+
     // The decision model has its own weights, so a resolve for the decision
     // role stops the server the OCR role started and restarts it with the
     // decision model (ADR 74, per-role config).

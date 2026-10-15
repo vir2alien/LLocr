@@ -88,6 +88,14 @@ class AppController : public QObject
     Q_PROPERTY(bool pageProblemRecognitionSupported READ pageProblemRecognitionSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool allProblemRecognitionSupported READ allProblemRecognitionSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY availabilityChanged)
+    // Whether the task's model is picked at all (RuntimeController): the
+    // actions that need a task gray out without it (the rework plan's §7).
+    Q_PROPERTY(bool pageOcrModelAvailable READ pageOcrModelAvailable NOTIFY availabilityChanged)
+    Q_PROPERTY(bool rawPageOcrModelAvailable READ rawPageOcrModelAvailable NOTIFY availabilityChanged)
+    Q_PROPERTY(bool blockRecognitionModelAvailable READ blockRecognitionModelAvailable NOTIFY availabilityChanged)
+    Q_PROPERTY(bool decisionModelAvailable READ decisionModelAvailable NOTIFY availabilityChanged)
+    Q_PROPERTY(bool layoutModelAvailable READ layoutModelAvailable NOTIFY availabilityChanged)
+    Q_PROPERTY(bool fixModelAvailable READ fixModelAvailable NOTIFY availabilityChanged)
     Q_PROPERTY(int currentPageRecognitionMode READ currentPageRecognitionMode NOTIFY availabilityChanged)
     Q_PROPERTY(int currentPageVerification READ currentPageVerification NOTIFY availabilityChanged)
 
@@ -122,6 +130,7 @@ public:
     explicit AppController(SettingsStore &settings,
                            RuntimeController &runtime,
                            RequestProfileStore &requestProfiles,
+                           RequestProfileStore &rawPageOcrRequestProfiles,
                            RequestProfileStore &checkRequestProfiles,
                            RequestProfileStore &layoutRequestProfiles,
                            RequestProfileStore &fixRequestProfiles,
@@ -181,6 +190,12 @@ public:
     bool pageProblemRecognitionSupported() const;
     bool allProblemRecognitionSupported() const;
     bool pageBlocksRecognitionSupported() const;
+    bool pageOcrModelAvailable() const;
+    bool rawPageOcrModelAvailable() const;
+    bool blockRecognitionModelAvailable() const;
+    bool decisionModelAvailable() const;
+    bool layoutModelAvailable() const;
+    bool fixModelAvailable() const;
     int currentPageRecognitionMode() const;
     int currentPageVerification() const;
 
@@ -242,6 +257,11 @@ signals:
 
 public slots:
     Q_INVOKABLE void openFiles(const QVariantList &fileUrls);
+    // task selects the recognition pipeline: "pageOcr" (markup-aware) or
+    // "rawPageOcr" (markup-free); the legacy no-task spellings keep the
+    // pageOcr meaning.
+    Q_INVOKABLE void recognizeCurrentPage(const QString &task);
+    Q_INVOKABLE void recognizeAllPages(const QString &task);
     Q_INVOKABLE void recognizeCurrent();
     Q_INVOKABLE void recognizeAll();
     Q_INVOKABLE void stop();
@@ -296,6 +316,7 @@ private:
     void startLayout(const QList<int> &pages);
     const ModelProfiles::Role *layoutRole() const;
     QString effectiveParserId() const;
+    QString effectiveParserIdFor(const QString &profileId) const;
     ParserOptions parserOptions() const;
     std::unique_ptr<IOutputParser> makeParser() const;
     void setPageText(int index, const QString &text);
@@ -346,6 +367,12 @@ private:
         bool pageBlocksRecognition = false;
         bool canRecognize = false;
         bool actionsIdle = false;
+        bool pageOcrModel = false;
+        bool rawPageOcrModel = false;
+        bool blockRecognitionModel = false;
+        bool decisionModel = false;
+        bool layoutModel = false;
+        bool fixModel = false;
         int currentPageMode = int(PageRecognitionMode::None);
         int currentPageVerification = int(PageVerification::Incomplete);
         bool operator==(const AvailabilityFlags &) const = default;

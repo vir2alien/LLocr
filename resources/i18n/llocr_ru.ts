@@ -198,6 +198,26 @@
         <translation type="vanished">Проверить</translation>
     </message>
     <message>
+        <source>Recognized</source>
+        <translation>Распознано</translation>
+    </message>
+    <message>
+        <source>Verified</source>
+        <translation>Проверено</translation>
+    </message>
+    <message>
+        <source>Mismatch</source>
+        <translation>Не совпало</translation>
+    </message>
+    <message>
+        <source>Damaged</source>
+        <translation>Повреждено</translation>
+    </message>
+    <message>
+        <source>Fixed</source>
+        <translation>Исправлено</translation>
+    </message>
+    <message>
         <source>Recognize</source>
         <translation type="vanished">Распознать</translation>
     </message>
@@ -920,6 +940,11 @@
         <location line="+3"/>
         <source>Recognize every page of the document</source>
         <translation>Распознать все страницы документа</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>All pages without markup</source>
+        <translation>Все страницы без разметки</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -1853,6 +1878,11 @@
         <translation type="vanished">Распознать проблемные блоки страницы</translation>
     </message>
     <message>
+        <location line="+9"/>
+        <source>Without markup</source>
+        <translation>Без разметки</translation>
+    </message>
+    <message>
         <location line="+87"/>
         <source>Problem blocks</source>
         <translation>Проблемные блоки</translation>
@@ -1877,9 +1907,8 @@
         <translation>Только проверить</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Verify and fix</source>
-        <translation>Проверить и исправить</translation>
+        <translation type="vanished">Проверить и исправить</translation>
     </message>
     <message>
         <location line="-85"/>

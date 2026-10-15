@@ -38,6 +38,7 @@ namespace llocr {
 AppController::AppController(SettingsStore &settings,
                              RuntimeController &runtime,
                              RequestProfileStore &requestProfiles,
+                             RequestProfileStore &rawPageOcrRequestProfiles,
                              RequestProfileStore &checkRequestProfiles,
                              RequestProfileStore &layoutRequestProfiles,
                              RequestProfileStore &fixRequestProfiles,
@@ -48,6 +49,7 @@ AppController::AppController(SettingsStore &settings,
                                                     settings,
                                                     runtime,
                                                     requestProfiles,
+                                                    rawPageOcrRequestProfiles,
                                                     [this](int index, QString &error) { return pageImage(index, &error); },
                                                     nullptr,
                                                     [this](int index, bool batch) {
@@ -139,6 +141,7 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_runtime, &RuntimeController::stateChanged, this, [this]() { emit configChanged(); });
     connect(&m_runtime, &RuntimeController::busyStateChanged, this, [this]() { emit configChanged(); });
     connect(&m_runtime, &RuntimeController::configValidChanged, this, [this]() { emit configChanged(); });
+    connect(&m_runtime, &RuntimeController::taskModelsChanged, this, &AppController::updateAvailability);
     connect(this, &AppController::resultChanged, this, &AppController::blockTextRangeChanged);
     connect(this, &AppController::editStateChanged, this, &AppController::blockTextRangeChanged);
     connect(this, &AppController::selectedBoxChanged, this, &AppController::blockTextRangeChanged);
@@ -164,10 +167,15 @@ QStringList AppController::parserLabels() const
 
 QString AppController::effectiveParserId() const
 {
+    return effectiveParserIdFor(m_settings.modelRecipeId());
+}
+
+QString AppController::effectiveParserIdFor(const QString &profileId) const
+{
     const QString configured = m_settings.parserId();
     if (!configured.isEmpty() && configured != ParserFactory::kAutoId)
         return configured;
-    return OcrModel::create(m_settings.modelRecipeId())->defaultParserId();
+    return OcrModel::create(profileId)->defaultParserId();
 }
 
 ParserOptions AppController::parserOptions() const
@@ -740,8 +748,9 @@ bool AppController::movePage(int from, int to)
     return true;
 }
 
-void AppController::recognizeCurrent()
+void AppController::recognizeCurrentPage(const QString &task)
 {
+    const ConnectionRole role = connectionRoleFromName(task);
     if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
         return;
     if (!canRecognize()) {
@@ -749,21 +758,32 @@ void AppController::recognizeCurrent()
         return;
     }
 
-    m_recognition.startCurrent(m_currentPage, m_document.pageCount());
+    m_recognition.startCurrent(m_currentPage, m_document.pageCount(), role);
     m_recognitionStopped = false;
+}
+
+void AppController::recognizeAllPages(const QString &task)
+{
+    const ConnectionRole role = connectionRoleFromName(task);
+    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
+        return;
+    if (!canRecognize()) {
+        setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
+        return;
+    }
+
+    m_recognition.startAll(m_document.pageCount(), role);
+    m_recognitionStopped = false;
+}
+
+void AppController::recognizeCurrent()
+{
+    recognizeCurrentPage(connectionRoleName(ConnectionRole::PageOcr));
 }
 
 void AppController::recognizeAll()
 {
-    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
-        return;
-    if (!canRecognize()) {
-        setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
-        return;
-    }
-
-    m_recognition.startAll(m_document.pageCount());
-    m_recognitionStopped = false;
+    recognizeAllPages(connectionRoleName(ConnectionRole::PageOcr));
 }
 
 void AppController::applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult)
@@ -772,12 +792,14 @@ void AppController::applyRawResult(int index, ConnectionRole task, const OcrResu
         return;
 
     ParserOptions options = parserOptions();
+    if (task == ConnectionRole::RawPageOcr)
+        options.modelId = m_settings.requestProfileIdForRole(connectionRoleName(task));
     const QSize pixelSize = m_document.page(index).pixelSize;
     if (pixelSize.isValid() && pixelSize.width() > 0)
         options.pageAspect = qreal(pixelSize.height()) / pixelSize.width();
 
     OcrResult parsed = rawResult;
-    if (auto parser = ParserFactory::create(effectiveParserId(), options))
+    if (auto parser = ParserFactory::create(effectiveParserIdFor(options.modelId), options))
         parsed = parser->parse(rawResult.text);
     m_boxModel.setStyleModelId(options.modelId);
 
@@ -1219,6 +1241,12 @@ void AppController::updateAvailability()
         pageBlocksRecognitionSupported(),
         canRecognize(),
         actionsIdle(),
+        pageOcrModelAvailable(),
+        rawPageOcrModelAvailable(),
+        blockRecognitionModelAvailable(),
+        decisionModelAvailable(),
+        layoutModelAvailable(),
+        fixModelAvailable(),
         currentPageRecognitionMode(),
         currentPageVerification(),
     };
@@ -1231,6 +1259,36 @@ void AppController::updateAvailability()
 bool AppController::pageProblemRecognitionSupported() const
 {
     return m_verify.pageRecheckSupported(m_currentPage);
+}
+
+bool AppController::pageOcrModelAvailable() const
+{
+    return m_runtime.taskModelAvailable(QStringLiteral("pageOcr"));
+}
+
+bool AppController::rawPageOcrModelAvailable() const
+{
+    return m_runtime.taskModelAvailable(QStringLiteral("rawPageOcr"));
+}
+
+bool AppController::blockRecognitionModelAvailable() const
+{
+    return m_runtime.taskModelAvailable(QStringLiteral("blockRecognition"));
+}
+
+bool AppController::decisionModelAvailable() const
+{
+    return m_runtime.taskModelAvailable(QStringLiteral("decision"));
+}
+
+bool AppController::layoutModelAvailable() const
+{
+    return m_runtime.taskModelAvailable(QStringLiteral("layout"));
+}
+
+bool AppController::fixModelAvailable() const
+{
+    return m_runtime.taskModelAvailable(QStringLiteral("fix"));
 }
 
 bool AppController::allProblemRecognitionSupported() const

@@ -43,9 +43,10 @@ ToolBar {
 
             SplitToolButton {
                 text: qsTr("Recognize page")
-                mainEnabled: Controller.hasImage && Controller.actionsIdle && Controller.canRecognize
+                mainEnabled: Controller.hasImage && Controller.actionsIdle
+                             && Controller.canRecognize && Controller.pageOcrModelAvailable
                 arrowEnabled: Controller.hasImage && Controller.actionsIdle
-                onMainActivated: Controller.recognizeCurrent()
+                onMainActivated: Controller.recognizeCurrentPage("pageOcr")
                 onMenuRequested: (anchor) => recognizePageMenu.popup(anchor, 0, anchor.height + 2)
             }
 
@@ -53,6 +54,8 @@ ToolBar {
                 text: qsTr("Verify")
                 mainEnabled: Controller.hasImage && Controller.actionsIdle
                              && Controller.pageVerificationSupported
+                             && Controller.decisionModelAvailable
+                             && Controller.fixModelAvailable
                 arrowEnabled: mainEnabled
                 onMainActivated: Controller.checkEnabledBlocksOnPage(VerificationQueueController.RecheckForce)
                 onMenuRequested: (anchor) => verifyPageMenu.popup(anchor, 0, anchor.height + 2)
@@ -62,7 +65,7 @@ ToolBar {
                 text: qsTr("Mark up page")
                 Layout.minimumWidth: implicitWidth
                 enabled: Controller.hasImage && Controller.actionsIdle
-                         && Controller.layoutAvailable
+                         && Controller.layoutAvailable && Controller.layoutModelAvailable
                 onClicked: markupConfirmDialog.requestMarkup()
             }
 
@@ -129,15 +132,24 @@ ToolBar {
         id: recognizePageMenu
 
         MenuItem {
+            text: qsTr("Without markup")
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.canRecognize && Controller.rawPageOcrModelAvailable
+            onTriggered: Controller.recognizeCurrentPage("rawPageOcr")
+        }
+        MenuSeparator {}
+        MenuItem {
             text: qsTr("Problem blocks")
             enabled: Controller.hasImage && Controller.actionsIdle
                      && Controller.pageProblemRecognitionSupported
+                     && Controller.blockRecognitionModelAvailable
             onTriggered: Controller.recognizeProblemBlocksOnPage()
         }
         MenuItem {
             text: qsTr("All blocks")
             enabled: Controller.hasImage && Controller.actionsIdle
                      && Controller.pageBlocksRecognitionSupported
+                     && Controller.blockRecognitionModelAvailable
             onTriggered: Controller.recognizeAllBlocksOnPage()
         }
     }
@@ -149,13 +161,8 @@ ToolBar {
             text: qsTr("Verify only")
             enabled: Controller.hasImage && Controller.actionsIdle
                      && Controller.pageVerificationSupported
+                     && Controller.decisionModelAvailable
             onTriggered: Controller.checkEnabledBlocksOnPage(VerificationQueueController.RecheckSkip)
-        }
-        MenuItem {
-            text: qsTr("Verify and fix")
-            enabled: Controller.hasImage && Controller.actionsIdle
-                     && Controller.pageVerificationSupported
-            onTriggered: Controller.checkEnabledBlocksOnPage(VerificationQueueController.RecheckForce)
         }
     }
 
@@ -190,36 +197,6 @@ ToolBar {
         }
 
         onConfirmed: Controller.layoutCurrentPage()
-    }
-
-    component SplitToolButton: Row {
-        id: splitRoot
-
-        // The toolbar may shrink a layout child below its implicit width
-        // (QML-I7): pin the cell so labels clip on the right instead of the
-        // caption being squeezed out.
-        Layout.minimumWidth: implicitWidth
-
-        spacing: 0
-
-        property string text: ""
-        property bool mainEnabled: true
-        property bool arrowEnabled: true
-        signal mainActivated()
-        signal menuRequested(Item anchor)
-
-        ToolButton {
-            id: mainButton
-            text: splitRoot.text
-            enabled: splitRoot.mainEnabled
-            onClicked: splitRoot.mainActivated()
-        }
-        ToolButton {
-            id: arrowButton
-            text: "\u25be"
-            enabled: splitRoot.arrowEnabled
-            onClicked: splitRoot.menuRequested(arrowButton)
-        }
     }
 
     component StubIconButton: ToolButton {

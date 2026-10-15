@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "config/RuntimePaths.h"
+#include "core/ConnectionRole.h"
 #include "runtime/ConnectionMode.h"
 #include "runtime/ResolvedConnection.h"
 #include "runtime/RuntimeLocator.h"
@@ -83,6 +84,11 @@ public:
 
     Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("pageOcr"));
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
+    // Whether the task's model is picked at all: managed — the model file
+    // exists on disk, external — a model name is set (the rework plan's §7
+    // availability). The verdicts ride taskModelsChanged; the actions bind
+    // them through the controller's availability flags.
+    Q_INVOKABLE bool taskModelAvailable(const QString &task) const;
     void ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(QObject *context, const std::function<void(const ResolvedConnection &)> &onResolved);
     void ensureConnectionReady(ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved);
@@ -118,11 +124,13 @@ private:
 private slots:
     void recomputeConfigValid();
     void recomputeLaunchConfigDirty();
+    void recomputeTaskModels();
     void invalidateResolvedCache();
 
 private:
     QString roleModelPath(ConnectionRole role) const;
     QString roleMmprojPath(ConnectionRole role) const;
+    bool taskModelAvailable(ConnectionRole role) const;
     bool serverRunsRole(ConnectionRole role) const;
     QString roleConfigError(ConnectionRole role) const;
     QString modelBuildError(ConnectionRole role) const;
@@ -156,6 +164,7 @@ signals:
     void launchConfigDirtyChanged();
     void lockedOutChanged();
     void orphanChanged();
+    void taskModelsChanged();
 
 private:
     class LlamaServerProcess *m_server = nullptr;
@@ -194,6 +203,7 @@ private:
     bool m_modelPathValid = false;
     bool m_launchConfigDirty = false;
     bool m_lockedOut = false;
+    bool m_taskModels[6] = {};
     ServerOwnerRecord m_orphan;
     QString m_orphanJsonPath;
     quint64 m_startGeneration = 0;

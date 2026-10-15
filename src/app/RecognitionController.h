@@ -35,12 +35,20 @@ public:
     using ImageProvider = std::function<QImage(int pageIndex, QString &error)>;
     using SkipResolver = std::function<PageSkip(int pageIndex, bool batch)>;
 
-    explicit RecognitionController(
-        SettingsStore &settings, RuntimeController &runtime, RequestProfileStore &requestProfiles, ImageProvider imageProvider, QObject *parent = nullptr, SkipResolver skipPage = {});
+    explicit RecognitionController(SettingsStore &settings,
+                                   RuntimeController &runtime,
+                                   RequestProfileStore &requestProfiles,
+                                   RequestProfileStore &rawPageOcrProfiles,
+                                   ImageProvider imageProvider,
+                                   QObject *parent = nullptr,
+                                   SkipResolver skipPage = {});
 
     bool busy() const { return m_busy; }
-    void startCurrent(int index, int totalPages);
-    void startAll(int totalPages);
+    // task picks the page-recognition pipeline: PageOcr runs the markup-aware
+    // page task, RawPageOcr the markup-free one; each brings its own request
+    // profile, model and server role.
+    void startCurrent(int index, int totalPages, ConnectionRole task = ConnectionRole::PageOcr);
+    void startAll(int totalPages, ConnectionRole task = ConnectionRole::PageOcr);
     void stop();
 
 signals:
@@ -68,10 +76,12 @@ private:
     SettingsStore &m_settings;
     RuntimeController &m_runtime;
     RequestProfileStore &m_requestProfiles;
+    RequestProfileStore &m_rawPageOcrProfiles;
     ImageProvider m_imageProvider;
     SkipResolver m_skipPage;
     int m_skippedUnreadable = 0;
     int m_skippedRecognized = 0;
+    ConnectionRole m_task = ConnectionRole::PageOcr;
 
     ResolvedConnection m_connection;
 

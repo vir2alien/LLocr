@@ -62,13 +62,14 @@ ToolBar {
 
         ToolSeparator {}
 
-        ToolButton {
+        SplitToolButton {
             text: qsTr("Recognize")
-            Layout.minimumWidth: implicitWidth
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Recognize every page of the document")
-            enabled: Controller.hasImage && Controller.actionsIdle && Controller.canRecognize
-            onClicked: Controller.recognizeAll()
+            mainTip: qsTr("Recognize every page of the document")
+            mainEnabled: Controller.hasImage && Controller.actionsIdle
+                         && Controller.canRecognize && Controller.pageOcrModelAvailable
+            arrowEnabled: mainEnabled
+            onMainActivated: Controller.recognizeAllPages("pageOcr")
+            onMenuRequested: (anchor) => recognizeAllMenu.popup(anchor, 0, anchor.height + 2)
         }
         ToolButton {
             text: qsTr("Verify")
@@ -78,6 +79,7 @@ ToolBar {
             enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
                      && !Controller.layoutBusy
                      && Controller.allPageVerificationSupported
+                     && Controller.decisionModelAvailable
             onClicked: Controller.checkAllEnabledBlocks()
         }
         ToolButton {
@@ -87,6 +89,7 @@ ToolBar {
             ToolTip.text: qsTr("Fix the problem blocks in the whole document")
             enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
                      && !Controller.layoutBusy && Controller.allProblemRecognitionSupported
+                     && Controller.fixModelAvailable
             onClicked: Controller.fixAllProblemBlocks()
         }
         ToolButton {
@@ -96,7 +99,7 @@ ToolBar {
             ToolTip.text: qsTr("Mark up every page of the document")
             enabled: Controller.hasImage && !Controller.busy
                      && !Controller.checkBusy && !Controller.layoutBusy
-                     && Controller.layoutAvailable
+                     && Controller.layoutAvailable && Controller.layoutModelAvailable
             onClicked: markupConfirmDialog.requestMarkup()
         }
         ToolButton {
@@ -246,6 +249,17 @@ ToolBar {
             enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
                      && !Controller.checkBusy
             onTriggered: headerRoot.exportRequested(Controller.pageCount > 1)
+        }
+    }
+
+    Menu {
+        id: recognizeAllMenu
+
+        MenuItem {
+            text: qsTr("All pages without markup")
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.canRecognize && Controller.rawPageOcrModelAvailable
+            onTriggered: Controller.recognizeAllPages("rawPageOcr")
         }
     }
 

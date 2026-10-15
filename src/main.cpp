@@ -161,7 +161,8 @@ int main(int argc, char *argv[])
     connectShutdownHandlers(app, instanceGuard, runtimeController, runtimeInstaller, modelInstaller);
 
     llocr::ProblemLog problemLog;
-    llocr::AppController appController(settingsStore, runtimeController, requestProfilesPageOcr, requestProfilesBlock, requestProfilesLayout, requestProfilesFix, verificationPrompts);
+    llocr::AppController appController(
+        settingsStore, runtimeController, requestProfilesPageOcr, requestProfilesRawPageOcr, requestProfilesBlock, requestProfilesLayout, requestProfilesFix, verificationPrompts);
     appController.setProblemLog(&problemLog);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Log", &problemLog);
     llocr::UiController uiController(settingsStore);

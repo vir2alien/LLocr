@@ -26,6 +26,20 @@ Rectangle {
                                            ? Controller.selectedBlockCorrectedCheckStatus
                                            : Controller.selectedBlockCheckStatus
 
+    // The word next to each dot: what the layer's pipeline state is.
+    function statusWord(status, emptyWord) {
+        if (status === 1)
+            return qsTr("Verified")
+        if (status >= 3)
+            return status === 3 ? qsTr("Damaged") : qsTr("Mismatch")
+        return emptyWord
+    }
+    readonly property string effectiveCaption: effectiveStatus !== 0
+        ? statusWord(effectiveStatus, "")
+        : correctionActive ? qsTr("Fixed")
+        : (Controller.selectedBlockText.length > 0 ? qsTr("Recognized") : "")
+    readonly property string correctionCaption: statusWord(Controller.selectedBlockCorrectedCheckStatus, qsTr("Fixed"))
+
     implicitHeight: checkColumn.implicitHeight + 2 * Theme.spacingSmall
     visible: Controller.selectedBoxIndex >= 0 && Controller.hasResult
 
@@ -60,6 +74,11 @@ Rectangle {
                 color: root.effectiveStatus === 1 ? Theme.success
                      : root.effectiveStatus >= 3 ? Theme.error
                      : Theme.nothing
+            }
+            LLOLabel {
+                visible: root.effectiveCaption.length > 0
+                text: root.effectiveCaption
+                color: Theme.textMuted
             }
             Item { Layout.fillWidth: true }
             LLOButton {
@@ -110,6 +129,10 @@ Rectangle {
                 color: Controller.selectedBlockCorrectedCheckStatus === 1 ? Theme.success
                      : Controller.selectedBlockCorrectedCheckStatus >= 3 ? Theme.error
                      : Theme.nothing
+            }
+            LLOLabel {
+                text: root.correctionCaption
+                color: Theme.textMuted
             }
             Item { Layout.fillWidth: true }
             LLOButton {
