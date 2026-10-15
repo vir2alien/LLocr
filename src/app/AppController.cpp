@@ -1046,14 +1046,14 @@ void AppController::revertBlockCorrection()
     emit editStateChanged();
 }
 
-void AppController::checkEnabledBlocksOnPage(int recheck)
+void AppController::checkEnabledBlocksOnPage(int fixMode)
 {
-    m_verify.checkPageEnabledBlocks(m_currentPage, recheck);
+    m_verify.checkPageEnabledBlocks(m_currentPage, fixMode);
 }
 
-void AppController::checkAllEnabledBlocks(int recheck)
+void AppController::checkAllEnabledBlocks(int fixMode)
 {
-    m_verify.checkAllEnabledBlocks(recheck);
+    m_verify.checkAllEnabledBlocks(fixMode);
 }
 
 void AppController::stopCheck()

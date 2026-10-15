@@ -519,6 +519,43 @@ private slots:
         runtime.stopServer();
     }
 
+    // The banner's Restart brings the server back for the role it was serving:
+    // a restart that always rebuilt the pageOcr config moved a server started
+    // for another task onto the page model (the rework plan's stage 8 takes
+    // the old todo bug into the per-task world).
+    void restartBringsBackTheStartedRole()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile checkModel(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
+        QVERIFY(checkModel.open(QIODevice::WriteOnly));
+        checkModel.write("check");
+        checkModel.close();
+
+        SettingsStore store;
+        store.setConnectionMode(QStringLiteral("managed"));
+        store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
+        // pageOcr has no model at all: a PageOcr restart would be refused
+        // outright, which is how the test tells the roles apart.
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
+        store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
+        store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
+        store.setStartOnDemand(true);
+        store.setStartupTimeoutMs(10000);
+
+        LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
+        RuntimeController runtime(store, launchProfiles);
+
+        int started = 0;
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &) { ++started; });
+        QTRY_VERIFY_WITH_TIMEOUT(started == 1, 15000);
+        QCOMPARE(runtime.state(), RuntimeState::Ready);
+
+        runtime.restartServer();
+        QTRY_VERIFY_WITH_TIMEOUT(runtime.state() == RuntimeState::Ready, 15000);
+        runtime.stopServer();
+    }
+
     // Regression: a Check request that arrives while an Ocr resolve is still in
     // flight must not be answered with the in-flight (OCR) connection — the
     // single managed server serves one role at a time, so the check request has

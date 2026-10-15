@@ -279,8 +279,8 @@ public slots:
     Q_INVOKABLE QList<int> blockTextRange(int boxIndex) const;
     Q_INVOKABLE int boxIndexForTextPosition(int position) const;
     Q_INVOKABLE void attachBlockTextHighlighter(QObject *textDocument, const QColor &color);
-    Q_INVOKABLE void checkEnabledBlocksOnPage(int recheck = VerificationQueueController::RecheckFromSetting);
-    Q_INVOKABLE void checkAllEnabledBlocks(int recheck = VerificationQueueController::RecheckFromSetting);
+    Q_INVOKABLE void checkEnabledBlocksOnPage(int fixMode = VerificationQueueController::FixFromSetting);
+    Q_INVOKABLE void checkAllEnabledBlocks(int fixMode = VerificationQueueController::FixFromSetting);
     Q_INVOKABLE void stopCheck();
     // Block (re-)recognition through the blockRecognition role: the selected
     // block regardless of status, or only the problem blocks (Mismatch/Review).

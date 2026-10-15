@@ -876,23 +876,27 @@ void RuntimeController::cancelPendingRestart()
 
 void RuntimeController::restartServer()
 {
+    // Restart brings back the server the role it was serving: the banner's
+    // dirty comparison is per started role, so a PageOcr restart here would
+    // silently move a block-recognition server onto the page model.
+    const ConnectionRole role = m_hasStartedConfig ? m_startedRole : ConnectionRole::PageOcr;
     if (m_server && m_server->state() != RuntimeState::Stopped) {
         setBusyState(AppBusyState::StoppingRuntime);
         setStatusMessage(tr("Stopping…"));
         cancelPendingRestart();
-        m_restartConn = connect(m_server, &LlamaServerProcess::stateChanged, this, [this]() {
+        m_restartConn = connect(m_server, &LlamaServerProcess::stateChanged, this, [this, role]() {
             if (m_server->state() != RuntimeState::Stopped)
                 return;
             cancelPendingRestart();
             setBusyState(AppBusyState::Idle);
-            const QString err = startServer();
+            const QString err = startServer(role);
             if (!err.isEmpty())
                 setStatusMessage(err);
         });
         m_server->stop();
         return;
     }
-    const QString err = startServer();
+    const QString err = startServer(role);
     if (!err.isEmpty())
         setStatusMessage(err);
 }

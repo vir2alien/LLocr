@@ -45,12 +45,12 @@ public:
 
     // Per-run override of check/autoFix for the decision phase: follow the
     // setting (default), never fix the mismatches, or always do.
-    enum RecheckMode : int {
-        RecheckFromSetting = -1,
-        RecheckSkip = 0,
-        RecheckForce = 1,
+    enum FixMode : int {
+        FixFromSetting = -1,
+        FixSkip = 0,
+        FixForce = 1,
     };
-    Q_ENUM(RecheckMode)
+    Q_ENUM(FixMode)
 
     bool checkBusy() const { return m_check.busy() || m_decision.busy() || m_fix.busy(); }
     bool queueActive() const { return m_verifyQueueActive; }
@@ -78,8 +78,8 @@ public:
 
 public slots:
     void checkBlock(int pageIndex, int boxIndex);
-    void checkPageEnabledBlocks(int pageIndex, int recheck = RecheckFromSetting);
-    void checkAllEnabledBlocks(int recheck = RecheckFromSetting);
+    void checkPageEnabledBlocks(int pageIndex, int fixMode = FixFromSetting);
+    void checkAllEnabledBlocks(int fixMode = FixFromSetting);
     // Re-recognition runs the queue straight in its second phase. The single
     // block form takes any status; the page/all forms pick the problem blocks.
     void recheckBlock(int pageIndex, int boxIndex);
@@ -119,10 +119,10 @@ private:
         int box;
     };
 
-    void startVerifyQueue(const QList<VerifyTask> &tasks, int recheck = RecheckFromSetting);
+    void startVerifyQueue(const QList<VerifyTask> &tasks, int fixMode = FixFromSetting);
     void startRecheckQueue(const QList<VerifyTask> &tasks);
     void startFixQueue(const QList<VerifyTask> &tasks);
-    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int recheck = RecheckFromSetting);
+    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int fixMode = FixFromSetting);
     void startNextVerify();
     void skipCurrentTask();
     void finishVerifyQueue();
@@ -150,7 +150,7 @@ private:
     int m_verifyDone = 0;
     double m_matchThreshold = 0.5;
     bool m_autoFix = false;
-    int m_runRecheck = RecheckFromSetting;
+    int m_runFix = FixFromSetting;
     StatusMessage m_checkError;
 };
 

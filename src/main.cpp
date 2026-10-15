@@ -69,7 +69,7 @@ void setupQmlEngine(QQmlApplicationEngine &engine, llocr::AppController &appCont
 {
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Controller", &appController);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "UiController", &uiController);
-    // Type-only registration: QML reads the RecheckMode constants from it,
+    // Type-only registration: QML reads the FixMode constants from it,
     // instances are owned by the AppController.
     qmlRegisterUncreatableType<llocr::VerificationQueueController>("LLocr", 1, 0, "VerificationQueueController", QStringLiteral("Accessed through the Controller singleton"));
 

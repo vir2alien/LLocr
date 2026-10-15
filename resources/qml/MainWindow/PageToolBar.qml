@@ -57,7 +57,7 @@ ToolBar {
                              && Controller.decisionModelAvailable
                              && Controller.fixModelAvailable
                 arrowEnabled: mainEnabled
-                onMainActivated: Controller.checkEnabledBlocksOnPage(VerificationQueueController.RecheckForce)
+                onMainActivated: Controller.checkEnabledBlocksOnPage(VerificationQueueController.FixForce)
                 onMenuRequested: (anchor) => verifyPageMenu.popup(anchor, 0, anchor.height + 2)
             }
 
@@ -162,7 +162,7 @@ ToolBar {
             enabled: Controller.hasImage && Controller.actionsIdle
                      && Controller.pageVerificationSupported
                      && Controller.decisionModelAvailable
-            onTriggered: Controller.checkEnabledBlocksOnPage(VerificationQueueController.RecheckSkip)
+            onTriggered: Controller.checkEnabledBlocksOnPage(VerificationQueueController.FixSkip)
         }
     }
 
