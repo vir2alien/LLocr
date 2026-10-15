@@ -92,6 +92,7 @@ Image {
                 readonly property bool correctionActive: boxCorrectedText.length > 0 || boxCorrectedCheckStatus !== 0
                 readonly property int effectiveStatus: correctionActive ? boxCorrectedCheckStatus : boxCheckStatus
                 readonly property real effectiveConfidence: correctionActive ? boxCorrectedConfidence : boxConfidence
+                readonly property string effectiveText: boxCorrectedText.length > 0 ? boxCorrectedText : boxText
 
                 // One hue per block kind; selection overrides the frame.
                 readonly property color kindOuter: boxKind == 1 ? Theme.overlayImageOuter
@@ -233,6 +234,8 @@ Image {
             visible: imageArea.selectedDelegate !== null
             isTextBlock: imageArea.selectedDelegate
                          ? !imageArea.selectedDelegate.isImage : true
+            blockText: imageArea.selectedDelegate
+                       ? imageArea.selectedDelegate.effectiveText : ""
 
             x: {
                 const sel = imageArea.selectedDelegate

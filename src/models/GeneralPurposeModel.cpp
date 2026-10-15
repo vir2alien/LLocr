@@ -61,18 +61,31 @@ QString stripOuterCodeFence(const QString &text)
 
 QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
 {
-    // The block-recognition protocol: the reply itself is the block text. The
-    // system message carries the shared contract; the user message is the
-    // composed type prompt and the block image. A previously recognized block
-    // sends its text framed by the role's recheckPrompt (composed upstream in
-    // VerificationQueueController); a fresh block is transcribed from scratch.
+    // Recognition protocol: the reply itself is the block text. Fix protocol
+    // (ADR 163): the model answers with exactly one of
+    //   OK
+    //   FIX\n<the complete corrected block>
+    //   REVIEW
+    // and the candidate travels as its own request part, framed by
+    // <ocr_candidate>. The system message carries the shared contract; the
+    // user message lists the type prompt, the block image and — for fix — the
+    // OCR candidate, in the order the model's fix role trains.
 
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
     QJsonObject typePromptPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.typePrompt}};
 
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("blockRecognition"));
-    QJsonArray content = role && role->promptBeforeImage ? QJsonArray{typePromptPart, imagePart} : QJsonArray{imagePart, typePromptPart};
+    const bool fix = request.protocol == CheckRequest::Protocol::Fix;
+    const QString roleName = fix ? QStringLiteral("fix") : QStringLiteral("blockRecognition");
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, roleName);
+    QJsonArray content;
+    if (fix) {
+        QJsonObject ocrPart{{QStringLiteral("type"), QStringLiteral("text")},
+                            {QStringLiteral("text"), QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>").arg(request.recognizedText)}};
+        content = role && role->promptBeforeImage ? QJsonArray{typePromptPart, ocrPart, imagePart} : QJsonArray{typePromptPart, imagePart, ocrPart};
+    } else {
+        content = role && role->promptBeforeImage ? QJsonArray{typePromptPart, imagePart} : QJsonArray{imagePart, typePromptPart};
+    }
 
     QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")}, {QStringLiteral("content"), request.systemPrompt}};
     QJsonObject userMessage{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
@@ -89,7 +102,7 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, co
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
-CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
+CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData, CheckRequest::Protocol protocol)
 {
     QJsonParseError parseError{};
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
@@ -104,17 +117,62 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData)
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
     const QString content = stripOuterCodeFence(stripControlTokens(message.value(QStringLiteral("content")).toString()));
 
-    // The block-recognition contract: the reply IS the block text. An empty
-    // reply (nothing but end-of-sentence markers, or the model refusing) means
-    // the block could not be transcribed — that is a verdict, not an error.
-    CheckResult result;
-    if (content.isEmpty()) {
-        result.status = CheckStatus::Review;
+    if (protocol == CheckRequest::Protocol::Recognition) {
+        // The block-recognition contract: the reply IS the block text. An
+        // empty reply (nothing but end-of-sentence markers, or the model
+        // refusing) means the block could not be transcribed — that is a
+        // verdict, not an error.
+        CheckResult result;
+        if (content.isEmpty()) {
+            result.status = CheckStatus::Review;
+            return result;
+        }
+        result.status = CheckStatus::Recognized;
+        result.text = content.trimmed();
         return result;
     }
-    result.status = CheckStatus::Recognized;
-    result.text = content.trimmed();
-    return result;
+
+    if (content.isEmpty())
+        return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel",
+                                                               "The model returned no corrected text, only end-of-sentence markers. "
+                                                               "Check that the selected model can process images."));
+
+    const QString trimmed = content.trimmed();
+    const QString upper = trimmed.toUpper();
+
+    if (upper.startsWith(QStringLiteral("OK"))) {
+        CheckResult ok;
+        ok.status = CheckStatus::Ok;
+        // Recognition is already correct — do not touch the original text.
+        return ok;
+    }
+
+    if (upper.startsWith(QStringLiteral("REVIEW"))) {
+        CheckResult review;
+        review.status = CheckStatus::Review;
+        return review;
+    }
+
+    if (upper.startsWith(QStringLiteral("FIX"))) {
+        QString fixed = trimmed.mid(3).trimmed();
+        // Accept both "FIX: ..." and "FIX\n..." spellings.
+        if (fixed.startsWith(QLatin1Char(':')))
+            fixed = fixed.mid(1).trimmed();
+        if (fixed.isEmpty()) {
+            // The verdict is explicit but the payload is missing (small models
+            // sometimes stop after the keyword): the block needs human eyes,
+            // not a protocol error.
+            CheckResult review;
+            review.status = CheckStatus::Review;
+            return review;
+        }
+        CheckResult fix;
+        fix.status = CheckStatus::Fixed;
+        fix.text = fixed;
+        return fix;
+    }
+
+    return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "Unexpected verifier response\u2014expected OK, FIX or REVIEW. Received: %1").arg(content.left(120)));
 }
 
 QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request, const ConnectionConfig &config)
@@ -122,7 +180,7 @@ QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request, con
     return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
                                         config,
                                         m_activeClient,
-                                        [](const QByteArray &body) { return parseResponse(body); },
+                                        [request](const QByteArray &body) { return parseResponse(body, request.protocol); },
                                         QCoreApplication::translate("GeneralPurposeModel", "Failed to encode the block image"));
 }
 

@@ -13,6 +13,7 @@ Rectangle {
     id: miniRoot
 
     property bool isTextBlock: true
+    property string blockText: ""
 
     implicitWidth: miniRow.implicitWidth + 2 * Theme.spacingSmall
     implicitHeight: miniRow.implicitHeight + 2 * Theme.spacingSmall
@@ -68,6 +69,13 @@ Rectangle {
             tip: qsTr("Verify block")
             enabled: Controller.actionsIdle && Controller.pageVerificationSupported
             onClicked: Controller.checkSelectedBlock()
+        }
+        MiniButton {
+            visible: miniRoot.isTextBlock
+            iconName: "wand-sparkles"
+            tip: qsTr("Fix block")
+            enabled: Controller.actionsIdle && miniRoot.blockText.length > 0
+            onClicked: Controller.fixSelectedBlock()
         }
         MiniButton {
             iconName: "trash-2"

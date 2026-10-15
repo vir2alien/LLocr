@@ -65,7 +65,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
     Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
-    Q_PROPERTY(bool autoRecheck READ autoRecheck WRITE setAutoRecheck NOTIFY autoRecheckChanged)
+    Q_PROPERTY(bool autoFix READ autoFix WRITE setAutoFix NOTIFY autoFixChanged)
     Q_PROPERTY(bool showConfidence READ showConfidence WRITE setShowConfidence NOTIFY showConfidenceChanged)
 
     Q_PROPERTY(QString decisionLaunchModelPath READ decisionLaunchModelPath WRITE setDecisionLaunchModelPath NOTIFY decisionLaunchModelPathChanged)
@@ -220,8 +220,8 @@ public:
     void setCheckModelName(const QString &name);
     bool autoCheck() const;
     void setAutoCheck(bool on);
-    bool autoRecheck() const;
-    void setAutoRecheck(bool on);
+    bool autoFix() const;
+    void setAutoFix(bool on);
     bool showConfidence() const;
     void setShowConfidence(bool on);
 
@@ -337,7 +337,7 @@ signals:
     void checkRequestProfileIdChanged();
     void checkModelNameChanged();
     void autoCheckChanged();
-    void autoRecheckChanged();
+    void autoFixChanged();
     void showConfidenceChanged();
     void decisionLaunchModelPathChanged();
     void decisionLaunchMmprojPathChanged();

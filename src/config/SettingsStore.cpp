@@ -89,7 +89,7 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultBlockRecognitionRequestProfileId())},
         {kCheckModelName, "checkModelName", QVariant(QString())},
         {kAutoCheck, "autoCheck", QVariant(false)},
-        {kAutoFix, "autoRecheck", QVariant(false)},
+        {kAutoFix, "autoFix", QVariant(false)},
         {kShowConfidence, "showConfidence", QVariant(false)},
         {kDecisionLaunchModelPath, "decisionLaunchModelPath", QVariant(QString())},
         {kDecisionLaunchMmprojPath, "decisionLaunchMmprojPath", QVariant(QString())},
@@ -928,17 +928,17 @@ void SettingsStore::setAutoCheck(bool on)
     emit autoCheckChanged();
 }
 
-bool SettingsStore::autoRecheck() const
+bool SettingsStore::autoFix() const
 {
     return m_settings.value(kAutoFix, false).toBool();
 }
 
-void SettingsStore::setAutoRecheck(bool on)
+void SettingsStore::setAutoFix(bool on)
 {
-    if (autoRecheck() == on)
+    if (autoFix() == on)
         return;
     m_settings.setValue(kAutoFix, on);
-    emit autoRecheckChanged();
+    emit autoFixChanged();
 }
 
 bool SettingsStore::showConfidence() const

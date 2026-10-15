@@ -18,14 +18,14 @@ Item {
     function loadValues() {
         loading = true
         autoCheckBox.checked = Settings.autoCheck
-        autoRecheckBox.checked = Settings.autoRecheck
+        autoFixCheckBox.checked = Settings.autoFix
         showConfidenceCheckBox.checked = Settings.showConfidence
         loading = false
     }
 
     function saveValues() {
         Settings.autoCheck = autoCheckBox.checked
-        Settings.autoRecheck = autoRecheckBox.checked
+        Settings.autoFix = autoFixCheckBox.checked
         Settings.showConfidence = showConfidenceCheckBox.checked
     }
 
@@ -135,10 +135,10 @@ Item {
         }
 
         LLOCheckBox {
-            id: autoRecheckBox
+            id: autoFixCheckBox
             Layout.fillWidth: true
             Layout.topMargin: Theme.spacingSmall
-            text: qsTr("Automatic re-recognition")
+            text: qsTr("Automatic fixing")
             font.pointSize: Theme.bodySmallSize
             onToggled: if (!loading) root.edited()
         }
@@ -148,7 +148,7 @@ Item {
             font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             wrapMode: Text.WordWrap
-            text: qsTr("Re-runs the blocks the decision model rejected through the block OCR model, right after the check.")
+            text: qsTr("Sends the blocks the decision model rejected to the fix model, right after the check.")
         }
 
         LLOCheckBox {
@@ -194,8 +194,8 @@ Item {
             wrapMode: Text.WordWrap
             text: qsTr("Checking is fast: the decision model only answers how likely "
                        + "the text matches the image, block by block. Matching blocks turn "
-                       + "green; rejected ones turn red. When re-recognition is on, the red "
-                       + "blocks are transcribed from scratch by the block OCR model. The "
+                       + "green; rejected ones turn red. When fixing is on, the red "
+                       + "blocks are corrected by the fix model. The "
                        + "managed runtime switches its loaded model between the two stages; "
                        + "an external runtime serves both.")
         }

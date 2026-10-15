@@ -39,29 +39,31 @@ AppController::AppController(SettingsStore &settings,
                              RequestProfileStore &requestProfiles,
                              RequestProfileStore &checkRequestProfiles,
                              RequestProfileStore &layoutRequestProfiles,
+                             RequestProfileStore &fixRequestProfiles,
                              VerificationPromptStore &verification,
                              QObject *parent)
     : m_settings(settings), m_runtime(runtime), m_verification(verification), m_checkRequestProfiles(checkRequestProfiles), m_layoutRequestProfiles(layoutRequestProfiles),
-      m_recognition(
-          settings,
-          runtime,
-          requestProfiles,
-          [this](int index, QString &error) { return pageImage(index, &error); },
-          nullptr,
-          [this](int index, bool batch) {
-              QReadLocker locker(&m_documentLock);
-              if (!m_document.isValidIndex(index))
-                  return PageSkip::Unreadable;
-              const DocumentPage &page = m_document.page(index);
-              if (!page.sourceError.isEmpty())
-                  return PageSkip::Unreadable;
-              if (batch && page.recognized)
-                  return PageSkip::AlreadyRecognized;
-              return PageSkip::None;
-          }),
+      m_fixRequestProfiles(fixRequestProfiles), m_recognition(
+                                                    settings,
+                                                    runtime,
+                                                    requestProfiles,
+                                                    [this](int index, QString &error) { return pageImage(index, &error); },
+                                                    nullptr,
+                                                    [this](int index, bool batch) {
+                                                        QReadLocker locker(&m_documentLock);
+                                                        if (!m_document.isValidIndex(index))
+                                                            return PageSkip::Unreadable;
+                                                        const DocumentPage &page = m_document.page(index);
+                                                        if (!page.sourceError.isEmpty())
+                                                            return PageSkip::Unreadable;
+                                                        if (batch && page.recognized)
+                                                            return PageSkip::AlreadyRecognized;
+                                                        return PageSkip::None;
+                                                    }),
       m_verify({m_document,
                 verification,
                 checkRequestProfiles,
+                fixRequestProfiles,
                 settings,
                 runtime,
                 [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
@@ -94,6 +96,7 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_verify, &VerificationQueueController::verificationStarted, this, &AppController::applyVerificationStarted);
     connect(&m_verify, &VerificationQueueController::blockVerified, this, &AppController::applyVerdictToBox);
     connect(&m_verify, &VerificationQueueController::blockRecognized, this, &AppController::applyRecognitionToBox);
+    connect(&m_verify, &VerificationQueueController::blockFixed, this, &AppController::applyFixToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
 
     connect(this, &AppController::pageChanged, this, &AppController::updateAvailability);
@@ -1047,6 +1050,18 @@ void AppController::recognizeAllBlocksOnPage()
     m_verify.recheckPageBlocks(m_currentPage);
 }
 
+void AppController::fixSelectedBlock()
+{
+    if (m_selectedBox < 0)
+        return;
+    m_verify.fixBlock(m_currentPage, m_selectedBox);
+}
+
+void AppController::fixAllProblemBlocks()
+{
+    m_verify.fixAllProblemBlocks();
+}
+
 const ModelProfiles::Role *AppController::layoutRole() const
 {
     return ModelProfiles::roleFor(m_layoutRequestProfiles.activeProfileId(), QStringLiteral("layout"));
@@ -1277,7 +1292,48 @@ void AppController::applyRecognitionToBox(int pageIndex, int boxIndex, const Che
     });
     if (!applied || !textChanged)
         return;
+    applyPageTextChanged(pageIndex);
+}
 
+void AppController::applyFixToBox(int pageIndex, int boxIndex, const CheckResult &result)
+{
+    // A failed request is not a fix: the block keeps its marks (and any
+    // previous correction) until a later run retries it.
+    if (result.status == CheckStatus::Failed)
+        return;
+
+    bool textChanged = false;
+    const bool applied = applyBoxTransition(pageIndex, boxIndex, [&result, &textChanged](BoundingBox &box) {
+        const QString before = BoxTransitions::effectiveText(box);
+        switch (result.status) {
+        case CheckStatus::Ok:
+            // The candidate is confirmed: it becomes the correction layer's
+            // duplicate of the text (the fix can be reverted, an Ok verdict
+            // cannot be told from an absent one).
+            BoxTransitions::fixConfirmedOriginal(box);
+            break;
+        case CheckStatus::Fixed:
+            BoxTransitions::fixApplied(box, result.text);
+            break;
+        case CheckStatus::Review:
+            // The model refuses to judge: the block is marked damaged on the
+            // correction layer, any previous correction stops being effective.
+            BoxTransitions::fixMarkedUnreadable(box);
+            break;
+        case CheckStatus::Failed:
+        case CheckStatus::Recognized:
+        case CheckStatus::Mismatch:
+            break;
+        }
+        textChanged = BoxTransitions::effectiveText(box) != before;
+    });
+    if (!applied || !textChanged)
+        return;
+    applyPageTextChanged(pageIndex);
+}
+
+void AppController::applyPageTextChanged(int pageIndex)
+{
     QString rebuilt;
     {
         QReadLocker locker(&m_documentLock);

@@ -80,6 +80,8 @@ class AppController : public QObject
     Q_PROPERTY(int checkProgressDone READ checkProgressDone NOTIFY checkStateChanged)
     Q_PROPERTY(int checkProgressTotal READ checkProgressTotal NOTIFY checkStateChanged)
     Q_PROPERTY(bool checkDecisionPhase READ checkDecisionPhase NOTIFY checkStateChanged)
+    Q_PROPERTY(bool checkRecheckPhase READ checkRecheckPhase NOTIFY checkStateChanged)
+    Q_PROPERTY(bool checkFixPhase READ checkFixPhase NOTIFY checkStateChanged)
     Q_PROPERTY(QString checkErrorMessage READ checkErrorMessage NOTIFY checkStateChanged)
     Q_PROPERTY(bool pageVerificationSupported READ pageVerificationSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool allPageVerificationSupported READ allPageVerificationSupported NOTIFY availabilityChanged)
@@ -120,6 +122,7 @@ public:
                            RequestProfileStore &requestProfiles,
                            RequestProfileStore &checkRequestProfiles,
                            RequestProfileStore &layoutRequestProfiles,
+                           RequestProfileStore &fixRequestProfiles,
                            VerificationPromptStore &verification,
                            QObject *parent = nullptr);
     ~AppController() override;
@@ -168,6 +171,8 @@ public:
     int checkProgressDone() const { return m_verify.progressDone(); }
     int checkProgressTotal() const { return m_verify.progressTotal(); }
     bool checkDecisionPhase() const { return m_verify.decisionPhase(); }
+    bool checkRecheckPhase() const { return m_verify.recheckPhase(); }
+    bool checkFixPhase() const { return m_verify.fixPhase(); }
     QString checkErrorMessage() const { return m_verify.errorMessage(); }
     bool pageVerificationSupported() const;
     bool allPageVerificationSupported() const;
@@ -259,6 +264,10 @@ public slots:
     Q_INVOKABLE void recognizeProblemBlocksOnPage();
     Q_INVOKABLE void recognizeAllProblemBlocks();
     Q_INVOKABLE void recognizeAllBlocksOnPage();
+    // The fix pipeline (ADR 163): the selected block, or every Mismatch/Review
+    // block of the document through the fix task's OK / FIX / REVIEW protocol.
+    Q_INVOKABLE void fixSelectedBlock();
+    Q_INVOKABLE void fixAllProblemBlocks();
     // Manual page markup through the layout role (TeleOCR-style two-phase
     // models): the reply replaces the page blocks, the text stays empty until
     // each block goes through blockRecognition.
@@ -296,10 +305,15 @@ private:
 
     // The verification queue's result sources (ADR 164): a decision verdict
     // lands on the effective layer, a block-recognition reply is an OCR
-    // result and overwrites the text layer.
+    // result and overwrites the text layer, a fix outcome writes the
+    // correction layer.
     void applyVerificationStarted(int pageIndex, int boxIndex);
     void applyVerdictToBox(int pageIndex, int boxIndex, const CheckResult &result);
     void applyRecognitionToBox(int pageIndex, int boxIndex, const CheckResult &result);
+    void applyFixToBox(int pageIndex, int boxIndex, const CheckResult &result);
+    // The effective text of the page changed structurally: rebuild it, rebase
+    // the edit baseline and refresh the views.
+    void applyPageTextChanged(int pageIndex);
     // Runs one transition on the box under the document lock and mirrors the
     // resulting two-layer state to the box model; false when the page or the
     // box is gone.
@@ -330,6 +344,7 @@ private:
     VerificationPromptStore &m_verification;
     RequestProfileStore &m_checkRequestProfiles;
     RequestProfileStore &m_layoutRequestProfiles;
+    RequestProfileStore &m_fixRequestProfiles;
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;

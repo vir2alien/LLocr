@@ -132,6 +132,17 @@ target_link_libraries(test_decision_model PRIVATE
 )
 add_test(NAME test_decision_model COMMAND test_decision_model)
 
+# The fix protocol (ADR 163): the OK / FIX / REVIEW answers the universal
+# model gives over a block's candidate text, and the request shape that
+# carries the candidate.
+qt_add_executable(test_fix_protocol test_fix_protocol.cpp)
+
+target_link_libraries(test_fix_protocol PRIVATE
+    Qt6::Test
+    llocr_models
+)
+add_test(NAME test_fix_protocol COMMAND test_fix_protocol)
+
 # The manual markup pass (layout role): the request shape it sends through the
 # block-recognition transport and the reply the layout parser consumes.
 qt_add_executable(test_layout test_layout.cpp)

@@ -225,10 +225,12 @@ public:
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
 // fixed det-token reply, so the real recognition pipeline produces real boxes.
 // Used to drive the AppController-level block-removal contract end to end.
-// It speaks all three protocols the app sends: the wrapped <|det|>…<|/det|>
+// It speaks all four protocols the app sends: the wrapped <|det|>…<|/det|>
 // stream the OCR models emit, the decision model's /v1/systemone (probability
 // is configurable — below the 0.5 default threshold every block mismatches),
-// and the block-recognition transcription (identified by its system message).
+// the block-recognition transcription (identified by its system message), and
+// the fix protocol (a request carrying an <ocr_candidate> payload — the reply
+// is the configurable OK / FIX / REVIEW answer).
 // Request counting is what makes "this block was not asked again" observable.
 class DetTokenChatServer : public QObject
 {
@@ -254,6 +256,8 @@ public:
     qreal systemoneProbability = 0.97;
     bool systemoneBroken = false;  // reply without an "answers" object → every judge fails
     QString transcription = QStringLiteral("Re-recognized block text");
+    // The fix protocol's reply for any request carrying an <ocr_candidate>.
+    QString fixReply = QStringLiteral("FIX\nFixed block text");
     // Overrides the det-token page reply when non-empty (e.g. a text-less
     // markup-shaped block for the first-recognition scenarios).
     QString ocrContent;
@@ -309,12 +313,14 @@ private:
                           .toJson(QJsonDocument::Compact);
         } else {
             // Chat completions: the wrapped <|det|>…<|/det|> stream for the OCR
-            // prompt (no system message), the block transcription otherwise;
+            // prompt (no system message), the fix protocol answer for a
+            // candidate-carrying request, the block transcription otherwise;
             // the model streams newlines as the two characters `\n`.
-            const QString content = request.contains("\"role\":\"system\"") ? transcription
-                                                                            : (ocrContent.isEmpty() ? QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
-                                                                                                                     "<|det|>text [112, 132, 884, 309]<|/det|>Second block text")
-                                                                                                    : ocrContent);
+            const QString content = request.contains("ocr_candidate")         ? fixReply
+                                    : request.contains("\"role\":\"system\"") ? transcription
+                                                                              : (ocrContent.isEmpty() ? QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
+                                                                                                                       "<|det|>text [112, 132, 884, 309]<|/det|>Second block text")
+                                                                                                      : ocrContent);
             body = QJsonDocument(QJsonObject{
                                      {"id", "cmpl-test"},
                                      {"object", "chat.completion"},
@@ -345,6 +351,7 @@ private:
     std::unique_ptr<RequestProfileStore> m_requestProfiles;
     std::unique_ptr<RequestProfileStore> m_checkRequestProfiles;
     std::unique_ptr<RequestProfileStore> m_layoutRequestProfiles;
+    std::unique_ptr<RequestProfileStore> m_fixRequestProfiles;
     std::unique_ptr<VerificationPromptStore> m_verification;
     std::unique_ptr<RuntimeController> m_runtime;
     std::unique_ptr<ProblemLog> m_problems;
@@ -372,10 +379,11 @@ private slots:
         m_requestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
         m_checkRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
         m_layoutRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Layout);
+        m_fixRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Fix);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_problems = std::make_unique<ProblemLog>();
-        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_verification);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_fixRequestProfiles, *m_verification);
         m_controller->setProblemLog(m_problems.get());
 
         // Fixtures that exist in every build: a raster, a generated multi-page
@@ -1493,7 +1501,7 @@ private slots:
     // re-recognition on, the mismatches go straight to the block-recognition
     // model in a second phase of the same run. The transcription is an OCR
     // result: it overwrites the block text and leaves no verdict (ADR 164).
-    void decisionMismatchFeedsRecheckWhenEnabled()
+    void decisionMismatchFeedsFixWhenEnabled()
     {
         DetTokenChatServer server;
         server.systemoneProbability = 0.1;  // below the 0.5 threshold: every block mismatches
@@ -1501,8 +1509,9 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
         m_settings->setAutoCheck(false);
-        m_settings->setAutoRecheck(true);
+        m_settings->setAutoFix(true);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1521,57 +1530,58 @@ private slots:
         const int statusRole = BoxListModel::CheckStatusRole;
         const int textRole = BoxListModel::TextRole;
         const int correctedRole = BoxListModel::CorrectedRole;
+        const int correctedStatusRole = BoxListModel::CorrectedCheckStatusRole;
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        // 1 recognition + 2 decision requests + 2 re-recognition requests.
+        // 1 recognition + 2 decision requests + 2 fix requests.
         QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);
         QCOMPARE(server.systemoneRequests(), 2);
-        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
-        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
-        QCOMPARE(boxes->data(boxes->index(0), textRole).toString(), server.transcription);
-        QCOMPARE(boxes->data(boxes->index(1), textRole).toString(), server.transcription);
-        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QString());
+        // The fix lands on the correction layer: the fixed text with no
+        // verdict yet (the gray dot), while the text layer keeps its Mismatch.
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        // The fix never touches the text layer: the OCR text stays.
+        QCOMPARE(boxes->data(boxes->index(0), textRole).toString(), QStringLiteral("1. Introduction"));
+        QCOMPARE(boxes->data(boxes->index(1), textRole).toString(), QStringLiteral("Second block text"));
+        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("Fixed block text"));
+        QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
 
-        // The re-recognition request is a from-scratch transcription (ADR 163):
-        // the rejected OCR text is not sent, so each chat request carries
-        // exactly one block's prompt and no candidate framing.
+        // The fix request speaks the correction protocol (ADR 163): the
+        // block's effective text travels as the <ocr_candidate> payload.
         QCOMPARE(server.chatRequests().size(), 3);
         QVERIFY(!server.chatRequests().at(0).contains("\"role\":\"system\""));  // the page OCR call
-        QVERIFY(!server.chatRequests().at(1).contains("Previously recognized text:"));
-        QVERIFY(!server.chatRequests().at(1).contains("1. Introduction"));
-        QVERIFY(!server.chatRequests().at(1).contains("Second block text"));
-        QVERIFY(!server.chatRequests().at(2).contains("Previously recognized text:"));
-        QVERIFY(!server.chatRequests().at(2).contains("Second block text"));
-        QVERIFY(!server.chatRequests().at(2).contains("1. Introduction"));
+        QVERIFY(server.chatRequests().at(1).contains("ocr_candidate"));
+        QVERIFY(server.chatRequests().at(1).contains("1. Introduction"));
+        QVERIFY(server.chatRequests().at(2).contains("ocr_candidate"));
+        QVERIFY(server.chatRequests().at(2).contains("Second block text"));
 
-        // Re-recognizing an answered block overwrites its text again — still a
-        // from-scratch transcription, no candidate in the request.
+        // Fixing an answered block re-runs the correction on the effective
+        // text — the stored correction — still as a structured candidate.
         m_controller->setSelectedBoxIndex(0);
-        m_controller->recognizeSelectedBlock();
+        m_controller->fixSelectedBlock();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 6, kImportTimeoutMs);
         QCOMPARE(server.chatRequests().size(), 4);
-        QVERIFY(!server.chatRequests().at(3).contains("Previously recognized text:"));
-        QVERIFY(!server.chatRequests().at(3).contains("1. Introduction"));
-        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QVERIFY(server.chatRequests().at(3).contains("ocr_candidate"));
+        QVERIFY(server.chatRequests().at(3).contains("Fixed block text"));
 
-        // The next verification run judges the fresh text (the decision
+        // The next verification run judges the corrected text (the decision
         // request's state). Still below the threshold, so both mismatch again
-        // and the automatic cycle re-recognizes them once more.
+        // and the automatic cycle corrects them once more.
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 10, kImportTimeoutMs);  // +2 decision +2 re-recognition
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 10, kImportTimeoutMs);  // +2 decision +2 fix
         QCOMPARE(server.systemoneRequests(), 4);
-        QVERIFY(server.systemoneBodies().at(2).contains("Re-recognized block text"));
+        QVERIFY(server.systemoneBodies().at(2).contains("Fixed block text"));
         QVERIFY(!server.systemoneBodies().at(2).contains("1. Introduction"));
-        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
-        // The re-recognition erased the verdict, so the confidence is gone —
-        // the block has no P(match) until the next run.
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::ConfidenceRole).toDouble(), -1.0);
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        // The decision verdict rides on the correction layer, so the text
+        // layer's confidence stayed where the first run left it.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::ConfidenceRole).toDouble(), 0.1);
     }
 
-    // Without the re-recognition option the run ends after the decision phase:
+    // Without the fixing option the run ends after the decision phase:
     // the rejected blocks keep their red mark for the user to act on.
     void decisionMismatchStaysWithoutRecheck()
     {
@@ -1582,7 +1592,7 @@ private slots:
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
         m_settings->setAutoCheck(false);
-        m_settings->setAutoRecheck(false);
+        m_settings->setAutoFix(false);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1660,9 +1670,10 @@ private slots:
         QCOMPARE(m_controller->resultText(), server.transcription);
     }
 
-    // The second run judges the re-recognized text and confirms it: green,
-    // the transcription stays the block text, nothing left to re-judge.
-    void confirmedVerdictKeepsTheReRecognizedText()
+    // The second run judges the corrected text and confirms it: the Ok verdict
+    // lands on the correction layer, the transcription stays the block text,
+    // nothing left to re-judge.
+    void confirmedVerdictLandsOnTheCorrectionLayer()
     {
         DetTokenChatServer server;
         server.systemoneProbability = 0.1;  // the first run rejects everything
@@ -1670,8 +1681,9 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
         m_settings->setAutoCheck(false);
-        m_settings->setAutoRecheck(true);
+        m_settings->setAutoFix(true);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1687,29 +1699,34 @@ private slots:
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
         const int statusRole = BoxListModel::CheckStatusRole;
+        const int correctedStatusRole = BoxListModel::CorrectedCheckStatusRole;
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);  // +2 decision +2 re-recognition
-        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);  // +2 decision +2 fix
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
 
-        server.systemoneProbability = 0.97;  // the fresh text matches now
+        server.systemoneProbability = 0.97;  // the corrected text matches now
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 7, kImportTimeoutMs);
         QCOMPARE(server.systemoneRequests(), 4);
-        // The judged candidate was the re-recognized text, not the OCR original.
-        QVERIFY(server.systemoneBodies().at(2).contains("Re-recognized block text"));
+        // The judged candidate was the corrected text, not the OCR original.
+        QVERIFY(server.systemoneBodies().at(2).contains("Fixed block text"));
         QVERIFY(!server.systemoneBodies().at(2).contains("1. Introduction"));
 
-        // Both blocks are confirmed: green, the transcription is the text, no
-        // verdict was demoted into a second variant.
-        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Ok));
-        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Ok));
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), server.transcription);
-        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), server.transcription);
-        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QString());
-        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::CorrectedRole).toString(), QString());
+        // Both blocks are confirmed on the correction layer: green there, the
+        // text layer keeps its first-run Mismatch, the transcription is
+        // untouched.
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::Ok));
+        QCOMPARE(boxes->data(boxes->index(1), correctedStatusRole).toInt(), int(BoxCheckStatus::Ok));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::ConfidenceRole).toDouble(), 0.1);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedConfidenceRole).toDouble(), 0.97);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), QStringLiteral("1. Introduction"));
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), QStringLiteral("Second block text"));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("Fixed block text"));
 
         // Answered: a third run asks nothing.
         m_controller->checkEnabledBlocksOnPage();
@@ -1730,7 +1747,7 @@ private slots:
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
         m_settings->setAutoCheck(false);
-        m_settings->setAutoRecheck(false);
+        m_settings->setAutoFix(false);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1789,6 +1806,77 @@ private slots:
         m_controller->recognizeAllProblemBlocks();
         QVERIFY(!m_controller->checkRunning());
         QCOMPARE(server.requests(), 6);
+    }
+
+    // The book-level «Исправить» runs every Mismatch/Review block through the
+    // fix protocol, and each protocol answer lands on the correction layer in
+    // its own shape: FIX → the correction text, OK → a duplicate of the text,
+    // REVIEW → the damaged verdict without a correction.
+    void fixEntriesCoverTheProblemBlocks()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+        m_settings->setAutoCheck(false);
+        m_settings->setAutoFix(false);
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("fix-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const int statusRole = BoxListModel::CheckStatusRole;
+        const int correctedRole = BoxListModel::CorrectedRole;
+        const int correctedStatusRole = BoxListModel::CorrectedCheckStatusRole;
+
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 3);  // 1 recognition + 2 decision, no auto-fix
+
+        server.fixReply = QStringLiteral("OK");
+        QVERIFY(m_controller->allProblemRecognitionSupported());
+        m_controller->fixAllProblemBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 5);
+        // OK confirms the candidate: the correction layer holds a duplicate of
+        // the text with no verdict — the gray dot.
+        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("1. Introduction"));
+        QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), QStringLiteral("Second block text"));
+        QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+
+        server.fixReply = QStringLiteral("REVIEW");
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->fixSelectedBlock();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 6);
+        // REVIEW marks the correction layer damaged: red, no correction text.
+        // The sibling keeps its confirmed correction.
+        QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::Review));
+        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QString());
+        QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), QStringLiteral("Second block text"));
+
+        // Only the damaged block is a problem anymore: the next book-level fix
+        // asks exactly one block, and the candidate is its OCR text.
+        QVERIFY(m_controller->allProblemRecognitionSupported());
+        server.fixReply = QStringLiteral("FIX\nRecovered block text");
+        m_controller->fixAllProblemBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 7);
+        QCOMPARE(server.chatRequests().last().contains("ocr_candidate"), true);
+        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("Recovered block text"));
+        QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
     }
 
     // A failed decision request is not a verdict: the block stays unchecked
@@ -2075,7 +2163,7 @@ private slots:
         QCOMPARE(observations.importingStates, QList<bool>({true}));
         QVERIFY(observations.committedCounts.isEmpty());
         QVERIFY(!observations.wrongThread.load());
-        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_verification);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_requestProfiles, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_fixRequestProfiles, *m_verification);
         m_controller->openFiles({QUrl::fromLocalFile(m_multipage)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
         QCOMPARE(m_controller->pageCount(), 3);

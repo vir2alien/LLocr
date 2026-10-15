@@ -255,6 +255,8 @@ qt_add_library(llocr_app STATIC
     app/CheckController.cpp
     app/DecisionController.h
     app/DecisionController.cpp
+    app/FixController.h
+    app/FixController.cpp
     app/LayoutController.h
     app/LayoutController.cpp
     app/VerificationPromptStore.h

@@ -84,10 +84,10 @@ ToolBar {
             text: qsTr("Fix")
             Layout.minimumWidth: implicitWidth
             ToolTip.visible: hovered
-            ToolTip.text: qsTr("Re-recognize the problem blocks in the whole document")
+            ToolTip.text: qsTr("Fix the problem blocks in the whole document")
             enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
                      && !Controller.layoutBusy && Controller.allProblemRecognitionSupported
-            onClicked: Controller.recognizeAllProblemBlocks()
+            onClicked: Controller.fixAllProblemBlocks()
         }
         ToolButton {
             text: qsTr("Mark up")

@@ -98,6 +98,8 @@ Item {
         if (Controller.checkRunning)
             return Controller.checkDecisionPhase ? qsTr("Checking %1 / %2").arg(Controller.checkProgressDone)
                                                                      .arg(Controller.checkProgressTotal)
+                                                 : Controller.checkFixPhase ? qsTr("Fixing %1 / %2").arg(Controller.checkProgressDone)
+                                                                              .arg(Controller.checkProgressTotal)
                                                  : qsTr("Re-recognizing %1 / %2").arg(Controller.checkProgressDone)
                                                                                   .arg(Controller.checkProgressTotal)
         if (Controller.layoutBusy)
