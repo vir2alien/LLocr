@@ -1092,10 +1092,6 @@
         <translation>Рантайм</translation>
     </message>
     <message>
-        <source>Models by task</source>
-        <translation>Модели по задачам</translation>
-    </message>
-    <message>
         <source>Models</source>
         <translation>Модели</translation>
     </message>
@@ -1752,26 +1748,6 @@
     </message>
 </context>
 <context>
-    <name>ModelsManagerWindow</name>
-    <message>
-        <location filename="../qml/Settings/ModelsManagerWindow.qml" line="+16"/>
-        <source>Models</source>
-        <translation>Модели</translation>
-    </message>
-    <message>
-        <source>Every model and quantization of the app. Assigning them to tasks lives in Models by task.</source>
-        <translation>Все модели и кванты приложения. Назначение их задачам — в окне «Модели по задачам».</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation>Закрыть</translation>
-    </message>
-    <message>
-        <source>Models are stored locally and launched by the managed runtime.</source>
-        <translation>Модели хранятся локально и запускаются управляемым рантаймом.</translation>
-    </message>
-</context>
-<context>
     <name>OcrModel</name>
     <message>
         <location filename="../../src/models/OcrModel.cpp" line="+169"/>
@@ -1793,21 +1769,18 @@
     <name>TaskModelsWindow</name>
     <message>
         <location filename="../qml/Settings/TaskModelsWindow.qml" line="+11"/>
-        <source>Models by task</source>
-        <translation>Модели по задачам</translation>
+        <source>Models</source>
+        <translation>Модели</translation>
     </message>
     <message>
-        <location line="+130"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
     <message>
-        <location line="+128"/>
         <source>Launch</source>
         <translation>Запуск</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Request</source>
         <translation>Запрос</translation>
     </message>
@@ -1830,6 +1803,84 @@
     <message>
         <source>Download</source>
         <translation>Скачать</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>Установлен</translation>
+    </message>
+    <message>
+        <source>Launch and request settings</source>
+        <translation>Запуск и запрос</translation>
+    </message>
+    <message>
+        <source>Downloaded model files on disk</source>
+        <translation>Загруженные файлы моделей на диске</translation>
+    </message>
+    <message>
+        <source>Downloaded models will appear here — pick a quantization in the rows above and save.</source>
+        <translation>Скачанные модели появятся здесь — выберите квантование в строках выше и сохраните.</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+    <message>
+        <source>Delete model file</source>
+        <translation>Удалить файл модели</translation>
+    </message>
+    <message>
+        <source>Delete %1 from disk?</source>
+        <translation>Удалить %1 с диска?</translation>
+    </message>
+    <message>
+        <source>%1 is used by %2 task(s). The task rows keep their choice, but the model is gone from disk until you download it again.</source>
+        <translation>%1 привязана к задачам (%2). Строки задач сохранят выбор, но модели на диске больше нет, пока вы не скачаете её снова.</translation>
+    </message>
+</context>
+<context>
+    <name>ModelQuantModel</name>
+    <message>
+        <source>full precision</source>
+        <translation>полная точность</translation>
+    </message>
+    <message>
+        <source>max quality</source>
+        <translation>макс. качество</translation>
+    </message>
+    <message>
+        <source>high quality, compact</source>
+        <translation>высокое качество, компактнее</translation>
+    </message>
+    <message>
+        <source>good quality, less memory</source>
+        <translation>хорошее качество, меньше памяти</translation>
+    </message>
+    <message>
+        <source>less memory</source>
+        <translation>меньше памяти</translation>
+    </message>
+    <message>
+        <source>for weak PCs</source>
+        <translation>для слабых ПК</translation>
+    </message>
+</context>
+<context>
+    <name>InstalledFilesModel</name>
+    <message numerus="yes">
+        <source>Used by %n task(s)</source>
+        <translation>
+            <numerusform>Используется в %n задаче</numerusform>
+            <numerusform>Используется в %n задачах</numerusform>
+            <numerusform>Используется в %n задачах</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Not used</source>
+        <translation>Не используется</translation>
     </message>
 </context>
 <context>

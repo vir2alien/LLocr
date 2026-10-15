@@ -344,19 +344,17 @@
     recognized blocks, verification results, manual edits) and **open** it
     again (File menu; `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S`; ADR 131), and — in
     **Settings → Runtime** — install a local llama.cpp runtime, and in
-    **Settings → Models** — install GGUF models from Hugging Face. That list is
-    **one row per model** with the quantization picked on the row
-    (`ModelQuantModel` + `Common/ModelDownloadList.qml`, ADR 122): «Use» /
-    «Download» are one button, the ⋮ menu has Open folder / Delete quantization
-    / Delete model, and the chosen quantization is remembered per profile
-    (`models/quant/<id>`). The two-list UI (installed + preset catalog) and
-    `InstalledModelsModel` are gone. A clean
+    **Settings → Models** — pick a model+quantization per task and download it
+    from Hugging Face (one window since ADR 168: quant dropdowns with curated
+    sizes `models/quant/<id>` remembered per profile, ⚙ per row for
+    Launch/Request, and a «files on disk» block with guarded delete; the
+    wizard's Model step keeps the `ModelDownloadList` list, ADR 122). A clean
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
   - **Verification and fix pipeline (ADR 145–147, 161–164; Oct 2026)** —
     verification runs in two stages: a fast **decision model** (clef-flash
-    via `/v1/systemone`, the `decision` task in «Модели по задачам», threshold
+    via `/v1/systemone`, the `decision` task in «Модели», threshold
     `decision/matchThreshold` in the task's Request tab) judges every queued
     block — Ok (green) or **Mismatch** (red). The request is scheme v5: the
     state is a JSON object (`block_type`/`recognized_text`/`notation` from
@@ -386,7 +384,7 @@
     text-less box). The markup pass replaces the page's blocks (confirmation
     if the page has results); the page reads «Только разметка» until every
     text block has text (ADR 165). The layout model is configured as the
-    `layout` task in «Модели по задачам» (`tasks/layout/*`,
+    `layout` task in «Модели» (`tasks/layout/*`,
     `ConnectionRole::Layout`, request profile `requestLayout.json`;
     deliberately absent from the setup wizard). The 1036² page squash mirrors
     the upstream calibration. Manual only — not wired into the automatic
@@ -449,10 +447,16 @@
     (ADR 164: `box.text` + `box.correctedText`, independent verdicts; the
     amber re-recognized state is gone), pages carry a persisted recognition
     mode plus a computed verification aggregate (ADR 165), and the model
-    settings live in two windows — «Модели по задачам» (assignment +
-    per-task Launch/Request, install queue for missing quants) and «Модели»
-    (every profile × quant, download/management, no assignment) (ADR 166);
-    the four per-role model windows are removed. Recognizing a page is a
+    settings live in **one window, «Модели»** (ADR 166 → superseded by
+    ADR 168): six task rows (`task | model ▾ | quant ▾ | ⚙`), the quant
+    dropdown listing every profile quantization with its curated size
+    (`sizeBytes` in the profile JSONs, `scripts/fetch-quant-sizes.sh`
+    refreshes them from HF) and a family hint, the per-task Launch/Request
+    tabs behind each row's ⚙, a sequential install queue for missing quants,
+    and a «Загруженные файлы моделей на диске» block (one row per installed
+    entry: size, "used by N tasks", guarded delete via
+    `ModelInstaller::removeInstalledEntry`); the separate all-models manager
+    window is deleted. Recognizing a page is a
     split-button choice (pageOcr vs rawPageOcr), not a setting. The re-run
     override enum is `VerificationQueueController::FixMode`
     (`FixFromSetting`/`FixSkip`/`FixForce`); a restart of the managed server

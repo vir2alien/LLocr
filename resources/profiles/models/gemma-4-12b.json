@@ -11,7 +11,8 @@
       {
         "id": "q4_k_xl",
         "file": "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf",
-        "sha256": ""
+        "sha256": "",
+        "sizeBytes": 6716356800
       }
     ],
     "mmproj": {

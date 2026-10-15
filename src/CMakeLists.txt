@@ -47,6 +47,8 @@ qt_add_library(llocr_core STATIC
     core/ValueParsing.h
     core/ModelProfiles.h
     core/ModelProfiles.cpp
+    core/ByteSize.h
+    core/ByteSize.cpp
 )
 target_include_directories(llocr_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_core PUBLIC Qt6::Core Qt6::Network)
@@ -134,6 +136,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/InstalledBuildsModel.cpp
     runtime/ModelQuantModel.h
     runtime/ModelQuantModel.cpp
+    runtime/InstalledFilesModel.h
+    runtime/InstalledFilesModel.cpp
     runtime/StagedInstall.h
     runtime/StagedInstall.cpp
     runtime/InstallLockGuard.h

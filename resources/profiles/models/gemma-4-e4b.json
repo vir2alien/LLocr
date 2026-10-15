@@ -11,12 +11,14 @@
       {
         "id": "q4_k_xl",
         "file": "gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf",
-        "sha256": ""
+        "sha256": "",
+        "sizeBytes": 4215695776
       },
       {
         "id": "q2_k_xl",
         "file": "gemma-4-E4B-it-qat-UD-Q2_K_XL.gguf",
-        "sha256": ""
+        "sha256": "",
+        "sizeBytes": 3219532192
       }
     ],
     "mmproj": {

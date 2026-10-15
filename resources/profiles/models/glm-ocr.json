@@ -11,12 +11,14 @@
       {
         "id": "q8_0",
         "file": "GLM-OCR-Q8_0.gguf",
-        "sha256": ""
+        "sha256": "",
+        "sizeBytes": 950433408
       },
       {
         "id": "f16",
         "file": "GLM-OCR-f16.gguf",
-        "sha256": ""
+        "sha256": "",
+        "sizeBytes": 1785771648
       }
     ],
     "mmproj": {

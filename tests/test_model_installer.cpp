@@ -7,6 +7,8 @@
 #include <memory>
 
 #include "config/SettingsStore.h"
+#include "core/ByteSize.h"
+#include "runtime/InstalledFilesModel.h"
 #include "runtime/InstalledState.h"
 #include "runtime/LaunchProfileStore.h"
 #include "runtime/ModelInstaller.h"
@@ -331,14 +333,16 @@ private slots:
 
         // The quants come from the profile, in the order the profile lists them.
         const QVariantList quants = roleAt(models, row, ModelQuantModel::QuantsRole).toList();
-        QCOMPARE(quants.size(), 2);
+        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("unlimited-ocr"));
+        QVERIFY(profile && profile->files.quants.size() >= 2);
+        QCOMPARE(quants.size(), profile->files.quants.size());
         QCOMPARE(quants.at(0).toMap().value(QStringLiteral("id")).toString(), QStringLiteral("Q8_0"));
-        QCOMPARE(quants.at(1).toMap().value(QStringLiteral("id")).toString(), QStringLiteral("Q4_K_M"));
         QVERIFY(quants.at(0).toMap().value(QStringLiteral("installed")).toBool());
-        QVERIFY(!quants.at(1).toMap().value(QStringLiteral("installed")).toBool());
-        // Both are downloadable: the profile pins a file for each.
         QVERIFY(quants.at(0).toMap().value(QStringLiteral("downloadable")).toBool());
-        QVERIFY(quants.at(1).toMap().value(QStringLiteral("downloadable")).toBool());
+        const QVariantMap q4 = quantOf(models, row, QStringLiteral("Q4_K_M"));
+        QVERIFY(!q4.isEmpty());
+        QVERIFY(!q4.value(QStringLiteral("installed")).toBool());
+        QVERIFY(q4.value(QStringLiteral("downloadable")).toBool());
 
         // The action button reads the *selected* quantization, which defaults to
         // the one that is installed; its size is the one measured on disk.
@@ -431,17 +435,17 @@ private slots:
         const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
-        const QString oddPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q6_K.gguf"));
+        const QString oddPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_0.gguf"));
         QVERIFY(!oddPath.isEmpty());
 
         ModelEntry odd;
-        odd.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q6_K");
+        odd.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_0");
         odd.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
         odd.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
         odd.dir = sub;
         odd.modelPath = oddPath;
         odd.origin = ModelOrigin::Managed;
-        odd.quantization = QStringLiteral("Q6_K");
+        odd.quantization = QStringLiteral("Q4_0");
         odd.roles = {QStringLiteral("pageOcr")};
 
         QString err;
@@ -453,7 +457,7 @@ private slots:
         auto *models = ocrModels(*s->installer);
         const int row = rowOfKey(models, QStringLiteral("unlimited-ocr"));
         QVERIFY(row >= 0);
-        const QVariantMap extra = quantOf(models, row, QStringLiteral("Q6_K"));
+        const QVariantMap extra = quantOf(models, row, QStringLiteral("Q4_0"));
         QVERIFY(!extra.isEmpty());
         QVERIFY(extra.value(QStringLiteral("installed")).toBool());
         // Nothing in the profile points at it, so it cannot be downloaded again.
@@ -482,10 +486,12 @@ private slots:
         QCOMPARE(pathOf(*s->installer, QStringLiteral("outside_model")), externalPath);
     }
 
-    // The selected quantization is a choice the user makes and it has to survive
-    // closing the window; the active model wins over it only when the user has not
-    // picked anything.
-    void selectedQuantIsRememberedAndYieldsToTheActiveModel()
+    // The row shows the task's active quantization; a remembered pick (one per
+    // profile, shared by every task riding it) is only the default while the
+    // task is not riding one of the row's quants yet. Otherwise two tasks on
+    // one profile would display each other's choice, and a stale remembered
+    // value would outshine what the task actually runs.
+    void selectedQuantFollowsTheActiveModel()
     {
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
@@ -528,18 +534,56 @@ private slots:
         QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q8_0"));
         QCOMPARE(s->settings.selectedQuant(QStringLiteral("unlimited-ocr")), QStringLiteral("Q8_0"));
 
-        // Activating the installed quantization does not move the picker: the user
-        // is comparing them, and the row keeps showing what was picked.
+        // The task's active quantization outranks the remembered pick: the row
+        // must show what the task runs, not the last profile-level pick.
         QVERIFY(mi.setActiveModel(quantModel(models)->entryIndexFor(QStringLiteral("unlimited-ocr"), QStringLiteral("Q4_K_M"))).isEmpty());
-        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedActiveRole).toBool(), false);
+        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q4_K_M"));
+        QVERIFY(roleAt(models, row, ModelQuantModel::SelectedActiveRole).toBool());
         QVERIFY(roleAt(models, row, ModelQuantModel::ActiveRole).toBool());
-        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedInstalledRole).toBool(), false);
+        QVERIFY(roleAt(models, row, ModelQuantModel::SelectedInstalledRole).toBool());
 
         // A pick that is not in the profile is refused rather than silently applied.
         mi.selectQuant(QStringLiteral("unlimited-ocr"), QStringLiteral("Q2_K"));
-        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q8_0"));
+        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q4_K_M"));
 
         s->settings.setSelectedQuant(QStringLiteral("unlimited-ocr"), QString());
+    }
+
+    // Saving a choice that is already on disk activates it AND refreshes the
+    // remembered pick — a stale saved value used to win the next open.
+    void applyTaskChoicesRefreshesTheRememberedPick()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        QVERIFY(QDir().mkpath(sub));
+
+        ModelEntry entry;
+        entry.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_K_M");
+        entry.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
+        entry.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        entry.dir = sub;
+        entry.modelPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_K_M.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
+        entry.origin = ModelOrigin::Managed;
+        entry.quantization = QStringLiteral("Q4_K_M");
+        QVERIFY(!entry.modelPath.isEmpty() && !entry.mmprojPath.isEmpty());
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {entry}, err), qPrintable(err));
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+        ModelInstaller &mi = *s->installer;
+
+        s->settings.setSelectedQuant(QStringLiteral("unlimited-ocr"), QStringLiteral("Q8_0"));
+
+        const QVariantList choices = {
+            QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("unlimited-ocr")}, {QStringLiteral("quantId"), QStringLiteral("Q4_K_M")}}};
+        const QVariantList missing = mi.applyTaskChoices(choices);
+        QVERIFY(missing.isEmpty());
+        QCOMPARE(s->settings.selectedQuant(QStringLiteral("unlimited-ocr")), QStringLiteral("Q4_K_M"));
+        QCOMPARE(s->settings.launchModelPathForRole(QStringLiteral("pageOcr")), entry.modelPath);
     }
 
     // Deleting a model takes every quantization of it, but only after the whole
@@ -1094,6 +1138,129 @@ private slots:
         QVERIFY(strayRow >= 0);
         QVERIFY(!roleAt(all, strayRow, ModelQuantModel::ProfileRole).toBool());
         QCOMPARE(all->entryIndexFor(QStringLiteral("stray_Q4_K_M"), QStringLiteral("Q4_K_M")), registryIndexOfQuant(*s->installer, QStringLiteral("Q4_K_M")));
+    }
+
+    void formatBytesRendersUnits()
+    {
+        QCOMPARE(formatBytes(0), QString());
+        QCOMPARE(formatBytes(-5), QString());
+        QCOMPARE(formatBytes(512 * 1024), QStringLiteral("512.0 KiB"));
+        QCOMPARE(formatBytes(5 * 1024 * 1024), QStringLiteral("5.0 MiB"));
+        QCOMPARE(formatBytes(4610580800LL), QStringLiteral("4.3 GiB"));
+        QCOMPARE(formatBytes(1), QStringLiteral("0.0 KiB"));
+    }
+
+    // ADR 168: the task window's quant dropdown shows every profile
+    // quantization with the curated download size and a family hint; the file
+    // on disk wins once the quantization is installed.
+    void quantDropdownCarriesCuratedSizesAndHints()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        auto *check = checkModels(*s->installer);
+        const int row = rowOfKey(check, QStringLiteral("teleocr"));
+        QVERIFY(row >= 0);
+
+        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("teleocr"));
+        QVERIFY(profile && profile->files.quants.size() >= 3);
+        const qint64 curated = profile->files.quants.first().sizeBytes;
+        QVERIFY(curated > 0);
+        QVERIFY(profile->files.quants.first().id.compare(QStringLiteral("q8_0"), Qt::CaseInsensitive) == 0);
+
+        QVariantMap quant = quantOf(check, row, QStringLiteral("Q8_0"));
+        QVERIFY(!quant.isEmpty());
+        QVERIFY(!quant.value(QStringLiteral("installed")).toBool());
+        QCOMPARE(quant.value(QStringLiteral("size")).toLongLong(), curated);
+        QCOMPARE(quant.value(QStringLiteral("sizeLabel")).toString(), formatBytes(curated));
+        QCOMPARE(quant.value(QStringLiteral("hint")).toString(), QStringLiteral("max quality"));
+        QCOMPARE(quantOf(check, row, QStringLiteral("Q3_K_M")).value(QStringLiteral("hint")).toString(), QStringLiteral("for weak PCs"));
+
+        const QString sub = QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("konradjr007__NaviDC-OCR-GGUF"));
+        QVERIFY(QDir().mkpath(sub));
+        ModelEntry entry;
+        entry.id = QStringLiteral("konradjr007__NaviDC-OCR-GGUF_Q8_0");
+        entry.title = QStringLiteral("konradjr007__NaviDC-OCR-GGUF");
+        entry.repo = QStringLiteral("konradjr007/NaviDC-OCR-GGUF");
+        entry.dir = sub;
+        entry.modelPath = writeGguf(sub, QStringLiteral("NaviDC-OCR-Q8_0.gguf"));
+        entry.origin = ModelOrigin::Managed;
+        entry.quantization = QStringLiteral("Q8_0");
+        entry.byteSize = 12345678;
+        entry.roles = {QStringLiteral("blockRecognition")};
+        QVERIFY(!entry.modelPath.isEmpty());
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(s->settings.runtimeModelsDir(), {entry}, err), qPrintable(err));
+        s->installer->refreshInstalled();
+
+        // Reconcile re-measures the size on disk; that measured size is what
+        // the dropdown must report for the installed quantization.
+        const ModelEntry *refreshed = nullptr;
+        const QList<ModelEntry> entries = s->installer->installedEntries();
+        for (const ModelEntry &candidate : entries) {
+            if (candidate.quantization == QLatin1String("Q8_0"))
+                refreshed = &candidate;
+        }
+        QVERIFY(refreshed && refreshed->byteSize != curated);
+        quant = quantOf(check, row, QStringLiteral("Q8_0"));
+        QVERIFY(quant.value(QStringLiteral("installed")).toBool());
+        QCOMPARE(quant.value(QStringLiteral("size")).toLongLong(), refreshed->byteSize);
+    }
+
+    // The disk block of the Models window (ADR 168): one row per installed
+    // entry with size and usage; the delete goes through the guards and keeps
+    // files shared with sibling entries.
+    void installedFilesListCarriesUsageAndDeletes()
+    {
+        std::unique_ptr<Setup> s = makeMultiQuantSetup();
+        QVERIFY(s != nullptr);
+        ModelInstaller &mi = *s->installer;
+
+        const QString sub = QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("org__repo"));
+        const QString q4Path = QDir(sub).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+        const QString q8Path = QDir(sub).filePath(QStringLiteral("model-Q8_0.gguf"));
+        const QString mmproj = QDir(sub).filePath(QStringLiteral("mmproj-model-F16.gguf"));
+
+        auto *files = qobject_cast<InstalledFilesModel *>(mi.installedFiles());
+        QVERIFY(files);
+        QCOMPARE(files->rowCount(), 2);
+
+        auto rowOfEntry = [files](const QString &entryId) {
+            for (int i = 0; i < files->rowCount(); ++i) {
+                if (files->data(files->index(i, 0), InstalledFilesModel::EntryIdRole).toString() == entryId)
+                    return i;
+            }
+            return -1;
+        };
+
+        int row = rowOfEntry(QStringLiteral("org__repo_Q8_0"));
+        QVERIFY(row >= 0);
+        const qint64 measured = mi.installedEntries().at(registryIndexOfQuant(mi, QStringLiteral("Q8_0"))).byteSize;
+        QCOMPARE(files->data(files->index(row, 0), InstalledFilesModel::UsageCountRole).toInt(), 0);
+        QCOMPARE(files->data(files->index(row, 0), InstalledFilesModel::UsageTextRole).toString(), QStringLiteral("Not used"));
+        QCOMPARE(files->data(files->index(row, 0), InstalledFilesModel::SizeLabelRole).toString(), formatBytes(measured));
+        QVERIFY(files->data(files->index(row, 0), InstalledFilesModel::RemovableRole).toBool());
+
+        const int q8 = registryIndexOfQuant(mi, QStringLiteral("Q8_0"));
+        QVERIFY(q8 >= 0);
+        QVERIFY(mi.setActiveModel(q8, QStringLiteral("pageOcr")).isEmpty());
+        QVERIFY(mi.setActiveModel(q8, QStringLiteral("fix")).isEmpty());
+
+        row = rowOfEntry(QStringLiteral("org__repo_Q8_0"));
+        QVERIFY(row >= 0);
+        QCOMPARE(files->data(files->index(row, 0), InstalledFilesModel::UsageCountRole).toInt(), 2);
+        QCOMPARE(files->data(files->index(row, 0), InstalledFilesModel::UsageTextRole).toString(), QStringLiteral("Used by 2 task(s)"));
+
+        QVERIFY(mi.removeInstalledEntry(QStringLiteral("org__repo_Q4_K_M")).isEmpty());
+        QCOMPARE(files->rowCount(), 1);
+        QVERIFY(!QFile::exists(q4Path));
+        QVERIFY(QFile::exists(q8Path));
+        QVERIFY(QFile::exists(mmproj));
+
+        QVERIFY(!mi.removeInstalledEntry(QStringLiteral("no_such_entry")).isEmpty());
     }
 };
 

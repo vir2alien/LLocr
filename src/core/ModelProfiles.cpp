@@ -55,6 +55,7 @@ ModelProfiles::Files readFiles(const QJsonObject &root, const QString &profileId
         quant.id = entry.value(QStringLiteral("id")).toString();
         quant.file = entry.value(QStringLiteral("file")).toString();
         quant.sha256 = entry.value(QStringLiteral("sha256")).toString().toLower();
+        quant.sizeBytes = static_cast<qint64>(entry.value(QStringLiteral("sizeBytes")).toDouble(0));
         if (quant.id.isEmpty() || quant.file.isEmpty()) {
             error = QObject::tr("Model profile %1 has a quantization without an id or a file name").arg(profileId);
             return files;

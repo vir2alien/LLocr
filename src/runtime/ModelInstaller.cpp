@@ -15,6 +15,7 @@
 #include "config/SettingsStore.h"
 #include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
+#include "runtime/InstalledFilesModel.h"
 #include "runtime/InstalledReconcile.h"
 #include "runtime/LaunchProfileStore.h"
 #include "runtime/ModelInstaller.h"
@@ -26,10 +27,10 @@ namespace llocr {
 
 ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runtime, InstalledState &state, QObject *parent)
     : QObject(parent), m_settings(settings), m_installState(state), m_runtime(runtime), m_transaction(new ModelInstallTransaction(settings, m_installState, this)),
-      m_allModels(new ModelQuantModel(*this, settings, QStringLiteral("all"), this)), m_pageOcrModels(new ModelQuantModel(*this, settings, QStringLiteral("pageOcr"), this)),
-      m_checkModels(new ModelQuantModel(*this, settings, QStringLiteral("blockRecognition"), this)), m_decisionModels(new ModelQuantModel(*this, settings, QStringLiteral("decision"), this)),
-      m_layoutModels(new ModelQuantModel(*this, settings, QStringLiteral("layout"), this)), m_rawPageOcrModels(new ModelQuantModel(*this, settings, QStringLiteral("rawPageOcr"), this)),
-      m_fixModels(new ModelQuantModel(*this, settings, QStringLiteral("fix"), this))
+      m_installedFiles(new InstalledFilesModel(*this, this)), m_allModels(new ModelQuantModel(*this, settings, QStringLiteral("all"), this)),
+      m_pageOcrModels(new ModelQuantModel(*this, settings, QStringLiteral("pageOcr"), this)), m_checkModels(new ModelQuantModel(*this, settings, QStringLiteral("blockRecognition"), this)),
+      m_decisionModels(new ModelQuantModel(*this, settings, QStringLiteral("decision"), this)), m_layoutModels(new ModelQuantModel(*this, settings, QStringLiteral("layout"), this)),
+      m_rawPageOcrModels(new ModelQuantModel(*this, settings, QStringLiteral("rawPageOcr"), this)), m_fixModels(new ModelQuantModel(*this, settings, QStringLiteral("fix"), this))
 {
     connect(m_transaction, &ModelInstallTransaction::stateChanged, this, [this](int state) { setState(static_cast<State>(state)); });
     connect(m_transaction, &ModelInstallTransaction::busyChanged, this, [this](bool busy) { setBusy(busy); });
@@ -45,6 +46,9 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     connect(&m_settings, &SettingsStore::layoutLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::rawPageOcrLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::fixLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
+    // The removal guard refuses files of a Ready server, so the disk block's
+    // delete buttons follow the runtime state too.
+    connect(&m_runtime, &RuntimeController::stateChanged, this, [this] { m_installedFiles->refresh(); });
 
     // The task queue rides the same transaction as a manual download: once the
     // user agreed to the missing list, every prepared install starts without a
@@ -126,7 +130,13 @@ void ModelInstaller::publishInstalled()
 {
     for (ModelQuantModel *model : {m_allModels, m_pageOcrModels, m_checkModels, m_decisionModels, m_layoutModels, m_rawPageOcrModels, m_fixModels})
         model->refresh();
+    m_installedFiles->setSource(m_installed);
     emit installedChanged();
+}
+
+QObject *ModelInstaller::installedFiles() const
+{
+    return m_installedFiles;
 }
 
 ModelInstaller::~ModelInstaller() = default;
@@ -324,15 +334,35 @@ int ModelInstaller::installedIndexFor(const QString &key, const QString &quantId
     return quantModel(role)->entryIndexFor(key, quantId);
 }
 
-bool ModelInstaller::isActiveForAnyTask(const ModelEntry &entry) const
+int ModelInstaller::activeTaskCount(const ModelEntry &entry) const
 {
     if (entry.modelPath.isEmpty())
-        return false;
+        return 0;
+    int count = 0;
     for (const ConnectionRole role : {ConnectionRole::PageOcr, ConnectionRole::RawPageOcr, ConnectionRole::BlockRecognition, ConnectionRole::Decision, ConnectionRole::Layout, ConnectionRole::Fix}) {
         if (entry.modelPath == m_settings.launchModelPathForRole(connectionRoleName(role)))
-            return true;
+            ++count;
     }
-    return false;
+    return count;
+}
+
+bool ModelInstaller::isActiveForAnyTask(const ModelEntry &entry) const
+{
+    return activeTaskCount(entry) > 0;
+}
+
+QString ModelInstaller::removalBlockerFor(const ModelEntry &entry) const
+{
+    return ModelRegistry::removalError(entry, m_installState.paths().modelsDir(), activeTaskCount(entry) > 0, m_runtime.state() == RuntimeState::Ready);
+}
+
+QString ModelInstaller::removeInstalledEntry(const QString &entryId)
+{
+    for (int i = 0; i < m_installed.size(); ++i) {
+        if (m_installed.at(i).id == entryId)
+            return removeModel(i);
+    }
+    return tr("This model is not installed");
 }
 
 void ModelInstaller::downloadQuant(const QString &key, const QString &quantId, const QString &role)
@@ -521,6 +551,9 @@ QVariantList ModelInstaller::applyTaskChoices(const QVariantList &choices)
         const int entry = model->entryIndexFor(key, quantId);
         if (entry >= 0) {
             setActiveModel(entry, task);
+            // The remembered pick must follow, or the next open shows a stale
+            // saved quantization instead of the one just activated.
+            m_settings.setSelectedQuant(key, quantId);
             continue;
         }
 

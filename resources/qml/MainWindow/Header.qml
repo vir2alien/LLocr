@@ -23,7 +23,6 @@ ToolBar {
     signal openVerificationSettingsRequested()
     signal openRuntimeSettingsRequested()
     signal openTaskModelsSettingsRequested()
-    signal openModelsManagerRequested()
 
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
@@ -478,12 +477,8 @@ ToolBar {
         }
         MenuSeparator {}
         MenuItem {
-            text: qsTr("Models by task")
-            onTriggered: headerRoot.openTaskModelsSettingsRequested()
-        }
-        MenuItem {
             text: qsTr("Models")
-            onTriggered: headerRoot.openModelsManagerRequested()
+            onTriggered: headerRoot.openTaskModelsSettingsRequested()
         }
     }
 

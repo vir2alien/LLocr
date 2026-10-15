@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "config/SettingsStore.h"
+#include "core/ByteSize.h"
 #include "core/ModelProfiles.h"
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelInstaller.h"
@@ -61,8 +62,14 @@ int indexOfPreset(const QList<ModelPreset> &presets, const QString &profileId, c
     return -1;
 }
 
-ModelQuantModel::Quant
-quantOf(const QList<ModelEntry> &installed, const QList<ModelPreset> &presets, const QString &profileId, const QString &repo, const QString &stem, const QString &label, const QString &activePath)
+ModelQuantModel::Quant quantOf(const QList<ModelEntry> &installed,
+                               const QList<ModelPreset> &presets,
+                               const QString &profileId,
+                               const QString &repo,
+                               const QString &stem,
+                               const QString &label,
+                               qint64 presetSize,
+                               const QString &activePath)
 {
     ModelQuantModel::Quant quant;
     quant.id = label;
@@ -71,9 +78,45 @@ quantOf(const QList<ModelEntry> &installed, const QList<ModelPreset> &presets, c
         const ModelEntry &entry = installed.at(quant.entryIndex);
         quant.size = entry.byteSize;
         quant.active = entry.modelPath == activePath;
+    } else {
+        quant.size = presetSize;
     }
     quant.presetIndex = indexOfPreset(presets, profileId, stem);
     return quant;
+}
+
+// One short family label per quantization grade (ADR 168), shown next to the
+// size in the task window's quant dropdown.
+QString quantHint(const QString &id)
+{
+    const QString q = id.toUpper();
+    if (q == QLatin1String("F16") || q == QLatin1String("BF16") || q == QLatin1String("F32") || q.startsWith(QLatin1String("FP8")))
+        return ModelQuantModel::tr("full precision");
+    if (q.startsWith(QLatin1String("Q8")))
+        return ModelQuantModel::tr("max quality");
+    if (q.startsWith(QLatin1String("Q6_K")))
+        return ModelQuantModel::tr("high quality, compact");
+    if (q.startsWith(QLatin1String("Q5_K")))
+        return ModelQuantModel::tr("good quality, less memory");
+    if (q.startsWith(QLatin1String("Q4_K")))
+        return ModelQuantModel::tr("less memory");
+    if (q.startsWith(QLatin1String("IQ4")) || q.startsWith(QLatin1String("Q4_")) || q.startsWith(QLatin1String("IQ3")) || q.startsWith(QLatin1String("Q3")) || q.startsWith(QLatin1String("IQ2")) ||
+        q.startsWith(QLatin1String("Q2")))
+        return ModelQuantModel::tr("for weak PCs");
+    return QString();
+}
+
+QVariantMap quantMap(const ModelQuantModel::Quant &q)
+{
+    QVariantMap item;
+    item.insert(QStringLiteral("id"), q.id);
+    item.insert(QStringLiteral("size"), QVariant::fromValue(q.size));
+    item.insert(QStringLiteral("sizeLabel"), ::llocr::formatBytes(q.size));
+    item.insert(QStringLiteral("hint"), quantHint(q.id));
+    item.insert(QStringLiteral("installed"), q.entryIndex >= 0);
+    item.insert(QStringLiteral("active"), q.active);
+    item.insert(QStringLiteral("downloadable"), q.presetIndex >= 0);
+    return item;
 }
 
 }  // namespace
@@ -130,15 +173,8 @@ QVariant ModelQuantModel::data(const QModelIndex &index, int role) const
     case QuantsRole: {
         QVariantList out;
         out.reserve(row.quants.size());
-        for (const Quant &q : row.quants) {
-            QVariantMap item;
-            item.insert(QStringLiteral("id"), q.id);
-            item.insert(QStringLiteral("size"), QVariant::fromValue(q.size));
-            item.insert(QStringLiteral("installed"), q.entryIndex >= 0);
-            item.insert(QStringLiteral("active"), q.active);
-            item.insert(QStringLiteral("downloadable"), q.presetIndex >= 0);
-            out.append(item);
-        }
+        for (const Quant &q : row.quants)
+            out.append(quantMap(q));
         return out;
     }
     case SelectedRole:
@@ -210,7 +246,7 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
         QSet<QString> covered;
         for (const ModelProfiles::Quant &quant : profile.files.quants) {
             const QString stem = modelStem(quant.file);
-            row.quants.append(quantOf(installed, presets, profile.id, profile.files.repo, stem, quant.id.toUpper(), activePath));
+            row.quants.append(quantOf(installed, presets, profile.id, profile.files.repo, stem, quant.id.toUpper(), quant.sizeBytes, activePath));
             covered.insert(stem);
         }
         for (int i = 0; i < installed.size(); ++i) {
@@ -220,7 +256,7 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
                 continue;
             if (!all && !matchesRole(entry, m_settings, m_role))
                 continue;
-            row.quants.append(quantOf(installed, presets, profile.id, profile.files.repo, stem, quantLabelOf(entry), activePath));
+            row.quants.append(quantOf(installed, presets, profile.id, profile.files.repo, stem, quantLabelOf(entry), 0, activePath));
             covered.insert(stem);
         }
         if (!row.quants.isEmpty())
@@ -256,16 +292,20 @@ int ModelQuantModel::selectedIndex(const Row &row) const
 {
     if (row.quants.isEmpty())
         return -1;
+    // The task's own active quantization leads. The saved pick is one per
+    // profile, so two tasks riding one profile must not show each other's
+    // choice; the remembered value is the default only while the task is not
+    // riding one of the row's quants yet.
+    for (int i = 0; i < row.quants.size(); ++i) {
+        if (row.quants.at(i).active)
+            return i;
+    }
     if (row.profile) {
         const QString saved = m_settings.selectedQuant(row.key);
         for (int i = 0; !saved.isEmpty() && i < row.quants.size(); ++i) {
             if (row.quants.at(i).id.compare(saved, Qt::CaseInsensitive) == 0)
                 return i;
         }
-    }
-    for (int i = 0; i < row.quants.size(); ++i) {
-        if (row.quants.at(i).active)
-            return i;
     }
     for (int i = 0; i < row.quants.size(); ++i) {
         if (row.quants.at(i).entryIndex >= 0)
@@ -348,14 +388,8 @@ QVariantMap ModelQuantModel::rowFor(const QString &key) const
     out.insert(QStringLiteral("active"), std::any_of(row->quants.cbegin(), row->quants.cend(), [](const Quant &q) { return q.active; }));
     QVariantList quants;
     quants.reserve(row->quants.size());
-    for (const Quant &q : row->quants) {
-        QVariantMap item;
-        item.insert(QStringLiteral("id"), q.id);
-        item.insert(QStringLiteral("size"), QVariant::fromValue(q.size));
-        item.insert(QStringLiteral("installed"), q.entryIndex >= 0);
-        item.insert(QStringLiteral("downloadable"), q.presetIndex >= 0);
-        quants.append(item);
-    }
+    for (const Quant &q : row->quants)
+        quants.append(quantMap(q));
     out.insert(QStringLiteral("quants"), quants);
     out.insert(QStringLiteral("selected"), row->selected);
     return out;

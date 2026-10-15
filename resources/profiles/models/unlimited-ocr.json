@@ -12,12 +12,32 @@
       {
         "id": "q8_0",
         "file": "Unlimited-OCR-Q8_0.gguf",
-        "sha256": ""
+        "sha256": "",
+        "sizeBytes": 3126139904
+      },
+      {
+        "id": "q6_k",
+        "file": "Unlimited-OCR-Q6_K.gguf",
+        "sha256": "",
+        "sizeBytes": 2613275904
+      },
+      {
+        "id": "q5_k_m",
+        "file": "Unlimited-OCR-Q5_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 2219208704
       },
       {
         "id": "q4_k_m",
         "file": "Unlimited-OCR-Q4_K_M.gguf",
-        "sha256": ""
+        "sha256": "",
+        "sizeBytes": 1950326784
+      },
+      {
+        "id": "iq4_xs",
+        "file": "Unlimited-OCR-IQ4_XS.gguf",
+        "sha256": "",
+        "sizeBytes": 1640897024
       }
     ],
     "mmproj": {

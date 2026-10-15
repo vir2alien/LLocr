@@ -8,8 +8,11 @@
     "repo": "LiquidAI/LFM2.5-VL-3B-GGUF",
     "revision": "",
     "quants": [
-      { "id": "q4_k_m", "file": "LFM2.5-VL-3B-Q4_K_M.gguf", "sha256": "" },
-      { "id": "q8_0", "file": "LFM2.5-VL-3B-Q8_0.gguf", "sha256": "" }
+      { "id": "q8_0", "file": "LFM2.5-VL-3B-Q8_0.gguf", "sha256": "", "sizeBytes": 2874779680 },
+      { "id": "q6_k", "file": "LFM2.5-VL-3B-Q6_K.gguf", "sha256": "", "sizeBytes": 2221615136 },
+      { "id": "q5_k_m", "file": "LFM2.5-VL-3B-Q5_K_M.gguf", "sha256": "", "sizeBytes": 1939744800 },
+      { "id": "q4_k_m", "file": "LFM2.5-VL-3B-Q4_K_M.gguf", "sha256": "", "sizeBytes": 1674455072 },
+      { "id": "q4_0", "file": "LFM2.5-VL-3B-Q4_0.gguf", "sha256": "", "sizeBytes": 1593894944 }
     ],
     "mmproj": { "id": "f16", "file": "mmproj-LFM2.5-VL-3B-F16.gguf", "sha256": "" },
     "mtp": {

@@ -77,7 +77,6 @@ ApplicationWindow {
         onOpenVerificationSettingsRequested: showWindow(verificationSettingsLoader)
         onOpenRuntimeSettingsRequested: showWindow(runtimeSettingsLoader)
         onOpenTaskModelsSettingsRequested: showWindow(taskModelsSettingsLoader)
-        onOpenModelsManagerRequested: showWindow(modelsManagerLoader)
     }
 
     SplitView {
@@ -249,12 +248,6 @@ ApplicationWindow {
         sourceComponent: TaskModelsWindow {
             runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
         }
-    }
-
-    Loader {
-        id: modelsManagerLoader
-        active: false
-        sourceComponent: ModelsManagerWindow {}
     }
 
     ExportDialog {

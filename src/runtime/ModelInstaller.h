@@ -16,6 +16,7 @@ namespace llocr {
 
 struct ReconcileResult;
 
+class InstalledFilesModel;
 class InstalledState;
 class ModelInstallTransaction;
 class RuntimeController;
@@ -35,6 +36,10 @@ class ModelInstaller : public QObject
     Q_PROPERTY(int taskQueueRemaining READ taskQueueRemaining NOTIFY taskQueueStateChanged)
 
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
+
+    // The "files on disk" block of the Models window (ADR 168): installed
+    // entries with size, per-task usage and a guarded delete.
+    Q_PROPERTY(QObject *installedFiles READ installedFiles CONSTANT)
 
     // The unified management list (the rework plan's stage 7): every profile
     // and every installed entry, nothing role-filtered, nothing active.
@@ -76,6 +81,7 @@ public:
     QObject *layoutQuantModels() const;
     QObject *rawPageOcrQuantModels() const;
     QObject *fixQuantModels() const;
+    QObject *installedFiles() const;
 
     // task is a task id: "pageOcr", "rawPageOcr", "blockRecognition",
     // "decision", "layout" or "fix".
@@ -98,6 +104,12 @@ public:
     Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
     Q_INVOKABLE QString removeModelRow(const QString &key, const QString &task = QStringLiteral("pageOcr"));
     Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
+
+    // Delete one installed file row of the Models window's disk block. Empty
+    // return = removed; otherwise the guard or error message.
+    Q_INVOKABLE QString removeInstalledEntry(const QString &entryId);
+    int activeTaskCount(const ModelEntry &entry) const;
+    QString removalBlockerFor(const ModelEntry &entry) const;
 
     Q_INVOKABLE void installPrepared();
 
@@ -159,6 +171,7 @@ private:
     QList<ModelPreset> m_presetsRawPageOcr;
     QList<ModelPreset> m_presetsFix;
     QList<ModelEntry> m_installed;
+    InstalledFilesModel *m_installedFiles = nullptr;
     ModelQuantModel *m_allModels = nullptr;
     ModelQuantModel *m_pageOcrModels = nullptr;
     ModelQuantModel *m_checkModels = nullptr;

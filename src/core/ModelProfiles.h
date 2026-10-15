@@ -41,6 +41,7 @@ public:
         QString id;
         QString file;
         QString sha256;
+        qint64 sizeBytes = 0;  // curated download size (ADR 168), shown before install
     };
 
     struct Module {

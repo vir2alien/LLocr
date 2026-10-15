@@ -9,14 +9,28 @@
     "revision": "",
     "quants": [
       {
-        "id": "q4_k_m",
-        "file": "NaviDC-OCR-Q4_K_M.gguf",
-        "sha256": ""
-      },
-      {
         "id": "q8_0",
         "file": "NaviDC-OCR-Q8_0.gguf",
-        "sha256": ""
+        "sha256": "",
+        "sizeBytes": 804750464
+      },
+      {
+        "id": "q5_k_m",
+        "file": "NaviDC-OCR-Q5_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 551374976
+      },
+      {
+        "id": "q4_k_m",
+        "file": "NaviDC-OCR-Q4_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 484216960
+      },
+      {
+        "id": "q3_k_m",
+        "file": "NaviDC-OCR-Q3_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 413975680
       }
     ],
     "mmproj": {
