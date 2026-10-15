@@ -93,9 +93,10 @@ Notes:
 - On builds without the `--spec-*` flags LLocr's capability probe retries
   without the offending flags — the model degrades to non-speculative speed,
   never to wrong output.
-- The two roles (OCR and verification) declare the **same** launch layer on
-  purpose: switching tasks re-uses the loaded weights instead of reloading
-  them, and the DSpark drafter accelerates verification for free.
+- The two tasks (pageOcr and blockRecognition) declare the **same** launch
+  layer on purpose: switching tasks re-uses the loaded weights instead of
+  reloading them, and the DSpark drafter accelerates block recognition for
+  free.
 
 ## 4. Composing requests
 
@@ -107,14 +108,14 @@ Notes:
 - **Text first, image last.** Every LFM2.5 example renders the user text and
   then the `<image>` tag. In the OpenAI-compatible API that means the content
   parts array must be `[text, image_url]` — LLocr encodes this as
-  `promptBeforeImage: true` in both roles of the model profile (the Qwen
+  `promptBeforeImage: true` in both tasks of the model profile (the Qwen
   family documents the opposite order, so the flag is per-model data).
 - One page per request: the prompt talks about pages in the plural, but a
   single-image message is simply `image_index=0`.
 
 ### The recognition prompt
 
-Shipped verbatim in the profile (`roles.ocr.prompts`, id
+Shipped verbatim in the profile (`roles.pageOcr.prompts`, id
 `layout-annotation`) — it is the model card's recommended prompt:
 
 ```text
@@ -150,10 +151,10 @@ Separate each region block with one blank line. Return only the parsed regions.
 | `max_tokens` | 8192 | A full annotated page exceeds 4k tokens routinely. |
 | `stream` | false | The parser consumes one complete response. |
 
-For the **verification** role the sampling is greedy (`temperature 0`,
-penalties off, `stream false`, `cache_prompt true`) — the structured
-OK/FIX/REVIEW protocol wants determinism, and greedy decoding keeps the
-DSpark speculation exact.
+For the **blockRecognition** task the same card sampling applies, with
+`stream false` and `cache_prompt false` — every block is an independent
+request, there is no conversation to cache (the pageOcr task keeps
+`cache_prompt true`).
 
 ## 5. Coordinates: the 2:3 grounding canvas
 
@@ -206,14 +207,14 @@ can be read while debugging (`LLOCR_RAW_DEBUG=1` dumps every request/reply):
   detected by text, tail-joined or dropped, and marked `duplicateSuspect` for
   the verification pass.
 
-## 7. Using it as the verification model
+## 7. Using it as the block-recognition model
 
-The profile declares a `blockRecognition` role next to `ocr` (ADR 138; the
-role was renamed from `check` in ADR 146), so LFM2.5-VL-3B can be picked as
-the block transcription model:
+The profile declares a `blockRecognition` task next to `pageOcr` (ADR 138;
+renamed from `check` in ADR 146), so LFM2.5-VL-3B can be picked as the block
+transcription model in «Модели по задачам»:
 
-- Same weights, same launch layer — switching OCR ↔ block recognition never
-  reloads the server, and the DSpark drafter accelerates that stage.
+- Same weights, same launch layer — switching pageOcr ↔ blockRecognition
+  never reloads the server, and the DSpark drafter accelerates that stage.
 - Plain-transcription contract (ADR 145): the reply IS the block text and
   nothing else. The profile carries its own system prompt and per-block
   prompts whose first paragraph is a mandatory reply-format contract — a 3B
@@ -221,23 +222,21 @@ the block transcription model:
   the request and shaped like its trained header-line-then-content layouts
   (ADR 140). An empty reply marks the block as needing human eyes instead of
   failing the run.
-- Verify-and-correct re-runs (ADR 152): a block that already carries text is
-  sent again with that original text framed by the role's `recheckPrompt` —
-  the profile's own wording asks the model to verify it against the crop and
-  return it unchanged or corrected. A text-less block (layout markup) is
-  transcribed from scratch.
-- Message layout: the composed type prompt (the block prompt, then the
-  recheck framing when re-checking), then the image (`promptBeforeImage`
-  applies to the blockRecognition role too).
+- The block's previous text is not sent — ADR 163 superseded ADR 152's
+  verify-and-correct framing: presenting a candidate and getting
+  confirm/correct/refuse back is the separate **fix** task's job, served by
+  the universal models (qwen3.5, gemma-4).
+- Message layout: the composed block prompt, then the image
+  (`promptBeforeImage` applies to the blockRecognition task too).
 
 ## 8. Where things live in LLocr
 
 | Piece | Location |
 | --- | --- |
-| Model profile (prompt, launch layer, request params, check role, DSpark module, `promptBeforeImage`) | `resources/profiles/models/lfm25-vl-3b.json` |
+| Model profile (prompt, launch layer, request params, blockRecognition task, DSpark module, `promptBeforeImage`) | `resources/profiles/models/lfm25-vl-3b.json` |
 | Parser (`lfm2.5-vl`): OTSL conversion, calibration, equation fixes | `src/parsers/` (`Lfm25VlParser`, `DetTokensParser` base) |
 | Label → style map (incl. `image_block`, `code` overrides) | `resources/profiles/labels.json` |
-| Verifier system prompt + block prompts | the check role of the profile (the only source; there is no shared prompt file) |
+| Block-recognition system prompt + block prompts | the blockRecognition task of the profile (the only source; there is no shared prompt file) |
 | DSpark download/install | `ModelInstallTransaction` (any model with `files.mtp`) |
 | Launch/flag composition | `ServerLaunchConfig` + `LaunchProfileStore` (platform table shows only `n-gpu-layers`, `flash-attn`, `ctx-size`) |
 

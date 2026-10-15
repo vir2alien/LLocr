@@ -10,7 +10,7 @@
 with its native vision encoder plus a small "joint schema" head that scores
 every option of every question in one pass. System One class: no text
 generation, only probabilities over typed questions. Apache-2.0 licensed.
-In LLocr it fills the **decision** role — verifying a recognized block
+In LLocr it fills the **decision** task — verifying a recognized block
 against its crop (`/v1/systemone`).
 
 Why this model: d1-3B (see study §17) fundamentally cannot verify formulas
@@ -67,7 +67,7 @@ Practical notes, each verified during testing:
   "requires" ≥1024 image tokens for grounding; the measurement showed a 3×
   latency increase (~7 → ~22 s per request) with no measurable gain for
   this task.
-- `--cache-reuse 0`, `--no-warmup` — same policy as the other roles: the
+- `--cache-reuse 0`, `--no-warmup` — same policy as the other tasks: the
   prompt cache is never reused (zero generation), no warmup needed.
 - `state: null` in a request is **rejected** (unlike lfm2-d1) — the server
   answers 400 `"state" must be provided`. Pass empty content as an object
@@ -158,12 +158,14 @@ before changing the default.
 
 ## 6. Settings in the app
 
-- Role — **decision** (the "Model decision" settings): keys
-  `decision/modelPath`, `decision/mmprojPath`,
-  `decision/requestProfileId = clef-flash`, `decision/matchThreshold`.
+- Task — **decision** (ADR 162; the «Модели по задачам» window): keys
+  `tasks/decision/modelPath`, `tasks/decision/mmprojPath`,
+  `tasks/decision/requestProfileId = clef-flash`; the threshold lives at
+  `decision/matchThreshold` and is shown in the task's Request tab.
 - Profile: `resources/profiles/models/clef-flash.json`; installation via
   Settings → Models (HF repository `bartowski/Cloudflare_clef-flash-GGUF`,
-  the Q4_K_M quant + mmproj-f16 on the model row).
+  the Q4_K_M quant + mmproj-f16 on the model row) or the task window's
+  install queue.
 - External mode: any System One-compatible server, base URL + key; the
   model name does not take part in the request body.
 

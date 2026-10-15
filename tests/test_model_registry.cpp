@@ -569,7 +569,7 @@ void TestModelRegistry::scanAttachesDraftAndDoesNotListItAsAModel()
 
     ModelEntry recorded;
     recorded.id = QStringLiteral("org__repo");
-    recorded.dir = repo;
+    recorded.dir = QFileInfo(repo).canonicalFilePath();
     recorded.modelPath = model;
     recorded.draftPath = draft;
     recorded.byteSize = QFileInfo(model).size();

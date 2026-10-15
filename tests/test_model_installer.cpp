@@ -727,7 +727,9 @@ private slots:
         QVERIFY(row >= 0);
         QVERIFY(!roleAt(models, row, ModelQuantModel::ProfileRole).toBool());
         QCOMPARE(roleAt(models, row, ModelQuantModel::TitleRole).toString(), QStringLiteral("ocr Q4_K_M"));
-        QCOMPARE(roleAt(models, row, ModelQuantModel::SubtitleRole).toString(), sub);
+        // The scan canonicalizes entry.dir (QTemporaryDir hands out /var/...,
+        // a symlink to /private/var/... on macOS).
+        QCOMPARE(roleAt(models, row, ModelQuantModel::SubtitleRole).toString(), QFileInfo(sub).canonicalFilePath());
         QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q4_K_M"));
         QVERIFY(roleAt(models, row, ModelQuantModel::SelectedInstalledRole).toBool());
         QVERIFY(!roleAt(models, row, ModelQuantModel::SelectedActiveRole).toBool());

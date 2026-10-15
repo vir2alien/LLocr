@@ -354,51 +354,54 @@
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
-  - **Decision pipeline (ADR 145–147, 161; Oct 2026)** — verification runs in two
-    stages: a fast **decision model** (clef-flash via `/v1/systemone`, its own
-    settings window/menu «Модель decision», threshold `decision/matchThreshold`)
-    judges every queued block — Ok (green) or the new **Mismatch** (red). The
-    request is scheme v5: the state is a JSON object
-    (`block_type`/`recognized_text`/`notation` from the profile) plus one noul
-    question — a raw-string state collapses the yes/no separation
-    (`docs/17-d1-verification-study.md`); d1-3B failed the task in every
-    phrasing and was removed (ADR 161). With
-    «Автоматическое повторное распознавание» (`check/autoRecheck`) the
-    mismatches are re-run through the **blockRecognition** role (renamed from
-    `check`, ADR 146) in the same run, the transcription becoming the block
-    text. Block-recognition entry points: per-block «Распознать», the page
-    toolbar's «Распознать страницу ▾» (problem blocks / all blocks of the
-    page), and the header «Исправить» (whole document). Planned blocks
-    (filter-enabled type
-    or duplicate suspect, unanswered) show the gray dot
+  - **Verification and fix pipeline (ADR 145–147, 161–164; Oct 2026)** —
+    verification runs in two stages: a fast **decision model** (clef-flash
+    via `/v1/systemone`, the `decision` task in «Модели по задачам», threshold
+    `decision/matchThreshold` in the task's Request tab) judges every queued
+    block — Ok (green) or **Mismatch** (red). The request is scheme v5: the
+    state is a JSON object (`block_type`/`recognized_text`/`notation` from
+    the profile) plus one noul question — a raw-string state collapses the
+    yes/no separation (`docs/17-d1-verification-study.md`); d1-3B failed the
+    task in every phrasing and was removed (ADR 161). Every block carries two
+    text layers with independent verdicts (ADR 164): `box.text` (the OCR
+    result) and `box.correctedText` (the fix model's correction); the dot and
+    the confidence badge follow the **effective** layer. With «Автоматическое
+    исправление после проверки» (`check/autoFix`) mismatches are re-run
+    through the **fix** task (universal models, OK/FIX/REVIEW, ADR 163) in
+    the same run, the correction landing in `correctedText`. Block
+    recognition (plain re-transcription) entry points: per-block
+    «Распознать», the page toolbar's «Распознать страницу ▾» (problem blocks
+    / all blocks of the page); the header «Исправить» runs the fix task over
+    the problem blocks of the whole document. Planned blocks (filter-enabled
+    type or duplicate suspect, unanswered) show the gray dot
     (`boxVerificationPlanned`). Model manual: `docs/18-clef-flash.md`.
   - **Manual page markup (ADR 149–150, Oct 2026)** — the page toolbar's
-    «Разметить страницу» (+ ▾ «Разметить все страницы») runs the **layout role**
-    (`roles.layout` in a model profile — TeleOCR ships it): the page goes to
-    the layout model with the card's layout prompt, the reply's
+    «Разметить страницу» (+ ▾ «Разметить все страницы») runs the **layout
+    task** (`roles.layout` in a model profile — TeleOCR ships it): the page
+    goes to the layout model with the card's layout prompt, the reply's
     `<box:…><label:…><orientation>` lines become **text-less** positioned
     blocks (parser `teleocr-layout`), and the text is then filled in through
-    blockRecognition — per-block «Распознать» or the new
+    blockRecognition — per-block «Распознать» or the
     «Распознать все блоки страницы» menu item (queues every NotChecked
     text-less box). The markup pass replaces the page's blocks (confirmation
-    if the page has results). Since **ADR 150** the layout model has its own
-    settings — a fourth full role: `layout/*` keys, `ConnectionRole::Layout`,
-    the Settings → Layout model window (Model / Launch / Request tabs;
-    deliberately absent from the setup wizard), a fourth installer list
-    (`layoutQuantModels`), the request profile `layout/requestProfileId` +
-    `requestLayout.json`. The 1036² page squash mirrors the upstream
-    calibration. Manual only — not wired into the automatic pipeline.
-    Model manual: `docs/15-teleocr.md`.
+    if the page has results); the page reads «Только разметка» until every
+    text block has text (ADR 165). The layout model is configured as the
+    `layout` task in «Модели по задачам» (`tasks/layout/*`,
+    `ConnectionRole::Layout`, request profile `requestLayout.json`;
+    deliberately absent from the setup wizard). The 1036² page squash mirrors
+    the upstream calibration. Manual only — not wired into the automatic
+    pipeline. Model manual: `docs/15-teleocr.md`.
   - **Interface rework (ADR 151, Oct 2026)** — the header is «Файл ▾» +
-    book-wide «Распознать» / «Проверить» / «Исправить» / «Разметить» /
-    «Экспортировать» (Stop, page nav, Настройки stay); the per-page actions
-    live in the two-row **page toolbar** (`MainWindow/PageToolBar.qml` above
-    the image, a 2×2 action grid: Распознать страницу ▾ (dropdown
-    «Проблемные блоки» / «Все блоки») over Разметить страницу, Проверить ▾ —
-    main click = verify + fix via the `RecheckMode` override of
-    `check/autoRecheck` — over Сохранить страницу → the export dialog
-    preselected to the current page; plus disabled stubs for block-add
-    (2×3 icon grid, the ▾ lists all
+    book-wide «Распознать» (a split button: main click = pageOcr with
+    markup, the menu = rawPageOcr without) / «Проверить» / «Исправить» /
+    «Разметить» / «Экспортировать» (Stop, page nav, Настройки stay); the
+    per-page actions live in the two-row **page toolbar**
+    (`MainWindow/PageToolBar.qml` above the image, a 2×2 action grid:
+    Распознать страницу ▾ (dropdown «Проблемные блоки» / «Все блоки») over
+    Разметить страницу, Проверить ▾ — main click = verify + fix via the
+    `FixMode` override of `check/autoFix` — over Сохранить страницу → the
+    export dialog preselected to the current page; plus disabled stubs for
+    block-add (2×3 icon grid, the ▾ lists all
     `BlockNames` types) and page rotation); the selected block carries a
     floating **mini-toolbar** (`MainWindow/BlockMiniToolbar.qml`: recognize /
     verify / delete) and `BlockEditPanel` keeps only the texts + «Отменить
@@ -417,25 +420,29 @@
     `auto` parser id, the data-driven label map and parse diagnostics, ADR 88;
     its stage-4 pipeline split is deferred as ADR 89). Next: the
     remaining roadmap items (see `docs/09-local-runtime-plan.md`).
-  - **Model/task rework started (Oct 2026)** — the staged program in
-    `docs/20-model-task-rework.md`: six tasks instead of four roles
-    (`pageOcr`/`rawPageOcr`/`blockRecognition`/`decision`/`layout`/`fix`),
-    two-layer block verification (ADR 164), the OK/FIX/REVIEW fix protocol
-    for universal models (ADR 163), page statuses (ADR 165), the new
-    settings windows (ADR 166). **Stage 0 done** — ADR 162–166 recorded in
-    `docs/07-glossary.md`. **Stage 1 done** — six tasks on every data layer:
-    `ConnectionRole{PageOcr, RawPageOcr, BlockRecognition, Decision, Layout,
-    Fix}` (legacy `"ocr"` maps to `PageOcr`), the nine model profiles
-    reshaped to the task matrix (universal models carry the OK/FIX/REVIEW
-    `fix` role; TeleOCR's label styles moved to its `layout` role), settings
-    under `tasks/<task>/*` with the one-time startup migration from
-    `launch/*`/`check/*`/`decision/*`/`layout/*` model keys and
-    `check/autoRecheck` → `check/autoFix` (the C++ property is still
-    `autoRecheck` until stage 3), `RequestProfileStore` ×6 with the renamed
-    QML singletons (`RequestProfilesPageOcr/RawPageOcr/Block/Decision/
-    Layout/Fix`), `ModelInstaller` exposing six per-task quant lists, and
-    `RoleProfiles.qml` dispatching all six tasks. Stages 2–9 are pending:
-    one stage = one session = one commit, current statuses live in the
-    plan's stage table; the two branches after stage 1 (core 2→3→4→5,
-    settings 6→7) share `SettingsStore`/`RoleProfiles.qml` — coordinate with
-    stage 1, don't rewrite each other.
+  - **Model/task rework complete (Oct 2026)** — the staged program in
+    `docs/20-model-task-rework.md` (stages 0–9, one stage = one commit) is
+    done; ADR 162–166 in `docs/07-glossary.md` are the decision record. Six
+    tasks replace the four roles — `pageOcr`/`rawPageOcr`/`blockRecognition`/
+    `decision`/`layout`/`fix` — one vocabulary across `ConnectionRole`, the
+    model profiles (`roles.<task>`), the settings
+    (`tasks/<task>/{modelPath, mmprojPath, draftPath, requestProfileId,
+    modelName}`, one-time migration from the old per-role keys; `check/`
+    keeps only `autoCheck`/`autoFix`/`showConfidence`) and one
+    `RequestProfileStore` per task. Shipped model → task matrix:
+    `unlimited-ocr` → pageOcr; `lfm25-vl-3b` → pageOcr + blockRecognition;
+    `glm-ocr` → rawPageOcr + blockRecognition; `teleocr` → layout +
+    blockRecognition; `clef-flash` → decision; `qwen3.5-4b/9b`,
+    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW). Block verification is two-layer
+    (ADR 164: `box.text` + `box.correctedText`, independent verdicts; the
+    amber re-recognized state is gone), pages carry a persisted recognition
+    mode plus a computed verification aggregate (ADR 165), and the model
+    settings live in two windows — «Модели по задачам» (assignment +
+    per-task Launch/Request, install queue for missing quants) and «Модели»
+    (every profile × quant, download/management, no assignment) (ADR 166);
+    the four per-role model windows are removed. Recognizing a page is a
+    split-button choice (pageOcr vs rawPageOcr), not a setting. The re-run
+    override enum is `VerificationQueueController::FixMode`
+    (`FixFromSetting`/`FixSkip`/`FixForce`); a restart of the managed server
+    brings back the role it was serving (stage-8 regression
+    `restartBringsBackTheStartedRole`).

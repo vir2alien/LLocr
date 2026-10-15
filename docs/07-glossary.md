@@ -2,31 +2,35 @@
 
 ## Terms
 - **OCR** — recognizing text from images.
-- **OCR**, **Block recognition**, **Decision**, **Layout** — the model roles.
-  The block-recognition role was renamed **check → blockRecognition** (ADR 146):
-  the profile files, the registry role tags and the enums say
-  **blockRecognition** (`roles.blockRecognition`, `ConnectionRole::
-  BlockRecognition`, `RequestProfileStore::Role::BlockRecognition`). The
-  **decision** role is the fast yes/no gate (`roles.decision`,
-  `ConnectionRole::Decision`, `/v1/systemone`, ADR 145/147); since ADR 154
-  its question is composed per block type, and the wire format also carries
-  the card's optional noul `criteria` for profiles that ship one. The
-  **layout**
-  role (ADR 149) is the manual page-markup pass for two-request models
-  (TeleOCR); since ADR 150 it is a full fourth role with its own model
-  settings (`layout/*`, `ConnectionRole::Layout`, the Settings → Layout model
-  window) — it is absent from the setup wizard on purpose. The legacy
-  vocabulary survives where renaming would cost user data or churn: the
-  `check/*` settings keys, `CheckController`/`CheckRequest`/`CheckResult`,
-  `requestValidate.json`, `RequestProfilesValidate`. The registry index
-  migrates `"check"` role tags to `"blockRecognition"` on load. Installer
-  APIs take the role as a string ("ocr" / "blockRecognition" / "decision" /
-  "layout"); the `bool forCheck` parameters they replaced are gone. The
-  block-recognition request is two-shaped (ADR 152): a block that already
-  carries text also sends that text, framed by the role's `recheckPrompt`
-  (`{text}` placeholder, built-in fallback wording) so the model verifies and
-  corrects it instead of transcribing from scratch; a text-less layout block
-  keeps the plain transcription contract.
+- **Tasks** (the former four roles, ADR 162) — the six model tasks a profile
+  declares by string id; the same ids name the profile files (`roles.<task>`),
+  the enum (`ConnectionRole::PageOcr, RawPageOcr, BlockRecognition, Decision,
+  Layout, Fix`), the settings and the QML. **pageOcr** — full-page OCR with
+  layout tokens (the old `ocr` role); **rawPageOcr** — full-page OCR as raw
+  text (parser `raw`); **blockRecognition** — single-block transcription
+  (plain: the type prompt + the crop, no candidate — the previous text is not
+  sent, ADR 163 superseding ADR 152's recheck framing); **decision** — the
+  fast yes/no gate (`/v1/systemone`, ADR 145/147; since ADR 154 the question
+  is composed per block type and the wire format carries the card's optional
+  noul `criteria`); **layout** — the manual page-markup pass (ADR 149);
+  **fix** — a universal model confirms / corrects / refuses the candidate
+  (OK/FIX/REVIEW, ADR 163). Per-task settings live in
+  `tasks/<task>/{modelPath, mmprojPath, draftPath, requestProfileId,
+  modelName}` with a one-time startup migration from `launch/*`, the old
+  `check/*`/`decision/*`/`layout/*` model keys; `check/` keeps only the
+  behavior keys (`autoCheck`, `autoFix` — the renamed `autoRecheck`,
+  `showConfidence`) and `decision/matchThreshold` stays. Every task has its
+  own request-profile store (user files `requestPage.json`,
+  `requestRawPage.json`, `requestBlock.json`, `requestDecision.json`,
+  `requestLayout.json`, `requestFix.json`; legacy `request.json` /
+  `requestValidate.json` are renamed on load; QML singletons
+  `RequestProfilesPageOcr` … `RequestProfilesFix`). Model ↔ task assignment
+  lives in the «Модели по задачам» window, downloads/management in the
+  unified «Модели» window. The legacy vocabulary survives where renaming
+  would cost user data or churn: `CheckController`/`CheckRequest`/
+  `CheckResult`, the queue's `Phase::Recheck`; the registry index migrates a
+  stored `"check"` role tag on load (ADR 146), and an unknown/legacy `"ocr"`
+  role name resolves to PageOcr.
 - **OCR model (adapter)** — the per-model recipe (`models/OcrModel.h`): how to
   talk to a specific OCR LLM — prompt variants, the default output parser, and
   (via the base class) the OpenAI-style chat-completions request body and
@@ -61,15 +65,20 @@
   (`BlockStyle.h`).
 - **bbox** — bounding box coordinates of a recognized fragment for overlay on
   the preview (produced by the model's own parser).
-- **Block status** — the per-box verification state (`BoundingBox::checkStatus`),
-  shown as the dot to the left of the box (ADR 153): a markup block without
-  text shows no dot; **gray** = recognized (page OCR or block recognition, no
-  verdict yet); **green** = the decision model confirmed the text (Ok);
-  **red** = rejected (Mismatch) or unreadable (Review); **amber** =
-  re-recognized while it already had text — two text variants
-  (`correctedText`), re-judged by the corrected variant on the next
-  verification run. The box hue follows the block kind, not the status:
-  text/table/formula/image each have their own fill + frame color.
+- **Block status** — the per-box verification state, shown as the dot to the
+  left of the box (ADR 164, two layers): every block carries `box.text` (the
+  OCR result) and `box.correctedText` (the fix model's correction); the dot
+  reflects the **effective** layer (the correction when present, else the
+  text) and answers one question — is the text you are looking at verified?
+  A markup block without text shows no dot; **gray** = recognized, no verdict
+  on that layer (including «исправлено» — a stored correction without its own
+  verdict yet); **green** = the decision model confirmed it (Ok);
+  **red** = rejected (Mismatch) or unreadable/damaged (Review). The amber
+  re-recognized state is removed (`BoxCheckStatus::ReRecognized` deleted
+  without renumbering; superseded ADR 153's two-variant semantics). The
+  confidence badge follows the same layer. The box hue follows the block
+  kind, not the status: text/table/formula/image each have their own fill +
+  frame color.
 - **Image/chart block** — a box labeled `image` or `chart`;
   editable on the preview (move / resize / delete) and exported as a cropped
   image.

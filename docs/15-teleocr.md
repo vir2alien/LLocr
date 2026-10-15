@@ -1,7 +1,8 @@
 # TeleOCR (NaviDC-OCR) — model manual
 
 Working notes for TeleOCR as it is used in LLocr: what the model is, where its
-GGUF comes from, how it is launched, how the OCR and block-recognition requests
+GGUF comes from, how it is launched, how the layout-markup and
+block-recognition requests
 are composed, and which of the card's prompts LLocr ships verbatim and which it
 had to adapt. Everything here is either from the model card, from the GGUF
 repository, or measured in this project (see the ADR references).
@@ -24,7 +25,7 @@ A Russian mirror of this document lives in
     for a model that cannot answer coordinates and text in one shot.
 - Languages per the card: **Chinese and English**. Anything else (Russian
   included) is outside the declared language set — for Russian documents
-  prefer `lfm25-vl-3b` or `qwen3.5-4b`.
+  prefer `lfm25-vl-3b` (pageOcr) or `glm-ocr` (rawPageOcr).
 - Benchmarks per the card (OmniDocBench v1.6): overall **96.87** — ahead of
   OvisOCR2 (96.58), PaddleOCR-VL-1.6 (96.33), MinerU2.5-Pro (95.75) and
   Gemini 3 Pro (92.85); #1 at ICDAR2026 Sci-ImageMiner. The numbers are the
@@ -82,11 +83,12 @@ Layer by layer:
 
 Notes:
 
-- **No `--special`.** The OCR role uses the `raw` parser — nothing consumes
-  det tokens, so special tokens stay off.
+- **No `--special`.** Nothing consumes det tokens: the layout reply is plain
+  `<box:…>` lines and block recognition is plain text — special tokens stay
+  off.
 - **No `--spec-*`.** No speculative-decoding drafter exists for this model.
-- The OCR and block-recognition roles share the same (empty) launch layer,
-  so switching between them never reloads the weights.
+- Both tasks (layout and blockRecognition) share the same (empty) launch
+  layer, so switching between them never reloads the weights.
 
 ## 4. Composing requests
 
@@ -97,28 +99,13 @@ Notes:
   (`[{"type": "text", …}, {"type": "image_url", …}]`).
   `GeneralPurposeModel` sends `[type prompt, image]` to every model; no
   `promptBeforeImage` flag is needed here (LFM2.5 is the opposite case).
-- One block crop per block-recognition request; one page per OCR request.
-
-### The OCR prompt
-
-Shipped verbatim in the profile (`roles.ocr.prompts`, id `document-parsing`)
-— it is the card's layout-analysis prompt:
-
-```text
-Analyze the image layout.
-```
-
-The parser for this role is **`raw`**: the reply becomes the page text as-is,
-a single block. The card's structured layout output (type/bbox/angle/content
-JSON-ish blocks) is **not** converted into bounding boxes — the det-token
-pipeline does not apply to this model. Practically: TeleOCR as the OCR model
-gives you its layout dump as text; as a box-producing OCR model use
-`lfm25-vl-3b` or `unlimited-ocr`.
+- One block crop per block-recognition request; one page per layout request.
 
 ### The layout prompt (page markup)
 
-The markup pass (its own Settings → Layout model window since ADR 150; the
-model is configured there, not in the setup wizard) sends the full page image
+The markup pass (the model is configured as the `layout` task in «Модели по
+задачам», ADR 162; the task is absent from the setup wizard on purpose)
+sends the full page image
 with one of the card's two layout prompts,
 shipped verbatim in `roles.layout.prompts`:
 
@@ -145,7 +132,7 @@ the upstream pipeline code (`TeleOCR/vlm_utils/TeleOCR_client.py`,
   image, code, algorithm, header, footer, page_number, page_footnote,
   aside_text, equation, equation_block, ref_text, list, phonetic, captions,
   unknown, seal, char) — every label is styled data-driven in
-  `roles.ocr.blocks.styles` and every non-image one has a block-recognition
+  `roles.layout.blocks.styles` and every non-image one has a block-recognition
   prompt, so the markup can flow straight into per-block recognition;
 - upstream may emit **polygons** (any even count of coordinates); the parser
   takes their bounding box;
@@ -194,7 +181,7 @@ Two deliberate deviations from the card:
 | Parameter | Value | Why |
 | --- | --- | --- |
 | `temperature` | 0.0 | The card transcribes greedily (`do_sample=False`); the GGUF page's example sends `temperature: 0.0`. |
-| `max_tokens` | 2048 (block recognition) / 4096 (OCR) | The GGUF page's example query caps at 2048 — generous for a block crop; the card's own inference uses `max_new_tokens=4096`, kept for the whole-page OCR role. |
+| `max_tokens` | 2048 (block recognition) / 4096 (layout) | The GGUF page's example query caps at 2048 — generous for a block crop; the card's own inference uses `max_new_tokens=4096`, kept for the layout pass. |
 | `repeat_penalty` / `presence_penalty` / `frequency_penalty` | 1.0 / 0.0 / 0.0 | Neutral — the card prescribes greedy decoding only. |
 | `stream` | false | The parser consumes one complete response. |
 | `cache_prompt` | true | The card sets `use_cache=True`; between blocks the system prompt and template are reused. |
@@ -206,55 +193,51 @@ Two deliberate deviations from the card:
   prompts steer it to HTML instead (see §4). Formulas: LaTeX, which the
   card's own post-processing wraps into `$$…$$` — LLocr keeps the model's
   delimiters as generated.
-- **Layout**: blocks with type / bbox / angle / content. In the OCR role this
-  passes through `raw` (§4); the markup pass parses it properly instead
-  (§4, «The layout prompt»).
+- **Layout**: blocks with type / bbox / angle / content, parsed by the
+  markup pass into positioned blocks (§4, «The layout prompt»); the block
+  content the dump may carry is ignored.
 - Control tokens / end-of-sentence markers in replies are stripped by the
   shared `GeneralPurposeModel::parseResponse`; an empty reply maps to
   `Review`, not to an error.
 
 ## 6. Role in the verification pipeline
 
-TeleOCR can serve both roles of the two-phase pipeline (ADR 145–147):
+TeleOCR serves two of the six tasks (ADR 162):
 
-- **phase 2, block recognition** — its main LLocr use: after the decision
-  model marks a block as mismatched (or on the manual «Recognize»
-  commands), the crop goes to the `blockRecognition` role with the §4
-  prompts; the transcription becomes the new block text. A block that
-  already carries text is additionally framed by the role's `recheckPrompt`
-  — the §4 wording wrapped around the block's original text, asking the
-  model to verify and correct it instead of transcribing from scratch
-  (ADR 152); text-less markup blocks keep the plain transcription request.
-- **manual page markup** — the `layout` role (ADR 149): the header «Mark up»
-  button (page / all pages) sends the page image with the layout prompt and
-  replaces the page's blocks with the reply's boxes; the text is then filled
-  in block by block through the entry above. Not wired into the automatic
-  pipeline.
-- **phase 1 upstream, OCR** — possible but raw (§4): no boxes, one text
-  block per page.
-- **decision (phase 1)** — not applicable: d1-3B is the decision model
-  (`docs/14-d1-3b.md`); TeleOCR speaks only chat completions.
+- **blockRecognition** — its main LLocr use: after the decision model marks
+  a block as mismatched (or on the manual «Recognize» commands), the crop
+  goes to the blockRecognition task with the §4 prompts; the transcription
+  becomes the new block text. The block's previous text is not sent — ADR
+  163 superseded ADR 152's verify-and-correct framing; presenting a
+  candidate and getting confirm/correct/refuse back is the separate **fix**
+  task's job (universal models).
+- **layout (manual page markup)** — the header «Mark up» button (page / all
+  pages) sends the page image with the layout prompt and replaces the
+  page's blocks with the reply's boxes; the text is then filled in block by
+  block through the entry above. Not wired into the automatic pipeline.
+- **decision (phase 1)** — not applicable: clef-flash is the decision model
+  (`docs/18-clef-flash.md`); TeleOCR speaks only chat completions.
 
 ## 7. Where things live in LLocr
 
 | Piece | Location |
 | --- | --- |
-| Model profile (roles, prompts, request params, files) | `resources/profiles/models/teleocr.json` |
+| Model profile (tasks, prompts, request params, files) | `resources/profiles/models/teleocr.json` |
 | Block-recognition request/response | `GeneralPurposeModel::buildRequestBody` / `parseResponse` (`src/models/`) |
-| OCR-role parsing (pass-through) | `RawParser` (`src/parsers/`) |
 | Layout reply parsing | `TeleOcrLayoutParser` (`src/parsers/`, id `teleocr-layout`) |
 | Markup pass (queue, 1036² page squash) | `LayoutController` (`src/app/`), driven from `Header.qml` |
 | Launch composition (no model layer for this model) | `ServerLaunchConfig` + `LaunchProfileStore` |
 | Download/install (quants + mmproj) | `ModelInstaller`, `ModelInstallTransaction` |
-| Installer UI rows | `ModelQuantModel` (four role lists: OCR / block OCR / decision / layout) |
+| Installer UI rows | `ModelQuantModel` (one list per task — assignment in «Модели по задачам», management in «Модели») |
 
 Design decisions: ADR 124 (the weights moved to
 `konradjr007/NaviDC-OCR-GGUF`, which a stock llama.cpp loads — the old
 runtime warning is gone), 126 (launch parameters belong to the machine, not
 to the weights — the profile's launch layer stays empty), 145–147 (the
 two-phase pipeline and the `blockRecognition` role), 140 (per-model prompt
-wording), 149 (the manual markup pass and the `layout` role), 152 (the
-verify-and-correct `recheckPrompt` for re-recognition).
+wording), 149 (the manual markup pass), 162 (the task matrix — TeleOCR is
+layout + blockRecognition; the raw page-OCR role is gone, and ADR 152's
+verify-and-correct framing is superseded by 163).
 
 ## 8. Links
 

@@ -23,7 +23,7 @@ A Russian mirror of this document lives in
 - **Recognition only, no detection.** The model emits no layout tokens and no
   coordinates; the official SDK pipeline pairs it with an external layout
   model (PP-DocLayoutV3) and feeds it crops. LLocr therefore does not give it
-  the layout role, and its page-level replies parse with the `raw` parser.
+  the layout task, and its page-level replies parse with the `raw` parser.
 - **Dynamic-resolution vision**: the processor scales images between
   `shortest_edge` 12544 px and `longest_edge` 9633792 px (patch 14, merge 2 →
   28 px per vision token). llama.cpp's mtmd applies the same scaling, so no
@@ -74,7 +74,7 @@ Layer by layer:
 
 - `--model / --mmproj / --alias / --host / --port` — core fields,
   single-sourced from the activation/install settings.
-- **Model layer** (`glm-ocr.json`, both roles identically):
+- **Model layer** (`glm-ocr.json`, both tasks identically):
   - `--flash-attn on` — the machine layer lets the user turn flash attention
     off, and without it the text attention graph materializes
     ctx² × 16 heads × F32 — **~17 GB at the machine's 16384** — which Metal
@@ -84,7 +84,7 @@ Layer by layer:
     off" reports are fixed in current builds.
   - `--image-min-tokens 456 --image-max-tokens 6144` — the native dynamic
     range is 16…12288 vision tokens (§1). The floor keeps small block crops
-    above 16-token coarseness (the blockRecognition role sends crops); the
+    above 16-token coarseness (the blockRecognition task sends crops); the
     ceiling keeps a ~240-dpi A4 page plus `max_tokens` 8192 inside the
     machine's 16384 context — at the uncapped 12288 the image alone would
     overflow it.
@@ -135,20 +135,22 @@ the «Разметить» command replaces, and that stays with TeleOCR.
 
 ## 5. Output formats
 
-- **ocr role**: the reply is the page transcription — plain text or
+- **rawPageOcr task**: the reply is the page transcription — plain text or
   Markdown (tables may come out as HTML or Markdown tables). No layout
   tokens, no coordinates; the whole reply becomes one text page through the
-  `raw` parser.
-- **blockRecognition role**: the reply is the block text (tables as a table,
+  `raw` parser. The whole-page prompt ships the trained
+  `Text Recognition:` prefix.
+- **blockRecognition task**: the reply is the block text (tables as a table,
   formulas as LaTeX), read by `GeneralPurposeModel::parseResponse`, which
   strips control tokens and a whole-reply Markdown fence.
 
 ## 6. Role in the verification pipeline
 
-- **ocr** — a fast whole-page pass (0.9B weights): the reply replaces the
-  page's text without block positions, so per-block editing and «Разметить»
+- **rawPageOcr** — a fast whole-page pass (0.9B weights): the reply replaces
+  the page's text without block positions, so per-block editing and
+  «Разметить»
   workflows start from TeleOCR or the det-token models instead.
-- **blockRecognition (phase 2)** — the second declared role: after the
+- **blockRecognition** — the second declared task: after the
   decision model marks a block as mismatched (or on the manual «Распознать»
   commands), the crop is re-transcribed with the trained prefix for its
   kind, and the reply becomes the block text.
@@ -161,11 +163,11 @@ the «Разметить» command replaces, and that stays with TeleOCR.
 | Piece | Location |
 | --- | --- |
 | Model profile (files, prefixes, request layer) | `resources/profiles/models/glm-ocr.json` |
-| Page OCR request/response, modality order | `OcrModel::buildRequestBody` (`src/models/`) |
+| rawPageOcr request/response, modality order | `OcrModel::buildRequestBody` (`src/models/`) |
 | Block-recognition request/response | `GeneralPurposeModel` (`src/models/`) |
 | Raw parsing (no fragments) | `RawParser` (`src/parsers/`) |
 | Memory estimate (glm4 metadata keys) | `ModelMemoryEstimator` |
-| Installer UI rows | `ModelQuantModel` (OCR list after the `unlimited-ocr` default, check list sorted by title) |
+| Installer UI rows | `ModelQuantModel` (one list per task — assignment in «Модели по задачам», management in «Модели») |
 
 Design decisions: ADR 88 (models are data — the profile is the whole
 contract), 112 (a new model is one JSON profile plus, if the reply shape is

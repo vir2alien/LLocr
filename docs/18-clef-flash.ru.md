@@ -10,7 +10,7 @@
 с его штатным vision-энкодером + маленький head («joint schema»), который
 оценивает все варианты всех вопросов за один проход. Класс System One:
 никакой генерации текста, только вероятности по типизированным вопросам.
-Лицензия Apache-2.0. В LLocr занимает роль **decision** — верификация
+Лицензия Apache-2.0. В LLocr занимает задачу **decision** — верификация
 распознанного блока по его кропу (`/v1/systemone`).
 
 Почему она: d1-3B (§17 исследования) не проверяет формулы и таблицы
@@ -155,12 +155,14 @@ state + **один** noul-вопрос:
 
 ## 6. Настройки в приложении
 
-- Роль — **decision** (настройки «Модель decision»): ключи
-  `decision/modelPath`, `decision/mmprojPath`,
-  `decision/requestProfileId = clef-flash`, `decision/matchThreshold`.
+- Задача — **decision** (ADR 162; окно «Модели по задачам»): ключи
+  `tasks/decision/modelPath`, `tasks/decision/mmprojPath`,
+  `tasks/decision/requestProfileId = clef-flash`; порог живёт в
+  `decision/matchThreshold` и показывается в Request-вкладке задачи.
 - Профиль: `resources/profiles/models/clef-flash.json`; установка —
   Settings → Models (репозиторий HF `bartowski/Cloudflare_clef-flash-GGUF`,
-  квант Q4_K_M + mmproj-f16 на строке модели).
+  квант Q4_K_M + mmproj-f16 на строке модели) или очередь установки
+  окна задач.
 - External-режим: любой System One-совместимый сервер, base URL + ключ; имя
   модели в теле запроса не участвует.
 
