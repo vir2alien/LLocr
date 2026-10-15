@@ -1,6 +1,8 @@
 #include "app/PageListModel.h"
 #include "app/PageIndex.h"
 
+#include <algorithm>
+
 namespace llocr {
 
 PageListModel::PageListModel(QObject *parent) : QAbstractListModel(parent) {}
@@ -33,6 +35,8 @@ QVariant PageListModel::data(const QModelIndex &index, int role) const
         return (row < m_recognitionMode.size()) ? m_recognitionMode.at(row) : 0;
     case VerificationRole:
         return (row < m_verification.size()) ? m_verification.at(row) : 0;
+    case SelectedRole:
+        return (row < m_selected.size()) ? m_selected.at(row) : false;
     }
     return {};
 }
@@ -47,6 +51,7 @@ QHash<int, QByteArray> PageListModel::roleNames() const
         {HasDuplicatesRole, "hasDuplicates"},
         {RecognitionModeRole, "pageRecognitionMode"},
         {VerificationRole, "pageVerification"},
+        {SelectedRole, "selected"},
     };
     return roles;
 }
@@ -63,6 +68,7 @@ void PageListModel::appendPages(int count)
     m_hasDuplicates += QList<bool>(count, false);
     m_recognitionMode += QList<int>(count, 0);
     m_verification += QList<int>(count, 0);
+    m_selected += QList<bool>(count, false);
     endInsertRows();
 }
 
@@ -150,6 +156,7 @@ void PageListModel::removePage(int index)
     m_hasDuplicates.removeAt(index);
     m_recognitionMode.removeAt(index);
     m_verification.removeAt(index);
+    const bool wasSelected = (index < m_selected.size()) ? m_selected.takeAt(index) : false;
     if (m_current == index)
         m_current = -1;
     else if (m_current > index)
@@ -158,6 +165,8 @@ void PageListModel::removePage(int index)
 
     if (index < m_recognized.size())
         emit dataChanged(this->index(index), this->index(m_recognized.size() - 1));
+    if (wasSelected)
+        emit selectionChanged();
 }
 
 void PageListModel::movePage(int from, int to)
@@ -178,6 +187,7 @@ void PageListModel::movePage(int from, int to)
     m_hasDuplicates.move(from, to);
     m_recognitionMode.move(from, to);
     m_verification.move(from, to);
+    m_selected.move(from, to);
 
     m_current = remapIndexAfterMove(m_current, from, to);
 
@@ -195,8 +205,81 @@ void PageListModel::clear()
     m_hasDuplicates.clear();
     m_recognitionMode.clear();
     m_verification.clear();
+    m_selected.clear();
     m_current = -1;
     endResetModel();
+    emit selectionChanged();
+}
+
+void PageListModel::selectSingle(int index)
+{
+    if (index < 0 || index >= m_recognized.size())
+        return;
+
+    bool changed = false;
+    for (int row = 0; row < m_selected.size(); ++row) {
+        const bool nowSelected = (row == index);
+        if (m_selected.at(row) == nowSelected)
+            continue;
+        m_selected[row] = nowSelected;
+        const QModelIndex mi = this->index(row);
+        emit dataChanged(mi, mi, {SelectedRole});
+        changed = true;
+    }
+    if (changed)
+        emit selectionChanged();
+}
+
+void PageListModel::setSelected(int index, bool selected)
+{
+    if (index < 0 || index >= m_selected.size())
+        return;
+    if (m_selected.at(index) == selected)
+        return;
+    m_selected[index] = selected;
+    const QModelIndex mi = this->index(index);
+    emit dataChanged(mi, mi, {SelectedRole});
+    emit selectionChanged();
+}
+
+void PageListModel::selectAll()
+{
+    bool changed = false;
+    for (int row = 0; row < m_selected.size(); ++row) {
+        if (m_selected.at(row))
+            continue;
+        m_selected[row] = true;
+        const QModelIndex mi = this->index(row);
+        emit dataChanged(mi, mi, {SelectedRole});
+        changed = true;
+    }
+    if (changed)
+        emit selectionChanged();
+}
+
+void PageListModel::clearSelection()
+{
+    bool changed = false;
+    for (int row = 0; row < m_selected.size(); ++row) {
+        if (!m_selected.at(row))
+            continue;
+        m_selected[row] = false;
+        const QModelIndex mi = this->index(row);
+        emit dataChanged(mi, mi, {SelectedRole});
+        changed = true;
+    }
+    if (changed)
+        emit selectionChanged();
+}
+
+int PageListModel::selectedCount() const
+{
+    return static_cast<int>(std::count(m_selected.cbegin(), m_selected.cend(), true));
+}
+
+bool PageListModel::isSelected(int index) const
+{
+    return index >= 0 && index < m_selected.size() && m_selected.at(index);
 }
 
 }  // namespace llocr

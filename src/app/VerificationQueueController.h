@@ -80,6 +80,9 @@ public slots:
     void checkBlock(int pageIndex, int boxIndex);
     void checkPageEnabledBlocks(int pageIndex, int fixMode = FixFromSetting);
     void checkAllEnabledBlocks(int fixMode = FixFromSetting);
+    // The toolbar's scoped spellings: the same collections over an explicit
+    // page set (the thumbnail selection).
+    void checkPagesEnabledBlocks(const QList<int> &pages, int fixMode = FixFromSetting);
     // Re-recognition runs the queue straight in its second phase. The single
     // block form takes any status; the page/all forms pick the problem blocks.
     void recheckBlock(int pageIndex, int boxIndex);
@@ -88,11 +91,13 @@ public slots:
     // Recognize every block of the page that has no text yet (the layout-pass
     // blocks); image placeholders are skipped.
     void recheckPageBlocks(int pageIndex);
+    void recheckPagesBlocks(const QList<int> &pages);
     // The fix pipeline (ADR 163): a single block regardless of status (the
     // entry guards on the block having text), or every Mismatch/Review block
     // of the document.
     void fixBlock(int pageIndex, int boxIndex);
     void fixAllProblemBlocks();
+    void fixPagesProblemBlocks(const QList<int> &pages);
     void stop();
 
 signals:

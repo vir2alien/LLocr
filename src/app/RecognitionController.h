@@ -49,6 +49,10 @@ public:
     // profile, model and server role.
     void startCurrent(int index, int totalPages, ConnectionRole task = ConnectionRole::PageOcr);
     void startAll(int totalPages, ConnectionRole task = ConnectionRole::PageOcr);
+    // The toolbar's scoped spelling: an explicit page set (the thumbnail
+    // selection). Explicitly picked pages are recognized even when already
+    // recognized; unreadable ones still report as skipped.
+    void startPages(const QList<int> &pages, ConnectionRole task = ConnectionRole::PageOcr);
     void stop();
 
 signals:
@@ -67,6 +71,8 @@ private:
     void resolveModel();
     int firstPageToRecognize(int from);
     void recognizePage(int index);
+    void recognizeNextScopePage();
+    bool launchPageRequest(int index);
     void finishRun();
     void setBusy(bool busy);
     QString promptText() const;
@@ -91,6 +97,8 @@ private:
 
     int m_totalPages = 0;
     int m_startIndex = 0;
+    QList<int> m_pageQueue;  ///< the startPages run; empty for the range modes
+    int m_queuePos = 0;
     bool m_busy = false;
     bool m_stopRequested = false;
     bool m_recognizeAll = false;

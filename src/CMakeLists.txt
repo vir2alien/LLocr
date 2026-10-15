@@ -359,7 +359,7 @@ endforeach()
 # BlockNames and RoleProfiles live in the module root, not in a subdirectory,
 # because qmllint resolves a singleton through the *nearest* qmldir and a
 # subdirectory qmldir (generated per directory) does not declare it.
-foreach(_singleton Theme.qml BlockNames.qml RoleProfiles.qml PageStatus.qml)
+foreach(_singleton Theme.qml BlockNames.qml RoleProfiles.qml PageStatus.qml TaskStatus.qml)
     set_source_files_properties("${CMAKE_SOURCE_DIR}/resources/qml/${_singleton}"
         PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 endforeach()

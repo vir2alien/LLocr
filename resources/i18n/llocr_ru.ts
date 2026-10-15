@@ -137,6 +137,10 @@
         <translation>Сначала укажите название модели в настройках.</translation>
     </message>
     <message>
+        <source>Page text copied to the clipboard.</source>
+        <translation>Текст страницы скопирован в буфер обмена.</translation>
+    </message>
+    <message>
         <source>The block-recognition model does not support page markup.</source>
         <translation type="obsolete">Модель blockRecognition не поддерживает разметку страниц.</translation>
     </message>
@@ -912,189 +916,220 @@
 <context>
     <name>Header</name>
     <message>
-        <location filename="../qml/MainWindow/Header.qml" line="+167"/>
+        <source>File</source>
+        <translation>Файл</translation>
+    </message>
+    <message>
         <source>Open…</source>
         <translation>Открыть…</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>Open project…</source>
         <translation>Открыть проект…</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Save project</source>
         <translation>Сохранить проект</translation>
     </message>
     <message>
-        <location line="+25"/>
         <source>Save project as…</source>
         <translation>Сохранить проект как…</translation>
     </message>
     <message>
-        <location line="-157"/>
-        <source>Recognize</source>
-        <translation>Распознать</translation>
+        <source>Export…</source>
+        <translation>Экспорт…</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <source>Recognize every page of the document</source>
-        <translation>Распознать все страницы документа</translation>
+        <source>Preset:</source>
+        <translation>Пресет:</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source>All pages without markup</source>
-        <translation>Все страницы без разметки</translation>
+        <source>Manual</source>
+        <translation>Ручной</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source>Verify</source>
-        <translation>Проверить</translation>
+        <source>Manual (step by step)</source>
+        <translation>Ручной (пошаговый)</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <source>Verify the recognized blocks on every page</source>
-        <translation>Проверить распознанные блоки на всех страницах</translation>
+        <source>Auto-recognize</source>
+        <translation>Авто-распознавание</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>Fix</source>
-        <translation>Исправить</translation>
+        <source>Automatic pipelines arrive in a later step</source>
+        <translation>Автоматические пайплайны появятся в следующем шаге</translation>
     </message>
     <message>
-        <source>Re-recognize the problem blocks in the whole document</source>
-        <translation type="vanished">Повторно распознать проблемные блоки во всём документе</translation>
+        <source>all %1</source>
+        <translation>все %1</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <source>%1 pg.</source>
+        <translation>%1 стр.</translation>
+    </message>
+    <message>
         <source>Mark up</source>
         <translation>Разметить</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <source>Mark up every page of the document</source>
-        <translation>Разметить все страницы документа</translation>
+        <source>Find the blocks on the selected pages</source>
+        <translation>Найти блоки на выбранных страницах</translation>
     </message>
     <message>
-        <location line="+205"/>
-        <source>Mark up?</source>
-        <translation>Разметить?</translation>
+        <source>Recognize</source>
+        <translation type="vanished">Распознать</translation>
+    </message>
+    <message>
+        <source>With markup</source>
+        <translation>С разметкой</translation>
+    </message>
+    <message>
+        <source>By the marked blocks</source>
+        <translation>По размеченным блокам</translation>
+    </message>
+    <message>
+        <source>Without markup</source>
+        <translation>Без разметки</translation>
+    </message>
+    <message>
+        <source>Recognize the selected pages: blocks and their text in one pass</source>
+        <translation>Распознать выбранные страницы: блоки и их текст одним проходом</translation>
+    </message>
+    <message>
+        <source>Recognize the marked blocks that still have no text</source>
+        <translation>Распознать размеченные блоки, у которых ещё нет текста</translation>
+    </message>
+    <message>
+        <source>Recognize the selected pages as raw text</source>
+        <translation>Распознать выбранные страницы как сплошной текст</translation>
+    </message>
+    <message>
+        <source>Without markup (raw text)</source>
+        <translation type="vanished">Без разметки (сырой текст)</translation>
+    </message>
+    <message>
+        <source>Recognize the text of the marked blocks</source>
+        <translation type="vanished">Распознать текст размеченных блоков</translation>
+    </message>
+    <message>
+        <source>Recognize the selected pages</source>
+        <translation type="vanished">Распознать выбранные страницы</translation>
+    </message>
+    <message>
+        <source>Verify</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <source>Verify the recognized blocks on the selected pages</source>
+        <translation>Проверить распознанные блоки на выбранных страницах</translation>
+    </message>
+    <message>
+        <source>Fix</source>
+        <translation>Исправить</translation>
+    </message>
+    <message>
+        <source>Fix the problem blocks on the selected pages</source>
+        <translation>Исправить проблемные блоки на выбранных страницах</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Стоп</translation>
+    </message>
+    <message>
+        <source>Export</source>
+        <translation>Экспорт</translation>
+    </message>
+    <message>
+        <source>Export the whole document</source>
+        <translation>Экспортировать весь документ</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Настройки</translation>
+    </message>
+    <message>
+        <source>Plain text</source>
+        <translation>Простой текст</translation>
+    </message>
+    <message>
+        <source>Complex layout</source>
+        <translation>Сложная вёрстка</translation>
+    </message>
+    <message>
+        <source>Technical / scientific</source>
+        <translation>Технический / научный</translation>
+    </message>
+    <message>
+        <source>Verify only</source>
+        <translation>Только проверить</translation>
+    </message>
+    <message>
+        <source>Whole document…</source>
+        <translation>Весь документ…</translation>
+    </message>
+    <message>
+        <source>Current page…</source>
+        <translation>Текущая страница…</translation>
+    </message>
+    <message>
+        <source>Setup wizard</source>
+        <translation>Мастер настройки</translation>
+    </message>
+    <message>
+        <source>Interface</source>
+        <translation>Интерфейс</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>Вывод</translation>
+    </message>
+    <message>
+        <source>Verification</source>
+        <translation>Проверка</translation>
+    </message>
+    <message>
+        <source>Runtime</source>
+        <translation>Рантайм</translation>
     </message>
     <message>
         <source>Models by task</source>
         <translation>Модели по задачам</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <source>Models</source>
+        <translation>Модели</translation>
+    </message>
+    <message>
+        <source>Mark up?</source>
+        <translation>Разметить?</translation>
+    </message>
+    <message>
         <source>Marking up replaces the recognized blocks and text on every page. Continue?</source>
         <translation>Разметка заменит распознанные блоки и текст на всех страницах. Продолжить?</translation>
     </message>
     <message>
-        <location line="-199"/>
-        <source>Export</source>
-        <translation>Экспортировать</translation>
+        <source>Marking up replaces the recognized blocks and text on the selected pages. Continue?</source>
+        <translation>Разметка заменит распознанные блоки и текст на выбранных страницах. Продолжить?</translation>
     </message>
     <message>
-        <source>Recognize all</source>
-        <translation type="vanished">Распознать всё</translation>
+        <source>Recognize every page of the document</source>
+        <translation type="vanished">Распознать все страницы документа</translation>
     </message>
     <message>
-        <source>Recognize problem blocks on the page</source>
-        <translation type="vanished">Распознать проблемные блоки на странице</translation>
+        <source>All pages without markup</source>
+        <translation type="vanished">Все страницы без разметки</translation>
     </message>
     <message>
-        <source>Recognize all blocks on the page</source>
-        <translation type="vanished">Распознать все блоки страницы</translation>
+        <source>Verify the recognized blocks on every page</source>
+        <translation type="vanished">Проверить распознанные блоки на всех страницах</translation>
     </message>
     <message>
-        <source>Recognize all problem blocks</source>
-        <translation type="vanished">Распознать все проблемные блоки</translation>
-    </message>
-    <message>
-        <source>Mark up all pages</source>
-        <translation type="vanished">Разметить все страницы</translation>
-    </message>
-    <message>
-        <source>Check page</source>
-        <translation type="vanished">Проверить страницу</translation>
-    </message>
-    <message>
-        <source>Check all</source>
-        <translation type="vanished">Проверить всё</translation>
-    </message>
-    <message>
-        <source>Marking up replaces the recognized blocks and text on this page. Continue?</source>
-        <translation type="vanished">Разметка заменит распознанные блоки и текст на этой странице. Продолжить?</translation>
-    </message>
-    <message>
-        <location line="-45"/>
-        <source>File</source>
-        <translation>Файл</translation>
-    </message>
-    <message>
-        <location line="+53"/>
-        <source>Stop</source>
-        <translation>Стоп</translation>
-    </message>
-    <message>
-        <location line="+134"/>
-        <source>Export…</source>
-        <translation>Экспорт…</translation>
-    </message>
-    <message>
-        <location line="-92"/>
-        <source>Settings</source>
-        <translation>Настройки</translation>
-    </message>
-    <message>
-        <location line="-66"/>
         <source>Fix the problem blocks in the whole document</source>
-        <translation>Исправить проблемные блоки во всём документе</translation>
+        <translation type="vanished">Исправить проблемные блоки во всём документе</translation>
     </message>
     <message>
-        <location line="+169"/>
-        <source>Setup wizard</source>
-        <translation>Мастер настройки</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Interface</source>
-        <translation>Интерфейс</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Output</source>
-        <translation>Вывод</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Verification</source>
-        <translation>Проверка</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Runtime</source>
-        <translation>Рантайм</translation>
-    </message>
-    <message>
-        <source>OCR model</source>
-        <translation type="vanished">Модель OCR</translation>
-    </message>
-    <message>
-        <source>Decision model</source>
-        <translation type="vanished">Модель decision</translation>
-    </message>
-    <message>
-        <source>Block OCR model</source>
-        <translation type="vanished">Модель OCR блока</translation>
-    </message>
-    <message>
-        <source>Layout model</source>
-        <translation type="vanished">Модель разметки</translation>
-    </message>
-    <message>
-        <source>Models</source>
-        <translation>Модели</translation>
+        <source>Mark up every page of the document</source>
+        <translation type="vanished">Разметить все страницы документа</translation>
     </message>
 </context>
 <context>
@@ -1889,6 +1924,33 @@
     </message>
 </context>
 <context>
+    <name>TaskStatus</name>
+    <message>
+        <source>Opening %1 / %2</source>
+        <translation>Открытие %1 / %2</translation>
+    </message>
+    <message>
+        <source>Checking %1 / %2</source>
+        <translation>Проверка %1 / %2</translation>
+    </message>
+    <message>
+        <source>Fixing %1 / %2</source>
+        <translation>Исправление %1 / %2</translation>
+    </message>
+    <message>
+        <source>Re-recognizing %1 / %2</source>
+        <translation>Распознавание %1 / %2</translation>
+    </message>
+    <message>
+        <source>Markup %1 / %2</source>
+        <translation>Разметка %1 / %2</translation>
+    </message>
+    <message>
+        <source>Check finished</source>
+        <translation>Проверка закончена</translation>
+    </message>
+</context>
+<context>
     <name>PageStatus</name>
     <message>
         <location filename="../qml/PageStatus.qml" line="+11"/>
@@ -1919,75 +1981,68 @@
 <context>
     <name>PageToolBar</name>
     <message>
-        <location filename="../qml/MainWindow/PageToolBar.qml" line="+45"/>
+        <source>Page</source>
+        <translation>Стр.</translation>
+    </message>
+    <message>
+        <source>Not implemented yet</source>
+        <translation>Функция пока не реализована</translation>
+    </message>
+    <message>
         <source>Recognize page</source>
-        <translation>Распознать страницу</translation>
+        <translation type="vanished">Распознать страницу</translation>
+    </message>
+    <message>
+        <source>Without markup</source>
+        <translation type="vanished">Без разметки</translation>
+    </message>
+    <message>
+        <source>Problem blocks</source>
+        <translation type="vanished">Проблемные блоки</translation>
+    </message>
+    <message>
+        <source>All blocks</source>
+        <translation type="vanished">Все блоки</translation>
+    </message>
+    <message>
+        <source>Verify</source>
+        <translation type="vanished">Проверить</translation>
+    </message>
+    <message>
+        <source>Verify only</source>
+        <translation type="vanished">Только проверить</translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation type="vanished">Сохранить страницу</translation>
+    </message>
+    <message>
+        <source>Mark up page</source>
+        <translation type="vanished">Разметить страницу</translation>
+    </message>
+    <message>
+        <source>Mark up?</source>
+        <translation type="vanished">Разметить?</translation>
+    </message>
+    <message>
+        <source>Marking up replaces the recognized blocks and text on this page. Continue?</source>
+        <translation type="vanished">Разметка заменит распознанные блоки и текст на этой странице. Продолжить?</translation>
     </message>
     <message>
         <source>Recognize problem blocks on the page</source>
         <translation type="vanished">Распознать проблемные блоки страницы</translation>
     </message>
     <message>
-        <location line="+9"/>
-        <source>Without markup</source>
-        <translation>Без разметки</translation>
-    </message>
-    <message>
-        <location line="+87"/>
-        <source>Problem blocks</source>
-        <translation>Проблемные блоки</translation>
-    </message>
-    <message>
         <source>Recognize all blocks on the page</source>
         <translation type="vanished">Распознать все блоки страницы</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>All blocks</source>
-        <translation>Все блоки</translation>
-    </message>
-    <message>
-        <location line="-85"/>
-        <source>Verify</source>
-        <translation>Проверить</translation>
-    </message>
-    <message>
-        <location line="+96"/>
-        <source>Verify only</source>
-        <translation>Только проверить</translation>
     </message>
     <message>
         <source>Verify and fix</source>
         <translation type="vanished">Проверить и исправить</translation>
     </message>
     <message>
-        <location line="-85"/>
-        <source>Save page</source>
-        <translation>Сохранить страницу</translation>
-    </message>
-    <message>
-        <location line="-8"/>
-        <source>Mark up page</source>
-        <translation>Разметить страницу</translation>
-    </message>
-    <message>
         <source>Mark up all pages</source>
         <translation type="vanished">Разметить все страницы</translation>
-    </message>
-    <message>
-        <location line="+122"/>
-        <source>Mark up?</source>
-        <translation>Разметить?</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Marking up replaces the recognized blocks and text on this page. Continue?</source>
-        <translation>Разметка заменит распознанные блоки и текст на этой странице. Продолжить?</translation>
-    </message>
-    <message>
-        <location line="+59"/>
-        <source>Not implemented yet</source>
-        <translation>Функция пока не реализована</translation>
     </message>
 </context>
 <context>
@@ -2949,6 +3004,10 @@
         <location line="-85"/>
         <source>Nothing to recognize:</source>
         <translation>Распознавать нечего:</translation>
+    </message>
+    <message>
+        <source>Recognizing page %1 (%2 of %3)…</source>
+        <translation>Распознавание страницы %1 (%2 из %3)…</translation>
     </message>
     <message>
         <location line="+24"/>
@@ -4428,9 +4487,20 @@
 <context>
     <name>ThumbPanel</name>
     <message>
-        <location filename="../qml/MainWindow/ThumbPanel.qml" line="+15"/>
         <source>No pages</source>
         <translation>Нет страниц</translation>
+    </message>
+    <message>
+        <source>Pages</source>
+        <translation>Страницы</translation>
+    </message>
+    <message>
+        <source>Select all (%1)</source>
+        <translation>Выбрать все (%1)</translation>
+    </message>
+    <message>
+        <source>Select none</source>
+        <translation>Снять выделение</translation>
     </message>
 </context>
 <context>
@@ -4879,26 +4949,26 @@
 <context>
     <name>WorkPanel</name>
     <message>
-        <location filename="../qml/MainWindow/WorkPanel.qml" line="+28"/>
         <source>Recognized text will appear here</source>
         <translation>Здесь появится распознанный текст</translation>
     </message>
     <message>
-        <location line="+19"/>
         <source>Edited</source>
         <translation>Изменено</translation>
     </message>
     <message>
-        <source>Recognized</source>
-        <translation type="vanished">Распознано</translation>
-    </message>
-    <message>
-        <location line="+9"/>
         <source>Revert</source>
         <translation>Отменить изменения</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <source>Copy the page text</source>
+        <translation>Копировать текст страницы</translation>
+    </message>
+    <message>
+        <source>Text (MD)</source>
+        <translation>Текст (MD)</translation>
+    </message>
+    <message>
         <source>Preview</source>
         <translation>Предпросмотр</translation>
     </message>

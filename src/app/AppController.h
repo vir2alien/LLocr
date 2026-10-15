@@ -98,6 +98,13 @@ class AppController : public QObject
     Q_PROPERTY(bool fixModelAvailable READ fixModelAvailable NOTIFY availabilityChanged)
     Q_PROPERTY(int currentPageRecognitionMode READ currentPageRecognitionMode NOTIFY availabilityChanged)
     Q_PROPERTY(int currentPageVerification READ currentPageVerification NOTIFY availabilityChanged)
+    // The toolbar's scope: the thumbnail selection, empty = every page. The
+    // counts ride the availability broadcast so a verdict landing on a
+    // non-current page re-announces them too.
+    Q_PROPERTY(int selectedPageCount READ selectedPageCount NOTIFY availabilityChanged)
+    Q_PROPERTY(int scopedProblemBlockCount READ scopedProblemBlockCount NOTIFY availabilityChanged)
+    Q_PROPERTY(bool scopeVerificationSupported READ scopeVerificationSupported NOTIFY availabilityChanged)
+    Q_PROPERTY(bool scopeBlocksRecognitionSupported READ scopeBlocksRecognitionSupported NOTIFY availabilityChanged)
 
     Q_PROPERTY(bool layoutBusy READ layoutBusy NOTIFY layoutStateChanged)
     Q_PROPERTY(int layoutProgressDone READ layoutProgressDone NOTIFY layoutProgressChanged)
@@ -198,6 +205,10 @@ public:
     bool fixModelAvailable() const;
     int currentPageRecognitionMode() const;
     int currentPageVerification() const;
+    int selectedPageCount() const;
+    int scopedProblemBlockCount() const;
+    bool scopeVerificationSupported() const;
+    bool scopeBlocksRecognitionSupported() const;
 
     bool layoutBusy() const { return m_layout.busy(); }
     int layoutProgressDone() const { return m_layout.progressDone(); }
@@ -281,6 +292,13 @@ public slots:
     Q_INVOKABLE void attachBlockTextHighlighter(QObject *textDocument, const QColor &color);
     Q_INVOKABLE void checkEnabledBlocksOnPage(int fixMode = VerificationQueueController::FixFromSetting);
     Q_INVOKABLE void checkAllEnabledBlocks(int fixMode = VerificationQueueController::FixFromSetting);
+    // The toolbar's scoped spellings: the same runs over the thumbnail
+    // selection (empty selection = every page).
+    Q_INVOKABLE void recognizeScopePages(const QString &task);
+    Q_INVOKABLE void recognizeScopeBlocks();
+    Q_INVOKABLE void layoutScopePages();
+    Q_INVOKABLE void checkScopeEnabledBlocks(int fixMode = VerificationQueueController::FixFromSetting);
+    Q_INVOKABLE void fixScopeProblemBlocks();
     Q_INVOKABLE void stopCheck();
     // Block (re-)recognition through the blockRecognition role: the selected
     // block regardless of status, or only the problem blocks (Mismatch/Review).
@@ -299,6 +317,7 @@ public slots:
     Q_INVOKABLE void layoutAllPages();
     Q_INVOKABLE void stopLayout();
     Q_INVOKABLE void cancelImport();
+    Q_INVOKABLE void copyCurrentPageText();
     Q_INVOKABLE void openProject(const QUrl &fileUrl);
     Q_INVOKABLE void saveProject(const QUrl &fileUrl);
 
@@ -355,6 +374,13 @@ private:
     // carries text; a no-op for the other modes.
     void refreshRecognitionModeAfterBlockText(int pageIndex);
 
+    // The toolbar scope: the thumbnail selection, empty selection = every
+    // page.
+    QList<int> scopePages() const;
+    // A fresh document starts with its current page selected so the toolbar
+    // scope reads "1 page", not "all".
+    void ensureDefaultSelection();
+
     // The values behind NOTIFY availabilityChanged; the signal fires only when
     // one of them actually flips, so a per-block queue update does not make
     // QML rescan the document (C++-21). The current-page status values ride
@@ -373,8 +399,12 @@ private:
         bool decisionModel = false;
         bool layoutModel = false;
         bool fixModel = false;
+        bool scopeVerification = false;
+        bool scopeBlocksRecognition = false;
         int currentPageMode = int(PageRecognitionMode::None);
         int currentPageVerification = int(PageVerification::Incomplete);
+        int selectedPages = 0;
+        int scopedProblemBlocks = 0;
         bool operator==(const AvailabilityFlags &) const = default;
     };
     void updateAvailability();

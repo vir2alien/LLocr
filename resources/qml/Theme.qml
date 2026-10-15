@@ -22,6 +22,9 @@ QtObject {
 
     readonly property color accent: dark ? "#b0b0b0" : "#4a4a4a"
     readonly property color selected: dark ? "#333333" : "#e2e2e2"
+    // The one warm accent: the «Исправить (N)» badge lights up when a check
+    // has left problem blocks behind.
+    readonly property color accentAttention: "#EF6C00"
 
     readonly property color error: "#c0392b"
     readonly property color success: "#27ae60"

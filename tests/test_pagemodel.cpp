@@ -180,6 +180,76 @@ private slots:
         const QModelIndex mi = model.index(row);
         return mi.isValid() && model.data(mi, PageListModel::CurrentRole).toBool();
     }
+
+    bool isSelectedAt(const PageListModel &model, int row, bool selected = true) const
+    {
+        const QModelIndex mi = model.index(row);
+        return mi.isValid() && model.data(mi, PageListModel::SelectedRole).toBool() == selected;
+    }
+
+    void selectionBasics()
+    {
+        PageListModel model;
+        model.appendPages(4);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        // A fresh list selects nothing: the scope is the whole document.
+        QCOMPARE(model.selectedCount(), 0);
+        QVERIFY(!model.isSelected(0));
+
+        QSignalSpy spy(&model, &PageListModel::selectionChanged);
+
+        model.selectSingle(2);
+        QCOMPARE(model.selectedCount(), 1);
+        QVERIFY(isSelectedAt(model, 2));
+        QVERIFY(isSelectedAt(model, 0, false));
+        QCOMPARE(spy.count(), 1);
+
+        // A no-op select stays silent.
+        model.selectSingle(2);
+        QCOMPARE(spy.count(), 1);
+
+        // Toggle one extra page on, then off.
+        model.setSelected(0, true);
+        QCOMPARE(model.selectedCount(), 2);
+        model.setSelected(0, false);
+        QCOMPARE(model.selectedCount(), 1);
+        QCOMPARE(spy.count(), 3);
+
+        model.selectAll();
+        QCOMPARE(model.selectedCount(), 4);
+        QCOMPARE(spy.count(), 4);
+        model.selectAll();
+        QCOMPARE(spy.count(), 4);  // already complete
+
+        model.clearSelection();
+        QCOMPARE(model.selectedCount(), 0);
+        QVERIFY(isSelectedAt(model, 2, false));
+
+        // Guards: out-of-range writes change nothing.
+        model.setSelected(9, true);
+        model.selectSingle(-1);
+        QCOMPARE(model.selectedCount(), 0);
+    }
+
+    void selectionFollowsMovesAndRemovals()
+    {
+        PageListModel model;
+        model.appendPages(4);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        model.selectSingle(1);
+        model.movePage(1, 3);
+        QVERIFY(isSelectedAt(model, 3));  // the flag moves with the page
+        QVERIFY(isSelectedAt(model, 1, false));
+
+        model.removePage(3);
+        QCOMPARE(model.selectedCount(), 0);  // the selected page is gone
+
+        model.setSelected(1, true);
+        model.removePage(0);
+        QVERIFY(isSelectedAt(model, 0));  // the selection shifts up with the row
+    }
 };
 
 QTEST_MAIN(TestPageModel)

@@ -391,20 +391,32 @@
     deliberately absent from the setup wizard). The 1036² page squash mirrors
     the upstream calibration. Manual only — not wired into the automatic
     pipeline. Model manual: `docs/15-teleocr.md`.
-  - **Interface rework (ADR 151, Oct 2026)** — the header is «Файл ▾» +
-    book-wide «Распознать» (a split button: main click = pageOcr with
-    markup, the menu = rawPageOcr without) / «Проверить» / «Исправить» /
-    «Разметить» / «Экспортировать» (Stop, page nav, Настройки stay); the
-    per-page actions live in the two-row **page toolbar**
-    (`MainWindow/PageToolBar.qml` above the image, a 2×2 action grid:
-    Распознать страницу ▾ (dropdown «Проблемные блоки» / «Все блоки») over
-    Разметить страницу, Проверить ▾ — main click = verify + fix via the
-    `FixMode` override of `check/autoFix` — over Сохранить страницу → the
-    export dialog preselected to the current page; plus disabled stubs for
-    block-add (2×3 icon grid, the ▾ lists all
-    `BlockNames` types) and page rotation); the selected block carries a
-    floating **mini-toolbar** (`MainWindow/BlockMiniToolbar.qml`: recognize /
-    verify / delete) and `BlockEditPanel` keeps only the texts + «Отменить
+  - **Interface rework (ADR 151, Oct 2026; unified toolbar ADR 167)** — the
+    header is one row: «Файл ▾», the **preset stub** («Ручной (Пошаговый)»
+    checked; three auto presets + «Авто-распознавание» disabled — automatic
+    pipelines are a later step) and the pipeline group **Разметить /
+    Распознать ▾ / Проверить ▾ / Исправить** — all acting on the **thumbnail
+    selection** (empty selection = the whole document; a fresh document
+    selects its current page; Ctrl/Cmd+click toggles, «Выбрать все» in the
+    column header; the captions carry the scope, «Исправить» lights
+    `Theme.accentAttention` with a `(N)` badge of `scopedProblemBlockCount`).
+    «Распознать ▾» is a three-mode picker — «С разметкой»
+    (`recognizeScopePages("pageOcr")`, the default), «По размеченным блокам»
+    (`recognizeScopeBlocks`), «Без разметки» (rawPageOcr); the chosen item
+    becomes the button caption, an item is selectable only while its model
+    and inputs exist. While anything runs, the pipeline buttons and the
+    preset stub go inactive and a Стоп key appears right of «Исправить»;
+    the progress text stays in the footer (the `TaskStatus` singleton).
+    On the right —
+    Экспорт ▾ («Весь документ…» / «Текущая страница…» through the export
+    dialog) and the ⚙️ icon. The **page toolbar**
+    (`MainWindow/PageToolBar.qml`) collapses to one row: «Стр. ‹ n / N ›»
+    page navigation plus the block-add stubs (the ▾ lists all `BlockNames`
+    types) and page rotation. The right panel switches text/preview through
+    the segmented «Текст (MD) | Предпросмотр» control next to «Копировать»
+    (`copyCurrentPageText`). The selected block carries a floating
+    **mini-toolbar** (`MainWindow/BlockMiniToolbar.qml`: recognize / verify /
+    fix / delete) and `BlockEditPanel` keeps only the texts + «Отменить
     исправление». Icons: Lucide SVGs in `resources/icons/ui/` (qrc
     `/icons/ui`, `ui_icons` CMake resource) colorized by `Common/Icon.qml`.
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate

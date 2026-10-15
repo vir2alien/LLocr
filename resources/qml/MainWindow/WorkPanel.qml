@@ -12,6 +12,8 @@ Rectangle {
     color: Theme.surfaceAlt
 
     property string previewMarkdown: ""
+    // The segmented switch's state: text editor or the Markdown preview.
+    property bool previewActive: false
 
     readonly property var selectedRange: Controller.selectedBlockTextRange
 
@@ -24,7 +26,7 @@ Rectangle {
     LLOLabel {
         anchors.centerIn: parent
         verticalAlignment: Text.AlignVCenter
-        visible: !Controller.hasResult && !previewSwitch.checked
+        visible: !Controller.hasResult && !root.previewActive
         text: qsTr("Recognized text will appear here")
         color: Theme.textMuted
         horizontalAlignment: Text.AlignHCenter
@@ -38,7 +40,7 @@ Rectangle {
         spacing: 0
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: previewSwitch.implicitHeight + 2*Theme.spacingSmall
+            Layout.preferredHeight: viewSwitch.implicitHeight + 2*Theme.spacingSmall
             spacing: Theme.spacing
             Layout.margins: Theme.spacingSmall
 
@@ -59,12 +61,30 @@ Rectangle {
             }
 
             Item { Layout.fillWidth: true }
-            Switch {
-                id: previewSwitch
-                Layout.alignment: Qt.AlignVCenter
-                topPadding: 0
-                bottomPadding: 0
-                text: qsTr("Preview")
+
+            ToolButton {
+                id: copyButton
+                implicitWidth: 28
+                implicitHeight: 26
+                padding: 0
+                enabled: Controller.hasResult
+                Accessible.name: qsTr("Copy the page text")
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Copy the page text")
+                Icon {
+                    anchors.centerIn: parent
+                    name: "clipboard-copy"
+                    size: 15
+                    color: copyButton.enabled ? Theme.textPrimary : Theme.textMuted
+                }
+                onClicked: Controller.copyCurrentPageText()
+            }
+
+            SegmentedControl {
+                id: viewSwitch
+                labels: [qsTr("Text (MD)"), qsTr("Preview")]
+                currentIndex: root.previewActive ? 1 : 0
+                onActivated: (index) => root.previewActive = index === 1
             }
         }// RowLayout text menu
         Rectangle {
@@ -76,7 +96,7 @@ Rectangle {
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: previewSwitch.checked ? 1 : 0
+            currentIndex: root.previewActive ? 1 : 0
 
             Flickable {
                 id: textFlickable
@@ -174,7 +194,7 @@ Rectangle {
             }
 
             Loader {
-                active: previewSwitch.checked
+                active: root.previewActive
                 onActiveChanged: if (active) previewDebounce.restart()
                 sourceComponent: previewComponent
             }
@@ -185,7 +205,7 @@ Rectangle {
         target: Controller
         function onSelectedBoxChanged() {
             const range = root.selectedRange
-            if (range.length !== 2 || previewSwitch.checked)
+            if (range.length !== 2 || root.previewActive)
                 return
             if (textArea.activeFocus)
                 return

@@ -15,7 +15,9 @@ ApplicationWindow {
     id: mainWindow
     width: 1360
     height: 820
-    minimumWidth: 900
+    // One row has to hold the whole toolbar — including the Stop key that
+    // appears next to «Исправить» while a run is active.
+    minimumWidth: 1160
     minimumHeight: 600
     visible: true
     title: Controller.projectFileName !== ""
@@ -65,13 +67,9 @@ ApplicationWindow {
         onOpenProjectRequested: openProjectDialog.open()
         onSaveProjectRequested: mainWindow.saveCurrentProject()
         onSaveProjectAsRequested: saveProjectDialog.open()
-        onExportRequested: (multiPage) => {
-            if (multiPage) {
-                exportOptionsDialog.open()
-            } else {
-                exportDialog.scope = 0
-                exportDialog.open()
-            }
+        onExportRequested: (presetScope) => {
+            exportOptionsDialog.presetScope = presetScope
+            exportOptionsDialog.open()
         }
         onSetupWizardRequested: mainWindow.openSetupWizard()
         onOpenUiSettingsRequested: showWindow(uiSettingsLoader)
@@ -100,8 +98,8 @@ ApplicationWindow {
         }
 
         ThumbPanel {
-            SplitView.preferredWidth: 170
-            SplitView.minimumWidth: 120
+            SplitView.preferredWidth: 190
+            SplitView.minimumWidth: 170
             SplitView.maximumWidth: 300
             color: Theme.surface
             visible: Controller.hasImage
@@ -110,10 +108,6 @@ ApplicationWindow {
         ImagePanel {
             SplitView.preferredWidth: parent.width * 0.45
             SplitView.minimumWidth: 300
-            onSavePageRequested: {
-                exportOptionsDialog.presetScope = 1
-                exportOptionsDialog.open()
-            }
         }
 
         WorkPanel {

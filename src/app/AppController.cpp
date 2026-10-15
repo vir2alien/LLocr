@@ -7,10 +7,12 @@
 #include <utility>
 
 #include <QBuffer>
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QFutureWatcher>
+#include <QGuiApplication>
 #include <QHash>
 #include <QMarginsF>
 #include <QMutex>
@@ -111,6 +113,7 @@ AppController::AppController(SettingsStore &settings,
     connect(this, &AppController::resultChanged, this, &AppController::updateAvailability);
     connect(this, &AppController::configChanged, this, &AppController::updateAvailability);
     connect(this, &AppController::importingChanged, this, &AppController::updateAvailability);
+    connect(&m_pageModel, &PageListModel::selectionChanged, this, &AppController::updateAvailability);
 
     connect(&m_layout, &LayoutController::busyChanged, this, [this]() {
         emit layoutStateChanged();
@@ -620,6 +623,8 @@ void AppController::recordImportedFile(const std::shared_ptr<ImportState> &state
             m_currentPage = 0;
         m_pageModel.appendPages(added);
         m_pageModel.setCurrent(m_currentPage);
+        if (pagesBefore == 0)
+            ensureDefaultSelection();
         notifyPageListGrown();
     } else {
         ++state->skipped;
@@ -711,6 +716,7 @@ bool AppController::removePage(int index)
 
     m_pageModel.removePage(index);
     m_pageModel.setCurrent(m_currentPage);
+    ensureDefaultSelection();
 
     updateBoxesForCurrent();
 
@@ -1056,6 +1062,41 @@ void AppController::checkAllEnabledBlocks(int fixMode)
     m_verify.checkAllEnabledBlocks(fixMode);
 }
 
+void AppController::recognizeScopePages(const QString &task)
+{
+    const ConnectionRole role = connectionRoleFromName(task);
+    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
+        return;
+    if (!canRecognize()) {
+        setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
+        return;
+    }
+    m_recognition.startPages(scopePages(), role);
+    m_recognitionStopped = false;
+}
+
+void AppController::recognizeScopeBlocks()
+{
+    if (m_layout.busy())
+        return;
+    m_verify.recheckPagesBlocks(scopePages());
+}
+
+void AppController::layoutScopePages()
+{
+    startLayout(scopePages());
+}
+
+void AppController::checkScopeEnabledBlocks(int fixMode)
+{
+    m_verify.checkPagesEnabledBlocks(scopePages(), fixMode);
+}
+
+void AppController::fixScopeProblemBlocks()
+{
+    m_verify.fixPagesProblemBlocks(scopePages());
+}
+
 void AppController::stopCheck()
 {
     m_verify.stop();
@@ -1126,6 +1167,15 @@ void AppController::layoutAllPages()
 void AppController::stopLayout()
 {
     m_layout.stop();
+}
+
+void AppController::copyCurrentPageText()
+{
+    const QString text = resultText();
+    if (text.isEmpty())
+        return;
+    QGuiApplication::clipboard()->setText(text);
+    setStatus(StatusMessage::translate("AppController", "Page text copied to the clipboard."));
 }
 
 void AppController::startLayout(const QList<int> &pages)
@@ -1247,8 +1297,12 @@ void AppController::updateAvailability()
         decisionModelAvailable(),
         layoutModelAvailable(),
         fixModelAvailable(),
+        scopeVerificationSupported(),
+        scopeBlocksRecognitionSupported(),
         currentPageRecognitionMode(),
         currentPageVerification(),
+        selectedPageCount(),
+        scopedProblemBlockCount(),
     };
     if (current == m_availability)
         return;
@@ -1289,6 +1343,61 @@ bool AppController::layoutModelAvailable() const
 bool AppController::fixModelAvailable() const
 {
     return m_runtime.taskModelAvailable(QStringLiteral("fix"));
+}
+
+QList<int> AppController::scopePages() const
+{
+    QList<int> pages;
+    const bool all = m_pageModel.selectedCount() == 0;
+    for (int i = 0; i < m_document.pageCount(); ++i) {
+        if (!all && !m_pageModel.data(m_pageModel.index(i), PageListModel::SelectedRole).toBool())
+            continue;
+        pages.append(i);
+    }
+    return pages;
+}
+
+void AppController::ensureDefaultSelection()
+{
+    if (m_pageModel.selectedCount() == 0 && m_document.isValidIndex(m_currentPage))
+        m_pageModel.selectSingle(m_currentPage);
+}
+
+int AppController::selectedPageCount() const
+{
+    return m_pageModel.selectedCount();
+}
+
+int AppController::scopedProblemBlockCount() const
+{
+    int total = 0;
+    for (const int pageIndex : scopePages()) {
+        if (!m_document.isValidIndex(pageIndex))
+            continue;
+        const DocumentPage &page = m_document.page(pageIndex);
+        if (!page.recognized || page.result.pages.isEmpty())
+            continue;
+        total += PageStatus::problemBlockCount(page.result.pages.first());
+    }
+    return total;
+}
+
+bool AppController::scopeVerificationSupported() const
+{
+    for (const int pageIndex : scopePages()) {
+        if (m_verify.pageVerificationSupported(pageIndex))
+            return true;
+    }
+    return false;
+}
+
+bool AppController::scopeBlocksRecognitionSupported() const
+{
+    for (const int pageIndex : scopePages()) {
+        if (m_verify.pageBlocksRecognitionSupported(pageIndex))
+            return true;
+    }
+    return false;
 }
 
 bool AppController::allProblemRecognitionSupported() const
@@ -1791,6 +1900,7 @@ void AppController::applyProjectData(const ProjectData &data)
     m_pageModel.setCurrent(0);
     m_currentPage = data.pages.isEmpty() ? 0 : std::clamp(data.currentPage, 0, m_document.pageCount() - 1);
     m_pageModel.setCurrent(m_currentPage);
+    ensureDefaultSelection();
     // Project labels come from whatever model created the file; the default
     // vocabulary is the only safe overlay mapping here.
     m_boxModel.setStyleModelId(QString());

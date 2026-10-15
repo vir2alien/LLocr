@@ -134,6 +134,30 @@ private slots:
         QCOMPARE(PageStatus::recognitionModeAfterBlockText(PageRecognitionMode::None, singlePage({pending}), everythingButImages), PageRecognitionMode::None);
     }
 
+    void problemBlockCountReadsTheEffectiveLayer()
+    {
+        BoundingBox answered = box(QStringLiteral("text"));
+        answered.checkStatus = BoxCheckStatus::Ok;
+        BoundingBox rejected = box(QStringLiteral("title"));
+        rejected.checkStatus = BoxCheckStatus::Mismatch;
+        BoundingBox unreadable = box(QStringLiteral("table"));
+        unreadable.checkStatus = BoxCheckStatus::Review;
+        BoundingBox pending = box(QStringLiteral("text"));  // NotChecked
+        QCOMPARE(PageStatus::problemBlockCount(singlePage({answered, rejected, unreadable, pending})), 2);
+        QCOMPARE(PageStatus::problemBlockCount(singlePage({answered, pending})), 0);
+        QCOMPARE(PageStatus::problemBlockCount(singlePage({})), 0);
+
+        // A fix verdict on the correction layer counts: the block still asks
+        // for attention (a refused REVIEW) or is settled by it.
+        BoundingBox corrected = box(QStringLiteral("text"));
+        corrected.checkStatus = BoxCheckStatus::Mismatch;
+        corrected.correctedText = QStringLiteral("fixed");
+        corrected.correctedCheckStatus = BoxCheckStatus::Ok;
+        QCOMPARE(PageStatus::problemBlockCount(singlePage({corrected})), 0);
+        corrected.correctedCheckStatus = BoxCheckStatus::Review;
+        QCOMPARE(PageStatus::problemBlockCount(singlePage({corrected})), 1);
+    }
+
     void pageListModelCarriesTheStatusRoles()
     {
         PageListModel model;

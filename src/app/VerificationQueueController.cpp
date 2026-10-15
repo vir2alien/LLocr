@@ -121,6 +121,24 @@ void VerificationQueueController::checkAllEnabledBlocks(int fixMode)
     startOrReportAnswered(tasks, answered, fixMode);
 }
 
+void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &pages, int fixMode)
+{
+    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+        return;
+
+    QList<VerifyTask> tasks;
+    int answered = 0;
+    for (const int p : pages) {
+        QList<int> candidates;
+        int pageAnswered = 0;
+        collectEnabledBoxes(p, candidates, pageAnswered);
+        answered += pageAnswered;
+        for (const int box : std::as_const(candidates))
+            tasks.append({p, box});
+    }
+    startOrReportAnswered(tasks, answered, fixMode);
+}
+
 void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const
 {
     if (!m_deps.document.isValidIndex(pageIndex))
@@ -322,6 +340,16 @@ void VerificationQueueController::recheckPageBlocks(int pageIndex)
     startRecheckQueue(tasks);
 }
 
+void VerificationQueueController::recheckPagesBlocks(const QList<int> &pages)
+{
+    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+        return;
+    QList<VerifyTask> tasks;
+    for (const int p : pages)
+        collectUnrecognizedBoxes(p, tasks);
+    startRecheckQueue(tasks);
+}
+
 void VerificationQueueController::recheckAllProblemBlocks()
 {
     if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
@@ -346,6 +374,16 @@ void VerificationQueueController::fixAllProblemBlocks()
         return;
     QList<VerifyTask> tasks;
     for (int p = 0; p < m_deps.document.pageCount(); ++p)
+        collectProblemBoxes(p, tasks);
+    startFixQueue(tasks);
+}
+
+void VerificationQueueController::fixPagesProblemBlocks(const QList<int> &pages)
+{
+    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+        return;
+    QList<VerifyTask> tasks;
+    for (const int p : pages)
         collectProblemBoxes(p, tasks);
     startFixQueue(tasks);
 }

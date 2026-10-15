@@ -11,9 +11,15 @@ import "../Common"
 ToolBar {
     id: pageToolBarRoot
 
-    signal savePageRequested()
-
     visible: Controller.hasImage
+
+    // The default single-page selection follows the navigation until the
+    // user builds a multi-selection of their own.
+    function goTo(pageIndex) {
+        if (Controller.selectedPageCount === 1 && Controller.pageModel.isSelected(Controller.currentPage))
+            Controller.pageModel.selectSingle(pageIndex)
+        Controller.currentPage = pageIndex
+    }
 
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
@@ -35,56 +41,37 @@ ToolBar {
     contentItem: RowLayout {
         spacing: Theme.spacingSmall
 
-        GridLayout {
-            rows: 2
-            columns: 2
-            columnSpacing: 0
-            rowSpacing: 0
+        RowLayout {
+            visible: Controller.pageCount > 1
+            spacing: 0
 
-            SplitToolButton {
-                text: qsTr("Recognize page")
-                mainEnabled: Controller.hasImage && Controller.actionsIdle
-                             && Controller.canRecognize && Controller.pageOcrModelAvailable
-                arrowEnabled: Controller.hasImage && Controller.actionsIdle
-                onMainActivated: Controller.recognizeCurrentPage("pageOcr")
-                onMenuRequested: (anchor) => recognizePageMenu.popup(anchor, 0, anchor.height + 2)
+            LLOLabel {
+                text: qsTr("Page")
+                color: Theme.textSecondary
             }
-
-            SplitToolButton {
-                text: qsTr("Verify")
-                mainEnabled: Controller.hasImage && Controller.actionsIdle
-                             && Controller.pageVerificationSupported
-                             && Controller.decisionModelAvailable
-                             && Controller.fixModelAvailable
-                arrowEnabled: mainEnabled
-                onMainActivated: Controller.checkEnabledBlocksOnPage(VerificationQueueController.FixForce)
-                onMenuRequested: (anchor) => verifyPageMenu.popup(anchor, 0, anchor.height + 2)
-            }
-
             ToolButton {
-                text: qsTr("Mark up page")
+                text: "\u2039"
                 Layout.minimumWidth: implicitWidth
-                enabled: Controller.hasImage && Controller.actionsIdle
-                         && Controller.layoutAvailable && Controller.layoutModelAvailable
-                onClicked: markupConfirmDialog.requestMarkup()
+                enabled: Controller.currentPage > 0
+                onClicked: pageToolBarRoot.goTo(Controller.currentPage - 1)
             }
-
+            LLOLabel {
+                text: (Controller.currentPage + 1) + " / " + Controller.pageCount
+                horizontalAlignment: Text.AlignHCenter
+                Layout.minimumWidth: 56
+            }
             ToolButton {
-                text: qsTr("Save page")
+                text: "\u203a"
                 Layout.minimumWidth: implicitWidth
-                enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-                         && !Controller.checkBusy
-                onClicked: pageToolBarRoot.savePageRequested()
+                enabled: Controller.currentPage < Controller.pageCount - 1
+                onClicked: pageToolBarRoot.goTo(Controller.currentPage + 1)
             }
         }
 
-        ToolSeparator {}
+        ToolSeparator { visible: Controller.pageCount > 1 }
 
-        GridLayout {
-            rows: 2
-            columns: 3
-            columnSpacing: 0
-            rowSpacing: 0
+        Row {
+            spacing: 0
 
             StubIconButton { iconName: "type" }
             StubIconButton { iconName: "image" }
@@ -96,7 +83,6 @@ ToolBar {
                 id: allBlocksButton
                 implicitWidth: 32
                 implicitHeight: 28
-                Layout.minimumWidth: implicitWidth
                 padding: 0
                 Row {
                     anchors.centerIn: parent
@@ -129,44 +115,6 @@ ToolBar {
     }
 
     Menu {
-        id: recognizePageMenu
-
-        MenuItem {
-            text: qsTr("Without markup")
-            enabled: Controller.hasImage && Controller.actionsIdle
-                     && Controller.canRecognize && Controller.rawPageOcrModelAvailable
-            onTriggered: Controller.recognizeCurrentPage("rawPageOcr")
-        }
-        MenuSeparator {}
-        MenuItem {
-            text: qsTr("Problem blocks")
-            enabled: Controller.hasImage && Controller.actionsIdle
-                     && Controller.pageProblemRecognitionSupported
-                     && Controller.blockRecognitionModelAvailable
-            onTriggered: Controller.recognizeProblemBlocksOnPage()
-        }
-        MenuItem {
-            text: qsTr("All blocks")
-            enabled: Controller.hasImage && Controller.actionsIdle
-                     && Controller.pageBlocksRecognitionSupported
-                     && Controller.blockRecognitionModelAvailable
-            onTriggered: Controller.recognizeAllBlocksOnPage()
-        }
-    }
-
-    Menu {
-        id: verifyPageMenu
-
-        MenuItem {
-            text: qsTr("Verify only")
-            enabled: Controller.hasImage && Controller.actionsIdle
-                     && Controller.pageVerificationSupported
-                     && Controller.decisionModelAvailable
-            onTriggered: Controller.checkEnabledBlocksOnPage(VerificationQueueController.FixSkip)
-        }
-    }
-
-    Menu {
         id: allBlocksMenu
 
         Instantiator {
@@ -179,24 +127,6 @@ ToolBar {
             onObjectAdded: (index, object) => allBlocksMenu.insertItem(index, object)
             onObjectRemoved: (index, object) => allBlocksMenu.removeItem(object)
         }
-    }
-
-    // The markup pass replaces the page's blocks (and drops its text), so a
-    // page that already carries results asks first.
-    InterruptConfirmDialog {
-        id: markupConfirmDialog
-
-        function requestMarkup() {
-            if (Controller.currentPageEditable) {
-                title = qsTr("Mark up?")
-                prompt = qsTr("Marking up replaces the recognized blocks and text on this page. Continue?")
-                open()
-            } else {
-                Controller.layoutCurrentPage()
-            }
-        }
-
-        onConfirmed: Controller.layoutCurrentPage()
     }
 
     component StubIconButton: ToolButton {

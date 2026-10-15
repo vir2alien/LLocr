@@ -18,6 +18,7 @@ public:
         HasDuplicatesRole,
         RecognitionModeRole,  ///< int PageRecognitionMode — how the result came to be
         VerificationRole,     ///< int PageVerification — the check aggregate
+        SelectedRole,
     };
 
     explicit PageListModel(QObject *parent = nullptr);
@@ -37,12 +38,25 @@ public:
     void movePage(int from, int to);
     void clear();
 
+    // An empty selection means the whole document; a fresh document selects
+    // its current page so the toolbar scope starts at one page.
+    Q_INVOKABLE void selectSingle(int index);
+    Q_INVOKABLE void setSelected(int index, bool selected);
+    Q_INVOKABLE void selectAll();
+    Q_INVOKABLE void clearSelection();
+    Q_INVOKABLE int selectedCount() const;
+    Q_INVOKABLE bool isSelected(int index) const;
+
+signals:
+    void selectionChanged();
+
 private:
     QList<bool> m_recognized;
     QList<bool> m_edited;
     QList<bool> m_hasDuplicates;
     QList<int> m_recognitionMode;
     QList<int> m_verification;
+    QList<bool> m_selected;
     int m_current = -1;
 };
 

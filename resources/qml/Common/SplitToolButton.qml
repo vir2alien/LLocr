@@ -18,6 +18,7 @@ Row {
     spacing: 0
 
     property string text: ""
+    property string iconName: ""
     property string mainTip: ""
     property bool mainEnabled: true
     property bool arrowEnabled: true
@@ -30,7 +31,40 @@ Row {
         enabled: splitRoot.mainEnabled
         ToolTip.visible: splitRoot.mainTip.length > 0 && mainButton.hovered
         ToolTip.text: splitRoot.mainTip
+
         onClicked: splitRoot.mainActivated()
+
+        // A custom contentItem does not size the control by itself: without
+        // the explicit implicit width every split button collapses to its
+        // padding and the toolbar draws them on top of each other.
+        implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
+        implicitHeight: topPadding + bottomPadding + contentItem.implicitHeight
+
+        contentItem: Item {
+            implicitWidth: textRow.implicitWidth
+            implicitHeight: textRow.implicitHeight
+
+            Row {
+                id: textRow
+                anchors.centerIn: parent
+                spacing: 5
+
+                Icon {
+                    visible: splitRoot.iconName.length > 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: splitRoot.iconName
+                    size: 15
+                    color: mainButton.enabled ? Theme.textPrimary : Theme.textMuted
+                }
+                Text {
+                    visible: mainButton.text.length > 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: mainButton.text
+                    font: mainButton.font
+                    color: mainButton.enabled ? Theme.textPrimary : Theme.textMuted
+                }
+            }
+        }
     }
     ToolButton {
         id: arrowButton

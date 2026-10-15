@@ -15,7 +15,8 @@ ToolBar {
     signal openProjectRequested()
     signal saveProjectRequested()
     signal saveProjectAsRequested()
-    signal exportRequested(bool multiPage)
+    // The ExportDialog's preset scope: 0 = whole document, 1 = current page.
+    signal exportRequested(int presetScope)
     signal setupWizardRequested()
     signal openUiSettingsRequested()
     signal openOutputSettingsRequested()
@@ -34,6 +35,54 @@ ToolBar {
             return sequence
         return String(sequence).replace("Ctrl+Shift+", "⇧⌘").replace("Ctrl+", "⌘")
     }
+
+    // The scope caption after the action names: an empty selection means the
+    // whole document.
+    function scopeCaption() {
+        if (!Controller.hasImage)
+            return ""
+        const n = Controller.selectedPageCount
+        if (n === 0 || n === Controller.pageCount)
+            return qsTr("all %1").arg(Controller.pageCount)
+        return qsTr("%1 pg.").arg(n)
+    }
+
+    function scopedText(base) {
+        const caption = scopeCaption()
+        return caption.length > 0 ? base + " " + caption : base
+    }
+
+    // The pipeline preset selector is a stub until the automatic pipelines
+    // land: the manual mode is what the step buttons below already are.
+    property bool manualPreset: true
+
+    // What the main click runs, chosen in «Распознать ▾»: 0 = the full page
+    // pass that produces the blocks and their text, 1 = the text of the
+    // already-marked blocks, 2 = raw text without blocks. The chosen menu
+    // item is mirrored onto the button caption; a mode is selectable only
+    // while its inputs exist, so the button can never sit on a dead choice.
+    property int recognizeMode: 0
+
+    function recognizeModeName() {
+        if (recognizeMode === 1)
+            return qsTr("By the marked blocks")
+        if (recognizeMode === 2)
+            return qsTr("Without markup")
+        return qsTr("With markup")
+    }
+
+    function recognizeModeTip() {
+        if (recognizeMode === 1)
+            return qsTr("Recognize the marked blocks that still have no text")
+        if (recognizeMode === 2)
+            return qsTr("Recognize the selected pages as raw text")
+        return qsTr("Recognize the selected pages: blocks and their text in one pass")
+    }
+
+    readonly property bool recognizeMainEnabled: Controller.hasImage && Controller.actionsIdle
+        && (recognizeMode === 1 ? Controller.scopeBlocksRecognitionSupported && Controller.blockRecognitionModelAvailable
+        : recognizeMode === 2 ? Controller.canRecognize && Controller.rawPageOcrModelAvailable
+        : Controller.canRecognize && Controller.pageOcrModelAvailable)
 
     background: Rectangle {
         color: Theme.surface
@@ -60,58 +109,97 @@ ToolBar {
 
         ToolSeparator {}
 
-        SplitToolButton {
-            text: qsTr("Recognize")
-            mainTip: qsTr("Recognize every page of the document")
-            mainEnabled: Controller.hasImage && Controller.actionsIdle
-                         && Controller.canRecognize && Controller.pageOcrModelAvailable
-            arrowEnabled: mainEnabled
-            onMainActivated: Controller.recognizeAllPages("pageOcr")
-            onMenuRequested: (anchor) => recognizeAllMenu.popup(anchor, 0, anchor.height + 2)
-        }
-        ToolButton {
-            text: qsTr("Verify")
-            Layout.minimumWidth: implicitWidth
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Verify the recognized blocks on every page")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
-                     && !Controller.layoutBusy
-                     && Controller.allPageVerificationSupported
-                     && Controller.decisionModelAvailable
-            onClicked: Controller.checkAllEnabledBlocks()
-        }
-        ToolButton {
-            text: qsTr("Fix")
-            Layout.minimumWidth: implicitWidth
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Fix the problem blocks in the whole document")
-            enabled: Controller.hasImage && !Controller.busy && !Controller.checkBusy
-                     && !Controller.layoutBusy && Controller.allProblemRecognitionSupported
-                     && Controller.fixModelAvailable
-            onClicked: Controller.fixAllProblemBlocks()
-        }
-        ToolButton {
-            text: qsTr("Mark up")
-            Layout.minimumWidth: implicitWidth
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Mark up every page of the document")
-            enabled: Controller.hasImage && !Controller.busy
-                     && !Controller.checkBusy && !Controller.layoutBusy
-                     && Controller.layoutAvailable && Controller.layoutModelAvailable
-            onClicked: markupConfirmDialog.requestMarkup()
-        }
-        ToolButton {
-            text: qsTr("Export")
-            Layout.minimumWidth: implicitWidth
-            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-                     && !Controller.checkBusy
-            onClicked: headerRoot.exportRequested(Controller.pageCount > 1)
+        RowLayout {
+            id: presetGroup
+            // The stub stays in place while a run is active; it just goes
+            // inactive like the pipeline buttons.
+            enabled: !TaskStatus.running()
+            spacing: Theme.spacingSmall
+
+            LLOLabel {
+                text: qsTr("Preset:")
+                color: Theme.textSecondary
+            }
+
+            IconToolButton {
+                id: presetButton
+                iconName: "wrench"
+                text: qsTr("Manual") + " \u25be"
+                enabled: true
+                onClicked: presetMenu.popup(presetButton, 0, presetButton.height + 2)
+            }
+
+            IconToolButton {
+                text: qsTr("Auto-recognize")
+                iconName: "play"
+                enabled: false
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Automatic pipelines arrive in a later step")
+            }
         }
 
-        ToolButton {
-            text: qsTr("Stop")
+        ToolSeparator {}
+
+        IconToolButton {
+            text: headerRoot.scopedText(qsTr("Mark up"))
+            iconName: "layout-template"
             Layout.minimumWidth: implicitWidth
-            enabled: Controller.busy || Controller.checkBusy || Controller.layoutBusy
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.layoutAvailable && Controller.layoutModelAvailable
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Find the blocks on the selected pages")
+            onClicked: markupConfirmDialog.requestMarkup()
+        }
+
+        SplitToolButton {
+            text: headerRoot.scopedText(headerRoot.recognizeModeName())
+            iconName: "zap"
+            mainTip: headerRoot.recognizeModeTip()
+            mainEnabled: headerRoot.recognizeMainEnabled
+            arrowEnabled: Controller.hasImage && Controller.actionsIdle
+            onMainActivated: {
+                if (recognizeMode === 1)
+                    Controller.recognizeScopeBlocks()
+                else if (recognizeMode === 2)
+                    Controller.recognizeScopePages("rawPageOcr")
+                else
+                    Controller.recognizeScopePages("pageOcr")
+            }
+            onMenuRequested: (anchor) => recognizeMenu.popup(anchor, 0, anchor.height + 2)
+        }
+
+        SplitToolButton {
+            text: headerRoot.scopedText(qsTr("Verify"))
+            iconName: "circle-check"
+            mainTip: qsTr("Verify the recognized blocks on the selected pages")
+            mainEnabled: Controller.hasImage && Controller.actionsIdle
+                         && Controller.scopeVerificationSupported && Controller.decisionModelAvailable
+            arrowEnabled: mainEnabled
+            onMainActivated: Controller.checkScopeEnabledBlocks()
+            onMenuRequested: (anchor) => verifyMenu.popup(anchor, 0, anchor.height + 2)
+        }
+
+        IconToolButton {
+            text: Controller.scopedProblemBlockCount > 0
+                  ? qsTr("Fix") + " (" + Controller.scopedProblemBlockCount + ")"
+                  : qsTr("Fix")
+            iconName: "wand-sparkles"
+            highlight: Controller.scopedProblemBlockCount > 0
+            Layout.minimumWidth: implicitWidth
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.fixModelAvailable && Controller.scopedProblemBlockCount > 0
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Fix the problem blocks on the selected pages")
+            onClicked: Controller.fixScopeProblemBlocks()
+        }
+
+        // The toolbar itself carries no progress text (the footer shows it);
+        // while anything runs the Stop key appears here.
+        IconToolButton {
+            text: qsTr("Stop")
+            iconName: "square"
+            iconSize: 13
+            visible: Controller.busy || Controller.checkBusy || Controller.layoutBusy
             onClicked: {
                 if (Controller.busy)
                     Controller.stop()
@@ -122,40 +210,74 @@ ToolBar {
             }
         }
 
-        ToolSeparator { visible: Controller.pageCount > 1 }
-
-        RowLayout {
-            visible: Controller.pageCount > 1
-            spacing: 0
-
-            ToolButton {
-                text: "\u2039"
-                Layout.minimumWidth: implicitWidth
-                enabled: Controller.currentPage > 0
-                onClicked: Controller.currentPage = Controller.currentPage - 1
-            }
-            LLOLabel {
-                text: (Controller.currentPage + 1) + " / " + Controller.pageCount
-                horizontalAlignment: Text.AlignHCenter
-                Layout.minimumWidth: 56
-            }
-            ToolButton {
-                text: "\u203a"
-                Layout.minimumWidth: implicitWidth
-                enabled: Controller.currentPage < Controller.pageCount - 1
-                onClicked: Controller.currentPage = Controller.currentPage + 1
-            }
-        }
-
         Item { Layout.fillWidth: true }
 
-        ToolButton {
+        SplitToolButton {
+            text: qsTr("Export")
+            iconName: "upload"
+            mainTip: qsTr("Export the whole document")
+            mainEnabled: Controller.hasResult && !Controller.exporting && !Controller.importing
+                         && !Controller.checkBusy
+            arrowEnabled: mainEnabled
+            onMainActivated: headerRoot.exportRequested(0)
+            onMenuRequested: (anchor) => exportMenu.popup(anchor, 0, anchor.height + 2)
+        }
+
+        IconToolButton {
             id: settingsButton
-            text: qsTr("Settings")
-            Layout.minimumWidth: implicitWidth
+            iconName: "settings"
+            Accessible.name: qsTr("Settings")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Settings")
             onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
         }
     }//RowLayout
+
+    // A toolbar button with a Lucide glyph before its caption; the highlight
+    // turns the caption into the warm accent (the «Исправить» badge). The
+    // implicit width must come from the content: a custom contentItem alone
+    // sizes the control to its padding, and the toolbar piles the buttons up.
+    component IconToolButton: ToolButton {
+        id: iconButton
+
+        property string iconName: ""
+        property int iconSize: 15
+        property bool highlight: false
+
+        implicitHeight: 28
+        implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
+        leftPadding: 6
+        rightPadding: 6
+        Layout.minimumWidth: implicitWidth
+
+        contentItem: Item {
+            implicitWidth: contentRow.implicitWidth
+            implicitHeight: contentRow.implicitHeight
+
+            Row {
+                id: contentRow
+                anchors.centerIn: parent
+                spacing: 5
+
+                Icon {
+                    visible: iconButton.iconName.length > 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: iconButton.iconName
+                    size: iconButton.iconSize
+                    color: iconButton.highlight ? Theme.accentAttention
+                          : (iconButton.enabled ? Theme.textPrimary : Theme.textMuted)
+                }
+                Text {
+                    visible: iconButton.text.length > 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: iconButton.text
+                    font: iconButton.font
+                    color: iconButton.highlight ? Theme.accentAttention
+                          : (iconButton.enabled ? Theme.textPrimary : Theme.textMuted)
+                }
+            }
+        }
+    }
 
     Menu {
         id: fileMenu
@@ -246,18 +368,88 @@ ToolBar {
             text: qsTr("Export…")
             enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
                      && !Controller.checkBusy
-            onTriggered: headerRoot.exportRequested(Controller.pageCount > 1)
+            onTriggered: headerRoot.exportRequested(0)
         }
     }
 
     Menu {
-        id: recognizeAllMenu
+        id: presetMenu
 
         MenuItem {
-            text: qsTr("All pages without markup")
+            text: qsTr("Plain text")
+            enabled: false
+        }
+        MenuItem {
+            text: qsTr("Complex layout")
+            enabled: false
+        }
+        MenuItem {
+            text: qsTr("Technical / scientific")
+            enabled: false
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: qsTr("Manual (step by step)")
+            checkable: true
+            checked: headerRoot.manualPreset
+        }
+    }
+
+    Menu {
+        id: recognizeMenu
+
+        MenuItem {
+            text: qsTr("With markup")
+            checkable: true
+            checked: headerRoot.recognizeMode === 0
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.canRecognize && Controller.pageOcrModelAvailable
+            onTriggered: headerRoot.recognizeMode = 0
+        }
+        MenuItem {
+            text: qsTr("By the marked blocks")
+            checkable: true
+            checked: headerRoot.recognizeMode === 1
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.scopeBlocksRecognitionSupported
+                     && Controller.blockRecognitionModelAvailable
+            onTriggered: headerRoot.recognizeMode = 1
+        }
+        MenuItem {
+            text: qsTr("Without markup")
+            checkable: true
+            checked: headerRoot.recognizeMode === 2
             enabled: Controller.hasImage && Controller.actionsIdle
                      && Controller.canRecognize && Controller.rawPageOcrModelAvailable
-            onTriggered: Controller.recognizeAllPages("rawPageOcr")
+            onTriggered: headerRoot.recognizeMode = 2
+        }
+    }
+
+    Menu {
+        id: verifyMenu
+
+        MenuItem {
+            text: qsTr("Verify only")
+            enabled: Controller.hasImage && Controller.actionsIdle
+                     && Controller.scopeVerificationSupported && Controller.decisionModelAvailable
+            onTriggered: Controller.checkScopeEnabledBlocks(VerificationQueueController.FixSkip)
+        }
+    }
+
+    Menu {
+        id: exportMenu
+
+        MenuItem {
+            text: qsTr("Whole document…")
+            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
+                     && !Controller.checkBusy
+            onTriggered: headerRoot.exportRequested(0)
+        }
+        MenuItem {
+            text: qsTr("Current page…")
+            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
+                     && !Controller.checkBusy
+            onTriggered: headerRoot.exportRequested(1)
         }
     }
 
@@ -301,15 +493,18 @@ ToolBar {
         id: markupConfirmDialog
 
         function requestMarkup() {
-            if (Controller.hasResult) {
-                title = qsTr("Mark up?")
-                prompt = qsTr("Marking up replaces the recognized blocks and text on every page. Continue?")
-                open()
-            } else {
-                Controller.layoutAllPages()
+            if (!Controller.hasResult) {
+                Controller.layoutScopePages()
+                return
             }
+            const n = Controller.selectedPageCount
+            const all = n === 0 || n === Controller.pageCount
+            title = qsTr("Mark up?")
+            prompt = all ? qsTr("Marking up replaces the recognized blocks and text on every page. Continue?")
+                         : qsTr("Marking up replaces the recognized blocks and text on the selected pages. Continue?")
+            open()
         }
 
-        onConfirmed: Controller.layoutAllPages()
+        onConfirmed: Controller.layoutScopePages()
     }
 } // ToolBar

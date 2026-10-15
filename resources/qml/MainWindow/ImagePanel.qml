@@ -11,8 +11,6 @@ import "../Common"
 Rectangle {
     id: imagePanelRoot
 
-    signal savePageRequested()
-
     color: Theme.surfaceSunken
 
     ColumnLayout {
@@ -21,7 +19,6 @@ Rectangle {
 
         PageToolBar {
             Layout.fillWidth: true
-            onSavePageRequested: imagePanelRoot.savePageRequested()
         }
 
         ImagePreview {

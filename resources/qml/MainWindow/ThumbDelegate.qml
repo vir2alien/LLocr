@@ -14,6 +14,7 @@ Item {
     required property int index
     required property int pageIndex
     required property bool current
+    required property bool selected
     required property bool recognized
     required property bool edited
     required property bool hasDuplicates
@@ -35,9 +36,10 @@ Item {
         id: card
         anchors.fill: parent
         radius: Theme.radius
-        color: current ? Theme.selected : "transparent"
+        color: current || selected ? Theme.selected : "transparent"
         border.color: dragActive ? Theme.accent
-                      : (current ? Theme.accent : Theme.divider)
+                      : (current ? Theme.accent
+                      : (selected ? Theme.border : Theme.divider))
         border.width: 1
 
         scale: delegateRoot.dragActive ? 1.03 : 1.0
@@ -113,8 +115,21 @@ Item {
             }
         }
 
-        TapHandler {
-            onTapped: Controller.currentPage = pageIndex
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            onClicked: (mouse) => {
+                // Ctrl/Cmd adds the page to (or removes it from) the toolbar
+                // scope without moving the current page; a plain click selects
+                // the page alone.
+                const additive = (mouse.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) !== 0
+                if (additive) {
+                    Controller.pageModel.setSelected(pageIndex, !selected)
+                } else {
+                    Controller.pageModel.selectSingle(pageIndex)
+                    Controller.currentPage = pageIndex
+                }
+            }
         }
     }// Rectangle card
 

@@ -59,6 +59,20 @@ void RecognitionController::startAll(int totalPages, ConnectionRole task)
     ensureConnectionReady();
 }
 
+void RecognitionController::startPages(const QList<int> &pages, ConnectionRole task)
+{
+    if (m_busy || pages.isEmpty())
+        return;
+    m_task = task;
+    m_pageQueue = pages;
+    m_queuePos = 0;
+    m_stopRequested = false;
+    m_recognizeAll = false;
+    resolveModel();
+    setBusy(true);
+    ensureConnectionReady();
+}
+
 void RecognitionController::resolveModel()
 {
     m_skippedUnreadable = 0;
@@ -120,7 +134,10 @@ void RecognitionController::ensureConnectionReady()
             return;
         }
         m_connection = conn;
-        recognizePage(m_startIndex);
+        if (!m_pageQueue.isEmpty())
+            recognizeNextScopePage();
+        else
+            recognizePage(m_startIndex);
     });
 }
 
@@ -150,8 +167,35 @@ void RecognitionController::recognizePage(int index)
         return;
     }
 
+    launchPageRequest(index);
+}
+
+// Pops the next queue entry the skip resolver allows, or finishes the run.
+void RecognitionController::recognizeNextScopePage()
+{
+    while (m_queuePos < m_pageQueue.size()) {
+        const int index = m_pageQueue.at(m_queuePos++);
+        const PageSkip skip = m_skipPage ? m_skipPage(index, false) : PageSkip::None;
+        if (skip == PageSkip::None) {
+            launchPageRequest(index);
+            return;
+        }
+        if (skip == PageSkip::Unreadable)
+            ++m_skippedUnreadable;
+        else
+            ++m_skippedRecognized;
+    }
+    emit statusRequested(StatusMessage::join({StatusMessage::translate("RecognitionController", "Recognition finished."), skipReport()}, QStringLiteral(" ")));
+    finishRun();
+}
+
+bool RecognitionController::launchPageRequest(int index)
+{
     m_recognizingIndex = index;
-    emit statusRequested(StatusMessage::translate("RecognitionController", "Recognizing page %1 of %2…").arg(index + 1).arg(m_totalPages));
+    if (!m_pageQueue.isEmpty())
+        emit statusRequested(StatusMessage::translate("RecognitionController", "Recognizing page %1 (%2 of %3)…").arg(index + 1).arg(m_queuePos).arg(m_pageQueue.size()));
+    else
+        emit statusRequested(StatusMessage::translate("RecognitionController", "Recognizing page %1 of %2…").arg(index + 1).arg(m_totalPages));
 
     QString imageError;
     const QImage image = m_imageProvider(index, imageError);
@@ -160,10 +204,11 @@ void RecognitionController::recognizePage(int index)
                                  .arg(index + 1)
                                  .arg(imageError.isEmpty() ? StatusMessage::translate("RecognitionController", "the page has no image to recognize").text() : imageError));
         finishRun();
-        return;
+        return false;
     }
     const OcrRequest request = buildRequest(image, m_connection);
     m_watcher.setFuture(m_model->recognize(request, m_connection.toConnectionConfig()));
+    return true;
 }
 
 OcrRequest RecognitionController::buildRequest(const QImage &image, const ResolvedConnection &conn) const
@@ -202,6 +247,11 @@ void RecognitionController::onRecognitionFinished()
         return;
     }
 
+    if (!m_pageQueue.isEmpty()) {
+        recognizeNextScopePage();
+        return;
+    }
+
     if (m_recognizeAll) {
         const int next = index + 1;
         if (next < m_totalPages) {
@@ -229,6 +279,8 @@ void RecognitionController::finishRun()
 {
     m_recognizingIndex = -1;
     m_recognizeAll = false;
+    m_pageQueue.clear();
+    m_queuePos = 0;
     setBusy(false);
 }
 
