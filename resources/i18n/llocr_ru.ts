@@ -1077,24 +1077,24 @@
         <translation>Рантайм</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>OCR model</source>
-        <translation>Модель OCR</translation>
+        <translation type="vanished">Модель OCR</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Decision model</source>
-        <translation>Модель decision</translation>
+        <translation type="vanished">Модель decision</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Block OCR model</source>
-        <translation>Модель OCR блока</translation>
+        <translation type="vanished">Модель OCR блока</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Layout model</source>
-        <translation>Модель разметки</translation>
+        <translation type="vanished">Модель разметки</translation>
+    </message>
+    <message>
+        <source>Models</source>
+        <translation>Модели</translation>
     </message>
 </context>
 <context>
@@ -1331,9 +1331,8 @@
         <translation type="vanished">Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/LocationTab.qml" line="+55"/>
         <source>Model profile</source>
-        <translation>Профиль модели</translation>
+        <translation type="vanished">Профиль модели</translation>
     </message>
     <message>
         <source>These paths select the model for text verification. Activating a downloaded model fills them automatically.</source>
@@ -1352,14 +1351,12 @@
         <translation type="vanished">Обзор…</translation>
     </message>
     <message>
-        <location line="-4"/>
         <source>The model is managed by the external server. Location and download settings are not available in this mode.</source>
-        <translation>Моделью управляет внешний сервер. Настройки расположения и скачивания модели в этом режиме недоступны.</translation>
+        <translation type="vanished">Моделью управляет внешний сервер. Настройки расположения и скачивания модели в этом режиме недоступны.</translation>
     </message>
     <message>
-        <location line="+25"/>
         <source>Configure runtime…</source>
-        <translation>Настроить рантайм…</translation>
+        <translation type="vanished">Настроить рантайм…</translation>
     </message>
     <message>
         <source>Specify model files</source>
@@ -1378,9 +1375,8 @@
         <translation type="vanished">необязательный mmproj-файл для визуальных моделей</translation>
     </message>
     <message>
-        <location line="+21"/>
         <source>Activated: %1</source>
-        <translation>Активирована: %1</translation>
+        <translation type="vanished">Активирована: %1</translation>
     </message>
     <message>
         <source>A model outside the app registry — used as-is for the managed launch.</source>
@@ -1403,18 +1399,16 @@
         <translation type="vanished">GGUF-модели (*.gguf)</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Models are stored locally and launched by the managed runtime.</source>
-        <translation>Модели хранятся локально и запускаются управляемым рантаймом.</translation>
+        <translation type="vanished">Модели хранятся локально и запускаются управляемым рантаймом.</translation>
     </message>
     <message>
         <source>No models installed</source>
         <translation type="vanished">Установленных моделей нет</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Models</source>
-        <translation>Модели</translation>
+        <translation type="vanished">Модели</translation>
     </message>
     <message>
         <source>The managed runtime cannot run this model. %1</source>
@@ -1598,20 +1592,15 @@
 <context>
     <name>ModelDownloadList</name>
     <message>
-        <location filename="../qml/Common/ModelDownloadList.qml" line="+71"/>
-        <location line="+111"/>
         <source>Active</source>
-        <translation>Активна</translation>
+        <translation type="vanished">Активна</translation>
     </message>
     <message>
-        <location line="-113"/>
-        <location line="+114"/>
         <source>Use</source>
-        <translation>Использовать</translation>
+        <translation type="vanished">Использовать</translation>
     </message>
     <message>
-        <location line="-113"/>
-        <location line="+113"/>
+        <location filename="../qml/Common/ModelDownloadList.qml" line="+182"/>
         <source>Download</source>
         <translation>Скачать</translation>
     </message>
@@ -1703,34 +1692,48 @@
         <translation type="vanished">Расположение</translation>
     </message>
     <message>
-        <location filename="../qml/Settings/ModelSettingsWindow.qml" line="+99"/>
         <source>Model</source>
-        <translation>Модель</translation>
+        <translation type="vanished">Модель</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Launch</source>
-        <translation>Запуск</translation>
+        <translation type="vanished">Запуск</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Request</source>
-        <translation>Запрос</translation>
+        <translation type="vanished">Запрос</translation>
     </message>
     <message>
-        <location line="-51"/>
         <source>Restore defaults</source>
-        <translation>Вернуть настройки по умолчанию</translation>
+        <translation type="vanished">Вернуть настройки по умолчанию</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>Save</source>
-        <translation>Сохранить</translation>
+        <translation type="vanished">Сохранить</translation>
     </message>
     <message>
-        <location line="-10"/>
         <source>Cancel</source>
-        <translation>Отмена</translation>
+        <translation type="vanished">Отмена</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsManagerWindow</name>
+    <message>
+        <location filename="../qml/Settings/ModelsManagerWindow.qml" line="+16"/>
+        <source>Models</source>
+        <translation>Модели</translation>
+    </message>
+    <message>
+        <source>Every model and quantization of the app. Assigning them to tasks lives in Models by task.</source>
+        <translation>Все модели и кванты приложения. Назначение их задачам — в окне «Модели по задачам».</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+    <message>
+        <source>Models are stored locally and launched by the managed runtime.</source>
+        <translation>Модели хранятся локально и запускаются управляемым рантаймом.</translation>
     </message>
 </context>
 <context>
@@ -4044,24 +4047,24 @@
         <translation type="vanished">Указать файлы модели</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>OCR model</source>
-        <translation>Модель OCR</translation>
+        <translation type="vanished">Модель OCR</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Block OCR model</source>
-        <translation>Модель OCR блока</translation>
+        <translation type="vanished">Модель OCR блока</translation>
     </message>
     <message>
-        <location line="-1"/>
         <source>Decision model</source>
-        <translation>Модель decision</translation>
+        <translation type="vanished">Модель decision</translation>
     </message>
     <message>
-        <location line="+33"/>
         <source>Pick a preset to download, or activate an installed model.</source>
-        <translation>Выберите модель и квант для скачивания или активируйте установленную модель.</translation>
+        <translation type="vanished">Выберите модель и квант для скачивания или активируйте установленную модель.</translation>
+    </message>
+    <message>
+        <source>Pick a preset to download; it becomes the recognition model when it lands.</source>
+        <translation>Выберите модель и квант для скачивания — после загрузки она станет моделью распознавания.</translation>
     </message>
     <message>
         <location line="+14"/>

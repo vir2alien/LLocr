@@ -28,17 +28,9 @@ QtObject {
              : qsTr("Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.")
     }
 
-    function activeTitle(task) {
-        return task === "blockRecognition" ? ModelInstaller.checkActiveTitle
-             : task === "decision" ? ModelInstaller.decisionActiveTitle
-             : task === "layout" ? ModelInstaller.layoutActiveTitle
-             : task === "rawPageOcr" ? ModelInstaller.rawPageOcrActiveTitle
-             : task === "fix" ? ModelInstaller.fixActiveTitle
-             : ModelInstaller.activeTitle
-    }
-
     function quantModels(task) {
-        return task === "blockRecognition" ? ModelInstaller.checkQuantModels
+        return task === "all" ? ModelInstaller.allModels
+             : task === "blockRecognition" ? ModelInstaller.checkQuantModels
              : task === "decision" ? ModelInstaller.decisionQuantModels
              : task === "layout" ? ModelInstaller.layoutQuantModels
              : task === "rawPageOcr" ? ModelInstaller.rawPageOcrQuantModels

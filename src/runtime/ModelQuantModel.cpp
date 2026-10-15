@@ -187,11 +187,16 @@ void ModelQuantModel::refresh()
 
 QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
 {
-    const QString activePath = m_settings.launchModelPathForRole(m_role);
+    // The management list ("all", the rework plan's stage 7) shows every
+    // profile and every installed entry regardless of the task heuristics,
+    // and marks nothing active — assigning models to tasks lives in the task
+    // window.
+    const bool all = m_role == QLatin1String("all");
+    const QString activePath = all ? QString() : m_settings.launchModelPathForRole(m_role);
     const QList<ModelPreset> &presets = m_installer.presetsForRole(m_role);
     const QList<ModelEntry> &installed = m_installer.installedEntries();
 
-    const QList<ModelProfiles::Profile> profiles = ModelProfiles::forRole(ModelProfiles::instance(), m_role);
+    const QList<ModelProfiles::Profile> profiles = all ? ModelProfiles::instance() : ModelProfiles::forRole(ModelProfiles::instance(), m_role);
     QList<Row> rows;
     for (const ModelProfiles::Profile &profile : std::as_const(profiles)) {
         Row row;
@@ -213,7 +218,7 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
             const QString stem = modelStem(entry.modelPath);
             if (entry.repo != profile.files.repo || covered.contains(stem))
                 continue;
-            if (!matchesRole(entry, m_settings, m_role))
+            if (!all && !matchesRole(entry, m_settings, m_role))
                 continue;
             row.quants.append(quantOf(installed, presets, profile.id, profile.files.repo, stem, quantLabelOf(entry), activePath));
             covered.insert(stem);
@@ -226,7 +231,7 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
         const ModelEntry &entry = installed.at(i);
         if (!entry.repo.isEmpty() && !ModelProfiles::idForRepo(ModelProfiles::instance(), entry.repo).isEmpty())
             continue;
-        if (!matchesRole(entry, m_settings, m_role))
+        if (!all && !matchesRole(entry, m_settings, m_role))
             continue;
         Row row;
         row.key = entry.id;

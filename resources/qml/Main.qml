@@ -79,10 +79,7 @@ ApplicationWindow {
         onOpenVerificationSettingsRequested: showWindow(verificationSettingsLoader)
         onOpenRuntimeSettingsRequested: showWindow(runtimeSettingsLoader)
         onOpenTaskModelsSettingsRequested: showWindow(taskModelsSettingsLoader)
-        onOpenOcrModelSettingsRequested: showWindow(ocrModelSettingsLoader)
-        onOpenDecisionModelSettingsRequested: showWindow(decisionModelSettingsLoader)
-        onOpenCheckModelSettingsRequested: showWindow(checkModelSettingsLoader)
-        onOpenLayoutModelSettingsRequested: showWindow(layoutModelSettingsLoader)
+        onOpenModelsManagerRequested: showWindow(modelsManagerLoader)
     }
 
     SplitView {
@@ -261,39 +258,9 @@ ApplicationWindow {
     }
 
     Loader {
-        id: ocrModelSettingsLoader
+        id: modelsManagerLoader
         active: false
-        sourceComponent: ModelSettingsWindow {
-            role: "pageOcr"
-            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
-        }
-    }
-
-    Loader {
-        id: decisionModelSettingsLoader
-        active: false
-        sourceComponent: ModelSettingsWindow {
-            role: "decision"
-            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
-        }
-    }
-
-    Loader {
-        id: checkModelSettingsLoader
-        active: false
-        sourceComponent: ModelSettingsWindow {
-            role: "blockRecognition"
-            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
-        }
-    }
-
-    Loader {
-        id: layoutModelSettingsLoader
-        active: false
-        sourceComponent: ModelSettingsWindow {
-            role: "layout"
-            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
-        }
+        sourceComponent: ModelsManagerWindow {}
     }
 
     ExportDialog {

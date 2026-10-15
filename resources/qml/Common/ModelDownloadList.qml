@@ -11,8 +11,14 @@ ListView {
 
     property int rowHeight: 46
     property int maxVisibleRows: 6
-    // Model task id this list serves: "pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout" or "fix".
-    property string role: "pageOcr"
+    // Which list to show: a task id ("pageOcr", …) or "all" for the unified
+    // management list.
+    property string task: "all"
+    // The task a downloaded model is assigned to on completion; empty for a
+    // plain download (assignment lives in the task window).
+    property string downloadTask: ""
+    // The row menu (open folder / delete) belongs to the management window.
+    property bool manage: false
 
     signal actionError(string message)
     signal downloadRequested(string title, string quantId, string license, string runtimeNote)
@@ -66,17 +72,15 @@ ListView {
                                      + Theme.spacingSmall
     readonly property int quantColumn: Math.ceil(metrics.advanceWidth("Q4_K_XL"))
                                       + 2 * Theme.spacingLarge
-    readonly property int actionColumn: Math.ceil(Math.max(metrics.advanceWidth(qsTr("Use")),
-                                                             metrics.advanceWidth(qsTr("Download")),
-                                                             metrics.advanceWidth(qsTr("Active"))))
-                                       + 2 * Theme.spacingLarge
+    readonly property int actionColumn: Math.ceil(metrics.advanceWidth(qsTr("Download")))
+                                        + 2 * Theme.spacingLarge
 
     visible: count > 0
     clip: true
     implicitHeight: count <= 0
                     ? 0
                     : (maxVisibleRows > 0 ? Math.min(count, maxVisibleRows) : count) * rowHeight
-    model: RoleProfiles.quantModels(role)
+    model: RoleProfiles.quantModels(task)
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
     delegate: Rectangle {
@@ -92,10 +96,8 @@ ListView {
         required property int selected
         required property string selectedLabel
         required property bool selectedInstalled
-        required property bool selectedActive
         required property double selectedSize
         required property bool selectedDownloadable
-        required property bool active
 
         readonly property bool anyInstalled: {
             for (let i = 0; i < quants.length; ++i) {
@@ -107,10 +109,7 @@ ListView {
 
         width: root.width
         height: root.rowHeight
-        color: active ? Theme.surfaceSunken : "transparent"
-        border.color: active ? Theme.accent : "transparent"
-        border.width: active ? 1 : 0
-        radius: Theme.radius
+        color: "transparent"
 
         Item {
             anchors.fill: parent
@@ -178,21 +177,14 @@ ListView {
                 }
 
                 LLOButton {
+                    visible: row.profile
                     Layout.minimumWidth: root.actionColumn
-                    text: row.selectedActive ? qsTr("Active")
-                          : row.selectedInstalled ? qsTr("Use") : qsTr("Download")
-                    enabled: !row.selectedActive && !ModelInstaller.busy
-                             && (row.selectedInstalled ? true : row.selectedDownloadable)
+                    text: qsTr("Download")
+                    enabled: !row.selectedInstalled && row.selectedDownloadable
+                             && !ModelInstaller.busy
                     onClicked: {
-                        if (row.selectedInstalled) {
-                            const err = ModelInstaller.useQuant(row.key, row.selectedLabel,
-                                                                root.role)
-                            if (err.length)
-                                root.actionError(err)
-                            return
-                        }
                         ModelInstaller.downloadQuant(row.key, row.selectedLabel,
-                                                     root.role)
+                                                     root.downloadTask)
                         root.downloadRequested(row.title, row.selectedLabel, row.license,
                                                row.runtimeNote)
                     }
@@ -200,6 +192,7 @@ ListView {
 
                 LLOButton {
                     id: menuButton
+                    visible: root.manage
                     implicitWidth: 26
                     text: ""
                     subtle: true
@@ -360,7 +353,7 @@ ListView {
                     rowMenu.close()
                     const err = ModelInstaller.openQuantFolder(root.activeRow.key,
                                                                root.activeRow.selectedLabel,
-                                                               root.role)
+                                                               root.task)
                     if (err.length)
                         root.actionError(err)
                 }
@@ -385,7 +378,7 @@ ListView {
                     rowMenu.close()
                     const err = ModelInstaller.removeQuant(root.activeRow.key,
                                                            root.activeRow.selectedLabel,
-                                                           root.role)
+                                                           root.task)
                     if (err.length)
                         root.actionError(err)
                 }
@@ -473,7 +466,7 @@ ListView {
                     Keys.onEscapePressed: deleteModelDialog.close()
                     onClicked: {
                         const err = ModelInstaller.removeModelRow(deleteModelDialog.pendingKey,
-                                                          root.role)
+                                                                  root.task)
                         deleteModelDialog.close()
                         if (err.length)
                             root.actionError(err)

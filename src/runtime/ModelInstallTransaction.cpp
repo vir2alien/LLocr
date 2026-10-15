@@ -615,7 +615,7 @@ void ModelInstallTransaction::completeInstall()
                 e.roles.append(r);
     }
     const QString installRole = m_pendingRole;
-    if (!e.roles.contains(installRole))
+    if (!installRole.isEmpty() && !e.roles.contains(installRole))
         e.roles.append(installRole);
 
     qint64 total = 0;
@@ -662,11 +662,15 @@ void ModelInstallTransaction::completeInstall()
     }
     m_installed = updated;
 
-    m_settings.setLaunchModelPathForRole(m_pendingRole, e.modelPath);
-    if (!e.mmprojPath.isEmpty())
-        m_settings.setLaunchMmprojPathForRole(m_pendingRole, e.mmprojPath);
-    m_settings.setLaunchDraftPathForRole(m_pendingRole, e.draftPath);
-    m_settings.selectModelProfile(m_pending.repo, m_pendingRole);
+    // An empty role is a management-window download: the model lands in the
+    // registry unassigned, the task window decides what uses it.
+    if (!m_pendingRole.isEmpty()) {
+        m_settings.setLaunchModelPathForRole(m_pendingRole, e.modelPath);
+        if (!e.mmprojPath.isEmpty())
+            m_settings.setLaunchMmprojPathForRole(m_pendingRole, e.mmprojPath);
+        m_settings.setLaunchDraftPathForRole(m_pendingRole, e.draftPath);
+        m_settings.selectModelProfile(m_pending.repo, m_pendingRole);
+    }
     m_settings.forceSave();
 
     setBusy(false);

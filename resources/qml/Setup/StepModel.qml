@@ -36,91 +36,68 @@ Item {
             font.bold: true
         }
 
-        ColumnLayout {
+        ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 6
+            contentWidth: availableWidth
+            contentHeight: paneLayout.implicitHeight
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            clip: true
 
-            TabBar {
-                id: modelTabBar
-                Layout.fillWidth: true
-                TabButton { text: qsTr("OCR model") }
-                TabButton { text: qsTr("Decision model") }
-                TabButton { text: qsTr("Block OCR model") }
-            }
+            ColumnLayout {
+                id: paneLayout
+                width: root.width
+                spacing: 6
 
-            StackLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                currentIndex: modelTabBar.currentIndex
-
-                Repeater {
-                    model: 3
-
-                    delegate: ScrollView {
-                        id: rolePane
-                        required property int index
-                        readonly property string role: index === 0 ? "pageOcr" : index === 1 ? "decision" : "blockRecognition"
-
-                        contentWidth: availableWidth
-                        contentHeight: paneLayout.implicitHeight
-                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        clip: true
-
-                        ColumnLayout {
-                            id: paneLayout
-                            width: rolePane.availableWidth
-                            spacing: 6
-
-                            InstallerStatusLabel {
-                                isError: ModelInstaller.state === ModelInstaller.Error
-                                busy: ModelInstaller.busy
-                                statusText: ModelInstaller.statusMessage.length
-                                      ? ModelInstaller.statusMessage
-                                      : qsTr("Pick a preset to download, or activate "
-                                             + "an installed model.")
-                            }
-
-                            InstallerProgressRow {
-                                Layout.fillWidth: true
-                                busy: ModelInstaller.busy
-                                progress: ModelInstaller.progress
-                                cancelVisible: ModelInstaller.state === ModelInstaller.Downloading
-                                onCancelClicked: ModelInstaller.cancelInstall()
-                            }
-
-                            LLOLabel {
-                                visible: downloadList.count === 0
-                                text: qsTr("No models available")
-                                color: Theme.textPrimary
-                            }
-
-                            ModelDownloadList {
-                                id: downloadList
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: downloadList.implicitHeight
-                                maxVisibleRows: -1
-                                role: rolePane.role
-                                onActionError: (msg) => statusLabel.text = msg
-                                onDownloadRequested: (title, quantId, license, runtimeNote) =>
-                                        pickDialog.showFor(title, quantId, license, runtimeNote)
-                            }
-
-                            LLOLabel {
-                                id: statusLabel
-                                Layout.fillWidth: true
-                                visible: text.length > 0
-                                color: Theme.textSecondary
-                                font.pointSize: Theme.captionSize
-                                elide: Text.ElideRight
-                                wrapMode: Text.NoWrap
-                            }
-                        }
-                    }
+                InstallerStatusLabel {
+                    Layout.fillWidth: true
+                    isError: ModelInstaller.state === ModelInstaller.Error
+                    busy: ModelInstaller.busy
+                    statusText: ModelInstaller.statusMessage.length
+                          ? ModelInstaller.statusMessage
+                          : qsTr("Pick a preset to download; it becomes the "
+                                 + "recognition model when it lands.")
                 }
-            }//StackLayout
-        }//ColumnLayout
+
+                InstallerProgressRow {
+                    visible: ModelInstaller.busy
+                    Layout.fillWidth: true
+                    busy: ModelInstaller.busy
+                    progress: ModelInstaller.progress
+                    cancelVisible: ModelInstaller.state === ModelInstaller.Downloading
+                    onCancelClicked: ModelInstaller.cancelInstall()
+                }
+
+                LLOLabel {
+                    visible: downloadList.count === 0
+                    text: qsTr("No models available")
+                    color: Theme.textPrimary
+                }
+
+                ModelDownloadList {
+                    id: downloadList
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: downloadList.implicitHeight
+                    maxVisibleRows: -1
+                    task: "pageOcr"
+                    downloadTask: "pageOcr"
+                    onActionError: (msg) => statusLabel.text = msg
+                    onDownloadRequested: (title, quantId, license, runtimeNote) =>
+                            pickDialog.showFor(title, quantId, license, runtimeNote)
+                }
+
+                LLOLabel {
+                    id: statusLabel
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    color: Theme.textSecondary
+                    font.pointSize: Theme.captionSize
+                    elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
+                }
+            }
+        }//ScrollView
 
         Item { Layout.fillHeight: true }
     }//ColumnLayout

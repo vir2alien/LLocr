@@ -36,19 +36,16 @@ class ModelInstaller : public QObject
 
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
 
+    // The unified management list (the rework plan's stage 7): every profile
+    // and every installed entry, nothing role-filtered, nothing active.
+    Q_PROPERTY(QObject *allModels READ allModels CONSTANT)
+
     Q_PROPERTY(QObject *quantModels READ quantModels CONSTANT)
     Q_PROPERTY(QObject *checkQuantModels READ checkQuantModels CONSTANT)
     Q_PROPERTY(QObject *decisionQuantModels READ decisionQuantModels CONSTANT)
     Q_PROPERTY(QObject *layoutQuantModels READ layoutQuantModels CONSTANT)
     Q_PROPERTY(QObject *rawPageOcrQuantModels READ rawPageOcrQuantModels CONSTANT)
     Q_PROPERTY(QObject *fixQuantModels READ fixQuantModels CONSTANT)
-
-    Q_PROPERTY(QString activeTitle READ activeTitle NOTIFY installedChanged)
-    Q_PROPERTY(QString checkActiveTitle READ checkActiveTitle NOTIFY installedChanged)
-    Q_PROPERTY(QString decisionActiveTitle READ decisionActiveTitle NOTIFY installedChanged)
-    Q_PROPERTY(QString layoutActiveTitle READ layoutActiveTitle NOTIFY installedChanged)
-    Q_PROPERTY(QString rawPageOcrActiveTitle READ rawPageOcrActiveTitle NOTIFY installedChanged)
-    Q_PROPERTY(QString fixActiveTitle READ fixActiveTitle NOTIFY installedChanged)
 
 public:
     enum State : int {
@@ -72,18 +69,13 @@ public:
     double progress() const { return m_progress; }
     QString statusMessage() const { return m_statusMessage; }
     int installedCount() const { return m_installed.size(); }
+    QObject *allModels() const;
     QObject *quantModels() const;
     QObject *checkQuantModels() const;
     QObject *decisionQuantModels() const;
     QObject *layoutQuantModels() const;
     QObject *rawPageOcrQuantModels() const;
     QObject *fixQuantModels() const;
-    QString activeTitle() const;
-    QString checkActiveTitle() const;
-    QString decisionActiveTitle() const;
-    QString layoutActiveTitle() const;
-    QString rawPageOcrActiveTitle() const;
-    QString fixActiveTitle() const;
 
     // task is a task id: "pageOcr", "rawPageOcr", "blockRecognition",
     // "decision", "layout" or "fix".
@@ -99,8 +91,10 @@ public:
     Q_INVOKABLE void rescanRegistry();
 
     Q_INVOKABLE void selectQuant(const QString &key, const QString &quantId);
-    Q_INVOKABLE QString useQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
-    Q_INVOKABLE void downloadQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
+    // task is a task id ("pageOcr", …) — the downloaded model is assigned to
+    // it on completion — or empty for a plain download with no assignment
+    // (the management window; assignment lives in the task window).
+    Q_INVOKABLE void downloadQuant(const QString &key, const QString &quantId, const QString &task = QString());
     Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
     Q_INVOKABLE QString removeModelRow(const QString &key, const QString &task = QStringLiteral("pageOcr"));
     Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
@@ -144,7 +138,6 @@ private:
 
     ModelQuantModel *quantModel(const QString &task) const;
     bool isActiveForAnyTask(const ModelEntry &entry) const;
-    QString activeTitleFor(const QString &task) const;
     int installedIndexFor(const QString &key, const QString &quantId, const QString &role) const;
     void publishInstalled();
 
@@ -158,6 +151,7 @@ private:
     double m_progress = 0.0;
     QString m_statusMessage;
 
+    QList<ModelPreset> m_presetsAll;
     QList<ModelPreset> m_presets;
     QList<ModelPreset> m_presetsValidate;
     QList<ModelPreset> m_presetsDecision;
@@ -165,6 +159,7 @@ private:
     QList<ModelPreset> m_presetsRawPageOcr;
     QList<ModelPreset> m_presetsFix;
     QList<ModelEntry> m_installed;
+    ModelQuantModel *m_allModels = nullptr;
     ModelQuantModel *m_pageOcrModels = nullptr;
     ModelQuantModel *m_checkModels = nullptr;
     ModelQuantModel *m_decisionModels = nullptr;

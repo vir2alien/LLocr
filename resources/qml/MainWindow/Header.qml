@@ -22,10 +22,7 @@ ToolBar {
     signal openVerificationSettingsRequested()
     signal openRuntimeSettingsRequested()
     signal openTaskModelsSettingsRequested()
-    signal openOcrModelSettingsRequested()
-    signal openDecisionModelSettingsRequested()
-    signal openCheckModelSettingsRequested()
-    signal openLayoutModelSettingsRequested()
+    signal openModelsManagerRequested()
 
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
@@ -293,20 +290,8 @@ ToolBar {
             onTriggered: headerRoot.openTaskModelsSettingsRequested()
         }
         MenuItem {
-            text: qsTr("OCR model")
-            onTriggered: headerRoot.openOcrModelSettingsRequested()
-        }
-        MenuItem {
-            text: qsTr("Decision model")
-            onTriggered: headerRoot.openDecisionModelSettingsRequested()
-        }
-        MenuItem {
-            text: qsTr("Block OCR model")
-            onTriggered: headerRoot.openCheckModelSettingsRequested()
-        }
-        MenuItem {
-            text: qsTr("Layout model")
-            onTriggered: headerRoot.openLayoutModelSettingsRequested()
+            text: qsTr("Models")
+            onTriggered: headerRoot.openModelsManagerRequested()
         }
     }
 

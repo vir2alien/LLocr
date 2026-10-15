@@ -393,7 +393,6 @@ private slots:
             layoutKeys.append(roleAt(layout, i, ModelQuantModel::KeyRole).toString());
         QCOMPARE(layoutKeys, QStringList({QStringLiteral("teleocr")}));
         QVERIFY(pathOf(*s->installer, QStringLiteral("teleocr"), QStringLiteral("layout")).isEmpty());
-        QVERIFY(s->installer->layoutActiveTitle().isEmpty());
 
         // The two tasks without a settings window of their own (rawPageOcr,
         // fix) still expose their lists — the task window (stage 6) reads them.
@@ -531,7 +530,7 @@ private slots:
 
         // Activating the installed quantization does not move the picker: the user
         // is comparing them, and the row keeps showing what was picked.
-        QVERIFY(mi.useQuant(QStringLiteral("unlimited-ocr"), QStringLiteral("Q4_K_M")).isEmpty());
+        QVERIFY(mi.setActiveModel(quantModel(models)->entryIndexFor(QStringLiteral("unlimited-ocr"), QStringLiteral("Q4_K_M"))).isEmpty());
         QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedActiveRole).toBool(), false);
         QVERIFY(roleAt(models, row, ModelQuantModel::ActiveRole).toBool());
         QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedInstalledRole).toBool(), false);
@@ -772,7 +771,7 @@ private slots:
 
         QSignalSpy changed(models, &QAbstractItemModel::dataChanged);
 
-        QVERIFY(s->installer->useQuant(QStringLiteral("org__repo_Q8_0"), QStringLiteral("Q8_0")).isEmpty());
+        QVERIFY(s->installer->setActiveModel(quantModel(models)->entryIndexFor(QStringLiteral("org__repo_Q8_0"), QStringLiteral("Q8_0"))).isEmpty());
 
         QVERIFY(!roleAt(models, q4Row, ModelQuantModel::ActiveRole).toBool());
         QVERIFY(roleAt(models, q8Row, ModelQuantModel::ActiveRole).toBool());
@@ -1033,6 +1032,66 @@ private slots:
         // Cancel on an idle installer is a no-op that leaves no queue behind.
         s->installer->cancelTaskInstalls();
         QVERIFY(!s->installer->taskQueueActive());
+    }
+
+    // The management window's list (the rework plan's stage 7): one row per
+    // profile across all the tasks plus standalone entries; an installed quant
+    // of a profile's repo joins the profile row even when the task heuristics
+    // would keep it out of that task's own list.
+    void allModelsListEveryProfileAndEntry()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        QVERIFY(QDir().mkpath(sub));
+
+        // An untagged mmproj-less quant inside a pageOcr profile's repo: the
+        // pageOcr list drops it, the management list keeps it.
+        ModelEntry chat;
+        chat.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_chat");
+        chat.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
+        chat.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        chat.dir = sub;
+        chat.modelPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-chat-Q8_0.gguf"));
+        chat.origin = ModelOrigin::Managed;
+        chat.quantization = QStringLiteral("chat");
+
+        ModelEntry stray;
+        stray.id = QStringLiteral("stray_Q4_K_M");
+        stray.title = QStringLiteral("stray");
+        stray.repo = QStringLiteral("other/stray");
+        stray.dir = QDir(modelsDir).filePath(QStringLiteral("other__stray"));
+        QVERIFY(QDir().mkpath(stray.dir));
+        stray.modelPath = writeGguf(stray.dir, QStringLiteral("stray-Q4_K_M.gguf"));
+        stray.origin = ModelOrigin::Managed;
+        stray.quantization = QStringLiteral("Q4_K_M");
+        QVERIFY(!chat.modelPath.isEmpty() && !stray.modelPath.isEmpty());
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {chat, stray}, err), qPrintable(err));
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        auto *all = qobject_cast<ModelQuantModel *>(s->installer->allModels());
+        QVERIFY(all);
+
+        // The shipped profiles are all here — including one that only a single
+        // task list would show (clef-flash answers decision alone).
+        QVERIFY(rowOfKey(all, QStringLiteral("clef-flash")) >= 0);
+
+        const int row = rowOfKey(all, QStringLiteral("unlimited-ocr"));
+        QVERIFY(row >= 0);
+        QVERIFY(quantOf(all, row, QStringLiteral("CHAT")).value(QStringLiteral("installed")).toBool());
+        auto *ocr = ocrModels(*s->installer);
+        QCOMPARE(quantOf(ocr, rowOfKey(ocr, QStringLiteral("unlimited-ocr")), QStringLiteral("CHAT")).value(QStringLiteral("installed")).toBool(), false);
+
+        // A repo no profile claims gets a row of its own, and its quantization
+        // resolves back to the installer's registry index for the actions.
+        const int strayRow = rowOfKey(all, QStringLiteral("stray_Q4_K_M"));
+        QVERIFY(strayRow >= 0);
+        QVERIFY(!roleAt(all, strayRow, ModelQuantModel::ProfileRole).toBool());
+        QCOMPARE(all->entryIndexFor(QStringLiteral("stray_Q4_K_M"), QStringLiteral("Q4_K_M")), registryIndexOfQuant(*s->installer, QStringLiteral("Q4_K_M")));
     }
 };
 
