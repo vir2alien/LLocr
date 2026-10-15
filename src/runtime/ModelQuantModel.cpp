@@ -293,7 +293,7 @@ QList<int> ModelQuantModel::allRoles() const
     return ids;
 }
 
-const ModelQuantModel::Row *ModelQuantModel::rowFor(const QString &key) const
+const ModelQuantModel::Row *ModelQuantModel::findRow(const QString &key) const
 {
     for (const Row &row : std::as_const(m_rows)) {
         if (row.key == key)
@@ -304,7 +304,7 @@ const ModelQuantModel::Row *ModelQuantModel::rowFor(const QString &key) const
 
 const ModelQuantModel::Quant *ModelQuantModel::quantFor(const QString &key, const QString &quantId) const
 {
-    const Row *row = rowFor(key);
+    const Row *row = findRow(key);
     if (!row)
         return nullptr;
     for (const Quant &quant : row->quants) {
@@ -320,10 +320,46 @@ int ModelQuantModel::entryIndexFor(const QString &key, const QString &quantId) c
     return quant ? quant->entryIndex : -1;
 }
 
+int ModelQuantModel::rowIndexOf(const QString &key) const
+{
+    for (int i = 0; i < m_rows.size(); ++i) {
+        if (m_rows.at(i).key == key)
+            return i;
+    }
+    return -1;
+}
+
+QVariantMap ModelQuantModel::rowFor(const QString &key) const
+{
+    const Row *row = findRow(key);
+    if (!row)
+        return {};
+    QVariantMap out;
+    out.insert(QStringLiteral("key"), row->key);
+    out.insert(QStringLiteral("title"), row->title);
+    out.insert(QStringLiteral("subtitle"), row->subtitle);
+    out.insert(QStringLiteral("license"), row->license);
+    out.insert(QStringLiteral("runtimeNote"), row->runtimeNote);
+    out.insert(QStringLiteral("active"), std::any_of(row->quants.cbegin(), row->quants.cend(), [](const Quant &q) { return q.active; }));
+    QVariantList quants;
+    quants.reserve(row->quants.size());
+    for (const Quant &q : row->quants) {
+        QVariantMap item;
+        item.insert(QStringLiteral("id"), q.id);
+        item.insert(QStringLiteral("size"), QVariant::fromValue(q.size));
+        item.insert(QStringLiteral("installed"), q.entryIndex >= 0);
+        item.insert(QStringLiteral("downloadable"), q.presetIndex >= 0);
+        quants.append(item);
+    }
+    out.insert(QStringLiteral("quants"), quants);
+    out.insert(QStringLiteral("selected"), row->selected);
+    return out;
+}
+
 QList<int> ModelQuantModel::entryIndexesFor(const QString &key) const
 {
     QList<int> indexes;
-    const Row *row = rowFor(key);
+    const Row *row = findRow(key);
     if (!row)
         return indexes;
     for (const Quant &quant : row->quants) {

@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QList>
 #include <QString>
+#include <QVariantMap>
 
 #include "runtime/ModelRegistry.h"
 
@@ -68,6 +69,11 @@ public:
     int presetIndexFor(const QString &key, const QString &quantId) const;
     bool hasQuant(const QString &key, const QString &quantId) const { return quantFor(key, quantId) != nullptr; }
 
+    // Task-window access to one row by profile id (the quant combo binds to
+    // the row's quants; the invokables are re-read when the caller resyncs).
+    Q_INVOKABLE int rowIndexOf(const QString &key) const;
+    Q_INVOKABLE QVariantMap rowFor(const QString &key) const;
+
     static bool matchesRole(const ModelEntry &entry, const SettingsStore &settings, const QString &role);
     static QString displayTitle(const ModelEntry &entry);
 
@@ -77,7 +83,7 @@ signals:
 private:
     QList<Row> buildRows() const;
     int selectedIndex(const Row &row) const;
-    const Row *rowFor(const QString &key) const;
+    const Row *findRow(const QString &key) const;
     const Quant *quantFor(const QString &key, const QString &quantId) const;
     QList<int> allRoles() const;
 

@@ -29,6 +29,10 @@ class ModelInstaller : public QObject
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
+    // The sequential queue of the task window (stage 6): active from
+    // queueTaskInstalls() until the last queued install settles.
+    Q_PROPERTY(bool taskQueueActive READ taskQueueActive NOTIFY taskQueueStateChanged)
+    Q_PROPERTY(int taskQueueRemaining READ taskQueueRemaining NOTIFY taskQueueStateChanged)
 
     Q_PROPERTY(int installedCount READ installedCount NOTIFY installedChanged)
 
@@ -105,11 +109,32 @@ public:
 
     Q_INVOKABLE void cancelInstall();
 
+    // The task window's save flow (the rework plan's stage 6). choices is a
+    // list of {task, key, quantId}: installed quants are activated for their
+    // task, missing ones are returned as {task, model, quant, size} for the
+    // download dialog — with the profile choice recorded so it survives.
+    Q_INVOKABLE QVariantList applyTaskChoices(const QVariantList &choices);
+    // Sequential download queue over the missing choices: one install at a
+    // time (the shared transaction), each result assigned to its task on
+    // completion.
+    Q_INVOKABLE void queueTaskInstalls(const QVariantList &choices);
+    Q_INVOKABLE void cancelTaskInstalls();
+    bool taskQueueActive() const { return m_taskQueueActive; }
+    int taskQueueRemaining() const { return m_taskQueue.size(); }
+
 private:
     void setState(State next);
     void setBusy(bool busy);
     void setProgress(double p);
     void setStatusMessage(const QString &msg);
+    void setTaskQueueActive(bool active);
+    void startNextQueuedInstall();
+
+    struct TaskInstall {
+        QString task;
+        QString key;
+        QString quantId;
+    };
 
     void reloadPresetsInternal();
 
@@ -146,6 +171,8 @@ private:
     ModelQuantModel *m_layoutModels = nullptr;
     ModelQuantModel *m_rawPageOcrModels = nullptr;
     ModelQuantModel *m_fixModels = nullptr;
+    QList<TaskInstall> m_taskQueue;
+    bool m_taskQueueActive = false;
 
 signals:
     void stateChanged();
@@ -154,6 +181,7 @@ signals:
     void statusMessageChanged();
     void installedChanged();
     void presetsChanged();
+    void taskQueueStateChanged();
 };
 
 }  // namespace llocr

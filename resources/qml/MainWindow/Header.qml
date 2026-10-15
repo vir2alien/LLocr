@@ -21,6 +21,7 @@ ToolBar {
     signal openOutputSettingsRequested()
     signal openVerificationSettingsRequested()
     signal openRuntimeSettingsRequested()
+    signal openTaskModelsSettingsRequested()
     signal openOcrModelSettingsRequested()
     signal openDecisionModelSettingsRequested()
     signal openCheckModelSettingsRequested()
@@ -287,6 +288,10 @@ ToolBar {
             onTriggered: headerRoot.openRuntimeSettingsRequested()
         }
         MenuSeparator {}
+        MenuItem {
+            text: qsTr("Models by task")
+            onTriggered: headerRoot.openTaskModelsSettingsRequested()
+        }
         MenuItem {
             text: qsTr("OCR model")
             onTriggered: headerRoot.openOcrModelSettingsRequested()

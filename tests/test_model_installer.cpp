@@ -929,6 +929,111 @@ private slots:
         ModelInstaller installer(settings, runtime, installed);
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
     }
+
+    // The task window's Save (the rework plan's stage 6): an installed quant
+    // is activated for its task, a missing one comes back for the download
+    // dialog while the profile intent is recorded.
+    void taskChoicesActivateInstalledAndListMissing()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        s->settings.setLaunchModelPath(QString());
+        s->settings.setCheckLaunchModelPath(QString());
+
+        // Two legacy (untagged) registry entries: the pageOcr-shaped one
+        // carries a projector, the blockRecognition-shaped one does not —
+        // matchesRole() splits the legacy entries by that heuristic.
+        const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString ocrDir = QDir(modelsDir).filePath(QStringLiteral("org__repo"));
+        QVERIFY(QDir().mkpath(ocrDir));
+        ModelEntry q4;
+        q4.id = QStringLiteral("org__repo_Q4_K_M");
+        q4.title = QStringLiteral("org__repo");
+        q4.repo = QStringLiteral("org/repo");
+        q4.dir = ocrDir;
+        q4.modelPath = writeGguf(ocrDir, QStringLiteral("model-Q4_K_M.gguf"));
+        q4.mmprojPath = writeGguf(ocrDir, QStringLiteral("mmproj-model-F16.gguf"));
+        q4.origin = ModelOrigin::Managed;
+        q4.quantization = QStringLiteral("Q4_K_M");
+        q4.byteSize = 1024;
+
+        const QString blockDir = QDir(modelsDir).filePath(QStringLiteral("org__blockrepo"));
+        QVERIFY(QDir().mkpath(blockDir));
+        ModelEntry q8;
+        q8.id = QStringLiteral("org__blockrepo_Q8_0");
+        q8.title = QStringLiteral("org__blockrepo");
+        q8.repo = QStringLiteral("org/blockrepo");
+        q8.dir = blockDir;
+        q8.modelPath = writeGguf(blockDir, QStringLiteral("model-Q8_0.gguf"));
+        q8.origin = ModelOrigin::Managed;
+        q8.quantization = QStringLiteral("Q8_0");
+        q8.byteSize = 2048;
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {q4, q8}, err), qPrintable(err));
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        auto *ocr = qobject_cast<ModelQuantModel *>(s->installer->quantModels());
+        QVERIFY(ocr);
+        QVERIFY(ocr->entryIndexFor(QStringLiteral("org__repo_Q4_K_M"), QStringLiteral("Q4_K_M")) >= 0);
+
+        // The decision task has no installed entry here; its shipped profile
+        // offers a downloadable quantization that is the missing one.
+        auto *decision = qobject_cast<ModelQuantModel *>(s->installer->decisionQuantModels());
+        QVERIFY(decision);
+        const int clefRow = rowOfKey(decision, QStringLiteral("clef-flash"));
+        QVERIFY(clefRow >= 0);
+        QVariantMap missingPick;
+        const QVariantList clefQuants = roleAt(decision, clefRow, ModelQuantModel::QuantsRole).toList();
+        for (const QVariant &q : clefQuants) {
+            const QVariantMap m = q.toMap();
+            if (m.value(QStringLiteral("downloadable")).toBool() && !m.value(QStringLiteral("installed")).toBool()) {
+                missingPick = m;
+                break;
+            }
+        }
+        QVERIFY(!missingPick.isEmpty());
+
+        QVariantList choices;
+        choices.append(
+            QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("org__repo_Q4_K_M")}, {QStringLiteral("quantId"), QStringLiteral("Q4_K_M")}});
+        choices.append(QVariantMap{
+            {QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("org__blockrepo_Q8_0")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
+        choices.append(QVariantMap{
+            {QStringLiteral("task"), QStringLiteral("decision")}, {QStringLiteral("key"), QStringLiteral("clef-flash")}, {QStringLiteral("quantId"), missingPick.value(QStringLiteral("id"))}});
+
+        const QVariantList missing = s->installer->applyTaskChoices(choices);
+        QCOMPARE(s->settings.launchModelPath(), q4.modelPath);
+        QCOMPARE(s->settings.checkLaunchModelPath(), q8.modelPath);
+        QCOMPARE(missing.size(), 1);
+        const QVariantMap item = missing.first().toMap();
+        QCOMPARE(item.value(QStringLiteral("task")).toString(), QStringLiteral("decision"));
+        QCOMPARE(item.value(QStringLiteral("key")).toString(), QStringLiteral("clef-flash"));
+        QCOMPARE(item.value(QStringLiteral("quantId")).toString(), missingPick.value(QStringLiteral("id")).toString());
+        // The profile intent survives a canceled queue.
+        QCOMPARE(s->settings.selectedQuant(QStringLiteral("clef-flash")), missingPick.value(QStringLiteral("id")).toString());
+    }
+
+    // A queue item no row knows about fails fast and stops the queue — no
+    // network is involved in this path.
+    void taskQueueFailsFastOnUnknownQuant()
+    {
+        auto s = makeMultiQuantSetup();
+        QVERIFY(s);
+        QSignalSpy activeSpy(s->installer.data(), &ModelInstaller::taskQueueStateChanged);
+
+        s->installer->queueTaskInstalls(
+            {QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("no-such-row")}, {QStringLiteral("quantId"), QStringLiteral("Q4_K_M")}}});
+        QCOMPARE(s->installer->stateInt(), (int)ModelInstaller::State::Error);
+        QVERIFY(!s->installer->taskQueueActive());
+        QCOMPARE(s->installer->taskQueueRemaining(), 0);
+        QVERIFY(!s->installer->busy());
+
+        // Cancel on an idle installer is a no-op that leaves no queue behind.
+        s->installer->cancelTaskInstalls();
+        QVERIFY(!s->installer->taskQueueActive());
+    }
 };
 
 QTEST_MAIN(TestModelInstaller)

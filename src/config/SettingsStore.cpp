@@ -1405,6 +1405,30 @@ QString SettingsStore::modelNameForRole(const QString &role) const
     return modelName();
 }
 
+void SettingsStore::setModelNameForRole(const QString &role, const QString &name)
+{
+    switch (connectionRoleFromName(role)) {
+    case ConnectionRole::BlockRecognition:
+        setCheckModelName(name);
+        break;
+    case ConnectionRole::Decision:
+        setDecisionModelName(name);
+        break;
+    case ConnectionRole::Layout:
+        setLayoutModelName(name);
+        break;
+    case ConnectionRole::RawPageOcr:
+        setRawPageOcrModelName(name);
+        break;
+    case ConnectionRole::Fix:
+        setFixModelName(name);
+        break;
+    case ConnectionRole::PageOcr:
+        setModelName(name);
+        break;
+    }
+}
+
 QString SettingsStore::launchProfileId() const
 {
     return m_settings.value(kLaunchProfileId).toString();

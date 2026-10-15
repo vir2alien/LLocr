@@ -78,6 +78,7 @@ ApplicationWindow {
         onOpenOutputSettingsRequested: showWindow(outputSettingsLoader)
         onOpenVerificationSettingsRequested: showWindow(verificationSettingsLoader)
         onOpenRuntimeSettingsRequested: showWindow(runtimeSettingsLoader)
+        onOpenTaskModelsSettingsRequested: showWindow(taskModelsSettingsLoader)
         onOpenOcrModelSettingsRequested: showWindow(ocrModelSettingsLoader)
         onOpenDecisionModelSettingsRequested: showWindow(decisionModelSettingsLoader)
         onOpenCheckModelSettingsRequested: showWindow(checkModelSettingsLoader)
@@ -249,6 +250,14 @@ ApplicationWindow {
         id: runtimeSettingsLoader
         active: false
         sourceComponent: RuntimeSettingsWindow {}
+    }
+
+    Loader {
+        id: taskModelsSettingsLoader
+        active: false
+        sourceComponent: TaskModelsWindow {
+            runtimeSettingsRef: windowProxy(runtimeSettingsLoader)
+        }
     }
 
     Loader {

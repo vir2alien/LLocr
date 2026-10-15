@@ -981,6 +981,10 @@
         <translation>Разметить?</translation>
     </message>
     <message>
+        <source>Models by task</source>
+        <translation>Модели по задачам</translation>
+    </message>
+    <message>
         <location line="+1"/>
         <source>Marking up replaces the recognized blocks and text on every page. Continue?</source>
         <translation>Разметка заменит распознанные блоки и текст на всех страницах. Продолжить?</translation>
@@ -1745,6 +1749,49 @@
         <location line="+19"/>
         <source>Failed to encode the page image</source>
         <translation>Не удалось закодировать изображение страницы</translation>
+    </message>
+</context>
+<context>
+    <name>TaskModelsWindow</name>
+    <message>
+        <location filename="../qml/Settings/TaskModelsWindow.qml" line="+11"/>
+        <source>Models by task</source>
+        <translation>Модели по задачам</translation>
+    </message>
+    <message>
+        <location line="+130"/>
+        <source>Model</source>
+        <translation>Модель</translation>
+    </message>
+    <message>
+        <location line="+128"/>
+        <source>Launch</source>
+        <translation>Запуск</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Request</source>
+        <translation>Запрос</translation>
+    </message>
+    <message>
+        <source>Restore defaults</source>
+        <translation>Вернуть настройки по умолчанию</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>Models to download</source>
+        <translation>Модели для скачивания</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>Скачать</translation>
     </message>
 </context>
 <context>

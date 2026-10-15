@@ -282,7 +282,8 @@ public:
     QString launchDraftPathForRole(const QString &role) const;
     void setLaunchDraftPathForRole(const QString &role, const QString &path);
     QString requestProfileIdForRole(const QString &role) const;
-    QString modelNameForRole(const QString &role) const;
+    Q_INVOKABLE QString modelNameForRole(const QString &role) const;
+    Q_INVOKABLE void setModelNameForRole(const QString &role, const QString &name);
 
     QString hfToken() const;
     void setHfToken(const QString &token);

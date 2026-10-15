@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QUrl>
+#include <QVariant>
 
 #include <algorithm>
 #include <functional>
@@ -43,6 +44,22 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
     connect(&m_settings, &SettingsStore::layoutLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::rawPageOcrLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
     connect(&m_settings, &SettingsStore::fixLaunchModelPathChanged, this, &ModelInstaller::publishInstalled);
+
+    // The task queue rides the same transaction as a manual download: once the
+    // user agreed to the missing list, every prepared install starts without a
+    // per-item license dialog, and the next item waits for the previous one.
+    connect(m_transaction, &ModelInstallTransaction::stateChanged, this, [this](int state) {
+        if (!m_taskQueueActive)
+            return;
+        if (state == State::ReadyToDownload)
+            installPrepared();
+        else if (state == State::Idle)
+            startNextQueuedInstall();
+        else if (state == State::Error) {
+            m_taskQueue.clear();
+            setTaskQueueActive(false);
+        }
+    });
 
     reloadPresetsInternal();
     refreshInstalled();
@@ -518,7 +535,116 @@ void ModelInstaller::installPrepared()
 
 void ModelInstaller::cancelInstall()
 {
+    m_taskQueue.clear();
+    setTaskQueueActive(false);
     m_transaction->cancel();
+}
+
+QVariantList ModelInstaller::applyTaskChoices(const QVariantList &choices)
+{
+    QVariantList missing;
+    for (const QVariant &choiceVar : choices) {
+        const QVariantMap choice = choiceVar.toMap();
+        const QString task = choice.value(QStringLiteral("task")).toString();
+        // An unknown id would silently become pageOcr; only the six real ones
+        // pass this round-trip.
+        if (task != connectionRoleName(connectionRoleFromName(task)))
+            continue;
+        const QString key = choice.value(QStringLiteral("key")).toString();
+        const QString quantId = choice.value(QStringLiteral("quantId")).toString();
+        if (key.isEmpty() || quantId.isEmpty())
+            continue;
+        ModelQuantModel *model = quantModel(task);
+        const int entry = model->entryIndexFor(key, quantId);
+        if (entry >= 0) {
+            setActiveModel(entry, task);
+            continue;
+        }
+
+        // Not on disk: the choice is still recorded (the profile intent
+        // survives a canceled queue), and the download dialog lists it.
+        const QList<ModelPreset> &presets = presetsForRole(task);
+        const int preset = model->presetIndexFor(key, quantId);
+        if (preset >= 0 && preset < presets.size()) {
+            m_settings.selectModelProfile(presets.at(preset).repo, task);
+            m_settings.setSelectedQuant(key, quantId);
+        }
+        const QVariantMap row = model->rowFor(key);
+        QVariantList quants = row.value(QStringLiteral("quants")).toList();
+        qint64 size = 0;
+        for (const QVariant &q : quants) {
+            const QVariantMap quant = q.toMap();
+            if (quant.value(QStringLiteral("id")).toString().compare(quantId, Qt::CaseInsensitive) == 0)
+                size = quant.value(QStringLiteral("size")).toLongLong();
+        }
+        QVariantMap item;
+        item.insert(QStringLiteral("task"), task);
+        item.insert(QStringLiteral("key"), key);
+        item.insert(QStringLiteral("quantId"), quantId);
+        item.insert(QStringLiteral("model"), row.value(QStringLiteral("title")));
+        item.insert(QStringLiteral("size"), size);
+        missing.append(item);
+    }
+    m_settings.forceSave();
+    publishInstalled();
+    return missing;
+}
+
+void ModelInstaller::queueTaskInstalls(const QVariantList &choices)
+{
+    if (m_busy)
+        return;
+    for (const QVariant &choiceVar : choices) {
+        const QVariantMap choice = choiceVar.toMap();
+        const QString task = choice.value(QStringLiteral("task")).toString();
+        if (task != connectionRoleName(connectionRoleFromName(task)))
+            continue;
+        const QString key = choice.value(QStringLiteral("key")).toString();
+        const QString quantId = choice.value(QStringLiteral("quantId")).toString();
+        if (key.isEmpty() || quantId.isEmpty())
+            continue;
+        m_taskQueue.append({task, key, quantId});
+    }
+    if (m_taskQueue.isEmpty())
+        return;
+    setTaskQueueActive(true);
+    startNextQueuedInstall();
+}
+
+void ModelInstaller::cancelTaskInstalls()
+{
+    m_taskQueue.clear();
+    setTaskQueueActive(false);
+    if (m_transaction->busy())
+        m_transaction->cancel();
+}
+
+void ModelInstaller::setTaskQueueActive(bool active)
+{
+    if (m_taskQueueActive == active)
+        return;
+    m_taskQueueActive = active;
+    emit taskQueueStateChanged();
+}
+
+void ModelInstaller::startNextQueuedInstall()
+{
+    if (m_taskQueue.isEmpty()) {
+        setTaskQueueActive(false);
+        return;
+    }
+    const TaskInstall item = m_taskQueue.takeFirst();
+    ModelQuantModel *model = quantModel(item.task);
+    const QList<ModelPreset> &presets = presetsForRole(item.task);
+    const int preset = model->presetIndexFor(item.key, item.quantId);
+    if (preset < 0 || preset >= presets.size()) {
+        setStatusMessage(tr("This quantization is not available for download"));
+        setState(State::Error);
+        m_taskQueue.clear();
+        setTaskQueueActive(false);
+        return;
+    }
+    m_transaction->prepare(presets.at(preset), item.task);
 }
 
 }  // namespace llocr
