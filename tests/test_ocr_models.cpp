@@ -175,29 +175,6 @@ private slots:
         }
     }
 
-    // The re-recognition framing (verify-and-correct instead of from-scratch
-    // transcription) needs a recheck prompt with the {text} placeholder. Every
-    // shipped blockRecognition profile declares its own wording, and the
-    // getter falls back to the built-in template for a model without the role.
-    void blockRecognitionRecheckPrompts()
-    {
-        for (const ModelProfiles::Profile &profile : ModelProfiles::instance()) {
-            const ModelProfiles::Role *role = ModelProfiles::roleFor(profile, QStringLiteral("blockRecognition"));
-            if (!role)
-                continue;
-            const QString prompt = ModelProfiles::recheckPromptFor(ModelProfiles::instance(), profile.id, QStringLiteral("blockRecognition"));
-            QCOMPARE(prompt, role->recheckPrompt);
-            QVERIFY2(!prompt.isEmpty(), qPrintable(profile.id));
-            QVERIFY2(prompt.contains(QStringLiteral("{text}")), qPrintable(QStringLiteral("%1: recheckPrompt without the {text} placeholder").arg(profile.id)));
-            QVERIFY2(prompt.contains(QStringLiteral("Previously recognized text:")), qPrintable(profile.id));
-        }
-        QVERIFY(ModelProfiles::roleFor(QStringLiteral("unlimited-ocr"), QStringLiteral("blockRecognition")) == nullptr);
-        const QString fallback = ModelProfiles::recheckPromptFor(ModelProfiles::instance(), QStringLiteral("unlimited-ocr"), QStringLiteral("blockRecognition"));
-        QVERIFY(!fallback.isEmpty());
-        QVERIFY(fallback.contains(QStringLiteral("{text}")));
-        QVERIFY(fallback.contains(QStringLiteral("Previously recognized text:")));
-    }
-
     // The model contract now lives in resources/profiles/models/<id>.json: a
     // model is added as data, so the tests read the shipped file rather than a
     // C++ subclass.
@@ -568,33 +545,33 @@ private slots:
         // The block-recognition contract: the reply itself is the block text.
         const CheckResult text = model.parse("{\"choices\":[{\"message\":{\"role\":\"assistant\","
                                              "\"content\":\"1. Introduction\"}}]}");
-        QCOMPARE(text.status, CheckStatus::ReRecognized);
+        QCOMPARE(text.status, CheckStatus::Recognized);
         QCOMPARE(text.text, QStringLiteral("1. Introduction"));
 
         // Whitespace around the transcription is trimmed, nothing else.
         const CheckResult padded = model.parse("{\"choices\":[{\"message\":{\"content\":\"  hello world\\n  \"}}]}");
-        QCOMPARE(padded.status, CheckStatus::ReRecognized);
+        QCOMPARE(padded.status, CheckStatus::Recognized);
         QCOMPARE(padded.text, QStringLiteral("hello world"));
 
         // A multi-line block (a table, a list) is transcribed as-is.
         const CheckResult multi = model.parse("{\"choices\":[{\"message\":{\"content\":\"<table>\\n<tr></tr>\\n</table>\"}}]}");
-        QCOMPARE(multi.status, CheckStatus::ReRecognized);
+        QCOMPARE(multi.status, CheckStatus::Recognized);
         QCOMPARE(multi.text, QStringLiteral("<table>\n<tr></tr>\n</table>"));
 
         // A reply that is one Markdown code fence — VL models do this to
         // tables — carries packaging, not block text: the fence is unwrapped
         // and the table kept verbatim, with or without a language tag.
         const CheckResult fenced = model.parse("{\"choices\":[{\"message\":{\"content\":\"```html\\n<table>\\n<tr><td>x</td></tr>\\n</table>\\n```\"}}]}");
-        QCOMPARE(fenced.status, CheckStatus::ReRecognized);
+        QCOMPARE(fenced.status, CheckStatus::Recognized);
         QCOMPARE(fenced.text, QStringLiteral("<table>\n<tr><td>x</td></tr>\n</table>"));
 
         const CheckResult bareFence = model.parse("{\"choices\":[{\"message\":{\"content\":\"```\\nplain text\\n```\"}}]}");
-        QCOMPARE(bareFence.status, CheckStatus::ReRecognized);
+        QCOMPARE(bareFence.status, CheckStatus::Recognized);
         QCOMPARE(bareFence.text, QStringLiteral("plain text"));
 
         // A fence around only part of the reply is content, not packaging.
         const CheckResult partialFence = model.parse("{\"choices\":[{\"message\":{\"content\":\"Before.\\n```html\\n<table></table>\\n```\\nAfter.\"}}]}");
-        QCOMPARE(partialFence.status, CheckStatus::ReRecognized);
+        QCOMPARE(partialFence.status, CheckStatus::Recognized);
         QCOMPARE(partialFence.text, QStringLiteral("Before.\n```html\n<table></table>\n```\nAfter."));
 
         // An empty reply — nothing but end-of-sentence markers — means the
@@ -608,13 +585,13 @@ private slots:
         // A think block must be dropped; only the final answer remains.
         const CheckResult withThink = model.parse("{\"choices\":[{\"message\":{\"content\":"
                                                   "\" thinkingreasoning response\\nrecognized text\"}}]}");
-        QVERIFY2(withThink.status == CheckStatus::ReRecognized, withThink.errorMessage.text().toUtf8().constData());
+        QVERIFY2(withThink.status == CheckStatus::Recognized, withThink.errorMessage.text().toUtf8().constData());
         QCOMPARE(withThink.text, QStringLiteral("recognized text"));
 
         // Trailing end-of-sentence markers must be stripped (ADR 18 parity).
         const CheckResult withMarker = model.parse("{\"choices\":[{\"message\":{\"content\":"
                                                    "\"recognized\\n<\uFF5Cend\u2581of\u2581sentence\uFF5C>\"}}]}");
-        QCOMPARE(withMarker.status, CheckStatus::ReRecognized);
+        QCOMPARE(withMarker.status, CheckStatus::Recognized);
         QCOMPARE(withMarker.text, QStringLiteral("recognized"));
 
         // Broken transports stay failures, not silent verdicts.
@@ -651,7 +628,7 @@ private slots:
         QVERIFY(server.gotRequest);
         QVERIFY2(future.result().status != CheckStatus::Failed, future.result().errorMessage.text().toUtf8().constData());
         // The reply body ("ok") IS the block text under the transcription contract.
-        QCOMPARE(future.result().status, CheckStatus::ReRecognized);
+        QCOMPARE(future.result().status, CheckStatus::Recognized);
         QCOMPARE(future.result().text, QStringLiteral("ok"));
     }
 };

@@ -190,8 +190,8 @@
     </message>
     <message>
         <location line="+52"/>
-        <source>Re-recognized text:</source>
-        <translation>Распознанный заново текст:</translation>
+        <source>Corrected text:</source>
+        <translation>Исправленный текст:</translation>
     </message>
     <message>
         <location line="+27"/>

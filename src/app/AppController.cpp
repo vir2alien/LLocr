@@ -27,6 +27,7 @@
 #include "parsers/ParserFactory.h"
 
 #include "config/RequestProfileStore.h"
+#include "core/BoxTransitions.h"
 #include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"
 #include "models/OcrModel.h"
@@ -90,7 +91,9 @@ AppController::AppController(SettingsStore &settings,
         updateAvailability();
     });
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
-    connect(&m_verify, &VerificationQueueController::blockChecked, this, &AppController::applyCheckResultToBox);
+    connect(&m_verify, &VerificationQueueController::verificationStarted, this, &AppController::applyVerificationStarted);
+    connect(&m_verify, &VerificationQueueController::blockVerified, this, &AppController::applyVerdictToBox);
+    connect(&m_verify, &VerificationQueueController::blockRecognized, this, &AppController::applyRecognitionToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
 
     connect(this, &AppController::pageChanged, this, &AppController::updateAvailability);
@@ -937,6 +940,12 @@ QString AppController::selectedBlockCorrected() const
     return box ? box->correctedText : QString();
 }
 
+int AppController::selectedBlockCorrectedCheckStatus() const
+{
+    const BoundingBox *box = selectedBox();
+    return box ? static_cast<int>(box->correctedCheckStatus) : 0;
+}
+
 QVariantList AppController::selectedBlockTextRange() const
 {
     const QList<int> range = blockTextRange(m_selectedBox);
@@ -970,44 +979,32 @@ void AppController::checkSelectedBlock()
 
 void AppController::revertBlockCorrection()
 {
-    if (m_selectedBox < 0 || !m_document.isValidIndex(m_currentPage))
+    const BoundingBox *box = selectedBox();
+    if (!box || !BoxTransitions::hasCorrection(*box))
         return;
 
-    QString boxText;
+    const int pageIndex = m_currentPage;
+    const int boxIndex = m_selectedBox;
+    if (!applyBoxTransition(pageIndex, boxIndex, BoxTransitions::correctionReverted))
+        return;
+
     QString rebuilt;
     {
-        QWriteLocker locker(&m_documentLock);
-        DocumentPage &page = m_document.page(m_currentPage);
-        if (!page.recognized || page.result.pages.isEmpty())
+        QReadLocker locker(&m_documentLock);
+        if (m_document.page(pageIndex).result.pages.isEmpty())
             return;
-        QList<BoundingBox> &boxes = page.result.pages[0].boxes;
-        if (m_selectedBox >= boxes.size())
-            return;
-
-        BoundingBox &box = boxes[m_selectedBox];
-        if (box.checkStatus == BoxCheckStatus::NotChecked && box.correctedText.isEmpty()) {
-            return;
-        }
-        box.checkStatus = BoxCheckStatus::NotChecked;
-        box.correctedText.clear();
-        box.confidence = -1.0;
-        boxText = box.text;
-        rebuilt = rebuildPageText(page.result.pages[0]);
-        ++m_cropRevision;
+        rebuilt = rebuildPageText(m_document.page(pageIndex).result.pages[0]);
     }
 
-    setPageText(m_currentPage, rebuilt);
-    if (rebuilt == m_editStore.baseline(m_currentPage)) {
-        m_editStore.revert(m_currentPage);
-        m_pageModel.setEdited(m_currentPage, false);
+    if (rebuilt == m_editStore.baseline(pageIndex)) {
+        m_editStore.revert(pageIndex);
+        m_pageModel.setEdited(pageIndex, false);
     } else {
         // Structural change: rebase the baseline (see removeBlock).
-        m_editStore.reset(m_currentPage, rebuilt);
-        markPageEdited(m_currentPage);
+        m_editStore.reset(pageIndex, rebuilt);
+        markPageEdited(pageIndex);
     }
 
-    m_boxModel.updateBoxCheck(m_selectedBox, static_cast<int>(BoxCheckStatus::NotChecked), QString(), boxText);
-    emit selectedBoxChanged();
     emit checkStateChanged();
     emit resultChanged();
     emit editStateChanged();
@@ -1199,90 +1196,101 @@ bool AppController::allProblemRecognitionSupported() const
     return m_verify.allPageRecheckSupported();
 }
 
-void AppController::applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result)
+bool AppController::applyBoxTransition(int pageIndex, int boxIndex, const std::function<void(BoundingBox &)> &transition)
 {
     if (!m_document.isValidIndex(pageIndex))
-        return;
+        return false;
 
-    BoxCheckStatus status = BoxCheckStatus::NotChecked;
+    int status = int(BoxCheckStatus::NotChecked);
     QString corrected;
     QString text;
     double confidence = -1.0;
-    QString rebuilt;
-    bool textChanged = false;
+    int correctedStatus = int(BoxCheckStatus::NotChecked);
+    double correctedConfidence = -1.0;
     {
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(pageIndex);
         if (!page.recognized || page.result.pages.isEmpty())
-            return;
+            return false;
         QList<BoundingBox> &boxes = page.result.pages[0].boxes;
         if (boxIndex < 0 || boxIndex >= boxes.size())
-            return;
+            return false;
 
         BoundingBox &box = boxes[boxIndex];
-        switch (result.status) {
-        case CheckStatus::Ok:
-            // The decision confirmed the re-recognized variant: it becomes
-            // the block text — the original it replaced was already rejected
-            // by the pass that triggered the re-recognition.
-            if (!box.correctedText.isEmpty()) {
-                box.text = box.correctedText;
-                box.correctedText.clear();
-            }
-            box.checkStatus = BoxCheckStatus::Ok;
-            break;
-        case CheckStatus::ReRecognized:
-            if (box.text.isEmpty() && box.correctedText.isEmpty()) {
-                // First recognition (e.g. a layout-markup block): the text
-                // lands where page OCR puts it and the block stays gray.
-                box.text = result.text;
-                box.checkStatus = BoxCheckStatus::NotChecked;
-            } else {
-                box.checkStatus = BoxCheckStatus::ReRecognized;
-                box.correctedText = result.text;
-            }
-            break;
-        case CheckStatus::Mismatch:
-            // The variants stay side by side for the human verdict.
-            box.checkStatus = BoxCheckStatus::Mismatch;
-            break;
-        case CheckStatus::Review:
-            box.checkStatus = BoxCheckStatus::Review;
-            break;
-        case CheckStatus::Failed:
-            break;
-        }
-        status = box.checkStatus;
+        transition(box);
+        ++m_cropRevision;
+
+        status = int(box.checkStatus);
         corrected = box.correctedText;
         text = box.text;
-        // A failed request is not a verdict: like the status, the confidence
-        // of the last real verdict stays.
-        if (result.status != CheckStatus::Failed)
-            box.confidence = result.confidence;
         confidence = box.confidence;
+        correctedStatus = int(box.correctedCheckStatus);
+        correctedConfidence = box.correctedConfidence;
+    }
 
-        if (result.status == CheckStatus::ReRecognized) {
-            rebuilt = rebuildPageText(page.result.pages[0]);
+    if (pageIndex == m_currentPage) {
+        m_boxModel.updateBoxCheck(boxIndex, status, corrected, text, confidence, correctedStatus, correctedConfidence);
+        if (m_selectedBox == boxIndex)
+            emit selectedBoxChanged();
+    }
+    return true;
+}
+
+void AppController::applyVerificationStarted(int pageIndex, int boxIndex)
+{
+    applyBoxTransition(pageIndex, boxIndex, BoxTransitions::verificationStarted);
+}
+
+void AppController::applyVerdictToBox(int pageIndex, int boxIndex, const CheckResult &result)
+{
+    // A failed request is not a verdict: verificationStarted already erased
+    // the previous one, so the block stays gray until a later run retries it.
+    if (result.status == CheckStatus::Failed)
+        return;
+    applyBoxTransition(pageIndex, boxIndex, [&result](BoundingBox &box) { BoxTransitions::verdictApplied(box, result); });
+}
+
+void AppController::applyRecognitionToBox(int pageIndex, int boxIndex, const CheckResult &result)
+{
+    bool textChanged = false;
+    const bool applied = applyBoxTransition(pageIndex, boxIndex, [&result, &textChanged](BoundingBox &box) {
+        switch (result.status) {
+        case CheckStatus::Recognized:
+            // Any OCR result overwrites the text layer, the correction layer
+            // and both verdicts (ADR 164) — a re-recognition never stacks a
+            // second variant.
+            BoxTransitions::ocrResultApplied(box, result.text);
             textChanged = true;
+            break;
+        case CheckStatus::Review:
+            // Unreadable: the stored correction (a legacy project's) still
+            // stops being the effective text.
+            textChanged = !box.correctedText.isEmpty();
+            BoxTransitions::blockUnreadable(box);
+            break;
+        case CheckStatus::Failed:
+        case CheckStatus::Ok:
+        case CheckStatus::Fixed:
+        case CheckStatus::Mismatch:
+            break;
         }
-        ++m_cropRevision;
+    });
+    if (!applied || !textChanged)
+        return;
+
+    QString rebuilt;
+    {
+        QReadLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
+            return;
+        rebuilt = rebuildPageText(m_document.page(pageIndex).result.pages[0]);
     }
 
-    if (textChanged) {
-        setPageText(pageIndex, rebuilt);
-        m_editStore.reset(pageIndex, rebuilt);
-        markPageEdited(pageIndex);
-    }
-
-    const bool onCurrentPage = pageIndex == m_currentPage;
-    if (onCurrentPage)
-        m_boxModel.updateBoxCheck(boxIndex, static_cast<int>(status), corrected, text, confidence);
-    if (onCurrentPage && m_selectedBox == boxIndex)
-        emit selectedBoxChanged();
-    if (textChanged) {
-        emit resultChanged();
-        emit editStateChanged();
-    }
+    setPageText(pageIndex, rebuilt);
+    m_editStore.reset(pageIndex, rebuilt);
+    markPageEdited(pageIndex);
+    emit resultChanged();
+    emit editStateChanged();
 }
 
 bool AppController::exportPages(const QUrl &fileUrl, int scope, int fromPage, int toPage)

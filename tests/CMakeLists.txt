@@ -520,6 +520,15 @@ target_link_libraries(test_llama_client PRIVATE
 )
 add_test(NAME test_llama_client COMMAND test_llama_client)
 
+# ---- The block state machine (ADR 164): two layers, pure transitions -------
+qt_add_executable(test_box_transitions test_box_transitions.cpp)
+
+target_link_libraries(test_box_transitions PRIVATE
+    Qt6::Test
+    llocr_core
+)
+add_test(NAME test_box_transitions COMMAND test_box_transitions)
+
 # ---- Log view sync: incremental QTextDocument mirroring (QML-I3) ------------
 qt_add_executable(test_log_document_sync test_log_document_sync.cpp)
 

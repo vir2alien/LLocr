@@ -57,6 +57,7 @@ QJsonObject boxToJson(const BoundingBox &box)
         {"text", box.text},
         {"correctedText", box.correctedText},
         {"checkStatus", int(box.checkStatus)},
+        {"correctedCheckStatus", int(box.correctedCheckStatus)},
         {"label", box.label},
         {"x", box.rect.x()},
         {"y", box.rect.y()},
@@ -67,13 +68,14 @@ QJsonObject boxToJson(const BoundingBox &box)
     };
 }
 
-BoundingBox boxFromJson(const QJsonObject &object)
+BoundingBox boxFromJson(const QJsonObject &object, int schemaVersion)
 {
     BoundingBox box;
     box.text = object.value("text").toString();
     box.correctedText = object.value("correctedText").toString();
-    const int status = object.value("checkStatus").toInt(int(BoxCheckStatus::NotChecked));
-    box.checkStatus = boxCheckStatusFromInt(status);
+    box.checkStatus = boxCheckStatusFromInt(object.value("checkStatus").toInt(int(BoxCheckStatus::NotChecked)));
+    if (schemaVersion >= 2)
+        box.correctedCheckStatus = boxCheckStatusFromInt(object.value("correctedCheckStatus").toInt(int(BoxCheckStatus::NotChecked)));
     box.label = object.value("label").toString();
     box.rect = QRectF(object.value("x").toDouble(), object.value("y").toDouble(), object.value("w").toDouble(), object.value("h").toDouble());
     box.positioned = object.value("positioned").toBool(true);
@@ -277,7 +279,7 @@ ProjectStore::LoadResult ProjectStore::load(const QString &path, const QString &
         page.parseNote = object.value("parseNote").toString();
         const QJsonArray boxes = object.value("boxes").toArray();
         for (const QJsonValue &boxValue : boxes)
-            page.boxes.append(boxFromJson(boxValue.toObject()));
+            page.boxes.append(boxFromJson(boxValue.toObject(), version));
         result.data.pages.append(page);
     }
     result.data.currentPage = root.value("currentPage").toInt(0);

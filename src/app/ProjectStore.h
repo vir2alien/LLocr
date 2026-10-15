@@ -41,7 +41,11 @@ struct ProjectData {
 class ProjectStore
 {
 public:
-    static constexpr int kSchemaVersion = 1;
+    // 2: boxes carry the correction layer's verdict (ADR 164). v1 projects
+    // keep loading: checkStatus 2 (the removed ReRecognized) reads as
+    // NotChecked on both layers, a stored correctedText survives as the
+    // correction layer.
+    static constexpr int kSchemaVersion = 2;
     static constexpr QLatin1StringView kFormatId{"llocr-project"};
     static constexpr QLatin1StringView kProjectEntry{"project.json"};
 

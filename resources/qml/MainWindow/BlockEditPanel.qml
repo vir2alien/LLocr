@@ -18,6 +18,14 @@ Rectangle {
     readonly property bool isTextBlock: Controller.selectedBoxIndex < 0
                                         || !Controller.boxModel.isImageBox(Controller.selectedBoxIndex)
 
+    // The dot shows the effective layer (ADR 164): the correction's status
+    // when the block carries one (or its damaged verdict), else the text's.
+    readonly property bool correctionActive: Controller.selectedBlockCorrected.length > 0
+                                             || Controller.selectedBlockCorrectedCheckStatus !== 0
+    readonly property int effectiveStatus: correctionActive
+                                           ? Controller.selectedBlockCorrectedCheckStatus
+                                           : Controller.selectedBlockCheckStatus
+
     implicitHeight: checkColumn.implicitHeight + 2 * Theme.spacingSmall
     visible: Controller.selectedBoxIndex >= 0 && Controller.hasResult
 
@@ -42,15 +50,15 @@ Rectangle {
                 Layout.maximumWidth: root.width - 90
             }
             Rectangle {
-                visible: Controller.selectedBlockCheckStatus !== 0
+                visible: root.effectiveStatus !== 0
                          || Controller.selectedBlockText.length > 0
+                         || Controller.selectedBlockCorrected.length > 0
                 Layout.preferredWidth: 8
                 Layout.preferredHeight: 8
                 Layout.alignment: Qt.AlignVCenter
                 radius: 4
-                color: Controller.selectedBlockCheckStatus === 1 ? Theme.success
-                     : Controller.selectedBlockCheckStatus === 2 ? Theme.warning
-                     : Controller.selectedBlockCheckStatus >= 3 ? Theme.error
+                color: root.effectiveStatus === 1 ? Theme.success
+                     : root.effectiveStatus >= 3 ? Theme.error
                      : Theme.nothing
             }
             Item { Layout.fillWidth: true }
@@ -82,17 +90,26 @@ Rectangle {
             }
         }
 
-        // Second text variant (the block was re-recognized while it already
-        // had one) — visible for the amber two-variant state and for the red
-        // states that keep both variants side by side.
+        // The correction layer: the universal model's fix, judged separately
+        // from the text («Отменить исправление» rolls the block back to it).
         RowLayout {
             visible: root.isTextBlock
                      && Controller.selectedBlockCorrected.length > 0
             Layout.fillWidth: true
             spacing: Theme.spacingSmall
             LLOLabel {
-                text: qsTr("Re-recognized text:")
+                text: qsTr("Corrected text:")
                 color: Theme.textMuted
+            }
+            Rectangle {
+                visible: Controller.selectedBlockCorrectedCheckStatus !== 0
+                Layout.preferredWidth: 8
+                Layout.preferredHeight: 8
+                Layout.alignment: Qt.AlignVCenter
+                radius: 4
+                color: Controller.selectedBlockCorrectedCheckStatus === 1 ? Theme.success
+                     : Controller.selectedBlockCorrectedCheckStatus >= 3 ? Theme.error
+                     : Theme.nothing
             }
             Item { Layout.fillWidth: true }
             LLOButton {

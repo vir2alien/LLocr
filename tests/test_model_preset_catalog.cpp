@@ -234,7 +234,6 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
         QVERIFY2(system.contains(QStringLiteral("OK")), qPrintable(id));
         QVERIFY2(system.contains(QStringLiteral("FIX")), qPrintable(id));
         QVERIFY2(system.contains(QStringLiteral("REVIEW")), qPrintable(id));
-        QVERIFY2(fix->recheckPrompt.isEmpty(), qPrintable(id));
         QVERIFY2(!fix->blockPrompts.isEmpty(), qPrintable(id));
         for (auto it = fix->blockPrompts.constBegin(); it != fix->blockPrompts.constEnd(); ++it)
             QVERIFY2(it.value().contains(QStringLiteral("FIX")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));

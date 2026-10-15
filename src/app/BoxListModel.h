@@ -29,8 +29,10 @@ public:
         LabelRole,
         CheckStatusRole,
         CorrectedRole,
+        CorrectedCheckStatusRole,
         KindRole,
         ConfidenceRole,
+        CorrectedConfidenceRole,
     };
 
     explicit BoxListModel(QObject *parent = nullptr);
@@ -48,7 +50,11 @@ public:
     void setStyleModelId(const QString &modelId);
 
     Q_INVOKABLE void updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height);
-    Q_INVOKABLE void updateBoxCheck(int index, int status, const QString &correctedText, const QString &text, double confidence = -1.0);
+    // Mirrors both layers of the box state (ADR 164): the text layer
+    // (status, text, confidence) and the correction layer (correctedText,
+    // correctedStatus, correctedConfidence).
+    Q_INVOKABLE void updateBoxCheck(
+        int index, int status, const QString &correctedText, const QString &text, double confidence = -1.0, int correctedStatus = int(BoxCheckStatus::NotChecked), double correctedConfidence = -1.0);
     void removeBox(int index);
     Q_INVOKABLE bool isImageBox(int index) const;
 

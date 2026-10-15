@@ -5,6 +5,7 @@
 
 #include "config/RequestProfileStore.h"
 #include "config/SettingsStore.h"
+#include "core/BoxTransitions.h"
 #include "core/ModelProfiles.h"
 #include "parsers/BlockStyle.h"
 
@@ -15,23 +16,7 @@ namespace {
 // shipped clef-flash profile carries its own wording).
 constexpr const char *kFallbackQuestion = "The state is a text fragment recognized from the attached image by an OCR "
                                           "model. Does the image show the same text?";
-
-// The text the decision stage judges: a re-recognized block answers for its
-// corrected variant, everything else for the recognized text.
-QString effectiveBoxText(const BoundingBox &box)
-{
-    return box.correctedText.isEmpty() ? box.text : box.correctedText;
-}
 }  // namespace
-
-QString VerificationQueueController::composeBlockUserPrompt(const QString &typePrompt, const QString &recheckPrompt, const QString &existingText)
-{
-    if (existingText.isEmpty())
-        return typePrompt;
-    QString recheck = recheckPrompt;
-    recheck.replace(QStringLiteral("{text}"), existingText);
-    return typePrompt.isEmpty() ? recheck : typePrompt + QStringLiteral("\n\n") + recheck;
-}
 
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
     : QObject(parent), m_deps(std::move(deps)), m_decision(m_deps.runtime, this), m_check(m_deps.checkRequestProfiles, m_deps.runtime, nullptr)
@@ -53,7 +38,7 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
         }
         const int page = m_verifyPage;
         const int box = m_verifyBoxIndex;
-        emit blockChecked(page, box, verdict);
+        emit blockVerified(page, box, verdict);
         ++m_verifyDone;
         if (verdict.status == CheckStatus::Mismatch && (m_runRecheck == RecheckForce || (m_runRecheck == RecheckFromSetting && m_autoRecheck)))
             m_recheckQueue.append({page, box});
@@ -70,7 +55,7 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
         }
         const int page = m_verifyPage;
         const int box = m_verifyBoxIndex;
-        emit blockChecked(page, box, result);
+        emit blockRecognized(page, box, result);
         ++m_verifyDone;
         emit stateChanged();
         QTimer::singleShot(0, this, [this]() { startNextVerify(); });
@@ -132,13 +117,13 @@ void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> 
         const BoundingBox &box = page.boxes.at(i);
         if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
             continue;
-        // A re-recognized block (two text variants) is judged again on its
-        // corrected text by the next run; Ok/Mismatch/Review have a verdict.
-        if (box.checkStatus != BoxCheckStatus::NotChecked && box.checkStatus != BoxCheckStatus::ReRecognized) {
+        // A block with a verdict on its effective layer has been answered;
+        // a re-recognized block (fresh text, verdicts erased) is asked again.
+        if (BoxTransitions::effectiveCheckStatus(box) != BoxCheckStatus::NotChecked) {
             ++answered;
             continue;
         }
-        if (effectiveBoxText(box).isEmpty())
+        if (BoxTransitions::effectiveText(box).isEmpty())
             continue;
         out.append(i);
     }
@@ -153,15 +138,15 @@ void VerificationQueueController::collectProblemBoxes(int pageIndex, QList<Verif
         return;
     const OcrPage &page = docPage.result.pages.first();
     for (int i = 0; i < page.boxes.size(); ++i) {
-        const BoxCheckStatus status = page.boxes.at(i).checkStatus;
+        const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(page.boxes.at(i));
         if (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review)
             out.append({pageIndex, i});
     }
 }
 
-// The layout pass creates text blocks with no text; a re-recognition that
-// already answered leaves the text in correctedText. Image placeholders are
-// never transcribed.
+// The layout pass creates text blocks with no text; a legacy project may
+// still carry a correction-only block. Image placeholders are never
+// transcribed.
 void VerificationQueueController::collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const
 {
     if (!m_deps.document.isValidIndex(pageIndex))
@@ -218,7 +203,7 @@ bool VerificationQueueController::pageVerificationSupported(int pageIndex) const
         return false;
     const OcrPage &page = m_deps.document.page(pageIndex).result.pages.first();
     for (const BoundingBox &box : std::as_const(page.boxes)) {
-        if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !effectiveBoxText(box).isEmpty())
+        if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !BoxTransitions::effectiveText(box).isEmpty())
             return true;
     }
     return false;
@@ -234,7 +219,7 @@ bool VerificationQueueController::allPageVerificationSupported() const
             continue;
         const OcrPage &page = docPage.result.pages.first();
         for (const BoundingBox &box : std::as_const(page.boxes)) {
-            if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !effectiveBoxText(box).isEmpty())
+            if ((m_deps.verification.isTypeEnabled(box.label) || box.duplicateSuspect) && !BoxTransitions::effectiveText(box).isEmpty())
                 return true;
         }
     }
@@ -392,16 +377,19 @@ void VerificationQueueController::startNextVerify()
         skipCurrentTask();
         return;
     }
-    const QString text = effectiveBoxText(boxes.at(m_verifyBoxIndex));
+    const BoundingBox &box = boxes.at(m_verifyBoxIndex);
+    const QString text = BoxTransitions::effectiveText(box);
     const QImage crop = m_deps.cropProvider(m_verifyPage, m_verifyBoxIndex);
     if (crop.isNull()) {
         skipCurrentTask();
         return;
     }
 
-    const BoundingBox &box = boxes.at(m_verifyBoxIndex);
-
     if (m_phase == Phase::Decision) {
+        // The old verdict of the layer being judged is erased while the
+        // request is in flight: a failed run leaves the block gray instead of
+        // showing a stale verdict (ADR 164).
+        emit verificationStarted(m_verifyPage, m_verifyBoxIndex);
         // The state carries the block's type, the candidate text and the
         // notation disclaimer; the wording is the role's question, with the
         // type's check list appended when the profile ships one, and the
@@ -412,14 +400,11 @@ void VerificationQueueController::startNextVerify()
     }
 
     // The transcription wording lives entirely in the model's profile
-    // (systemPrompt + blockPrompts on the blockRecognition role). A block
-    // that was already recognized also sends its original text, framed by the
-    // role's recheckPrompt, so the model verifies and corrects it instead of
-    // transcribing from scratch; a text-less block (layout markup) goes out
-    // as before.
+    // (systemPrompt + blockPrompts on the blockRecognition role). Per
+    // ADR 163 the block's previous text is not sent — presenting a candidate
+    // and getting confirm/fix/refuse back is the fix task's job.
     const QString modelId = m_deps.checkRequestProfiles.activeProfileId();
-    const QString typePrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"), box.label);
-    const QString userPrompt = composeBlockUserPrompt(typePrompt, ModelProfiles::recheckPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition")), box.text);
+    const QString userPrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"), box.label);
     const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("blockRecognition"));
     m_check.checkBlock(crop, systemPrompt, userPrompt);
 }

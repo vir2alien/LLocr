@@ -67,7 +67,8 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     BoundingBox box;
     box.text = QStringLiteral("block text");
     box.correctedText = QStringLiteral("corrected text");
-    box.checkStatus = BoxCheckStatus::ReRecognized;
+    box.checkStatus = BoxCheckStatus::Mismatch;
+    box.correctedCheckStatus = BoxCheckStatus::Ok;
     box.duplicateSuspect = true;
     box.label = QStringLiteral("text");
     box.rect = QRectF(0.1, 0.2, 0.5, 0.25);
@@ -199,7 +200,8 @@ private slots:
         QCOMPARE(imagePage.boxes.size(), 4);
         QCOMPARE(imagePage.boxes.at(0).text, QStringLiteral("block text"));
         QCOMPARE(imagePage.boxes.at(0).correctedText, QStringLiteral("corrected text"));
-        QCOMPARE(imagePage.boxes.at(0).checkStatus, BoxCheckStatus::ReRecognized);
+        QCOMPARE(imagePage.boxes.at(0).checkStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(imagePage.boxes.at(0).correctedCheckStatus, BoxCheckStatus::Ok);
         QCOMPARE(imagePage.boxes.at(0).label, QStringLiteral("text"));
         QCOMPARE(imagePage.boxes.at(0).rect, QRectF(0.1, 0.2, 0.5, 0.25));
         QVERIFY(imagePage.boxes.at(0).positioned);
@@ -207,6 +209,7 @@ private slots:
         // The decision-stage status survives the container round-trip.
         QCOMPARE(imagePage.boxes.at(1).text, QStringLiteral("misread block"));
         QCOMPARE(imagePage.boxes.at(1).checkStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(imagePage.boxes.at(1).correctedCheckStatus, BoxCheckStatus::NotChecked);
         QVERIFY(imagePage.boxes.at(2).text == QStringLiteral("preamble"));
         QVERIFY(!imagePage.boxes.at(2).positioned);
         QVERIFY(!imagePage.boxes.at(2).duplicateSuspect);
@@ -346,6 +349,68 @@ private slots:
         const ProjectStore::LoadResult current = ProjectStore::load(makeProject(QJsonObject{{"format", "llocr-project"}, {"version", ProjectStore::kSchemaVersion}}), extractDir);
         QVERIFY2(current.error.isEmpty(), qPrintable(current.error));
         QCOMPARE(current.data.pages.size(), 0);
+    }
+
+    // A v1 project stores the removed ReRecognized as checkStatus 2: both
+    // layers read as NotChecked while the second variant survives as the
+    // correction layer (ADR 164). Real v1 verdicts stay on the text layer.
+    void v1ProjectReadsReRecognizedAsTwoEmptyLayers()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString extractDir = dir.filePath(QStringLiteral("x"));
+        QVERIFY(QDir().mkpath(extractDir));
+
+        const auto boxJson = [](const QString &text, const QString &corrected, int status) {
+            return QJsonObject{
+                {"text", text},
+                {"correctedText", corrected},
+                {"checkStatus", status},
+                {"label", QStringLiteral("text")},
+                {"x", 0.0},
+                {"y", 0.0},
+                {"w", 0.5},
+                {"h", 0.5},
+                {"positioned", true},
+                {"duplicateSuspect", false},
+            };
+        };
+        const QJsonObject manifest{
+            {"format", QStringLiteral("llocr-project")},
+            {"version", 1},
+            {"currentPage", 0},
+            {"sources", QJsonArray{}},
+            {"pages",
+             QJsonArray{QJsonObject{
+                 {"sourceId", -1},
+                 {"sourcePageIndex", -1},
+                 {"recognized", true},
+                 {"edited", false},
+                 {"hasDuplicates", false},
+                 {"text", QStringLiteral("t")},
+                 {"baseline", QStringLiteral("t")},
+                 {"parseNote", QString()},
+                 {"boxes", QJsonArray{boxJson(QStringLiteral("original"), QStringLiteral("second variant"), 2), boxJson(QStringLiteral("checked"), QString(), 1)}},
+             }}},
+        };
+        const QString projectPath = dir.filePath(QStringLiteral("v1.llocr"));
+        ZipWriter w(projectPath);
+        QVERIFY(w.addEntry(QStringLiteral("project.json"), QJsonDocument(manifest).toJson()));
+        QVERIFY(w.finish());
+
+        const ProjectStore::LoadResult loaded = ProjectStore::load(projectPath, extractDir);
+        QVERIFY2(loaded.error.isEmpty(), qPrintable(loaded.error));
+        QCOMPARE(loaded.data.pages.size(), 1);
+        QCOMPARE(loaded.data.pages.first().boxes.size(), 2);
+
+        const BoundingBox &reRecognized = loaded.data.pages.first().boxes.at(0);
+        QCOMPARE(reRecognized.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(reRecognized.correctedCheckStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(reRecognized.correctedText, QStringLiteral("second variant"));
+
+        const BoundingBox &checked = loaded.data.pages.first().boxes.at(1);
+        QCOMPARE(checked.checkStatus, BoxCheckStatus::Ok);
+        QCOMPARE(checked.correctedCheckStatus, BoxCheckStatus::NotChecked);
     }
 };
 

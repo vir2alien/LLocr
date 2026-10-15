@@ -18,14 +18,6 @@ namespace llocr {
 
 namespace {
 
-// Instruction appended to a blockRecognition request when the block already
-// carries recognized text; {text} is substituted with it. Profiles override
-// this wording through the role's recheckPrompt key.
-constexpr char kFallbackRecheckPrompt[] = "The following text was previously recognized in this image and may contain errors.\n\n"
-                                          "Previously recognized text:\n{text}\n\n"
-                                          "Verify the text against the image. If it is correct, return it unchanged; if it is wrong, "
-                                          "return the corrected text. The reply must be the text only — no explanations, no Markdown code fences.";
-
 ModelProfiles::Module readModule(const QJsonObject &object, QString &error)
 {
     ModelProfiles::Module module;
@@ -111,7 +103,6 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.systemPrompt = roleObject.value(QStringLiteral("systemPrompt")).toString();
         role.statePrompt = roleObject.value(QStringLiteral("statePrompt")).toString();
         role.question = roleObject.value(QStringLiteral("question")).toString();
-        role.recheckPrompt = roleObject.value(QStringLiteral("recheckPrompt")).toString();
         const QJsonObject criteria = roleObject.value(QStringLiteral("criteria")).toObject();
         role.criteriaTrue = criteria.value(QStringLiteral("true")).toString();
         role.criteriaFalse = criteria.value(QStringLiteral("false")).toString();
@@ -361,15 +352,6 @@ QString ModelProfiles::questionFor(const QList<Profile> &profiles, const QString
     const Profile *profile = find(profiles, modelId);
     const Role *found = profile ? roleFor(*profile, role) : nullptr;
     return found ? found->question : QString();
-}
-
-QString ModelProfiles::recheckPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
-{
-    const Profile *profile = find(profiles, modelId);
-    const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    if (!found || found->recheckPrompt.isEmpty())
-        return QString::fromUtf8(kFallbackRecheckPrompt);
-    return found->recheckPrompt;
 }
 
 QString ModelProfiles::criteriaTrueFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)

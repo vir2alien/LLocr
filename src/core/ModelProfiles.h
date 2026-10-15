@@ -26,7 +26,6 @@ public:
         QString systemPrompt;    // check-role override of the shared verifier system prompt
         QString statePrompt;     // decision role: framing + comparison rules; read instead of systemPrompt
         QString question;        // decision role: the yes/no question itself when the profile ships one
-        QString recheckPrompt;   // blockRecognition: instruction appended when the block already has text; {text} is the placeholder
         QString criteriaTrue;    // decision role: the "true" side of the noul question (what counts as a match)
         QString criteriaFalse;   // decision role: the "false" side (what counts as a difference)
         QList<Prompt> prompts;
@@ -101,8 +100,6 @@ public:
     static QString statePromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString questionFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
-
-    static QString recheckPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString criteriaTrueFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
     static QString criteriaFalseFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);

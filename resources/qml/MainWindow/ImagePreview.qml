@@ -77,11 +77,21 @@ Image {
                 required property real boxHeight
                 required property string boxText
                 required property int boxCheckStatus
+                required property string boxCorrectedText
+                required property int boxCorrectedCheckStatus
                 required property int boxKind
                 required property real boxConfidence
+                required property real boxCorrectedConfidence
 
                 property bool isImage: Controller.boxModel.isImageBox(boxDelegate.index)
                 property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
+
+                // The status dot follows the effective layer (ADR 164): the
+                // correction when the block carries one (or its damaged
+                // verdict), else the OCR text.
+                readonly property bool correctionActive: boxCorrectedText.length > 0 || boxCorrectedCheckStatus !== 0
+                readonly property int effectiveStatus: correctionActive ? boxCorrectedCheckStatus : boxCheckStatus
+                readonly property real effectiveConfidence: correctionActive ? boxCorrectedConfidence : boxConfidence
 
                 // One hue per block kind; selection overrides the frame.
                 readonly property color kindOuter: boxKind == 1 ? Theme.overlayImageOuter
@@ -118,31 +128,30 @@ Image {
 
                 Rectangle {
                     id: statusDot
-                    // Outside the block, to the left: gray = recognized (by
-                    // page OCR or block recognition, no verdict yet), green =
-                    // verified Ok, amber = re-recognized (two text variants),
-                    // red = Mismatch/Review. With the confidence option on, a
-                    // decision verdict (green/red) renders as its probability
-                    // in percent inside a circle of the verdict's color. A
-                    // markup block without text shows nothing.
+                    // Outside the block, to the left: gray = recognized or
+                    // corrected (no verdict on the effective layer), green =
+                    // verified Ok, red = Mismatch or the damaged Review. With
+                    // the confidence option on, a decision verdict (green/red)
+                    // renders as its probability in percent inside a circle of
+                    // the verdict's color. A markup block without text shows
+                    // nothing.
                     readonly property bool confidenceBadge: Settings.showConfidence
-                                                            && (boxCheckStatus === 1 || boxCheckStatus === 4)
-                                                            && boxConfidence >= 0
-                    visible: boxCheckStatus !== 0 || boxText.length > 0
+                                                            && (effectiveStatus === 1 || effectiveStatus === 4)
+                                                            && effectiveConfidence >= 0
+                    visible: boxText.length > 0 || boxCorrectedText.length > 0
                     x: boxDelegate.x < 14 ? 2 : (confidenceBadge ? -24 : -12)
                     anchors.verticalCenter: parent.verticalCenter
                     width: confidenceBadge ? 20 : 8
                     height: confidenceBadge ? 20 : 8
                     radius: width / 2
-                    color: boxCheckStatus === 1 ? Theme.success
-                         : boxCheckStatus === 2 ? Theme.warning
-                         : boxCheckStatus >= 3 ? Theme.error
+                    color: effectiveStatus === 1 ? Theme.success
+                         : effectiveStatus >= 3 ? Theme.error
                          : Theme.nothing
 
                     Text {
                         anchors.centerIn: parent
                         visible: parent.confidenceBadge
-                        text: Math.round(boxConfidence * 100)
+                        text: Math.round(effectiveConfidence * 100)
                         font.pointSize: Theme.captionSize
                         font.bold: true
                         color: "#ffffff"

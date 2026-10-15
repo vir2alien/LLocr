@@ -10,14 +10,13 @@
 namespace llocr {
 
 enum class BoxCheckStatus : int {
-    NotChecked = 0,    ///< No verdict yet. With text: recognized (gray dot);
-                       ///< without text: layout markup (no dot).
-    Ok = 1,            ///< The decision model confirmed the text matches the image.
-    ReRecognized = 2,  ///< The block was re-recognized while it already had
-                       ///< text; correctedText holds the second variant.
-    Review = 3,        ///< The block is unreadable — needs human eyes.
-    Mismatch = 4,      ///< The decision model rejected the text; waiting for (or skipped)
-                       ///< re-recognition.
+    NotChecked = 0,  ///< No verdict yet. With text: recognized (gray dot);
+                     ///< without text: layout markup (no dot).
+    Ok = 1,          ///< The decision model confirmed the text matches the image.
+                     ///< 2 is reserved: pre-v2 projects stored ReRecognized there,
+                     ///< read back as NotChecked (ADR 164).
+    Review = 3,      ///< The block is unreadable — needs human eyes.
+    Mismatch = 4,    ///< The decision model rejected the text.
 };
 
 // The single int->enum gate: project load and the QML write path must not
@@ -25,20 +24,25 @@ enum class BoxCheckStatus : int {
 // project.json and silently coerce back to NotChecked on the next open).
 inline BoxCheckStatus boxCheckStatusFromInt(int value)
 {
+    if (value == 2)  // the reserved ReRecognized slot of v1 projects
+        return BoxCheckStatus::NotChecked;
     return value >= int(BoxCheckStatus::NotChecked) && value <= int(BoxCheckStatus::Mismatch) ? BoxCheckStatus(value) : BoxCheckStatus::NotChecked;
 }
 
 struct BoundingBox {
-    QString text;           ///< Recognized text of this fragment.
-    QString correctedText;  ///< Second text variant (checkStatus == ReRecognized); kept separate from text.
-    BoxCheckStatus checkStatus = BoxCheckStatus::NotChecked;
-    QString label;  ///< Block type reported by the model (title, text, table...).
-    QRectF rect;    ///< Normalized rectangle: x, y, width, height in [0, 1].
+    QString text;                                                      ///< OCR result of this fragment (the text layer).
+    QString correctedText;                                             ///< Correction layer: the universal model's fix (ADR 163);
+                                                                       ///< empty when the block was never corrected.
+    BoxCheckStatus checkStatus = BoxCheckStatus::NotChecked;           ///< Verdict on the text layer.
+    BoxCheckStatus correctedCheckStatus = BoxCheckStatus::NotChecked;  ///< Verdict on the correction layer.
+    QString label;                                                     ///< Block type reported by the model (title, text, table...).
+    QRectF rect;                                                       ///< Normalized rectangle: x, y, width, height in [0, 1].
     bool positioned = true;
-    bool duplicateSuspect = false;  ///< A duplicate was merged into this block —
-                                    ///< included in verification regardless of the
-                                    ///< label filter.
-    double confidence = -1.0;       ///< P(match) of the last decision verdict; -1 = none. Debug aid, not persisted.
+    bool duplicateSuspect = false;      ///< A duplicate was merged into this block —
+                                        ///< included in verification regardless of the
+                                        ///< label filter.
+    double confidence = -1.0;           ///< P(match) of the text-layer verdict; -1 = none. Debug aid, not persisted.
+    double correctedConfidence = -1.0;  ///< P(match) of the correction-layer verdict; -1 = none. Debug aid, not persisted.
 };
 
 struct OcrPage {

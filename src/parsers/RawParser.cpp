@@ -1,5 +1,7 @@
 #include "parsers/RawParser.h"
 
+#include "core/BoxTransitions.h"
+
 #include <QCoreApplication>
 
 namespace llocr {
@@ -26,7 +28,7 @@ QString RawParser::rebuildText(const OcrPage &page) const
     // preview instead of the stale markup text.
     QStringList blocks;
     for (const BoundingBox &box : page.boxes) {
-        const QString text = box.correctedText.isEmpty() ? box.text : box.correctedText;
+        const QString text = BoxTransitions::effectiveText(box);
         if (!text.isEmpty())
             blocks.append(text);
     }

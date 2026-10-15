@@ -58,17 +58,12 @@ public:
     int progressTotal() const { return m_verifyTotal; }
     QString errorMessage() const { return m_checkError.text(); }
 
-    // The block-recognition user message: a block that already carries text is
-    // not transcribed from scratch — the recheck template (with {text}
-    // substituted) is appended so the model verifies and corrects it.
-    static QString composeBlockUserPrompt(const QString &typePrompt, const QString &recheckPrompt, const QString &existingText);
-
     bool pageVerificationSupported(int pageIndex) const;
     bool allPageVerificationSupported() const;
 
     // Problem blocks = the statuses that ask for a re-run: the decision stage
     // rejected the text (Mismatch) or the block could not be transcribed
-    // (Review). Re-recognized blocks keep both variants and are re-judged by
+    // (Review). Re-recognized blocks have no verdict yet and are re-judged by
     // the next verification run instead.
     bool pageRecheckSupported(int pageIndex) const;
     bool allPageRecheckSupported() const;
@@ -94,7 +89,12 @@ public slots:
 signals:
     void stateChanged();
     void statusRequested(const llocr::StatusMessage &message);
-    void blockChecked(int pageIndex, int boxIndex, const llocr::CheckResult &result);
+    // One signal per result source: the decision verdict (blockVerified) and
+    // the block-recognition transcription (blockRecognized) drive different
+    // box transitions (ADR 164); the fix pipeline adds blockFixed later.
+    void verificationStarted(int pageIndex, int boxIndex);
+    void blockVerified(int pageIndex, int boxIndex, const llocr::CheckResult &result);
+    void blockRecognized(int pageIndex, int boxIndex, const llocr::CheckResult &result);
     void problemReported(const llocr::StatusMessage &message);
 
 private:

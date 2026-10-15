@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <QHash>
 #include <QImage>
@@ -70,6 +71,7 @@ class AppController : public QObject
     Q_PROPERTY(QString selectedBlockLabel READ selectedBlockLabel NOTIFY selectedBoxChanged)
     Q_PROPERTY(int selectedBlockCheckStatus READ selectedBlockCheckStatus NOTIFY selectedBoxChanged)
     Q_PROPERTY(QString selectedBlockCorrected READ selectedBlockCorrected NOTIFY selectedBoxChanged)
+    Q_PROPERTY(int selectedBlockCorrectedCheckStatus READ selectedBlockCorrectedCheckStatus NOTIFY selectedBoxChanged)
     Q_PROPERTY(QVariantList selectedBlockTextRange READ selectedBlockTextRange NOTIFY blockTextRangeChanged)
 
     Q_PROPERTY(bool checkBusy READ checkBusy NOTIFY checkStateChanged)
@@ -156,6 +158,7 @@ public:
     QString selectedBlockLabel() const;
     int selectedBlockCheckStatus() const;
     QString selectedBlockCorrected() const;
+    int selectedBlockCorrectedCheckStatus() const;
     QVariantList selectedBlockTextRange() const;
     void setSelectedBoxIndex(int index);
 
@@ -291,7 +294,16 @@ private:
     void updateBoxesForCurrent();
     const BoundingBox *selectedBox() const;
 
-    void applyCheckResultToBox(int pageIndex, int boxIndex, const CheckResult &result);
+    // The verification queue's result sources (ADR 164): a decision verdict
+    // lands on the effective layer, a block-recognition reply is an OCR
+    // result and overwrites the text layer.
+    void applyVerificationStarted(int pageIndex, int boxIndex);
+    void applyVerdictToBox(int pageIndex, int boxIndex, const CheckResult &result);
+    void applyRecognitionToBox(int pageIndex, int boxIndex, const CheckResult &result);
+    // Runs one transition on the box under the document lock and mirrors the
+    // resulting two-layer state to the box model; false when the page or the
+    // box is gone.
+    bool applyBoxTransition(int pageIndex, int boxIndex, const std::function<void(BoundingBox &)> &transition);
 
     // The values behind NOTIFY availabilityChanged; the signal fires only when
     // one of them actually flips, so a per-block queue update does not make

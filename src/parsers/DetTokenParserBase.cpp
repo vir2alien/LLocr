@@ -3,6 +3,7 @@
 #include "parsers/DetTokenFormat.h"
 #include "parsers/OtslTable.h"
 
+#include "core/BoxTransitions.h"
 #include "core/ServiceMarkers.h"
 
 #include <QCoreApplication>
@@ -332,7 +333,7 @@ IOutputParser::RebuiltPageText DetTokenParserBase::rebuildTextWithRanges(const O
         BlockStyleInfo style = blockStyleForLabel(box.label, m_options.modelId);
         if (style.style == BlockStyle::ImagePlaceholder)
             style.imageIndex = i;
-        const QString text = box.correctedText.isEmpty() ? box.text : box.correctedText;
+        const QString text = BoxTransitions::effectiveText(box);
         if (text.isEmpty() && style.style != BlockStyle::ImagePlaceholder)
             continue;
         const QString rendered = applyStyle(text, style, m_options);

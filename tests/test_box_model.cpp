@@ -168,9 +168,10 @@ private slots:
         QCOMPARE(spy.count(), 1);
     }
 
-    // updateBoxCheck mirrors the document: a re-recognized variant that was
-    // confirmed (Ok collapse) or a first recognition changes the text too.
-    void updateBoxCheckUpdatesText()
+    // updateBoxCheck mirrors the document's two layers (ADR 164): the text
+    // layer (status, text, confidence) and the correction layer (correctedText,
+    // its own verdict and confidence) travel together in one update.
+    void updateBoxCheckMirrorsBothLayers()
     {
         BoxListModel model;
         QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
@@ -178,62 +179,44 @@ private slots:
         model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1), QStringLiteral("original"))});
 
         QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
-        model.updateBoxCheck(0, int(BoxCheckStatus::ReRecognized), QStringLiteral("second"), QStringLiteral("original"));
-        QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::ReRecognized));
-        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("second"));
+        // A corrected block: the rejected text keeps its verdict, the fix is
+        // stored without one.
+        model.updateBoxCheck(0, int(BoxCheckStatus::Mismatch), QStringLiteral("corrected"), QStringLiteral("original"), 0.2);
+        QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Mismatch));
         QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(), QStringLiteral("original"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), 0.2);
+        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("corrected"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedCheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedConfidenceRole).toDouble(), -1.0);
         QCOMPARE(spy.count(), 1);
 
         // Same-value update must not emit anything.
-        model.updateBoxCheck(0, int(BoxCheckStatus::ReRecognized), QStringLiteral("second"), QStringLiteral("original"));
+        model.updateBoxCheck(0, int(BoxCheckStatus::Mismatch), QStringLiteral("corrected"), QStringLiteral("original"), 0.2);
         QCOMPARE(spy.count(), 1);
 
-        // The decision confirmed the second variant: it becomes the text.
-        model.updateBoxCheck(0, int(BoxCheckStatus::Ok), QString(), QStringLiteral("second"));
-        QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Ok));
-        QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(), QStringLiteral("second"));
-        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedRole).toString(), QString());
+        // The decision confirms the fix: the verdict lands on the correction
+        // layer, the OCR text stays untouched (no promotion).
+        model.updateBoxCheck(0, int(BoxCheckStatus::Mismatch), QStringLiteral("corrected"), QStringLiteral("original"), 0.2, int(BoxCheckStatus::Ok), 0.97);
+        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedCheckStatusRole).toInt(), int(BoxCheckStatus::Ok));
+        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedConfidenceRole).toDouble(), 0.97);
+        QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(), QStringLiteral("original"));
+        QCOMPARE(spy.count(), 2);
 
-        // First recognition: text lands in the block, status stays NotChecked.
-        model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1), QString())});
-        model.updateBoxCheck(0, int(BoxCheckStatus::NotChecked), QString(), QStringLiteral("transcribed"));
+        // A re-recognition erases the correction layer: the fresh text is the
+        // block text and no verdict survives.
+        model.updateBoxCheck(0, int(BoxCheckStatus::NotChecked), QString(), QStringLiteral("fresh"));
         QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
-        QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(), QStringLiteral("transcribed"));
-    }
-
-    // The decision verdict's P(match) rides along with the status: the
-    // confidence role mirrors it, and a verdict without one (re-recognition,
-    // revert) resets it to "none".
-    void updateBoxCheckCarriesConfidence()
-    {
-        BoxListModel model;
-        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
-
-        model.setBoxes({makeBox(QStringLiteral("text"), QRectF(0, 0, 0.1, 0.1), QStringLiteral("original"))});
+        QCOMPARE(model.data(model.index(0), BoxListModel::TextRole).toString(), QStringLiteral("fresh"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedRole).toString(), QString());
+        QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedCheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), -1.0);
-
-        QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
-        model.updateBoxCheck(0, int(BoxCheckStatus::Mismatch), QString(), QStringLiteral("original"), 0.38);
-        QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), 0.38);
-        QCOMPARE(spy.count(), 1);
-
-        // Same-value update must not emit anything.
-        model.updateBoxCheck(0, int(BoxCheckStatus::Mismatch), QString(), QStringLiteral("original"), 0.38);
-        QCOMPARE(spy.count(), 1);
-
-        // The recheck phase answers with no probability: the stale confidence
-        // of the rejected text does not survive to the new variant.
-        model.updateBoxCheck(0, int(BoxCheckStatus::ReRecognized), QStringLiteral("second"), QStringLiteral("original"));
-        QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), -1.0);
-
-        // ... and the next decision attaches it to the confirmed text.
-        model.updateBoxCheck(0, int(BoxCheckStatus::Ok), QString(), QStringLiteral("second"), 0.97);
-        QCOMPARE(model.data(model.index(0), BoxListModel::ConfidenceRole).toDouble(), 0.97);
+        QCOMPARE(spy.count(), 3);
     }
 
     // The QML entry point must pass through the same int->enum gate as the
-    // project load: an out-of-range value coerces to NotChecked instead of
-    // reaching the model and later project.json.
+    // project load: an out-of-range value (or the reserved 2 of v1 projects)
+    // coerces to NotChecked instead of reaching the model and later
+    // project.json.
     void updateBoxCheckClampsOutOfRangeStatus()
     {
         BoxListModel model;
@@ -245,6 +228,8 @@ private slots:
         QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(model.data(model.index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("bogus"));
         model.updateBoxCheck(0, -3, QString(), QStringLiteral("text"));
+        QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        model.updateBoxCheck(0, 2, QString(), QStringLiteral("text"));
         QCOMPARE(model.data(model.index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
     }
 };
