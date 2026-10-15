@@ -59,6 +59,7 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     ProjectPageData imagePage;
     imagePage.sourceId = 0;
     imagePage.recognized = true;
+    imagePage.recognitionMode = PageRecognitionMode::MarkupOcr;
     imagePage.edited = true;
     imagePage.hasDuplicates = true;
     imagePage.text = QStringLiteral("edited text");
@@ -192,6 +193,7 @@ private slots:
         QCOMPARE(loaded.data.pages.size(), 3);
         const ProjectPageData &imagePage = loaded.data.pages.at(0);
         QVERIFY(imagePage.recognized);
+        QCOMPARE(imagePage.recognitionMode, PageRecognitionMode::MarkupOcr);
         QVERIFY(imagePage.edited);
         QVERIFY(imagePage.hasDuplicates);
         QCOMPARE(imagePage.text, QStringLiteral("edited text"));
@@ -411,6 +413,57 @@ private slots:
         const BoundingBox &checked = loaded.data.pages.first().boxes.at(1);
         QCOMPARE(checked.checkStatus, BoxCheckStatus::Ok);
         QCOMPARE(checked.correctedCheckStatus, BoxCheckStatus::NotChecked);
+
+        // The mode is absent from v1 saves: a recognized page with boxes can
+        // only have come from a block-and-text run.
+        QCOMPARE(loaded.data.pages.first().recognitionMode, PageRecognitionMode::MarkupOcr);
+    }
+
+    // The v1 → mode derivation covers the three shapes a v1 save can carry:
+    // recognized with boxes (the page OCR run), recognized without them (the
+    // raw run), and an unrecognized page.
+    void pageRecognitionModeMigratesFromV1()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString extractDir = dir.filePath(QStringLiteral("x"));
+        QVERIFY(QDir().mkpath(extractDir));
+
+        const auto pageJson = [](bool recognized, bool withBoxes) {
+            QJsonObject page{
+                {"sourceId", -1},
+                {"sourcePageIndex", -1},
+                {"recognized", recognized},
+                {"edited", false},
+                {"hasDuplicates", false},
+                {"text", QString()},
+                {"baseline", QString()},
+                {"parseNote", QString()},
+            };
+            if (withBoxes)
+                page.insert("boxes",
+                            QJsonArray{QJsonObject{
+                                {"text", QStringLiteral("t")}, {"label", QStringLiteral("text")}, {"x", 0.0}, {"y", 0.0}, {"w", 0.5}, {"h", 0.5}, {"positioned", true}, {"duplicateSuspect", false}}});
+            return page;
+        };
+        const QJsonObject manifest{
+            {"format", QStringLiteral("llocr-project")},
+            {"version", 1},
+            {"currentPage", 0},
+            {"sources", QJsonArray{}},
+            {"pages", QJsonArray{pageJson(true, true), pageJson(true, false), pageJson(false, false)}},
+        };
+        const QString projectPath = dir.filePath(QStringLiteral("v1modes.llocr"));
+        ZipWriter w(projectPath);
+        QVERIFY(w.addEntry(QStringLiteral("project.json"), QJsonDocument(manifest).toJson()));
+        QVERIFY(w.finish());
+
+        const ProjectStore::LoadResult loaded = ProjectStore::load(projectPath, extractDir);
+        QVERIFY2(loaded.error.isEmpty(), qPrintable(loaded.error));
+        QCOMPARE(loaded.data.pages.size(), 3);
+        QCOMPARE(loaded.data.pages.at(0).recognitionMode, PageRecognitionMode::MarkupOcr);
+        QCOMPARE(loaded.data.pages.at(1).recognitionMode, PageRecognitionMode::RawOcr);
+        QCOMPARE(loaded.data.pages.at(2).recognitionMode, PageRecognitionMode::None);
     }
 };
 

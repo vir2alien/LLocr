@@ -24,6 +24,7 @@
 #include <QTimer>
 #include <QVariant>
 
+#include "parsers/BlockStyle.h"
 #include "parsers/ParserFactory.h"
 
 #include "config/RequestProfileStore.h"
@@ -81,10 +82,14 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_recognition, &RecognitionController::rawResultReady, this, &AppController::applyRawResult);
 
-    // The verification filter changes which blocks «Проверить» would pick up,
-    // so the availability flags follow it live: the model signal covers edits
-    // in the settings window, the store's modelChanged covers load/reset.
-    const auto verificationFilterChanged = [this]() { updateAvailability(); };
+    // The verification filter changes which blocks «Проверить» would pick up
+    // and which pages count as verified, so the availability flags and every
+    // page's aggregate follow it live: the model signal covers edits in the
+    // settings window, the store's modelChanged covers load/reset.
+    const auto verificationFilterChanged = [this]() {
+        refreshAllPageVerifications();
+        updateAvailability();
+    };
     connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, verificationFilterChanged);
     connect(&verification, &VerificationPromptStore::modelChanged, this, verificationFilterChanged);
 
@@ -761,7 +766,7 @@ void AppController::recognizeAll()
     m_recognitionStopped = false;
 }
 
-void AppController::applyRawResult(int index, const OcrResult &rawResult)
+void AppController::applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult)
 {
     if (!m_document.isValidIndex(index))
         return;
@@ -785,6 +790,8 @@ void AppController::applyRawResult(int index, const OcrResult &rawResult)
     }
 
     m_pageModel.setRecognized(index, true);
+    setRecognitionMode(index, task == ConnectionRole::RawPageOcr ? PageRecognitionMode::RawOcr : PageRecognitionMode::MarkupOcr);
+    refreshPageVerification(index);
 
     const bool hadDups = !parsed.pages.isEmpty() && parsed.pages.first().hasDuplicates;
     if (hadDups)
@@ -890,6 +897,10 @@ bool AppController::removeBlock(int boxIndex)
         ++m_cropRevision;
     }
     m_boxModel.removeBox(boxIndex);
+    // The removed block could have been the one holding the page back: both
+    // the aggregate and the markup-only completion are derived from the set.
+    refreshRecognitionModeAfterBlockText(m_currentPage);
+    refreshPageVerification(m_currentPage);
 
     const QString rebuilt = rebuildPageText(m_document.page(m_currentPage).result.pages[0]);
     setPageText(m_currentPage, rebuilt);
@@ -1156,6 +1167,8 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
     }
 
     m_pageModel.setRecognized(pageIndex, true);
+    setRecognitionMode(pageIndex, PageRecognitionMode::MarkupOnly);
+    refreshPageVerification(pageIndex);
     if (pageData.hasDuplicates)
         m_pageModel.setHasDuplicates(pageIndex, true);
 
@@ -1184,6 +1197,18 @@ bool AppController::allPageVerificationSupported() const
     return m_verify.allPageVerificationSupported();
 }
 
+int AppController::currentPageRecognitionMode() const
+{
+    return m_document.isValidIndex(m_currentPage) ? int(m_document.page(m_currentPage).recognitionMode) : int(PageRecognitionMode::None);
+}
+
+int AppController::currentPageVerification() const
+{
+    if (!m_document.isValidIndex(m_currentPage) || m_document.page(m_currentPage).result.pages.isEmpty())
+        return int(PageVerification::Incomplete);
+    return int(PageStatus::verificationAggregate(m_document.page(m_currentPage).result.pages.first(), [this](const QString &label) { return m_verification.isTypeEnabled(label); }));
+}
+
 void AppController::updateAvailability()
 {
     const AvailabilityFlags current{
@@ -1194,6 +1219,8 @@ void AppController::updateAvailability()
         pageBlocksRecognitionSupported(),
         canRecognize(),
         actionsIdle(),
+        currentPageRecognitionMode(),
+        currentPageVerification(),
     };
     if (current == m_availability)
         return;
@@ -1248,7 +1275,42 @@ bool AppController::applyBoxTransition(int pageIndex, int boxIndex, const std::f
         if (m_selectedBox == boxIndex)
             emit selectedBoxChanged();
     }
+    refreshPageVerification(pageIndex);
     return true;
+}
+
+void AppController::setRecognitionMode(int pageIndex, PageRecognitionMode mode)
+{
+    if (!m_document.isValidIndex(pageIndex))
+        return;
+    m_document.page(pageIndex).recognitionMode = mode;
+    m_pageModel.setRecognitionMode(pageIndex, int(mode));
+}
+
+void AppController::refreshPageVerification(int pageIndex)
+{
+    const PageVerification verification =
+        m_document.isValidIndex(pageIndex) && !m_document.page(pageIndex).result.pages.isEmpty()
+            ? PageStatus::verificationAggregate(m_document.page(pageIndex).result.pages.first(), [this](const QString &label) { return m_verification.isTypeEnabled(label); })
+            : PageVerification::Incomplete;
+    m_pageModel.setVerification(pageIndex, int(verification));
+}
+
+void AppController::refreshAllPageVerifications()
+{
+    for (int i = 0; i < m_document.pageCount(); ++i)
+        refreshPageVerification(i);
+}
+
+void AppController::refreshRecognitionModeAfterBlockText(int pageIndex)
+{
+    if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
+        return;
+    const DocumentPage &page = m_document.page(pageIndex);
+    const QString modelId = m_checkRequestProfiles.activeProfileId();
+    const PageRecognitionMode mode = PageStatus::recognitionModeAfterBlockText(
+        page.recognitionMode, page.result.pages.first(), [&modelId](const BoundingBox &box) { return blockStyleForLabel(box.label, modelId).style != BlockStyle::ImagePlaceholder; });
+    setRecognitionMode(pageIndex, mode);
 }
 
 void AppController::applyVerificationStarted(int pageIndex, int boxIndex)
@@ -1290,7 +1352,10 @@ void AppController::applyRecognitionToBox(int pageIndex, int boxIndex, const Che
             break;
         }
     });
-    if (!applied || !textChanged)
+    if (!applied)
+        return;
+    refreshRecognitionModeAfterBlockText(pageIndex);
+    if (!textChanged)
         return;
     applyPageTextChanged(pageIndex);
 }
@@ -1507,6 +1572,7 @@ bool AppController::collectProjectData(ProjectData *data, QString *error)
         entry.sourceId = id;
         entry.sourcePageIndex = page.sourcePageIndex;
         entry.recognized = page.recognized;
+        entry.recognitionMode = page.recognitionMode;
         entry.hasDuplicates = !page.result.pages.isEmpty() && page.result.pages.first().hasDuplicates;
         entry.text = page.result.text;
         entry.parseNote = page.parseNote;
@@ -1638,6 +1704,7 @@ void AppController::applyProjectData(const ProjectData &data)
             const ProjectPageData &entry = data.pages.at(savedIndexForSlot.at(slot));
             DocumentPage &page = m_document.page(slot);
             page.recognized = entry.recognized;
+            page.recognitionMode = entry.recognitionMode;
             page.parseNote = entry.parseNote;
             OcrResult result;
             result.success = true;
@@ -1659,7 +1726,9 @@ void AppController::applyProjectData(const ProjectData &data)
         m_pageModel.setRecognized(slot, entry.recognized);
         m_pageModel.setEdited(slot, entry.edited);
         m_pageModel.setHasDuplicates(slot, entry.hasDuplicates);
+        m_pageModel.setRecognitionMode(slot, int(entry.recognitionMode));
     }
+    refreshAllPageVerifications();
 
     m_pageModel.setCurrent(0);
     m_currentPage = data.pages.isEmpty() ? 0 : std::clamp(data.currentPage, 0, m_document.pageCount() - 1);

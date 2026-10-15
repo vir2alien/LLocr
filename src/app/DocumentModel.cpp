@@ -1,5 +1,7 @@
 #include "app/DocumentModel.h"
 
+#include "core/BoxTransitions.h"
+
 #include <exception>
 #include <memory>
 #include <new>
@@ -9,6 +11,33 @@
 #include <utility>
 
 namespace llocr {
+
+PageVerification PageStatus::verificationAggregate(const OcrPage &page, const std::function<bool(const QString &label)> &isTypeEnabled)
+{
+    bool sawSubject = false;
+    bool sawError = false;
+    for (const BoundingBox &box : std::as_const(page.boxes)) {
+        if (!isTypeEnabled(box.label) && !box.duplicateSuspect)
+            continue;
+        sawSubject = true;
+        const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(box);
+        if (status == BoxCheckStatus::NotChecked)
+            return PageVerification::Incomplete;
+        sawError |= status == BoxCheckStatus::Review || status == BoxCheckStatus::Mismatch;
+    }
+    return sawSubject ? (sawError ? PageVerification::HasErrors : PageVerification::Clean) : PageVerification::Incomplete;
+}
+
+PageRecognitionMode PageStatus::recognitionModeAfterBlockText(PageRecognitionMode mode, const OcrPage &page, const std::function<bool(const BoundingBox &box)> &expectsText)
+{
+    if (mode != PageRecognitionMode::MarkupOnly)
+        return mode;
+    for (const BoundingBox &box : std::as_const(page.boxes)) {
+        if (expectsText(box) && box.text.isEmpty())
+            return PageRecognitionMode::MarkupOnly;
+    }
+    return PageRecognitionMode::MarkupOcr;
+}
 
 namespace {
 

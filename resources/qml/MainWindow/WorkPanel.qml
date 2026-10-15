@@ -45,7 +45,8 @@ Rectangle {
             LLOLabel {
                 visible: Controller.currentPageEditable
                 text: Controller.currentPageEdited ? qsTr("Edited")
-                                                   : qsTr("Recognized")
+                                                   : PageStatus.statusText(Controller.currentPageRecognitionMode,
+                                                                           Controller.currentPageVerification)
                 color: Controller.currentPageEdited ? Theme.textPrimary
                                                    : Theme.textMuted
                 font.bold: Controller.currentPageEdited

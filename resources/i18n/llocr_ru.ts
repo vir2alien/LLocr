@@ -4,17 +4,17 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+545"/>
+        <location filename="../../src/app/AppController.cpp" line="+550"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
-        <location line="+559"/>
+        <location line="+565"/>
         <source>The layout model does not support page markup.</source>
         <translation>Модель разметки не поддерживает разметку страниц.</translation>
     </message>
     <message>
-        <location line="+586"/>
+        <location line="+644"/>
         <location line="+48"/>
         <source>No project selected.</source>
         <translation>Проект не выбран</translation>
@@ -40,12 +40,12 @@
         <translation>Нечего сохранять — нет открытых страниц</translation>
     </message>
     <message>
-        <location line="-235"/>
+        <location line="-239"/>
         <source>The source file %1 is gone, and the page has no rendered copy to embed.</source>
         <translation>Исходный файл %1 отсутствует, и у страницы нет копии изображения для встраивания</translation>
     </message>
     <message>
-        <location line="+254"/>
+        <location line="+258"/>
         <source>Saving project…</source>
         <translation>Сохранение проекта…</translation>
     </message>
@@ -81,7 +81,7 @@
         <translation>Проект открыт: страниц: %1, пропущено: %2</translation>
     </message>
     <message>
-        <location line="-1105"/>
+        <location line="-1169"/>
         <source>Importing %1 (%2/%3)…</source>
         <translation>Импорт %1 (%2/%3)…</translation>
     </message>
@@ -141,7 +141,7 @@
         <translation type="obsolete">Модель blockRecognition не поддерживает разметку страниц.</translation>
     </message>
     <message>
-        <location line="+353"/>
+        <location line="+359"/>
         <source>The model profile has no markup prompt.</source>
         <translation>В профиле модели нет промпта разметки.</translation>
     </message>
@@ -151,12 +151,12 @@
         <translation>Модель не вернула блоки разметки для страницы %1.</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+34"/>
         <source>Page %1 marked up: %2 block(s).</source>
         <translation>Страница %1 размечена: блоков — %2.</translation>
     </message>
     <message>
-        <location line="+186"/>
+        <location line="+238"/>
         <source>Markdown (*.md)</source>
         <translation>Markdown (*.md)</translation>
     </message>
@@ -483,7 +483,7 @@
 <context>
     <name>DocumentModel</name>
     <message>
-        <location filename="../../src/app/DocumentModel.cpp" line="+123"/>
+        <location filename="../../src/app/DocumentModel.cpp" line="+152"/>
         <source>Failed to read DjVu %1, page %2.</source>
         <translation>Не удалось прочитать DjVu %1, страницу %2.</translation>
     </message>
@@ -675,6 +675,17 @@
     </message>
 </context>
 <context>
+    <name>FixController</name>
+    <message>
+        <source>Fix stopped.</source>
+        <translation type="vanished">Исправление остановлено.</translation>
+    </message>
+    <message>
+        <source>Stopped before the fix started.</source>
+        <translation type="vanished">Исправление остановлено до запуска.</translation>
+    </message>
+</context>
+<context>
     <name>Footer</name>
     <message>
         <location filename="../qml/MainWindow/Footer.qml" line="+24"/>
@@ -844,17 +855,6 @@
         <location line="+1"/>
         <source>Recognition is in progress. Stopping the server will interrupt the current job. Continue?</source>
         <translation>Идёт распознавание. Остановка сервера прервёт текущий процесс. Продолжить?</translation>
-    </message>
-</context>
-<context>
-    <name>FixController</name>
-    <message>
-        <source>Fix stopped.</source>
-        <translation type="vanished">Исправление остановлено.</translation>
-    </message>
-    <message>
-        <source>Stopped before the fix started.</source>
-        <translation type="vanished">Исправление остановлено до запуска.</translation>
     </message>
 </context>
 <context>
@@ -1814,6 +1814,34 @@
     </message>
 </context>
 <context>
+    <name>PageStatus</name>
+    <message>
+        <location filename="../qml/PageStatus.qml" line="+11"/>
+        <source>Verified (no errors)</source>
+        <translation>Проверено (без ошибок)</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Verified (with errors)</source>
+        <translation>Проверено (есть ошибки)</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Markup only</source>
+        <translation>Только разметка</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Recognized (without markup)</source>
+        <translation>Распознано (без разметки)</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Recognized</source>
+        <translation>Распознано</translation>
+    </message>
+</context>
+<context>
     <name>PageToolBar</name>
     <message>
         <location filename="../qml/MainWindow/PageToolBar.qml" line="+45"/>
@@ -2000,7 +2028,7 @@
     <name>ProjectStore</name>
     <message>
         <location filename="../../src/app/ProjectStore.cpp" line="+114"/>
-        <location line="+93"/>
+        <location line="+94"/>
         <source>Cannot overwrite %1.</source>
         <translation>Не удалось перезаписать %1</translation>
     </message>
@@ -4278,7 +4306,7 @@
 <context>
     <name>ThumbDelegate</name>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="+80"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="+87"/>
         <source>Has duplicates</source>
         <translation>Дубликаты</translation>
     </message>
@@ -4288,7 +4316,7 @@
         <translation>Изменено</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Recognized</source>
         <translation>Распознано</translation>
     </message>
@@ -4303,7 +4331,7 @@
         <translation>Страница %1</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+49"/>
         <source>Delete page</source>
         <translation>Удалить страницу</translation>
     </message>
@@ -4313,7 +4341,7 @@
         <translation>Удалить страницу %1</translation>
     </message>
     <message>
-        <location line="-68"/>
+        <location line="-80"/>
         <source>Load error</source>
         <translation>Ошибка загрузки</translation>
     </message>
@@ -4675,7 +4703,7 @@
 <context>
     <name>VerificationQueueController</name>
     <message>
-        <location filename="../../src/app/VerificationQueueController.cpp" line="+193"/>
+        <location filename="../../src/app/VerificationQueueController.cpp" line="+194"/>
         <source>Nothing to check:</source>
         <translation>Проверять нечего:</translation>
     </message>
@@ -4782,12 +4810,11 @@
         <translation>Изменено</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Recognized</source>
-        <translation>Распознано</translation>
+        <translation type="vanished">Распознано</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+9"/>
         <source>Revert</source>
         <translation>Отменить изменения</translation>
     </message>

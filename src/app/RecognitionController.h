@@ -9,6 +9,7 @@
 #include <QString>
 
 #include "core/ConnectionConfig.h"
+#include "core/ConnectionRole.h"
 #include "core/OcrRequest.h"
 #include "core/StatusMessage.h"
 #include "models/OcrModel.h"
@@ -43,7 +44,9 @@ public:
     void stop();
 
 signals:
-    void rawResultReady(int pageIndex, const llocr::OcrResult &raw);
+    // The task tells the caller which pipeline produced the result (the page
+    // mode derives from it: PageOcr → MarkupOcr, RawPageOcr → RawOcr).
+    void rawResultReady(int pageIndex, llocr::ConnectionRole task, const llocr::OcrResult &raw);
     void statusRequested(const StatusMessage &message);
 
     void busyChanged();

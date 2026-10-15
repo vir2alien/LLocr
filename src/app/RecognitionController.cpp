@@ -186,7 +186,7 @@ void RecognitionController::onRecognitionFinished()
         return;
     }
 
-    emit rawResultReady(index, raw);
+    emit rawResultReady(index, ConnectionRole::PageOcr, raw);
 
     if (m_stopRequested) {
         emit statusRequested(StatusMessage::translate("RecognitionController", "Stopped after page %1.").arg(index + 1));

@@ -143,6 +143,17 @@ target_link_libraries(test_fix_protocol PRIVATE
 )
 add_test(NAME test_fix_protocol COMMAND test_fix_protocol)
 
+# The page statuses (the rework plan's §6): the verification aggregate over a
+# page's subject blocks, the markup-only completion, and the page list roles
+# that carry both to the thumbnails.
+qt_add_executable(test_page_status test_page_status.cpp)
+
+target_link_libraries(test_page_status PRIVATE
+    Qt6::Test
+    llocr_app
+)
+add_test(NAME test_page_status COMMAND test_page_status)
+
 # The manual markup pass (layout role): the request shape it sends through the
 # block-recognition transport and the reply the layout parser consumes.
 qt_add_executable(test_layout test_layout.cpp)

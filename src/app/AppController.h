@@ -88,6 +88,8 @@ class AppController : public QObject
     Q_PROPERTY(bool pageProblemRecognitionSupported READ pageProblemRecognitionSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool allProblemRecognitionSupported READ allProblemRecognitionSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY availabilityChanged)
+    Q_PROPERTY(int currentPageRecognitionMode READ currentPageRecognitionMode NOTIFY availabilityChanged)
+    Q_PROPERTY(int currentPageVerification READ currentPageVerification NOTIFY availabilityChanged)
 
     Q_PROPERTY(bool layoutBusy READ layoutBusy NOTIFY layoutStateChanged)
     Q_PROPERTY(int layoutProgressDone READ layoutProgressDone NOTIFY layoutProgressChanged)
@@ -179,6 +181,8 @@ public:
     bool pageProblemRecognitionSupported() const;
     bool allProblemRecognitionSupported() const;
     bool pageBlocksRecognitionSupported() const;
+    int currentPageRecognitionMode() const;
+    int currentPageVerification() const;
 
     bool layoutBusy() const { return m_layout.busy(); }
     int layoutProgressDone() const { return m_layout.progressDone(); }
@@ -287,7 +291,7 @@ private:
     bool reportProblem(const StatusMessage &message, ProblemLog::Severity severity = ProblemLog::Warning);
     void notifyDocumentChanged();
     void notifyPageChanged();
-    void applyRawResult(int index, const OcrResult &rawResult);
+    void applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult);
     void applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);
     const ModelProfiles::Role *layoutRole() const;
@@ -319,9 +323,21 @@ private:
     // box is gone.
     bool applyBoxTransition(int pageIndex, int boxIndex, const std::function<void(BoundingBox &)> &transition);
 
+    // The page-status derivations (the rework plan's §6): the mode is stored
+    // on the page, the verification aggregate is computed over the page's
+    // boxes with the current filter. Both land in the page list's roles and,
+    // for the current page, in the availability flags.
+    void setRecognitionMode(int pageIndex, PageRecognitionMode mode);
+    void refreshPageVerification(int pageIndex);
+    void refreshAllPageVerifications();
+    // MarkupOnly → MarkupOcr once every text-expecting block of the page
+    // carries text; a no-op for the other modes.
+    void refreshRecognitionModeAfterBlockText(int pageIndex);
+
     // The values behind NOTIFY availabilityChanged; the signal fires only when
     // one of them actually flips, so a per-block queue update does not make
-    // QML rescan the document (C++-21).
+    // QML rescan the document (C++-21). The current-page status values ride
+    // along: the work panel's caption binds to them.
     struct AvailabilityFlags {
         bool pageVerification = false;
         bool allPageVerification = false;
@@ -330,6 +346,8 @@ private:
         bool pageBlocksRecognition = false;
         bool canRecognize = false;
         bool actionsIdle = false;
+        int currentPageMode = int(PageRecognitionMode::None);
+        int currentPageVerification = int(PageVerification::Incomplete);
         bool operator==(const AvailabilityFlags &) const = default;
     };
     void updateAvailability();

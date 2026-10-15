@@ -138,6 +138,7 @@ bool ProjectStore::save(const QString &path, const ProjectData &data, QString *e
             {"sourceId", page.sourceId},
             {"sourcePageIndex", page.sourcePageIndex},
             {"recognized", page.recognized},
+            {"recognitionMode", int(page.recognitionMode)},
             {"edited", page.edited},
             {"hasDuplicates", page.hasDuplicates},
             {"text", page.text},
@@ -280,6 +281,12 @@ ProjectStore::LoadResult ProjectStore::load(const QString &path, const QString &
         const QJsonArray boxes = object.value("boxes").toArray();
         for (const QJsonValue &boxValue : boxes)
             page.boxes.append(boxFromJson(boxValue.toObject(), version));
+        // v1 projects (and files written before the field) carry no mode:
+        // derive it from what such a save can tell.
+        const int storedMode = object.value("recognitionMode").toInt(-1);
+        page.recognitionMode = storedMode >= int(PageRecognitionMode::MarkupOnly) && storedMode <= int(PageRecognitionMode::MarkupOcr) ? PageRecognitionMode(storedMode)
+                               : page.recognized ? (page.boxes.isEmpty() ? PageRecognitionMode::RawOcr : PageRecognitionMode::MarkupOcr)
+                                                 : PageRecognitionMode::None;
         result.data.pages.append(page);
     }
     result.data.currentPage = root.value("currentPage").toInt(0);

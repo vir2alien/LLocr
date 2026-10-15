@@ -3,6 +3,7 @@
 #include "app/DjVuDocument.h"
 #include "app/PdfDocument.h"
 #include "core/OcrResult.h"
+#include <functional>
 #include <memory>
 #include <QHash>
 #include <QImage>
@@ -14,10 +15,35 @@ namespace llocr {
 
 enum class DocumentSource { Image, Pdf, DjVu };
 
+// How the page's structured result came to be: the page OCR task returns the
+// blocks and their text in one reply, the layout task returns the blocks only
+// (the text arrives block by block), the raw task returns text without blocks.
+enum class PageRecognitionMode : int { None = 0, MarkupOnly = 1, RawOcr = 2, MarkupOcr = 3 };
+
+// The verification aggregate over the page's subject blocks: a verdict on the
+// effective layer of every block the check would ask. Incomplete = at least
+// one subject block is unanswered, or there are none.
+enum class PageVerification : int { Incomplete = 0, HasErrors = 1, Clean = 2 };
+
+// Pure derivations over a recognized page (the rework plan's §6).
+namespace PageStatus {
+
+// Subjects = the enabled block types ∪ duplicate suspects. A Review or a
+// Mismatch verdict on the effective layer makes the page erroneous; one
+// unanswered subject leaves it Incomplete.
+PageVerification verificationAggregate(const OcrPage &page, const std::function<bool(const QString &label)> &isTypeEnabled);
+
+// MarkupOnly → MarkupOcr once every block that is expected to carry text does;
+// the predicate decides which blocks those are (image placeholders never do).
+PageRecognitionMode recognitionModeAfterBlockText(PageRecognitionMode mode, const OcrPage &page, const std::function<bool(const BoundingBox &box)> &expectsText);
+
+}  // namespace PageStatus
+
 struct DocumentPage {
     QImage image;
     OcrResult result;
     bool recognized = false;
+    PageRecognitionMode recognitionMode = PageRecognitionMode::None;
     QString sourcePath;
     DocumentSource sourceType = DocumentSource::Image;
     int sourcePageIndex = -1;
