@@ -22,7 +22,7 @@ private slots:
     // parameter lists are what make a model recognisable, so both are checked
     // against the values the model card and the launcher actually document.
     void shippedProfilesAreTheOnesTheDocsDescribe();
-    void lightonOcrShipsTheGroundingAndTranscriptionModes();
+    void lightonOcrShipsOnlyTheTrainedModes();
     void draftModuleReachesThePresets();
     void roleDefaultsFollowTheShippedProfiles();
     void verifierSystemPromptFollowsTheModel();
@@ -94,7 +94,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"teleocr", "blockRecognition,layout", "b4000", "q8_0,q5_k_m,q4_k_m,q3_k_m", ""},
         {"glm-ocr", "rawPageOcr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"clef-flash", "decision", "b11430", "q8_0,q6_k,q5_k_m,q4_k_m,q4_0", "ctx-size,batch-size,ubatch-size"},
-        {"lightonocr", "pageOcr,rawPageOcr", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "flash-attn,jinja,reasoning-budget,image-min-tokens"},
+        {"lightonocr", "pageOcr,rawPageOcr,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "flash-attn,jinja,reasoning-budget,image-min-tokens"},
     };
 
     for (const Expected &e : expected) {
@@ -136,9 +136,10 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
 
 // LightOnOCR-3 trains exactly two prompts — empty for transcription,
 // "grounding" for the labeled boxes — and the card calls every other
-// instruction out of distribution. The profile must keep that split and must
-// not claim tasks the model was never trained for.
-void TestModelPresetCatalog::lightonOcrShipsTheGroundingAndTranscriptionModes()
+// instruction out of distribution. The profile must keep that split: page OCR
+// grounds, page and block transcription run on the empty prompt (the block is
+// just a smaller image), and no task outside the two prompts is claimed.
+void TestModelPresetCatalog::lightonOcrShipsOnlyTheTrainedModes()
 {
     const ModelProfiles::Role *pageOcr = ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("pageOcr"));
     QVERIFY(pageOcr);
@@ -161,8 +162,16 @@ void TestModelPresetCatalog::lightonOcrShipsTheGroundingAndTranscriptionModes()
     QCOMPARE(rawPageOcr->parser, QStringLiteral("raw"));
     QVERIFY(rawPageOcr->prompts.isEmpty());
 
+    // Block recognition is the same empty prompt over a smaller image: no
+    // system message, no per-type prefixes, the reply read raw.
+    const ModelProfiles::Role *blocks = ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("blockRecognition"));
+    QVERIFY(blocks);
+    QCOMPARE(blocks->parser, QStringLiteral("raw"));
+    QVERIFY(blocks->prompts.isEmpty());
+    QVERIFY(blocks->systemPrompt.isEmpty());
+    QVERIFY(blocks->blockPrompts.isEmpty());
+
     // The card: "Other instructions are out of distribution."
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("blockRecognition")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("layout")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("decision")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("fix")));

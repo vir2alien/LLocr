@@ -78,19 +78,45 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, co
     const bool fix = request.protocol == CheckRequest::Protocol::Fix;
     const QString roleName = fix ? QStringLiteral("fix") : QStringLiteral("blockRecognition");
     const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, roleName);
+    QJsonObject ocrPart{{QStringLiteral("type"), QStringLiteral("text")},
+                        {QStringLiteral("text"), QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>").arg(request.recognizedText)}};
+    // An empty prompt is the transcription request itself (LightOnOCR-3 trains
+    // "the image only") — empty text parts and an empty system message are
+    // dropped rather than sent.
+    const bool promptFirst = role && role->promptBeforeImage;
     QJsonArray content;
     if (fix) {
-        QJsonObject ocrPart{{QStringLiteral("type"), QStringLiteral("text")},
-                            {QStringLiteral("text"), QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>").arg(request.recognizedText)}};
-        content = role && role->promptBeforeImage ? QJsonArray{typePromptPart, ocrPart, imagePart} : QJsonArray{typePromptPart, imagePart, ocrPart};
+        if (promptFirst) {
+            if (!request.typePrompt.isEmpty())
+                content.append(typePromptPart);
+            content.append(ocrPart);
+            content.append(imagePart);
+        } else {
+            if (!request.typePrompt.isEmpty())
+                content.append(typePromptPart);
+            content.append(imagePart);
+            content.append(ocrPart);
+        }
+    } else if (promptFirst) {
+        if (!request.typePrompt.isEmpty())
+            content.append(typePromptPart);
+        content.append(imagePart);
     } else {
-        content = role && role->promptBeforeImage ? QJsonArray{typePromptPart, imagePart} : QJsonArray{imagePart, typePromptPart};
+        content.append(imagePart);
+        if (!request.typePrompt.isEmpty())
+            content.append(typePromptPart);
     }
 
-    QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")}, {QStringLiteral("content"), request.systemPrompt}};
     QJsonObject userMessage{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
 
-    QJsonObject root{{QStringLiteral("model"), request.modelId}, {QStringLiteral("messages"), QJsonArray{systemMessage, userMessage}}};
+    QJsonArray messages;
+    if (!request.systemPrompt.isEmpty()) {
+        QJsonObject systemMessage{{QStringLiteral("role"), QStringLiteral("system")}, {QStringLiteral("content"), request.systemPrompt}};
+        messages.append(systemMessage);
+    }
+    messages.append(userMessage);
+
+    QJsonObject root{{QStringLiteral("model"), request.modelId}, {QStringLiteral("messages"), messages}};
 
     root.insert(QStringLiteral("chat_template_kwargs"), QJsonObject{{QStringLiteral("enable_thinking"), false}});
 

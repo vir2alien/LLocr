@@ -580,6 +580,25 @@ private slots:
         QCOMPARE(lfmContent.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
     }
 
+    // LightOnOCR-3 block recognition runs on the empty prompt over the block
+    // crop — no system message, no per-type prefix: the envelope is one user
+    // message carrying the image only, same rule as the page request.
+    void checkBodyOmitsEmptySystemAndTypePrompts()
+    {
+        ExposedGeneralPurposeModel model;
+        CheckRequest request;
+        request.image = QImage(4, 4, QImage::Format_RGB32);
+        request.modelId = QStringLiteral("lightonocr");
+
+        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray messages = QJsonDocument::fromJson(body).object().value(QStringLiteral("messages")).toArray();
+        QCOMPARE(messages.size(), 1);
+        QCOMPARE(messages.at(0).toObject().value(QStringLiteral("role")).toString(), QStringLiteral("user"));
+        const QJsonArray content = messages.at(0).toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(content.size(), 1);
+        QCOMPARE(content.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+    }
+
     void checkResponseParsing()
     {
         ExposedGeneralPurposeModel model;
