@@ -150,6 +150,7 @@ ApplicationWindow {
                 spacing: 2
                 visible: ModelInstaller.installedCount > 0
                 model: ModelInstaller.installedFiles
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: RowLayout {
                     id: fileRow

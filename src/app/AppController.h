@@ -103,6 +103,7 @@ class AppController : public QObject
     // non-current page re-announces them too.
     Q_PROPERTY(int selectedPageCount READ selectedPageCount NOTIFY availabilityChanged)
     Q_PROPERTY(int scopedProblemBlockCount READ scopedProblemBlockCount NOTIFY availabilityChanged)
+    Q_PROPERTY(bool scopeHasResults READ scopeHasResults NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeVerificationSupported READ scopeVerificationSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeBlocksRecognitionSupported READ scopeBlocksRecognitionSupported NOTIFY availabilityChanged)
 
@@ -207,6 +208,7 @@ public:
     int currentPageVerification() const;
     int selectedPageCount() const;
     int scopedProblemBlockCount() const;
+    bool scopeHasResults() const;
     bool scopeVerificationSupported() const;
     bool scopeBlocksRecognitionSupported() const;
 
@@ -405,6 +407,7 @@ private:
         int currentPageVerification = int(PageVerification::Incomplete);
         int selectedPages = 0;
         int scopedProblemBlocks = 0;
+        bool scopeHasResults = false;
         bool operator==(const AvailabilityFlags &) const = default;
     };
     void updateAvailability();

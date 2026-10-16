@@ -1303,6 +1303,7 @@ void AppController::updateAvailability()
         currentPageVerification(),
         selectedPageCount(),
         scopedProblemBlockCount(),
+        scopeHasResults(),
     };
     if (current == m_availability)
         return;
@@ -1366,6 +1367,15 @@ void AppController::ensureDefaultSelection()
 int AppController::selectedPageCount() const
 {
     return m_pageModel.selectedCount();
+}
+
+bool AppController::scopeHasResults() const
+{
+    for (const int pageIndex : scopePages()) {
+        if (m_document.isValidIndex(pageIndex) && m_document.page(pageIndex).recognized)
+            return true;
+    }
+    return false;
 }
 
 int AppController::scopedProblemBlockCount() const

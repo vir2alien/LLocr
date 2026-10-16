@@ -496,7 +496,9 @@ ToolBar {
         id: markupConfirmDialog
 
         function requestMarkup() {
-            if (!Controller.hasResult) {
+            // Only the pages in scope lose their blocks, so their results —
+            // not another page's — are what the confirmation asks about.
+            if (!Controller.scopeHasResults) {
                 Controller.layoutScopePages()
                 return
             }
