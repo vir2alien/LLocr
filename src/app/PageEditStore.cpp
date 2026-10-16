@@ -10,6 +10,11 @@ bool PageEditStore::reset(int index, const QString &recognizedText)
     return m_edited.remove(index);
 }
 
+void PageEditStore::rebase(int index, const QString &text)
+{
+    m_baselines.insert(index, text);
+}
+
 QString PageEditStore::baseline(int index) const
 {
     return m_baselines.value(index);

@@ -41,7 +41,10 @@ private slots:
         LlamaClient client;
         const QUrl url(QStringLiteral("http://%1:%2/v1/chat/completions").arg(kBlackHoleHost).arg(kBlackHolePort));
         QFuture<HttpResponse> future = client.postJson(url, "{}", {}, 8000, 8000);
-        QVERIFY(!future.isFinished());
+        // Some environments answer the black-hole connect instantly (no hang
+        // to abort); the premise of this test is a connect still in flight.
+        if (future.isFinished())
+            QSKIP("the connect finished immediately — nothing to abort mid-flight");
 
         client.abort();
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 8000);

@@ -1584,9 +1584,22 @@ void AppController::applyPageTextChanged(int pageIndex)
         rebuilt = rebuildPageText(m_document.page(pageIndex).result.pages[0]);
     }
 
+    // A manual edit owns the page text until it is reverted: a block landing
+    // (recognition, fix, re-check) updates the blocks but must not wipe the
+    // user's text out from under the panel — that used to read as a silent
+    // reset, and the next «Отменить изменения» did nothing. The revert target
+    // moves forward to the block-derived text instead.
+    if (m_editStore.isEdited(pageIndex)) {
+        m_editStore.rebase(pageIndex, rebuilt);
+        return;
+    }
+
     setPageText(pageIndex, rebuilt);
-    m_editStore.reset(pageIndex, rebuilt);
-    markPageEdited(pageIndex);
+    // Rebase only: recognition and fix produce the page text themselves —
+    // this must not read as a manual edit («Изменено»).
+    const bool droppedEdit = m_editStore.reset(pageIndex, rebuilt);
+    if (droppedEdit)
+        m_pageModel.setEdited(pageIndex, false);
     emit resultChanged();
     emit editStateChanged();
 }
@@ -1627,6 +1640,10 @@ void AppController::markPageEdited(int index)
         return;
     m_editStore.setEdited(index, true);
     m_pageModel.setEdited(index, true);
+    // The «Изменено» label and the Revert button read this flag through
+    // properties with different NOTIFY signals; without the broadcast the
+    // label only refreshes when an unrelated availability change fires.
+    emit editStateChanged();
 }
 
 void AppController::notifyPageListGrown()

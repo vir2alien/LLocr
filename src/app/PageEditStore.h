@@ -11,6 +11,9 @@ class PageEditStore
 {
 public:
     bool reset(int index, const QString &recognizedText);
+    // Moves the revert target without touching the edited flag: a block
+    // landing on a manually edited page must not clobber the user's text.
+    void rebase(int index, const QString &text);
     QString baseline(int index) const;
 
     bool revert(int index);

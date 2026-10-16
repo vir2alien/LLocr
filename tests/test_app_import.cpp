@@ -13,6 +13,11 @@
 #include <QPainter>
 #include <QPdfWriter>
 #include <QPointer>
+#include <QQmlComponent>
+#include <QQmlContext>
+#include <QQmlEngine>
+#include <QQuickItem>
+#include <QQuickWindow>
 #include <QRegularExpression>
 #include <QSemaphore>
 #include <QTcpServer>
@@ -30,6 +35,7 @@
 #include "app/BoxListModel.h"
 #include "app/ProblemLog.h"
 #include "app/RecognitionController.h"
+#include "app/UiController.h"
 #include "app/VerificationPromptStore.h"
 #include "app/VerificationQueueController.h"
 #include "config/RequestProfileStore.h"
@@ -117,6 +123,29 @@ void compareQuadrants(const QImage &image, const QList<QColor> &expected)
         QVERIFY2(qAbs(actual.red() - color.red()) <= 12 && qAbs(actual.green() - color.green()) <= 12 && qAbs(actual.blue() - color.blue()) <= 12,
                  qPrintable(QStringLiteral("Quadrant %1: expected %2, got %3").arg(i).arg(color.name(), actual.name())));
     }
+}
+
+QQuickItem *findFirstTextItem(QQuickItem *root)
+{
+    const QByteArray className = root->metaObject()->className();
+    if (className.contains("TextArea") || className.contains("TextEdit"))
+        return root;
+    for (QQuickItem *child : root->childItems()) {
+        if (QQuickItem *found = findFirstTextItem(child))
+            return found;
+    }
+    return nullptr;
+}
+
+QQuickItem *findButtonWithText(QQuickItem *root, const QString &text)
+{
+    if (QByteArray(root->metaObject()->className()).contains("Button") && root->property("text").toString() == text)
+        return root;
+    for (QQuickItem *child : root->childItems()) {
+        if (QQuickItem *found = findButtonWithText(child, text))
+            return found;
+    }
+    return nullptr;
 }
 
 void compareWhite(const QImage &image)
@@ -1673,6 +1702,39 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QString());
         QCOMPARE(m_controller->selectedBlockText(), server.transcription);
         QCOMPARE(m_controller->resultText(), server.transcription);
+        // The pipeline's text is not a manual edit: no «Изменено», nothing
+        // for Revert to undo — on the page model's marker too.
+        QVERIFY(!m_controller->currentPageEdited());
+        auto *pages = qobject_cast<PageListModel *>(m_controller->pageModel());
+        QVERIFY(pages);
+        QVERIFY(!pages->data(pages->index(0, 0), PageListModel::EditedRole).toBool());
+
+        // A manual edit after the landing rebases on the rebuilt text, so
+        // Revert goes back to it — not to some earlier session's state.
+        m_controller->setCurrentPageText(m_controller->resultText() + QStringLiteral("junk"));
+        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(pages->data(pages->index(0, 0), PageListModel::EditedRole).toBool());
+
+        m_controller->revertCurrentPageEdits();
+        QCOMPARE(m_controller->resultText(), server.transcription);
+        QVERIFY(!m_controller->currentPageEdited());
+        QVERIFY(!pages->data(pages->index(0, 0), PageListModel::EditedRole).toBool());
+
+        // A block landing on the manually edited page (the check/fix queue
+        // drains while the user is already typing on a fresh page) must not
+        // wipe the user's text out from under the panel: that silent reset is
+        // what made «Отменить изменения» a no-op on the first click. The
+        // landing only moves the revert target to the block-derived text.
+        m_controller->setCurrentPageText(m_controller->resultText() + QStringLiteral("junk2"));
+        QVERIFY(m_controller->currentPageEdited());
+        m_controller->recognizeSelectedBlock();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(m_controller->resultText(), server.transcription + QStringLiteral("junk2"));
+        QVERIFY(m_controller->currentPageEdited());
+
+        m_controller->revertCurrentPageEdits();
+        QCOMPARE(m_controller->resultText(), server.transcription);
+        QVERIFY(!m_controller->currentPageEdited());
     }
 
     // The second run judges the corrected text and confirms it: the Ok verdict
@@ -2006,6 +2068,123 @@ private slots:
         m_controller->revertCurrentPageEdits();
         QCOMPARE(m_controller->resultText(), QString());
         QCOMPARE(m_controller->currentPageEdited(), false);
+    }
+
+    // The «Изменено» label and the Revert button are separate QML bindings on
+    // the edited flag; the flip must broadcast editStateChanged itself — the
+    // panel's per-keystroke resultChanged echo used to be the only thing that
+    // refreshed the button, and the label could stay on the pre-edit caption.
+    void manualEditBroadcastsEditState()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY(controller.hasResult());
+
+        QSignalSpy editSpy(&controller, &AppController::editStateChanged);
+        QVERIFY(editSpy.isValid());
+
+        controller.setCurrentPageText(QStringLiteral("typed by hand"));
+        QCOMPARE(controller.currentPageEdited(), true);
+        QCOMPARE(editSpy.count(), 1);
+
+        // Later keystrokes in the same edit session add no news.
+        controller.setCurrentPageText(QStringLiteral("typed by hand again"));
+        QCOMPARE(editSpy.count(), 1);
+
+        controller.revertCurrentPageEdits();
+        QCOMPARE(controller.currentPageEdited(), false);
+        QCOMPARE(editSpy.count(), 2);
+    }
+
+    // The real WorkPanel.qml against the real controller: the user's repro is
+    // typing into a mapped block's range right after recognition and clicking
+    // «Отменить изменения» — the stored text must come back on the first click
+    // (the QML-only replica of the panel logic could not reproduce a two-click
+    // behavior, so the whole component runs here).
+    void workPanelRevertUndoesBlockEditOnOneClick()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setAutoCheck(false);
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY(controller.hasResult());
+        const QString recognized = controller.resultText();
+
+        qmlRegisterSingletonInstance("LLocr", 1, 0, "Controller", &controller);
+        qmlRegisterSingletonInstance("LLocr", 1, 0, "Settings", m_settings.get());
+        llocr::UiController uiController(*m_settings);
+        qmlRegisterSingletonInstance("LLocr", 1, 0, "UiController", &uiController);
+        // A disk-loaded WorkPanel.qml reaches the QML singletons through the
+        // LLocr module; the engine here has no main.cpp registration cascade,
+        // so the five module singletons are registered from their source files.
+        const QString qmlRoot = QFINDTESTDATA(QStringLiteral("../resources/qml"));
+        const auto registerSingleton = [&qmlRoot](const char *name) { qmlRegisterSingletonType(QUrl::fromLocalFile(qmlRoot + QStringLiteral("/%1.qml").arg(name)), "LLocr", 1, 0, name); };
+        registerSingleton("BlockNames");
+        registerSingleton("PageStatus");
+        registerSingleton("RoleProfiles");
+        registerSingleton("TaskStatus");
+        QQmlEngine engine;
+        engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
+        // Common/*.qml read Theme without importing LLocr (module-wide
+        // visibility inside the app); a context property covers them when the
+        // panel is loaded from disk.
+        QQmlComponent themeComponent(&engine, QUrl::fromLocalFile(qmlRoot + QStringLiteral("/Theme.qml")));
+        std::unique_ptr<QObject> theme{themeComponent.create()};
+        QVERIFY2(theme, qPrintable(themeComponent.errorString()));
+        engine.rootContext()->setContextProperty(QStringLiteral("Theme"), theme.get());
+        const QString panelPath = QFINDTESTDATA(QStringLiteral("../resources/qml/MainWindow/WorkPanel.qml"));
+        QVERIFY2(QFile::exists(panelPath), qPrintable(panelPath));
+        QQmlComponent component(&engine, QUrl::fromLocalFile(panelPath));
+        std::unique_ptr<QQuickItem> panel{qobject_cast<QQuickItem *>(component.create())};
+        QVERIFY2(panel, qPrintable(component.errorString()));
+        panel->setWidth(760);
+        panel->setHeight(600);
+
+        QQuickWindow window;
+        panel->setParentItem(window.contentItem());
+        window.resize(780, 620);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+        QQuickItem *textArea = findFirstTextItem(panel.get());
+        QVERIFY2(textArea, "the panel must contain its text field");
+        QQuickItem *revertButton = findButtonWithText(panel.get(), QStringLiteral("Revert"));
+        QVERIFY2(revertButton, "the panel must contain the Revert button");
+
+        // The user reaches the caret by clicking into the text, which the
+        // TapHandler turns into a block selection — the selected block and its
+        // highlight are part of the repro.
+        controller.setSelectedBoxIndex(0);
+        textArea->forceActiveFocus();
+        QVERIFY(textArea->hasActiveFocus());
+        // The caret sits at position 0 — inside the first mapped block's range,
+        // which is where the user's repro types.
+        for (const int key : {int(Qt::Key_X), int(Qt::Key_Y), int(Qt::Key_Z)})
+            QTest::keyClick(&window, Qt::Key(key));
+        QCOMPARE(controller.currentPageEdited(), true);
+        QCOMPARE(textArea->property("text").toString(), QStringLiteral("xyz") + recognized);
+        QCOMPARE(revertButton->isVisible(), true);
+
+        QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, revertButton->mapToScene(QPointF(revertButton->width() / 2, revertButton->height() / 2)).toPoint());
+        QCOMPARE(textArea->property("text").toString(), recognized);
+        QCOMPARE(controller.currentPageEdited(), false);
+        QCOMPARE(revertButton->isVisible(), false);
     }
 
     // The project file is the whole working state: pages (with their sources),

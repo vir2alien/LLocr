@@ -57,7 +57,13 @@ Rectangle {
             LLOButton {
                 text: qsTr("Revert")
                 visible: Controller.currentPageEditable && Controller.currentPageEdited
-                onClicked: Controller.revertCurrentPageEdits()
+                onClicked: {
+                    Controller.revertCurrentPageEdits()
+                    // The panel defers reloads while it holds focus; a revert
+                    // must show the stored text immediately, not on blur.
+                    textArea.pendingReload = false
+                    textArea.reload()
+                }
             }
 
             Item { Layout.fillWidth: true }
@@ -143,6 +149,13 @@ Rectangle {
                         if (syncing || !activeFocus || text === modelText)
                             return
                         Controller.setCurrentPageText(text)
+                        // A document-backed field re-emits textChanged for an
+                        // already-handled edit when the next event is
+                        // processed — a keystroke's late duplicate lands
+                        // mid-click. The committed text is the model now:
+                        // without this the replay re-commits over a revert,
+                        // and «Отменить изменения» needs two clicks.
+                        modelText = text
                     }
 
                     onActiveFocusChanged: {
@@ -180,7 +193,10 @@ Rectangle {
                     Connections {
                         target: Controller
                         function onResultChanged() {
-                            if (textArea.activeFocus)
+                            // Defer only while uncommitted typing is on the
+                            // field; an idle field must show the stored text
+                            // right away, or a revert looks like a no-op.
+                            if (textArea.activeFocus && textArea.text !== textArea.modelText)
                                 textArea.pendingReload = true
                             else
                                 textArea.reload()
