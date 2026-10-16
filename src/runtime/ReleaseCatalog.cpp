@@ -17,6 +17,7 @@
 
 #include "runtime/ReleaseCatalog.h"
 
+#include "runtime/HardwareInfo.h"
 #include "runtime/HttpClient.h"
 
 namespace llocr {
@@ -278,8 +279,14 @@ PlatformInfo ReleaseCatalog::detectPlatform()
     if (kernel.startsWith(QLatin1String("win"))) {
         info.os = PlatformOs::Windows;
         info.osTag = QStringLiteral("win");
-        info.backend = QStringLiteral("cpu");
-        info.backendReason = QObject::tr("CPU backend by default; enable CUDA if an NVIDIA GPU is present");
+        const HardwareReport hardware = HardwareInfo::detect();
+        info.backend = HardwareInfo::recommendedBackendFor(info.osTag, hardware.adapters);
+        if (info.backend == QLatin1String("cuda"))
+            info.backendReason = QObject::tr("NVIDIA GPU detected (%1): CUDA backend recommended").arg(hardware.adapters.first().name);
+        else if (info.backend == QLatin1String("vulkan"))
+            info.backendReason = QObject::tr("GPU detected (%1): Vulkan backend recommended").arg(hardware.adapters.first().name);
+        else
+            info.backendReason = QObject::tr("No GPU detected: CPU backend");
     } else if (kernel.contains(QLatin1String("mac")) || kernel.contains(QLatin1String("darwin"))) {
         info.os = PlatformOs::macOS;
         info.osTag = QStringLiteral("macos");

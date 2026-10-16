@@ -1766,15 +1766,22 @@
     </message>
 </context>
 <context>
-    <name>TaskModelsWindow</name>
-    <message>
-        <location filename="../qml/Settings/TaskModelsWindow.qml" line="+11"/>
-        <source>Models</source>
-        <translation>Модели</translation>
-    </message>
+    <name>TaskModelsTable</name>
     <message>
         <source>Model</source>
         <translation>Модель</translation>
+    </message>
+    <message>
+        <source>Installed</source>
+        <translation>Установлен</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>Скачать</translation>
+    </message>
+    <message>
+        <source>Launch and request settings</source>
+        <translation>Запуск и запрос</translation>
     </message>
     <message>
         <source>Launch</source>
@@ -1783,6 +1790,18 @@
     <message>
         <source>Request</source>
         <translation>Запрос</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+</context>
+<context>
+    <name>TaskModelsWindow</name>
+    <message>
+        <location filename="../qml/Settings/TaskModelsWindow.qml" line="+11"/>
+        <source>Models</source>
+        <translation>Модели</translation>
     </message>
     <message>
         <source>Restore defaults</source>
@@ -1805,14 +1824,6 @@
         <translation>Скачать</translation>
     </message>
     <message>
-        <source>Installed</source>
-        <translation>Установлен</translation>
-    </message>
-    <message>
-        <source>Launch and request settings</source>
-        <translation>Запуск и запрос</translation>
-    </message>
-    <message>
         <source>Downloaded model files on disk</source>
         <translation>Загруженные файлы моделей на диске</translation>
     </message>
@@ -1823,10 +1834,6 @@
     <message>
         <source>Delete</source>
         <translation>Удалить</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation>Закрыть</translation>
     </message>
     <message>
         <source>Delete model file</source>
@@ -3271,6 +3278,21 @@
     </message>
 </context>
 <context>
+    <name>ReleaseCatalog</name>
+    <message>
+        <source>NVIDIA GPU detected (%1): CUDA backend recommended</source>
+        <translation>Обнаружен GPU NVIDIA (%1): рекомендуется бэкенд CUDA</translation>
+    </message>
+    <message>
+        <source>GPU detected (%1): Vulkan backend recommended</source>
+        <translation>Обнаружен GPU (%1): рекомендуется бэкенд Vulkan</translation>
+    </message>
+    <message>
+        <source>No GPU detected: CPU backend</source>
+        <translation>GPU не обнаружен: бэкенд CPU</translation>
+    </message>
+</context>
+<context>
     <name>RuntimeBuildsList</name>
     <message>
         <location filename="../qml/Common/RuntimeBuildsList.qml" line="+118"/>
@@ -3766,116 +3788,58 @@
     </message>
 </context>
 <context>
-    <name>StepDone</name>
+    <name>StepCheck</name>
     <message>
-        <source>Done</source>
-        <translation type="vanished">Готово</translation>
+        <source>Check and launch</source>
+        <translation>Проверка и запуск</translation>
     </message>
     <message>
-        <source>Your local runtime is ready. Drop an image or PDF onto the window to start recognizing.</source>
-        <translation type="vanished">Локальный рантайм готов. Перетащите изображение или PDF в окно, чтобы начать распознавание.</translation>
+        <source>The button downloads everything that is still missing — the runtime and the models — then runs an end-to-end check: the server starts, the model loads, one OCR request is performed.</source>
+        <translation>Кнопка скачивает всё недостающее — рантайм и модели — затем выполняет сквозную проверку: запускается сервер, загружается модель, выполняется один OCR-запрос.</translation>
     </message>
     <message>
-        <location filename="../qml/Setup/StepDone.qml" line="+34"/>
-        <source>Summary</source>
-        <translation>Сводка</translation>
+        <source>To download</source>
+        <translation>Будет скачано</translation>
     </message>
     <message>
-        <location line="+31"/>
-        <source>Mode:</source>
-        <translation>Режим:</translation>
+        <source>llama.cpp runtime — %1 backend</source>
+        <translation>Рантайм llama.cpp — бэкенд %1</translation>
     </message>
     <message>
-        <source>Local server (managed)</source>
-        <translation type="vanished">Локальный сервер (управляемый)</translation>
+        <source>Models total: %1</source>
+        <translation>Модели суммарно: %1</translation>
     </message>
     <message>
-        <location line="+11"/>
-        <source>Runtime:</source>
-        <translation>Рантайм:</translation>
+        <source>Everything is already installed — only the check remains.</source>
+        <translation>Всё уже установлено — осталась только проверка.</translation>
     </message>
     <message>
-        <source>Model:</source>
-        <translation type="vanished">Модель:</translation>
+        <source>Download and check</source>
+        <translation>Скачать и проверить</translation>
     </message>
     <message>
-        <location line="-55"/>
-        <source>not set</source>
-        <translation>не задано</translation>
+        <source>Check</source>
+        <translation>Проверить</translation>
     </message>
     <message>
-        <location line="+22"/>
-        <source>Setup is complete. The app will use your external server; drop an image or PDF onto the window to start recognizing.</source>
-        <translation>Настройка завершена. Приложение будет использовать ваш внешний сервер; перетащите изображение или PDF в окно, чтобы начать распознавание.</translation>
+        <source>Running self-test…</source>
+        <translation>Выполняется самопроверка…</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>Setup is complete. The app will run its own llama-server; drop an image or PDF onto the window to start recognizing.</source>
-        <translation>Настройка завершена. Приложение запустит собственный llama-server; перетащите изображение или PDF в окно, чтобы начать распознавание.</translation>
+        <source>Self-test passed: “%1”</source>
+        <translation>Самопроверка пройдена: «%1»</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <source>Configuration</source>
-        <translation>Конфигурация</translation>
+        <source>All set.</source>
+        <translation>Всё готово.</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <source>External server</source>
-        <translation>Внешний сервер</translation>
+        <source>The check starts the server and performs one OCR request.</source>
+        <translation>Проверка запускает сервер и выполняет один OCR-запрос.</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Managed (downloaded llama.cpp)</source>
-        <translation>Управляемый (скачанный llama.cpp)</translation>
-    </message>
-    <message>
-        <source>Managed (own llama.cpp binary)</source>
-        <translation type="vanished">Управляемый (свой бинарник llama.cpp)</translation>
-    </message>
-    <message>
-        <location line="+12"/>
-        <source>Endpoint:</source>
-        <translation>Адрес:</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>OCR model:</source>
-        <translation>Модель OCR:</translation>
-    </message>
-    <message>
-        <location line="+20"/>
-        <source>Block OCR model:</source>
-        <translation>Модель OCR блока:</translation>
-    </message>
-    <message>
-        <location line="-10"/>
-        <source>Decision model:</source>
-        <translation>Модель decision:</translation>
-    </message>
-    <message>
-        <location line="+21"/>
-        <source>Auto-start:</source>
-        <translation>Автозапуск:</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>On</source>
-        <translation>Вкл</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Off</source>
-        <translation>Выкл</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Port:</source>
-        <translation>Порт:</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>auto</source>
-        <translation>авто</translation>
+        <source>Something failed — see the message above, fix the cause and press the button again.</source>
+        <translation>Что-то не получилось — см. сообщение выше, устраните причину и нажмите кнопку ещё раз.</translation>
     </message>
 </context>
 <context>
@@ -3889,6 +3853,37 @@
         <location line="+8"/>
         <source>Configure the connection to your OpenAI-compatible server.</source>
         <translation>Настройте подключение к вашему OpenAI-совместимому серверу.</translation>
+    </message>
+</context>
+<context>
+    <name>StepHardware</name>
+    <message>
+        <source>Hardware and models</source>
+        <translation>Оборудование и модели</translation>
+    </message>
+    <message>
+        <source>The app has detected your hardware and picked the runtime backend and default models — a quantization that fits the memory. Change anything below; the check runs on the last step.</source>
+        <translation>Программа определила оборудование и выбрала бэкенд рантайма и модели по умолчанию — с квантованием, влезающим в память. Всё можно изменить ниже; проверка — на последнем шаге.</translation>
+    </message>
+    <message>
+        <source>Detected hardware</source>
+        <translation>Обнаружено оборудование</translation>
+    </message>
+    <message>
+        <source>CPU (no GPU detected)</source>
+        <translation>CPU (GPU не обнаружен)</translation>
+    </message>
+    <message>
+        <source>VRAM</source>
+        <translation>VRAM</translation>
+    </message>
+    <message>
+        <source>RAM</source>
+        <translation>RAM</translation>
+    </message>
+    <message>
+        <source>Runtime backend</source>
+        <translation>Рекомендуемый рантайм</translation>
     </message>
 </context>
 <context>
@@ -3922,328 +3917,6 @@
     <message>
         <source>Dark</source>
         <translation type="vanished">Тёмная</translation>
-    </message>
-</context>
-<context>
-    <name>StepLaunch</name>
-    <message>
-        <source>Launch</source>
-        <translation type="vanished">Запуск</translation>
-    </message>
-    <message>
-        <location filename="../qml/Setup/StepLaunch.qml" line="+154"/>
-        <source>Estimated memory needs ~%1 GiB (model + context) — this looks high for %2 GiB of RAM.</source>
-        <translation>Примерная потребность в памяти ~%1 ГБ (модель + контекст) — это много для %2 ГБ ОЗУ.</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>Reduce --ctx-size or --n-gpu-layers, or use a smaller model.</source>
-        <translation>Уменьшите --ctx-size или --n-gpu-layers либо используйте модель меньше.</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>Memory estimate: ~%1 GiB total (%2 GiB model + %3 GiB KV cache) on %4 GiB RAM</source>
-        <translation>Оценка памяти: всего ~%1 ГБ (%2 ГБ модель + %3 ГБ KV-кэш) при %4 ГБ ОЗУ</translation>
-    </message>
-    <message>
-        <location line="-88"/>
-        <source>Tune how the local server starts, then run a quick end-to-end check. It starts the server, loads your model and performs one OCR request.</source>
-        <translation>Настройте, как запускается локальный сервер, затем выполните быструю сквозную проверку. Она запустит сервер, загрузит модель и выполнит один OCR-запрос.</translation>
-    </message>
-    <message>
-        <location line="-8"/>
-        <source>Check and launch</source>
-        <translation>Проверка и запуск</translation>
-    </message>
-    <message>
-        <location line="+18"/>
-        <source>Port</source>
-        <translation>Порт</translation>
-    </message>
-    <message>
-        <source>Context size</source>
-        <translation type="vanished">Размер контекста</translation>
-    </message>
-    <message>
-        <source>GPU layers</source>
-        <translation type="vanished">Слои на GPU</translation>
-    </message>
-    <message>
-        <source>Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default.</source>
-        <translation type="vanished">Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено.</translation>
-    </message>
-    <message>
-        <source>Launch profile</source>
-        <translation type="vanished">Профиль запуска</translation>
-    </message>
-    <message>
-        <location line="+27"/>
-        <source>Start the server when the app launches</source>
-        <translation>Запускать сервер при старте приложения</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>Full parameter table: Settings → Launch. Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default. The launch profile follows the installed build automatically.</source>
-        <translation>Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено. Профиль запуска следит за установленной сборкой автоматически</translation>
-    </message>
-    <message>
-        <source>Full parameter table: Settings → Launch. Loading the model at startup uses several GB of RAM/VRAM even when idle — off by default. The profile list holds only what this system and the installed backend can run.</source>
-        <translation type="vanished">Полная таблица параметров: Настройки → Запуск. Загрузка модели при старте занимает несколько ГБ RAM/VRAM даже в простое — по умолчанию выключено. В списке профилей только то, что может запустить эта система с установленным бэкендом</translation>
-    </message>
-    <message>
-        <source>This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.</source>
-        <translation type="vanished">Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора. Если страница обрезается, прежде всего стоит проверить размер контекста</translation>
-    </message>
-    <message>
-        <location line="-20"/>
-        <source>This model is not in the catalog. The server starts with the platform defaults only — if a page comes out truncated, the context window is the first thing to look at.</source>
-        <translation>Этой модели нет в каталоге. Сервер запускается только с платформенными параметрами — если страница обрезается, прежде всего стоит проверить размер контекста</translation>
-    </message>
-    <message>
-        <source>The managed runtime cannot run this model. %1</source>
-        <translation type="obsolete">Управляемый рантайм не может запустить эту модель. %1</translation>
-    </message>
-    <message>
-        <location line="+77"/>
-        <source>Command preview</source>
-        <translation>Предпросмотр команды</translation>
-    </message>
-    <message>
-        <location line="+27"/>
-        <source>Check</source>
-        <translation>Проверить</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>Running self-test…</source>
-        <translation>Выполняется самопроверка…</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>Self-test passed: “%1”</source>
-        <translation>Самопроверка пройдена: «%1»</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Press Check to verify the full chain.</source>
-        <translation>Нажмите «Проверить», чтобы удостовериться в работоспособности всей цепочки.</translation>
-    </message>
-</context>
-<context>
-    <name>StepModel</name>
-    <message>
-        <source>Model</source>
-        <translation type="vanished">Модель</translation>
-    </message>
-    <message>
-        <source>Vision-capable GGUF models work with the managed server. Pick a preset, find one on Hugging Face, or point at a local file.</source>
-        <translation type="vanished">Ви-модели в формате GGUF работают с управляемым сервером. Выберите пресет, найдите модель на Hugging Face или укажите локальный файл.</translation>
-    </message>
-    <message>
-        <source>Estimated footprint: ~%1 GiB (model + context) on %2 GiB RAM</source>
-        <translation type="vanished">Примерный размер: ~%1 ГБ (модель + контекст) на %2 ГБ ОЗУ</translation>
-    </message>
-    <message>
-        <source>Model selected: %1</source>
-        <translation type="vanished">Модель выбрана: %1</translation>
-    </message>
-    <message>
-        <source>Vision-capable GGUF models work with the managed server. Pick a preset or point at a local file.</source>
-        <translation type="vanished">Ви-модели в формате GGUF работают с управляемым сервером. Выберите пресет или укажите локальный файл.</translation>
-    </message>
-    <message>
-        <source>No model selected yet.</source>
-        <translation type="vanished">Модель ещё не выбрана.</translation>
-    </message>
-    <message>
-        <source>Installed models</source>
-        <translation type="vanished">Установленные модели</translation>
-    </message>
-    <message>
-        <source>managed</source>
-        <translation type="vanished">управляемая</translation>
-    </message>
-    <message>
-        <source>external</source>
-        <translation type="vanished">внешняя</translation>
-    </message>
-    <message>
-        <source>Active</source>
-        <translation type="vanished">Активна</translation>
-    </message>
-    <message>
-        <source>Activate</source>
-        <translation type="vanished">Активировать</translation>
-    </message>
-    <message>
-        <source>Presets</source>
-        <translation type="vanished">Пресеты</translation>
-    </message>
-    <message>
-        <source>Hugging Face</source>
-        <translation type="vanished">Hugging Face</translation>
-    </message>
-    <message>
-        <source>Local file</source>
-        <translation type="vanished">Локальный файл</translation>
-    </message>
-    <message>
-        <source>Start from a preset</source>
-        <translation type="vanished">Начать с пресета</translation>
-    </message>
-    <message>
-        <source>~%1 GiB VRAM</source>
-        <translation type="vanished">~%1 ГиБ VRAM</translation>
-    </message>
-    <message>
-        <source>Install</source>
-        <translation type="vanished">Установить</translation>
-    </message>
-    <message>
-        <source>e.g. vision gguf</source>
-        <translation type="vanished">напр. vision gguf</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation type="vanished">Поиск</translation>
-    </message>
-    <message>
-        <source>Results appear here. Models install into the managed models directory.</source>
-        <translation type="vanished">Результаты появятся здесь. Модели устанавливаются в управляемый каталог models.</translation>
-    </message>
-    <message>
-        <source>path to a .gguf model</source>
-        <translation type="vanished">путь к модели .gguf</translation>
-    </message>
-    <message>
-        <source>Browse…</source>
-        <translation type="vanished">Обзор…</translation>
-    </message>
-    <message>
-        <source>Use this file</source>
-        <translation type="vanished">Использовать этот файл</translation>
-    </message>
-    <message>
-        <source>The local model is not managed: its license is your responsibility, and it is not verified by the catalog.</source>
-        <translation type="vanished">Локальная модель не управляется: за её лицензию отвечаете вы, и каталог её не проверяет.</translation>
-    </message>
-    <message>
-        <source>Install model</source>
-        <translation type="vanished">Установка модели</translation>
-    </message>
-    <message>
-        <source>Review the license before installing. Downloading starts after confirmation.</source>
-        <translation type="vanished">Перед установкой ознакомьтесь с лицензией. Загрузка начнётся после подтверждения.</translation>
-    </message>
-    <message>
-        <source>License: %1</source>
-        <translation type="vanished">Лицензия: %1</translation>
-    </message>
-    <message>
-        <source>Select a GGUF model</source>
-        <translation type="vanished">Выберите модель GGUF</translation>
-    </message>
-    <message>
-        <location filename="../qml/Setup/StepModel.qml" line="+33"/>
-        <source>Models</source>
-        <translation>Модели</translation>
-    </message>
-    <message>
-        <source>Download models</source>
-        <translation type="vanished">Скачать модели</translation>
-    </message>
-    <message>
-        <source>Specify model files</source>
-        <translation type="vanished">Указать файлы модели</translation>
-    </message>
-    <message>
-        <source>OCR model</source>
-        <translation type="vanished">Модель OCR</translation>
-    </message>
-    <message>
-        <source>Block OCR model</source>
-        <translation type="vanished">Модель OCR блока</translation>
-    </message>
-    <message>
-        <source>Decision model</source>
-        <translation type="vanished">Модель decision</translation>
-    </message>
-    <message>
-        <source>Pick a preset to download, or activate an installed model.</source>
-        <translation type="vanished">Выберите модель и квант для скачивания или активируйте установленную модель.</translation>
-    </message>
-    <message>
-        <source>Pick a preset to download; it becomes the recognition model when it lands.</source>
-        <translation>Выберите модель и квант для скачивания — после загрузки она станет моделью распознавания.</translation>
-    </message>
-    <message>
-        <location line="+14"/>
-        <source>No models available</source>
-        <translation>Нет доступных моделей</translation>
-    </message>
-    <message>
-        <source>No models installed</source>
-        <translation type="vanished">Установленных моделей нет</translation>
-    </message>
-    <message>
-        <source>Preset catalog</source>
-        <translation type="vanished">Каталог пресетов</translation>
-    </message>
-    <message>
-        <source>The managed runtime cannot run this model. %1</source>
-        <translation type="vanished">Управляемый рантайм не может запустить эту модель. %1</translation>
-    </message>
-    <message>
-        <source>Path to the OCR model</source>
-        <translation type="vanished">Путь до модели OCR</translation>
-    </message>
-    <message>
-        <source>path to the .gguf model file</source>
-        <translation type="vanished">путь до файла модели .gguf</translation>
-    </message>
-    <message>
-        <source>OCR multimodal module (mmproj)</source>
-        <translation type="vanished">Мультимодальный модуль OCR (mmproj)</translation>
-    </message>
-    <message>
-        <source>optional mmproj file for vision models</source>
-        <translation type="vanished">необязательный mmproj-файл для визуальных моделей</translation>
-    </message>
-    <message>
-        <source>Path to the check model</source>
-        <translation type="vanished">Путь до модели проверки</translation>
-    </message>
-    <message>
-        <source>optional small general-purpose model</source>
-        <translation type="vanished">необязательная небольшая модель общего назначения</translation>
-    </message>
-    <message>
-        <source>Check multimodal module (mmproj)</source>
-        <translation type="vanished">Мультимодальный модуль проверки (mmproj)</translation>
-    </message>
-    <message>
-        <source>The check model is optional — text verification can be configured later in Settings.</source>
-        <translation type="vanished">Модель проверки необязательна — проверку текста можно настроить позже в настройках.</translation>
-    </message>
-    <message>
-        <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
-        <translation type="vanished">Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
-    </message>
-    <message>
-        <source>Select a model file</source>
-        <translation type="vanished">Выберите файл модели</translation>
-    </message>
-    <message>
-        <source>GGUF models (*.gguf)</source>
-        <translation type="vanished">Модели GGUF (*.gguf)</translation>
-    </message>
-    <message>
-        <source>All files (*)</source>
-        <translation type="vanished">Все файлы (*)</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
     </message>
 </context>
 <context>
@@ -4312,113 +3985,6 @@
         <location line="+17"/>
         <source>Margins (mm)</source>
         <translation>Поля (мм)</translation>
-    </message>
-</context>
-<context>
-    <name>StepRuntime</name>
-    <message>
-        <location filename="../qml/Setup/StepRuntime.qml" line="+30"/>
-        <source>Runtime (llama.cpp)</source>
-        <translation>Рантайм (llama.cpp)</translation>
-    </message>
-    <message>
-        <source>LLM OCR manages a local llama-server process. First obtain its binary — by downloading a prebuilt build or pointing to one you already have.</source>
-        <translation type="vanished">LLM OCR управляет локальным процессом llama-server. Сначала получите его бинарник — скачав готовую сборку или указав уже имеющуюся.</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>LLM OCR manages a local llama-server process. Download a prebuilt build below, or activate one already installed.</source>
-        <translation>LLM OCR управляет локальным процессом llama-server. Скачайте готовую сборку ниже или активируйте уже установленную.</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Download llama.cpp</source>
-        <translation>Скачать llama.cpp</translation>
-    </message>
-    <message>
-        <location line="+11"/>
-        <source>Backend</source>
-        <translation>Backend</translation>
-    </message>
-    <message>
-        <location line="+17"/>
-        <source>Platform: %1 · recommended: %2</source>
-        <translation>Платформа: %1 · рекомендуемый: %2</translation>
-    </message>
-    <message>
-        <location line="+10"/>
-        <source>Installed: %1 (%2)</source>
-        <translation>Установлено: %1 (%2)</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Ready to install.</source>
-        <translation>Готово к установке.</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Installed builds</source>
-        <translation>Установленные сборки</translation>
-    </message>
-    <message>
-        <source>%1 — binary missing</source>
-        <translation type="vanished">%1 — бинарник отсутствует</translation>
-    </message>
-    <message>
-        <source>Active</source>
-        <translation type="vanished">Активна</translation>
-    </message>
-    <message>
-        <source>Activate</source>
-        <translation type="vanished">Активировать</translation>
-    </message>
-    <message>
-        <location line="+33"/>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Download and install</source>
-        <translation>Скачать и установить</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>Check for updates</source>
-        <translation>Проверить обновления</translation>
-    </message>
-    <message>
-        <location line="+11"/>
-        <source>On Windows, a freshly downloaded binary can be flagged by SmartScreen or antivirus; if launch fails, allow the file in the antivirus settings.</source>
-        <translation>На Windows свежескачанный бинарник может быть помечен SmartScreen или антивирусом; если запуск не удаётся, разрешите файл в настройках антивируса.</translation>
-    </message>
-    <message>
-        <source>On Windows, a freshly downloaded binary can be flagged by SmartScreen or antivirus; if launch fails, pick the file manually below.</source>
-        <translation type="vanished">На Windows свежескачанный бинарник может быть помечен SmartScreen или антивирусом; если запуск не удаётся, выберите файл вручную ниже.</translation>
-    </message>
-    <message>
-        <source>Use an existing llama-server binary</source>
-        <translation type="vanished">Использовать существующий бинарник llama-server</translation>
-    </message>
-    <message>
-        <source>path to llama-server</source>
-        <translation type="vanished">путь к llama-server</translation>
-    </message>
-    <message>
-        <source>Browse…</source>
-        <translation type="vanished">Обзор…</translation>
-    </message>
-    <message>
-        <source>Probe</source>
-        <translation type="vanished">Проверить</translation>
-    </message>
-    <message>
-        <source>No binary selected yet.</source>
-        <translation type="vanished">Бинарник ещё не выбран.</translation>
-    </message>
-    <message>
-        <source>Select llama-server binary</source>
-        <translation type="vanished">Выберите бинарник llama-server</translation>
     </message>
 </context>
 <context>

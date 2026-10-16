@@ -17,7 +17,8 @@ Dialog {
     // to the window's top-left corner.
     parent: Overlay.overlay
     anchors.centerIn: parent
-    width: 660
+    // Wide enough for the hardware step's task table (ADR 170).
+    width: 760
     // Each step reports its content height (implicitHeight + margins); the
     // dialog grows past 560 when a long localized step needs it — wrapped
     // Russian hints otherwise clip — and never exceeds the screen.
@@ -27,9 +28,12 @@ Dialog {
 
     property int current: 0
     property bool completed: false
-    // Step list depends on the mode chosen on step 2 (the model step is
-    // skipped for the external-server mode).
+    // Step list depends on the mode chosen on step 2 (the external mode has
+    // no hardware/check steps).
     property list<Item> steps: []
+    // What the hardware step could not activate on its Next — quantizations
+    // still to download; the check step's chain downloads them.
+    property var missingChoices: []
     readonly property int lastStep: steps.length - 1
     // `var`, not Item: the steps are heterogeneous components that each declare
     // their own `complete`, which the static Item type cannot express. The only
@@ -40,15 +44,15 @@ Dialog {
     function rebuildSteps() {
         const choice = stepWelcome.choice
         if (choice === 1)
-            // External server: no model and no managed-launch steps.
-            steps = [stepIntro, stepWelcome, stepExternal, stepOutput, stepDone]
+            // External server: configure the endpoint, then output options.
+            steps = [stepIntro, stepWelcome, stepExternal, stepOutput]
         else
-            steps = [stepIntro, stepWelcome, stepRuntime, stepModel, stepOutput,
-                     stepLaunch, stepDone]
+            steps = [stepIntro, stepWelcome, stepHardware, stepOutput, stepCheck]
     }
 
     function startWizard() {
         wizard.completed = false
+        wizard.missingChoices = []
         stepWelcome.choice = -1
         rebuildSteps()
         wizard.current = 0
@@ -62,6 +66,13 @@ Dialog {
             return
         Settings.setupDismissed = true
         wizard.close()
+    }
+
+    function finishWizard() {
+        wizard.completed = true
+        Settings.setupVersion = 1
+        Settings.setupDismissed = false
+        wizard.accept()
     }
 
     Component.onCompleted: rebuildSteps()
@@ -81,10 +92,10 @@ Dialog {
             anchors.fill: parent
             visible: wizard.currentStep === stepWelcome
         }
-        StepRuntime {
-            id: stepRuntime
+        StepHardware {
+            id: stepHardware
             anchors.fill: parent
-            visible: wizard.currentStep === stepRuntime
+            visible: wizard.currentStep === stepHardware
         }
 
         StepExternal {
@@ -92,25 +103,16 @@ Dialog {
             anchors.fill: parent
             visible: wizard.currentStep === stepExternal
         }
-        StepModel {
-            id: stepModel
-            anchors.fill: parent
-            visible: wizard.currentStep === stepModel
-        }
         StepOutput {
             id: stepOutput
             anchors.fill: parent
             visible: wizard.currentStep === stepOutput
         }
-        StepLaunch {
-            id: stepLaunch
+        StepCheck {
+            id: stepCheck
             anchors.fill: parent
-            visible: wizard.currentStep === stepLaunch
-        }
-        StepDone {
-            id: stepDone
-            anchors.fill: parent
-            visible: wizard.currentStep === stepDone
+            visible: wizard.currentStep === stepCheck
+            missingChoices: wizard.missingChoices
         }
     }
 
@@ -165,13 +167,15 @@ Dialog {
                 enabled: wizard.canProceed
                 onClicked: {
                     if (wizard.current === wizard.lastStep) {
-                        wizard.completed = true
-                        stepDone.markDone()
-                        wizard.accept()
+                        wizard.finishWizard()
                     } else {
                         // The step list may change after the mode is picked
                         // (step 2) — rebuild before moving on.
                         wizard.rebuildSteps()
+                        // Leaving the hardware step applies the task choices;
+                        // the check step downloads what is still missing.
+                        if (wizard.currentStep === stepHardware)
+                            wizard.missingChoices = stepHardware.applyChoices()
                         wizard.current += 1
                     }
                 }

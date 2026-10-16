@@ -178,6 +178,15 @@ private:
         return -1;
     }
 
+    static QVariantMap choiceFor(const QVariantList &choices, const QString &task)
+    {
+        for (const QVariant &v : choices) {
+            if (v.toMap().value(QStringLiteral("task")).toString() == task)
+                return v.toMap();
+        }
+        return {};
+    }
+
 private slots:
     void initTestCase()
     {
@@ -584,6 +593,84 @@ private slots:
         QVERIFY(missing.isEmpty());
         QCOMPARE(s->settings.selectedQuant(QStringLiteral("unlimited-ocr")), QStringLiteral("Q4_K_M"));
         QCOMPARE(s->settings.launchModelPathForRole(QStringLiteral("pageOcr")), entry.modelPath);
+    }
+
+    // The wizard's auto-selection (ADR 169/170): every task gets its
+    // role-default profile with the best quantization the budget allows.
+    void defaultTaskChoicesFollowRoleDefaults()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        const QVariantList choices = s->installer->defaultTaskChoices(16LL << 40);
+        QCOMPARE(choices.size(), 6);
+        const QHash<QString, QPair<QString, QString>> expected = {
+            {QStringLiteral("pageOcr"), {QStringLiteral("unlimited-ocr"), QStringLiteral("Q8_0")}},
+            {QStringLiteral("rawPageOcr"), {QStringLiteral("glm-ocr"), QStringLiteral("Q8_0")}},
+            {QStringLiteral("blockRecognition"), {QStringLiteral("glm-ocr"), QStringLiteral("Q8_0")}},
+            {QStringLiteral("decision"), {QStringLiteral("clef-flash"), QStringLiteral("Q8_0")}},
+            {QStringLiteral("layout"), {QStringLiteral("teleocr"), QStringLiteral("Q8_0")}},
+            {QStringLiteral("fix"), {QStringLiteral("qwen3.5-4b"), QStringLiteral("Q8_0")}},
+        };
+        for (auto it = expected.cbegin(); it != expected.cend(); ++it) {
+            const QVariantMap choice = choiceFor(choices, it.key());
+            QCOMPARE(choice.value(QStringLiteral("key")).toString(), it.value().first);
+            QCOMPARE(choice.value(QStringLiteral("quantId")).toString(), it.value().second);
+        }
+    }
+
+    // A tight budget steps down the curated ladder; when nothing fits, the
+    // smallest quantization still wins over a hopeless one.
+    void defaultTaskChoicesFitTheMemoryBudget()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        const QVariantList choices = s->installer->defaultTaskChoices(2LL << 30);
+        QCOMPARE(choiceFor(choices, QStringLiteral("pageOcr")).value(QStringLiteral("quantId")).toString(),
+                 QStringLiteral("Q4_K_M"));  // q8_0/q6_k/q5_k_m all exceed 2 GiB
+        QCOMPARE(choiceFor(choices, QStringLiteral("rawPageOcr")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
+        QCOMPARE(choiceFor(choices, QStringLiteral("blockRecognition")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
+        QCOMPARE(choiceFor(choices, QStringLiteral("decision")).value(QStringLiteral("quantId")).toString(),
+                 QStringLiteral("Q4_0"));  // nothing of clef-flash fits → the smallest
+        QCOMPARE(choiceFor(choices, QStringLiteral("layout")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
+        QCOMPARE(choiceFor(choices, QStringLiteral("fix")).value(QStringLiteral("quantId")).toString(),
+                 QStringLiteral("IQ4_XS"));  // nothing of qwen3.5-4b fits → the smallest
+    }
+
+    // A quant already on disk beats a better download: the wizard must not
+    // re-download what the machine already has.
+    void defaultTaskChoicesPreferTheInstalledQuant()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        QVERIFY(QDir().mkpath(sub));
+
+        ModelEntry entry;
+        entry.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_K_M");
+        entry.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
+        entry.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        entry.dir = sub;
+        entry.modelPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_K_M.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
+        entry.origin = ModelOrigin::Managed;
+        entry.quantization = QStringLiteral("Q4_K_M");
+        QVERIFY(!entry.modelPath.isEmpty() && !entry.mmprojPath.isEmpty());
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {entry}, err), qPrintable(err));
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        const QVariantList choices = s->installer->defaultTaskChoices(16LL << 40);
+        QCOMPARE(choiceFor(choices, QStringLiteral("pageOcr")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q4_K_M"));
+        QCOMPARE(choiceFor(choices, QStringLiteral("layout")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
     }
 
     // Deleting a model takes every quantization of it, but only after the whole

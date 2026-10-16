@@ -19,12 +19,7 @@ ApplicationWindow {
 
     property var runtimeSettingsRef: null
 
-    readonly property var taskIds: ["pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout", "fix"]
     readonly property bool externalMode: Settings.connectionMode === "external"
-
-    // The table edits a draft; Save applies it, Cancel re-reads the settings.
-    // task -> {key: profile id, quantId, modelName}.
-    property var draft: ({})
 
     function bringToFront() {
         if (visibility === Window.Minimized)
@@ -34,74 +29,12 @@ ApplicationWindow {
         requestActivate()
     }
 
-    function fmtBytes(bytes) {
-        if (bytes <= 0)
-            return ""
-        if (bytes >= 1073741824)
-            return (bytes / 1073741824).toFixed(1) + " GiB"
-        if (bytes >= 1048576)
-            return (bytes / 1048576).toFixed(1) + " MiB"
-        return (bytes / 1024).toFixed(1) + " KiB"
-    }
-
-    // Draft quant id for a task's profile: the row's own default — the active
-    // quant, else the saved choice, else the first installed one (the same
-    // order the models list uses). Empty in the external mode or when the
-    // profile has no quantization rows.
-    function draftQuantId(task, key) {
-        if (window.externalMode)
-            return ""
-        const row = RoleProfiles.quantModels(task).rowFor(key)
-        const quants = row.quants || []
-        const idx = row.selected >= 0 && row.selected < quants.length ? row.selected : 0
-        return quants[idx] ? quants[idx].id : ""
-    }
-
-    function syncDraft() {
-        var next = {}
-        for (const task of window.taskIds) {
-            const key = RoleProfiles.requestProfileId(task)
-            next[task] = {
-                key: key,
-                quantId: window.draftQuantId(task, key),
-                modelName: Settings.modelNameForRole(task)
-            }
-        }
-        window.draft = next
-    }
-
-    function loadValues() {
-        window.syncDraft()
-    }
-
-    function openTaskSettings(task, button) {
-        taskSettingsPopup.task = task
-        taskSettingsPopup.attachTo(button)
-        taskSettingsPopup.open()
-    }
-
-    function quantMarker(q) {
-        return q.installed ? "✓" : (q.downloadable ? "⬇" : "·")
-    }
-
-    function quantItemText(q) {
-        const status = q.installed ? qsTr("Installed") : (q.downloadable ? qsTr("Download") : "")
-        let s = window.quantMarker(q) + " " + q.id
-        if (q.sizeLabel.length > 0)
-            s += " — " + q.sizeLabel
-        const tail = status.length > 0 && q.hint.length > 0 ? status + ", " + q.hint
-                                                                 : (status.length > 0 ? status : q.hint)
-        if (tail.length > 0)
-            s += " (" + tail + ")"
-        return s
-    }
-
     onVisibleChanged: {
         if (visible) {
             ModelInstaller.refreshInstalled()
             ModelInstaller.reloadPresets()
             ModelInstaller.rescanRegistry()
-            window.loadValues()
+            taskTable.syncDraft()
         }
     }
 
@@ -134,16 +67,13 @@ ApplicationWindow {
         LLOButton {
             subtle: true
             text: qsTr("Restore defaults")
-            onClicked: {
-                launchTab.resetValues()
-                requestTab.resetValues()
-            }
+            onClicked: taskTable.resetTabs()
         }
         LLOButton {
             text: qsTr("Cancel")
             enabled: !ModelInstaller.taskQueueActive
             onClicked: {
-                window.loadValues()
+                taskTable.syncDraft()
                 window.close()
             }
         }
@@ -156,25 +86,14 @@ ApplicationWindow {
     }//footer
 
     function save() {
-        launchTab.saveValues()
-        requestTab.saveValues()
+        taskTable.saveTabs()
         if (window.externalMode) {
-            for (const task of window.taskIds) {
-                RoleProfiles.setRequestProfileId(task, window.draft[task].key)
-                Settings.setModelNameForRole(task, window.draft[task].modelName)
-            }
-            Settings.forceSave()
+            taskTable.applyExternalDraft()
             window.close()
             return
         }
 
-        var choices = []
-        for (const task of window.taskIds) {
-            const entry = window.draft[task]
-            if (entry.quantId.length > 0)
-                choices.push({task: task, key: entry.key, quantId: entry.quantId})
-        }
-        const missing = ModelInstaller.applyTaskChoices(choices)
+        const missing = ModelInstaller.applyTaskChoices(taskTable.buildChoices())
         if (missing.length === 0) {
             window.close()
             return
@@ -190,219 +109,11 @@ ApplicationWindow {
 
         // The six tasks: model + quantization per row (model name in the
         // external mode); the gear opens that task's Launch/Request settings.
-        ColumnLayout {
+        TaskModelsTable {
+            id: taskTable
             Layout.fillWidth: true
-            spacing: 4
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacingSmall
-                Item { Layout.preferredWidth: 200 }
-                LLOLabel {
-                    Layout.fillWidth: true
-                    font.bold: true
-                    color: Theme.textMuted
-                    text: qsTr("Model")
-                }
-                Item { Layout.preferredWidth: 150 }
-                Item { Layout.preferredWidth: 36 }
-            }
-
-            Repeater {
-                model: window.taskIds
-
-                delegate: RowLayout {
-                    id: taskRow
-
-                    required property string modelData
-
-                    readonly property var quantModel: RoleProfiles.quantModels(taskRow.modelData)
-                    readonly property var entry: window.draft[taskRow.modelData] || {}
-
-                    Layout.fillWidth: true
-                    spacing: Theme.spacingSmall
-
-                    Item {
-                        Layout.preferredWidth: 200
-                        implicitHeight: modelBox.implicitHeight
-
-                        LLOLabel {
-                            anchors.fill: parent
-                            verticalAlignment: Text.AlignVCenter
-                            leftPadding: Theme.spacingSmall
-                            elide: Text.ElideRight
-                            text: RoleProfiles.title(taskRow.modelData)
-                            color: Theme.textSecondary
-                        }
-                    }
-
-                    ComboBox {
-                        id: modelBox
-                        Layout.fillWidth: true
-                        implicitHeight: Theme.controlHeight
-                        model: taskRow.quantModel
-                        textRole: "title"
-                        valueRole: "key"
-
-                        function sync() {
-                            const entry = window.draft[taskRow.modelData]
-                            if (!entry)
-                                return
-                            const idx = taskRow.quantModel.rowIndexOf(entry.key)
-                            currentIndex = idx >= 0 ? idx : 0
-                            if (currentValue)
-                                entry.key = currentValue
-                            quantBox.sync()
-                        }
-
-                        Component.onCompleted: modelBox.sync()
-                        onActivated: function (index) {
-                            window.draft[taskRow.modelData].key = modelBox.valueAt(index)
-                            // The saved quant choice belongs to the previous
-                            // profile; the new row picks its own default.
-                            window.draft[taskRow.modelData].quantId = ""
-                            quantBox.sync()
-                        }
-                        Connections {
-                            target: window
-                            function onDraftChanged() { modelBox.sync() }
-                        }
-                        Connections {
-                            target: ModelInstaller
-                            function onInstalledChanged() { modelBox.sync() }
-                            function onPresetsChanged() { modelBox.sync() }
-                        }
-                    }
-
-                    ComboBox {
-                        id: quantBox
-                        visible: !window.externalMode
-                        Layout.preferredWidth: 150
-                        implicitHeight: Theme.controlHeight
-                        textRole: "id"
-
-                        // The dropdown is wider than the control and hangs off
-                        // its right edge, leftward — the rows sit at the right
-                        // edge of the window, so a centered popup would leave it.
-                        popup: Popup {
-                            y: quantBox.height + 2
-                            width: 360
-                            padding: 1
-                            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
-
-                            onAboutToShow: {
-                                const p = quantBox.mapToItem(null, 0, 0)
-                                const left = Math.max(Theme.spacingSmall, Math.min(p.x + quantBox.width - width, window.width - width - Theme.spacingSmall))
-                                x = left - p.x
-                            }
-
-                            background: Rectangle {
-                                color: Theme.surface
-                                border.color: Theme.border
-                                border.width: 1
-                                radius: Theme.controlRadius
-                            }
-
-                            contentItem: Column {
-                                spacing: 0
-
-                                Repeater {
-                                    model: quantBox.popup.visible && window.draft[taskRow.modelData]
-                                           ? (taskRow.quantModel.rowFor(window.draft[taskRow.modelData].key).quants || [])
-                                           : []
-
-                                    delegate: MenuItem {
-                                        id: quantEntry
-
-                                        required property var modelData
-                                        required property int index
-
-                                        width: quantBox.popup.width - quantBox.popup.padding * 2
-                                        height: Theme.controlHeight
-                                        highlighted: quantEntry.index === quantBox.currentIndex
-                                        text: window.quantItemText(quantEntry.modelData)
-                                        onTriggered: {
-                                            quantBox.choose(quantEntry.index)
-                                            quantBox.popup.close()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        displayText: {
-                            const q = quantBox.model && quantBox.currentIndex >= 0 ? quantBox.model[quantBox.currentIndex] : null
-                            return q ? q.id + "  " + window.quantMarker(q) : ""
-                        }
-
-                        function choose(index) {
-                            // The custom popup bypasses ComboBox's own
-                            // selection path, so currentIndex (the closed
-                            // button's text follows it) is updated here.
-                            currentIndex = index
-                            if (window.draft[taskRow.modelData] && model[index])
-                                window.draft[taskRow.modelData].quantId = model[index].id
-                        }
-
-                        function sync() {
-                            const entry = window.draft[taskRow.modelData]
-                            if (!entry)
-                                return
-                            const row = taskRow.quantModel.rowFor(entry.key)
-                            model = row.quants || []
-                            let idx = model.findIndex(q => q.id.toLowerCase() === String(entry.quantId).toLowerCase())
-                            if (idx < 0)
-                                idx = row.selected >= 0 && row.selected < model.length ? row.selected : 0
-                            // A same-index re-assign emits nothing, and the
-                            // display text would keep a stale install marker.
-                            currentIndex = -1
-                            currentIndex = idx
-                            if (model[currentIndex])
-                                entry.quantId = model[currentIndex].id
-                        }
-
-                        Component.onCompleted: quantBox.sync()
-                        onActivated: function (index) {
-                            quantBox.choose(index)
-                        }
-                    }
-
-                    TextField {
-                        id: nameField
-                        visible: window.externalMode
-                        Layout.preferredWidth: 210
-                        implicitHeight: Theme.controlHeight
-                        text: taskRow.entry.modelName || ""
-                        onTextEdited: {
-                            if (window.draft[taskRow.modelData])
-                                window.draft[taskRow.modelData].modelName = nameField.text
-                        }
-                    }
-
-                    ToolButton {
-                        id: gearButton
-
-                        implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
-                        implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
-                        onClicked: window.openTaskSettings(taskRow.modelData, gearButton)
-                        ToolTip.visible: hovered
-                        ToolTip.text: qsTr("Launch and request settings")
-
-                        contentItem: Item {
-                            implicitWidth: gearIcon.size
-                            implicitHeight: gearIcon.size
-
-                            Icon {
-                                id: gearIcon
-                                anchors.centerIn: parent
-                                name: "settings"
-                                size: 15
-                                color: gearButton.enabled ? Theme.textPrimary : Theme.textMuted
-                            }
-                        }
-                    }
-                }
-            }
+            runtimeSettingsRef: window.runtimeSettingsRef
+            externalMode: window.externalMode
         }
 
         // The files actually on disk: one row per installed model+quant with
@@ -524,100 +235,6 @@ ApplicationWindow {
         }
     }//ColumnLayout
 
-    // Launch/Request settings of one task row, hidden behind its gear.
-    Popup {
-        id: taskSettingsPopup
-
-        property string task: "pageOcr"
-
-        function attachTo(button) {
-            // The rows end at the window's right edge, so the popup hangs off
-            // the gear's right edge leftward and is clamped into the window.
-            const p = button.mapToItem(parent, 0, 0)
-            x = Math.max(Theme.paddingWindow, Math.min(p.x + button.width - width, parent.width - width - Theme.paddingWindow))
-            y = Math.max(Theme.paddingWindow, Math.min(p.y + button.height + Theme.spacingSmall, parent.height - height - Theme.paddingWindow))
-        }
-
-        parent: window.contentItem
-        width: 560
-        height: 480
-        padding: Theme.spacing
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        background: Rectangle {
-            color: Theme.surface
-            border.color: Theme.border
-            border.width: 1
-            radius: Theme.controlRadius
-        }
-
-        onAboutToShow: {
-            launchTab.loadValues()
-            requestTab.loadValues()
-        }
-
-        contentItem: ColumnLayout {
-            spacing: Theme.spacingSmall
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacingSmall
-
-                LLOLabel {
-                    Layout.fillWidth: true
-                    font.bold: true
-                    elide: Text.ElideRight
-                    text: RoleProfiles.title(taskSettingsPopup.task)
-                }
-                ToolButton {
-                    id: popupCloseButton
-
-                    implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
-                    implicitHeight: topPadding + bottomPadding + contentItem.implicitHeight
-                    onClicked: taskSettingsPopup.close()
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Close")
-
-                    contentItem: Item {
-                        implicitWidth: closeIcon.size
-                        implicitHeight: closeIcon.size
-
-                        Icon {
-                            id: closeIcon
-                            anchors.centerIn: parent
-                            name: "x"
-                            size: 15
-                            color: Theme.textSecondary
-                        }
-                    }
-                }
-            }
-
-            SettingsTabBar {
-                id: popupTabs
-                Layout.fillWidth: true
-                titles: [qsTr("Launch"), qsTr("Request")]
-            }
-
-            StackLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                currentIndex: popupTabs.currentIndex
-
-                LaunchTab {
-                    id: launchTab
-                    role: taskSettingsPopup.task
-                    runtimeSettingsRef: window.runtimeSettingsRef
-                }
-
-                RequestTab {
-                    id: requestTab
-                    role: taskSettingsPopup.task
-                }
-            }
-        }
-    }
-
     // The not-installed quantizations the Save ran into (the rework plan's
     // stage 6): one sequential download queue after the user agrees.
     Dialog {
@@ -642,7 +259,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     text: RoleProfiles.title(modelData.task) + " — "
                           + modelData.model + " · " + modelData.quantId
-                          + (modelData.size > 0 ? " (" + window.fmtBytes(modelData.size) + ")" : "")
+                          + (modelData.size > 0 ? " (" + taskTable.fmtBytes(modelData.size) + ")" : "")
                 }
             }
         }

@@ -296,10 +296,20 @@
       surfaced as `Controller.parseWarning` in the footer instead of a silent
       "successful" blob. The stage-4 pipeline split is recorded as deferred
       (ADR 89) — do it when a model with a non-det-token reply shape lands.
-    - **F** ✅ — first-run wizard: `SetupWizard.qml` + `Setup/Step{Welcome,
-      Runtime,Model,Launch,Done}.qml`, trigger per §4.4 (Timer in Main.qml, no
-      network probes), per-step gating; External path sets `setupVersion = 1`;
-      Launch step uses the QML self-test bridge `runSelfTestQml()`.
+    - **F** ✅ — first-run wizard, **reworked to five steps (ADR 170)**:
+      `SetupWizard.qml` + `Setup/Step{Intro,Welcome,Hardware,External,
+      Output,Check}.qml`, trigger per §4.4 (Timer in Main.qml, no network
+      probes), per-step gating. Managed: Intro (language/theme) → mode →
+      **Hardware and models** (GPU/VRAM via `HardwareInfo` — DXGI on Windows,
+      Metal on macOS; hardware-backed backend recommendation in an editable
+      ComboBox; the shared `Common/TaskModelsTable` prefilled by
+      `ModelInstaller::defaultTaskChoices()` — role-default models, ADR 169,
+      memory-fitting quants, budget 0.9 × (VRAM ‖ RAM)) → Output → **Check**
+      (one button: download the missing runtime — an installed one is reused —
+      and the missing quants via the sequential queue, then `runSelfTestQml()`;
+      a passed self-test is the only way to Finish). External: Intro → mode →
+      External endpoint → Output → Finish (StepExternal is awaiting its own
+      rework). The old Runtime/Model/Launch/Done steps are deleted.
     - **G-UI** ✅ — `Footer.qml` managed-runtime indicator (dot yellow/green/red
       + text, click opens the shared `ServerLogWindow`), Start/Stop toggle for
         the managed server (Managed mode only, `startServer()`/`stopServer()`),
@@ -307,8 +317,9 @@
       + stderr status text while StartingRuntime, §7.5 error surfacing for
         Failed, and
         the «Launch settings changed — restart» banner with a Restart button.
-    - **H** 🔄 — H.2 ✅ (memory estimate + warning in the wizard Launch step,
-      `ModelMemoryEstimator`), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
+    - **H** 🔄 — H.2 ✅ (memory estimate + warning, `ModelMemoryEstimator`;
+      the wizard Launch step that hosted it is gone since ADR 170 — the
+      estimate lives on in Settings → Launch), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
       probe bounds 2.5s/5s, `probeCached()` LRU — plus a **shared probe budget**
       (`--version` + `--help`, worst case = `timeoutMs`, ADR 51) and a
       **persistent capabilities cache** `capabilities-<sha1(path+mtime+size)>.json`
@@ -461,7 +472,13 @@
     and a «Загруженные файлы моделей на диске» block (one row per installed
     entry: size, "used by N tasks", guarded delete via
     `ModelInstaller::removeInstalledEntry`); the separate all-models manager
-    window is deleted. Recognizing a page is a
+    window is deleted. The rows live in the shared
+    `Common/TaskModelsTable.qml` — also the heart of the wizard's hardware
+    step — and the auto-selection the defaults feed is live (ADR 170):
+    `ModelInstaller::defaultTaskChoices()` picks each task's role-default
+    model and the best quantization the memory budget fits (0.9 × (VRAM ‖
+    RAM), `runtime/HardwareInfo`), preferring already-installed quants.
+    Recognizing a page is a
     split-button choice (pageOcr vs rawPageOcr), not a setting. The re-run
     override enum is `VerificationQueueController::FixMode`
     (`FixFromSetting`/`FixSkip`/`FixForce`); a restart of the managed server

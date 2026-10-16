@@ -473,6 +473,15 @@ target_link_libraries(test_model_registry PRIVATE
 )
 add_test(NAME test_model_registry COMMAND test_model_registry)
 
+# ---- Wizard hardware probe (ADR 170) -------------------------------------
+qt_add_executable(test_hardware_info test_hardware_info.cpp)
+
+target_link_libraries(test_hardware_info PRIVATE
+    Qt6::Test
+    llocr_runtime
+)
+add_test(NAME test_hardware_info COMMAND test_hardware_info)
+
 # ---- Stage E: model installer (removeModel / multi-quant) ----------------
 qt_add_executable(test_model_installer test_model_installer.cpp)
 

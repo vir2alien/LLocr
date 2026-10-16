@@ -105,6 +105,11 @@ endif()
 # Enable Qt6 policies for modern CMake integration (qt_add_executable, etc.).
 qt_standard_project_setup(REQUIRES 6.10)
 
+# Objective-C++ is needed by the macOS GPU probe (runtime/HardwareInfo_mac.mm).
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
+
 # DjVu input support is optional: without DjVuLibre the app builds and
 # works, and opening a .djvu file reports an actionable error at runtime.
 # Dependency acquisition is deliberately outside this build.

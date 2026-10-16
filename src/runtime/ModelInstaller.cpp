@@ -15,6 +15,7 @@
 #include "config/SettingsStore.h"
 #include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
+#include "runtime/HardwareInfo.h"
 #include "runtime/InstalledFilesModel.h"
 #include "runtime/InstalledReconcile.h"
 #include "runtime/LaunchProfileStore.h"
@@ -584,6 +585,63 @@ QVariantList ModelInstaller::applyTaskChoices(const QVariantList &choices)
     m_settings.forceSave();
     publishInstalled();
     return missing;
+}
+
+// The wizard's auto-selection (ADR 169/170): every task gets its role-default
+// profile, the quantization is the best one the memory budget allows — an
+// already installed quant always wins over a download of the same grade.
+QVariantList ModelInstaller::defaultTaskChoices(qint64 budgetBytes)
+{
+    const qint64 budget = budgetBytes >= 0 ? budgetBytes : HardwareInfo::detect().memoryBudgetBytes();
+    static const QStringList kTasks = {
+        QStringLiteral("pageOcr"), QStringLiteral("rawPageOcr"), QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("layout"), QStringLiteral("fix")};
+    QVariantList choices;
+    for (const QString &task : kTasks) {
+        const QString key = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), task);
+        ModelQuantModel *model = quantModel(task);
+        if (key.isEmpty() || !model || model->rowIndexOf(key) < 0)
+            continue;
+        const QVariantList quants = model->rowFor(key).value(QStringLiteral("quants")).toList();
+        if (quants.isEmpty())
+            continue;
+        const auto installed = [](const QVariantMap &q) { return q.value(QStringLiteral("installed")).toBool(); };
+        const auto fits = [budget](const QVariantMap &q) {
+            const qint64 size = q.value(QStringLiteral("size")).toLongLong();
+            return size > 0 && size <= budget;
+        };
+        int pick = -1;
+        for (int i = 0; i < quants.size(); ++i) {
+            if (installed(quants.at(i).toMap()) && fits(quants.at(i).toMap())) {
+                pick = i;
+                break;
+            }
+        }
+        if (pick < 0) {
+            for (int i = 0; i < quants.size(); ++i) {
+                if (installed(quants.at(i).toMap())) {
+                    pick = i;
+                    break;
+                }
+            }
+        }
+        if (pick < 0) {
+            for (int i = 0; i < quants.size(); ++i) {
+                if (fits(quants.at(i).toMap())) {
+                    pick = i;
+                    break;
+                }
+            }
+        }
+        if (pick < 0)
+            pick = quants.size() - 1;
+
+        QVariantMap choice;
+        choice.insert(QStringLiteral("task"), task);
+        choice.insert(QStringLiteral("key"), key);
+        choice.insert(QStringLiteral("quantId"), quants.at(pick).toMap().value(QStringLiteral("id")).toString());
+        choices.append(choice);
+    }
+    return choices;
 }
 
 void ModelInstaller::queueTaskInstalls(const QVariantList &choices)

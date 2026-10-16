@@ -196,6 +196,8 @@ qt_add_library(llocr_runtime STATIC
     runtime/ModelInstaller.cpp
     runtime/ModelMemoryEstimator.h
     runtime/ModelMemoryEstimator.cpp
+    runtime/HardwareInfo.h
+    runtime/HardwareInfo.cpp
     runtime/LaunchProfileStore.h
     runtime/LaunchProfileStore.cpp
     runtime/LaunchParametersModel.h
@@ -212,13 +214,22 @@ target_link_libraries(llocr_runtime
 )
 
 # One ProcessGuard implementation per platform; the other two are stubs, so the
-# class always has a definition.
+# class always has a definition. The same split carries the GPU probe
+# (HardwareInfo_win: DXGI, HardwareInfo_mac: Metal, HardwareInfo_linux: none).
 if(WIN32)
-    target_sources(llocr_runtime PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp)
+    target_sources(llocr_runtime PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_win.cpp
+        ${CMAKE_SOURCE_DIR}/src/runtime/HardwareInfo_win.cpp)
 elseif(APPLE)
-    target_sources(llocr_runtime PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp)
+    target_sources(llocr_runtime PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_mac.cpp
+        ${CMAKE_SOURCE_DIR}/src/runtime/HardwareInfo_mac.mm)
+    find_library(METAL_FRAMEWORK Metal REQUIRED)
+    target_link_libraries(llocr_runtime PRIVATE ${METAL_FRAMEWORK})
 else()
-    target_sources(llocr_runtime PRIVATE ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp)
+    target_sources(llocr_runtime PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/runtime/ProcessGuard_linux.cpp
+        ${CMAKE_SOURCE_DIR}/src/runtime/HardwareInfo_linux.cpp)
 endif()
 
 # ---- llocr_app ---------------------------------------------------------------

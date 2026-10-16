@@ -124,6 +124,11 @@ public:
     // time (the shared transaction), each result assigned to its task on
     // completion.
     Q_INVOKABLE void queueTaskInstalls(const QVariantList &choices);
+    // The wizard's auto-selection: {task, key, quantId} per task — the
+    // role-default profile (ADR 169) with the best quantization the memory
+    // budget fits; an installed quant beats a better download. budgetBytes < 0
+    // reads the hardware budget.
+    Q_INVOKABLE QVariantList defaultTaskChoices(qint64 budgetBytes = -1);
     Q_INVOKABLE void cancelTaskInstalls();
     bool taskQueueActive() const { return m_taskQueueActive; }
     int taskQueueRemaining() const { return m_taskQueue.size(); }

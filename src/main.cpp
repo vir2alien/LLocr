@@ -15,6 +15,7 @@
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
 #include "core/ModelProfiles.h"
+#include "runtime/HardwareInfo.h"
 #include "runtime/InstalledState.h"
 #include "runtime/InstallTransaction.h"
 #include "runtime/LaunchProfileStore.h"
@@ -143,6 +144,9 @@ int main(int argc, char *argv[])
 
     llocr::RuntimeInstaller runtimeInstaller(settingsStore, installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RuntimeInstaller", &runtimeInstaller);
+
+    llocr::HardwareInfo hardwareInfo;
+    qmlRegisterSingletonInstance("LLocr", 1, 0, "HardwareInfo", &hardwareInfo);
 
     llocr::ModelInstaller modelInstaller(settingsStore, runtimeController, installedState);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "ModelInstaller", &modelInstaller);
