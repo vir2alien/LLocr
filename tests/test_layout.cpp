@@ -7,6 +7,7 @@
 
 #include "core/ConnectionConfig.h"
 #include "models/GeneralPurposeModel.h"
+#include "parsers/MinerULayoutParser.h"
 #include "parsers/TeleOcrLayoutParser.h"
 
 using namespace llocr;
@@ -20,6 +21,7 @@ class ExposedGeneralPurposeModel : public GeneralPurposeModel
 public:
     static QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
     static CheckResult parse(const QByteArray &responseData) { return parseResponse(responseData); }
+    static CheckResult parseStructural(const QByteArray &responseData) { return parseResponse(responseData, CheckRequest::Protocol::Recognition, true); }
 };
 
 // A loopback HTTP server that records the request line and body and answers
@@ -102,6 +104,7 @@ CheckRequest layoutRequest()
     cache.kind = RequestValueKind::Boolean;
     cache.value = true;
     request.parameters = {temperature, cache};
+    request.structuralReply = true;
     return request;
 }
 
@@ -178,6 +181,32 @@ private slots:
         const CheckResult garbage = model.parse("{ not json");
         QCOMPARE(garbage.status, CheckStatus::Failed);
         QVERIFY(!garbage.errorMessage.text().isEmpty());
+    }
+
+    // MinerU's layout reply is special-token markup: the <|box_start|> family
+    // is the data itself. The default cleanup eats every <|...|> span (the
+    // <box:> tags of TeleOCR survive it — that is why only MinerU broke), so
+    // the layout pass reads its reply structurally and the markers reach the
+    // parser.
+    void structuralReplyKeepsTheSpecialTokenMarkers()
+    {
+        const QByteArray reply = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\""
+                                                   "<|box_start|>116 101 273 117<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\\n"
+                                                   "<|box_start|>113 132 885 310<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|><|im_end|>\"}}]}");
+
+        const CheckResult stripped = ExposedGeneralPurposeModel::parse(reply);
+        QVERIFY(!stripped.text.contains(QStringLiteral("<|box_start|>")));
+
+        const CheckResult structural = ExposedGeneralPurposeModel::parseStructural(reply);
+        QCOMPARE(structural.status, CheckStatus::Recognized);
+        QVERIFY(structural.text.contains(QStringLiteral("<|box_start|>")));
+
+        const OcrResult parsed = MinerULayoutParser().parse(structural.text);
+        QVERIFY(parsed.success);
+        QCOMPARE(parsed.pages.first().boxes.size(), 2);
+        QCOMPARE(parsed.pages.first().boxes.at(0).label, QStringLiteral("title"));
+        QVERIFY(parsed.pages.first().boxes.at(0).positioned);
+        QCOMPARE(parsed.pages.first().boxes.at(1).label, QStringLiteral("text"));
     }
 };
 

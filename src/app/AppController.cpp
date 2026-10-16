@@ -1222,7 +1222,15 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
         }
     }
     if (!hasPositioned) {
-        const StatusMessage message = StatusMessage::translate("AppController", "The model returned no layout blocks for page %1.").arg(pageIndex + 1);
+        // A stripped reply is the tell of a server serving the model without
+        // its launch layer (e.g. started before the profile changed): the
+        // numbers arrive, the special-token markers around them do not.
+        QString snippet = rawText.simplified();
+        if (snippet.size() > 160)
+            snippet = snippet.left(160) + QStringLiteral("…");
+        const StatusMessage message = rawText.isEmpty()
+                                          ? StatusMessage::translate("AppController", "The model returned no layout blocks for page %1.").arg(pageIndex + 1)
+                                          : StatusMessage::translate("AppController", "The model returned no layout blocks for page %1. Reply starts: %2").arg(pageIndex + 1).arg(snippet);
         setStatus(message);
         reportProblem(message, ProblemLog::Warning);
         return;

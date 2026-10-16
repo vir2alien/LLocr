@@ -128,7 +128,7 @@ QByteArray GeneralPurposeModel::buildRequestBody(const CheckRequest &request, co
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
-CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData, CheckRequest::Protocol protocol)
+CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData, CheckRequest::Protocol protocol, bool structuralReply)
 {
     QJsonParseError parseError{};
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
@@ -141,7 +141,10 @@ CheckResult GeneralPurposeModel::parseResponse(const QByteArray &responseData, C
         return CheckResult::makeError(StatusMessage::translate("GeneralPurposeModel", "No choices in response"));
 
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
-    const QString content = stripOuterCodeFence(stripControlTokens(message.value(QStringLiteral("content")).toString()));
+    const QString rawContent = message.value(QStringLiteral("content")).toString();
+    // A structural reply feeds a parser that reads the <|...|> markup itself;
+    // the service-token cleanup would delete exactly the data it needs.
+    const QString content = structuralReply ? stripOuterCodeFence(rawContent) : stripOuterCodeFence(stripControlTokens(rawContent));
 
     if (protocol == CheckRequest::Protocol::Recognition) {
         // The block-recognition contract: the reply IS the block text. An
@@ -206,7 +209,7 @@ QFuture<CheckResult> GeneralPurposeModel::check(const CheckRequest &request, con
     return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
                                         config,
                                         m_activeClient,
-                                        [request](const QByteArray &body) { return parseResponse(body, request.protocol); },
+                                        [request](const QByteArray &body) { return parseResponse(body, request.protocol, request.structuralReply); },
                                         QCoreApplication::translate("GeneralPurposeModel", "Failed to encode the block image"));
 }
 

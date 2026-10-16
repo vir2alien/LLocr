@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "id": "mineru",
+  "title": "MinerU2.5-Pro-2605-1.2B",
+  "license": "https://huggingface.co/opendatalab/MinerU2.5-Pro-2605-1.2B",
+  "minBuild": "b4000",
+  "files": {
+    "repo": "mradermacher/MinerU2.5-Pro-2605-1.2B-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q8_0",
+        "file": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+        "sha256": "",
+        "sizeBytes": 531066976
+      },
+      {
+        "id": "q6_k",
+        "file": "MinerU2.5-Pro-2605-1.2B.Q6_K.gguf",
+        "sha256": "",
+        "sizeBytes": 505735264
+      },
+      {
+        "id": "q5_k_m",
+        "file": "MinerU2.5-Pro-2605-1.2B.Q5_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 420084832
+      },
+      {
+        "id": "q4_k_m",
+        "file": "MinerU2.5-Pro-2605-1.2B.Q4_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 397806688
+      },
+      {
+        "id": "q3_k_m",
+        "file": "MinerU2.5-Pro-2605-1.2B.Q3_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 355465312
+      }
+    ],
+    "mmproj": {
+      "id": "q8_0",
+      "file": "MinerU2.5-Pro-2605-1.2B.mmproj-Q8_0.gguf",
+      "sha256": ""
+    }
+  },
+  "roles": {
+    "layout": {
+      "alias": "llocr-mineru-layout",
+      "parser": "mineru-layout",
+      "maxOutput": 4096,
+      "systemPrompt": "You are a helpful assistant.",
+      "prompts": [
+        {
+          "id": "detection",
+          "title": "Detection",
+          "text": "\nLayout Detection:"
+        }
+      ],
+      "launch": [
+        {
+          "order": 1,
+          "name": "special",
+          "description": "Render special tokens in the reply: the <|box_start|>/<|ref_start|> layout markers and the OTSL cell tokens are special vocabulary, and the server strips them by default."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "top_p",
+          "value": 0.01,
+          "description": "Nucleus-sampling cutoff; the upstream client keeps the reply on the model's top choices."
+        },
+        {
+          "order": 3,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 6,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 7,
+          "name": "cache_prompt",
+          "value": true,
+          "description": "Cache the prompt (image embeddings, system message) between pages."
+        }
+      ],
+      "blocks": {
+        "styles": {
+          "doc_title": "heading",
+          "paragraph_title": "heading",
+          "code": "text",
+          "algorithm": "text",
+          "list": "text",
+          "list_item": "text",
+          "index": "text",
+          "phonetic": "text",
+          "aside_text": "text",
+          "formula_number": "italic",
+          "caption": "italic",
+          "code_caption": "italic",
+          "footnote": "italic",
+          "image_footnote": "italic",
+          "header": "italic",
+          "footer": "italic"
+        }
+      }
+    },
+    "blockRecognition": {
+      "alias": "llocr-mineru-blocks",
+      "parser": "raw",
+      "maxOutput": 8192,
+      "systemPrompt": "You are a helpful assistant.",
+      "launch": [
+        {
+          "order": 1,
+          "name": "special",
+          "description": "Render special tokens in the reply: table replies carry the OTSL cell tokens (<fcel>/<ecel>/<nl>), which the server strips by default."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "top_p",
+          "value": 0.01,
+          "description": "Nucleus-sampling cutoff; the upstream client keeps the reply on the model's top choices."
+        },
+        {
+          "order": 3,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "presence_penalty",
+          "value": 1.0,
+          "description": "Flat penalty on tokens already emitted; the upstream client uses it to stop table and formula loops."
+        },
+        {
+          "order": 5,
+          "name": "frequency_penalty",
+          "value": 0.05,
+          "description": "Mild frequency-proportional penalty, matching the upstream sampling defaults."
+        },
+        {
+          "order": 6,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 7,
+          "name": "cache_prompt",
+          "value": true,
+          "description": "Cache the prompt (image embeddings, system message) between blocks."
+        }
+      ],
+      "blockPrompts": {
+        "text": "\nText Recognition:",
+        "title": "\nText Recognition:",
+        "doc_title": "\nText Recognition:",
+        "paragraph_title": "\nText Recognition:",
+        "list": "\nText Recognition:",
+        "list_item": "\nText Recognition:",
+        "index": "\nText Recognition:",
+        "formula_number": "\nText Recognition:",
+        "table": "\nTable Recognition:",
+        "table_caption": "\nText Recognition:",
+        "image_caption": "\nText Recognition:",
+        "caption": "\nText Recognition:",
+        "footnote": "\nText Recognition:",
+        "table_footnote": "\nText Recognition:",
+        "figure_footnote": "\nText Recognition:",
+        "equation": "\nFormula Recognition:",
+        "formula": "\nFormula Recognition:",
+        "code": "\nText Recognition:",
+        "abstract": "\nText Recognition:",
+        "ref_text": "\nText Recognition:",
+        "reference": "\nText Recognition:",
+        "header": "\nText Recognition:",
+        "footer": "\nText Recognition:",
+        "page_number": "\nText Recognition:",
+        "seal": "\nText Recognition:",
+        "page_footnote": "\nText Recognition:",
+        "aside_text": "\nText Recognition:",
+        "phonetic": "\nText Recognition:",
+        "unknown": "\nText Recognition:",
+        "code_caption": "\nText Recognition:",
+        "image_footnote": "\nText Recognition:",
+        "algorithm": "\nText Recognition:"
+      }
+    }
+  }
+}

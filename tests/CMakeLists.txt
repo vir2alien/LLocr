@@ -28,6 +28,8 @@ set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/glm-ocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/clef-flash.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/lightonocr.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/mineru.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/paddleocr-vl.json"
 )
 
 # Test double: a local llama-server stand-in. It is NOT registered via add_test;
@@ -276,6 +278,11 @@ qt_add_executable(test_launch_config test_launch_config.cpp)
 target_link_libraries(test_launch_config PRIVATE
     Qt6::Test
     llocr_runtime
+)
+qt_add_resources(test_launch_config "launch_config_model_profiles"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+    FILES ${LLOCR_MODEL_PROFILE_FILES}
 )
 add_test(NAME test_launch_config COMMAND test_launch_config)
 

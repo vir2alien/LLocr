@@ -8,10 +8,10 @@ namespace llocr {
 
 namespace {
 
-// TeleOCR's layout pass is calibrated on square 1036x1036 inputs (upstream
-// resizes the page hard, without keeping the aspect). Normalized block
-// coordinates are invariant to that squeeze, so matching the training input
-// costs nothing and keeps the boxes accurate.
+// TeleOCR's and MinerU's layout passes are calibrated on square 1036x1036
+// inputs (upstream resizes the page hard, without keeping the aspect).
+// Normalized block coordinates are invariant to that squeeze, so matching the
+// training input costs nothing and keeps the boxes accurate.
 constexpr int kLayoutImageSize = 1036;
 
 }  // namespace
@@ -90,6 +90,7 @@ void LayoutController::startNext()
             request.typePrompt = m_prompt;
             request.modelId = conn.modelId;
             request.parameters = m_requestProfiles.activeProfile().parameters;
+            request.structuralReply = true;
 
             m_watcher.setFuture(m_model->check(request, conn.toConnectionConfig()));
         },

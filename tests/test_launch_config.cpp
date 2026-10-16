@@ -3,9 +3,14 @@
 #include <QJsonObject>
 #include <QtTest>
 
+#include "config/SettingsStore.h"
+#include "core/ConnectionRole.h"
+#include "core/ModelProfiles.h"
 #include "runtime/LaunchParametersModel.h"
+#include "runtime/LaunchProfileStore.h"
 #include "runtime/ServerCapabilities.h"
 #include "runtime/ServerLaunchConfig.h"
+#include "testsettings.h"
 
 using namespace llocr;
 
@@ -22,6 +27,8 @@ class TestLaunchConfig : public QObject
 {
     Q_OBJECT
 
+    TestSettingsIsolation m_settingsIsolation;
+
 private slots:
     void argvCoreFirstThenProfileRows();
     void argvPassesTheDraftModelPath();
@@ -29,6 +36,7 @@ private slots:
     void argvSkipsReservedNames();
     void argvNumericFormatting();
     void argvVerbatimDashNames();
+    void fromSettingsCarriesTheModelLaunchLayer();
     void displayCommandEscapes();
     void cyrillicAndSpacePaths();
 
@@ -170,6 +178,28 @@ void TestLaunchConfig::argvVerbatimDashNames()
     const QStringList args = cfg.toArguments(modernCaps());
     QVERIFY(args.contains(QStringLiteral("-ctk")));
     QVERIFY(args.contains(QStringLiteral("q8_0")));
+}
+
+// The full managed-start compose — policy, platform profile and the model
+// profile's launch layer, read back through fromSettings. MinerU's reply is
+// unreadable without its layer (the layout markers and the OTSL cell tokens
+// are special vocabulary the server strips from the output by default), so
+// this is the chain a broken merge would silently truncate.
+void TestLaunchConfig::fromSettingsCarriesTheModelLaunchLayer()
+{
+    SettingsStore settings;
+    LaunchProfileStore launchProfiles(settings);
+    launchProfiles.setModelProfiles(ModelProfiles::instance());
+    settings.setLayoutRequestProfileId(QStringLiteral("mineru"));
+
+    const ServerLaunchConfig layout = ServerLaunchConfig::fromSettings(settings, launchProfiles, ConnectionRole::Layout);
+    const QStringList args = layout.toArguments(modernCaps());
+    QVERIFY2(args.contains(QStringLiteral("--special")), qPrintable(args.join(QLatin1Char(' '))));
+
+    settings.setCheckRequestProfileId(QStringLiteral("mineru"));
+    const ServerLaunchConfig blocks = ServerLaunchConfig::fromSettings(settings, launchProfiles, ConnectionRole::BlockRecognition);
+    const QStringList blockArgs = blocks.toArguments(modernCaps());
+    QVERIFY2(blockArgs.contains(QStringLiteral("--special")), qPrintable(blockArgs.join(QLatin1Char(' '))));
 }
 
 void TestLaunchConfig::displayCommandEscapes()

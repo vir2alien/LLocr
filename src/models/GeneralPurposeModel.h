@@ -29,7 +29,7 @@ public:
 
 protected:
     static QByteArray buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl);
-    static CheckResult parseResponse(const QByteArray &responseData, CheckRequest::Protocol protocol = CheckRequest::Protocol::Recognition);
+    static CheckResult parseResponse(const QByteArray &responseData, CheckRequest::Protocol protocol = CheckRequest::Protocol::Recognition, bool structuralReply = false);
 
 private:
     // One client (and its QNAM) for the model's lifetime: the per-request

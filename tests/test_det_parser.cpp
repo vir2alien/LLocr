@@ -5,6 +5,7 @@
 #include "parsers/BlockStyle.h"
 #include "parsers/Lfm25VlParser.h"
 #include "parsers/LightonOcrParser.h"
+#include "parsers/MinerULayoutParser.h"
 #include "parsers/ParserFactory.h"
 #include "parsers/ParserOptions.h"
 #include "parsers/RawParser.h"
@@ -705,15 +706,19 @@ private slots:
         QCOMPARE(Lfm25VlParser().displayName(), QStringLiteral("LFM2.5-VL"));
         QCOMPARE(LightonOcrParser().id(), QStringLiteral("lightonocr"));
         QCOMPARE(LightonOcrParser().displayName(), QStringLiteral("LightOnOCR-3"));
+        QCOMPARE(MinerULayoutParser().id(), QStringLiteral("mineru-layout"));
+        QCOMPARE(MinerULayoutParser().displayName(), QStringLiteral("MinerU layout"));
 
         const QStringList ids = ParserFactory::registeredIds();
         QVERIFY(ids.contains(QStringLiteral("unlimited-ocr")));
         QVERIFY(ids.contains(QStringLiteral("lfm2.5-vl")));
         QVERIFY(ids.contains(QStringLiteral("lightonocr")));
+        QVERIFY(ids.contains(QStringLiteral("mineru-layout")));
         QVERIFY(!ids.contains(QStringLiteral("det_tokens")));
         QVERIFY(dynamic_cast<UnlimitedOcrParser *>(ParserFactory::create(QStringLiteral("unlimited-ocr")).get()));
         QVERIFY(dynamic_cast<Lfm25VlParser *>(ParserFactory::create(QStringLiteral("lfm2.5-vl")).get()));
         QVERIFY(dynamic_cast<LightonOcrParser *>(ParserFactory::create(QStringLiteral("lightonocr")).get()));
+        QVERIFY(dynamic_cast<MinerULayoutParser *>(ParserFactory::create(QStringLiteral("mineru-layout")).get()));
         QCOMPARE(ParserFactory::create(QStringLiteral("det_tokens"))->id(), QStringLiteral("raw"));
     }
     void parsesAllTagsAndFormatsMarkdown()
@@ -1640,6 +1645,169 @@ private slots:
         QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
         QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/1)")));
         QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/2)")));
+    }
+
+    // --- MinerU layout pass (the manual markup feature) -----------------------
+
+    // One "<|box_start|>…<|box_end|><|ref_start|>…<|ref_end|>" line per block,
+    // coordinates on the 0–1000 scale; the rotation token and the continuation
+    // flag in the tail are dropped — the markup pass only positions blocks, the
+    // text arrives later through blockRecognition.
+    void parsesMinerULayoutLines()
+    {
+        const QString raw = QStringLiteral("Sure, here is the layout of the page:\n"
+                                           "<|box_start|>34 56 789 123<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\n"
+                                           "<|box_start|>100 200 900 800<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>txt_contd_tgt\n"
+                                           "<|box_start|>481 923 511 935<|box_end|><|ref_start|>header<|ref_end|><|rotate_up|><|im_end|>\n");
+
+        MinerULayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+
+        const BoundingBox &title = page.boxes.at(0);
+        QCOMPARE(title.label, QStringLiteral("title"));
+        QVERIFY(title.text.isEmpty());
+        QVERIFY(title.positioned);
+        QVERIFY(qFuzzyCompare(title.rect.x(), 0.034));
+        QVERIFY(qFuzzyCompare(title.rect.y(), 0.056));
+        QVERIFY(qFuzzyCompare(title.rect.width(), (789.0 - 34.0) / 1000.0));
+        QVERIFY(qFuzzyCompare(title.rect.height(), (123.0 - 56.0) / 1000.0));
+
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("text"));
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("header"));
+
+        // Nothing is rendered yet — no blocks with text.
+        QVERIFY(page.text.isEmpty());
+        QVERIFY(r.notes.isEmpty());
+    }
+
+    // The upstream client maps unknown regions to images and skips inline
+    // formulas: an unknown block renders as an image crop placeholder, an
+    // inline-formula line must not become a block at all.
+    void minerULayoutUnknownReadsAsImageAndInlineFormulaIsSkipped()
+    {
+        const QString raw = QStringLiteral("<|box_start|>10 10 500 200<|box_end|><|ref_start|>unknown<|ref_end|>\n"
+                                           "<|box_start|>20 220 500 240<|box_end|><|ref_start|>inline_formula<|ref_end|>\n"
+                                           "<|box_start|>30 300 500 400<|box_end|><|ref_start|>image<|ref_end|>\n");
+
+        MinerULayoutParser parser(ParserOptions{});
+        parser.m_options.modelId = QStringLiteral("mineru");
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 2);
+        QCOMPARE(r.pages.first().boxes.at(0).label, QStringLiteral("image"));
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
+        QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/1)")));
+    }
+
+    // Boxes off the 0–1000 scale and zero-size boxes are dropped the way the
+    // upstream client drops them.
+    void minerULayoutDropsInvalidBoxes()
+    {
+        const QString raw = QStringLiteral("<|box_start|>10 10 1200 200<|box_end|><|ref_start|>text<|ref_end|>\n"
+                                           "<|box_start|>50 50 50 300<|box_end|><|ref_start|>text<|ref_end|>\n"
+                                           "<|box_start|>100 100 400 200<|box_end|><|ref_start|>text<|ref_end|>\n");
+
+        MinerULayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 1);
+        QVERIFY(qFuzzyCompare(r.pages.first().boxes.at(0).rect.width(), 0.3));
+    }
+
+    // A reply without a single block line leaves no positioned boxes — the
+    // markup pass reports it instead of wiping the page.
+    void minerULayoutReplyWithoutBlockLinesYieldsNoBoxes()
+    {
+        const QString raw = QStringLiteral("This page contains a paragraph of body text.");
+
+        MinerULayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QVERIFY(r.pages.first().boxes.isEmpty());
+        QCOMPARE(r.notes.size(), 1);
+        QVERIFY(r.notes.first().contains(QStringLiteral("No layout tokens")));
+    }
+
+    // Composite regions are recognition units: a container absorbs the children
+    // it covers (>= 0.9 of the child) and reads as the canonical equation/image
+    // kind, so markup never queues the same pixels twice. A child that only
+    // pokes out of a container, and a caption below it, survive.
+    void minerULayoutAbsorbsChildrenIntoComposites()
+    {
+        const QString raw = QStringLiteral("<|box_start|>100 100 900 500<|box_end|><|ref_start|>equation_block<|ref_end|>\n"
+                                           "<|box_start|>110 120 500 200<|box_end|><|ref_start|>equation<|ref_end|>\n"
+                                           "<|box_start|>110 220 890 320<|box_end|><|ref_start|>text<|ref_end|>\n"
+                                           "<|box_start|>100 550 900 700<|box_end|><|ref_start|>image_block<|ref_end|>\n"
+                                           "<|box_start|>120 560 700 690<|box_end|><|ref_start|>image<|ref_end|>\n"
+                                           "<|box_start|>120 700 700 780<|box_end|><|ref_start|>image_caption<|ref_end|>\n"
+                                           "<|box_start|>850 450 950 520<|box_end|><|ref_start|>text<|ref_end|>\n");
+
+        MinerULayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 4);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("equation"));
+        QCOMPARE(page.boxes.at(0).rect.width(), 0.8);
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("image"));
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("image_caption"));
+        QCOMPARE(page.boxes.at(3).label, QStringLiteral("text"));
+
+        // The absorbed children are gone from the text; the surviving container
+        // renders as the crop placeholder of its box index.
+        QVERIFY(page.text.contains(QStringLiteral("![Image](image://ocr/crop/1)")));
+        QCOMPARE(page.boxes.at(0).duplicateSuspect, false);
+    }
+
+    // Two heavily overlapping composite boxes do not erase each other: only
+    // the strictly larger one absorbs, so the pair collapses onto the bigger
+    // copy (the coordinates stay outside the base parser's exact-match
+    // tolerance, so this really exercises the absorption pass).
+    void minerULayoutNearIdenticalCompositesSurvive()
+    {
+        const QString raw = QStringLiteral("<|box_start|>100 100 900 500<|box_end|><|ref_start|>equation_block<|ref_end|>\n"
+                                           "<|box_start|>115 115 885 485<|box_end|><|ref_start|>equation_block<|ref_end|>\n");
+
+        MinerULayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 1);
+        QCOMPARE(r.pages.first().boxes.at(0).label, QStringLiteral("equation"));
+        QCOMPARE(r.pages.first().boxes.at(0).rect.width(), 0.8);
+    }
+
+    // The bullet-list container absorbs its items (they arrive as sibling text
+    // blocks under it) and is recognized as one list; a heading near it is not
+    // a list item and stays.
+    void minerULayoutAbsorbsListItems()
+    {
+        const QString raw = QStringLiteral("<|box_start|>100 100 900 180<|box_end|><|ref_start|>title<|ref_end|>\n"
+                                           "<|box_start|>120 220 880 700<|box_end|><|ref_start|>list<|ref_end|>\n"
+                                           "<|box_start|>130 230 870 380<|box_end|><|ref_start|>text<|ref_end|>\n"
+                                           "<|box_start|>130 390 870 540<|box_end|><|ref_start|>text<|ref_end|>\n"
+                                           "<|box_start|>130 550 870 690<|box_end|><|ref_start|>text<|ref_end|>\n"
+                                           "<|box_start|>100 750 900 830<|box_end|><|ref_start|>text<|ref_end|>\n");
+
+        MinerULayoutParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("title"));
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("list"));
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("text"));
     }
 };
 

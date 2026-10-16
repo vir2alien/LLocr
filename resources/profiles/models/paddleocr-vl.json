@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "id": "paddleocr-vl",
+  "title": "PaddleOCR-VL-1.6",
+  "license": "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6",
+  "minBuild": "b8200",
+  "files": {
+    "repo": "PaddlePaddle/PaddleOCR-VL-1.6-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "f16",
+        "file": "PaddleOCR-VL-1.6-GGUF.gguf",
+        "sha256": "",
+        "sizeBytes": 935769056
+      }
+    ],
+    "mmproj": {
+      "id": "f16",
+      "file": "PaddleOCR-VL-1.6-GGUF-mmproj.gguf",
+      "sha256": ""
+    }
+  },
+  "roles": {
+    "blockRecognition": {
+      "alias": "llocr-paddleocr-blocks",
+      "parser": "raw",
+      "maxOutput": 8192,
+      "launch": [],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding, as the model card prescribes."
+        },
+        {
+          "order": 2,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 3,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 6,
+          "name": "cache_prompt",
+          "value": true,
+          "description": "Cache the prompt (image embeddings) between blocks."
+        }
+      ],
+      "blockPrompts": {
+        "text": "OCR:",
+        "title": "OCR:",
+        "list": "OCR:",
+        "table": "Table Recognition:",
+        "table_caption": "OCR:",
+        "image_caption": "OCR:",
+        "table_footnote": "OCR:",
+        "figure_footnote": "OCR:",
+        "equation": "Formula Recognition:",
+        "formula": "Formula Recognition:",
+        "code": "OCR:",
+        "abstract": "OCR:",
+        "ref_text": "OCR:",
+        "reference": "OCR:",
+        "header": "OCR:",
+        "footer": "OCR:",
+        "page_number": "OCR:",
+        "seal": "Seal Recognition:",
+        "page_footnote": "OCR:",
+        "aside_text": "OCR:",
+        "phonetic": "OCR:",
+        "unknown": "OCR:",
+        "code_caption": "OCR:",
+        "image_footnote": "OCR:",
+        "algorithm": "OCR:",
+        "equation_block": "Formula Recognition:"
+      }
+    }
+  }
+}

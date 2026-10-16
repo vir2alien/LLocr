@@ -388,7 +388,9 @@ private slots:
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(checkKeys, QStringList({QStringLiteral("glm-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("lightonocr"), QStringLiteral("teleocr")}));
+        QCOMPARE(
+            checkKeys,
+            QStringList({QStringLiteral("glm-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("lightonocr"), QStringLiteral("mineru"), QStringLiteral("paddleocr-vl"), QStringLiteral("teleocr")}));
 
         // The decision list serves the decision task only.
         QStringList decisionKeys;
@@ -397,14 +399,14 @@ private slots:
         QCOMPARE(decisionKeys, QStringList({QStringLiteral("clef-flash")}));
         QVERIFY(pathOf(*s->installer, QStringLiteral("clef-flash"), QStringLiteral("decision")).isEmpty());
 
-        // The layout list serves the layout task only (ADR 150): one shipped
-        // profile declares it.
+        // The layout list serves the layout task only (ADR 150): two shipped
+        // profiles declare it.
         auto *layout = qobject_cast<ModelQuantModel *>(s->installer->layoutQuantModels());
         QVERIFY(layout);
         QStringList layoutKeys;
         for (int i = 0; i < layout->rowCount(); ++i)
             layoutKeys.append(roleAt(layout, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(layoutKeys, QStringList({QStringLiteral("teleocr")}));
+        QCOMPARE(layoutKeys, QStringList({QStringLiteral("teleocr"), QStringLiteral("mineru")}));
         QVERIFY(pathOf(*s->installer, QStringLiteral("teleocr"), QStringLiteral("layout")).isEmpty());
 
         // The two tasks without a settings window of their own (rawPageOcr,
@@ -792,8 +794,8 @@ private slots:
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 3);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), -1);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_verify")), -1);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 4);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 5);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 6);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 7);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_ocr")), ocrPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), QStringLiteral("blockRecognition")), textPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), QStringLiteral("blockRecognition")), verifierPath);
@@ -806,7 +808,7 @@ private slots:
         // active OCR model and must appear in the OCR list too.
         settings.setLaunchModelPath(textPath);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 4);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 4);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 6);
     }
 
     // A list model with named roles: a QML delegate that misspells a role name

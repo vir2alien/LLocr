@@ -57,6 +57,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location line="+0"/>
+        <source>The model returned no layout blocks for page %1. Reply starts: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location line="+34"/>
         <source>Page %1 marked up: %2 block(s).</source>
         <translation type="unfinished"></translation>

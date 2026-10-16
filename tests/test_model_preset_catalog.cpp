@@ -23,6 +23,8 @@ private slots:
     // against the values the model card and the launcher actually document.
     void shippedProfilesAreTheOnesTheDocsDescribe();
     void lightonOcrShipsOnlyTheTrainedModes();
+    void mineruShipsTheTrainedTwoStepProtocol();
+    void paddleOcrVlShipsElementRecognitionOnly();
     void draftModuleReachesThePresets();
     void roleDefaultsFollowTheShippedProfiles();
     void verifierSystemPromptFollowsTheModel();
@@ -95,6 +97,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"glm-ocr", "rawPageOcr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"clef-flash", "decision", "b11430", "q8_0,q6_k,q5_k_m,q4_k_m,q4_0", "ctx-size,batch-size,ubatch-size"},
         {"lightonocr", "pageOcr,rawPageOcr,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "flash-attn,jinja,reasoning-budget,image-min-tokens"},
+        {"mineru", "layout,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "special"},
+        {"paddleocr-vl", "blockRecognition", "b8200", "f16", ""},
     };
 
     for (const Expected &e : expected) {
@@ -175,6 +179,76 @@ void TestModelPresetCatalog::lightonOcrShipsOnlyTheTrainedModes()
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("layout")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("decision")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("fix")));
+}
+
+// MinerU2.5-Pro trains one two-step document parse (the mineru-vl-utils
+// protocol): layout detection over the 1036²-squashed page, then per-block
+// transcription by type. No single-shot page mode exists in its prompt set,
+// so pageOcr and rawPageOcr must stay unclaimed.
+void TestModelPresetCatalog::mineruShipsTheTrainedTwoStepProtocol()
+{
+    const ModelProfiles::Role *layout = ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("layout"));
+    QVERIFY(layout);
+    QCOMPARE(layout->parser, QStringLiteral("mineru-layout"));
+    QCOMPARE(layout->prompts.size(), 1);
+    QCOMPARE(layout->prompts.constFirst().text, QStringLiteral("\nLayout Detection:"));
+    QCOMPARE(layout->systemPrompt, QStringLiteral("You are a helpful assistant."));
+    // The model's own vocabulary styled in the profile; the default label map
+    // already covers text/title/table/equation/image.
+    QCOMPARE(layout->blockStyles.value(QStringLiteral("doc_title")), QStringLiteral("heading"));
+    QCOMPARE(layout->blockStyles.value(QStringLiteral("list_item")), QStringLiteral("text"));
+    QCOMPARE(layout->blockStyles.value(QStringLiteral("caption")), QStringLiteral("italic"));
+
+    const ModelProfiles::Role *blocks = ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("blockRecognition"));
+    QVERIFY(blocks);
+    QCOMPARE(blocks->parser, QStringLiteral("raw"));
+    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("text")), QStringLiteral("\nText Recognition:"));
+    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("table")), QStringLiteral("\nTable Recognition:"));
+    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("\nFormula Recognition:"));
+
+    // Every type the layout pass can name needs a block prompt, or the markup
+    // pipeline sends an empty one.
+    for (auto it = layout->blockStyles.constBegin(); it != layout->blockStyles.constEnd(); ++it) {
+        if (it.value() == QLatin1String("image"))
+            continue;
+        QVERIFY2(blocks->blockPrompts.contains(it.key()), qPrintable(QStringLiteral("no block prompt for %1").arg(it.key())));
+        QVERIFY2(!blocks->blockPrompts.value(it.key()).isEmpty(), qPrintable(QStringLiteral("empty block prompt for %1").arg(it.key())));
+    }
+
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("pageOcr")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("rawPageOcr")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("decision")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("fix")));
+}
+
+// PaddleOCR-VL-1.6's VLM answers six element prompts (OCR, table, formula,
+// chart, seal, spotting); the page layout is a separate RT-DETR model that
+// ships outside the GGUF, so only the block task is claimed. The card's
+// server invocation is --temp 0 with no system message.
+void TestModelPresetCatalog::paddleOcrVlShipsElementRecognitionOnly()
+{
+    const ModelProfiles::Role *blocks = ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("blockRecognition"));
+    QVERIFY(blocks);
+    QCOMPARE(blocks->parser, QStringLiteral("raw"));
+    QVERIFY(blocks->systemPrompt.isEmpty());
+    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("text")), QStringLiteral("OCR:"));
+    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("table")), QStringLiteral("Table Recognition:"));
+    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
+    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("seal")), QStringLiteral("Seal Recognition:"));
+
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("pageOcr")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("rawPageOcr")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("layout")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("decision")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("fix")));
+
+    // The quant ladder lives with mradermacher, but the mmproj only ships in
+    // the official repo — and a preset downloads everything from one repo,
+    // so the profile pins the official one for both.
+    const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("paddleocr-vl"));
+    QVERIFY(profile);
+    QCOMPARE(profile->files.repo, QStringLiteral("PaddlePaddle/PaddleOCR-VL-1.6-GGUF"));
+    QVERIFY(profile->files.mmproj.repo.isEmpty());
 }
 
 // A check model carries its own wording per block type and its own system

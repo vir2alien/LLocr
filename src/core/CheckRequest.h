@@ -21,6 +21,10 @@ struct CheckRequest {
     QString modelId;                     ///< Model to route the request to (from the connection).
     QList<RequestParameter> parameters;  ///< Sampling parameters from the validate request profile.
     Protocol protocol = Protocol::Recognition;
+    // The reply is model-structured markup for a downstream parser (the layout
+    // pass): its <|...|> tokens are the data, so the reply must reach the
+    // parser without the service-token cleanup the block text gets.
+    bool structuralReply = false;
 };
 
 }  // namespace llocr
