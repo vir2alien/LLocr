@@ -22,6 +22,7 @@ private slots:
     // parameter lists are what make a model recognisable, so both are checked
     // against the values the model card and the launcher actually document.
     void shippedProfilesAreTheOnesTheDocsDescribe();
+    void lightonOcrShipsTheGroundingAndTranscriptionModes();
     void draftModuleReachesThePresets();
     void roleDefaultsFollowTheShippedProfiles();
     void verifierSystemPromptFollowsTheModel();
@@ -93,6 +94,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"teleocr", "blockRecognition,layout", "b4000", "q8_0,q5_k_m,q4_k_m,q3_k_m", ""},
         {"glm-ocr", "rawPageOcr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"clef-flash", "decision", "b11430", "q8_0,q6_k,q5_k_m,q4_k_m,q4_0", "ctx-size,batch-size,ubatch-size"},
+        {"lightonocr", "pageOcr,rawPageOcr", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "flash-attn,jinja,reasoning-budget,image-min-tokens"},
     };
 
     for (const Expected &e : expected) {
@@ -130,6 +132,40 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
             QVERIFY2(served.at(0).launch == served.at(1).launch, qPrintable(QStringLiteral("%1: the two tasks declare different launch parameters, so switching task reloads the model").arg(id)));
         }
     }
+}
+
+// LightOnOCR-3 trains exactly two prompts — empty for transcription,
+// "grounding" for the labeled boxes — and the card calls every other
+// instruction out of distribution. The profile must keep that split and must
+// not claim tasks the model was never trained for.
+void TestModelPresetCatalog::lightonOcrShipsTheGroundingAndTranscriptionModes()
+{
+    const ModelProfiles::Role *pageOcr = ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("pageOcr"));
+    QVERIFY(pageOcr);
+    QCOMPARE(pageOcr->parser, QStringLiteral("lightonocr"));
+    QCOMPARE(pageOcr->prompts.size(), 1);
+    QCOMPARE(pageOcr->prompts.constFirst().text, QStringLiteral("grounding"));
+    // The card's label vocabulary, styled in the profile: the model writes its
+    // own markdown (headings stay untouched), chart blocks carry their
+    // extracted data table, captions and footnotes render italic.
+    QCOMPARE(pageOcr->blockStyles.value(QStringLiteral("title")), QStringLiteral("text"));
+    QCOMPARE(pageOcr->blockStyles.value(QStringLiteral("chart")), QStringLiteral("table"));
+    QCOMPARE(pageOcr->blockStyles.value(QStringLiteral("formula")), QStringLiteral("equation"));
+    QCOMPARE(pageOcr->blockStyles.value(QStringLiteral("caption")), QStringLiteral("italic"));
+    QCOMPARE(pageOcr->blockStyles.value(QStringLiteral("header_image")), QStringLiteral("image"));
+
+    // The transcription mode is the empty prompt: no prompts entry at all, the
+    // reply is read raw.
+    const ModelProfiles::Role *rawPageOcr = ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("rawPageOcr"));
+    QVERIFY(rawPageOcr);
+    QCOMPARE(rawPageOcr->parser, QStringLiteral("raw"));
+    QVERIFY(rawPageOcr->prompts.isEmpty());
+
+    // The card: "Other instructions are out of distribution."
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("blockRecognition")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("layout")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("decision")));
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("lightonocr"), QStringLiteral("fix")));
 }
 
 // A check model carries its own wording per block type and its own system

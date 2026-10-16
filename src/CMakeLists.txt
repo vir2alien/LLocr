@@ -111,6 +111,8 @@ qt_add_library(llocr_parsers STATIC
     parsers/Lfm25VlParser.cpp
     parsers/TeleOcrLayoutParser.h
     parsers/TeleOcrLayoutParser.cpp
+    parsers/LightonOcrParser.h
+    parsers/LightonOcrParser.cpp
     parsers/DetTokenFormat.h
     parsers/DetTokenFormat.cpp
     parsers/OtslTable.h

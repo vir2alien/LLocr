@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "id": "lightonocr",
+  "title": "LightOnOCR-3-4B",
+  "license": "https://huggingface.co/lightonai/LightOnOCR-3-4B",
+  "minBuild": "b4000",
+  "files": {
+    "repo": "prithivMLmods/LightOnOCR-3-4B-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q8_0",
+        "file": "LightOnOCR-3-4B.Q8_0.gguf",
+        "sha256": "",
+        "sizeBytes": 4482403264
+      },
+      {
+        "id": "q6_k",
+        "file": "LightOnOCR-3-4B.Q6_K.gguf",
+        "sha256": "",
+        "sizeBytes": 3464055744
+      },
+      {
+        "id": "q5_k_m",
+        "file": "LightOnOCR-3-4B.Q5_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 3074986944
+      },
+      {
+        "id": "q4_k_m",
+        "file": "LightOnOCR-3-4B.Q4_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 2708804544
+      },
+      {
+        "id": "q3_k_m",
+        "file": "LightOnOCR-3-4B.Q3_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 2262064064
+      }
+    ],
+    "mmproj": {
+      "id": "bf16",
+      "file": "LightOnOCR-3-4B.mmproj-bf16.gguf",
+      "sha256": ""
+    }
+  },
+  "roles": {
+    "pageOcr": {
+      "alias": "llocr-lightonocr",
+      "parser": "lightonocr",
+      "maxOutput": 8192,
+      "prompts": [
+        {
+          "id": "grounding",
+          "title": "Grounding",
+          "text": "grounding"
+        }
+      ],
+      "blocks": {
+        "styles": {
+          "text": "text",
+          "title": "text",
+          "list": "text",
+          "header": "text",
+          "footer": "text",
+          "page_number": "italic",
+          "footnote": "italic",
+          "caption": "italic",
+          "formula": "equation",
+          "code": "text",
+          "table": "table",
+          "image": "image",
+          "chart": "table",
+          "header_image": "image",
+          "footer_image": "image",
+          "aside_text": "text"
+        }
+      },
+      "launch": [
+        {
+          "order": 1,
+          "name": "flash-attn",
+          "value": "on",
+          "description": "Flash attention kernels; required for the vision stack."
+        },
+        {
+          "order": 2,
+          "name": "jinja",
+          "description": "Use the chat template from the GGUF metadata; the transcription mode is the empty prompt and grounding is a bare word."
+        },
+        {
+          "order": 3,
+          "name": "reasoning-budget",
+          "value": 0,
+          "description": "Budget for thinking tokens; the model is trained with thinking disabled, the chat template default."
+        },
+        {
+          "order": 4,
+          "name": "image-min-tokens",
+          "value": 1024,
+          "description": "Vision budget floor; llama.cpp warns that Qwen-VL needs at least 1024 image tokens for grounding tasks."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.2,
+          "description": "Sampling randomness; 0.2 with top_p 0.9 is the model card's recommended setting."
+        },
+        {
+          "order": 2,
+          "name": "top_p",
+          "value": 0.9,
+          "description": "Nucleus sampling cutoff; the model card's recommended setting."
+        },
+        {
+          "order": 3,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 6,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 7,
+          "name": "cache_prompt",
+          "value": false,
+          "description": "Reuse the prompt cache; false avoids the recurring-state position warnings Qwen3.5 logs when requests share a prefix."
+        }
+      ]
+    },
+    "rawPageOcr": {
+      "alias": "llocr-lightonocr-transcribe",
+      "parser": "raw",
+      "maxOutput": 8192,
+      "launch": [
+        {
+          "order": 1,
+          "name": "flash-attn",
+          "value": "on",
+          "description": "Flash attention kernels; required for the vision stack."
+        },
+        {
+          "order": 2,
+          "name": "jinja",
+          "description": "Use the chat template from the GGUF metadata; the transcription mode is the empty prompt and grounding is a bare word."
+        },
+        {
+          "order": 3,
+          "name": "reasoning-budget",
+          "value": 0,
+          "description": "Budget for thinking tokens; the model is trained with thinking disabled, the chat template default."
+        },
+        {
+          "order": 4,
+          "name": "image-min-tokens",
+          "value": 1024,
+          "description": "Vision budget floor; llama.cpp warns that Qwen-VL needs at least 1024 image tokens for grounding tasks."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.2,
+          "description": "Sampling randomness; 0.2 with top_p 0.9 is the model card's recommended setting."
+        },
+        {
+          "order": 2,
+          "name": "top_p",
+          "value": 0.9,
+          "description": "Nucleus sampling cutoff; the model card's recommended setting."
+        },
+        {
+          "order": 3,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 6,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 7,
+          "name": "cache_prompt",
+          "value": false,
+          "description": "Reuse the prompt cache; false avoids the recurring-state position warnings Qwen3.5 logs when requests share a prefix."
+        }
+      ]
+    }
+  }
+}

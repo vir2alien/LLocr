@@ -27,6 +27,7 @@ set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/teleocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/glm-ocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/clef-flash.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/lightonocr.json"
 )
 
 # Test double: a local llama-server stand-in. It is NOT registered via add_test;

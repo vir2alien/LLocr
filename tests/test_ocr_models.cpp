@@ -247,6 +247,48 @@ private slots:
         QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
     }
 
+    // LightOnOCR-3 serves two trained modes: "grounding" for the page with
+    // labeled boxes (the lightonocr parser) and the empty prompt for raw
+    // markdown transcription.
+    void lightonOcrModelContract()
+    {
+        const OcrModel model(QStringLiteral("lightonocr"));
+
+        QCOMPARE(model.id(), QStringLiteral("lightonocr"));
+        QCOMPARE(model.displayName(), QStringLiteral("LightOnOCR-3-4B"));
+        QCOMPARE(model.defaultParserId(), QStringLiteral("lightonocr"));
+
+        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
+        QCOMPARE(variants.size(), 1);
+        QCOMPARE(variants.first().text, QStringLiteral("grounding"));
+        QVERIFY(!variants.first().id.isEmpty());
+        QVERIFY(!variants.first().title.isEmpty());
+    }
+
+    // The transcription mode is the empty prompt — the card's request carries
+    // the image only, so the text part is dropped rather than sent empty.
+    // With the grounding prompt the message is image-first, the Qwen-family
+    // order.
+    void ocrBodyOmitsTheTextPartWhenThePromptIsEmpty()
+    {
+        OcrRequest request;
+        request.image = QImage(4, 4, QImage::Format_RGB32);
+        request.modelId = QStringLiteral("lightonocr");
+
+        const QByteArray emptyBody = ExposedOcrModel(QStringLiteral("lightonocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray emptyContent = QJsonDocument::fromJson(emptyBody).object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(emptyContent.size(), 1);
+        QCOMPARE(emptyContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+
+        request.prompt = QStringLiteral("grounding");
+        const QByteArray groundingBody = ExposedOcrModel(QStringLiteral("lightonocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray groundingContent = QJsonDocument::fromJson(groundingBody).object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(groundingContent.size(), 2);
+        QCOMPARE(groundingContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(groundingContent.last().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+        QCOMPARE(groundingContent.last().toObject().value(QStringLiteral("text")).toString(), QStringLiteral("grounding"));
+    }
+
     // The message layout is the model's trained shape: the LFM2.5 card documents
     // text-then-image, the Qwen-family models document image-then-text. The
     // order travels in the profile, so one shipped entry can deviate without a

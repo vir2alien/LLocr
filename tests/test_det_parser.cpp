@@ -4,6 +4,7 @@
 #include "core/OcrResult.h"
 #include "parsers/BlockStyle.h"
 #include "parsers/Lfm25VlParser.h"
+#include "parsers/LightonOcrParser.h"
 #include "parsers/ParserFactory.h"
 #include "parsers/ParserOptions.h"
 #include "parsers/RawParser.h"
@@ -27,6 +28,7 @@ class TestDetParser : public QObject
     {
         body(UnlimitedOcrParser());
         body(Lfm25VlParser());
+        body(LightonOcrParser());
     }
 
 private slots:
@@ -701,13 +703,17 @@ private slots:
         QCOMPARE(UnlimitedOcrParser().displayName(), QStringLiteral("Unlimited-OCR"));
         QCOMPARE(Lfm25VlParser().id(), QStringLiteral("lfm2.5-vl"));
         QCOMPARE(Lfm25VlParser().displayName(), QStringLiteral("LFM2.5-VL"));
+        QCOMPARE(LightonOcrParser().id(), QStringLiteral("lightonocr"));
+        QCOMPARE(LightonOcrParser().displayName(), QStringLiteral("LightOnOCR-3"));
 
         const QStringList ids = ParserFactory::registeredIds();
         QVERIFY(ids.contains(QStringLiteral("unlimited-ocr")));
         QVERIFY(ids.contains(QStringLiteral("lfm2.5-vl")));
+        QVERIFY(ids.contains(QStringLiteral("lightonocr")));
         QVERIFY(!ids.contains(QStringLiteral("det_tokens")));
         QVERIFY(dynamic_cast<UnlimitedOcrParser *>(ParserFactory::create(QStringLiteral("unlimited-ocr")).get()));
         QVERIFY(dynamic_cast<Lfm25VlParser *>(ParserFactory::create(QStringLiteral("lfm2.5-vl")).get()));
+        QVERIFY(dynamic_cast<LightonOcrParser *>(ParserFactory::create(QStringLiteral("lightonocr")).get()));
         QCOMPARE(ParserFactory::create(QStringLiteral("det_tokens"))->id(), QStringLiteral("raw"));
     }
     void parsesAllTagsAndFormatsMarkdown()
@@ -998,6 +1004,82 @@ private slots:
 
         const QString md = r.pages.first().text;
         QVERIFY(md.contains(QStringLiteral("![Image](image://ocr/crop/0)")));
+    }
+
+    // LightOnOCR-3 grounding mode: a markdown-image placeholder per block
+    // carries the label and the bbox (coordinates normalized to 0–1000), and
+    // the content between placeholders is the block's own markdown — the
+    // model card's example page, parsed with the profile's label styles.
+    void parsesLightonOcrGroundingPlaceholders()
+    {
+        const QString raw = QStringLiteral("![title](80,70,920,140)\n"
+                                           "# Company report 2025\n\n"
+                                           "![text](80,175,920,225)\n"
+                                           "Revenue rose 20%.\nCosts fell.\n\n"
+                                           "![image](80,285,460,545)\n"
+                                           "A solar-powered factory.\n\n"
+                                           "![chart](540,285,920,545)\n"
+                                           "<table>\n  <tr><th>Year</th><th>Revenue</th></tr>\n  <tr><td>2024</td><td>€10M</td></tr>\n</table>\n\n"
+                                           "![page_number](488,950,512,965)\n3");
+
+        ParserOptions options;
+        options.modelId = QStringLiteral("lightonocr");
+        LightonOcrParser parser(options);
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 5);
+
+        const BoundingBox &title = page.boxes.at(0);
+        QCOMPARE(title.label, QStringLiteral("title"));
+        QCOMPARE(title.text, QStringLiteral("# Company report 2025"));
+        QVERIFY(qFuzzyCompare(title.rect.x(), 0.08));
+        QVERIFY(qFuzzyCompare(title.rect.y(), 0.07));
+        QVERIFY(qFuzzyCompare(title.rect.width(), 0.84));
+
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("text"));
+        // Real newlines — the grounding stream does not escape them.
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("Revenue rose 20%.\nCosts fell."));
+
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("image"));
+        QCOMPARE(page.boxes.at(3).label, QStringLiteral("chart"));
+        QCOMPARE(page.boxes.at(4).label, QStringLiteral("page_number"));
+
+        const QString md = page.text;
+        // The model writes its own markdown heading markers — no style prefix
+        // on top (title maps to plain text for this model).
+        QVERIFY(md.contains(QStringLiteral("# Company report 2025")));
+        QVERIFY(!md.contains(QStringLiteral("## #")));
+        QVERIFY(md.contains(QStringLiteral("![A solar-powered factory.](image://ocr/crop/2)")));
+        // The chart block carries the extracted data points as an HTML table —
+        // kept tabular, not turned into an image crop.
+        QVERIFY(md.contains(QStringLiteral("| Year | Revenue |")));
+        QVERIFY(md.contains(QStringLiteral("| 2024 | €10M |")));
+        QVERIFY(md.contains(QStringLiteral("*3*")));
+    }
+
+    // A trailing `+` on a label marks a block continued from the previous
+    // page; the style map and the block filters speak the bare label.
+    void lightonOcrContinuationSuffixKeepsTheBareLabel()
+    {
+        const QString raw = QStringLiteral("![text](80,100,920,200)\nFirst part.\n\n"
+                                           "![text+](80,210,920,300)\nContinued part.\n\n"
+                                           "![table+](80,310,920,400)\n<table><tr><td>x</td></tr></table>");
+
+        ParserOptions options;
+        options.modelId = QStringLiteral("lightonocr");
+        LightonOcrParser parser(options);
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 3);
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("text"));
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("Continued part."));
+        QCOMPARE(page.boxes.at(2).label, QStringLiteral("table"));
+        QVERIFY(page.text.contains(QStringLiteral("Continued part.")));
     }
 
     // After a box is removed, rebuildText must re-index the image URLs so

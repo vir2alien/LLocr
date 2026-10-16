@@ -146,7 +146,17 @@ QByteArray OcrModel::buildRequestBody(const OcrRequest &request, const QByteArra
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
 
     const ModelProfiles::Role *role = pageRoleFor(request.modelId);
-    QJsonArray content = role && role->promptBeforeImage ? QJsonArray{textPart, imagePart} : QJsonArray{imagePart, textPart};
+    // An empty prompt is the transcription request itself (LightOnOCR-3 trains
+    // "the image only") — a text part with an empty string would be a
+    // different input, so the part is dropped rather than sent empty.
+    const bool sendPrompt = !request.prompt.isEmpty();
+    const bool promptFirst = role && role->promptBeforeImage;
+    QJsonArray content;
+    if (sendPrompt && promptFirst)
+        content.append(textPart);
+    content.append(imagePart);
+    if (sendPrompt && !promptFirst)
+        content.append(textPart);
 
     QJsonObject message{{QStringLiteral("role"), QStringLiteral("user")}, {QStringLiteral("content"), content}};
 

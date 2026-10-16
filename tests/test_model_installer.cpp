@@ -383,7 +383,7 @@ private slots:
         QStringList ocrKeys;
         for (int i = 0; i < ocr->rowCount(); ++i)
             ocrKeys.append(roleAt(ocr, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(ocrKeys, QStringList({QStringLiteral("unlimited-ocr"), QStringLiteral("lfm25-vl-3b")}));
+        QCOMPARE(ocrKeys, QStringList({QStringLiteral("unlimited-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("lightonocr")}));
 
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
@@ -412,7 +412,7 @@ private slots:
         QStringList rawPageKeys;
         for (int i = 0; i < rawPage->rowCount(); ++i)
             rawPageKeys.append(roleAt(rawPage, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(rawPageKeys, QStringList({QStringLiteral("glm-ocr")}));
+        QCOMPARE(rawPageKeys, QStringList({QStringLiteral("glm-ocr"), QStringLiteral("lightonocr")}));
 
         QStringList fixKeys;
         for (int i = 0; i < fix->rowCount(); ++i)
@@ -789,7 +789,7 @@ private slots:
         auto *checkList = checkModels(mi);
         QVERIFY(ocrList);
         QVERIFY(checkList);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 2);
+        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 3);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), -1);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_verify")), -1);
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
@@ -805,7 +805,7 @@ private slots:
         // The role's active model is always listed: the text model becomes the
         // active OCR model and must appear in the OCR list too.
         settings.setLaunchModelPath(textPath);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 3);
+        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 4);
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
     }
 
@@ -847,7 +847,7 @@ private slots:
         auto *models = ocrModels(installer);
         QVERIFY(models);
         // The models of the task, and the one the user brought themselves.
-        QCOMPARE(models->rowCount(), 3);
+        QCOMPARE(models->rowCount(), 4);
 
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(ModelQuantModel::KeyRole), QByteArray("key"));
@@ -872,7 +872,7 @@ private slots:
         QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
         installer.refreshInstalled();
         QCOMPARE(resetSpy.count(), 0);
-        QCOMPARE(models->rowCount(), 3);
+        QCOMPARE(models->rowCount(), 4);
 
         // Activating the model re-reads the highlight from the settings.
         QVERIFY(installer.setActiveModel(0).isEmpty());
