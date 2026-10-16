@@ -4,17 +4,90 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+550"/>
+        <location filename="../../src/app/AppController.cpp" line="+561"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
-        <location line="+565"/>
+        <location line="+89"/>
+        <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Warning: %1 page(s) replaced with blank pages — see the problem log.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+45"/>
+        <location line="+19"/>
+        <source>Page %1 deleted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>Moved page %1 to position %2.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <location line="+14"/>
+        <location line="+294"/>
+        <source>Set a model name in Settings first.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+107"/>
+        <source>Page text copied to the clipboard.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>The layout model does not support page markup.</source>
         <translation>Модель разметки не поддерживает разметку страниц.</translation>
     </message>
     <message>
-        <location line="+644"/>
+        <location line="+5"/>
+        <source>The model profile has no markup prompt.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+33"/>
+        <source>The model returned no layout blocks for page %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+34"/>
+        <source>Page %1 marked up: %2 block(s).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+356"/>
+        <source>Markdown (*.md)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Plain text (*.txt)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>HTML (*.html)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Word document (*.docx)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>PDF (*.pdf)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+335"/>
         <location line="+48"/>
         <source>No project selected.</source>
         <translation>Проект не выбран</translation>
@@ -40,12 +113,12 @@
         <translation>Нечего сохранять — нет открытых страниц</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-240"/>
         <source>The source file %1 is gone, and the page has no rendered copy to embed.</source>
         <translation>Исходный файл %1 отсутствует, и у страницы нет копии изображения для встраивания</translation>
     </message>
     <message>
-        <location line="+258"/>
+        <location line="+259"/>
         <source>Saving project…</source>
         <translation>Сохранение проекта…</translation>
     </message>
@@ -66,7 +139,12 @@
         <translation>Страницы проекта %1 не удалось восстановить — подробности в журнале проблем</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="-1513"/>
+        <source>Page %1 could not be rendered and is shown blank — see the problem log.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1515"/>
         <source>The project contains no pages.</source>
         <translation>Проект не содержит страниц</translation>
     </message>
@@ -81,12 +159,12 @@
         <translation>Проект открыт: страниц: %1, пропущено: %2</translation>
     </message>
     <message>
-        <location line="-1169"/>
+        <location line="-1353"/>
         <source>Importing %1 (%2/%3)…</source>
         <translation>Импорт %1 (%2/%3)…</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+53"/>
         <source>None of the selected files could be added.</source>
         <translation>Ни один из выбранных файлов не удалось добавить</translation>
     </message>
@@ -101,138 +179,72 @@
         <translation>Добавлено файлов: %1, страниц: %2</translation>
     </message>
     <message>
-        <source>Warning: %1 page(s) replaced with blank pages. %2</source>
-        <translation type="obsolete">Внимание: %1 стр. заменено пустыми страницами. %2</translation>
+        <source>Recognized</source>
+        <translation type="vanished">Распознано</translation>
     </message>
     <message>
-        <location line="+12"/>
-        <source>Warning: %1 page(s) replaced with blank pages — see the problem log.</source>
-        <translation>Внимание: %1 стр. заменено пустыми страницами — см. журнал проблем.</translation>
+        <source>Verified</source>
+        <translation type="vanished">Проверено</translation>
     </message>
     <message>
-        <location line="-9"/>
-        <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
-        <translation>Импорт остановлен: открыто файлов %1 из %2, страниц: %3.</translation>
+        <source>Mismatch</source>
+        <translation type="vanished">Не совпало</translation>
     </message>
     <message>
-        <location line="-224"/>
-        <source>Page %1 could not be rendered and is shown blank — see the problem log.</source>
-        <translation>Страницу %1 не удалось отрисовать, показана пустой — см. журнал проблем.</translation>
+        <source>Damaged</source>
+        <translation type="vanished">Повреждено</translation>
     </message>
     <message>
-        <location line="+278"/>
-        <location line="+18"/>
-        <source>Page %1 deleted.</source>
-        <translation>Страница %1 удалена</translation>
+        <source>Fixed</source>
+        <translation type="vanished">Исправлено</translation>
     </message>
     <message>
-        <location line="+28"/>
-        <source>Moved page %1 to position %2.</source>
-        <translation>Страница %1 перемещена на позицию %2.</translation>
-    </message>
-    <message>
-        <location line="+11"/>
-        <location line="+13"/>
-        <source>Set a model name in Settings first.</source>
-        <translation>Сначала укажите название модели в настройках.</translation>
-    </message>
-    <message>
-        <source>Page text copied to the clipboard.</source>
-        <translation>Текст страницы скопирован в буфер обмена.</translation>
-    </message>
-    <message>
-        <source>The block-recognition model does not support page markup.</source>
-        <translation type="obsolete">Модель blockRecognition не поддерживает разметку страниц.</translation>
-    </message>
-    <message>
-        <location line="+359"/>
-        <source>The model profile has no markup prompt.</source>
-        <translation>В профиле модели нет промпта разметки.</translation>
-    </message>
-    <message>
-        <location line="+33"/>
-        <source>The model returned no layout blocks for page %1.</source>
-        <translation>Модель не вернула блоки разметки для страницы %1.</translation>
-    </message>
-    <message>
-        <location line="+34"/>
-        <source>Page %1 marked up: %2 block(s).</source>
-        <translation>Страница %1 размечена: блоков — %2.</translation>
-    </message>
-    <message>
-        <location line="+238"/>
-        <source>Markdown (*.md)</source>
-        <translation>Markdown (*.md)</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Plain text (*.txt)</source>
-        <translation>Обычный текст (*.txt)</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>HTML (*.html)</source>
-        <translation>HTML (*.html)</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Word document (*.docx)</source>
-        <translation>Документ Word (*.docx)</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>PDF (*.pdf)</source>
-        <translation>PDF (*.pdf)</translation>
+        <source>Revert correction</source>
+        <translation type="vanished">Отменить исправление</translation>
     </message>
 </context>
 <context>
     <name>BlockEditPanel</name>
     <message>
-        <location filename="../qml/MainWindow/BlockEditPanel.qml" line="+45"/>
-        <source>Block %1</source>
-        <translation>Блок %1</translation>
-    </message>
-    <message>
-        <location line="+56"/>
-        <source>Corrected text:</source>
-        <translation>Исправленный текст:</translation>
-    </message>
-    <message>
-        <source>Verify</source>
-        <translation type="vanished">Проверить</translation>
-    </message>
-    <message>
-        <source>Recognized</source>
-        <translation>Распознано</translation>
-    </message>
-    <message>
+        <location filename="../qml/MainWindow/BlockEditPanel.qml" line="+32"/>
         <source>Verified</source>
-        <translation>Проверено</translation>
+        <translation type="unfinished">Проверено</translation>
     </message>
     <message>
-        <source>Mismatch</source>
-        <translation>Не совпало</translation>
-    </message>
-    <message>
+        <location line="+2"/>
         <source>Damaged</source>
-        <translation>Повреждено</translation>
+        <translation type="unfinished">Повреждено</translation>
     </message>
     <message>
+        <location line="+0"/>
+        <source>Mismatch</source>
+        <translation type="unfinished">Не совпало</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+2"/>
         <source>Fixed</source>
-        <translation>Исправлено</translation>
+        <translation type="unfinished">Исправлено</translation>
     </message>
     <message>
-        <source>Recognize</source>
-        <translation type="vanished">Распознать</translation>
+        <location line="-1"/>
+        <source>Recognized</source>
+        <translation type="unfinished">Распознано</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+19"/>
+        <source>Block %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+61"/>
+        <source>Corrected text:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+19"/>
         <source>Revert correction</source>
-        <translation>Отменить исправление</translation>
-    </message>
-    <message>
-        <source>Delete block</source>
-        <translation type="vanished">Удалить блок</translation>
+        <translation type="unfinished">Отменить исправление</translation>
     </message>
 </context>
 <context>
@@ -248,12 +260,12 @@
         <translation>Проверить блок</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+8"/>
         <source>Fix block</source>
         <translation>Исправить блок</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+7"/>
         <source>Delete block</source>
         <translation>Удалить блок</translation>
     </message>
@@ -377,52 +389,6 @@
     </message>
 </context>
 <context>
-    <name>CheckController</name>
-    <message>
-        <source>Check stopped.</source>
-        <translation type="vanished">Проверка остановлена.</translation>
-    </message>
-    <message>
-        <source>No response</source>
-        <translation type="vanished">Нет ответа</translation>
-    </message>
-    <message>
-        <source>Stopping…</source>
-        <translation type="vanished">Остановка…</translation>
-    </message>
-    <message>
-        <source>Stopped before check started.</source>
-        <translation type="vanished">Проверка остановлена до запуска.</translation>
-    </message>
-    <message>
-        <source>Connection is not configured.</source>
-        <translation type="vanished">Подключение не настроено.</translation>
-    </message>
-</context>
-<context>
-    <name>DecisionController</name>
-    <message>
-        <source>Decision check stopped.</source>
-        <translation type="vanished">Decision-проверка остановлена.</translation>
-    </message>
-    <message>
-        <source>No response</source>
-        <translation type="vanished">Нет ответа</translation>
-    </message>
-    <message>
-        <source>Stopping…</source>
-        <translation type="vanished">Остановка…</translation>
-    </message>
-    <message>
-        <source>Stopped before the decision check started.</source>
-        <translation type="vanished">Decision-проверка остановлена до запуска.</translation>
-    </message>
-    <message>
-        <source>Connection is not configured.</source>
-        <translation type="vanished">Подключение не настроено.</translation>
-    </message>
-</context>
-<context>
     <name>DecisionModel</name>
     <message>
         <location filename="../../src/models/DecisionModel.cpp" line="+52"/>
@@ -507,7 +473,7 @@
 <context>
     <name>DocumentModel</name>
     <message>
-        <location filename="../../src/app/DocumentModel.cpp" line="+152"/>
+        <location filename="../../src/app/DocumentModel.cpp" line="+162"/>
         <source>Failed to read DjVu %1, page %2.</source>
         <translation>Не удалось прочитать DjVu %1, страницу %2.</translation>
     </message>
@@ -639,13 +605,13 @@
         <translation>Для экспорта в DOCX требуется Pandoc, который не найден в PATH. Установите с pandoc.org или экспортируйте в Markdown/HTML.</translation>
     </message>
     <message>
+        <location line="+13"/>
         <location filename="../../src/app/ExportController.cpp" line="+25"/>
-        <location filename="../../src/app/Exporter.cpp" line="+13"/>
         <source>Exported PDF using the built-in writer (%1).</source>
         <translation>PDF экспортирован встроенным модулем (%1).</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location filename="../../src/app/ExportController.cpp" line="+9"/>
         <source>Exported HTML using the basic writer (%1).</source>
         <translation>HTML экспортирован упрощённым модулем (%1).</translation>
     </message>
@@ -665,15 +631,15 @@
         <translation>Не удалось записать файл: %1 (%2)</translation>
     </message>
     <message>
-        <location filename="../../src/app/ExportController.cpp" line="-12"/>
-        <location filename="../../src/app/Exporter.cpp" line="+2"/>
+        <location line="+2"/>
         <location line="+30"/>
         <location line="+55"/>
+        <location filename="../../src/app/ExportController.cpp" line="-12"/>
         <source>Exported to %1</source>
         <translation>Экспортировано: %1</translation>
     </message>
     <message>
-        <location filename="../../src/app/Exporter.cpp" line="-78"/>
+        <location line="-78"/>
         <source>Pandoc not found.</source>
         <translation>Pandoc не найден.</translation>
     </message>
@@ -699,17 +665,6 @@
     </message>
 </context>
 <context>
-    <name>FixController</name>
-    <message>
-        <source>Fix stopped.</source>
-        <translation type="vanished">Исправление остановлено.</translation>
-    </message>
-    <message>
-        <source>Stopped before the fix started.</source>
-        <translation type="vanished">Исправление остановлено до запуска.</translation>
-    </message>
-</context>
-<context>
     <name>Footer</name>
     <message>
         <location filename="../qml/MainWindow/Footer.qml" line="+24"/>
@@ -717,12 +672,7 @@
         <translation>Пустая страница вместо повреждённой — не удалось декодировать оригинал. %1</translation>
     </message>
     <message>
-        <location line="+72"/>
-        <source>Opening %1 / %2</source>
-        <translation>Открытие %1 / %2</translation>
-    </message>
-    <message>
-        <location line="+40"/>
+        <location line="+94"/>
         <source>Launch settings changed — restart the server to apply them.</source>
         <translation>Параметры запуска изменены — перезапустите сервер, чтобы они применились.</translation>
     </message>
@@ -737,7 +687,7 @@
         <translation>Скрыть</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="+155"/>
         <source>Stop server</source>
         <translation>Остановить сервер</translation>
     </message>
@@ -752,7 +702,7 @@
         <translation>Журнал сервера — нажмите, чтобы открыть. %1</translation>
     </message>
     <message>
-        <location line="-282"/>
+        <location line="-265"/>
         <source>The local runtime is owned by another LLocr instance.</source>
         <translation>Локальный рантайм занят другим экземпляром LLocr.</translation>
     </message>
@@ -812,12 +762,7 @@
         <translation>Рантайм: неизвестно</translation>
     </message>
     <message>
-        <location line="+15"/>
-        <source>Fixing %1 / %2</source>
-        <translation>Исправление %1 / %2</translation>
-    </message>
-    <message>
-        <location line="+74"/>
+        <location line="+71"/>
         <source>Stop it</source>
         <translation>Остановить</translation>
     </message>
@@ -836,27 +781,7 @@
         <translation>Подробнее…</translation>
     </message>
     <message>
-        <location line="-142"/>
-        <source>Checking %1 / %2</source>
-        <translation>Проверка %1 / %2</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Re-recognizing %1 / %2</source>
-        <translation>Распознавание %1 / %2</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>Markup %1 / %2</source>
-        <translation>Разметка %1 / %2</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>Check finished</source>
-        <translation>Проверка закончена</translation>
-    </message>
-    <message>
-        <location line="+182"/>
+        <location line="+51"/>
         <source>Stop</source>
         <translation>Стоп</translation>
     </message>
@@ -884,7 +809,7 @@
 <context>
     <name>GeneralPurposeModel</name>
     <message>
-        <location filename="../../src/models/GeneralPurposeModel.cpp" line="+110"/>
+        <location filename="../../src/models/GeneralPurposeModel.cpp" line="+136"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный ответ JSON</translation>
     </message>
@@ -908,239 +833,253 @@
         <source>Unexpected verifier response—expected OK, FIX or REVIEW. Received: %1</source>
         <translation>Неожиданный ответ верификатора — ожидалось OK, FIX или REVIEW. Получено: %1</translation>
     </message>
-    <message>
-        <source>The model returned FIX without the corrected text.</source>
-        <translation type="vanished">Модель вернула FIX без исправленного текста.</translation>
-    </message>
 </context>
 <context>
     <name>Header</name>
     <message>
+        <location filename="../qml/MainWindow/Header.qml" line="+83"/>
         <source>File</source>
         <translation>Файл</translation>
     </message>
     <message>
-        <source>Open…</source>
-        <translation>Открыть…</translation>
-    </message>
-    <message>
+        <location line="+357"/>
         <source>Open project…</source>
         <translation>Открыть проект…</translation>
     </message>
     <message>
+        <location line="+11"/>
         <source>Save project</source>
         <translation>Сохранить проект</translation>
     </message>
     <message>
+        <location line="+25"/>
         <source>Save project as…</source>
         <translation>Сохранить проект как…</translation>
     </message>
     <message>
-        <source>Export…</source>
-        <translation>Экспорт…</translation>
-    </message>
-    <message>
-        <source>Preset:</source>
-        <translation>Пресет:</translation>
-    </message>
-    <message>
-        <source>Manual</source>
-        <translation>Ручной</translation>
-    </message>
-    <message>
-        <source>Manual (step by step)</source>
-        <translation>Ручной (пошаговый)</translation>
-    </message>
-    <message>
-        <source>Auto-recognize</source>
-        <translation>Авто-распознавание</translation>
-    </message>
-    <message>
+        <location line="-319"/>
         <source>Automatic pipelines arrive in a later step</source>
         <translation>Автоматические пайплайны появятся в следующем шаге</translation>
     </message>
     <message>
-        <source>all %1</source>
-        <translation>все %1</translation>
-    </message>
-    <message>
-        <source>%1 pg.</source>
-        <translation>%1 стр.</translation>
-    </message>
-    <message>
+        <location line="+10"/>
         <source>Mark up</source>
         <translation>Разметить</translation>
     </message>
     <message>
+        <location line="+8"/>
         <source>Find the blocks on the selected pages</source>
         <translation>Найти блоки на выбранных страницах</translation>
     </message>
     <message>
+        <location line="+34"/>
         <source>Recognize</source>
-        <translation type="vanished">Распознать</translation>
+        <translation>Распознать</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>With markup</source>
         <translation>С разметкой</translation>
     </message>
     <message>
-        <source>By the marked blocks</source>
-        <translation>По размеченным блокам</translation>
-    </message>
-    <message>
+        <location line="+20"/>
         <source>Without markup</source>
         <translation>Без разметки</translation>
     </message>
     <message>
+        <location line="-12"/>
         <source>Recognize the selected pages: blocks and their text in one pass</source>
         <translation>Распознать выбранные страницы: блоки и их текст одним проходом</translation>
     </message>
     <message>
+        <location line="-25"/>
         <source>Recognize the marked blocks that still have no text</source>
         <translation>Распознать размеченные блоки, у которых ещё нет текста</translation>
     </message>
     <message>
+        <location line="+45"/>
         <source>Recognize the selected pages as raw text</source>
         <translation>Распознать выбранные страницы как сплошной текст</translation>
     </message>
     <message>
-        <source>Without markup (raw text)</source>
-        <translation type="vanished">Без разметки (сырой текст)</translation>
-    </message>
-    <message>
-        <source>Recognize the text of the marked blocks</source>
-        <translation type="vanished">Распознать текст размеченных блоков</translation>
-    </message>
-    <message>
-        <source>Recognize the selected pages</source>
-        <translation type="vanished">Распознать выбранные страницы</translation>
-    </message>
-    <message>
+        <location line="+18"/>
         <source>Verify</source>
         <translation>Проверить</translation>
     </message>
     <message>
-        <source>Verify the recognized blocks on the selected pages</source>
-        <translation>Проверить распознанные блоки на выбранных страницах</translation>
-    </message>
-    <message>
+        <location line="+20"/>
+        <location line="+1"/>
         <source>Fix</source>
         <translation>Исправить</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>Fix the problem blocks on the selected pages</source>
         <translation>Исправить проблемные блоки на выбранных страницах</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>Стоп</translation>
+        <translation type="vanished">Стоп</translation>
     </message>
     <message>
+        <location line="+15"/>
         <source>Export</source>
         <translation>Экспорт</translation>
     </message>
     <message>
-        <source>Export the whole document</source>
-        <translation>Экспортировать весь документ</translation>
-    </message>
-    <message>
+        <location line="+13"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <source>Plain text</source>
-        <translation>Простой текст</translation>
-    </message>
-    <message>
-        <source>Complex layout</source>
-        <translation>Сложная вёрстка</translation>
-    </message>
-    <message>
-        <source>Technical / scientific</source>
-        <translation>Технический / научный</translation>
-    </message>
-    <message>
-        <source>Verify only</source>
-        <translation>Только проверить</translation>
-    </message>
-    <message>
-        <source>Whole document…</source>
-        <translation>Весь документ…</translation>
-    </message>
-    <message>
-        <source>Current page…</source>
-        <translation>Текущая страница…</translation>
-    </message>
-    <message>
+        <location line="+186"/>
         <source>Setup wizard</source>
         <translation>Мастер настройки</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Interface</source>
         <translation>Интерфейс</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Output</source>
         <translation>Вывод</translation>
     </message>
     <message>
+        <location line="-255"/>
+        <location line="+259"/>
         <source>Verification</source>
         <translation>Проверка</translation>
     </message>
     <message>
+        <location line="-423"/>
+        <source>Import</source>
+        <translation>Импорт</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Open images, PDF or DjVu</source>
+        <translation>Открыть изображения, PDF или DjVu</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Pages</source>
+        <translation>Страницы</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>All</source>
+        <translation>Все</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Pages to process: follows the selection in the thumbnail panel, or type a range like 1-10, 15</source>
+        <translation>Страницы для обработки: следуют за выделением в панели миниатюр, либо введите диапазон вида 1-10, 15</translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>Auto</source>
+        <translation>Авто</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Fast</source>
+        <translation>Быстро</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Balanced</source>
+        <translation>Баланс</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Accurate</source>
+        <translation>Точно</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Recognize %1 pg.</source>
+        <translation>Распознать %1 стр.</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Markup</source>
+        <translation>Разметка</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Stop the layout pass</source>
+        <translation>Остановить разметку</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Recognize blocks</source>
+        <translation>Распознать блоки</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Stop the block recognition</source>
+        <translation>Остановить распознавание блоков</translation>
+    </message>
+    <message>
+        <location line="+25"/>
+        <location line="+20"/>
+        <source>Stop the recognition</source>
+        <translation>Остановить распознавание</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>Stop the verification</source>
+        <translation>Остановить проверку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Verify the recognized blocks without fixing them</source>
+        <translation>Проверить распознанные блоки, не исправляя их</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Stop the fix</source>
+        <translation>Остановить исправление</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Export the recognized text</source>
+        <translation>Экспортировать распознанный текст</translation>
+    </message>
+    <message>
+        <location line="+210"/>
         <source>Runtime</source>
         <translation>Рантайм</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Models</source>
         <translation>Модели</translation>
     </message>
     <message>
+        <location line="+19"/>
         <source>Mark up?</source>
         <translation>Разметить?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Marking up replaces the recognized blocks and text on every page. Continue?</source>
         <translation>Разметка заменит распознанные блоки и текст на всех страницах. Продолжить?</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Marking up replaces the recognized blocks and text on the selected pages. Continue?</source>
         <translation>Разметка заменит распознанные блоки и текст на выбранных страницах. Продолжить?</translation>
-    </message>
-    <message>
-        <source>Recognize every page of the document</source>
-        <translation type="vanished">Распознать все страницы документа</translation>
-    </message>
-    <message>
-        <source>All pages without markup</source>
-        <translation type="vanished">Все страницы без разметки</translation>
-    </message>
-    <message>
-        <source>Verify the recognized blocks on every page</source>
-        <translation type="vanished">Проверить распознанные блоки на всех страницах</translation>
-    </message>
-    <message>
-        <source>Fix the problem blocks in the whole document</source>
-        <translation type="vanished">Исправить проблемные блоки во всём документе</translation>
-    </message>
-    <message>
-        <source>Mark up every page of the document</source>
-        <translation type="vanished">Разметить все страницы документа</translation>
-    </message>
-</context>
-<context>
-    <name>HfSearchList</name>
-    <message>
-        <source>Install</source>
-        <translation type="obsolete">Установить</translation>
     </message>
 </context>
 <context>
     <name>ImagePanel</name>
     <message>
-        <location filename="../qml/MainWindow/ImagePanel.qml" line="+37"/>
+        <location filename="../qml/MainWindow/ImagePanel.qml" line="+34"/>
         <source>Open an image or PDF to begin</source>
-        <translation>Откройте изображение или PDF, чтобы начать</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1148,12 +1087,12 @@
     <message>
         <location filename="../qml/MainWindow/ImagePreview.qml" line="+21"/>
         <source>Rendering page…</source>
-        <translation>Рендер страницы…</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+15"/>
         <source>Could not load the page image</source>
-        <translation>Не удалось загрузить изображение страницы</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1161,33 +1100,33 @@
     <message>
         <location filename="../qml/Common/InstallModelDialog.qml" line="+27"/>
         <source>Install model</source>
-        <translation>Установка модели</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+42"/>
+        <location line="+27"/>
+        <source>Preparing the download…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+15"/>
         <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
-        <translation>Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+15"/>
         <location line="+2"/>
         <source>License: %1</source>
-        <translation>Лицензия: %1</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-32"/>
-        <source>Preparing the download…</source>
-        <translation>Подготовка загрузки…</translation>
-    </message>
-    <message>
-        <location line="+58"/>
-        <source>Install</source>
-        <translation>Установить</translation>
-    </message>
-    <message>
-        <location line="-5"/>
+        <location line="+21"/>
         <source>Cancel</source>
-        <translation>Отмена</translation>
+        <translation type="unfinished">Отмена</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Install</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1230,62 +1169,14 @@
 <context>
     <name>LaunchTab</name>
     <message>
-        <source>Profile</source>
-        <translation type="vanished">Профиль</translation>
-    </message>
-    <message>
-        <source>Restore profile</source>
-        <translation type="vanished">Восстановить профиль</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation type="vanished">Параметр</translation>
-    </message>
-    <message>
-        <source>Value</source>
-        <translation type="vanished">Значение</translation>
-    </message>
-    <message>
-        <source>Description</source>
-        <translation type="vanished">Описание</translation>
-    </message>
-    <message>
         <location filename="../qml/Settings/LaunchTab.qml" line="+54"/>
         <source>(flag)</source>
         <translation>(флаг)</translation>
     </message>
     <message>
-        <source>New parameter name</source>
-        <translation type="vanished">Имя нового параметра</translation>
-    </message>
-    <message>
-        <source>Add</source>
-        <translation type="vanished">Добавить</translation>
-    </message>
-    <message>
-        <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows belong to a layer: the shared server policy, this machine&apos;s build, or the model itself — they are what the server is started with, and the profile owns them.</source>
-        <translation type="vanished">Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки принадлежат какому-то слою: общей политике сервера, сборке этой машины или самой модели — это то, с чем сервер реально запускается, и принадлежит профилю</translation>
-    </message>
-    <message>
         <location line="+9"/>
         <source>The machine&apos;s parameters: how much of the model goes to the GPU, flash attention, and the context window. Everything else — the server policy and the model&apos;s own parameters — is tuned by the app and its model profiles.</source>
         <translation>Параметры машины: сколько слоёв модели на GPU, flash attention и размер контекста. Всё остальное — политика сервера и собственные параметры модели — подобрано приложением и профилями моделей</translation>
-    </message>
-    <message>
-        <source>llama-server command-line parameters; --model/--mmproj/--alias/--host/--port come from the other launch settings. The greyed-out rows are the shared server policy and apply to every model on this machine.</source>
-        <translation type="vanished">Параметры командной строки llama-server; --model/--mmproj/--alias/--host/--port берутся из остальных настроек запуска. Затенённые строки — общая политика сервера, она действует для любой модели на этой машине</translation>
-    </message>
-    <message>
-        <source>This model is not in the catalog, so its launch parameters come from the fallback set instead of the model&apos;s own. The context window may be wrong for it — check the log if a page comes out truncated.</source>
-        <translation type="vanished">Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора, а не из её собственных. Размер контекста может ей не подходить — если страница обрезается, посмотрите журнал</translation>
-    </message>
-    <message>
-        <source>The managed runtime cannot run this model. %1</source>
-        <translation type="vanished">Управляемый рантайм не может запустить эту модель. %1</translation>
-    </message>
-    <message>
-        <source>This model is not in the catalog, so its launch parameters come from the fallback set. If a page comes out truncated, the context window is the first thing to look at.</source>
-        <translation type="vanished">Этой модели нет в каталоге, поэтому параметры запуска взяты из резервного набора. Если страница обрезается, прежде всего стоит проверить размер контекста</translation>
     </message>
     <message>
         <location line="+14"/>
@@ -1296,41 +1187,6 @@
         <location line="+4"/>
         <source>Configure runtime…</source>
         <translation>Настроить рантайм…</translation>
-    </message>
-    <message>
-        <source>The list follows the build that is installed. These profiles need another one: %1.</source>
-        <translation type="vanished">Список следует за установленной сборкой. Эти профили требуют другой сборки: %1</translation>
-    </message>
-    <message>
-        <source>Runtime settings…</source>
-        <translation type="vanished">Настройки рантайма…</translation>
-    </message>
-</context>
-<context>
-    <name>LayoutController</name>
-    <message>
-        <source>Markup stopped.</source>
-        <translation type="vanished">Разметка остановлена.</translation>
-    </message>
-    <message>
-        <source>No response</source>
-        <translation type="vanished">Нет ответа</translation>
-    </message>
-    <message>
-        <source>Stopping…</source>
-        <translation type="vanished">Остановка…</translation>
-    </message>
-    <message>
-        <source>Page %1 could not be rendered for markup.</source>
-        <translation type="vanished">Страницу %1 не удалось отрисовать для разметки.</translation>
-    </message>
-    <message>
-        <source>Stopped before markup started.</source>
-        <translation type="vanished">Разметка остановлена до запуска.</translation>
-    </message>
-    <message>
-        <source>Connection is not configured.</source>
-        <translation type="vanished">Подключение не настроено.</translation>
     </message>
 </context>
 <context>
@@ -1352,221 +1208,14 @@
     </message>
 </context>
 <context>
-    <name>LocationTab</name>
-    <message>
-        <source>Model location</source>
-        <translation type="vanished">Расположение модели</translation>
-    </message>
-    <message>
-        <source>These paths are used when the managed llama-server is launched. Activating a downloaded model fills them automatically.</source>
-        <translation type="vanished">Эти пути используются при запуске локального llama-server. Активация скачанной через приложение модели заполняет их автоматически.</translation>
-    </message>
-    <message>
-        <source>Model profile</source>
-        <translation type="vanished">Профиль модели</translation>
-    </message>
-    <message>
-        <source>These paths select the model for text verification. Activating a downloaded model fills them automatically.</source>
-        <translation type="vanished">Эти пути выбирают модель для проверки текста. Активация скачанной через приложение модели заполняет их автоматически.</translation>
-    </message>
-    <message>
-        <source>Path to the main model</source>
-        <translation type="vanished">Путь до основной модели</translation>
-    </message>
-    <message>
-        <source>Path to the multimodal module (mmproj)</source>
-        <translation type="vanished">Путь до мультимодального модуля (mmproj)</translation>
-    </message>
-    <message>
-        <source>Browse…</source>
-        <translation type="vanished">Обзор…</translation>
-    </message>
-    <message>
-        <source>The model is managed by the external server. Location and download settings are not available in this mode.</source>
-        <translation type="vanished">Моделью управляет внешний сервер. Настройки расположения и скачивания модели в этом режиме недоступны.</translation>
-    </message>
-    <message>
-        <source>Configure runtime…</source>
-        <translation type="vanished">Настроить рантайм…</translation>
-    </message>
-    <message>
-        <source>Specify model files</source>
-        <translation type="vanished">Указать файлы модели</translation>
-    </message>
-    <message>
-        <source>Download model</source>
-        <translation type="vanished">Скачать модель</translation>
-    </message>
-    <message>
-        <source>path to the .gguf model file</source>
-        <translation type="vanished">путь до файла модели .gguf</translation>
-    </message>
-    <message>
-        <source>optional mmproj file for vision models</source>
-        <translation type="vanished">необязательный mmproj-файл для визуальных моделей</translation>
-    </message>
-    <message>
-        <source>Activated: %1</source>
-        <translation type="vanished">Активирована: %1</translation>
-    </message>
-    <message>
-        <source>A model outside the app registry — used as-is for the managed launch.</source>
-        <translation type="vanished">Модель вне реестра приложения — используется как есть при запуске.</translation>
-    </message>
-    <message>
-        <source>A model outside the app registry — used for text verification.</source>
-        <translation type="vanished">Модель вне реестра приложения — используется для проверки текста.</translation>
-    </message>
-    <message>
-        <source>Select a model file</source>
-        <translation type="vanished">Выберите файл модели</translation>
-    </message>
-    <message>
-        <source>Select an mmproj file</source>
-        <translation type="vanished">Выберите файл mmproj</translation>
-    </message>
-    <message>
-        <source>GGUF models (*.gguf)</source>
-        <translation type="vanished">GGUF-модели (*.gguf)</translation>
-    </message>
-    <message>
-        <source>Models are stored locally and launched by the managed runtime.</source>
-        <translation type="vanished">Модели хранятся локально и запускаются управляемым рантаймом.</translation>
-    </message>
-    <message>
-        <source>No models installed</source>
-        <translation type="vanished">Установленных моделей нет</translation>
-    </message>
-    <message>
-        <source>Models</source>
-        <translation type="vanished">Модели</translation>
-    </message>
-    <message>
-        <source>The managed runtime cannot run this model. %1</source>
-        <translation type="vanished">Управляемый рантайм не может запустить эту модель. %1</translation>
-    </message>
-    <message>
-        <source>No presets available</source>
-        <translation type="vanished">Нет доступных пресетов</translation>
-    </message>
-    <message>
-        <source>managed</source>
-        <translation type="vanished">управляемая</translation>
-    </message>
-    <message>
-        <source>external</source>
-        <translation type="vanished">внешняя</translation>
-    </message>
-    <message>
-        <source>Active</source>
-        <translation type="vanished">Активна</translation>
-    </message>
-    <message>
-        <source>Activate</source>
-        <translation type="vanished">Активировать</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation type="vanished">Удалить</translation>
-    </message>
-    <message>
-        <source>Open folder</source>
-        <translation type="vanished">Открыть папку</translation>
-    </message>
-    <message>
-        <source>Preset catalog</source>
-        <translation type="vanished">Каталог пресетов</translation>
-    </message>
-    <message>
-        <source>~%1 GiB VRAM</source>
-        <translation type="vanished">~%1 ГиБ VRAM</translation>
-    </message>
-    <message>
-        <source>Install</source>
-        <translation type="vanished">Установить</translation>
-    </message>
-    <message>
-        <source>Search Hugging Face</source>
-        <translation type="vanished">Поиск на Hugging Face</translation>
-    </message>
-    <message>
-        <source>e.g. vision gguf</source>
-        <translation type="vanished">напр. vision gguf</translation>
-    </message>
-    <message>
-        <source>Search</source>
-        <translation type="vanished">Поиск</translation>
-    </message>
-    <message>
-        <source>Results appear here. Models install into the managed models directory.</source>
-        <translation type="vanished">Результаты появятся здесь. Модели устанавливаются в управляемый каталог models.</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
-    </message>
-    <message>
-        <source>Installed models: </source>
-        <translation type="vanished">Установленные модели: </translation>
-    </message>
-    <message>
-        <source>HF token (optional)</source>
-        <translation type="vanished">HF-токен (необязательно)</translation>
-    </message>
-    <message>
-        <source>read-only token for gated repos</source>
-        <translation type="vanished">токен только для чтения для gated-репозиториев</translation>
-    </message>
-    <message>
-        <source>Import catalog…</source>
-        <translation type="vanished">Импорт каталога…</translation>
-    </message>
-    <message>
-        <source>Export catalog…</source>
-        <translation type="vanished">Экспорт каталога…</translation>
-    </message>
-    <message>
-        <source>Restore defaults</source>
-        <translation type="vanished">Восстановить по умолчанию</translation>
-    </message>
-    <message>
-        <source>Install model</source>
-        <translation type="vanished">Установка модели</translation>
-    </message>
-    <message>
-        <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
-        <translation type="vanished">Загрузка начнётся после подтверждения. Действует лицензия модели — ознакомьтесь с ней перед установкой.</translation>
-    </message>
-    <message>
-        <source>License: %1</source>
-        <translation type="vanished">Лицензия: %1</translation>
-    </message>
-    <message>
-        <source>Import preset catalog</source>
-        <translation type="vanished">Импорт каталога пресетов</translation>
-    </message>
-    <message>
-        <source>JSON files (*.json)</source>
-        <translation type="vanished">JSON-файлы (*.json)</translation>
-    </message>
-    <message>
-        <source>All files (*)</source>
-        <translation type="vanished">Все файлы (*)</translation>
-    </message>
-    <message>
-        <source>Export preset catalog</source>
-        <translation type="vanished">Экспорт каталога пресетов</translation>
-    </message>
-</context>
-<context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="+23"/>
+        <location filename="../qml/Main.qml" line="+25"/>
         <source>LLM OCR</source>
         <translation>LLM OCR</translation>
     </message>
     <message>
-        <location line="+140"/>
+        <location line="+129"/>
         <source>Drop to open</source>
         <translation>Перетащите чтобы открыть</translation>
     </message>
@@ -1591,12 +1240,12 @@
         <translation>Экспорт распознанного текста</translation>
     </message>
     <message>
-        <location line="-160"/>
+        <location line="-149"/>
         <source>LLM OCR — %1</source>
         <translation>LLM OCR — %1</translation>
     </message>
     <message>
-        <location line="+176"/>
+        <location line="+165"/>
         <source>Open project</source>
         <translation>Открытие проекта</translation>
     </message>
@@ -1623,20 +1272,13 @@
 <context>
     <name>ModelDownloadList</name>
     <message>
-        <source>Active</source>
-        <translation type="vanished">Активна</translation>
-    </message>
-    <message>
-        <source>Use</source>
-        <translation type="vanished">Использовать</translation>
-    </message>
-    <message>
-        <location filename="../qml/Common/ModelDownloadList.qml" line="+182"/>
+        <location filename="../qml/Common/ModelDownloadList.qml" line="+75"/>
+        <location line="+107"/>
         <source>Download</source>
         <translation>Скачать</translation>
     </message>
     <message>
-        <location line="+152"/>
+        <location line="+146"/>
         <location line="+40"/>
         <source>Open folder</source>
         <translation>Открыть папку</translation>
@@ -1671,86 +1313,9 @@
     </message>
 </context>
 <context>
-    <name>ModelInstalledList</name>
-    <message>
-        <source>managed</source>
-        <translation type="vanished">управляемая</translation>
-    </message>
-    <message>
-        <source>external</source>
-        <translation type="vanished">внешняя</translation>
-    </message>
-    <message>
-        <source>Active</source>
-        <translation type="vanished">Активна</translation>
-    </message>
-    <message>
-        <source>Activate</source>
-        <translation type="vanished">Активировать</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation type="vanished">Удалить</translation>
-    </message>
-    <message>
-        <source>Open folder</source>
-        <translation type="vanished">Открыть папку</translation>
-    </message>
-</context>
-<context>
-    <name>ModelPresetList</name>
-    <message>
-        <source>~%1 GiB VRAM</source>
-        <translation type="obsolete">~%1 ГиБ VRAM</translation>
-    </message>
-    <message>
-        <source>Active</source>
-        <translation type="vanished">Активна</translation>
-    </message>
-    <message>
-        <source>Activate</source>
-        <translation type="vanished">Активировать</translation>
-    </message>
-    <message>
-        <source>Install</source>
-        <translation type="vanished">Установить</translation>
-    </message>
-</context>
-<context>
-    <name>ModelSettingsWindow</name>
-    <message>
-        <source>Location</source>
-        <translation type="vanished">Расположение</translation>
-    </message>
-    <message>
-        <source>Model</source>
-        <translation type="vanished">Модель</translation>
-    </message>
-    <message>
-        <source>Launch</source>
-        <translation type="vanished">Запуск</translation>
-    </message>
-    <message>
-        <source>Request</source>
-        <translation type="vanished">Запрос</translation>
-    </message>
-    <message>
-        <source>Restore defaults</source>
-        <translation type="vanished">Вернуть настройки по умолчанию</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation type="vanished">Сохранить</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
-    </message>
-</context>
-<context>
     <name>OcrModel</name>
     <message>
-        <location filename="../../src/models/OcrModel.cpp" line="+169"/>
+        <location filename="../../src/models/OcrModel.cpp" line="+179"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный JSON-ответ</translation>
     </message>
@@ -1763,131 +1328,6 @@
         <location line="+19"/>
         <source>Failed to encode the page image</source>
         <translation>Не удалось закодировать изображение страницы</translation>
-    </message>
-</context>
-<context>
-    <name>TaskModelsTable</name>
-    <message>
-        <source>Model</source>
-        <translation>Модель</translation>
-    </message>
-    <message>
-        <source>Installed</source>
-        <translation>Установлен</translation>
-    </message>
-    <message>
-        <source>Download</source>
-        <translation>Скачать</translation>
-    </message>
-    <message>
-        <source>Launch and request settings</source>
-        <translation>Запуск и запрос</translation>
-    </message>
-    <message>
-        <source>Launch</source>
-        <translation>Запуск</translation>
-    </message>
-    <message>
-        <source>Request</source>
-        <translation>Запрос</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation>Закрыть</translation>
-    </message>
-</context>
-<context>
-    <name>TaskModelsWindow</name>
-    <message>
-        <location filename="../qml/Settings/TaskModelsWindow.qml" line="+11"/>
-        <source>Models</source>
-        <translation>Модели</translation>
-    </message>
-    <message>
-        <source>Restore defaults</source>
-        <translation>Вернуть настройки по умолчанию</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation>Сохранить</translation>
-    </message>
-    <message>
-        <source>Models to download</source>
-        <translation>Модели для скачивания</translation>
-    </message>
-    <message>
-        <source>Download</source>
-        <translation>Скачать</translation>
-    </message>
-    <message>
-        <source>Downloaded model files on disk</source>
-        <translation>Загруженные файлы моделей на диске</translation>
-    </message>
-    <message>
-        <source>Downloaded models will appear here — pick a quantization in the rows above and save.</source>
-        <translation>Скачанные модели появятся здесь — выберите квантование в строках выше и сохраните.</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>Удалить</translation>
-    </message>
-    <message>
-        <source>Delete model file</source>
-        <translation>Удалить файл модели</translation>
-    </message>
-    <message>
-        <source>Delete %1 from disk?</source>
-        <translation>Удалить %1 с диска?</translation>
-    </message>
-    <message>
-        <source>%1 is used by %2 task(s). The task rows keep their choice, but the model is gone from disk until you download it again.</source>
-        <translation>%1 привязана к задачам (%2). Строки задач сохранят выбор, но модели на диске больше нет, пока вы не скачаете её снова.</translation>
-    </message>
-</context>
-<context>
-    <name>ModelQuantModel</name>
-    <message>
-        <source>full precision</source>
-        <translation>полная точность</translation>
-    </message>
-    <message>
-        <source>max quality</source>
-        <translation>макс. качество</translation>
-    </message>
-    <message>
-        <source>high quality, compact</source>
-        <translation>высокое качество, компактнее</translation>
-    </message>
-    <message>
-        <source>good quality, less memory</source>
-        <translation>хорошее качество, меньше памяти</translation>
-    </message>
-    <message>
-        <source>less memory</source>
-        <translation>меньше памяти</translation>
-    </message>
-    <message>
-        <source>for weak PCs</source>
-        <translation>для слабых ПК</translation>
-    </message>
-</context>
-<context>
-    <name>InstalledFilesModel</name>
-    <message numerus="yes">
-        <source>Used by %n task(s)</source>
-        <translation>
-            <numerusform>Используется в %n задаче</numerusform>
-            <numerusform>Используется в %n задачах</numerusform>
-            <numerusform>Используется в %n задачах</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Not used</source>
-        <translation>Не используется</translation>
     </message>
 </context>
 <context>
@@ -1982,41 +1422,6 @@
     </message>
 </context>
 <context>
-    <name>TaskStatus</name>
-    <message>
-        <source>Opening %1 / %2</source>
-        <translation>Открытие %1 / %2</translation>
-    </message>
-    <message>
-        <source>Checking %1 / %2</source>
-        <translation>Проверка %1 / %2</translation>
-    </message>
-    <message>
-        <source>Fixing %1 / %2</source>
-        <translation>Исправление %1 / %2</translation>
-    </message>
-    <message>
-        <source>Re-recognizing %1 / %2</source>
-        <translation>Распознавание %1 / %2</translation>
-    </message>
-    <message>
-        <source>Markup %1 / %2</source>
-        <translation>Разметка %1 / %2</translation>
-    </message>
-    <message>
-        <source>Check finished</source>
-        <translation>Проверка закончена</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n more in queue</source>
-        <translation>
-            <numerusform>ещё %n в очереди</numerusform>
-            <numerusform>ещё %n в очереди</numerusform>
-            <numerusform>ещё %n в очереди</numerusform>
-        </translation>
-    </message>
-</context>
-<context>
     <name>PageStatus</name>
     <message>
         <location filename="../qml/PageStatus.qml" line="+11"/>
@@ -2047,68 +1452,14 @@
 <context>
     <name>PageToolBar</name>
     <message>
+        <location filename="../qml/MainWindow/PageToolBar.qml" line="+49"/>
         <source>Page</source>
         <translation>Стр.</translation>
     </message>
     <message>
+        <location line="+102"/>
         <source>Not implemented yet</source>
         <translation>Функция пока не реализована</translation>
-    </message>
-    <message>
-        <source>Recognize page</source>
-        <translation type="vanished">Распознать страницу</translation>
-    </message>
-    <message>
-        <source>Without markup</source>
-        <translation type="vanished">Без разметки</translation>
-    </message>
-    <message>
-        <source>Problem blocks</source>
-        <translation type="vanished">Проблемные блоки</translation>
-    </message>
-    <message>
-        <source>All blocks</source>
-        <translation type="vanished">Все блоки</translation>
-    </message>
-    <message>
-        <source>Verify</source>
-        <translation type="vanished">Проверить</translation>
-    </message>
-    <message>
-        <source>Verify only</source>
-        <translation type="vanished">Только проверить</translation>
-    </message>
-    <message>
-        <source>Save page</source>
-        <translation type="vanished">Сохранить страницу</translation>
-    </message>
-    <message>
-        <source>Mark up page</source>
-        <translation type="vanished">Разметить страницу</translation>
-    </message>
-    <message>
-        <source>Mark up?</source>
-        <translation type="vanished">Разметить?</translation>
-    </message>
-    <message>
-        <source>Marking up replaces the recognized blocks and text on this page. Continue?</source>
-        <translation type="vanished">Разметка заменит распознанные блоки и текст на этой странице. Продолжить?</translation>
-    </message>
-    <message>
-        <source>Recognize problem blocks on the page</source>
-        <translation type="vanished">Распознать проблемные блоки страницы</translation>
-    </message>
-    <message>
-        <source>Recognize all blocks on the page</source>
-        <translation type="vanished">Распознать все блоки страницы</translation>
-    </message>
-    <message>
-        <source>Verify and fix</source>
-        <translation type="vanished">Проверить и исправить</translation>
-    </message>
-    <message>
-        <source>Mark up all pages</source>
-        <translation type="vanished">Разметить все страницы</translation>
     </message>
 </context>
 <context>
@@ -2133,19 +1484,11 @@
         <source>Description</source>
         <translation>Описание</translation>
     </message>
-    <message>
-        <source>New parameter name</source>
-        <translation type="vanished">Имя нового параметра</translation>
-    </message>
-    <message>
-        <source>Add</source>
-        <translation type="vanished">Добавить</translation>
-    </message>
 </context>
 <context>
     <name>ParserFactory</name>
     <message>
-        <location filename="../../src/parsers/ParserFactory.cpp" line="+29"/>
+        <location filename="../../src/parsers/ParserFactory.cpp" line="+30"/>
         <source>Automatic (model default)</source>
         <translation>Автоматически (по модели)</translation>
     </message>
@@ -2407,10 +1750,6 @@
         <translation>Скачанный архив отсутствует: %1</translation>
     </message>
     <message>
-        <source>Cannot tell which build is in use — nothing was removed. Install or activate a build first.</source>
-        <translation type="vanished">Не удалось определить, какая сборка используется — ничего не удалено. Сначала установите или активируйте сборку.</translation>
-    </message>
-    <message>
         <location line="+4"/>
         <source>Downloaded archive size mismatch (expected %1, got %2)</source>
         <translation>Несовпадение размера скачанного архива (ожидалось %1, получено %2)</translation>
@@ -2429,10 +1768,6 @@
         <location line="+4"/>
         <source>This release did not publish a sha256 digest; integrity was not verified</source>
         <translation>Релиз не опубликовал контрольную сумму sha256; целостность не проверена</translation>
-    </message>
-    <message>
-        <source>Unable to create the staging directory</source>
-        <translation type="vanished">Не удалось создать промежуточную папку</translation>
     </message>
     <message>
         <location line="+22"/>
@@ -2536,7 +1871,7 @@
         <translation>Подготовка контекста…</translation>
     </message>
     <message>
-        <location filename="../../src/runtime/ReleaseCatalog.cpp" line="+143"/>
+        <location filename="../../src/runtime/ReleaseCatalog.cpp" line="+144"/>
         <source>The GitHub releases response contained no releases</source>
         <translation>Ответ GitHub не содержал релизов</translation>
     </message>
@@ -2602,18 +1937,24 @@
         <translation>Релизы не распознаны</translation>
     </message>
     <message>
-        <location line="+28"/>
-        <source>CPU backend by default; enable CUDA if an NVIDIA GPU is present</source>
-        <translation>По умолчанию — CPU; включите CUDA, если есть NVIDIA GPU</translation>
+        <location line="+30"/>
+        <source>NVIDIA GPU detected (%1): CUDA backend recommended</source>
+        <translation>Обнаружен GPU NVIDIA (%1): рекомендуется бэкенд CUDA</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>GPU detected (%1): Vulkan backend recommended</source>
+        <translation>Обнаружен GPU (%1): рекомендуется бэкенд Vulkan</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>No GPU detected: CPU backend</source>
+        <translation>GPU не обнаружен: бэкенд CPU</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Metal backend recommended on Apple silicon; fall back to CPU on Intel</source>
         <translation>На Apple Silicon рекомендуется бэкенд Metal; на Intel используется CPU</translation>
-    </message>
-    <message>
-        <source>No response</source>
-        <translation type="vanished">Нет ответа</translation>
     </message>
     <message>
         <location filename="../../src/runtime/SelfTestController.cpp" line="+67"/>
@@ -2629,14 +1970,6 @@
         <location line="+5"/>
         <source>File not found: %1</source>
         <translation>Файл не найден: %1</translation>
-    </message>
-    <message>
-        <source>Another instance is already running</source>
-        <translation type="vanished">Другой экземпляр уже запущен</translation>
-    </message>
-    <message>
-        <source>No llama-server binary found automatically</source>
-        <translation type="vanished">Бинарник llama-server не найден автоматически</translation>
     </message>
     <message>
         <location line="-53"/>
@@ -2679,26 +2012,6 @@
         <location line="+1"/>
         <source>The binary did not answer (%1; %2)</source>
         <translation>Бинарник не ответил (%1; %2)</translation>
-    </message>
-    <message>
-        <source>Build %1 is below the minimum (%2) — update it</source>
-        <translation type="vanished">Сборка %1 ниже минимальной (%2) — обновите её</translation>
-    </message>
-    <message>
-        <source>Valid llama-server (build unknown)</source>
-        <translation type="vanished">Корректный llama-server (сборка неизвестна)</translation>
-    </message>
-    <message>
-        <source>Valid llama-server %1</source>
-        <translation type="vanished">Корректный llama-server %1</translation>
-    </message>
-    <message>
-        <source>The selected file is not executable</source>
-        <translation type="vanished">Выбранный файл не является исполняемым</translation>
-    </message>
-    <message>
-        <source>Unable to make the binary executable</source>
-        <translation type="vanished">Не удалось сделать бинарник исполняемым</translation>
     </message>
     <message>
         <location filename="../../src/config/RuntimePaths.cpp" line="+89"/>
@@ -2845,7 +2158,7 @@
         <translation>Профиль модели %1 содержит файлы без репозитория</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+12"/>
         <source>Model profile %1 has a quantization without an id or a file name</source>
         <translation>Профиль модели %1 содержит квантизацию без id или имени файла</translation>
     </message>
@@ -2957,37 +2270,37 @@
         <translation>Профиль запроса не содержит массива параметров</translation>
     </message>
     <message>
+        <location line="-40"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+138"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="-40"/>
         <source>%1 parameter is not an object</source>
         <translation>%1: параметр не является объектом</translation>
     </message>
     <message>
-        <location line="-47"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+7"/>
+        <location line="+7"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="-47"/>
         <source>%1 parameter has an empty name</source>
         <translation>%1: у параметра пустое имя</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+6"/>
+        <location line="+6"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+8"/>
         <source>%1 parameter %2 has an invalid order</source>
         <translation>%1: параметр %2 имеет некорректный порядок</translation>
     </message>
     <message>
-        <location line="+22"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+9"/>
+        <location line="+9"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+22"/>
         <source>%1 parameter %2 has an unsupported value</source>
         <translation>%1: параметр %2 имеет неподдерживаемое значение</translation>
     </message>
     <message>
-        <location line="+25"/>
-        <location filename="../../src/core/RequestProfile.cpp" line="+6"/>
+        <location line="+6"/>
+        <location filename="../../src/core/LaunchProfile.cpp" line="+25"/>
         <source>%1 has a duplicate parameter: %2</source>
         <translation>%1: дублирующийся параметр: %2</translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="+18"/>
+        <location line="+18"/>
         <source>Request profile</source>
         <translation>Профиль запроса</translation>
     </message>
@@ -3048,7 +2361,7 @@
 <context>
     <name>RecognitionController</name>
     <message>
-        <location filename="../../src/app/RecognitionController.cpp" line="+108"/>
+        <location filename="../../src/app/RecognitionController.cpp" line="+130"/>
         <source>Stopped before recognition started.</source>
         <translation>Остановлено до начала распознавания.</translation>
     </message>
@@ -3058,25 +2371,22 @@
         <translation>Подключение не настроено.</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+23"/>
         <source>Page %1 is a blank replacement for an unreadable page; recognition skipped.</source>
         <translation>Страница %1 — пустая замена нечитаемой страницы; распознавание пропущено.</translation>
     </message>
     <message>
-        <source>Recognition finished. Skipped %1 unreadable page(s).</source>
-        <translation type="vanished">Распознавание закончено. Пропущено нечитаемых страниц: %1.</translation>
-    </message>
-    <message>
-        <location line="-85"/>
+        <location line="-102"/>
         <source>Nothing to recognize:</source>
         <translation>Распознавать нечего:</translation>
     </message>
     <message>
+        <location line="+143"/>
         <source>Recognizing page %1 (%2 of %3)…</source>
         <translation>Распознавание страницы %1 (%2 из %3)…</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="-105"/>
         <source>%1 page(s) already recognized</source>
         <translation>уже распознано страниц: %1</translation>
     </message>
@@ -3086,23 +2396,23 @@
         <translation>нечитаемых страниц: %1</translation>
     </message>
     <message>
-        <location line="+74"/>
+        <location line="+104"/>
         <source>Recognizing page %1 of %2…</source>
         <translation>Распознавание страницы %1 из %2…</translation>
     </message>
     <message>
         <location line="+5"/>
-        <location line="+32"/>
+        <location line="+33"/>
         <source>Error on page %1: %2</source>
         <translation>Ошибка на странице %1: %2</translation>
     </message>
     <message>
-        <location line="-30"/>
+        <location line="-31"/>
         <source>the page has no image to recognize</source>
         <translation>у страницы нет изображения для распознавания</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+24"/>
         <source>No response</source>
         <translation>Нет ответа</translation>
     </message>
@@ -3117,8 +2427,9 @@
         <translation>Остановлено после страницы %1.</translation>
     </message>
     <message>
-        <location line="-52"/>
-        <location line="+65"/>
+        <location line="-80"/>
+        <location line="+23"/>
+        <location line="+75"/>
         <source>Recognition finished.</source>
         <translation>Распознавание закончено.</translation>
     </message>
@@ -3130,82 +2441,6 @@
 </context>
 <context>
     <name>RequestTab</name>
-    <message>
-        <source>e.g. Unlimited-OCR, or the id your server exposes</source>
-        <translation type="vanished">например, Unlimited-OCR или id, который предоставляет ваш сервер</translation>
-    </message>
-    <message>
-        <source>Temperature</source>
-        <translation type="vanished">Температура</translation>
-    </message>
-    <message>
-        <source>Max tokens per page</source>
-        <translation type="vanished">Макс. токенов на стр.</translation>
-    </message>
-    <message>
-        <source>DRY multiplier</source>
-        <translation type="vanished">множитель DRY</translation>
-    </message>
-    <message>
-        <source>DRY base</source>
-        <translation type="vanished">DRY база штрафа</translation>
-    </message>
-    <message>
-        <source>DRY allowed length</source>
-        <translation type="vanished">DRY разрешенная длина</translation>
-    </message>
-    <message>
-        <source>DRY range</source>
-        <translation type="vanished">DRY диапазон</translation>
-    </message>
-    <message>
-        <source>DRY (Don&apos;t Repeat Yourself) the parameters are selected for optimal recognition accuracy in llama.cpp</source>
-        <translation type="vanished">DRY (Don&apos;t Repeat Yourself) параметры подобраны для оптимальной точности распознавания в llama.cpp</translation>
-    </message>
-    <message>
-        <source>OCR model</source>
-        <translation type="vanished">Модель OCR</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation type="vanished">Профиль</translation>
-    </message>
-    <message>
-        <source>Restore profile</source>
-        <translation type="vanished">Восстановить профиль</translation>
-    </message>
-    <message>
-        <source>Parameter</source>
-        <translation type="vanished">Параметр</translation>
-    </message>
-    <message>
-        <source>Value</source>
-        <translation type="vanished">Значение</translation>
-    </message>
-    <message>
-        <source>Description</source>
-        <translation type="vanished">Описание</translation>
-    </message>
-    <message>
-        <source>New parameter name</source>
-        <translation type="vanished">Имя нового параметра</translation>
-    </message>
-    <message>
-        <source>value</source>
-        <translation type="vanished">значение</translation>
-    </message>
-    <message>
-        <source>Add</source>
-        <translation type="vanished">Добавить</translation>
-    </message>
-    <message>
-        <source>Advanced request parameters sent to llama.cpp alongside the OCR prompt; see the llama.cpp server documentation</source>
-        <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом распознавания; см. документацию llama-server</translation>
-    </message>
-    <message>
-        <source>Advanced request parameters sent to llama.cpp alongside the check prompt; see the llama.cpp server documentation</source>
-        <translation type="vanished">Расширенные параметры запроса к llama.cpp, отправляемые вместе с промптом проверки; см. документацию llama-server</translation>
-    </message>
     <message>
         <location filename="../qml/Settings/RequestTab.qml" line="+49"/>
         <source>Match threshold (%)</source>
@@ -3283,21 +2518,6 @@
         <location line="-5"/>
         <source>Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.</source>
         <translation>Параметры запроса к decision-эндпоинту. Набор задаёт профиль модели — меняйте значения, а не список</translation>
-    </message>
-</context>
-<context>
-    <name>ReleaseCatalog</name>
-    <message>
-        <source>NVIDIA GPU detected (%1): CUDA backend recommended</source>
-        <translation>Обнаружен GPU NVIDIA (%1): рекомендуется бэкенд CUDA</translation>
-    </message>
-    <message>
-        <source>GPU detected (%1): Vulkan backend recommended</source>
-        <translation>Обнаружен GPU (%1): рекомендуется бэкенд Vulkan</translation>
-    </message>
-    <message>
-        <source>No GPU detected: CPU backend</source>
-        <translation>GPU не обнаружен: бэкенд CPU</translation>
     </message>
 </context>
 <context>
@@ -3382,14 +2602,6 @@
 <context>
     <name>RuntimeTab</name>
     <message>
-        <source>Launch setup wizard…</source>
-        <translation type="vanished">Запустить мастер настройки…</translation>
-    </message>
-    <message>
-        <source>Walks you through installing a runtime and a model, then configures the launch.</source>
-        <translation type="vanished">Проведёт вас по установке рантайма и модели, затем настроит запуск.</translation>
-    </message>
-    <message>
         <location filename="../qml/Settings/RuntimeTab.qml" line="+33"/>
         <source>Connection mode</source>
         <translation>Режим подключения</translation>
@@ -3473,10 +2685,6 @@
         <translation>Показать</translation>
     </message>
     <message>
-        <source>Request timeout (ms)</source>
-        <translation type="vanished">Время ожидания запроса (мс)</translation>
-    </message>
-    <message>
         <location line="+11"/>
         <source>Note: the API key is stored locally in plaintext. Avoid using production keys.</source>
         <translation>Примечание: API-ключ хранится локально в открытом виде. Не используйте рабочие ключи.</translation>
@@ -3484,62 +2692,6 @@
 </context>
 <context>
     <name>RuntimeTabInternal</name>
-    <message>
-        <source>llama-server binary</source>
-        <translation type="vanished">Бинарник llama-server</translation>
-    </message>
-    <message>
-        <source>path to llama-server</source>
-        <translation type="vanished">путь к llama-server</translation>
-    </message>
-    <message>
-        <source>Browse…</source>
-        <translation type="vanished">Обзор…</translation>
-    </message>
-    <message>
-        <source>Select llama-server binary</source>
-        <translation type="vanished">Выбрать бинарник llama-server</translation>
-    </message>
-    <message>
-        <source>Executables (*)</source>
-        <translation type="vanished">Исполняемые файлы (*)</translation>
-    </message>
-    <message>
-        <source>Auto-detect</source>
-        <translation type="vanished">Определить автоматически</translation>
-    </message>
-    <message>
-        <source>Not probed yet</source>
-        <translation type="vanished">Ещё не проверено</translation>
-    </message>
-    <message>
-        <source>No server binary selected</source>
-        <translation type="vanished">Бинарник сервера не выбран</translation>
-    </message>
-    <message>
-        <source>Check</source>
-        <translation type="vanished">Проверить</translation>
-    </message>
-    <message>
-        <source>Start</source>
-        <translation type="vanished">Запустить</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation type="vanished">Остановить</translation>
-    </message>
-    <message>
-        <source>Restart</source>
-        <translation type="vanished">Перезапустить</translation>
-    </message>
-    <message>
-        <source>Show log</source>
-        <translation type="vanished">Показать журнал</translation>
-    </message>
-    <message>
-        <source>Managed mode uses this binary to run a local llama-server. Recognition in External mode is unaffected.</source>
-        <translation type="vanished">Режим Managed использует этот бинарник для запуска локального llama-server. Распознавание в режиме External не затрагивается.</translation>
-    </message>
     <message>
         <location filename="../qml/Settings/RuntimeTabInternal.qml" line="+71"/>
         <source>Install llama.cpp</source>
@@ -3559,18 +2711,6 @@
         <location line="+5"/>
         <source>Installed builds</source>
         <translation>Установленные сборки</translation>
-    </message>
-    <message>
-        <source>%1 — binary missing</source>
-        <translation type="vanished">%1 — бинарник отсутствует</translation>
-    </message>
-    <message>
-        <source>Active</source>
-        <translation type="vanished">Активна</translation>
-    </message>
-    <message>
-        <source>Activate</source>
-        <translation type="vanished">Активировать</translation>
     </message>
     <message>
         <location line="+45"/>
@@ -3664,33 +2804,6 @@
     </message>
 </context>
 <context>
-    <name>SDTabBar</name>
-    <message>
-        <source>UI</source>
-        <translation type="vanished">Интерфейс</translation>
-    </message>
-    <message>
-        <source>Request</source>
-        <translation type="vanished">Запрос</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation type="vanished">Вывод</translation>
-    </message>
-    <message>
-        <source>Runtime</source>
-        <translation type="vanished">Рантайм</translation>
-    </message>
-    <message>
-        <source>Launch</source>
-        <translation type="vanished">Запуск</translation>
-    </message>
-    <message>
-        <source>Models</source>
-        <translation type="vanished">Модели</translation>
-    </message>
-</context>
-<context>
     <name>SelfTestController</name>
     <message>
         <location filename="../../src/runtime/SelfTestController.cpp" line="-7"/>
@@ -3734,43 +2847,16 @@
             <numerusform>%n строк</numerusform>
         </translation>
     </message>
-    <message>
-        <source>live</source>
-        <translation type="vanished">вживую</translation>
-    </message>
-</context>
-<context>
-    <name>SettingsDialog</name>
-    <message>
-        <source>Settings</source>
-        <translation type="vanished">Настройки</translation>
-    </message>
-    <message>
-        <source>Output parser</source>
-        <translation type="vanished">Парсер вывода</translation>
-    </message>
-    <message>
-        <source>‘raw’ keeps the model text as-is. ‘det_tokens’ extracts positioned fragments (bounding boxes) for the overlay.</source>
-        <translation type="vanished">«raw» оставляет текст модели как есть. «det_tokens» извлекает позиционированные фрагменты (ограничивающие рамки) для наложения.</translation>
-    </message>
-    <message>
-        <source>Select llama-server binary</source>
-        <translation type="vanished">Выберите бинарник llama-server</translation>
-    </message>
-    <message>
-        <source>Executables (*)</source>
-        <translation type="vanished">Исполняемые файлы (*)</translation>
-    </message>
 </context>
 <context>
     <name>SetupWizard</name>
     <message>
-        <location filename="../qml/SetupWizard.qml" line="+26"/>
+        <location filename="../qml/SetupWizard.qml" line="+27"/>
         <source>Setup</source>
         <translation>Настройка</translation>
     </message>
     <message>
-        <location line="+113"/>
+        <location line="+114"/>
         <source>Step %1 of %2</source>
         <translation>Шаг %1 из %2</translation>
     </message>
@@ -3798,54 +2884,67 @@
 <context>
     <name>StepCheck</name>
     <message>
+        <location filename="../qml/Setup/StepCheck.qml" line="+118"/>
         <source>Check and launch</source>
         <translation>Проверка и запуск</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>The button downloads everything that is still missing — the runtime and the models — then runs an end-to-end check: the server starts, the model loads, one OCR request is performed.</source>
         <translation>Кнопка скачивает всё недостающее — рантайм и модели — затем выполняет сквозную проверку: запускается сервер, загружается модель, выполняется один OCR-запрос.</translation>
     </message>
     <message>
+        <location line="+12"/>
         <source>To download</source>
         <translation>Будет скачано</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>llama.cpp runtime — %1 backend</source>
         <translation>Рантайм llama.cpp — бэкенд %1</translation>
     </message>
     <message>
+        <location line="+24"/>
         <source>Models total: %1</source>
         <translation>Модели суммарно: %1</translation>
     </message>
     <message>
+        <location line="+8"/>
         <source>Everything is already installed — only the check remains.</source>
         <translation>Всё уже установлено — осталась только проверка.</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>Download and check</source>
         <translation>Скачать и проверить</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Check</source>
         <translation>Проверить</translation>
     </message>
     <message>
+        <location line="+13"/>
         <source>Running self-test…</source>
         <translation>Выполняется самопроверка…</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Self-test passed: “%1”</source>
         <translation>Самопроверка пройдена: «%1»</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>All set.</source>
         <translation>Всё готово.</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>The check starts the server and performs one OCR request.</source>
         <translation>Проверка запускает сервер и выполняет один OCR-запрос.</translation>
     </message>
     <message>
+        <location line="+42"/>
         <source>Something failed — see the message above, fix the cause and press the button again.</source>
         <translation>Что-то не получилось — см. сообщение выше, устраните причину и нажмите кнопку ещё раз.</translation>
     </message>
@@ -3866,30 +2965,37 @@
 <context>
     <name>StepHardware</name>
     <message>
+        <location filename="../qml/Setup/StepHardware.qml" line="+52"/>
         <source>Hardware and models</source>
         <translation>Оборудование и модели</translation>
     </message>
     <message>
+        <location line="+8"/>
         <source>The app has detected your hardware and picked the runtime backend and default models — a quantization that fits the memory. Change anything below; the check runs on the last step.</source>
         <translation>Программа определила оборудование и выбрала бэкенд рантайма и модели по умолчанию — с квантованием, влезающим в память. Всё можно изменить ниже; проверка — на последнем шаге.</translation>
     </message>
     <message>
+        <location line="+11"/>
         <source>Detected hardware</source>
         <translation>Обнаружено оборудование</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>CPU (no GPU detected)</source>
         <translation>CPU (GPU не обнаружен)</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>VRAM</source>
         <translation>VRAM</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>RAM</source>
         <translation>RAM</translation>
     </message>
     <message>
+        <location line="+12"/>
         <source>Runtime backend</source>
         <translation>Рекомендуемый рантайм</translation>
     </message>
@@ -3905,26 +3011,6 @@
         <location line="+8"/>
         <source>This assistant recognizes text from images and PDFs using a local LLM. A few steps will configure the app — you can change everything later in Settings.</source>
         <translation>Этот помощник распознаёт текст на изображениях и PDF с помощью локальной LLM. Несколько шагов настроят приложение — всё потом можно изменить в настройках.</translation>
-    </message>
-    <message>
-        <source>Language</source>
-        <translation type="vanished">Язык</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation type="vanished">Как в ОС</translation>
-    </message>
-    <message>
-        <source>Theme</source>
-        <translation type="vanished">Тема</translation>
-    </message>
-    <message>
-        <source>Light</source>
-        <translation type="vanished">Светлая</translation>
-    </message>
-    <message>
-        <source>Dark</source>
-        <translation type="vanished">Тёмная</translation>
     </message>
 </context>
 <context>
@@ -3998,30 +3084,6 @@
 <context>
     <name>StepWelcome</name>
     <message>
-        <source>Welcome to LLM OCR</source>
-        <translation type="vanished">Добро пожаловать в LLM OCR</translation>
-    </message>
-    <message>
-        <source>This assistant recognizes text from images and PDFs using a local LLM. Choose how to connect to a model.</source>
-        <translation type="vanished">Этот помощник распознаёт текст из изображений и PDF с помощью локальной LLM. Выберите, как подключиться к модели.</translation>
-    </message>
-    <message>
-        <source>Local server (recommended)</source>
-        <translation type="vanished">Локальный сервер (рекомендуется)</translation>
-    </message>
-    <message>
-        <source>I already have a server or API</source>
-        <translation type="vanished">У меня уже есть сервер или API</translation>
-    </message>
-    <message>
-        <source>LLM OCR downloads and runs llama.cpp locally. Everything stays on this machine.</source>
-        <translation type="vanished">LLM OCR скачивает и запускает llama.cpp локально. Всё остаётся на этом компьютере.</translation>
-    </message>
-    <message>
-        <source>Point to an existing OpenAI-compatible endpoint and configure it in Settings.</source>
-        <translation type="vanished">Укажите существующий OpenAI-совместимый endpoint и настройте его в Настройках.</translation>
-    </message>
-    <message>
         <location filename="../qml/Setup/StepWelcome.qml" line="+32"/>
         <source>Choose how to work with the LLM.</source>
         <translation>Выберите способ работы с LLM.</translation>
@@ -4037,14 +3099,6 @@
         <translation>Готовая сборка llama.cpp скачивается и обновляется приложением.</translation>
     </message>
     <message>
-        <source>LLM OCR will manage the server (I will specify the llama.cpp binary)</source>
-        <translation type="vanished">LLM OCR будет управлять запуском сервера (укажу расположение исполняемого файла llama.cpp)</translation>
-    </message>
-    <message>
-        <source>You already have a llama-server binary on this machine.</source>
-        <translation type="vanished">Бинарник llama-server уже есть на этом компьютере.</translation>
-    </message>
-    <message>
         <location line="+3"/>
         <source>I will run the server with models myself</source>
         <translation>Я сам запущу сервер с моделями</translation>
@@ -4056,20 +3110,168 @@
     </message>
 </context>
 <context>
-    <name>TestAppImport</name>
+    <name>TaskModelsTable</name>
     <message>
-        <source>Broken page %1.</source>
-        <translation type="vanished">Повреждённая страница %1.</translation>
+        <location filename="../qml/Common/TaskModelsTable.qml" line="+145"/>
+        <source>Model</source>
+        <translation>Модель</translation>
     </message>
     <message>
+        <location line="-26"/>
+        <source>Installed</source>
+        <translation>Установлен</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Download</source>
+        <translation>Скачать</translation>
+    </message>
+    <message>
+        <location line="+215"/>
+        <source>Launch and request settings</source>
+        <translation>Запуск и запрос</translation>
+    </message>
+    <message>
+        <location line="+86"/>
+        <source>Launch</source>
+        <translation>Запуск</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Request</source>
+        <translation>Запрос</translation>
+    </message>
+    <message>
+        <location line="-20"/>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+</context>
+<context>
+    <name>TaskModelsWindow</name>
+    <message>
+        <location filename="../qml/Settings/TaskModelsWindow.qml" line="+13"/>
+        <source>Models</source>
+        <translation>Модели</translation>
+    </message>
+    <message>
+        <location line="+35"/>
+        <source>Restore defaults</source>
+        <translation>Вернуть настройки по умолчанию</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <location line="+219"/>
+        <location line="+56"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <location line="-266"/>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <location line="+190"/>
+        <source>Models to download</source>
+        <translation>Модели для скачивания</translation>
+    </message>
+    <message>
+        <location line="+25"/>
+        <source>Download</source>
+        <translation>Скачать</translation>
+    </message>
+    <message>
+        <location line="-145"/>
+        <source>Downloaded model files on disk</source>
+        <translation>Загруженные файлы моделей на диске</translation>
+    </message>
+    <message>
+        <location line="+104"/>
+        <source>Downloaded models will appear here — pick a quantization in the rows above and save.</source>
+        <translation>Скачанные модели появятся здесь — выберите квантование в строках выше и сохраните.</translation>
+    </message>
+    <message>
+        <location line="-25"/>
+        <location line="+122"/>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Delete model file</source>
+        <translation>Удалить файл модели</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Delete %1 from disk?</source>
+        <translation>Удалить %1 с диска?</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>%1 is used by %2 task(s). The task rows keep their choice, but the model is gone from disk until you download it again.</source>
+        <translation>%1 привязана к задачам (%2). Строки задач сохранят выбор, но модели на диске больше нет, пока вы не скачаете её снова.</translation>
+    </message>
+</context>
+<context>
+    <name>TaskStatus</name>
+    <message>
+        <location filename="../qml/TaskStatus.qml" line="+18"/>
+        <source>Opening %1 / %2</source>
+        <translation>Открытие %1 / %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Checking %1 / %2</source>
+        <translation>Проверка %1 / %2</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Fixing %1 / %2</source>
+        <translation>Исправление %1 / %2</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Re-recognizing %1 / %2</source>
+        <translation>Распознавание %1 / %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Markup %1 / %2</source>
+        <translation>Разметка %1 / %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Check finished</source>
+        <translation>Проверка закончена</translation>
+    </message>
+    <message numerus="yes">
+        <location line="-16"/>
+        <source>%n more in queue</source>
+        <translation>
+            <numerusform>ещё %n в очереди</numerusform>
+            <numerusform>ещё %n в очереди</numerusform>
+            <numerusform>ещё %n в очереди</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
+    <name>TestAppImport</name>
+    <message>
+        <location filename="../../tests/test_app_import.cpp" line="+1027"/>
+        <source>Broken page %1.</source>
+        <translation>Повреждённая страница %1.</translation>
+    </message>
+    <message>
+        <location line="+31"/>
         <source>Page %1 is blank.</source>
-        <translation type="vanished">Страница %1 пустая.</translation>
+        <translation>Страница %1 пустая.</translation>
     </message>
 </context>
 <context>
     <name>ThumbDelegate</name>
     <message>
-        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="+87"/>
+        <location filename="../qml/MainWindow/ThumbDelegate.qml" line="+89"/>
         <source>Has duplicates</source>
         <translation>Дубликаты</translation>
     </message>
@@ -4094,7 +3296,7 @@
         <translation>Страница %1</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+62"/>
         <source>Delete page</source>
         <translation>Удалить страницу</translation>
     </message>
@@ -4104,7 +3306,7 @@
         <translation>Удалить страницу %1</translation>
     </message>
     <message>
-        <location line="-80"/>
+        <location line="-93"/>
         <source>Load error</source>
         <translation>Ошибка загрузки</translation>
     </message>
@@ -4112,43 +3314,24 @@
 <context>
     <name>ThumbPanel</name>
     <message>
+        <location filename="../qml/MainWindow/ThumbPanel.qml" line="+21"/>
         <source>No pages</source>
         <translation>Нет страниц</translation>
     </message>
     <message>
+        <location line="+17"/>
         <source>Pages</source>
         <translation>Страницы</translation>
     </message>
     <message>
+        <location line="+15"/>
         <source>Select all (%1)</source>
         <translation>Выбрать все (%1)</translation>
     </message>
     <message>
+        <location line="-1"/>
         <source>Select none</source>
         <translation>Снять выделение</translation>
-    </message>
-</context>
-<context>
-    <name>UITab</name>
-    <message>
-        <source>Language</source>
-        <translation type="vanished">Язык</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation type="vanished">Как в ОС</translation>
-    </message>
-    <message>
-        <source>Theme</source>
-        <translation type="vanished">Тема</translation>
-    </message>
-    <message>
-        <source>Light</source>
-        <translation type="vanished">Светлая</translation>
-    </message>
-    <message>
-        <source>Dark</source>
-        <translation type="vanished">Тёмная</translation>
     </message>
 </context>
 <context>
@@ -4167,113 +3350,9 @@
 <context>
     <name>VerificationBlocksTab</name>
     <message>
-        <source>Check automatically</source>
-        <translation type="vanished">Проверять автоматически</translation>
-    </message>
-    <message>
-        <source>When on, verification starts automatically as soon as recognition finishes. The managed runtime switches its loaded model from OCR to the check model; an external runtime just starts checking. Already checked blocks are skipped — only newly recognized blocks are verified.</source>
-        <translation type="vanished">Когда включено, проверка запускается автоматически сразу после завершения распознавания. Управляемый рантайм сам переключает загруженную модель с OCR на модель проверки; при внешнем рантайме проверка просто стартует. Уже проверенные блоки пропускаются — проверяются только вновь распознанные.</translation>
-    </message>
-    <message>
-        <source>Blocks whose type is checked below are verified automatically when verification runs. Unchecked types are skipped.</source>
-        <translation type="vanished">Блоки, тип которых отмечен ниже, проверяются автоматически при запуске проверки. Неотмеченные типы пропускаются.</translation>
-    </message>
-    <message>
-        <source>Blocks without OCR text (image, chart) are always skipped.</source>
-        <translation type="vanished">Блоки без OCR-текста (изображение, диаграмма) всегда пропускаются.</translation>
-    </message>
-    <message>
-        <source>Text</source>
-        <translation type="vanished">Текст</translation>
-    </message>
-    <message>
-        <source>Headings</source>
-        <translation type="vanished">Заголовки</translation>
-    </message>
-    <message>
-        <source>Tables</source>
-        <translation type="vanished">Таблицы</translation>
-    </message>
-    <message>
-        <source>Equations</source>
-        <translation type="vanished">Уравнения</translation>
-    </message>
-    <message>
-        <source>Formulas</source>
-        <translation type="vanished">Формулы</translation>
-    </message>
-    <message>
-        <source>Lists</source>
-        <translation type="vanished">Списки</translation>
-    </message>
-    <message>
-        <source>Code</source>
-        <translation type="vanished">Код</translation>
-    </message>
-    <message>
-        <source>Abstracts</source>
-        <translation type="vanished">Аннотации</translation>
-    </message>
-    <message>
-        <source>Image captions</source>
-        <translation type="vanished">Подписи к изображениям</translation>
-    </message>
-    <message>
-        <source>Table captions</source>
-        <translation type="vanished">Подписи к таблицам</translation>
-    </message>
-    <message>
-        <source>Figure footnotes</source>
-        <translation type="vanished">Сноски к изображениям</translation>
-    </message>
-    <message>
-        <source>Table footnotes</source>
-        <translation type="vanished">Сноски к таблицам</translation>
-    </message>
-    <message>
-        <source>Reference texts</source>
-        <translation type="vanished">Текст ссылок</translation>
-    </message>
-    <message>
-        <source>References</source>
-        <translation type="vanished">Ссылки</translation>
-    </message>
-    <message>
-        <source>Running headers</source>
-        <translation type="vanished">Верхние колонтитулы</translation>
-    </message>
-    <message>
-        <source>Running footers</source>
-        <translation type="vanished">Нижние колонтитулы</translation>
-    </message>
-    <message>
-        <source>Page numbers</source>
-        <translation type="vanished">Номера страниц</translation>
-    </message>
-    <message>
-        <source>Seals and stamps</source>
-        <translation type="vanished">Печати и штампы</translation>
-    </message>
-    <message>
-        <source>numbered display equations</source>
-        <translation type="vanished">выключные уравнения с номером</translation>
-    </message>
-    <message>
-        <source>isolated formulas (LaTeX)</source>
-        <translation type="vanished">изолированные формулы (LaTeX)</translation>
-    </message>
-    <message>
         <location filename="../qml/Settings/VerificationBlocksTab.qml" line="+124"/>
         <source>Automatic checking</source>
         <translation>Автоматическая проверка</translation>
-    </message>
-    <message>
-        <source>Automatic re-recognition</source>
-        <translation type="vanished">Автоматическое повторное распознавание</translation>
-    </message>
-    <message>
-        <source>Re-runs the blocks the decision model rejected through the block OCR model, right after the check.</source>
-        <translation type="vanished">Повторно распознаёт блоки, отклонённые decision-моделью, моделью OCR блока — сразу после проверки.</translation>
     </message>
     <message>
         <location line="+34"/>
@@ -4311,10 +3390,6 @@
         <translation>Проверка быстрая: decision-модель лишь оценивает по блокам, насколько вероятно, что текст соответствует изображению. Совпавшие блоки становятся зелёными, отклонённые — красными. Когда включено исправление, красные блоки исправляет модель fix. Управляемый рантайм переключает загруженную модель между двумя стадиями; внешний обслуживает обе.</translation>
     </message>
     <message>
-        <source>Checking is fast: the decision model only answers how likely the text matches the image, block by block. Matching blocks turn green; rejected ones turn red. When re-recognition is on, the red blocks are transcribed from scratch by the block OCR model. The managed runtime switches its loaded model between the two stages; an external runtime serves both.</source>
-        <translation type="vanished">Проверка быстрая: decision-модель лишь оценивает по блокам, насколько вероятно, что текст соответствует изображению. Совпавшие блоки становятся зелёными, отклонённые — красными. Когда включено повторное распознавание, красные блоки заново распознаёт модель OCR блока. Управляемый рантайм переключает загруженную модель между двумя стадиями; внешний обслуживает обе.</translation>
-    </message>
-    <message>
         <location line="+14"/>
         <source>Block types to check</source>
         <translation>Типы блоков для проверки</translation>
@@ -4335,149 +3410,15 @@
         <translation>Снять выбор</translation>
     </message>
     <message>
-        <source>Main content</source>
-        <translation type="vanished">Основное содержимое</translation>
-    </message>
-    <message>
-        <source>Captions, footnotes and references</source>
-        <translation type="vanished">Подписи, сноски и ссылки</translation>
-    </message>
-    <message>
-        <source>Service</source>
-        <translation type="vanished">Служебные</translation>
-    </message>
-    <message>
         <location line="+66"/>
         <source>Blocks without OCR text are not checked.</source>
         <translation>Блоки без OCR-текста не проверяются.</translation>
     </message>
 </context>
 <context>
-    <name>VerificationPanel</name>
-    <message>
-        <source>Check block</source>
-        <translation type="vanished">Проверка блока</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation type="vanished">ОК</translation>
-    </message>
-    <message>
-        <source>Fixed</source>
-        <translation type="vanished">Исправлено</translation>
-    </message>
-    <message>
-        <source>Review</source>
-        <translation type="vanished">Проверка</translation>
-    </message>
-    <message>
-        <source>Recognized text:</source>
-        <translation type="vanished">Распознанный текст:</translation>
-    </message>
-    <message>
-        <source>Block %1</source>
-        <translation type="vanished">Блок %1</translation>
-    </message>
-    <message>
-        <source>Corrected by the verifier:</source>
-        <translation type="vanished">Исправлено верификатором:</translation>
-    </message>
-    <message>
-        <source>Verify</source>
-        <translation type="vanished">Проверить</translation>
-    </message>
-    <message>
-        <source>Revert correction</source>
-        <translation type="vanished">Отменить исправление</translation>
-    </message>
-    <message>
-        <source>Delete block</source>
-        <translation type="vanished">Удалить блок</translation>
-    </message>
-    <message>
-        <source>Verify block</source>
-        <translation type="vanished">Проверить блок</translation>
-    </message>
-    <message>
-        <source>%1 / %2</source>
-        <translation type="vanished">%1 / %2</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation type="vanished">Стоп</translation>
-    </message>
-</context>
-<context>
-    <name>VerificationPromptsTab</name>
-    <message>
-        <source>Prompt for “%1” blocks</source>
-        <translation type="vanished">Промпт для блоков «%1»</translation>
-    </message>
-    <message>
-        <source>Prompt differs from the built-in one</source>
-        <translation type="vanished">Промпт отличается от исходного</translation>
-    </message>
-    <message>
-        <source>Select a block type</source>
-        <translation type="vanished">Выберите тип блока</translation>
-    </message>
-    <message>
-        <source>Unsaved changes</source>
-        <translation type="vanished">Есть несохранённые изменения</translation>
-    </message>
-    <message>
-        <source>Customized</source>
-        <translation type="vanished">Пользовательский</translation>
-    </message>
-    <message>
-        <source>Original</source>
-        <translation type="vanished">Исходный</translation>
-    </message>
-    <message>
-        <source>Selected for checking</source>
-        <translation type="vanished">Выбран для проверки</translation>
-    </message>
-    <message>
-        <source>Not selected for checking</source>
-        <translation type="vanished">Не выбран для проверки</translation>
-    </message>
-    <message>
-        <source>Answer format: OK / FIX / REVIEW</source>
-        <translation type="vanished">Формат ответа: OK / FIX / REVIEW</translation>
-    </message>
-    <message>
-        <source>OK — the block matches the image. FIX — the block was corrected: on the next line output the complete corrected block, it replaces the original. REVIEW — the block is unreadable, cropped or ambiguous.</source>
-        <translation type="vanished">OK — блок соответствует изображению. FIX — блок был исправлен: на следующей строке выведите полностью исправленный блок, он заменяет исходный. REVIEW — блок нечитаем, обрезан или неоднозначен.</translation>
-    </message>
-    <message>
-        <source>Prompt</source>
-        <translation type="vanished">Промпт</translation>
-    </message>
-    <message>
-        <source>Restore original prompt</source>
-        <translation type="vanished">Восстановить исходный промпт</translation>
-    </message>
-    <message>
-        <source>Restore original prompt?</source>
-        <translation type="vanished">Восстановить исходный промпт?</translation>
-    </message>
-    <message>
-        <source>The customized prompt for this block type will be replaced by the built-in one. The change is applied to the window draft and is stored only after Save.</source>
-        <translation type="vanished">Пользовательский промпт для этого типа блока будет заменён встроенным. Изменение попадёт в черновик окна и сохранится только после «Сохранить».</translation>
-    </message>
-    <message>
-        <source>Ask the verifier to check this kind of block against the image and answer with OK, FIX followed by the corrected block, or REVIEW.</source>
-        <translation type="vanished">Попросите верификатор проверить блок этого типа по изображению и ответить OK, FIX с исправленным блоком или REVIEW.</translation>
-    </message>
-    <message>
-        <source>Prompt for the selected block type</source>
-        <translation type="vanished">Промпт для выбранного типа блока</translation>
-    </message>
-</context>
-<context>
     <name>VerificationQueueController</name>
     <message>
-        <location filename="../../src/app/VerificationQueueController.cpp" line="+194"/>
+        <location filename="../../src/app/VerificationQueueController.cpp" line="+212"/>
         <source>Nothing to check:</source>
         <translation>Проверять нечего:</translation>
     </message>
@@ -4495,10 +3436,6 @@
         <translation>Настройки проверки</translation>
     </message>
     <message>
-        <source>Blocks</source>
-        <translation type="vanished">Блоки</translation>
-    </message>
-    <message>
         <location line="+22"/>
         <source>Reset all settings</source>
         <translation>Сбросить все настройки</translation>
@@ -4514,22 +3451,6 @@
         <translation>Есть несохранённые изменения. Закрыть без сохранения?</translation>
     </message>
     <message>
-        <source>Block checking</source>
-        <translation type="vanished">Проверка блоков</translation>
-    </message>
-    <message>
-        <source>System prompt</source>
-        <translation type="vanished">Системный промпт</translation>
-    </message>
-    <message>
-        <source>Block prompts</source>
-        <translation type="vanished">Промпты блоков</translation>
-    </message>
-    <message>
-        <source>Restore defaults</source>
-        <translation type="vanished">Вернуть настройки по умолчанию</translation>
-    </message>
-    <message>
         <location line="-53"/>
         <source>Save</source>
         <translation>Сохранить</translation>
@@ -4541,242 +3462,37 @@
     </message>
 </context>
 <context>
-    <name>VerificationSystemTab</name>
-    <message>
-        <source>The system prompt sets the verification protocol. The verifier model answers with one of: OK — the block is correct; FIX followed by a newline and the complete corrected block; or REVIEW — the block is unreadable.</source>
-        <translation type="vanished">Системный промпт задаёт протокол проверки. Модель-верификатор отвечает одним из: OK — блок верен; FIX, за которым на новой строке полный исправленный блок; или REVIEW — блок нечитаем.</translation>
-    </message>
-    <message>
-        <source>Customized</source>
-        <translation type="obsolete">Пользовательский</translation>
-    </message>
-    <message>
-        <source>Original</source>
-        <translation type="obsolete">Исходный</translation>
-    </message>
-    <message>
-        <source>Restore original prompt</source>
-        <translation type="vanished">Восстановить исходный промпт</translation>
-    </message>
-    <message>
-        <source>System prompt for the verification model</source>
-        <translation type="vanished">Системный промпт для модели проверки</translation>
-    </message>
-    <message>
-        <source>Restore original system prompt?</source>
-        <translation type="vanished">Восстановить исходный системный промпт?</translation>
-    </message>
-    <message>
-        <source>The customized system prompt will be replaced by the built-in one. The change is applied to the window draft and is stored only after Save.</source>
-        <translation type="vanished">Пользовательский системный промпт будет заменён встроенным. Изменение попадёт в черновик окна и сохранится только после «Сохранить».</translation>
-    </message>
-</context>
-<context>
     <name>WorkPanel</name>
     <message>
+        <location filename="../qml/MainWindow/WorkPanel.qml" line="+30"/>
         <source>Recognized text will appear here</source>
         <translation>Здесь появится распознанный текст</translation>
     </message>
     <message>
+        <location line="+19"/>
         <source>Edited</source>
         <translation>Изменено</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>Revert</source>
         <translation>Отменить изменения</translation>
     </message>
     <message>
+        <location line="+19"/>
+        <location line="+2"/>
         <source>Copy the page text</source>
         <translation>Копировать текст страницы</translation>
     </message>
     <message>
+        <location line="+12"/>
         <source>Text (MD)</source>
         <translation>Текст (MD)</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Preview</source>
         <translation>Предпросмотр</translation>
-    </message>
-    <message>
-        <source>Check block</source>
-        <translation type="vanished">Проверка блока</translation>
-    </message>
-    <message>
-        <source>Recognized text:</source>
-        <translation type="vanished">Распознанный текст:</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation type="vanished">ОК</translation>
-    </message>
-    <message>
-        <source>Fixed</source>
-        <translation type="vanished">Исправлено</translation>
-    </message>
-    <message>
-        <source>Review</source>
-        <translation type="vanished">Проверка</translation>
-    </message>
-    <message>
-        <source>Corrected by the verifier:</source>
-        <translation type="vanished">Исправлено верификатором:</translation>
-    </message>
-    <message>
-        <source>Verify block</source>
-        <translation type="vanished">Проверить блок</translation>
-    </message>
-    <message>
-        <source>Check page</source>
-        <translation type="vanished">Проверить страницу</translation>
-    </message>
-    <message>
-        <source>%1 / %2</source>
-        <translation type="vanished">%1 / %2</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation type="vanished">Стоп</translation>
-    </message>
-    <message>
-        <source>Check the text against the image and fix any errors. Return only the corrected text.</source>
-        <translation type="vanished">Проверь текст по изображению и исправь все ошибки. Верни только исправленный текст.</translation>
-    </message>
-    <message>
-        <source>Check</source>
-        <translation type="vanished">Проверить</translation>
-    </message>
-    <message>
-        <source>Apply fix</source>
-        <translation type="vanished">Применить исправление</translation>
-    </message>
-</context>
-<context>
-    <name>llocr::AppController</name>
-    <message>
-        <source>Warning: %1 page(s) replaced with blank pages. %2</source>
-        <translation type="vanished">Внимание: %1 стр. заменено пустыми страницами. %2</translation>
-    </message>
-    <message>
-        <source>Importing %1 (%2/%3)…</source>
-        <translation type="vanished">Импорт %1 (%2/%3)…</translation>
-    </message>
-    <message>
-        <source>No files selected.</source>
-        <translation type="vanished">Не выбрано ни одного файла</translation>
-    </message>
-    <message>
-        <source>No supported files selected.</source>
-        <translation type="vanished">Не выбрано ни одного поддерживаемого файла</translation>
-    </message>
-    <message>
-        <source>None of the selected files could be added.</source>
-        <translation type="vanished">Ни один из выбранных файлов не удалось добавить</translation>
-    </message>
-    <message>
-        <source>Added %1 file(s), %2 page(s); %3 file(s) skipped.</source>
-        <translation type="vanished">Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
-    </message>
-    <message>
-        <source>Added %1 file(s), %2 page(s).</source>
-        <translation type="vanished">Добавлено файлов: %1, страниц: %2</translation>
-    </message>
-    <message>
-        <source>Page %1 deleted.</source>
-        <translation type="vanished">Страница %1 удалена</translation>
-    </message>
-    <message>
-        <source>Moved page %1 to position %2.</source>
-        <translation type="vanished">Страница %1 перемещена на позицию %2.</translation>
-    </message>
-    <message>
-        <source>Set a model name in Settings first.</source>
-        <translation type="vanished">Сначала укажите название модели в настройках.</translation>
-    </message>
-    <message>
-        <source>No output path.</source>
-        <translation type="vanished">Не указан путь для сохранения.</translation>
-    </message>
-    <message>
-        <source>Nothing to export for the selected pages (no recognized pages in that selection).</source>
-        <translation type="vanished">Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
-    </message>
-    <message>
-        <source>An export is already in progress.</source>
-        <translation type="vanished">Экспорт уже выполняется.</translation>
-    </message>
-    <message>
-        <source>Exporting…</source>
-        <translation type="vanished">Экспорт…</translation>
-    </message>
-    <message>
-        <source>Exporting… (%1/%2)</source>
-        <translation type="vanished">Экспорт… (%1/%2)</translation>
-    </message>
-    <message>
-        <source>%1 (%2 page(s)).</source>
-        <translation type="vanished">%1 (%2 стр.).</translation>
-    </message>
-    <message>
-        <source>Markdown (*.md)</source>
-        <translation type="vanished">Markdown (*.md)</translation>
-    </message>
-    <message>
-        <source>Plain text (*.txt)</source>
-        <translation type="vanished">Обычный текст (*.txt)</translation>
-    </message>
-    <message>
-        <source>HTML (*.html)</source>
-        <translation type="vanished">HTML (*.html)</translation>
-    </message>
-    <message>
-        <source>Word document (*.docx)</source>
-        <translation type="vanished">Документ Word (*.docx)</translation>
-    </message>
-    <message>
-        <source>PDF (*.pdf)</source>
-        <translation type="vanished">PDF (*.pdf)</translation>
-    </message>
-</context>
-<context>
-    <name>llocr::CheckController</name>
-    <message>
-        <source>No response</source>
-        <translation type="vanished">Нет ответа</translation>
-    </message>
-    <message>
-        <source>Stopping…</source>
-        <translation type="obsolete">Остановка…</translation>
-    </message>
-    <message>
-        <source>Connection is not configured.</source>
-        <translation type="vanished">Подключение не настроено.</translation>
-    </message>
-</context>
-<context>
-    <name>llocr::ExportController</name>
-    <message>
-        <source>Exporting… (%1/%2)</source>
-        <translation type="vanished">Экспорт… (%1/%2)</translation>
-    </message>
-    <message>
-        <source>No output path.</source>
-        <translation type="vanished">Не указан путь для сохранения.</translation>
-    </message>
-    <message>
-        <source>An export is already in progress.</source>
-        <translation type="vanished">Экспорт уже выполняется.</translation>
-    </message>
-    <message>
-        <source>Nothing to export for the selected pages (no recognized pages in that selection).</source>
-        <translation type="vanished">Экспортировать нечего: в выбранных страницах нет распознанных.</translation>
-    </message>
-    <message>
-        <source>Exporting…</source>
-        <translation type="vanished">Экспорт…</translation>
-    </message>
-    <message>
-        <source>%1 (%2 page(s)).</source>
-        <translation type="vanished">%1 (%2 стр.).</translation>
     </message>
 </context>
 <context>
@@ -4819,6 +3535,23 @@
     </message>
 </context>
 <context>
+    <name>llocr::InstalledFilesModel</name>
+    <message numerus="yes">
+        <location filename="../../src/runtime/InstalledFilesModel.cpp" line="+80"/>
+        <source>Used by %n task(s)</source>
+        <translation>
+            <numerusform>Используется в %n задаче</numerusform>
+            <numerusform>Используется в %n задачах</numerusform>
+            <numerusform>Используется в %n задачах</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Not used</source>
+        <translation>Не используется</translation>
+    </message>
+</context>
+<context>
     <name>llocr::ModelInstallTransaction</name>
     <message>
         <location filename="../../src/runtime/ModelInstallTransaction.cpp" line="-244"/>
@@ -4858,10 +3591,6 @@
         <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
     </message>
     <message>
-        <source>Draft module %1 not found in %2</source>
-        <translation type="vanished">Модуль черновика %1 не найден в %2</translation>
-    </message>
-    <message>
         <location line="+25"/>
         <source>Unable to read downloaded file %1</source>
         <translation>Не удалось прочитать скачанный файл %1</translation>
@@ -4877,7 +3606,7 @@
         <translation>Модель загружена, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+20"/>
         <source>Installed %1</source>
         <translation>Установлено %1</translation>
     </message>
@@ -4890,19 +3619,19 @@
 <context>
     <name>llocr::ModelInstaller</name>
     <message>
-        <location filename="../../src/runtime/ModelInstaller.cpp" line="+307"/>
-        <location line="+110"/>
+        <location filename="../../src/runtime/ModelInstaller.cpp" line="+308"/>
+        <location line="+122"/>
         <location line="+84"/>
         <source>Invalid model selection</source>
         <translation>Неверный выбор модели</translation>
     </message>
     <message>
-        <location line="-191"/>
+        <location line="-203"/>
         <source>This model has no model file selected</source>
         <translation>У этой модели не выбран файл модели</translation>
     </message>
     <message>
-        <location line="+160"/>
+        <location line="+172"/>
         <source>Unable to remove model file: %1</source>
         <translation>Не удалось удалить файл модели: %1</translation>
     </message>
@@ -4927,131 +3656,66 @@
         <translation>Файлы моделей удалены, но реестр не удалось сохранить: %1</translation>
     </message>
     <message>
-        <location line="-203"/>
+        <location line="-215"/>
         <source>The selected model is no longer on disk: %1 — pick another one in Settings → Models.</source>
         <translation>Выбранной модели больше нет на диске: %1 — выберите другую в Настройки → Модели.</translation>
     </message>
     <message>
-        <source>No preset selected</source>
-        <translation type="vanished">Пресет не выбран</translation>
-    </message>
-    <message>
-        <source>The preset is not installed</source>
-        <translation type="vanished">Пресет не установлен</translation>
-    </message>
-    <message>
-        <location line="+67"/>
-        <location line="+22"/>
+        <location line="+101"/>
         <location line="+34"/>
         <source>This quantization is not installed</source>
         <translation>Этот квант не установлен</translation>
     </message>
     <message>
         <location line="-45"/>
+        <location line="+358"/>
         <source>This quantization is not available for download</source>
         <translation>Этот квант недоступен для скачивания</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="-368"/>
+        <location line="+29"/>
         <source>This model is not installed</source>
         <translation>Эта модель не установлена</translation>
     </message>
-    <message>
-        <source>Enter a search query</source>
-        <translation type="vanished">Введите поисковый запрос</translation>
-    </message>
-    <message>
-        <source>Searching Hugging Face …</source>
-        <translation type="vanished">Поиск на Hugging Face …</translation>
-    </message>
-    <message>
-        <source>No models found</source>
-        <translation type="vanished">Модели не найдены</translation>
-    </message>
-    <message>
-        <source>%1 model(s) found</source>
-        <translation type="vanished">Найдено моделей: %1</translation>
-    </message>
-    <message>
-        <source>Invalid search selection</source>
-        <translation type="vanished">Некорректный выбор результата поиска</translation>
-    </message>
-    <message>
-        <source>Unable to open catalog: %1</source>
-        <translation type="vanished">Не удалось открыть каталог: %1</translation>
-    </message>
-    <message>
-        <source>Catalog is not valid JSON: %1</source>
-        <translation type="vanished">Каталог не является корректным JSON: %1</translation>
-    </message>
-    <message>
-        <source>Unexpected catalog shape</source>
-        <translation type="vanished">Неожиданный формат каталога</translation>
-    </message>
-    <message>
-        <source>No valid presets in file</source>
-        <translation type="vanished">В файле нет корректных пресетов</translation>
-    </message>
 </context>
 <context>
-    <name>llocr::RecognitionController</name>
+    <name>llocr::ModelQuantModel</name>
     <message>
-        <source>Page %1 is a blank replacement for an unreadable page; recognition skipped.</source>
-        <translation type="vanished">Страница %1 — пустая замена нечитаемой страницы; распознавание пропущено.</translation>
+        <location filename="../../src/runtime/ModelQuantModel.cpp" line="+94"/>
+        <source>full precision</source>
+        <translation>полная точность</translation>
     </message>
     <message>
-        <source>Done. Skipped %1 unreadable page(s).</source>
-        <translation type="vanished">Готово. Пропущено нечитаемых страниц: %1.</translation>
+        <location line="+2"/>
+        <source>max quality</source>
+        <translation>макс. качество</translation>
     </message>
     <message>
-        <source>Stopped before recognition started.</source>
-        <translation type="vanished">Остановлено до начала распознавания.</translation>
+        <location line="+2"/>
+        <source>high quality, compact</source>
+        <translation>высокое качество, компактнее</translation>
     </message>
     <message>
-        <source>Connection is not configured.</source>
-        <translation type="vanished">Подключение не настроено.</translation>
+        <location line="+2"/>
+        <source>good quality, less memory</source>
+        <translation>хорошее качество, меньше памяти</translation>
     </message>
     <message>
-        <source>Recognizing page %1 of %2…</source>
-        <translation type="vanished">Распознавание страницы %1 из %2…</translation>
+        <location line="+2"/>
+        <source>less memory</source>
+        <translation>меньше памяти</translation>
     </message>
     <message>
-        <source>No response</source>
-        <translation type="vanished">Нет ответа</translation>
-    </message>
-    <message>
-        <source>Stopped at page %1.</source>
-        <translation type="vanished">Остановлено на странице %1.</translation>
-    </message>
-    <message>
-        <source>Recognition finished. Skipped %1 unreadable page(s).</source>
-        <translation type="vanished">Распознавание закончено. Пропущено нечитаемых страниц: %1.</translation>
-    </message>
-    <message>
-        <source>Recognition finished.</source>
-        <translation type="vanished">Распознавание закончено.</translation>
-    </message>
-    <message>
-        <source>Error on page %1: %2</source>
-        <translation type="vanished">Ошибка на странице %1: %2</translation>
-    </message>
-    <message>
-        <source>Stopped after page %1.</source>
-        <translation type="vanished">Остановлено после страницы %1.</translation>
-    </message>
-    <message>
-        <source>Done.</source>
-        <translation type="vanished">Готово.</translation>
-    </message>
-    <message>
-        <source>Stopping…</source>
-        <translation type="vanished">Остановка…</translation>
+        <location line="+3"/>
+        <source>for weak PCs</source>
+        <translation>для слабых ПК</translation>
     </message>
 </context>
 <context>
     <name>llocr::RuntimeController</name>
     <message>
-        <location filename="../../src/runtime/RuntimeController.cpp" line="+448"/>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="+473"/>
         <source>Another LLocr instance is already running</source>
         <translation>Уже запущен другой экземпляр LLocr</translation>
     </message>
@@ -5066,12 +3730,12 @@
         <translation>Запуск сервера…</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+30"/>
         <source>Stopping…</source>
         <translation>Остановка…</translation>
     </message>
     <message>
-        <location line="-570"/>
+        <location line="-597"/>
         <source>Managed server is not configured</source>
         <translation>Управляемый сервер не настроен</translation>
     </message>
@@ -5121,7 +3785,7 @@
         <translation>%1 требует llama.cpp %2 или новее (эта сборка — %3) — обновите рантайм в Настройки → Рантайм</translation>
     </message>
     <message>
-        <location line="+98"/>
+        <location line="+121"/>
         <source>Server is not set to start automatically. Start it from the main window or Settings → Runtime.</source>
         <translation>Сервер не настроен на автозапуск. Запустите его из главного окна или через Настройки → Рантайм.</translation>
     </message>
@@ -5146,7 +3810,7 @@
         <translation>Переключение на модель исправления…</translation>
     </message>
     <message>
-        <location line="-265"/>
+        <location line="-288"/>
         <source>Raw OCR model is not selected — pick a model in Settings → Models</source>
         <translation>Модель raw OCR не выбрана — выберите модель в Settings → Models</translation>
     </message>
@@ -5166,7 +3830,7 @@
         <translation>Файл модели исправления не найден: %1 — выберите модель заново в Settings → Models</translation>
     </message>
     <message>
-        <location line="+308"/>
+        <location line="+331"/>
         <source>Failed to query /v1/models: %1</source>
         <translation>Не удалось получить список моделей (/v1/models): %1</translation>
     </message>
@@ -5231,8 +3895,8 @@
         <translation>Бинарник сервера не выбран</translation>
     </message>
     <message>
-        <location line="-435"/>
-        <location line="+438"/>
+        <location line="-458"/>
+        <location line="+461"/>
         <source>File not found: %1</source>
         <translation>Файл не найден: %1</translation>
     </message>
@@ -5247,12 +3911,12 @@
         <translation>Сервер уже запущен</translation>
     </message>
     <message>
-        <location line="-433"/>
+        <location line="-456"/>
         <source>Model is not selected — pick a model in Settings → Models or in the Setup wizard</source>
         <translation>Модель не выбрана — выберите модель в Settings → Models или в мастере настройки</translation>
     </message>
     <message>
-        <location line="+629"/>
+        <location line="+656"/>
         <source>Server start cancelled</source>
         <translation>Запуск сервера отменён</translation>
     </message>
@@ -5262,7 +3926,7 @@
         <translation>Остановлен</translation>
     </message>
     <message>
-        <location line="-356"/>
+        <location line="-360"/>
         <source>Switching to the block OCR model…</source>
         <translation>Переключение на модель OCR блока…</translation>
     </message>
@@ -5277,7 +3941,7 @@
         <translation>Переключение на OCR-модель…</translation>
     </message>
     <message>
-        <location line="-243"/>
+        <location line="-266"/>
         <source>Block OCR model is not selected — pick a model in Settings → Block OCR model</source>
         <translation>Модель OCR блока не выбрана — выберите её в Settings → Модель OCR блока</translation>
     </message>
@@ -5477,13 +4141,6 @@
         <location filename="../../src/runtime/SingleInstanceGuard.cpp" line="+18"/>
         <source>Another LLocr instance is already running; local server operations are disabled.</source>
         <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
-    </message>
-</context>
-<context>
-    <name>llocr::VerificationQueueController</name>
-    <message>
-        <source>The state is a text fragment recognized from the attached image by an OCR model. Does the image show exactly this text?</source>
-        <translation type="vanished">State — это фрагмент текста, распознанный из приложенного изображения OCR-моделью. Изображение показывает ровно этот текст?</translation>
     </message>
 </context>
 </TS>

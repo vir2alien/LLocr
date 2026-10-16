@@ -47,6 +47,16 @@ public:
     Q_INVOKABLE int selectedCount() const;
     Q_INVOKABLE bool isSelected(int index) const;
 
+    // The toolbar's page-range field edits the selection through this pair:
+    // the compact 1-based form ("1-10, 15"), an empty selection formats to an
+    // empty string. applyPagesRange returns the parsed page count; an empty
+    // input clears the selection (the whole document), an input with no valid
+    // token changes nothing.
+    Q_INVOKABLE QString selectedPagesRange() const;
+    Q_INVOKABLE int applyPagesRange(const QString &range);
+    static QString formatPageRange(QList<int> pages);
+    static QList<int> parsePageRange(const QString &range, int pageCount);
+
 signals:
     void selectionChanged();
 

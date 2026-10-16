@@ -35,58 +35,28 @@ ToolBar {
         return String(sequence).replace("Ctrl+Shift+", "⇧⌘").replace("Ctrl+", "⌘")
     }
 
-    // The scope caption after the action names: an empty selection means the
-    // whole document.
-    function scopeCaption() {
-        if (!Controller.hasImage)
-            return ""
-        const n = Controller.selectedPageCount
-        if (n === 0 || n === Controller.pageCount)
-            return qsTr("all %1").arg(Controller.pageCount)
-        return qsTr("%1 pg.").arg(n)
-    }
+    // The page count the pipeline acts on: an empty selection means the whole
+    // document; the «Страницы» field is the same selection written as a range.
+    readonly property int scopePageCount: Controller.selectedPageCount > 0
+                                          ? Controller.selectedPageCount
+                                          : Controller.pageCount
 
-    function scopedText(base) {
-        const caption = scopeCaption()
-        return caption.length > 0 ? base + " " + caption : base
-    }
+    // The «Авто» quality tier is kept for the automatic pipelines; until they
+    // land the switch is live but its button stays disabled.
+    property int autoMode: 0
 
-    // The pipeline preset selector is a stub until the automatic pipelines
-    // land: the manual mode is what the step buttons below already are.
-    property bool manualPreset: true
-
-    // What the main click runs, chosen in «Распознать ▾»: 0 = the full page
-    // pass that produces the blocks and their text, 1 = the text of the
-    // already-marked blocks, 2 = raw text without blocks. The chosen menu
-    // item is mirrored onto the button caption; a mode is selectable only
-    // while its inputs exist, so the button can never sit on a dead choice.
-    property int recognizeMode: 0
-
-    function recognizeModeName() {
-        if (recognizeMode === 1)
-            return qsTr("By the marked blocks")
-        if (recognizeMode === 2)
-            return qsTr("Without markup")
-        return qsTr("With markup")
-    }
-
-    function recognizeModeTip() {
-        if (recognizeMode === 1)
-            return qsTr("Recognize the marked blocks that still have no text")
-        if (recognizeMode === 2)
-            return qsTr("Recognize the selected pages as raw text")
-        return qsTr("Recognize the selected pages: blocks and their text in one pass")
-    }
+    // The page-recognition button that was used last: while a page-recognition
+    // run is active the stop affordance shows on it (the running queue does
+    // not expose which role it serves).
+    property string pageRecognitionTask: "pageOcr"
 
     // The pipeline buttons' idle gate: recognition machinery plus the model
-    // download queue (which shares the footer line and the Stop key).
+    // download queue (the download queue has no toolbar affordance of its own
+    // — it is cancelled where it starts, in the Models window or the wizard).
     readonly property bool pipelineIdle: Controller.actionsIdle
                                          && !ModelInstaller.taskQueueActive
 
-    readonly property bool recognizeMainEnabled: headerRoot.pipelineIdle && Controller.hasImage
-        && (recognizeMode === 1 ? Controller.scopeBlocksRecognitionSupported && Controller.blockRecognitionModelAvailable
-        : recognizeMode === 2 ? Controller.canRecognize && Controller.rawPageOcrModelAvailable
-        : Controller.canRecognize && Controller.pageOcrModelAvailable)
+    implicitHeight: headerRow.implicitHeight + topPadding + bottomPadding
 
     background: Rectangle {
         color: Theme.surface
@@ -101,147 +71,270 @@ ToolBar {
     }
 
     RowLayout {
+        id: headerRow
         anchors.fill: parent
         spacing: Theme.spacingSmall
 
-        ToolButton {
-            id: fileButton
-            text: qsTr("File")
-            Layout.minimumWidth: implicitWidth
-            onClicked: fileMenu.popup(fileButton, 0, fileButton.height + 2)
+        ToolGroup {
+            captionLine: false
+
+            IconToolButton {
+                id: fileButton
+                text: qsTr("File")
+                iconName: "file-text"
+                Layout.fillWidth: true
+                onClicked: fileMenu.popup(fileButton, 0, fileButton.height + 2)
+            }
+
+            IconToolButton {
+                id: importButton
+                text: qsTr("Import")
+                iconName: "image"
+                Layout.fillWidth: true
+                enabled: !Controller.busy && !Controller.importing && !Controller.exporting
+                         && !Controller.checkBusy
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Open images, PDF or DjVu")
+                onClicked: headerRoot.openFileRequested()
+            }
         }
 
-        ToolSeparator {}
+        ToolDivider {}
 
-        RowLayout {
-            id: presetGroup
-            // The stub stays in place while a run is active; it just goes
-            // inactive like the pipeline buttons.
-            enabled: !TaskStatus.running()
-            spacing: Theme.spacingSmall
+        ToolGroup {
+            title: qsTr("Pages")
 
-            LLOLabel {
-                text: qsTr("Preset:")
-                color: Theme.textSecondary
+            TextField {
+                id: pagesField
+
+                implicitWidth: 110
+                implicitHeight: 28
+                enabled: Controller.hasImage
+                placeholderText: qsTr("All")
+                ToolTip.visible: hovered && enabled
+                ToolTip.text: qsTr("Pages to process: follows the selection in the thumbnail panel, or type a range like 1-10, 15")
+
+                function applyRange() {
+                    Controller.pageModel.applyPagesRange(pagesField.text)
+                    pagesField.text = Controller.pageModel.selectedPagesRange()
+                }
+
+                onAccepted: applyRange()
+                onActiveFocusChanged: {
+                    if (activeFocus)
+                        selectAll()
+                    else
+                        applyRange()
+                }
+
+                Connections {
+                    target: Controller.pageModel
+                    function onSelectionChanged() {
+                        if (!pagesField.activeFocus)
+                            pagesField.text = Controller.pageModel.selectedPagesRange()
+                    }
+                }
+            }
+        }
+
+        ToolDivider {}
+
+        ToolGroup {
+            title: qsTr("Auto")
+
+            SegmentedControl {
+                labels: [qsTr("Fast"), qsTr("Balanced"), qsTr("Accurate")]
+                currentIndex: headerRoot.autoMode
+                onActivated: (index) => headerRoot.autoMode = index
             }
 
             IconToolButton {
-                id: presetButton
-                iconName: "wrench"
-                text: qsTr("Manual") + " \u25be"
-                enabled: true
-                onClicked: presetMenu.popup(presetButton, 0, presetButton.height + 2)
-            }
-
-            IconToolButton {
-                text: qsTr("Auto-recognize")
-                iconName: "play"
+                text: qsTr("Recognize %1 pg.").arg(headerRoot.scopePageCount)
+                iconName: "zap"
+                Layout.fillWidth: true
                 enabled: false
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Automatic pipelines arrive in a later step")
             }
         }
 
-        ToolSeparator {}
+        ToolDivider {}
 
-        IconToolButton {
-            text: headerRoot.scopedText(qsTr("Mark up"))
-            iconName: "layout-template"
-            Layout.minimumWidth: implicitWidth
-            enabled: headerRoot.pipelineIdle && Controller.hasImage
-                     && Controller.layoutAvailable && Controller.layoutModelAvailable
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Find the blocks on the selected pages")
-            onClicked: markupConfirmDialog.requestMarkup()
-        }
+        ToolGroup {
+            title: qsTr("Markup")
 
-        SplitToolButton {
-            text: headerRoot.scopedText(headerRoot.recognizeModeName())
-            iconName: "zap"
-            mainTip: headerRoot.recognizeModeTip()
-            mainEnabled: headerRoot.recognizeMainEnabled
-            arrowEnabled: headerRoot.pipelineIdle && Controller.hasImage
-            onMainActivated: {
-                if (recognizeMode === 1)
-                    Controller.recognizeScopeBlocks()
-                else if (recognizeMode === 2)
-                    Controller.recognizeScopePages("rawPageOcr")
-                else
-                    Controller.recognizeScopePages("pageOcr")
+            IconToolButton {
+                text: qsTr("Mark up")
+                iconName: "layout-template"
+                Layout.fillWidth: true
+                stopMode: Controller.layoutBusy
+                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                         && Controller.layoutAvailable && Controller.layoutModelAvailable)
+                ToolTip.visible: hovered
+                ToolTip.text: stopMode ? qsTr("Stop the layout pass")
+                                       : qsTr("Find the blocks on the selected pages")
+                onClicked: {
+                    if (stopMode) {
+                        Controller.stopLayout()
+                        return
+                    }
+                    markupConfirmDialog.requestMarkup()
+                }
             }
-            onMenuRequested: (anchor) => recognizeMenu.popup(anchor, 0, anchor.height + 2)
+
+            IconToolButton {
+                text: qsTr("Recognize blocks")
+                iconName: "scan-text"
+                Layout.fillWidth: true
+                stopMode: Controller.checkBusy && Controller.checkRecheckPhase
+                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                         && Controller.scopeBlocksRecognitionSupported
+                         && Controller.blockRecognitionModelAvailable)
+                ToolTip.visible: hovered
+                ToolTip.text: stopMode ? qsTr("Stop the block recognition")
+                                       : qsTr("Recognize the marked blocks that still have no text")
+                onClicked: {
+                    if (stopMode) {
+                        Controller.stopCheck()
+                        return
+                    }
+                    Controller.recognizeScopeBlocks()
+                }
+            }
         }
 
-        SplitToolButton {
-            text: headerRoot.scopedText(qsTr("Verify"))
-            iconName: "circle-check"
-            mainTip: qsTr("Verify the recognized blocks on the selected pages")
-            mainEnabled: headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.scopeVerificationSupported && Controller.decisionModelAvailable
-            arrowEnabled: mainEnabled
-            onMainActivated: Controller.checkScopeEnabledBlocks()
-            onMenuRequested: (anchor) => verifyMenu.popup(anchor, 0, anchor.height + 2)
+        ToolDivider {}
+
+        ToolGroup {
+            title: qsTr("Recognize")
+
+            IconToolButton {
+                text: qsTr("With markup")
+                iconName: "zap"
+                Layout.fillWidth: true
+                stopMode: Controller.busy && headerRoot.pageRecognitionTask === "pageOcr"
+                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                         && Controller.canRecognize && Controller.pageOcrModelAvailable)
+                ToolTip.visible: hovered
+                ToolTip.text: stopMode ? qsTr("Stop the recognition")
+                                       : qsTr("Recognize the selected pages: blocks and their text in one pass")
+                onClicked: {
+                    if (stopMode) {
+                        Controller.stop()
+                        return
+                    }
+                    headerRoot.pageRecognitionTask = "pageOcr"
+                    Controller.recognizeScopePages("pageOcr")
+                }
+            }
+
+            IconToolButton {
+                text: qsTr("Without markup")
+                iconName: "type"
+                Layout.fillWidth: true
+                stopMode: Controller.busy && headerRoot.pageRecognitionTask === "rawPageOcr"
+                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                         && Controller.canRecognize && Controller.rawPageOcrModelAvailable)
+                ToolTip.visible: hovered
+                ToolTip.text: stopMode ? qsTr("Stop the recognition")
+                                       : qsTr("Recognize the selected pages as raw text")
+                onClicked: {
+                    if (stopMode) {
+                        Controller.stop()
+                        return
+                    }
+                    headerRoot.pageRecognitionTask = "rawPageOcr"
+                    Controller.recognizeScopePages("rawPageOcr")
+                }
+            }
         }
 
-        IconToolButton {
-            text: Controller.scopedProblemBlockCount > 0
-                  ? qsTr("Fix") + " (" + Controller.scopedProblemBlockCount + ")"
-                  : qsTr("Fix")
-            iconName: "wand-sparkles"
-            highlight: Controller.scopedProblemBlockCount > 0
-            Layout.minimumWidth: implicitWidth
-            enabled: headerRoot.pipelineIdle && Controller.hasImage
-                     && Controller.fixModelAvailable && Controller.scopedProblemBlockCount > 0
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Fix the problem blocks on the selected pages")
-            onClicked: Controller.fixScopeProblemBlocks()
+        ToolDivider {}
+
+        ToolGroup {
+            title: qsTr("Verification")
+
+            IconToolButton {
+                text: qsTr("Verify")
+                iconName: "circle-check"
+                Layout.fillWidth: true
+                stopMode: Controller.checkBusy && Controller.checkDecisionPhase
+                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                         && Controller.scopeVerificationSupported && Controller.decisionModelAvailable)
+                ToolTip.visible: hovered
+                ToolTip.text: stopMode ? qsTr("Stop the verification")
+                                       : qsTr("Verify the recognized blocks without fixing them")
+                onClicked: {
+                    if (stopMode) {
+                        Controller.stopCheck()
+                        return
+                    }
+                    Controller.checkScopeEnabledBlocks(VerificationQueueController.FixSkip)
+                }
+            }
+
+            IconToolButton {
+                text: Controller.scopedProblemBlockCount > 0
+                      ? qsTr("Fix") + " (" + Controller.scopedProblemBlockCount + ")"
+                      : qsTr("Fix")
+                iconName: "wand-sparkles"
+                Layout.fillWidth: true
+                highlight: Controller.scopedProblemBlockCount > 0
+                stopMode: Controller.checkBusy && Controller.checkFixPhase
+                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
+                         && Controller.fixModelAvailable && Controller.scopedProblemBlockCount > 0)
+                ToolTip.visible: hovered
+                ToolTip.text: stopMode ? qsTr("Stop the fix")
+                                       : qsTr("Fix the problem blocks on the selected pages")
+                onClicked: {
+                    if (stopMode) {
+                        Controller.stopCheck()
+                        return
+                    }
+                    Controller.fixScopeProblemBlocks()
+                }
+            }
         }
 
-        // The toolbar itself carries no progress text (the footer shows it);
-        // while anything runs the Stop key appears here.
-        IconToolButton {
-            text: qsTr("Stop")
-            iconName: "square"
-            iconSize: 13
-            visible: Controller.busy || Controller.checkBusy || Controller.layoutBusy
-                     || ModelInstaller.taskQueueActive
-            onClicked: {
-                if (Controller.busy)
-                    Controller.stop()
-                else if (Controller.layoutBusy)
-                    Controller.stopLayout()
-                else if (Controller.checkBusy)
-                    Controller.stopCheck()
-                else
-                    ModelInstaller.cancelTaskInstalls()
+        ToolDivider {}
+
+        ToolGroup {
+            IconToolButton {
+                text: qsTr("Export")
+                iconName: "upload"
+                enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
+                         && !Controller.checkBusy
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Export the recognized text")
+                onClicked: headerRoot.exportRequested(0)
             }
         }
 
         Item { Layout.fillWidth: true }
 
-        SplitToolButton {
-            text: qsTr("Export")
-            iconName: "upload"
-            mainTip: qsTr("Export the whole document")
-            mainEnabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-                         && !Controller.checkBusy
-            arrowEnabled: mainEnabled
-            onMainActivated: headerRoot.exportRequested(0)
-            onMenuRequested: (anchor) => exportMenu.popup(anchor, 0, anchor.height + 2)
-        }
+        ToolGroup {
+            captionLine: false
 
-        IconToolButton {
-            id: settingsButton
-            iconName: "settings"
-            Accessible.name: qsTr("Settings")
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Settings")
-            onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
+            IconToolButton {
+                id: settingsButton
+                text: qsTr("Settings")
+                iconName: "settings"
+                onClicked: settingsMenu.popup(settingsButton, 0, settingsButton.height + 2)
+            }
         }
     }//RowLayout
 
+    Shortcut {
+        sequence: "Ctrl+O"
+        enabled: !Controller.busy && !Controller.importing && !Controller.exporting
+                 && !Controller.checkBusy
+        onActivated: headerRoot.openFileRequested()
+    }
+
     // A toolbar button with a Lucide glyph before its caption; the highlight
-    // turns the caption into the warm accent (the «Исправить» badge). The
+    // turns the caption into the warm accent (the «Исправить» badge). In stop
+    // mode the caption gives way to the stop glyph inside a spinning ring —
+    // the button stays enabled and its click stops the run it started. The
     // implicit width must come from the content: a custom contentItem alone
     // sizes the control to its padding, and the toolbar piles the buttons up.
     component IconToolButton: ToolButton {
@@ -250,6 +343,7 @@ ToolBar {
         property string iconName: ""
         property int iconSize: 15
         property bool highlight: false
+        property bool stopMode: false
 
         implicitHeight: 28
         implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
@@ -258,12 +352,16 @@ ToolBar {
         Layout.minimumWidth: implicitWidth
 
         contentItem: Item {
-            implicitWidth: contentRow.implicitWidth
-            implicitHeight: contentRow.implicitHeight
+            implicitWidth: iconButton.stopMode ? stopStack.implicitWidth
+                                               : contentRow.implicitWidth
+            implicitHeight: iconButton.stopMode ? stopStack.implicitHeight
+                                                : contentRow.implicitHeight
 
             Row {
                 id: contentRow
-                anchors.centerIn: parent
+                visible: !iconButton.stopMode
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: 5
 
                 Icon {
@@ -283,37 +381,82 @@ ToolBar {
                           : (iconButton.enabled ? Theme.textPrimary : Theme.textMuted)
                 }
             }
+
+            Item {
+                id: stopStack
+                visible: iconButton.stopMode
+                anchors.centerIn: parent
+                implicitWidth: stopRing.width
+                implicitHeight: stopRing.height
+
+                Icon {
+                    id: stopRing
+                    name: "loader-circle"
+                    size: 26
+                    color: Theme.textSecondary
+
+                    RotationAnimation on rotation {
+                        from: 0
+                        to: 360
+                        duration: 900
+                        loops: Animation.Infinite
+                        running: iconButton.stopMode
+                    }
+                }
+
+                Icon {
+                    anchors.centerIn: stopRing
+                    name: "square"
+                    // Even sizes keep the centering on whole pixels — an odd
+                    // square in an even ring lands at x.5 and renders left of
+                    // the ring's center.
+                    size: 12
+                    color: Theme.textPrimary
+                }
+            }
         }
+    }
+
+    // A caption over a stack of pipeline buttons; the children declared at the
+    // use site stack vertically below it. The caption line exists even when
+    // the title is empty (Экспорт rides on the pipeline buttons' first row);
+    // groups that opt out start at the very top of the toolbar (Файл/Импорт,
+    // Настройки). fillWidth must be explicit: a nested layout is widened by
+    // default, and the groups would spread over the whole toolbar.
+    component ToolGroup: ColumnLayout {
+        id: groupRoot
+
+        property string title: ""
+        property bool captionLine: true
+
+        spacing: 3
+        Layout.fillWidth: false
+        Layout.alignment: Qt.AlignTop
+
+        LLOLabel {
+            visible: groupRoot.captionLine
+            // The caption's text edge follows the buttons' leftPadding, so it
+            // never sticks out to the left of the content under it.
+            leftPadding: 6
+            text: groupRoot.title
+            font: Theme.caption
+            color: Theme.textMuted
+        }
+    }
+
+    // The group divider: a hairline over the full toolbar height — the
+    // ToolSeparator's short center line reads as a gap, not a border.
+    component ToolDivider: Rectangle {
+        Layout.fillHeight: true
+        implicitWidth: 1
+        color: Theme.divider
     }
 
     Menu {
         id: fileMenu
 
         MenuItem {
-            id: openItem
-
-            action: Action {
-                id: openAction
-                text: qsTr("Open…")
-                shortcut: "Ctrl+O"
-                enabled: !Controller.busy && !Controller.importing && !Controller.exporting
-                         && !Controller.checkBusy
-                onTriggered: headerRoot.openFileRequested()
-            }
-
-            rightPadding: padding + spacing + openShortcutLabel.implicitWidth
-
-            Label {
-                id: openShortcutLabel
-                anchors.right: parent.right
-                anchors.rightMargin: openItem.padding
-                anchors.verticalCenter: parent.verticalCenter
-                font: Theme.caption
-                color: Theme.textMuted
-                text: headerRoot.shortcutDisplayText(openAction.shortcut)
-            }
-        }
-        MenuItem {
+            id: openProjectItem
             text: qsTr("Open project…")
             enabled: !Controller.busy && !Controller.importing && !Controller.exporting
                          && !Controller.projectBusy && !Controller.checkRunning
@@ -369,94 +512,6 @@ ToolBar {
                 color: Theme.textMuted
                 text: headerRoot.shortcutDisplayText(saveAsAction.shortcut)
             }
-        }
-        MenuSeparator {}
-        MenuItem {
-            text: qsTr("Export…")
-            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-                     && !Controller.checkBusy
-            onTriggered: headerRoot.exportRequested(0)
-        }
-    }
-
-    Menu {
-        id: presetMenu
-
-        MenuItem {
-            text: qsTr("Plain text")
-            enabled: false
-        }
-        MenuItem {
-            text: qsTr("Complex layout")
-            enabled: false
-        }
-        MenuItem {
-            text: qsTr("Technical / scientific")
-            enabled: false
-        }
-        MenuSeparator {}
-        MenuItem {
-            text: qsTr("Manual (step by step)")
-            checkable: true
-            checked: headerRoot.manualPreset
-        }
-    }
-
-    Menu {
-        id: recognizeMenu
-
-        MenuItem {
-            text: qsTr("With markup")
-            checkable: true
-            checked: headerRoot.recognizeMode === 0
-            enabled: headerRoot.pipelineIdle && Controller.hasImage
-                     && Controller.canRecognize && Controller.pageOcrModelAvailable
-            onTriggered: headerRoot.recognizeMode = 0
-        }
-        MenuItem {
-            text: qsTr("By the marked blocks")
-            checkable: true
-            checked: headerRoot.recognizeMode === 1
-            enabled: headerRoot.pipelineIdle && Controller.hasImage
-                     && Controller.scopeBlocksRecognitionSupported
-                     && Controller.blockRecognitionModelAvailable
-            onTriggered: headerRoot.recognizeMode = 1
-        }
-        MenuItem {
-            text: qsTr("Without markup")
-            checkable: true
-            checked: headerRoot.recognizeMode === 2
-            enabled: headerRoot.pipelineIdle && Controller.hasImage
-                     && Controller.canRecognize && Controller.rawPageOcrModelAvailable
-            onTriggered: headerRoot.recognizeMode = 2
-        }
-    }
-
-    Menu {
-        id: verifyMenu
-
-        MenuItem {
-            text: qsTr("Verify only")
-            enabled: headerRoot.pipelineIdle && Controller.hasImage
-                     && Controller.scopeVerificationSupported && Controller.decisionModelAvailable
-            onTriggered: Controller.checkScopeEnabledBlocks(VerificationQueueController.FixSkip)
-        }
-    }
-
-    Menu {
-        id: exportMenu
-
-        MenuItem {
-            text: qsTr("Whole document…")
-            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-                     && !Controller.checkBusy
-            onTriggered: headerRoot.exportRequested(0)
-        }
-        MenuItem {
-            text: qsTr("Current page…")
-            enabled: Controller.hasResult && !Controller.exporting && !Controller.importing
-                     && !Controller.checkBusy
-            onTriggered: headerRoot.exportRequested(1)
         }
     }
 

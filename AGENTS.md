@@ -400,25 +400,40 @@
     deliberately absent from the setup wizard). The 1036² page squash mirrors
     the upstream calibration. Manual only — not wired into the automatic
     pipeline. Model manual: `docs/15-teleocr.md`.
-  - **Interface rework (ADR 151, Oct 2026; unified toolbar ADR 167)** — the
-    header is one row: «Файл ▾», the **preset stub** («Ручной (Пошаговый)»
-    checked; three auto presets + «Авто-распознавание» disabled — automatic
-    pipelines are a later step) and the pipeline group **Разметить /
-    Распознать ▾ / Проверить ▾ / Исправить** — all acting on the **thumbnail
-    selection** (empty selection = the whole document; a fresh document
-    selects its current page; Ctrl/Cmd+click toggles, «Выбрать все» in the
-    column header; the captions carry the scope, «Исправить» lights
-    `Theme.accentAttention` with a `(N)` badge of `scopedProblemBlockCount`).
-    «Распознать ▾» is a three-mode picker — «С разметкой»
-    (`recognizeScopePages("pageOcr")`, the default), «По размеченным блокам»
-    (`recognizeScopeBlocks`), «Без разметки» (rawPageOcr); the chosen item
-    becomes the button caption, an item is selectable only while its model
-    and inputs exist. While anything runs, the pipeline buttons and the
-    preset stub go inactive and a Стоп key appears right of «Исправить»;
-    the progress text stays in the footer (the `TaskStatus` singleton).
-    On the right —
-    Экспорт ▾ («Весь документ…» / «Текущая страница…» through the export
-    dialog) and the ⚙️ icon. The **page toolbar**
+  - **Interface rework (ADR 151, Oct 2026; toolbar ADR 167 → ADR 171)** — the
+    header is one row of labeled groups: «Файл / Импорт» (stacked; «Файл» is
+    the project menu — open / save / save-as project, Ctrl+O moved to
+    «Импорт»), «Страницы» (a page-range field in the compact 1-based form
+    "1-10, 15" — a two-way editor of the thumbnail selection through
+    `PageListModel::selectedPagesRange()` / `applyPagesRange()`: the
+    thumbnails update the field, typing a range replaces the selection,
+    an empty input = the whole document, garbage changes nothing; empty
+    selection = the whole document as before), «Авто» (the
+    Fast/Balanced/Accurate segmented switch is live, its «Распознать N стр»
+    button stays disabled until the automatic pipelines land), «Разметка»
+    (Разметить / Распознать блоки), «Распознать» (С разметкой / Без
+    разметки — the ADR 167 three-mode picker dissolved into explicit
+    buttons) and «Верификация» (Проверить / Исправить) — all acting on the
+    **thumbnail selection** (Ctrl/Cmd+click toggles, «Выбрать все» in the
+    column header; «Исправить» lights `Theme.accentAttention` with a `(N)`
+    badge of `scopedProblemBlockCount`). «Проверить» always runs the
+    decision pass **without** auto-fix (`checkScopeEnabledBlocks(FixSkip)`)
+    — verify and fix are separate buttons in the manual pipeline;
+    `check/autoFix` stays a setting for the future automatic pipelines.
+    While anything runs the pipeline buttons go inactive and the started
+    action's button turns into the stop control — a black square inside a
+    spinning ring; the mapping is by flags/phases (`layoutBusy` → «Разметить»,
+    `busy` + the last-used page-recognition button, `checkBusy` +
+    `checkDecisionPhase`/`checkRecheckPhase`/`checkFixPhase` → «Проверить» /
+    «Распознать блоки» / «Исправить»), so a run started elsewhere still shows
+    its stop on the matching button. The model-download queue has no toolbar
+    stop — it is cancelled where it starts (Models window, wizard). The
+    progress text stays in the footer (the `TaskStatus` singleton). On the
+    right — Экспорт (opens the
+    export dialog, the scope is chosen there) and «Настройки» (the settings
+    menu). The ADR 167 preset stub («Ручной (Пошаговый)» + three grey
+    presets) is deleted — the «Авто» switch is its successor. The **page
+    toolbar**
     (`MainWindow/PageToolBar.qml`) collapses to one row: «Стр. ‹ n / N ›»
     page navigation plus the block-add stubs (the ▾ lists all `BlockNames`
     types) and page rotation. The right panel switches text/preview through

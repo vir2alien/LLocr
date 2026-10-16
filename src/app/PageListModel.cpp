@@ -1,6 +1,9 @@
 #include "app/PageListModel.h"
 #include "app/PageIndex.h"
 
+#include <QRegularExpression>
+#include <QSet>
+
 #include <algorithm>
 
 namespace llocr {
@@ -280,6 +283,104 @@ int PageListModel::selectedCount() const
 bool PageListModel::isSelected(int index) const
 {
     return index >= 0 && index < m_selected.size() && m_selected.at(index);
+}
+
+QString PageListModel::formatPageRange(QList<int> pages)
+{
+    std::sort(pages.begin(), pages.end());
+    pages.erase(std::unique(pages.begin(), pages.end()), pages.end());
+
+    QString text;
+    for (int i = 0; i < pages.size();) {
+        const int start = pages.at(i);
+        int end = start;
+        int j = i + 1;
+        while (j < pages.size() && pages.at(j) == end + 1)
+            end = pages.at(j++);
+        if (!text.isEmpty())
+            text += QLatin1String(", ");
+        if (end > start)
+            text += QString::number(start + 1) % QLatin1Char('-') % QString::number(end + 1);
+        else
+            text += QString::number(start + 1);
+        i = j;
+    }
+    return text;
+}
+
+QList<int> PageListModel::parsePageRange(const QString &range, int pageCount)
+{
+    QList<int> pages;
+    if (pageCount <= 0)
+        return pages;
+
+    static const QRegularExpression separator(QLatin1String("[\\s,;]+"));
+    QSet<int> unique;
+    const QStringList tokens = range.split(separator, Qt::SkipEmptyParts);
+    for (const QString &token : tokens) {
+        const QStringList bounds = token.split(QLatin1Char('-'));
+        if (bounds.size() > 2)
+            continue;
+        bool okFirst = false;
+        int low = bounds.first().toInt(&okFirst);
+        if (!okFirst)
+            continue;
+        int high = low;
+        if (bounds.size() == 2) {
+            bool okSecond = false;
+            high = bounds.last().toInt(&okSecond);
+            if (!okSecond)
+                continue;
+        }
+        low = qBound(1, low, pageCount);
+        high = qBound(1, high, pageCount);
+        if (low > high)
+            std::swap(low, high);
+        for (int page = low; page <= high; ++page)
+            unique.insert(page - 1);
+    }
+    pages = QList<int>(unique.cbegin(), unique.cend());
+    std::sort(pages.begin(), pages.end());
+    return pages;
+}
+
+QString PageListModel::selectedPagesRange() const
+{
+    QList<int> pages;
+    for (int row = 0; row < m_selected.size(); ++row) {
+        if (m_selected.at(row))
+            pages.append(row);
+    }
+    return formatPageRange(pages);
+}
+
+int PageListModel::applyPagesRange(const QString &range)
+{
+    const QList<int> pages = parsePageRange(range, m_selected.size());
+    if (pages.isEmpty()) {
+        // A bare clear is the whole document; garbage leaves the selection
+        // alone so a typo cannot silently widen the scope.
+        if (range.trimmed().isEmpty())
+            clearSelection();
+        return 0;
+    }
+
+    int cursor = 0;
+    bool changed = false;
+    for (int row = 0; row < m_selected.size(); ++row) {
+        const bool selected = cursor < pages.size() && pages.at(cursor) == row;
+        if (selected)
+            ++cursor;
+        if (m_selected.at(row) == selected)
+            continue;
+        m_selected[row] = selected;
+        const QModelIndex mi = index(row);
+        emit dataChanged(mi, mi, {SelectedRole});
+        changed = true;
+    }
+    if (changed)
+        emit selectionChanged();
+    return pages.size();
 }
 
 }  // namespace llocr

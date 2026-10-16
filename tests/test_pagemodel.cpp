@@ -5,9 +5,9 @@
 
 using namespace llocr;
 
-// Verification of PageListModel::movePage ordering, including the
-// beginMoveRows()/endMoveRows() signalling that keeps the QML ListView
-// (QQmlDelegateModel) in sync with the underlying data.
+// Verification of PageListModel: move ordering, selection and the page-range
+// field, including the beginMoveRows()/endMoveRows() signalling that keeps
+// the QML ListView (QQmlDelegateModel) in sync with the underlying data.
 class TestPageModel : public QObject
 {
     Q_OBJECT
@@ -249,6 +249,64 @@ private slots:
         model.setSelected(1, true);
         model.removePage(0);
         QVERIFY(isSelectedAt(model, 0));  // the selection shifts up with the row
+    }
+
+    void pageRangeFormat()
+    {
+        QCOMPARE(PageListModel::formatPageRange({0, 1, 2, 9}), QStringLiteral("1-3, 10"));
+        QCOMPARE(PageListModel::formatPageRange({0}), QStringLiteral("1"));
+        QCOMPARE(PageListModel::formatPageRange({0, 1}), QStringLiteral("1-2"));
+        QCOMPARE(PageListModel::formatPageRange({}), QString());
+        // unsorted and duplicated input is normalized
+        QCOMPARE(PageListModel::formatPageRange({9, 0, 2, 1, 2}), QStringLiteral("1-3, 10"));
+    }
+
+    void pageRangeParse()
+    {
+        QCOMPARE(PageListModel::parsePageRange(QStringLiteral("1-10, 15"), 20), (QList<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 14}));
+        // clamped into the document; a reversed range is normalized
+        QCOMPARE(PageListModel::parsePageRange(QStringLiteral("0, 99, 5-3"), 4), (QList<int>{0, 2, 3}));
+        // garbage tokens are ignored; commas, spaces and semicolons separate
+        QCOMPARE(PageListModel::parsePageRange(QStringLiteral("abc, 2; 4..6, x-7, 3"), 6), (QList<int>{1, 2}));
+        // a three-bound token is malformed
+        QCOMPARE(PageListModel::parsePageRange(QStringLiteral("1-2-3, 2"), 5), (QList<int>{1}));
+        QVERIFY(PageListModel::parsePageRange(QString(), 5).isEmpty());
+        QVERIFY(PageListModel::parsePageRange(QStringLiteral("1-2"), 0).isEmpty());
+    }
+
+    void pageRangeApply()
+    {
+        PageListModel model;
+        model.appendPages(20);
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        QSignalSpy spy(&model, &PageListModel::selectionChanged);
+        QCOMPARE(model.applyPagesRange(QStringLiteral("1-10, 15")), 11);
+        QCOMPARE(model.selectedCount(), 11);
+        QVERIFY(isSelectedAt(model, 0));
+        QVERIFY(isSelectedAt(model, 9));
+        QVERIFY(isSelectedAt(model, 14));
+        QVERIFY(isSelectedAt(model, 10, false));
+        QVERIFY(isSelectedAt(model, 13, false));
+        QCOMPARE(spy.count(), 1);
+
+        // The toolbar round-trip: the formatted selection parses back to itself.
+        QCOMPARE(model.selectedPagesRange(), QStringLiteral("1-10, 15"));
+        QCOMPARE(model.applyPagesRange(model.selectedPagesRange()), 11);
+        QCOMPARE(spy.count(), 1);  // a no-op stays silent
+
+        // An empty input is the whole document.
+        QCOMPARE(model.applyPagesRange(QStringLiteral("  ")), 0);
+        QCOMPARE(model.selectedCount(), 0);
+        QCOMPARE(spy.count(), 2);
+
+        // Garbage changes nothing: a typo must not silently widen the scope.
+        model.selectSingle(3);
+        spy.clear();
+        QCOMPARE(model.applyPagesRange(QStringLiteral("abc, -")), 0);
+        QCOMPARE(model.selectedCount(), 1);
+        QVERIFY(isSelectedAt(model, 3));
+        QCOMPARE(spy.count(), 0);
     }
 };
 
