@@ -60,14 +60,14 @@ Rectangle {
             visible: miniRoot.isTextBlock
             iconName: "scan-text"
             tip: qsTr("Recognize block")
-            enabled: Controller.actionsIdle && Controller.blockRecognitionModelAvailable
+            enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle && Controller.blockRecognitionModelAvailable
             onClicked: Controller.recognizeSelectedBlock()
         }
         MiniButton {
             visible: miniRoot.isTextBlock
             iconName: "circle-check"
             tip: qsTr("Verify block")
-            enabled: Controller.actionsIdle && Controller.decisionModelAvailable
+            enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle && Controller.decisionModelAvailable
                      && miniRoot.blockText.length > 0
             onClicked: Controller.checkSelectedBlock()
         }
@@ -75,14 +75,14 @@ Rectangle {
             visible: miniRoot.isTextBlock
             iconName: "wand-sparkles"
             tip: qsTr("Fix block")
-            enabled: Controller.actionsIdle && Controller.fixModelAvailable
+            enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle && Controller.fixModelAvailable
                      && miniRoot.blockText.length > 0
             onClicked: Controller.fixSelectedBlock()
         }
         MiniButton {
             iconName: "trash-2"
             tip: qsTr("Delete block")
-            enabled: Controller.actionsIdle
+            enabled: !ModelInstaller.taskQueueActive && Controller.actionsIdle
                      && Controller.selectedBoxIndex >= 0
             onClicked: Controller.removeBlock(Controller.selectedBoxIndex)
         }

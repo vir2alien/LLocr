@@ -1062,6 +1062,82 @@ private slots:
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
     }
 
+    // A choice recorded while its quantization is still downloading (the task
+    // window's Save) must not be reverted to the model at the launch path by
+    // the stale-profile repair in refreshInstalled().
+    void pendingDownloadChoiceKeepsTheRecordedProfile()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF"));
+        QVERIFY(QDir().mkpath(sub));
+
+        ModelEntry entry;
+        entry.id = QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF_Q8_0");
+        entry.title = QStringLiteral("LFM2.5-VL-3B");
+        entry.repo = QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF");
+        entry.dir = sub;
+        entry.modelPath = writeGguf(sub, QStringLiteral("LFM2.5-VL-3B-Q8_0.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-LFM2.5-VL-3B-F16.gguf"));
+        entry.origin = ModelOrigin::Managed;
+        entry.quantization = QStringLiteral("Q8_0");
+        QVERIFY(!entry.modelPath.isEmpty());
+
+        QString err;
+        QVERIFY2(ModelRegistry::save(modelsDir, {entry}, err), qPrintable(err));
+
+        SettingsStore settings;
+        pointAtTempDir(settings, root.path());
+        settings.setLaunchModelPath(entry.modelPath);
+        LaunchProfileStore launchProfiles(settings);
+        InstalledState installed(settings);
+        RuntimeController runtime(settings, launchProfiles, &installed);
+        ModelInstaller installer(settings, runtime, installed);
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+
+        // The task window's Save with a still-missing lightonocr quantization:
+        // the pending final path takes over the launch setting at once.
+        const QVariantList missing = installer.applyTaskChoices(
+            {QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("lightonocr")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}}});
+        QCOMPARE(missing.size(), 1);
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lightonocr"));
+        const QString pendingPath = settings.launchModelPath();
+        QVERIFY(!pendingPath.isEmpty() && !QFileInfo::exists(pendingPath));
+
+        // The refresh an reopened Models window runs must not read the old
+        // model file as the user's choice.
+        installer.refreshInstalled();
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lightonocr"));
+        QCOMPARE(settings.launchModelPath(), pendingPath);
+    }
+
+    // One model+quant picked by several tasks is one download: the missing
+    // list carries a single entry with every task's id merged in.
+    void applyTaskChoicesMergeSharedDownloads()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        s->settings.setLaunchModelPath(QString());
+        s->settings.setCheckLaunchModelPath(QString());
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        QVariantList choices;
+        choices.append(QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("lfm25-vl-3b")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
+        choices.append(
+            QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("lfm25-vl-3b")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
+
+        const QVariantList missing = s->installer->applyTaskChoices(choices);
+        QCOMPARE(missing.size(), 1);
+        const QVariantMap item = missing.first().toMap();
+        QCOMPARE(item.value(QStringLiteral("task")).toString(), QStringLiteral("pageOcr"));
+        QCOMPARE(item.value(QStringLiteral("tasks")).toList().size(), 2);
+        // The profile intent is recorded for both tasks.
+        QCOMPARE(s->settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(s->settings.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
+    }
+
     // The task window's Save (the rework plan's stage 6): an installed quant
     // is activated for its task, a missing one comes back for the download
     // dialog while the profile intent is recorded.

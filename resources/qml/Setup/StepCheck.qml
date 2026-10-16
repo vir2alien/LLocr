@@ -156,7 +156,7 @@ Item {
                     required property var modelData
 
                     Layout.fillWidth: true
-                    text: RoleProfiles.title(missingRow.modelData.task) + " — "
+                    text: RoleProfiles.choiceTitles(missingRow.modelData) + " — "
                           + missingRow.modelData.model + " · " + missingRow.modelData.quantId
                           + (missingRow.modelData.size > 0
                              ? " (" + root.fmtBytes(missingRow.modelData.size) + ")" : "")

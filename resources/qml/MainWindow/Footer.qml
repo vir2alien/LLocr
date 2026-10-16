@@ -261,6 +261,7 @@ Item {
                                                  || Controller.checkBusy
                                                  || Controller.layoutBusy
                                                  || Controller.projectBusy
+                                                 || ModelInstaller.taskQueueActive
                                                  || Runtime.busyState === Runtime.StartingRuntime
                     visible: running
                     Layout.preferredWidth: 28

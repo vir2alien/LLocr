@@ -11,10 +11,10 @@ ApplicationWindow {
     id: window
 
     title: qsTr("Models")
-    width: 760
-    height: 780
+    width: 680
+    height: 620
     minimumWidth: 680
-    minimumHeight: 620
+    minimumHeight: 500
     modality: Qt.NonModal
 
     property var runtimeSettingsRef: null
@@ -42,27 +42,6 @@ ApplicationWindow {
     }
 
     footer: SettingsFooter {
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 4
-
-            // The queue's progress lives here (the rework plan's stage 6):
-            // one install at a time, cancellable as a whole.
-            InstallerStatusLabel {
-                visible: ModelInstaller.busy
-                isError: ModelInstaller.state === ModelInstaller.Error
-                busy: ModelInstaller.busy
-                statusText: ModelInstaller.statusMessage
-            }
-            InstallerProgressRow {
-                visible: ModelInstaller.busy
-                Layout.fillWidth: true
-                busy: ModelInstaller.busy
-                progress: ModelInstaller.progress
-                cancelVisible: ModelInstaller.taskQueueActive
-                onCancelClicked: ModelInstaller.cancelTaskInstalls()
-            }
-        }
         Item { Layout.fillWidth: true }
         LLOButton {
             subtle: true
@@ -114,6 +93,28 @@ ApplicationWindow {
             Layout.fillWidth: true
             runtimeSettingsRef: window.runtimeSettingsRef
             externalMode: window.externalMode
+        }
+
+        // The queue's progress (the rework plan's stage 6): one install at a
+        // time, cancellable as a whole.
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: ModelInstaller.busy
+            spacing: 4
+
+            InstallerStatusLabel {
+                Layout.fillWidth: true
+                isError: ModelInstaller.state === ModelInstaller.Error
+                busy: ModelInstaller.busy
+                statusText: ModelInstaller.statusMessage
+            }
+            InstallerProgressRow {
+                Layout.fillWidth: true
+                busy: ModelInstaller.busy
+                progress: ModelInstaller.progress
+                cancelVisible: ModelInstaller.taskQueueActive
+                onCancelClicked: ModelInstaller.cancelTaskInstalls()
+            }
         }
 
         // The files actually on disk: one row per installed model+quant with
@@ -257,7 +258,7 @@ ApplicationWindow {
                 delegate: LLOLabel {
                     required property var modelData
                     Layout.fillWidth: true
-                    text: RoleProfiles.title(modelData.task) + " — "
+                    text: RoleProfiles.choiceTitles(modelData) + " — "
                           + modelData.model + " · " + modelData.quantId
                           + (modelData.size > 0 ? " (" + taskTable.fmtBytes(modelData.size) + ")" : "")
                 }

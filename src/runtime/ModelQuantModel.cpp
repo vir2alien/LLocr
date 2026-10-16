@@ -433,6 +433,11 @@ bool ModelQuantModel::matchesRole(const ModelEntry &entry, const SettingsStore &
     return role == QLatin1String("blockRecognition") ? !vision : vision;
 }
 
+QString ModelQuantModel::stemName(const QString &pathOrFile)
+{
+    return modelStem(pathOrFile);
+}
+
 QString ModelQuantModel::displayTitle(const ModelEntry &entry)
 {
     QString display = QFileInfo(entry.modelPath).completeBaseName();

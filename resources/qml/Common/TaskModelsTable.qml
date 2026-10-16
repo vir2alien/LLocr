@@ -106,9 +106,8 @@ Item {
         requestTab.resetValues()
     }
 
-    function openTaskSettings(task, button) {
+    function openTaskSettings(task) {
         taskSettingsPopup.task = task
-        taskSettingsPopup.attachTo(button)
         taskSettingsPopup.open()
     }
 
@@ -145,7 +144,7 @@ Item {
                 color: Theme.textMuted
                 text: qsTr("Model")
             }
-            Item { Layout.preferredWidth: 150 }
+            Item { Layout.preferredWidth: 105 }
             Item { Layout.preferredWidth: 36 }
         }
 
@@ -218,7 +217,7 @@ Item {
                 ComboBox {
                     id: quantBox
                     visible: !table.externalMode
-                    Layout.preferredWidth: 150
+                    Layout.preferredWidth: 105
                     implicitHeight: Theme.controlHeight
                     textRole: "id"
 
@@ -330,7 +329,7 @@ Item {
 
                     implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
                     implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
-                    onClicked: table.openTaskSettings(taskRow.modelData, gearButton)
+                    onClicked: table.openTaskSettings(taskRow.modelData)
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Launch and request settings")
 
@@ -357,17 +356,10 @@ Item {
 
         property string task: "pageOcr"
 
-        function attachTo(button) {
-            // The rows end at the host's right edge, so the popup hangs off
-            // the gear's right edge leftward and is clamped into the host.
-            const p = button.mapToItem(parent, 0, 0)
-            x = Math.max(Theme.paddingWindow, Math.min(p.x + button.width - width, parent.width - width - Theme.paddingWindow))
-            y = Math.max(Theme.paddingWindow, Math.min(p.y + button.height + Theme.spacingSmall, parent.height - height - Theme.paddingWindow))
-        }
-
-        // The overlay, not the table: the clamp uses the full host area, and
-        // in the wizard the rows live inside a dialog.
+        // The overlay, not the table: in the wizard the rows live inside a
+        // dialog, and a centered popup fits either host.
         parent: Overlay.overlay
+        anchors.centerIn: parent
         width: 560
         height: 480
         padding: Theme.spacing

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <QList>
 #include <QObject>
 #include <QQmlEngine>
@@ -117,12 +118,13 @@ public:
 
     // The task window's save flow (the rework plan's stage 6). choices is a
     // list of {task, key, quantId}: installed quants are activated for their
-    // task, missing ones are returned as {task, model, quant, size} for the
-    // download dialog — with the profile choice recorded so it survives.
+    // task, missing ones are returned as {task, tasks, key, quantId, model,
+    // size} for the download dialog — one entry per model+quant no matter how
+    // many tasks picked it, with the profile choice recorded so it survives.
     Q_INVOKABLE QVariantList applyTaskChoices(const QVariantList &choices);
     // Sequential download queue over the missing choices: one install at a
-    // time (the shared transaction), each result assigned to its task on
-    // completion.
+    // time (the shared transaction), deduplicated by model+quant, each
+    // resulting install assigned to every task that asked for it.
     Q_INVOKABLE void queueTaskInstalls(const QVariantList &choices);
     // The wizard's auto-selection: {task, key, quantId} per task — the
     // role-default profile (ADR 169) with the best quantization the memory
@@ -140,9 +142,12 @@ private:
     void setStatusMessage(const QString &msg);
     void setTaskQueueActive(bool active);
     void startNextQueuedInstall();
+    void finishRunningInstall();
 
+    // One download shared by every task that picked it: the first task rides
+    // the transaction's own assignment, the rest are activated on completion.
     struct TaskInstall {
-        QString task;
+        QStringList tasks;
         QString key;
         QString quantId;
     };
@@ -185,6 +190,7 @@ private:
     ModelQuantModel *m_rawPageOcrModels = nullptr;
     ModelQuantModel *m_fixModels = nullptr;
     QList<TaskInstall> m_taskQueue;
+    std::optional<TaskInstall> m_runningInstall;
     bool m_taskQueueActive = false;
 
 signals:

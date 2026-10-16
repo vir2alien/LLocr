@@ -59,9 +59,11 @@ ModelInstaller::ModelInstaller(SettingsStore &settings, RuntimeController &runti
             return;
         if (state == State::ReadyToDownload)
             installPrepared();
-        else if (state == State::Idle)
+        else if (state == State::Idle) {
+            finishRunningInstall();
             startNextQueuedInstall();
-        else if (state == State::Error) {
+        } else if (state == State::Error) {
+            m_runningInstall.reset();
             m_taskQueue.clear();
             setTaskQueueActive(false);
         }
@@ -529,6 +531,7 @@ void ModelInstaller::installPrepared()
 
 void ModelInstaller::cancelInstall()
 {
+    m_runningInstall.reset();
     m_taskQueue.clear();
     setTaskQueueActive(false);
     m_transaction->cancel();
@@ -537,6 +540,7 @@ void ModelInstaller::cancelInstall()
 QVariantList ModelInstaller::applyTaskChoices(const QVariantList &choices)
 {
     QVariantList missing;
+    QList<std::pair<QString, QString>> missingKeys;
     for (const QVariant &choiceVar : choices) {
         const QVariantMap choice = choiceVar.toMap();
         const QString task = choice.value(QStringLiteral("task")).toString();
@@ -559,12 +563,26 @@ QVariantList ModelInstaller::applyTaskChoices(const QVariantList &choices)
         }
 
         // Not on disk: the choice is still recorded (the profile intent
-        // survives a canceled queue), and the download dialog lists it.
+        // survives a canceled queue), and the download dialog lists it — one
+        // row per model+quant, no matter how many tasks picked it. The
+        // download's final path goes into the task's launch settings now: the
+        // refresh-time profile repair keys off the launch path, and the old
+        // model file still sitting there must not read as the user's choice.
         const QList<ModelPreset> &presets = presetsForRole(task);
         const int preset = model->presetIndexFor(key, quantId);
         if (preset >= 0 && preset < presets.size()) {
             m_settings.selectModelProfile(presets.at(preset).repo, task);
             m_settings.setSelectedQuant(key, quantId);
+            const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), key);
+            if (profile) {
+                for (const ModelProfiles::Quant &q : profile->files.quants) {
+                    if (q.id.compare(quantId, Qt::CaseInsensitive) != 0)
+                        continue;
+                    const QString dir = QDir(m_installState.paths().modelsDir()).filePath(ModelInstallTransaction::repoDirName(presets.at(preset).repo));
+                    m_settings.setLaunchModelPathForRole(task, QDir(dir).filePath(q.file));
+                    break;
+                }
+            }
         }
         const QVariantMap row = model->rowFor(key);
         QVariantList quants = row.value(QStringLiteral("quants")).toList();
@@ -574,8 +592,19 @@ QVariantList ModelInstaller::applyTaskChoices(const QVariantList &choices)
             if (quant.value(QStringLiteral("id")).toString().compare(quantId, Qt::CaseInsensitive) == 0)
                 size = quant.value(QStringLiteral("size")).toLongLong();
         }
+        const auto known = std::find_if(missingKeys.cbegin(), missingKeys.cend(), [&](const auto &k) { return k.first == key && k.second.compare(quantId, Qt::CaseInsensitive) == 0; });
+        if (known != missingKeys.cend()) {
+            QVariantMap merged = missing.at(known - missingKeys.cbegin()).toMap();
+            QVariantList tasks = merged.value(QStringLiteral("tasks")).toList();
+            tasks.append(task);
+            merged.insert(QStringLiteral("tasks"), tasks);
+            missing[known - missingKeys.cbegin()] = merged;
+            continue;
+        }
+        missingKeys.append({key, quantId});
         QVariantMap item;
         item.insert(QStringLiteral("task"), task);
+        item.insert(QStringLiteral("tasks"), QVariantList{task});
         item.insert(QStringLiteral("key"), key);
         item.insert(QStringLiteral("quantId"), quantId);
         item.insert(QStringLiteral("model"), row.value(QStringLiteral("title")));
@@ -650,14 +679,24 @@ void ModelInstaller::queueTaskInstalls(const QVariantList &choices)
         return;
     for (const QVariant &choiceVar : choices) {
         const QVariantMap choice = choiceVar.toMap();
-        const QString task = choice.value(QStringLiteral("task")).toString();
-        if (task != connectionRoleName(connectionRoleFromName(task)))
-            continue;
+        QStringList tasks;
+        for (const QVariant &t : choice.value(QStringLiteral("tasks")).toList())
+            tasks << t.toString();
+        if (tasks.isEmpty())
+            tasks << choice.value(QStringLiteral("task")).toString();
+        tasks.removeIf([](const QString &task) { return task != connectionRoleName(connectionRoleFromName(task)); });
         const QString key = choice.value(QStringLiteral("key")).toString();
         const QString quantId = choice.value(QStringLiteral("quantId")).toString();
-        if (key.isEmpty() || quantId.isEmpty())
+        if (tasks.isEmpty() || key.isEmpty() || quantId.isEmpty())
             continue;
-        m_taskQueue.append({task, key, quantId});
+        const auto queued = std::find_if(m_taskQueue.cbegin(), m_taskQueue.cend(), [&](const TaskInstall &item) { return item.key == key && item.quantId.compare(quantId, Qt::CaseInsensitive) == 0; });
+        if (queued != m_taskQueue.cend()) {
+            for (const QString &task : tasks)
+                if (!queued->tasks.contains(task))
+                    m_taskQueue[queued - m_taskQueue.cbegin()].tasks.append(task);
+            continue;
+        }
+        m_taskQueue.append({tasks, key, quantId});
     }
     if (m_taskQueue.isEmpty())
         return;
@@ -667,6 +706,7 @@ void ModelInstaller::queueTaskInstalls(const QVariantList &choices)
 
 void ModelInstaller::cancelTaskInstalls()
 {
+    m_runningInstall.reset();
     m_taskQueue.clear();
     setTaskQueueActive(false);
     if (m_transaction->busy())
@@ -688,17 +728,34 @@ void ModelInstaller::startNextQueuedInstall()
         return;
     }
     const TaskInstall item = m_taskQueue.takeFirst();
-    ModelQuantModel *model = quantModel(item.task);
-    const QList<ModelPreset> &presets = presetsForRole(item.task);
+    m_runningInstall = item;
+    ModelQuantModel *model = quantModel(item.tasks.first());
+    const QList<ModelPreset> &presets = presetsForRole(item.tasks.first());
     const int preset = model->presetIndexFor(item.key, item.quantId);
     if (preset < 0 || preset >= presets.size()) {
         setStatusMessage(tr("This quantization is not available for download"));
         setState(State::Error);
+        m_runningInstall.reset();
         m_taskQueue.clear();
         setTaskQueueActive(false);
         return;
     }
-    m_transaction->prepare(presets.at(preset), item.task);
+    m_transaction->prepare(presets.at(preset), item.tasks.first());
+}
+
+void ModelInstaller::finishRunningInstall()
+{
+    if (!m_runningInstall)
+        return;
+    const TaskInstall item = *m_runningInstall;
+    m_runningInstall.reset();
+    // The transaction already activated the first task; the rest ride the
+    // same download and are activated here.
+    for (const QString &task : item.tasks.mid(1)) {
+        const int entry = quantModel(task)->entryIndexFor(item.key, item.quantId);
+        if (entry >= 0)
+            setActiveModel(entry, task);
+    }
 }
 
 }  // namespace llocr

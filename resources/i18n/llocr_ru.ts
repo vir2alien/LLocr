@@ -2007,6 +2007,14 @@
         <source>Check finished</source>
         <translation>Проверка закончена</translation>
     </message>
+    <message numerus="yes">
+        <source>%n more in queue</source>
+        <translation>
+            <numerusform>ещё %n в очереди</numerusform>
+            <numerusform>ещё %n в очереди</numerusform>
+            <numerusform>ещё %n в очереди</numerusform>
+        </translation>
+    </message>
 </context>
 <context>
     <name>PageStatus</name>

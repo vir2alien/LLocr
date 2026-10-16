@@ -78,7 +78,12 @@ ToolBar {
         return qsTr("Recognize the selected pages: blocks and their text in one pass")
     }
 
-    readonly property bool recognizeMainEnabled: Controller.hasImage && Controller.actionsIdle
+    // The pipeline buttons' idle gate: recognition machinery plus the model
+    // download queue (which shares the footer line and the Stop key).
+    readonly property bool pipelineIdle: Controller.actionsIdle
+                                         && !ModelInstaller.taskQueueActive
+
+    readonly property bool recognizeMainEnabled: headerRoot.pipelineIdle && Controller.hasImage
         && (recognizeMode === 1 ? Controller.scopeBlocksRecognitionSupported && Controller.blockRecognitionModelAvailable
         : recognizeMode === 2 ? Controller.canRecognize && Controller.rawPageOcrModelAvailable
         : Controller.canRecognize && Controller.pageOcrModelAvailable)
@@ -143,7 +148,7 @@ ToolBar {
             text: headerRoot.scopedText(qsTr("Mark up"))
             iconName: "layout-template"
             Layout.minimumWidth: implicitWidth
-            enabled: Controller.hasImage && Controller.actionsIdle
+            enabled: headerRoot.pipelineIdle && Controller.hasImage
                      && Controller.layoutAvailable && Controller.layoutModelAvailable
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Find the blocks on the selected pages")
@@ -155,7 +160,7 @@ ToolBar {
             iconName: "zap"
             mainTip: headerRoot.recognizeModeTip()
             mainEnabled: headerRoot.recognizeMainEnabled
-            arrowEnabled: Controller.hasImage && Controller.actionsIdle
+            arrowEnabled: headerRoot.pipelineIdle && Controller.hasImage
             onMainActivated: {
                 if (recognizeMode === 1)
                     Controller.recognizeScopeBlocks()
@@ -171,7 +176,7 @@ ToolBar {
             text: headerRoot.scopedText(qsTr("Verify"))
             iconName: "circle-check"
             mainTip: qsTr("Verify the recognized blocks on the selected pages")
-            mainEnabled: Controller.hasImage && Controller.actionsIdle
+            mainEnabled: headerRoot.pipelineIdle && Controller.hasImage
                          && Controller.scopeVerificationSupported && Controller.decisionModelAvailable
             arrowEnabled: mainEnabled
             onMainActivated: Controller.checkScopeEnabledBlocks()
@@ -185,7 +190,7 @@ ToolBar {
             iconName: "wand-sparkles"
             highlight: Controller.scopedProblemBlockCount > 0
             Layout.minimumWidth: implicitWidth
-            enabled: Controller.hasImage && Controller.actionsIdle
+            enabled: headerRoot.pipelineIdle && Controller.hasImage
                      && Controller.fixModelAvailable && Controller.scopedProblemBlockCount > 0
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Fix the problem blocks on the selected pages")
@@ -199,13 +204,16 @@ ToolBar {
             iconName: "square"
             iconSize: 13
             visible: Controller.busy || Controller.checkBusy || Controller.layoutBusy
+                     || ModelInstaller.taskQueueActive
             onClicked: {
                 if (Controller.busy)
                     Controller.stop()
                 else if (Controller.layoutBusy)
                     Controller.stopLayout()
-                else
+                else if (Controller.checkBusy)
                     Controller.stopCheck()
+                else
+                    ModelInstaller.cancelTaskInstalls()
             }
         }
 
@@ -401,7 +409,7 @@ ToolBar {
             text: qsTr("With markup")
             checkable: true
             checked: headerRoot.recognizeMode === 0
-            enabled: Controller.hasImage && Controller.actionsIdle
+            enabled: headerRoot.pipelineIdle && Controller.hasImage
                      && Controller.canRecognize && Controller.pageOcrModelAvailable
             onTriggered: headerRoot.recognizeMode = 0
         }
@@ -409,7 +417,7 @@ ToolBar {
             text: qsTr("By the marked blocks")
             checkable: true
             checked: headerRoot.recognizeMode === 1
-            enabled: Controller.hasImage && Controller.actionsIdle
+            enabled: headerRoot.pipelineIdle && Controller.hasImage
                      && Controller.scopeBlocksRecognitionSupported
                      && Controller.blockRecognitionModelAvailable
             onTriggered: headerRoot.recognizeMode = 1
@@ -418,7 +426,7 @@ ToolBar {
             text: qsTr("Without markup")
             checkable: true
             checked: headerRoot.recognizeMode === 2
-            enabled: Controller.hasImage && Controller.actionsIdle
+            enabled: headerRoot.pipelineIdle && Controller.hasImage
                      && Controller.canRecognize && Controller.rawPageOcrModelAvailable
             onTriggered: headerRoot.recognizeMode = 2
         }
@@ -429,7 +437,7 @@ ToolBar {
 
         MenuItem {
             text: qsTr("Verify only")
-            enabled: Controller.hasImage && Controller.actionsIdle
+            enabled: headerRoot.pipelineIdle && Controller.hasImage
                      && Controller.scopeVerificationSupported && Controller.decisionModelAvailable
             onTriggered: Controller.checkScopeEnabledBlocks(VerificationQueueController.FixSkip)
         }

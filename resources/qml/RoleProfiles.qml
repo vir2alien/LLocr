@@ -38,6 +38,13 @@ QtObject {
              : ModelInstaller.quantModels
     }
 
+    // Titles of every task riding one missing-model row — applyTaskChoices
+    // deduplicates by model+quant and merges the tasks into "tasks".
+    function choiceTitles(item) {
+        const ids = item.tasks && item.tasks.length > 0 ? item.tasks : [item.task]
+        return ids.map(t => title(t)).join(" + ")
+    }
+
     function runtimeNote(task) {
         return LaunchProfiles.modelRuntimeNoteForRole(task)
     }

@@ -76,6 +76,9 @@ public:
 
     static bool matchesRole(const ModelEntry &entry, const SettingsStore &settings, const QString &role);
     static QString displayTitle(const ModelEntry &entry);
+    // File identity across multi-part names: "model-00001-of-00002.gguf" and
+    // the quantization leaf both reduce to "model".
+    static QString stemName(const QString &pathOrFile);
 
 signals:
     void countChanged();
