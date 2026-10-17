@@ -48,6 +48,7 @@
   | `docs/18-clef-flash.md`   | Model manual: Cloudflare clef-flash decision model (launch, recommended v5 request scheme, thresholds); Russian mirror in `18-clef-flash.ru.md` |
   | `docs/19-glm-ocr.md`      | Model manual: GLM-OCR (trained task prefixes, no layout/coordinates, `raw` parser, glm4 metadata); Russian mirror in `19-glm-ocr.ru.md` |
   | `docs/20-model-task-rework.md` | Rework plan: six tasks instead of four roles, two-layer verification, the OK/FIX/REVIEW fix pipeline, page statuses, new settings windows (Oct 2026); stage table with statuses |
+  | `docs/21-d3.md`           | Model manual: d3-flash / d3-mini decision models (System One protocol, non-causal state reading, minBuild b11572); Russian mirror in `21-d3.ru.md` |
   
   ## Rules for the agent
   
@@ -468,7 +469,8 @@
     `RequestProfileStore` per task. Shipped model → task matrix:
     `unlimited-ocr` → pageOcr; `lfm25-vl-3b` → pageOcr + blockRecognition;
     `glm-ocr` → rawPageOcr + blockRecognition; `teleocr` → layout +
-    blockRecognition; `clef-flash` → decision; `qwen3.5-4b/9b`,
+    blockRecognition; `clef-flash`, `d3-flash`/`d3-mini` → decision
+    (`docs/21-d3.md`); `qwen3.5-4b/9b`,
     `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW). Task defaults (ADR 169,
     `roles.<task>.default: true` in the profile JSONs, exactly one per
     task, read by the upcoming auto-selection): pageOcr = `unlimited-ocr`,
