@@ -42,12 +42,13 @@
     "mmproj": {
       "id": "q8_0",
       "file": "MinerU2.5-Pro-2605-1.2B.mmproj-Q8_0.gguf",
-      "sha256": ""
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
     }
   },
   "roles": {
     "layout": {
-      "alias": "llocr-mineru-layout",
+      "alias": "llocr-layout",
       "parser": "mineru-layout",
       "maxOutput": 4096,
       "systemPrompt": "You are a helpful assistant.",
@@ -58,6 +59,26 @@
           "text": "\nLayout Detection:"
         }
       ],
+      "blocks": {
+        "styles": {
+          "doc_title": "heading",
+          "paragraph_title": "heading",
+          "code": "text",
+          "algorithm": "text",
+          "list": "text",
+          "list_item": "text",
+          "index": "text",
+          "phonetic": "text",
+          "aside_text": "text",
+          "formula_number": "italic",
+          "caption": "italic",
+          "code_caption": "italic",
+          "footnote": "italic",
+          "image_footnote": "italic",
+          "header": "italic",
+          "footer": "italic"
+        }
+      },
       "launch": [
         {
           "order": 1,
@@ -108,33 +129,47 @@
           "value": true,
           "description": "Cache the prompt (image embeddings, system message) between pages."
         }
-      ],
-      "blocks": {
-        "styles": {
-          "doc_title": "heading",
-          "paragraph_title": "heading",
-          "code": "text",
-          "algorithm": "text",
-          "list": "text",
-          "list_item": "text",
-          "index": "text",
-          "phonetic": "text",
-          "aside_text": "text",
-          "formula_number": "italic",
-          "caption": "italic",
-          "code_caption": "italic",
-          "footnote": "italic",
-          "image_footnote": "italic",
-          "header": "italic",
-          "footer": "italic"
-        }
-      }
+      ]
     },
     "blockRecognition": {
-      "alias": "llocr-mineru-blocks",
+      "alias": "llocr-blockrecognition",
       "parser": "raw",
       "maxOutput": 8192,
       "systemPrompt": "You are a helpful assistant.",
+      "blockPrompts": {
+        "text": "\nText Recognition:",
+        "title": "\nText Recognition:",
+        "doc_title": "\nText Recognition:",
+        "paragraph_title": "\nText Recognition:",
+        "list": "\nText Recognition:",
+        "list_item": "\nText Recognition:",
+        "index": "\nText Recognition:",
+        "formula_number": "\nText Recognition:",
+        "table": "\nTable Recognition:",
+        "table_caption": "\nText Recognition:",
+        "image_caption": "\nText Recognition:",
+        "caption": "\nText Recognition:",
+        "footnote": "\nText Recognition:",
+        "table_footnote": "\nText Recognition:",
+        "figure_footnote": "\nText Recognition:",
+        "equation": "\nFormula Recognition:",
+        "formula": "\nFormula Recognition:",
+        "code": "\nText Recognition:",
+        "abstract": "\nText Recognition:",
+        "ref_text": "\nText Recognition:",
+        "reference": "\nText Recognition:",
+        "header": "\nText Recognition:",
+        "footer": "\nText Recognition:",
+        "page_number": "\nText Recognition:",
+        "seal": "\nText Recognition:",
+        "page_footnote": "\nText Recognition:",
+        "aside_text": "\nText Recognition:",
+        "phonetic": "\nText Recognition:",
+        "unknown": "\nText Recognition:",
+        "code_caption": "\nText Recognition:",
+        "image_footnote": "\nText Recognition:",
+        "algorithm": "\nText Recognition:"
+      },
       "launch": [
         {
           "order": 1,
@@ -185,41 +220,7 @@
           "value": true,
           "description": "Cache the prompt (image embeddings, system message) between blocks."
         }
-      ],
-      "blockPrompts": {
-        "text": "\nText Recognition:",
-        "title": "\nText Recognition:",
-        "doc_title": "\nText Recognition:",
-        "paragraph_title": "\nText Recognition:",
-        "list": "\nText Recognition:",
-        "list_item": "\nText Recognition:",
-        "index": "\nText Recognition:",
-        "formula_number": "\nText Recognition:",
-        "table": "\nTable Recognition:",
-        "table_caption": "\nText Recognition:",
-        "image_caption": "\nText Recognition:",
-        "caption": "\nText Recognition:",
-        "footnote": "\nText Recognition:",
-        "table_footnote": "\nText Recognition:",
-        "figure_footnote": "\nText Recognition:",
-        "equation": "\nFormula Recognition:",
-        "formula": "\nFormula Recognition:",
-        "code": "\nText Recognition:",
-        "abstract": "\nText Recognition:",
-        "ref_text": "\nText Recognition:",
-        "reference": "\nText Recognition:",
-        "header": "\nText Recognition:",
-        "footer": "\nText Recognition:",
-        "page_number": "\nText Recognition:",
-        "seal": "\nText Recognition:",
-        "page_footnote": "\nText Recognition:",
-        "aside_text": "\nText Recognition:",
-        "phonetic": "\nText Recognition:",
-        "unknown": "\nText Recognition:",
-        "code_caption": "\nText Recognition:",
-        "image_footnote": "\nText Recognition:",
-        "algorithm": "\nText Recognition:"
-      }
+      ]
     }
   }
 }

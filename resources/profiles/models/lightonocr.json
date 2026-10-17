@@ -42,12 +42,13 @@
     "mmproj": {
       "id": "bf16",
       "file": "LightOnOCR-3-4B.mmproj-bf16.gguf",
-      "sha256": ""
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
     }
   },
   "roles": {
     "pageOcr": {
-      "alias": "llocr-lightonocr",
+      "alias": "llocr-pageocr",
       "parser": "lightonocr",
       "maxOutput": 8192,
       "prompts": [
@@ -148,7 +149,7 @@
       ]
     },
     "blockRecognition": {
-      "alias": "llocr-lightonocr-blocks",
+      "alias": "llocr-blockrecognition",
       "parser": "raw",
       "maxOutput": 8192,
       "launch": [
@@ -222,7 +223,7 @@
       ]
     },
     "rawPageOcr": {
-      "alias": "llocr-lightonocr-transcribe",
+      "alias": "llocr-rawpageocr",
       "parser": "raw",
       "maxOutput": 8192,
       "launch": [

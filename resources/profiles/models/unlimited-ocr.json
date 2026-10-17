@@ -42,14 +42,15 @@
     "mmproj": {
       "id": "f16",
       "file": "mmproj-Unlimited-OCR-F16.gguf",
-      "sha256": ""
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
     }
   },
   "roles": {
     "pageOcr": {
-      "alias": "llocr-unlimited-ocr",
-      "parser": "unlimited-ocr",
+      "alias": "llocr-pageocr",
       "default": true,
+      "parser": "unlimited-ocr",
       "maxOutput": 8192,
       "prompts": [
         {

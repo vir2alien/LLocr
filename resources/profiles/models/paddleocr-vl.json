@@ -18,14 +18,43 @@
     "mmproj": {
       "id": "f16",
       "file": "PaddleOCR-VL-1.6-GGUF-mmproj.gguf",
-      "sha256": ""
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
     }
   },
   "roles": {
     "blockRecognition": {
-      "alias": "llocr-paddleocr-blocks",
+      "alias": "llocr-blockrecognition",
       "parser": "raw",
       "maxOutput": 8192,
+      "blockPrompts": {
+        "text": "OCR:",
+        "title": "OCR:",
+        "list": "OCR:",
+        "table": "Table Recognition:",
+        "table_caption": "OCR:",
+        "image_caption": "OCR:",
+        "table_footnote": "OCR:",
+        "figure_footnote": "OCR:",
+        "equation": "Formula Recognition:",
+        "formula": "Formula Recognition:",
+        "code": "OCR:",
+        "abstract": "OCR:",
+        "ref_text": "OCR:",
+        "reference": "OCR:",
+        "header": "OCR:",
+        "footer": "OCR:",
+        "page_number": "OCR:",
+        "seal": "Seal Recognition:",
+        "page_footnote": "OCR:",
+        "aside_text": "OCR:",
+        "phonetic": "OCR:",
+        "unknown": "OCR:",
+        "code_caption": "OCR:",
+        "image_footnote": "OCR:",
+        "algorithm": "OCR:",
+        "equation_block": "Formula Recognition:"
+      },
       "launch": [],
       "request": [
         {
@@ -64,35 +93,7 @@
           "value": true,
           "description": "Cache the prompt (image embeddings) between blocks."
         }
-      ],
-      "blockPrompts": {
-        "text": "OCR:",
-        "title": "OCR:",
-        "list": "OCR:",
-        "table": "Table Recognition:",
-        "table_caption": "OCR:",
-        "image_caption": "OCR:",
-        "table_footnote": "OCR:",
-        "figure_footnote": "OCR:",
-        "equation": "Formula Recognition:",
-        "formula": "Formula Recognition:",
-        "code": "OCR:",
-        "abstract": "OCR:",
-        "ref_text": "OCR:",
-        "reference": "OCR:",
-        "header": "OCR:",
-        "footer": "OCR:",
-        "page_number": "OCR:",
-        "seal": "Seal Recognition:",
-        "page_footnote": "OCR:",
-        "aside_text": "OCR:",
-        "phonetic": "OCR:",
-        "unknown": "OCR:",
-        "code_caption": "OCR:",
-        "image_footnote": "OCR:",
-        "algorithm": "OCR:",
-        "equation_block": "Formula Recognition:"
-      }
+      ]
     }
   }
 }

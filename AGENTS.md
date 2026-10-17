@@ -49,6 +49,11 @@
   | `docs/19-glm-ocr.md`      | Model manual: GLM-OCR (trained task prefixes, no layout/coordinates, `raw` parser, glm4 metadata); Russian mirror in `19-glm-ocr.ru.md` |
   | `docs/20-model-task-rework.md` | Rework plan: six tasks instead of four roles, two-layer verification, the OK/FIX/REVIEW fix pipeline, page statuses, new settings windows (Oct 2026); stage table with statuses |
   | `docs/21-d3.md`           | Model manual: d3-flash / d3-mini decision models (System One protocol, non-causal state reading, minBuild b11572); Russian mirror in `21-d3.ru.md` |
+  | `docs/22-unlimited-ocr.md` | Model manual: Unlimited-OCR (pageOcr default, DRY anti-loop sampling, vision budget, `unlimited-ocr` det parser); Russian mirror in `22-unlimited-ocr.ru.md` |
+  | `docs/23-lightonocr.md`   | Model manual: LightOnOCR-3-4B (two trained prompts — grounding + empty transcription, three roles, everything else out of distribution); Russian mirror in `23-lightonocr.ru.md` |
+  | `docs/24-mineru.md`       | Model manual: MinerU2.5-Pro-2605-1.2B (two-step protocol, 1036² squash, `--special`, layout absorption); Russian mirror in `24-mineru.ru.md` |
+  | `docs/25-paddleocr-vl.md` | Model manual: PaddleOCR-VL-1.6 (blockRecognition only — the layout model ships outside the GGUF, official single-quant repo); Russian mirror in `25-paddleocr-vl.ru.md` |
+  | `docs/26-qwen3.5.md`      | Model manual: Qwen3.5-4B/9B, the fix default (OK/FIX/REVIEW, MTP drafting, framed candidate); Russian mirror in `26-qwen3.5.ru.md` |
   
   ## Rules for the agent
   
