@@ -5,7 +5,7 @@
 namespace llocr {
 
 FixController::FixController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent)
-    : ModelRequestController(runtime, "FixController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<GeneralPurposeModel>())
+    : ModelRequestController(runtime, "FixController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<FixModel>())
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
         if (stopRequested()) {
@@ -47,7 +47,7 @@ void FixController::fixBlock(const QImage &image, const QString &recognizedText,
             request.recognizedText = recognizedText;
             request.modelId = conn.modelId;
             request.parameters = requestParameters();
-            request.protocol = CheckRequest::Protocol::Fix;
+            request.task = CheckRequest::Task::Fix;
 
             m_watcher.setFuture(m_model->check(request, conn.toConnectionConfig()));
         },

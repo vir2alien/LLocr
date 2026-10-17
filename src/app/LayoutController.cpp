@@ -17,7 +17,7 @@ constexpr int kLayoutImageSize = 1036;
 }  // namespace
 
 LayoutController::LayoutController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent)
-    : ModelRequestController(runtime, "LayoutController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<GeneralPurposeModel>())
+    : ModelRequestController(runtime, "LayoutController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<LayoutModel>())
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
         ++m_progressDone;
@@ -90,7 +90,7 @@ void LayoutController::startNext()
             request.typePrompt = m_prompt;
             request.modelId = conn.modelId;
             request.parameters = m_requestProfiles.activeProfile().parameters;
-            request.structuralReply = true;
+            request.task = CheckRequest::Task::Layout;
 
             m_watcher.setFuture(m_model->check(request, conn.toConnectionConfig()));
         },

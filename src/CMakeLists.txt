@@ -87,8 +87,14 @@ qt_add_library(llocr_models STATIC
     models/OcrModel.cpp
     models/ImageDataUrl.h
     models/ImageDataUrl.cpp
-    models/GeneralPurposeModel.h
-    models/GeneralPurposeModel.cpp
+    models/VisionChatModel.h
+    models/VisionChatModel.cpp
+    models/BlockRecognitionModel.h
+    models/BlockRecognitionModel.cpp
+    models/FixModel.h
+    models/FixModel.cpp
+    models/LayoutModel.h
+    models/LayoutModel.cpp
     models/DecisionModel.h
     models/DecisionModel.cpp
 )

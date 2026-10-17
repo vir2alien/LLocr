@@ -4,18 +4,18 @@
 #include <QtTest>
 
 #include "core/CheckRequest.h"
-#include "models/GeneralPurposeModel.h"
+#include "models/FixModel.h"
 
 using namespace llocr;
 
 namespace {
 
 // The parse/build pair is the whole fix protocol surface; expose them.
-class ExposedGeneralPurposeModel : public GeneralPurposeModel
+class ExposedFixModel : public FixModel
 {
 public:
     QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
-    CheckResult parse(const QByteArray &responseData, CheckRequest::Protocol protocol) { return parseResponse(responseData, protocol); }
+    CheckResult parse(const QByteArray &responseData) { return parseResponse(responseData); }
 };
 
 QByteArray chatReply(const QString &content)
@@ -31,7 +31,7 @@ CheckRequest fixRequest()
     request.typePrompt = QStringLiteral("Block type: text.");
     request.recognizedText = QStringLiteral("The candidate text");
     request.modelId = QStringLiteral("qwen3.5-9b");
-    request.protocol = CheckRequest::Protocol::Fix;
+    request.task = CheckRequest::Task::Fix;
     return request;
 }
 
@@ -58,27 +58,27 @@ private slots:
     // The fix request wraps the candidate in <ocr_candidate> and orders the
     // parts after the model's fix role (image-first for the shipped profiles).
     void requestBodyCarriesTheCandidate();
-    void recognitionProtocolUnchanged();
+    void emptyCandidateStillTravelsFramed();
 };
 
 void TestFixProtocol::fixWithColonAndNewline()
 {
-    ExposedGeneralPurposeModel model;
+    ExposedFixModel model;
 
-    const CheckResult colon = model.parse(chatReply(QStringLiteral("FIX: The corrected text")), CheckRequest::Protocol::Fix);
+    const CheckResult colon = model.parse(chatReply(QStringLiteral("FIX: The corrected text")));
     QCOMPARE(colon.status, CheckStatus::Fixed);
     QCOMPARE(colon.text, QStringLiteral("The corrected text"));
 
-    const CheckResult newline = model.parse(chatReply(QStringLiteral("FIX\nThe corrected\ntext")), CheckRequest::Protocol::Fix);
+    const CheckResult newline = model.parse(chatReply(QStringLiteral("FIX\nThe corrected\ntext")));
     QCOMPARE(newline.status, CheckStatus::Fixed);
     QCOMPARE(newline.text, QStringLiteral("The corrected\ntext"));
 }
 
 void TestFixProtocol::emptyFixMeansReview()
 {
-    ExposedGeneralPurposeModel model;
+    ExposedFixModel model;
     for (const QString &answer : {QStringLiteral("FIX"), QStringLiteral("FIX:"), QStringLiteral("fix \n")}) {
-        const CheckResult result = model.parse(chatReply(answer), CheckRequest::Protocol::Fix);
+        const CheckResult result = model.parse(chatReply(answer));
         QCOMPARE(result.status, CheckStatus::Review);
         QVERIFY(result.text.isEmpty());
     }
@@ -86,9 +86,9 @@ void TestFixProtocol::emptyFixMeansReview()
 
 void TestFixProtocol::okConfirmsWithoutText()
 {
-    ExposedGeneralPurposeModel model;
+    ExposedFixModel model;
     for (const QString &answer : {QStringLiteral("OK"), QStringLiteral("Ok"), QStringLiteral("OK — the block matches")}) {
-        const CheckResult result = model.parse(chatReply(answer), CheckRequest::Protocol::Fix);
+        const CheckResult result = model.parse(chatReply(answer));
         QCOMPARE(result.status, CheckStatus::Ok);
         QVERIFY(result.text.isEmpty());
     }
@@ -96,47 +96,47 @@ void TestFixProtocol::okConfirmsWithoutText()
 
 void TestFixProtocol::reviewMarksWithoutText()
 {
-    ExposedGeneralPurposeModel model;
-    const CheckResult result = model.parse(chatReply(QStringLiteral("REVIEW")), CheckRequest::Protocol::Fix);
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QStringLiteral("REVIEW")));
     QCOMPARE(result.status, CheckStatus::Review);
     QVERIFY(result.text.isEmpty());
 }
 
 void TestFixProtocol::garbageIsAnError()
 {
-    ExposedGeneralPurposeModel model;
-    const CheckResult result = model.parse(chatReply(QStringLiteral("The block is fine, I think")), CheckRequest::Protocol::Fix);
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QStringLiteral("The block is fine, I think")));
     QCOMPARE(result.status, CheckStatus::Failed);
     QVERIFY2(result.errorMessage.text().contains(QStringLiteral("OK, FIX or REVIEW")), qPrintable(result.errorMessage.text()));
 }
 
 void TestFixProtocol::codeFenceAroundFix()
 {
-    ExposedGeneralPurposeModel model;
-    const CheckResult result = model.parse(chatReply(QStringLiteral("```\nFIX: The corrected text\n```")), CheckRequest::Protocol::Fix);
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QStringLiteral("```\nFIX: The corrected text\n```")));
     QCOMPARE(result.status, CheckStatus::Fixed);
     QCOMPARE(result.text, QStringLiteral("The corrected text"));
 }
 
 void TestFixProtocol::thinkingIsStripped()
 {
-    ExposedGeneralPurposeModel model;
-    const CheckResult result = model.parse(chatReply(QStringLiteral("FIX: The corrected text\n thinking what to change response")), CheckRequest::Protocol::Fix);
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QStringLiteral("FIX: The corrected text\n thinking what to change response")));
     QCOMPARE(result.status, CheckStatus::Fixed);
     QCOMPARE(result.text, QStringLiteral("The corrected text"));
 }
 
 void TestFixProtocol::emptyContentIsAnError()
 {
-    ExposedGeneralPurposeModel model;
-    const CheckResult result = model.parse(chatReply(QString()), CheckRequest::Protocol::Fix);
+    ExposedFixModel model;
+    const CheckResult result = model.parse(chatReply(QString()));
     QCOMPARE(result.status, CheckStatus::Failed);
     QVERIFY(!result.errorMessage.text().isEmpty());
 }
 
 void TestFixProtocol::requestBodyCarriesTheCandidate()
 {
-    ExposedGeneralPurposeModel model;
+    ExposedFixModel model;
     const QJsonObject body = QJsonDocument::fromJson(model.build(fixRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
 
     QCOMPARE(body.value("model").toString(), QStringLiteral("qwen3.5-9b"));
@@ -155,25 +155,19 @@ void TestFixProtocol::requestBodyCarriesTheCandidate()
     QVERIFY2(candidate.contains(QStringLiteral("The candidate text")), qPrintable(candidate));
 }
 
-void TestFixProtocol::recognitionProtocolUnchanged()
+void TestFixProtocol::emptyCandidateStillTravelsFramed()
 {
-    ExposedGeneralPurposeModel model;
-
-    // The recognition request stays candidate-free.
+    // The candidate-free transcription contract lives in
+    // BlockRecognitionModel; the fix wire always carries the framing, even
+    // when the candidate text is empty — the empty-payload handling is the
+    // parser's verdict, not a wire shape.
+    ExposedFixModel model;
     CheckRequest request = fixRequest();
-    request.protocol = CheckRequest::Protocol::Recognition;
+    request.recognizedText.clear();
     const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
-    QVERIFY(!body.contains("ocr_candidate"));
+    QVERIFY(body.contains("ocr_candidate"));
     const QJsonArray content = QJsonDocument::fromJson(body).object().value("messages").toArray().at(1).toObject().value("content").toArray();
-    QCOMPARE(content.size(), 2);
-
-    // And the recognition parse still answers the transcription itself; an
-    // empty reply is the unreadable verdict, not an error.
-    const CheckResult recognized = model.parse(chatReply(QStringLiteral("The transcription")), CheckRequest::Protocol::Recognition);
-    QCOMPARE(recognized.status, CheckStatus::Recognized);
-    QCOMPARE(recognized.text, QStringLiteral("The transcription"));
-    const CheckResult unreadable = model.parse(chatReply(QString()), CheckRequest::Protocol::Recognition);
-    QCOMPARE(unreadable.status, CheckStatus::Review);
+    QCOMPARE(content.size(), 3);
 }
 
 QTEST_MAIN(TestFixProtocol)

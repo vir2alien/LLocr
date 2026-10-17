@@ -8,7 +8,7 @@
 #include "app/ModelRequestController.h"
 #include "core/CheckRequest.h"
 #include "core/CheckResult.h"
-#include "models/GeneralPurposeModel.h"
+#include "models/FixModel.h"
 
 namespace llocr {
 
@@ -34,7 +34,7 @@ private:
     QList<RequestParameter> requestParameters() const;
 
     RequestProfileStore &m_requestProfiles;
-    std::unique_ptr<GeneralPurposeModel> m_model;
+    std::unique_ptr<FixModel> m_model;
     QFutureWatcher<CheckResult> m_watcher;
 };
 

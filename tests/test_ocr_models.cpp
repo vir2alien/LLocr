@@ -16,7 +16,7 @@
 #include "core/ConnectionConfig.h"
 #include "core/ModelProfiles.h"
 #include "core/OcrRequest.h"
-#include "models/GeneralPurposeModel.h"
+#include "models/BlockRecognitionModel.h"
 #include "models/OcrModel.h"
 #include "parsers/BlockStyle.h"
 #include "parsers/ParserFactory.h"
@@ -26,7 +26,7 @@ using namespace llocr;
 namespace {
 
 // Exposes the protected request/response formation for white-box tests.
-class ExposedGeneralPurposeModel : public GeneralPurposeModel
+class ExposedBlockRecognitionModel : public BlockRecognitionModel
 {
 public:
     QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
@@ -498,7 +498,7 @@ private slots:
 
     void checkRequestBodyCarriesPromptAndImageOnly()
     {
-        ExposedGeneralPurposeModel model;
+        ExposedBlockRecognitionModel model;
         CheckRequest request;
         request.image = QImage(4, 4, QImage::Format_ARGB32);
         request.image.fill(Qt::gray);
@@ -561,7 +561,7 @@ private slots:
     // follows, same as the OCR body does.
     void checkBodyOrderFollowsTheModelProfile()
     {
-        ExposedGeneralPurposeModel model;
+        ExposedBlockRecognitionModel model;
         CheckRequest request;
         request.image = QImage(4, 4, QImage::Format_RGB32);
         request.systemPrompt = QStringLiteral("You transcribe one block.");
@@ -585,7 +585,7 @@ private slots:
     // message carrying the image only, same rule as the page request.
     void checkBodyOmitsEmptySystemAndTypePrompts()
     {
-        ExposedGeneralPurposeModel model;
+        ExposedBlockRecognitionModel model;
         CheckRequest request;
         request.image = QImage(4, 4, QImage::Format_RGB32);
         request.modelId = QStringLiteral("lightonocr");
@@ -601,7 +601,7 @@ private slots:
 
     void checkResponseParsing()
     {
-        ExposedGeneralPurposeModel model;
+        ExposedBlockRecognitionModel model;
 
         // The block-recognition contract: the reply itself is the block text.
         const CheckResult text = model.parse("{\"choices\":[{\"message\":{\"role\":\"assistant\","
@@ -655,6 +655,15 @@ private slots:
         QCOMPARE(withMarker.status, CheckStatus::Recognized);
         QCOMPARE(withMarker.text, QStringLiteral("recognized"));
 
+        // The <|...|> service markers are chatter the block text never keeps
+        // (the structural layout reply is LayoutModel's business); whatever
+        // the model printed between them stays verbatim.
+        const CheckResult withMarkers = model.parse("{\"choices\":[{\"message\":{\"content\":"
+                                                    "\"<|box_start|>116 101 273 117<|box_end|>recognized text<|im_end|>\"}}]}");
+        QCOMPARE(withMarkers.status, CheckStatus::Recognized);
+        QVERIFY(!withMarkers.text.contains(QStringLiteral("<|box_start|>")));
+        QVERIFY(withMarkers.text.contains(QStringLiteral("recognized text")));
+
         // Broken transports stay failures, not silent verdicts.
         const CheckResult emptyChoices = model.parse("{\"choices\":[]}");
         QCOMPARE(emptyChoices.status, CheckStatus::Failed);
@@ -683,7 +692,7 @@ private slots:
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
         config.responseTimeoutMs = 10000;
 
-        const auto model = std::make_unique<GeneralPurposeModel>();
+        const auto model = std::make_unique<BlockRecognitionModel>();
         QFuture<CheckResult> future = model->check(request, config);
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(server.gotRequest);

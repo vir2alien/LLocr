@@ -6,7 +6,7 @@
 #include <QTest>
 
 #include "core/ConnectionConfig.h"
-#include "models/GeneralPurposeModel.h"
+#include "models/LayoutModel.h"
 #include "parsers/MinerULayoutParser.h"
 #include "parsers/TeleOcrLayoutParser.h"
 
@@ -14,14 +14,13 @@ using namespace llocr;
 
 namespace {
 
-// The markup pass reuses the block-recognition transport, so the request
-// formation is exposed for white-box checks the same way DecisionModel is.
-class ExposedGeneralPurposeModel : public GeneralPurposeModel
+// The markup request formation is exposed for white-box checks the same way
+// DecisionModel is.
+class ExposedLayoutModel : public LayoutModel
 {
 public:
     static QByteArray build(const CheckRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
     static CheckResult parse(const QByteArray &responseData) { return parseResponse(responseData); }
-    static CheckResult parseStructural(const QByteArray &responseData) { return parseResponse(responseData, CheckRequest::Protocol::Recognition, true); }
 };
 
 // A loopback HTTP server that records the request line and body and answers
@@ -104,7 +103,7 @@ CheckRequest layoutRequest()
     cache.kind = RequestValueKind::Boolean;
     cache.value = true;
     request.parameters = {temperature, cache};
-    request.structuralReply = true;
+    request.task = CheckRequest::Task::Layout;
     return request;
 }
 
@@ -120,7 +119,7 @@ private slots:
     // is documented for), plus the layout profile parameters top-level.
     void requestBodyCarriesSystemPromptAndImage()
     {
-        const QByteArray body = ExposedGeneralPurposeModel::build(layoutRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QByteArray body = ExposedLayoutModel::build(layoutRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"));
         const QJsonObject root = QJsonDocument::fromJson(body).object();
 
         const QJsonArray messages = root.value(QStringLiteral("messages")).toArray();
@@ -153,7 +152,7 @@ private slots:
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
         config.responseTimeoutMs = 10000;
 
-        GeneralPurposeModel model;
+        LayoutModel model;
         QFuture<CheckResult> future = model.check(layoutRequest(), config);
         QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 15000);
         QVERIFY(server.gotRequest);
@@ -173,7 +172,7 @@ private slots:
     // markup pass reports a failed page instead of wiping the blocks.
     void emptyReplyIsNotAFailure()
     {
-        ExposedGeneralPurposeModel model;
+        ExposedLayoutModel model;
         const CheckResult empty = model.parse("{\"choices\":[{\"message\":{\"content\":\"\"}}]}");
         QCOMPARE(empty.status, CheckStatus::Review);
         QVERIFY(empty.text.isEmpty());
@@ -184,20 +183,17 @@ private slots:
     }
 
     // MinerU's layout reply is special-token markup: the <|box_start|> family
-    // is the data itself. The default cleanup eats every <|...|> span (the
-    // <box:> tags of TeleOCR survive it — that is why only MinerU broke), so
-    // the layout pass reads its reply structurally and the markers reach the
-    // parser.
-    void structuralReplyKeepsTheSpecialTokenMarkers()
+    // is the data itself. The layout model reads the reply structurally — no
+    // service-token cleanup — so the markers reach the parser. (The block
+    // recognition model strips them; that contract is pinned in
+    // test_ocr_models.)
+    void layoutReplyKeepsTheSpecialTokenMarkers()
     {
         const QByteArray reply = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\""
                                                    "<|box_start|>116 101 273 117<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\\n"
                                                    "<|box_start|>113 132 885 310<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|><|im_end|>\"}}]}");
 
-        const CheckResult stripped = ExposedGeneralPurposeModel::parse(reply);
-        QVERIFY(!stripped.text.contains(QStringLiteral("<|box_start|>")));
-
-        const CheckResult structural = ExposedGeneralPurposeModel::parseStructural(reply);
+        const CheckResult structural = ExposedLayoutModel::parse(reply);
         QCOMPARE(structural.status, CheckStatus::Recognized);
         QVERIFY(structural.text.contains(QStringLiteral("<|box_start|>")));
 

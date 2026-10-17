@@ -5,7 +5,7 @@
 namespace llocr {
 
 CheckController::CheckController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent)
-    : ModelRequestController(runtime, "CheckController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<GeneralPurposeModel>())
+    : ModelRequestController(runtime, "CheckController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<BlockRecognitionModel>())
 {
     connect(&m_watcher, &QFutureWatcher<CheckResult>::finished, this, [this]() {
         if (stopRequested()) {

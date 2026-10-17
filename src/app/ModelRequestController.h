@@ -13,10 +13,11 @@
 namespace llocr {
 
 // Shared scaffold of the per-role request controllers (CheckController,
-// DecisionController, LayoutController): the busy flag with its NOTIFY, the
-// stop flag honoured across both the resolve and the in-flight phases, and
-// the ensureConnectionReady error handling. Subclasses own the model call,
-// the result watcher and the finished signal.
+// DecisionController, FixController, LayoutController, RecognitionController):
+// the busy flag with its NOTIFY, the stop flag honoured across both the
+// resolve and the in-flight phases, and the ensureConnectionReady error
+// handling. Subclasses own the model call, the result watcher and the
+// finished signal.
 class ModelRequestController : public QObject
 {
     Q_OBJECT
@@ -34,6 +35,7 @@ protected:
 
     bool stopRequested() const { return m_stopRequested; }
     const char *trContext() const { return m_trContext; }
+    RuntimeController &runtime() { return m_runtime; }
 
     // Runs `start` with the connection resolved for the role; the
     // stopped-while-resolving case is reported and ends the run. The

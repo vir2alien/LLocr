@@ -8,7 +8,7 @@
 #include "app/ModelRequestController.h"
 #include "core/CheckRequest.h"
 #include "core/CheckResult.h"
-#include "models/GeneralPurposeModel.h"
+#include "models/LayoutModel.h"
 
 namespace llocr {
 
@@ -45,7 +45,7 @@ private:
     void resetRun() override;
 
     RequestProfileStore &m_requestProfiles;
-    std::unique_ptr<GeneralPurposeModel> m_model;
+    std::unique_ptr<LayoutModel> m_model;
     QFutureWatcher<CheckResult> m_watcher;
     QList<int> m_queue;
     ImageProvider m_imageProvider;

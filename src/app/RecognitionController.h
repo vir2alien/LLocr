@@ -5,16 +5,13 @@
 
 #include <QFutureWatcher>
 #include <QImage>
-#include <QObject>
-#include <QString>
 
-#include "core/ConnectionConfig.h"
+#include "app/ModelRequestController.h"
 #include "core/ConnectionRole.h"
 #include "core/OcrRequest.h"
 #include "core/StatusMessage.h"
 #include "models/OcrModel.h"
 #include "runtime/ResolvedConnection.h"
-#include "runtime/RuntimeController.h"
 
 namespace llocr {
 
@@ -27,7 +24,7 @@ enum class PageSkip {
     AlreadyRecognized,
 };
 
-class RecognitionController : public QObject
+class RecognitionController : public ModelRequestController
 {
     Q_OBJECT
 
@@ -43,7 +40,6 @@ public:
                                    QObject *parent = nullptr,
                                    SkipResolver skipPage = {});
 
-    bool busy() const { return m_busy; }
     // task picks the page-recognition pipeline: PageOcr runs the markup-aware
     // page task, RawPageOcr the markup-free one; each brings its own request
     // profile, model and server role.
@@ -53,15 +49,11 @@ public:
     // selection). Explicitly picked pages are recognized even when already
     // recognized; unreadable ones still report as skipped.
     void startPages(const QList<int> &pages, ConnectionRole task = ConnectionRole::PageOcr);
-    void stop();
 
 signals:
     // The task tells the caller which pipeline produced the result (the page
     // mode derives from it: PageOcr → MarkupOcr, RawPageOcr → RawOcr).
     void rawResultReady(int pageIndex, llocr::ConnectionRole task, const llocr::OcrResult &raw);
-    void statusRequested(const StatusMessage &message);
-
-    void busyChanged();
 
 private slots:
     void onRecognitionFinished();
@@ -73,14 +65,14 @@ private:
     void recognizePage(int index);
     void recognizeNextScopePage();
     bool launchPageRequest(int index);
-    void finishRun();
-    void setBusy(bool busy);
     QString promptText() const;
     StatusMessage skipReport() const;
     OcrRequest buildRequest(const QImage &image, const ResolvedConnection &conn) const;
 
+    void abortRequest() override;
+    void resetRun() override;
+
     SettingsStore &m_settings;
-    RuntimeController &m_runtime;
     RequestProfileStore &m_requestProfiles;
     RequestProfileStore &m_rawPageOcrProfiles;
     ImageProvider m_imageProvider;
@@ -99,8 +91,6 @@ private:
     int m_startIndex = 0;
     QList<int> m_pageQueue;  ///< the startPages run; empty for the range modes
     int m_queuePos = 0;
-    bool m_busy = false;
-    bool m_stopRequested = false;
     bool m_recognizeAll = false;
     int m_recognizingIndex = -1;
 };

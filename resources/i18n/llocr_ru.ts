@@ -812,31 +812,43 @@
     </message>
 </context>
 <context>
-    <name>GeneralPurposeModel</name>
+    <name>VisionChatModel</name>
     <message>
-        <location filename="../../src/models/GeneralPurposeModel.cpp" line="+136"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный ответ JSON</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>No choices in response</source>
         <translation>В ответе нет вариантов</translation>
     </message>
+</context>
+<context>
+    <name>BlockRecognitionModel</name>
     <message>
-        <location line="+69"/>
+        <source>Failed to encode the block image</source>
+        <translation>Не удалось закодировать изображение блока</translation>
+    </message>
+</context>
+<context>
+    <name>FixModel</name>
+    <message>
         <source>Failed to encode the block image</source>
         <translation>Не удалось закодировать изображение блока</translation>
     </message>
     <message>
-        <location line="-48"/>
         <source>The model returned no corrected text, only end-of-sentence markers. Check that the selected model can process images.</source>
         <translation>Модель не вернула исправленный текст — только маркеры конца предложения. Убедитесь, что выбранная модель умеет обрабатывать изображения.</translation>
     </message>
     <message>
-        <location line="+39"/>
         <source>Unexpected verifier response—expected OK, FIX or REVIEW. Received: %1</source>
         <translation>Неожиданный ответ верификатора — ожидалось OK, FIX или REVIEW. Получено: %1</translation>
+    </message>
+</context>
+<context>
+    <name>LayoutModel</name>
+    <message>
+        <source>Failed to encode the block image</source>
+        <translation>Не удалось закодировать изображение блока</translation>
     </message>
 </context>
 <context>
