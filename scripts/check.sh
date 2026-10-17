@@ -120,13 +120,13 @@ if [ "$DO_LINT" -eq 1 ]; then
     fi
     if [ -z "$QMLLINT" ]; then
         echo "qmllint not found — SKIPPED" >&2
-    elif [ ! -f "$BUILD_DIR/src/LLocr/qmldir" ]; then
-        echo "the LLocr QML module is not built (no $BUILD_DIR/src/LLocr/qmldir) — SKIPPED" >&2
+    elif [ ! -f "$BUILD_DIR/LLocr/qmldir" ]; then
+        echo "the LLocr QML module is not built (no $BUILD_DIR/LLocr/qmldir) — SKIPPED" >&2
     else
         LIST=/tmp/llocr-qmllint-files.txt
         find "$ROOT/resources/qml" -name '*.qml' | sort > "$LIST"
         # Info-level output is ~700 lines of style notes; keep it for failures.
-        if ! (cd "$ROOT" && xargs "$QMLLINT" --max-warnings 0 -I "build/src" < "$LIST") > /tmp/llocr-qmllint.log 2>&1; then
+        if ! (cd "$ROOT" && xargs "$QMLLINT" --max-warnings 0 -I "build" < "$LIST") > /tmp/llocr-qmllint.log 2>&1; then
             cat /tmp/llocr-qmllint.log
             echo "qmllint reported problems (see above)" >&2
             exit 1

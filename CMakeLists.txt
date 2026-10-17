@@ -270,6 +270,56 @@ endif()
 
 add_subdirectory(src)
 
+# The QML tree is a real module: the file list is
+# globbed, so a new .qml file no longer has to be added by hand, and
+# qmllint/qmlcachegen can resolve the module. Files land as
+# qrc:/qt/qml/LLocr/… (main.cpp loads that URL; the old hand-maintained
+# resource list put them at qrc:/qml/…). The C++ singletons are still
+# registered by hand in main.cpp (qmlRegisterSingletonInstance) — making them
+# module types needs the create() factories from the layering work in stage 4;
+# the QML API is unchanged either way.
+#
+# Declared in the source root, not beside the llocr target in src/: the
+# qmlcachegen output path is <target>_<path relative to this directory>, and
+# with the module in src/ it embeds "llocr_../resources/qml" — a trailing-dot
+# directory component that Win32 cannot create (macOS/Linux treat it as a
+# literal name). From the root the relative path is resources/qml/… and the
+# generated tree is flat. qt_add_qml_module wires the cross-directory case
+# itself (the cachegen outputs are registered in the target's scope).
+# CONFIGURE_DEPENDS re-globs on add/remove, so the list is not maintained by
+# hand (49 lines before).
+file(GLOB_RECURSE LLOCR_QML_FILES CONFIGURE_DEPENDS
+     "${CMAKE_SOURCE_DIR}/resources/qml/*.qml")
+list(FILTER LLOCR_QML_FILES EXCLUDE REGEX "/scratch/")  # scratch: not shipped
+
+# qt_add_qml_module resolves every QML file to an absolute path and then needs
+# QT_RESOURCE_ALIAS to derive its path inside the module. The alias is relative
+# to resources/qml, so the module keeps the subdirectory layout (MainWindow/,
+# Settings/, Common/, Setup/).
+foreach(_qml IN LISTS LLOCR_QML_FILES)
+    file(RELATIVE_PATH _alias "${CMAKE_SOURCE_DIR}/resources/qml" "${_qml}")
+    set_source_files_properties("${_qml}" PROPERTIES QT_RESOURCE_ALIAS "${_alias}")
+endforeach()
+
+# The QML singletons must be marked as such for the build system too:
+# without QT_QML_SINGLETON_TYPE the generated qmldir lists them as ordinary
+# component types, and `Theme.accent` then reads a property off the *type*
+# (undefined) instead of off the singleton instance. `pragma Singleton` in the
+# file is what the engine sees; this property is what qmldir/qmllint see.
+# BlockNames and RoleProfiles live in the module root, not in a subdirectory,
+# because qmllint resolves a singleton through the *nearest* qmldir and a
+# subdirectory qmldir (generated per directory) does not declare it.
+foreach(_singleton Theme.qml BlockNames.qml RoleProfiles.qml PageStatus.qml TaskStatus.qml)
+    set_source_files_properties("${CMAKE_SOURCE_DIR}/resources/qml/${_singleton}"
+        PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+endforeach()
+
+qt_add_qml_module(llocr
+    URI LLocr
+    VERSION 1.0
+    QML_FILES ${LLOCR_QML_FILES}
+)
+
 if(LLOCR_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

@@ -350,50 +350,26 @@ if(LLOCR_DJVU_AVAILABLE)
     endif()
 endif()
 
-# The QML tree is a real module: the file list is
-# globbed, so a new .qml file no longer has to be added by hand, and
-# qmllint/qmlcachegen can resolve the module. Files land as
-# qrc:/qt/qml/LLocr/… (main.cpp loads that URL; the old hand-maintained
-# resource list put them at qrc:/qml/…). The C++ singletons are still
-# registered by hand in main.cpp (qmlRegisterSingletonInstance) — making them
-# module types needs the create() factories from the layering work in stage 4;
-# the QML API is unchanged either way.
-#
-# The module must be declared in the directory that owns the target: the
-# qmltyperegistrar tooling target reads the target's autogen rules, which are
-# only visible in that directory scope. CONFIGURE_DEPENDS re-globs on
-# add/remove, so the list is no longer maintained by hand (49 lines before).
-file(GLOB_RECURSE LLOCR_QML_FILES CONFIGURE_DEPENDS
-     "${CMAKE_SOURCE_DIR}/resources/qml/*.qml")
-list(FILTER LLOCR_QML_FILES EXCLUDE REGEX "/scratch/")  # scratch: not shipped
-
-# qt_add_qml_module resolves every QML file to an absolute path and then needs
-# QT_RESOURCE_ALIAS to derive its path inside the module. The alias is relative
-# to resources/qml, so the module keeps the subdirectory layout (MainWindow/,
-# Settings/, Common/, Setup/).
-foreach(_qml IN LISTS LLOCR_QML_FILES)
-    file(RELATIVE_PATH _alias "${CMAKE_SOURCE_DIR}/resources/qml" "${_qml}")
-    set_source_files_properties("${_qml}" PROPERTIES QT_RESOURCE_ALIAS "${_alias}")
-endforeach()
-
-# The QML singletons must be marked as such for the build system too:
-# without QT_QML_SINGLETON_TYPE the generated qmldir lists them as ordinary
-# component types, and `Theme.accent` then reads a property off the *type*
-# (undefined) instead of off the singleton instance. `pragma Singleton` in the
-# file is what the engine sees; this property is what qmldir/qmllint see.
-# BlockNames and RoleProfiles live in the module root, not in a subdirectory,
-# because qmllint resolves a singleton through the *nearest* qmldir and a
-# subdirectory qmldir (generated per directory) does not declare it.
-foreach(_singleton Theme.qml BlockNames.qml RoleProfiles.qml PageStatus.qml TaskStatus.qml)
-    set_source_files_properties("${CMAKE_SOURCE_DIR}/resources/qml/${_singleton}"
-        PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-endforeach()
-
-qt_add_qml_module(llocr
-    URI LLocr
-    VERSION 1.0
-    QML_FILES ${LLOCR_QML_FILES}
-)
+# The zlib import library resolved by find_package(ZLIB) may be a DLL import
+# (vcpkg x64-windows is): the loader then needs that DLL beside every exe,
+# which is the same bin/ directory for the app and all tests. Skipped when the
+# runtime DLL cannot be located (a static zlib needs nothing here).
+if(WIN32)
+    get_filename_component(_zlib_lib_dir "${ZLIB_LIBRARY_RELEASE}" DIRECTORY)
+    find_file(LLOCR_ZLIB_RUNTIME_DLL
+        NAMES z.dll zlib.dll zlib1.dll
+        HINTS "${_zlib_lib_dir}/../bin" "${_zlib_lib_dir}"
+    )
+    if(LLOCR_ZLIB_RUNTIME_DLL)
+        add_custom_command(TARGET llocr POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "${LLOCR_ZLIB_RUNTIME_DLL}" "$<TARGET_FILE_DIR:llocr>"
+            COMMENT "Copying the zlib runtime DLL beside llocr.exe"
+            VERBATIM
+        )
+    endif()
+    unset(LLOCR_ZLIB_RUNTIME_DLL CACHE)
+endif()
 
 qt_add_resources(llocr "app_conf"
     PREFIX "/"

@@ -19,7 +19,8 @@ QString makeRepoDir(const QString &modelsDir, const QString &name)
     const QString dir = QDir(modelsDir).filePath(name);
     QDir().mkpath(dir);
     QFile a(QDir(dir).filePath(QStringLiteral("model-Q4_K_M.gguf")));
-    a.open(QIODevice::WriteOnly);
+    if (!a.open(QIODevice::WriteOnly))
+        return QString();
     a.write("GGUF placeholder");
     a.close();
     return dir;
@@ -29,7 +30,8 @@ QString corruptIndex(const QString &modelsDir)
 {
     const QString path = ModelRegistry::indexPathFor(modelsDir);
     QFile f(path);
-    f.open(QIODevice::WriteOnly);
+    if (!f.open(QIODevice::WriteOnly))
+        return QString();
     f.write("{ not valid json ");
     f.close();
     return path;
@@ -288,12 +290,16 @@ void TestModelRegistry::persistsExplicitDefaultCtxSize()
     QVERIFY(err.isEmpty());
 
     // The explicit value (which equals the default) is written, not skipped.
-    QFile idx(ModelRegistry::indexPathFor(dir.path()));
-    QVERIFY(idx.open(QIODevice::ReadOnly));
-    const QJsonDocument doc = QJsonDocument::fromJson(idx.readAll());
-    const QJsonArray arr = doc.object().value(QStringLiteral("models")).toArray();
-    QVERIFY(arr.size() == 1);
-    QCOMPARE(arr.at(0).toObject().value(QStringLiteral("ctxSize")).toInt(0), 8192);
+    // The reader is scoped: load() below rewrites the index, and on Windows a
+    // rename over a file that is still open fails with access denied.
+    {
+        QFile idx(ModelRegistry::indexPathFor(dir.path()));
+        QVERIFY(idx.open(QIODevice::ReadOnly));
+        const QJsonDocument doc = QJsonDocument::fromJson(idx.readAll());
+        const QJsonArray arr = doc.object().value(QStringLiteral("models")).toArray();
+        QVERIFY(arr.size() == 1);
+        QCOMPARE(arr.at(0).toObject().value(QStringLiteral("ctxSize")).toInt(0), 8192);
+    }
 
     bool rebuilt = false;
     const QList<ModelEntry> loaded = ModelRegistry::load(dir.path(), rebuilt, err);

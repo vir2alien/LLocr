@@ -5,6 +5,7 @@
 #include <QJsonParseError>
 #include <QSaveFile>
 #include <QSettings>
+#include <QSet>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -28,9 +29,11 @@ QJsonObject objectFromJson(const QByteArray &json)
     return QJsonDocument::fromJson(json).object();
 }
 
-// Two presets: metal-tagged and cpu-tagged, for the auto-switch tests. The
-// policy section is not part of any preset: the app owns it, and the settings
-// table never shows it.
+// Presets covering every backend the platform detection can recommend, so the
+// no-configured-backend resolution lands on one of them on any machine: metal
+// on macOS, cuda or vulkan on a GPU Windows machine, cpu everywhere else.
+// The policy section is not part of any preset: the app owns it, and the
+// settings table never shows it.
 constexpr const char *kPresetsJson = R"({
     "schemaVersion": 1,
     "policy": { "parameters": [
@@ -42,6 +45,14 @@ constexpr const char *kPresetsJson = R"({
           "parameters": [
               { "order": 1, "name": "ctx-size", "value": 16384 },
               { "order": 2, "name": "flash-attn", "value": "off" }
+          ] },
+        { "id": "cuda", "name": "CUDA", "os": "win", "backend": "cuda",
+          "parameters": [
+              { "order": 1, "name": "ctx-size", "value": 8192 }
+          ] },
+        { "id": "vulkan", "name": "Vulkan", "os": "win", "backend": "vulkan",
+          "parameters": [
+              { "order": 1, "name": "ctx-size", "value": 8192 }
           ] },
         { "id": "cpu", "name": "CPU", "backend": "cpu",
           "parameters": [
@@ -56,7 +67,10 @@ constexpr const char *kEmptyCatalog = R"({ "schemaVersion": 1, "profiles": [] })
 // models/<id>.json, so a name here would apply to every model the machine runs.
 constexpr const char *kLayeredPresetsJson = R"({
     "schemaVersion": 1,
-    "policy": { "parameters": [ { "order": 1, "name": "parallel", "value": 1 } ] },
+    "policy": { "parameters": [
+        { "order": 1, "name": "parallel", "value": 1 },
+        { "order": 2, "name": "no-warmup" }
+    ] },
     "profiles": [
         { "id": "cpu", "name": "CPU", "backend": "cpu",
           "parameters": [
@@ -151,12 +165,15 @@ private slots:
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
-        // No runtime installed: the platform-recommended backend resolves
-        // (cpu on Windows/Linux, metal on macOS — both presets exist).
+        // No runtime installed: the platform-recommended backend resolves —
+        // metal on macOS, cuda/vulkan on a GPU Windows machine, cpu otherwise;
+        // the fixture carries a preset for each.
         LaunchProfileStore store(settings, presetsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
+        const QSet<QString> everyDetectedBackend{QStringLiteral("metal"), QStringLiteral("cpu"),
+                                                 QStringLiteral("cuda"), QStringLiteral("vulkan")};
         const QString initialId = store.activeProfileId();
-        QVERIFY(initialId == QStringLiteral("metal") || initialId == QStringLiteral("cpu"));
+        QVERIFY(everyDetectedBackend.contains(initialId));
 
         // Installing a CPU backend switches (and persists) to the cpu preset.
         settings.setRuntimeBackend(QStringLiteral("cpu"));
@@ -169,7 +186,7 @@ private slots:
         QCOMPARE(settings.launchProfileId(), QStringLiteral("metal"));
 
         // An unknown backend keeps the current selection (nothing better).
-        settings.setRuntimeBackend(QStringLiteral("vulkan"));
+        settings.setRuntimeBackend(QStringLiteral("rocm"));
         QCOMPARE(store.activeProfileId(), QStringLiteral("metal"));
     }
 
@@ -187,7 +204,9 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         LaunchProfileStore store(settings, presetsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
-        QVERIFY(store.draftProfileId() == QStringLiteral("metal") || store.draftProfileId() == QStringLiteral("cpu"));
+        const QSet<QString> everyDetectedBackend{QStringLiteral("metal"), QStringLiteral("cpu"),
+                                                 QStringLiteral("cuda"), QStringLiteral("vulkan")};
+        QVERIFY(everyDetectedBackend.contains(store.draftProfileId()));
 
         // Installing a CPU build switches the draft (and the persisted
         // selection) to the cpu preset; back again on metal.
@@ -457,11 +476,12 @@ private slots:
     void policyLayerIsSharedAndOutOfTheTable()
     {
         QTemporaryDir dir;
-        const QString presetsPath = writeProfileFile(dir, "presets.json", kPresetsJson);
+        const QString presetsPath = writeProfileFile(dir, "presets.json", kLayeredPresetsJson);
 
         SettingsStore settings;
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
+        settings.setRuntimeBackend(QStringLiteral("cpu"));  // the only preset the fixture has
         LaunchProfileStore store(settings, presetsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
 

@@ -191,20 +191,26 @@ QList<ModelEntry> ModelRegistry::load(const QString &modelsDir, bool &rebuilt, Q
     // reconciliation fills it from the scan. The four near-identical rescan
     // branches this replaces each had to remember to do the same thing.
     QList<ModelEntry> index;
-    QFile f(indexPathFor(modelsDir));
-    const bool indexExists = f.exists();
-    if (indexExists) {
-        if (!f.open(QIODevice::ReadOnly)) {
-            error = QObject::tr("Unable to read model registry: %1").arg(f.errorString());
-        } else {
-            QJsonParseError perr;
-            const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
-            if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
-                error = QObject::tr("Model index is corrupt; rescanning models directory");
-            } else if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1) != kSchemaVersion) {
-                error = QObject::tr("Model index version mismatch; rescanning");
+    // The reader must be closed before the reconciliation below: the rewrite
+    // goes through QSaveFile::commit, and a rename over a file that is still
+    // open on Windows fails with access denied (POSIX allows it).
+    bool indexExists = false;
+    {
+        QFile f(indexPathFor(modelsDir));
+        indexExists = f.exists();
+        if (indexExists) {
+            if (!f.open(QIODevice::ReadOnly)) {
+                error = QObject::tr("Unable to read model registry: %1").arg(f.errorString());
             } else {
-                index = entriesFromIndex(doc.object());
+                QJsonParseError perr;
+                const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
+                if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
+                    error = QObject::tr("Model index is corrupt; rescanning models directory");
+                } else if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1) != kSchemaVersion) {
+                    error = QObject::tr("Model index version mismatch; rescanning");
+                } else {
+                    index = entriesFromIndex(doc.object());
+                }
             }
         }
     }

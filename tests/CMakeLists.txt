@@ -437,9 +437,12 @@ add_test(NAME test_release_catalog COMMAND test_release_catalog)
 # ---- Stage D: archive extractor -----------------------------------------
 qt_add_executable(test_archive_extractor test_archive_extractor.cpp)
 
+# The test builds ZIP fixtures with crc32 and includes <zlib.h> directly;
+# llocr_runtime links ZLIB PRIVATE, so its headers do not propagate here.
 target_link_libraries(test_archive_extractor PRIVATE
     Qt6::Test
     llocr_runtime
+    ZLIB::ZLIB
 )
 add_test(NAME test_archive_extractor COMMAND test_archive_extractor)
 
@@ -462,6 +465,7 @@ target_compile_definitions(test_install_transaction PRIVATE
 target_link_libraries(test_install_transaction PRIVATE
     Qt6::Test
     llocr_runtime
+    ZLIB::ZLIB
 )
 add_test(NAME test_install_transaction COMMAND test_install_transaction)
 
