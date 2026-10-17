@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "clef-flash",
-  "title": "Cloudflare clef-flash (decision)",
+  "title": "Cloudflare clef-flash",
   "license": "https://huggingface.co/bartowski/Cloudflare_clef-flash-GGUF",
   "minBuild": "b11430",
   "files": {

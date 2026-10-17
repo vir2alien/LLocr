@@ -392,11 +392,12 @@ private slots:
             checkKeys,
             QStringList({QStringLiteral("glm-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("lightonocr"), QStringLiteral("mineru"), QStringLiteral("paddleocr-vl"), QStringLiteral("teleocr")}));
 
-        // The decision list serves the decision task only.
+        // The decision list serves the decision task only; the default model
+        // leads, the rest sort by title (ModelProfiles::forRole).
         QStringList decisionKeys;
         for (int i = 0; i < decision->rowCount(); ++i)
             decisionKeys.append(roleAt(decision, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(decisionKeys, QStringList({QStringLiteral("clef-flash")}));
+        QCOMPARE(decisionKeys, QStringList({QStringLiteral("clef-flash"), QStringLiteral("d3-flash"), QStringLiteral("d3-mini")}));
         QVERIFY(pathOf(*s->installer, QStringLiteral("clef-flash"), QStringLiteral("decision")).isEmpty());
 
         // The layout list serves the layout task only (ADR 150): two shipped

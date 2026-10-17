@@ -96,6 +96,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"teleocr", "blockRecognition,layout", "b4000", "q8_0,q5_k_m,q4_k_m,q3_k_m", ""},
         {"glm-ocr", "rawPageOcr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"clef-flash", "decision", "b11430", "q8_0,q6_k,q5_k_m,q4_k_m,q4_0", "ctx-size,batch-size,ubatch-size"},
+        {"d3-flash", "decision", "b11572", "q8_0,q4_k_m", "ctx-size,batch-size,ubatch-size"},
+        {"d3-mini", "decision", "b11572", "q8_0,q4_k_m", "ctx-size,batch-size,ubatch-size"},
         {"lightonocr", "pageOcr,rawPageOcr,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "flash-attn,jinja,reasoning-budget,image-min-tokens"},
         {"mineru", "layout,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "special"},
         {"paddleocr-vl", "blockRecognition", "b8200", "f16", ""},
@@ -473,20 +475,24 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
 // profile carries the state's notation disclaimer in statePrompt and the ask
 // in question. The measured scheme ships neither the noul answer sides nor
 // per-type check lists — neither improved the separation — and the mechanisms
-// stay available to profiles that want them.
+// stay available to profiles that want them. Every System One model ships the
+// same wording: the d3 family reads the same request schema as clef-flash.
 void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(QStringLiteral("clef-flash"), QStringLiteral("decision"));
-    QVERIFY2(role, "clef-flash declares the decision role");
+    const QStringList decisionModels = {QStringLiteral("clef-flash"), QStringLiteral("d3-flash"), QStringLiteral("d3-mini")};
+    for (const QString &id : decisionModels) {
+        const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("decision"));
+        QVERIFY2(role, qPrintable(QStringLiteral("%1 declares the decision role").arg(id)));
 
-    QVERIFY(role->statePrompt.contains(QStringLiteral("carrier, not content")));
-    QVERIFY(role->question.contains(QStringLiteral("exactly the same characters, words, numbers and symbols")));
-    QVERIFY(role->criteriaTrue.isEmpty());
-    QVERIFY(role->criteriaFalse.isEmpty());
-    QVERIFY(role->blockPrompts.isEmpty());
-    QCOMPARE(ModelProfiles::criteriaTrueFor(profiles, QStringLiteral("clef-flash"), QStringLiteral("decision")), QString());
-    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("clef-flash"), QStringLiteral("decision"), QStringLiteral("formula")), QString());
+        QVERIFY2(role->statePrompt.contains(QStringLiteral("carrier, not content")), qPrintable(id));
+        QVERIFY2(role->question.contains(QStringLiteral("exactly the same characters, words, numbers and symbols")), qPrintable(id));
+        QVERIFY2(role->criteriaTrue.isEmpty(), qPrintable(id));
+        QVERIFY2(role->criteriaFalse.isEmpty(), qPrintable(id));
+        QVERIFY2(role->blockPrompts.isEmpty(), qPrintable(id));
+        QCOMPARE(ModelProfiles::criteriaTrueFor(profiles, id, QStringLiteral("decision")), QString());
+        QCOMPARE(ModelProfiles::blockPromptFor(profiles, id, QStringLiteral("decision"), QStringLiteral("formula")), QString());
+    }
 }
 
 // A model the managed runtime cannot load says so in its profile, and the note

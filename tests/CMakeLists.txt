@@ -27,6 +27,8 @@ set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/teleocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/glm-ocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/clef-flash.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/d3-flash.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/d3-mini.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/lightonocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/mineru.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/paddleocr-vl.json"
