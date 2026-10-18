@@ -2,6 +2,7 @@
 
 #include "models/ChatExchange.h"
 #include "models/ImageDataUrl.h"
+#include "models/VisionChatModel.h"
 
 #include <atomic>
 #include <memory>
@@ -187,7 +188,7 @@ OcrResult OcrModel::parseResponse(const QByteArray &responseData)
     }
 
     const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
-    const QString content = message.value(QStringLiteral("content")).toString();
+    const QString content = VisionChatModel::stripEscapedPunctuation(message.value(QStringLiteral("content")).toString());
     dumpRawResponse(responseData, content, true);
 
     OcrResult result;
@@ -196,9 +197,26 @@ OcrResult OcrModel::parseResponse(const QByteArray &responseData)
     return result;
 }
 
+namespace {
+// The profile's trained page size: a page larger than the edge is shrunk to
+// fit before encoding (KeepAspectRatio), smaller pages pass untouched.
+QImage scaledToLongestEdge(const QImage &image, int longestEdge)
+{
+    if (image.isNull() || longestEdge <= 0 || (image.width() <= longestEdge && image.height() <= longestEdge))
+        return image;
+    const QSize fit = image.size().scaled(QSize(longestEdge, longestEdge), Qt::KeepAspectRatio);
+    return image.scaled(fit, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+}
+}  // namespace
+
 QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const ConnectionConfig &config)
 {
-    return runChatExchange<OcrResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
+    return runChatExchange<OcrResult>([request]() {
+        QImage image = request.image;
+        if (const ModelProfiles::Role *role = pageRoleFor(request.modelId))
+            image = scaledToLongestEdge(image, role->imageLongestEdge);
+        return buildRequestBody(request, encodeImageDataUrl(image));
+    },
                                       config,
                                       m_activeClient,
                                       [](const QByteArray &body) { return parseResponse(body); },

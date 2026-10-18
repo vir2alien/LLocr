@@ -108,6 +108,7 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.criteriaTrue = criteria.value(QStringLiteral("true")).toString();
         role.criteriaFalse = criteria.value(QStringLiteral("false")).toString();
         role.promptBeforeImage = roleObject.value(QStringLiteral("promptBeforeImage")).toBool(false);
+        role.imageLongestEdge = roleObject.value(QStringLiteral("imageLongestEdge")).toInt(0);
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
         if (!error.isEmpty())
             return profile;

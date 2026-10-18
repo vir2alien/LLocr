@@ -51,7 +51,7 @@ CheckResult BlockRecognitionModel::parseResponse(const QByteArray &responseData)
     if (!replyContent(responseData, &content, &error))
         return error;
 
-    const QString cleaned = stripOuterCodeFence(stripControlTokens(content));
+    const QString cleaned = stripEscapedPunctuation(stripOuterCodeFence(stripControlTokens(content)));
 
     CheckResult result;
     if (cleaned.isEmpty()) {

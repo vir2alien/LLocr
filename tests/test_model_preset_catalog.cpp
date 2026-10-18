@@ -98,7 +98,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"clef-flash", "decision", "b11430", "q8_0,q6_k,q5_k_m,q4_k_m,q4_0", "ctx-size,batch-size,ubatch-size"},
         {"d3-flash", "decision", "b11572", "q8_0,q4_k_m", "ctx-size,batch-size,ubatch-size"},
         {"d3-mini", "decision", "b11572", "q8_0,q4_k_m", "ctx-size,batch-size,ubatch-size"},
-        {"lightonocr", "pageOcr,rawPageOcr,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "flash-attn,jinja,reasoning-budget,image-min-tokens"},
+        {"lightonocr", "pageOcr,rawPageOcr,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "flash-attn,jinja,reasoning-budget"},
         {"mineru", "layout,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "special"},
         {"paddleocr-vl", "blockRecognition", "b8200", "f16", ""},
     };

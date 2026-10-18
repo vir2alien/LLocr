@@ -1,6 +1,7 @@
 #include "models/VisionChatModel.h"
 
 #include <QJsonDocument>
+#include <QRegularExpression>
 
 #include <algorithm>
 
@@ -88,6 +89,14 @@ QString VisionChatModel::stripOuterCodeFence(const QString &text)
     if (trimmed.left(openEnd).mid(3).trimmed().contains(QLatin1Char('`')))
         return text;
     return trimmed.mid(openEnd + 1, closeStart - openEnd - 1).trimmed();
+}
+
+QString VisionChatModel::stripEscapedPunctuation(const QString &text)
+{
+    static const QRegularExpression escaped(QStringLiteral(R"(\$\\([.,;:!?]))"));
+    QString out = text;
+    out.replace(escaped, QStringLiteral("$\\1"));
+    return out;
 }
 
 }  // namespace llocr

@@ -35,6 +35,7 @@ public:
         QHash<QString, QString> blockPrompts;
         QHash<QString, QString> blockAliases;  // alias -> canonical blockPrompts key
         bool promptBeforeImage = false;        // wire order: prompt text first, then the image (LFM2.5 trains text-then-image)
+        int imageLongestEdge = 0;              // 0 = send the page as-is; >0 = downscale to fit (LightOnOCR-3 trains on 2048 px pages)
     };
 
     struct Quant {

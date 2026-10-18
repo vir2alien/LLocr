@@ -95,20 +95,14 @@
           "name": "reasoning-budget",
           "value": 0,
           "description": "Budget for thinking tokens; the model is trained with thinking disabled, the chat template default."
-        },
-        {
-          "order": 4,
-          "name": "image-min-tokens",
-          "value": 1024,
-          "description": "Vision budget floor; llama.cpp warns that Qwen-VL needs at least 1024 image tokens for grounding tasks."
         }
       ],
       "request": [
         {
           "order": 1,
           "name": "temperature",
-          "value": 0.2,
-          "description": "Sampling randomness; 0.2 with top_p 0.9 is the model card's recommended setting."
+          "value": 0.1,
+          "description": "Sampling randomness; 0.1 is the official LightOnOCR client's setting for v3 \"use temperature 0.1, not greedy decoding\"; the card's example: 0.2 with top_p 0.9."
         },
         {
           "order": 2,
@@ -146,7 +140,8 @@
           "value": false,
           "description": "Reuse the prompt cache; false avoids the recurring-state position warnings Qwen3.5 logs when requests share a prefix."
         }
-      ]
+      ],
+      "imageLongestEdge": 2048
     },
     "blockRecognition": {
       "alias": "llocr-blockrecognition",
@@ -169,20 +164,14 @@
           "name": "reasoning-budget",
           "value": 0,
           "description": "Budget for thinking tokens; the model is trained with thinking disabled, the chat template default."
-        },
-        {
-          "order": 4,
-          "name": "image-min-tokens",
-          "value": 1024,
-          "description": "Vision budget floor; llama.cpp warns that Qwen-VL needs at least 1024 image tokens for grounding tasks."
         }
       ],
       "request": [
         {
           "order": 1,
           "name": "temperature",
-          "value": 0.2,
-          "description": "Sampling randomness; 0.2 with top_p 0.9 is the model card's recommended setting."
+          "value": 0.1,
+          "description": "Sampling randomness; 0.1 is the official LightOnOCR client's setting for v3 \"use temperature 0.1, not greedy decoding\"; the card's example: 0.2 with top_p 0.9."
         },
         {
           "order": 2,
@@ -243,20 +232,14 @@
           "name": "reasoning-budget",
           "value": 0,
           "description": "Budget for thinking tokens; the model is trained with thinking disabled, the chat template default."
-        },
-        {
-          "order": 4,
-          "name": "image-min-tokens",
-          "value": 1024,
-          "description": "Vision budget floor; llama.cpp warns that Qwen-VL needs at least 1024 image tokens for grounding tasks."
         }
       ],
       "request": [
         {
           "order": 1,
           "name": "temperature",
-          "value": 0.2,
-          "description": "Sampling randomness; 0.2 with top_p 0.9 is the model card's recommended setting."
+          "value": 0.1,
+          "description": "Sampling randomness; 0.1 is the official LightOnOCR client's setting for v3 \"use temperature 0.1, not greedy decoding\"; the card's example: 0.2 with top_p 0.9."
         },
         {
           "order": 2,
@@ -294,7 +277,8 @@
           "value": false,
           "description": "Reuse the prompt cache; false avoids the recurring-state position warnings Qwen3.5 logs when requests share a prefix."
         }
-      ]
+      ],
+      "imageLongestEdge": 2048
     }
   }
 }

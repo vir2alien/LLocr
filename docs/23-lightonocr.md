@@ -26,7 +26,7 @@ licensed.
 
 ## 3. Launch
 
-App layering (the profile's model layer adds four flags on top of the
+App layering (the profile's model layer adds three flags on top of the
 platform and policy layers):
 
 ```
@@ -35,7 +35,7 @@ llama-server \
   --mmproj <modelsDir>/prithivMLmods__LightOnOCR-3-4B-GGUF/LightOnOCR-3-4B.mmproj-bf16.gguf \
   --alias llocr-pageocr \
   --host 127.0.0.1 --port <auto> \
-  --flash-attn on --jinja --reasoning-budget 0 --image-min-tokens 1024 \
+  --flash-attn on --jinja --reasoning-budget 0 \
   --n-gpu-layers 99 --parallel 1 \
   --cache-reuse 0 --no-context-shift --no-warmup
 ```
@@ -47,11 +47,14 @@ llama-server \
   (its template default); without the flag the reply can open with a think
   block.
 - **`--flash-attn on`** — required by the vision stack (platform default).
-- **`--image-min-tokens 1024`** — llama.cpp warns that Qwen-VL needs at
-  least 1024 image tokens for grounding tasks.
 
-All three roles carry the identical flag set, so switching between them
-never reloads the same weights.
+The profile deliberately does **not** set `--image-min-tokens`: pages are
+sent through `imageLongestEdge: 2048` (`OcrModel` downscales,
+KeepAspectRatio — the card trains/evaluates on 400-DPI pages with a target
+longest dimension of 2048 px, exactly what the official client sends), so
+a page already yields ≥1024 vision tokens, and on a block crop the flag
+would stretch a ~65×20 px strip over 1024 tokens. One flag set for all
+three roles also means switching between them never reloads the weights.
 
 ## 4. Request contract
 
@@ -64,8 +67,38 @@ never reloads the same weights.
   part **omitted entirely** (`OcrModel` drops the empty prompt): the page
   or the block crop is transcribed raw, `parser: raw`.
 
-Sampling: `temperature 0`, `top_p 0.9`, penalties neutral, `stream false`,
-`cache_prompt true` (image embeddings reused across pages).
+Sampling: `temperature 0.1` (the official LightOnOCR client's setting for
+v3 — "use temperature 0.1, not greedy decoding"; the card's example: 0.2),
+`top_p 0.9`, penalties neutral, `stream false`, `cache_prompt false`
+(avoids the recurring-state position warnings Qwen3.5 logs when requests
+share a prefix — a throughput trade-off, not a quality one).
+
+Reply hygiene: markdown-trained output escapes the punctuation that
+follows inline math (`$x$\.` `$x$\,`); `stripEscapedPunctuation`
+(`VisionChatModel`) unescapes it on every page/block reply, the same fix
+the official client applies as `fix_dollars`.
+
+## 4. Request contract
+
+- **pageOcr** — one chat request per page: `[image_url data-URI, text
+  "grounding"]`; the `lightonocr` parser (`llocr_parsers`) turns the
+  labeled reply into positioned blocks. The profile styles the card's
+  vocabulary: headings stay plain text, chart blocks become data tables,
+  captions/footnotes/page numbers render italic.
+- **rawPageOcr / blockRecognition** — the same request shape with the text
+  part **omitted entirely** (`OcrModel` drops the empty prompt): the page
+  or the block crop is transcribed raw, `parser: raw`.
+
+Sampling: `temperature 0.1` (the official LightOnOCR client's setting for
+v3 — "use temperature 0.1, not greedy decoding"; the card's example: 0.2),
+`top_p 0.9`, penalties neutral, `stream false`, `cache_prompt false`
+(avoids the recurring-state position warnings Qwen3.5 logs when requests
+share a prefix — a throughput trade-off, not a quality one).
+
+Reply hygiene: markdown-trained output escapes the punctuation that
+follows inline math (`$x$\.` `$x$\,`); `stripEscapedPunctuation`
+(`VisionChatModel`) unescapes it on every page/block reply, the same fix
+the official client applies as `fix_dollars`.
 
 ## 5. Verification notes
 
@@ -85,5 +118,12 @@ decision/fix pipeline (docs/18, docs/20).
 - **Two prompts, nothing else.** Asking it to fix, judge or lay out a page
   is out of distribution by the card's own wording — the profile
   deliberately does not declare those roles.
+- **Block crops are out of distribution too.** The model is a page model:
+  the official pipeline feeds whole 2048 px pages and has no crop mode —
+  footnote/page_number/formula blocks all arrive through grounding. In the
+  Oct-2026 block-recognition benchmark (OCRtest) small crops came back as
+  English figure descriptions ("### Figure – Pixelated Number…") and long
+  formulas truncated; expect weak blockRecognition results from this model
+  and use pageOcr/rawPageOcr instead.
 - The GGUF repository is a third-party packaging (`prithivMLmods`), not
   LightOn's own.

@@ -29,6 +29,12 @@ public:
 
     void abort();
 
+    // Reply hygiene for every vision task: a Markdown-trained model escapes the
+    // punctuation that follows inline math ("$x$\." "$x$\,") — the backslash
+    // prints literally in the transcript (LightOnOCR's own client applies the
+    // same fix as its fix_dollars).
+    static QString stripEscapedPunctuation(const QString &text);
+
 protected:
     // The request root every task sends: the model name, the sampling
     // parameters from the task's request profile, and the template switch
