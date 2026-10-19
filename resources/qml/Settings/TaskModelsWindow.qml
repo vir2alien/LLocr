@@ -192,6 +192,31 @@ ApplicationWindow {
                         color: fileRow.usageCount > 0 ? Theme.textPrimary : Theme.textMuted
                     }
                     ToolButton {
+                        id: openFolderButton
+
+                        implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
+                        implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
+                        onClicked: {
+                            const err = ModelInstaller.openInstalledEntryFolder(fileRow.entryId)
+                            filesErrorLabel.text = err
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Open folder")
+
+                        contentItem: Item {
+                            implicitWidth: folderIcon.size
+                            implicitHeight: folderIcon.size
+
+                            Icon {
+                                id: folderIcon
+                                anchors.centerIn: parent
+                                name: "folder"
+                                size: 15
+                                color: Theme.textSecondary
+                            }
+                        }
+                    }
+                    ToolButton {
                         id: deleteRowButton
 
                         implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth

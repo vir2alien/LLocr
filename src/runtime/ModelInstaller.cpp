@@ -368,6 +368,15 @@ QString ModelInstaller::removeInstalledEntry(const QString &entryId)
     return tr("This model is not installed");
 }
 
+QString ModelInstaller::openInstalledEntryFolder(const QString &entryId)
+{
+    for (int i = 0; i < m_installed.size(); ++i) {
+        if (m_installed.at(i).id == entryId)
+            return openModelFolder(i);
+    }
+    return tr("This model is not installed");
+}
+
 void ModelInstaller::downloadQuant(const QString &key, const QString &quantId, const QString &role)
 {
     if (m_busy)

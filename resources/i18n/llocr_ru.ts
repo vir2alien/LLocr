@@ -3214,6 +3214,10 @@
         <translation>Скачанные модели появятся здесь — выберите квантование в строках выше и сохраните.</translation>
     </message>
     <message>
+        <source>Open folder</source>
+        <translation>Открыть папку</translation>
+    </message>
+    <message>
         <location line="-25"/>
         <location line="+122"/>
         <source>Delete</source>

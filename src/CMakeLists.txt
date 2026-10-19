@@ -423,7 +423,7 @@ qt_add_resources(llocr "app_icons"
 
 # --- UI icon set (Lucide, ISC) --------------------------------------------------
 # Monochrome 24x24 stroke SVGs, colorized at runtime by Common/Icon.qml.
-file(GLOB UI_ICON_FILES
+file(GLOB UI_ICON_FILES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/resources/icons/ui/*.svg")
 
 qt_add_resources(llocr "ui_icons"

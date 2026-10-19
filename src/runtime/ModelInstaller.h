@@ -109,6 +109,9 @@ public:
     // Delete one installed file row of the Models window's disk block. Empty
     // return = removed; otherwise the guard or error message.
     Q_INVOKABLE QString removeInstalledEntry(const QString &entryId);
+    // Open the containing folder of one installed file row (entryId as in
+    // removeInstalledEntry). Empty return = opened; otherwise the error.
+    Q_INVOKABLE QString openInstalledEntryFolder(const QString &entryId);
     int activeTaskCount(const ModelEntry &entry) const;
     QString removalBlockerFor(const ModelEntry &entry) const;
 
