@@ -33,7 +33,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 BUCKETS = ('Формулы', 'Таблицы', 'Текст с формулами', 'Простой текст', 'Служебные')
-FLAG_STATUSES = {4, 5}  # Review и Mismatch — всё, что не Ok
+# BoxCheckStatus приложения: 0 NotChecked, 1 Ok, 3 Review, 4 Mismatch (2 —
+# зарезервированный слот проектов v1). Флаг = всё, что не Ok/NotChecked.
+FLAG_STATUSES = {3, 4}
 
 
 def load_materials(materials_dir):
@@ -150,7 +152,10 @@ def main():
     truth = json.loads(Path(args.truth).read_text(encoding='utf-8'))
 
     def model_name(f):
-        rel = f.parent.relative_to(HERE) if f.parent != Path('.') else Path('.')
+        try:
+            rel = f.parent.relative_to(HERE)
+        except ValueError:
+            return f.stem.replace('OCR_TEST_', '')
         return (rel / f.stem.replace('OCR_TEST_', '')).as_posix().lstrip('./')
 
     candidates = [(model_name(f), read_project(f)) for f in files]
@@ -196,7 +201,8 @@ def main():
         per_bucket = OrderedDict((b, defaultdict(int)) for b in BUCKETS)
         fn_list, fp_list = [], []
         for r in rows:
-            st = proj['pages'][r['pi']]['boxes'][r['bi']]['checkStatus']
+            box = proj['pages'][r['pi']]['boxes'][r['bi']]
+            st = box['checkStatus']
             if st == 0:
                 per_bucket[r['bucket']]['excluded'] += 1
                 continue
@@ -229,7 +235,24 @@ def main():
             totals[field] = sum(b[field] for b in per_bucket.values())
         totals['FN_pct'] = round(100 * totals['FN'] / totals['err'], 1) if totals['err'] else 0.0
         totals['FP_pct'] = round(100 * totals['FP'] / totals['clean'], 1) if totals['clean'] else 0.0
-        report['models'][name] = {'buckets': per_bucket, 'totals': totals}
+        # Кривая из сохранённого P(match): Ok = p >= t, поэтому флаг при p < t;
+        # вердикты Review остаются флагами при любом t. Ограничение: Mismatch
+        # по диагнозу (fixable при высокой p) кривая не видит — она завышает FN
+        # на таких блоках; блоки без confidence в кривой не участвуют.
+        conf_rows = []
+        for r in rows:
+            box = proj['pages'][r['pi']]['boxes'][r['bi']]
+            st = box['checkStatus']
+            if st == 0 or truth_of(r) == 'stale' or box.get('confidence', -1.0) < 0:
+                continue
+            conf_rows.append((box['confidence'], truth_of(r) == 'err', st == 3))
+        sweep = []
+        for t in (0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9):
+            fn = sum(1 for c, is_err, is_review in conf_rows if is_err and not is_review and c >= t)
+            fp = sum(1 for c, is_err, is_review in conf_rows if not is_err and (is_review or c < t))
+            sweep.append({'t': t, 'FN': fn, 'FP': fp})
+        report['models'][name] = {'buckets': per_bucket, 'totals': totals, 'threshold_sweep': sweep}
+        report['models'][name]['conf_blocks'] = len(conf_rows)
         detail[name] = {'FN': fn_list, 'FP': fp_list}
 
     groups = OrderedDict()
@@ -268,7 +291,13 @@ def main():
                   f"{b['FN']:3d} ({b['FN_pct']:4.1f}%) {b['FP']:3d} ({b['FP_pct']:4.1f}%) {b['FN_content']:6d}")
         t = m['totals']
         print(f"{'ИТОГО':18s} {t['err']:6d} {t['clean']:6d} "
-              f"{t['FN']:3d} ({t['FN_pct']:4.1f}%) {t['FP']:3d} ({t['FP_pct']:4.1f}%) {t['FN_content']:6d}\n")
+              f"{t['FN']:3d} ({t['FN_pct']:4.1f}%) {t['FP']:3d} ({t['FP_pct']:4.1f}%) {t['FN_content']:6d}")
+        if m.get('conf_blocks'):
+            print(f"  калибровка порога по P(match) ({m['conf_blocks']} блоков с confidence; "
+                  f"флаг при p < t, Review — всегда флаг):")
+            for s in m['threshold_sweep']:
+                print(f"    t={s['t']:.2f} → FN={s['FN']:2d}  FP={s['FP']:2d}")
+        print()
     for gname, c in report['consensus'].items():
         print(f"Консенсус [{gname}]: пропустили все {c['missed_by_all']}/{c['err_blocks']}, "
               f"поймали все {c['caught_by_all']}, хотя бы одна {c['caught_by_any']} "

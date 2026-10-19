@@ -53,7 +53,7 @@ QString assignEntryName(int id, const QString &originalName, QSet<QString> *used
 
 QJsonObject boxToJson(const BoundingBox &box)
 {
-    return QJsonObject{
+    QJsonObject object{
         {"text", box.text},
         {"correctedText", box.correctedText},
         {"checkStatus", int(box.checkStatus)},
@@ -66,6 +66,11 @@ QJsonObject boxToJson(const BoundingBox &box)
         {"positioned", box.positioned},
         {"duplicateSuspect", box.duplicateSuspect},
     };
+    if (box.confidence >= 0.0)
+        object.insert("confidence", box.confidence);
+    if (box.correctedConfidence >= 0.0)
+        object.insert("correctedConfidence", box.correctedConfidence);
+    return object;
 }
 
 BoundingBox boxFromJson(const QJsonObject &object, int schemaVersion)
@@ -80,6 +85,8 @@ BoundingBox boxFromJson(const QJsonObject &object, int schemaVersion)
     box.rect = QRectF(object.value("x").toDouble(), object.value("y").toDouble(), object.value("w").toDouble(), object.value("h").toDouble());
     box.positioned = object.value("positioned").toBool(true);
     box.duplicateSuspect = object.value("duplicateSuspect").toBool(false);
+    box.confidence = object.value("confidence").toDouble(-1.0);
+    box.correctedConfidence = object.value("correctedConfidence").toDouble(-1.0);
     return box;
 }
 

@@ -41,8 +41,10 @@ struct BoundingBox {
     bool duplicateSuspect = false;      ///< A duplicate was merged into this block —
                                         ///< included in verification regardless of the
                                         ///< label filter.
-    double confidence = -1.0;           ///< P(match) of the text-layer verdict; -1 = none. Debug aid, not persisted.
-    double correctedConfidence = -1.0;  ///< P(match) of the correction-layer verdict; -1 = none. Debug aid, not persisted.
+    double confidence = -1.0;           ///< P(match) of the text-layer verdict; -1 = none.
+                                        ///< Persisted in project.json (ADR 173) — the
+                                        ///< threshold calibration data of the eval stand.
+    double correctedConfidence = -1.0;  ///< P(match) of the correction-layer verdict; -1 = none.
 };
 
 struct OcrPage {
