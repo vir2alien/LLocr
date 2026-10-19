@@ -372,18 +372,15 @@
   - **Verification and fix pipeline (ADR 145–147, 161–164, 172; Oct 2026)** —
     verification runs in two stages: a fast **decision model** (clef-flash or
     d3-flash/d3-mini via `/v1/systemone`, the `decision` task in «Модели»)
-    judges every queued block. The verdict is routed by scheme (ADR 172):
-    clef-flash ships **v5** — a JSON-object state
-    (`block_type`/`recognized_text`/`notation`) plus one noul question, Ok
-    (green) / **Mismatch** (red) by the `decision/matchThreshold` setting;
-    d3 ships **v6** (`docs/21-d3.md` §4b) — per-block equivalence rules in
-    `state.notation` and a ready two-question dict (`match` noul +
-    `diagnosis` choice; d3 answers each question of a request with its own
-    forward pass, so the draft's `has_text`/`readable` noul gates stay out
-    of the profile — empty/unreadable crops route through the diagnosis
-    classes), the verdict routed four ways: empty or unreadable crop →
-    **Review** (human eyes, never a fixer call even under auto-fix), Ok
-    only when the noul and the choice head both agree, else Mismatch;
+    judges every queued block. All three ship the **same scheme v6**
+    (`docs/21-d3.md` §4b): per-block equivalence rules in `state.notation`
+    and a ready two-question dict (`match` noul + `diagnosis` choice) — d3
+    answers each question of a request with its own forward pass, clef reads
+    them jointly (free), so the draft's `has_text`/`readable` noul gates
+    stay out of every profile and empty/unreadable crops route through the
+    diagnosis classes; the verdict is routed four ways: empty or unreadable
+    crop → **Review** (human eyes, never a fixer call even under auto-fix),
+    Ok only when the noul and the choice head both agree, else Mismatch;
     thresholds resolve per block type (`matchThresholdByBlock` in the
     profile → role `matchThreshold` → the setting). d1-3B failed the task
     in every phrasing and was removed (ADR 161). Every block carries two text layers with independent verdicts

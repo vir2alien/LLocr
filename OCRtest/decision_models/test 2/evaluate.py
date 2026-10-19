@@ -12,7 +12,8 @@ CER=0 = чистый блок; clean_overrides переопределяют. О�
 выявляют устаревание истины, если результат распознавания сменился.
 
 Использование:
-  python3 evaluate.py                # все OCR_TEST_*.llocr в папке скрипта
+  python3 evaluate.py                # все OCR_TEST_*.llocr рядом и в подпапках (iteration1/, ...)
+  python3 evaluate.py iteration2     # только прогоны указанной подпапки
   python3 evaluate.py --verbose      # + списки FN/FP с расхождениями
   python3 evaluate.py --json out.json
   python3 evaluate.py --materials PATH OTHER.llocr ...
@@ -75,22 +76,18 @@ def bucket_for(group, label):
 
 
 def build_rows(projects, gtjson, gtmod, cmp):
-    first = next(iter(projects.values()))
+    first_name, first = next(iter(projects.items()))
     n_pages = len(first['pages'])
     rows = []
     for pi in range(n_pages):
         n_boxes = len(first['pages'][pi]['boxes'])
         if len(gtjson['pages'][pi]['boxes']) != n_boxes:
             raise SystemExit(
-                f'стр. {pi}: в проекте {n_boxes} блоков, в эталоне '
+                f'{first_name}, стр. {pi}: в проекте {n_boxes} блоков, в эталоне '
                 f'{len(gtjson["pages"][pi]["boxes"])} — разметка разошлась с gt.json')
         for bi in range(n_boxes):
             gtbox = gtjson['pages'][pi]['boxes'][bi]
-            texts = {name: p['pages'][pi]['boxes'][bi]['text'] for name, p in projects.items()}
-            if len(set(texts.values())) > 1:
-                raise SystemExit(f'стр. {pi} бл. {bi}: тексты в проектах различаются — '
-                                 'это уже не одно распознавание; оценке не подлежит')
-            text = texts[first_name(projects)]
+            text = first['pages'][pi]['boxes'][bi]['text']
             group = gtbox['group']
             if group in ('equation', 'table'):
                 ngt, nhyp = cmp.norm_eq(gtmod.GT[pi][bi]), cmp.norm_eq(text)
@@ -133,7 +130,15 @@ def main():
     if not materials.exists():
         raise SystemExit(f'нет папки materials: {materials} (укажите --materials)')
 
-    files = [Path(f) for f in args.files] or sorted(HERE.glob('OCR_TEST_*.llocr'))
+    files = []
+    for f in args.files:
+        p = Path(f).resolve()
+        if p.is_dir():
+            files += sorted(p.glob('OCR_TEST_*.llocr'))
+        else:
+            files.append(p)
+    if not files:
+        files = sorted(HERE.glob('**/OCR_TEST_*.llocr'))
     if not files:
         raise SystemExit('нет .llocr-проектов для оценки')
     for f in files:
@@ -144,7 +149,21 @@ def main():
     gtjson = json.loads((materials / 'gt.json').read_text(encoding='utf-8'))
     truth = json.loads(Path(args.truth).read_text(encoding='utf-8'))
 
-    projects = OrderedDict((f.stem.replace('OCR_TEST_', ''), read_project(f)) for f in files)
+    def model_name(f):
+        rel = f.parent.relative_to(HERE) if f.parent != Path('.') else Path('.')
+        return (rel / f.stem.replace('OCR_TEST_', '')).as_posix().lstrip('./')
+
+    candidates = [(model_name(f), read_project(f)) for f in files]
+    projects = OrderedDict()
+    for name, proj in candidates:
+        statuses = {b['checkStatus'] for pg in proj['pages'] for b in pg['boxes']}
+        if statuses == {0}:
+            print(f'(пропущен {name}: нет вердиктов — это исходный проект распознавания, не прогон decision-модели)')
+            continue
+        projects[name] = proj
+    if not projects:
+        raise SystemExit('среди проектов нет ни одного прогона decision-модели (все без вердиктов)')
+    print()
     rows = build_rows(projects, gtjson, gtmod, cmp)
 
     fingerprints = truth['text_fingerprints_sha1']
@@ -213,24 +232,32 @@ def main():
         report['models'][name] = {'buckets': per_bucket, 'totals': totals}
         detail[name] = {'FN': fn_list, 'FP': fp_list}
 
-    err_rows = [r for r in rows if truth_of(r) == 'err' and all(
-        proj['pages'][r['pi']]['boxes'][r['bi']]['checkStatus'] != 0 for proj in projects.values())]
-    clean_rows = [r for r in rows if truth_of(r) == 'clean' and all(
-        proj['pages'][r['pi']]['boxes'][r['bi']]['checkStatus'] != 0 for proj in projects.values())]
-    flags = lambda r, proj: proj['pages'][r['pi']]['boxes'][r['bi']]['checkStatus'] in FLAG_STATUSES
-    report['consensus'] = {
-        'err_blocks': len(err_rows),
-        'missed_by_all': sum(1 for r in err_rows if not any(flags(r, p) for p in projects.values())),
-        'caught_by_all': sum(1 for r in err_rows if all(flags(r, p) for p in projects.values())),
-        'caught_by_any': sum(1 for r in err_rows if any(flags(r, p) for p in projects.values())),
-        'FP_if_any_flag': sum(1 for r in clean_rows if any(flags(r, p) for p in projects.values())),
-        'clean_blocks': len(clean_rows),
-    }
+    groups = OrderedDict()
+    for name in projects:
+        top = name.split('/')[0] if '/' in name else '(корень)'
+        groups.setdefault(top, []).append(name)
+    report['consensus'] = OrderedDict()
+    for gname, names in groups.items():
+        runs = [projects[n] for n in names]
+        err_rows = [r for r in rows if truth_of(r) == 'err' and all(
+            p['pages'][r['pi']]['boxes'][r['bi']]['checkStatus'] != 0 for p in runs)]
+        clean_rows = [r for r in rows if truth_of(r) == 'clean' and all(
+            p['pages'][r['pi']]['boxes'][r['bi']]['checkStatus'] != 0 for p in runs)]
+        flags = lambda r, p: p['pages'][r['pi']]['boxes'][r['bi']]['checkStatus'] in FLAG_STATUSES
+        report['consensus'][gname] = {
+            'models': names,
+            'err_blocks': len(err_rows),
+            'missed_by_all': sum(1 for r in err_rows if not any(flags(r, p) for p in runs)),
+            'caught_by_all': sum(1 for r in err_rows if all(flags(r, p) for p in runs)),
+            'caught_by_any': sum(1 for r in err_rows if any(flags(r, p) for p in runs)),
+            'FP_if_any_flag': sum(1 for r in clean_rows if any(flags(r, p) for p in runs)),
+            'clean_blocks': len(clean_rows),
+        }
 
     w = max(len(n) for n in projects)
-    print(f"Блоков всего: {len(rows)}; с ошибками: {report['consensus']['err_blocks']}, "
-          f"чистых: {report['consensus']['clean_blocks']}, вне области проверки: "
-          f"{sum(b['excluded'] for b in report['models'][first_name(projects)]['buckets'].values())}\n")
+    first_totals = report['models'][next(iter(report['models']))]['totals']
+    print(f"Блоков всего: {len(rows)}; с ошибками: {first_totals['err']}, "
+          f"чистых: {first_totals['clean']}, вне области проверки: {first_totals['excluded']}\n")
     for name, m in report['models'].items():
         print(f"===== {name}")
         print(f"{'тип':18s} {'ошибок':>6s} {'чистых':>6s} {'FN':>9s} {'FP':>9s} {'FN(видимых)':>11s}")
@@ -242,10 +269,10 @@ def main():
         t = m['totals']
         print(f"{'ИТОГО':18s} {t['err']:6d} {t['clean']:6d} "
               f"{t['FN']:3d} ({t['FN_pct']:4.1f}%) {t['FP']:3d} ({t['FP_pct']:4.1f}%) {t['FN_content']:6d}\n")
-    c = report['consensus']
-    print(f"Консенсус: пропустили все три {c['missed_by_all']}/{c['err_blocks']}, "
-          f"поймали все три {c['caught_by_all']}, хотя бы одна {c['caught_by_any']} "
-          f"(FP при правиле «флаг хотя бы одной»: {c['FP_if_any_flag']}).")
+    for gname, c in report['consensus'].items():
+        print(f"Консенсус [{gname}]: пропустили все {c['missed_by_all']}/{c['err_blocks']}, "
+              f"поймали все {c['caught_by_all']}, хотя бы одна {c['caught_by_any']} "
+              f"(FP при правиле «флаг хотя бы одной»: {c['FP_if_any_flag']}).")
 
     if args.verbose:
         for name in projects:
