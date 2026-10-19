@@ -284,6 +284,12 @@ public:
 
     qreal systemoneProbability = 0.97;
     bool systemoneBroken = false;  // reply without an "answers" object → every judge fails
+    // When set, the systemone reply carries the full v6 answer set (match/
+    // has_text/readable + a choice map topped by systemoneTopDiagnosis).
+    bool systemoneMultiAnswer = false;
+    qreal systemoneHasText = 0.99;
+    qreal systemoneReadable = 0.94;
+    QString systemoneTopDiagnosis = QStringLiteral("exact_match");
     QString transcription = QStringLiteral("Re-recognized block text");
     // The fix protocol's reply for any request carrying an <ocr_candidate>.
     QString fixReply = QStringLiteral("FIX\nFixed block text");
@@ -335,11 +341,23 @@ private:
         if (request.contains("POST /v1/systemone")) {
             // The decision answer: P(match) in the {"noul": x} spelling.
             ++const_cast<DetTokenChatServer *>(this)->m_systemoneRequests;
-            body =
-                systemoneBroken
-                    ? QJsonDocument(QJsonObject{{"error", QJsonObject{{"message", "no such endpoint"}}}}).toJson(QJsonDocument::Compact)
-                    : QJsonDocument(QJsonObject{{"answers", QJsonObject{{"match", QJsonObject{{"noul", systemoneProbability}}}}}, {"usage", QJsonObject{{"input_tokens", 42}, {"output_tokens", 0}}}})
-                          .toJson(QJsonDocument::Compact);
+            if (systemoneMultiAnswer) {
+                QJsonObject choice{{systemoneTopDiagnosis, 0.9}};
+                for (const QString &klass : {QStringLiteral("exact_match"), QStringLiteral("fixable_ocr_error"), QStringLiteral("unreadable_or_clipped"), QStringLiteral("empty_crop")}) {
+                    if (klass != systemoneTopDiagnosis)
+                        choice.insert(klass, 0.03);
+                }
+                const QJsonObject answers{{"match", QJsonObject{{"noul", systemoneProbability}}},
+                                          {"has_text", QJsonObject{{"noul", systemoneHasText}}},
+                                          {"readable", QJsonObject{{"noul", systemoneReadable}}},
+                                          {"diagnosis", QJsonObject{{"choice", choice}}}};
+                body = QJsonDocument(QJsonObject{{"answers", answers}, {"usage", QJsonObject{{"input_tokens", 42}, {"output_tokens", 0}}}}).toJson(QJsonDocument::Compact);
+            } else {
+                body = systemoneBroken ? QJsonDocument(QJsonObject{{"error", QJsonObject{{"message", "no such endpoint"}}}}).toJson(QJsonDocument::Compact)
+                                       : QJsonDocument(QJsonObject{{"answers", QJsonObject{{"match", QJsonObject{{"noul", systemoneProbability}}}}},
+                                                                   {"usage", QJsonObject{{"input_tokens", 42}, {"output_tokens", 0}}}})
+                                             .toJson(QJsonDocument::Compact);
+            }
         } else {
             // Chat completions: the wrapped <|det|>…<|/det|> stream for the OCR
             // prompt (no system message), the fix protocol answer for a
@@ -1980,6 +1998,60 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QVERIFY2(m_controller->checkErrorMessage().contains(QStringLiteral("answers")), qPrintable(m_controller->checkErrorMessage()));
+    }
+
+    // Scheme v6 routing end-to-end: an unreadable crop goes straight to Review
+    // (human eyes) and never reaches the fix protocol, even with automatic
+    // fixing enabled (docs/21, §v6).
+    void decisionV6RoutingSendsUnreadableCropsToReview()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the match head rejects the text
+        server.systemoneMultiAnswer = true;
+        server.systemoneReadable = 0.1;  // below the 0.45 cut-off: REVIEW
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+        m_settings->setAutoCheck(false);
+        m_settings->setAutoFix(true);
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("v6-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 3);  // 1 recognition + 2 decision; the fix stage never ran
+        QCOMPARE(server.systemoneRequests(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Review));
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Review));
+        QVERIFY(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString().isEmpty());
+
+        // Re-ask via re-recognition (answered blocks are skipped by the check):
+        // the crop is now legible and the choice head says exact_match, but
+        // the noul stays below the threshold — both heads must agree, so the
+        // verdict is Mismatch, not Ok.
+        server.systemoneReadable = 0.94;
+        server.systemoneTopDiagnosis = QStringLiteral("exact_match");
+        m_controller->recognizeAllProblemBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 5);
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.systemoneRequests(), 4);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Mismatch));
     }
 
     // Regression (ADR 102): the page owns its text, so re-typing what the page

@@ -4,8 +4,8 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QSaveFile>
-#include <QSettings>
 #include <QSet>
+#include <QSettings>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -170,8 +170,7 @@ private slots:
         // the fixture carries a preset for each.
         LaunchProfileStore store(settings, presetsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
-        const QSet<QString> everyDetectedBackend{QStringLiteral("metal"), QStringLiteral("cpu"),
-                                                 QStringLiteral("cuda"), QStringLiteral("vulkan")};
+        const QSet<QString> everyDetectedBackend{QStringLiteral("metal"), QStringLiteral("cpu"), QStringLiteral("cuda"), QStringLiteral("vulkan")};
         const QString initialId = store.activeProfileId();
         QVERIFY(everyDetectedBackend.contains(initialId));
 
@@ -204,8 +203,7 @@ private slots:
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         LaunchProfileStore store(settings, presetsPath);
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
-        const QSet<QString> everyDetectedBackend{QStringLiteral("metal"), QStringLiteral("cpu"),
-                                                 QStringLiteral("cuda"), QStringLiteral("vulkan")};
+        const QSet<QString> everyDetectedBackend{QStringLiteral("metal"), QStringLiteral("cpu"), QStringLiteral("cuda"), QStringLiteral("vulkan")};
         QVERIFY(everyDetectedBackend.contains(store.draftProfileId()));
 
         // Installing a CPU build switches the draft (and the persisted

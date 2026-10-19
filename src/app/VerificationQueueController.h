@@ -11,6 +11,7 @@
 #include "app/FixController.h"
 #include "app/VerificationPromptStore.h"
 #include "core/CheckResult.h"
+#include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"
 #include "runtime/RuntimeController.h"
 
@@ -20,11 +21,14 @@ class RequestProfileStore;
 class SettingsStore;
 
 // The two-phase verification queue (ADR 145, ADR 163). Phase 1 sends every
-// queued block to the decision model, which answers a probability instead of
-// generating text: at/above the threshold the block is marked Ok, below it —
-// Mismatch. With automatic fixing enabled, phase 2 sends the mismatched
-// blocks through the fix task's OK / FIX / REVIEW protocol right away, so one
-// verification run costs at most two server role switches.
+// queued block to the decision model, which answers probabilities instead of
+// generating text: the v6 routing (docs/21) marks a block Ok when both the
+// noul and the choice head agree, sends an empty/unreadable crop to a human
+// (Review) and everything else to Mismatch — the threshold is per block type
+// when the profile ships the map. With automatic fixing enabled, phase 2
+// sends the mismatched blocks through the fix task's OK / FIX / REVIEW
+// protocol right away, so one verification run costs at most two server role
+// switches.
 class VerificationQueueController : public QObject
 {
     Q_OBJECT
@@ -135,9 +139,11 @@ private:
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;
     QString decisionQuestion(const QString &blockType) const;
-    QString decisionNotation() const;
+    QString decisionNotation(const QString &blockType) const;
+    QJsonObject decisionQuestions(const QString &blockType) const;
     QString decisionCriteriaTrue() const;
     QString decisionCriteriaFalse() const;
+    double matchThresholdFor(const QString &blockType) const;
 
     Deps m_deps;
     DecisionController m_decision;
@@ -154,6 +160,8 @@ private:
     int m_verifyTotal = 0;
     int m_verifyDone = 0;
     double m_matchThreshold = 0.5;
+    const ModelProfiles::Role *m_decisionRole = nullptr;  // resolved per run: v6 thresholds live on the role
+    QString m_judgedType;                                 // the block type of the verdict in flight
     bool m_autoFix = false;
     int m_runFix = FixFromSetting;
     StatusMessage m_checkError;

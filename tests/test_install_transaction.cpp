@@ -420,8 +420,7 @@ void TestInstallTransaction::installedBackendFollowsTheTagOnDisk()
 
     // The picker offers what the platform actually publishes: one backend per
     // arch on macOS, cpu/cuda/vulkan on Windows and Linux.
-    QCOMPARE(installer.availableBackends(),
-             ReleaseCatalog::backendsFor(ReleaseCatalog::detectPlatform()));
+    QCOMPARE(installer.availableBackends(), ReleaseCatalog::backendsFor(ReleaseCatalog::detectPlatform()));
 
     // The sweep keeps the directory that is running even though its name still
     // spells the old backend: a prefix guessed from the settings (now "metal")

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QHash>
+#include <QJsonObject>
 #include <QList>
 #include <QString>
 
@@ -18,6 +19,12 @@ public:
         QString text;
     };
 
+    struct DecisionBlock {
+        QString statePrompt;    // per-block equivalence rules, carried into state.notation
+        QString question;       // legacy single-question wording (scheme v5)
+        QJsonObject questions;  // ready-made questions dict handed to /v1/systemone (scheme v6)
+    };
+
     struct Role {
         QString alias;
         QString parser;
@@ -33,6 +40,12 @@ public:
         QList<RequestParameter> request;
         QHash<QString, QString> blockStyles;
         QHash<QString, QString> blockPrompts;
+        QHash<QString, DecisionBlock> decisionBlocks;  // blockPrompts entries shipped as objects (decision v6)
+        QJsonObject questions;                         // role-level questions dict fallback (decision v6)
+        double matchThreshold = -1.0;                  // -1 = not shipped; the settings knob applies
+        QHash<QString, double> blockMatchThresholds;   // matchThresholdByBlock, keyed like blockPrompts
+        double emptyThreshold = -1.0;
+        double readableThreshold = -1.0;
         QHash<QString, QString> blockAliases;  // alias -> canonical blockPrompts key
         bool promptBeforeImage = false;        // wire order: prompt text first, then the image (LFM2.5 trains text-then-image)
         int imageLongestEdge = 0;              // 0 = send the page as-is; >0 = downscale to fit (LightOnOCR-3 trains on 2048 px pages)
@@ -96,6 +109,8 @@ public:
     static QList<Prompt> promptsFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type);
+
+    static DecisionBlock decisionBlockFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type);
 
     static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 

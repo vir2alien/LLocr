@@ -150,6 +150,32 @@ private slots:
         QCOMPARE(criteria.value(QStringLiteral("false")).toString(), QStringLiteral("The image shows at least one different character."));
     }
 
+    void requestBodyCarriesTheReadyQuestionsDict()
+    {
+        // A v6 profile hands over the ready dict (match/has_text/readable/
+        // diagnosis) — it must reach the wire verbatim, with no legacy
+        // single-question build merged in.
+        ExposedDecisionModel model;
+        DecisionRequest request = testRequest();
+        QJsonObject diagnosis;
+        diagnosis.insert(QStringLiteral("exact_match"), 0.1);
+        diagnosis.insert(QStringLiteral("fixable_ocr_error"), 0.9);
+        QJsonObject diagnosisQuestion;
+        diagnosisQuestion.insert(QStringLiteral("type"), QStringLiteral("choice"));
+        diagnosisQuestion.insert(QStringLiteral("instructions"), QStringLiteral("Classify the relationship."));
+        diagnosisQuestion.insert(QStringLiteral("criteria"), diagnosis);
+        QJsonObject questions;
+        questions.insert(QStringLiteral("match"), QJsonObject{{QStringLiteral("type"), QStringLiteral("noul")}, {QStringLiteral("instructions"), QStringLiteral("Match?")}});
+        questions.insert(QStringLiteral("diagnosis"), diagnosisQuestion);
+        request.questions = questions;
+
+        const QJsonObject root = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+        const QJsonObject wire = root.value(QStringLiteral("questions")).toObject();
+        QCOMPARE(wire.size(), 2);
+        QCOMPARE(wire.value(QStringLiteral("match")).toObject().value(QStringLiteral("instructions")).toString(), QStringLiteral("Match?"));
+        QCOMPARE(wire.value(QStringLiteral("diagnosis")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("choice"));
+    }
+
     void responseParsingAcceptsAllSpellings()
     {
         ExposedDecisionModel model;
@@ -193,6 +219,107 @@ private slots:
 
         const DecisionResult objectAnswer = model.parse("{\"answers\": {\"match\": {\"noul\": \"high\"}}}");
         QVERIFY(!objectAnswer.ok);
+    }
+
+    void responseParsingReadsTheMultiQuestionAnswers()
+    {
+        ExposedDecisionModel model;
+
+        // The v6 shape: three noul answers plus a choice map under "choice",
+        // all from one forward pass (docs/21, §v6).
+        const DecisionResult full = model.parse("{\"answers\": {"
+                                                "\"match\": {\"type\": \"noul\", \"noul\": 0.18},"
+                                                "\"has_text\": {\"type\": \"noul\", \"noul\": 0.99},"
+                                                "\"readable\": {\"type\": \"noul\", \"noul\": 0.94},"
+                                                "\"diagnosis\": {\"type\": \"choice\", \"choice\": {"
+                                                "\"exact_match\": 0.12, \"fixable_ocr_error\": 0.83, \"unreadable_or_clipped\": 0.04, \"empty_crop\": 0.01}}}}");
+        QVERIFY(full.ok);
+        QCOMPARE(full.probability, 0.18);
+        QCOMPARE(full.hasText, 0.99);
+        QCOMPARE(full.readable, 0.94);
+        QCOMPARE(full.diagnosis.size(), 4);
+        QCOMPARE(full.topDiagnosis(), QStringLiteral("fixable_ocr_error"));
+
+        // The other spelling: the class map under "probabilities".
+        const DecisionResult probabilities = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"probabilities\": {\"exact_match\": 0.95, \"fixable_ocr_error\": 0.05}}}}");
+        QVERIFY(probabilities.ok);
+        QCOMPARE(probabilities.diagnosis.size(), 2);
+        QCOMPARE(probabilities.topDiagnosis(), QStringLiteral("exact_match"));
+
+        // The measured llama-server shape (decision-eval probe.json): a
+        // string label next to the probabilities map, plus a confidence that
+        // must not leak into the diagnosis.
+        const DecisionResult measured = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"type\": \"choice\", \"choice\": \"fixable_ocr_error\", \"probabilities\": "
+                                                    "{\"exact_match\": 0.12, \"fixable_ocr_error\": 0.83, \"unreadable_or_clipped\": 0.04, \"empty_crop\": 0.01}, \"confidence\": 0.85}}}");
+        QVERIFY(measured.ok);
+        QCOMPARE(measured.diagnosis.size(), 4);
+        QCOMPARE(measured.topDiagnosis(), QStringLiteral("fixable_ocr_error"));
+
+        // A label with no map at all is a certain verdict for that class.
+        const DecisionResult labelOnly = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"type\": \"choice\", \"choice\": \"exact_match\"}}}");
+        QVERIFY(labelOnly.ok);
+        QCOMPARE(labelOnly.diagnosis.size(), 1);
+        QCOMPARE(labelOnly.topDiagnosis(), QStringLiteral("exact_match"));
+
+        // v5 answers ship match only: the aux fields stay unset (negative).
+        const DecisionResult legacy = model.parse("{\"answers\": {\"match\": {\"noul\": 0.97}}}");
+        QVERIFY(legacy.ok);
+        QCOMPARE(legacy.probability, 0.97);
+        QVERIFY(legacy.hasText < 0);
+        QVERIFY(legacy.readable < 0);
+        QVERIFY(legacy.diagnosis.isEmpty());
+
+        // A present-but-unreadable answer is an error, never a silent verdict.
+        const DecisionResult brokenChoice = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"choice\": {\"exact_match\": \"high\"}}}}");
+        QVERIFY(!brokenChoice.ok);
+        const DecisionResult emptyChoice = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"type\": \"choice\"}}}");
+        QVERIFY(!emptyChoice.ok);
+        const DecisionResult brokenNoul = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"has_text\": {\"noul\": \"yes\"}}}");
+        QVERIFY(!brokenNoul.ok);
+    }
+
+    void routingCoversTheFourOutcomes()
+    {
+        DecisionResult result;
+        result.ok = true;
+        result.probability = 0.9;
+        result.hasText = 0.99;
+        result.readable = 0.94;
+        result.diagnosis = {{QStringLiteral("exact_match"), 0.12}, {QStringLiteral("fixable_ocr_error"), 0.83}, {QStringLiteral("unreadable_or_clipped"), 0.04}, {QStringLiteral("empty_crop"), 0.01}};
+
+        // A readable crop with a fixable discrepancy goes to the fixer (Mismatch).
+        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Mismatch);
+
+        // An empty crop is a hallucination — human eyes, no fixer call.
+        result.hasText = 0.1;
+        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Review);
+        result.hasText = 0.99;
+        result.diagnosis = {{QStringLiteral("empty_crop"), 0.9}};
+        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Review);
+
+        // An unreadable/clipped crop goes to Review before the fixer burns GPU.
+        result.diagnosis = {{QStringLiteral("exact_match"), 0.1}, {QStringLiteral("unreadable_or_clipped"), 0.8}};
+        result.readable = 0.2;
+        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Review);
+        result.readable = 0.94;
+
+        // Both heads agree: Ok.
+        result.diagnosis = {{QStringLiteral("exact_match"), 0.95}};
+        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Ok);
+        // The per-block threshold applies: same answer below it is a Mismatch.
+        QCOMPARE(result.routedStatus(0.96, 0.25, 0.45), CheckStatus::Mismatch);
+        // The choice head vetoes a high noul: not exact_match, not Ok.
+        result.diagnosis = {{QStringLiteral("fixable_ocr_error"), 0.6}, {QStringLiteral("exact_match"), 0.4}};
+        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Mismatch);
+
+        // Back-compat: no aux answers (v5 profile, old server) — the
+        // threshold-only verdict, Ok above and Mismatch below.
+        result.hasText = -1.0;
+        result.readable = -1.0;
+        result.diagnosis.clear();
+        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Ok);
+        result.probability = 0.5;
+        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Mismatch);
     }
 
     void judgeSendsRequestToSystemoneAndParsesTheAnswer()

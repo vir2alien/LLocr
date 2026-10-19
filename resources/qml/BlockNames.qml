@@ -12,6 +12,7 @@ QtObject {
         "List": qsTr("Lists"),
         "Code": qsTr("Code"),
         "Abstract": qsTr("Abstracts"),
+        "Key-value field": qsTr("Key-value fields"),
         "Image caption": qsTr("Image captions"),
         "Table caption": qsTr("Table captions"),
         "Figure footnote": qsTr("Figure footnotes"),

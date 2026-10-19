@@ -9,7 +9,8 @@ namespace llocr {
 // Transport status of one model reply; not persisted. The producers:
 // blockRecognition → Recognized (the reply is the block text) or Review
 // (unreadable), fix → Ok / Fixed (text holds the correction) / Review,
-// decision → Ok / Mismatch (confidence carries the probability).
+// decision → Ok / Mismatch, or Review for an empty/unreadable crop (v6
+// routing, docs/21) — confidence carries the match probability.
 enum class CheckStatus : int {
     Failed = 0,      ///< Network/parse error — errorMessage describes it.
     Ok = 1,          ///< Confirmed: no correction needed.

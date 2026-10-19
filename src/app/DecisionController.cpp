@@ -21,8 +21,14 @@ void DecisionController::abortRequest()
         m_model->abort();
 }
 
-void DecisionController::judgeBlock(
-    const QImage &image, const QString &blockType, const QString &recognizedText, const QString &notation, const QString &question, const QString &criteriaTrue, const QString &criteriaFalse)
+void DecisionController::judgeBlock(const QImage &image,
+                                    const QString &blockType,
+                                    const QString &recognizedText,
+                                    const QString &notation,
+                                    const QString &question,
+                                    const QString &criteriaTrue,
+                                    const QString &criteriaFalse,
+                                    const QJsonObject &questions)
 {
     if (busy() || image.isNull())
         return;
@@ -32,7 +38,7 @@ void DecisionController::judgeBlock(
     beginRequest(
         ConnectionRole::Decision,
         StatusMessage::translate(trContext(), "Stopped before the decision check started."),
-        [this, image, blockType, recognizedText, notation, question, criteriaTrue, criteriaFalse](const ResolvedConnection &conn) {
+        [this, image, blockType, recognizedText, notation, question, criteriaTrue, criteriaFalse, questions](const ResolvedConnection &conn) {
             DecisionRequest request;
             request.image = image;
             request.blockType = blockType;
@@ -41,6 +47,7 @@ void DecisionController::judgeBlock(
             request.question = question;
             request.criteriaTrue = criteriaTrue;
             request.criteriaFalse = criteriaFalse;
+            request.questions = questions;
 
             m_watcher.setFuture(m_model->judge(request, conn.toConnectionConfig()));
         },

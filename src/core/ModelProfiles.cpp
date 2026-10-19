@@ -109,6 +109,13 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.criteriaFalse = criteria.value(QStringLiteral("false")).toString();
         role.promptBeforeImage = roleObject.value(QStringLiteral("promptBeforeImage")).toBool(false);
         role.imageLongestEdge = roleObject.value(QStringLiteral("imageLongestEdge")).toInt(0);
+        role.questions = roleObject.value(QStringLiteral("questions")).toObject();
+        role.matchThreshold = roleObject.value(QStringLiteral("matchThreshold")).toDouble(-1.0);
+        const QJsonObject thresholds = roleObject.value(QStringLiteral("matchThresholdByBlock")).toObject();
+        for (auto threshold = thresholds.constBegin(); threshold != thresholds.constEnd(); ++threshold)
+            role.blockMatchThresholds.insert(threshold.key(), threshold.value().toDouble(-1.0));
+        role.emptyThreshold = roleObject.value(QStringLiteral("emptyThreshold")).toDouble(-1.0);
+        role.readableThreshold = roleObject.value(QStringLiteral("readableThreshold")).toDouble(-1.0);
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
         if (!error.isEmpty())
             return profile;
@@ -139,6 +146,22 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
 
         const QJsonObject blockPrompts = roleObject.value(QStringLiteral("blockPrompts")).toObject();
         for (auto prompt = blockPrompts.constBegin(); prompt != blockPrompts.constEnd(); ++prompt) {
+            // A v6 decision entry ships as an object (statePrompt/question/
+            // questions); the string shape stays the fix/teleocr vocabulary.
+            if (prompt.value().isObject()) {
+                const QJsonObject spec = prompt.value().toObject();
+                ModelProfiles::DecisionBlock block;
+                block.statePrompt = spec.value(QStringLiteral("statePrompt")).toString();
+                block.question = spec.value(QStringLiteral("question")).toString();
+                block.questions = spec.value(QStringLiteral("questions")).toObject();
+                const bool empty = prompt.key().isEmpty() || (block.statePrompt.isEmpty() && block.question.isEmpty() && block.questions.isEmpty());
+                if (empty) {
+                    error = QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(profile.id);
+                    return profile;
+                }
+                role.decisionBlocks.insert(prompt.key(), block);
+                continue;
+            }
             const QString text = prompt.value().toString();
             if (prompt.key().isEmpty() || text.isEmpty()) {
                 error = QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(profile.id);
@@ -333,6 +356,21 @@ QString ModelProfiles::blockPromptFor(const QList<Profile> &profiles, const QStr
     if (!direct.isEmpty())
         return direct;
     return found->blockPrompts.value(found->blockAliases.value(type));
+}
+
+ModelProfiles::DecisionBlock ModelProfiles::decisionBlockFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type)
+{
+    const Profile *profile = find(profiles, modelId);
+    const Role *found = profile ? roleFor(*profile, role) : nullptr;
+    if (!found)
+        return {};
+    const auto direct = found->decisionBlocks.constFind(type);
+    if (direct != found->decisionBlocks.constEnd())
+        return direct.value();
+    const auto aliased = found->decisionBlocks.constFind(found->blockAliases.value(type));
+    if (aliased != found->decisionBlocks.constEnd())
+        return aliased.value();
+    return {};
 }
 
 QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)

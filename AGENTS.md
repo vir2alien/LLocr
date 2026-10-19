@@ -369,27 +369,40 @@
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
-  - **Verification and fix pipeline (ADR 145–147, 161–164; Oct 2026)** —
-    verification runs in two stages: a fast **decision model** (clef-flash
-    via `/v1/systemone`, the `decision` task in «Модели», threshold
-    `decision/matchThreshold` in the task's Request tab) judges every queued
-    block — Ok (green) or **Mismatch** (red). The request is scheme v5: the
-    state is a JSON object (`block_type`/`recognized_text`/`notation` from
-    the profile) plus one noul question — a raw-string state collapses the
-    yes/no separation (`docs/17-d1-verification-study.md`); d1-3B failed the
-    task in every phrasing and was removed (ADR 161). Every block carries two
-    text layers with independent verdicts (ADR 164): `box.text` (the OCR
-    result) and `box.correctedText` (the fix model's correction); the dot and
-    the confidence badge follow the **effective** layer. With «Автоматическое
-    исправление после проверки» (`check/autoFix`) mismatches are re-run
-    through the **fix** task (universal models, OK/FIX/REVIEW, ADR 163) in
-    the same run, the correction landing in `correctedText`. Block
-    recognition (plain re-transcription) entry points: per-block
-    «Распознать», the page toolbar's «Распознать страницу ▾» (problem blocks
-    / all blocks of the page); the header «Исправить» runs the fix task over
-    the problem blocks of the whole document. Planned blocks (filter-enabled
-    type or duplicate suspect, unanswered) show the gray dot
-    (`boxVerificationPlanned`). Model manual: `docs/18-clef-flash.md`.
+  - **Verification and fix pipeline (ADR 145–147, 161–164, 172; Oct 2026)** —
+    verification runs in two stages: a fast **decision model** (clef-flash or
+    d3-flash/d3-mini via `/v1/systemone`, the `decision` task in «Модели»)
+    judges every queued block. The verdict is routed by scheme (ADR 172):
+    clef-flash ships **v5** — a JSON-object state
+    (`block_type`/`recognized_text`/`notation`) plus one noul question, Ok
+    (green) / **Mismatch** (red) by the `decision/matchThreshold` setting;
+    d3 ships **v6** (`docs/21-d3.md` §4b) — per-block equivalence rules in
+    `state.notation` and a ready two-question dict (`match` noul +
+    `diagnosis` choice; d3 answers each question of a request with its own
+    forward pass, so the draft's `has_text`/`readable` noul gates stay out
+    of the profile — empty/unreadable crops route through the diagnosis
+    classes), the verdict routed four ways: empty or unreadable crop →
+    **Review** (human eyes, never a fixer call even under auto-fix), Ok
+    only when the noul and the choice head both agree, else Mismatch;
+    thresholds resolve per block type (`matchThresholdByBlock` in the
+    profile → role `matchThreshold` → the setting). d1-3B failed the task
+    in every phrasing and was removed (ADR 161). Every block carries two text layers with independent verdicts
+    (ADR 164): `box.text` (the OCR result) and `box.correctedText` (the fix
+    model's correction); the dot and the confidence badge follow the
+    **effective** layer. With «Автоматическое исправление после проверки»
+    (`check/autoFix`) mismatches are re-run through the **fix** task
+    (universal models, OK/FIX/REVIEW, ADR 163) in the same run, the
+    correction landing in `correctedText`; Review blocks are left to the
+    human. The fix profiles carry the same per-block equivalence rules as
+    the decision v6 prompts ("Equivalent (never fix) / Strictly different
+    (fix)") so the two models cannot disagree on е/ё, homoglyphs, LaTeX
+    commands or table cells. Block recognition (plain re-transcription)
+    entry points: per-block «Распознать», the page toolbar's «Распознать
+    страницу ▾» (problem blocks / all blocks of the page); the header
+    «Исправить» runs the fix task over the problem blocks of the whole
+    document. Planned blocks (filter-enabled type or duplicate suspect,
+    unanswered) show the gray dot (`boxVerificationPlanned`). Model manuals:
+    `docs/18-clef-flash.md` (v5), `docs/21-d3.md` (v6).
   - **Manual page markup (ADR 149–150, Oct 2026)** — the page toolbar's
     «Разметить страницу» (+ ▾ «Разметить все страницы») runs the **layout
     task** (`roles.layout` in a model profile — TeleOCR ships it): the page

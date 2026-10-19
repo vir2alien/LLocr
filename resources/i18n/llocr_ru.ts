@@ -319,6 +319,11 @@
     </message>
     <message>
         <location line="+1"/>
+        <source>Key-value fields</source>
+        <translation>Поля «ключ—значение»</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Image captions</source>
         <translation>Подписи к изображениям</translation>
     </message>

@@ -17,24 +17,29 @@ QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const
 {
     // The state is a JSON object: the candidate text sits in a named field, so
     // the model reads it as content to compare against the crop — a raw string
-    // answers "is there text on the image" instead (docs/17, §4). LLocr asks
-    // exactly one question, "match", of the yes/no kind; the wording travels
-    // in the model profile's decision role, and the profile's criteria (what
-    // each side of the answer means) rides along when it ships one.
+    // answers "is there text on the image" instead (docs/17, §4). A v6 profile
+    // hands over the ready questions dict (match/has_text/readable/diagnosis,
+    // one forward pass); otherwise the single v5 question is built here, with
+    // the profile's noul criteria riding along when it ships one.
     QJsonObject state{{QStringLiteral("block_type"), request.blockType}, {QStringLiteral("recognized_text"), request.recognizedText}};
     if (!request.notation.isEmpty())
         state.insert(QStringLiteral("notation"), request.notation);
 
-    QJsonObject question{{QStringLiteral("type"), QStringLiteral("noul")}, {QStringLiteral("instructions"), request.question}};
-    if (!request.criteriaTrue.isEmpty() || !request.criteriaFalse.isEmpty()) {
-        QJsonObject criteria;
-        if (!request.criteriaTrue.isEmpty())
-            criteria.insert(QStringLiteral("true"), request.criteriaTrue);
-        if (!request.criteriaFalse.isEmpty())
-            criteria.insert(QStringLiteral("false"), request.criteriaFalse);
-        question.insert(QStringLiteral("criteria"), criteria);
+    QJsonObject questions;
+    if (!request.questions.isEmpty()) {
+        questions = request.questions;
+    } else {
+        QJsonObject question{{QStringLiteral("type"), QStringLiteral("noul")}, {QStringLiteral("instructions"), request.question}};
+        if (!request.criteriaTrue.isEmpty() || !request.criteriaFalse.isEmpty()) {
+            QJsonObject criteria;
+            if (!request.criteriaTrue.isEmpty())
+                criteria.insert(QStringLiteral("true"), request.criteriaTrue);
+            if (!request.criteriaFalse.isEmpty())
+                criteria.insert(QStringLiteral("false"), request.criteriaFalse);
+            question.insert(QStringLiteral("criteria"), criteria);
+        }
+        questions.insert(QStringLiteral("match"), question);
     }
-    QJsonObject questions{{QStringLiteral("match"), question}};
 
     QJsonObject root;
     root.insert(QStringLiteral("state"), state);
@@ -43,6 +48,72 @@ QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const
 
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
+
+namespace {
+
+// The endpoint spelled the probability differently across versions: a bare
+// number, {"noul": x} or {"probability": x}. Returns false for anything else.
+bool readNoul(const QJsonValue &answer, double &probability)
+{
+    if (answer.isDouble()) {
+        probability = answer.toDouble();
+        return true;
+    }
+    if (!answer.isObject())
+        return false;
+    const QJsonObject object = answer.toObject();
+    const QJsonValue value = object.contains(QStringLiteral("noul")) ? object.value(QStringLiteral("noul")) : object.value(QStringLiteral("probability"));
+    if (!value.isDouble())
+        return false;
+    probability = value.toDouble();
+    return true;
+}
+
+// A choice answer's class map is spelled differently across builds: the
+// measured llama-server shape is a string label next to a probabilities map
+// ({"choice": "exact_match", "probabilities": {...}}), the v6 draft put the
+// map right under "choice", and a label with no map counts as a certain
+// verdict for that class.
+bool readChoice(const QJsonValue &answer, QHash<QString, double> &diagnosis)
+{
+    if (!answer.isObject())
+        return false;
+    const QJsonObject object = answer.toObject();
+    QJsonValue map = object.value(QStringLiteral("probabilities"));
+    if (!map.isObject())
+        map = object.value(QStringLiteral("probs"));
+    if (map.isObject()) {
+        const QJsonObject probabilities = map.toObject();
+        for (auto it = probabilities.constBegin(); it != probabilities.constEnd(); ++it) {
+            if (!it.value().isDouble())
+                return false;
+            diagnosis.insert(it.key(), std::clamp(it.value().toDouble(), 0.0, 1.0));
+        }
+        return !diagnosis.isEmpty();
+    }
+    if (object.value(QStringLiteral("choice")).isString()) {
+        diagnosis.insert(object.value(QStringLiteral("choice")).toString(), 1.0);
+        return true;
+    }
+    if (object.value(QStringLiteral("choice")).isObject()) {
+        const QJsonObject probabilities = object.value(QStringLiteral("choice")).toObject();
+        for (auto it = probabilities.constBegin(); it != probabilities.constEnd(); ++it) {
+            if (!it.value().isDouble())
+                return false;
+            diagnosis.insert(it.key(), std::clamp(it.value().toDouble(), 0.0, 1.0));
+        }
+        return !diagnosis.isEmpty();
+    }
+    // A bare map of numbers — only when nothing else is in the answer.
+    for (auto it = object.constBegin(); it != object.constEnd(); ++it) {
+        if (!it.value().isDouble())
+            return false;
+        diagnosis.insert(it.key(), std::clamp(it.value().toDouble(), 0.0, 1.0));
+    }
+    return !diagnosis.isEmpty();
+}
+
+}  // namespace
 
 DecisionResult DecisionModel::parseResponse(const QByteArray &responseData)
 {
@@ -55,27 +126,26 @@ DecisionResult DecisionModel::parseResponse(const QByteArray &responseData)
     if (!root.contains(QStringLiteral("answers")))
         return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "No answers in response"));
 
-    const QJsonValue match = root.value(QStringLiteral("answers")).toObject().value(QStringLiteral("match"));
+    const QJsonObject answers = root.value(QStringLiteral("answers")).toObject();
+    const QJsonValue match = answers.value(QStringLiteral("match"));
     if (match.isUndefined())
         return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "No match answer in response"));
 
-    // The endpoint spelled the probability differently across versions: a bare
-    // number, {"noul": x} or {"probability": x}. Anything else is an error,
-    // never a silent verdict.
     double probability = 0.0;
-    if (match.isDouble()) {
-        probability = match.toDouble();
-    } else if (match.isObject()) {
-        const QJsonObject answer = match.toObject();
-        const QJsonValue value = answer.contains(QStringLiteral("noul")) ? answer.value(QStringLiteral("noul")) : answer.value(QStringLiteral("probability"));
-        if (!value.isDouble())
-            return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
-        probability = value.toDouble();
-    } else {
+    if (!readNoul(match, probability))
         return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
-    }
 
+    // The v6 aux questions are optional: a v5 profile or an old server ships
+    // match only. An answer that is present but unreadable is an error, never
+    // a silent verdict.
     DecisionResult result;
+    if (answers.contains(QStringLiteral("has_text")) && !readNoul(answers.value(QStringLiteral("has_text")), result.hasText))
+        return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
+    if (answers.contains(QStringLiteral("readable")) && !readNoul(answers.value(QStringLiteral("readable")), result.readable))
+        return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
+    if (answers.contains(QStringLiteral("diagnosis")) && !readChoice(answers.value(QStringLiteral("diagnosis")), result.diagnosis))
+        return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
+
     result.ok = true;
     result.probability = std::clamp(probability, 0.0, 1.0);
     return result;

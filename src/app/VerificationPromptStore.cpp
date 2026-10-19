@@ -31,6 +31,7 @@ QList<VerificationBlock> builtInBlocks()
         {QStringLiteral("list"), QStringLiteral("List"), QStringLiteral("content"), true},
         {QStringLiteral("code"), QStringLiteral("Code"), QStringLiteral("content"), true},
         {QStringLiteral("abstract"), QStringLiteral("Abstract"), QStringLiteral("content"), true},
+        {QStringLiteral("key_value"), QStringLiteral("Key-value field"), QStringLiteral("content"), true},
         {QStringLiteral("image_caption"), QStringLiteral("Image caption"), QStringLiteral("captions"), true},
         {QStringLiteral("table_caption"), QStringLiteral("Table caption"), QStringLiteral("captions"), true},
         {QStringLiteral("figure_footnote"), QStringLiteral("Figure footnote"), QStringLiteral("captions"), true},

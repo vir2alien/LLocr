@@ -211,16 +211,17 @@ QImage scaledToLongestEdge(const QImage &image, int longestEdge)
 
 QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const ConnectionConfig &config)
 {
-    return runChatExchange<OcrResult>([request]() {
-        QImage image = request.image;
-        if (const ModelProfiles::Role *role = pageRoleFor(request.modelId))
-            image = scaledToLongestEdge(image, role->imageLongestEdge);
-        return buildRequestBody(request, encodeImageDataUrl(image));
-    },
-                                      config,
-                                      m_activeClient,
-                                      [](const QByteArray &body) { return parseResponse(body); },
-                                      QCoreApplication::translate("OcrModel", "Failed to encode the page image"));
+    return runChatExchange<OcrResult>(
+        [request]() {
+            QImage image = request.image;
+            if (const ModelProfiles::Role *role = pageRoleFor(request.modelId))
+                image = scaledToLongestEdge(image, role->imageLongestEdge);
+            return buildRequestBody(request, encodeImageDataUrl(image));
+        },
+        config,
+        m_activeClient,
+        [](const QByteArray &body) { return parseResponse(body); },
+        QCoreApplication::translate("OcrModel", "Failed to encode the page image"));
 }
 
 void OcrModel::abort()

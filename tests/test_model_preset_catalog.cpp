@@ -374,6 +374,18 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
         for (auto it = fix->blockPrompts.constBegin(); it != fix->blockPrompts.constEnd(); ++it)
             QVERIFY2(it.value().contains(QStringLiteral("FIX")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
     }
+
+    // The equivalence rules are synced with the decision v6 block prompts
+    // (docs/21): the fixer treats the same things as equivalent and strictly
+    // different, or the two models would fight over е/ё, homoglyphs, LaTeX
+    // commands and table cells. All four fix models ship identical prompts.
+    const QString fixText = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("text"));
+    QVERIFY(fixText.contains(QStringLiteral("Equivalent (never fix)")));
+    QVERIFY(fixText.contains(QStringLiteral("е/ё")));
+    const QString fixCode = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("code"));
+    QVERIFY(fixCode.contains(QStringLiteral("Nothing is normalized")));
+    const QString fixEquation = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("equation"));
+    QVERIFY(fixEquation.contains(QStringLiteral("LaTeX is the carrier")));
 }
 
 // The layout role is what the manual markup pass drives: its parser id must be
@@ -471,26 +483,61 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("pageOcr"), QStringLiteral("formula")).isEmpty());
 }
 
-// The decision gate asks one question over a structured state (docs/17): the
-// profile carries the state's notation disclaimer in statePrompt and the ask
-// in question. The measured scheme ships neither the noul answer sides nor
-// per-type check lists — neither improved the separation — and the mechanisms
-// stay available to profiles that want them. Every System One model ships the
-// same wording: the d3 family reads the same request schema as clef-flash.
+// The decision gate asks its questions over a structured state (docs/17).
+// clef-flash stays on the measured v5 scheme: one noul question, no criteria,
+// no per-type prompts — clef reads the questions of a request jointly, so
+// extra questions are out of distribution for it (docs/18). The d3 family
+// ships scheme v6: per-block equivalence rules, a per-block threshold map and
+// a ready two-question dict (match noul + diagnosis choice) — d3 answers each
+// question of a request with its own forward pass (~1.4 s measured), so the
+// noul gates has_text/readable are left out; the empty/unreadable routes run
+// through the diagnosis classes (docs/21, §4b).
 void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    const QStringList decisionModels = {QStringLiteral("clef-flash"), QStringLiteral("d3-flash"), QStringLiteral("d3-mini")};
-    for (const QString &id : decisionModels) {
+
+    const ModelProfiles::Role *clef = ModelProfiles::roleFor(QStringLiteral("clef-flash"), QStringLiteral("decision"));
+    QVERIFY2(clef, "clef-flash declares the decision role");
+    QVERIFY2(clef->statePrompt.contains(QStringLiteral("carrier, not content")), qPrintable(QStringLiteral("clef-flash statePrompt")));
+    QVERIFY2(clef->question.contains(QStringLiteral("exactly the same characters, words, numbers and symbols")), qPrintable(QStringLiteral("clef-flash question")));
+    QVERIFY2(clef->criteriaTrue.isEmpty(), "clef-flash criteriaTrue");
+    QVERIFY2(clef->criteriaFalse.isEmpty(), "clef-flash criteriaFalse");
+    QVERIFY2(clef->blockPrompts.isEmpty(), "clef-flash blockPrompts");
+    QVERIFY2(clef->decisionBlocks.isEmpty(), "clef-flash decisionBlocks");
+    QVERIFY2(clef->questions.isEmpty(), "clef-flash questions");
+    QCOMPARE(ModelProfiles::blockPromptFor(profiles, QStringLiteral("clef-flash"), QStringLiteral("decision"), QStringLiteral("formula")), QString());
+
+    for (const QString &id : {QStringLiteral("d3-flash"), QStringLiteral("d3-mini")}) {
         const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("decision"));
         QVERIFY2(role, qPrintable(QStringLiteral("%1 declares the decision role").arg(id)));
 
-        QVERIFY2(role->statePrompt.contains(QStringLiteral("carrier, not content")), qPrintable(id));
-        QVERIFY2(role->question.contains(QStringLiteral("exactly the same characters, words, numbers and symbols")), qPrintable(id));
-        QVERIFY2(role->criteriaTrue.isEmpty(), qPrintable(id));
-        QVERIFY2(role->criteriaFalse.isEmpty(), qPrintable(id));
+        // The v6 ask: match + diagnosis, nothing else — every extra question
+        // is a separate forward pass on d3.
+        const QStringList questionKeys = role->questions.keys();
+        QCOMPARE(questionKeys.size(), 2);
+        QCOMPARE(role->questions.value(QStringLiteral("match")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("noul"));
+        QCOMPARE(role->questions.value(QStringLiteral("diagnosis")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("choice"));
+        QVERIFY2(!questionKeys.contains(QStringLiteral("has_text")), qPrintable(id));
+        QVERIFY2(!questionKeys.contains(QStringLiteral("readable")), qPrintable(id));
+
+        // The routing calibration travels with the profile (docs/21, §4b).
+        QVERIFY2(role->matchThreshold > 0, qPrintable(id));
+        QVERIFY2(role->emptyThreshold > 0, qPrintable(id));
+        QVERIFY2(role->readableThreshold > 0, qPrintable(id));
+        QVERIFY2(role->blockMatchThresholds.size() >= 18, qPrintable(id));
+
+        // Per-block equivalence rules; the alias hop resolves the duplicates,
+        // and unknown types fall through to the role level.
+        QVERIFY2(role->blockAliases.value(QStringLiteral("formula")) == QLatin1String("equation"), qPrintable(id));
         QVERIFY2(role->blockPrompts.isEmpty(), qPrintable(id));
-        QCOMPARE(ModelProfiles::criteriaTrueFor(profiles, id, QStringLiteral("decision")), QString());
+        const ModelProfiles::DecisionBlock text = ModelProfiles::decisionBlockFor(profiles, id, QStringLiteral("decision"), QStringLiteral("text"));
+        QVERIFY2(!text.statePrompt.isEmpty(), qPrintable(id));
+        QVERIFY2(text.questions.size() == 2, qPrintable(id));
+        const ModelProfiles::DecisionBlock formula = ModelProfiles::decisionBlockFor(profiles, id, QStringLiteral("decision"), QStringLiteral("formula"));
+        QVERIFY2(formula.statePrompt.contains(QStringLiteral("LaTeX is the carrier")), qPrintable(id));
+        const ModelProfiles::DecisionBlock unknown = ModelProfiles::decisionBlockFor(profiles, id, QStringLiteral("decision"), QStringLiteral("unknown-type"));
+        QVERIFY2(unknown.statePrompt.isEmpty(), qPrintable(id));
+        QVERIFY2(unknown.questions.isEmpty(), qPrintable(id));
         QCOMPARE(ModelProfiles::blockPromptFor(profiles, id, QStringLiteral("decision"), QStringLiteral("formula")), QString());
     }
 }

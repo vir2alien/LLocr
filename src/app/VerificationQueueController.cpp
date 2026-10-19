@@ -16,6 +16,9 @@ namespace {
 // shipped clef-flash profile carries its own wording).
 constexpr const char *kFallbackQuestion = "The state is a text fragment recognized from the attached image by an OCR "
                                           "model. Does the image show the same text?";
+// v6 routing cut-offs for profiles that ship no calibration (docs/21, §v6).
+constexpr double kDefaultEmptyThreshold = 0.25;
+constexpr double kDefaultReadableThreshold = 0.45;
 }  // namespace
 
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
@@ -34,7 +37,9 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
                 emit problemReported(result.errorMessage);
             }
         } else {
-            verdict.status = result.probability >= m_matchThreshold ? CheckStatus::Ok : CheckStatus::Mismatch;
+            verdict.status = result.routedStatus(matchThresholdFor(m_judgedType),
+                                                 m_decisionRole && m_decisionRole->emptyThreshold >= 0 ? m_decisionRole->emptyThreshold : kDefaultEmptyThreshold,
+                                                 m_decisionRole && m_decisionRole->readableThreshold >= 0 ? m_decisionRole->readableThreshold : kDefaultReadableThreshold);
             verdict.confidence = result.probability;
         }
         const int page = m_verifyPage;
@@ -300,6 +305,7 @@ void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &task
     m_checkFinished = false;
     m_phase = Phase::Decision;
     m_matchThreshold = m_deps.settings.decisionMatchThreshold();
+    m_decisionRole = ModelProfiles::roleFor(m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
     m_autoFix = m_deps.settings.autoFix();
     m_runFix = fixMode;
     m_verifyQueue = tasks;
@@ -487,11 +493,13 @@ void VerificationQueueController::startNextVerify()
         // showing a stale verdict (ADR 164).
         emit verificationStarted(m_verifyPage, m_verifyBoxIndex);
         // The state carries the block's type, the candidate text and the
-        // notation disclaimer; the wording is the role's question, with the
-        // type's check list appended when the profile ships one, and the
-        // profile's criteria (what each side of the yes/no answer means)
-        // riding along.
-        m_decision.judgeBlock(crop, box.label, text, decisionNotation(), decisionQuestion(box.label), decisionCriteriaTrue(), decisionCriteriaFalse());
+        // notation disclaimer (per-type equivalence rules when the v6 profile
+        // ships them); the asks travel as the profile's ready questions dict
+        // (match/has_text/readable/diagnosis) or, on v5 profiles, as the
+        // single question with the type's check list appended and the
+        // profile's criteria riding along.
+        m_judgedType = box.label;
+        m_decision.judgeBlock(crop, box.label, text, decisionNotation(box.label), decisionQuestion(box.label), decisionCriteriaTrue(), decisionCriteriaFalse(), decisionQuestions(box.label));
         return;
     }
 
@@ -539,16 +547,43 @@ QString VerificationQueueController::decisionQuestion(const QString &blockType) 
     return parts.join(QStringLiteral("\n\n"));
 }
 
-QString VerificationQueueController::decisionNotation() const
+QString VerificationQueueController::decisionNotation(const QString &blockType) const
 {
     const QString modelId = m_deps.settings.decisionRequestProfileId();
     const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
-    // The state's notation disclaimer; profiles predating statePrompt fall
-    // back to their system prompt.
+    // Per-block equivalence rules (v6) carry the notation disclaimer; profiles
+    // predating statePrompt fall back to their system prompt.
+    const ModelProfiles::DecisionBlock block = ModelProfiles::decisionBlockFor(profiles, modelId, QStringLiteral("decision"), blockType);
+    if (!block.statePrompt.isEmpty())
+        return block.statePrompt;
     QString notation = ModelProfiles::statePromptFor(profiles, modelId, QStringLiteral("decision"));
     if (notation.isEmpty())
         notation = ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("decision"));
     return notation;
+}
+
+QJsonObject VerificationQueueController::decisionQuestions(const QString &blockType) const
+{
+    const QString modelId = m_deps.settings.decisionRequestProfileId();
+    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
+    const ModelProfiles::DecisionBlock block = ModelProfiles::decisionBlockFor(profiles, modelId, QStringLiteral("decision"), blockType);
+    if (!block.questions.isEmpty())
+        return block.questions;
+    const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, QStringLiteral("decision"));
+    return role ? role->questions : QJsonObject();
+}
+
+double VerificationQueueController::matchThresholdFor(const QString &blockType) const
+{
+    if (!m_decisionRole)
+        return m_matchThreshold;
+    const QString aliasKey = m_decisionRole->blockAliases.value(blockType, blockType);
+    const double byBlock = m_decisionRole->blockMatchThresholds.value(aliasKey, -1.0);
+    if (byBlock >= 0)
+        return byBlock;
+    if (m_decisionRole->matchThreshold >= 0)
+        return m_decisionRole->matchThreshold;
+    return m_matchThreshold;
 }
 
 QString VerificationQueueController::decisionCriteriaTrue() const

@@ -28,7 +28,8 @@ public:
                     const QString &notation,
                     const QString &question,
                     const QString &criteriaTrue = QString(),
-                    const QString &criteriaFalse = QString());
+                    const QString &criteriaFalse = QString(),
+                    const QJsonObject &questions = {});
 
 signals:
     void judgeFinished(const llocr::DecisionResult &result);
