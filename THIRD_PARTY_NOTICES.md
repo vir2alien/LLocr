@@ -154,7 +154,7 @@ the licenses that govern it. Each component's full license text is kept in the
   (`type`, `image`, `table`, `sigma`, `code`, `layout-grid`, `rotate-ccw`,
   `rotate-cw`, `scan-text`, `circle-check`, `trash-2`) shipped in
   `resources/icons/ui/` and embedded through the `ui_icons` qrc resource;
-  they are colorized at runtime by `resources/qml/Common/Icon.qml`
+  they are colorized at runtime by `src/qml/Common/Icon.qml`
   (ADR 151).
 - **License text:** [`licenses/Lucide-LICENSE.txt`](licenses/Lucide-LICENSE.txt),
   from upstream `LICENSE`. The upstream `<!-- @license lucide-static ... -->`

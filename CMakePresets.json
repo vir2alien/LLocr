@@ -15,12 +15,13 @@
     },
     {
       "name": "dev-win",
-      "displayName": "LLocr dev (MSVC 2022 x64, NMake Makefiles)",
-      "generator": "NMake Makefiles",
+      "displayName": "LLocr dev (MSVC 2022 x64, Ninja)",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/win-msvc2022",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_PREFIX_PATH": "C:/Qt/6.10.3/msvc2022_64"
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.10.3/msvc2022_64",
+        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
       }
     }
   ],

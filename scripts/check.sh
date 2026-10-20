@@ -105,7 +105,7 @@ fi
 
 # ---- QML lint -------------------------------------------------------------
 # qmllint only picks up .qmllint.ini from the analysed file's directory upwards,
-# so it runs with resources/qml as the working directory. The config demotes the
+# so it runs with src/qml as the working directory. The config demotes the
 # two categories that are noise or unreliable today (see .qmllint.ini); anything
 # else — unresolved type, missing property, syntax error — fails the run.
 if [ "$DO_LINT" -eq 1 ]; then
@@ -124,7 +124,7 @@ if [ "$DO_LINT" -eq 1 ]; then
         echo "the LLocr QML module is not built (no $BUILD_DIR/LLocr/qmldir) — SKIPPED" >&2
     else
         LIST=/tmp/llocr-qmllint-files.txt
-        find "$ROOT/resources/qml" -name '*.qml' | sort > "$LIST"
+        find "$ROOT/src/qml" -name '*.qml' | sort > "$LIST"
         # Info-level output is ~700 lines of style notes; keep it for failures.
         if ! (cd "$ROOT" && xargs "$QMLLINT" --max-warnings 0 -I "build" < "$LIST") > /tmp/llocr-qmllint.log 2>&1; then
             cat /tmp/llocr-qmllint.log

@@ -2205,7 +2205,7 @@ private slots:
         // A disk-loaded WorkPanel.qml reaches the QML singletons through the
         // LLocr module; the engine here has no main.cpp registration cascade,
         // so the five module singletons are registered from their source files.
-        const QString qmlRoot = QFINDTESTDATA(QStringLiteral("../resources/qml"));
+        const QString qmlRoot = QFINDTESTDATA(QStringLiteral("../src/qml"));
         const auto registerSingleton = [&qmlRoot](const char *name) { qmlRegisterSingletonType(QUrl::fromLocalFile(qmlRoot + QStringLiteral("/%1.qml").arg(name)), "LLocr", 1, 0, name); };
         registerSingleton("BlockNames");
         registerSingleton("PageStatus");
@@ -2220,7 +2220,7 @@ private slots:
         std::unique_ptr<QObject> theme{themeComponent.create()};
         QVERIFY2(theme, qPrintable(themeComponent.errorString()));
         engine.rootContext()->setContextProperty(QStringLiteral("Theme"), theme.get());
-        const QString panelPath = QFINDTESTDATA(QStringLiteral("../resources/qml/MainWindow/WorkPanel.qml"));
+        const QString panelPath = QFINDTESTDATA(QStringLiteral("../src/qml/MainWindow/WorkPanel.qml"));
         QVERIFY2(QFile::exists(panelPath), qPrintable(panelPath));
         QQmlComponent component(&engine, QUrl::fromLocalFile(panelPath));
         std::unique_ptr<QQuickItem> panel{qobject_cast<QQuickItem *>(component.create())};

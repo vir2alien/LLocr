@@ -311,36 +311,26 @@ as follows:
    The command-line equivalent for a from-scratch configure is shown in the
    “From scratch” example below.
 
-Ready-made MSVC trees exist at `build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug`
-and `..._Release`; reuse them (run `cmake .` to re-generate), don't reconfigure
-from scratch:
+The ready-made tree is `build/win-msvc2022` (the `dev-win` preset from
+`CMakePresets.json`: **Ninja**, Debug, Qt at `C:/Qt/6.10.3/msvc2022_64`,
+vcpkg toolchain). Incremental builds reuse it directly; a from-scratch build
+is the same two commands after deleting the tree (ADR 176):
 
 ```bat
-:: In an “MSVC … x64 Developer Command Prompt” (vcvars64.bat), Debug tree:
-cd build\Desktop_Qt_6_10_3_MSVC2022_64bit_Debug
-set PATH=C:\Qt\Tools\QtCreator\bin\jom;C:\Qt\Tools\CMake_64\bin;C:\Qt\6.10.3\msvc2022_64\bin;%PATH%
-cmake.exe .
-jom.exe -j 8          :: build llocr + tests
+:: In an “MSVC … x64 Developer Command Prompt” (vcvars64.bat):
+cmake --preset dev-win             :: configure (skip if the tree exists)
+cmake --build --preset dev-win     :: build llocr + tests
 set PATH=C:\Qt\6.10.3\msvc2022_64\bin;%PATH%   :: Qt DLLs for running tests
-ctest.exe --test-dir . -j 4
+ctest --test-dir build\win-msvc2022 -j 4
 ```
 
-From scratch (no existing tree), inside the MSVC 2022 environment with the
-plain CMake from cmake.org:
-
-```sh
-cmake -S . -B build/win-msvc2022 -G "NMake Makefiles" ^
-  -DCMAKE_BUILD_TYPE=Debug ^
-  -DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64 ^
-  -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
-cmake --build build/win-msvc2022 -j 8
-ctest --test-dir build/win-msvc2022
-```
-
-In Qt Creator the kit “Desktop Qt 6.10.3 MSVC2022 64bit” uses the bundled CMake
-with the **NMake Makefiles JOM** generator (JOM is Qt's parallel make) and the
-vcpkg toolchain from the kit environment; both paths resolve the same Qt
-package and the same vcpkg ZLIB.
+In Qt Creator the kit “Desktop Qt 6.10.3 MSVC2022 64bit” works with its
+**NMake Makefiles JOM** generator, and `dev-win` uses **Ninja** — both build
+from a clean tree since the ADR 176 relayout (the QML module is declared
+beside the `llocr` target and the QML tree lives in `src/qml/`; before that,
+fresh builds died with “dependent 'src\llocr_autogen\timestamp' does not
+exist”). The legacy `build/Desktop_Qt_6_10_3_MSVC2022_64bit_*` trees build
+again after `cmake .` inside them.
 
 ## Install, tests, run
 ```sh
@@ -453,4 +443,4 @@ LLocr/
 > `ConnectionConfig` (transport, former `ProviderConfig`) and `LlamaClient`
 > live in `src/core/`; OCR model adapters live in `src/models/`;
 > `ResolvedConnection` and the runtime layer live in `src/runtime/`. QML lives
-> under `resources/qml/`.
+> under `src/qml/`.

@@ -65,7 +65,7 @@
   4. Build system — **CMake** (not qmake).
   5. When decisions change — update `07-glossary.md`.
   6. UI text sizes — use `Theme.*Size` / `Theme.*` fonts from
-     `resources/qml/Theme.qml`; never hardcode `font.pointSize` in QML. They
+     `src/qml/Theme.qml`; never hardcode `font.pointSize` in QML. They
      carry the macOS point-size compensation (ADR 77).
   7. **Comments only in the most extreme cases** — when the code cannot be
      understood from the surrounding context and from the names of the classes,
@@ -139,9 +139,9 @@
   **On Windows** use the MSVC 2022 64-bit Qt package
   (`C:/Qt/6.10.3/msvc2022_64`) and the MSVC 2022 64-bit compiler — the MinGW
   Qt build does **not** ship Qt WebEngine (required for the Markdown preview),
-  see ADR 54. In Qt Creator pick the “Desktop Qt 6.10.3 MSVC2022 64bit” kit
-  (generator `NMake Makefiles JOM`); the `.qtcreator` user config references
-  this kit.
+  see ADR 54. The supported path is the `dev-win` preset (Ninja,
+  `build/win-msvc2022`); the old NMake JOM kit builds again too after the
+  ADR 176 QML-module relayout — fixing from-scratch builds was the point.
   
   ### Windows (MSVC 2022 64-bit) — concrete steps
   
@@ -149,37 +149,26 @@
   `C:/Qt/6.10.3` with both `mingw_64` and `msvc2022_64` packages. **Use only
   `msvc2022_64`** — the MinGW package has no Qt WebEngine, so `find_package`
   fails and the app cannot build. ZLIB comes from vcpkg at `C:/vcpkg`
-  (toolchain `x64-windows`, set in the Qt Creator kit environment — vcpkg
-  participates only on Windows, not on the macOS build; see
-  `THIRD_PARTY_NOTICES.md`).
+  (toolchain `x64-windows`; vcpkg participates only on Windows, not on the
+  macOS build; see `THIRD_PARTY_NOTICES.md`).
   
-  The ready-made directories `build/Desktop_Qt_6_10_3_MSVC2022_64bit_Debug`
-  and `build/Desktop_Qt_6_10_3_MSVC2022_64bit_Release` are configured with
-  MSVC; a fresh agent should reuse them (run `cmake .` inside to re-generate,
-  then build) instead of configuring from scratch:
+  The ready-made tree is `build/win-msvc2022` (the `dev-win` preset: Ninja,
+  Debug). Incremental builds reuse it directly; a from-scratch build is the
+  same two commands after deleting the tree — nothing else, that is the point
+  of ADR 176:
   
   ```bat
-  :: Start a “MSVC … x64 Developer Command Prompt” (or call vcvars64.bat),
-  :: then for the Debug tree:
-  cd build\Desktop_Qt_6_10_3_MSVC2022_64bit_Debug
-  set PATH=C:\Qt\Tools\QtCreator\bin\jom;C:\Qt\Tools\CMake_64\bin;C:\Qt\6.10.3\msvc2022_64\bin;%PATH%
-  cmake.exe .
-  jom.exe -j 8          :: build llocr + tests
+  :: In an “MSVC … x64 Developer Command Prompt” (or after vcvars64.bat):
+  cmake --preset dev-win             :: configure (skip if the tree exists)
+  cmake --build --preset dev-win     :: build llocr + tests
   :: Before running tests, put the Qt DLLs on PATH (the exes need them):
   set PATH=C:\Qt\6.10.3\msvc2022_64\bin;%PATH%
-  ctest.exe --test-dir . -j 4
+  ctest --test-dir build\win-msvc2022 -j 4
   ```
   
-  From scratch (no existing tree):
-  
-  ```bat
-  cmake -S . -B build/win-msvc2022 -G "NMake Makefiles" ^
-    -DCMAKE_BUILD_TYPE=Debug ^
-    -DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64 ^
-    -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
-  cmake --build build/win-msvc2022 -j 8
-  ctest --test-dir build/win-msvc2022
-  ```
+  The legacy `build/Desktop_Qt_6_10_3_MSVC2022_64bit_*` trees are the old
+  NMake JOM kits; after `cmake .` inside them they build again (ADR 176), but
+  new work should go through the preset tree.
   
   Windows-specific gotchas future agents should remember:
   

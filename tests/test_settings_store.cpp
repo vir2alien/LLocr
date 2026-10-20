@@ -668,7 +668,7 @@ private slots:
     // meta-object of the targets this test can see.
     void qmlSignalHandlersExist()
     {
-        const QDir root(QStringLiteral(LLOCR_SOURCE_DIR) + QStringLiteral("/resources/qml"));
+        const QDir root(QStringLiteral(LLOCR_SOURCE_DIR) + QStringLiteral("/src/qml"));
         QVERIFY2(root.exists(), qPrintable(root.path()));
 
         // Only Settings is linked here; the other singletons live in layers this
