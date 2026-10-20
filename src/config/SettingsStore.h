@@ -269,7 +269,7 @@ public:
     // Task-generic views over the per-task model settings. role is a task id:
     // "pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout" or
     // "fix" (the legacy "ocr" maps to "pageOcr").
-    QString launchModelPathForRole(const QString &role) const;
+    Q_INVOKABLE QString launchModelPathForRole(const QString &role) const;
     void setLaunchModelPathForRole(const QString &role, const QString &path);
     QString launchMmprojPathForRole(const QString &role) const;
     void setLaunchMmprojPathForRole(const QString &role, const QString &path);

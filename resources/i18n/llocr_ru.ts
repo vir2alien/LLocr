@@ -1211,6 +1211,16 @@
         <translation>Параметры машины: сколько слоёв модели на GPU, flash attention и размер контекста. Всё остальное — политика сервера и собственные параметры модели — подобрано приложением и профилями моделей</translation>
     </message>
     <message>
+        <location line="+25"/>
+        <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6.</source>
+        <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, KV-кэш %5, рабочий буфер %6.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>The model does not fit in this card&apos;s video memory. Lower the number of GPU layers or the context window, or pick a smaller quantization.</source>
+        <translation>Модель не помещается в видеопамять этой карты. Уменьшите число слоёв на GPU или размер контекста, либо выберите меньший квант.</translation>
+    </message>
+    <message>
         <location line="+14"/>
         <source>The model is managed by the external server. Location and download settings are not available in this mode.</source>
         <translation>Моделью управляет внешний сервер. Настройки расположения и скачивания модели в этом режиме недоступны.</translation>

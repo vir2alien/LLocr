@@ -19,8 +19,11 @@ Item {
 
     readonly property string runtimeNote: RoleProfiles.runtimeNote(role)
 
+    property var memoryEstimate: ({})
+
     function loadValues() {
         root.profiles.reloadDraft()
+        root.memoryEstimate = root.externalMode ? ({}) : Runtime.estimateModelMemory(Settings.launchModelPathForRole(root.role), root.role)
     }
 
     function saveValues() {
@@ -53,6 +56,30 @@ Item {
             valueWidth: root.valueWidth
             valuePlaceholder: qsTr("(flag)")
             setValue: (row, text) => root.profiles.setDraftValue(row, text)
+        }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.helpColor
+            visible: root.memoryEstimate.valid === true
+            text: qsTr("Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6.")
+                    .arg(root.memoryEstimate.totalLabel)
+                    .arg(root.memoryEstimate.vramLabel)
+                    .arg(root.memoryEstimate.modelLabel)
+                    .arg(root.memoryEstimate.mmprojLabel)
+                    .arg(root.memoryEstimate.kvLabel)
+                    .arg(root.memoryEstimate.computeLabel)
+        }
+
+        LLOLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            font.pointSize: Theme.captionSize
+            color: Theme.error
+            visible: root.memoryEstimate.overVramBudget === true
+            text: qsTr("The model does not fit in this card's video memory. Lower the number of GPU layers or the context window, or pick a smaller quantization.")
         }
 
         LLOLabel {

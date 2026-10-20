@@ -17,8 +17,10 @@
 
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/ByteSize.h"
 #include "core/LaunchProfile.h"
 #include "core/ModelProfiles.h"
+#include "runtime/HardwareInfo.h"
 #include "runtime/HttpClient.h"
 #include "runtime/InstalledState.h"
 #include "runtime/LaunchProfileStore.h"
@@ -921,26 +923,44 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, con
     QVariantMap out;
     const LaunchProfile profile = m_launchProfiles.activeProfile(m_settings.requestProfileIdForRole(role), role);
     int ctxSize = 8192;
+    int ubatchTokens = 0;
     QString cacheTypeK;
     QString cacheTypeV;
     if (const LaunchParameter *row = profile.find(QStringLiteral("ctx-size")); row && row->kind == LaunchValueKind::Number)
         ctxSize = int(row->value.toDouble());
+    if (const LaunchParameter *row = profile.find(QStringLiteral("ubatch-size")); row && row->kind == LaunchValueKind::Number)
+        ubatchTokens = int(row->value.toDouble());
     if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-k")); row && row->kind == LaunchValueKind::Text)
         cacheTypeK = row->value.toString();
     if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-v")); row && row->kind == LaunchValueKind::Text)
         cacheTypeV = row->value.toString();
 
-    const ModelMemoryEstimate e = ::llocr::estimateModelMemory(modelPath, ctxSize, cacheTypeK, cacheTypeV);
+    const QString mmprojPath = m_settings.launchMmprojPathForRole(role).trimmed();
+    const ModelMemoryEstimate e = ::llocr::estimateModelMemory(modelPath, ctxSize, cacheTypeK, cacheTypeV, mmprojPath, ubatchTokens);
     out.insert(QStringLiteral("modelBytes"), e.modelBytes);
+    out.insert(QStringLiteral("mmprojBytes"), e.mmprojBytes);
     out.insert(QStringLiteral("kvCacheBytes"), e.kvCacheBytes);
+    out.insert(QStringLiteral("computeBufferBytes"), e.computeBufferBytes);
     out.insert(QStringLiteral("totalBytes"), e.totalBytes);
     out.insert(QStringLiteral("systemRamBytes"), e.systemRamBytes);
     out.insert(QStringLiteral("valid"), e.valid);
     out.insert(QStringLiteral("error"), e.error);
     out.insert(QStringLiteral("nLayer"), e.nLayer);
+    out.insert(QStringLiteral("nKvLayer"), e.nKvLayer);
     out.insert(QStringLiteral("nKvHead"), e.nKvHead);
     out.insert(QStringLiteral("headDim"), e.headDim);
     out.insert(QStringLiteral("overBudget"), e.valid && e.systemRamBytes > 0 && e.totalBytes > static_cast<qint64>(e.systemRamBytes * kMemoryBudgetFactor));
+
+    const HardwareReport hardware = HardwareInfo::detect();
+    out.insert(QStringLiteral("vramBytes"), hardware.primaryGpuMemoryBytes());
+    out.insert(QStringLiteral("vramBudgetBytes"), hardware.memoryBudgetBytes());
+    out.insert(QStringLiteral("overVramBudget"), e.valid && hardware.primaryGpuMemoryBytes() > 0 && e.totalBytes > hardware.primaryGpuMemoryBytes());
+    out.insert(QStringLiteral("totalLabel"), formatBytes(e.totalBytes));
+    out.insert(QStringLiteral("modelLabel"), formatBytes(e.modelBytes));
+    out.insert(QStringLiteral("mmprojLabel"), formatBytes(e.mmprojBytes));
+    out.insert(QStringLiteral("kvLabel"), formatBytes(e.kvCacheBytes));
+    out.insert(QStringLiteral("computeLabel"), formatBytes(e.computeBufferBytes));
+    out.insert(QStringLiteral("vramLabel"), formatBytes(hardware.primaryGpuMemoryBytes()));
     return out;
 }
 

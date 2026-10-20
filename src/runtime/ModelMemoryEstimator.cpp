@@ -1,8 +1,10 @@
+#include <QBuffer>
 #include <QByteArray>
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QSet>
 #include <QString>
 #include <QVariant>
 
@@ -39,28 +41,52 @@ enum GGUFType : quint32 {
     Float64 = 12,
 };
 
+// The header of a GGUF holds the metadata and the tensor table; a vision
+// model's header reaches tens of megabytes (the chat template alone is a few
+// hundred kilobytes), so the reader grows its window instead of assuming one
+// size.
+constexpr qint64 kInitialHeaderBytes = 4 * 1024 * 1024;
+constexpr qint64 kMaxHeaderBytes = 96 * 1024 * 1024;
+
 class GgufReader
 {
 public:
-    static constexpr qint64 kMaxHeaderBytes = 8 * 1024 * 1024;  // 8 MiB
+    explicit GgufReader(const QString &path) : m_file(path) {}
 
-    GgufReader(const QString &path)
+    bool run(QHash<QString, QVariant> &out, QStringList &tensorNames, QString &error)
     {
-        m_file.setFileName(path);
-        if (!m_file.open(QIODevice::ReadOnly)) {
-            m_error = m_file.errorString();
-            return;
+        qint64 window = kInitialHeaderBytes;
+        while (true) {
+            if (!m_file.open(QIODevice::ReadOnly)) {
+                error = m_file.errorString();
+                return false;
+            }
+            m_data = m_file.read(window);
+            m_file.close();
+
+            m_truncated = false;
+            m_tensorCount = 0;
+            QString localError;
+            const bool ok = parse(out, tensorNames, localError);
+            if (!m_truncated) {
+                if (!ok)
+                    error = localError;
+                return ok;
+            }
+            if (window >= kMaxHeaderBytes) {
+                error = QStringLiteral("header larger than %1 bytes").arg(kMaxHeaderBytes);
+                return false;
+            }
+            window *= 4;
         }
-        m_data = m_file.read(kMaxHeaderBytes);
     }
 
-    bool run(QHash<QString, QVariant> &out, QString &error)
+private:
+    bool parse(QHash<QString, QVariant> &out, QStringList &tensorNames, QString &error)
     {
-        if (!m_error.isEmpty()) {
-            error = m_error;
-            return false;
-        }
-        QDataStream in(m_data);
+        QBuffer buffer(&m_data);
+        buffer.open(QIODevice::ReadOnly);
+        QDataStream in(&buffer);
         in.setByteOrder(QDataStream::LittleEndian);
 
         char magic[4] = {};
@@ -68,64 +94,121 @@ public:
             error = QStringLiteral("not a GGUF file");
             return false;
         }
-        if (!takeUint32(in, m_version))
-            return setError(error, QStringLiteral("truncated header"));
-        if (m_version < 2) {
-            error = QStringLiteral("unsupported GGUF version %1").arg(m_version);
+        quint32 version = 0;
+        if (!takeUint32(in, version)) {
+            error = QStringLiteral("truncated header");
+            return false;
+        }
+        if (version < 2) {
+            error = QStringLiteral("unsupported GGUF version %1").arg(version);
             return false;
         }
         quint64 tensorCount = 0, kvCount = 0;
-        if (!takeU64(in, tensorCount) || !takeU64(in, kvCount))
-            return setError(error, QStringLiteral("truncated header counts"));
-        Q_UNUSED(tensorCount);
+        if (!takeUint64(in, tensorCount) || !takeUint64(in, kvCount)) {
+            error = QStringLiteral("truncated header counts");
+            return false;
+        }
+        m_tensorCount = tensorCount;
 
         for (quint64 i = 0; i < kvCount; ++i) {
             QString key;
-            if (!takeString(in, key))
-                return setError(error, QStringLiteral("truncated metadata key"));
+            if (!takeString(in, key)) {
+                error = QStringLiteral("truncated metadata key");
+                return false;
+            }
             quint32 type = 0;
-            if (!takeUint32(in, type))
-                return setError(error, QStringLiteral("truncated metadata type"));
+            if (!takeUint32(in, type)) {
+                error = QStringLiteral("truncated metadata type");
+                return false;
+            }
             QVariant value;
-            if (!takeValue(in, type, value))
-                return setError(error, QStringLiteral("truncated metadata value"));
+            if (!takeValue(in, type, value)) {
+                error = QStringLiteral("truncated metadata value");
+                return false;
+            }
             out.insert(key, value);
         }
+
+        if (!readTensorNames(in, tensorNames, error))
+            return false;
         return true;
     }
 
-private:
-    bool setError(QString &error, const QString &msg) const
+    bool readTensorNames(QDataStream &in, QStringList &names, QString &error)
     {
-        error = msg;
-        return false;
+        for (quint64 i = 0; i < m_tensorCount; ++i) {
+            QString name;
+            if (!takeString(in, name)) {
+                error = QStringLiteral("truncated tensor table");
+                return false;
+            }
+            names.append(name);
+            quint32 nDims = 0;
+            if (!takeUint32(in, nDims)) {
+                error = QStringLiteral("truncated tensor table");
+                return false;
+            }
+            for (quint32 d = 0; d < nDims; ++d) {
+                quint64 dim = 0;
+                if (!takeUint64(in, dim)) {
+                    error = QStringLiteral("truncated tensor table");
+                    return false;
+                }
+            }
+            quint32 type = 0;
+            quint64 offset = 0;
+            if (!takeUint32(in, type) || !takeUint64(in, offset)) {
+                error = QStringLiteral("truncated tensor table");
+                return false;
+            }
+        }
+        return true;
     }
 
     bool takeUint8(QDataStream &in, quint8 &v) const
     {
         in >> v;
-        return in.status() == QDataStream::Ok;
+        if (in.status() != QDataStream::Ok) {
+            m_truncated = true;
+            return false;
+        }
+        return true;
     }
+
     bool takeUint32(QDataStream &in, quint32 &v) const
     {
         in >> v;
-        return in.status() == QDataStream::Ok;
+        if (in.status() != QDataStream::Ok) {
+            m_truncated = true;
+            return false;
+        }
+        return true;
     }
-    bool takeU64(QDataStream &in, quint64 &v) const
+
+    bool takeUint64(QDataStream &in, quint64 &v) const
     {
         in >> v;
-        return in.status() == QDataStream::Ok;
+        if (in.status() != QDataStream::Ok) {
+            m_truncated = true;
+            return false;
+        }
+        return true;
     }
+
     bool takeString(QDataStream &in, QString &s) const
     {
         quint64 len = 0;
-        if (!takeU64(in, len))
+        if (!takeUint64(in, len))
             return false;
-        if (len > static_cast<quint64>(in.device()->bytesAvailable()))
+        if (len > static_cast<quint64>(in.device()->bytesAvailable())) {
+            m_truncated = true;
             return false;
+        }
         QByteArray raw(static_cast<int>(len), Qt::Uninitialized);
-        if (in.readRawData(raw.data(), static_cast<qint64>(len)) != static_cast<qint64>(len))
+        if (in.readRawData(raw.data(), static_cast<int>(len)) != len) {
+            m_truncated = true;
             return false;
+        }
         s = QString::fromUtf8(raw);
         return true;
     }
@@ -143,24 +226,30 @@ private:
         case Int8: {
             qint8 v;
             in >> v;
-            if (in.status() != QDataStream::Ok)
+            if (in.status() != QDataStream::Ok) {
+                m_truncated = true;
                 return false;
+            }
             value = v;
             return true;
         }
         case Uint16: {
             quint16 v;
             in >> v;
-            if (in.status() != QDataStream::Ok)
+            if (in.status() != QDataStream::Ok) {
+                m_truncated = true;
                 return false;
+            }
             value = v;
             return true;
         }
         case Int16: {
             qint16 v;
             in >> v;
-            if (in.status() != QDataStream::Ok)
+            if (in.status() != QDataStream::Ok) {
+                m_truncated = true;
                 return false;
+            }
             value = v;
             return true;
         }
@@ -172,10 +261,13 @@ private:
             return true;
         }
         case Int32: {
-            quint32 v;
-            if (!takeUint32(in, v))
+            qint32 v;
+            in >> v;
+            if (in.status() != QDataStream::Ok) {
+                m_truncated = true;
                 return false;
-            value = static_cast<qint32>(v);
+            }
+            value = v;
             return true;
         }
         case Float32: {
@@ -184,7 +276,7 @@ private:
                 return false;
             float f{};
             std::memcpy(&f, &raw, sizeof f);
-            value = static_cast<double>(f);
+            value = f;
             return true;
         }
         case Bool: {
@@ -195,29 +287,32 @@ private:
             return true;
         }
         case String: {
-            QString s;
-            if (!takeString(in, s))
+            QString v;
+            if (!takeString(in, v))
                 return false;
-            value = s;
+            value = v;
             return true;
         }
         case Uint64: {
             quint64 v;
-            if (!takeU64(in, v))
+            if (!takeUint64(in, v))
                 return false;
             value = v;
             return true;
         }
         case Int64: {
-            quint64 v;
-            if (!takeU64(in, v))
+            qint64 v;
+            in >> v;
+            if (in.status() != QDataStream::Ok) {
+                m_truncated = true;
                 return false;
-            value = static_cast<qint64>(v);
+            }
+            value = v;
             return true;
         }
         case Float64: {
             quint64 raw;
-            if (!takeU64(in, raw))
+            if (!takeUint64(in, raw))
                 return false;
             double d{};
             std::memcpy(&d, &raw, sizeof d);
@@ -226,37 +321,127 @@ private:
         }
         case Array: {
             quint32 elemType = 0;
-            quint64 count = 0;
-            if (!takeUint32(in, elemType) || !takeU64(in, count))
+            if (!takeUint32(in, elemType))
                 return false;
-            for (quint64 i = 0; i < count; ++i) {
-                QVariant ignored;
-                if (!takeValue(in, elemType, ignored))
+            quint64 count = 0;
+            if (!takeUint64(in, count))
+                return false;
+            if (elemType == String) {
+                for (quint64 i = 0; i < count; ++i) {
+                    QString ignored;
+                    if (!takeString(in, ignored))
+                        return false;
+                }
+                value = QVariant();
+            } else if (elemType == Array) {
+                for (quint64 i = 0; i < count; ++i) {
+                    QVariant ignored;
+                    if (!takeValue(in, elemType, ignored))
+                        return false;
+                }
+                value = QVariant();
+            } else {
+                const int size = scalarSize(elemType);
+                if (size <= 0) {
+                    m_truncated = true;
                     return false;
+                }
+                for (quint64 i = 0; i < count; ++i) {
+                    QVariant ignored;
+                    if (!takeValue(in, elemType, ignored))
+                        return false;
+                    Q_UNUSED(ignored);
+                }
+                value = QVariant();
             }
-            value = QVariant();  // arrays skipped
             return true;
         }
         default:
+            m_truncated = true;
             return false;
         }
     }
 
-    mutable QByteArray m_data;
-    mutable QString m_error;
-    mutable quint32 m_version = 0;
-    QFile m_file;
-};
-
-bool readIntMeta(const QHash<QString, QVariant> &meta, const QString &candidate1, const QString &candidate2, qint64 &value)
-{
-    for (const QString &key : {candidate1, candidate2}) {
-        if (meta.contains(key)) {
-            value = meta.value(key).toLongLong();
-            return true;
+    static int scalarSize(quint32 type)
+    {
+        switch (type) {
+        case Uint8:
+        case Int8:
+        case Bool:
+            return 1;
+        case Uint16:
+        case Int16:
+            return 2;
+        case Uint32:
+        case Int32:
+        case Float32:
+            return 4;
+        case Uint64:
+        case Int64:
+        case Float64:
+            return 8;
+        default:
+            return 0;
         }
     }
-    return false;
+
+    QByteArray m_data;
+    QFile m_file;
+    quint64 m_tensorCount = 0;
+    mutable bool m_truncated = false;
+};
+
+qint64 readIntMeta(const QHash<QString, QVariant> &meta, const QStringList &arches, const QStringList &keys)
+{
+    for (const QString &arch : arches) {
+        for (const QString &key : keys) {
+            bool ok = false;
+            const qint64 value = meta.value(arch + QLatin1Char('.') + key).toLongLong(&ok);
+            if (ok && value > 0)
+                return value;
+        }
+    }
+    return 0;
+}
+
+// The layers that keep a KV cache. A hybrid architecture (Qwen3.5) keeps the
+// recurrent state in SSM tensors and only the full-attention layers carry K
+// and V — the tensor table says which layers those are.
+int countKvLayers(const QStringList &tensorNames)
+{
+    QSet<int> layers;
+    for (const QString &name : tensorNames) {
+        if (!name.startsWith(QLatin1String("blk.")))
+            continue;
+        const int dot = name.indexOf(QLatin1Char('.'), 4);
+        if (dot < 0)
+            continue;
+        bool ok = false;
+        const int index = name.mid(4, dot - 4).toInt(&ok);
+        if (!ok)
+            continue;
+        const QString tensor = name.mid(dot + 1);
+        if (tensor.startsWith(QLatin1String("attn_k")) || tensor.startsWith(QLatin1String("attn_v")))
+            layers.insert(index);
+    }
+    return int(layers.size());
+}
+
+// llama.cpp reserves the graph's working set for the largest ubatch it may
+// see: the query/key/value projection, the attention output and the
+// feed-forward pair, each in f32. Calibrated against the size llama.cpp
+// reports for the shipped models (the d3-mini Q4_K_M: 1312 MiB at an 8192
+// ubatch).
+qint64 computeBytesPerToken(qint64 nEmbd, qint64 nHead, qint64 nKvHead, qint64 headDim, qint64 nFf)
+{
+    if (nEmbd <= 0)
+        return 0;
+    qint64 bytes = nEmbd * 4 * 6;
+    if (headDim > 0 && nHead > 0)
+        bytes += headDim * (nHead + 2 * nKvHead) * 4;
+    if (nFf > 0)
+        bytes += nFf * 4 * 2;
+    return bytes;
 }
 
 QString cacheType(const QString &type)
@@ -269,10 +454,11 @@ QString cacheType(const QString &type)
 
 }  // namespace
 
-ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, const QString &cacheTypeK, const QString &cacheTypeV)
+ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, const QString &cacheTypeK, const QString &cacheTypeV, const QString &mmprojPath, int ubatchTokens)
 {
     ModelMemoryEstimate e;
     e.modelBytes = QFileInfo(modelPath).size();
+    e.mmprojBytes = mmprojPath.isEmpty() ? 0 : QFileInfo(mmprojPath).size();
     e.ctxSize = ctxSize <= 0 ? 8192 : ctxSize;
     e.systemRamBytes = systemPhysicalRamBytes();
 
@@ -281,24 +467,28 @@ ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, c
     e.bytesPerValue = (kt == "f32" || vt == "f32") ? 4 : 2;
 
     QHash<QString, QVariant> meta;
+    QStringList tensorNames;
     GgufReader reader(modelPath);
-    e.valid = reader.run(meta, e.error);
+    e.valid = reader.run(meta, tensorNames, e.error);
 
-    qint64 nLayer = 0, nKvHead = 0, headCount = 0, nEmbd = 0;
-    qint64 headDim = 0;
+    qint64 nLayer = 0, nKvHead = 0, headCount = 0, nEmbd = 0, nFf = 0, headDim = 0;
     if (e.valid) {
-        for (const QString &arch : {QStringLiteral("llama"), QStringLiteral("qwen2"), QStringLiteral("gptneox"), QStringLiteral("gemma4"), QStringLiteral("glm4")}) {
-            if (!nLayer)
-                readIntMeta(meta, arch + ".block_count", arch + ".n_layer", nLayer);
-            if (!nKvHead)
-                readIntMeta(meta, arch + ".attention.head_count_kv", arch + ".n_head_kv", nKvHead);
-            if (!headCount)
-                readIntMeta(meta, arch + ".attention.head_count", arch + ".n_head", headCount);
-            if (!nEmbd)
-                readIntMeta(meta, arch + ".embedding_length", arch + ".n_embd", nEmbd);
+        QStringList arches;
+        const QString declared = meta.value(QStringLiteral("general.architecture")).toString();
+        if (!declared.isEmpty())
+            arches.append(declared);
+        for (const QString &arch : {QStringLiteral("llama"), QStringLiteral("qwen2"), QStringLiteral("qwen35"), QStringLiteral("gptneox"), QStringLiteral("gemma4"), QStringLiteral("glm4")}) {
+            if (!arches.contains(arch))
+                arches.append(arch);
         }
+        nLayer = readIntMeta(meta, arches, {QStringLiteral("block_count"), QStringLiteral("n_layer")});
+        nKvHead = readIntMeta(meta, arches, {QStringLiteral("attention.head_count_kv"), QStringLiteral("n_head_kv")});
+        headCount = readIntMeta(meta, arches, {QStringLiteral("attention.head_count"), QStringLiteral("n_head")});
+        nEmbd = readIntMeta(meta, arches, {QStringLiteral("embedding_length"), QStringLiteral("n_embd")});
+        nFf = readIntMeta(meta, arches, {QStringLiteral("feed_forward_length")});
+        headDim = readIntMeta(meta, arches, {QStringLiteral("attention.key_length")});
     }
-    if (headCount > 0 && nEmbd > 0)
+    if (headDim <= 0 && headCount > 0 && nEmbd > 0)
         headDim = nEmbd / headCount;
 
     if (nLayer <= 0)
@@ -308,11 +498,16 @@ ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, c
     if (headDim <= 0)
         headDim = 128;
 
-    e.nLayer = nLayer;
-    e.nKvHead = nKvHead;
-    e.headDim = headDim;
-    e.kvCacheBytes = 2LL * nLayer * nKvHead * headDim * e.ctxSize * e.bytesPerValue;
-    e.totalBytes = e.modelBytes + e.kvCacheBytes;
+    e.nLayer = int(nLayer);
+    e.nKvHead = int(nKvHead);
+    e.headDim = int(headDim);
+
+    const int kvLayers = countKvLayers(tensorNames);
+    e.nKvLayer = kvLayers > 0 ? kvLayers : e.nLayer;
+
+    e.kvCacheBytes = 2LL * e.nKvLayer * e.nKvHead * e.headDim * e.ctxSize * e.bytesPerValue;
+    e.computeBufferBytes = ubatchTokens > 0 ? qint64(ubatchTokens) * computeBytesPerToken(nEmbd, headCount, nKvHead, headDim, nFf) : 0;
+    e.totalBytes = e.modelBytes + e.mmprojBytes + e.kvCacheBytes + e.computeBufferBytes;
     return e;
 }
 
@@ -328,7 +523,7 @@ qint64 systemPhysicalRamBytes()
     int64_t mem = 0;
     size_t len = sizeof(mem);
     if (sysctlbyname("hw.memsize", &mem, &len, nullptr, 0) == 0)
-        return static_cast<qint64>(mem);
+        return static_cast<int64_t>(mem);
     return 0;
 #elif defined(Q_OS_LINUX)
     const long pages = sysconf(_SC_PHYS_PAGES);
