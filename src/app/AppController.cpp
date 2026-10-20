@@ -945,6 +945,54 @@ bool AppController::removeBlock(int boxIndex)
     return true;
 }
 
+bool AppController::addBlock(const QString &type)
+{
+    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy())
+        return false;
+    if (!m_document.isValidIndex(m_currentPage))
+        return false;
+
+    BoundingBox box;
+    box.label = type.isEmpty() ? QStringLiteral("text") : type;
+    box.rect = QRectF(0.35, 0.45, 0.3, 0.08);
+    // The text the blocks stand for: the page text follows the blocks only as
+    // long as it is that text (a manual edit or a raw page OCR owns it
+    // otherwise).
+    const QString blockDerivedText = rebuildPageText(m_document.page(m_currentPage).result.pages.value(0));
+    {
+        QWriteLocker locker(&m_documentLock);
+        DocumentPage &page = m_document.page(m_currentPage);
+        if (page.result.pages.isEmpty())
+            page.result.pages.append(OcrPage());
+        page.result.pages[0].boxes.append(box);
+        page.recognized = true;
+        ++m_cropRevision;
+    }
+
+    m_pageModel.setRecognized(m_currentPage, true);
+    if (m_document.page(m_currentPage).recognitionMode == PageRecognitionMode::None)
+        setRecognitionMode(m_currentPage, PageRecognitionMode::MarkupOnly);
+
+    updateBoxesForCurrent();
+
+    const OcrPage &page = m_document.page(m_currentPage).result.pages[0];
+    const QString rebuilt = rebuildPageText(page);
+    if (pageText(m_currentPage) == blockDerivedText) {
+        setPageText(m_currentPage, rebuilt);
+        // The revert target moves forward with the blocks. The page is not a
+        // manual edit: its text must keep following the blocks, so the
+        // recognition of the new block reaches the text panel.
+        m_editStore.rebase(m_currentPage, rebuilt);
+    }
+
+    refreshPageVerification(m_currentPage);
+    setSelectedBoxIndex(page.boxes.size() - 1);
+
+    setStatus(StatusMessage::translate("AppController", "Block added."));
+    emit resultChanged();
+    return true;
+}
+
 const BoundingBox *AppController::selectedBox() const
 {
     if (m_selectedBox < 0 || !m_document.isValidIndex(m_currentPage))

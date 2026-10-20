@@ -76,17 +76,18 @@ ToolBar {
         Row {
             spacing: 0
 
-            StubIconButton { iconName: "type" }
-            StubIconButton { iconName: "image" }
-            StubIconButton { iconName: "table" }
-            StubIconButton { iconName: "sigma" }
-            StubIconButton { iconName: "code" }
+            BlockAddButton { iconName: "type"; blockName: "Text" }
+            BlockAddButton { iconName: "image"; blockName: "Image" }
+            BlockAddButton { iconName: "table"; blockName: "Table" }
+            BlockAddButton { iconName: "sigma"; blockName: "Formula" }
+            BlockAddButton { iconName: "code"; blockName: "Code" }
 
             ToolButton {
                 id: allBlocksButton
                 implicitWidth: 32
                 implicitHeight: 28
                 padding: 0
+                enabled: Controller.actionsIdle
                 Row {
                     anchors.centerIn: parent
                     spacing: 0
@@ -94,12 +95,13 @@ ToolBar {
                         anchors.verticalCenter: parent.verticalCenter
                         name: "layout-grid"
                         size: 18
+                        color: allBlocksButton.enabled ? Theme.textPrimary : Theme.textMuted
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "\u25be"
                         font: Theme.caption
-                        color: Theme.textPrimary
+                        color: allBlocksButton.enabled ? Theme.textPrimary : Theme.textMuted
                     }
                 }
                 onClicked: allBlocksMenu.popup(allBlocksButton, 0, allBlocksButton.height + 2)
@@ -167,11 +169,36 @@ ToolBar {
             delegate: MenuItem {
                 required property string modelData
                 text: BlockNames.displayName(modelData)
-                enabled: false
+                onTriggered: Controller.addBlock(BlockNames.blockType(modelData))
             }
             onObjectAdded: (index, object) => allBlocksMenu.insertItem(index, object)
             onObjectRemoved: (index, object) => allBlocksMenu.removeItem(object)
         }
+    }
+
+    component BlockAddButton: ToolButton {
+        id: addButton
+
+        required property string iconName
+        required property string blockName
+
+        implicitWidth: 32
+        implicitHeight: 28
+        Layout.minimumWidth: implicitWidth
+        padding: 0
+        enabled: Controller.actionsIdle
+
+        Icon {
+            anchors.centerIn: parent
+            name: addButton.iconName
+            size: 18
+            color: addButton.enabled ? Theme.textPrimary : Theme.textMuted
+        }
+
+        onClicked: Controller.addBlock(BlockNames.blockType(addButton.blockName))
+
+        ToolTip.visible: addButton.hovered
+        ToolTip.text: BlockNames.displayName(addButton.blockName)
     }
 
     component StubIconButton: ToolButton {

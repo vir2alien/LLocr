@@ -9,6 +9,11 @@
         <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
+        <location line="+430"/>
+        <source>Block added.</source>
+        <translation>Блок добавлен.</translation>
+    </message>
+    <message>
         <location line="+89"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
@@ -321,6 +326,11 @@
         <location line="+1"/>
         <source>Key-value fields</source>
         <translation>Поля «ключ—значение»</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Images</source>
+        <translation>Изображения</translation>
     </message>
     <message>
         <location line="+1"/>

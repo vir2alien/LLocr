@@ -21,6 +21,7 @@ const char *kBuiltInLabels[] = {
     "table_footnote:italic",
     "page_number:italic",
     "equation:equation",
+    "formula:equation",
     "table:table",
     // "text", "footer" and anything unmapped fall through to PlainText.
 };

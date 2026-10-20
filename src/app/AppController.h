@@ -285,6 +285,8 @@ public slots:
     Q_INVOKABLE void revertCurrentPageEdits();
     Q_INVOKABLE void onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height);
     Q_INVOKABLE bool removeBlock(int boxIndex);
+    // Adds an empty block of the given type to the current page and selects it.
+    Q_INVOKABLE bool addBlock(const QString &type);
     Q_INVOKABLE QString resolveImagesForPreview(const QString &markdown);
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();

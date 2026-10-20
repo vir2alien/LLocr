@@ -1266,6 +1266,37 @@ private slots:
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("Introduction")));
     }
 
+    // A manually added block: an empty block of the given type lands on the
+    // current page, is selected and the page counts as edited. The page text
+    // follows the blocks only while it is the block-derived text.
+    void addedBlockLandsOnTheCurrentPage()
+    {
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 0);
+
+        QVERIFY(controller.addBlock(QStringLiteral("table")));
+        QCOMPARE(boxes->rowCount(), 1);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::LabelRole).toString(), QStringLiteral("table"));
+        QCOMPARE(controller.selectedBoxIndex(), 0);
+        // The page text is not a manual edit: it keeps following the blocks, so
+        // the recognition of the new block reaches the text panel.
+        QVERIFY(!controller.currentPageEdited());
+        // An empty text block adds nothing to the page text.
+        QVERIFY(controller.resultText().isEmpty());
+
+        // An image block brings its placeholder with it.
+        QVERIFY(controller.addBlock(QStringLiteral("image")));
+        QCOMPARE(boxes->rowCount(), 2);
+        QCOMPARE(controller.selectedBoxIndex(), 1);
+        QVERIFY2(controller.resultText().contains(QStringLiteral("image://ocr/crop/")), qPrintable(controller.resultText()));
+    }
+
     // The block ↔ text mapping the selection sync builds on: after a det-token
     // recognition every box maps to its character range in the page text; a
     // manual edit switches the mapping to best-effort (intact blocks stay

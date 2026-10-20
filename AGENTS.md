@@ -443,8 +443,9 @@
     presets) is deleted — the «Авто» switch is its successor. The **page
     toolbar**
     (`MainWindow/PageToolBar.qml`) collapses to one row: «Стр. ‹ n / N ›»
-    page navigation plus the block-add stubs (the ▾ lists all `BlockNames`
-    types) and page rotation. The right panel switches text/preview through
+    page navigation plus the block-add buttons (T / image / table / Σ / code
+    + a ▾ with every `BlockNames` type — they add an empty block of that type
+    to the current page, ADR 177) and page rotation. The right panel switches text/preview through
     the segmented «Текст (MD) | Предпросмотр» control next to «Копировать»
     (`copyCurrentPageText`). The selected block carries a floating
     **mini-toolbar** (`MainWindow/BlockMiniToolbar.qml`: recognize / verify /

@@ -331,22 +331,12 @@ Item {
                         }
                     }
 
+                    // Drag & boundary editing: every block can be moved and
+                    // resized, the manually added ones included — a block the
+                    // user placed must be placeable.
                     MouseArea {
                         anchors.fill: parent
-                        visible: !boxDelegate.isImage
-                        cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton
-                        onClicked: {
-                            Controller.selectedBoxIndex = boxDelegate.index
-                            imageArea.forceActiveFocus()
-                        }
-                    }
-
-                    // --- Image blocks: drag & boundary editing (existing behavior) ---
-                    MouseArea {
-                        anchors.fill: parent
-                        visible: boxDelegate.isImage
-                        cursorShape: Qt.SizeAllCursor
+                        cursorShape: boxDelegate.isImage ? Qt.SizeAllCursor : Qt.PointingHandCursor
                         acceptedButtons: Qt.LeftButton
 
                         property real grabX: 0
@@ -449,7 +439,6 @@ Item {
                     border.color: Theme.overlayImageOuter
                     border.width: 1
                     visible: imageArea.selectedDelegate !== null
-                             && imageArea.selectedDelegate.isImage
 
                     x: {
                         const sel = imageArea.selectedDelegate
