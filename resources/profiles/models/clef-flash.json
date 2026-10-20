@@ -51,16 +51,16 @@
       "alias": "llocr-decision",
       "default": true,
       "protocol": "systemone_multi_question_v6",
-      "matchThreshold": 0.7,
+      "matchThreshold": 0.8,
       "emptyThreshold": 0.25,
       "readableThreshold": 0.45,
       "matchThresholdByBlock": {
-        "text": 0.75,
+        "text": 0.8,
         "abstract": 0.75,
         "title": 0.78,
         "list": 0.75,
         "image_caption": 0.75,
-        "table_caption": 0.75,
+        "table_caption": 0.78,
         "figure_footnote": 0.75,
         "table_footnote": 0.75,
         "header": 0.78,
@@ -507,7 +507,7 @@
         }
       ],
       "request": [],
-      "_note": "Схема v6, совпадает с d3 (два вопроса match+diagnosis в /v1/systemone; clef читает их совместно — второй вопрос не стоит отдельного forward pass). Стенд OCRtest/decision_models/test 2: iteration1 (v5, T=0.7) FN 51%/FP 20%; iteration2 (v6, пороги 0.68/0.72/0.75) FN 37%/FP 10%. Итерация 3: matchThresholdByBlock подняты (text 0.75, equation/formula/table 0.8) — Ok = p ≥ t, выше порог = меньше пропусков и больше ложных флагов; старый замер v5 на формулах: T=0.8 → 13% пропусков при 25% ложных. FP приняты (лучше лишний флаг, чем пропущенная формула). Точная калибровка — по confidence, сохраняемому в project.json (ADR 173): кривая FN/FP(t) печатается evaluate.py после первого прогона. state строкой или null недопустимы: строка разрушает разделение (AUC 0.79 → 0.65 на формулах), null отклоняется сервером с 400."
+      "_note": "Схема v6, совпадает с d3 (два вопроса match+diagnosis в /v1/systemone; clef читает их совместно — второй вопрос не стоит отдельного forward pass). Стенд OCRtest/decision_models/test 2: iteration1 (v5, T=0.7) FN 51%/FP 20%; iteration2 (v6, пороги 0.68/0.72/0.75) FN 37%/FP 10%; iteration3 (пороги 0.75/0.8, промпты mismatch-first) FN 16/FP 24 из 73/104 — минус 11 FN, включая 4 гомоглифа н/H и б/6, цена — FP на чистых блоках с p 0.68–0.80, равных эталону только после carrier-нормализации. Итерация 4 (текущие пороги): text 0.8 и table_caption 0.78 по кривой FN/FP(t) из сохранённого confidence (ADR 173) — в «Текст с формулами» ошибки сидят с p ≥ 0.755, чистые ≤ 0.747; лейбл text покрывает и «Простой текст», поэтому полный эффект FN 16→12, FP 24→36; «Формулы» остаются на 0.8 (следующая ступень 0.85 = −2 FN за +9 FP — решать по кривой). Жёсткое ядро — одно-символьные подмены ρ/p, ∯/∬, г/r, ν/v, ж/к, ∂/d с p 0.76–0.90 при чистых ≤ 0.80 — порогом недостижимо. Ok = p ≥ t: выше порог = меньше FN, больше FP; FP приняты (лучше лишний флаг, чем пропущенная формула). state строкой или null недопустимы: строка разрушает разделение (AUC 0.79 → 0.65 на формулах), null отклоняется сервером с 400."
     }
   }
 }
