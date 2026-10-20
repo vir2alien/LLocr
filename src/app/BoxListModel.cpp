@@ -4,6 +4,20 @@
 
 namespace llocr {
 
+namespace {
+
+// The page furniture: running heads, running feet, page numbers and seals.
+// They carry no content, so the overlay draws them grey instead of the text
+// hue. The shipped vocabularies spell them header/footer/page_number
+// (LFM says page_header/page_footer).
+bool isServiceLabel(const QString &label)
+{
+    return label == QLatin1String("header") || label == QLatin1String("footer") || label == QLatin1String("page_header") || label == QLatin1String("page_footer") ||
+           label == QLatin1String("page_number") || label == QLatin1String("seal");
+}
+
+}  // namespace
+
 BoxListModel::BoxListModel(QObject *parent) : QAbstractListModel(parent) {}
 
 int BoxListModel::rowCount(const QModelIndex &parent) const
@@ -79,7 +93,7 @@ BoxListModel::BoxKind BoxListModel::kindFor(const BoundingBox &box) const
     case BlockStyle::Equation:
         return BoxKind::Formula;
     default:
-        return BoxKind::Text;
+        return isServiceLabel(box.label) ? BoxKind::Service : BoxKind::Text;
     }
 }
 

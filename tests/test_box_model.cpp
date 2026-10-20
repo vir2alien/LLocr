@@ -150,6 +150,10 @@ private slots:
             makeBox(QStringLiteral("image"), QRectF(0, 0, 0.2, 0.1)),
             makeBox(QStringLiteral("chart"), QRectF(0, 0, 0.2, 0.1)),
             makeBox(QStringLiteral("unmapped-label"), QRectF(0, 0, 0.2, 0.1)),
+            makeBox(QStringLiteral("header"), QRectF(0, 0, 0.2, 0.1)),
+            makeBox(QStringLiteral("footer"), QRectF(0, 0, 0.2, 0.1)),
+            makeBox(QStringLiteral("page_number"), QRectF(0, 0, 0.2, 0.1)),
+            makeBox(QStringLiteral("page_footer"), QRectF(0, 0, 0.2, 0.1)),
         });
 
         QCOMPARE(model.data(model.index(0), BoxListModel::KindRole).toInt(), int(BoxListModel::BoxKind::Text));
@@ -160,6 +164,11 @@ private slots:
         QCOMPARE(model.data(model.index(5), BoxListModel::KindRole).toInt(), int(BoxListModel::BoxKind::Image));
         // An unknown label is a text block, not a crash.
         QCOMPARE(model.data(model.index(6), BoxListModel::KindRole).toInt(), int(BoxListModel::BoxKind::Text));
+        // The page furniture is its own kind: it renders grey, not as text.
+        QCOMPARE(model.data(model.index(7), BoxListModel::KindRole).toInt(), int(BoxListModel::BoxKind::Service));
+        QCOMPARE(model.data(model.index(8), BoxListModel::KindRole).toInt(), int(BoxListModel::BoxKind::Service));
+        QCOMPARE(model.data(model.index(9), BoxListModel::KindRole).toInt(), int(BoxListModel::BoxKind::Service));
+        QCOMPARE(model.data(model.index(10), BoxListModel::KindRole).toInt(), int(BoxListModel::BoxKind::Service));
 
         // The style model id re-resolves the map for every row.
         QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);

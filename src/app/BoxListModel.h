@@ -18,6 +18,7 @@ public:
         Image = 1,
         Table = 2,
         Formula = 3,
+        Service = 4,
     };
 
     enum Roles : int {

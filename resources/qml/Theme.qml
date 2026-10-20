@@ -49,6 +49,11 @@ QtObject {
     readonly property color overlayImageOuter: "#2196F3"
     readonly property color overlayImageInner: "#FFFFFF"
     readonly property color overlayImageFill: "#102194F3"
+    // Service blocks (running heads/feet, page numbers): page furniture, not
+    // content — grey so they never read as a text block.
+    readonly property color overlayServiceOuter: "#757575"
+    readonly property color overlayServiceInner: "#D9D9D9"
+    readonly property color overlayServiceFill: "#10757575"
 
     readonly property int spacingSmall: 4
     readonly property int spacing: 8

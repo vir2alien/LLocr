@@ -98,14 +98,17 @@ Image {
                 readonly property color kindOuter: boxKind == 1 ? Theme.overlayImageOuter
                                                                  : boxKind == 2 ? Theme.overlayTableOuter
                                                                  : boxKind == 3 ? Theme.overlayFormulaOuter
+                                                                 : boxKind == 4 ? Theme.overlayServiceOuter
                                                                  : Theme.overlayTextOuter
                 readonly property color kindInner: boxKind == 1 ? Theme.overlayImageInner
                                                                   : boxKind == 2 ? Theme.overlayTableInner
                                                                   : boxKind == 3 ? Theme.overlayFormulaInner
+                                                                  : boxKind == 4 ? Theme.overlayServiceInner
                                                                   : Theme.overlayTextInner
                 readonly property color kindFill: boxKind == 1 ? Theme.overlayImageFill
                                                                  : boxKind == 2 ? Theme.overlayTableFill
                                                                  : boxKind == 3 ? Theme.overlayFormulaFill
+                                                                 : boxKind == 4 ? Theme.overlayServiceFill
                                                                  : Theme.overlayTextFill
 
                 color: kindFill
