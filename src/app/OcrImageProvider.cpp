@@ -29,7 +29,10 @@ QImage OcrImageProvider::requestImage(const QString &id, QSize *size, const QSiz
         return image;
 
     if (requestedSize.isValid() && !requestedSize.isEmpty()) {
-        image = image.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        // Twice the requested size, so that zooming into the page does not
+        // show a blown-up preview.
+        const QSize want = image.size().boundedTo(requestedSize * 2);
+        image = image.scaled(want, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     }
 
     if (size)

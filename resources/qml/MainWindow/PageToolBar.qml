@@ -13,6 +13,9 @@ ToolBar {
 
     visible: Controller.hasImage
 
+    // The page preview the zoom acts on (set by ImagePanel).
+    property var preview: null
+
     // The default single-page selection follows the navigation until the
     // user builds a multi-selection of their own.
     function goTo(pageIndex) {
@@ -112,6 +115,48 @@ ToolBar {
         }
 
         Item { Layout.fillWidth: true }
+
+        ToolButton {
+            id: zoomButton
+            implicitWidth: 58
+            implicitHeight: 28
+            padding: 0
+            enabled: pageToolBarRoot.preview !== null
+            Row {
+                anchors.centerIn: parent
+                spacing: 0
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: pageToolBarRoot.preview
+                          ? Math.round(pageToolBarRoot.preview.zoom * 100) + "%" : ""
+                    color: Theme.textPrimary
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "\u25be"
+                    font: Theme.caption
+                    color: Theme.textPrimary
+                }
+            }
+            onClicked: zoomMenu.popup(zoomButton, 0, zoomButton.height + 2)
+        }
+    }
+
+    Menu {
+        id: zoomMenu
+
+        MenuItem {
+            text: qsTr("Zoom in")
+            onTriggered: pageToolBarRoot.preview.zoomBy(1.25)
+        }
+        MenuItem {
+            text: qsTr("Zoom out")
+            onTriggered: pageToolBarRoot.preview.zoomBy(1 / 1.25)
+        }
+        MenuItem {
+            text: qsTr("Fit page")
+            onTriggered: pageToolBarRoot.preview.resetZoom()
+        }
     }
 
     Menu {

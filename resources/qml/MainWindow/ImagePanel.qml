@@ -19,12 +19,17 @@ Rectangle {
 
         PageToolBar {
             Layout.fillWidth: true
+            preview: imagePreview
         }
 
         ImagePreview {
+            id: imagePreview
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.margins: Theme.spacingLarge
+            // The block panel floats over the preview's bottom edge.
+            bottomInset: blockPanel.visible
+                         ? Math.max(0, blockPanel.height - Theme.spacingLarge) : 0
         }
     }
 
@@ -36,6 +41,7 @@ Rectangle {
     }
 
     BlockEditPanel {
+        id: blockPanel
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom

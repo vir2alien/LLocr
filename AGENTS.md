@@ -351,7 +351,10 @@
     model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
     recognition) via a thumbnail strip with recognized / edited / duplicate
-    markers, **delete** and **drag-reorder** pages → **stop** a running job →
+    markers, **delete** and **drag-reorder** pages → **zoom and pan the page
+    preview** (the wheel scrolls, Ctrl/⌘+wheel zooms, the page drags; the
+    selected block is scrolled clear of the block panel — ADR 175) → **stop** a
+    running job →
     edit the recognized text per page (per-page edits via `PageEditStore`) and
     toggle a **Markdown preview** (Qt WebEngine + marked + KaTeX) → **edit
     image/chart blocks** (move / resize / delete) directly on the preview →

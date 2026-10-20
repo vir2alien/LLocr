@@ -1483,6 +1483,21 @@
         <source>Not implemented yet</source>
         <translation>Функция пока не реализована</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow/PageToolBar.qml" line="+149"/>
+        <source>Zoom in</source>
+        <translation>Увеличить</translation>
+    </message>
+    <message>
+        <location line="+153"/>
+        <source>Zoom out</source>
+        <translation>Уменьшить</translation>
+    </message>
+    <message>
+        <location line="+157"/>
+        <source>Fit page</source>
+        <translation>Вписать страницу</translation>
+    </message>
 </context>
 <context>
     <name>ParamsTableEditor</name>
