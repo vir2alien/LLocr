@@ -64,8 +64,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString checkLaunchDraftPath READ checkLaunchDraftPath WRITE setCheckLaunchDraftPath NOTIFY checkLaunchDraftPathChanged)
     Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
     Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
-    Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
-    Q_PROPERTY(bool autoFix READ autoFix WRITE setAutoFix NOTIFY autoFixChanged)
     Q_PROPERTY(bool showConfidence READ showConfidence WRITE setShowConfidence NOTIFY showConfidenceChanged)
 
     Q_PROPERTY(QString decisionLaunchModelPath READ decisionLaunchModelPath WRITE setDecisionLaunchModelPath NOTIFY decisionLaunchModelPathChanged)
@@ -218,10 +216,6 @@ public:
     void setCheckRequestProfileId(const QString &id);
     QString checkModelName() const;
     void setCheckModelName(const QString &name);
-    bool autoCheck() const;
-    void setAutoCheck(bool on);
-    bool autoFix() const;
-    void setAutoFix(bool on);
     bool showConfidence() const;
     void setShowConfidence(bool on);
 
@@ -337,8 +331,6 @@ signals:
     void checkLaunchDraftPathChanged();
     void checkRequestProfileIdChanged();
     void checkModelNameChanged();
-    void autoCheckChanged();
-    void autoFixChanged();
     void showConfidenceChanged();
     void decisionLaunchModelPathChanged();
     void decisionLaunchMmprojPathChanged();
@@ -453,8 +445,8 @@ private:
     static constexpr const char *kRetiredModelRequestProfileId = "model/requestProfileId";
 
     // Models per task. The ex-role keys (launch/* model files, check/*,
-    // decision/*, layout/* model keys, model/recipeId, check/autoRecheck)
-    // migrate into this namespace and the check/autoFix key on startup.
+    // decision/*, layout/* model keys, model/recipeId) migrate into this
+    // namespace on startup.
     static constexpr const char *kModelRecipeId = "tasks/pageOcr/requestProfileId";
     static constexpr const char *kLaunchModelPath = "tasks/pageOcr/modelPath";
     static constexpr const char *kLaunchMmprojPath = "tasks/pageOcr/mmprojPath";
@@ -478,10 +470,13 @@ private:
     static constexpr const char *kRetiredCheckSourceDownload = "check/sourceDownload";
 
     // Verification behavior
-    static constexpr const char *kAutoCheck = "check/autoCheck";
-    static constexpr const char *kAutoFix = "check/autoFix";
-    static constexpr const char *kRetiredAutoRecheck = "check/autoRecheck";
     static constexpr const char *kShowConfidence = "check/showConfidence";
+
+    // The automatic check/fix switches: the check and the fix are separate
+    // actions now (ADR 178).
+    static constexpr const char *kRetiredAutoCheck = "check/autoCheck";
+    static constexpr const char *kRetiredAutoFix = "check/autoFix";
+    static constexpr const char *kRetiredAutoRecheck = "check/autoRecheck";
 
     // Decision model keys
     static constexpr const char *kDecisionLaunchModelPath = "tasks/decision/modelPath";

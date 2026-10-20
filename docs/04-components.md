@@ -30,11 +30,10 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   uses the same resolved connection (role-aware model name per ADR 73) and the
   single managed instance is re-loaded per task (ADR 74). Checking runs on the
   current page (`checkEnabledBlocksOnPage`), across all recognized pages
-  («Проверить всё», `checkAllEnabledBlocks`), or automatically after a
-  recognition run when `check/autoCheck` is on (Config: Settings → Проверка →
-  Blocks) — the automatic run passes `onlyUnchecked`, so blocks that were
-  already verified (`checkStatus != NotChecked`) are skipped and a re-
-  recognition only verifies the newly recognized blocks. In Managed mode the
+  («Проверить всё», `checkAllEnabledBlocks`) — the queue asks only the blocks
+  that have no answer yet, so a re-recognition only verifies the newly
+  recognized blocks. Fixing is a separate action («Исправить», ADR 178): the
+  rejected blocks go to the fix model in their own run. In Managed mode the
   server switches from the OCR to the check model automatically (ADR 74), in
   External mode the check just starts (ADR 91).
   The serial check queue (task list, progress, stop) lives in

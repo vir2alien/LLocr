@@ -371,18 +371,17 @@
     them jointly (free), so the draft's `has_text`/`readable` noul gates
     stay out of every profile and empty/unreadable crops route through the
     diagnosis classes; the verdict is routed four ways: empty or unreadable
-    crop → **Review** (human eyes, never a fixer call even under auto-fix),
+    crop → **Review** (human eyes, never a fixer call),
     Ok only when the noul and the choice head both agree, else Mismatch;
     thresholds resolve per block type (`matchThresholdByBlock` in the
     profile → role `matchThreshold` → the setting). d1-3B failed the task
     in every phrasing and was removed (ADR 161). Every block carries two text layers with independent verdicts
     (ADR 164): `box.text` (the OCR result) and `box.correctedText` (the fix
     model's correction); the dot and the confidence badge follow the
-    **effective** layer. With «Автоматическое исправление после проверки»
-    (`check/autoFix`) mismatches are re-run through the **fix** task
-    (universal models, OK/FIX/REVIEW, ADR 163) in the same run, the
-    correction landing in `correctedText`; Review blocks are left to the
-    human. The fix profiles carry the same per-block equivalence rules as
+    **effective** layer. The **fix** task (universal models, OK/FIX/REVIEW,
+    ADR 163) runs as a separate action (ADR 178): the «Исправить» button
+    sends the mismatched blocks, the correction landing in `correctedText`;
+    Review blocks are left to the human. The fix profiles carry the same per-block equivalence rules as
     the decision v6 prompts ("Equivalent (never fix) / Strictly different
     (fix)") so the two models cannot disagree on е/ё, homoglyphs, LaTeX
     commands or table cells. Block recognition (plain re-transcription)
@@ -424,10 +423,10 @@
     buttons) and «Верификация» (Проверить / Исправить) — all acting on the
     **thumbnail selection** (Ctrl/Cmd+click toggles, «Выбрать все» in the
     column header; «Исправить» lights `Theme.accentAttention` with a `(N)`
-    badge of `scopedProblemBlockCount`). «Проверить» always runs the
-    decision pass **without** auto-fix (`checkScopeEnabledBlocks(FixSkip)`)
-    — verify and fix are separate buttons in the manual pipeline;
-    `check/autoFix` stays a setting for the future automatic pipelines.
+    badge of `scopedProblemBlockCount`). «Проверить» runs the decision pass
+    only (`checkScopeEnabledBlocks()`) — verify and fix are separate buttons
+    in the manual pipeline; the automatic check/fix switches are gone
+    (ADR 178).
     While anything runs the pipeline buttons go inactive and the started
     action's button turns into the stop control — a black square inside a
     spinning ring; the mapping is by flags/phases (`layoutBusy` → «Разметить»,
@@ -473,8 +472,8 @@
     model profiles (`roles.<task>`), the settings
     (`tasks/<task>/{modelPath, mmprojPath, draftPath, requestProfileId,
     modelName}`, one-time migration from the old per-role keys; `check/`
-    keeps only `autoCheck`/`autoFix`/`showConfidence`) and one
-    `RequestProfileStore` per task. Shipped model → task matrix:
+    keeps only `showConfidence` — the automatic check/fix switches are gone,
+    ADR 178) and one `RequestProfileStore` per task. Shipped model → task matrix:
     `unlimited-ocr` → pageOcr; `lfm25-vl-3b` → pageOcr + blockRecognition;
     `glm-ocr` → rawPageOcr + blockRecognition; `teleocr` → layout +
     blockRecognition; `clef-flash`, `d3-flash`/`d3-mini` → decision
@@ -504,8 +503,6 @@
     model and the best quantization the memory budget fits (0.9 × (VRAM ‖
     RAM), `runtime/HardwareInfo`), preferring already-installed quants.
     Recognizing a page is a
-    split-button choice (pageOcr vs rawPageOcr), not a setting. The re-run
-    override enum is `VerificationQueueController::FixMode`
-    (`FixFromSetting`/`FixSkip`/`FixForce`); a restart of the managed server
-    brings back the role it was serving (stage-8 regression
-    `restartBringsBackTheStartedRole`).
+    split-button choice (pageOcr vs rawPageOcr), not a setting. A restart of
+    the managed server brings back the role it was serving (stage-8
+    regression `restartBringsBackTheStartedRole`).

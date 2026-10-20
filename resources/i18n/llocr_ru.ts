@@ -3401,12 +3401,11 @@
 <context>
     <name>VerificationBlocksTab</name>
     <message>
-        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="+124"/>
         <source>Automatic checking</source>
-        <translation>Автоматическая проверка</translation>
+        <translation type="vanished">Автоматическая проверка</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location filename="../qml/Settings/VerificationBlocksTab.qml" line="121"/>
         <source>Show model confidence</source>
         <translation>Показывать уверенность модели</translation>
     </message>
@@ -3416,29 +3415,26 @@
         <translation>Вместо точки состояния проверенные блоки показывают вероятность decision-модели в процентах в цветном кружке. Отладочный инструмент для decision-модели.</translation>
     </message>
     <message>
-        <location line="-34"/>
         <source>Runs after recognition. Already checked blocks are skipped.</source>
-        <translation>Запускается после распознавания. Уже проверенные блоки пропускаются.</translation>
+        <translation type="vanished">Запускается после распознавания. Уже проверенные блоки пропускаются.</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Automatic fixing</source>
-        <translation>Автоматическое исправление после проверки</translation>
+        <translation type="vanished">Автоматическое исправление после проверки</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Sends the blocks the decision model rejected to the fix model, right after the check.</source>
-        <translation>Сразу после проверки отправляет забракованные decision-моделью блоки на исправление модели fix.</translation>
+        <translation type="vanished">Сразу после проверки отправляет забракованные decision-моделью блоки на исправление модели fix.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+16"/>
         <source>How checking works</source>
         <translation>Как работает проверка</translation>
     </message>
     <message>
         <location line="+11"/>
-        <source>Checking is fast: the decision model only answers how likely the text matches the image, block by block. Matching blocks turn green; rejected ones turn red. When fixing is on, the red blocks are corrected by the fix model. The managed runtime switches its loaded model between the two stages; an external runtime serves both.</source>
-        <translation>Проверка быстрая: decision-модель лишь оценивает по блокам, насколько вероятно, что текст соответствует изображению. Совпавшие блоки становятся зелёными, отклонённые — красными. Когда включено исправление, красные блоки исправляет модель fix. Управляемый рантайм переключает загруженную модель между двумя стадиями; внешний обслуживает обе.</translation>
+        <source>Checking is fast: the decision model only answers how likely the text matches the image, block by block. Matching blocks turn green; rejected ones turn red. Fixing is a separate step: the «Fix» button sends the rejected blocks to the fix model. The managed runtime switches its loaded model between the two tasks; an external runtime serves both.</source>
+        <translation>Проверка быстрая: decision-модель лишь оценивает по блокам, насколько вероятно, что текст соответствует изображению. Совпавшие блоки становятся зелёными, отклонённые — красными. Исправление — отдельный шаг: кнопка «Исправить» отправляет отклонённые блоки модели fix. Управляемый рантайм переключает загруженную модель между двумя задачами; внешний обслуживает обе.</translation>
     </message>
     <message>
         <location line="+14"/>

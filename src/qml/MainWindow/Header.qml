@@ -269,7 +269,7 @@ ToolBar {
                         Controller.stopCheck()
                         return
                     }
-                    Controller.checkScopeEnabledBlocks(VerificationQueueController.FixSkip)
+                    Controller.checkScopeEnabledBlocks()
                 }
             }
 

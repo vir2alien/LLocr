@@ -78,8 +78,6 @@ AppController::AppController(SettingsStore &settings,
       m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this), QObject(parent)
 {
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
-        if (!m_recognition.busy() && !m_recognitionStopped && m_settings.autoCheck())
-            QTimer::singleShot(0, this, [this]() { m_verify.checkAllEnabledBlocks(); });
         emit busyChanged();
         updateAvailability();
     });
@@ -765,7 +763,6 @@ void AppController::recognizeCurrentPage(const QString &task)
     }
 
     m_recognition.startCurrent(m_currentPage, m_document.pageCount(), role);
-    m_recognitionStopped = false;
 }
 
 void AppController::recognizeAllPages(const QString &task)
@@ -779,7 +776,6 @@ void AppController::recognizeAllPages(const QString &task)
     }
 
     m_recognition.startAll(m_document.pageCount(), role);
-    m_recognitionStopped = false;
 }
 
 void AppController::recognizeCurrent()
@@ -841,7 +837,6 @@ void AppController::applyRawResult(int index, ConnectionRole task, const OcrResu
 
 void AppController::stop()
 {
-    m_recognitionStopped = true;
     m_recognition.stop();
 }
 
@@ -1100,14 +1095,14 @@ void AppController::revertBlockCorrection()
     emit editStateChanged();
 }
 
-void AppController::checkEnabledBlocksOnPage(int fixMode)
+void AppController::checkEnabledBlocksOnPage()
 {
-    m_verify.checkPageEnabledBlocks(m_currentPage, fixMode);
+    m_verify.checkPageEnabledBlocks(m_currentPage);
 }
 
-void AppController::checkAllEnabledBlocks(int fixMode)
+void AppController::checkAllEnabledBlocks()
 {
-    m_verify.checkAllEnabledBlocks(fixMode);
+    m_verify.checkAllEnabledBlocks();
 }
 
 void AppController::recognizeScopePages(const QString &task)
@@ -1120,7 +1115,6 @@ void AppController::recognizeScopePages(const QString &task)
         return;
     }
     m_recognition.startPages(scopePages(), role);
-    m_recognitionStopped = false;
 }
 
 void AppController::recognizeScopeBlocks()
@@ -1135,9 +1129,9 @@ void AppController::layoutScopePages()
     startLayout(scopePages());
 }
 
-void AppController::checkScopeEnabledBlocks(int fixMode)
+void AppController::checkScopeEnabledBlocks()
 {
-    m_verify.checkPagesEnabledBlocks(scopePages(), fixMode);
+    m_verify.checkPagesEnabledBlocks(scopePages());
 }
 
 void AppController::fixScopeProblemBlocks()

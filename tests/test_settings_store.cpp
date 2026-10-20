@@ -110,8 +110,6 @@ private slots:
         // "auto" — the OCR model adapter declares its parser (ADR 88).
         QCOMPARE(store.parserId(), QStringLiteral("auto"));
         QCOMPARE(store.checkModelName(), QString());
-        QCOMPARE(store.autoCheck(), false);
-        QCOMPARE(store.autoFix(), false);
         QCOMPARE(store.decisionMatchThreshold(), 0.5);
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
@@ -154,7 +152,6 @@ private slots:
         // "auto" — the OCR model adapter declares its parser (ADR 88).
         QCOMPARE(store.parserId(), QStringLiteral("auto"));
         QCOMPARE(store.checkModelName(), QString());
-        QCOMPARE(store.autoCheck(), false);
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
     }
@@ -306,9 +303,8 @@ private slots:
 
         QCOMPARE(store.launchHost(), QStringLiteral("127.0.0.1"));
         QCOMPARE(store.launchPort(), 0);
-        QCOMPARE(store.launchProfileId(), QStringLiteral(""));
-        QCOMPARE(store.autoCheck(), false);
-        QCOMPARE(store.hfToken(), QStringLiteral(""));
+        QCOMPARE(store.launchProfileId(), QString());
+        QCOMPARE(store.hfToken(), QString());
     }
 
     void timeoutAndPortClamps()
@@ -504,6 +500,8 @@ private slots:
             QStringLiteral("check/requestProfileId"),
             QStringLiteral("check/modelName"),
             QStringLiteral("check/autoRecheck"),
+            QStringLiteral("check/autoCheck"),
+            QStringLiteral("check/autoFix"),
             QStringLiteral("decision/modelPath"),
             QStringLiteral("decision/mmprojPath"),
             QStringLiteral("decision/draftPath"),
@@ -610,19 +608,6 @@ private slots:
             QVERIFY2(!store.contains(QString::fromLatin1(legacy)), legacy);
     }
 
-    // The re-stage toggle is now the fix task's switch: the stored value moves
-    // to check/autoFix and the old key is removed.
-    void autoRecheckKeyMigratesToAutoFix()
-    {
-        QSettings pre;
-        pre.setValue(QStringLiteral("check/autoRecheck"), true);
-
-        const SettingsStore store;
-        QCOMPARE(store.autoFix(), true);
-        QVERIFY(!store.contains(QStringLiteral("check/autoRecheck")));
-        QCOMPARE(pre.value(QStringLiteral("check/autoFix")).toBool(), true);
-    }
-
     // Activating a model of a known family has to pick that family's profile:
     // the weights on disk would otherwise run with another model's launch
     // parameters. A repo the catalog does not know, or one that does not answer
@@ -698,32 +683,6 @@ private slots:
         }
         QVERIFY2(blocks > 0, "no Connections block targets a singleton this test can check");
         QVERIFY(handlers > 0);
-    }
-
-    void autoCheckRoundTrip()
-    {
-        SettingsStore store;
-        QCOMPARE(store.autoCheck(), false);
-        store.setAutoCheck(true);
-        QCOMPARE(store.autoCheck(), true);
-        store.setAutoCheck(true);  // no-op, no signal spam
-        QCOMPARE(store.autoCheck(), true);
-        store.setAutoCheck(false);
-        QCOMPARE(store.autoCheck(), false);
-    }
-
-    // The re-recognition option is independent of autoCheck: it also governs
-    // what a manual «Check all» does after the decision phase.
-    void autoFixRoundTrip()
-    {
-        SettingsStore store;
-        QCOMPARE(store.autoFix(), false);
-        store.setAutoFix(true);
-        QCOMPARE(store.autoFix(), true);
-        store.setAutoFix(true);  // no-op, no signal spam
-        QCOMPARE(store.autoFix(), true);
-        store.setAutoFix(false);
-        QCOMPARE(store.autoFix(), false);
     }
 
     void migrationConfiguredProfileKeepsExternal()

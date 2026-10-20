@@ -17,15 +17,11 @@ Item {
 
     function loadValues() {
         loading = true
-        autoCheckBox.checked = Settings.autoCheck
-        autoFixCheckBox.checked = Settings.autoFix
         showConfidenceCheckBox.checked = Settings.showConfidence
         loading = false
     }
 
     function saveValues() {
-        Settings.autoCheck = autoCheckBox.checked
-        Settings.autoFix = autoFixCheckBox.checked
         Settings.showConfidence = showConfidenceCheckBox.checked
     }
 
@@ -119,39 +115,6 @@ Item {
         spacing: 0
 
         LLOCheckBox {
-            id: autoCheckBox
-            Layout.fillWidth: true
-            text: qsTr("Automatic checking")
-            font.pointSize: Theme.bodySmallSize
-            onToggled: if (!loading) root.edited()
-        }
-        LLOLabel {
-            Layout.fillWidth: true
-            Layout.leftMargin: 4
-            font.pointSize: Theme.footnoteSize
-            color: Theme.helpColor
-            wrapMode: Text.WordWrap
-            text: qsTr("Runs after recognition. Already checked blocks are skipped.")
-        }
-
-        LLOCheckBox {
-            id: autoFixCheckBox
-            Layout.fillWidth: true
-            Layout.topMargin: Theme.spacingSmall
-            text: qsTr("Automatic fixing")
-            font.pointSize: Theme.bodySmallSize
-            onToggled: if (!loading) root.edited()
-        }
-        LLOLabel {
-            Layout.fillWidth: true
-            Layout.leftMargin: 4
-            font.pointSize: Theme.footnoteSize
-            color: Theme.helpColor
-            wrapMode: Text.WordWrap
-            text: qsTr("Sends the blocks the decision model rejected to the fix model, right after the check.")
-        }
-
-        LLOCheckBox {
             id: showConfidenceCheckBox
             Layout.fillWidth: true
             Layout.topMargin: Theme.spacingSmall
@@ -194,9 +157,9 @@ Item {
             wrapMode: Text.WordWrap
             text: qsTr("Checking is fast: the decision model only answers how likely "
                        + "the text matches the image, block by block. Matching blocks turn "
-                       + "green; rejected ones turn red. When fixing is on, the red "
-                       + "blocks are corrected by the fix model. The "
-                       + "managed runtime switches its loaded model between the two stages; "
+                       + "green; rejected ones turn red. Fixing is a separate step: the "
+                       + "«Fix» button sends the rejected blocks to the fix model. The "
+                       + "managed runtime switches its loaded model between the two tasks; "
                        + "an external runtime serves both.")
         }
 

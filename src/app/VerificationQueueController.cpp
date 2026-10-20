@@ -46,8 +46,6 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
         const int box = m_verifyBoxIndex;
         emit blockVerified(page, box, verdict);
         ++m_verifyDone;
-        if (verdict.status == CheckStatus::Mismatch && (m_runFix == FixForce || (m_runFix == FixFromSetting && m_autoFix)))
-            m_fixQueue.append({page, box});
         emit stateChanged();
         QTimer::singleShot(0, this, [this]() { startNextVerify(); });
     });
@@ -93,7 +91,7 @@ void VerificationQueueController::checkBlock(int pageIndex, int boxIndex)
     startVerifyQueue({{pageIndex, boxIndex}});
 }
 
-void VerificationQueueController::checkPageEnabledBlocks(int pageIndex, int fixMode)
+void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
 {
     if (!m_deps.document.isValidIndex(pageIndex))
         return;
@@ -105,10 +103,10 @@ void VerificationQueueController::checkPageEnabledBlocks(int pageIndex, int fixM
     QList<VerifyTask> tasks;
     for (const int box : std::as_const(candidates))
         tasks.append({pageIndex, box});
-    startOrReportAnswered(tasks, answered, fixMode);
+    startOrReportAnswered(tasks, answered);
 }
 
-void VerificationQueueController::checkAllEnabledBlocks(int fixMode)
+void VerificationQueueController::checkAllEnabledBlocks()
 {
     if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
         return;
@@ -123,10 +121,10 @@ void VerificationQueueController::checkAllEnabledBlocks(int fixMode)
         for (const int box : std::as_const(candidates))
             tasks.append({p, box});
     }
-    startOrReportAnswered(tasks, answered, fixMode);
+    startOrReportAnswered(tasks, answered);
 }
 
-void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &pages, int fixMode)
+void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &pages)
 {
     if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
         return;
@@ -141,7 +139,7 @@ void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &page
         for (const int box : std::as_const(candidates))
             tasks.append({p, box});
     }
-    startOrReportAnswered(tasks, answered, fixMode);
+    startOrReportAnswered(tasks, answered);
 }
 
 void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const
@@ -205,10 +203,10 @@ void VerificationQueueController::collectUnrecognizedBoxes(int pageIndex, QList<
     }
 }
 
-void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int fixMode)
+void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered)
 {
     if (!tasks.isEmpty()) {
-        startVerifyQueue(tasks, fixMode);
+        startVerifyQueue(tasks);
         return;
     }
     if (answered == 0)
@@ -221,7 +219,6 @@ void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> 
 void VerificationQueueController::stop()
 {
     m_verifyQueue.clear();
-    m_fixQueue.clear();
     if (m_verifyQueueActive) {
         m_verifyQueueActive = false;
         m_verifyPage = -1;
@@ -294,7 +291,7 @@ bool VerificationQueueController::allPageRecheckSupported() const
     return false;
 }
 
-void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &tasks, int fixMode)
+void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &tasks)
 {
     if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
         return;
@@ -306,10 +303,7 @@ void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &task
     m_phase = Phase::Decision;
     m_matchThreshold = m_deps.settings.decisionMatchThreshold();
     m_decisionRole = ModelProfiles::roleFor(m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
-    m_autoFix = m_deps.settings.autoFix();
-    m_runFix = fixMode;
     m_verifyQueue = tasks;
-    m_fixQueue.clear();
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     m_verifyTotal = tasks.size();
@@ -405,7 +399,6 @@ void VerificationQueueController::startRecheckQueue(const QList<VerifyTask> &tas
     m_checkFinished = false;
     m_phase = Phase::Recheck;
     m_verifyQueue = tasks;
-    m_fixQueue.clear();
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     m_verifyTotal = tasks.size();
@@ -427,7 +420,6 @@ void VerificationQueueController::startFixQueue(const QList<VerifyTask> &tasks)
     m_checkFinished = false;
     m_phase = Phase::Fix;
     m_verifyQueue = tasks;
-    m_fixQueue.clear();
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     m_verifyTotal = tasks.size();
@@ -444,22 +436,8 @@ void VerificationQueueController::startNextVerify()
         return;
 
     if (m_verifyQueue.isEmpty()) {
-        if (m_phase == Phase::Decision && !m_fixQueue.isEmpty()) {
-            // Phase 2: the mismatches go to the fix protocol (ADR 163). The
-            // server is already on the decision model, so this reuses the
-            // switch — one switch back instead of per-block restarts.
-            m_phase = Phase::Fix;
-            m_verifyQueue = m_fixQueue;
-            m_fixQueue.clear();
-            m_verifyTotal = m_verifyQueue.size();
-            m_verifyDone = 0;
-            m_verifyPage = -1;
-            m_verifyBoxIndex = -1;
-            emit stateChanged();
-        } else {
-            finishVerifyQueue();
-            return;
-        }
+        finishVerifyQueue();
+        return;
     }
 
     const VerifyTask task = m_verifyQueue.takeFirst();
@@ -609,7 +587,6 @@ void VerificationQueueController::finishVerifyQueue()
         return;
     m_verifyQueueActive = false;
     m_verifyQueue.clear();
-    m_fixQueue.clear();
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
     m_checkFinished = true;

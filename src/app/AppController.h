@@ -294,14 +294,14 @@ public slots:
     Q_INVOKABLE QList<int> blockTextRange(int boxIndex) const;
     Q_INVOKABLE int boxIndexForTextPosition(int position) const;
     Q_INVOKABLE void attachBlockTextHighlighter(QObject *textDocument, const QColor &color);
-    Q_INVOKABLE void checkEnabledBlocksOnPage(int fixMode = VerificationQueueController::FixFromSetting);
-    Q_INVOKABLE void checkAllEnabledBlocks(int fixMode = VerificationQueueController::FixFromSetting);
+    Q_INVOKABLE void checkEnabledBlocksOnPage();
+    Q_INVOKABLE void checkAllEnabledBlocks();
     // The toolbar's scoped spellings: the same runs over the thumbnail
     // selection (empty selection = every page).
     Q_INVOKABLE void recognizeScopePages(const QString &task);
     Q_INVOKABLE void recognizeScopeBlocks();
     Q_INVOKABLE void layoutScopePages();
-    Q_INVOKABLE void checkScopeEnabledBlocks(int fixMode = VerificationQueueController::FixFromSetting);
+    Q_INVOKABLE void checkScopeEnabledBlocks();
     Q_INVOKABLE void fixScopeProblemBlocks();
     Q_INVOKABLE void stopCheck();
     // Block (re-)recognition through the blockRecognition role: the selected
@@ -451,7 +451,6 @@ private:
 
     int m_selectedBox = -1;
     BlockTextHighlighter *m_blockHighlighter = nullptr;  ///< owned; created on first attach
-    bool m_recognitionStopped = false;
 
     // Memo of currentPageRebuild() keyed by its inputs (page, the structural
     // revisions, the shown text) plus parser options: a keystroke re-reads the

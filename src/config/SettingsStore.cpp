@@ -88,8 +88,6 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kCheckLaunchDraftPath, "checkLaunchDraftPath", QVariant(QString())},
         {kCheckRequestProfileId, "checkRequestProfileId", QVariant(defaultBlockRecognitionRequestProfileId())},
         {kCheckModelName, "checkModelName", QVariant(QString())},
-        {kAutoCheck, "autoCheck", QVariant(false)},
-        {kAutoFix, "autoFix", QVariant(false)},
         {kShowConfidence, "showConfidence", QVariant(false)},
         {kDecisionLaunchModelPath, "decisionLaunchModelPath", QVariant(QString())},
         {kDecisionLaunchMmprojPath, "decisionLaunchMmprojPath", QVariant(QString())},
@@ -151,7 +149,14 @@ void SettingsStore::applyStartupMigration()
             m_settings.setValue(kBaseUrl, saved);
     }
 
-    for (const char *retired : {kRetiredAlias, kRetiredServerPathIsManaged, kRetiredLaunchSourceDownload, kRetiredCheckSourceDownload, kRetiredModelRequestProfileId})
+    for (const char *retired : {kRetiredAlias,
+                                kRetiredServerPathIsManaged,
+                                kRetiredLaunchSourceDownload,
+                                kRetiredCheckSourceDownload,
+                                kRetiredModelRequestProfileId,
+                                kRetiredAutoCheck,
+                                kRetiredAutoFix,
+                                kRetiredAutoRecheck})
         m_settings.remove(QString::fromLatin1(retired));
 
     // `provider/timeoutMs` capped the whole request, so its value lives on as
@@ -196,11 +201,6 @@ void SettingsStore::applyStartupMigration()
             m_settings.setValue(to, m_settings.value(from));
         m_settings.remove(from);
     }
-
-    // The auto-stage-after-verification toggle is now the fix task's switch.
-    if (!m_settings.contains(kAutoFix) && m_settings.contains(kRetiredAutoRecheck))
-        m_settings.setValue(kAutoFix, m_settings.value(kRetiredAutoRecheck));
-    m_settings.remove(QString::fromLatin1(kRetiredAutoRecheck));
 
     resolveStoredModelId(kModelRecipeId, QStringLiteral("pageOcr"));
     resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("blockRecognition"));
@@ -913,32 +913,6 @@ void SettingsStore::setCheckModelName(const QString &name)
         return;
     m_settings.setValue(kCheckModelName, name);
     emit checkModelNameChanged();
-}
-
-bool SettingsStore::autoCheck() const
-{
-    return m_settings.value(kAutoCheck, false).toBool();
-}
-
-void SettingsStore::setAutoCheck(bool on)
-{
-    if (autoCheck() == on)
-        return;
-    m_settings.setValue(kAutoCheck, on);
-    emit autoCheckChanged();
-}
-
-bool SettingsStore::autoFix() const
-{
-    return m_settings.value(kAutoFix, false).toBool();
-}
-
-void SettingsStore::setAutoFix(bool on)
-{
-    if (autoFix() == on)
-        return;
-    m_settings.setValue(kAutoFix, on);
-    emit autoFixChanged();
 }
 
 bool SettingsStore::showConfidence() const

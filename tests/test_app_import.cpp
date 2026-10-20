@@ -538,7 +538,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
@@ -577,7 +576,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         std::set<int> withResult{0, 2, 3};
         QList<int> askedFor;
@@ -1225,7 +1223,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
@@ -1307,7 +1304,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
@@ -1362,7 +1358,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
@@ -1394,7 +1389,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         // The mock server answers every page with the same content, so both
@@ -1428,7 +1422,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
@@ -1483,7 +1476,6 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
-        m_settings->setAutoCheck(false);
 
         // A box needs at least a pixel in both directions to become a crop, and
         // the det-token boxes are normalized: on the shared 39x27 fixture the
@@ -1550,7 +1542,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
@@ -1580,11 +1571,11 @@ private slots:
         QCOMPARE(controller.pageCount(), 3);
     }
 
-    // The decision phase runs first for every queued block; with automatic
-    // re-recognition on, the mismatches go straight to the block-recognition
-    // model in a second phase of the same run. The transcription is an OCR
-    // result: it overwrites the block text and leaves no verdict (ADR 164).
-    void decisionMismatchFeedsFixWhenEnabled()
+    // The decision phase judges every queued block; the mismatches stay marked
+    // for the user. The fix is a separate action (ADR 178): the «Fix» button
+    // sends the problem blocks through the fix protocol, and the answer lands
+    // on the correction layer (ADR 164).
+    void decisionMismatchIsFixedByTheSeparateFixRun()
     {
         DetTokenChatServer server;
         server.systemoneProbability = 0.1;  // below the 0.5 threshold: every block mismatches
@@ -1593,8 +1584,6 @@ private slots:
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
-        m_settings->setAutoCheck(false);
-        m_settings->setAutoFix(true);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1617,9 +1606,16 @@ private slots:
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        // 1 recognition + 2 decision requests + 2 fix requests.
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);
+        // 1 recognition + 2 decision requests; the fix stage did not run.
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 3, kImportTimeoutMs);
         QCOMPARE(server.systemoneRequests(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+
+        // The «Fix» action sends the problem blocks to the fix model.
+        m_controller->fixAllProblemBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);
         // The fix lands on the correction layer: the fixed text with no
         // verdict yet (the gray dot), while the text layer keeps its Mismatch.
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
@@ -1650,11 +1646,10 @@ private slots:
         QVERIFY(server.chatRequests().at(3).contains("Fixed block text"));
 
         // The next verification run judges the corrected text (the decision
-        // request's state). Still below the threshold, so both mismatch again
-        // and the automatic cycle corrects them once more.
+        // request's state). Still below the threshold, so both mismatch again.
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 10, kImportTimeoutMs);  // +2 decision +2 fix
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 8, kImportTimeoutMs);  // +2 decision
         QCOMPARE(server.systemoneRequests(), 4);
         QVERIFY(server.systemoneBodies().at(2).contains("Fixed block text"));
         QVERIFY(!server.systemoneBodies().at(2).contains("1. Introduction"));
@@ -1664,9 +1659,9 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::ConfidenceRole).toDouble(), 0.1);
     }
 
-    // Without the fixing option the run ends after the decision phase:
-    // the rejected blocks keep their red mark for the user to act on.
-    void decisionMismatchStaysWithoutRecheck()
+    // The check run ends after the decision phase: the rejected blocks keep
+    // their red mark for the user to act on.
+    void decisionMismatchStaysUnfixed()
     {
         DetTokenChatServer server;
         server.systemoneProbability = 0.1;
@@ -1674,8 +1669,6 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
-        m_settings->setAutoCheck(false);
-        m_settings->setAutoFix(false);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1716,7 +1709,6 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
-        m_settings->setAutoCheck(false);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1798,8 +1790,6 @@ private slots:
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
-        m_settings->setAutoCheck(false);
-        m_settings->setAutoFix(true);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1819,8 +1809,14 @@ private slots:
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);  // +2 decision +2 fix
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 3, kImportTimeoutMs);  // +2 decision
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+
+        // The fix is a separate action (ADR 178): the «Fix» button corrects
+        // the rejected blocks.
+        m_controller->fixAllProblemBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);  // +2 fix
 
         server.systemoneProbability = 0.97;  // the corrected text matches now
         m_controller->checkEnabledBlocksOnPage();
@@ -1862,8 +1858,6 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
-        m_settings->setAutoCheck(false);
-        m_settings->setAutoFix(false);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1937,8 +1931,6 @@ private slots:
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
-        m_settings->setAutoCheck(false);
-        m_settings->setAutoFix(false);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2005,7 +1997,6 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
-        m_settings->setAutoCheck(false);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2032,8 +2023,7 @@ private slots:
     }
 
     // Scheme v6 routing end-to-end: an unreadable crop goes straight to Review
-    // (human eyes) and never reaches the fix protocol, even with automatic
-    // fixing enabled (docs/21, §v6).
+    // (human eyes) instead of Mismatch (docs/21, §v6).
     void decisionV6RoutingSendsUnreadableCropsToReview()
     {
         DetTokenChatServer server;
@@ -2045,8 +2035,6 @@ private slots:
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
-        m_settings->setAutoCheck(false);
-        m_settings->setAutoFix(true);
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2064,7 +2052,7 @@ private slots:
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 3);  // 1 recognition + 2 decision; the fix stage never ran
+        QCOMPARE(server.requests(), 3);  // 1 recognition + 2 decision; the check run never fixes
         QCOMPARE(server.systemoneRequests(), 2);
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Review));
         QCOMPARE(boxes->data(boxes->index(1), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Review));
@@ -2096,7 +2084,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
@@ -2147,7 +2134,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
@@ -2183,7 +2169,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
@@ -2219,7 +2204,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
@@ -2300,7 +2284,6 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setAutoCheck(false);
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});

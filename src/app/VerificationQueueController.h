@@ -25,10 +25,10 @@ class SettingsStore;
 // generating text: the v6 routing (docs/21) marks a block Ok when both the
 // noul and the choice head agree, sends an empty/unreadable crop to a human
 // (Review) and everything else to Mismatch — the threshold is per block type
-// when the profile ships the map. With automatic fixing enabled, phase 2
-// sends the mismatched blocks through the fix task's OK / FIX / REVIEW
-// protocol right away, so one verification run costs at most two server role
-// switches.
+// when the profile ships the map. The fix is a separate action (ADR 178): the
+// user sends the mismatched blocks through the fix task's OK / FIX / REVIEW
+// protocol with the «Fix» button, so one check run costs one server role
+// switch.
 class VerificationQueueController : public QObject
 {
     Q_OBJECT
@@ -46,15 +46,6 @@ public:
     };
 
     explicit VerificationQueueController(Deps deps, QObject *parent = nullptr);
-
-    // Per-run override of check/autoFix for the decision phase: follow the
-    // setting (default), never fix the mismatches, or always do.
-    enum FixMode : int {
-        FixFromSetting = -1,
-        FixSkip = 0,
-        FixForce = 1,
-    };
-    Q_ENUM(FixMode)
 
     bool checkBusy() const { return m_check.busy() || m_decision.busy() || m_fix.busy(); }
     bool queueActive() const { return m_verifyQueueActive; }
@@ -82,11 +73,11 @@ public:
 
 public slots:
     void checkBlock(int pageIndex, int boxIndex);
-    void checkPageEnabledBlocks(int pageIndex, int fixMode = FixFromSetting);
-    void checkAllEnabledBlocks(int fixMode = FixFromSetting);
+    void checkPageEnabledBlocks(int pageIndex);
+    void checkAllEnabledBlocks();
     // The toolbar's scoped spellings: the same collections over an explicit
     // page set (the thumbnail selection).
-    void checkPagesEnabledBlocks(const QList<int> &pages, int fixMode = FixFromSetting);
+    void checkPagesEnabledBlocks(const QList<int> &pages);
     // Re-recognition runs the queue straight in its second phase. The single
     // block form takes any status; the page/all forms pick the problem blocks.
     void recheckBlock(int pageIndex, int boxIndex);
@@ -128,10 +119,10 @@ private:
         int box;
     };
 
-    void startVerifyQueue(const QList<VerifyTask> &tasks, int fixMode = FixFromSetting);
+    void startVerifyQueue(const QList<VerifyTask> &tasks);
     void startRecheckQueue(const QList<VerifyTask> &tasks);
     void startFixQueue(const QList<VerifyTask> &tasks);
-    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int fixMode = FixFromSetting);
+    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered);
     void startNextVerify();
     void skipCurrentTask();
     void finishVerifyQueue();
@@ -152,7 +143,6 @@ private:
 
     Phase m_phase = Phase::Decision;
     QList<VerifyTask> m_verifyQueue;
-    QList<VerifyTask> m_fixQueue;
     int m_verifyPage = -1;
     int m_verifyBoxIndex = -1;
     bool m_verifyQueueActive = false;
@@ -162,8 +152,6 @@ private:
     double m_matchThreshold = 0.5;
     const ModelProfiles::Role *m_decisionRole = nullptr;  // resolved per run: v6 thresholds live on the role
     QString m_judgedType;                                 // the block type of the verdict in flight
-    bool m_autoFix = false;
-    int m_runFix = FixFromSetting;
     StatusMessage m_checkError;
 };
 
