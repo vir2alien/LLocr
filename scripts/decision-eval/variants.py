@@ -1,7 +1,7 @@
 """Prompt/request variants for /v1/systemone.
 
-V0 reproduces byte-for-byte what the app sends (profile texts are read from
-the repo's resources/profiles/models/clef-flash.json, role "decision", so a
+V0 reproduces byte-for-byte what the app sends (the request texts are read
+from the repo's resources/profiles/requests/decision-requests.json, so a
 future profile edit re-baselines automatically). V1-V4 are the alternative
 shapes tried during the docs/17 study (minimal question, multi-question
 decomposition, single choice); v6-v9 are the specialized formula/table
@@ -23,15 +23,24 @@ class Variant:
 
 
 def load_app_profile(profile_path):
+    """The decision request texts (ADR 182) and the routing calibration.
+
+    The request texts live in the shared request profile
+    (resources/profiles/requests/decision-requests.json); the model profile
+    keeps the per-model routing calibration.
+    """
     data = json.loads(profile_path.read_text(encoding="utf-8"))
-    role = data["roles"]["decision"]
+    model = data.get("roles", {}).get("decision", {})
+    request_id = model.get("promptProfile", "decision-requests")
+    request_path = profile_path.parents[1] / "requests" / f"{request_id}.json"
+    request = json.loads(request_path.read_text(encoding="utf-8"))
     return {
-        "state_prompt": role.get("statePrompt", ""),
-        "question": role.get("question", ""),
-        "criteria_true": role.get("criteria", {}).get("true", ""),
-        "criteria_false": role.get("criteria", {}).get("false", ""),
-        "block_prompts": role.get("blockPrompts", {}),
-        "block_aliases": role.get("blockAliases", {}),
+        "state_prompt": request.get("statePrompt", ""),
+        "question": request.get("question", ""),
+        "criteria_true": request.get("criteria", {}).get("true", ""),
+        "criteria_false": request.get("criteria", {}).get("false", ""),
+        "block_prompts": request.get("blockPrompts", {}),
+        "block_aliases": request.get("blockAliases", {}),
     }
 
 

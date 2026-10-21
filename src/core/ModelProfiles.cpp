@@ -74,6 +74,102 @@ ModelProfiles::Files readFiles(const QJsonObject &root, const QString &profileId
     return files;
 }
 
+namespace {
+
+// The prompt half of a role: the system prompt, the per-block prompts, the
+// decision questions and the alias map. A model profile keeps them inline; a
+// request profile ships them in its own file (ADR 182).
+void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QString &error, const QString &id, bool requestProfile)
+{
+    role.systemPrompt = object.value(QStringLiteral("systemPrompt")).toString();
+    role.statePrompt = object.value(QStringLiteral("statePrompt")).toString();
+    role.question = object.value(QStringLiteral("question")).toString();
+    role.questions = object.value(QStringLiteral("questions")).toObject();
+    const QJsonObject criteria = object.value(QStringLiteral("criteria")).toObject();
+    role.criteriaTrue = criteria.value(QStringLiteral("true")).toString();
+    role.criteriaFalse = criteria.value(QStringLiteral("false")).toString();
+
+    const QJsonObject blockPrompts = object.value(QStringLiteral("blockPrompts")).toObject();
+    for (auto prompt = blockPrompts.constBegin(); prompt != blockPrompts.constEnd(); ++prompt) {
+        // A v6 decision entry ships as an object (statePrompt/question/
+        // questions); the string shape stays the fix/teleocr vocabulary.
+        if (prompt.value().isObject()) {
+            const QJsonObject spec = prompt.value().toObject();
+            ModelProfiles::DecisionBlock block;
+            block.statePrompt = spec.value(QStringLiteral("statePrompt")).toString();
+            block.question = spec.value(QStringLiteral("question")).toString();
+            block.questions = spec.value(QStringLiteral("questions")).toObject();
+            const bool empty = prompt.key().isEmpty() || (block.statePrompt.isEmpty() && block.question.isEmpty() && block.questions.isEmpty());
+            if (empty) {
+                error = requestProfile ? QObject::tr("Request profile %1 has a block prompt without a block type or text").arg(id)
+                                       : QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(id);
+                return;
+            }
+            role.decisionBlocks.insert(prompt.key(), block);
+            continue;
+        }
+        const QString text = prompt.value().toString();
+        if (prompt.key().isEmpty() || text.isEmpty()) {
+            error = requestProfile ? QObject::tr("Request profile %1 has a block prompt without a block type or text").arg(id)
+                                   : QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(id);
+            return;
+        }
+        role.blockPrompts.insert(prompt.key(), text);
+    }
+
+    const QJsonObject blockAliases = object.value(QStringLiteral("blockAliases")).toObject();
+    for (auto alias = blockAliases.constBegin(); alias != blockAliases.constEnd(); ++alias) {
+        const QString target = alias.value().toString();
+        if (alias.key().isEmpty() || target.isEmpty()) {
+            error = requestProfile ? QObject::tr("Request profile %1 has a block alias without a block type or target").arg(id)
+                                   : QObject::tr("Model profile %1 has a block alias without a block type or target").arg(id);
+            return;
+        }
+        role.blockAliases.insert(alias.key(), target);
+    }
+}
+
+// The shared request texts of a task replace the role's own ones.
+void applyPromptProfile(ModelProfiles::Role &role, const ModelProfiles::Role &prompts)
+{
+    role.systemPrompt = prompts.systemPrompt;
+    role.statePrompt = prompts.statePrompt;
+    role.question = prompts.question;
+    role.questions = prompts.questions;
+    role.criteriaTrue = prompts.criteriaTrue;
+    role.criteriaFalse = prompts.criteriaFalse;
+    role.blockPrompts = prompts.blockPrompts;
+    role.decisionBlocks = prompts.decisionBlocks;
+    role.blockAliases = prompts.blockAliases;
+}
+
+bool findPromptProfile(const QList<ModelProfiles::PromptProfile> &profiles, const QString &id)
+{
+    for (const ModelProfiles::PromptProfile &profile : profiles) {
+        if (profile.id == id)
+            return true;
+    }
+    return false;
+}
+
+// A prompt profile: the id, the title and the prompt half of a role.
+ModelProfiles::PromptProfile readPromptProfile(const QJsonObject &root, QString &error)
+{
+    ModelProfiles::PromptProfile profile;
+    profile.id = root.value(QStringLiteral("id")).toString();
+    if (profile.id.isEmpty()) {
+        error = QObject::tr("A request profile has an empty id");
+        return profile;
+    }
+    profile.title = root.value(QStringLiteral("title")).toString();
+    if (profile.title.isEmpty())
+        profile.title = profile.id;
+    readPromptFields(root, profile.prompts, error, profile.id, true);
+    return profile;
+}
+
+}  // namespace
+
 ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
 {
     ModelProfiles::Profile profile;
@@ -99,23 +195,21 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         ModelProfiles::Role role;
         role.alias = roleObject.value(QStringLiteral("alias")).toString();
         role.parser = roleObject.value(QStringLiteral("parser")).toString();
+        role.protocol = roleObject.value(QStringLiteral("protocol")).toString();
         role.maxOutput = roleObject.value(QStringLiteral("maxOutput")).toInt(0);
+        const QJsonObject maxOutputs = roleObject.value(QStringLiteral("maxOutputByBlock")).toObject();
+        for (auto maxOutput = maxOutputs.constBegin(); maxOutput != maxOutputs.constEnd(); ++maxOutput)
+            role.blockMaxOutput.insert(maxOutput.key(), maxOutput.value().toInt(0));
         role.isDefault = roleObject.value(QStringLiteral("default")).toBool(false);
-        role.systemPrompt = roleObject.value(QStringLiteral("systemPrompt")).toString();
-        role.statePrompt = roleObject.value(QStringLiteral("statePrompt")).toString();
-        role.question = roleObject.value(QStringLiteral("question")).toString();
-        const QJsonObject criteria = roleObject.value(QStringLiteral("criteria")).toObject();
-        role.criteriaTrue = criteria.value(QStringLiteral("true")).toString();
-        role.criteriaFalse = criteria.value(QStringLiteral("false")).toString();
         role.promptBeforeImage = roleObject.value(QStringLiteral("promptBeforeImage")).toBool(false);
         role.imageLongestEdge = roleObject.value(QStringLiteral("imageLongestEdge")).toInt(0);
-        role.questions = roleObject.value(QStringLiteral("questions")).toObject();
         role.matchThreshold = roleObject.value(QStringLiteral("matchThreshold")).toDouble(-1.0);
         const QJsonObject thresholds = roleObject.value(QStringLiteral("matchThresholdByBlock")).toObject();
         for (auto threshold = thresholds.constBegin(); threshold != thresholds.constEnd(); ++threshold)
             role.blockMatchThresholds.insert(threshold.key(), threshold.value().toDouble(-1.0));
         role.emptyThreshold = roleObject.value(QStringLiteral("emptyThreshold")).toDouble(-1.0);
         role.readableThreshold = roleObject.value(QStringLiteral("readableThreshold")).toDouble(-1.0);
+        role.promptProfile = roleObject.value(QStringLiteral("promptProfile")).toString();
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
         if (!error.isEmpty())
             return profile;
@@ -144,41 +238,9 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
             role.blockStyles.insert(style.key(), style.value().toVariant().toString());
         }
 
-        const QJsonObject blockPrompts = roleObject.value(QStringLiteral("blockPrompts")).toObject();
-        for (auto prompt = blockPrompts.constBegin(); prompt != blockPrompts.constEnd(); ++prompt) {
-            // A v6 decision entry ships as an object (statePrompt/question/
-            // questions); the string shape stays the fix/teleocr vocabulary.
-            if (prompt.value().isObject()) {
-                const QJsonObject spec = prompt.value().toObject();
-                ModelProfiles::DecisionBlock block;
-                block.statePrompt = spec.value(QStringLiteral("statePrompt")).toString();
-                block.question = spec.value(QStringLiteral("question")).toString();
-                block.questions = spec.value(QStringLiteral("questions")).toObject();
-                const bool empty = prompt.key().isEmpty() || (block.statePrompt.isEmpty() && block.question.isEmpty() && block.questions.isEmpty());
-                if (empty) {
-                    error = QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(profile.id);
-                    return profile;
-                }
-                role.decisionBlocks.insert(prompt.key(), block);
-                continue;
-            }
-            const QString text = prompt.value().toString();
-            if (prompt.key().isEmpty() || text.isEmpty()) {
-                error = QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(profile.id);
-                return profile;
-            }
-            role.blockPrompts.insert(prompt.key(), text);
-        }
-
-        const QJsonObject blockAliases = roleObject.value(QStringLiteral("blockAliases")).toObject();
-        for (auto alias = blockAliases.constBegin(); alias != blockAliases.constEnd(); ++alias) {
-            const QString target = alias.value().toString();
-            if (alias.key().isEmpty() || target.isEmpty()) {
-                error = QObject::tr("Model profile %1 has a block alias without a block type or target").arg(profile.id);
-                return profile;
-            }
-            role.blockAliases.insert(alias.key(), target);
-        }
+        readPromptFields(roleObject, role, error, profile.id, false);
+        if (!error.isEmpty())
+            return profile;
 
         profile.roles.insert(it.key(), role);
     }
@@ -211,10 +273,23 @@ QList<ModelProfiles::Profile> ModelProfiles::loadFrom(const QString &directory, 
             return {};
         }
         QString profileError;
-        const Profile profile = readProfile(doc.object(), profileError);
+        Profile profile = readProfile(doc.object(), profileError);
         if (!profileError.isEmpty()) {
             error = QObject::tr("%1: %2").arg(path, profileError);
             return {};
+        }
+        // A role that names a prompt profile takes its texts from there: the
+        // fix and decision tasks speak the same requests whatever model serves
+        // them (ADR 182).
+        for (auto role = profile.roles.begin(); role != profile.roles.end(); ++role) {
+            if (role->promptProfile.isEmpty())
+                continue;
+            const PromptProfile *prompts = promptProfile(role->promptProfile);
+            if (!prompts) {
+                error = QObject::tr("Model profile %1 references an unknown request profile: %2").arg(profile.id, role->promptProfile);
+                return {};
+            }
+            applyPromptProfile(*role, prompts->prompts);
         }
         if (find(out, profile.id)) {
             error = QObject::tr("Duplicate model profile id: %1").arg(profile.id);
@@ -223,6 +298,66 @@ QList<ModelProfiles::Profile> ModelProfiles::loadFrom(const QString &directory, 
         out.append(profile);
     }
     return out;
+}
+
+QList<ModelProfiles::PromptProfile> ModelProfiles::loadPromptProfilesFrom(const QString &directory, QString &error)
+{
+    QList<PromptProfile> out;
+    QDir dir(directory);
+    if (!dir.exists()) {
+        error = QObject::tr("Request profile directory not found: %1").arg(directory);
+        return out;
+    }
+
+    const QStringList files = dir.entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
+    for (const QString &name : files) {
+        const QString path = dir.filePath(name);
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly)) {
+            error = QObject::tr("Unable to read %1: %2").arg(path, file.errorString());
+            return {};
+        }
+        QJsonParseError parseError{};
+        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+            error = QObject::tr("%1 is malformed: %2").arg(path, parseError.errorString());
+            return {};
+        }
+        QString profileError;
+        const PromptProfile profile = readPromptProfile(doc.object(), profileError);
+        if (!profileError.isEmpty()) {
+            error = QObject::tr("%1: %2").arg(path, profileError);
+            return {};
+        }
+        if (findPromptProfile(out, profile.id)) {
+            error = QObject::tr("Duplicate request profile id: %1").arg(profile.id);
+            return {};
+        }
+        out.append(profile);
+    }
+    return out;
+}
+
+const QList<ModelProfiles::PromptProfile> &ModelProfiles::promptProfiles()
+{
+    static const QList<PromptProfile> loaded = [] {
+        QList<PromptProfile> profiles;
+        QString error;
+        profiles = loadPromptProfilesFrom(QString::fromUtf8(kPromptResourceDir), error);
+        if (!error.isEmpty())
+            qWarning("ModelProfiles: %s", qUtf8Printable(error));
+        return profiles;
+    }();
+    return loaded;
+}
+
+const ModelProfiles::PromptProfile *ModelProfiles::promptProfile(const QString &id)
+{
+    for (const PromptProfile &profile : promptProfiles()) {
+        if (profile.id == id)
+            return &profile;
+    }
+    return nullptr;
 }
 
 QList<ModelProfiles::Profile> ModelProfiles::loadBuiltIn(QString &error)
@@ -437,6 +572,17 @@ QList<RequestParameter> ModelProfiles::requestWithMaxOutput(const QList<Profile>
     maxTokens.order = out.isEmpty() ? 1 : out.last().order + 1;
     out.append(maxTokens);
     return out;
+}
+
+int ModelProfiles::maxOutputForBlock(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &blockType)
+{
+    const Profile *profile = find(profiles, modelId);
+    const Role *found = profile ? roleFor(*profile, role) : nullptr;
+    if (!found)
+        return -1;
+    const QString aliasKey = found->blockAliases.value(blockType, blockType);
+    const int byBlock = found->blockMaxOutput.value(aliasKey, -1);
+    return byBlock;
 }
 
 }  // namespace llocr

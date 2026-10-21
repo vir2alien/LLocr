@@ -1594,6 +1594,11 @@ void AppController::applyFixToBox(int pageIndex, int boxIndex, const CheckResult
     if (result.status == CheckStatus::Failed)
         return;
 
+    // A demoted FIX (diff-gate downgrade, EMPTY crop) still lands on the
+    // block — the reason tells the user why nothing changed.
+    if (!result.notes.isEmpty())
+        setStatus(result.notes);
+
     bool textChanged = false;
     const bool applied = applyBoxTransition(pageIndex, boxIndex, [&result, &textChanged](BoundingBox &box) {
         const QString before = BoxTransitions::effectiveText(box);

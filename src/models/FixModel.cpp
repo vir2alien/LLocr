@@ -7,6 +7,7 @@
 
 #include "core/ModelProfiles.h"
 #include "models/ChatExchange.h"
+#include "models/FixDiffGate.h"
 #include "models/ImageDataUrl.h"
 
 namespace llocr {
@@ -16,21 +17,21 @@ QFuture<CheckResult> FixModel::check(const CheckRequest &request, const Connecti
     return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
                                         config,
                                         m_activeClient,
-                                        [](const QByteArray &body) { return parseResponse(body); },
+                                        [request](const QByteArray &body) { return parseResponse(body, request.recognizedText, request.blockType); },
                                         QCoreApplication::translate("FixModel", "Failed to encode the block image"));
 }
 
 QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl)
 {
     // Fix protocol (ADR 163): the candidate travels as its own user-message
-    // part, framed by <ocr_candidate>; the system message carries the shared
+    // part, framed by <CANDIDATE>; the system message carries the shared
     // contract; the parts follow the order the model's fix role trains.
     const ModelProfiles::Role *role = ModelProfiles::roleFor(request.modelId, QStringLiteral("fix"));
     const bool promptFirst = role && role->promptBeforeImage;
 
     const QJsonObject typePromptPart = textPart(request.typePrompt);
     const QJsonObject image = imagePart(imageDataUrl);
-    const QJsonObject ocrPart = textPart(QStringLiteral("OCR candidate:\n<ocr_candidate>\n%1\n</ocr_candidate>").arg(request.recognizedText));
+    const QJsonObject ocrPart = textPart(QStringLiteral("OCR candidate:\n<CANDIDATE>\n%1\n</CANDIDATE>").arg(request.recognizedText));
 
     QJsonArray content;
     if (promptFirst) {
@@ -53,7 +54,7 @@ QByteArray FixModel::buildRequestBody(const CheckRequest &request, const QByteAr
     return QJsonDocument(buildRoot(request, std::move(messages))).toJson(QJsonDocument::Compact);
 }
 
-CheckResult FixModel::parseResponse(const QByteArray &responseData)
+CheckResult FixModel::parseResponse(const QByteArray &responseData, const QString &candidate, const QString &blockType)
 {
     QString content;
     CheckResult error;
@@ -83,11 +84,11 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData)
     }
 
     if (upper.startsWith(QStringLiteral("FIX"))) {
-        QString fixed = trimmed.mid(3).trimmed();
+        QString body = trimmed.mid(3).trimmed();
         // Accept both "FIX: ..." and "FIX\n..." spellings.
-        if (fixed.startsWith(QLatin1Char(':')))
-            fixed = fixed.mid(1).trimmed();
-        if (fixed.isEmpty()) {
+        if (body.startsWith(QLatin1Char(':')))
+            body = body.mid(1).trimmed();
+        if (body.isEmpty()) {
             // The verdict is explicit but the payload is missing (small models
             // sometimes stop after the keyword): the block needs human eyes,
             // not a protocol error.
@@ -95,13 +96,21 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData)
             review.status = CheckStatus::Review;
             return review;
         }
-        CheckResult fix;
-        fix.status = CheckStatus::Fixed;
-        fix.text = fixed;
-        return fix;
+        const FixDiffGate::Outcome outcome = FixDiffGate::isFullBlockType(blockType) ? FixDiffGate::fixFullBlock(candidate, body, blockType) : FixDiffGate::fixSpan(candidate, body, blockType);
+        CheckResult result;
+        result.status = outcome.status;
+        if (outcome.status == CheckStatus::Fixed)
+            result.text = outcome.text;
+        result.notes = outcome.downgradeReason;
+        return result;
     }
 
-    return CheckResult::makeError(StatusMessage::translate("FixModel", "Unexpected verifier response\u2014expected OK, FIX or REVIEW. Received: %1").arg(cleaned.left(120)));
+    // Anything outside the OK / FIX / REVIEW scheme is a deviation, not a
+    // protocol error: the block goes to human eyes.
+    CheckResult review;
+    review.status = CheckStatus::Review;
+    review.notes = StatusMessage::translate("FixModel", "The reply does not follow the OK/FIX/REVIEW scheme: %1").arg(cleaned.left(120));
+    return review;
 }
 
 }  // namespace llocr

@@ -93,6 +93,8 @@ qt_add_library(llocr_models STATIC
     models/BlockRecognitionModel.cpp
     models/FixModel.h
     models/FixModel.cpp
+    models/FixDiffGate.h
+    models/FixDiffGate.cpp
     models/LayoutModel.h
     models/LayoutModel.cpp
     models/DecisionModel.h
@@ -396,6 +398,15 @@ qt_add_resources(llocr "app_model_profiles"
     PREFIX "/profiles/models"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
     FILES ${MODEL_PROFILE_FILES}
+)
+
+# The request profiles: the shared prompt texts of the fix and decision tasks
+# (ADR 182). Same one-file-per-profile rule as the model profiles.
+file(GLOB REQUEST_PROFILE_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/resources/profiles/requests/*.json")
+qt_add_resources(llocr "app_request_profiles"
+    PREFIX "/profiles/requests"
+    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/requests"
+    FILES ${REQUEST_PROFILE_FILES}
 )
 
 file(GLOB_RECURSE PREVIEW_FILES

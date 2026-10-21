@@ -34,6 +34,30 @@ set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/paddleocr-vl.json"
 )
 
+# The request profiles: the shared request texts of the fix and decision tasks
+# (ADR 182). A model profile names the prompt profile it takes its texts from,
+# so a test that reads a model contract needs these too.
+set(LLOCR_REQUEST_PROFILE_FILES
+    "${CMAKE_SOURCE_DIR}/resources/profiles/requests/fix-requests.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/requests/decision-requests.json"
+)
+
+# The shipped profiles a test reads: the model profiles and the request
+# profiles they point at. One call per target so adding a profile does not mean
+# editing every test target (docs/11-profile-findings.md, finding 6).
+function(llocr_add_profile_resources target)
+    qt_add_resources(${target} "${target}_model_profiles"
+        PREFIX "/profiles/models"
+        BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
+        FILES ${LLOCR_MODEL_PROFILE_FILES}
+    )
+    qt_add_resources(${target} "${target}_request_profiles"
+        PREFIX "/profiles/requests"
+        BASE "${CMAKE_SOURCE_DIR}/resources/profiles/requests"
+        FILES ${LLOCR_REQUEST_PROFILE_FILES}
+    )
+endfunction()
+
 # Test double: a local llama-server stand-in. It is NOT registered via add_test;
 # the runtime tests spawn it as a real child process to exercise probe/health.
 qt_add_executable(mock_llama_server mock_llama_server.cpp)
@@ -58,11 +82,7 @@ qt_add_resources(test_det_parser "det_parser_labels_res"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )
-qt_add_resources(test_det_parser "det_parser_model_profiles"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
-    FILES ${LLOCR_MODEL_PROFILE_FILES}
-)
+llocr_add_profile_resources(test_det_parser)
 add_test(NAME test_det_parser COMMAND test_det_parser)
 
 qt_add_executable(test_profile_storage test_profile_storage.cpp)
@@ -88,11 +108,7 @@ target_link_libraries(test_ocr_models PRIVATE
     llocr_models
     llocr_parsers
 )
-qt_add_resources(test_ocr_models "ocr_model_profiles"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
-    FILES ${LLOCR_MODEL_PROFILE_FILES}
-)
+llocr_add_profile_resources(test_ocr_models)
 qt_add_resources(test_ocr_models "ocr_model_labels"
     PREFIX "/profiles"
     BASE "${CMAKE_SOURCE_DIR}/resources/profiles"
@@ -137,9 +153,9 @@ target_link_libraries(test_decision_model PRIVATE
 )
 add_test(NAME test_decision_model COMMAND test_decision_model)
 
-# The fix protocol (ADR 163): the OK / FIX / REVIEW answers the universal
-# model gives over a block's candidate text, and the request shape that
-# carries the candidate.
+# The fix protocol (ADR 163, ADR 179): the OK / FIX / REVIEW / EMPTY answers
+# the universal model gives over a block's candidate text, the span/EDITS
+# diff gate, and the request shape that carries the candidate.
 qt_add_executable(test_fix_protocol test_fix_protocol.cpp)
 
 target_link_libraries(test_fix_protocol PRIVATE
@@ -147,6 +163,14 @@ target_link_libraries(test_fix_protocol PRIVATE
     llocr_models
 )
 add_test(NAME test_fix_protocol COMMAND test_fix_protocol)
+
+qt_add_executable(test_fix_diff_gate test_fix_diff_gate.cpp)
+
+target_link_libraries(test_fix_diff_gate PRIVATE
+    Qt6::Test
+    llocr_models
+)
+add_test(NAME test_fix_diff_gate COMMAND test_fix_diff_gate)
 
 # The page statuses (the rework plan's §6): the verification aggregate over a
 # page's subject blocks, the markup-only completion, and the page list roles
@@ -224,11 +248,7 @@ qt_add_resources(test_app_import "app_import_profiles"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )
-qt_add_resources(test_app_import "app_import_model_profiles"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
-    FILES ${LLOCR_MODEL_PROFILE_FILES}
-)
+llocr_add_profile_resources(test_app_import)
 if(WIN32 AND LLOCR_DJVU_AVAILABLE)
     add_custom_command(TARGET test_app_import POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
@@ -246,11 +266,7 @@ target_link_libraries(test_settings_store PRIVATE
     Qt6::Test
     llocr_config
 )
-qt_add_resources(test_settings_store "settings_store_profiles"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
-    FILES ${LLOCR_MODEL_PROFILE_FILES}
-)
+llocr_add_profile_resources(test_settings_store)
 # The QML signal-handler check needs the source tree, not just the resources.
 target_compile_definitions(test_settings_store PRIVATE
     LLOCR_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
@@ -281,11 +297,7 @@ target_link_libraries(test_launch_config PRIVATE
     Qt6::Test
     llocr_runtime
 )
-qt_add_resources(test_launch_config "launch_config_model_profiles"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
-    FILES ${LLOCR_MODEL_PROFILE_FILES}
-)
+llocr_add_profile_resources(test_launch_config)
 add_test(NAME test_launch_config COMMAND test_launch_config)
 
 qt_add_executable(test_runtime_lifetime test_runtime_lifetime.cpp)
@@ -392,11 +404,7 @@ target_compile_definitions(test_ensure_connection PRIVATE
 
 # minBuildIsComparedByNumber reads a model profile's minBuild, so the shipped
 # profiles have to be a resource of this binary too.
-qt_add_resources(test_ensure_connection "ensure_connection_profiles"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
-    FILES ${LLOCR_MODEL_PROFILE_FILES}
-)
+llocr_add_profile_resources(test_ensure_connection)
 
 # llocr_app also carries CheckController: the check-stop contract is about what
 # a job must NOT do to the runtime, so it belongs next to the resolve tests.
@@ -502,11 +510,7 @@ qt_add_executable(test_model_installer test_model_installer.cpp)
 # The built-in preset catalogs are Qt resources; register them under the
 # same :/profiles/ prefix so ModelInstaller::reloadPresetsInternal resolves
 # them.
-qt_add_resources(test_model_installer "model_installer_profiles"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
-    FILES ${LLOCR_MODEL_PROFILE_FILES}
-)
+llocr_add_profile_resources(test_model_installer)
 
 target_link_libraries(test_model_installer PRIVATE
     Qt6::Test
@@ -529,11 +533,7 @@ qt_add_executable(test_model_preset_catalog test_model_preset_catalog.cpp)
 # The shipped built-in preset catalog is a Qt resource; register it under the
 # same :/profiles/ prefix so ModelPresetCatalog::kBuiltInOcrPath resolves
 # in-test.
-qt_add_resources(test_model_preset_catalog "preset_profiles"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/resources/profiles/models"
-    FILES ${LLOCR_MODEL_PROFILE_FILES}
-)
+llocr_add_profile_resources(test_model_preset_catalog)
 
 target_link_libraries(test_model_preset_catalog PRIVATE
     Qt6::Test

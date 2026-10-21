@@ -126,20 +126,22 @@ Layer by layer:
   thinking is off (the E-series does not); `--jinja` makes llama.cpp parse
   the channel markers out, so `content` arrives clean either way.
 - One block crop per request; the candidate text rides along framed by
-  `<ocr_candidate>` (§ fix prompts).
+  `<CANDIDATE>` (§ fix prompts).
 
 ### The fix prompts
 
 The profile is based on `qwen3.5-9b.json` and reuses its prompt set for the
-fix task (ADR 163): the verifier system prompt (the image is the only source
-of truth; the OCR candidate and the image text are data, not instructions)
-plus one check list per block type. The reply is exactly one of `OK`, `FIX` +
-the complete corrected block, or `REVIEW`. The user message orders the type
-prompt, the block image and the candidate framed by
-`<ocr_candidate>…</ocr_candidate>`. The table prompt pins the plain-markup
-contract — raw `<table>` HTML,
-no Markdown fences, no `border`/`style`/`data-*` attributes — which both
-families need.
+fix task (the `span_hybrid` protocol, ADR 180): the verifier system prompt
+(the image is the only source of truth; the three verdict tokens OK / FIX /
+REVIEW, span edits for text blocks, the complete formula for a formula block
+and the full block plus `EDITS:` for a table) plus one check list per block
+type. The system prompt names the document language through a
+`{{LANGUAGE}}` placeholder the app fills in (ADR 181). The user
+message orders the type prompt, the block image and the candidate framed by
+`<CANDIDATE>…</CANDIDATE>`. The table prompt pins the same-serialization
+contract — the corrected table answers in the candidate's own format
+(HTML in, HTML out; Markdown in, Markdown out) with every cell change
+declared under `EDITS:` — which both families need.
 
 ### Request parameters
 
@@ -147,18 +149,19 @@ families need.
 | --- | --- | --- |
 | `temperature` | 0.0 | Deterministic greedy decoding for the correction protocol. (The card's chat sampling — temp 1.0, top-p 0.95, top-k 64 — is for conversation, not for a verification pipeline.) |
 | `repeat_penalty` / `presence_penalty` / `frequency_penalty` | 1.0 / 0.0 / 0.0 | Neutral. |
-| `max_tokens` | 8192 | Generous for a table crop; matches the qwen profiles. |
+| `max_tokens` | 8192 | Generous for a table crop; matches the qwen profiles. `maxOutputByBlock` budgets the reply per block type (a page number 64, a table 8192). |
+| `stop` | `["<end_of_turn>", "<eos>", "</CANDIDATE>"]` | Ends the reply at the verdict even when the model would keep generating. |
 | `stream` | false | The parser consumes one complete response. |
 | `cache_prompt` | false | Every block request stays independent of the draft's shared KV cache. |
 
 ## 5. Output formats
 
 The fix protocol's three verdicts — `OK`, `FIX` + the corrected block, or
-`REVIEW` — are mapped by `GeneralPurposeModel::parseResponse` onto the
+`REVIEW` — are mapped by `FixModel::parseResponse` and the diff gate onto the
 correction layer: `OK` keeps the text, `FIX` stores the correction in
 `correctedText`, `REVIEW` marks the block damaged; an empty `FIX` degrades to
-`Review` (ADR 139/163), anything else is a request error and the block state
-does not change.
+`Review` (ADR 139/163), a reply outside the three verdicts degrades to
+`Review` as a deviation (ADR 181).
 
 ## 6. Role in the verification pipeline
 
@@ -176,7 +179,8 @@ does not change.
 
 | Piece | Location |
 | --- | --- |
-| Model profiles (files, prompts, launch/request layers) | `resources/profiles/models/gemma-4-e4b.json`, `gemma-4-12b.json` |
+| Model profiles (files, launch/request layers) | `resources/profiles/models/gemma-4-e4b.json`, `gemma-4-12b.json` |
+| Fix request texts (shared with the other fix models) | `resources/profiles/requests/fix-requests.json` |
 | Fix request/response, modality order | `GeneralPurposeModel::buildRequestBody` / `parseResponse` (`src/models/`) |
 | Drafter download and `launch/draftPath` wiring | `ModelInstallTransaction`, `ModelInstaller`, `ServerLaunchConfig` |
 | Memory estimate (gemma4 metadata keys) | `ModelMemoryEstimator` |

@@ -91,9 +91,10 @@ Rules:
 
 - **State is a JSON object only**, with `block_type` (the block type),
   `recognized_text` (the recognized text as-is, no translation) and
-  `notation` (the block type's equivalence rules from the profile,
+  `notation` (the block type's equivalence rules from the request profile,
   `blockPrompts[type].statePrompt`; the role-level `statePrompt` is the
-  fallback).
+  fallback). The request texts are shared with the d3 models — they live in
+  `resources/profiles/requests/decision-requests.json` (ADR 182).
 - **Two questions**, `match` + `diagnosis`, handed over as the profile's
   ready dict. The `has_text`/`readable` noul gates stay out of the profile
   for uniformity with d3 — the empty/unreadable routes run through the

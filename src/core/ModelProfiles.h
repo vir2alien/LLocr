@@ -28,13 +28,15 @@ public:
     struct Role {
         QString alias;
         QString parser;
+        QString protocol;  // reply contract id ("span_hybrid" fix, "systemone_multi_question_v6" decision)
         int maxOutput = 0;
-        bool isDefault = false;  // the role's recommended model, replacing the first-in-catalog fallback
-        QString systemPrompt;    // check-role override of the shared verifier system prompt
-        QString statePrompt;     // decision role: framing + comparison rules; read instead of systemPrompt
-        QString question;        // decision role: the yes/no question itself when the profile ships one
-        QString criteriaTrue;    // decision role: the "true" side of the noul question (what counts as a match)
-        QString criteriaFalse;   // decision role: the "false" side (what counts as a difference)
+        QHash<QString, int> blockMaxOutput;  // maxOutputByBlock, keyed like blockPrompts (fix task)
+        bool isDefault = false;              // the role's recommended model, replacing the first-in-catalog fallback
+        QString systemPrompt;                // check-role override of the shared verifier system prompt
+        QString statePrompt;                 // decision role: framing + comparison rules; read instead of systemPrompt
+        QString question;                    // decision role: the yes/no question itself when the profile ships one
+        QString criteriaTrue;                // decision role: the "true" side of the noul question (what counts as a match)
+        QString criteriaFalse;               // decision role: the "false" side (what counts as a difference)
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
@@ -49,6 +51,7 @@ public:
         QHash<QString, QString> blockAliases;  // alias -> canonical blockPrompts key
         bool promptBeforeImage = false;        // wire order: prompt text first, then the image (LFM2.5 trains text-then-image)
         int imageLongestEdge = 0;              // 0 = send the page as-is; >0 = downscale to fit (LightOnOCR-3 trains on 2048 px pages)
+        QString promptProfile;                 // id of the prompt profile this role takes its texts from
     };
 
     struct Quant {
@@ -85,10 +88,27 @@ public:
         QHash<QString, Role> roles;
     };
 
+    // The request texts of a task, kept in their own profile and shared by
+    // every model that serves the task (ADR 182): the system prompt, the
+    // per-block prompts and the decision questions. A model role names the
+    // profile it speaks ("promptProfile": "fix-requests"). The struct is a
+    // "prompt profile" and not a "request profile" because the latter already
+    // means the request parameters (RequestProfile, RequestProfileStore).
+    struct PromptProfile {
+        QString id;
+        QString title;
+        Role prompts;
+    };
+
     static constexpr const char *kResourceDir = ":/profiles/models";
+    static constexpr const char *kPromptResourceDir = ":/profiles/requests";
 
     static QList<Profile> loadFrom(const QString &directory, QString &error);
     static QList<Profile> loadBuiltIn(QString &error);
+
+    static QList<PromptProfile> loadPromptProfilesFrom(const QString &directory, QString &error);
+    static const QList<PromptProfile> &promptProfiles();
+    static const PromptProfile *promptProfile(const QString &id);
 
     static const QList<Profile> &instance();
 
@@ -124,6 +144,10 @@ public:
     static QString runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId);
 
     static QList<RequestParameter> requestWithMaxOutput(const QList<Profile> &profiles, const QString &modelId, const QString &role);
+
+    // Per-block output budget of the fix task: maxOutputByBlock[type] (through
+    // the block aliases), else -1 when the profile ships no per-block entry.
+    static int maxOutputForBlock(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &blockType);
 };
 
 }  // namespace llocr

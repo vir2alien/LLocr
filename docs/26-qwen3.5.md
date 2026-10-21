@@ -2,17 +2,22 @@
 
 > Manual launch, request contract and app wiring for the fix-family
 > default. Russian version: `docs/26-qwen3.5.ru.md`. The correction
-> protocol itself: ADR 163 and `docs/20-model-task-rework.md`; the other
-> fix family (Gemma 4 QAT): `docs/16-gemma-4.md`.
+> protocol itself: ADR 163, ADR 180 and `docs/todo/fix_models_improvements.md`;
+> the other fix family (Gemma 4 QAT): `docs/16-gemma-4.md`.
 
 ## 1. What they are
 
 **Qwen3.5-4B** and **Qwen3.5-9B** (unsloth -MTP packaging) are general
 purpose instruct VLMs serving the **fix** task: they receive a block crop
 plus the OCR candidate framed as data and answer with the three-token
-contract **OK / FIX / REVIEW** (ADR 163). The 4B is the task's default
-model (ADR 169); the 9B is the same recipe at a larger size. Apache-2.0
-licensed.
+contract **OK / FIX / REVIEW**. A FIX carries span edits
+(`old_substring => new_substring` lines) for text blocks, the complete
+corrected formula for a formula block and a full corrected block with a
+mandatory `EDITS:` section for a table; the deterministic diff gate applies
+the edits to the candidate itself (the `span_hybrid` protocol, ADR 180 — it
+supersedes the ADR 163 full-block reply) and reads a formula's complete
+block as the correction (ADR 181). The 4B is the task's default model
+(ADR 169); the 9B is the same recipe at a larger size. Apache-2.0 licensed.
 
 ## 2. Files
 
@@ -45,8 +50,8 @@ llama-server \
 - **`--spec-type draft-mtp --spec-draft-n-max 4`** — speculative decoding
   with the MTP head inside the weights; 4 is what the head was trained
   for.
-- **`--special`** — the FIX payload may carry special vocabulary; the
-  server strips it by default.
+- **`--special`** — the reply may carry special vocabulary; the app's
+  parser strips the service markers (`stripControlTokens`).
 - **`--temp 0`** — server-side greedy; corrections must be deterministic.
 - **`--jinja --reasoning-budget 0`** — the GGUF's chat template with
   thinking disabled: the reply is the verdict only.
@@ -59,25 +64,46 @@ llama-server \
 
 One chat request per block (transport: `FixModel` over
 `/v1/chat/completions`). Part order: system prompt (the three-token
-contract plus the data-not-instructions framing), then
+contract plus the data-not-instructions framing and the document language),
+then
 `[type prompt, ocr candidate, image]`. The candidate travels framed:
 
 ```
 OCR candidate:
-<ocr_candidate>
+<CANDIDATE>
 …recognized text…
-</ocr_candidate>
+</CANDIDATE>
 ```
 
-The per-type prompts (`blockPrompts`, 18 types) pin what a FIX may change
-per block class — tables by cell position with rowspan/colspan, formulas
-symbol-by-symbol without simplification, and so on. Reply parsing:
-`OK` → Ok, `REVIEW` → Review, `FIX\n…` → Fixed with the payload; empty or
-garbage replies are errors, never silent verdicts.
+The per-type prompts (`blockPrompts`, 17 types; `formula`/`reference` ride
+the `blockAliases` hop) pin what a FIX may change per block class — and
+name the output mode: span edits for the text classes, the complete
+formula for `equation`, the full block plus `EDITS:` for `table`. They
+live in the shared request profile
+`resources/profiles/requests/fix-requests.json` (ADR 182), which every
+fix model names — the model profiles keep the parameters only. Reply
+parsing (`FixModel` + `FixDiffGate`):
+`OK` → Ok, `REVIEW` → Review, a span `FIX` → Fixed with
+the candidate after the edits, a formula `FIX` → Fixed with the complete
+formula, a structural `FIX` → Fixed when every change
+is declared under `EDITS:`. The gate matches anchors in an equivalence view
+(the model drops `\(…\)` carrier markup and collapses spacing when it
+copies — the match maps back to the real span); a no-op fix, a missing or
+ambiguous anchor and an undeclared diff demote to Review — the reason lands
+in the footer. A reply that is none of the three verdicts — an old
+`EMPTY`, a free-text remark, a `FIX none` — is a deviation and lands on
+Review too (ADR 181).
 
 Sampling: `temperature 0`, neutral penalties, `stream false`,
 `cache_prompt false` — false avoids the recurring-state position warnings
-Qwen3.5 logs when requests share a prefix.
+Qwen3.5 logs when requests share a prefix. `stop`
+(`["<|im_end|>", "<|endoftext|>", "</CANDIDATE>"]`) ends the reply at the
+verdict. `maxOutputByBlock` budgets the reply per block type (a page
+number 64 tokens, a formula 1024, a table 8192) — the block-level value
+overrides the request profile's `max_tokens`. Formula candidates travel in
+canonical LaTeX (`FixDiffGate::normalizeLatexCandidate`), and the type
+answers the span contract — the full block with `EDITS:` is tables-only
+now (ADR 180).
 
 ## 5. Verification notes
 

@@ -47,7 +47,7 @@
   | `docs/17-d1-verification-study.md` | Study: decision models as OCR verifiers (d1-3B vs clef-flash) — methodology, request schemes v0–v9, calibration, why clef-flash replaces d1-3B |
   | `docs/18-clef-flash.md`   | Model manual: Cloudflare clef-flash decision model (launch, recommended v5 request scheme, thresholds); Russian mirror in `18-clef-flash.ru.md` |
   | `docs/19-glm-ocr.md`      | Model manual: GLM-OCR (trained task prefixes, no layout/coordinates, `raw` parser, glm4 metadata); Russian mirror in `19-glm-ocr.ru.md` |
-  | `docs/20-model-task-rework.md` | Rework plan: six tasks instead of four roles, two-layer verification, the OK/FIX/REVIEW fix pipeline, page statuses, new settings windows (Oct 2026); stage table with statuses |
+  | `docs/20-model-task-rework.md` | Rework plan: six tasks instead of four roles, two-layer verification, the fix pipeline (since ADR 180 the `span_hybrid` protocol), page statuses, new settings windows (Oct 2026); stage table with statuses |
   | `docs/21-d3.md`           | Model manual: d3-flash / d3-mini decision models (System One protocol, non-causal state reading, minBuild b11572); Russian mirror in `21-d3.ru.md` |
   | `docs/22-unlimited-ocr.md` | Model manual: Unlimited-OCR (pageOcr default, DRY anti-loop sampling, vision budget, `unlimited-ocr` det parser); Russian mirror in `22-unlimited-ocr.ru.md` |
   | `docs/23-lightonocr.md`   | Model manual: LightOnOCR-3-4B (two trained prompts — grounding + empty transcription, three roles, everything else out of distribution); Russian mirror in `23-lightonocr.ru.md` |
@@ -378,13 +378,24 @@
     in every phrasing and was removed (ADR 161). Every block carries two text layers with independent verdicts
     (ADR 164): `box.text` (the OCR result) and `box.correctedText` (the fix
     model's correction); the dot and the confidence badge follow the
-    **effective** layer. The **fix** task (universal models, OK/FIX/REVIEW,
-    ADR 163) runs as a separate action (ADR 178): the «Исправить» button
-    sends the mismatched blocks, the correction landing in `correctedText`;
-    Review blocks are left to the human. The fix profiles carry the same per-block equivalence rules as
+    **effective** layer. The **fix** task (universal models,
+    OK/FIX/REVIEW, the `span_hybrid` protocol — ADR 180, superseding
+    the ADR 163 full-block reply; the three-verdict scheme and the
+    document-language placeholder are ADR 181) runs as a separate action
+    (ADR 178): the
+    «Исправить» button sends the mismatched blocks; a FIX carries span
+    edits (`old => new` lines) for text blocks — the diff gate
+    (`FixDiffGate`) applies them to the candidate itself, and a no-op,
+    a missing/ambiguous anchor or an undeclared diff demotes the verdict to
+    Review (the reason lands in the footer) — a formula answers with the
+    complete formula, and a full block with a
+    mandatory `EDITS:` section for `table`; a reply outside the three
+    verdicts (an old `EMPTY`, a `FIX none`, a free-text remark) lands on
+    Review as a deviation. The fix profiles carry the same per-block equivalence rules as
     the decision v6 prompts ("Equivalent (never fix) / Strictly different
     (fix)") so the two models cannot disagree on е/ё, homoglyphs, LaTeX
-    commands or table cells. Block recognition (plain re-transcription)
+    commands or table cells; `maxOutputByBlock` budgets the reply per block
+    type. Block recognition (plain re-transcription)
     entry points: per-block «Распознать», the page toolbar's «Распознать
     страницу ▾» (problem blocks / all blocks of the page); the header
     «Исправить» runs the fix task over the problem blocks of the whole
@@ -478,7 +489,7 @@
     `glm-ocr` → rawPageOcr + blockRecognition; `teleocr` → layout +
     blockRecognition; `clef-flash`, `d3-flash`/`d3-mini` → decision
     (`docs/21-d3.md`); `qwen3.5-4b/9b`,
-    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW). Task defaults (ADR 169,
+    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW, ADR 180/181). Task defaults (ADR 169,
     `roles.<task>.default: true` in the profile JSONs, exactly one per
     task, read by the upcoming auto-selection): pageOcr = `unlimited-ocr`,
     rawPageOcr = `glm-ocr`, blockRecognition = `glm-ocr`,
@@ -506,3 +517,13 @@
     split-button choice (pageOcr vs rawPageOcr), not a setting. A restart of
     the managed server brings back the role it was serving (stage-8
     regression `restartBringsBackTheStartedRole`).
+  - **The request texts of a task live in their own profiles (ADR 182)** —
+    `resources/profiles/requests/{fix-requests,decision-requests}.json`. The
+    fix and decision tasks send the same requests whatever model serves them,
+    so a model role only *names* the request profile
+    (`"promptProfile": "fix-requests"`) and the model profiles keep the
+    parameters (launch, request, `maxOutput`/`maxOutputByBlock`, the decision
+    calibration, the routing rules). `ModelProfiles` loads the request
+    profiles from `:/profiles/requests` and merges their texts into the role,
+    so every existing lookup keeps working. The OCR models keep their prompts
+    inline — their tasks really do differ per model.

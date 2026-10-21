@@ -549,7 +549,7 @@ private slots:
         QCOMPARE(content.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
 
         const QString bodyText = QString::fromUtf8(body);
-        QVERIFY(!bodyText.contains(QStringLiteral("ocr_candidate")));
+        QVERIFY(!bodyText.contains(QStringLiteral("<CANDIDATE>")));
 
         QCOMPARE(content.at(0).toObject().value(QStringLiteral("image_url")).toObject().value(QStringLiteral("url")).toString(), QStringLiteral("data:image/png;base64,AAAA"));
         QCOMPARE(content.at(1).toObject().value(QStringLiteral("text")).toString(), QStringLiteral("Verify the text block."));

@@ -258,7 +258,7 @@ public:
 // stream the OCR models emit, the decision model's /v1/systemone (probability
 // is configurable — below the 0.5 default threshold every block mismatches),
 // the block-recognition transcription (identified by its system message), and
-// the fix protocol (a request carrying an <ocr_candidate> payload — the reply
+// the fix protocol (a request carrying a <CANDIDATE> payload — the reply
 // is the configurable OK / FIX / REVIEW answer).
 // Request counting is what makes "this block was not asked again" observable.
 class DetTokenChatServer : public QObject
@@ -291,8 +291,11 @@ public:
     qreal systemoneReadable = 0.94;
     QString systemoneTopDiagnosis = QStringLiteral("exact_match");
     QString transcription = QStringLiteral("Re-recognized block text");
-    // The fix protocol's reply for any request carrying an <ocr_candidate>.
-    QString fixReply = QStringLiteral("FIX\nFixed block text");
+    // The fix protocol's reply for any request carrying a <CANDIDATE>. `%1`
+    // stands for the candidate text, so the default is a span edit that
+    // rewrites the whole block; fixReplies overrides per candidate.
+    QString fixReply = QStringLiteral("FIX\n%1 => Fixed block text");
+    QHash<QString, QString> fixReplies;
     // Overrides the det-token page reply when non-empty (e.g. a text-less
     // markup-shaped block for the first-recognition scenarios).
     QString ocrContent;
@@ -335,6 +338,29 @@ private:
         }
     }
 
+    // The candidate text between the <CANDIDATE> markers; the wire is JSON,
+    // so the newlines around it are the two-character `\n` sequences.
+    static QString candidateOf(const QByteArray &request)
+    {
+        const QByteArray begin = "<CANDIDATE>\\n";
+        const QByteArray end = "\\n</CANDIDATE>";
+        const int at = request.indexOf(begin);
+        if (at < 0)
+            return {};
+        const int from = at + begin.size();
+        const int to = request.indexOf(end, from);
+        return to < 0 ? QString() : QString::fromUtf8(request.mid(from, to - from));
+    }
+
+    QString fixAnswer(const QByteArray &request) const
+    {
+        const QString candidate = candidateOf(request);
+        const auto overridden = fixReplies.constFind(candidate);
+        if (overridden != fixReplies.constEnd())
+            return overridden.value();
+        return QString(fixReply).replace(QStringLiteral("%1"), candidate);
+    }
+
     QByteArray reply(const QByteArray &request) const
     {
         QByteArray body;
@@ -363,7 +389,7 @@ private:
             // prompt (no system message), the fix protocol answer for a
             // candidate-carrying request, the block transcription otherwise;
             // the model streams newlines as the two characters `\n`.
-            const QString content = request.contains("ocr_candidate")         ? fixReply
+            const QString content = request.contains("<CANDIDATE>")           ? fixAnswer(request)
                                     : request.contains("\"role\":\"system\"") ? transcription
                                                                               : (ocrContent.isEmpty() ? QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
                                                                                                                        "<|det|>text [112, 132, 884, 309]<|/det|>Second block text")
@@ -1627,22 +1653,23 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
 
         // The fix request speaks the correction protocol (ADR 163): the
-        // block's effective text travels as the <ocr_candidate> payload.
+        // block's effective text travels as the <CANDIDATE> payload.
         QCOMPARE(server.chatRequests().size(), 3);
         QVERIFY(!server.chatRequests().at(0).contains("\"role\":\"system\""));  // the page OCR call
-        QVERIFY(server.chatRequests().at(1).contains("ocr_candidate"));
+        QVERIFY(server.chatRequests().at(1).contains("<CANDIDATE>"));
         QVERIFY(server.chatRequests().at(1).contains("1. Introduction"));
-        QVERIFY(server.chatRequests().at(2).contains("ocr_candidate"));
+        QVERIFY(server.chatRequests().at(2).contains("<CANDIDATE>"));
         QVERIFY(server.chatRequests().at(2).contains("Second block text"));
 
         // Fixing an answered block re-runs the correction on the effective
         // text — the stored correction — still as a structured candidate.
+        server.fixReplies.insert(QStringLiteral("Fixed block text"), QStringLiteral("FIX\ntext => text and more"));
         m_controller->setSelectedBoxIndex(0);
         m_controller->fixSelectedBlock();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 6, kImportTimeoutMs);
         QCOMPARE(server.chatRequests().size(), 4);
-        QVERIFY(server.chatRequests().at(3).contains("ocr_candidate"));
+        QVERIFY(server.chatRequests().at(3).contains("<CANDIDATE>"));
         QVERIFY(server.chatRequests().at(3).contains("Fixed block text"));
 
         // The next verification run judges the corrected text (the decision
@@ -1978,11 +2005,11 @@ private slots:
         // Only the damaged block is a problem anymore: the next book-level fix
         // asks exactly one block, and the candidate is its OCR text.
         QVERIFY(m_controller->allProblemRecognitionSupported());
-        server.fixReply = QStringLiteral("FIX\nRecovered block text");
+        server.fixReply = QStringLiteral("FIX\n1. Introduction => Recovered block text");
         m_controller->fixAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(server.requests(), 7);
-        QCOMPARE(server.chatRequests().last().contains("ocr_candidate"), true);
+        QCOMPARE(server.chatRequests().last().contains("<CANDIDATE>"), true);
         QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("Recovered block text"));
         QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
     }

@@ -7,6 +7,7 @@
 #include "config/SettingsStore.h"
 #include "core/BoxTransitions.h"
 #include "core/ModelProfiles.h"
+#include "models/FixDiffGate.h"
 #include "parsers/BlockStyle.h"
 
 namespace llocr {
@@ -19,6 +20,9 @@ constexpr const char *kFallbackQuestion = "The state is a text fragment recogniz
 // v6 routing cut-offs for profiles that ship no calibration (docs/21, §v6).
 constexpr double kDefaultEmptyThreshold = 0.25;
 constexpr double kDefaultReadableThreshold = 0.45;
+// The language the fix prompt names ({{LANGUAGE}}). The user's choice and
+// the auto-detection land in the next step.
+const QString kDocumentLanguage = QStringLiteral("Russian");
 }  // namespace
 
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
@@ -489,9 +493,16 @@ void VerificationQueueController::startNextVerify()
             return;
         }
         const QString modelId = m_deps.fixRequestProfiles.activeProfileId();
-        const QString userPrompt = ModelProfiles::blockPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("fix"), box.label);
-        const QString systemPrompt = ModelProfiles::systemPromptFor(ModelProfiles::instance(), modelId, QStringLiteral("fix"));
-        m_fix.fixBlock(crop, text, systemPrompt, userPrompt);
+        const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
+        const QString userPrompt = ModelProfiles::blockPromptFor(profiles, modelId, QStringLiteral("fix"), box.label);
+        QString systemPrompt = ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("fix"));
+        systemPrompt.replace(QStringLiteral("{{LANGUAGE}}"), kDocumentLanguage);
+        const int maxOutput = ModelProfiles::maxOutputForBlock(profiles, modelId, QStringLiteral("fix"), box.label);
+        // The OCR models emit spaced LaTeX ("Bi _ {1}") that provokes the
+        // fixer into pure spacing churn; the wire carries the canonical form
+        // while the block text keeps its bytes (ADR 180).
+        const QString candidate = FixDiffGate::isMathBlockType(box.label) ? FixDiffGate::normalizeLatexCandidate(text) : text;
+        m_fix.fixBlock(crop, candidate, systemPrompt, userPrompt, box.label, maxOutput);
         return;
     }
 

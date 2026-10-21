@@ -24,7 +24,7 @@ class FixController : public ModelRequestController
 public:
     explicit FixController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent = nullptr);
 
-    void fixBlock(const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt);
+    void fixBlock(const QImage &image, const QString &recognizedText, const QString &systemPrompt, const QString &typePrompt, const QString &blockType, int maxOutput);
 
 signals:
     void fixFinished(const CheckResult &result);

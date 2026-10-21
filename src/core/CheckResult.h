@@ -8,9 +8,10 @@ namespace llocr {
 
 // Transport status of one model reply; not persisted. The producers:
 // blockRecognition → Recognized (the reply is the block text) or Review
-// (unreadable), fix → Ok / Fixed (text holds the correction) / Review,
-// decision → Ok / Mismatch, or Review for an empty/unreadable crop (v6
-// routing, docs/21) — confidence carries the match probability.
+// (unreadable), fix → Ok / Fixed (text holds the correction) / Review (also
+// for EMPTY and diff-gate downgrades, ADR 179), decision → Ok / Mismatch, or
+// Review for an empty/unreadable crop (v6 routing, docs/21) — confidence
+// carries the match probability.
 enum class CheckStatus : int {
     Failed = 0,      ///< Network/parse error — errorMessage describes it.
     Ok = 1,          ///< Confirmed: no correction needed.
@@ -22,7 +23,8 @@ enum class CheckStatus : int {
 
 struct CheckResult {
     CheckStatus status = CheckStatus::Failed;
-    QString text;  ///< Block text for Recognized / Fixed.
+    QString text;         ///< Block text for Recognized / Fixed.
+    StatusMessage notes;  ///< Fix task: why a FIX reply was demoted to Ok/Review (the diff gate's reason).
     StatusMessage errorMessage;
     double confidence = -1.0;  ///< P(match) of the decision verdict; -1 when the verdict carries none.
 

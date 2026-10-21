@@ -855,8 +855,71 @@
         <translation>Модель не вернула исправленный текст — только маркеры конца предложения. Убедитесь, что выбранная модель умеет обрабатывать изображения.</translation>
     </message>
     <message>
-        <source>Unexpected verifier response—expected OK, FIX or REVIEW. Received: %1</source>
-        <translation>Неожиданный ответ верификатора — ожидалось OK, FIX или REVIEW. Получено: %1</translation>
+        <source>The reply does not follow the OK/FIX/REVIEW scheme: %1</source>
+        <translation>Ответ не соответствует схеме OK/FIX/REVIEW: %1</translation>
+    </message>
+</context>
+<context>
+    <name>FixDiffGate</name>
+    <message>
+        <source>Malformed edit line without '=&gt;': %1</source>
+        <translation>Некорректная строка правки без «=&gt;»: %1</translation>
+    </message>
+    <message>
+        <source>The FIX reply lists no edits.</source>
+        <translation>Ответ FIX не содержит ни одной правки.</translation>
+    </message>
+    <message>
+        <source>An edit has no anchor text on the left of '=&gt;'.</source>
+        <translation>У правки нет якорного текста слева от «=&gt;».</translation>
+    </message>
+    <message>
+        <source>The edit anchor was not found in the block: %1</source>
+        <translation>Якорь правки не найден в блоке: %1</translation>
+    </message>
+    <message>
+        <source>The edit anchor matches more than one place: %1</source>
+        <translation>Якорь правки совпадает более чем в одном месте: %1</translation>
+    </message>
+    <message>
+        <source>Every proposed fix was an equivalent no-op; the block text is kept.</source>
+        <translation>Все предложенные правки эквивалентны — текст блока оставлен как есть.</translation>
+    </message>
+    <message>
+        <source>The model declared no change instead of a verdict; the block needs a human look.</source>
+        <translation>Модель не предложила правку, а просто констатировала отсутствие изменений — блок нужно посмотреть глазами.</translation>
+    </message>
+    <message>
+        <source>The reply declares no edits but the corrected block differs.</source>
+        <translation>В ответе нет ни одной правки, но исправленный блок отличается.</translation>
+    </message>
+    <message>
+        <source>The corrected block is missing its EDITS: section.</source>
+        <translation>В исправленном блоке нет секции EDITS:.</translation>
+    </message>
+    <message>
+        <source>The reply carries a whole block; this block type expects span edits.</source>
+        <translation>Ответ содержит весь блок целиком, а этот тип блока ожидает точечные правки.</translation>
+    </message>
+    <message>
+        <source>The corrected block is empty.</source>
+        <translation>Исправленный блок пуст.</translation>
+    </message>
+    <message>
+        <source>The corrected block is equivalent to the candidate; the block text is kept.</source>
+        <translation>Исправленный блок эквивалентен кандидату — текст блока оставлен как есть.</translation>
+    </message>
+    <message>
+        <source>A declared edit is not part of the block: %1</source>
+        <translation>Заявленная правка отсутствует в блоке: %1</translation>
+    </message>
+    <message>
+        <source>A declared edit is not part of the corrected block: %1</source>
+        <translation>Заявленная правка отсутствует в исправленном блоке: %1</translation>
+    </message>
+    <message>
+        <source>The corrected block changes text the EDITS: list does not declare: %1</source>
+        <translation>Исправленный блок меняет текст, не объявленный в EDITS:: %1</translation>
     </message>
 </context>
 <context>
@@ -2258,6 +2321,36 @@
         <location line="+18"/>
         <source>Model profile directory not found: %1</source>
         <translation>Каталог профилей моделей не найден: %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>A request profile has an empty id</source>
+        <translation>Профиль запросов имеет пустой id</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Request profile %1 has a block prompt without a block type or text</source>
+        <translation>Профиль запросов %1 содержит блочный промпт без типа блока или текста</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Request profile %1 has a block alias without a block type or target</source>
+        <translation>Профиль запросов %1 содержит псевдоним блока без типа блока или цели</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Request profile directory not found: %1</source>
+        <translation>Каталог профилей запросов не найден: %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Duplicate request profile id: %1</source>
+        <translation>Дублирующийся id профиля запросов: %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Model profile %1 references an unknown request profile: %2</source>
+        <translation>Профиль модели %1 ссылается на неизвестный профиль запросов: %2</translation>
     </message>
     <message>
         <location line="+9"/>

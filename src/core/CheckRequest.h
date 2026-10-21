@@ -19,6 +19,7 @@ struct CheckRequest {
     QString systemPrompt;                ///< System-level instruction for the checking model.
     QString typePrompt;                  ///< Instruction for this block's type (from the verification prompts).
     QString recognizedText;              ///< Fix task: the OCR candidate under correction.
+    QString blockType;                   ///< Fix task: the block label, picks the reply mode and edit gate.
     QString modelId;                     ///< Model to route the request to (from the connection).
     QList<RequestParameter> parameters;  ///< Sampling parameters from the task's request profile.
     Task task = Task::BlockRecognition;

@@ -33,6 +33,7 @@ private slots:
     void checkModelBlockPromptsOverridePerType();
     void fixRolesShipTheCorrectionProtocol();
     void decisionRoleShipsTheStructuredStateWording();
+    void requestProfilesCarryTheSharedRequests();
     void runtimeNoteReachesTheSettings();
     void mergeByUserPrecedence();
     void importToJsonRoundTrips();
@@ -352,10 +353,10 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("blockRecognition")).isEmpty());
 }
 
-// The fix task's profiles speak the OK / FIX / REVIEW correction protocol: the
-// system prompt pins the three-token contract, the per-type prompts describe
-// what a FIX may change, and the recheck framing is gone — the candidate text
-// travels as its own request part (ADR 163).
+// The fix task's profiles speak the same protocol (ADR 179): the system
+// prompt pins the three-token contract (OK / FIX / REVIEW) and the language
+// placeholder, the per-type prompts describe what a FIX may change, and the
+// alias map keeps formula/reference out of the prompt table.
 void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
@@ -365,15 +366,43 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     for (const QString &id : fixModels) {
         const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(fix, qPrintable(id));
+        QCOMPARE(fix->protocol, QStringLiteral("span_hybrid"));
         const QString system = fix->systemPrompt;
-        QVERIFY2(system.contains(QStringLiteral("Output exactly one of")), qPrintable(id));
+        QVERIFY2(system.contains(QStringLiteral("exactly one of these")), qPrintable(id));
         QVERIFY2(system.contains(QStringLiteral("OK")), qPrintable(id));
         QVERIFY2(system.contains(QStringLiteral("FIX")), qPrintable(id));
         QVERIFY2(system.contains(QStringLiteral("REVIEW")), qPrintable(id));
+        // EMPTY is gone from the scheme, and the language is a placeholder the
+        // app fills in.
+        QVERIFY2(!system.contains(QStringLiteral("EMPTY")), qPrintable(id));
+        QVERIFY2(system.contains(QStringLiteral("{{LANGUAGE}}")), qPrintable(id));
+        QVERIFY2(system.contains(QStringLiteral("Never truncate your output")), qPrintable(id));
+        QVERIFY2(fix->blockAliases.value(QStringLiteral("formula")) == QStringLiteral("equation"), qPrintable(id));
+        QVERIFY2(fix->blockAliases.value(QStringLiteral("reference")) == QStringLiteral("ref_text"), qPrintable(id));
+        QVERIFY2(!fix->blockMaxOutput.isEmpty(), qPrintable(id));
         QVERIFY2(!fix->blockPrompts.isEmpty(), qPrintable(id));
         for (auto it = fix->blockPrompts.constBegin(); it != fix->blockPrompts.constEnd(); ++it)
             QVERIFY2(it.value().contains(QStringLiteral("FIX")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
     }
+
+    // The per-block output budget resolves through the alias chain: a formula
+    // asks for the equation budget, an unknown type falls back to -1 (the
+    // request profile's max_tokens stays untouched).
+    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("formula")), 1024);
+    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("reference")), 512);
+    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("page_number")), 64);
+    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("unknown-type")), -1);
+
+    // The alias hop serves the formula/reference prompts (the byte-for-byte
+    // duplicates are gone from the table), and key_value — the one decision
+    // type the fix vocabulary used to miss — ships its own.
+    const ModelProfiles::Role *qwenFix = ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"));
+    QVERIFY(qwenFix);
+    QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("formula")));
+    QVERIFY(!qwenFix->blockPrompts.contains(QStringLiteral("reference")));
+    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("formula")).isEmpty());
+    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("reference")).isEmpty());
+    QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("key_value")).isEmpty());
 
     // The equivalence rules are synced with the decision v6 block prompts
     // (docs/21): the fixer treats the same things as equivalent and strictly
@@ -382,10 +411,14 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     const QString fixText = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("text"));
     QVERIFY(fixText.contains(QStringLiteral("Equivalent (never fix)")));
     QVERIFY(fixText.contains(QStringLiteral("е/ё")));
+    QVERIFY(fixText.contains(QStringLiteral("old_substring => new_substring")));
     const QString fixCode = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("code"));
     QVERIFY(fixCode.contains(QStringLiteral("Nothing is normalized")));
     const QString fixEquation = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("equation"));
-    QVERIFY(fixEquation.contains(QStringLiteral("LaTeX is the carrier")));
+    QVERIFY(fixEquation.contains(QStringLiteral("the complete formula as LaTeX")));
+    QVERIFY(fixEquation.contains(QStringLiteral("Do not change spacing, aliases, or operand order")));
+    const QString fixTable = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("table"));
+    QVERIFY(fixTable.contains(QStringLiteral("EDITS:")));
 }
 
 // The layout role is what the manual markup pass drives: its parser id must be
@@ -528,6 +561,51 @@ void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
         QVERIFY2(unknown.questions.isEmpty(), qPrintable(id));
         QCOMPARE(ModelProfiles::blockPromptFor(profiles, id, QStringLiteral("decision"), QStringLiteral("formula")), QString());
     }
+}
+
+// The fix and decision tasks send the same requests whatever model serves
+// them, so the request texts live in their own profiles and the model roles
+// only name them (ADR 182). The parameters — launch, request, thresholds —
+// stay in the model profile.
+void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+
+    // Two request profiles, one per task.
+    QCOMPARE(ModelProfiles::promptProfiles().size(), 2);
+    QVERIFY(ModelProfiles::promptProfile(QStringLiteral("fix-requests")));
+    QVERIFY(ModelProfiles::promptProfile(QStringLiteral("decision-requests")));
+    QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("no-such-profile")));
+
+    // Every fix model names the shared fix request profile and inherits its
+    // texts; the parameters stay in the model profile.
+    for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
+        const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("fix"));
+        QVERIFY2(role, qPrintable(id));
+        QCOMPARE(role->promptProfile, QStringLiteral("fix-requests"));
+        QCOMPARE(role->systemPrompt, ModelProfiles::promptProfile(QStringLiteral("fix-requests"))->prompts.systemPrompt);
+        QVERIFY(!role->systemPrompt.isEmpty());
+        QVERIFY(!role->blockPrompts.isEmpty());
+        QVERIFY(!role->blockMaxOutput.isEmpty());
+    }
+
+    // The same for the decision models: the request texts are shared, the
+    // routing calibration stays per model.
+    for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("decision"))) {
+        const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("decision"));
+        QVERIFY2(role, qPrintable(id));
+        QCOMPARE(role->promptProfile, QStringLiteral("decision-requests"));
+        QCOMPARE(role->statePrompt, ModelProfiles::promptProfile(QStringLiteral("decision-requests"))->prompts.statePrompt);
+        QVERIFY(!role->statePrompt.isEmpty());
+        QVERIFY(role->matchThreshold > 0);
+    }
+
+    // The OCR models keep their own prompts inline — only the two shared tasks
+    // moved.
+    const ModelProfiles::Role *teleocr = ModelProfiles::roleFor(QStringLiteral("teleocr"), QStringLiteral("layout"));
+    QVERIFY(teleocr);
+    QVERIFY(teleocr->promptProfile.isEmpty());
+    QVERIFY(teleocr->systemPrompt.contains(QStringLiteral("<box:")));
 }
 
 // A model the managed runtime cannot load says so in its profile, and the note
