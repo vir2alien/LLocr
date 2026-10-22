@@ -1,0 +1,13 @@
+{
+  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11799-metal-macos-arm64/llama-b11799/llama-server",
+  "model": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/mistralai__Ministral-3-8B-Instruct-2512-GGUF/Ministral-3-8B-Instruct-2512-Q4_K_M.gguf",
+  "mmproj": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/mistralai__Ministral-3-8B-Instruct-2512-GGUF/Ministral-3-8B-Instruct-2512-BF16-mmproj.gguf",
+  "alias": "llocr-fix",
+  "host": "127.0.0.1",
+  "port": 8126,
+  "parallel": 1,
+  "cache_reuse": 0,
+  "n_gpu_layers": 99,
+  "flash_attn": "on",
+  "ctx_size": 16384
+}

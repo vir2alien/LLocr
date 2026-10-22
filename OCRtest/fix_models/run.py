@@ -372,6 +372,8 @@ def main():
     ap.add_argument("--all", action="store_true", help="все варианты из variants.py")
     ap.add_argument("--blocks", default="", help="uid через запятую (по умолчанию весь корпус)")
     ap.add_argument("--config", default=str(HERE / "configs" / "qwen3.5-4b.json"))
+    ap.add_argument("--model", default="qwen3.5-4b", help="id профиля модели (resources/profiles/models/<id>.json)")
+    ap.add_argument("--model-profile", default="", help="путь к профилю модели (по умолчанию resources/profiles/models/<--model>.json)")
     ap.add_argument("--base-url", default="", help="использовать уже запущенный сервер")
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--refresh", action="store_true", help="не брать ответы из кеша")
@@ -396,7 +398,9 @@ def main():
         wanted = {u.strip() for u in args.blocks.split(",") if u.strip()}
         corpus["blocks"] = [b for b in corpus["blocks"] if b["uid"] in wanted]
 
-    model = load_model_profile(REPO / "resources" / "profiles" / "models" / "qwen3.5-4b.json")
+    profile_path = Path(args.model_profile) if args.model_profile else \
+        REPO / "resources" / "profiles" / "models" / (args.model + ".json")
+    model = load_model_profile(profile_path)
     requests = json.loads(FIX_REQUESTS.read_text(encoding="utf-8"))
     prompts = {
         "system": requests["systemPrompt"].replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE),

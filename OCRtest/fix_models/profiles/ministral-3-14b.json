@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "id": "ministral-3-14b",
+  "title": "Ministral 3 14B Instruct 2512",
+  "license": "https://huggingface.co/unsloth/Ministral-3-14B-Instruct-2512-GGUF",
+  "minBuild": "b11799",
+  "files": {
+    "repo": "unsloth/Ministral-3-14B-Instruct-2512-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q4_k_m",
+        "file": "Ministral-3-14B-Instruct-2512-Q4_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 8239100000
+      }
+    ],
+    "mmproj": {
+      "id": "f16",
+      "file": "mmproj-F16.gguf",
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
+    }
+  },
+  "roles": {
+    "fix": {
+      "alias": "llocr-fix",
+      "default": false,
+      "protocol": "span_hybrid",
+      "promptProfile": "fix-requests",
+      "maxOutput": 8192,
+      "maxOutputByBlock": {
+        "page_number": 64,
+        "header": 128,
+        "footer": 128,
+        "seal": 256,
+        "title": 256,
+        "key_value": 256,
+        "image_caption": 512,
+        "table_caption": 512,
+        "figure_footnote": 512,
+        "table_footnote": 512,
+        "ref_text": 512,
+        "text": 1024,
+        "abstract": 1024,
+        "list": 1024,
+        "code": 2048,
+        "equation": 1024,
+        "table": 8192
+      },
+      "launch": [
+        {
+          "order": 1,
+          "name": "temp",
+          "value": 0,
+          "description": "Server-side default sampling temperature; greedy decoding for transcription."
+        },
+        {
+          "order": 2,
+          "name": "parallel",
+          "value": 1,
+          "description": "A single decoding slot."
+        },
+        {
+          "order": 3,
+          "name": "no-warmup",
+          "description": "Skip the warmup run at model load (faster start, slower first request)."
+        },
+        {
+          "order": 4,
+          "name": "jinja",
+          "description": "Use the chat template from the GGUF metadata."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding (the card asks for temperature below 0.1)."
+        },
+        {
+          "order": 2,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 3,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 6,
+          "name": "cache_prompt",
+          "value": false,
+          "description": "Reuse the prompt cache; off keeps every block request independent."
+        },
+        {
+          "order": 7,
+          "name": "stop",
+          "value": [
+            "</s>",
+            "</CANDIDATE>"
+          ],
+          "description": "Stop sequences; the reply ends with the verdict even when the model would keep generating."
+        }
+      ]
+    }
+  }
+}

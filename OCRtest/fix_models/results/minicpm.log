@@ -1,0 +1,31 @@
+0.00.042.840 I srv  llama_server: initializing ...
+0.00.042.847 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.043.037 W srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.044.717 I srv    load_model: loading model '/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/openbmb__MiniCPM-V-4.7-1B-gguf/MiniCPM-V-4_7-1B-Q8_0.gguf'
+0.00.843.959 I cmn          init: llama threadpool init, n_threads = 4
+0.01.474.428 I srv    load_model: loaded multimodal model, '/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/openbmb__MiniCPM-V-4.7-1B-gguf/mmproj-model-f16.gguf'
+0.01.644.544 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 16384, kv_unified = 'true'
+0.01.646.897 I srv  llama_server: model loaded
+0.01.646.901 I srv  llama_server: listening on http://127.0.0.1:8124
+0.40.220.422 I slot get_availabl: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+0.40.220.445 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.41.493.031 W find_slot: non-consecutive token position 28 after 14 for sequence 0 with 321 new tokens
+0.41.493.232 W find_slot: non-consecutive token position 28 after 14 for sequence 0 with 321 new tokens
+0.43.385.370 I slot print_timing: id  0 | task 0 | prompt eval time =    1574.41 ms /   345 tokens (    4.56 ms per token,   219.13 tokens per second)
+0.43.385.372 I slot print_timing: id  0 | task 0 |        eval time =    1590.49 ms /   141 tokens (   11.36 ms per token,    88.02 tokens per second)
+0.43.385.373 I slot print_timing: id  0 | task 0 |       total time =    3164.90 ms /   486 tokens
+0.43.385.373 I slot print_timing: id  0 | task 0 |    graphs reused =        139
+0.43.385.373 I slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)
+0.43.385.382 I slot      release: id  0 | task 0 | stop processing: n_tokens = 485, truncated = 0
+0.51.308.972 I slot get_availabl: id  1 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+0.51.308.994 I slot launch_slot_: id  1 | task 144 | processing task, is_child = 0
+0.52.495.834 W find_slot: non-consecutive token position 43 after 29 for sequence 1 with 321 new tokens
+0.52.496.090 W find_slot: non-consecutive token position 43 after 29 for sequence 1 with 321 new tokens
+0.55.714.429 I slot print_timing: id  1 | task 144 | n_gen =    265, tg =  87.92 t/s, tg_3s =  88.25 t/s
+0.58.026.341 I slot print_timing: id  1 | task 144 | prompt eval time =    1399.27 ms /   391 tokens (    3.58 ms per token,   279.43 tokens per second)
+0.58.026.344 I slot print_timing: id  1 | task 144 |        eval time =    5314.74 ms /   467 tokens (   11.41 ms per token,    87.68 tokens per second)
+0.58.026.345 I slot print_timing: id  1 | task 144 |       total time =    6714.01 ms /   858 tokens
+0.58.026.345 I slot print_timing: id  1 | task 144 |    graphs reused =        602
+0.58.026.346 I slot print_timing: id  1 | task 144 |   graph reallocs =          0    /     0        (same size) / (changed size)
+0.58.026.357 I slot      release: id  1 | task 144 | stop processing: n_tokens = 857, truncated = 0
+2.09.742.792 I srv    operator(): operator(): cleaning up before exit...
