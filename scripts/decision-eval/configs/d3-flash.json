@@ -1,0 +1,25 @@
+{
+  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11799-metal-macos-arm64/llama-b11799/llama-server",
+  "model": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/ggml-org__vllm-d3-flash-GGUF/vllm-d3-flash-Q4_K_M.gguf",
+  "mmproj": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/ggml-org__vllm-d3-flash-GGUF/mmproj-vllm-d3-flash-Q8_0.gguf",
+  "alias": "d3-flash",
+  "ctx_size": 8192,
+  "parallel": 1,
+  "extra_args": [
+    "--n-gpu-layers",
+    "99",
+    "--flash-attn",
+    "on",
+    "--parallel",
+    "1",
+    "--cache-reuse",
+    "0",
+    "--no-context-shift",
+    "--no-warmup",
+    "--batch-size",
+    "8192",
+    "--ubatch-size",
+    "8192"
+  ],
+  "profile": "resources/profiles/models/d3-flash.json"
+}

@@ -9,6 +9,7 @@ schemes.
 """
 
 import json
+import re
 from dataclasses import dataclass, field
 
 
@@ -140,7 +141,7 @@ EQ_TWO_IMAGES_Q = (
 
 
 def html_table_rows(text):
-    """Best-effort <tr>/<td> -> [[cell, ...], ...]; None when nothing parses."""
+    """Best-effort <tr><td> -> [[cell, ...], ...]; None when nothing parses."""
     import re
     rows = []
     for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", text, re.S | re.I):
@@ -151,15 +152,80 @@ def html_table_rows(text):
     return rows or None
 
 
+# The canonical wire form of a LaTeX candidate — the same normalization the
+# app does before the request (FixDiffGate::normalizeLatexCandidate): the OCR
+# models emit spaced LaTeX ("Bi _ {1}") that reads as noise to the model.
+# Rendering-preserving; the block's own text is untouched. The port must stay
+# in step with the C++ one: the app's test (test_app_import::
+# decisionRequestCarriesTheNormalizedFormula) pins the app's output, and
+# check_normalization_matches_the_app() below pins this one to the same values.
+# The character classes mirror the app's regexps literally — Qt's \w is ASCII
+# ([A-Za-z0-9_]), so Python's Unicode \w would not.
+_LATEX_SPACE_BEFORE_BRACE = re.compile(r"([A-Za-z0-9_}\)])[ \t\r\n\f\v]+([{}\[()])")
+_LATEX_SPACE_AFTER_OPEN = re.compile(r"([{\[(])[ \t\r\n\f\v]+")
+
+
+def normalize_latex_candidate(text):
+    """The app's wire form of a LaTeX candidate ("Bi _ {1}" -> "Bi _{1}")."""
+    import unicodedata
+    out = _LATEX_SPACE_BEFORE_BRACE.sub(r"\1\2", text)
+    out = _LATEX_SPACE_AFTER_OPEN.sub(r"\1", out)
+    out = out.replace("\\tag {", "\\tag{")
+    return unicodedata.normalize("NFC", out)
+
+
+def check_normalization_matches_the_app():
+    """The port against the values the app produces (ADR 183).
+
+    The expectations are the app's own output (FixDiffGate::
+    normalizeLatexCandidate), verified against the C++ implementation.
+
+    Returns the mismatches; empty means the stand and the app agree.
+    """
+    expected = {
+        "$$Bi _ {1}$$": "$$Bi _{1}$$",
+        "Bi _ {1}": "Bi _{1}",
+        "\\frac { 1 } { 2 }": "\\frac{1} {2}",
+        "\\tag {1.2a}": "\\tag{1.2a}",
+        "x ^ 2 + y _ 1": "x ^ 2 + y _ 1",
+        "\\left( x \\right)": "\\left(x \\right)",
+        "a ) b": "a) b",
+        "\\text {Скорость}": "\\text{Скорость}",
+        "текст": "текст",
+        "текст {": "текст {",
+    }
+    return [(src, normalize_latex_candidate(src), want)
+            for src, want in expected.items()
+            if normalize_latex_candidate(src) != want]
+
+
+def is_math_block_type(label):
+    """The block types whose LaTeX candidate is normalized before the request."""
+    return label in ("equation", "formula")
+
+
+def app_candidate(block):
+    """The candidate text the app sends for this block."""
+    if is_math_block_type(block.label):
+        return normalize_latex_candidate(block.text)
+    return block.text
+
+
 def make_variants(profile):
     def v0(block):
         # The app's request in its current form (scheme v7): the state is a JSON
-        # object with the block type, the candidate text and the notation (the
-        # general axes plus the block type's own rules); one noul question.
-        state = {"block_type": block.label, "recognized_text": block.text}
+        # object with the block type, the candidate text (normalized for the
+        # math types, as the app does) and the notation (the general axes plus
+        # the block type's own rules); one noul question.
+        state = {"block_type": block.label, "recognized_text": app_candidate(block)}
         notation = app_notation(profile, block.label)
         if notation:
             state["notation"] = notation
+        # The app's state is a QJsonObject, which keeps its keys sorted — and
+        # the server serializes the state into the prompt as it arrives, so the
+        # key order is part of the request. Sorted here for the same reason:
+        # an unsorted state is a different prompt and a different answer.
+        state = {key: state[key] for key in sorted(state)}
         instructions = (profile["question"] or MINIMAL_Q).replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE)
         q = {"type": "noul", "instructions": instructions}
         if profile["criteria_true"] or profile["criteria_false"]:

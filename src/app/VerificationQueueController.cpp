@@ -485,8 +485,13 @@ void VerificationQueueController::startNextVerify()
         // description of the check (the axes every block is judged on plus
         // this block type's own rules); the request asks one question: is the
         // block recognized correctly?
+        // The OCR models emit spaced LaTeX ("Bi _ {1}"); the wire carries the
+        // canonical form, as it does for the fix task, so both tasks judge the
+        // same text and the checker does not spend its attention on spacing
+        // (ADR 183). The block's own bytes stay untouched.
+        const QString candidate = FixDiffGate::isMathBlockType(box.label) ? FixDiffGate::normalizeLatexCandidate(text) : text;
         m_judgedType = box.label;
-        m_decision.judgeBlock(crop, box.label, text, decisionNotation(box.label), decisionQuestion(), decisionCriteriaTrue(), decisionCriteriaFalse());
+        m_decision.judgeBlock(crop, box.label, candidate, decisionNotation(box.label), decisionQuestion(), decisionCriteriaTrue(), decisionCriteriaFalse());
         return;
     }
 

@@ -392,6 +392,11 @@ def main():
         print(f"labels template written: {labels_path}")
 
     profile = V.load_app_profile(cfg["profile_path"])
+    drift = V.check_normalization_matches_the_app()
+    if drift:
+        for src, got, want in drift:
+            print(f"normalization drift: {src!r} -> {got!r}, the app sends {want!r}")
+        raise SystemExit("the stand's LaTeX normalization no longer matches the app's")
     variant_list = V.make_variants(profile)
     if args.variants:
         wanted = set(args.variants.split(","))

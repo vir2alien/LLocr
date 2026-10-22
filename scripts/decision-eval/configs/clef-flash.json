@@ -1,7 +1,7 @@
 {
-  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11564-metal-macos-arm64/llama-b11564/llama-server",
-  "model": "/Users/gladskikh/Git/LLocr/OCRtest/work/models/clef-flash/Cloudflare_clef-flash-Q5_K_M.gguf",
-  "mmproj": "/Users/gladskikh/Git/LLocr/OCRtest/work/models/clef-flash/mmproj-Cloudflare_clef-flash-f16.gguf",
+  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11799-metal-macos-arm64/llama-b11799/llama-server",
+  "model": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/bartowski__Cloudflare_clef-flash-GGUF/Cloudflare_clef-flash-Q4_K_M.gguf",
+  "mmproj": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/bartowski__Cloudflare_clef-flash-GGUF/mmproj-Cloudflare_clef-flash-f16.gguf",
   "alias": "clef-flash",
   "ctx_size": 8192,
   "parallel": 1,

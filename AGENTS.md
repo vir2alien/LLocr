@@ -375,7 +375,11 @@
     else **Mismatch** (a crop the model cannot read lands on **Review** in
     the fix task, which answers REVIEW for an unreadable, clipped or empty
     crop); thresholds resolve per block type (`matchThresholdByBlock` in the
-    profile → role `matchThreshold` → the setting). d1-3B failed the task
+    profile → role `matchThreshold` → the setting). A formula reaches the
+    decision model in its **canonical wire form** (the same
+    `FixDiffGate::normalizeLatexCandidate` the fix task gets), so the OCR
+    models' spaced LaTeX does not read as noise and both tasks judge the
+    same text. d1-3B failed the task
     in every phrasing and was removed (ADR 161). Every block carries two text layers with independent verdicts
     (ADR 164): `box.text` (the OCR result) and `box.correctedText` (the fix
     model's correction); the dot and the confidence badge follow the
@@ -528,3 +532,19 @@
     profiles from `:/profiles/requests` and merges their texts into the role,
     so every existing lookup keeps working. The OCR models keep their prompts
     inline — their tasks really do differ per model.
+  - **The decision thresholds are measured, per model, against the request that
+    ships (ADR 184)** — a threshold describes one model's p(match) distribution
+    under one request; rewrite the request and the measurement is void. The
+    calibration needs no GUI: `scripts/decision-calibrate.py` prints the
+    FN/FP(t) curve from the stored P(match) (ADR 173) and scores a profile's
+    thresholds on a run (`--policy`), and
+    `scripts/decision-eval/score-project.py` sends the app's own request over a
+    corpus and writes the verdicts into a `.llocr` project — it reproduces the
+    app's numbers bit for bit, which needs the state's keys **sorted** (the app
+    builds it in a `QJsonObject`) and the formula in its canonical wire form.
+    The stand's port of that normalization is pinned to the app's output and the
+    run aborts if the two drift apart. The thresholds themselves are picked by
+    `scripts/decision-eval/pick-thresholds.py` (the knee of each block type's
+    curve: one caught error costs at most one false alarm); the rule reproduces
+    d3-mini's shipped profile exactly on its own run, so it is a rule, not a
+    tuning.

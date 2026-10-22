@@ -132,7 +132,53 @@ The scheme that closed formulas before v6 (docs/17, measured 13–14 Oct
 dominated by `\tag{n}`, `\mathrm`, `\left(...\right)` being read as content.
 That finding (and the unification with d3) is what motivated v6 here.
 
-## 5. Calibration (measured 13–14 Oct 2026, docs/17)
+## 5. Calibration (measured 22 Oct 2026, iteration 7)
+
+The request texts are shared by every decision model (ADR 182), so rewriting
+the request moves each model's p(match) distribution — clef's thresholds were
+re-measured on the run that matches the shipped request (ADR 184). The v5
+measurement below is kept for the history; it described a request that no
+longer exists.
+
+Corpus: `OCRtest/decision_models/test 2/iteration7/OCR_TEST_clef-flash.llocr`
+— 177 blocks (73 with errors, 104 clean), the same scope as the app's own
+runs. The verdict is a pure threshold over the stored P(match) (ADR 173), so
+the operating point is read off the FN/FP(t) curve, no new run needed.
+
+The rewritten request cost clef its separation:
+
+| block class | AUC (iteration 4, old request) | AUC (iteration 7, shipped request) |
+|---|---|---|
+| formulas | 0.782 | 0.715 |
+| tables | 0.889 | 0.722 |
+| text with formulas | 0.870 | 0.821 |
+| plain text | 0.860 | 0.479 |
+| service blocks | 0.978 | 1.000 |
+
+At the old thresholds the new run gives FN 18 / FP 32 — against FN 11 / FP 36
+of iteration 4. The per-block thresholds are the knees of the new curves, the
+last step that buys a caught error for at most one false alarm:
+
+| block type | threshold | FN / FP there |
+|---|---|---|
+| text | 0.80 | 12 / 15 |
+| equation, formula | 0.75 | 10 / 6 |
+| table | 0.50 | 0 / 2 |
+| table_caption | 0.80 | 0 / 0 |
+| table_footnote | 0.75 | 0 / 0 |
+| title | 0.85 | 0 / 1 |
+| list, image_caption | 0.75 | not calibrated (one block each) |
+
+**FN 22 / FP 25** in total. `scripts/decision-eval/pick-thresholds.py` picks
+the thresholds; the rule is checked against d3-mini, whose profile it
+reproduces exactly (FN 12 / FP 22).
+
+The plain-text AUC of 0.479 is the sharpest symptom: on running text clef now
+answers worse than chance. The wording is shared (ADR 182), so this is the
+price clef pays for the wording written on d3-mini — undoing it needs a
+separate wording for clef.
+
+### The v5 measurement (13–14 Oct 2026, docs/17)
 
 Full OCRtest corpus (221 blocks; formulas — 64 blocks, tables — 9; the
 corruption ground truth excludes LaTeX notation changes and edits inside
@@ -157,12 +203,6 @@ Threshold operating points on formulas:
 | **0.7** | **27 %** | **9 %** |
 | 0.75 | 17 % | 16 % |
 | 0.8 | 13 % | 25 % |
-
-Recommendation: `decision/matchThreshold = 0.7` (measured, formulas). The
-v6 profile also carries the per-block map (`matchThresholdByBlock`,
-0.68–0.82) copied from d3-mini — **uncalibrated for clef**: until the next
-corpus run the role-level 0.7 is the measured number, and a false-alarm
-spike means raising the map, not the setting.
 
 ## 6. Settings in the app
 
