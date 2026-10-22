@@ -10,6 +10,7 @@
 
 #include "runtime/ModelCatalog.h"
 
+#include "core/ModelProfiles.h"
 #include "runtime/HttpClient.h"
 
 namespace llocr {
@@ -21,7 +22,8 @@ const QRegularExpression kSplitRe(QStringLiteral(R"(^(.*)-(\d{3,5})-of-(\d{3,5})
 const QRegularExpression kQuantRe(QStringLiteral("(?:^|[^A-Za-z0-9])("
                                                  "Q[3456]_K_[SML]|IQ[124][0-9]?_[A-Z_]+|Q[0-9]_[01]|Q[3456]_K|B[2-8]_0|"
                                                  "F16|BF16|FP8|TF32|F8"
-                                                 ")(?:[^A-Za-z0-9]|$)"));
+                                                 ")(?:[^A-Za-z0-9]|$)"),
+                                  QRegularExpression::CaseInsensitiveOption);
 
 QString quantInName(const QString &name)
 {
@@ -31,7 +33,7 @@ QString quantInName(const QString &name)
     QString last;
     while (it.hasNext())
         last = it.next().captured(1);
-    return last;
+    return last.toUpper();
 }
 
 struct GetResult {
@@ -170,6 +172,18 @@ bool ModelCatalog::splitAscending(const QString &a, const QString &b)
 QString ModelCatalog::quantizationFromName(const QString &name)
 {
     return quantInName(name);
+}
+
+QString ModelCatalog::quantizationForFile(const QString &repo, const QString &fileName)
+{
+    // The model profile is the authority for the models it ships: its file may
+    // carry no quant token at all (PaddleOCR-VL) or a truncated one
+    // ("…-UD-Q4_K_XL.gguf" reads as "Q4_K"). The file name decides only for a
+    // repo no profile describes.
+    const QString declared = ModelProfiles::quantIdForFile(repo, fileName);
+    if (!declared.isEmpty())
+        return declared.toUpper();
+    return quantizationFromName(fileName);
 }
 
 QString ModelCatalog::encodePath(const QString &path)

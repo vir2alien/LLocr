@@ -143,6 +143,7 @@ private slots:
     void detectsRoles();
     void splitsMultiPart();
     void extractsQuantization();
+    void resolvesQuantizationFromTheProfile();
     void encodesPaths();
     void resolvesUrl();
     void parsesPaginationLink();
@@ -204,8 +205,21 @@ void TestModelCatalog::extractsQuantization()
     QCOMPARE(ModelCatalog::quantizationFromName(QStringLiteral("model-Q4_K_M.gguf")), QStringLiteral("Q4_K_M"));
     QCOMPARE(ModelCatalog::quantizationFromName(QStringLiteral("unsloth.bin.F16.gguf")), QStringLiteral("F16"));
     QCOMPARE(ModelCatalog::quantizationFromName(QStringLiteral("model-x.Q8_0.gguf")), QStringLiteral("Q8_0"));
+    // A lowercase token is the same quant (GLM-OCR ships "GLM-OCR-f16.gguf").
+    QCOMPARE(ModelCatalog::quantizationFromName(QStringLiteral("GLM-OCR-f16.gguf")), QStringLiteral("F16"));
     // Non-gguf names never extract a quant token.
     QVERIFY(ModelCatalog::quantizationFromName(QStringLiteral("readme.txt")).isEmpty());
+}
+
+void TestModelCatalog::resolvesQuantizationFromTheProfile()
+{
+    // PaddleOCR-VL ships a single file whose name carries no quant token at
+    // all, so the quantization comes from the model profile.
+    QCOMPARE(ModelCatalog::quantizationForFile(QStringLiteral("PaddlePaddle/PaddleOCR-VL-1.6-GGUF"), QStringLiteral("PaddleOCR-VL-1.6-GGUF.gguf")), QStringLiteral("F16"));
+    // The profile knows the file by name; the quant token in the name wins
+    // only for a repo no profile describes.
+    QCOMPARE(ModelCatalog::quantizationForFile(QStringLiteral("PaddlePaddle/PaddleOCR-VL-1.6-GGUF"), QStringLiteral("other.gguf")), QString());
+    QCOMPARE(ModelCatalog::quantizationForFile(QStringLiteral("org/unknown"), QStringLiteral("model-Q4_K_M.gguf")), QStringLiteral("Q4_K_M"));
 }
 
 void TestModelCatalog::encodesPaths()

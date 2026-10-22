@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QObject>
+#include <QRegularExpression>
 #include <QSet>
 
 #include <algorithm>
@@ -17,6 +18,18 @@
 namespace llocr {
 
 namespace {
+
+// The file name without its extension and without the "-00001-of-00002"
+// split suffix: the part that identifies the model, not its packaging.
+QString quantStem(const QString &fileName)
+{
+    QString stem = fileName.section(QLatin1Char('/'), -1);
+    if (stem.endsWith(QLatin1String(".gguf"), Qt::CaseInsensitive))
+        stem.chop(5);
+    static const QRegularExpression kSplit(QStringLiteral(R"(-\d{3,5}-of-\d{3,5}$)"));
+    stem.remove(kSplit);
+    return stem;
+}
 
 ModelProfiles::Module readModule(const QJsonObject &object, QString &error)
 {
@@ -406,6 +419,22 @@ QString ModelProfiles::idForRepo(const QList<Profile> &profiles, const QString &
     for (const Profile &profile : profiles) {
         if (profile.files.repo == repo)
             return profile.id;
+    }
+    return QString();
+}
+
+QString ModelProfiles::quantIdForFile(const QString &repo, const QString &fileName)
+{
+    if (repo.isEmpty() || fileName.isEmpty())
+        return QString();
+    const QString leaf = fileName.section(QLatin1Char('/'), -1);
+    for (const Profile &profile : instance()) {
+        if (profile.files.repo != repo)
+            continue;
+        for (const Quant &quant : profile.files.quants) {
+            if (quantStem(quant.file) == quantStem(leaf))
+                return quant.id;
+        }
     }
     return QString();
 }

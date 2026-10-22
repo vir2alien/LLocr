@@ -43,6 +43,10 @@ public:
 
     static bool splitAscending(const QString &a, const QString &b);
     static QString quantizationFromName(const QString &name);
+    // The quantization of a file in a repo: the token in its name, else the id
+    // the model profile declares for that file (some repos name their file
+    // without a quant token at all).
+    static QString quantizationForFile(const QString &repo, const QString &fileName);
 
     static QString encodePath(const QString &path);
 

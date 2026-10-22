@@ -16,7 +16,7 @@
 
 | файл | размер | назначение |
 |---|---|---|
-| `PaddleOCR-VL-1.6-GGUF-F16.gguf` | ~0.94 ГБ | модель — единственный квант в официальном репозитории |
+| `PaddleOCR-VL-1.6-GGUF.gguf` | ~0.94 ГБ | модель — единственный квант в официальном репозитории (f16) |
 | `PaddleOCR-VL-1.6-GGUF-mmproj.gguf` | ~0.88 ГБ | vision-проектор, **обязателен** |
 
 - Репозиторий: `PaddlePaddle/PaddleOCR-VL-1.6-GGUF` — официальная упаковка
@@ -34,7 +34,7 @@
 
 ```
 llama-server \
-  --model <modelsDir>/PaddlePaddle__PaddleOCR-VL-1.6-GGUF/PaddleOCR-VL-1.6-GGUF-F16.gguf \
+  --model <modelsDir>/PaddlePaddle__PaddleOCR-VL-1.6-GGUF/PaddleOCR-VL-1.6-GGUF.gguf \
   --mmproj <modelsDir>/PaddlePaddle__PaddleOCR-VL-1.6-GGUF/PaddleOCR-VL-1.6-GGUF-mmproj.gguf \
   --alias llocr-blockrecognition \
   --host 127.0.0.1 --port <авто> \
@@ -74,6 +74,7 @@ decision/fix (docs/18, docs/20).
   профиль сознательно не объявляет задачу layout; для разметки нужны
   teleocr или mineru.
 - Единственный квант f16: меньше спуститься некуда, но модель настолько
-  мала, что это редко имеет значение.
+  мала, что это редко имеет значение. В имени файла нет токена кванта,
+  поэтому квант берётся из профиля модели.
 - Промпты chart и spotting из карточки не подключены — задач
   транскрипции диаграмм и spotting на всю страницу у блоков в LLocr нет.

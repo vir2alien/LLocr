@@ -29,7 +29,7 @@ QString entryQuant(const ModelEntry &entry)
 {
     QString quant = entry.quantization.trimmed();
     if (quant.isEmpty())
-        quant = ModelCatalog::quantizationFromName(entry.modelPath).trimmed();
+        quant = ModelCatalog::quantizationForFile(entry.repo, ModelCatalog::leafName(entry.modelPath)).trimmed();
     return quant.isEmpty() ? QStringLiteral("—") : quant.toUpper();
 }
 

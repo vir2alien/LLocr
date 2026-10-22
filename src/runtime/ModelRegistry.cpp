@@ -355,12 +355,12 @@ QList<ModelEntry> ModelRegistry::scanModelsDir(const QString &modelsDir)
             sortSplitParts(&modelParts);
 
             ModelEntry e;
-            const QString quant = ModelCatalog::quantizationFromName(modelParts.first());
-            e.id = quant.isEmpty() ? dirName : dirName + QLatin1Char('_') + quant;
-            e.title = dirName;
             const int sep = dirName.indexOf(QLatin1String("__"));
             e.repoId = sep > 0 ? dirName.left(sep) + QLatin1Char('/') + dirName.mid(sep + 2) : dirName;
             e.repo = e.repoId;
+            const QString quant = ModelCatalog::quantizationForFile(e.repo, modelParts.first());
+            e.id = quant.isEmpty() ? dirName : dirName + QLatin1Char('_') + quant;
+            e.title = dirName;
             e.dir = dirPath;
             e.origin = ModelOrigin::Managed;  // inside modelsDir ⇒ managed
             e.license = QStringLiteral("https://huggingface.co/%1").arg(e.repo);

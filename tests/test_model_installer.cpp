@@ -194,6 +194,34 @@ private slots:
         QCoreApplication::setApplicationName(QStringLiteral("test_model_installer"));
     }
 
+    // A model whose file name carries no quant token (PaddleOCR-VL) must still
+    // show a quant name everywhere the UI names one: the models list and the
+    // "files on disk" list both read it off the entry.
+    void aModelWithoutAQuantTokenInItsNameIsStillNamed()
+    {
+        auto s = std::make_unique<Setup>();
+        pointAtTempDir(s->settings, s->root.path());
+        const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("PaddlePaddle__PaddleOCR-VL-1.6-GGUF"));
+        QVERIFY(QDir().mkpath(sub));
+        const QString model = writeGguf(sub, QStringLiteral("PaddleOCR-VL-1.6-GGUF.gguf"));
+        QVERIFY(!model.isEmpty());
+
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        // The registry names the quantization from the model profile.
+        const QList<ModelEntry> &entries = s->installer->installedEntries();
+        QCOMPARE(entries.size(), 1);
+        QCOMPARE(entries.first().quantization, QStringLiteral("F16"));
+
+        // The "files on disk" list shows the name, not a dash.
+        auto *files = qobject_cast<QAbstractItemModel *>(s->installer->installedFiles());
+        QVERIFY(files);
+        QCOMPARE(files->rowCount(), 1);
+        QCOMPARE(files->data(files->index(0, 0), InstalledFilesModel::QuantRole).toString(), QStringLiteral("F16"));
+    }
+
     // The user-facing contract: deleting one quant from a shared folder must
     // leave the other quant and the common mmproj untouched.
     void removingOneQuantKeepsSharedMmproj()

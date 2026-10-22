@@ -31,7 +31,7 @@ QString quantLabelOf(const ModelEntry &entry)
 {
     QString quant = entry.quantization.trimmed();
     if (quant.isEmpty())
-        quant = ModelCatalog::quantizationFromName(entry.modelPath).trimmed();
+        quant = ModelCatalog::quantizationForFile(entry.repo, ModelCatalog::leafName(entry.modelPath)).trimmed();
     if (!quant.isEmpty())
         return quant.toUpper();
     const QString stem = modelStem(entry.modelPath);

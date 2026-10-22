@@ -56,6 +56,7 @@ class TestModelRegistry : public QObject
 
 private slots:
     void rescansWhenIndexMissing();
+    void scansAQuantNamedByTheProfile();
     void scansMultiQuantAsSeparateEntries();
     void rebuildsOnCorruptIndex();
     void atomicWriteRoundtrip();
@@ -96,6 +97,26 @@ void TestModelRegistry::rescansWhenIndexMissing()
     QCOMPARE(entries.at(0).origin, ModelOrigin::Managed);
     QVERIFY(entries.at(0).modelPath.endsWith(QStringLiteral("model-Q4_K_M.gguf")));
     QCOMPARE(entries.at(0).quantization, QStringLiteral("Q4_K_M"));
+}
+
+void TestModelRegistry::scansAQuantNamedByTheProfile()
+{
+    // PaddleOCR-VL's file name carries no quant token, so the scan can only
+    // name the quantization from the model profile.
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString sub = QDir(dir.path()).filePath(QStringLiteral("PaddlePaddle__PaddleOCR-VL-1.6-GGUF"));
+    QVERIFY(QDir().mkpath(sub));
+    const QString model = QDir(sub).filePath(QStringLiteral("PaddleOCR-VL-1.6-GGUF.gguf"));
+    QFile f(model);
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write("GGUF placeholder");
+    f.close();
+
+    const QList<ModelEntry> entries = ModelRegistry::scanModelsDir(dir.path());
+    QCOMPARE(entries.size(), 1);
+    QCOMPARE(entries.first().quantization, QStringLiteral("F16"));
+    QCOMPARE(entries.first().id, QStringLiteral("PaddlePaddle__PaddleOCR-VL-1.6-GGUF_F16"));
 }
 
 void TestModelRegistry::scansMultiQuantAsSeparateEntries()

@@ -16,7 +16,7 @@ crop by type. Apache-2.0 licensed.
 
 | file | size | purpose |
 |---|---|---|
-| `PaddleOCR-VL-1.6-GGUF-F16.gguf` | ~0.94 GB | the model — the only quant the official repo ships |
+| `PaddleOCR-VL-1.6-GGUF.gguf` | ~0.94 GB | the model — the only quant the official repo ships (f16) |
 | `PaddleOCR-VL-1.6-GGUF-mmproj.gguf` | ~0.88 GB | vision projector, **mandatory** |
 
 - Repository: `PaddlePaddle/PaddleOCR-VL-1.6-GGUF` — the official
@@ -34,7 +34,7 @@ layer; everything else is the platform + policy layers:
 
 ```
 llama-server \
-  --model <modelsDir>/PaddlePaddle__PaddleOCR-VL-1.6-GGUF/PaddleOCR-VL-1.6-GGUF-F16.gguf \
+  --model <modelsDir>/PaddlePaddle__PaddleOCR-VL-1.6-GGUF/PaddleOCR-VL-1.6-GGUF.gguf \
   --mmproj <modelsDir>/PaddlePaddle__PaddleOCR-VL-1.6-GGUF/PaddleOCR-VL-1.6-GGUF-mmproj.gguf \
   --alias llocr-blockrecognition \
   --host 127.0.0.1 --port <auto> \
@@ -74,6 +74,7 @@ decision/fix pipeline (docs/18, docs/20).
   the GGUF — the profile deliberately does not declare the layout task;
   markup passes need teleocr or mineru.
 - Single f16 quant: no smaller quants exist to step down to; the model is
-  small enough that this rarely matters.
+  small enough that this rarely matters. The file name carries no quant
+  token, so the quantization comes from the model profile.
 - The card's chart and spotting prompts are not wired — LLocr has no
   chart-transcription or full-image-spotting task for blocks.

@@ -582,7 +582,7 @@ void ModelInstallTransaction::completeInstall()
     ModelEntry e;
     {
         const QString baseId = repoDirName(m_pending.repo);
-        const QString quant = ModelCatalog::quantizationFromName(ModelCatalog::leafName(m_pending.modelNames.first()));
+        const QString quant = ModelCatalog::quantizationForFile(m_pending.repo, ModelCatalog::leafName(m_pending.modelNames.first()));
         e.id = quant.isEmpty() ? baseId : baseId + QLatin1Char('_') + quant;
     }
     e.title = m_pending.title;
@@ -600,7 +600,7 @@ void ModelInstallTransaction::completeInstall()
         e.mmprojPath = installedPath(m_pending.mmprojRel);
     if (!m_pending.mtpRel.isEmpty())
         e.draftPath = installedPath(m_pending.mtpRel);
-    e.quantization = ModelCatalog::quantizationFromName(ModelCatalog::leafName(m_pending.modelNames.first()));
+    e.quantization = ModelCatalog::quantizationForFile(m_pending.repo, ModelCatalog::leafName(m_pending.modelNames.first()));
     e.license = m_pending.license;
     e.parser = m_pending.parser;
     e.ctxSize = m_pending.ctxSize;
@@ -646,7 +646,11 @@ void ModelInstallTransaction::completeInstall()
     const bool saved = ModelRegistry::update(
         pendingModelsDir,
         [&updated, &e](QList<ModelEntry> &entries) {
-            entries.removeIf([&](const ModelEntry &x) { return x.id == e.id; });
+            // The model file is the identity of an installed model: an entry
+            // pointing at the same file is the same model, whatever its id
+            // (the id carries the quant, and the quant of a file whose name
+            // carries no token is only known from the model profile).
+            entries.removeIf([&](const ModelEntry &x) { return x.id == e.id || (!e.modelPath.isEmpty() && x.modelPath == e.modelPath); });
             entries.append(e);
             updated = entries;
             return entries;

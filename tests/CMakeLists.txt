@@ -484,6 +484,9 @@ target_link_libraries(test_model_catalog PRIVATE
     Qt6::Test
     llocr_runtime
 )
+# The quantization of a shipped file comes from the model profile, so the
+# profiles have to be a resource of this binary.
+llocr_add_profile_resources(test_model_catalog)
 add_test(NAME test_model_catalog COMMAND test_model_catalog)
 
 # ---- Stage E: model registry -----------------------------------------
@@ -493,6 +496,7 @@ target_link_libraries(test_model_registry PRIVATE
     Qt6::Test
     llocr_runtime
 )
+llocr_add_profile_resources(test_model_registry)
 add_test(NAME test_model_registry COMMAND test_model_registry)
 
 # ---- Wizard hardware probe (ADR 170) -------------------------------------

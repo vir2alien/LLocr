@@ -3,6 +3,7 @@
 #include <QTest>
 
 #include "core/ModelProfiles.h"
+#include "runtime/ModelCatalog.h"
 #include "runtime/ModelPreset.h"
 #include "runtime/ModelPresetCatalog.h"
 
@@ -25,6 +26,7 @@ private slots:
     void lightonOcrShipsOnlyTheTrainedModes();
     void mineruShipsTheTrainedTwoStepProtocol();
     void paddleOcrVlShipsElementRecognitionOnly();
+    void everyShippedQuantResolvesToItsName();
     void draftModuleReachesThePresets();
     void roleDefaultsFollowTheShippedProfiles();
     void verifierSystemPromptFollowsTheModel();
@@ -253,6 +255,20 @@ void TestModelPresetCatalog::paddleOcrVlShipsElementRecognitionOnly()
     QVERIFY(profile);
     QCOMPARE(profile->files.repo, QStringLiteral("PaddlePaddle/PaddleOCR-VL-1.6-GGUF"));
     QVERIFY(profile->files.mmproj.repo.isEmpty());
+}
+
+// Every shipped quantization must resolve to a name the UI can show. A file
+// whose name carries no quant token (PaddleOCR-VL) or a lowercase one
+// (GLM-OCR-f16) is the case that used to leave the quant unnamed.
+void TestModelPresetCatalog::everyShippedQuantResolvesToItsName()
+{
+    for (const ModelProfiles::Profile &profile : ModelProfiles::instance()) {
+        for (const ModelProfiles::Quant &quant : profile.files.quants) {
+            const QString resolved = ModelCatalog::quantizationForFile(profile.files.repo, quant.file);
+            QVERIFY2(!resolved.isEmpty(), qPrintable(QStringLiteral("%1: quant %2 (%3) resolves to no name").arg(profile.id, quant.id, quant.file)));
+            QCOMPARE(resolved, quant.id.toUpper());
+        }
+    }
 }
 
 // A check model carries its own wording per block type and its own system
@@ -517,30 +533,33 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("unlimited-ocr"), QStringLiteral("pageOcr"), QStringLiteral("formula")).isEmpty());
 }
 
-// All three decision models ship the same scheme v6 (docs/21, §4b): per-block
-// equivalence rules, a per-block threshold map and a ready two-question dict
-// (match noul + diagnosis choice). d3 answers each question of a request with
-// its own forward pass (~1.4 s measured), so the noul gates has_text/readable
-// stay out of every profile; on clef-flash, which reads the questions of a
-// request jointly, the second question is free.
+// All three decision models ship the same scheme v7: ONE question per request
+// (a noul `match`), the axes the block is checked on in the state text
+// (state.notation), and the document language named in the state. d3 answers
+// each question of a request with its own forward pass (~1.4 s measured), so
+// the v6 second question (the diagnosis choice) doubled the price of a check
+// and is gone.
 void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
 {
-    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
 
     for (const QString &id : {QStringLiteral("clef-flash"), QStringLiteral("d3-flash"), QStringLiteral("d3-mini")}) {
         const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("decision"));
         QVERIFY2(role, qPrintable(QStringLiteral("%1 declares the decision role").arg(id)));
 
-        // The v6 ask: match + diagnosis, nothing else — every extra question
-        // is a separate forward pass on d3.
-        const QStringList questionKeys = role->questions.keys();
-        QCOMPARE(questionKeys.size(), 2);
-        QCOMPARE(role->questions.value(QStringLiteral("match")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("noul"));
-        QCOMPARE(role->questions.value(QStringLiteral("diagnosis")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("choice"));
-        QVERIFY2(!questionKeys.contains(QStringLiteral("has_text")), qPrintable(id));
-        QVERIFY2(!questionKeys.contains(QStringLiteral("readable")), qPrintable(id));
+        // One question per request, and it is the yes/no one: "is the block
+        // recognized correctly?". Every extra question is a separate forward
+        // pass on d3. The criteria stay out: they measured worse than the bare
+        // question (docs/17, §6), and the axes carry the detail instead.
+        QVERIFY2(role->questions.isEmpty(), qPrintable(id));
+        QVERIFY2(!role->question.isEmpty(), qPrintable(id));
         QVERIFY2(role->criteriaTrue.isEmpty(), qPrintable(id));
         QVERIFY2(role->criteriaFalse.isEmpty(), qPrintable(id));
+
+        // The axes live in the state text, and the document language is named
+        // there ({{LANGUAGE}} is filled in by the app).
+        QVERIFY2(role->statePrompt.contains(QStringLiteral("{{LANGUAGE}}")), qPrintable(id));
+        QVERIFY2(role->statePrompt.contains(QStringLiteral("independent axes")), qPrintable(id));
 
         // The routing calibration travels with the profile (docs/21, §4b).
         QVERIFY2(role->matchThreshold > 0, qPrintable(id));
@@ -548,13 +567,12 @@ void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
         QVERIFY2(role->readableThreshold > 0, qPrintable(id));
         QVERIFY2(role->blockMatchThresholds.size() >= 18, qPrintable(id));
 
-        // Per-block equivalence rules; the alias hop resolves the duplicates,
-        // and unknown types fall through to the role level.
+        // Per-block rules; the alias hop resolves the duplicates, and unknown
+        // types fall through to the role level.
         QVERIFY2(role->blockAliases.value(QStringLiteral("formula")) == QLatin1String("equation"), qPrintable(id));
         QVERIFY2(role->blockPrompts.isEmpty(), qPrintable(id));
         const ModelProfiles::DecisionBlock text = ModelProfiles::decisionBlockFor(profiles, id, QStringLiteral("decision"), QStringLiteral("text"));
         QVERIFY2(!text.statePrompt.isEmpty(), qPrintable(id));
-        QVERIFY2(text.questions.size() == 2, qPrintable(id));
         const ModelProfiles::DecisionBlock formula = ModelProfiles::decisionBlockFor(profiles, id, QStringLiteral("decision"), QStringLiteral("formula"));
         QVERIFY2(formula.statePrompt.contains(QStringLiteral("LaTeX is the carrier")), qPrintable(id));
         const ModelProfiles::DecisionBlock unknown = ModelProfiles::decisionBlockFor(profiles, id, QStringLiteral("decision"), QStringLiteral("unknown-type"));
