@@ -150,30 +150,20 @@ private slots:
         QCOMPARE(criteria.value(QStringLiteral("false")).toString(), QStringLiteral("The image shows at least one different character."));
     }
 
-    void requestBodyCarriesTheReadyQuestionsDict()
+    void requestBodyCarriesExactlyOneQuestion()
     {
-        // A v6 profile hands over the ready dict (match/has_text/readable/
-        // diagnosis) — it must reach the wire verbatim, with no legacy
-        // single-question build merged in.
+        // The decision scheme asks ONE question: a noul `match`. Every extra
+        // question is a separate forward pass on d3 (~1.4 s measured), so the
+        // request must carry nothing else.
         ExposedDecisionModel model;
         DecisionRequest request = testRequest();
-        QJsonObject diagnosis;
-        diagnosis.insert(QStringLiteral("exact_match"), 0.1);
-        diagnosis.insert(QStringLiteral("fixable_ocr_error"), 0.9);
-        QJsonObject diagnosisQuestion;
-        diagnosisQuestion.insert(QStringLiteral("type"), QStringLiteral("choice"));
-        diagnosisQuestion.insert(QStringLiteral("instructions"), QStringLiteral("Classify the relationship."));
-        diagnosisQuestion.insert(QStringLiteral("criteria"), diagnosis);
-        QJsonObject questions;
-        questions.insert(QStringLiteral("match"), QJsonObject{{QStringLiteral("type"), QStringLiteral("noul")}, {QStringLiteral("instructions"), QStringLiteral("Match?")}});
-        questions.insert(QStringLiteral("diagnosis"), diagnosisQuestion);
-        request.questions = questions;
+        request.question = QStringLiteral("Does the recognized text reproduce the crop?");
 
         const QJsonObject root = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
         const QJsonObject wire = root.value(QStringLiteral("questions")).toObject();
-        QCOMPARE(wire.size(), 2);
-        QCOMPARE(wire.value(QStringLiteral("match")).toObject().value(QStringLiteral("instructions")).toString(), QStringLiteral("Match?"));
-        QCOMPARE(wire.value(QStringLiteral("diagnosis")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("choice"));
+        QCOMPARE(wire.size(), 1);
+        QCOMPARE(wire.value(QStringLiteral("match")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("noul"));
+        QCOMPARE(wire.value(QStringLiteral("match")).toObject().value(QStringLiteral("instructions")).toString(), QStringLiteral("Does the recognized text reproduce the crop?"));
     }
 
     void responseParsingAcceptsAllSpellings()

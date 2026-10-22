@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QImage>
-#include <QJsonObject>
 #include <QString>
 
 namespace llocr {
@@ -18,10 +17,9 @@ struct DecisionRequest {
     QString blockType;       ///< The block's label, carried into state.block_type.
     QString recognizedText;  ///< The OCR candidate text, carried into state.recognized_text.
     QString notation;        ///< Notation disclaimer carried into state.notation (the profile's statePrompt); empty omits the field.
-    QString question;        ///< The single yes/no question wording (the decision role's question, with the block type's prompt appended when the profile ships one).
+    QString question;        ///< The single yes/no question wording (the decision role's question).
     QString criteriaTrue;    ///< Optional noul criteria: what counts as a match; empty omits the field.
     QString criteriaFalse;   ///< Optional noul criteria: what counts as a difference; empty omits the field.
-    QJsonObject questions;   ///< Ready-made questions dict (scheme v6); when non-empty it replaces the single-question build.
 };
 
 }  // namespace llocr

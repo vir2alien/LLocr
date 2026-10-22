@@ -361,19 +361,20 @@
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
-  - **Verification and fix pipeline (ADR 145–147, 161–164, 172; Oct 2026)** —
+  - **Verification and fix pipeline (ADR 145–147, 161–164, 172, 183; Oct 2026)** —
     verification runs in two stages: a fast **decision model** (clef-flash or
     d3-flash/d3-mini via `/v1/systemone`, the `decision` task in «Модели»)
-    judges every queued block. All three ship the **same scheme v6**
-    (`docs/21-d3.md` §4b): per-block equivalence rules in `state.notation`
-    and a ready two-question dict (`match` noul + `diagnosis` choice) — d3
-    answers each question of a request with its own forward pass, clef reads
-    them jointly (free), so the draft's `has_text`/`readable` noul gates
-    stay out of every profile and empty/unreadable crops route through the
-    diagnosis classes; the verdict is routed four ways: empty or unreadable
-    crop → **Review** (human eyes, never a fixer call),
-    Ok only when the noul and the choice head both agree, else Mismatch;
-    thresholds resolve per block type (`matchThresholdByBlock` in the
+    judges every queued block. All three ship the **same scheme v7**
+    (`docs/21-d3.md` §4b): ONE question per request (a noul `match`) and the
+    **axes** the block is checked on — script, case, face, position,
+    delimiters, designations, units — in `state.notation`, with the
+    document language named there through a `{{LANGUAGE}}` placeholder.
+    d3 answers each question of a request with its own forward pass, so the
+    v6 second question (`diagnosis`) doubled the price of a check and is
+    gone; the verdict is routed two ways: `match ≥ threshold` → **Ok**,
+    else **Mismatch** (a crop the model cannot read lands on **Review** in
+    the fix task, which answers REVIEW for an unreadable, clipped or empty
+    crop); thresholds resolve per block type (`matchThresholdByBlock` in the
     profile → role `matchThreshold` → the setting). d1-3B failed the task
     in every phrasing and was removed (ADR 161). Every block carries two text layers with independent verdicts
     (ADR 164): `box.text` (the OCR result) and `box.correctedText` (the fix
@@ -392,8 +393,8 @@
     mandatory `EDITS:` section for `table`; a reply outside the three
     verdicts (an old `EMPTY`, a `FIX none`, a free-text remark) lands on
     Review as a deviation. The fix profiles carry the same per-block equivalence rules as
-    the decision v6 prompts ("Equivalent (never fix) / Strictly different
-    (fix)") so the two models cannot disagree on е/ё, homoglyphs, LaTeX
+    the decision prompts (ADR 183: the axes and the language-parameterized
+    script rule) so the two models cannot disagree on е/ё, homoglyphs, LaTeX
     commands or table cells; `maxOutputByBlock` budgets the reply per block
     type. Block recognition (plain re-transcription)
     entry points: per-block «Распознать», the page toolbar's «Распознать

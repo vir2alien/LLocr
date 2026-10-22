@@ -4,6 +4,7 @@
 
 #include <QFutureWatcher>
 #include <QImage>
+#include <QString>
 
 #include "app/ModelRequestController.h"
 #include "core/DecisionRequest.h"
@@ -28,8 +29,7 @@ public:
                     const QString &notation,
                     const QString &question,
                     const QString &criteriaTrue = QString(),
-                    const QString &criteriaFalse = QString(),
-                    const QJsonObject &questions = {});
+                    const QString &criteriaFalse = QString());
 
 signals:
     void judgeFinished(const llocr::DecisionResult &result);

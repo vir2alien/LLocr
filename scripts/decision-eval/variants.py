@@ -44,11 +44,27 @@ def load_app_profile(profile_path):
     }
 
 
-def app_instructions(profile, label):
+# The app fills the placeholder with the document language (Russian for now).
+DOCUMENT_LANGUAGE = "Russian"
+
+
+def _block_state_prompt(profile, label):
+    """The per-block-type rules of the request profile.
+
+    The decision profile ships them as objects ({statePrompt}); an older
+    profile shipped plain strings.
+    """
     alias = profile["block_aliases"].get(label, label)
-    type_prompt = profile["block_prompts"].get(label) or profile["block_prompts"].get(alias, "")
-    parts = [p for p in (profile["state_prompt"], profile["question"], type_prompt) if p]
-    return "\n\n".join(parts)
+    entry = profile["block_prompts"].get(label) or profile["block_prompts"].get(alias) or ""
+    if isinstance(entry, dict):
+        entry = entry.get("statePrompt", "")
+    return entry
+
+
+def app_notation(profile, label):
+    """The state description the app sends: the general axes, then the block's own rules."""
+    parts = [p for p in (profile["state_prompt"], _block_state_prompt(profile, label)) if p]
+    return "\n\n".join(parts).replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE)
 
 
 MINIMAL_Q = "Does the image show exactly the text in the state?"
@@ -137,19 +153,14 @@ def html_table_rows(text):
 
 def make_variants(profile):
     def v0(block):
-        # The app's request in its current form (scheme v5, docs/17 §10): the
-        # state is a JSON object with the block type, the candidate text and
-        # the profile's notation line; the single instruction is the role's
-        # question, with the type's check list appended when the profile ships
-        # one, and the criteria ride along when shipped.
+        # The app's request in its current form (scheme v7): the state is a JSON
+        # object with the block type, the candidate text and the notation (the
+        # general axes plus the block type's own rules); one noul question.
         state = {"block_type": block.label, "recognized_text": block.text}
-        if profile["state_prompt"]:
-            state["notation"] = profile["state_prompt"]
-        instructions = profile["question"] or MINIMAL_Q
-        alias = profile["block_aliases"].get(block.label, block.label)
-        type_prompt = profile["block_prompts"].get(block.label) or profile["block_prompts"].get(alias, "")
-        if type_prompt:
-            instructions = instructions + "\n\n" + type_prompt
+        notation = app_notation(profile, block.label)
+        if notation:
+            state["notation"] = notation
+        instructions = (profile["question"] or MINIMAL_Q).replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE)
         q = {"type": "noul", "instructions": instructions}
         if profile["criteria_true"] or profile["criteria_false"]:
             crit = {}

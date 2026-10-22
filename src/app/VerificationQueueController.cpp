@@ -20,9 +20,16 @@ constexpr const char *kFallbackQuestion = "The state is a text fragment recogniz
 // v6 routing cut-offs for profiles that ship no calibration (docs/21, §v6).
 constexpr double kDefaultEmptyThreshold = 0.25;
 constexpr double kDefaultReadableThreshold = 0.45;
-// The language the fix prompt names ({{LANGUAGE}}). The user's choice and
+// The language the prompts name ({{LANGUAGE}}). The user's choice and
 // the auto-detection land in the next step.
 const QString kDocumentLanguage = QStringLiteral("Russian");
+
+// The prompts that name the document language ({{LANGUAGE}}) get the
+// language filled in before they reach the model.
+QString withDocumentLanguage(QString text)
+{
+    return text.replace(QStringLiteral("{{LANGUAGE}}"), kDocumentLanguage);
+}
 }  // namespace
 
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
@@ -475,13 +482,11 @@ void VerificationQueueController::startNextVerify()
         // showing a stale verdict (ADR 164).
         emit verificationStarted(m_verifyPage, m_verifyBoxIndex);
         // The state carries the block's type, the candidate text and the
-        // notation disclaimer (per-type equivalence rules when the v6 profile
-        // ships them); the asks travel as the profile's ready questions dict
-        // (match/has_text/readable/diagnosis) or, on v5 profiles, as the
-        // single question with the type's check list appended and the
-        // profile's criteria riding along.
+        // description of the check (the axes every block is judged on plus
+        // this block type's own rules); the request asks one question: is the
+        // block recognized correctly?
         m_judgedType = box.label;
-        m_decision.judgeBlock(crop, box.label, text, decisionNotation(box.label), decisionQuestion(box.label), decisionCriteriaTrue(), decisionCriteriaFalse(), decisionQuestions(box.label));
+        m_decision.judgeBlock(crop, box.label, text, decisionNotation(box.label), decisionQuestion(), decisionCriteriaTrue(), decisionCriteriaFalse());
         return;
     }
 
@@ -516,7 +521,7 @@ void VerificationQueueController::startNextVerify()
     m_check.checkBlock(crop, systemPrompt, userPrompt);
 }
 
-QString VerificationQueueController::decisionQuestion(const QString &blockType) const
+QString VerificationQueueController::decisionQuestion() const
 {
     const QString modelId = m_deps.settings.decisionRequestProfileId();
     const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
@@ -527,39 +532,26 @@ QString VerificationQueueController::decisionQuestion(const QString &blockType) 
     QString question = ModelProfiles::questionFor(profiles, modelId, QStringLiteral("decision"));
     if (question.isEmpty())
         question = StatusMessage::translate("VerificationQueueController", kFallbackQuestion).text();
-
-    QStringList parts;
-    parts.append(question);
-    const QString typePrompt = ModelProfiles::blockPromptFor(profiles, modelId, QStringLiteral("decision"), blockType);
-    if (!typePrompt.isEmpty())
-        parts.append(typePrompt);
-    return parts.join(QStringLiteral("\n\n"));
+    return withDocumentLanguage(question);
 }
 
 QString VerificationQueueController::decisionNotation(const QString &blockType) const
 {
     const QString modelId = m_deps.settings.decisionRequestProfileId();
     const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
-    // Per-block equivalence rules (v6) carry the notation disclaimer; profiles
-    // predating statePrompt fall back to their system prompt.
+    // The state description: the general axes every block is checked on, then
+    // what is specific to this block type. The per-type rules only add to the
+    // general ones — they never replace them.
+    QStringList parts;
+    const QString general = ModelProfiles::statePromptFor(profiles, modelId, QStringLiteral("decision"));
+    if (!general.isEmpty())
+        parts.append(general);
     const ModelProfiles::DecisionBlock block = ModelProfiles::decisionBlockFor(profiles, modelId, QStringLiteral("decision"), blockType);
     if (!block.statePrompt.isEmpty())
-        return block.statePrompt;
-    QString notation = ModelProfiles::statePromptFor(profiles, modelId, QStringLiteral("decision"));
-    if (notation.isEmpty())
-        notation = ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("decision"));
-    return notation;
-}
-
-QJsonObject VerificationQueueController::decisionQuestions(const QString &blockType) const
-{
-    const QString modelId = m_deps.settings.decisionRequestProfileId();
-    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
-    const ModelProfiles::DecisionBlock block = ModelProfiles::decisionBlockFor(profiles, modelId, QStringLiteral("decision"), blockType);
-    if (!block.questions.isEmpty())
-        return block.questions;
-    const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, QStringLiteral("decision"));
-    return role ? role->questions : QJsonObject();
+        parts.append(block.statePrompt);
+    if (parts.isEmpty())
+        parts.append(ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("decision")));
+    return withDocumentLanguage(parts.join(QStringLiteral("\n\n")));
 }
 
 double VerificationQueueController::matchThresholdFor(const QString &blockType) const
@@ -577,12 +569,12 @@ double VerificationQueueController::matchThresholdFor(const QString &blockType) 
 
 QString VerificationQueueController::decisionCriteriaTrue() const
 {
-    return ModelProfiles::criteriaTrueFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
+    return withDocumentLanguage(ModelProfiles::criteriaTrueFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision")));
 }
 
 QString VerificationQueueController::decisionCriteriaFalse() const
 {
-    return ModelProfiles::criteriaFalseFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
+    return withDocumentLanguage(ModelProfiles::criteriaFalseFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision")));
 }
 
 void VerificationQueueController::skipCurrentTask()

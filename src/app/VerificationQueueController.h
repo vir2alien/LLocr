@@ -22,13 +22,13 @@ class SettingsStore;
 
 // The two-phase verification queue (ADR 145, ADR 163). Phase 1 sends every
 // queued block to the decision model, which answers probabilities instead of
-// generating text: the v6 routing (docs/21) marks a block Ok when both the
-// noul and the choice head agree, sends an empty/unreadable crop to a human
-// (Review) and everything else to Mismatch — the threshold is per block type
-// when the profile ships the map. The fix is a separate action (ADR 178): the
-// user sends the mismatched blocks through the fix task's OK / FIX / REVIEW
-// protocol with the «Fix» button, so one check run costs one server role
-// switch.
+// generating text: the request asks ONE question (ADR 183) and the state
+// description names the axes the block is checked on, so the verdict is the
+// threshold on P(match) — Ok above it, Mismatch below. The threshold is per
+// block type when the profile ships the map. The fix is a separate action
+// (ADR 178): the user sends the mismatched blocks through the fix task's
+// OK / FIX / REVIEW protocol with the «Fix» button, so one check run costs
+// one server role switch.
 class VerificationQueueController : public QObject
 {
     Q_OBJECT
@@ -129,9 +129,8 @@ private:
     void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const;
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;
-    QString decisionQuestion(const QString &blockType) const;
+    QString decisionQuestion() const;
     QString decisionNotation(const QString &blockType) const;
-    QJsonObject decisionQuestions(const QString &blockType) const;
     QString decisionCriteriaTrue() const;
     QString decisionCriteriaFalse() const;
     double matchThresholdFor(const QString &blockType) const;

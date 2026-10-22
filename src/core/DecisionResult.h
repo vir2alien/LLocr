@@ -37,11 +37,12 @@ struct DecisionResult {
         return top;
     }
 
-    // Scheme v6 routing (docs/21, §v6): an empty or unreadable crop goes to a
-    // human (Review) instead of burning a fixer call; Ok needs both the noul
-    // and the choice head to agree. Answers that were not asked (v5 profiles,
-    // old servers) leave the threshold-only verdict. EMPTY and REVIEW both
-    // land on the existing Review status — no new block states.
+    // Routing (ADR 183): the decision pass asks ONE question, so the verdict
+    // is the threshold on P(match) — Ok above it, Mismatch below. The aux
+    // answers (has_text, readable, the diagnosis classes) are still read when
+    // a server sends them, and they keep their routes: an empty or unreadable
+    // crop goes to Review (human eyes, never a fixer call). EMPTY and REVIEW
+    // both land on the existing Review status — no new block states.
     CheckStatus routedStatus(double matchThreshold, double emptyThreshold, double readableThreshold) const
     {
         const QString top = topDiagnosis();

@@ -77,55 +77,51 @@ Latency (Mac, Metal, Q5_K_M): ~7–15 s per formula request, 80–110 s for
 large tables (4–5k prompt tokens). That is 3–4× slower than d1-3B — the
 price for being able to verify formulas.
 
-## 4. Request scheme (v6, unified with d3)
+## 4. Request scheme (v7, unified with d3)
 
-Since 19 Oct 2026 clef ships the **same scheme v6 as the d3 family**
-(`docs/21-d3.md` §4b): per-block equivalence rules carried into
-`state.notation`, a per-block threshold map, and a ready two-question dict —
-`match` (noul) + `diagnosis` (choice: `exact_match` / `fixable_ocr_error` /
-`unreadable_or_clipped` / `empty_crop`). clef reads the questions of a
-request jointly in one prompt, so the second question costs no latency —
-unlike d3, which pays one forward pass per question.
+clef ships the **same scheme v7 as the d3 family**
+(`docs/21-d3.md` §4b): one noul question `match`, the axes the block is
+checked on in `state.notation`, a per-block threshold map. clef reads the
+questions of a request jointly in one prompt, so a second question would
+cost it no latency — unlike d3, which pays one forward pass per question.
+The scheme is one question anyway: the axes carry the veto the second
+question used to provide, in a single pass.
 
 Rules:
 
 - **State is a JSON object only**, with `block_type` (the block type),
   `recognized_text` (the recognized text as-is, no translation) and
-  `notation` (the block type's equivalence rules from the request profile,
-  `blockPrompts[type].statePrompt`; the role-level `statePrompt` is the
-  fallback). The request texts are shared with the d3 models — they live in
+  `notation` (the axes every block is checked on plus the block type's own
+  rules, from the request profile — the role-level `statePrompt` and the
+  per-block `blockPrompts[type].statePrompt` joined). The request texts are
+  shared with the d3 models — they live in
   `resources/profiles/requests/decision-requests.json` (ADR 182).
-- **Two questions**, `match` + `diagnosis`, handed over as the profile's
-  ready dict. The `has_text`/`readable` noul gates stay out of the profile
-  for uniformity with d3 — the empty/unreadable routes run through the
-  diagnosis classes; adding them back is a JSON edit (free for clef, code
-  and thresholds already support them).
-- **No criteria**, no longer instructions — measured, none improve
-  separation.
+- **One question**, `match` (noul), built by the app from the profile's
+  `question`. The `has_text`/`readable` noul gates and the `diagnosis`
+  choice stay out of the profile; the parser still reads all five answers,
+  so a profile may ship them again without code changes.
+- **No criteria** — measured, they do not improve separation (docs/17, §6).
 - Instruction texts are fixed (English); the content stays in the document
-  language.
+  language, which the state names through a `{{LANGUAGE}}` placeholder the
+  app fills in.
 - The image is a PNG data-URI of the block crop at page resolution (300 DPI
   for PDFs), exactly what the app sends.
 
-Response (the measured choice shape: a string label next to a
-`probabilities` map):
+Response:
 
 ```json
 {
   "model": "llocr-decision",
   "answers": {
-    "match": { "type": "noul", "noul": 0.83 },
-    "diagnosis": { "type": "choice", "choice": "exact_match",
-                   "probabilities": { "exact_match": 0.81, "fixable_ocr_error": 0.15,
-                                      "unreadable_or_clipped": 0.03, "empty_crop": 0.01 },
-                   "confidence": 0.86 } },
+    "match": { "type": "noul", "noul": 0.83 }
+  },
   "usage": { "input_tokens": 902, "output_tokens": 0 }
 }
 ```
 
-Routing: the same four-way rule as d3 (ADR 172) — top `empty_crop` /
-`unreadable_or_clipped` → Review, Ok only when `match ≥ threshold` and top
-= `exact_match`, else Mismatch.
+Routing: `Ok` when `match ≥ threshold`, else `Mismatch` (ADR 183). A crop
+clef cannot read scores low and lands on **Review** in the fix task, which
+answers REVIEW for an unreadable, clipped or empty crop.
 
 ## 4b. The measured v5 baseline
 

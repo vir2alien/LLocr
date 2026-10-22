@@ -17,29 +17,24 @@ QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const
 {
     // The state is a JSON object: the candidate text sits in a named field, so
     // the model reads it as content to compare against the crop — a raw string
-    // answers "is there text on the image" instead (docs/17, §4). A v6 profile
-    // hands over the ready questions dict (match/has_text/readable/diagnosis,
-    // one forward pass); otherwise the single v5 question is built here, with
-    // the profile's noul criteria riding along when it ships one.
+    // answers "is there text on the image" instead (docs/17, §4). The request
+    // carries ONE question: a noul `match` whose instructions name the axes the
+    // state describes. The criteria ride along when the profile ships them.
     QJsonObject state{{QStringLiteral("block_type"), request.blockType}, {QStringLiteral("recognized_text"), request.recognizedText}};
     if (!request.notation.isEmpty())
         state.insert(QStringLiteral("notation"), request.notation);
 
-    QJsonObject questions;
-    if (!request.questions.isEmpty()) {
-        questions = request.questions;
-    } else {
-        QJsonObject question{{QStringLiteral("type"), QStringLiteral("noul")}, {QStringLiteral("instructions"), request.question}};
-        if (!request.criteriaTrue.isEmpty() || !request.criteriaFalse.isEmpty()) {
-            QJsonObject criteria;
-            if (!request.criteriaTrue.isEmpty())
-                criteria.insert(QStringLiteral("true"), request.criteriaTrue);
-            if (!request.criteriaFalse.isEmpty())
-                criteria.insert(QStringLiteral("false"), request.criteriaFalse);
-            question.insert(QStringLiteral("criteria"), criteria);
-        }
-        questions.insert(QStringLiteral("match"), question);
+    QJsonObject question{{QStringLiteral("type"), QStringLiteral("noul")}, {QStringLiteral("instructions"), request.question}};
+    if (!request.criteriaTrue.isEmpty() || !request.criteriaFalse.isEmpty()) {
+        QJsonObject criteria;
+        if (!request.criteriaTrue.isEmpty())
+            criteria.insert(QStringLiteral("true"), request.criteriaTrue);
+        if (!request.criteriaFalse.isEmpty())
+            criteria.insert(QStringLiteral("false"), request.criteriaFalse);
+        question.insert(QStringLiteral("criteria"), criteria);
     }
+    QJsonObject questions;
+    questions.insert(QStringLiteral("match"), question);
 
     QJsonObject root;
     root.insert(QStringLiteral("state"), state);
