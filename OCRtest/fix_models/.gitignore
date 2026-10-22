@@ -1,0 +1,6 @@
+# Пересобирается: corpus/build_corpus.py
+_project/
+_pages/
+# Кеш ответов llama-server (по хешу запроса) и логи
+results/*/cache/
+results/server*.log

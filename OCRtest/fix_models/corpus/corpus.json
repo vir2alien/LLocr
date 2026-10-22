@@ -1,0 +1,127 @@
+{
+ "description": "Корпус fix-стенда: кандидат — текст распознавания MinerU2.5-Pro, истина — ручной эталон (gt.json + overrides.json).",
+ "project": "/Users/gladskikh/Git/LLocr/OCRtest/decision_models/test 2/OCR_TEST_MinerU2.5-Pro.llocr",
+ "gt": "/Users/gladskikh/Git/LLocr/OCRtest/ocr_models/materials/gt.json",
+ "dpi": 300,
+ "blocks": [
+  {
+   "uid": "p03b02",
+   "page": 3,
+   "index": 2,
+   "label": "text",
+   "group": "ru_math_text",
+   "candidate": "Подставляя значение  \\( M_{\\pi} \\)  и  \\( Q_{исп.впр} \\)  в уравнение (2.63), получим",
+   "candidate_wire": "Подставляя значение  \\( M_{\\pi} \\)  и  \\( Q_{исп.впр} \\)  в уравнение (2.63), получим",
+   "gt": "Подставляя значение M_п и Q_исп.впр в уравнение (2.63), получим",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b02_text.png",
+   "crop_size": [
+    1857,
+    86
+   ]
+  },
+  {
+   "uid": "p03b03",
+   "page": 3,
+   "index": 3,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\left| \\frac {p}{p _ {\\mathrm{H.Bnp}}} = \\left(\\frac {V _ {\\mathrm{H.Bnp}}}{V}\\right) ^ {n _ {1}} \\frac {M}{M _ {\\mathrm{H.Bnp}}} e ^ {\\left[ - \\bar {B} \\int_ {0} ^ {\\tau} \\frac {d \\tau}{\\left(1 + \\frac {M _ {\\Pi}}{M _ {\\mathrm{H.Bnp}}}\\right)} \\right]} \\right. \\tag {2.68}\\]",
+   "candidate_wire": "\\[\\left| \\frac{p}{p _{\\mathrm{H.Bnp}}} = \\left(\\frac{V _{\\mathrm{H.Bnp}}}{V}\\right) ^ {n _{1}} \\frac{M}{M _{\\mathrm{H.Bnp}}} e ^ {\\left[- \\bar{B} \\int_{0} ^ {\\tau} \\frac{d \\tau}{\\left(1 + \\frac{M _{\\Pi}}{M _{\\mathrm{H.Bnp}}}\\right)} \\right]} \\right. \\tag{2.68}\\]",
+   "gt": "\\frac{p}{p_{н.впр}} = \\left(\\frac{V_{н.впр}}{V}\\right)^{n_1} \\frac{M}{M_{н.впр}} e^{\\left[−\\bar{B} \\int_0^{\\bar{\\tau}} \\frac{d\\tau}{1+\\frac{M_п}{M_{н.впр}}}\\right]}. \\quad (2.68)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b03_equation.png",
+   "crop_size": [
+    1742,
+    510
+   ]
+  },
+  {
+   "uid": "p03b05",
+   "page": 3,
+   "index": 5,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\overline {{\\mathrm{B}}} _ {1} = \\frac {\\left(\\mathrm{n} _ {1} - 1\\right) \\mathrm{Q} _ {\\text {терм}}}{\\mathrm{M} _ {\\mathrm{T}} \\mathrm{R} _ {\\mathrm{B}} \\mathrm{T} _ {\\mathrm{Нвпр}}}, \\quad \\overline {{\\mathrm{B}}} = \\frac {\\left(\\mathrm{n} _ {1} - 1\\right) \\mathrm{Q} _ {\\text {исп.впр}}}{\\mathrm{M} _ {\\mathrm{Н.впр}} \\mathrm{R} _ {\\mathrm{B}} \\mathrm{T} _ {\\mathrm{Н.впр}}};\\]",
+   "candidate_wire": "\\[\\overline{{\\mathrm{B}}} _{1} = \\frac{\\left(\\mathrm{n} _{1} - 1\\right) \\mathrm{Q} _{\\text{терм}}}{\\mathrm{M} _{\\mathrm{T}} \\mathrm{R} _{\\mathrm{B}} \\mathrm{T} _{\\mathrm{Нвпр}}}, \\quad \\overline{{\\mathrm{B}}} = \\frac{\\left(\\mathrm{n} _{1} - 1\\right) \\mathrm{Q} _{\\text{исп.впр}}}{\\mathrm{M} _{\\mathrm{Н.впр}} \\mathrm{R} _{\\mathrm{B}} \\mathrm{T} _{\\mathrm{Н.впр}}};\\]",
+   "gt": "\\bar{B}_1 = \\frac{(n_1−1)Q_{терм}}{M_т R_в T_{н.впр}}, \\bar{B} = \\frac{(n_1−1)Q_{исп.впр}}{M_{н.впр} R_в T_{н.впр}};",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b05_equation.png",
+   "crop_size": [
+    1285,
+    216
+   ]
+  },
+  {
+   "uid": "p03b09",
+   "page": 3,
+   "index": 9,
+   "label": "text",
+   "group": "ru_math_text",
+   "candidate": "\\( Q_{исп.впр} \\) - тепло, подводимое к топливу за время \\( \\tau_{впр} \\) при условиях в момент начала впрыска.",
+   "candidate_wire": "\\( Q_{исп.впр} \\) - тепло, подводимое к топливу за время \\( \\tau_{впр} \\) при условиях в момент начала впрыска.",
+   "gt": "Q_исп.впр − тепло, подводимое к топливу за время τ_впр при условиях в момент начала впрыска.",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b09_text.png",
+   "crop_size": [
+    2098,
+    168
+   ]
+  },
+  {
+   "uid": "p03b11",
+   "page": 3,
+   "index": 11,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\frac {\\mathrm{p}}{\\mathrm{p} _ {\\mathrm{H.Bnp}}} \\approx \\left(\\frac {\\mathrm{V} _ {\\mathrm{H.Bnp}}}{\\mathrm{V}}\\right) ^ {n _ {1}} \\left(1 + \\frac {\\overline {{\\mathrm{B}}}}{\\overline {{\\mathrm{B}}} _ {1}} \\bar {\\tau}\\right) ^ {1 - \\overline {{\\mathrm{B}}} _ {1}}; \\tag {2.69a}\\]",
+   "candidate_wire": "\\[\\frac{\\mathrm{p}}{\\mathrm{p} _{\\mathrm{H.Bnp}}} \\approx \\left(\\frac{\\mathrm{V} _{\\mathrm{H.Bnp}}}{\\mathrm{V}}\\right) ^ {n _{1}} \\left(1 + \\frac{\\overline{{\\mathrm{B}}}}{\\overline{{\\mathrm{B}}} _{1}} \\bar{\\tau}\\right) ^ {1 - \\overline{{\\mathrm{B}}} _{1}}; \\tag{2.69a}\\]",
+   "gt": "\\frac{p}{p_{н.впр}} \\approx \\left(\\frac{V_{н.впр}}{V}\\right)^{n_1} \\left(1+\\frac{\\bar{B}}{\\bar{B}_1}\\bar{\\tau}\\right)^{1−\\bar{B}_1}; \\quad (2.69а)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b11_equation.png",
+   "crop_size": [
+    1580,
+    246
+   ]
+  },
+  {
+   "uid": "p03b12",
+   "page": 3,
+   "index": 12,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\frac {\\mathrm{T}}{\\mathrm{T} _ {\\mathrm{H.BPp}}} \\approx \\left(\\frac {\\mathrm{V} _ {\\mathrm{H.BPp}}}{\\mathrm{V}}\\right) ^ {n _ {1} - 1} \\left(1 + \\frac {\\overline {{\\mathrm{B}}}}{\\overline {{\\mathrm{B}}} _ {1}} \\bar {\\tau}\\right) ^ {- \\overline {{\\mathrm{B}}} _ {1}}. \\tag {2.696}\\]",
+   "candidate_wire": "\\[\\frac{\\mathrm{T}}{\\mathrm{T} _{\\mathrm{H.BPp}}} \\approx \\left(\\frac{\\mathrm{V} _{\\mathrm{H.BPp}}}{\\mathrm{V}}\\right) ^ {n _{1} - 1} \\left(1 + \\frac{\\overline{{\\mathrm{B}}}}{\\overline{{\\mathrm{B}}} _{1}} \\bar{\\tau}\\right) ^ {- \\overline{{\\mathrm{B}}} _{1}}. \\tag{2.696}\\]",
+   "gt": "\\frac{T}{T_{н.впр}} \\approx \\left(\\frac{V_{н.впр}}{V}\\right)^{n_1−1} \\left(1+\\frac{\\bar{B}}{\\bar{B}_1}\\bar{\\tau}\\right)^{−\\bar{B}_1}. \\quad (2.69б)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b12_equation.png",
+   "crop_size": [
+    1587,
+    250
+   ]
+  },
+  {
+   "uid": "p03b14",
+   "page": 3,
+   "index": 14,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\frac {\\mathrm{p}}{\\mathrm{p} _ {\\mathrm{H.Bnp}}} \\approx \\left(\\frac {\\mathrm{V} _ {\\mathrm{H.Bnp}}}{\\mathrm{V}}\\right) ^ {\\mathrm{n} _ {1}} \\left(1 + \\frac {\\mathrm{M} _ {\\mathrm{v}}}{\\mathrm{M} _ {\\mathrm{H.Bnp}}}\\right) \\mathrm{e} ^ {- \\overline {{\\mathrm{B}}} _ {1} \\overline {{\\tau}}}; \\tag {2.70a}\\]",
+   "candidate_wire": "\\[\\frac{\\mathrm{p}}{\\mathrm{p} _{\\mathrm{H.Bnp}}} \\approx \\left(\\frac{\\mathrm{V} _{\\mathrm{H.Bnp}}}{\\mathrm{V}}\\right) ^ {\\mathrm{n} _{1}} \\left(1 + \\frac{\\mathrm{M} _{\\mathrm{v}}}{\\mathrm{M} _{\\mathrm{H.Bnp}}}\\right) \\mathrm{e} ^ {- \\overline{{\\mathrm{B}}} _{1} \\overline{{\\tau}}}; \\tag{2.70a}\\]",
+   "gt": "\\frac{p}{p_{н.впр}} \\approx \\left(\\frac{V_{н.впр}}{V}\\right)^{n_1} \\left(1+\\frac{M_v}{M_{н.впр}}\\right) e^{−\\bar{B}_1\\bar{\\tau}}; \\quad (2.70а)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b14_equation.png",
+   "crop_size": [
+    1641,
+    243
+   ]
+  }
+ ]
+}

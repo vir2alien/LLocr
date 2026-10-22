@@ -1,0 +1,8 @@
+-> сервер {'reasoning_budget': 512}
+   combo_hint_generic_think_2x
+
+=== qwen3.5-4b · 7 блоков
+вариант                 Ok  Fix  Rev  улучш  порч  CER до CER после  инд до инд после     с
+combo_hint_generic_think_2x   2    5    0      2     1   0.147     0.111    0.50      0.71  36.9
+
+ответы: results/r5/rows.jsonl

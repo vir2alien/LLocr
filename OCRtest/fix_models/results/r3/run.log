@@ -1,0 +1,27 @@
+-> сервер (профиль приложения)
+   script_hint
+   script_hint_2x
+   read_script_hint
+-> сервер {'reasoning_budget': 512}
+   script_hint_think
+-> сервер {'image_min_tokens': 2048}
+   vision_2048
+   img_1x_vision_2048
+-> сервер {'image_min_tokens': 4096}
+   vision_4096
+   img_1x_vision_4096
+   img_2x_vision_4096
+
+=== qwen3.5-4b · 7 блоков
+вариант                 Ok  Fix  Rev  улучш  порч  CER до CER после  инд до инд после     с
+script_hint_think        2    5    0      3     0   0.147     0.084    0.50      0.73  43.0
+read_script_hint         0    0    0      3     4   0.147     0.138    0.50      0.64  14.8
+vision_2048              2    5    0      1     0   0.147     0.146    0.50      0.52  31.6
+img_1x_vision_2048       2    5    0      1     0   0.147     0.146    0.50      0.52  31.6
+vision_4096              2    5    0      1     0   0.147     0.146    0.50      0.52  31.6
+img_1x_vision_4096       2    5    0      1     0   0.147     0.146    0.50      0.52  31.6
+script_hint              2    5    0      1     1   0.147     0.146    0.50      0.55  12.5
+img_2x_vision_4096       2    5    0      0     1   0.147     0.148    0.50      0.52  74.9
+script_hint_2x           2    5    0      0     1   0.147     0.152    0.50      0.52  18.7
+
+ответы: results/r3/rows.jsonl

@@ -1,0 +1,19 @@
+-> сервер (профиль приложения)
+   read_only
+   self_check
+   page_ctx
+   page_ctx_2x
+   img_2x_gray
+   img_2x_bin
+-> сервер {'reasoning_budget': 512}
+   think_512_2x
+   think_512_page
+   self_check_think
+-> сервер {'reasoning_budget': 2048}
+   think_2048
+-> сервер {'image_min_tokens': 4096}
+   img_2x_vision_4096
+   img_3x_vision_4096
+   img_1x_vision_4096
+-> сервер {'image_min_tokens': 8192}
+сервер упал, смотрите results/server.log: /Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11799-metal-macos-arm64/llama-b11799/llama-server --model /Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__Qwen3.5-4B-MTP-GGUF/Qwen3.5-4B-Q8_0.gguf --mmproj /Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__Qwen3.5-4B-MTP-GGUF/mmproj-F16.gguf --alias llocr-fix --host 127.0.0.1 --port 8123 --spec-type draft-mtp --spec-draft-n-max 4 --special --temp 0 --jinja --reasoning-budget 0 --image-min-tokens 1024 --parallel 1 --cache-reuse 0 --no-context-shift --no-warmup --n-gpu-layers 99 --flash-attn on --ctx-size 16384 --image-min-tokens 8192

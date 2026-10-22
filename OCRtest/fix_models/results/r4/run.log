@@ -1,0 +1,15 @@
+-> сервер {'reasoning_budget': 512}
+   combo_hint_think_2x
+   script_hint_think
+-> сервер {'image_min_tokens': 4096, 'reasoning_budget': 512}
+   combo_hint_think_vision
+   combo_think_2x_vision
+
+=== qwen3.5-4b · 7 блоков
+вариант                 Ok  Fix  Rev  улучш  порч  CER до CER после  инд до инд после     с
+combo_hint_think_2x      3    4    0      4     0   0.147     0.062    0.50      0.74  48.6
+script_hint_think        2    5    0      3     0   0.147     0.084    0.50      0.73  43.5
+combo_hint_think_vision   2    5    0      3     0   0.147     0.084    0.50      0.73  43.5
+combo_think_2x_vision    1    5    1      2     1   0.147     0.119    0.50      0.67 102.0
+
+ответы: results/r4/rows.jsonl
