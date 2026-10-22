@@ -84,7 +84,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
     };
     // The launch lists are the ones a wrong edit silently truncates: a model
     // that loses image-*-tokens or dry-sequence-breaker still starts, and the only
-    // symptom is a worse vision budget. ctx-size and n-predict are not listed on
+    // symptom is a worse vision budget; the 12B losing ubatch-size still starts
+    // and aborts on the first image decode. ctx-size and n-predict are not listed on
     // purpose — they follow the machine's memory and live in the platform
     // profiles of serverLaunch.json (ADR 126).
     const QList<Expected> expected = {
@@ -93,7 +94,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"qwen3.5-4b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"qwen3.5-9b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"gemma-4-e4b", "fix", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,flash-attn,image-min-tokens"},
-        {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens"},
+        {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens,ubatch-size"},
         {"teleocr", "blockRecognition,layout", "b4000", "q8_0,q5_k_m,q4_k_m,q3_k_m", ""},
         {"glm-ocr", "rawPageOcr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"clef-flash", "decision", "b11430", "q8_0,q6_k,q5_k_m,q4_k_m,q4_0", "ctx-size,batch-size,ubatch-size"},

@@ -165,7 +165,7 @@
           "order": 6,
           "name": "cache_prompt",
           "value": false,
-          "description": "Reuse the prompt cache; false avoids the recurring-state position warnings Qwen3.5 logs when blocks share a prefix."
+          "description": "No-op for this model: hybrid recurrent memory cannot be rewound, so llama-server forces full prompt re-processing whatever this says. Kept off to make that explicit."
         },
         {
           "order": 7,

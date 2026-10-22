@@ -101,6 +101,17 @@ Layer by layer:
     visual token budgets: **70 / 140 / 280 / 560 / 1120**. The card says to
     use the higher budgets for OCR, document parsing and small text, so the
     profile pins the top budget (§ Best practices 5).
+  - `--ubatch-size 2048` — **12B only**. The 12B is the *unified* build: the
+    projector feeds image patches into the main model, and that decode runs
+    with non-causal attention — a non-causal batch cannot be split across
+    ubatches, the whole image must fit in one. With the server default 512
+    llama-server caps the vision budget to 512 tokens, and any block crop
+    upscaled up to the budget lands a few tokens *above* the cap (the resize
+    rounds both sides up to the patch grid) — the first image decode aborts
+    the server with `non-causal attention requires n_ubatch >= n_tokens`.
+    2048 holds the pinned 1120-token budget plus the rounding overshoot. The
+    E4B encodes images in its own projector on the causal path and keeps the
+    default.
   - `--flash-attn off` — **E4B only**: the card's E4B command runs with
     flash attention off. The 12B card says the opposite (`-fa on`), which is
     what the platform layer already defaults to on Metal/CUDA — so the 12B

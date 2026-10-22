@@ -25,6 +25,7 @@ private slots:
     void stopDuringStartupIsSafe();
     void restartAfterGracefulStopSurvivesStaleKillTimer();
     void reportsTensorLoadPercent();
+    void benignWarningNoiseIsFiltered();
 };
 
 // Helper that builds a server pointed at the mock binary. Timers/network need
@@ -192,6 +193,26 @@ void TestServerProcess::reportsTensorLoadPercent()
     QVERIFY(m->loadProgressPercent() >= 0 && m->loadProgressPercent() <= 100);
     m->stop();
     QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
+}
+
+void TestServerProcess::benignWarningNoiseIsFiltered()
+{
+    QTemporaryDir dir;
+    QString logFile;
+    // --warn emits the llama.cpp #28166 false positive (mrope image batches on
+    // hybrid-recurrent models fire it on every request); the wrapper must keep
+    // it out of the ring and the log file while real lines still pass.
+    QScopedPointer<LlamaServerProcess> m(makeServer({QStringLiteral("--hello"), QStringLiteral("3"), QStringLiteral("--warn"), QStringLiteral("8")}, 60000, true, dir, logFile));
+    QVERIFY(m->start().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(m->state() == RuntimeState::Ready, 12000);
+    QTRY_VERIFY_WITH_TIMEOUT(static_cast<int>(m->ringBuffer().filter(QStringLiteral("llama_model_loader")).size()) >= 3, 12000);
+    QTest::qWait(500);  // margin for any (wrongly) forwarded warning lines
+    QVERIFY(m->ringBuffer().filter(QStringLiteral("non-consecutive token position")).isEmpty());
+    m->stop();
+    QTRY_COMPARE_WITH_TIMEOUT(int(m->state()), int(RuntimeState::Stopped), 8000);
+    QFile f(logFile);
+    QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+    QVERIFY(!f.readAll().contains("non-consecutive token position"));
 }
 
 QTEST_MAIN(TestServerProcess)

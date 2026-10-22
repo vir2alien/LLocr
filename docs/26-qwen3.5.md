@@ -95,8 +95,10 @@ in the footer. A reply that is none of the three verdicts — an old
 Review too (ADR 181).
 
 Sampling: `temperature 0`, neutral penalties, `stream false`,
-`cache_prompt false` — false avoids the recurring-state position warnings
-Qwen3.5 logs when requests share a prefix. `stop`
+`cache_prompt false` — the flag is a no-op here: hybrid recurrent memory
+cannot be rewound, so llama-server force-disables prompt caching and
+re-processes the full prompt of every request regardless (§7).
+`stop`
 (`["<|im_end|>", "<|endoftext|>", "</CANDIDATE>"]`) ends the reply at the
 verdict. `maxOutputByBlock` budgets the reply per block type (a page
 number 64 tokens, a formula 1024, a table 8192) — the block-level value
@@ -122,9 +124,17 @@ ADR 164) and is itself judged by the decision task on the next
 
 ## 7. Known limitations
 
-- Qwen3.5 logs benign `non-consecutive token position` warnings with
-  shared prefixes — the app pins `cache_prompt false` (§4) and the log
-  filter; upstream bug #28166.
+- Qwen3.5 logs `non-consecutive token position` warnings on every M-RoPE
+  image batch: image tokens share one scalar position and the recurrent
+  cache's `find_slot` expects strictly advancing ones (upstream bug
+  #28166, open). The decoder continues correctly and no work is
+  repeated — the flood is noise, and `LlamaServerProcess` filters these
+  lines out of the log window.
+- Related, and the actual per-block cost: prompt caching is impossible
+  for hybrid-recurrent models (the recurrent state cannot be rewound),
+  so every fix request re-processes its full prompt — text, the
+  1024-token image and all — no matter what `cache_prompt` says. The
+  warnings are not the latency; the forced re-prefill is.
 - A restart of the managed server brings back the role it was serving
   (stage-8 regression `restartBringsBackTheStartedRole`) — do not "fix"
   a role flip by re-picking the model.

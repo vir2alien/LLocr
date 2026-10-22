@@ -12,6 +12,8 @@
 //   --crash-on-health   exit(1) the first time /health is served
 //   --crash-after MS    exit(1) after MS of uptime
 //   --hello N           print N "llama_model_loader: loading" lines at startup
+//   --warn N            print N find_slot "non-consecutive token position"
+//                       warnings (the llama.cpp #28166 noise the app filters)
 //
 // Environment:
 //   LLOCR_MOCK_MARKER            append one "invoke" line per spawn
@@ -58,6 +60,7 @@ int main(int argc, char *argv[])
     qint64 crashAfterMs = 0;
     int helloLines = 0;
     int progressLines = 0;
+    int warnLines = 0;
 
     QStringList args = app.arguments().mid(1);
     for (int i = 0; i < args.size(); ++i) {
@@ -81,6 +84,8 @@ int main(int argc, char *argv[])
             helloLines = value().toInt();
         else if (a == QStringLiteral("--progress"))
             progressLines = value().toInt();
+        else if (a == QStringLiteral("--warn"))
+            warnLines = value().toInt();
     }
 
     // The probe runs `--version` / `--help`; keep them quick and truthful.
@@ -120,6 +125,11 @@ int main(int argc, char *argv[])
             const double pct = (i + 1) * 100.0 / progressLines;
             printf("llama_model_loader: - loading tensors, %5.2f%%\n", pct);
         }
+        fflush(stdout);
+    }
+    if (warnLines > 0) {
+        for (int i = 0; i < warnLines; ++i)
+            printf("W find_slot: non-consecutive token position %d after %d for sequence 0 with %u new tokens\n", 965 + i, 964 + i, 512);
         fflush(stdout);
     }
     if (delayStartMs > 0)

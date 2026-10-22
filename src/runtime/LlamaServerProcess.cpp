@@ -287,6 +287,12 @@ void LlamaServerProcess::appendLine(const QString &line)
 {
     if (line.trimmed().isEmpty())
         return;
+    // llama.cpp #28166: M-RoPE image tokens share one scalar position, so
+    // every image batch on hybrid-recurrent models (qwen3.5) trips this
+    // recurrent-cache check; the decoder continues correctly and the flood
+    // is pure noise.
+    if (line.contains(QStringLiteral("non-consecutive token position")))
+        return;
     m_ring.append(line);
     if (m_ring.size() > m_ringMaxLines)
         m_ring.remove(0, m_ring.size() - m_ringMaxLines);
