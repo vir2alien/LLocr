@@ -115,8 +115,9 @@ private slots:
         QCOMPARE(corrected.confidence, 0.2);
     }
 
-    // The fix outcomes (ADR 163): the correction layer is rewritten, the text
-    // layer's verdict survives everything.
+    // The fix outcomes (ADR 163, ADR 185): the correction layer is rewritten,
+    // the text layer's verdict survives everything, and the outcome itself is
+    // recorded — a confirmed text is not a stored correction.
     void fixOutcomesTouchOnlyTheCorrectionLayer()
     {
         BoundingBox fixed = recognizedBox();
@@ -127,17 +128,107 @@ private slots:
         QCOMPARE(fixed.correctedCheckStatus, BoxCheckStatus::NotChecked);
         QCOMPARE(fixed.correctedConfidence, -1.0);
         QCOMPARE(fixed.checkStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(fixed.fixStatus, BoxFixStatus::Fixed);
+        // A fresh correction is the text the user reads.
+        QVERIFY(fixed.useCorrectedText);
 
         BoundingBox confirmed = recognizedBox();
+        confirmed.checkStatus = BoxCheckStatus::Mismatch;
         BoxTransitions::fixConfirmedOriginal(confirmed);
-        QCOMPARE(confirmed.correctedText, QStringLiteral("recognized"));
+        // The fixer confirmed the text: nothing is stored, and the verdict the
+        // recognition earned survives.
+        QVERIFY(confirmed.correctedText.isEmpty());
+        QCOMPARE(confirmed.checkStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(confirmed.fixStatus, BoxFixStatus::NotNeeded);
+        QVERIFY(!BoxTransitions::hasCorrection(confirmed));
 
         BoundingBox damaged = correctedBox();
         BoxTransitions::fixMarkedUnreadable(damaged);
         QVERIFY(damaged.correctedText.isEmpty());
         QCOMPARE(damaged.correctedCheckStatus, BoxCheckStatus::Review);
+        QCOMPARE(damaged.fixStatus, BoxFixStatus::Damaged);
         // ...and the damaged verdict is what the dot shows.
         QCOMPARE(BoxTransitions::effectiveCheckStatus(damaged), BoxCheckStatus::Review);
+    }
+
+    // A fix that answers «no correction needed» must not throw the
+    // recognition's verdict away (ADR 185): the text layer keeps it, and the
+    // corrected layer is not created at all.
+    void fixConfirmationKeepsTheRecognitionVerdict()
+    {
+        BoundingBox box = recognizedBox();
+        box.checkStatus = BoxCheckStatus::Mismatch;
+        box.confidence = 0.2;
+
+        BoxTransitions::fixConfirmedOriginal(box);
+
+        QCOMPARE(box.checkStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(box.confidence, 0.2);
+        QCOMPARE(BoxTransitions::effectiveCheckStatus(box), BoxCheckStatus::Mismatch);
+        QCOMPARE(BoxTransitions::effectiveText(box), QStringLiteral("recognized"));
+        QCOMPARE(box.fixStatus, BoxFixStatus::NotNeeded);
+    }
+
+    // The panel's toggle (ADR 185): the user reads the other layer, and the
+    // verdict follows the layer in view.
+    void theTogglePicksTheLayerInView()
+    {
+        BoundingBox box = correctedBox();
+        box.correctedCheckStatus = BoxCheckStatus::Ok;
+        box.correctedConfidence = 0.9;
+
+        // The correction is in view by default.
+        QVERIFY(BoxTransitions::correctionSelected(box));
+        QCOMPARE(BoxTransitions::effectiveText(box), QStringLiteral("corrected"));
+        QCOMPARE(BoxTransitions::effectiveCheckStatus(box), BoxCheckStatus::Ok);
+
+        BoxTransitions::layerSwitched(box, false);
+        QVERIFY(!BoxTransitions::correctionSelected(box));
+        QCOMPARE(BoxTransitions::effectiveText(box), QStringLiteral("recognized"));
+        // The text layer's own verdict answers for the text in view.
+        QCOMPARE(BoxTransitions::effectiveCheckStatus(box), BoxCheckStatus::Mismatch);
+        QCOMPARE(BoxTransitions::effectiveConfidence(box), 0.2);
+
+        BoxTransitions::layerSwitched(box, true);
+        QCOMPARE(BoxTransitions::effectiveText(box), QStringLiteral("corrected"));
+        QCOMPARE(BoxTransitions::effectiveCheckStatus(box), BoxCheckStatus::Ok);
+    }
+
+    // A re-fix that changes the text switches the view to the new text
+    // (ADR 185) — the user was reading the old one.
+    void aNewCorrectionTakesOverTheView()
+    {
+        BoundingBox box = correctedBox();
+        BoxTransitions::layerSwitched(box, false);
+
+        BoxTransitions::fixApplied(box, QStringLiteral("newer text"));
+
+        QVERIFY(box.useCorrectedText);
+        QVERIFY(BoxTransitions::correctionSelected(box));
+        QCOMPARE(BoxTransitions::effectiveText(box), QStringLiteral("newer text"));
+    }
+
+    // The user's own verdict (ADR 185): the layer in view is marked correct
+    // even when the decision model rejected it.
+    void approvalMarksTheLayerInView()
+    {
+        BoundingBox plain = recognizedBox();
+        plain.checkStatus = BoxCheckStatus::Mismatch;
+        plain.confidence = 0.1;
+
+        BoxTransitions::blockApproved(plain);
+
+        QCOMPARE(plain.checkStatus, BoxCheckStatus::Approved);
+        QCOMPARE(BoxTransitions::effectiveCheckStatus(plain), BoxCheckStatus::Approved);
+
+        BoundingBox corrected = correctedBox();
+        corrected.correctedCheckStatus = BoxCheckStatus::Mismatch;
+        BoxTransitions::blockApproved(corrected);
+
+        // The correction is in view: the correction layer is approved, the
+        // text layer keeps the model's verdict.
+        QCOMPARE(corrected.correctedCheckStatus, BoxCheckStatus::Approved);
+        QCOMPARE(corrected.checkStatus, BoxCheckStatus::Mismatch);
     }
 
     // «Отменить исправление»: the block rolls back to the text layer's state —
@@ -190,8 +281,9 @@ private slots:
         QCOMPARE(boxCheckStatusFromInt(1), BoxCheckStatus::Ok);
         QCOMPARE(boxCheckStatusFromInt(3), BoxCheckStatus::Review);
         QCOMPARE(boxCheckStatusFromInt(4), BoxCheckStatus::Mismatch);
+        QCOMPARE(boxCheckStatusFromInt(5), BoxCheckStatus::Approved);
         QCOMPARE(boxCheckStatusFromInt(-1), BoxCheckStatus::NotChecked);
-        QCOMPARE(boxCheckStatusFromInt(5), BoxCheckStatus::NotChecked);
+        QCOMPARE(boxCheckStatusFromInt(6), BoxCheckStatus::NotChecked);
     }
 };
 

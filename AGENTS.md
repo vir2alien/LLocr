@@ -464,8 +464,11 @@
     the segmented «Текст (MD) | Предпросмотр» control next to «Копировать»
     (`copyCurrentPageText`). The selected block carries a floating
     **mini-toolbar** (`MainWindow/BlockMiniToolbar.qml`: recognize / verify /
-    fix / delete) and `BlockEditPanel` keeps only the texts + «Отменить
-    исправление». Icons: Lucide SVGs in `resources/icons/ui/` (qrc
+    fix / delete). `BlockEditPanel` shows the block label (no «Block» prefix),
+    the two layers with their **own** statuses and scores, the check score and
+    the overall status in the header, the outcome of the last fix run, the
+    **layer toggle** (corrected ↔ original, the preview text follows it) and
+    «Утвердить блок» / «Утвердить исправление» (ADR 185). Icons: Lucide SVGs in `resources/icons/ui/` (qrc
     `/icons/ui`, `ui_icons` CMake resource) colorized by `Common/Icon.qml`.
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**

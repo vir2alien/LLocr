@@ -17,6 +17,19 @@ enum class BoxCheckStatus : int {
                      ///< read back as NotChecked (ADR 164).
     Review = 3,      ///< The block is unreadable — needs human eyes.
     Mismatch = 4,    ///< The decision model rejected the text.
+    Approved = 5,    ///< The user confirmed the block by hand (ADR 185) — the
+                     ///< decision model's verdict was wrong.
+};
+
+// The outcome of the last fix run (ADR 185). The correction layer alone cannot
+// tell a confirmed text from a stored correction: a fix that answers «no
+// correction needed» stores nothing, and a block that was never fixed stores
+// nothing either.
+enum class BoxFixStatus : int {
+    None = 0,       ///< No fix has been run on this block.
+    NotNeeded = 1,  ///< The fixer confirmed the text — nothing was corrected.
+    Fixed = 2,      ///< The fixer produced a correction (correctedText holds it).
+    Damaged = 3,    ///< The fixer could not read the block — human eyes needed.
 };
 
 // The single int->enum gate: project load and the QML write path must not
@@ -26,7 +39,12 @@ inline BoxCheckStatus boxCheckStatusFromInt(int value)
 {
     if (value == 2)  // the reserved ReRecognized slot of v1 projects
         return BoxCheckStatus::NotChecked;
-    return value >= int(BoxCheckStatus::NotChecked) && value <= int(BoxCheckStatus::Mismatch) ? BoxCheckStatus(value) : BoxCheckStatus::NotChecked;
+    return value >= int(BoxCheckStatus::NotChecked) && value <= int(BoxCheckStatus::Approved) ? BoxCheckStatus(value) : BoxCheckStatus::NotChecked;
+}
+
+inline BoxFixStatus boxFixStatusFromInt(int value)
+{
+    return value >= int(BoxFixStatus::None) && value <= int(BoxFixStatus::Damaged) ? BoxFixStatus(value) : BoxFixStatus::None;
 }
 
 struct BoundingBox {
@@ -35,6 +53,9 @@ struct BoundingBox {
                                                                        ///< empty when the block was never corrected.
     BoxCheckStatus checkStatus = BoxCheckStatus::NotChecked;           ///< Verdict on the text layer.
     BoxCheckStatus correctedCheckStatus = BoxCheckStatus::NotChecked;  ///< Verdict on the correction layer.
+    BoxFixStatus fixStatus = BoxFixStatus::None;                       ///< Outcome of the last fix run (ADR 185).
+    bool useCorrectedText = true;                                      ///< The panel's toggle: the correction layer is the
+                                                                       ///< one the user reads (ADR 185).
     QString label;                                                     ///< Block type reported by the model (title, text, table...).
     QRectF rect;                                                       ///< Normalized rectangle: x, y, width, height in [0, 1].
     bool positioned = true;

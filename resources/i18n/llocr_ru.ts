@@ -14,6 +14,11 @@
         <translation>Блок добавлен.</translation>
     </message>
     <message>
+        <location line="+19"/>
+        <source>Block approved.</source>
+        <translation>Блок утверждён.</translation>
+    </message>
+    <message>
         <location line="+89"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
@@ -231,9 +236,8 @@
         <translation type="unfinished">Не совпало</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <location line="+2"/>
-        <source>Fixed</source>
+        <location line="+19"/>
+        <source>Corrected</source>
         <translation type="unfinished">Исправлено</translation>
     </message>
     <message>
@@ -243,13 +247,48 @@
     </message>
     <message>
         <location line="+19"/>
-        <source>Block %1</source>
-        <translation type="unfinished"></translation>
+        <source>Approved</source>
+        <translation type="unfinished">Утверждён</translation>
     </message>
     <message>
         <location line="+61"/>
-        <source>Corrected text:</source>
-        <translation type="unfinished"></translation>
+        <source>No correction required</source>
+        <translation type="unfinished">Не требует исправления</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Recognized text</source>
+        <translation type="unfinished">Распознанный текст</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Corrected text</source>
+        <translation type="unfinished">Исправленный текст</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Correction:</source>
+        <translation type="unfinished">Исправление:</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Show original</source>
+        <translation type="unfinished">Показать оригинал</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Show correction</source>
+        <translation type="unfinished">Показать исправление</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Approve block</source>
+        <translation type="unfinished">Утвердить блок</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Approve correction</source>
+        <translation type="unfinished">Утвердить исправление</translation>
     </message>
     <message>
         <location line="+19"/>

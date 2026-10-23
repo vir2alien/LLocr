@@ -60,6 +60,10 @@ QVariant BoxListModel::data(const QModelIndex &index, int role) const
         return box.confidence;
     case CorrectedConfidenceRole:
         return box.correctedConfidence;
+    case FixStatusRole:
+        return static_cast<int>(box.fixStatus);
+    case UseCorrectedRole:
+        return box.useCorrectedText;
     }
     return {};
 }
@@ -79,6 +83,8 @@ QHash<int, QByteArray> BoxListModel::roleNames() const
         {KindRole, "boxKind"},
         {ConfidenceRole, "boxConfidence"},
         {CorrectedConfidenceRole, "boxCorrectedConfidence"},
+        {FixStatusRole, "boxFixStatus"},
+        {UseCorrectedRole, "boxUseCorrectedText"},
     };
     return roles;
 }
@@ -136,24 +142,26 @@ void BoxListModel::updateBoxRect(int index, qreal x, qreal y, qreal width, qreal
     emit dataChanged(mi, mi, {XRole, YRole, WidthRole, HeightRole});
 }
 
-void BoxListModel::updateBoxCheck(int index, int status, const QString &correctedText, const QString &text, double confidence, int correctedStatus, double correctedConfidence)
+void BoxListModel::updateBoxState(int index, const BoundingBox &box)
 {
     if (index < 0 || index >= m_boxes.size())
         return;
-    BoundingBox &box = m_boxes[index];
-    const BoxCheckStatus next = boxCheckStatusFromInt(status);
-    const BoxCheckStatus nextCorrected = boxCheckStatusFromInt(correctedStatus);
-    if (box.checkStatus == next && box.correctedText == correctedText && box.text == text && box.confidence == confidence && box.correctedCheckStatus == nextCorrected &&
-        box.correctedConfidence == correctedConfidence)
+    BoundingBox &current = m_boxes[index];
+    const bool changed = current.checkStatus != box.checkStatus || current.correctedText != box.correctedText || current.text != box.text || current.confidence != box.confidence ||
+                         current.correctedCheckStatus != box.correctedCheckStatus || current.correctedConfidence != box.correctedConfidence || current.fixStatus != box.fixStatus ||
+                         current.useCorrectedText != box.useCorrectedText;
+    if (!changed)
         return;
-    box.checkStatus = next;
-    box.correctedText = correctedText;
-    box.text = text;
-    box.confidence = confidence;
-    box.correctedCheckStatus = nextCorrected;
-    box.correctedConfidence = correctedConfidence;
+    current.checkStatus = box.checkStatus;
+    current.correctedText = box.correctedText;
+    current.text = box.text;
+    current.confidence = box.confidence;
+    current.correctedCheckStatus = box.correctedCheckStatus;
+    current.correctedConfidence = box.correctedConfidence;
+    current.fixStatus = box.fixStatus;
+    current.useCorrectedText = box.useCorrectedText;
     const QModelIndex mi = createIndex(index, 0);
-    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole, CorrectedCheckStatusRole, TextRole, ConfidenceRole, CorrectedConfidenceRole});
+    emit dataChanged(mi, mi, {CheckStatusRole, CorrectedRole, CorrectedCheckStatusRole, TextRole, ConfidenceRole, CorrectedConfidenceRole, FixStatusRole, UseCorrectedRole});
 }
 
 void BoxListModel::removeBox(int index)

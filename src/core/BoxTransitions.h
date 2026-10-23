@@ -9,8 +9,12 @@ namespace llocr::BoxTransitions {
 // REVIEW stores a verdict without text, and the dot must still show damaged.
 bool hasCorrection(const BoundingBox &box);
 
-// What the user reads, verifies and exports: the correction when the layer
-// has text, else the OCR text.
+// The correction layer is the one the user reads: the panel's toggle selects
+// it and it carries text (ADR 185).
+bool correctionSelected(const BoundingBox &box);
+
+// What the user reads, verifies and exports: the correction when the layer is
+// selected, else the OCR text.
 QString effectiveText(const BoundingBox &box);
 BoxCheckStatus effectiveCheckStatus(const BoundingBox &box);
 double effectiveConfidence(const BoundingBox &box);
@@ -31,14 +35,22 @@ void verificationStarted(BoundingBox &box);
 void verdictApplied(BoundingBox &box, const CheckResult &result);
 
 // The fix protocol's outcomes (ADR 163): a correction replaces the layer's
-// text, an OK stores the text as a duplicate, a REVIEW marks the block
-// damaged without storing a correction. The text layer's verdict survives
-// all three — it is about the OCR text, not the correction.
+// text, an OK confirms the text as it is, a REVIEW marks the block damaged
+// without storing a correction. The text layer's verdict survives all three —
+// it is about the OCR text, not the correction (ADR 185: an OK keeps the
+// verdict the recognition earned).
 void fixApplied(BoundingBox &box, const QString &text);
 void fixConfirmedOriginal(BoundingBox &box);
 void fixMarkedUnreadable(BoundingBox &box);
 
 // «Отменить исправление»: the block rolls back to the text layer's state.
 void correctionReverted(BoundingBox &box);
+
+// The user confirms the block by hand: the layer in view is marked correct
+// even when the decision model rejected it (ADR 185).
+void blockApproved(BoundingBox &box);
+
+// The panel's toggle: the user reads the other layer (ADR 185).
+void layerSwitched(BoundingBox &box, bool corrected);
 
 }  // namespace llocr::BoxTransitions

@@ -1031,6 +1031,30 @@ int AppController::selectedBlockCorrectedCheckStatus() const
     return box ? static_cast<int>(box->correctedCheckStatus) : 0;
 }
 
+double AppController::selectedBlockConfidence() const
+{
+    const BoundingBox *box = selectedBox();
+    return box ? box->confidence : -1.0;
+}
+
+double AppController::selectedBlockCorrectedConfidence() const
+{
+    const BoundingBox *box = selectedBox();
+    return box ? box->correctedConfidence : -1.0;
+}
+
+int AppController::selectedBlockFixStatus() const
+{
+    const BoundingBox *box = selectedBox();
+    return box ? static_cast<int>(box->fixStatus) : 0;
+}
+
+bool AppController::selectedBlockUsesCorrected() const
+{
+    const BoundingBox *box = selectedBox();
+    return box ? box->useCorrectedText : false;
+}
+
 QVariantList AppController::selectedBlockTextRange() const
 {
     const QList<int> range = blockTextRange(m_selectedBox);
@@ -1073,26 +1097,54 @@ void AppController::revertBlockCorrection()
     if (!applyBoxTransition(pageIndex, boxIndex, BoxTransitions::correctionReverted))
         return;
 
-    QString rebuilt;
-    {
-        QReadLocker locker(&m_documentLock);
-        if (m_document.page(pageIndex).result.pages.isEmpty())
-            return;
-        rebuilt = rebuildPageText(m_document.page(pageIndex).result.pages[0]);
-    }
-
-    if (rebuilt == m_editStore.baseline(pageIndex)) {
-        m_editStore.revert(pageIndex);
-        m_pageModel.setEdited(pageIndex, false);
-    } else {
-        // Structural change: rebase the baseline (see removeBlock).
-        m_editStore.reset(pageIndex, rebuilt);
-        markPageEdited(pageIndex);
-    }
+    // The page text follows the block: the preview must not keep the reverted
+    // correction. A page the user edited by hand keeps their text — only the
+    // undo target moves (the same rule the fix follows).
+    applyPageTextChanged(pageIndex);
 
     emit checkStateChanged();
     emit resultChanged();
     emit editStateChanged();
+}
+
+void AppController::setSelectedBlockUsesCorrected(bool corrected)
+{
+    const int pageIndex = m_currentPage;
+    const int boxIndex = m_selectedBox;
+    {
+        QReadLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
+            return;
+        const QList<BoundingBox> &boxes = m_document.page(pageIndex).result.pages.first().boxes;
+        if (boxIndex < 0 || boxIndex >= boxes.size())
+            return;
+        const BoundingBox &box = boxes.at(boxIndex);
+        // Nothing to switch to: a block without a correction has one text.
+        if (box.correctedText.isEmpty() || box.useCorrectedText == corrected)
+            return;
+    }
+
+    if (!applyBoxTransition(pageIndex, boxIndex, [corrected](BoundingBox &box) { BoxTransitions::layerSwitched(box, corrected); }))
+        return;
+
+    // The document's text follows the layer the user reads (ADR 185).
+    applyPageTextChanged(pageIndex);
+}
+
+void AppController::approveSelectedBlock()
+{
+    if (m_selectedBox < 0)
+        return;
+
+    const int pageIndex = m_currentPage;
+    const int boxIndex = m_selectedBox;
+    if (!applyBoxTransition(pageIndex, boxIndex, BoxTransitions::blockApproved))
+        return;
+
+    setStatus(StatusMessage::translate("AppController", "Block approved."));
+    updateAvailability();
+    emit checkStateChanged();
+    emit resultChanged();
 }
 
 void AppController::checkEnabledBlocksOnPage()
@@ -1470,12 +1522,7 @@ bool AppController::applyBoxTransition(int pageIndex, int boxIndex, const std::f
     if (!m_document.isValidIndex(pageIndex))
         return false;
 
-    int status = int(BoxCheckStatus::NotChecked);
-    QString corrected;
-    QString text;
-    double confidence = -1.0;
-    int correctedStatus = int(BoxCheckStatus::NotChecked);
-    double correctedConfidence = -1.0;
+    BoundingBox updated;
     {
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(pageIndex);
@@ -1488,17 +1535,11 @@ bool AppController::applyBoxTransition(int pageIndex, int boxIndex, const std::f
         BoundingBox &box = boxes[boxIndex];
         transition(box);
         ++m_cropRevision;
-
-        status = int(box.checkStatus);
-        corrected = box.correctedText;
-        text = box.text;
-        confidence = box.confidence;
-        correctedStatus = int(box.correctedCheckStatus);
-        correctedConfidence = box.correctedConfidence;
+        updated = box;
     }
 
     if (pageIndex == m_currentPage) {
-        m_boxModel.updateBoxCheck(boxIndex, status, corrected, text, confidence, correctedStatus, correctedConfidence);
+        m_boxModel.updateBoxState(boxIndex, updated);
         if (m_selectedBox == boxIndex)
             emit selectedBoxChanged();
     }

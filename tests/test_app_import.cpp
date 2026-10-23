@@ -1987,9 +1987,9 @@ private slots:
     }
 
     // The book-level «Исправить» runs every Mismatch/Review block through the
-    // fix protocol, and each protocol answer lands on the correction layer in
-    // its own shape: FIX → the correction text, OK → a duplicate of the text,
-    // REVIEW → the damaged verdict without a correction.
+    // fix protocol, and each protocol answer lands in its own shape: FIX → the
+    // correction text, OK → nothing stored (the recognition's verdict
+    // survives, ADR 185), REVIEW → the damaged verdict without a correction.
     void fixEntriesCoverTheProblemBlocks()
     {
         DetTokenChatServer server;
@@ -2016,6 +2016,7 @@ private slots:
         const int statusRole = BoxListModel::CheckStatusRole;
         const int correctedRole = BoxListModel::CorrectedRole;
         const int correctedStatusRole = BoxListModel::CorrectedCheckStatusRole;
+        const int fixStatusRole = BoxListModel::FixStatusRole;
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
@@ -2026,11 +2027,14 @@ private slots:
         m_controller->fixAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(server.requests(), 5);
-        // OK confirms the candidate: the correction layer holds a duplicate of
-        // the text with no verdict — the gray dot.
-        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("1. Introduction"));
-        QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), QStringLiteral("Second block text"));
+        // OK confirms the candidate: nothing is stored, and the verdict the
+        // recognition earned survives (ADR 185) — the blocks stay flagged until
+        // the user approves them.
+        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QString());
+        QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), QString());
         QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(0), fixStatusRole).toInt(), int(BoxFixStatus::NotNeeded));
 
         server.fixReply = QStringLiteral("REVIEW");
         m_controller->setSelectedBoxIndex(0);
@@ -2038,10 +2042,19 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(server.requests(), 6);
         // REVIEW marks the correction layer damaged: red, no correction text.
-        // The sibling keeps its confirmed correction.
         QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::Review));
         QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QString());
-        QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), QStringLiteral("Second block text"));
+        QCOMPARE(boxes->data(boxes->index(0), fixStatusRole).toInt(), int(BoxFixStatus::Damaged));
+        // The sibling keeps the text the recognition produced.
+        QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), QString());
+
+        // The user's own verdict (ADR 185): the block in view is marked
+        // correct even though the decision model rejected it — and it stops
+        // being a problem block.
+        m_controller->setSelectedBoxIndex(1);
+        m_controller->approveSelectedBlock();
+        QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Approved));
+        QCOMPARE(m_controller->scopedProblemBlockCount(), 1);
 
         // Only the damaged block is a problem anymore: the next book-level fix
         // asks exactly one block, and the candidate is its OCR text.
@@ -2053,6 +2066,81 @@ private slots:
         QCOMPARE(server.chatRequests().last().contains("<CANDIDATE>"), true);
         QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("Recovered block text"));
         QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        // The fresh correction is the text the user reads (ADR 185).
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::UseCorrectedRole).toBool(), true);
+    }
+
+    // The panel's toggle (ADR 185): the user reads the corrected text or the
+    // original one, and the page text follows the layer in view.
+    void theLayerToggleMovesThePreviewText()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("layer-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
+
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->fixSelectedBlock();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+
+        // The correction is in view: the preview follows it.
+        QVERIFY(m_controller->selectedBlockUsesCorrected());
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("Fixed block text")));
+
+        // The user compares with the original: the preview follows the text
+        // layer.
+        m_controller->setSelectedBlockUsesCorrected(false);
+        QVERIFY(!m_controller->selectedBlockUsesCorrected());
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("1. Introduction")));
+        QVERIFY(!m_controller->resultText().contains(QStringLiteral("Fixed block text")));
+
+        m_controller->setSelectedBlockUsesCorrected(true);
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("Fixed block text")));
+    }
+
+    // «Отменить исправление» must take the correction out of the preview too,
+    // not only out of the block.
+    void revertingTheCorrectionUpdatesThePreview()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("revert-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
+
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->fixSelectedBlock();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("Fixed block text")));
+
+        m_controller->revertBlockCorrection();
+        QVERIFY2(!m_controller->resultText().contains(QStringLiteral("Fixed block text")), qPrintable(m_controller->resultText()));
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("1. Introduction")));
     }
 
     // A failed decision request is not a verdict: the block stays unchecked

@@ -58,6 +58,8 @@ QJsonObject boxToJson(const BoundingBox &box)
         {"correctedText", box.correctedText},
         {"checkStatus", int(box.checkStatus)},
         {"correctedCheckStatus", int(box.correctedCheckStatus)},
+        {"fixStatus", int(box.fixStatus)},
+        {"useCorrectedText", box.useCorrectedText},
         {"label", box.label},
         {"x", box.rect.x()},
         {"y", box.rect.y()},
@@ -81,6 +83,10 @@ BoundingBox boxFromJson(const QJsonObject &object, int schemaVersion)
     box.checkStatus = boxCheckStatusFromInt(object.value("checkStatus").toInt(int(BoxCheckStatus::NotChecked)));
     if (schemaVersion >= 2)
         box.correctedCheckStatus = boxCheckStatusFromInt(object.value("correctedCheckStatus").toInt(int(BoxCheckStatus::NotChecked)));
+    // The fix outcome and the layer toggle are optional: a project written
+    // before them reads the defaults (no fix ran, the correction is in view).
+    box.fixStatus = boxFixStatusFromInt(object.value("fixStatus").toInt(int(BoxFixStatus::None)));
+    box.useCorrectedText = object.value("useCorrectedText").toBool(true);
     box.label = object.value("label").toString();
     box.rect = QRectF(object.value("x").toDouble(), object.value("y").toDouble(), object.value("w").toDouble(), object.value("h").toDouble());
     box.positioned = object.value("positioned").toBool(true);

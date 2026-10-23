@@ -251,17 +251,19 @@ Item {
                     required property int boxKind
                     required property real boxConfidence
                     required property real boxCorrectedConfidence
+                    required property bool boxUseCorrectedText
 
                     property bool isImage: Controller.boxModel.isImageBox(boxDelegate.index)
                     property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
 
-                    // The status dot follows the effective layer (ADR 164): the
-                    // correction when the block carries one (or its damaged
-                    // verdict), else the OCR text.
+                    // The status dot follows the layer the user reads (ADR 185):
+                    // the correction while the panel's toggle selects it, else
+                    // the OCR text. A verdict-only correction (a fix REVIEW)
+                    // speaks for the block — there is no corrected text to read.
                     readonly property bool correctionActive: boxCorrectedText.length > 0 || boxCorrectedCheckStatus !== 0
-                    readonly property int effectiveStatus: correctionActive ? boxCorrectedCheckStatus : boxCheckStatus
-                    readonly property real effectiveConfidence: correctionActive ? boxCorrectedConfidence : boxConfidence
-                    readonly property string effectiveText: boxCorrectedText.length > 0 ? boxCorrectedText : boxText
+                    readonly property int effectiveStatus: boxUseCorrectedText && correctionActive ? boxCorrectedCheckStatus : boxCheckStatus
+                    readonly property real effectiveConfidence: boxUseCorrectedText && correctionActive ? boxCorrectedConfidence : boxConfidence
+                    readonly property string effectiveText: boxUseCorrectedText && boxCorrectedText.length > 0 ? boxCorrectedText : boxText
 
                     // One hue per block kind; selection overrides the frame.
                     readonly property color kindOuter: boxKind == 1 ? Theme.overlayImageOuter
@@ -302,8 +304,9 @@ Item {
                     Rectangle {
                         id: statusDot
                         // Outside the block, to the left: gray = recognized or
-                        // corrected (no verdict on the effective layer), green =
-                        // verified Ok, red = Mismatch or the damaged Review. With
+                        // corrected (no verdict on the layer in view), green =
+                        // verified Ok or approved by hand, red = Mismatch or the
+                        // damaged Review. With
                         // the confidence option on, a decision verdict (green/red)
                         // renders as its probability in percent inside a circle of
                         // the verdict's color. A markup block without text shows
@@ -317,7 +320,7 @@ Item {
                         width: confidenceBadge ? 20 : 8
                         height: confidenceBadge ? 20 : 8
                         radius: width / 2
-                        color: effectiveStatus === 1 ? Theme.success
+                        color: effectiveStatus === 1 || effectiveStatus === 5 ? Theme.success
                              : effectiveStatus >= 3 ? Theme.error
                              : Theme.nothing
 

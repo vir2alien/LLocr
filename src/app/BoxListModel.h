@@ -34,6 +34,8 @@ public:
         KindRole,
         ConfidenceRole,
         CorrectedConfidenceRole,
+        FixStatusRole,
+        UseCorrectedRole,
     };
 
     explicit BoxListModel(QObject *parent = nullptr);
@@ -51,11 +53,10 @@ public:
     void setStyleModelId(const QString &modelId);
 
     Q_INVOKABLE void updateBoxRect(int index, qreal x, qreal y, qreal width, qreal height);
-    // Mirrors both layers of the box state (ADR 164): the text layer
-    // (status, text, confidence) and the correction layer (correctedText,
-    // correctedStatus, correctedConfidence).
-    Q_INVOKABLE void updateBoxCheck(
-        int index, int status, const QString &correctedText, const QString &text, double confidence = -1.0, int correctedStatus = int(BoxCheckStatus::NotChecked), double correctedConfidence = -1.0);
+    // Mirrors the whole box state (ADR 164): the text layer (status, text,
+    // confidence), the correction layer (correctedText, its own verdict and
+    // confidence) and the fix outcome with the layer the user reads.
+    void updateBoxState(int index, const BoundingBox &box);
     void removeBox(int index);
     Q_INVOKABLE bool isImageBox(int index) const;
 

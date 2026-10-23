@@ -72,6 +72,12 @@ class AppController : public QObject
     Q_PROPERTY(int selectedBlockCheckStatus READ selectedBlockCheckStatus NOTIFY selectedBoxChanged)
     Q_PROPERTY(QString selectedBlockCorrected READ selectedBlockCorrected NOTIFY selectedBoxChanged)
     Q_PROPERTY(int selectedBlockCorrectedCheckStatus READ selectedBlockCorrectedCheckStatus NOTIFY selectedBoxChanged)
+    Q_PROPERTY(double selectedBlockConfidence READ selectedBlockConfidence NOTIFY selectedBoxChanged)
+    Q_PROPERTY(double selectedBlockCorrectedConfidence READ selectedBlockCorrectedConfidence NOTIFY selectedBoxChanged)
+    // The outcome of the last fix run (ADR 185) and the layer the user reads:
+    // the panel toggles between the corrected and the original text.
+    Q_PROPERTY(int selectedBlockFixStatus READ selectedBlockFixStatus NOTIFY selectedBoxChanged)
+    Q_PROPERTY(bool selectedBlockUsesCorrected READ selectedBlockUsesCorrected WRITE setSelectedBlockUsesCorrected NOTIFY selectedBoxChanged)
     Q_PROPERTY(QVariantList selectedBlockTextRange READ selectedBlockTextRange NOTIFY blockTextRangeChanged)
 
     Q_PROPERTY(bool checkBusy READ checkBusy NOTIFY checkStateChanged)
@@ -181,6 +187,11 @@ public:
     int selectedBlockCheckStatus() const;
     QString selectedBlockCorrected() const;
     int selectedBlockCorrectedCheckStatus() const;
+    double selectedBlockConfidence() const;
+    double selectedBlockCorrectedConfidence() const;
+    int selectedBlockFixStatus() const;
+    bool selectedBlockUsesCorrected() const;
+    void setSelectedBlockUsesCorrected(bool corrected);
     QVariantList selectedBlockTextRange() const;
     void setSelectedBoxIndex(int index);
 
@@ -290,6 +301,9 @@ public slots:
     Q_INVOKABLE QString resolveImagesForPreview(const QString &markdown);
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();
+    // The user confirms the block by hand (ADR 185): the layer in view is
+    // marked correct even when the decision model rejected it.
+    Q_INVOKABLE void approveSelectedBlock();
     Q_INVOKABLE bool blockTextMapped() const;
     Q_INVOKABLE QList<int> blockTextRange(int boxIndex) const;
     Q_INVOKABLE int boxIndexForTextPosition(int position) const;
