@@ -1,8 +1,41 @@
 #include "app/FixController.h"
 
 #include "config/RequestProfileStore.h"
+#include "core/RequestBudget.h"
 
 namespace llocr {
+
+namespace {
+
+int launchNumber(const QList<LaunchParameter> &parameters, const QString &name)
+{
+    for (const LaunchParameter &parameter : parameters) {
+        if (parameter.name == name && parameter.kind == LaunchValueKind::Number)
+            return parameter.value.toInt();
+    }
+    return 0;
+}
+
+int parameterNumber(const QList<RequestParameter> &parameters, const QString &name)
+{
+    for (const RequestParameter &parameter : parameters) {
+        if (parameter.name == name)
+            return parameter.value.toInt();
+    }
+    return 0;
+}
+
+void setParameterNumber(QList<RequestParameter> &parameters, const QString &name, int value)
+{
+    for (RequestParameter &parameter : parameters) {
+        if (parameter.name == name) {
+            parameter.value = QVariant(double(value));
+            return;
+        }
+    }
+}
+
+}  // namespace
 
 FixController::FixController(RequestProfileStore &requestProfiles, RuntimeController &runtime, QObject *parent)
     : ModelRequestController(runtime, "FixController", parent), m_requestProfiles(requestProfiles), m_model(std::make_unique<FixModel>())
@@ -13,7 +46,15 @@ FixController::FixController(RequestProfileStore &requestProfiles, RuntimeContro
             finish();
             return;
         }
-        emit fixFinished(watcherResult(m_watcher));
+        CheckResult result = watcherResult(m_watcher);
+        if (!m_budgetNote.isEmpty()) {
+            QList<StatusMessage> parts;
+            if (!result.notes.isEmpty())
+                parts.append(result.notes);
+            parts.append(m_budgetNote);
+            result.notes = StatusMessage::join(parts);
+        }
+        emit fixFinished(result);
         finish();
     });
 }
@@ -51,13 +92,25 @@ void FixController::fixBlock(const QImage &image, const QString &recognizedText,
             // The per-block budget overrides the profile's max_tokens only
             // where the profile ships a per-block entry; a user-edited value
             // stays untouched for the other types.
-            if (maxOutput > 0) {
-                for (RequestParameter &parameter : request.parameters) {
-                    if (parameter.name == QLatin1String("max_tokens")) {
-                        parameter.value = maxOutput;
-                        break;
-                    }
-                }
+            if (maxOutput > 0)
+                setParameterNumber(request.parameters, QStringLiteral("max_tokens"), maxOutput);
+
+            // The generation budget inside the server's context window: the
+            // answer's room and the thinking's room. The context is a hard
+            // limit, so the thinking yields before the answer (ADR 193).
+            const ServerLaunchConfig &config = runtime().startedConfig();
+            RequestBudget budget;
+            budget.contextSize = launchNumber(config.parameters, QStringLiteral("ctx-size"));
+            budget.promptTokens = estimatePromptTokens(systemPrompt, typePrompt, recognizedText, launchNumber(config.parameters, QStringLiteral("image-min-tokens")));
+            budget.answerTokens = parameterNumber(request.parameters, QStringLiteral("max_tokens"));
+            budget.reasoningTokens = parameterNumber(request.parameters, QLatin1String(kReasoningBudgetParameter));
+            setParameterNumber(request.parameters, QStringLiteral("max_tokens"), budget.maxTokens());
+            setParameterNumber(request.parameters, QLatin1String(kReasoningBudgetParameter), budget.effectiveReasoning());
+            m_budgetNote = StatusMessage();
+            if (budget.reasoningTokens > 0 && budget.effectiveReasoning() < budget.reasoningTokens) {
+                // The context did not leave room for the chosen thinking: the
+                // thinking yields, the correction keeps its room.
+                m_budgetNote = StatusMessage::translate("FixController", "The thinking budget was cut to %1 tokens to fit the context window.").arg(budget.effectiveReasoning());
             }
             request.task = CheckRequest::Task::Fix;
 

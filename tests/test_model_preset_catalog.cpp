@@ -96,8 +96,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"lfm25-vl-3b", "pageOcr,blockRecognition", "b8000", "q8_0,q6_k,q5_k_m,q4_k_m,q4_0", "special,spec-type,spec-draft-n-max,spec-draft-n-min"},
         {"qwen3.5-4b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"qwen3.5-9b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
-        {"gemma-4-e4b", "fix", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,flash-attn,image-min-tokens"},
-        {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,image-min-tokens,ubatch-size"},
+        {"gemma-4-e4b", "fix", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
+        {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,image-min-tokens,ubatch-size"},
         {"teleocr", "blockRecognition,layout", "b4000", "q8_0,q5_k_m,q4_k_m,q3_k_m", ""},
         {"glm-ocr", "rawPageOcr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"clef-flash", "decision", "b11430", "q8_0,q6_k,q5_k_m,q4_k_m,q4_0", "ctx-size,batch-size,ubatch-size"},
@@ -591,11 +591,13 @@ void TestModelPresetCatalog::fixRolesShipTheReasoningMode()
         QCOMPARE(budget->choices.at(1).value.toDouble(), 512.0);
     }
 
-    // The models that were measured with thinking say so; the others do not.
+    // Every fix model may think: the qwen pair and the gemma pair both declare
+    // the capability (the gemma chat template carries the enable_thinking switch
+    // and the thought channel — verified on llama.cpp b11799).
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"))->reasoningSupported);
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-9b"), QStringLiteral("fix"))->reasoningSupported);
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("gemma-4-e4b"), QStringLiteral("fix"))->reasoningSupported);
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("gemma-4-12b"), QStringLiteral("fix"))->reasoningSupported);
+    QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-e4b"), QStringLiteral("fix"))->reasoningSupported);
+    QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-12b"), QStringLiteral("fix"))->reasoningSupported);
 }
 
 void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()

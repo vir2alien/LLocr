@@ -42,6 +42,8 @@ qt_add_library(llocr_core STATIC
     core/ServiceMarkers.h
     core/RequestProfile.h
     core/RequestProfile.cpp
+    core/RequestBudget.h
+    core/RequestBudget.cpp
     core/LaunchProfile.h
     core/LaunchProfile.cpp
     core/StatusMessage.h

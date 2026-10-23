@@ -118,9 +118,13 @@ the **request** — llama.cpp reads `reasoning_budget_tokens` per request and it
 overrides the server's `--reasoning-budget` — so the mode takes effect on the
 next fix, with no server restart. The budget is also the switch:
 `chat_template_kwargs.enable_thinking` follows it, and `off` keeps the old
-behaviour (the reply is the answer). The thinking tokens come out of the
-generation budget, so `max_tokens` grows by the reasoning budget and the answer
-still gets the room the block needs.
+behaviour (the reply is the answer). The generation budget is computed inside
+the server's **context window**: the answer's block budget plus the thinking,
+clipped so the request fits — the thinking yields before the answer, because a
+correction matters more than a thought. The window is the running server's
+`ctx-size` (16384 in the shipped platform profile), the prompt's size is
+estimated, and when the thinking does not fit, it shrinks and the footer says
+by how much.
 
 The mode is edited per model in Settings → Models → ⚙ → Request, next to
 temperature and `max_tokens`. The measurement behind it: the stand

@@ -77,6 +77,10 @@ public:
     bool modelPathValid() const { return m_modelPathValid; }
     bool lockedOut() const { return m_lockedOut; }
     bool launchConfigDirty() const { return m_launchConfigDirty; }
+    // The launch configuration the running server was started with — the
+    // context window and the image's token floor among its parameters. Empty
+    // when no managed server runs (an external server's window is the user's).
+    const ServerLaunchConfig &startedConfig() const { return m_startedConfig; }
 
     bool orphanDetected() const { return m_orphan.isValid(); }
     QString orphanInfo() const;

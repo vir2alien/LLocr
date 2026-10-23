@@ -54,6 +54,7 @@
       "alias": "llocr-fix",
       "protocol": "full_block",
       "promptProfile": "fix-requests",
+      "reasoning": true,
       "maxOutput": 8192,
       "launch": [
         {
@@ -88,16 +89,22 @@
         {
           "order": 6,
           "name": "jinja",
-          "description": "Use the chat template from the GGUF metadata: it parses Gemma 4's thought channel and applies the request's enable_thinking=false."
+          "description": "Use the chat template from the GGUF metadata: it parses Gemma 4's thought channel, so the request's thinking mode decides whether the model reasons first."
         },
         {
           "order": 7,
+          "name": "reasoning-budget",
+          "value": 0,
+          "description": "Server default for the thinking budget; the fix request carries the reasoning mode and overrides it."
+        },
+        {
+          "order": 8,
           "name": "flash-attn",
           "value": "off",
           "description": "The card's E4B command runs with flash attention off (-fa off); overrides the platform's on default."
         },
         {
-          "order": 8,
+          "order": 9,
           "name": "image-min-tokens",
           "value": 1120,
           "description": "Visual token budget floor; Gemma 4 supports 70/140/280/560/1120 and the card recommends the top budgets for OCR and small text."

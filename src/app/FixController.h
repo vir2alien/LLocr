@@ -36,6 +36,7 @@ private:
     RequestProfileStore &m_requestProfiles;
     std::unique_ptr<FixModel> m_model;
     QFutureWatcher<CheckResult> m_watcher;
+    StatusMessage m_budgetNote;  // the thinking was cut to fit the context
 };
 
 }  // namespace llocr

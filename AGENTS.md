@@ -417,9 +417,14 @@
     all (`reasoning: true`), the request profile holds the steps, the budget
     rides the request (llama.cpp reads it per request — no server restart) and
     it is also the switch: `enable_thinking` follows it, so zero keeps the old
-    behaviour; the thinking tokens come out of the generation budget, so
-    `max_tokens` grows by the reasoning budget and the answer keeps the room
-    the block needs. Block recognition (plain re-transcription)
+    behaviour. The generation budget is computed inside the server's context
+    window (`src/core/RequestBudget.h`): the answer's block budget plus the
+    thinking, clipped so the request fits — the thinking yields before the
+    answer, because a correction matters more than a thought; the window
+    comes from the running server's `ctx-size`, the prompt's size is estimated
+    (the text at two characters per token for Cyrillic and four for the rest,
+    the image at the model's token floor), and a cut thinking is reported in
+    the footer. Block recognition (plain re-transcription)
     entry points: per-block «Распознать», the page toolbar's «Распознать
     страницу ▾» (problem blocks / all blocks of the page); the header
     «Исправить» runs the fix task over the problem blocks of the whole

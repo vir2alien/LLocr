@@ -48,6 +48,7 @@
       "alias": "llocr-fix",
       "protocol": "full_block",
       "promptProfile": "fix-requests",
+      "reasoning": true,
       "maxOutput": 8192,
       "launch": [
         {
@@ -82,16 +83,22 @@
         {
           "order": 6,
           "name": "jinja",
-          "description": "Use the chat template from the GGUF metadata: it parses Gemma 4's thought channel and applies the request's enable_thinking=false."
+          "description": "Use the chat template from the GGUF metadata: it parses Gemma 4's thought channel, so the request's thinking mode decides whether the model reasons first."
         },
         {
           "order": 7,
+          "name": "reasoning-budget",
+          "value": 0,
+          "description": "Server default for the thinking budget; the fix request carries the reasoning mode and overrides it."
+        },
+        {
+          "order": 8,
           "name": "image-min-tokens",
           "value": 1120,
           "description": "Visual token budget floor; Gemma 4 supports 70/140/280/560/1120 and the card recommends the top budgets for OCR and small text."
         },
         {
-          "order": 8,
+          "order": 9,
           "name": "ubatch-size",
           "value": 2048,
           "description": "12B-only, unified build: image patches are decoded into the main model with non-causal attention, so the whole image must fit one ubatch. The default 512 makes the server cap the vision budget to 512, and a block crop upscaled to the budget lands just above it (the resize rounds both sides up to the patch grid) and aborts the server on a GGML assert. 2048 holds the pinned 1120 budget plus the rounding overshoot."

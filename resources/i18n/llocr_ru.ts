@@ -792,6 +792,14 @@
     </message>
 </context>
 <context>
+    <name>FixController</name>
+    <message>
+        <location filename="../../src/app/FixController.cpp" line="+113"/>
+        <source>The thinking budget was cut to %1 tokens to fit the context window.</source>
+        <translation>Бюджет размышления урезан до %1 токенов, чтобы поместиться в окно контекста.</translation>
+    </message>
+</context>
+<context>
     <name>FixDiffGate</name>
     <message>
         <source>Malformed edit line without &apos;=&gt;&apos;: %1</source>
@@ -2551,7 +2559,7 @@
         <translation>Не удалось удалить пользовательский каталог: %1</translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="+218"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="+217"/>
         <source>Request profile has no parameters array</source>
         <translation>Профиль запроса не содержит массива параметров</translation>
     </message>
@@ -3743,7 +3751,7 @@
 <context>
     <name>VisionChatModel</name>
     <message>
-        <location filename="../../src/models/VisionChatModel.cpp" line="+67"/>
+        <location filename="../../src/models/VisionChatModel.cpp" line="+58"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный ответ JSON</translation>
     </message>

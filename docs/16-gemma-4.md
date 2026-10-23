@@ -79,7 +79,8 @@ llama-server \
   --alias llocr-verify --host 127.0.0.1 --port <n> \
   --n-gpu-layers 99 --ctx-size 16384 \
   --spec-type draft-mtp --spec-draft-n-max 4 --temp 0 --parallel 1 \
-  --no-warmup --jinja --flash-attn off --image-min-tokens 1120 \
+  --no-warmup --jinja --reasoning-budget 0 --flash-attn off \
+  --image-min-tokens 1120 \
   --cache-reuse 0 --no-context-shift
 ```
 
@@ -95,8 +96,11 @@ Layer by layer:
     measured 1.5–2.2× decode speedup and suggests trying 1–6 per machine.
   - `--temp 0 --parallel 1 --no-warmup` — server-side defaults for a
     single-stream transcription pipeline (same as the qwen profiles).
-  - `--jinja` — the GGUF chat template parses Gemma 4's thought channel and
-    applies the request's `enable_thinking=false` (§4).
+  - `--jinja` — the GGUF chat template parses Gemma 4's thought channel, so
+    the request's thinking mode decides whether the model reasons first (§4).
+  - `--reasoning-budget 0` — the server's default thinking budget: no thinking
+    unless a request asks for it. The fix request carries the reasoning mode
+    and overrides the default (ADR 193).
   - `--image-min-tokens 1120` — Gemma 4 quantizes each image to one of five
     visual token budgets: **70 / 140 / 280 / 560 / 1120**. The card says to
     use the higher budgets for OCR, document parsing and small text, so the
@@ -130,12 +134,13 @@ Layer by layer:
   follows the profile's `promptBeforeImage` flag, the same flag the OCR body
   already honored. Gemma 4 (and every Qwen-family model) gets
   `[image, type prompt]`; LFM2.5 keeps its trained `[type prompt, image]`.
-- Thinking is disabled per request: `chat_template_kwargs:
-  {"enable_thinking": false}` — the flag `GeneralPurposeModel` already sends
-  on every block-recognition and fix request, and the same switch the Gemma 4
-  template documents. The 12B still emits an **empty** thought block when
-  thinking is off (the E-series does not); `--jinja` makes llama.cpp parse
-  the channel markers out, so `content` arrives clean either way.
+- Thinking follows the request's mode: `chat_template_kwargs:
+  {"enable_thinking": …}` is true exactly when the request carries a reasoning
+  budget above zero (ADR 193) — the off mode keeps the old behaviour, and the
+  thought, when it is on, arrives in `reasoning_content` while `content` holds
+  the verdict and the corrected block. The 12B still emits an **empty** thought
+  block when thinking is off (the E-series does not); `--jinja` makes llama.cpp
+  parse the channel markers out, so `content` arrives clean either way.
 - One block crop per request; the candidate text rides along framed by
   `<CANDIDATE>` (§ fix prompts).
 
@@ -163,12 +168,29 @@ contract — the corrected table answers in the candidate's own format
 | `stream` | false | The parser consumes one complete response. |
 | `cache_prompt` | false | Every block request stays independent of the draft's shared KV cache. |
 
-The fix task's optional reasoning mode (ADR 193) is **not** offered for the
-gemma pair: the model profile carries no `reasoning` flag, so the fix request
-has no reasoning budget and the reply is the answer — the same as before. The
-capability is the model's own (`reasoning: true` in the model profile), so a
-gemma that is measured to think well gets the flag and the same four steps
-(off / low 512 / med 1024 / high 1536) that the shared request profile offers.
+The fix task's optional reasoning mode (ADR 193) **is** offered for the gemma
+pair: the model profile carries `reasoning: true`, so the fix request carries a
+thinking budget and the same four steps (off / low 512 / med 1024 / high 1536)
+that the shared request profile offers.
+
+Verified on llama.cpp b11799 (the model `gemma-4-E4B-it-qat-UD-Q4_K_XL`, the
+server `--jinja --reasoning-budget 0`):
+
+- the gemma-4 chat template knows the `enable_thinking` switch and the thought
+  channel (`<|channel>thought`), so llama.cpp's autoparser moves the thinking
+  into `message.reasoning_content` and leaves the verdict and the corrected
+  block in `message.content`;
+- the budget rides the request (`reasoning_budget_tokens`) and cuts the thought
+  at the wanted token: a budget of 32 gave a ~32-token thought and the answer
+  after it, a budget of 512 the full thought and the same answer;
+- a budget of 0 (the off mode) produced no thinking at all — the answer as
+  before.
+
+The option had simply never been added to the gemma profiles; the model itself
+is not limited. One practical caveat: a thought cut in the middle (a small
+budget) sometimes runs into the answer itself — a tail with the explanation
+follows the corrected block. The off mode therefore stays the default, and the
+budget is picked large enough for the thought to fit.
 
 ## 5. Output formats
 

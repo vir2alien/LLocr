@@ -270,9 +270,10 @@ void TestFixProtocol::reasoningBudgetTurnsTheThinkingOn()
     body = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
     QCOMPARE(body.value("reasoning_budget_tokens").toDouble(), 1024.0);
     QCOMPARE(body.value("chat_template_kwargs").toObject().value("enable_thinking").toBool(), true);
-    // The thinking tokens come out of the generation budget: the answer keeps
-    // the room the block needs.
-    QCOMPARE(body.value("max_tokens").toDouble(), 3072.0);
+    // The transport follows the budget the task computed: the generation
+    // budget is the task's own (the answer plus the thinking inside the
+    // context window), not the transport's business.
+    QCOMPARE(body.value("max_tokens").toDouble(), 2048.0);
 
     // A budget of zero is the default: the reply is the answer.
     request.parameters[0].value = QVariant(0.0);

@@ -281,6 +281,14 @@ target_link_libraries(test_request_profile PRIVATE
 )
 add_test(NAME test_request_profile COMMAND test_request_profile)
 
+qt_add_executable(test_request_budget test_request_budget.cpp)
+
+target_link_libraries(test_request_budget PRIVATE
+    Qt6::Test
+    llocr_core
+)
+add_test(NAME test_request_budget COMMAND test_request_budget)
+
 qt_add_executable(test_launch_profile test_launch_profile.cpp)
 
 # LaunchProfileStore::activeProfileId() uses ReleaseCatalog::detectPlatform,
