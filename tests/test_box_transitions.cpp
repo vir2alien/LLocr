@@ -272,6 +272,46 @@ private slots:
         QCOMPARE(BoxTransitions::effectiveCheckStatus(damaged), BoxCheckStatus::Review);
     }
 
+    // The hand-written text (ADR 187): it lands in the version the user wrote
+    // in, it is marked as the user's own text — not as a confirmation of the
+    // model's verdict — and the version in view follows the hand.
+    void theHandWrittenTextIsStoredAndMarkedAsEdited()
+    {
+        BoundingBox plain = recognizedBox();
+        plain.checkStatus = BoxCheckStatus::Mismatch;
+        plain.confidence = 0.3;
+
+        BoxTransitions::blockTextEdited(plain, QStringLiteral("by hand"), false);
+        QCOMPARE(plain.text, QStringLiteral("by hand"));
+        QCOMPARE(plain.checkStatus, BoxCheckStatus::Edited);
+        QCOMPARE(plain.confidence, -1.0);
+        QVERIFY(!plain.useCorrectedText);
+
+        BoundingBox corrected = correctedBox();
+        corrected.checkStatus = BoxCheckStatus::Mismatch;
+        BoxTransitions::blockTextEdited(corrected, QStringLiteral("fixed by hand"), true);
+        QCOMPARE(corrected.correctedText, QStringLiteral("fixed by hand"));
+        QCOMPARE(corrected.correctedCheckStatus, BoxCheckStatus::Edited);
+        // The other version keeps its own text and verdict.
+        QCOMPARE(corrected.text, QStringLiteral("recognized"));
+        QCOMPARE(corrected.checkStatus, BoxCheckStatus::Mismatch);
+        QVERIFY(corrected.useCorrectedText);
+    }
+
+    // A version the user opened and left alone is not a hand-written one: the
+    // model's verdict stands.
+    void anUnchangedEditKeepsTheVerdict()
+    {
+        BoundingBox box = recognizedBox();
+        box.checkStatus = BoxCheckStatus::Mismatch;
+        box.confidence = 0.2;
+
+        BoxTransitions::blockTextEdited(box, box.text, false);
+
+        QCOMPARE(box.checkStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(box.confidence, 0.2);
+    }
+
     // The removed ReRecognized value leaves a numeric hole: old projects read
     // it as NotChecked, the real statuses keep their values.
     void reservedValueTwoReadsAsNotChecked()
@@ -283,7 +323,72 @@ private slots:
         QCOMPARE(boxCheckStatusFromInt(4), BoxCheckStatus::Mismatch);
         QCOMPARE(boxCheckStatusFromInt(5), BoxCheckStatus::Approved);
         QCOMPARE(boxCheckStatusFromInt(-1), BoxCheckStatus::NotChecked);
-        QCOMPARE(boxCheckStatusFromInt(6), BoxCheckStatus::NotChecked);
+        QCOMPARE(boxCheckStatusFromInt(6), BoxCheckStatus::Edited);
+        QCOMPARE(boxCheckStatusFromInt(7), BoxCheckStatus::NotChecked);
+    }
+
+    // «Отозвать утверждение» (ADR 187): the approval is undone and the
+    // verdict the decision model gave stands again.
+    void approvalCanBeReverted()
+    {
+        BoundingBox plain = recognizedBox();
+        plain.checkStatus = BoxCheckStatus::Mismatch;
+        plain.confidence = 0.1;
+
+        BoxTransitions::blockApproved(plain);
+        QCOMPARE(plain.checkStatus, BoxCheckStatus::Approved);
+        QCOMPARE(plain.checkStatusBeforeApproval, BoxCheckStatus::Mismatch);
+
+        BoxTransitions::blockApprovalReverted(plain);
+        QCOMPARE(plain.checkStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(plain.checkStatusBeforeApproval, BoxCheckStatus::NotChecked);
+        // The approval is gone: a second revert changes nothing.
+        BoxTransitions::blockApprovalReverted(plain);
+        QCOMPARE(plain.checkStatus, BoxCheckStatus::Mismatch);
+    }
+
+    // The correction layer keeps its own approval: the text layer's verdict
+    // is not touched by the confirmation of the correction.
+    void theApprovalOfTheCorrectionCanBeReverted()
+    {
+        BoundingBox box = correctedBox();
+        box.correctedCheckStatus = BoxCheckStatus::Mismatch;
+
+        BoxTransitions::blockApproved(box);
+        QCOMPARE(box.correctedCheckStatus, BoxCheckStatus::Approved);
+        QCOMPARE(box.checkStatus, BoxCheckStatus::Mismatch);
+
+        BoxTransitions::blockApprovalReverted(box);
+        QCOMPARE(box.correctedCheckStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(box.checkStatus, BoxCheckStatus::Mismatch);
+    }
+
+    // A new verdict replaces the one the approval kept: the revert must not
+    // bring back a verdict the model has already answered again.
+    void aNewVerdictForgetsTheApproval()
+    {
+        BoundingBox box = recognizedBox();
+        box.checkStatus = BoxCheckStatus::Mismatch;
+        BoxTransitions::blockApproved(box);
+        QCOMPARE(box.checkStatusBeforeApproval, BoxCheckStatus::Mismatch);
+
+        BoxTransitions::verificationStarted(box);
+        BoxTransitions::verdictApplied(box, verdict(CheckStatus::Ok, 0.9));
+
+        QCOMPARE(box.checkStatus, BoxCheckStatus::Ok);
+        QCOMPARE(box.checkStatusBeforeApproval, BoxCheckStatus::NotChecked);
+    }
+
+    // A block nobody judged keeps its «recognized» state when the approval is
+    // undone: there is no verdict to bring back.
+    void revertingAnApprovalWithoutAVerdictLeavesTheBlockUnchecked()
+    {
+        BoundingBox box = recognizedBox();
+        BoxTransitions::blockApproved(box);
+        QCOMPARE(box.checkStatus, BoxCheckStatus::Approved);
+
+        BoxTransitions::blockApprovalReverted(box);
+        QCOMPARE(box.checkStatus, BoxCheckStatus::NotChecked);
     }
 };
 

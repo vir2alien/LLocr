@@ -34,6 +34,22 @@ QtObject {
 
     readonly property color helpColor: textSecondary
 
+    // --- The block inspector -------------------------------------------------
+    // The version cards of the block panel: the one in view carries the accent,
+    // the other one is muted.
+    readonly property color cardSurface: dark ? "#2f2f2f" : "#ffffff"
+    readonly property color cardSurfaceMuted: dark ? "#262626" : "#f1f5f9"
+    readonly property color cardBorder: dark ? "#3f3f3f" : "#e2e8f0"
+    readonly property color cardAccent: dark ? "#60a5fa" : "#3b82f6"
+    readonly property color cardAccentBg: dark ? "#1c3450" : "#eff6ff"
+    // The diff tints: what the correction dropped from the original and what it
+    // put in. A soft background, no strikethrough — a strike reads as a minus
+    // sign inside a formula.
+    readonly property color diffRemovedBg: dark ? "#4a2020" : "#fee2e2"
+    readonly property color diffRemovedText: dark ? "#fca5a5" : "#991b1b"
+    readonly property color diffAddedBg: dark ? "#123a25" : "#dcfce7"
+    readonly property color diffAddedText: dark ? "#86efac" : "#166534"
+
     // --- Overlay (bounding boxes on the image preview) ---
     // One hue per block kind; fill = ~6% translucency, outer/inner = the
     // double frame around the box.
@@ -78,6 +94,20 @@ QtObject {
     readonly property color linkColor: accent
 
     readonly property font caption: Qt.font({
+        pointSize: captionSize
+    })
+
+    // The code-like blocks — a formula, a table, a snippet — are read in a
+    // monospace face: the brackets, the subscripts and the spaces must not
+    // drift apart.
+    readonly property string monoFamily: Qt.platform.os === "osx" ? "Menlo"
+                                       : (Qt.platform.os === "windows" ? "Consolas" : "DejaVu Sans Mono")
+    readonly property font mono: Qt.font({
+        family: monoFamily,
+        pointSize: bodySmallSize
+    })
+    readonly property font monoSmall: Qt.font({
+        family: monoFamily,
         pointSize: captionSize
     })
 }

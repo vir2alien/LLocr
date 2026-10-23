@@ -159,6 +159,9 @@ Rectangle {
                     }
 
                     onActiveFocusChanged: {
+                        // The panel's approve hotkey must not take the Return
+                        // away from a text the user is typing in.
+                        Controller.pageTextEditorFocused = activeFocus
                         if (!activeFocus && pendingReload) {
                             pendingReload = false
                             reload()

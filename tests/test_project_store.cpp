@@ -95,6 +95,15 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     markup.rect = QRectF(0.05, 0.7, 0.4, 0.1);
     markup.positioned = true;
     imagePage.boxes.append(markup);
+    // A block the user confirmed by hand: the verdict the confirmation
+    // replaced travels with it (ADR 187).
+    BoundingBox approved;
+    approved.text = QStringLiteral("confirmed block");
+    approved.checkStatus = BoxCheckStatus::Approved;
+    approved.checkStatusBeforeApproval = BoxCheckStatus::Mismatch;
+    approved.label = QStringLiteral("text");
+    approved.rect = QRectF(0.1, 0.5, 0.4, 0.15);
+    imagePage.boxes.append(approved);
     data.pages.append(imagePage);
 
     ProjectPageData pdfPage;
@@ -203,7 +212,7 @@ private slots:
         QCOMPARE(imagePage.text, QStringLiteral("edited text"));
         QCOMPARE(imagePage.baseline, QStringLiteral("recognized text"));
         QCOMPARE(imagePage.parseNote, QStringLiteral("no layout tokens"));
-        QCOMPARE(imagePage.boxes.size(), 4);
+        QCOMPARE(imagePage.boxes.size(), 5);
         QCOMPARE(imagePage.boxes.at(0).text, QStringLiteral("block text"));
         QCOMPARE(imagePage.boxes.at(0).correctedText, QStringLiteral("corrected text"));
         QCOMPARE(imagePage.boxes.at(0).checkStatus, BoxCheckStatus::Mismatch);
@@ -234,6 +243,10 @@ private slots:
         QCOMPARE(imagePage.boxes.at(3).checkStatus, BoxCheckStatus::NotChecked);
         QCOMPARE(imagePage.boxes.at(3).rect, QRectF(0.05, 0.7, 0.4, 0.1));
         QVERIFY(imagePage.boxes.at(3).positioned);
+        // The confirmation and the verdict it replaced both survive the
+        // container (ADR 187): the undo has something to put back.
+        QCOMPARE(imagePage.boxes.at(4).checkStatus, BoxCheckStatus::Approved);
+        QCOMPARE(imagePage.boxes.at(4).checkStatusBeforeApproval, BoxCheckStatus::Mismatch);
 
         const ProjectPageData &pdfPage = loaded.data.pages.at(1);
         QCOMPARE(pdfPage.sourceId, 1);

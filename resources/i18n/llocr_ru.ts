@@ -19,6 +19,16 @@
         <translation>Блок утверждён.</translation>
     </message>
     <message>
+        <location line="+19"/>
+        <source>Block approval reverted.</source>
+        <translation>Утверждение блока отозвано.</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Block text changed.</source>
+        <translation>Текст блока изменён.</translation>
+    </message>
+    <message>
         <location line="+89"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
@@ -251,34 +261,29 @@
         <translation type="unfinished">Утверждён</translation>
     </message>
     <message>
+        <location line="+19"/>
+        <source>Edited by hand</source>
+        <translation type="unfinished">Изменён вручную</translation>
+    </message>
+    <message>
         <location line="+61"/>
         <source>No correction required</source>
         <translation type="unfinished">Не требует исправления</translation>
     </message>
     <message>
         <location line="+19"/>
-        <source>Recognized text</source>
-        <translation type="unfinished">Распознанный текст</translation>
+        <source>Differences</source>
+        <translation type="unfinished">Различия</translation>
     </message>
     <message>
         <location line="+19"/>
-        <source>Corrected text</source>
-        <translation type="unfinished">Исправленный текст</translation>
+        <source>Highlight what the correction changed</source>
+        <translation type="unfinished">Подсветить, что изменило исправление</translation>
     </message>
     <message>
         <location line="+19"/>
-        <source>Correction:</source>
-        <translation type="unfinished">Исправление:</translation>
-    </message>
-    <message>
-        <location line="+19"/>
-        <source>Show original</source>
-        <translation type="unfinished">Показать оригинал</translation>
-    </message>
-    <message>
-        <location line="+19"/>
-        <source>Show correction</source>
-        <translation type="unfinished">Показать исправление</translation>
+        <source>Reset correction</source>
+        <translation type="unfinished">Сбросить исправление</translation>
     </message>
     <message>
         <location line="+19"/>
@@ -292,8 +297,41 @@
     </message>
     <message>
         <location line="+19"/>
-        <source>Revert correction</source>
-        <translation type="unfinished">Отменить исправление</translation>
+        <source>Revoke approval</source>
+        <translation type="unfinished">Отозвать утверждение</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Recognized text (OCR)</source>
+        <translation type="unfinished">Распознанный текст (OCR)</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Corrected text (AI)</source>
+        <translation type="unfinished">Исправленный текст (AI)</translation>
+    </message>
+</context>
+<context>
+    <name>BlockVersionCard</name>
+    <message>
+        <location filename="../qml/MainWindow/BlockVersionCard.qml" line="+156"/>
+        <source>Edit</source>
+        <translation type="unfinished">Изм.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Save</source>
+        <translation type="unfinished">Сохранить</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>In the document</source>
+        <translation type="unfinished">Используется в документе</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Click to select</source>
+        <translation type="unfinished">Нажмите, чтобы выбрать</translation>
     </message>
 </context>
 <context>
@@ -1048,8 +1086,8 @@
     </message>
     <message>
         <location line="+9"/>
-        <source>Fix the problem blocks on the selected pages</source>
-        <translation>Исправить проблемные блоки на выбранных страницах</translation>
+        <source>Fix the blocks that wait for a fix on the selected pages</source>
+        <translation>Исправить блоки, ожидающие исправления, на выбранных страницах</translation>
     </message>
     <message>
         <source>Stop</source>

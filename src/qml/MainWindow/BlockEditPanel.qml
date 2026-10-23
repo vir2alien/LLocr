@@ -8,6 +8,13 @@ import LLocr
 
 import "../Common"
 
+// The inspector of the selected block: the two versions of its text (the OCR
+// result and the correction), the verdict each of them earned and the actions
+// the operator has (ADR 185, ADR 186).
+//
+// The card in view is the version the document shows; the header carries the
+// state of the block and the actions. Every status has one place: the pipeline
+// state in the header, the per-layer verdicts in the card headers.
 Rectangle {
     id: root
 
@@ -19,7 +26,7 @@ Rectangle {
                                         || !Controller.boxModel.isImageBox(Controller.selectedBoxIndex)
 
     // The two layers of a block (ADR 164): the OCR text and the correction.
-    // The panel's toggle picks the one the user reads, and the verdict follows
+    // The card in view is the one the user reads, and the verdict follows
     // that layer (ADR 185).
     readonly property bool correctionStored: Controller.selectedBlockCorrected.length > 0
                                              && Controller.selectedBlockCorrected !== Controller.selectedBlockText
@@ -29,12 +36,19 @@ Rectangle {
     readonly property int effectiveStatus: Controller.selectedBlockUsesCorrected && correctionActive
                                            ? Controller.selectedBlockCorrectedCheckStatus
                                            : Controller.selectedBlockCheckStatus
-    readonly property double effectiveConfidence: Controller.selectedBlockUsesCorrected && correctionActive
-                                                  ? Controller.selectedBlockCorrectedConfidence
-                                                  : Controller.selectedBlockConfidence
-    // The score belongs to the model's verdict: an approved block carries no
-    // verdict of its own.
-    readonly property bool scoreVisible: effectiveConfidence >= 0 && effectiveStatus !== 5
+    // The layer the operator acts on: the one the panel shows (ADR 187).
+    readonly property bool correctionLayerInView: Controller.selectedBlockUsesCorrected && correctionActive
+    // The block in view carries the user's approval: the button offers the undo.
+    readonly property bool approved: effectiveStatus === 5
+
+    // A formula, a table or a snippet is read in a monospace face: the
+    // brackets, the subscripts and the spaces must not drift apart.
+    readonly property bool monoBlock: {
+        const label = Controller.selectedBlockLabel.toLowerCase()
+        return label.indexOf("equation") >= 0 || label.indexOf("formula") >= 0
+                || label.indexOf("code") >= 0 || label.indexOf("latex") >= 0
+                || label.indexOf("math") >= 0 || label.indexOf("table") >= 0
+    }
 
     // The word next to each dot: what the layer's pipeline state is. A layer
     // nobody judged yet carries no word — its title says what it is.
@@ -43,6 +57,8 @@ Rectangle {
             return qsTr("Verified")
         if (status === 5)
             return qsTr("Approved")
+        if (status === 6)
+            return qsTr("Edited by hand")
         if (status === 3)
             return qsTr("Damaged")
         if (status === 4)
@@ -50,38 +66,81 @@ Rectangle {
         return ""
     }
     function dotColor(status) {
-        if (status === 1 || status === 5)
+        if (status === 1 || status === 5 || status === 6)
             return Theme.success
-        if (status >= 3)
+        if (status === 3 || status === 4)
             return Theme.error
         return Theme.nothing
     }
     function scoreText(confidence) {
-        return Math.round(confidence * 100) + "%"
+        return confidence >= 0 ? Math.round(confidence * 100) + "%" : ""
+    }
+    // The score belongs to the model's verdict: a human state (approved,
+    // written by hand) has no score of its own (ADR 187).
+    function layerScore(confidence, status) {
+        if (status === 5 || status === 6)
+            return ""
+        return scoreText(confidence)
     }
 
-    // The overall state of the block: recognized (nothing checked it yet),
-    // verified (the layer in view carries a verdict), corrected (a correction
-    // the decision has not judged yet) or approved by hand.
+    // The state of the block in the header: what the pipeline did with it.
     readonly property string overallStatus: effectiveStatus === 5 ? qsTr("Approved")
-                                          : effectiveStatus !== 0 ? qsTr("Verified")
+                                          : effectiveStatus === 6 ? qsTr("Edited by hand")
+                                          : effectiveStatus === 1 ? qsTr("Verified")
+                                          : effectiveStatus === 3 ? qsTr("Damaged")
+                                          : effectiveStatus === 4 ? qsTr("Mismatch")
                                           : correctionInView ? qsTr("Corrected")
                                           : qsTr("Recognized")
 
-    // The outcome of the last fix run — the one thing the correction layer
-    // alone cannot tell (ADR 185).
-    readonly property string fixResult: {
-        if (Controller.selectedBlockFixStatus === 1)
-            return qsTr("No correction required")
-        if (Controller.selectedBlockFixStatus === 2)
-            return qsTr("Corrected")
-        if (Controller.selectedBlockFixStatus === 3)
-            return qsTr("Damaged")
-        return ""
-    }
+    // The outcome of the last fix run (ADR 185). A fix that confirmed the
+    // text stores nothing: there is no correction to show, and the header
+    // says so.
+    readonly property bool fixNotNeeded: Controller.selectedBlockFixStatus === 1 && !correctionStored
+    readonly property bool fixDamaged: Controller.selectedBlockFixStatus === 3
 
+    // The text of a layer as HTML: the fragments the correction changed are
+    // tinted, the rest is the plain text (ADR 186).
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }
+    function layerHtml(text, ranges, background, foreground) {
+        if (!text)
+            return ""
+        var out = "<span style=\"white-space: pre-wrap\">"
+        var pos = 0
+        for (var i = 0; i < ranges.length; ++i) {
+            const start = ranges[i].start
+            const length = ranges[i].length
+            if (start > pos)
+                out += escapeHtml(text.substring(pos, start))
+            out += "<span style=\"background-color:" + background + ";color:" + foreground + "\">"
+            out += escapeHtml(text.substring(start, start + length))
+            out += "</span>"
+            pos = start + length
+        }
+        if (pos < text.length)
+            out += escapeHtml(text.substring(pos))
+        return out + "</span>"
+    }
+    readonly property string originalHtml: layerHtml(Controller.selectedBlockText,
+                                                    Controller.highlightDifferences ? Controller.selectedBlockRemovedRanges : [],
+                                                    Theme.diffRemovedBg,
+                                                    Theme.diffRemovedText)
+    readonly property string correctedHtml: layerHtml(Controller.selectedBlockCorrected,
+                                                     Controller.highlightDifferences ? Controller.selectedBlockAddedRanges : [],
+                                                     Theme.diffAddedBg,
+                                                     Theme.diffAddedText)
     implicitHeight: checkColumn.implicitHeight + 2 * Theme.spacingSmall
     visible: Controller.selectedBoxIndex >= 0 && Controller.hasResult
+
+    // Approve and move on: the operator's rhythm. The page text editor keeps
+    // the Return — a shortcut that fires while a text is being typed in would
+    // approve a block by accident.
+    Shortcut {
+        sequences: ["Ctrl+Return", "Meta+Return"]
+        enabled: Controller.selectedBoxIndex >= 0 && !Controller.pageTextEditorFocused
+        onActivated: Controller.approveSelectedBlockAndSelectNext()
+    }
 
     ColumnLayout {
         id: checkColumn
@@ -95,20 +154,18 @@ Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: closeButton.implicitHeight
             spacing: Theme.spacingSmall
+
             LLOLabel {
                 text: Controller.selectedBlockLabel
                 font.bold: true
                 color: Theme.textPrimary
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap
-                // The row keeps room for the dot, the status, the score, the
-                // approve button and the close button; the label gives way.
-                Layout.maximumWidth: Math.max(0, root.width - 300)
+                // The row keeps room for the status, the buttons and the close
+                // button; the label gives way.
+                Layout.maximumWidth: Math.max(0, root.width - 380)
             }
             Rectangle {
-                visible: root.effectiveStatus !== 0
-                         || Controller.selectedBlockText.length > 0
-                         || Controller.selectedBlockCorrected.length > 0
                 Layout.preferredWidth: 8
                 Layout.preferredHeight: 8
                 Layout.alignment: Qt.AlignVCenter
@@ -116,21 +173,46 @@ Rectangle {
                 color: root.dotColor(root.effectiveStatus)
             }
             LLOLabel {
-                visible: root.overallStatus.length > 0
                 text: root.overallStatus
-                color: Theme.textMuted
+                color: Theme.textSecondary
             }
             LLOLabel {
-                visible: root.scoreVisible
-                text: root.scoreText(root.effectiveConfidence)
+                visible: root.fixNotNeeded
+                text: qsTr("No correction required")
                 color: Theme.textMuted
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
+            LLOButton {
+                // The switch compares the two versions: without a correction
+                // there is nothing to compare (ADR 188).
+                visible: root.isTextBlock && root.correctionStored
+                text: qsTr("Differences")
+                checkable: true
+                checked: Controller.highlightDifferences
+                onToggled: Controller.highlightDifferences = checked
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Highlight what the correction changed")
+            }
+            LLOButton {
+                visible: root.correctionStored || root.fixDamaged
+                text: qsTr("Reset correction")
+                subtle: true
+                enabled: !Controller.checkBusy && !Controller.busy
+                onClicked: Controller.revertBlockCorrection()
+            }
             LLOButton {
                 visible: root.isTextBlock && Controller.selectedBlockText.length > 0
-                text: root.correctionInView ? qsTr("Approve correction") : qsTr("Approve block")
+                // The one button of the block: it confirms it, and while the
+                // confirmation stands it undoes it (ADR 187). No colour of its
+                // own: the panel carries no green (ADR 188).
+                text: root.approved ? qsTr("Revoke approval")
+                     : (root.correctionLayerInView ? qsTr("Approve correction")
+                                                   : qsTr("Approve block"))
                 enabled: !Controller.checkBusy && !Controller.busy
-                onClicked: Controller.approveSelectedBlock()
+                onClicked: root.approved ? Controller.revertBlockApproval()
+                                         : Controller.approveSelectedBlock()
             }
             LLOButton {
                 id: closeButton
@@ -141,119 +223,46 @@ Rectangle {
             }
         }
 
-        // What the last fix run answered (ADR 185): a confirmed text, a stored
-        // correction or a block the fixer could not read.
-        RowLayout {
-            visible: root.fixResult.length > 0
+        // The recognized text: the OCR result and the verdict it earned.
+        BlockVersionCard {
             Layout.fillWidth: true
-            spacing: Theme.spacingSmall
-            LLOLabel {
-                text: qsTr("Correction:")
-                color: Theme.textMuted
-            }
-            LLOLabel {
-                text: root.fixResult
-                color: Theme.textPrimary
-            }
-            Item { Layout.fillWidth: true }
-        }
-
-        // The OCR text and its own verdict.
-        RowLayout {
             visible: root.isTextBlock && Controller.selectedBlockText.length > 0
-            Layout.fillWidth: true
-            spacing: Theme.spacingSmall
-            Rectangle {
-                Layout.preferredWidth: 8
-                Layout.preferredHeight: 8
-                Layout.alignment: Qt.AlignVCenter
-                radius: 4
-                color: root.dotColor(Controller.selectedBlockCheckStatus)
-            }
-            LLOLabel {
-                text: qsTr("Recognized text")
-                color: Theme.textMuted
-            }
-            LLOLabel {
-                text: root.statusWord(Controller.selectedBlockCheckStatus)
-                visible: text.length > 0
-                Layout.leftMargin: Theme.spacing
-                color: Theme.textMuted
-            }
-            Item { Layout.fillWidth: true }
-        }
-
-        ScrollView {
-            visible: root.isTextBlock && Controller.selectedBlockText.length > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(recognizedText.contentHeight, 96)
-            contentWidth: availableWidth
-            TextArea {
-                id: recognizedText
-                width: parent.width
-                readOnly: true
-                wrapMode: TextArea.Wrap
-                selectByMouse: true
-                color: Theme.textSecondary
-                background: null
-                topPadding: 0
-                bottomPadding: 0
-                text: Controller.selectedBlockText
-            }
+            title: qsTr("Recognized text (OCR)")
+            badgeText: root.statusWord(Controller.selectedBlockCheckStatus)
+            badgeScore: root.layerScore(Controller.selectedBlockConfidence, Controller.selectedBlockCheckStatus)
+            badgeColor: root.dotColor(Controller.selectedBlockCheckStatus)
+            active: !root.correctionInView
+            verified: Controller.selectedBlockCheckStatus === 1
+                      || Controller.selectedBlockCheckStatus === 5
+                      || Controller.selectedBlockCheckStatus === 6
+            html: root.originalHtml
+            plainText: Controller.selectedBlockText
+            mono: root.monoBlock
+            editable: !Controller.checkBusy && !Controller.busy
+            onActivated: Controller.selectedBlockUsesCorrected = false
+            onEdited: (text) => Controller.setSelectedBlockText(text, false)
         }
 
         // The correction layer: the universal model's fix, judged separately
-        // from the text («Отменить исправление» rolls the block back to it).
-        // A block the fixer confirmed carries no correction to show.
-        RowLayout {
-            visible: root.isTextBlock && root.correctionStored
+        // from the text. A block the fixer confirmed carries no correction to
+        // show.
+        BlockVersionCard {
             Layout.fillWidth: true
-            spacing: Theme.spacingSmall
-            Rectangle {
-                Layout.preferredWidth: 8
-                Layout.preferredHeight: 8
-                Layout.alignment: Qt.AlignVCenter
-                radius: 4
-                color: root.dotColor(Controller.selectedBlockCorrectedCheckStatus)
-            }
-            LLOLabel {
-                text: qsTr("Corrected text")
-                color: Theme.textMuted
-            }
-            LLOLabel {
-                text: root.statusWord(Controller.selectedBlockCorrectedCheckStatus)
-                visible: text.length > 0
-                Layout.leftMargin: Theme.spacing
-                color: Theme.textMuted
-            }
-            Item { Layout.fillWidth: true }
-            LLOButton {
-                text: root.correctionInView ? qsTr("Show original") : qsTr("Show correction")
-                onClicked: Controller.selectedBlockUsesCorrected = !root.correctionInView
-            }
-            LLOButton {
-                text: qsTr("Revert correction")
-                enabled: !Controller.checkBusy && !Controller.busy
-                onClicked: Controller.revertBlockCorrection()
-            }
-        }
-        ScrollView {
             visible: root.isTextBlock && root.correctionStored
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(correctedText.contentHeight, 96)
-            contentWidth: availableWidth
-            TextArea {
-                id: correctedText
-                width: parent.width
-                readOnly: true
-                wrapMode: TextArea.Wrap
-                selectByMouse: true
-                color: Theme.textPrimary
-                background: null
-                topPadding: 0
-                bottomPadding: 0
-                text: Controller.selectedBlockCorrected
-            }
+            title: qsTr("Corrected text (AI)")
+            badgeText: root.statusWord(Controller.selectedBlockCorrectedCheckStatus)
+            badgeScore: root.layerScore(Controller.selectedBlockCorrectedConfidence, Controller.selectedBlockCorrectedCheckStatus)
+            badgeColor: root.dotColor(Controller.selectedBlockCorrectedCheckStatus)
+            active: root.correctionInView
+            verified: Controller.selectedBlockCorrectedCheckStatus === 1
+                      || Controller.selectedBlockCorrectedCheckStatus === 5
+                      || Controller.selectedBlockCorrectedCheckStatus === 6
+            html: root.correctedHtml
+            plainText: Controller.selectedBlockCorrected
+            mono: root.monoBlock
+            editable: !Controller.checkBusy && !Controller.busy
+            onActivated: Controller.selectedBlockUsesCorrected = true
+            onEdited: (text) => Controller.setSelectedBlockText(text, true)
         }
     }
 }

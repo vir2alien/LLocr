@@ -134,7 +134,7 @@ private slots:
         QCOMPARE(PageStatus::recognitionModeAfterBlockText(PageRecognitionMode::None, singlePage({pending}), everythingButImages), PageRecognitionMode::None);
     }
 
-    void problemBlockCountReadsTheEffectiveLayer()
+    void pendingFixCountReadsTheEffectiveLayer()
     {
         BoundingBox answered = box(QStringLiteral("text"));
         answered.checkStatus = BoxCheckStatus::Ok;
@@ -143,9 +143,9 @@ private slots:
         BoundingBox unreadable = box(QStringLiteral("table"));
         unreadable.checkStatus = BoxCheckStatus::Review;
         BoundingBox pending = box(QStringLiteral("text"));  // NotChecked
-        QCOMPARE(PageStatus::problemBlockCount(singlePage({answered, rejected, unreadable, pending})), 2);
-        QCOMPARE(PageStatus::problemBlockCount(singlePage({answered, pending})), 0);
-        QCOMPARE(PageStatus::problemBlockCount(singlePage({})), 0);
+        QCOMPARE(PageStatus::pendingFixCount(singlePage({answered, rejected, unreadable, pending})), 2);
+        QCOMPARE(PageStatus::pendingFixCount(singlePage({answered, pending})), 0);
+        QCOMPARE(PageStatus::pendingFixCount(singlePage({})), 0);
 
         // A fix verdict on the correction layer counts: the block still asks
         // for attention (a refused REVIEW) or is settled by it.
@@ -153,9 +153,29 @@ private slots:
         corrected.checkStatus = BoxCheckStatus::Mismatch;
         corrected.correctedText = QStringLiteral("fixed");
         corrected.correctedCheckStatus = BoxCheckStatus::Ok;
-        QCOMPARE(PageStatus::problemBlockCount(singlePage({corrected})), 0);
+        QCOMPARE(PageStatus::pendingFixCount(singlePage({corrected})), 0);
         corrected.correctedCheckStatus = BoxCheckStatus::Review;
-        QCOMPARE(PageStatus::problemBlockCount(singlePage({corrected})), 1);
+        QCOMPARE(PageStatus::pendingFixCount(singlePage({corrected})), 1);
+
+        // The fixer has answered this candidate (ADR 188): the block waits for
+        // the operator, not for another fix run.
+        BoundingBox confirmed = box(QStringLiteral("text"));
+        confirmed.checkStatus = BoxCheckStatus::Mismatch;
+        confirmed.fixStatus = BoxFixStatus::NotNeeded;
+        QCOMPARE(PageStatus::pendingFixCount(singlePage({confirmed})), 0);
+        BoundingBox damaged = box(QStringLiteral("text"));
+        damaged.correctedCheckStatus = BoxCheckStatus::Review;
+        damaged.useCorrectedText = true;
+        damaged.fixStatus = BoxFixStatus::Damaged;
+        QCOMPARE(PageStatus::pendingFixCount(singlePage({damaged})), 0);
+        // A stored correction is a new candidate the fixer has not seen: a
+        // correction the decision model rejected goes back to it.
+        BoundingBox rejectedCorrection = box(QStringLiteral("text"));
+        rejectedCorrection.correctedText = QStringLiteral("fixed");
+        rejectedCorrection.correctedCheckStatus = BoxCheckStatus::Mismatch;
+        rejectedCorrection.useCorrectedText = true;
+        rejectedCorrection.fixStatus = BoxFixStatus::Fixed;
+        QCOMPARE(PageStatus::pendingFixCount(singlePage({rejectedCorrection})), 1);
     }
 
     void pageListModelCarriesTheStatusRoles()

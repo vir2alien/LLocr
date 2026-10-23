@@ -192,6 +192,23 @@ void VerificationQueueController::collectProblemBoxes(int pageIndex, QList<Verif
     }
 }
 
+// The blocks the fixer still has to answer (ADR 188): the decision model left
+// them open and the fixer has not looked at this candidate yet. The same set
+// the toolbar badge counts, so the number is the work.
+void VerificationQueueController::collectFixBoxes(int pageIndex, QList<VerifyTask> &out) const
+{
+    if (!m_deps.document.isValidIndex(pageIndex))
+        return;
+    const DocumentPage &docPage = m_deps.document.page(pageIndex);
+    if (!docPage.recognized || docPage.result.pages.isEmpty())
+        return;
+    const OcrPage &page = docPage.result.pages.first();
+    for (int i = 0; i < page.boxes.size(); ++i) {
+        if (BoxTransitions::needsFix(page.boxes.at(i)))
+            out.append({pageIndex, i});
+    }
+}
+
 // The layout pass creates text blocks with no text; a legacy project may
 // still carry a correction-only block. Image placeholders are never
 // transcribed.
@@ -385,7 +402,7 @@ void VerificationQueueController::fixAllProblemBlocks()
         return;
     QList<VerifyTask> tasks;
     for (int p = 0; p < m_deps.document.pageCount(); ++p)
-        collectProblemBoxes(p, tasks);
+        collectFixBoxes(p, tasks);
     startFixQueue(tasks);
 }
 
@@ -395,7 +412,7 @@ void VerificationQueueController::fixPagesProblemBlocks(const QList<int> &pages)
         return;
     QList<VerifyTask> tasks;
     for (const int p : pages)
-        collectProblemBoxes(p, tasks);
+        collectFixBoxes(p, tasks);
     startFixQueue(tasks);
 }
 

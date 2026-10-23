@@ -140,6 +140,18 @@ void ExportRendererTest::printsPdfFile()
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_MACOS
+    // Chromium's multi-process model registers a named Mach rendezvous server
+    // in the bootstrap namespace; a restricted session (a sandbox, a
+    // container, a shell without a GUI session) refuses the registration and
+    // Chromium aborts with SIGTRAP — a crash dialog on the desktop, a red test
+    // in the suite. The test renders the app's own local bundle, so the
+    // renderer runs in the browser process: no rendezvous, no crash, and the
+    // assertions stay about the rendered output, not about the process model.
+    const QByteArray flags = qgetenv("QTWEBENGINE_CHROMIUM_FLAGS");
+    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", flags + (flags.isEmpty() ? "" : " ") + "--single-process");
+#endif
+
     // Must run before the QGuiApplication is constructed.
     QtWebEngineQuick::initialize();
     QGuiApplication app(argc, argv);

@@ -19,6 +19,8 @@ enum class BoxCheckStatus : int {
     Mismatch = 4,    ///< The decision model rejected the text.
     Approved = 5,    ///< The user confirmed the block by hand (ADR 185) — the
                      ///< decision model's verdict was wrong.
+    Edited = 6,      ///< The user wrote the text by hand (ADR 187): the text
+                     ///< is theirs, not the model's and not a confirmation.
 };
 
 // The outcome of the last fix run (ADR 185). The correction layer alone cannot
@@ -39,7 +41,7 @@ inline BoxCheckStatus boxCheckStatusFromInt(int value)
 {
     if (value == 2)  // the reserved ReRecognized slot of v1 projects
         return BoxCheckStatus::NotChecked;
-    return value >= int(BoxCheckStatus::NotChecked) && value <= int(BoxCheckStatus::Approved) ? BoxCheckStatus(value) : BoxCheckStatus::NotChecked;
+    return value >= int(BoxCheckStatus::NotChecked) && value <= int(BoxCheckStatus::Edited) ? BoxCheckStatus(value) : BoxCheckStatus::NotChecked;
 }
 
 inline BoxFixStatus boxFixStatusFromInt(int value)
@@ -66,6 +68,12 @@ struct BoundingBox {
                                         ///< Persisted in project.json (ADR 173) — the
                                         ///< threshold calibration data of the eval stand.
     double correctedConfidence = -1.0;  ///< P(match) of the correction-layer verdict; -1 = none.
+
+    // The verdict an approval replaced (ADR 187): «Отозвать утверждение»
+    // puts it back. The comment is above the fields on purpose — a trailing
+    // one would drag the whole struct's comment column to the right.
+    BoxCheckStatus checkStatusBeforeApproval = BoxCheckStatus::NotChecked;
+    BoxCheckStatus correctedCheckStatusBeforeApproval = BoxCheckStatus::NotChecked;
 };
 
 struct OcrPage {

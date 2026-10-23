@@ -79,6 +79,15 @@ class AppController : public QObject
     Q_PROPERTY(int selectedBlockFixStatus READ selectedBlockFixStatus NOTIFY selectedBoxChanged)
     Q_PROPERTY(bool selectedBlockUsesCorrected READ selectedBlockUsesCorrected WRITE setSelectedBlockUsesCorrected NOTIFY selectedBoxChanged)
     Q_PROPERTY(QVariantList selectedBlockTextRange READ selectedBlockTextRange NOTIFY blockTextRangeChanged)
+    // What the correction changed (ADR 186): the ranges the panel tints — the
+    // fragments the fix dropped from the original and the ones it put in.
+    Q_PROPERTY(QVariantList selectedBlockRemovedRanges READ selectedBlockRemovedRanges NOTIFY blockDiffChanged)
+    Q_PROPERTY(QVariantList selectedBlockAddedRanges READ selectedBlockAddedRanges NOTIFY blockDiffChanged)
+    // The panel's diff view: the tinted ranges or the plain text.
+    Q_PROPERTY(bool highlightDifferences READ highlightDifferences WRITE setHighlightDifferences NOTIFY highlightDifferencesChanged)
+    // The page text editor holds the keyboard: the approve hotkey must not
+    // take the Return away from a text the user is typing in.
+    Q_PROPERTY(bool pageTextEditorFocused READ pageTextEditorFocused WRITE setPageTextEditorFocused NOTIFY pageTextEditorFocusedChanged)
 
     Q_PROPERTY(bool checkBusy READ checkBusy NOTIFY checkStateChanged)
     Q_PROPERTY(bool checkRunning READ checkRunning NOTIFY checkStateChanged)
@@ -108,7 +117,7 @@ class AppController : public QObject
     // counts ride the availability broadcast so a verdict landing on a
     // non-current page re-announces them too.
     Q_PROPERTY(int selectedPageCount READ selectedPageCount NOTIFY availabilityChanged)
-    Q_PROPERTY(int scopedProblemBlockCount READ scopedProblemBlockCount NOTIFY availabilityChanged)
+    Q_PROPERTY(int scopedPendingFixCount READ scopedPendingFixCount NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeHasResults READ scopeHasResults NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeVerificationSupported READ scopeVerificationSupported NOTIFY availabilityChanged)
     Q_PROPERTY(bool scopeBlocksRecognitionSupported READ scopeBlocksRecognitionSupported NOTIFY availabilityChanged)
@@ -194,6 +203,12 @@ public:
     void setSelectedBlockUsesCorrected(bool corrected);
     QVariantList selectedBlockTextRange() const;
     void setSelectedBoxIndex(int index);
+    QVariantList selectedBlockRemovedRanges() const;
+    QVariantList selectedBlockAddedRanges() const;
+    bool highlightDifferences() const { return m_highlightDifferences; }
+    void setHighlightDifferences(bool enabled);
+    bool pageTextEditorFocused() const { return m_pageTextEditorFocused; }
+    void setPageTextEditorFocused(bool focused);
 
     bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive(); }
     bool checkRunning() const { return m_verify.queueActive(); }
@@ -218,7 +233,7 @@ public:
     int currentPageRecognitionMode() const;
     int currentPageVerification() const;
     int selectedPageCount() const;
-    int scopedProblemBlockCount() const;
+    int scopedPendingFixCount() const;
     bool scopeHasResults() const;
     bool scopeVerificationSupported() const;
     bool scopeBlocksRecognitionSupported() const;
@@ -265,6 +280,11 @@ signals:
 
     void selectedBoxChanged();
     void blockTextRangeChanged();
+    // The panel's diff view changed: a new block, a new correction or the
+    // highlight toggle.
+    void blockDiffChanged();
+    void highlightDifferencesChanged();
+    void pageTextEditorFocusedChanged();
     void checkStateChanged();
     // The availability flags (canRecognize and the page/all "supported"
     // properties) fold in the current page, the page content, the recognition
@@ -304,6 +324,17 @@ public slots:
     // The user confirms the block by hand (ADR 185): the layer in view is
     // marked correct even when the decision model rejected it.
     Q_INVOKABLE void approveSelectedBlock();
+    // «Отозвать утверждение»: the user's confirmation is undone and the
+    // verdict the decision model gave stands again (ADR 187).
+    Q_INVOKABLE void revertBlockApproval();
+    // Approves the block in view and jumps to the next problem block of the
+    // page: the operator's rhythm (hotkey in the panel).
+    Q_INVOKABLE void approveSelectedBlockAndSelectNext();
+    // Selects the next block the decision model left open on this page.
+    Q_INVOKABLE void selectNextProblemBlock();
+    // The user corrects the text of a version by hand (ADR 187): the version
+    // is written, marked as the user's own, and the page text follows.
+    Q_INVOKABLE void setSelectedBlockText(const QString &text, bool correctedLayer);
     Q_INVOKABLE bool blockTextMapped() const;
     Q_INVOKABLE QList<int> blockTextRange(int boxIndex) const;
     Q_INVOKABLE int boxIndexForTextPosition(int position) const;
@@ -465,6 +496,8 @@ private:
 
     int m_selectedBox = -1;
     BlockTextHighlighter *m_blockHighlighter = nullptr;  ///< owned; created on first attach
+    bool m_highlightDifferences = true;
+    bool m_pageTextEditorFocused = false;
 
     // Memo of currentPageRebuild() keyed by its inputs (page, the structural
     // revisions, the shown text) plus parser options: a keystroke re-reads the

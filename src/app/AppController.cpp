@@ -33,6 +33,7 @@
 #include "core/BoxTransitions.h"
 #include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"
+#include "core/TextDiff.h"
 #include "models/OcrModel.h"
 
 namespace llocr {
@@ -77,6 +78,10 @@ AppController::AppController(SettingsStore &settings,
       m_layout(layoutRequestProfiles, runtime, this),
       m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this), QObject(parent)
 {
+    // The panel's diff view follows the block: a new selection, a new
+    // correction or a new verdict changes what the panel tints.
+    connect(this, &AppController::selectedBoxChanged, this, &AppController::blockDiffChanged);
+
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
         emit busyChanged();
         updateAvailability();
@@ -1147,6 +1152,121 @@ void AppController::approveSelectedBlock()
     emit resultChanged();
 }
 
+void AppController::revertBlockApproval()
+{
+    if (m_selectedBox < 0)
+        return;
+
+    // Nothing to undo: the block in view carries no confirmation.
+    const BoundingBox *box = selectedBox();
+    if (!box || BoxTransitions::effectiveCheckStatus(*box) != BoxCheckStatus::Approved)
+        return;
+
+    const int pageIndex = m_currentPage;
+    const int boxIndex = m_selectedBox;
+    if (!applyBoxTransition(pageIndex, boxIndex, BoxTransitions::blockApprovalReverted))
+        return;
+
+    // The text does not change: only the verdict does.
+    setStatus(StatusMessage::translate("AppController", "Block approval reverted."));
+    updateAvailability();
+    emit checkStateChanged();
+    emit resultChanged();
+}
+
+void AppController::approveSelectedBlockAndSelectNext()
+{
+    approveSelectedBlock();
+    selectNextProblemBlock();
+}
+
+void AppController::selectNextProblemBlock()
+{
+    const int pageIndex = m_currentPage;
+    int next = -1;
+    {
+        QReadLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
+            return;
+        const QList<BoundingBox> &boxes = m_document.page(pageIndex).result.pages.first().boxes;
+        // The blocks the decision model left open, in reading order; the search
+        // starts behind the current one so the operator moves forward.
+        for (int index = m_selectedBox + 1; index < boxes.size(); ++index) {
+            const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(boxes.at(index));
+            if (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review) {
+                next = index;
+                break;
+            }
+        }
+    }
+    if (next < 0)
+        return;
+    setSelectedBoxIndex(next);
+}
+
+void AppController::setSelectedBlockText(const QString &text, bool correctedLayer)
+{
+    if (m_selectedBox < 0)
+        return;
+
+    const int pageIndex = m_currentPage;
+    const int boxIndex = m_selectedBox;
+    if (!applyBoxTransition(pageIndex, boxIndex, [&text, correctedLayer](BoundingBox &box) { BoxTransitions::blockTextEdited(box, text, correctedLayer); }))
+        return;
+
+    // The page text follows the block, exactly as a correction does.
+    applyPageTextChanged(pageIndex);
+    setStatus(StatusMessage::translate("AppController", "Block text changed."));
+    updateAvailability();
+    emit checkStateChanged();
+    emit resultChanged();
+}
+
+QVariantList AppController::selectedBlockRemovedRanges() const
+{
+    const BoundingBox *box = selectedBox();
+    // Without a correction there is nothing to compare: the diff of a block
+    // and an empty text would tint the whole block.
+    if (!box || box->correctedText.isEmpty())
+        return {};
+    const TextDiff diff = diffText(box->text, box->correctedText);
+    QVariantList ranges;
+    ranges.reserve(diff.removed.size());
+    for (const DiffRange &range : diff.removed)
+        ranges.append(QVariantMap{{QStringLiteral("start"), range.start}, {QStringLiteral("length"), range.length}});
+    return ranges;
+}
+
+QVariantList AppController::selectedBlockAddedRanges() const
+{
+    const BoundingBox *box = selectedBox();
+    if (!box || box->correctedText.isEmpty())
+        return {};
+    const TextDiff diff = diffText(box->text, box->correctedText);
+    QVariantList ranges;
+    ranges.reserve(diff.added.size());
+    for (const DiffRange &range : diff.added)
+        ranges.append(QVariantMap{{QStringLiteral("start"), range.start}, {QStringLiteral("length"), range.length}});
+    return ranges;
+}
+
+void AppController::setHighlightDifferences(bool enabled)
+{
+    if (m_highlightDifferences == enabled)
+        return;
+    m_highlightDifferences = enabled;
+    emit highlightDifferencesChanged();
+    emit blockDiffChanged();
+}
+
+void AppController::setPageTextEditorFocused(bool focused)
+{
+    if (m_pageTextEditorFocused == focused)
+        return;
+    m_pageTextEditorFocused = focused;
+    emit pageTextEditorFocusedChanged();
+}
+
 void AppController::checkEnabledBlocksOnPage()
 {
     m_verify.checkPageEnabledBlocks(m_currentPage);
@@ -1404,7 +1524,7 @@ void AppController::updateAvailability()
         currentPageRecognitionMode(),
         currentPageVerification(),
         selectedPageCount(),
-        scopedProblemBlockCount(),
+        scopedPendingFixCount(),
         scopeHasResults(),
     };
     if (current == m_availability)
@@ -1480,7 +1600,7 @@ bool AppController::scopeHasResults() const
     return false;
 }
 
-int AppController::scopedProblemBlockCount() const
+int AppController::scopedPendingFixCount() const
 {
     int total = 0;
     for (const int pageIndex : scopePages()) {
@@ -1489,7 +1609,7 @@ int AppController::scopedProblemBlockCount() const
         const DocumentPage &page = m_document.page(pageIndex);
         if (!page.recognized || page.result.pages.isEmpty())
             continue;
-        total += PageStatus::problemBlockCount(page.result.pages.first());
+        total += PageStatus::pendingFixCount(page.result.pages.first());
     }
     return total;
 }

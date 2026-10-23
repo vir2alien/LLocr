@@ -578,6 +578,15 @@ target_link_libraries(test_box_transitions PRIVATE
 )
 add_test(NAME test_box_transitions COMMAND test_box_transitions)
 
+# ---- What a correction changed, word by word (ADR 186) ----------------------
+qt_add_executable(test_text_diff test_text_diff.cpp)
+
+target_link_libraries(test_text_diff PRIVATE
+    Qt6::Test
+    llocr_core
+)
+add_test(NAME test_text_diff COMMAND test_text_diff)
+
 # ---- Log view sync: incremental QTextDocument mirroring (QML-I3) ------------
 qt_add_executable(test_log_document_sync test_log_document_sync.cpp)
 

@@ -9,9 +9,23 @@ namespace llocr::BoxTransitions {
 // REVIEW stores a verdict without text, and the dot must still show damaged.
 bool hasCorrection(const BoundingBox &box);
 
+// The layer the user reads, verifies and acts on: the correction when the
+// block carries one, else the OCR text. A verdict-only correction (a fix
+// REVIEW) is the layer in view too — there is no corrected text to read, and
+// the damage is the block's state.
+bool effectiveLayerIsCorrection(const BoundingBox &box);
+
 // The correction layer is the one the user reads: the panel's toggle selects
 // it and it carries text (ADR 185).
 bool correctionSelected(const BoundingBox &box);
+
+// The block still waits for the fixer (ADR 188): the decision model left it
+// open and the fixer has not answered this candidate yet. A fix that
+// confirmed the text (OK) or could not read it (REVIEW) has answered it —
+// such a block waits for the operator, not for another fix run. A stored
+// correction is a new candidate the fixer has not seen: a correction the
+// decision model rejected goes back to it.
+bool needsFix(const BoundingBox &box);
 
 // What the user reads, verifies and exports: the correction when the layer is
 // selected, else the OCR text.
@@ -50,7 +64,16 @@ void correctionReverted(BoundingBox &box);
 // even when the decision model rejected it (ADR 185).
 void blockApproved(BoundingBox &box);
 
+// «Отозвать утверждение»: the user's confirmation is undone and the verdict
+// the model gave comes back (ADR 187).
+void blockApprovalReverted(BoundingBox &box);
+
 // The panel's toggle: the user reads the other layer (ADR 185).
 void layerSwitched(BoundingBox &box, bool corrected);
+
+// The user writes into one of the two versions: the text is stored there and
+// the version is marked as the user's own text (ADR 187) — a hand-written
+// text is not a confirmation of the model's verdict.
+void blockTextEdited(BoundingBox &box, const QString &text, bool correctedLayer);
 
 }  // namespace llocr::BoxTransitions

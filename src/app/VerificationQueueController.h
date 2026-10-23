@@ -128,6 +128,7 @@ private:
     void finishVerifyQueue();
     void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const;
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
+    void collectFixBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;
     QString decisionQuestion() const;
     QString decisionNotation(const QString &blockType) const;

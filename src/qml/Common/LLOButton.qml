@@ -16,6 +16,8 @@ Button {
     background: Rectangle {
         radius: Theme.controlRadius
         color: {
+            if (control.checked)
+                return control.down ? Theme.selected : Theme.cardAccentBg
             if (!control.enabled)
                 return control.emphasis ? Theme.selected : Theme.surfaceSunken
             if (control.emphasis)
@@ -28,7 +30,11 @@ Button {
                                 : (control.hovered ? Theme.surfaceSunken
                                                    : Theme.surface)
         }
-        border.color: control.emphasis && control.enabled ? Theme.accent : Theme.divider
+        border.color: {
+            if (control.checked)
+                return Theme.cardAccent
+            return control.emphasis && control.enabled ? Theme.accent : Theme.divider
+        }
         border.width: control.subtle && (!control.enabled || (!control.hovered && !control.down)) ? 0 : 1
     }
 

@@ -37,9 +37,10 @@ PageVerification verificationAggregate(const OcrPage &page, const std::function<
 // the predicate decides which blocks those are (image placeholders never do).
 PageRecognitionMode recognitionModeAfterBlockText(PageRecognitionMode mode, const OcrPage &page, const std::function<bool(const BoundingBox &box)> &expectsText);
 
-// Blocks whose effective layer carries a Mismatch or a Review verdict — the
-// same set the fix queue picks up, so the toolbar badge matches its work.
-int problemBlockCount(const OcrPage &page);
+// The blocks that still wait for the fixer (ADR 188): the decision model left
+// them open and the fixer has not answered them yet — the same set the fix
+// queue picks up, so the toolbar badge matches its work.
+int pendingFixCount(const OcrPage &page);
 
 }  // namespace PageStatus
 

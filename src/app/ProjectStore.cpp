@@ -72,6 +72,12 @@ QJsonObject boxToJson(const BoundingBox &box)
         object.insert("confidence", box.confidence);
     if (box.correctedConfidence >= 0.0)
         object.insert("correctedConfidence", box.correctedConfidence);
+    // The verdict an approval replaced (ADR 187): written only when there is
+    // one, so a project without approvals stays as small as before.
+    if (box.checkStatusBeforeApproval != BoxCheckStatus::NotChecked)
+        object.insert("checkStatusBeforeApproval", int(box.checkStatusBeforeApproval));
+    if (box.correctedCheckStatusBeforeApproval != BoxCheckStatus::NotChecked)
+        object.insert("correctedCheckStatusBeforeApproval", int(box.correctedCheckStatusBeforeApproval));
     return object;
 }
 
@@ -93,6 +99,10 @@ BoundingBox boxFromJson(const QJsonObject &object, int schemaVersion)
     box.duplicateSuspect = object.value("duplicateSuspect").toBool(false);
     box.confidence = object.value("confidence").toDouble(-1.0);
     box.correctedConfidence = object.value("correctedConfidence").toDouble(-1.0);
+    // Optional: a project written before the undo of an approval reads the
+    // default (nothing to put back).
+    box.checkStatusBeforeApproval = boxCheckStatusFromInt(object.value("checkStatusBeforeApproval").toInt(int(BoxCheckStatus::NotChecked)));
+    box.correctedCheckStatusBeforeApproval = boxCheckStatusFromInt(object.value("correctedCheckStatusBeforeApproval").toInt(int(BoxCheckStatus::NotChecked)));
     return box;
 }
 

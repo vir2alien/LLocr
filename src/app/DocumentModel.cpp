@@ -39,12 +39,11 @@ PageRecognitionMode PageStatus::recognitionModeAfterBlockText(PageRecognitionMod
     return PageRecognitionMode::MarkupOcr;
 }
 
-int PageStatus::problemBlockCount(const OcrPage &page)
+int PageStatus::pendingFixCount(const OcrPage &page)
 {
     int count = 0;
     for (const BoundingBox &box : std::as_const(page.boxes)) {
-        const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(box);
-        count += (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review) ? 1 : 0;
+        count += BoxTransitions::needsFix(box) ? 1 : 0;
     }
     return count;
 }

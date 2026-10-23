@@ -274,18 +274,18 @@ ToolBar {
             }
 
             IconToolButton {
-                text: Controller.scopedProblemBlockCount > 0
-                      ? qsTr("Fix") + " (" + Controller.scopedProblemBlockCount + ")"
+                text: Controller.scopedPendingFixCount > 0
+                      ? qsTr("Fix") + " (" + Controller.scopedPendingFixCount + ")"
                       : qsTr("Fix")
                 iconName: "wand-sparkles"
                 Layout.fillWidth: true
-                highlight: Controller.scopedProblemBlockCount > 0
+                highlight: Controller.scopedPendingFixCount > 0
                 stopMode: Controller.checkBusy && Controller.checkFixPhase
                 enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.fixModelAvailable && Controller.scopedProblemBlockCount > 0)
+                         && Controller.fixModelAvailable && Controller.scopedPendingFixCount > 0)
                 ToolTip.visible: hovered
                 ToolTip.text: stopMode ? qsTr("Stop the fix")
-                                       : qsTr("Fix the problem blocks on the selected pages")
+                                       : qsTr("Fix the blocks that wait for a fix on the selected pages")
                 onClicked: {
                     if (stopMode) {
                         Controller.stopCheck()

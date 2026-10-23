@@ -2049,25 +2049,76 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), QString());
 
         // The user's own verdict (ADR 185): the block in view is marked
-        // correct even though the decision model rejected it — and it stops
-        // being a problem block.
+        // correct even though the decision model rejected it.
         m_controller->setSelectedBoxIndex(1);
         m_controller->approveSelectedBlock();
         QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Approved));
-        QCOMPARE(m_controller->scopedProblemBlockCount(), 1);
 
-        // Only the damaged block is a problem anymore: the next book-level fix
-        // asks exactly one block, and the candidate is its OCR text.
+        // The fixer has answered both blocks (ADR 188): the badge is quiet and
+        // the book-level fix has nothing to do — a block the fixer answered
+        // waits for the operator, not for another fix run.
+        QCOMPARE(m_controller->scopedPendingFixCount(), 0);
+        m_controller->fixAllProblemBlocks();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.requests(), 6);
+
+        // The re-recognition is a different remedy: the decision model still
+        // rejects the blocks, so the OCR model may read them again.
         QVERIFY(m_controller->allProblemRecognitionSupported());
+    }
+
+    // The «Исправить (N)» badge counts the blocks that still wait for the fixer
+    // (ADR 188): the decision model's rejections minus the ones the fixer has
+    // already answered. A correction the decision model rejects goes back to
+    // the fixer.
+    void theFixBadgeCountsTheBlocksWaitingForTheFixer()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("fix-badge-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(m_controller->scopedPendingFixCount(), 2);
+
+        // The user's confirmation takes one block out of the queue.
+        m_controller->setSelectedBoxIndex(1);
+        m_controller->approveSelectedBlock();
+        QCOMPARE(m_controller->scopedPendingFixCount(), 1);
+
+        // The fixer answers the other one with a correction: the number is
+        // gone, the badge is quiet.
         server.fixReply = QStringLiteral("FIX\n1. Introduction => Recovered block text");
         m_controller->fixAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 7);
-        QCOMPARE(server.chatRequests().last().contains("<CANDIDATE>"), true);
-        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("Recovered block text"));
-        QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QCOMPARE(m_controller->scopedPendingFixCount(), 0);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QStringLiteral("Recovered block text"));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedCheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
         // The fresh correction is the text the user reads (ADR 185).
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::UseCorrectedRole).toBool(), true);
+
+        // The decision model rejects the correction: the block is a new
+        // candidate for the fixer, and the badge counts it again.
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(m_controller->scopedPendingFixCount(), 1);
     }
 
     // The panel's toggle (ADR 185): the user reads the corrected text or the
@@ -2109,6 +2160,165 @@ private slots:
 
         m_controller->setSelectedBlockUsesCorrected(true);
         QVERIFY(m_controller->resultText().contains(QStringLiteral("Fixed block text")));
+    }
+
+    // The panel's diff view (ADR 186): the ranges point at the fragments the
+    // correction changed.
+    void theDiffRangesPointAtTheChangedFragments()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setFixModelName(QStringLiteral("fix-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("diff-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
+
+        // Without a correction there is nothing to compare: no range at all.
+        m_controller->setSelectedBoxIndex(0);
+        QVERIFY(m_controller->selectedBlockRemovedRanges().isEmpty());
+        QVERIFY(m_controller->selectedBlockAddedRanges().isEmpty());
+
+        m_controller->fixSelectedBlock();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+
+        const QVariantList removed = m_controller->selectedBlockRemovedRanges();
+        const QVariantList added = m_controller->selectedBlockAddedRanges();
+        QCOMPARE(removed.size(), 1);
+        QCOMPARE(added.size(), 1);
+        const QString original = m_controller->selectedBlockText();
+        const QString corrected = m_controller->selectedBlockCorrected();
+        const QVariantMap removedRange = removed.first().toMap();
+        const QVariantMap addedRange = added.first().toMap();
+        QCOMPARE(original.mid(removedRange.value(QStringLiteral("start")).toInt(), removedRange.value(QStringLiteral("length")).toInt()), original);
+        QCOMPARE(corrected.mid(addedRange.value(QStringLiteral("start")).toInt(), addedRange.value(QStringLiteral("length")).toInt()), corrected);
+        QVERIFY(!original.isEmpty());
+        QVERIFY(!corrected.isEmpty());
+    }
+
+    // The hand-written text (ADR 187): it is stored in the version the user
+    // wrote in, marked as the user's own text, and the page text follows it.
+    void handWrittenTextIsMarkedAsEditedAndFollowsThePage()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("hand-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
+
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->setSelectedBlockText(QStringLiteral("Hand written text"), false);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        // The text is the user's own — not a confirmation of the model's verdict.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Edited));
+        QCOMPARE(m_controller->selectedBlockText(), QStringLiteral("Hand written text"));
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("Hand written text")));
+        // The version the user wrote in is the one the document carries.
+        QVERIFY(!m_controller->selectedBlockUsesCorrected());
+    }
+
+    // «Отозвать утверждение» (ADR 187): the approval is undone and the
+    // verdict the decision model gave stands again.
+    void theApprovalCanBeRevoked()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("revoke-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const int statusRole = BoxListModel::CheckStatusRole;
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->approveSelectedBlock();
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Approved));
+        // The confirmed block is not a problem anymore.
+        QCOMPARE(m_controller->scopedPendingFixCount(), 1);
+
+        m_controller->revertBlockApproval();
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        // The model's verdict is back: the block is a problem again.
+        QCOMPARE(m_controller->scopedPendingFixCount(), 2);
+    }
+
+    // The operator's rhythm (ADR 186): approving a block moves on to the next
+    // problem block of the page.
+    void approvingMovesToTheNextProblemBlock()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("next-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(m_controller->scopedPendingFixCount(), 2);
+
+        m_controller->setSelectedBoxIndex(0);
+        m_controller->approveSelectedBlockAndSelectNext();
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Approved));
+        // The next block the decision model left open is in view.
+        QCOMPARE(m_controller->selectedBoxIndex(), 1);
+
+        // The last problem block: there is nothing behind it, so the view
+        // stays where it is.
+        m_controller->approveSelectedBlockAndSelectNext();
+        QCOMPARE(m_controller->selectedBoxIndex(), 1);
     }
 
     // «Отменить исправление» must take the correction out of the preview too,

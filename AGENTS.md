@@ -203,7 +203,9 @@
   the four base targets (`test_det_parser`, `test_pagemodel`,
   `test_settings_store`, `test_exporter`) plus the export-render integration
   test (`test_export_renderer` — headless WebEngine, needs the Qt DLLs on
-  `PATH`) plus the local-runtime suite
+  `PATH`; it runs Chromium single-process on macOS, because a restricted
+  session cannot register Chromium's Mach rendezvous server and Chromium
+  would abort with SIGTRAP) plus the local-runtime suite
   (`test_launch_config`, `test_runtime_lifetime`, `test_runtime_locator`,
   `test_capabilities`, `test_server_process`, `test_ensure_connection`,
   (`test_download_manager`, `test_release_catalog`, `test_archive_extractor`,
@@ -407,6 +409,36 @@
     document. Planned blocks (filter-enabled type or duplicate suspect,
     unanswered) show the gray dot (`boxVerificationPlanned`). Model manuals:
     `docs/18-clef-flash.md` (v5), `docs/21-d3.md` (v6).
+  - **The block panel is a version inspector (ADR 185–187, Oct 2026)** — the
+    panel shows the two versions of the selected block as two clickable
+    cards (`MainWindow/BlockVersionCard.qml`); the card in view is the version
+    the document carries, the other one stays for comparison (the preview
+    text follows the choice). Every status has one place: the state of the
+    block in the header (распознан / проверен / исправлен / утверждён /
+    изменён вручную), the
+    verdict and the score of each layer in its own card header, and the fix
+    outcome («Не требует исправления») next to the state when there is no
+    correction to show. The fragments a correction changed are **tinted in
+    place** — soft red in the original, soft green in the correction, computed
+    word by word in `core/TextDiff.h` (a word is a run of letters, digits and
+    the characters that belong to a word inside LaTeX) and rendered as rich
+    text with `white-space: pre-wrap`, so the spaces and the line breaks of a
+    formula survive; the «Различия» switch turns the tint off — the switch
+    appears only when there is a second version to compare (ADR 188). A formula, a
+    table or a code block is read in a monospace face (`Theme.mono`).
+    «Утвердить блок» / «Утвердить исправление» approves the version in view
+    (`BoxCheckStatus::Approved`); while the confirmation stands the same button
+    reads «Отозвать утверждение» and puts the model's verdict back (ADR 187 —
+    the block keeps the verdict the approval replaced, `checkStatusBeforeApproval`).
+    `Ctrl`/`Cmd+Return` approves it and jumps to
+    the next problem block, and «Изм.» lets the operator write the text by
+    hand: the button becomes «Сохранить» (the exit from the edit is explicit,
+    `Esc` cancels), the version is stored as **«Изменён вручную»**
+    (`BoxCheckStatus::Edited` — the user's own text, not a confirmation of the
+    model's verdict), and the page text follows it. The cards carry a uniform
+    frame — no colored stripe on the left. The panel carries **no colour of its
+    own** (ADR 188): the confirm button and «Сохранить» are ordinary buttons,
+    the verdicts are the only green and red in it.
   - **Manual page markup (ADR 149–150, Oct 2026)** — the page toolbar's
     «Разметить страницу» (+ ▾ «Разметить все страницы») runs the **layout
     task** (`roles.layout` in a model profile — TeleOCR ships it): the page
@@ -439,7 +471,10 @@
     buttons) and «Верификация» (Проверить / Исправить) — all acting on the
     **thumbnail selection** (Ctrl/Cmd+click toggles, «Выбрать все» in the
     column header; «Исправить» lights `Theme.accentAttention` with a `(N)`
-    badge of `scopedProblemBlockCount`). «Проверить» runs the decision pass
+    badge of `scopedPendingFixCount` — the blocks that still wait for the
+    fixer (ADR 188): a block leaves the count when the fixer has answered its
+    candidate (OK or REVIEW), a correction the decision model rejects comes
+    back into it). «Проверить» runs the decision pass
     only (`checkScopeEnabledBlocks()`) — verify and fix are separate buttons
     in the manual pipeline; the automatic check/fix switches are gone
     (ADR 178).
@@ -464,11 +499,22 @@
     the segmented «Текст (MD) | Предпросмотр» control next to «Копировать»
     (`copyCurrentPageText`). The selected block carries a floating
     **mini-toolbar** (`MainWindow/BlockMiniToolbar.qml`: recognize / verify /
-    fix / delete). `BlockEditPanel` shows the block label (no «Block» prefix),
-    the two layers with their **own** statuses and scores, the check score and
-    the overall status in the header, the outcome of the last fix run, the
-    **layer toggle** (corrected ↔ original, the preview text follows it) and
-    «Утвердить блок» / «Утвердить исправление» (ADR 185). Icons: Lucide SVGs in `resources/icons/ui/` (qrc
+    fix / delete). `BlockEditPanel` is a **version inspector** (ADR 186): the
+    recognized text (OCR) and the correction (AI) are two
+    `MainWindow/BlockVersionCard.qml` cards, the card in view is the version the
+    document carries (accent border, stripe, radio, «Используется в документе»)
+    and clicking a card switches the layer (the preview text follows it). The
+    header carries one status word (распознан / проверен / исправлен /
+    утверждён), the **Различия** toggle, «Сбросить исправление» and the
+    primary «Утвердить блок» / «Утвердить исправление» (ADR 185). Each card
+    header carries the verdict and the score of **its own** layer; the changed
+    fragments are **tinted in place** — soft red in the original, soft green in
+    the correction, computed word by word (`core/TextDiff.h`) — and a formula,
+    table or code block is read in a monospace face (`Theme.mono`). `Ctrl`/
+    `Cmd+Return` approves the block in view and jumps to the next problem
+    block; «Изм.» turns the card into a field where the operator writes the
+    text by hand (the version is approved and the page text follows).
+    Icons: Lucide SVGs in `resources/icons/ui/` (qrc
     `/icons/ui`, `ui_icons` CMake resource) colorized by `Common/Icon.qml`.
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
