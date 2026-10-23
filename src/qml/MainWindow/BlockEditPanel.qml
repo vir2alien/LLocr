@@ -40,6 +40,12 @@ Rectangle {
     readonly property bool correctionLayerInView: Controller.selectedBlockUsesCorrected && correctionActive
     // The block in view carries the user's approval: the button offers the undo.
     readonly property bool approved: effectiveStatus === 5
+    // A block the user drew and nothing has been recognized in yet: it is
+    // markup, not a recognized text (ADR 189). The page says the same about
+    // itself — «Только разметка».
+    readonly property bool markupOnly: effectiveStatus === 0
+                                       && Controller.selectedBlockText.length === 0
+                                       && Controller.selectedBlockCorrected.length === 0
 
     // A formula, a table or a snippet is read in a monospace face: the
     // brackets, the subscripts and the spaces must not drift apart.
@@ -90,6 +96,7 @@ Rectangle {
                                           : effectiveStatus === 3 ? qsTr("Damaged")
                                           : effectiveStatus === 4 ? qsTr("Mismatch")
                                           : correctionInView ? qsTr("Corrected")
+                                          : root.markupOnly ? qsTr("Markup")
                                           : qsTr("Recognized")
 
     // The outcome of the last fix run (ADR 185). A fix that confirmed the
@@ -166,6 +173,9 @@ Rectangle {
                 Layout.maximumWidth: Math.max(0, root.width - 380)
             }
             Rectangle {
+                // A block without content carries no dot — the overlay shows
+                // none either (ADR 189).
+                visible: !root.markupOnly
                 Layout.preferredWidth: 8
                 Layout.preferredHeight: 8
                 Layout.alignment: Qt.AlignVCenter

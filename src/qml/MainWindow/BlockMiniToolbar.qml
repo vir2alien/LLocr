@@ -14,6 +14,10 @@ Rectangle {
 
     property bool isTextBlock: true
     property string blockText: ""
+    // The block is open for moving and resizing: the button offers the way
+    // out (ADR 189).
+    property bool editing: false
+    signal editToggled()
 
     implicitWidth: miniRow.implicitWidth + 2 * Theme.spacingSmall
     implicitHeight: miniRow.implicitHeight + 2 * Theme.spacingSmall
@@ -56,6 +60,11 @@ Rectangle {
             ToolTip.text: miniButton.tip
         }
 
+        MiniButton {
+            iconName: miniRoot.editing ? "check" : "move"
+            tip: miniRoot.editing ? qsTr("Finish editing") : qsTr("Move or resize the block")
+            onClicked: miniRoot.editToggled()
+        }
         MiniButton {
             visible: miniRoot.isTextBlock
             iconName: "scan-text"

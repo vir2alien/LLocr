@@ -318,6 +318,9 @@ public slots:
     Q_INVOKABLE bool removeBlock(int boxIndex);
     // Adds an empty block of the given type to the current page and selects it.
     Q_INVOKABLE bool addBlock(const QString &type);
+    // Adds an empty block with the rectangle the user drew on the page (the
+    // coordinates are relative to the page, ADR 189).
+    Q_INVOKABLE bool addBlockAt(const QString &type, qreal x, qreal y, qreal width, qreal height);
     Q_INVOKABLE QString resolveImagesForPreview(const QString &markdown);
     Q_INVOKABLE void checkSelectedBlock();
     Q_INVOKABLE void revertBlockCorrection();

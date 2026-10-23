@@ -198,6 +198,56 @@ std::unique_ptr<IOutputParser> AppController::makeParser() const
     return ParserFactory::create(effectiveParserId(), parserOptions());
 }
 
+namespace {
+
+// The pipeline changed the block-derived text from `previous` to `rebuilt`.
+// The page carries the user's own text: the change must land in it, or the
+// block the operator just made is missing from the document. The user's
+// wording wins where it diverges from the recognition — the change is applied
+// where the two still agree (ADR 190).
+QString mergePipelineChange(const QString &userText, const QString &previous, const QString &rebuilt)
+{
+    int prefix = 0;
+    const int maxPrefix = qMin(previous.size(), rebuilt.size());
+    while (prefix < maxPrefix && previous.at(prefix) == rebuilt.at(prefix))
+        ++prefix;
+    int suffix = 0;
+    const int maxSuffix = qMin(previous.size() - prefix, rebuilt.size() - prefix);
+    while (suffix < maxSuffix && previous.at(previous.size() - 1 - suffix) == rebuilt.at(rebuilt.size() - 1 - suffix))
+        ++suffix;
+    const QString oldMiddle = previous.mid(prefix, previous.size() - prefix - suffix);
+    const QString newMiddle = rebuilt.mid(prefix, rebuilt.size() - prefix - suffix);
+    if (newMiddle.isEmpty())
+        return userText;  // a removal: the removed text is the user's to keep
+
+    // The anchor is the part the two texts still share; the change belongs
+    // right after it.
+    const QString anchor = rebuilt.left(prefix);
+    const int anchorPos = anchor.isEmpty() ? 0 : userText.lastIndexOf(anchor);
+    if (anchorPos < 0)
+        return userText;  // the user's text diverged: their wording stands
+    const int searchFrom = anchorPos + anchor.size();
+
+    if (oldMiddle.isEmpty()) {
+        // An addition: the new content goes where the blocks put it.
+        QString separator;
+        if (!userText.isEmpty() && !userText.endsWith(QLatin1Char('\n')))
+            separator = QStringLiteral("\n\n");
+        else if (userText.endsWith(QLatin1Char('\n')) && !userText.endsWith(QStringLiteral("\n\n")))
+            separator = QStringLiteral("\n");
+        return userText.left(searchFrom) + separator + newMiddle + userText.mid(searchFrom);
+    }
+
+    // A replacement: the old text gives way to the new one, where the user's
+    // text still carries the old one.
+    const int pos = userText.indexOf(oldMiddle, searchFrom);
+    if (pos < 0)
+        return userText;
+    return userText.left(pos) + newMiddle + userText.mid(pos + oldMiddle.size());
+}
+
+}  // namespace
+
 QString AppController::rebuildPageText(const OcrPage &page) const
 {
     const auto parser = makeParser();
@@ -931,9 +981,19 @@ bool AppController::removeBlock(int boxIndex)
     refreshPageVerification(m_currentPage);
 
     const QString rebuilt = rebuildPageText(m_document.page(m_currentPage).result.pages[0]);
-    setPageText(m_currentPage, rebuilt);
-    m_editStore.reset(m_currentPage, rebuilt);
-    markPageEdited(m_currentPage);
+    if (m_editStore.isEdited(m_currentPage)) {
+        // The user's own text owns the page: a removal changes the blocks, not
+        // the text under the panel. The revert target moves forward, so the
+        // next Revert lands on the structurally-consistent text.
+        m_editStore.rebase(m_currentPage, rebuilt);
+    } else {
+        setPageText(m_currentPage, rebuilt);
+        // A removed block is a structural change, not a manual edit: the text
+        // still follows the blocks, so a later recognition may write it again
+        // — the same rule as a block landing. The revert target moves forward:
+        // the removed block's text must not come back (ADR 190).
+        m_editStore.reset(m_currentPage, rebuilt);
+    }
 
     if (m_selectedBox == boxIndex)
         setSelectedBoxIndex(-1);
@@ -947,6 +1007,11 @@ bool AppController::removeBlock(int boxIndex)
 
 bool AppController::addBlock(const QString &type)
 {
+    return addBlockAt(type, 0.35, 0.45, 0.3, 0.08);
+}
+
+bool AppController::addBlockAt(const QString &type, qreal x, qreal y, qreal width, qreal height)
+{
     if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy())
         return false;
     if (!m_document.isValidIndex(m_currentPage))
@@ -954,7 +1019,11 @@ bool AppController::addBlock(const QString &type)
 
     BoundingBox box;
     box.label = type.isEmpty() ? QStringLiteral("text") : type;
-    box.rect = QRectF(0.35, 0.45, 0.3, 0.08);
+    // The rectangle the user drew stays inside the page (ADR 189).
+    const qreal minSize = 0.01;
+    const qreal w = qBound(minSize, width, qreal(1.0));
+    const qreal h = qBound(minSize, height, qreal(1.0));
+    box.rect = QRectF(qBound(qreal(0.0), x, qreal(1.0) - w), qBound(qreal(0.0), y, qreal(1.0) - h), w, h);
     // The text the blocks stand for: the page text follows the blocks only as
     // long as it is that text (a manual edit or a raw page OCR owns it
     // otherwise).
@@ -979,11 +1048,11 @@ bool AppController::addBlock(const QString &type)
     const QString rebuilt = rebuildPageText(page);
     if (pageText(m_currentPage) == blockDerivedText) {
         setPageText(m_currentPage, rebuilt);
-        // The revert target moves forward with the blocks. The page is not a
-        // manual edit: its text must keep following the blocks, so the
-        // recognition of the new block reaches the text panel.
-        m_editStore.rebase(m_currentPage, rebuilt);
     }
+    // The revert target moves forward with the blocks — also when the page
+    // carries the user's own text: the next Revert must land on the text the
+    // blocks stand for.
+    m_editStore.rebase(m_currentPage, rebuilt);
 
     refreshPageVerification(m_currentPage);
     setSelectedBoxIndex(page.boxes.size() - 1);
@@ -1806,7 +1875,17 @@ void AppController::applyPageTextChanged(int pageIndex)
     // reset, and the next «Отменить изменения» did nothing. The revert target
     // moves forward to the block-derived text instead.
     if (m_editStore.isEdited(pageIndex)) {
+        // The pipeline's change still lands in the user's text: dropping it
+        // would leave the block the operator just made out of the document
+        // (ADR 190).
+        const QString previous = m_editStore.baseline(pageIndex);
         m_editStore.rebase(pageIndex, rebuilt);
+        const QString merged = mergePipelineChange(pageText(pageIndex), previous, rebuilt);
+        if (merged != pageText(pageIndex)) {
+            setPageText(pageIndex, merged);
+            emit resultChanged();
+            emit editStateChanged();
+        }
         return;
     }
 

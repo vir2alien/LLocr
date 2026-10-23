@@ -1275,7 +1275,9 @@ private slots:
         const QString after = m_controller->resultText();
         QVERIFY(after.contains(QStringLiteral("1. Introduction")));
         QVERIFY(!after.contains(QStringLiteral("Second block text")));
-        QVERIFY(m_controller->currentPageEdited());
+        // A removed block is a structural change, not a manual edit: the text
+        // still follows the blocks, so the pipeline may write it again.
+        QVERIFY(!m_controller->currentPageEdited());
 
         // A refused removal must change nothing.
         QVERIFY(!m_controller->removeBlock(7));
@@ -1287,6 +1289,163 @@ private slots:
         QVERIFY(m_controller->removeBlock(0));
         QCOMPARE(boxes->rowCount(), 0);
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("Introduction")));
+    }
+
+    // The operator's flow on a page that carries markup as well: a block is
+    // removed, a new one is drawn over the table area and recognized — the new
+    // block's text must reach the page text (the MD view and the preview).
+    void drawnBlockReachesThePageTextOnAMarkupPage()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY(controller.hasResult());
+
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+
+        // The page carries markup too: a drawn table block with no text.
+        QVERIFY(controller.addBlockAt(QStringLiteral("table"), 0.1, 0.5, 0.3, 0.2));
+        QCOMPARE(boxes->rowCount(), 3);
+
+        // The operator deletes a block…
+        QVERIFY(controller.removeBlock(1));
+        QCOMPARE(boxes->rowCount(), 2);
+
+        // …draws a new one over the table area…
+        QVERIFY(controller.addBlockAt(QStringLiteral("table"), 0.5, 0.5, 0.3, 0.2));
+        QCOMPARE(boxes->rowCount(), 3);
+        QCOMPARE(controller.selectedBoxIndex(), 2);
+
+        // …and recognizes it.
+        const int requests = server.requests();
+        controller.recognizeSelectedBlock();
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(controller.selectedBlockText(), server.transcription, kImportTimeoutMs);
+
+        // The page text follows the blocks: the new block's content is in the
+        // document.
+        QVERIFY2(controller.resultText().contains(server.transcription), qPrintable(controller.resultText()));
+        // And nothing freezes it: the removal is not a manual edit.
+        QVERIFY(!controller.currentPageEdited());
+    }
+
+    // A removal changes the blocks, not the text the user wrote by hand.
+    void removalKeepsTheUsersOwnText()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY(controller.hasResult());
+
+        controller.setCurrentPageText(controller.resultText() + QStringLiteral("\ntyped by hand"));
+        QVERIFY(controller.currentPageEdited());
+
+        QVERIFY(controller.removeBlock(1));
+
+        // The user's text survives the removal…
+        QVERIFY2(controller.resultText().contains(QStringLiteral("typed by hand")), qPrintable(controller.resultText()));
+        // …and the page is still the user's own text.
+        QVERIFY(controller.currentPageEdited());
+    }
+
+    // The pipeline's new content lands in a page the user edited by hand: the
+    // block the operator just made must be in the document, and the user's own
+    // text must survive.
+    void pipelineContentLandsInAHandEditedPage()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY(controller.hasResult());
+
+        // The operator edits the page text by hand…
+        controller.setCurrentPageText(controller.resultText() + QStringLiteral("\ntyped by hand"));
+        QVERIFY(controller.currentPageEdited());
+
+        // …draws a block and recognizes it.
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 0.1, 0.6, 0.3, 0.1));
+        const int requests = server.requests();
+        controller.recognizeSelectedBlock();
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(controller.selectedBlockText(), server.transcription, kImportTimeoutMs);
+
+        // The new block's content is in the document…
+        QVERIFY2(controller.resultText().contains(server.transcription), qPrintable(controller.resultText()));
+        // …and the user's own text is still there.
+        QVERIFY2(controller.resultText().contains(QStringLiteral("typed by hand")), qPrintable(controller.resultText()));
+    }
+
+    // The operator's flow: a block is removed, a new one is drawn and
+    // recognized — the new block's text must reach the view model (the
+    // preview) and the page text (the MD view).
+    void drawnBlockReachesThePageTextAfterARemoval()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY(controller.hasResult());
+
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+
+        // The operator deletes a block…
+        QVERIFY(controller.removeBlock(1));
+        QCOMPARE(boxes->rowCount(), 1);
+
+        // …draws a new one…
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 0.1, 0.1, 0.3, 0.1));
+        QCOMPARE(boxes->rowCount(), 2);
+        QCOMPARE(controller.selectedBoxIndex(), 1);
+
+        // …and recognizes it.
+        const int requests = server.requests();
+        controller.recognizeSelectedBlock();
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), requests + 1, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), server.transcription, kImportTimeoutMs);
+
+        // The block carries the text…
+        QCOMPARE(controller.selectedBlockText(), server.transcription);
+        // …and the page text follows it.
+        QVERIFY2(controller.resultText().contains(server.transcription), qPrintable(controller.resultText()));
     }
 
     // A manually added block: an empty block of the given type lands on the
@@ -1318,6 +1477,39 @@ private slots:
         QCOMPARE(boxes->rowCount(), 2);
         QCOMPARE(controller.selectedBoxIndex(), 1);
         QVERIFY2(controller.resultText().contains(QStringLiteral("image://ocr/crop/")), qPrintable(controller.resultText()));
+    }
+
+    // A block the user drew on the page: it lands with the rectangle the
+    // mouse drew, and the rectangle stays inside the page (ADR 189).
+    void drawnBlockLandsWithItsRectangle()
+    {
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 0.2, 0.3, 0.25, 0.1));
+        QCOMPARE(boxes->rowCount(), 1);
+        QCOMPARE(controller.selectedBoxIndex(), 0);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::XRole).toDouble(), 0.2);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::YRole).toDouble(), 0.3);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::WidthRole).toDouble(), 0.25);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::HeightRole).toDouble(), 0.1);
+
+        // A rectangle that reaches past the page edge is pulled back into it.
+        QVERIFY(controller.addBlockAt(QStringLiteral("text"), 0.9, 0.95, 0.3, 0.2));
+        QCOMPARE(boxes->rowCount(), 2);
+        const double x = boxes->data(boxes->index(1), BoxListModel::XRole).toDouble();
+        const double y = boxes->data(boxes->index(1), BoxListModel::YRole).toDouble();
+        const double w = boxes->data(boxes->index(1), BoxListModel::WidthRole).toDouble();
+        const double h = boxes->data(boxes->index(1), BoxListModel::HeightRole).toDouble();
+        QVERIFY(x >= 0.0 && x + w <= 1.0 + 1e-9);
+        QVERIFY(y >= 0.0 && y + h <= 1.0 + 1e-9);
+        QVERIFY(qAbs(x + w - 1.0) < 1e-9);
+        QVERIFY(qAbs(y + h - 1.0) < 1e-9);
     }
 
     // The block ↔ text mapping the selection sync builds on: after a det-token
@@ -2460,12 +2652,14 @@ private slots:
         QVERIFY(m_controller->removeBlock(1));
         const QString afterRemoval = m_controller->resultText();
         QVERIFY(!afterRemoval.contains(QStringLiteral("Second block text")));
-        QVERIFY(m_controller->currentPageEdited());
+        // The removal is structural: the text still follows the blocks, so the
+        // page is not a manual edit yet.
+        QVERIFY(!m_controller->currentPageEdited());
 
         // Typing the very same text back is a no-op, not a revert.
         m_controller->setCurrentPageText(afterRemoval);
         QCOMPARE(m_controller->resultText(), afterRemoval);
-        QVERIFY(m_controller->currentPageEdited());
+        QVERIFY(!m_controller->currentPageEdited());
         QVERIFY(!m_controller->resultText().contains(QStringLiteral("Second block text")));
 
         // A real user edit goes through; Revert rolls the text back to the last
@@ -2509,7 +2703,10 @@ private slots:
 
         QVERIFY(m_controller->removeBlock(1));
         QCOMPARE(m_controller->resultText(), QStringLiteral("## 1. Introduction"));
-        QVERIFY(m_controller->currentPageEdited());
+        // A removal is a structural change: the page is not a manual edit, so
+        // Revert has nothing to undo — and the removed block's text must not
+        // come back.
+        QVERIFY(!m_controller->currentPageEdited());
 
         // Revert must not resurrect the removed block's text.
         m_controller->revertCurrentPageEdits();
@@ -2660,8 +2857,10 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
         QVERIFY(controller.hasResult());
         QVERIFY(controller.removeBlock(1));
-        QVERIFY(controller.currentPageEdited());
+        // A removal is a structural change, not a manual edit.
+        QVERIFY(!controller.currentPageEdited());
         controller.setCurrentPageText(controller.resultText() + QStringLiteral("\nhand-added line"));
+        QVERIFY(controller.currentPageEdited());
 
         // A different page becomes current, and the pages are reordered.
         controller.setCurrentPage(2);

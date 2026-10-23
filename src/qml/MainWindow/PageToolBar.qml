@@ -16,6 +16,20 @@ ToolBar {
     // The page preview the zoom acts on (set by ImagePanel).
     property var preview: null
 
+    // The add buttons do not add a block on the spot: they arm the draw mode,
+    // and the user draws the block on the page with the mouse (ADR 189).
+    function beginDraw(name) {
+        if (!pageToolBarRoot.preview)
+            return
+        pageToolBarRoot.preview.beginDrawBlock(name)
+    }
+
+    function cancelDraw() {
+        if (!pageToolBarRoot.preview)
+            return
+        pageToolBarRoot.preview.cancelDrawBlock()
+    }
+
     // The default single-page selection follows the navigation until the
     // user builds a multi-selection of their own.
     function goTo(pageIndex) {
@@ -169,7 +183,7 @@ ToolBar {
             delegate: MenuItem {
                 required property string modelData
                 text: BlockNames.displayName(modelData)
-                onTriggered: Controller.addBlock(BlockNames.blockType(modelData))
+                onTriggered: pageToolBarRoot.beginDraw(modelData)
             }
             onObjectAdded: (index, object) => allBlocksMenu.insertItem(index, object)
             onObjectRemoved: (index, object) => allBlocksMenu.removeItem(object)
@@ -188,6 +202,20 @@ ToolBar {
         padding: 0
         enabled: Controller.actionsIdle
 
+        // The button that armed the draw mode says so: it is the way out.
+        readonly property bool drawing: pageToolBarRoot.preview
+                                         && pageToolBarRoot.preview.drawBlockName === addButton.blockName
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 2
+            radius: Theme.controlRadius
+            visible: addButton.drawing
+            color: Theme.selected
+            border.color: Theme.border
+            border.width: 1
+        }
+
         Icon {
             anchors.centerIn: parent
             name: addButton.iconName
@@ -195,10 +223,16 @@ ToolBar {
             color: addButton.enabled ? Theme.textPrimary : Theme.textMuted
         }
 
-        onClicked: Controller.addBlock(BlockNames.blockType(addButton.blockName))
+        onClicked: {
+            if (addButton.drawing)
+                pageToolBarRoot.cancelDraw()
+            else
+                pageToolBarRoot.beginDraw(addButton.blockName)
+        }
 
         ToolTip.visible: addButton.hovered
-        ToolTip.text: BlockNames.displayName(addButton.blockName)
+        ToolTip.text: addButton.drawing ? qsTr("Cancel")
+                                        : BlockNames.displayName(addButton.blockName)
     }
 
     component StubIconButton: ToolButton {

@@ -439,6 +439,38 @@
     frame — no colored stripe on the left. The panel carries **no colour of its
     own** (ADR 188): the confirm button and «Сохранить» are ordinary buttons,
     the verdicts are the only green and red in it.
+  - **A block is selected, drawn and moved in three separate gestures
+    (ADR 189, Oct 2026)** — a click on a block only **selects** it (the block
+    panel opens); a drag that starts on a block moves the **page**, as a drag
+    on the empty page does (the pan lives in `ImagePreview.beginPan` /
+    `continuePan`, shared by the page's and the blocks' mouse areas). The
+    block's **mini toolbar** carries the edit button (icon «move»): it opens
+    the block for moving and resizing (the eight handles appear only then) and
+    becomes a **checkmark** («готово») in the mode; the checkmark or a click
+    outside the block leaves the mode (another block takes the selection, the
+    empty page deselects). The toolbar's add buttons and the block-type menu
+    **arm the draw mode** instead of dropping a block at a default place: the
+    cursor turns into a crosshair, a chip follows it and names the block being
+    drawn, the drag paints the rectangle in the hue the block will wear, and
+    the release creates the block (`Controller.addBlockAt(type, x, y, w, h)`,
+    clamped into the page) and selects it. `Esc` or a second click on the same
+    button cancels the mode. A block that carries no text and no verdict says
+    **«Разметка»** in the panel (and shows no dot) — the same word the page
+    uses for itself, «Только разметка»; «Распознано» is only true for a block
+    the OCR has read.
+  - **A structural change is not a manual edit (ADR 190, Oct 2026)** — the
+    «Изменено» marker means one thing only: *the user typed the text by hand*
+    (`setCurrentPageText`). A **removed** block — like a block landing
+    (recognition, fix, re-check) — only moves the revert target forward, so
+    the page text keeps following the blocks and the next recognition writes
+    it again. Before the fix, a removal froze the page text: a block drawn and
+    recognized after a deletion never reached the panel (the MD view kept the
+    old text), so the work looked lost. Two rules keep the user's own text
+    safe: a removal never replaces it, and a pipeline change on a hand-edited
+    page is **merged** into that text (the common part anchors the change,
+    the user's wording wins where it diverges) instead of being dropped. The
+    removed block's text still never comes back — the revert target moves
+    with the blocks.
   - **Manual page markup (ADR 149–150, Oct 2026)** — the page toolbar's
     «Разметить страницу» (+ ▾ «Разметить все страницы») runs the **layout
     task** (`roles.layout` in a model profile — TeleOCR ships it): the page

@@ -22,6 +22,48 @@ Item {
     // inside the free area above it.
     property real bottomInset: 0
 
+    // The block the user opened for moving and resizing (ADR 189). -1 = none:
+    // a click on a block only selects it.
+    property int editingBoxIndex: -1
+    // The block type the user is drawing on the page (ADR 189); empty = the
+    // preview is not in the draw mode.
+    property string drawBlockName: ""
+    readonly property bool drawing: drawBlockName !== ""
+    property bool drawActive: false
+    property real drawAnchorX: 0
+    property real drawAnchorY: 0
+    property real drawX: 0
+    property real drawY: 0
+    property real drawW: 0
+    property real drawH: 0
+    // The hue of the block being drawn: the one the block will wear.
+    readonly property color drawColor: {
+        const type = drawBlockName !== "" ? BlockNames.blockType(drawBlockName) : "text"
+        if (type === "image")
+            return Theme.overlayImageOuter
+        if (type === "table")
+            return Theme.overlayTableOuter
+        if (type === "equation" || type === "formula")
+            return Theme.overlayFormulaOuter
+        return Theme.overlayTextOuter
+    }
+    // The cursor in the viewport's frame: the draw chip follows it.
+    property point pointerPos: Qt.point(0, 0)
+    // The chip belongs to the page: it says where the block will be drawn.
+    readonly property bool pointerOnPage: pointerPos.x >= imageArea.x
+                                         && pointerPos.x <= imageArea.x + imageArea.width
+                                         && pointerPos.y >= imageArea.y
+                                         && pointerPos.y <= imageArea.y + imageArea.height
+    // A click that belongs to the finished draw must not deselect the block
+    // the draw has just created.
+    property bool suppressClick: false
+
+    // The pan anchor: the page moves with the drag, wherever the drag started
+    // (ADR 189).
+    property real panAnchorX: 0
+    property real panAnchorY: 0
+    property bool panning: false
+
     readonly property real usableHeight: Math.max(1, viewport.height - root.bottomInset)
 
     // The page may not be dragged out of the view; vertically it may scroll
@@ -40,6 +82,76 @@ Item {
         const maxY = Math.max(0, h - ph) - baseTop
         root.panX = Math.max(minX, Math.min(maxX, root.panX))
         root.panY = Math.max(minY, Math.min(maxY, root.panY))
+    }
+
+    function beginPan(x, y) {
+        root.panAnchorX = x
+        root.panAnchorY = y
+        root.panning = false
+    }
+
+    function continuePan(x, y) {
+        const dx = x - root.panAnchorX
+        const dy = y - root.panAnchorY
+        if (!root.panning && Math.abs(dx) + Math.abs(dy) < 3)
+            return
+        root.panning = true
+        root.panAnchorX = x
+        root.panAnchorY = y
+        root.panX += dx
+        root.panY += dy
+        root.clampPan()
+    }
+
+    // The user picked a block type in the toolbar: the next drag on the page
+    // draws the block (ADR 189).
+    function beginDrawBlock(name) {
+        root.drawBlockName = name
+        root.drawActive = false
+        root.drawX = 0
+        root.drawY = 0
+        root.drawW = 0
+        root.drawH = 0
+    }
+
+    function cancelDrawBlock() {
+        root.drawBlockName = ""
+        root.drawActive = false
+    }
+
+    // The mouse position in the page's own coordinates (0..1).
+    function pagePoint(item, mouse) {
+        const p = item.mapToItem(imageArea, mouse.x, mouse.y)
+        return Qt.point(p.x / imageArea.width, p.y / imageArea.height)
+    }
+
+    function beginDrawAt(point) {
+        root.drawActive = true
+        root.drawAnchorX = point.x
+        root.drawAnchorY = point.y
+        root.drawX = point.x
+        root.drawY = point.y
+        root.drawW = 0
+        root.drawH = 0
+    }
+
+    function updateDrawAt(point) {
+        if (!root.drawActive)
+            return
+        root.drawX = Math.min(root.drawAnchorX, point.x)
+        root.drawY = Math.min(root.drawAnchorY, point.y)
+        root.drawW = Math.abs(point.x - root.drawAnchorX)
+        root.drawH = Math.abs(point.y - root.drawAnchorY)
+    }
+
+    function endDraw() {
+        root.drawActive = false
+        const name = root.drawBlockName
+        root.drawBlockName = ""
+        // A click without a drag draws nothing: the gesture ends empty.
+        if (root.drawW > 0.005 && root.drawH > 0.005)
+            Controller.addBlockAt(BlockNames.blockType(name), root.drawX, root.drawY,
+                                  root.drawW, root.drawH)
     }
 
     function zoomBy(factor) {
@@ -174,37 +286,54 @@ Item {
             height: pageImage.paintedHeight * root.zoom
 
             MouseArea {
+                id: pageMouse
                 anchors.fill: parent
-                property real lastX: 0
-                property real lastY: 0
-                property bool dragged: false
+                hoverEnabled: true
+                cursorShape: root.drawing ? Qt.CrossCursor : Qt.ArrowCursor
 
                 onPressed: (mouse) => {
+                    root.suppressClick = false
+                    imageArea.forceActiveFocus()
+                    if (root.drawing) {
+                        root.beginDrawAt(root.pagePoint(pageMouse, mouse))
+                        return
+                    }
                     // The page moves with the drag, so the cursor position is
                     // tracked in the viewport's frame — the area's own frame
                     // moves with the page and would halve every step.
                     const p = mapToItem(viewport, mouse.x, mouse.y)
-                    lastX = p.x
-                    lastY = p.y
-                    dragged = false
-                    imageArea.forceActiveFocus()
+                    root.beginPan(p.x, p.y)
                 }
                 onPositionChanged: (mouse) => {
                     const p = mapToItem(viewport, mouse.x, mouse.y)
-                    const dx = p.x - lastX
-                    const dy = p.y - lastY
-                    if (!dragged && Math.abs(dx) + Math.abs(dy) < 3)
+                    root.pointerPos = p
+                    // The hover only moves the chip: the page moves while the
+                    // button is down, never on a mere mouse move.
+                    if (!pressed)
                         return
-                    dragged = true
-                    lastX = p.x
-                    lastY = p.y
-                    root.panX += dx
-                    root.panY += dy
-                    root.clampPan()
+                    if (root.drawing) {
+                        root.updateDrawAt(root.pagePoint(pageMouse, mouse))
+                        return
+                    }
+                    root.continuePan(p.x, p.y)
+                }
+                onReleased: (mouse) => {
+                    if (root.drawing) {
+                        root.endDraw()
+                        root.suppressClick = true
+                    }
                 }
                 onClicked: {
-                    if (!dragged)
+                    if (root.suppressClick) {
+                        root.suppressClick = false
+                        return
+                    }
+                    if (!root.panning) {
+                        // A click outside the blocks leaves the edit mode
+                        // (ADR 189).
+                        root.editingBoxIndex = -1
                         Controller.selectedBoxIndex = -1
+                    }
                 }
             }
 
@@ -334,13 +463,18 @@ Item {
                         }
                     }
 
-                    // Drag & boundary editing: every block can be moved and
-                    // resized, the manually added ones included — a block the
-                    // user placed must be placeable.
+                    // A click on a block selects it; the block itself moves only
+                    // in the edit mode the mini toolbar opens (ADR 189). A drag
+                    // that starts on a block moves the page, as a drag on the
+                    // empty page does.
                     MouseArea {
+                        id: blockMouse
                         anchors.fill: parent
-                        cursorShape: boxDelegate.isImage ? Qt.SizeAllCursor : Qt.PointingHandCursor
+                        hoverEnabled: true
                         acceptedButtons: Qt.LeftButton
+                        cursorShape: root.drawing ? Qt.CrossCursor
+                                  : root.editingBoxIndex === boxDelegate.index
+                                    ? Qt.SizeAllCursor : Qt.PointingHandCursor
 
                         property real grabX: 0
                         property real grabY: 0
@@ -348,15 +482,42 @@ Item {
                         property real origY: 0
 
                         onPressed: (mouse) => {
-                            Controller.selectedBoxIndex = boxDelegate.index
                             imageArea.forceActiveFocus()
-                            origX = boxDelegate.boxX
-                            origY = boxDelegate.boxY
-                            const p = mapToItem(imageArea, mouse.x, mouse.y)
-                            grabX = p.x
-                            grabY = p.y
+                            root.suppressClick = false
+                            if (root.drawing) {
+                                root.beginDrawAt(root.pagePoint(blockMouse, mouse))
+                                return
+                            }
+                            Controller.selectedBoxIndex = boxDelegate.index
+                            if (root.editingBoxIndex === boxDelegate.index) {
+                                origX = boxDelegate.boxX
+                                origY = boxDelegate.boxY
+                                const p = mapToItem(imageArea, mouse.x, mouse.y)
+                                grabX = p.x
+                                grabY = p.y
+                            } else {
+                                // Another block takes the selection: the block
+                                // that was open for editing closes.
+                                root.editingBoxIndex = -1
+                                const p = mapToItem(viewport, mouse.x, mouse.y)
+                                root.beginPan(p.x, p.y)
+                            }
                         }
                         onPositionChanged: (mouse) => {
+                            const vp = mapToItem(viewport, mouse.x, mouse.y)
+                            root.pointerPos = vp
+                            // The hover only moves the chip: the page moves
+                            // while the button is down.
+                            if (!pressed)
+                                return
+                            if (root.drawing) {
+                                root.updateDrawAt(root.pagePoint(blockMouse, mouse))
+                                return
+                            }
+                            if (root.editingBoxIndex !== boxDelegate.index) {
+                                root.continuePan(vp.x, vp.y)
+                                return
+                            }
                             const p = mapToItem(imageArea, mouse.x, mouse.y)
                             const dx = (p.x - grabX) / imageArea.width
                             const dy = (p.y - grabY) / imageArea.height
@@ -364,6 +525,12 @@ Item {
                             const ny = Math.max(0, Math.min(1 - boxHeight, origY + dy))
                             Controller.onBoxRectChanged(boxDelegate.index, nx, ny,
                                                         boxWidth, boxHeight)
+                        }
+                        onReleased: (mouse) => {
+                            if (root.drawing) {
+                                root.endDraw()
+                                root.suppressClick = true
+                            }
                         }
                     }//MouseArea
                 }//delegate: Rectangle
@@ -401,6 +568,12 @@ Item {
                              ? !imageArea.selectedDelegate.isImage : true
                 blockText: imageArea.selectedDelegate
                            ? imageArea.selectedDelegate.effectiveText : ""
+                editing: root.editingBoxIndex === Controller.selectedBoxIndex
+                         && root.editingBoxIndex >= 0
+                onEditToggled: {
+                    root.editingBoxIndex = root.editingBoxIndex === Controller.selectedBoxIndex
+                                                ? -1 : Controller.selectedBoxIndex
+                }
 
                 x: {
                     const sel = imageArea.selectedDelegate
@@ -441,7 +614,11 @@ Item {
                     color: Theme.surfaceAlt
                     border.color: Theme.overlayImageOuter
                     border.width: 1
+                    // The handles belong to the edit mode: a block is
+                    // resized only while the user opened it for editing
+                    // (ADR 189).
                     visible: imageArea.selectedDelegate !== null
+                             && root.editingBoxIndex === Controller.selectedBoxIndex
 
                     x: {
                         const sel = imageArea.selectedDelegate
@@ -499,7 +676,59 @@ Item {
                     }//MouseArea
                 }//delegate: Rectangle
             }//Repeater
+
+            // The rectangle the user is drawing (ADR 189): it wears the hue
+            // of the block type it will become.
+            Rectangle {
+                z: 4
+                visible: root.drawActive
+                x: root.drawX * imageArea.width
+                y: root.drawY * imageArea.height
+                width: root.drawW * imageArea.width
+                height: root.drawH * imageArea.height
+                color: Qt.alpha(root.drawColor, 0.12)
+                border.color: root.drawColor
+                border.width: 1
+            }
         }//Item: imageArea
+
+        // The chip that follows the cursor in the draw mode: it names the
+        // block the next drag will draw (ADR 189).
+        Rectangle {
+            id: drawChip
+            z: 5
+            visible: root.drawing && root.pointerOnPage
+            x: Math.max(0, Math.min(root.pointerPos.x + 16, viewport.width - width - 4))
+            y: Math.max(0, Math.min(root.pointerPos.y + 16, viewport.height - height - 4))
+            width: chipRow.implicitWidth + 2 * Theme.spacingSmall
+            height: chipRow.implicitHeight + 2 * Theme.spacingSmall
+            radius: Theme.radius
+            color: Theme.surface
+            border.color: Theme.border
+            border.width: 1
+
+            Row {
+                id: chipRow
+                anchors.centerIn: parent
+                spacing: Theme.spacingSmall
+
+                Rectangle {
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: root.drawColor
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    // displayName() has no answer for an empty name — the chip
+                    // is hidden then, but the binding still runs.
+                    text: root.drawBlockName !== ""
+                          ? BlockNames.displayName(root.drawBlockName) : ""
+                    font: Theme.caption
+                    color: Theme.textPrimary
+                }
+            }
+        }
 
         WheelHandler {
             onWheel: (event) => {
@@ -538,12 +767,28 @@ Item {
         }
     }//Item: viewport
 
+    // Escape leaves the draw mode: the crosshair is a mode, not a state the
+    // user is stuck in (ADR 189).
+    Shortcut {
+        sequences: ["Escape"]
+        enabled: root.drawing
+        onActivated: root.cancelDrawBlock()
+    }
+
     Connections {
         target: Controller
         function onSelectedBoxChanged() {
+            // The block that is open for editing is the selected one: another
+            // selection closes the edit mode (ADR 189).
+            if (root.editingBoxIndex >= 0
+                    && root.editingBoxIndex !== Controller.selectedBoxIndex)
+                root.editingBoxIndex = -1
             root.ensureVisible()
         }
         function onPageChanged() {
+            // Another page: the edited block and the drawn block are gone.
+            root.editingBoxIndex = -1
+            root.cancelDrawBlock()
             root.ensureVisible()
         }
     }
