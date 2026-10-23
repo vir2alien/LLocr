@@ -818,7 +818,7 @@
         <translation type="vanished">Все предложенные правки эквивалентны — текст блока оставлен как есть.</translation>
     </message>
     <message>
-        <location filename="../../src/models/FixDiffGate.cpp" line="+175"/>
+        <location filename="../../src/models/FixDiffGate.cpp" line="+174"/>
         <source>The model declared no change instead of a verdict; the block needs a human look.</source>
         <translation>Модель не предложила правку, а просто констатировала отсутствие изменений — блок нужно посмотреть глазами.</translation>
     </message>
@@ -2399,12 +2399,32 @@
         <translation>Профиль модели %1 не содержит квантизаций</translation>
     </message>
     <message>
-        <location line="+138"/>
+        <location line="+105"/>
+        <source>Budget for the model&apos;s thinking tokens; 0 means the reply is the answer only.</source>
+        <translation>Бюджет токенов размышления модели; 0 — ответом будет сам ответ.</translation>
+    </message>
+    <message>
+        <location line="+37"/>
+        <source>Request profile %1 has a malformed reasoning mode</source>
+        <translation>Профиль запросов %1 содержит некорректный режим размышления</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Request profile %1 has a reasoning mode without a label</source>
+        <translation>Профиль запросов %1 содержит режим размышления без названия</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Request profile %1 has a reasoning mode without a budget</source>
+        <translation>Профиль запросов %1 содержит режим размышления без бюджета</translation>
+    </message>
+    <message>
+        <location line="+42"/>
         <source>A model profile has an empty id</source>
         <translation>Профиль модели имеет пустой id</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+34"/>
         <source>Model profile</source>
         <translation>Профиль модели</translation>
     </message>
@@ -2419,7 +2439,7 @@
         <translation>Профиль модели %1 содержит промпт без id или текста</translation>
     </message>
     <message>
-        <location line="-151"/>
+        <location line="-206"/>
         <location line="+9"/>
         <source>Model profile %1 has a block prompt without a block type or text</source>
         <translation>Профиль модели %1 содержит блочный промпт без типа блока или текста</translation>
@@ -2430,17 +2450,17 @@
         <translation>Профиль модели %1 содержит псевдоним блока без типа блока или цели</translation>
     </message>
     <message>
-        <location line="+159"/>
+        <location line="+214"/>
         <source>Model profile directory not found: %1</source>
         <translation>Каталог профилей моделей не найден: %1</translation>
     </message>
     <message>
-        <location line="-123"/>
+        <location line="-144"/>
         <source>A request profile has an empty id</source>
         <translation>Профиль запросов имеет пустой id</translation>
     </message>
     <message>
-        <location line="-57"/>
+        <location line="-91"/>
         <location line="+9"/>
         <source>Request profile %1 has a block prompt without a block type or text</source>
         <translation>Профиль запросов %1 содержит блочный промпт без типа блока или текста</translation>
@@ -2451,7 +2471,7 @@
         <translation>Профиль запросов %1 содержит псевдоним блока без типа блока или цели</translation>
     </message>
     <message>
-        <location line="+211"/>
+        <location line="+267"/>
         <source>Request profile directory not found: %1</source>
         <translation>Каталог профилей запросов не найден: %1</translation>
     </message>
@@ -2461,27 +2481,27 @@
         <translation>Дублирующийся id профиля запросов: %1</translation>
     </message>
     <message>
-        <location line="-44"/>
+        <location line="-45"/>
         <source>Model profile %1 references an unknown request profile: %2</source>
         <translation>Профиль модели %1 ссылается на неизвестный профиль запросов: %2</translation>
     </message>
     <message>
         <location line="-23"/>
-        <location line="+51"/>
+        <location line="+52"/>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+4"/>
         <source>Unable to read %1: %2</source>
         <translation>Не удалось прочитать %1: %2</translation>
     </message>
     <message>
-        <location line="-45"/>
-        <location line="+51"/>
+        <location line="-46"/>
+        <location line="+52"/>
         <location filename="../../src/runtime/ModelPresetCatalog.cpp" line="+6"/>
         <source>%1 is malformed: %2</source>
         <translation>Некорректный формат %1: %2</translation>
     </message>
     <message>
-        <location line="-45"/>
-        <location line="+51"/>
+        <location line="-46"/>
+        <location line="+52"/>
         <source>%1: %2</source>
         <translation>%1: %2</translation>
     </message>
@@ -2531,12 +2551,12 @@
         <translation>Не удалось удалить пользовательский каталог: %1</translation>
     </message>
     <message>
-        <location filename="../../src/core/RequestProfile.cpp" line="+194"/>
+        <location filename="../../src/core/RequestProfile.cpp" line="+218"/>
         <source>Request profile has no parameters array</source>
         <translation>Профиль запроса не содержит массива параметров</translation>
     </message>
     <message>
-        <location line="-40"/>
+        <location line="-61"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+138"/>
         <source>%1 parameter is not an object</source>
         <translation>%1: параметр не является объектом</translation>
@@ -2560,7 +2580,22 @@
         <translation>%1: параметр %2 имеет неподдерживаемое значение</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <source>%1 parameter %2 has a malformed choice</source>
+        <translation>%1: параметр %2 содержит некорректный вариант</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>%1 parameter %2 has a choice without a label</source>
+        <translation>%1: параметр %2 содержит вариант без названия</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>%1 parameter %2 has a choice with an unsupported value</source>
+        <translation>%1: параметр %2 содержит вариант с неподдерживаемым значением</translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <location filename="../../src/core/LaunchProfile.cpp" line="+25"/>
         <source>%1 has a duplicate parameter: %2</source>
         <translation>%1: дублирующийся параметр: %2</translation>
@@ -2571,7 +2606,7 @@
         <translation>Профиль запроса</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+45"/>
         <source>Request profile is not an object</source>
         <translation>Профиль запроса не является объектом</translation>
     </message>
@@ -3708,7 +3743,7 @@
 <context>
     <name>VisionChatModel</name>
     <message>
-        <location filename="../../src/models/VisionChatModel.cpp" line="+48"/>
+        <location filename="../../src/models/VisionChatModel.cpp" line="+67"/>
         <source>Invalid JSON response</source>
         <translation>Некорректный ответ JSON</translation>
     </message>

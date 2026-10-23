@@ -52,6 +52,7 @@ public:
         bool promptBeforeImage = false;        // wire order: prompt text first, then the image (LFM2.5 trains text-then-image)
         int imageLongestEdge = 0;              // 0 = send the page as-is; >0 = downscale to fit (LightOnOCR-3 trains on 2048 px pages)
         QString promptProfile;                 // id of the prompt profile this role takes its texts from
+        bool reasoningSupported = false;       // the model can think: the fix task may spend a reasoning budget
     };
 
     struct Quant {
@@ -128,6 +129,11 @@ public:
         QString id;
         QString title;
         Role prompts;
+        // The reasoning modes the task offers (the label and the budget of
+        // thinking tokens). The fix task's modes are shared by every model
+        // that serves it; a model profile says whether its model can think at
+        // all (ADR 193).
+        QList<RequestParameterChoice> reasoningModes;
     };
 
     static constexpr const char *kResourceDir = ":/profiles/models";

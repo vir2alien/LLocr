@@ -107,6 +107,26 @@ keeps the parameters only. Formula candidates travel in
 canonical LaTeX (`FixDiffGate::normalizeLatexCandidate`), so the spaced
 LaTeX of the OCR models does not read as churn.
 
+### Reasoning mode
+
+The qwen3.5 pair can **think before it answers** — the fix task's optional
+reasoning mode (ADR 193). The model profile carries `reasoning: true` (the
+capability), the shared request profile carries the steps the task offers
+(`reasoningModes`: off / low 512 / med 1024 / high 1536), and the app derives
+the request parameter `reasoning_budget_tokens` from the two. The budget rides
+the **request** — llama.cpp reads `reasoning_budget_tokens` per request and it
+overrides the server's `--reasoning-budget` — so the mode takes effect on the
+next fix, with no server restart. The budget is also the switch:
+`chat_template_kwargs.enable_thinking` follows it, and `off` keeps the old
+behaviour (the reply is the answer). The thinking tokens come out of the
+generation budget, so `max_tokens` grows by the reasoning budget and the answer
+still gets the room the block needs.
+
+The mode is edited per model in Settings → Models → ⚙ → Request, next to
+temperature and `max_tokens`. The measurement behind it: the stand
+(`OCRtest/fix_models`) — thinking 512 tokens lifted the fix index from 0.54 to
+0.65 on the problem page, at the price of speed.
+
 ## 5. Verification notes
 
 The fix output lands in the block's second text layer (`correctedText`,

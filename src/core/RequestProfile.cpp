@@ -22,12 +22,14 @@ constexpr const char *kOrderKey = "order";
 constexpr const char *kNameKey = "name";
 constexpr const char *kValueKey = "value";
 constexpr const char *kDescriptionKey = "description";
+constexpr const char *kChoicesKey = "choices";
+constexpr const char *kLabelKey = "label";
 
 }  // namespace
 
 bool RequestParameter::operator==(const RequestParameter &other) const
 {
-    return name == other.name && kind == other.kind && value.typeId() == other.value.typeId() && value == other.value;
+    return name == other.name && kind == other.kind && value.typeId() == other.value.typeId() && value == other.value && choices == other.choices;
 }
 
 bool RequestProfile::valueFromJson(const QJsonValue &value, RequestValueKind &kind, QVariant &out)
@@ -178,6 +180,27 @@ QList<RequestParameter> RequestProfile::parseParameters(const QJsonArray &array,
         }
         parameter.description = obj.value(QLatin1String(kDescriptionKey)).toString();
 
+        const QJsonArray choices = obj.value(QLatin1String(kChoicesKey)).toArray();
+        for (const QJsonValue &entry : choices) {
+            if (!entry.isObject()) {
+                error = QObject::tr("%1 parameter %2 has a malformed choice").arg(what, parameter.name);
+                return {};
+            }
+            const QJsonObject choiceObject = entry.toObject();
+            RequestParameterChoice choice;
+            choice.label = choiceObject.value(QLatin1String(kLabelKey)).toString();
+            if (choice.label.isEmpty()) {
+                error = QObject::tr("%1 parameter %2 has a choice without a label").arg(what, parameter.name);
+                return {};
+            }
+            RequestValueKind choiceKind = RequestValueKind::Number;
+            if (!valueFromJson(choiceObject.value(QLatin1String(kValueKey)), choiceKind, choice.value)) {
+                error = QObject::tr("%1 parameter %2 has a choice with an unsupported value").arg(what, parameter.name);
+                return {};
+            }
+            parameter.choices.append(choice);
+        }
+
         if (names.contains(parameter.name)) {
             error = QObject::tr("%1 has a duplicate parameter: %2").arg(what, parameter.name);
             return {};
@@ -214,6 +237,16 @@ QJsonObject RequestProfile::toJson() const
         obj.insert(QLatin1String(kValueKey), valueToJson(p.value));
         if (!p.description.isEmpty())
             obj.insert(QLatin1String(kDescriptionKey), p.description);
+        if (!p.choices.isEmpty()) {
+            QJsonArray choices;
+            for (const RequestParameterChoice &choice : p.choices) {
+                QJsonObject choiceObject;
+                choiceObject.insert(QLatin1String(kLabelKey), choice.label);
+                choiceObject.insert(QLatin1String(kValueKey), valueToJson(choice.value));
+                choices.append(choiceObject);
+            }
+            obj.insert(QLatin1String(kChoicesKey), choices);
+        }
         params.append(obj);
     }
     QJsonObject root;
@@ -277,9 +310,11 @@ RequestProfile RequestProfile::merge(const RequestProfile &defaults, const Reque
         const auto it = userByName.constFind(d.name);
         if (it != userByName.constEnd()) {
             RequestParameter p = it.value();
-            // The built-in profile owns the position and the documentation.
+            // The built-in profile owns the position, the documentation and the
+            // option set.
             p.order = d.order;
             p.description = d.description;
+            p.choices = d.choices;
             out.parameters.append(p);
             userByName.remove(d.name);
         } else {

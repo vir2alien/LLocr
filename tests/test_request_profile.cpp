@@ -198,6 +198,58 @@ private slots:
         QCOMPARE(reparsed.parameters.at(0).description, QStringLiteral("alpha description"));
     }
 
+    // A parameter with named options: the label the settings show and the
+    // value the request carries.
+    void parseChoicesRoundTrip()
+    {
+        QString error;
+        const RequestProfile profile = RequestProfile::fromJson(objectFromJson(R"({
+            "id": "fix-requests",
+            "parameters": [
+                { "order": 1, "name": "reasoning_budget_tokens", "value": 0,
+                  "description": "thinking budget",
+                  "choices": [
+                      { "label": "off", "value": 0 },
+                      { "label": "low", "value": 512 },
+                      { "label": "high", "value": 1536 }
+                  ] }
+            ]
+        })"),
+                                                                error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(profile.parameters.size(), 1);
+        const RequestParameter &parameter = profile.parameters.at(0);
+        QCOMPARE(parameter.choices.size(), 3);
+        QCOMPARE(parameter.choices.at(0).label, QStringLiteral("off"));
+        QCOMPARE(parameter.choices.at(0).value.toDouble(), 0.0);
+        QCOMPARE(parameter.choices.at(1).label, QStringLiteral("low"));
+        QCOMPARE(parameter.choices.at(1).value.toDouble(), 512.0);
+        QCOMPARE(parameter.choices.at(2).value.toDouble(), 1536.0);
+
+        const QJsonObject back = profile.toJson();
+        const QJsonArray choices = back.value("parameters").toArray().at(0).toObject().value("choices").toArray();
+        QCOMPARE(choices.size(), 3);
+        QCOMPARE(choices.at(1).toObject().value("label").toString(), QStringLiteral("low"));
+        QCOMPARE(choices.at(1).toObject().value("value").toDouble(), 512.0);
+        QString error2;
+        QVERIFY(RequestProfile::fromJson(back, error2) == profile);
+    }
+
+    // A choice without a label is a broken profile, not a silent drop.
+    void parseChoicesRejectsAMalformedChoice()
+    {
+        QString error;
+        RequestProfile::fromJson(objectFromJson(R"({
+            "id": "broken",
+            "parameters": [
+                { "order": 1, "name": "reasoning_budget_tokens", "value": 0,
+                  "choices": [ { "value": 0 } ] }
+            ]
+        })"),
+                                 error);
+        QVERIFY(!error.isEmpty());
+    }
+
     void parseProfilesFile()
     {
         QString error;
@@ -378,6 +430,28 @@ private slots:
         QCOMPARE(merged2.parameters.size(), 2);
         QCOMPARE(merged2.parameters.at(1).name, QStringLiteral("beta"));
         QCOMPARE(merged2.parameters.at(1).value.toDouble(), 35.0);
+    }
+
+    // The built-in profile owns the option set: a user file that carries a
+    // stale choice list does not change what the settings offer.
+    void mergeKeepsTheBuiltInChoices()
+    {
+        RequestParameter parameter = makeParameter(1, QStringLiteral("reasoning_budget_tokens"), 0.0);
+        parameter.choices = {RequestParameterChoice{QStringLiteral("off"), QVariant(0.0)}, RequestParameterChoice{QStringLiteral("low"), QVariant(512.0)}};
+        RequestProfile defaults;
+        defaults.parameters = {parameter};
+
+        RequestParameter userParameter = parameter;
+        userParameter.value = QVariant(512.0);
+        userParameter.choices = {RequestParameterChoice{QStringLiteral("stale"), QVariant(1.0)}};
+        RequestProfile user;
+        user.parameters = {userParameter};
+
+        const RequestProfile merged = RequestProfile::merge(defaults, user);
+        QCOMPARE(merged.parameters.size(), 1);
+        QCOMPARE(merged.parameters.at(0).value.toDouble(), 512.0);
+        QCOMPARE(merged.parameters.at(0).choices.size(), 2);
+        QCOMPARE(merged.parameters.at(0).choices.at(1).label, QStringLiteral("low"));
     }
 
     void textParsingIsKindStrict()

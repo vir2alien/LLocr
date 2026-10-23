@@ -64,6 +64,7 @@
       "default": true,
       "protocol": "full_block",
       "promptProfile": "fix-requests",
+      "reasoning": true,
       "maxOutput": 8192,
       "launch": [
         {
@@ -109,7 +110,7 @@
           "order": 8,
           "name": "reasoning-budget",
           "value": 0,
-          "description": "Budget for thinking tokens; 0 disables reasoning so the reply is the transcription only."
+          "description": "Server default for the thinking budget; the fix request carries the reasoning mode and overrides it."
         },
         {
           "order": 9,

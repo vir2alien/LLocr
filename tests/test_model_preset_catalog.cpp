@@ -34,6 +34,7 @@ private slots:
     void teleOcrBlockPromptsCoverTheLayoutVocabulary();
     void checkModelBlockPromptsOverridePerType();
     void fixRolesShipTheCorrectionProtocol();
+    void fixRolesShipTheReasoningMode();
     void decisionRoleShipsTheStructuredStateWording();
     void requestProfilesCarryTheSharedRequests();
     void runtimeNoteReachesTheSettings();
@@ -550,6 +551,53 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
 // each question of a request with its own forward pass (~1.4 s measured), so
 // the v6 second question (the diagnosis choice) doubled the price of a check
 // and is gone.
+// The reasoning mode is optional: the model profile says whether the model
+// can think at all, the request profile offers the modes every fix model
+// shares. A model without the flag gets no parameter and no thinking (ADR 193).
+void TestModelPresetCatalog::fixRolesShipTheReasoningMode()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const ModelProfiles::PromptProfile *requests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
+    QVERIFY(requests);
+    QCOMPARE(requests->reasoningModes.size(), 4);
+    QCOMPARE(requests->reasoningModes.at(0).label, QStringLiteral("off"));
+    QCOMPARE(requests->reasoningModes.at(0).value.toDouble(), 0.0);
+    QCOMPARE(requests->reasoningModes.at(1).label, QStringLiteral("low"));
+    QCOMPARE(requests->reasoningModes.at(1).value.toDouble(), 512.0);
+    QCOMPARE(requests->reasoningModes.at(2).label, QStringLiteral("med"));
+    QCOMPARE(requests->reasoningModes.at(2).value.toDouble(), 1024.0);
+    QCOMPARE(requests->reasoningModes.at(3).label, QStringLiteral("high"));
+    QCOMPARE(requests->reasoningModes.at(3).value.toDouble(), 1536.0);
+
+    for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
+        const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
+        QVERIFY2(fix, qPrintable(id));
+
+        const RequestParameter *budget = nullptr;
+        for (const RequestParameter &parameter : fix->request) {
+            if (parameter.name == QLatin1String(kReasoningBudgetParameter))
+                budget = &parameter;
+        }
+        if (!fix->reasoningSupported) {
+            // A model that cannot think has no budget to set.
+            QVERIFY2(budget == nullptr, qPrintable(id));
+            continue;
+        }
+        QVERIFY2(budget, qPrintable(id));
+        QCOMPARE(budget->value.toDouble(), 0.0);
+        QCOMPARE(budget->kind, RequestValueKind::Number);
+        QCOMPARE(budget->choices.size(), 4);
+        QCOMPARE(budget->choices.at(1).label, QStringLiteral("low"));
+        QCOMPARE(budget->choices.at(1).value.toDouble(), 512.0);
+    }
+
+    // The models that were measured with thinking say so; the others do not.
+    QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"))->reasoningSupported);
+    QVERIFY(ModelProfiles::roleFor(QStringLiteral("qwen3.5-9b"), QStringLiteral("fix"))->reasoningSupported);
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("gemma-4-e4b"), QStringLiteral("fix"))->reasoningSupported);
+    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("gemma-4-12b"), QStringLiteral("fix"))->reasoningSupported);
+}
+
 void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
 {
     const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();

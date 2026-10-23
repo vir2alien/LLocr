@@ -410,7 +410,16 @@
     type — the whole block travels in the reply, so the budget must fit it.
     The budgets are the protocol's own rule, so they live in the **request
     profile** (`fix-requests.json`), one copy for all four fix models; a model
-    profile may still ship its own entry for a block type and it wins. Block recognition (plain re-transcription)
+    profile may still ship its own entry for a block type and it wins. The
+    fix models may also **think first**: the mode is the request parameter
+    `reasoning_budget_tokens` with the four steps off / low 512 / med 1024 /
+    high 1536 (ADR 193). The model profile says whether the model can think at
+    all (`reasoning: true`), the request profile holds the steps, the budget
+    rides the request (llama.cpp reads it per request — no server restart) and
+    it is also the switch: `enable_thinking` follows it, so zero keeps the old
+    behaviour; the thinking tokens come out of the generation budget, so
+    `max_tokens` grows by the reasoning budget and the answer keeps the room
+    the block needs. Block recognition (plain re-transcription)
     entry points: per-block «Распознать», the page toolbar's «Распознать
     страницу ▾» (problem blocks / all blocks of the page); the header
     «Исправить» runs the fix task over the problem blocks of the whole

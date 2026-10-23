@@ -26,6 +26,21 @@ QVariant RequestParametersModel::data(const QModelIndex &index, int role) const
         return p.order;
     case DescriptionRole:
         return p.description;
+    case ChoicesRole: {
+        QVariantList choices;
+        for (const RequestParameterChoice &choice : p.choices) {
+            choices.append(QVariantMap{{QStringLiteral("label"), choice.label}, {QStringLiteral("value"), RequestProfile::valueToText(choice.value)}});
+        }
+        return choices;
+    }
+    case ChoiceIndexRole: {
+        const QString value = RequestProfile::valueToText(p.value);
+        for (int i = 0; i < p.choices.size(); ++i) {
+            if (RequestProfile::valueToText(p.choices.at(i).value) == value)
+                return i;
+        }
+        return -1;
+    }
     }
     return QVariant();
 }
@@ -38,6 +53,8 @@ QHash<int, QByteArray> RequestParametersModel::roleNames() const
         {KindRole, "kind"},
         {OrderRole, "order"},
         {DescriptionRole, "description"},
+        {ChoicesRole, "choices"},
+        {ChoiceIndexRole, "choiceIndex"},
     };
     return roles;
 }

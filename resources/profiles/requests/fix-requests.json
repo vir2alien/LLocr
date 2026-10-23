@@ -19,6 +19,12 @@
     "equation": 2048,
     "table": 8192
   },
+  "reasoningModes": [
+    {"label": "off", "value": 0},
+    {"label": "low", "value": 512},
+    {"label": "med", "value": 1024},
+    {"label": "high", "value": 1536}
+  ],
   "blockAliases": {
     "formula": "equation",
     "reference": "ref_text",

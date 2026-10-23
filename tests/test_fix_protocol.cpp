@@ -78,6 +78,8 @@ private slots:
     // parts after the model's fix role (image-first for the shipped profiles).
     void requestBodyCarriesTheCandidate();
     void emptyCandidateStillTravelsFramed();
+    // The reasoning budget rides the request and switches the thinking on.
+    void reasoningBudgetTurnsTheThinkingOn();
 };
 
 void TestFixProtocol::fixCarriesTheCompleteBlock()
@@ -240,6 +242,44 @@ void TestFixProtocol::emptyCandidateStillTravelsFramed()
     QVERIFY(body.contains("CANDIDATE"));
     const QJsonArray content = QJsonDocument::fromJson(body).object().value("messages").toArray().at(1).toObject().value("content").toArray();
     QCOMPARE(content.size(), 3);
+}
+
+void TestFixProtocol::reasoningBudgetTurnsTheThinkingOn()
+{
+    // The budget rides the request: llama.cpp reads reasoning_budget_tokens
+    // per request, and the budget is also the switch — a budget above zero
+    // asks the model to think first (ADR 193).
+    ExposedFixModel model;
+    CheckRequest request = fixRequest();
+
+    QJsonObject body = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+    QVERIFY(!body.contains("reasoning_budget_tokens"));
+    QCOMPARE(body.value("chat_template_kwargs").toObject().value("enable_thinking").toBool(), false);
+
+    RequestParameter budget;
+    budget.name = QLatin1String(kReasoningBudgetParameter);
+    budget.kind = RequestValueKind::Number;
+    budget.value = QVariant(1024.0);
+    request.parameters.append(budget);
+    RequestParameter maxTokens;
+    maxTokens.name = QStringLiteral("max_tokens");
+    maxTokens.kind = RequestValueKind::Number;
+    maxTokens.value = QVariant(2048.0);
+    request.parameters.append(maxTokens);
+
+    body = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+    QCOMPARE(body.value("reasoning_budget_tokens").toDouble(), 1024.0);
+    QCOMPARE(body.value("chat_template_kwargs").toObject().value("enable_thinking").toBool(), true);
+    // The thinking tokens come out of the generation budget: the answer keeps
+    // the room the block needs.
+    QCOMPARE(body.value("max_tokens").toDouble(), 3072.0);
+
+    // A budget of zero is the default: the reply is the answer.
+    request.parameters[0].value = QVariant(0.0);
+    body = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+    QCOMPARE(body.value("reasoning_budget_tokens").toDouble(), 0.0);
+    QCOMPARE(body.value("chat_template_kwargs").toObject().value("enable_thinking").toBool(), false);
+    QCOMPARE(body.value("max_tokens").toDouble(), 2048.0);
 }
 
 QTEST_MAIN(TestFixProtocol)

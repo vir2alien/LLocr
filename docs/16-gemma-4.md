@@ -163,6 +163,13 @@ contract — the corrected table answers in the candidate's own format
 | `stream` | false | The parser consumes one complete response. |
 | `cache_prompt` | false | Every block request stays independent of the draft's shared KV cache. |
 
+The fix task's optional reasoning mode (ADR 193) is **not** offered for the
+gemma pair: the model profile carries no `reasoning` flag, so the fix request
+has no reasoning budget and the reply is the answer — the same as before. The
+capability is the model's own (`reasoning: true` in the model profile), so a
+gemma that is measured to think well gets the flag and the same four steps
+(off / low 512 / med 1024 / high 1536) that the shared request profile offers.
+
 ## 5. Output formats
 
 The fix protocol's three verdicts — `OK`, `FIX` + the corrected block, or

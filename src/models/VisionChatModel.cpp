@@ -20,10 +20,29 @@ QJsonObject VisionChatModel::buildRoot(const CheckRequest &request, QJsonArray m
 {
     QJsonObject root{{QStringLiteral("model"), request.modelId}, {QStringLiteral("messages"), std::move(messages)}};
 
-    root.insert(QStringLiteral("chat_template_kwargs"), QJsonObject{{QStringLiteral("enable_thinking"), false}});
-
     QList<RequestParameter> parameters = request.parameters;
     std::stable_sort(parameters.begin(), parameters.end(), [](const RequestParameter &a, const RequestParameter &b) { return a.order < b.order; });
+
+    // The reasoning budget is also the switch: a budget above zero asks the
+    // model to think first, and the budget itself caps the thinking tokens.
+    // Without one the reply stays the answer — no thinking (ADR 193).
+    double reasoningBudget = 0.0;
+    for (const RequestParameter &parameter : parameters) {
+        if (parameter.name == QLatin1String(kReasoningBudgetParameter))
+            reasoningBudget = parameter.value.toDouble();
+    }
+    root.insert(QStringLiteral("chat_template_kwargs"), QJsonObject{{QStringLiteral("enable_thinking"), reasoningBudget > 0.0}});
+
+    // The thinking tokens come out of the generation budget, so the answer
+    // keeps the room the block needs: the budget grows by the reasoning
+    // budget, and the answer is not cut short (ADR 193).
+    if (reasoningBudget > 0.0) {
+        for (RequestParameter &parameter : parameters) {
+            if (parameter.name == QLatin1String("max_tokens"))
+                parameter.value = parameter.value.toDouble() + reasoningBudget;
+        }
+    }
+
     for (const RequestParameter &parameter : parameters)
         root.insert(parameter.name, RequestProfile::valueToJson(parameter.value));
 

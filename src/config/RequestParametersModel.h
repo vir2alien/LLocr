@@ -19,6 +19,8 @@ public:
         KindRole,
         OrderRole,
         DescriptionRole,
+        ChoicesRole,      // the named options of the value (empty for a free value)
+        ChoiceIndexRole,  // the option the value matches, -1 when it matches none
     };
 
     explicit RequestParametersModel(QObject *parent = nullptr);

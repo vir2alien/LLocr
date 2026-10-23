@@ -10,11 +10,28 @@ class QJsonObject;
 
 namespace llocr {
 
+// The request field that carries the reasoning budget. llama.cpp reads it per
+// request (it overrides the server's --reasoning-budget), and the budget is
+// also the switch: zero means the reply is the answer, without thinking
+// (ADR 193).
+inline constexpr const char *kReasoningBudgetParameter = "reasoning_budget_tokens";
+
 enum class RequestValueKind {
     Number,      // QVariant(double)
     Boolean,     // QVariant(bool)
     String,      // QVariant(QString)
     StringList,  // QVariant(QStringList) — JSON array of strings
+};
+
+// A named option of a parameter: the label the settings show and the value
+// the request carries. A parameter with choices is a closed set — the
+// reasoning mode, for one (the choices come from the request profile).
+struct RequestParameterChoice {
+    QString label;
+    QVariant value;
+
+    bool operator==(const RequestParameterChoice &other) const { return label == other.label && value == other.value; }
+    bool operator!=(const RequestParameterChoice &other) const { return !(*this == other); }
 };
 
 struct RequestParameter {
@@ -23,6 +40,7 @@ struct RequestParameter {
     RequestValueKind kind = RequestValueKind::Number;
     QVariant value;
     QString description;
+    QList<RequestParameterChoice> choices;
 
     bool operator==(const RequestParameter &other) const;
     bool operator!=(const RequestParameter &other) const { return !(*this == other); }

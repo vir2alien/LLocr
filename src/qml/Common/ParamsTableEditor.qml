@@ -60,6 +60,9 @@ Item {
                 required property int index
                 required property var model
 
+                readonly property var choices: model.choices || []
+                readonly property int choiceIndex: model.choiceIndex !== undefined ? model.choiceIndex : -1
+
                 width: paramsList.width
                 implicitHeight: Math.max(Theme.controlHeight,
                                          descriptionLabel.implicitHeight)
@@ -84,12 +87,45 @@ Item {
                     selectByMouse: true
                     placeholderText: root.valuePlaceholder
                     text: paramRow.model.valueText
+                    visible: paramRow.choices.length === 0
 
                     onEditingFinished: {
                         if (text === paramRow.model.valueText)
                             return
                         if (!root.setValue(paramRow.index, text))
                             text = Qt.binding(() => paramRow.model.valueText)
+                    }
+                }
+
+                // A parameter with named options is a closed set: the choices
+                // come from the request profile, the value from the model.
+                ComboBox {
+                    id: choiceBox
+                    anchors.left: nameLabel.right
+                    anchors.leftMargin: Theme.spacing
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width * root.valueWidth
+                    implicitHeight: Theme.controlHeight
+                    visible: paramRow.choices.length > 0
+                    model: paramRow.choices
+                    textRole: "label"
+                    valueRole: "value"
+
+                    Component.onCompleted: currentIndex = paramRow.choiceIndex
+                    onActivated: (index) => {
+                        const choice = paramRow.choices[index]
+                        if (!root.setValue(paramRow.index, choice.value))
+                            choiceBox.currentIndex = paramRow.choiceIndex
+                    }
+
+                    // The value can change outside the control (a reset of the
+                    // profile); the option follows the model.
+                    Connections {
+                        target: root.model
+                        function onDataChanged(topLeft, bottomRight, roles) {
+                            if (topLeft.row <= paramRow.index && paramRow.index <= bottomRight.row)
+                                choiceBox.currentIndex = paramRow.choiceIndex
+                        }
                     }
                 }
 
