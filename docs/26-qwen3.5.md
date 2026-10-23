@@ -2,7 +2,7 @@
 
 > Manual launch, request contract and app wiring for the fix-family
 > default. Russian version: `docs/26-qwen3.5.ru.md`. The correction
-> protocol itself: ADR 163, ADR 180 and `docs/todo/fix_models_improvements.md`;
+> protocol itself: ADR 163, ADR 192 and `docs/todo/fix_models_improvements.md`;
 > the other fix family (Gemma 4 QAT): `docs/16-gemma-4.md`.
 
 ## 1. What they are
@@ -10,13 +10,12 @@
 **Qwen3.5-4B** and **Qwen3.5-9B** (unsloth -MTP packaging) are general
 purpose instruct VLMs serving the **fix** task: they receive a block crop
 plus the OCR candidate framed as data and answer with the three-token
-contract **OK / FIX / REVIEW**. A FIX carries span edits
-(`old_substring => new_substring` lines) for text blocks, the complete
-corrected formula for a formula block and a full corrected block with a
-mandatory `EDITS:` section for a table; the deterministic diff gate applies
-the edits to the candidate itself (the `span_hybrid` protocol, ADR 180 — it
-supersedes the ADR 163 full-block reply) and reads a formula's complete
-block as the correction (ADR 181). The 4B is the task's default model
+contract **OK / FIX / REVIEW**. A FIX carries the **complete corrected
+block** and nothing else; the gate decides whether that block may replace the
+candidate (the `full_block` protocol, ADR 192 — it supersedes the ADR 180
+`span_hybrid` span edits, which the small models could not carry) and keeps
+the candidate's own bytes when the corrected block is only a re-spelling of it
+(ADR 181). The 4B is the task's default model
 (ADR 169); the 9B is the same recipe at a larger size. Apache-2.0 licensed.
 
 ## 2. Files
@@ -75,23 +74,21 @@ OCR candidate:
 </CANDIDATE>
 ```
 
-The per-type prompts (`blockPrompts`, 17 types; `formula`/`reference` ride
-the `blockAliases` hop) pin what a FIX may change per block class — and
-name the output mode: span edits for the text classes, the complete
-formula for `equation`, the full block plus `EDITS:` for `table`. They
+The per-type prompts (`blockPrompts`, 15 types; `formula`/`reference` ride
+the `blockAliases` hop, and the caption and footnote types are merged) pin
+what a FIX may change per block class — and name the output mode: the
+complete corrected block. They
 live in the shared request profile
 `resources/profiles/requests/fix-requests.json` (ADR 182), which every
 fix model names — the model profiles keep the parameters only. Reply
 parsing (`FixModel` + `FixDiffGate`):
-`OK` → Ok, `REVIEW` → Review, a span `FIX` → Fixed with
-the candidate after the edits, a formula `FIX` → Fixed with the complete
-formula, a structural `FIX` → Fixed when every change
-is declared under `EDITS:`. The gate matches anchors in an equivalence view
-(the model drops `\(…\)` carrier markup and collapses spacing when it
-copies — the match maps back to the real span); a no-op fix, a missing or
-ambiguous anchor and an undeclared diff demote to Review — the reason lands
-in the footer. A reply that is none of the three verdicts — an old
-`EMPTY`, a free-text remark, a `FIX none` — is a deviation and lands on
+`OK` → Ok, `REVIEW` → Review, `FIX` → the complete corrected block, which
+replaces the candidate unless the gate finds it equivalent to it — an
+equivalent block reads as Ok and the candidate's bytes stay (the model
+re-spelled it, changed nothing). An empty reply, a `FIX none` and a reply cut
+by the token budget (`finish_reason: length`) land on Review — the reason
+lands in the footer. A reply that is none of the three verdicts — an old
+`EMPTY`, a free-text remark — is a deviation and lands on
 Review too (ADR 181).
 
 Sampling: `temperature 0`, neutral penalties, `stream false`,
@@ -101,11 +98,14 @@ re-processes the full prompt of every request regardless (§7).
 `stop`
 (`["<|im_end|>", "<|endoftext|>", "</CANDIDATE>"]`) ends the reply at the
 verdict. `maxOutputByBlock` budgets the reply per block type (a page
-number 64 tokens, a formula 1024, a table 8192) — the block-level value
-overrides the request profile's `max_tokens`. Formula candidates travel in
-canonical LaTeX (`FixDiffGate::normalizeLatexCandidate`), and the type
-answers the span contract — the full block with `EDITS:` is tables-only
-now (ADR 180).
+number 64 tokens, a formula 2048, a table 8192) — the block-level value
+overrides the request profile's `max_tokens`, and it has to fit the whole
+block, because the whole block travels in the reply (ADR 192). The budgets
+are the protocol's rule, so they live in the shared request profile
+(`fix-requests.json`) — one copy for all four fix models; the model profile
+keeps the parameters only. Formula candidates travel in
+canonical LaTeX (`FixDiffGate::normalizeLatexCandidate`), so the spaced
+LaTeX of the OCR models does not read as churn.
 
 ## 5. Verification notes
 

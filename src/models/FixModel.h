@@ -5,11 +5,10 @@
 namespace llocr {
 
 // The fix task: the block crop plus the OCR candidate under correction. The
-// reply contract is OK / FIX / REVIEW; a FIX reply is span edits
-// (`old => new` lines) for the text types, the complete corrected block for
-// the formula types, and the complete block plus a mandatory EDITS: section
-// for the table type — all of them pass the diff gate before they reach the
-// block (ADR 179).
+// reply contract is OK / FIX / REVIEW; a FIX reply carries the complete
+// corrected block, and the gate (ADR 192) decides whether that block may
+// replace the candidate — an equivalent block keeps the candidate's bytes, an
+// empty or budget-cut reply goes to human eyes.
 class FixModel : public VisionChatModel
 {
     Q_DISABLE_COPY_MOVE(FixModel)

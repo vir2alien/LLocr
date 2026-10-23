@@ -23,11 +23,17 @@ QByteArray chatReply(const QString &content)
     return QJsonDocument(QJsonObject{{"choices", QJsonArray{QJsonObject{{"message", QJsonObject{{"content", content}}}}}}}).toJson(QJsonDocument::Compact);
 }
 
+// The server stopped at the token budget — the reply carries a fragment.
+QByteArray chatReplyCut(const QString &content)
+{
+    return QJsonDocument(QJsonObject{{"choices", QJsonArray{QJsonObject{{"finish_reason", QStringLiteral("length")}, {"message", QJsonObject{{"content", content}}}}}}}).toJson(QJsonDocument::Compact);
+}
+
 CheckRequest fixRequest()
 {
     CheckRequest request;
     request.image = QImage(4, 4, QImage::Format_RGB32);
-    request.systemPrompt = QStringLiteral("Answer OK, FIX, REVIEW or EMPTY.");
+    request.systemPrompt = QStringLiteral("Answer OK, FIX or REVIEW.");
     request.typePrompt = QStringLiteral("Block type: text.");
     request.recognizedText = QStringLiteral("The candidate text");
     request.blockType = QStringLiteral("text");
@@ -43,9 +49,9 @@ class TestFixProtocol : public QObject
     Q_OBJECT
 
 private slots:
-    // A span FIX edits the candidate; both documented spellings of the
-    // keyword are accepted and nothing else is stripped.
-    void fixWithColonAndNewline();
+    // A FIX carries the complete corrected block; both documented spellings
+    // of the keyword are accepted and nothing else is stripped.
+    void fixCarriesTheCompleteBlock();
     // An explicit FIX without a payload is a refusal to judge, not an error.
     void emptyFixMeansReview();
     void okConfirmsWithoutText();
@@ -59,32 +65,31 @@ private slots:
     void codeFenceAroundFix();
     void thinkingIsStripped();
     void emptyContentIsAnError();
-    // A legacy full-block reply on a span type lists no `old => new` lines:
-    // the gate sends it to review instead of trusting a re-transcription.
-    void legacyFullBlockReplyIsDemotedToReview();
+    // The whole-block reply IS the contract now: it replaces the candidate.
+    void fullBlockReplyIsApplied();
     // "FIX none" is not a verdict either: the model declared no change
     // instead of a correction, so the block needs a human look.
     void fixNoneIsReviewed();
-    // The structural types read the full-block + EDITS: contract instead.
-    void fullBlockTypeParsesTheEditsSection();
-    // A formula reply carries the complete formula (no EDITS: section).
+    // A formula reply carries the complete formula.
     void formulaReplyIsAppliedAsTheCorrection();
+    // A reply cut by the token budget is a fragment, not a correction.
+    void truncatedReplyIsReviewed();
     // The fix request wraps the candidate in <CANDIDATE> and orders the
     // parts after the model's fix role (image-first for the shipped profiles).
     void requestBodyCarriesTheCandidate();
     void emptyCandidateStillTravelsFramed();
 };
 
-void TestFixProtocol::fixWithColonAndNewline()
+void TestFixProtocol::fixCarriesTheCompleteBlock()
 {
     ExposedFixModel model;
     const QString candidate = QStringLiteral("Коэффициент k = 0,85 подтверждён.");
 
-    const CheckResult colon = model.parse(chatReply(QStringLiteral("FIX: k = 0,85 => k = 0,35")), candidate, QStringLiteral("text"));
+    const CheckResult colon = model.parse(chatReply(QStringLiteral("FIX: Коэффициент k = 0,35 подтверждён.")), candidate, QStringLiteral("text"));
     QCOMPARE(colon.status, CheckStatus::Fixed);
     QCOMPARE(colon.text, QStringLiteral("Коэффициент k = 0,35 подтверждён."));
 
-    const CheckResult newline = model.parse(chatReply(QStringLiteral("FIX\nk = 0,85 => k = 0,35")), candidate, QStringLiteral("text"));
+    const CheckResult newline = model.parse(chatReply(QStringLiteral("FIX\nКоэффициент k = 0,35 подтверждён.")), candidate, QStringLiteral("text"));
     QCOMPARE(newline.status, CheckStatus::Fixed);
     QCOMPARE(newline.text, QStringLiteral("Коэффициент k = 0,35 подтверждён."));
 }
@@ -137,7 +142,7 @@ void TestFixProtocol::garbageIsReviewed()
 void TestFixProtocol::codeFenceAroundFix()
 {
     ExposedFixModel model;
-    const CheckResult result = model.parse(chatReply(QStringLiteral("```\nFIX: k = 0,85 => k = 0,35\n```")), QStringLiteral("k = 0,85 подтверждён."), QStringLiteral("text"));
+    const CheckResult result = model.parse(chatReply(QStringLiteral("```\nFIX: k = 0,35 подтверждён.\n```")), QStringLiteral("k = 0,85 подтверждён."), QStringLiteral("text"));
     QCOMPARE(result.status, CheckStatus::Fixed);
     QCOMPARE(result.text, QStringLiteral("k = 0,35 подтверждён."));
 }
@@ -145,7 +150,7 @@ void TestFixProtocol::codeFenceAroundFix()
 void TestFixProtocol::thinkingIsStripped()
 {
     ExposedFixModel model;
-    const CheckResult result = model.parse(chatReply(QStringLiteral("FIX: k = 0,85 => k = 0,35\n thinking what to change response")), QStringLiteral("k = 0,85 подтверждён."), QStringLiteral("text"));
+    const CheckResult result = model.parse(chatReply(QStringLiteral("FIX: k = 0,35 подтверждён.\n thinking what to change response")), QStringLiteral("k = 0,85 подтверждён."), QStringLiteral("text"));
     QCOMPARE(result.status, CheckStatus::Fixed);
     QCOMPARE(result.text, QStringLiteral("k = 0,35 подтверждён."));
 }
@@ -158,15 +163,15 @@ void TestFixProtocol::emptyContentIsAnError()
     QVERIFY(!result.errorMessage.text().isEmpty());
 }
 
-void TestFixProtocol::legacyFullBlockReplyIsDemotedToReview()
+void TestFixProtocol::fullBlockReplyIsApplied()
 {
-    // A model still on the old contract re-transcribes the block; without an
-    // `old => new` line the gate refuses the reply — the candidate survives.
+    // The reply carries the complete corrected block — that is the contract
+    // now, for every block type.
     ExposedFixModel model;
-    const CheckResult result = model.parse(chatReply(QStringLiteral("FIX\nThe complete corrected text")), QStringLiteral("The candidate text"), QStringLiteral("text"));
-    QCOMPARE(result.status, CheckStatus::Review);
-    QVERIFY(result.text.isEmpty());
-    QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
+    const CheckResult result =
+        model.parse(chatReply(QStringLiteral("FIX\nВ 2026 году коэффициент k = 0,35 был подтверждён.")), QStringLiteral("В 2026 году коэффициент k = 0,85 был подтверждён."), QStringLiteral("text"));
+    QCOMPARE(result.status, CheckStatus::Fixed);
+    QCOMPARE(result.text, QStringLiteral("В 2026 году коэффициент k = 0,35 был подтверждён."));
 }
 
 void TestFixProtocol::fixNoneIsReviewed()
@@ -182,23 +187,23 @@ void TestFixProtocol::fixNoneIsReviewed()
 void TestFixProtocol::formulaReplyIsAppliedAsTheCorrection()
 {
     // The formula prompt asks for the complete formula, so a formula reply is
-    // a full block without an EDITS: section.
+    // a full block.
     ExposedFixModel model;
     const CheckResult result = model.parse(chatReply(QStringLiteral("FIX\n\\[\\mathrm{Bi}_{1} = 2\\]")), QStringLiteral("$$\n\\mathrm{Bi}_{1} = 1\n$$"), QStringLiteral("equation"));
     QCOMPARE(result.status, CheckStatus::Fixed);
     QCOMPARE(result.text, QStringLiteral("\\[\\mathrm{Bi}_{1} = 2\\]"));
 }
 
-void TestFixProtocol::fullBlockTypeParsesTheEditsSection()
+void TestFixProtocol::truncatedReplyIsReviewed()
 {
+    // The server stopped at the token budget: the reply is a fragment of the
+    // block, and a fragment is not a correction.
     ExposedFixModel model;
-    const QString reply = QStringLiteral("FIX\nВ 2026 году коэффициент k = 0,35 был подтверждён.\n"
-                                         "EDITS:\n"
-                                         "0,85 => 0,35");
-    // Tables keep the full-block contract; formulas answer in span style.
-    const CheckResult result = model.parse(chatReply(reply), QStringLiteral("В 2026 году коэффициент k = 0,85 был подтверждён."), QStringLiteral("table"));
-    QCOMPARE(result.status, CheckStatus::Fixed);
-    QCOMPARE(result.text, QStringLiteral("В 2026 году коэффициент k = 0,35 был подтверждён."));
+    const CheckResult result =
+        model.parse(chatReplyCut(QStringLiteral("FIX\nВ 2026 году коэффициент k = 0,35 был подтв")), QStringLiteral("В 2026 году коэффициент k = 0,85 был подтверждён."), QStringLiteral("text"));
+    QCOMPARE(result.status, CheckStatus::Review);
+    QVERIFY(result.text.isEmpty());
+    QVERIFY2(!result.notes.isEmpty(), qPrintable(result.notes.text()));
 }
 
 void TestFixProtocol::requestBodyCarriesTheCandidate()
@@ -210,7 +215,7 @@ void TestFixProtocol::requestBodyCarriesTheCandidate()
     const QJsonArray messages = body.value("messages").toArray();
     QCOMPARE(messages.size(), 2);
     QCOMPARE(messages.at(0).toObject().value("role").toString(), QStringLiteral("system"));
-    QCOMPARE(messages.at(0).toObject().value("content").toString(), QStringLiteral("Answer OK, FIX, REVIEW or EMPTY."));
+    QCOMPARE(messages.at(0).toObject().value("content").toString(), QStringLiteral("Answer OK, FIX or REVIEW."));
 
     const QJsonArray content = messages.at(1).toObject().value("content").toArray();
     QCOMPARE(content.size(), 3);

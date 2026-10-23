@@ -146,6 +146,10 @@ void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QStr
         }
         role.blockAliases.insert(alias.key(), target);
     }
+
+    const QJsonObject maxOutputs = object.value(QStringLiteral("maxOutputByBlock")).toObject();
+    for (auto maxOutput = maxOutputs.constBegin(); maxOutput != maxOutputs.constEnd(); ++maxOutput)
+        role.blockMaxOutput.insert(maxOutput.key(), maxOutput.value().toInt(0));
 }
 
 // The shared request texts of a task replace the role's own ones.
@@ -160,6 +164,12 @@ void applyPromptProfile(ModelProfiles::Role &role, const ModelProfiles::Role &pr
     role.blockPrompts = prompts.blockPrompts;
     role.decisionBlocks = prompts.decisionBlocks;
     role.blockAliases = prompts.blockAliases;
+    // The shared reply budgets fill the gaps: a model profile that ships its
+    // own entry for a block type keeps it (ADR 192).
+    for (auto budget = prompts.blockMaxOutput.constBegin(); budget != prompts.blockMaxOutput.constEnd(); ++budget) {
+        if (!role.blockMaxOutput.contains(budget.key()))
+            role.blockMaxOutput.insert(budget.key(), budget.value());
+    }
 }
 
 bool findPromptProfile(const QList<ModelProfiles::PromptProfile> &profiles, const QString &id)
@@ -243,9 +253,6 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         role.parser = roleObject.value(QStringLiteral("parser")).toString();
         role.protocol = roleObject.value(QStringLiteral("protocol")).toString();
         role.maxOutput = roleObject.value(QStringLiteral("maxOutput")).toInt(0);
-        const QJsonObject maxOutputs = roleObject.value(QStringLiteral("maxOutputByBlock")).toObject();
-        for (auto maxOutput = maxOutputs.constBegin(); maxOutput != maxOutputs.constEnd(); ++maxOutput)
-            role.blockMaxOutput.insert(maxOutput.key(), maxOutput.value().toInt(0));
         role.isDefault = roleObject.value(QStringLiteral("default")).toBool(false);
         role.promptBeforeImage = roleObject.value(QStringLiteral("promptBeforeImage")).toBool(false);
         role.imageLongestEdge = roleObject.value(QStringLiteral("imageLongestEdge")).toInt(0);

@@ -50,18 +50,23 @@ def load_model_profile(path):
         "alias": role.get("alias", profile["id"]),
         "max_output": role.get("maxOutput", 2048),
         "max_output_by_block": role.get("maxOutputByBlock", {}),
+        "shared_max_output_by_block": {},
         "params": params,
         "launch": role.get("launch", []),
     }
 
 
-def request_params(model, block_label, overrides):
+def request_params(model, block_label, overrides, aliases=None):
     """Параметры запроса ровно как их собирает приложение."""
     params = {}
     for name, value in model["params"]:
         params[name] = value
-    budget = model["max_output_by_block"].get(block_label, model["max_output"])
-    params["max_tokens"] = budget
+    # Общие бюджеты живут в профиле запроса, свои — в профиле модели и
+    # перекрывают общие (ADR 192).
+    budgets = dict(model["shared_max_output_by_block"])
+    budgets.update(model["max_output_by_block"])
+    alias_key = (aliases or {}).get(block_label, block_label)
+    params["max_tokens"] = budgets.get(alias_key, model["max_output"])
     params.update(overrides or {})
     return params
 
@@ -199,7 +204,7 @@ def build_payload(block, model, variant, image_png, system_prompt, type_prompt, 
         "messages": messages,
         "chat_template_kwargs": {"enable_thinking": False},
     }
-    payload.update(request_params(model, block["label"], variant["request"]))
+    payload.update(request_params(model, block["label"], variant["request"], model.get("block_aliases")))
     payload.update(variant.get("extra_body") or {})
     return payload
 
@@ -276,7 +281,9 @@ def run_variant(client, corpus, model, variant, prompts, cache_dir, timeout_s, r
         if hint:
             hint = hint.replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE)
         system_prompt = (prompts["system"] + "\n\n" + hint) if hint else prompts["system"]
-        type_prompt = variant["type_prompt"] or prompts["type"][block["label"]]
+        # ModelProfiles::blockPromptFor идёт через алиас профиля запроса.
+        label = aliases.get(block["label"], block["label"])
+        type_prompt = variant["type_prompt"] or prompts["type"][label]
         extra_parts = None
         candidate = None
 
@@ -321,7 +328,7 @@ def run_variant(client, corpus, model, variant, prompts, cache_dir, timeout_s, r
             })
             continue
 
-        verdict, text, reason = gate.parse_reply(content, block["candidate_wire"], block["label"])
+        verdict, text, reason = gate.parse_reply(content, block["candidate_wire"], block["label"], finish_reason(data))
         corrected = text if verdict == gate.FIXED else block["candidate_wire"]
         kind, cer_before, cer_after = metrics.classify(block, corrected)
         idx_before, _, _ = metrics.index_hit_rate(block, block["candidate_wire"])
@@ -343,6 +350,14 @@ def run_variant(client, corpus, model, variant, prompts, cache_dir, timeout_s, r
             "completion_tokens": (data.get("usage") or {}).get("completion_tokens"),
         })
     return rows
+
+
+def finish_reason(data):
+    """finish_reason сервера: "length" — ответ обрезан бюджетом токенов."""
+    choices = data.get("choices") or []
+    if not choices:
+        return ""
+    return choices[0].get("finish_reason") or ""
 
 
 def cached_chat(client, payload, cache_dir, timeout_s, refresh):
@@ -402,6 +417,9 @@ def main():
         REPO / "resources" / "profiles" / "models" / (args.model + ".json")
     model = load_model_profile(profile_path)
     requests = json.loads(FIX_REQUESTS.read_text(encoding="utf-8"))
+    aliases = requests.get("blockAliases", {})
+    model["block_aliases"] = aliases
+    model["shared_max_output_by_block"] = requests.get("maxOutputByBlock", {})
     prompts = {
         "system": requests["systemPrompt"].replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE),
         "type": dict(requests["blockPrompts"]),

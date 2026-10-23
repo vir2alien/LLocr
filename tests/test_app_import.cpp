@@ -291,10 +291,10 @@ public:
     qreal systemoneReadable = 0.94;
     QString systemoneTopDiagnosis = QStringLiteral("exact_match");
     QString transcription = QStringLiteral("Re-recognized block text");
-    // The fix protocol's reply for any request carrying a <CANDIDATE>. `%1`
-    // stands for the candidate text, so the default is a span edit that
-    // rewrites the whole block; fixReplies overrides per candidate.
-    QString fixReply = QStringLiteral("FIX\n%1 => Fixed block text");
+    // The fix protocol's reply for any request carrying a <CANDIDATE>. The
+    // reply carries the complete corrected block and nothing else;
+    // fixReplies overrides per candidate.
+    QString fixReply = QStringLiteral("FIX\nFixed block text");
     QHash<QString, QString> fixReplies;
     // Overrides the det-token page reply when non-empty (e.g. a text-less
     // markup-shaped block for the first-recognition scenarios).
@@ -1854,8 +1854,10 @@ private slots:
         QVERIFY(server.chatRequests().at(2).contains("Second block text"));
 
         // Fixing an answered block re-runs the correction on the effective
-        // text — the stored correction — still as a structured candidate.
-        server.fixReplies.insert(QStringLiteral("Fixed block text"), QStringLiteral("FIX\ntext => text and more"));
+        // text — the stored correction — still as a structured candidate. The
+        // reply is the complete corrected block, so it replaces the whole
+        // correction.
+        server.fixReplies.insert(QStringLiteral("Fixed block text"), QStringLiteral("FIX\nFixed block text and more"));
         m_controller->setSelectedBoxIndex(0);
         m_controller->fixSelectedBlock();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
@@ -1863,6 +1865,7 @@ private slots:
         QCOMPARE(server.chatRequests().size(), 4);
         QVERIFY(server.chatRequests().at(3).contains("<CANDIDATE>"));
         QVERIFY(server.chatRequests().at(3).contains("Fixed block text"));
+        QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("Fixed block text and more"));
 
         // The next verification run judges the corrected text (the decision
         // request's state). Still below the threshold, so both mismatch again.
@@ -2294,7 +2297,7 @@ private slots:
 
         // The fixer answers the other one with a correction: the number is
         // gone, the badge is quiet.
-        server.fixReply = QStringLiteral("FIX\n1. Introduction => Recovered block text");
+        server.fixReply = QStringLiteral("FIX\nRecovered block text");
         m_controller->fixAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(m_controller->scopedPendingFixCount(), 0);

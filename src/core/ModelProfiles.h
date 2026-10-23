@@ -28,7 +28,7 @@ public:
     struct Role {
         QString alias;
         QString parser;
-        QString protocol;  // reply contract id ("span_hybrid" fix, "systemone_multi_question_v6" decision)
+        QString protocol;  // reply contract id ("full_block" fix, "systemone_multi_question_v6" decision)
         int maxOutput = 0;
         QHash<QString, int> blockMaxOutput;  // maxOutputByBlock, keyed like blockPrompts (fix task)
         bool isDefault = false;              // the role's recommended model, replacing the first-in-catalog fallback

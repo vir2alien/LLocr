@@ -4,12 +4,12 @@
 <context>
     <name>AppController</name>
     <message>
-        <location filename="../../src/app/AppController.cpp" line="+564"/>
+        <location filename="../../src/app/AppController.cpp" line="+614"/>
         <source>No files selected.</source>
         <translation>Не выбрано ни одного файла</translation>
     </message>
     <message>
-        <location line="+436"/>
+        <location line="+446"/>
         <source>Block added.</source>
         <translation>Блок добавлен.</translation>
     </message>
@@ -29,7 +29,7 @@
         <translation>Текст блока изменён.</translation>
     </message>
     <message>
-        <location line="-575"/>
+        <location line="-585"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
     </message>
@@ -52,7 +52,7 @@
     <message>
         <location line="+12"/>
         <location line="+13"/>
-        <location line="+516"/>
+        <location line="+526"/>
         <source>Set a model name in Settings first.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -87,7 +87,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+350"/>
+        <location line="+360"/>
         <source>Markdown (*.md)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -164,12 +164,12 @@
         <translation>Страницы проекта %1 не удалось восстановить — подробности в журнале проблем</translation>
     </message>
     <message>
-        <location line="-1735"/>
+        <location line="-1755"/>
         <source>Page %1 could not be rendered and is shown blank — see the problem log.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1737"/>
+        <location line="+1757"/>
         <source>The project contains no pages.</source>
         <translation>Проект не содержит страниц</translation>
     </message>
@@ -184,7 +184,7 @@
         <translation>Проект открыт: страниц: %1, пропущено: %2</translation>
     </message>
     <message>
-        <location line="-1575"/>
+        <location line="-1595"/>
         <source>Importing %1 (%2/%3)…</source>
         <translation>Импорт %1 (%2/%3)…</translation>
     </message>
@@ -798,14 +798,12 @@
         <translation type="vanished">Некорректная строка правки без «=&gt;»: %1</translation>
     </message>
     <message>
-        <location filename="../../src/models/FixDiffGate.cpp" line="+100"/>
         <source>The FIX reply lists no edits.</source>
-        <translation>Ответ FIX не содержит ни одной правки.</translation>
+        <translation type="vanished">Ответ FIX не содержит ни одной правки.</translation>
     </message>
     <message>
-        <location line="+255"/>
         <source>An edit has no anchor text on the left of &apos;=&gt;&apos;.</source>
-        <translation>У правки нет якорного текста слева от «=&gt;».</translation>
+        <translation type="vanished">У правки нет якорного текста слева от «=&gt;».</translation>
     </message>
     <message>
         <source>The edit anchor was not found in the block: %1</source>
@@ -816,38 +814,33 @@
         <translation type="vanished">Якорь правки совпадает более чем в одном месте: %1</translation>
     </message>
     <message>
-        <location line="+48"/>
         <source>Every proposed fix was an equivalent no-op; the block text is kept.</source>
-        <translation>Все предложенные правки эквивалентны — текст блока оставлен как есть.</translation>
+        <translation type="vanished">Все предложенные правки эквивалентны — текст блока оставлен как есть.</translation>
     </message>
     <message>
-        <location line="-65"/>
-        <location line="+106"/>
+        <location filename="../../src/models/FixDiffGate.cpp" line="+175"/>
         <source>The model declared no change instead of a verdict; the block needs a human look.</source>
         <translation>Модель не предложила правку, а просто констатировала отсутствие изменений — блок нужно посмотреть глазами.</translation>
     </message>
     <message>
-        <location line="+31"/>
         <source>The reply declares no edits but the corrected block differs.</source>
-        <translation>В ответе нет ни одной правки, но исправленный блок отличается.</translation>
+        <translation type="vanished">В ответе нет ни одной правки, но исправленный блок отличается.</translation>
     </message>
     <message>
-        <location line="-11"/>
         <source>The corrected block is missing its EDITS: section.</source>
-        <translation>В исправленном блоке нет секции EDITS:.</translation>
+        <translation type="vanished">В исправленном блоке нет секции EDITS:.</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>The reply carries a whole block; this block type expects span edits.</source>
-        <translation>Ответ содержит весь блок целиком, а этот тип блока ожидает точечные правки.</translation>
+        <translation type="vanished">Ответ содержит весь блок целиком, а этот тип блока ожидает точечные правки.</translation>
     </message>
     <message>
-        <location line="-23"/>
+        <location line="-2"/>
         <source>The corrected block is empty.</source>
         <translation>Исправленный блок пуст.</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+9"/>
         <source>The corrected block is equivalent to the candidate; the block text is kept.</source>
         <translation>Исправленный блок эквивалентен кандидату — текст блока оставлен как есть.</translation>
     </message>
@@ -867,7 +860,7 @@
 <context>
     <name>FixModel</name>
     <message>
-        <location filename="../../src/models/FixModel.cpp" line="+21"/>
+        <location filename="../../src/models/FixModel.cpp" line="+36"/>
         <source>Failed to encode the block image</source>
         <translation>Не удалось закодировать изображение блока</translation>
     </message>
@@ -877,7 +870,12 @@
         <translation>Модель не вернула исправленный текст — только маркеры конца предложения. Убедитесь, что выбранная модель умеет обрабатывать изображения.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+38"/>
+        <source>The reply was cut by the token budget; the block needs a human look.</source>
+        <translation>Ответ обрезан бюджетом токенов — блок нужно посмотреть глазами.</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <source>The reply does not follow the OK/FIX/REVIEW scheme: %1</source>
         <translation>Ответ не соответствует схеме OK/FIX/REVIEW: %1</translation>
     </message>
@@ -1364,22 +1362,22 @@
         <translation>(флаг)</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+48"/>
         <source>The machine&apos;s parameters: how much of the model goes to the GPU, flash attention, and the context window. Everything else — the server policy and the model&apos;s own parameters — is tuned by the app and its model profiles.</source>
         <translation>Параметры машины: сколько слоёв модели на GPU, flash attention и размер контекста. Всё остальное — политика сервера и собственные параметры модели — подобрано приложением и профилями моделей</translation>
     </message>
     <message>
-        <location line="-23"/>
+        <location line="-26"/>
         <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6, vision %7, overhead %8.</source>
         <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, KV-кэш %5, рабочий буфер %6, зрение %7, накладные %8.</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="-8"/>
         <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6, overhead %7.</source>
         <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, KV-кэш %5, рабочий буфер %6, накладные %7.</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+26"/>
         <source>The model does not fit in this card&apos;s video memory. Lower the number of GPU layers or the context window, or pick a smaller quantization.</source>
         <translation>Модель не помещается в видеопамять этой карты. Уменьшите число слоёв на GPU или размер контекста, либо выберите меньший квант.</translation>
     </message>
@@ -2381,7 +2379,7 @@
         <translation>%1 не найден: %2</translation>
     </message>
     <message>
-        <location filename="../../src/core/ModelProfiles.cpp" line="+45"/>
+        <location filename="../../src/core/ModelProfiles.cpp" line="+51"/>
         <source>Model profile %1 has a module without a file name</source>
         <translation>Профиль модели %1 содержит модуль без имени файла</translation>
     </message>
@@ -2401,12 +2399,12 @@
         <translation>Профиль модели %1 не содержит квантизаций</translation>
     </message>
     <message>
-        <location line="+112"/>
+        <location line="+138"/>
         <source>A model profile has an empty id</source>
         <translation>Профиль модели имеет пустой id</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+36"/>
         <source>Model profile</source>
         <translation>Профиль модели</translation>
     </message>
@@ -2421,7 +2419,7 @@
         <translation>Профиль модели %1 содержит промпт без id или текста</translation>
     </message>
     <message>
-        <location line="-124"/>
+        <location line="-151"/>
         <location line="+9"/>
         <source>Model profile %1 has a block prompt without a block type or text</source>
         <translation>Профиль модели %1 содержит блочный промпт без типа блока или текста</translation>
@@ -2432,12 +2430,12 @@
         <translation>Профиль модели %1 содержит псевдоним блока без типа блока или цели</translation>
     </message>
     <message>
-        <location line="+132"/>
+        <location line="+159"/>
         <source>Model profile directory not found: %1</source>
         <translation>Каталог профилей моделей не найден: %1</translation>
     </message>
     <message>
-        <location line="-96"/>
+        <location line="-123"/>
         <source>A request profile has an empty id</source>
         <translation>Профиль запросов имеет пустой id</translation>
     </message>
@@ -2453,7 +2451,7 @@
         <translation>Профиль запросов %1 содержит псевдоним блока без типа блока или цели</translation>
     </message>
     <message>
-        <location line="+184"/>
+        <location line="+211"/>
         <source>Request profile directory not found: %1</source>
         <translation>Каталог профилей запросов не найден: %1</translation>
     </message>
@@ -3362,17 +3360,17 @@
 <context>
     <name>TaskModelsTable</name>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+145"/>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+142"/>
         <source>Model</source>
         <translation>Модель</translation>
     </message>
     <message>
-        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+119"/>
+        <location line="-19"/>
         <source>VRAM ≥ %1</source>
         <translation>VRAM ≥ %1</translation>
     </message>
     <message>
-        <location line="+215"/>
+        <location line="+208"/>
         <source>Launch and request settings</source>
         <translation>Запуск и запрос</translation>
     </message>
@@ -4143,7 +4141,7 @@
         <translation>Модель не выбрана — выберите модель в Settings → Models или в мастере настройки</translation>
     </message>
     <message>
-        <location line="+674"/>
+        <location line="+688"/>
         <source>Server start cancelled</source>
         <translation>Запуск сервера отменён</translation>
     </message>
@@ -4153,7 +4151,7 @@
         <translation>Остановлен</translation>
     </message>
     <message>
-        <location line="-378"/>
+        <location line="-392"/>
         <source>Switching to the block OCR model…</source>
         <translation>Переключение на модель OCR блока…</translation>
     </message>

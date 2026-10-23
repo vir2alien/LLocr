@@ -12,6 +12,21 @@
 
 namespace llocr {
 
+namespace {
+
+// The server stopped at the token budget: the reply carries a fragment of the
+// block, not a correction (ADR 192).
+bool replyCutByBudget(const QByteArray &responseData)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    const QJsonArray choices = doc.object().value(QStringLiteral("choices")).toArray();
+    if (choices.isEmpty())
+        return false;
+    return choices.first().toObject().value(QStringLiteral("finish_reason")).toString() == QLatin1String("length");
+}
+
+}  // namespace
+
 QFuture<CheckResult> FixModel::check(const CheckRequest &request, const ConnectionConfig &config)
 {
     return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
@@ -96,7 +111,14 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
             review.status = CheckStatus::Review;
             return review;
         }
-        const FixDiffGate::Outcome outcome = FixDiffGate::isFullBlockType(blockType) ? FixDiffGate::fixFullBlock(candidate, body, blockType) : FixDiffGate::fixSpan(candidate, body, blockType);
+        if (replyCutByBudget(responseData)) {
+            // The reply was cut mid-block: a fragment is not a correction.
+            CheckResult review;
+            review.status = CheckStatus::Review;
+            review.notes = StatusMessage::translate("FixModel", "The reply was cut by the token budget; the block needs a human look.");
+            return review;
+        }
+        const FixDiffGate::Outcome outcome = FixDiffGate::fixBlock(candidate, body, blockType);
         CheckResult result;
         result.status = outcome.status;
         if (outcome.status == CheckStatus::Fixed)

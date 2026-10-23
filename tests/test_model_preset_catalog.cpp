@@ -373,7 +373,7 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("blockRecognition")).isEmpty());
 }
 
-// The fix task's profiles speak the same protocol (ADR 179): the system
+// The fix task's profiles speak the same protocol (ADR 192): the system
 // prompt pins the three-token contract (OK / FIX / REVIEW) and the language
 // placeholder, the per-type prompts describe what a FIX may change, and the
 // alias map keeps formula/reference out of the prompt table.
@@ -386,7 +386,7 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     for (const QString &id : fixModels) {
         const ModelProfiles::Role *fix = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(fix, qPrintable(id));
-        QCOMPARE(fix->protocol, QStringLiteral("span_hybrid"));
+        QCOMPARE(fix->protocol, QStringLiteral("full_block"));
         const QString system = fix->systemPrompt;
         QVERIFY2(system.contains(QStringLiteral("exactly one of these")), qPrintable(id));
         QVERIFY2(system.contains(QStringLiteral("OK")), qPrintable(id));
@@ -396,20 +396,29 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
         // app fills in.
         QVERIFY2(!system.contains(QStringLiteral("EMPTY")), qPrintable(id));
         QVERIFY2(system.contains(QStringLiteral("{{LANGUAGE}}")), qPrintable(id));
-        QVERIFY2(system.contains(QStringLiteral("Never truncate your output")), qPrintable(id));
+        QVERIFY2(system.contains(QStringLiteral("Never truncate output")), qPrintable(id));
+        // The reply carries the whole block and nothing else.
+        QVERIFY2(system.contains(QStringLiteral("<the complete corrected block>")), qPrintable(id));
         QVERIFY2(fix->blockAliases.value(QStringLiteral("formula")) == QStringLiteral("equation"), qPrintable(id));
         QVERIFY2(fix->blockAliases.value(QStringLiteral("reference")) == QStringLiteral("ref_text"), qPrintable(id));
         QVERIFY2(!fix->blockMaxOutput.isEmpty(), qPrintable(id));
         QVERIFY2(!fix->blockPrompts.isEmpty(), qPrintable(id));
-        for (auto it = fix->blockPrompts.constBegin(); it != fix->blockPrompts.constEnd(); ++it)
-            QVERIFY2(it.value().contains(QStringLiteral("FIX")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
+        for (auto it = fix->blockPrompts.constBegin(); it != fix->blockPrompts.constEnd(); ++it) {
+            QVERIFY2(it.value().contains(QStringLiteral("Mode after FIX: the complete corrected")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
+            // The span contract is gone: no prompt may ask for `old => new`
+            // edits or for the old table's EDITS: section.
+            QVERIFY2(!it.value().contains(QStringLiteral("old => new")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
+            QVERIFY2(!it.value().contains(QStringLiteral("EDITS:")), qPrintable(QStringLiteral("%1: %2").arg(id, it.key())));
+        }
     }
 
     // The per-block output budget resolves through the alias chain: a formula
     // asks for the equation budget, an unknown type falls back to -1 (the
-    // request profile's max_tokens stays untouched).
-    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("formula")), 1024);
-    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("reference")), 512);
+    // request profile's max_tokens stays untouched). The reply carries the
+    // whole block, so the budget must fit the block (ADR 192).
+    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("formula")), 2048);
+    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("reference")), 1024);
+    QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("image_caption")), 1024);
     QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("page_number")), 64);
     QCOMPARE(ModelProfiles::maxOutputForBlock(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("unknown-type")), -1);
 
@@ -429,16 +438,15 @@ void TestModelPresetCatalog::fixRolesShipTheCorrectionProtocol()
     // different, or the two models would fight over е/ё, homoglyphs, LaTeX
     // commands and table cells. All four fix models ship identical prompts.
     const QString fixText = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("text"));
-    QVERIFY(fixText.contains(QStringLiteral("Equivalent (never fix)")));
+    QVERIFY(fixText.contains(QStringLiteral("Never fix:")));
     QVERIFY(fixText.contains(QStringLiteral("е/ё")));
-    QVERIFY(fixText.contains(QStringLiteral("old_substring => new_substring")));
     const QString fixCode = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("code"));
-    QVERIFY(fixCode.contains(QStringLiteral("Nothing is normalized")));
+    QVERIFY(fixCode.contains(QStringLiteral("Nothing is equivalent here")));
     const QString fixEquation = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("equation"));
-    QVERIFY(fixEquation.contains(QStringLiteral("the complete formula as LaTeX")));
+    QVERIFY(fixEquation.contains(QStringLiteral("the complete corrected formula as LaTeX")));
     QVERIFY(fixEquation.contains(QStringLiteral("Do not change spacing, aliases, or operand order")));
     const QString fixTable = ModelProfiles::blockPromptFor(profiles, QStringLiteral("qwen3.5-4b"), QStringLiteral("fix"), QStringLiteral("table"));
-    QVERIFY(fixTable.contains(QStringLiteral("EDITS:")));
+    QVERIFY(fixTable.contains(QStringLiteral("the complete corrected table, then stop")));
 }
 
 // The layout role is what the manual markup pass drives: its parser id must be
@@ -601,14 +609,30 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
 
     // Every fix model names the shared fix request profile and inherits its
     // texts; the parameters stay in the model profile.
+    const ModelProfiles::PromptProfile *fixRequests = ModelProfiles::promptProfile(QStringLiteral("fix-requests"));
+    QVERIFY(fixRequests);
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
         const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("fix"));
         QVERIFY2(role, qPrintable(id));
         QCOMPARE(role->promptProfile, QStringLiteral("fix-requests"));
-        QCOMPARE(role->systemPrompt, ModelProfiles::promptProfile(QStringLiteral("fix-requests"))->prompts.systemPrompt);
+        QCOMPARE(role->systemPrompt, fixRequests->prompts.systemPrompt);
         QVERIFY(!role->systemPrompt.isEmpty());
         QVERIFY(!role->blockPrompts.isEmpty());
         QVERIFY(!role->blockMaxOutput.isEmpty());
+    }
+
+    // The reply budgets are the protocol's own rule — the whole block travels
+    // in the reply — so they live in the request profile, once, and every fix
+    // model inherits them (ADR 192). A model profile that ships its own entry
+    // keeps it; the four shipped fix models ship none.
+    QVERIFY(!fixRequests->prompts.blockMaxOutput.isEmpty());
+    QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("text")), 2048);
+    QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("page_number")), 64);
+    QCOMPARE(fixRequests->prompts.blockMaxOutput.value(QStringLiteral("table")), 8192);
+    for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("fix"))) {
+        const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("fix"));
+        QVERIFY2(role, qPrintable(id));
+        QCOMPARE(role->blockMaxOutput, fixRequests->prompts.blockMaxOutput);
     }
 
     // The same for the decision models: the request texts are shared, the

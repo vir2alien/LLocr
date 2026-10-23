@@ -62,28 +62,9 @@
     "fix": {
       "alias": "llocr-fix",
       "default": true,
-      "protocol": "span_hybrid",
+      "protocol": "full_block",
       "promptProfile": "fix-requests",
       "maxOutput": 8192,
-      "maxOutputByBlock": {
-        "page_number": 64,
-        "header": 128,
-        "footer": 128,
-        "seal": 256,
-        "title": 256,
-        "key_value": 256,
-        "image_caption": 512,
-        "table_caption": 512,
-        "figure_footnote": 512,
-        "table_footnote": 512,
-        "ref_text": 512,
-        "text": 1024,
-        "abstract": 1024,
-        "list": 1024,
-        "code": 2048,
-        "equation": 1024,
-        "table": 8192
-      },
       "launch": [
         {
           "order": 1,

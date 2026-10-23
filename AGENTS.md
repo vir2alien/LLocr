@@ -47,7 +47,7 @@
   | `docs/17-d1-verification-study.md` | Study: decision models as OCR verifiers (d1-3B vs clef-flash) — methodology, request schemes v0–v9, calibration, why clef-flash replaces d1-3B |
   | `docs/18-clef-flash.md`   | Model manual: Cloudflare clef-flash decision model (launch, recommended v5 request scheme, thresholds); Russian mirror in `18-clef-flash.ru.md` |
   | `docs/19-glm-ocr.md`      | Model manual: GLM-OCR (trained task prefixes, no layout/coordinates, `raw` parser, glm4 metadata); Russian mirror in `19-glm-ocr.ru.md` |
-  | `docs/20-model-task-rework.md` | Rework plan: six tasks instead of four roles, two-layer verification, the fix pipeline (since ADR 180 the `span_hybrid` protocol), page statuses, new settings windows (Oct 2026); stage table with statuses |
+  | `docs/20-model-task-rework.md` | Rework plan: six tasks instead of four roles, two-layer verification, the fix pipeline (since ADR 192 the `full_block` protocol), page statuses, new settings windows (Oct 2026); stage table with statuses |
   | `docs/21-d3.md`           | Model manual: d3-flash / d3-mini decision models (System One protocol, non-causal state reading, minBuild b11572); Russian mirror in `21-d3.ru.md` |
   | `docs/22-unlimited-ocr.md` | Model manual: Unlimited-OCR (pageOcr default, DRY anti-loop sampling, vision budget, `unlimited-ocr` det parser); Russian mirror in `22-unlimited-ocr.ru.md` |
   | `docs/23-lightonocr.md`   | Model manual: LightOnOCR-3-4B (two trained prompts — grounding + empty transcription, three roles, everything else out of distribution); Russian mirror in `23-lightonocr.ru.md` |
@@ -391,23 +391,26 @@
     (ADR 164): `box.text` (the OCR result) and `box.correctedText` (the fix
     model's correction); the dot and the confidence badge follow the
     **effective** layer. The **fix** task (universal models,
-    OK/FIX/REVIEW, the `span_hybrid` protocol — ADR 180, superseding
-    the ADR 163 full-block reply; the three-verdict scheme and the
+    OK/FIX/REVIEW, the `full_block` protocol — ADR 192, which dropped the
+    ADR 180 `span_hybrid` span contract because the small models could not
+    carry it; the three-verdict scheme and the
     document-language placeholder are ADR 181) runs as a separate action
     (ADR 178): the
-    «Исправить» button sends the mismatched blocks; a FIX carries span
-    edits (`old => new` lines) for text blocks — the diff gate
-    (`FixDiffGate`) applies them to the candidate itself, and a no-op,
-    a missing/ambiguous anchor or an undeclared diff demotes the verdict to
-    Review (the reason lands in the footer) — a formula answers with the
-    complete formula, and a full block with a
-    mandatory `EDITS:` section for `table`; a reply outside the three
-    verdicts (an old `EMPTY`, a `FIX none`, a free-text remark) lands on
+    «Исправить» button sends the mismatched blocks; a FIX carries the
+    **complete corrected block** and nothing else — the gate
+    (`FixDiffGate::fixBlock`) keeps the candidate's own bytes when the
+    corrected block is equivalent to it (the model re-spelled it), and an
+    empty reply, a `FIX none` or a reply cut by the token budget demotes the
+    verdict to Review (the reason lands in the footer); a reply outside the
+    three verdicts (an old `EMPTY`, a free-text remark) lands on
     Review as a deviation. The fix profiles carry the same per-block equivalence rules as
     the decision prompts (ADR 183: the axes and the language-parameterized
     script rule) so the two models cannot disagree on е/ё, homoglyphs, LaTeX
     commands or table cells; `maxOutputByBlock` budgets the reply per block
-    type. Block recognition (plain re-transcription)
+    type — the whole block travels in the reply, so the budget must fit it.
+    The budgets are the protocol's own rule, so they live in the **request
+    profile** (`fix-requests.json`), one copy for all four fix models; a model
+    profile may still ship its own entry for a block type and it wins. Block recognition (plain re-transcription)
     entry points: per-block «Распознать», the page toolbar's «Распознать
     страницу ▾» (problem blocks / all blocks of the page); the header
     «Исправить» runs the fix task over the problem blocks of the whole

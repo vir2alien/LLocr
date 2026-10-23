@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QList>
 #include <QString>
 
 #include "core/CheckResult.h"
@@ -8,42 +7,30 @@
 
 namespace llocr::FixDiffGate {
 
-// Deterministic gate over a FIX reply (ADR 179). Span replies never carry
-// unchanged text — the candidate is edited here, so the model cannot corrupt
-// what it was not asked to change. Full-block replies (table/equation) must
-// declare every change under EDITS:, and a word-level diff demotes any
-// undeclared edit to Review. The equivalence normalization mirrors the block
-// prompts' "Equivalent (never fix)" lists, so a cosmetic fix reads as a no-op
-// and keeps the original candidate.
-struct Edit {
-    QString oldText;
-    QString newText;
-    QString location;  // "r2c3" / "structure" on table replies, empty otherwise
-};
-
+// The gate over a FIX reply (ADR 192). The reply carries the complete
+// corrected block, so the gate decides one thing only: may that block replace
+// the candidate? A block equivalent to the candidate keeps the candidate's own
+// bytes (the model re-spelled it, changed nothing); an empty reply goes to
+// human eyes. The equivalence normalization mirrors the block prompts'
+// "Never fix" lists, so a cosmetic rewrite reads as a no-op.
 struct Outcome {
     CheckStatus status = CheckStatus::Failed;
-    QString text;                   // Fixed: the corrected text; Ok/Review: unused
+    QString text;                   // Fixed: the corrected block
     StatusMessage downgradeReason;  // why a FIX reply became Ok or Review
 };
-
-// The structural types whose FIX reply carries the whole block plus EDITS:.
-bool isFullBlockType(const QString &blockType);
 
 // Equation/formula: LaTeX spacing on the wire is normalized and the math
 // comparisons run space-insensitively.
 bool isMathBlockType(const QString &blockType);
 
-// Parses the reply body (everything after the FIX keyword) as `old => new`
-// lines and applies them to the candidate.
-Outcome fixSpan(const QString &candidate, const QString &body, const QString &blockType);
+// Reads the reply body as the complete corrected block: Fixed when it differs
+// from the candidate, Ok when it is equivalent to it, Review when the reply
+// carries nothing to apply.
+Outcome fixBlock(const QString &candidate, const QString &body, const QString &blockType);
 
-// Splits the reply body into the corrected block and the EDITS: section, then
-// verifies the block against the candidate.
-Outcome fixFullBlock(const QString &candidate, const QString &body, const QString &blockType);
-
-// NFC, soft hyphens, ligatures, ellipsis; spaces and quotes collapse except in
-// code. Strictly-different pairs (е/ё, homoglyphs, …) are never normalized.
+// NFC, soft hyphens, ligatures, ellipsis; spaces and line breaks collapse
+// except in code. Strictly-different pairs (е/ё, homoglyphs, …) are never
+// normalized.
 QString normalizeForEquivalence(const QString &text, bool isCode);
 
 // Canonical wire form of a LaTeX candidate ("Bi _ {1}" -> "Bi_{1}",
