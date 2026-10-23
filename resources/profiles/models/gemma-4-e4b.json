@@ -22,6 +22,7 @@
       }
     ],
     "mmproj": {
+      "sizeBytes": 990372672,
       "id": "f16",
       "file": "mmproj-F16.gguf",
       "sha256": "",
@@ -32,6 +33,21 @@
       "file": "mtp-gemma-4-E4B-it.gguf",
       "sha256": ""
     }
+  },
+  "memory": {
+    "nLayer": 42,
+    "nKvLayers": 20,
+    "nHead": 8,
+    "nKvHead": 2,
+    "headDim": 512,
+    "nEmbd": 2560,
+    "nFf": 10240,
+    "visionTokens": 1120,
+    "visionBufferBytes": 3986933350,
+    "draftBytes": 59678016,
+    "workingSetBytesPerToken": 176218,
+    "workingSetContextBytes": 36,
+    "kvBytesPerToken": 20224
   },
   "roles": {
     "fix": {

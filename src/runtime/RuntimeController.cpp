@@ -921,45 +921,59 @@ QString RuntimeController::launchCommandPreview()
 QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, const QString &role)
 {
     QVariantMap out;
-    const LaunchProfile profile = m_launchProfiles.activeProfile(m_settings.requestProfileIdForRole(role), role);
-    int ctxSize = 8192;
-    int ubatchTokens = 0;
-    QString cacheTypeK;
-    QString cacheTypeV;
-    if (const LaunchParameter *row = profile.find(QStringLiteral("ctx-size")); row && row->kind == LaunchValueKind::Number)
-        ctxSize = int(row->value.toDouble());
-    if (const LaunchParameter *row = profile.find(QStringLiteral("ubatch-size")); row && row->kind == LaunchValueKind::Number)
-        ubatchTokens = int(row->value.toDouble());
-    if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-k")); row && row->kind == LaunchValueKind::Text)
-        cacheTypeK = row->value.toString();
-    if (const LaunchParameter *row = profile.find(QStringLiteral("cache-type-v")); row && row->kind == LaunchValueKind::Text)
-        cacheTypeV = row->value.toString();
-
+    const QString modelId = m_settings.requestProfileIdForRole(role);
+    const LaunchProfile launch = m_launchProfiles.activeProfile(modelId, role);
     const QString mmprojPath = m_settings.launchMmprojPathForRole(role).trimmed();
-    const ModelMemoryEstimate e = ::llocr::estimateModelMemory(modelPath, ctxSize, cacheTypeK, cacheTypeV, mmprojPath, ubatchTokens);
+
+    // A model of the catalog carries the numbers measured against llama.cpp
+    // (ADR 191); anything else is read from its own header.
+    const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), modelId);
+    ModelMemoryShape shape;
+    bool valid = false;
+    QString error;
+    if (profile && profile->memory.valid) {
+        shape = shapeFromProfile(profile->memory);
+        valid = true;
+    } else {
+        shape = shapeFromFile(modelPath, &valid, &error);
+    }
+    shape.weightsBytes = QFileInfo(modelPath).size();
+    shape.projectorBytes = mmprojPath.isEmpty() ? 0 : QFileInfo(mmprojPath).size();
+
+    const int visionTokens = profile ? ModelProfiles::visionTokensFor(*profile, role) : 0;
+    const ModelMemoryBudget budget = budgetFromLaunch(launch, visionTokens);
+    const ModelMemoryEstimate e = estimateMemory(shape, budget);
+
     out.insert(QStringLiteral("modelBytes"), e.modelBytes);
     out.insert(QStringLiteral("mmprojBytes"), e.mmprojBytes);
+    out.insert(QStringLiteral("draftBytes"), e.draftBytes);
     out.insert(QStringLiteral("kvCacheBytes"), e.kvCacheBytes);
     out.insert(QStringLiteral("computeBufferBytes"), e.computeBufferBytes);
+    out.insert(QStringLiteral("visionBufferBytes"), e.visionBufferBytes);
+    out.insert(QStringLiteral("overheadBytes"), e.overheadBytes);
     out.insert(QStringLiteral("totalBytes"), e.totalBytes);
+    out.insert(QStringLiteral("requiredVramBytes"), e.requiredVramBytes);
     out.insert(QStringLiteral("systemRamBytes"), e.systemRamBytes);
-    out.insert(QStringLiteral("valid"), e.valid);
-    out.insert(QStringLiteral("error"), e.error);
+    out.insert(QStringLiteral("valid"), valid);
+    out.insert(QStringLiteral("error"), error);
     out.insert(QStringLiteral("nLayer"), e.nLayer);
     out.insert(QStringLiteral("nKvLayer"), e.nKvLayer);
     out.insert(QStringLiteral("nKvHead"), e.nKvHead);
     out.insert(QStringLiteral("headDim"), e.headDim);
-    out.insert(QStringLiteral("overBudget"), e.valid && e.systemRamBytes > 0 && e.totalBytes > static_cast<qint64>(e.systemRamBytes * kMemoryBudgetFactor));
+    out.insert(QStringLiteral("overBudget"), valid && e.systemRamBytes > 0 && e.requiredVramBytes > static_cast<qint64>(e.systemRamBytes * kMemoryBudgetFactor));
 
     const HardwareReport hardware = HardwareInfo::detect();
     out.insert(QStringLiteral("vramBytes"), hardware.primaryGpuMemoryBytes());
     out.insert(QStringLiteral("vramBudgetBytes"), hardware.memoryBudgetBytes());
-    out.insert(QStringLiteral("overVramBudget"), e.valid && hardware.primaryGpuMemoryBytes() > 0 && e.totalBytes > hardware.primaryGpuMemoryBytes());
+    out.insert(QStringLiteral("overVramBudget"), valid && hardware.primaryGpuMemoryBytes() > 0 && e.requiredVramBytes > hardware.primaryGpuMemoryBytes());
     out.insert(QStringLiteral("totalLabel"), formatBytes(e.totalBytes));
+    out.insert(QStringLiteral("requiredLabel"), formatBytes(e.requiredVramBytes));
     out.insert(QStringLiteral("modelLabel"), formatBytes(e.modelBytes));
     out.insert(QStringLiteral("mmprojLabel"), formatBytes(e.mmprojBytes));
     out.insert(QStringLiteral("kvLabel"), formatBytes(e.kvCacheBytes));
     out.insert(QStringLiteral("computeLabel"), formatBytes(e.computeBufferBytes));
+    out.insert(QStringLiteral("visionLabel"), formatBytes(e.visionBufferBytes));
+    out.insert(QStringLiteral("overheadLabel"), formatBytes(e.overheadBytes));
     out.insert(QStringLiteral("vramLabel"), formatBytes(hardware.primaryGpuMemoryBytes()));
     return out;
 }

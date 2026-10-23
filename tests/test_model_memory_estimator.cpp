@@ -176,7 +176,14 @@ private slots:
     void nonGgufFallsBackToDefaults();
     void f32CacheDoublesBytesPerValue();
     void onlyTheAttentionLayersGetAKvCache();
+    void theMtpDraftBlockKeepsNoCache();
     void countsTheProjectorAndTheWorkingSet();
+    void countsTheVisionEncoderAndTheOverhead();
+    void aFlatVisionCostDoesNotFollowTheTokenCount();
+    void everyProfileCarriesItsArchitecture();
+    void theRequirementFollowsTheMeasuredNumbers();
+    void aPageFillsTheImageBudgetAndACropDoesNot();
+    void theLaunchProfileSetsTheBudget();
     void systemRamIsPositive();
 };
 
@@ -269,6 +276,200 @@ void TestModelMemoryEstimator::countsTheProjectorAndTheWorkingSet()
     const ModelMemoryEstimate large = estimateModelMemory(path, 8192, QString(), QString(), projector, 8192);
     QCOMPARE(large.computeBufferBytes, 2 * small.computeBufferBytes);
     QCOMPARE(large.totalBytes, large.modelBytes + large.mmprojBytes + large.kvCacheBytes + large.computeBufferBytes);
+}
+
+// The speculative decoding head is a draft layer of its own: llama.cpp runs it
+// as a separate graph and keeps no cache for it (the qwen35 MTP block).
+void TestModelMemoryEstimator::theMtpDraftBlockKeepsNoCache()
+{
+    QTemporaryDir dir;
+    QStringList tensors;
+    tensors << QStringLiteral("blk.0.attn_k.weight") << QStringLiteral("blk.0.attn_v.weight");
+    tensors << QStringLiteral("blk.1.nextn.attn_k.weight") << QStringLiteral("blk.1.nextn.attn_v.weight");
+    const QString path = writeGguf(dir, ggufHeaderWithTensors(2, 32, 8, 4096, tensors), 0);
+    QVERIFY(!path.isEmpty());
+
+    const ModelMemoryEstimate e = estimateModelMemory(path, 8192, QString(), QString());
+    QVERIFY(e.valid);
+    QCOMPARE(e.nKvLayer, 1);
+    QCOMPARE(e.kvCacheBytes, 2LL * 1 * 8 * 128 * 8192 * 2);
+}
+
+// The requirement of a card: the weights, the projector, the draft, the KV
+// cache, the working set, the vision encoder and the server's overhead.
+void TestModelMemoryEstimator::countsTheVisionEncoderAndTheOverhead()
+{
+    ModelMemoryShape shape;
+    shape.weightsBytes = 1000LL * 1024 * 1024;
+    shape.projectorBytes = 500LL * 1024 * 1024;
+    shape.draftBytes = 50LL * 1024 * 1024;
+    shape.nLayer = 32;
+    shape.nKvLayers = 8;
+    shape.nHead = 16;
+    shape.nKvHead = 4;
+    shape.headDim = 256;
+    shape.nEmbd = 2560;
+    shape.nFf = 9216;
+    shape.visionBytesPerToken = 110600;
+
+    ModelMemoryBudget budget;
+    budget.ctxSize = 16384;
+    budget.ubatchTokens = 512;
+    budget.visionTokens = 1024;
+
+    const ModelMemoryEstimate e = estimateMemory(shape, budget);
+    QCOMPARE(e.kvCacheBytes, 2LL * 8 * 4 * 256 * 16384 * 2);
+    QCOMPARE(e.visionBufferBytes, 1024LL * 110600);
+    QCOMPARE(e.totalBytes, e.modelBytes + e.draftBytes + e.mmprojBytes + e.kvCacheBytes + e.computeBufferBytes + e.visionBufferBytes);
+    QVERIFY(e.computeBufferBytes > 0);
+    // the overhead is what turns the buffers into a requirement
+    QVERIFY(e.overheadBytes > 0);
+    QCOMPARE(e.requiredVramBytes, e.totalBytes + e.overheadBytes);
+    QVERIFY(e.requiredVramBytes > e.totalBytes);
+
+    // a bigger context costs more
+    ModelMemoryBudget bigger = budget;
+    bigger.ctxSize = 32768;
+    const ModelMemoryEstimate more = estimateMemory(shape, bigger);
+    QVERIFY(more.kvCacheBytes > e.kvCacheBytes);
+    QVERIFY(more.requiredVramBytes > e.requiredVramBytes);
+}
+
+// Every shipped model ships the architecture the estimate needs: a
+// quantization that is not downloaded yet has no header to read.
+// A projector whose cost does not follow the token count carries the whole
+// working set: the gemma-4-E4B runs without flash attention, so its encoder
+// holds an attention matrix over every patch of the page.
+void TestModelMemoryEstimator::aFlatVisionCostDoesNotFollowTheTokenCount()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const ModelProfiles::Profile *e4b = ModelProfiles::find(profiles, QStringLiteral("gemma-4-e4b"));
+    QVERIFY(e4b);
+    QVERIFY(e4b->memory.visionBufferBytes > 0);
+
+    const ModelMemoryShape shape = shapeFromProfile(e4b->memory);
+    ModelMemoryBudget budget;
+    budget.visionTokens = 1120;
+    const ModelMemoryEstimate e = estimateMemory(shape, budget);
+    QCOMPARE(e.visionBufferBytes, e4b->memory.visionBufferBytes);
+
+    ModelMemoryBudget bigger = budget;
+    bigger.visionTokens = 4480;
+    QCOMPARE(estimateMemory(shape, bigger).visionBufferBytes, e.visionBufferBytes);
+}
+
+void TestModelMemoryEstimator::everyProfileCarriesItsArchitecture()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    QVERIFY(!profiles.isEmpty());
+    for (const ModelProfiles::Profile &profile : profiles) {
+        QVERIFY2(profile.memory.valid, qPrintable(profile.id));
+        QVERIFY(profile.memory.nEmbd > 0);
+        QVERIFY(profile.memory.nLayer > 0);
+        // the vision cost is a rate per image token, or the whole working set
+        // of a projector whose cost does not follow the token count
+        QVERIFY(profile.memory.visionBytesPerToken > 0 || profile.memory.visionBufferBytes > 0);
+        QVERIFY(profile.files.mmproj.sizeBytes > 0);
+    }
+    // the d3-mini keeps a cache in 8 of its 32 layers
+    const ModelProfiles::Profile *d3 = ModelProfiles::find(profiles, QStringLiteral("d3-mini"));
+    QVERIFY(d3);
+    QCOMPARE(d3->memory.nKvLayers, 8);
+    const ModelMemoryShape shape = shapeFromProfile(d3->memory);
+    QCOMPARE(shape.nKvLayers, 8);
+    QCOMPARE(shape.nEmbd, 2560);
+}
+
+// The requirement of the two models the numbers were measured on: the
+// d3-mini, whose profile was fitted on a 6 GB card, and the GLM-OCR, whose
+// page recognition reserves more in the vision encoder than in the cache.
+void TestModelMemoryEstimator::theRequirementFollowsTheMeasuredNumbers()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+
+    const ModelProfiles::Profile *d3 = ModelProfiles::find(profiles, QStringLiteral("d3-mini"));
+    QVERIFY(d3);
+    ModelMemoryShape d3Shape = shapeFromProfile(d3->memory);
+    d3Shape.weightsBytes = 3707523520;  // the curated Q4_K_M
+    d3Shape.projectorBytes = d3->files.mmproj.sizeBytes;
+    d3Shape.draftBytes = d3->memory.draftBytes;
+    ModelMemoryBudget d3Budget;
+    d3Budget.ctxSize = 8192;  // the launch profile the d3-mini ships
+    d3Budget.ubatchTokens = 6144;
+    d3Budget.visionTokens = ModelProfiles::visionTokensFor(*d3, QStringLiteral("decision"));
+    const ModelMemoryEstimate d3Estimate = estimateMemory(d3Shape, d3Budget);
+    // eight of the 32 layers keep a cache: 256 MiB at an 8192 context
+    QCOMPARE(d3Estimate.kvCacheBytes, 256LL * 1024 * 1024);
+    QVERIFY(d3Estimate.visionBufferBytes > 0);
+    // ADR 179 fitted the d3-mini on a 6 GB card — the requirement must fit it
+    QVERIFY(d3Estimate.requiredVramBytes < 6LL * 1024 * 1024 * 1024);
+    QVERIFY(d3Estimate.requiredVramBytes > d3Shape.weightsBytes);
+
+    const ModelProfiles::Profile *glm = ModelProfiles::find(profiles, QStringLiteral("glm-ocr"));
+    QVERIFY(glm);
+    ModelMemoryShape glmShape = shapeFromProfile(glm->memory);
+    glmShape.weightsBytes = 950433408;  // the curated Q8_0
+    glmShape.projectorBytes = glm->files.mmproj.sizeBytes;
+    ModelMemoryBudget glmBudget;
+    glmBudget.ctxSize = 16384;
+    glmBudget.ubatchTokens = 512;
+    glmBudget.visionTokens = ModelProfiles::visionTokensFor(*glm, QStringLiteral("rawPageOcr"));
+    QCOMPARE(glmBudget.visionTokens, 6144);
+    const ModelMemoryEstimate glmEstimate = estimateMemory(glmShape, glmBudget);
+    // the page fills the image budget: the encoder reserves more than the cache
+    QVERIFY(glmEstimate.visionBufferBytes > glmEstimate.kvCacheBytes);
+    QVERIFY(glmEstimate.requiredVramBytes > 4LL * 1024 * 1024 * 1024);
+}
+
+// A page fills the model's image budget; a block crop stays at the floor the
+// model declares.
+void TestModelMemoryEstimator::aPageFillsTheImageBudgetAndACropDoesNot()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const ModelProfiles::Profile *glm = ModelProfiles::find(profiles, QStringLiteral("glm-ocr"));
+    QVERIFY(glm);
+    // the raw page role: the model shrinks the page to its image-max-tokens
+    QCOMPARE(ModelProfiles::visionTokensFor(*glm, QStringLiteral("rawPageOcr")), 6144);
+    // the block role: a crop is scaled up to the floor the model declares
+    QCOMPARE(ModelProfiles::visionTokensFor(*glm, QStringLiteral("blockRecognition")), 456);
+
+    // a model that declares no budget: a page falls back to the model's own
+    const ModelProfiles::Profile *tele = ModelProfiles::find(profiles, QStringLiteral("teleocr"));
+    QVERIFY(tele);
+    QCOMPARE(ModelProfiles::visionTokensFor(*tele, QStringLiteral("layout")), tele->memory.visionTokens);
+    QVERIFY(ModelProfiles::visionTokensFor(*tele, QStringLiteral("blockRecognition")) < tele->memory.visionTokens);
+}
+
+// The launch profile is what the server runs with: the context, the ubatch
+// and the cache types.
+void TestModelMemoryEstimator::theLaunchProfileSetsTheBudget()
+{
+    LaunchProfile launch;
+    LaunchParameter ctx;
+    ctx.name = QStringLiteral("ctx-size");
+    ctx.kind = LaunchValueKind::Number;
+    ctx.value = 16384.0;
+    LaunchParameter ubatch;
+    ubatch.name = QStringLiteral("ubatch-size");
+    ubatch.kind = LaunchValueKind::Number;
+    ubatch.value = 6144.0;
+    LaunchParameter cache;
+    cache.name = QStringLiteral("cache-type-k");
+    cache.kind = LaunchValueKind::Text;
+    cache.value = QStringLiteral("f32");
+    launch.parameters = {ctx, ubatch, cache};
+
+    const ModelMemoryBudget budget = budgetFromLaunch(launch, 1024);
+    QCOMPARE(budget.ctxSize, 16384);
+    QCOMPARE(budget.ubatchTokens, 6144);
+    QCOMPARE(budget.bytesPerValue, 4);
+    QCOMPARE(budget.visionTokens, 1024);
+
+    // a profile that says nothing gets llama.cpp's own defaults
+    const ModelMemoryBudget plain = budgetFromLaunch(LaunchProfile(), 0);
+    QCOMPARE(plain.ctxSize, 8192);
+    QCOMPARE(plain.ubatchTokens, 512);
+    QCOMPARE(plain.bytesPerValue, 2);
 }
 
 void TestModelMemoryEstimator::systemRamIsPositive()

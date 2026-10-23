@@ -40,11 +40,26 @@
       }
     ],
     "mmproj": {
+      "sizeBytes": 811876448,
       "id": "f16",
       "file": "mmproj-Unlimited-OCR-F16.gguf",
       "sha256": "",
       "_note": "Mandatory: without the projector the model sees no image."
     }
+  },
+  "memory": {
+    "nLayer": 12,
+    "nKvLayers": 12,
+    "nHead": 10,
+    "nKvHead": 10,
+    "headDim": 128,
+    "nEmbd": 1280,
+    "nFf": 6848,
+    "nMoeLayers": 11,
+    "nExpertUsed": 6,
+    "nExpertFf": 896,
+    "visionTokens": 1156,
+    "visionBufferBytes": 2981117952
   },
   "roles": {
     "pageOcr": {

@@ -6,6 +6,7 @@
 #include <QString>
 #include <QVariantMap>
 
+#include "core/ModelProfiles.h"
 #include "runtime/ModelRegistry.h"
 
 namespace llocr {
@@ -24,6 +25,7 @@ public:
         int entryIndex = -1;   ///< the installer's registry list, -1 when not installed
         int presetIndex = -1;  ///< the role's preset list, -1 when the profile offers no download
         qint64 size = 0;
+        qint64 vramBytes = 0;  ///< the card the quantization needs (ADR 191)
         bool active = false;
     };
 
@@ -85,6 +87,9 @@ signals:
 
 private:
     QList<Row> buildRows() const;
+    // The card the quantization needs: the weights, the projector, the draft,
+    // the KV cache, the working set and the vision encoder (ADR 191).
+    qint64 requiredVram(const ModelProfiles::Profile &profile, qint64 weightsBytes, qint64 projectorBytes) const;
     int selectedIndex(const Row &row) const;
     const Row *findRow(const QString &key) const;
     const Quant *quantFor(const QString &key, const QString &quantId) const;

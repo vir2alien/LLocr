@@ -422,6 +422,7 @@ target_link_libraries(test_model_memory_estimator PRIVATE
     Qt6::Test
     llocr_runtime
 )
+llocr_add_profile_resources(test_model_memory_estimator)
 add_test(NAME test_model_memory_estimator COMMAND test_model_memory_estimator)
 
 # ---- Stage C: download manager ------------------------------------------

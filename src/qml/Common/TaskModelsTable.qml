@@ -116,14 +116,11 @@ Item {
     }
 
     function quantItemText(q) {
-        const status = q.installed ? qsTr("Installed") : (q.downloadable ? qsTr("Download") : "")
         let s = table.quantMarker(q) + " " + q.id
         if (q.sizeLabel.length > 0)
             s += " — " + q.sizeLabel
-        const tail = status.length > 0 && q.hint.length > 0 ? status + ", " + q.hint
-                                                                 : (status.length > 0 ? status : q.hint)
-        if (tail.length > 0)
-            s += " (" + tail + ")"
+        if (q.vramLabel.length > 0)
+            s += " · " + qsTr("VRAM ≥ %1").arg(q.vramLabel)
         return s
     }
 

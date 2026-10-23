@@ -64,13 +64,28 @@ Item {
             font.pointSize: Theme.captionSize
             color: Theme.helpColor
             visible: root.memoryEstimate.valid === true
-            text: qsTr("Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6.")
-                    .arg(root.memoryEstimate.totalLabel)
-                    .arg(root.memoryEstimate.vramLabel)
-                    .arg(root.memoryEstimate.modelLabel)
-                    .arg(root.memoryEstimate.mmprojLabel)
-                    .arg(root.memoryEstimate.kvLabel)
-                    .arg(root.memoryEstimate.computeLabel)
+            text: {
+                // a model outside the catalog has no profile: the encoder's
+                // cost is unknown and stays out of the sentence
+                if (root.memoryEstimate.visionLabel.length === 0)
+                    return qsTr("Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6, overhead %7.")
+                            .arg(root.memoryEstimate.requiredLabel)
+                            .arg(root.memoryEstimate.vramLabel)
+                            .arg(root.memoryEstimate.modelLabel)
+                            .arg(root.memoryEstimate.mmprojLabel)
+                            .arg(root.memoryEstimate.kvLabel)
+                            .arg(root.memoryEstimate.computeLabel)
+                            .arg(root.memoryEstimate.overheadLabel)
+                return qsTr("Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6, vision %7, overhead %8.")
+                        .arg(root.memoryEstimate.requiredLabel)
+                        .arg(root.memoryEstimate.vramLabel)
+                        .arg(root.memoryEstimate.modelLabel)
+                        .arg(root.memoryEstimate.mmprojLabel)
+                        .arg(root.memoryEstimate.kvLabel)
+                        .arg(root.memoryEstimate.computeLabel)
+                        .arg(root.memoryEstimate.visionLabel)
+                        .arg(root.memoryEstimate.overheadLabel)
+            }
         }
 
         LLOLabel {

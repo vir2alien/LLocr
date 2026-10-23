@@ -19,6 +19,11 @@ namespace llocr {
 
 namespace {
 
+// The image tokens a task falls back to: a page the model does not size
+// itself, and a block crop the model does not floor.
+constexpr int kDefaultPageTokens = 4096;
+constexpr int kDefaultCropTokens = 512;
+
 // The file name without its extension and without the "-00001-of-00002"
 // split suffix: the part that identifies the model, not its packaging.
 QString quantStem(const QString &fileName)
@@ -41,6 +46,7 @@ ModelProfiles::Module readModule(const QJsonObject &object, QString &error)
     module.sha256 = object.value(QStringLiteral("sha256")).toString().toLower();
     module.repo = object.value(QStringLiteral("repo")).toString();
     module.revision = object.value(QStringLiteral("revision")).toString();
+    module.sizeBytes = static_cast<qint64>(object.value(QStringLiteral("sizeBytes")).toDouble(0));
     if (module.file.isEmpty()) {
         error = QObject::tr("Model profile %1 has a module without a file name").arg(module.id);
         return module;
@@ -181,6 +187,32 @@ ModelProfiles::PromptProfile readPromptProfile(const QJsonObject &root, QString 
     return profile;
 }
 
+ModelProfiles::Memory readMemory(const QJsonObject &root)
+{
+    ModelProfiles::Memory memory;
+    const QJsonObject object = root.value(QStringLiteral("memory")).toObject();
+    if (object.isEmpty())
+        return memory;
+    memory.nLayer = object.value(QStringLiteral("nLayer")).toInt(0);
+    memory.nKvLayers = object.value(QStringLiteral("nKvLayers")).toInt(0);
+    memory.nHead = object.value(QStringLiteral("nHead")).toInt(0);
+    memory.nKvHead = object.value(QStringLiteral("nKvHead")).toInt(0);
+    memory.headDim = object.value(QStringLiteral("headDim")).toInt(0);
+    memory.nEmbd = object.value(QStringLiteral("nEmbd")).toInt(0);
+    memory.nFf = object.value(QStringLiteral("nFf")).toInt(0);
+    memory.nMoeLayers = object.value(QStringLiteral("nMoeLayers")).toInt(0);
+    memory.nExpertUsed = object.value(QStringLiteral("nExpertUsed")).toInt(0);
+    memory.nExpertFf = object.value(QStringLiteral("nExpertFf")).toInt(0);
+    memory.visionTokens = object.value(QStringLiteral("visionTokens")).toInt(0);
+    memory.visionBytesPerToken = static_cast<qint64>(object.value(QStringLiteral("visionBytesPerToken")).toDouble(0));
+    memory.visionBufferBytes = static_cast<qint64>(object.value(QStringLiteral("visionBufferBytes")).toDouble(0));
+    memory.workingSetBytesPerToken = static_cast<qint64>(object.value(QStringLiteral("workingSetBytesPerToken")).toDouble(0));
+    memory.workingSetContextBytes = static_cast<qint64>(object.value(QStringLiteral("workingSetContextBytes")).toDouble(0));
+    memory.kvBytesPerToken = static_cast<qint64>(object.value(QStringLiteral("kvBytesPerToken")).toDouble(0));
+    memory.valid = memory.nEmbd > 0;
+    return memory;
+}
+
 }  // namespace
 
 ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
@@ -201,6 +233,7 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
     profile.files = readFiles(root, profile.id, error);
     if (!error.isEmpty())
         return profile;
+    profile.memory = readMemory(root);
 
     const QJsonObject roles = root.value(QStringLiteral("roles")).toObject();
     for (auto it = roles.constBegin(); it != roles.constEnd(); ++it) {
@@ -612,6 +645,32 @@ int ModelProfiles::maxOutputForBlock(const QList<Profile> &profiles, const QStri
     const QString aliasKey = found->blockAliases.value(blockType, blockType);
     const int byBlock = found->blockMaxOutput.value(aliasKey, -1);
     return byBlock;
+}
+
+int ModelProfiles::visionTokensFor(const Profile &profile, const QString &role)
+{
+    // The tasks that send the whole page: the page fills the model's budget.
+    // The others send a block crop, which llama.cpp scales up to the floor
+    // the model declares and which stays small otherwise.
+    const bool page = role == QLatin1String("pageOcr") || role == QLatin1String("rawPageOcr") || role == QLatin1String("layout") || role == QLatin1String("all");
+    int minTokens = 0;
+    int maxTokens = 0;
+    if (const Role *modelRole = roleFor(profile, role)) {
+        for (const LaunchParameter &parameter : modelRole->launch) {
+            if (parameter.name == QLatin1String("image-min-tokens"))
+                minTokens = int(parameter.value.toDouble());
+            else if (parameter.name == QLatin1String("image-max-tokens"))
+                maxTokens = int(parameter.value.toDouble());
+        }
+    }
+    if (page) {
+        if (maxTokens > 0)
+            return maxTokens;
+        return profile.memory.visionTokens > 0 ? profile.memory.visionTokens : kDefaultPageTokens;
+    }
+    if (minTokens > 0)
+        return minTokens;
+    return kDefaultCropTokens;
 }
 
 }  // namespace llocr

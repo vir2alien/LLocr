@@ -1370,8 +1370,13 @@
     </message>
     <message>
         <location line="-23"/>
-        <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6.</source>
-        <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, KV-кэш %5, рабочий буфер %6.</translation>
+        <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6, vision %7, overhead %8.</source>
+        <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, KV-кэш %5, рабочий буфер %6, зрение %7, накладные %8.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6, overhead %7.</source>
+        <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, KV-кэш %5, рабочий буфер %6, накладные %7.</translation>
     </message>
     <message>
         <location line="+15"/>
@@ -3362,14 +3367,9 @@
         <translation>Модель</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <source>Installed</source>
-        <translation>Установлен</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Download</source>
-        <translation>Скачать</translation>
+        <location filename="../../src/qml/Common/TaskModelsTable.qml" line="+119"/>
+        <source>VRAM ≥ %1</source>
+        <translation>VRAM ≥ %1</translation>
     </message>
     <message>
         <location line="+215"/>
@@ -3937,39 +3937,6 @@
         <location line="+29"/>
         <source>This model is not installed</source>
         <translation>Эта модель не установлена</translation>
-    </message>
-</context>
-<context>
-    <name>llocr::ModelQuantModel</name>
-    <message>
-        <location filename="../../src/runtime/ModelQuantModel.cpp" line="+94"/>
-        <source>full precision</source>
-        <translation>полная точность</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>max quality</source>
-        <translation>макс. качество</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>high quality, compact</source>
-        <translation>высокое качество, компактнее</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>good quality, less memory</source>
-        <translation>хорошее качество, меньше памяти</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>less memory</source>
-        <translation>меньше памяти</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>for weak PCs</source>
-        <translation>для слабых ПК</translation>
     </message>
 </context>
 <context>

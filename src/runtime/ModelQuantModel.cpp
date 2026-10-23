@@ -8,9 +8,13 @@
 
 #include "config/SettingsStore.h"
 #include "core/ByteSize.h"
+#include "core/LaunchProfile.h"
 #include "core/ModelProfiles.h"
+#include "runtime/LaunchProfileStore.h"
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelInstaller.h"
+#include "runtime/ModelMemoryEstimator.h"
+#include "runtime/RuntimeController.h"
 
 namespace llocr {
 
@@ -85,25 +89,20 @@ ModelQuantModel::Quant quantOf(const QList<ModelEntry> &installed,
     return quant;
 }
 
-// One short family label per quantization grade (ADR 168), shown next to the
-// size in the task window's quant dropdown.
-QString quantHint(const QString &id)
+// The management list is role-agnostic: a model is measured in the role that
+// asks the most of it — a page role if it has one (the page fills the image
+// budget), its first role otherwise.
+QString effectiveRole(const ModelProfiles::Profile &profile, const QString &role)
 {
-    const QString q = id.toUpper();
-    if (q == QLatin1String("F16") || q == QLatin1String("BF16") || q == QLatin1String("F32") || q.startsWith(QLatin1String("FP8")))
-        return ModelQuantModel::tr("full precision");
-    if (q.startsWith(QLatin1String("Q8")))
-        return ModelQuantModel::tr("max quality");
-    if (q.startsWith(QLatin1String("Q6_K")))
-        return ModelQuantModel::tr("high quality, compact");
-    if (q.startsWith(QLatin1String("Q5_K")))
-        return ModelQuantModel::tr("good quality, less memory");
-    if (q.startsWith(QLatin1String("Q4_K")))
-        return ModelQuantModel::tr("less memory");
-    if (q.startsWith(QLatin1String("IQ4")) || q.startsWith(QLatin1String("Q4_")) || q.startsWith(QLatin1String("IQ3")) || q.startsWith(QLatin1String("Q3")) || q.startsWith(QLatin1String("IQ2")) ||
-        q.startsWith(QLatin1String("Q2")))
-        return ModelQuantModel::tr("for weak PCs");
-    return QString();
+    if (role != QLatin1String("all"))
+        return role;
+    QStringList names = profile.roles.keys();
+    std::sort(names.begin(), names.end());
+    for (const QString &name : std::as_const(names)) {
+        if (name == QLatin1String("pageOcr") || name == QLatin1String("rawPageOcr") || name == QLatin1String("layout"))
+            return name;
+    }
+    return names.isEmpty() ? role : names.first();
 }
 
 QVariantMap quantMap(const ModelQuantModel::Quant &q)
@@ -112,7 +111,8 @@ QVariantMap quantMap(const ModelQuantModel::Quant &q)
     item.insert(QStringLiteral("id"), q.id);
     item.insert(QStringLiteral("size"), QVariant::fromValue(q.size));
     item.insert(QStringLiteral("sizeLabel"), ::llocr::formatBytes(q.size));
-    item.insert(QStringLiteral("hint"), quantHint(q.id));
+    item.insert(QStringLiteral("vramBytes"), QVariant::fromValue(q.vramBytes));
+    item.insert(QStringLiteral("vramLabel"), ::llocr::formatBytes(q.vramBytes));
     item.insert(QStringLiteral("installed"), q.entryIndex >= 0);
     item.insert(QStringLiteral("active"), q.active);
     item.insert(QStringLiteral("downloadable"), q.presetIndex >= 0);
@@ -221,6 +221,21 @@ void ModelQuantModel::refresh()
         emit countChanged();
 }
 
+qint64 ModelQuantModel::requiredVram(const ModelProfiles::Profile &profile, qint64 weightsBytes, qint64 projectorBytes) const
+{
+    if (!profile.memory.valid)
+        return 0;
+    const QString role = effectiveRole(profile, m_role);
+    const LaunchProfile launch = m_installer.runtime().launchProfiles().activeProfile(profile.id, role);
+    const int visionTokens = ModelProfiles::visionTokensFor(profile, role);
+    ModelMemoryShape shape = shapeFromProfile(profile.memory);
+    shape.weightsBytes = weightsBytes;
+    shape.projectorBytes = projectorBytes;
+    shape.draftBytes = profile.memory.draftBytes;
+    const ModelMemoryBudget budget = budgetFromLaunch(launch, visionTokens);
+    return estimateMemory(shape, budget).requiredVramBytes;
+}
+
 QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
 {
     // The management list ("all", the rework plan's stage 7) shows every
@@ -243,6 +258,16 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
         row.runtimeNote = profile.runtimeNote;
         row.profile = true;
 
+        // The projector the model needs: the file on disk when it is
+        // installed, the curated size otherwise.
+        qint64 projectorBytes = profile.files.mmproj.sizeBytes;
+        for (const ModelEntry &entry : installed) {
+            if (entry.repo == profile.files.repo && !entry.mmprojPath.isEmpty()) {
+                projectorBytes = QFileInfo(entry.mmprojPath).size();
+                break;
+            }
+        }
+
         QSet<QString> covered;
         for (const ModelProfiles::Quant &quant : profile.files.quants) {
             const QString stem = modelStem(quant.file);
@@ -259,6 +284,8 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
             row.quants.append(quantOf(installed, presets, profile.id, profile.files.repo, stem, quantLabelOf(entry), 0, activePath));
             covered.insert(stem);
         }
+        for (Quant &quant : row.quants)
+            quant.vramBytes = requiredVram(profile, quant.size, projectorBytes);
         if (!row.quants.isEmpty())
             rows.append(row);
     }
@@ -279,6 +306,8 @@ QList<ModelQuantModel::Row> ModelQuantModel::buildRows() const
         quant.entryIndex = i;
         quant.size = entry.byteSize;
         quant.active = !entry.modelPath.isEmpty() && entry.modelPath == activePath;
+        // A model outside the catalog has no profile: nothing is known about
+        // the encoder it would run, so no card is named.
         row.quants.append(quant);
         rows.append(row);
     }

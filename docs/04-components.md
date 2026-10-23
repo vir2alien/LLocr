@@ -332,7 +332,7 @@ Local-runtime suite (stages A–H):
 | `test_install_transaction` | failure at every step leaves no garbage / settings intact     |
 | `test_model_catalog`       | pagination, revision pinning, mmproj, multi-part, path encoding |
 | `test_model_registry`      | recovery, managed vs external, active-model removal guard     |
-| `test_model_memory_estimator` | GGUF + KV-cache RAM estimate (H.2)                        |
+| `test_model_memory_estimator` | GGUF + KV-cache RAM estimate, the card a model needs (H.2, ADR 191) |
 | `test_install_lock`        | dedicated `.install.lock`: path, refusal while another instance installs, release (H.6) |
 
 Plus the helper `mock_llama_server` binary (not a ctest target): a local
@@ -425,6 +425,18 @@ table, the preset catalog and the HF search are part of the **Location** tab
   a link to the license/accept page (ADR 29/44/45). ✅
 - Memory: the wizard's **Launch** step shows a **model + KV-cache RAM estimate**
   and warns when the total looks high vs system RAM (`ModelMemoryEstimator`, H.2). ✅
+- **The card a model needs** (ADR 191): the estimate is a *requirement* — the
+  weights, the projector, the speculative-decoding draft, the KV cache, the
+  working set, the vision encoder and the server's overhead. The model
+  profiles ship the architecture (`memory` block) and the curated sizes, so
+  a quantization that is not downloaded yet carries the number too; the task
+  window's quant dropdown shows it (`VRAM ≥ 11.4 GiB`) and Settings → Launch
+  shows the same breakdown against the card. The vision encoder is measured
+  from llama.cpp's own clip reservation: a rate per image token, or the whole
+  working set for the two projectors whose cost does not follow the token
+  count (the gemma-4-E4B, whose encoder runs without flash attention, and the
+  Unlimited-OCR, whose projector tiles the page). A model outside the catalog
+  names no card — nothing is known about the encoder it would run. ✅
 
 ## 4.18 First-run wizard (Stage F)
 On a clean profile (`setupVersion == 0 && !setupDismissed`) `Main.qml` triggers

@@ -40,11 +40,23 @@
       }
     ],
     "mmproj": {
+      "sizeBytes": 675569216,
       "id": "bf16",
       "file": "LightOnOCR-3-4B.mmproj-bf16.gguf",
       "sha256": "",
       "_note": "Mandatory: without the projector the model sees no image."
     }
+  },
+  "memory": {
+    "nLayer": 32,
+    "nKvLayers": 8,
+    "nHead": 16,
+    "nKvHead": 4,
+    "headDim": 256,
+    "nEmbd": 2560,
+    "nFf": 9216,
+    "visionTokens": 4096,
+    "visionBytesPerToken": 110600
   },
   "roles": {
     "pageOcr": {

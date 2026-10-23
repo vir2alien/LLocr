@@ -48,6 +48,29 @@ enum GGUFType : quint32 {
 constexpr qint64 kInitialHeaderBytes = 4 * 1024 * 1024;
 constexpr qint64 kMaxHeaderBytes = 96 * 1024 * 1024;
 
+// llama.cpp's scheduler reserves a little more than the shape predicts
+// (ADR 191): the working set of the shipped models runs up to 12 % over the
+// derived one, and the margin turns the estimate into a requirement — the
+// card that runs the model, not the card it barely starts on.
+constexpr qint64 kWorkingSetPercent = 112;
+
+// The attention mask llama.cpp builds for the whole context: f16 per context
+// token and ubatch token.
+constexpr qint64 kMaskBytesPerContextToken = 2;
+
+// llama.cpp's own defaults, used when the launch profile says nothing: the
+// server's batch of 2048 tokens and an ubatch of 512.
+constexpr int kDefaultCtxSize = 8192;
+constexpr int kDefaultUbatchTokens = 512;
+
+// The server's own allocations on top of the buffers: the logits buffer, the
+// samplers, the graph metadata and the HTTP layer.
+constexpr qint64 kServerOverheadBytes = 64 * 1024 * 1024;
+
+// The allocator's slack: the caching allocator keeps the blocks it has
+// handed out, and the freed ones do not go back to the card at once.
+constexpr qint64 kOverheadShare = 8;  // per cent
+
 class GgufReader
 {
 public:
@@ -406,10 +429,13 @@ qint64 readIntMeta(const QHash<QString, QVariant> &meta, const QStringList &arch
 
 // The layers that keep a KV cache. A hybrid architecture (Qwen3.5) keeps the
 // recurrent state in SSM tensors and only the full-attention layers carry K
-// and V — the tensor table says which layers those are.
+// and V — the tensor table says which layers those are. The speculative
+// decoding head (the "nextn" block) is a draft layer of its own: llama.cpp
+// runs it as a separate graph and keeps no cache for it.
 int countKvLayers(const QStringList &tensorNames)
 {
     QSet<int> layers;
+    QSet<int> drafts;
     for (const QString &name : tensorNames) {
         if (!name.startsWith(QLatin1String("blk.")))
             continue;
@@ -420,10 +446,15 @@ int countKvLayers(const QStringList &tensorNames)
         const int index = name.mid(4, dot - 4).toInt(&ok);
         if (!ok)
             continue;
+        if (name.contains(QLatin1String("nextn."))) {
+            drafts.insert(index);
+            continue;
+        }
         const QString tensor = name.mid(dot + 1);
         if (tensor.startsWith(QLatin1String("attn_k")) || tensor.startsWith(QLatin1String("attn_v")))
             layers.insert(index);
     }
+    layers.subtract(drafts);
     return int(layers.size());
 }
 
@@ -444,6 +475,18 @@ qint64 computeBytesPerToken(qint64 nEmbd, qint64 nHead, qint64 nKvHead, qint64 h
     return bytes;
 }
 
+// The shape alone understates what llama.cpp reserves: a mixture-of-experts
+// layer materializes the experts it routes a token to (the gate, the up
+// projection and the down projection of each), and the plain decoder layers
+// are only a part of the graph.
+qint64 computeBytesPerToken(const ModelMemoryShape &shape)
+{
+    qint64 bytes = computeBytesPerToken(shape.nEmbd, shape.nHead, shape.nKvHead, shape.headDim, shape.nFf);
+    if (shape.nMoeLayers > 0 && shape.nExpertUsed > 0 && shape.nExpertFf > 0)
+        bytes += qint64(shape.nMoeLayers) * shape.nExpertUsed * shape.nExpertFf * 4 * 3;
+    return bytes;
+}
+
 QString cacheType(const QString &type)
 {
     const QString t = type.trimmed();
@@ -454,25 +497,93 @@ QString cacheType(const QString &type)
 
 }  // namespace
 
-ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, const QString &cacheTypeK, const QString &cacheTypeV, const QString &mmprojPath, int ubatchTokens)
+ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMemoryBudget &budget)
 {
     ModelMemoryEstimate e;
-    e.modelBytes = QFileInfo(modelPath).size();
-    e.mmprojBytes = mmprojPath.isEmpty() ? 0 : QFileInfo(mmprojPath).size();
-    e.ctxSize = ctxSize <= 0 ? 8192 : ctxSize;
+    e.modelBytes = shape.weightsBytes;
+    e.draftBytes = shape.draftBytes;
+    e.mmprojBytes = shape.projectorBytes;
+    e.ctxSize = budget.ctxSize > 0 ? budget.ctxSize : kDefaultCtxSize;
+    e.bytesPerValue = budget.bytesPerValue;
     e.systemRamBytes = systemPhysicalRamBytes();
 
-    const QString kt = cacheType(cacheTypeK);
-    const QString vt = cacheType(cacheTypeV);
-    e.bytesPerValue = (kt == "f32" || vt == "f32") ? 4 : 2;
+    e.nLayer = shape.nLayer;
+    e.nKvLayer = shape.nKvLayers > 0 ? shape.nKvLayers : shape.nLayer;
+    e.nKvHead = shape.nKvHead;
+    e.headDim = shape.headDim;
 
+    const qint64 kvPerToken = shape.kvBytesPerToken > 0 ? shape.kvBytesPerToken : 2LL * e.nKvLayer * shape.nKvHead * shape.headDim * e.bytesPerValue;
+    e.kvCacheBytes = kvPerToken * e.ctxSize;
+
+    const qint64 perToken = shape.workingSetBytesPerToken > 0 ? shape.workingSetBytesPerToken : computeBytesPerToken(shape) * kWorkingSetPercent / 100;
+    const qint64 contextBytes = shape.workingSetContextBytes > 0 ? shape.workingSetContextBytes : kMaskBytesPerContextToken;
+    if (budget.ubatchTokens > 0)
+        e.computeBufferBytes = qint64(budget.ubatchTokens) * perToken + qint64(e.ctxSize) * budget.ubatchTokens * contextBytes;
+
+    e.visionBufferBytes = shape.visionBufferBytes > 0 ? shape.visionBufferBytes : qint64(budget.visionTokens) * shape.visionBytesPerToken;
+
+    e.totalBytes = e.modelBytes + e.draftBytes + e.mmprojBytes + e.kvCacheBytes + e.computeBufferBytes + e.visionBufferBytes;
+    // The server's own allocations: the logits buffer, the samplers, the
+    // graph metadata and the allocator's slack.
+    e.overheadBytes = kServerOverheadBytes + e.totalBytes * kOverheadShare / 100;
+    e.requiredVramBytes = e.totalBytes + e.overheadBytes;
+    return e;
+}
+
+ModelMemoryShape shapeFromProfile(const ModelProfiles::Memory &memory)
+{
+    ModelMemoryShape shape;
+    shape.nLayer = memory.nLayer;
+    shape.nKvLayers = memory.nKvLayers;
+    shape.nHead = memory.nHead;
+    shape.nKvHead = memory.nKvHead;
+    shape.headDim = memory.headDim;
+    shape.nEmbd = memory.nEmbd;
+    shape.nFf = memory.nFf;
+    shape.nMoeLayers = memory.nMoeLayers;
+    shape.nExpertUsed = memory.nExpertUsed;
+    shape.nExpertFf = memory.nExpertFf;
+    shape.visionBytesPerToken = memory.visionBytesPerToken;
+    shape.visionBufferBytes = memory.visionBufferBytes;
+    shape.workingSetBytesPerToken = memory.workingSetBytesPerToken;
+    shape.workingSetContextBytes = memory.workingSetContextBytes;
+    shape.kvBytesPerToken = memory.kvBytesPerToken;
+    return shape;
+}
+
+ModelMemoryBudget budgetFromLaunch(const LaunchProfile &launch, int visionTokens)
+{
+    ModelMemoryBudget budget;
+    budget.ctxSize = kDefaultCtxSize;
+    budget.ubatchTokens = kDefaultUbatchTokens;
+    if (const LaunchParameter *row = launch.find(QStringLiteral("ctx-size")); row && row->kind == LaunchValueKind::Number)
+        budget.ctxSize = int(row->value.toDouble());
+    if (const LaunchParameter *row = launch.find(QStringLiteral("ubatch-size")); row && row->kind == LaunchValueKind::Number)
+        budget.ubatchTokens = int(row->value.toDouble());
+    const LaunchParameter *cacheK = launch.find(QStringLiteral("cache-type-k"));
+    const LaunchParameter *cacheV = launch.find(QStringLiteral("cache-type-v"));
+    if ((cacheK && cacheK->kind == LaunchValueKind::Text && cacheType(cacheK->value.toString()) == QLatin1String("f32")) ||
+        (cacheV && cacheV->kind == LaunchValueKind::Text && cacheType(cacheV->value.toString()) == QLatin1String("f32")))
+        budget.bytesPerValue = 4;
+    budget.visionTokens = visionTokens;
+    return budget;
+}
+
+ModelMemoryShape shapeFromFile(const QString &modelPath, bool *ok, QString *error)
+{
     QHash<QString, QVariant> meta;
     QStringList tensorNames;
     GgufReader reader(modelPath);
-    e.valid = reader.run(meta, tensorNames, e.error);
+    QString readError;
+    const bool valid = reader.run(meta, tensorNames, readError);
+    if (ok)
+        *ok = valid;
+    if (error)
+        *error = readError;
 
+    ModelMemoryShape shape;
     qint64 nLayer = 0, nKvHead = 0, headCount = 0, nEmbd = 0, nFf = 0, headDim = 0;
-    if (e.valid) {
+    if (valid) {
         QStringList arches;
         const QString declared = meta.value(QStringLiteral("general.architecture")).toString();
         if (!declared.isEmpty())
@@ -487,6 +598,12 @@ ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, c
         nEmbd = readIntMeta(meta, arches, {QStringLiteral("embedding_length"), QStringLiteral("n_embd")});
         nFf = readIntMeta(meta, arches, {QStringLiteral("feed_forward_length")});
         headDim = readIntMeta(meta, arches, {QStringLiteral("attention.key_length")});
+        // A mixture of experts: the layers that route a token to experts, and
+        // the experts they pick.
+        const qint64 dense = readIntMeta(meta, arches, {QStringLiteral("leading_dense_block_count")});
+        shape.nMoeLayers = int(std::max<qint64>(0, nLayer - std::max<qint64>(1, dense)));
+        shape.nExpertUsed = int(readIntMeta(meta, arches, {QStringLiteral("expert_used_count")}));
+        shape.nExpertFf = int(readIntMeta(meta, arches, {QStringLiteral("expert_feed_forward_length")}));
     }
     if (headDim <= 0 && headCount > 0 && nEmbd > 0)
         headDim = nEmbd / headCount;
@@ -498,16 +615,34 @@ ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, c
     if (headDim <= 0)
         headDim = 128;
 
-    e.nLayer = int(nLayer);
-    e.nKvHead = int(nKvHead);
-    e.headDim = int(headDim);
+    shape.nLayer = int(nLayer);
+    shape.nKvHead = int(nKvHead);
+    shape.headDim = int(headDim);
+    shape.nHead = int(headCount);
+    shape.nEmbd = int(nEmbd);
+    shape.nFf = int(nFf);
+    shape.nKvLayers = countKvLayers(tensorNames);
+    return shape;
+}
 
-    const int kvLayers = countKvLayers(tensorNames);
-    e.nKvLayer = kvLayers > 0 ? kvLayers : e.nLayer;
+ModelMemoryEstimate estimateModelMemory(const QString &modelPath, int ctxSize, const QString &cacheTypeK, const QString &cacheTypeV, const QString &mmprojPath, int ubatchTokens)
+{
+    bool valid = false;
+    QString error;
+    ModelMemoryShape shape = shapeFromFile(modelPath, &valid, &error);
+    shape.weightsBytes = QFileInfo(modelPath).size();
+    shape.projectorBytes = mmprojPath.isEmpty() ? 0 : QFileInfo(mmprojPath).size();
 
-    e.kvCacheBytes = 2LL * e.nKvLayer * e.nKvHead * e.headDim * e.ctxSize * e.bytesPerValue;
-    e.computeBufferBytes = ubatchTokens > 0 ? qint64(ubatchTokens) * computeBytesPerToken(nEmbd, headCount, nKvHead, headDim, nFf) : 0;
-    e.totalBytes = e.modelBytes + e.mmprojBytes + e.kvCacheBytes + e.computeBufferBytes;
+    ModelMemoryBudget budget;
+    budget.ctxSize = ctxSize <= 0 ? kDefaultCtxSize : ctxSize;
+    budget.ubatchTokens = ubatchTokens;
+    const QString kt = cacheType(cacheTypeK);
+    const QString vt = cacheType(cacheTypeV);
+    budget.bytesPerValue = (kt == QLatin1String("f32") || vt == QLatin1String("f32")) ? 4 : 2;
+
+    ModelMemoryEstimate e = estimateMemory(shape, budget);
+    e.valid = valid;
+    e.error = error;
     return e;
 }
 

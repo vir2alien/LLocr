@@ -1345,9 +1345,10 @@ private slots:
     }
 
     // ADR 168: the task window's quant dropdown shows every profile
-    // quantization with the curated download size and a family hint; the file
-    // on disk wins once the quantization is installed.
-    void quantDropdownCarriesCuratedSizesAndHints()
+    // quantization with the curated download size; ADR 191 adds the card the
+    // quantization needs. The file on disk wins once the quantization is
+    // installed.
+    void quantDropdownCarriesCuratedSizesAndTheCardRequirement()
     {
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
@@ -1369,8 +1370,11 @@ private slots:
         QVERIFY(!quant.value(QStringLiteral("installed")).toBool());
         QCOMPARE(quant.value(QStringLiteral("size")).toLongLong(), curated);
         QCOMPARE(quant.value(QStringLiteral("sizeLabel")).toString(), formatBytes(curated));
-        QCOMPARE(quant.value(QStringLiteral("hint")).toString(), QStringLiteral("max quality"));
-        QCOMPARE(quantOf(check, row, QStringLiteral("Q3_K_M")).value(QStringLiteral("hint")).toString(), QStringLiteral("for weak PCs"));
+        // the card the quantization needs: the weights, the projector, the KV
+        // cache, the working set and the vision encoder.
+        const qint64 vram = quant.value(QStringLiteral("vramBytes")).toLongLong();
+        QVERIFY(vram > curated);
+        QCOMPARE(quant.value(QStringLiteral("vramLabel")).toString(), formatBytes(vram));
 
         const QString sub = QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("konradjr007__NaviDC-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));

@@ -65,8 +65,37 @@ public:
         QString id;
         QString file;
         QString sha256;
-        QString repo;      // empty = files.repo; the DSpark/MTP draft lives in its own repo
-        QString revision;  // empty = pin the repo head at install time
+        QString repo;          // empty = files.repo; the DSpark/MTP draft lives in its own repo
+        QString revision;      // empty = pin the repo head at install time
+        qint64 sizeBytes = 0;  // curated download size (the projector's own weight)
+    };
+
+    // The architecture the memory estimate needs (ADR 191). A quantization
+    // that is not downloaded yet has no GGUF header to read, so the profile
+    // ships the shape: the requirement must be known before the file exists.
+    struct Memory {
+        int nLayer = 0;     // decoder layers
+        int nKvLayers = 0;  // layers that keep a K/V cache (0 = all of them)
+        int nHead = 0;
+        int nKvHead = 0;
+        int headDim = 0;
+        int nEmbd = 0;
+        int nFf = 0;
+        int nMoeLayers = 0;              // the layers that route to experts
+        int nExpertUsed = 0;             // experts a token activates
+        int nExpertFf = 0;               // the expert's own feed-forward width
+        int visionTokens = 0;            // the image tokens the server must hold
+        qint64 visionBytesPerToken = 0;  // the encoder's working set per image token
+        qint64 visionBufferBytes = 0;    // the encoder's whole working set (0 = follow the token count)
+        qint64 draftBytes = 0;           // the speculative decoding draft the server loads next to the target
+        // llama.cpp's own numbers, where its scheduler reserves more than the
+        // shape predicts: the measured cost of one token of the graph's
+        // working set (0 = derive it from the shape) and of one context token
+        // of the attention mask.
+        qint64 workingSetBytesPerToken = 0;
+        qint64 workingSetContextBytes = 0;
+        qint64 kvBytesPerToken = 0;  // the KV cache per context token (0 = derive it)
+        bool valid = false;
     };
 
     struct Files {
@@ -85,6 +114,7 @@ public:
         QString runtimeNote;
         bool isDefault = false;
         Files files;
+        Memory memory;
         QHash<QString, Role> roles;
     };
 
@@ -154,6 +184,12 @@ public:
     // Per-block output budget of the fix task: maxOutputByBlock[type] (through
     // the block aliases), else -1 when the profile ships no per-block entry.
     static int maxOutputForBlock(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &blockType);
+
+    // The image budget of a task: the number of image tokens the server has to
+    // hold. A page fills the model's own budget (the model shrinks the page
+    // to its image-max-tokens), a block crop is scaled up to the floor the
+    // model declares (its image-min-tokens) and stays small otherwise.
+    static int visionTokensFor(const Profile &profile, const QString &role);
 };
 
 }  // namespace llocr

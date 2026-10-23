@@ -40,6 +40,7 @@
       }
     ],
     "mmproj": {
+      "sizeBytes": 853993952,
       "id": "f16",
       "file": "mmproj-LFM2.5-VL-3B-F16.gguf",
       "sha256": "",
@@ -51,6 +52,18 @@
       "sha256": "4eb314404b7b4c0033799faf5662f8277cf3d94163b8d791a22363165e294821",
       "repo": "LiquidAI/LFM2.5-VL-3B-DSpark-GGUF"
     }
+  },
+  "memory": {
+    "nLayer": 30,
+    "nKvLayers": 8,
+    "nHead": 32,
+    "nKvHead": 8,
+    "headDim": 64,
+    "nEmbd": 2048,
+    "nFf": 10752,
+    "visionTokens": 256,
+    "visionBytesPerToken": 110600,
+    "draftBytes": 567205280
   },
   "roles": {
     "pageOcr": {

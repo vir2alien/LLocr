@@ -34,11 +34,23 @@
       }
     ],
     "mmproj": {
+      "sizeBytes": 1327938560,
       "id": "f16",
       "file": "mmproj-NaviDC-OCR-F16.gguf",
       "sha256": "",
       "_note": "Mandatory: without the projector the model sees no image."
     }
+  },
+  "memory": {
+    "nLayer": 28,
+    "nKvLayers": 28,
+    "nHead": 16,
+    "nKvHead": 8,
+    "headDim": 128,
+    "nEmbd": 1024,
+    "nFf": 3072,
+    "visionTokens": 1369,
+    "visionBytesPerToken": 282280
   },
   "roles": {
     "blockRecognition": {

@@ -316,7 +316,12 @@
         the «Launch settings changed — restart» banner with a Restart button.
     - **H** 🔄 — H.2 ✅ (memory estimate + warning, `ModelMemoryEstimator`;
       the wizard Launch step that hosted it is gone since ADR 170 — the
-      estimate lives on in Settings → Launch), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
+      estimate lives on in Settings → Launch; **ADR 191** — the estimate became
+      a *requirement*: the model profiles ship the architecture and the curated
+      sizes, so every quantization of every model carries the minimum video
+      memory it needs (weights · projector · draft · KV cache · working set ·
+      vision encoder · overhead) and the quant dropdown shows it
+      (`VRAM ≥ 11.4 GiB`) instead of the parenthetical hint), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
       probe bounds 2.5s/5s, `probeCached()` LRU — plus a **shared probe budget**
       (`--version` + `--help`, worst case = `timeoutMs`, ADR 51) and a
       **persistent capabilities cache** `capabilities-<sha1(path+mtime+size)>.json`

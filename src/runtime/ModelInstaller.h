@@ -88,6 +88,7 @@ public:
     // "decision", "layout" or "fix".
     const QList<ModelPreset> &presetsForRole(const QString &task) const;
     const QList<ModelEntry> &installedEntries() const { return m_installed; }
+    RuntimeController &runtime() { return m_runtime; }
 
     Q_INVOKABLE void reloadPresets();
     Q_INVOKABLE QString setActiveModel(int index, const QString &task = QStringLiteral("pageOcr"));

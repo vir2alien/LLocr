@@ -40,11 +40,23 @@
       }
     ],
     "mmproj": {
+      "sizeBytes": 709409600,
       "id": "q8_0",
       "file": "MinerU2.5-Pro-2605-1.2B.mmproj-Q8_0.gguf",
       "sha256": "",
       "_note": "Mandatory: without the projector the model sees no image."
     }
+  },
+  "memory": {
+    "nLayer": 24,
+    "nKvLayers": 24,
+    "nHead": 14,
+    "nKvHead": 2,
+    "headDim": 64,
+    "nEmbd": 896,
+    "nFf": 4864,
+    "visionTokens": 1369,
+    "visionBytesPerToken": 132324
   },
   "roles": {
     "layout": {

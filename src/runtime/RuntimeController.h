@@ -83,6 +83,10 @@ public:
     Q_INVOKABLE QString terminateOrphan();
 
     Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("pageOcr"));
+    // The launch profile the machine runs with, composed with the model's own
+    // rows: the estimate reads the context, the ubatch and the cache types
+    // from it.
+    LaunchProfileStore &launchProfiles() { return m_launchProfiles; }
     Q_INVOKABLE bool canRecognize(bool documentLoaded) const;
     // Whether the task's model is picked at all: managed — the model file
     // exists on disk, external — a model name is set (the rework plan's §7
