@@ -308,6 +308,22 @@ target_link_libraries(test_launch_config PRIVATE
 llocr_add_profile_resources(test_launch_config)
 add_test(NAME test_launch_config COMMAND test_launch_config)
 
+# The Launch settings tab as QML: the memory-estimate label must not throw
+# when the estimate map is empty (the tab's placeholder before the popup
+# opens). The file is read from the source tree, so the test covers the
+# shipped QML rather than a copy.
+qt_add_executable(test_launch_tab_qml test_launch_tab_qml.cpp)
+
+target_link_libraries(test_launch_tab_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    # QQuickStyle: the app runs the Fusion style, and the native macOS style
+    # warns about every customized control.
+    Qt6::QuickControls2
+    llocr_config
+)
+add_test(NAME test_launch_tab_qml COMMAND test_launch_tab_qml)
+
 qt_add_executable(test_runtime_lifetime test_runtime_lifetime.cpp)
 
 target_link_libraries(test_runtime_lifetime PRIVATE

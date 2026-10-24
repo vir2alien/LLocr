@@ -340,6 +340,14 @@ Plus the helper `mock_llama_server` binary (not a ctest target): a local
 controlled crash and delayed start. **No test uses the real network** — only
 local `QTcpServer` and fixtures in `tests/data/`.
 
+QML suite:
+- `test_launch_tab_qml` — loads the shipped `Settings/LaunchTab.qml` and
+  watches the engine's warnings: the memory-estimate label must stay silent
+  while the estimate map is still the tab's empty placeholder (QML evaluates
+  the bindings of an invisible label too, so an unguarded key read took the
+  whole window down), and must show the sentence — with and without the
+  vision term — once the estimate is in place.
+
 > The four base targets from `AGENTS.md` are still present; the runtime suite
 > above is what the local-runtime plan (stages A–H) added.
 

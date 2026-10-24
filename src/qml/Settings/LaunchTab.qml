@@ -65,8 +65,11 @@ Item {
             color: Theme.helpColor
             visible: root.memoryEstimate.valid === true
             text: {
+                // The estimate map is a placeholder until the popup opens, and
                 // a model outside the catalog has no profile: the encoder's
-                // cost is unknown and stays out of the sentence
+                // cost is unknown and stays out of the sentence.
+                if (root.memoryEstimate.valid !== true)
+                    return ""
                 if (root.memoryEstimate.visionLabel.length === 0)
                     return qsTr("Video memory for this model: %1 of %2 on this card — weights %3, projector %4, draft %5, KV cache %6, working set %7, overhead %8.")
                             .arg(root.memoryEstimate.requiredLabel)
