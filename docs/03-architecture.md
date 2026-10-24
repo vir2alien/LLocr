@@ -209,19 +209,31 @@ Starting → Ready → Stopping → Stopped`, plus `Failed`) are exposed to QML;
 `canRecognize` per §1.4 of the local-runtime plan (`docs/09-local-runtime-plan.md`).
 
 ## Backend building blocks (implemented)
-- **AppController** — the ViewModel. Exposes `busy`, `resultText`,
-  `statusMessage`, `hasImage`, `pageCount`, `currentPage`, `hasResult`,
-  `imageRevision`, `docRevision`, `currentPageEditable`, `currentPageEdited`,
-  `exportNameFilters`, `canRecognize`, `parserNames`, `prompt`, and the
-  `pageModel` / `boxModel` list models to QML. Owns page lifecycle
-  (open/append/remove/reorder), per-page edits and image-block editing.
-  Delegates the recognition run loop to `RecognitionController`, the LLM
-  verification queue to `VerificationQueueController` (ADR 86) and the export
-  pipeline to `ExportController` (ADR 86) — its own methods are forwarders and
-  signal relays with the QML API unchanged. Applies check results to the
-  document (`applyCheckResultToBox` under the document lock). All
+- **AppController** — the ViewModel and the **facade** the QML binds to
+  (ADR 213). Exposes `busy`, `resultText`, `statusMessage`, `hasImage`,
+  `pageCount`, `currentPage`, `hasResult`, `imageRevision`, `docRevision`,
+  `currentPageEditable`, `currentPageEdited`, `exportNameFilters`,
+  `canRecognize`, `parserNames`, `prompt`, and the `pageModel` / `boxModel`
+  list models to QML. Owns page lifecycle (open/append/remove/reorder),
+  per-page edits and image-block editing. The domains around it live in their
+  own classes — `BlockInspector`, `ProjectController`, `AvailabilityPresenter`,
+  `VerificationQueueController`, `LayoutController`, `RecognitionController`,
+  `ExportController` — and the facade forwards their state and signals with
+  the QML API unchanged. Applies check results to the document
+  (`applyCheckResultToBox` under the document lock). All
   connection/model/parser settings live in `SettingsStore` (exposed to QML
   as the `Settings` singleton), not on the controller.
+- **BlockInspector** — the selected block: the two text layers with their
+  verdicts, the diff between them (one comparison per pair of texts,
+  ADR 208), the block's place in the page text and the paint of the selected
+  range. The selection and the memos are its own; the document belongs to the
+  controller, and the two meet through injected providers.
+- **ProjectController** — the `.llocr` file: reading, writing, the busy flag,
+  the path and the restoration of the document it reads (ADR 131, ADR 213).
+- **AvailabilityPresenter** — the availability matrix: the twenty flags, the
+  fingerprint that guards the recomputation (ADR 208) and the toolbar scope.
+  The flags change only when one of them flips, so the queue's chatter does
+  not make QML rescan the document.
 - **VerificationQueueController** — owns the serial verification (LLM check)
   queue: task list (`{page, box}`), progress, stop, and the owned
   `CheckController`; candidate boxes are collected from the enabled block

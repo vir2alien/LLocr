@@ -254,6 +254,12 @@ endif()
 qt_add_library(llocr_app STATIC
     app/AppController.h
     app/AppController.cpp
+    app/AvailabilityPresenter.h
+    app/AvailabilityPresenter.cpp
+    app/BlockInspector.h
+    app/BlockInspector.cpp
+    app/ProjectController.h
+    app/ProjectController.cpp
     app/BlockGroupFilterModel.h
     app/BlockGroupFilterModel.cpp
     app/BlockTextHighlighter.h

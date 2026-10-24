@@ -8,6 +8,7 @@
 #include "app/ModelRequestController.h"
 #include "core/CheckRequest.h"
 #include "core/CheckResult.h"
+#include "core/ModelProfiles.h"
 #include "models/LayoutModel.h"
 
 namespace llocr {
@@ -34,6 +35,11 @@ public:
 
     int progressDone() const { return m_progressDone; }
     int progressTotal() const { return m_progressTotal; }
+
+    // The layout role of the active profile: the prompt and the parser the
+    // markup pass runs with (ADR 213).
+    const ModelProfiles::Role *role() const;
+    bool available() const;
 
 signals:
     void layoutFinished(int pageIndex, const QString &rawText);

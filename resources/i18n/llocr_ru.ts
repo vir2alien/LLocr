@@ -112,6 +112,58 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location line="-1755"/>
+        <source>Page %1 could not be rendered and is shown blank — see the problem log.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-1595"/>
+        <source>Importing %1 (%2/%3)…</source>
+        <translation>Импорт %1 (%2/%3)…</translation>
+    </message>
+    <message>
+        <location line="+53"/>
+        <source>None of the selected files could be added.</source>
+        <translation>Ни один из выбранных файлов не удалось добавить</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Added %1 file(s), %2 page(s); %3 file(s) skipped.</source>
+        <translation>Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Added %1 file(s), %2 page(s).</source>
+        <translation>Добавлено файлов: %1, страниц: %2</translation>
+    </message>
+    <message>
+        <source>Recognized</source>
+        <translation type="vanished">Распознано</translation>
+    </message>
+    <message>
+        <source>Verified</source>
+        <translation type="vanished">Проверено</translation>
+    </message>
+    <message>
+        <source>Mismatch</source>
+        <translation type="vanished">Не совпало</translation>
+    </message>
+    <message>
+        <source>Damaged</source>
+        <translation type="vanished">Повреждено</translation>
+    </message>
+    <message>
+        <source>Fixed</source>
+        <translation type="vanished">Исправлено</translation>
+    </message>
+    <message>
+        <source>Revert correction</source>
+        <translation type="vanished">Отменить исправление</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectController</name>
+    <message>
         <location line="+335"/>
         <location line="+48"/>
         <source>No project selected.</source>
@@ -164,11 +216,6 @@
         <translation>Страницы проекта %1 не удалось восстановить — подробности в журнале проблем</translation>
     </message>
     <message>
-        <location line="-1755"/>
-        <source>Page %1 could not be rendered and is shown blank — see the problem log.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location line="+1757"/>
         <source>The project contains no pages.</source>
         <translation>Проект не содержит страниц</translation>
@@ -182,50 +229,6 @@
         <location line="+2"/>
         <source>Project opened: %1 page(s), %2 skipped.</source>
         <translation>Проект открыт: страниц: %1, пропущено: %2</translation>
-    </message>
-    <message>
-        <location line="-1595"/>
-        <source>Importing %1 (%2/%3)…</source>
-        <translation>Импорт %1 (%2/%3)…</translation>
-    </message>
-    <message>
-        <location line="+53"/>
-        <source>None of the selected files could be added.</source>
-        <translation>Ни один из выбранных файлов не удалось добавить</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Added %1 file(s), %2 page(s); %3 file(s) skipped.</source>
-        <translation>Добавлено файлов: %1, страниц: %2; пропущено файлов: %3</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Added %1 file(s), %2 page(s).</source>
-        <translation>Добавлено файлов: %1, страниц: %2</translation>
-    </message>
-    <message>
-        <source>Recognized</source>
-        <translation type="vanished">Распознано</translation>
-    </message>
-    <message>
-        <source>Verified</source>
-        <translation type="vanished">Проверено</translation>
-    </message>
-    <message>
-        <source>Mismatch</source>
-        <translation type="vanished">Не совпало</translation>
-    </message>
-    <message>
-        <source>Damaged</source>
-        <translation type="vanished">Повреждено</translation>
-    </message>
-    <message>
-        <source>Fixed</source>
-        <translation type="vanished">Исправлено</translation>
-    </message>
-    <message>
-        <source>Revert correction</source>
-        <translation type="vanished">Отменить исправление</translation>
     </message>
 </context>
 <context>

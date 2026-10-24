@@ -10,12 +10,11 @@
 #include <QObject>
 #include <QReadWriteLock>
 #include <QSet>
-#include <QTemporaryDir>
 #include <QUrl>
 #include <QVariant>
 
-#include "core/TextDiff.h"
-
+#include "app/AvailabilityPresenter.h"
+#include "app/BlockInspector.h"
 #include "app/BoxListModel.h"
 #include "app/DocumentModel.h"
 #include "app/ExportController.h"
@@ -25,7 +24,7 @@
 #include "app/PageEditStore.h"
 #include "app/PageListModel.h"
 #include "app/ProblemLog.h"
-#include "app/ProjectStore.h"
+#include "app/ProjectController.h"
 #include "app/RecognitionController.h"
 #include "app/VerificationPromptStore.h"
 #include "app/VerificationQueueController.h"
@@ -41,7 +40,6 @@
 namespace llocr {
 
 class RequestProfileStore;
-class BlockTextHighlighter;
 
 constexpr qint64 kPreviewCacheBudgetBytes = 64ll * 1024 * 1024;
 constexpr qint64 kThumbnailCacheBudgetBytes = 48ll * 1024 * 1024;
@@ -168,9 +166,9 @@ public:
 
     bool busy() const { return m_recognition.busy(); }
     bool exporting() const { return m_export.exporting(); }
-    bool projectBusy() const { return m_projectBusy; }
-    QUrl projectPath() const { return m_projectPath; }
-    QString projectFileName() const;
+    bool projectBusy() const { return m_project.busy(); }
+    QUrl projectPath() const { return m_project.path(); }
+    QString projectFileName() const { return m_project.fileName(); }
     bool importing() const { return m_importing; }
     int importProgressDone() const { return m_importDone; }
     int importProgressTotal() const { return m_importTotal; }
@@ -185,8 +183,8 @@ public:
     int imageRevision() const { return m_imageRevision; }
     int docRevision() const { return m_docRevision; }
 
-    bool canRecognize() const;
-    bool actionsIdle() const { return !m_recognition.busy() && !m_layout.busy() && !checkBusy() && !m_importing; }
+    bool canRecognize() const { return m_availability.canRecognize(); }
+    bool actionsIdle() const { return m_availability.actionsIdle(); }
     QStringList parserNames() const;
     QStringList parserLabels() const;
 
@@ -195,25 +193,25 @@ public:
     bool currentPageEditable() const;
     bool currentPageEdited() const;
 
-    int selectedBoxIndex() const { return m_selectedBox; }
-    QString selectedBlockText() const;
-    QString selectedBlockLabel() const;
-    int selectedBlockCheckStatus() const;
-    QString selectedBlockCorrected() const;
-    int selectedBlockCorrectedCheckStatus() const;
-    double selectedBlockConfidence() const;
-    double selectedBlockCorrectedConfidence() const;
-    int selectedBlockFixStatus() const;
-    int selectedBlockSyntaxProblem() const;
-    bool selectedBlockUsesCorrected() const;
+    int selectedBoxIndex() const { return m_inspector.selectedBoxIndex(); }
+    QString selectedBlockText() const { return m_inspector.selectedBlockText(); }
+    QString selectedBlockLabel() const { return m_inspector.selectedBlockLabel(); }
+    int selectedBlockCheckStatus() const { return m_inspector.selectedBlockCheckStatus(); }
+    QString selectedBlockCorrected() const { return m_inspector.selectedBlockCorrected(); }
+    int selectedBlockCorrectedCheckStatus() const { return m_inspector.selectedBlockCorrectedCheckStatus(); }
+    double selectedBlockConfidence() const { return m_inspector.selectedBlockConfidence(); }
+    double selectedBlockCorrectedConfidence() const { return m_inspector.selectedBlockCorrectedConfidence(); }
+    int selectedBlockFixStatus() const { return m_inspector.selectedBlockFixStatus(); }
+    int selectedBlockSyntaxProblem() const { return m_inspector.selectedBlockSyntaxProblem(); }
+    bool selectedBlockUsesCorrected() const { return m_inspector.selectedBlockUsesCorrected(); }
     void setSelectedBlockUsesCorrected(bool corrected);
-    QVariantList selectedBlockTextRange() const;
-    void setSelectedBoxIndex(int index);
-    QVariantList selectedBlockRemovedRanges() const;
-    QVariantList selectedBlockAddedRanges() const;
-    bool highlightDifferences() const { return m_highlightDifferences; }
+    QVariantList selectedBlockTextRange() const { return m_inspector.selectedBlockTextRange(); }
+    void setSelectedBoxIndex(int index) { m_inspector.setSelectedBoxIndex(index); }
+    QVariantList selectedBlockRemovedRanges() const { return m_inspector.selectedBlockRemovedRanges(); }
+    QVariantList selectedBlockAddedRanges() const { return m_inspector.selectedBlockAddedRanges(); }
+    bool highlightDifferences() const { return m_inspector.highlightDifferences(); }
     void setHighlightDifferences(bool enabled);
-    bool pageTextEditorFocused() const { return m_pageTextEditorFocused; }
+    bool pageTextEditorFocused() const { return m_inspector.pageTextEditorFocused(); }
     void setPageTextEditorFocused(bool focused);
 
     bool checkBusy() const { return m_verify.checkBusy() || m_verify.queueActive(); }
@@ -225,29 +223,29 @@ public:
     bool checkRecheckPhase() const { return m_verify.recheckPhase(); }
     bool checkFixPhase() const { return m_verify.fixPhase(); }
     QString checkErrorMessage() const { return m_verify.errorMessage(); }
-    bool pageVerificationSupported() const;
-    bool allPageVerificationSupported() const;
-    bool pageProblemRecognitionSupported() const;
-    bool allProblemRecognitionSupported() const;
-    bool pageBlocksRecognitionSupported() const;
-    bool pageOcrModelAvailable() const;
-    bool rawPageOcrModelAvailable() const;
-    bool blockRecognitionModelAvailable() const;
-    bool decisionModelAvailable() const;
-    bool layoutModelAvailable() const;
-    bool fixModelAvailable() const;
-    int currentPageRecognitionMode() const;
-    int currentPageVerification() const;
-    int selectedPageCount() const;
-    int scopedPendingFixCount() const;
-    bool scopeHasResults() const;
-    bool scopeVerificationSupported() const;
-    bool scopeBlocksRecognitionSupported() const;
+    bool pageVerificationSupported() const { return m_availability.pageVerificationSupported(); }
+    bool allPageVerificationSupported() const { return m_availability.allPageVerificationSupported(); }
+    bool pageProblemRecognitionSupported() const { return m_availability.pageProblemRecognitionSupported(); }
+    bool allProblemRecognitionSupported() const { return m_availability.allProblemRecognitionSupported(); }
+    bool pageBlocksRecognitionSupported() const { return m_availability.pageBlocksRecognitionSupported(); }
+    bool pageOcrModelAvailable() const { return m_availability.pageOcrModelAvailable(); }
+    bool rawPageOcrModelAvailable() const { return m_availability.rawPageOcrModelAvailable(); }
+    bool blockRecognitionModelAvailable() const { return m_availability.blockRecognitionModelAvailable(); }
+    bool decisionModelAvailable() const { return m_availability.decisionModelAvailable(); }
+    bool layoutModelAvailable() const { return m_availability.layoutModelAvailable(); }
+    bool fixModelAvailable() const { return m_availability.fixModelAvailable(); }
+    int currentPageRecognitionMode() const { return m_availability.currentPageRecognitionMode(); }
+    int currentPageVerification() const { return m_availability.currentPageVerification(); }
+    int selectedPageCount() const { return m_availability.selectedPageCount(); }
+    int scopedPendingFixCount() const { return m_availability.scopedPendingFixCount(); }
+    bool scopeHasResults() const { return m_availability.scopeHasResults(); }
+    bool scopeVerificationSupported() const { return m_availability.scopeVerificationSupported(); }
+    bool scopeBlocksRecognitionSupported() const { return m_availability.scopeBlocksRecognitionSupported(); }
 
     bool layoutBusy() const { return m_layout.busy(); }
     int layoutProgressDone() const { return m_layout.progressDone(); }
     int layoutProgressTotal() const { return m_layout.progressTotal(); }
-    bool layoutAvailable() const;
+    bool layoutAvailable() const { return m_layout.available(); }
 
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
     QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
@@ -376,8 +374,8 @@ public slots:
     Q_INVOKABLE void stopLayout();
     Q_INVOKABLE void cancelImport();
     Q_INVOKABLE void copyCurrentPageText();
-    Q_INVOKABLE void openProject(const QUrl &fileUrl);
-    Q_INVOKABLE void saveProject(const QUrl &fileUrl);
+    Q_INVOKABLE void openProject(const QUrl &fileUrl) { m_project.open(fileUrl); }
+    Q_INVOKABLE void saveProject(const QUrl &fileUrl) { m_project.save(fileUrl); }
 
 private:
     struct ImportState;
@@ -391,20 +389,14 @@ private:
     void applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult);
     void applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);
-    const ModelProfiles::Role *layoutRole() const;
     QString effectiveParserId() const;
     QString effectiveParserIdFor(const QString &profileId) const;
-    const TextDiff &selectedBlockDiff() const;
     ParserOptions parserOptions() const;
     std::unique_ptr<IOutputParser> makeParser() const;
     void setPageText(int index, const QString &text);
     QString pageText(int index) const;
     QString rebuildPageText(const OcrPage &page) const;
-    IOutputParser::RebuiltPageText currentPageRebuild() const;
-    void invalidateRebuildCache();
-    void updateBlockHighlight();
     void updateBoxesForCurrent();
-    const BoundingBox *selectedBox() const;
 
     // The verification queue's result sources (ADR 164): a decision verdict
     // lands on the effective layer, a block-recognition reply is an OCR
@@ -440,61 +432,7 @@ private:
     // scope reads "1 page", not "all".
     void ensureDefaultSelection();
 
-    // The values behind NOTIFY availabilityChanged; the signal fires only when
-    // one of them actually flips, so a per-block queue update does not make
-    // QML rescan the document (C++-21). The current-page status values ride
-    // along: the work panel's caption binds to them.
-    struct AvailabilityFlags {
-        bool pageVerification = false;
-        bool allPageVerification = false;
-        bool pageProblemRecognition = false;
-        bool allProblemRecognition = false;
-        bool pageBlocksRecognition = false;
-        bool canRecognize = false;
-        bool actionsIdle = false;
-        bool pageOcrModel = false;
-        bool rawPageOcrModel = false;
-        bool blockRecognitionModel = false;
-        bool decisionModel = false;
-        bool layoutModel = false;
-        bool fixModel = false;
-        bool scopeVerification = false;
-        bool scopeBlocksRecognition = false;
-        int currentPageMode = int(PageRecognitionMode::None);
-        int currentPageVerification = int(PageVerification::Incomplete);
-        int selectedPages = 0;
-        int scopedProblemBlocks = 0;
-        bool scopeHasResults = false;
-        bool operator==(const AvailabilityFlags &) const = default;
-    };
-    // The cheap fingerprint of the inputs the flags are computed from. It is
-    // compared before any of the expensive getters runs: the flags cost a
-    // scan of the document, and the queue's chatter must not pay for it
-    // (ADR 208).
-    struct AvailabilityInputs {
-        int docRevision = -1;
-        int cropRevision = -1;
-        int currentPage = -1;
-        int pageSelectionRevision = -1;
-        int verificationFilterRevision = -1;
-        bool importing = false;
-        bool recognitionBusy = false;
-        bool layoutBusy = false;
-        bool checkBusy = false;
-        bool runtimeCanRecognize = false;
-        bool pageOcrModel = false;
-        bool rawPageOcrModel = false;
-        bool blockRecognitionModel = false;
-        bool decisionModel = false;
-        bool layoutModel = false;
-        bool fixModel = false;
-        bool operator==(const AvailabilityInputs &) const = default;
-    };
     void updateAvailability();
-
-    bool collectProjectData(ProjectData *data, QString *error);
-    void applyProjectData(const ProjectData &data);
-    bool projectGuardsBusy() const;
 
 private:
     SettingsStore &m_settings;
@@ -506,9 +444,11 @@ private:
     DocumentModel m_document;
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
+    BlockInspector m_inspector;
     RecognitionController m_recognition;
     VerificationQueueController m_verify;
     LayoutController m_layout;
+    AvailabilityPresenter m_availability;
     bool m_importing = false;
     int m_importDone = 0;
     int m_importTotal = 0;
@@ -526,29 +466,12 @@ private:
     ProblemLog *m_problems = nullptr;  ///< not owned; the full diagnostic texts live here
     ExportController m_export;
     mutable QReadWriteLock m_documentLock;
+    ProjectController m_project;
 
-    int m_selectedBox = -1;
-    BlockTextHighlighter *m_blockHighlighter = nullptr;  ///< owned; created on first attach
-    bool m_highlightDifferences = true;
-    bool m_pageTextEditorFocused = false;
-
-    // Memo of currentPageRebuild() keyed by its inputs (page, the structural
-    // revisions, the shown text) plus parser options: a keystroke re-reads the
-    // rebuild several times (highlight, QML range property), and the regex
-    // pass over the blocks must not run per read.
-    mutable IOutputParser::RebuiltPageText m_rebuildCache;
-    mutable int m_rebuildCachePage = -1;
-    mutable int m_rebuildCacheDocRevision = -1;
-    mutable int m_rebuildCacheCropRevision = -1;
     mutable QString m_parserIdCache;
-    AvailabilityInputs m_availabilityInputs;
     int m_pageSelectionRevision = 0;
     int m_verificationFilterRevision = 0;
-    mutable TextDiff m_diffCache;
-    mutable QString m_diffBefore;
-    mutable QString m_diffAfter;
     mutable QString m_parserIdKey;
-    mutable QString m_rebuildCacheText;
 
     LruImageCache m_previewCache{kPreviewCacheBudgetBytes};
     mutable QMutex m_previewMutex;
@@ -558,11 +481,6 @@ private:
     QMutex m_thumbnailMutex;
     LruImageCache m_thumbnailCache{kThumbnailCacheBudgetBytes};
     QSet<QString> m_reportedUnrenderablePages;
-
-    bool m_projectBusy = false;
-    QUrl m_projectPath;
-    std::shared_ptr<QTemporaryDir> m_projectSessionDir;
-    AvailabilityFlags m_availability;
 
     void notifyPageListGrown();
     void markPageEdited(int index);

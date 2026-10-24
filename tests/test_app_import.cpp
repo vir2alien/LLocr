@@ -33,6 +33,7 @@
 
 #include "app/AppController.h"
 #include "app/BoxListModel.h"
+#include "app/PageListModel.h"
 #include "app/ProblemLog.h"
 #include "app/RecognitionController.h"
 #include "app/UiController.h"
@@ -1057,6 +1058,31 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QCOMPARE(controller.pageCount(), 5);
+    }
+
+    void theAvailabilitySignalFollowsTheFlags()
+    {
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_raster)});
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+        QCOMPARE(controller.pageCount(), 2);
+        // The current page is selected by default.
+        QCOMPARE(controller.selectedPageCount(), 1);
+
+        QSignalSpy spy(&controller, &AppController::availabilityChanged);
+
+        // A page change that moves no flag announces nothing: the pages are
+        // alike, so the availability of the document did not change.
+        controller.setCurrentPage(1);
+        QCOMPARE(spy.count(), 0);
+
+        // The selection is a flag of its own: one announcement, not one per
+        // trigger.
+        auto *pages = qobject_cast<PageListModel *>(controller.pageModel());
+        QVERIFY(pages);
+        pages->clearSelection();
+        QCOMPARE(controller.selectedPageCount(), 0);
+        QCOMPARE(spy.count(), 1);
     }
 #endif  // LLOCR_HAVE_DJVU (asynchronous import path)
 

@@ -527,12 +527,14 @@ self-contained **`.llocr`** file (File menu: «Open project…», «Save project
   edits), `parseNote`, `hasDuplicates`, plus the source reference
   (file id + page index). The current page is restored. App-level settings
   (connection, models, parser, verification prompts) are *not* project state.
-- **Save** (`AppController::saveProject`) snapshots on the GUI thread and
+- **Save** (`AppController::saveProject` → `ProjectController`) snapshots on
+  the GUI thread and
   writes in a worker (`projectBusy` feeds the footer spinner); the file is
   written to a `.tmp` and renamed atomically. A source file that no longer
   exists falls back to the page's resident rendered image; if there is none,
   the save refuses and names the file.
-- **Open** (`AppController::openProject`) extracts in a worker into a session
+- **Open** (`AppController::openProject` → `ProjectController`) extracts in a
+  worker into a session
   `QTemporaryDir` owned by the controller (the extracted sources live as long
   as the document), then rebuilds the document through the public
   `DocumentModel` API (`appendFile`/`removePage`/`movePage`) — the same lazy
@@ -542,3 +544,28 @@ self-contained **`.llocr`** file (File menu: «Open project…», «Save project
 - **Tests** — `test_project_store` (container round-trip, schema validation,
   fallbacks) and `TestAppImport::projectSaveAndReopenRestoresTheWorkingState`
   (end-to-end: recognize → edit → reorder → save → reopen).
+
+## 4.21 The controller facade (ADR 213)
+`AppController` is the ViewModel the QML binds to, and it is a **facade**:
+the domains around it live in their own classes in `src/app/`, and the facade
+forwards their state and signals. The property names, their `NOTIFY` signals
+and the QML bindings are unchanged — the split is invisible to the UI.
+
+- **`BlockInspector`** — the selected block: the two text layers with their
+  verdicts, the diff between them, the block's place in the page text and the
+  paint of the selected range.
+- **`ProjectController`** — the `.llocr` file: reading, writing, the busy flag,
+  the path and the restoration of the document (§4.20).
+- **`AvailabilityPresenter`** — the availability matrix: the twenty flags of
+  the toolbar and the panel, the fingerprint that guards the recomputation
+  (ADR 208) and the toolbar scope (the thumbnail selection).
+- **`VerificationQueueController`** — the verification and fix pipeline: its
+  state and its progress were already its own; the facade only relays the
+  signal.
+- **`LayoutController`** — the markup pass: it owns the layout role of the
+  active profile (the prompt and the parser).
+
+The document, the import, the parser choice and the status line stay in the
+facade — they are its own work. Every new class takes what it needs through
+a `Deps` struct (references and providers), the idiom of the layer.
+

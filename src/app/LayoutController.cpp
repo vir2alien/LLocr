@@ -56,6 +56,16 @@ void LayoutController::layoutPages(const QList<int> &pages, const ImageProvider 
     startNext();
 }
 
+const ModelProfiles::Role *LayoutController::role() const
+{
+    return ModelProfiles::roleFor(m_requestProfiles.activeProfileId(), QStringLiteral("layout"));
+}
+
+bool LayoutController::available() const
+{
+    return role() != nullptr;
+}
+
 void LayoutController::stop()
 {
     m_queue.clear();

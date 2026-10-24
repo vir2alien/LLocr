@@ -1,5 +1,4 @@
 #include "app/AppController.h"
-#include "app/BlockTextHighlighter.h"
 #include "app/LruImageCache.h"
 #include "app/PageIndex.h"
 
@@ -8,16 +7,10 @@
 
 #include <QBuffer>
 #include <QClipboard>
-#include <QCoreApplication>
-#include <QDir>
 #include <QFileInfo>
 #include <QFutureWatcher>
 #include <QGuiApplication>
-#include <QHash>
-#include <QMarginsF>
 #include <QMutex>
-#include <QPageLayout>
-#include <QPageSize>
 #include <QQuickTextDocument>
 #include <QReadWriteLock>
 #include <QRegularExpression>
@@ -34,7 +27,6 @@
 #include "core/LatexText.h"
 #include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"
-#include "core/TextDiff.h"
 #include "models/OcrModel.h"
 
 namespace llocr {
@@ -49,24 +41,31 @@ AppController::AppController(SettingsStore &settings,
                              VerificationPromptStore &verification,
                              QObject *parent)
     : QObject(parent), m_settings(settings), m_runtime(runtime), m_verification(verification), m_checkRequestProfiles(checkRequestProfiles), m_layoutRequestProfiles(layoutRequestProfiles),
-      m_fixRequestProfiles(fixRequestProfiles), m_recognition(
-                                                    settings,
-                                                    runtime,
-                                                    requestProfiles,
-                                                    rawPageOcrRequestProfiles,
-                                                    [this](int index, QString &error) { return pageImage(index, &error); },
-                                                    nullptr,
-                                                    [this](int index, bool batch) {
-                                                        QReadLocker locker(&m_documentLock);
-                                                        if (!m_document.isValidIndex(index))
-                                                            return PageSkip::Unreadable;
-                                                        const DocumentPage &page = m_document.page(index);
-                                                        if (!page.sourceError.isEmpty())
-                                                            return PageSkip::Unreadable;
-                                                        if (batch && page.recognized)
-                                                            return PageSkip::AlreadyRecognized;
-                                                        return PageSkip::None;
-                                                    }),
+      m_fixRequestProfiles(fixRequestProfiles), m_inspector({m_document,
+                                                             [this] { return m_currentPage; },
+                                                             [this] { return m_docRevision; },
+                                                             [this] { return m_cropRevision; },
+                                                             [this](int index) { return pageText(index); },
+                                                             [this] { return makeParser(); }},
+                                                            this),
+      m_recognition(
+          settings,
+          runtime,
+          requestProfiles,
+          rawPageOcrRequestProfiles,
+          [this](int index, QString &error) { return pageImage(index, &error); },
+          nullptr,
+          [this](int index, bool batch) {
+              QReadLocker locker(&m_documentLock);
+              if (!m_document.isValidIndex(index))
+                  return PageSkip::Unreadable;
+              const DocumentPage &page = m_document.page(index);
+              if (!page.sourceError.isEmpty())
+                  return PageSkip::Unreadable;
+              if (batch && page.recognized)
+                  return PageSkip::AlreadyRecognized;
+              return PageSkip::None;
+          }),
       m_verify({m_document,
                 verification,
                 checkRequestProfiles,
@@ -76,12 +75,44 @@ AppController::AppController(SettingsStore &settings,
                 [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
                 [this]() { return m_recognition.busy(); }},
                this),
-      m_layout(layoutRequestProfiles, runtime, this),
-      m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this)
+      m_layout(layoutRequestProfiles, runtime, this), m_availability({m_document,
+                                                                      m_pageModel,
+                                                                      m_verify,
+                                                                      runtime,
+                                                                      verification,
+                                                                      [this] { return m_currentPage; },
+                                                                      [this] { return m_importing; },
+                                                                      [this] { return m_recognition.busy(); },
+                                                                      [this] { return m_layout.busy(); },
+                                                                      [this] { return checkBusy(); }},
+                                                                     this),
+      m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this),
+      m_project({m_document,
+                 m_pageModel,
+                 m_boxModel,
+                 m_editStore,
+                 m_documentLock,
+                 [this] { return m_currentPage; },
+                 [this](int index) {
+                     m_currentPage = index;
+                     m_pageModel.setCurrent(index);
+                 },
+                 [this] { return m_recognition.busy() || m_layout.busy() || m_importing || m_export.exporting() || m_verify.queueActive() || m_verify.checkBusy(); },
+                 [this](const StatusMessage &message) { setStatus(message); },
+                 [this](const StatusMessage &message, ProblemLog::Severity severity) { reportProblem(message, severity); },
+                 [this] { m_inspector.resetSelection(); },
+                 [this] { refreshAllPageVerifications(); },
+                 [this] { ensureDefaultSelection(); },
+                 [this] { updateBoxesForCurrent(); },
+                 [this] { notifyDocumentChanged(); }},
+                this)
 {
-    // The panel's diff view follows the block: a new selection, a new
-    // correction or a new verdict changes what the panel tints.
-    connect(this, &AppController::selectedBoxChanged, this, &AppController::blockDiffChanged);
+    // The inspector owns the selected block: its signals are the facade's.
+    connect(&m_inspector, &BlockInspector::selectedBoxChanged, this, &AppController::selectedBoxChanged);
+    connect(&m_inspector, &BlockInspector::blockTextRangeChanged, this, &AppController::blockTextRangeChanged);
+    connect(&m_inspector, &BlockInspector::blockDiffChanged, this, &AppController::blockDiffChanged);
+    connect(&m_inspector, &BlockInspector::highlightDifferencesChanged, this, &AppController::highlightDifferencesChanged);
+    connect(&m_inspector, &BlockInspector::pageTextEditorFocusedChanged, this, &AppController::pageTextEditorFocusedChanged);
 
     connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
         emit busyChanged();
@@ -102,16 +133,16 @@ AppController::AppController(SettingsStore &settings,
     connect(qobject_cast<VerificationBlocksModel *>(verification.blockModel()), &VerificationBlocksModel::countsChanged, this, verificationFilterChanged);
     connect(&verification, &VerificationPromptStore::modelChanged, this, verificationFilterChanged);
 
-    connect(&m_verify, &VerificationQueueController::stateChanged, this, [this]() {
-        emit checkStateChanged();
-        updateAvailability();
-    });
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::checkStateChanged);
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::updateAvailability);
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::verificationStarted, this, &AppController::applyVerificationStarted);
     connect(&m_verify, &VerificationQueueController::blockVerified, this, &AppController::applyVerdictToBox);
     connect(&m_verify, &VerificationQueueController::blockRecognized, this, &AppController::applyRecognitionToBox);
     connect(&m_verify, &VerificationQueueController::blockFixed, this, &AppController::applyFixToBox);
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
+
+    connect(&m_availability, &AvailabilityPresenter::changed, this, &AppController::availabilityChanged);
 
     connect(this, &AppController::pageChanged, this, &AppController::updateAvailability);
     connect(this, &AppController::documentChanged, this, &AppController::updateAvailability);
@@ -123,16 +154,17 @@ AppController::AppController(SettingsStore &settings,
         updateAvailability();
     });
 
-    connect(&m_layout, &LayoutController::busyChanged, this, [this]() {
-        emit layoutStateChanged();
-        updateAvailability();
-    });
+    connect(&m_layout, &LayoutController::busyChanged, this, &AppController::layoutStateChanged);
+    connect(&m_layout, &LayoutController::busyChanged, this, &AppController::updateAvailability);
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_layout, &LayoutController::progressChanged, this, &AppController::layoutProgressChanged);
     connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
     connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
 
     connect(&m_export, &ExportController::exportingChanged, this, &AppController::exportingChanged);
+
+    connect(&m_project, &ProjectController::busyChanged, this, &AppController::projectBusyChanged);
+    connect(&m_project, &ProjectController::pathChanged, this, &AppController::projectPathChanged);
     connect(&m_export, &ExportController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
 
     connect(this, &AppController::pageChanged, this, [this]() {
@@ -153,15 +185,14 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_runtime, &RuntimeController::busyStateChanged, this, [this]() { emit configChanged(); });
     connect(&m_runtime, &RuntimeController::configValidChanged, this, [this]() { emit configChanged(); });
     connect(&m_runtime, &RuntimeController::taskModelsChanged, this, &AppController::updateAvailability);
-    connect(this, &AppController::resultChanged, this, &AppController::blockTextRangeChanged);
-    connect(this, &AppController::editStateChanged, this, &AppController::blockTextRangeChanged);
-    connect(this, &AppController::selectedBoxChanged, this, &AppController::blockTextRangeChanged);
+    connect(this, &AppController::resultChanged, &m_inspector, &BlockInspector::announceTextRangeChanged);
+    connect(this, &AppController::editStateChanged, &m_inspector, &BlockInspector::announceTextRangeChanged);
     // The parser options shape the block-to-text mapping; the memoized rebuild
     // has no revision to key on for them.
-    connect(&m_settings, &SettingsStore::parserIdChanged, this, &AppController::invalidateRebuildCache);
-    connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, &AppController::invalidateRebuildCache);
-    connect(&m_settings, &SettingsStore::keepPageNumbersChanged, this, &AppController::invalidateRebuildCache);
-    connect(&m_settings, &SettingsStore::tablesAsHtmlChanged, this, &AppController::invalidateRebuildCache);
+    connect(&m_settings, &SettingsStore::parserIdChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
+    connect(&m_settings, &SettingsStore::modelRecipeIdChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
+    connect(&m_settings, &SettingsStore::keepPageNumbersChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
+    connect(&m_settings, &SettingsStore::tablesAsHtmlChanged, &m_inspector, &BlockInspector::invalidateRebuildCache);
 }
 
 AppController::~AppController() = default;
@@ -292,124 +323,6 @@ QString AppController::rebuildPageText(const OcrPage &page) const
     return parser ? parser->rebuildText(page) : page.text;
 }
 
-IOutputParser::RebuiltPageText AppController::currentPageRebuild() const
-{
-    if (!m_document.isValidIndex(m_currentPage))
-        return {};
-    const DocumentPage &page = m_document.page(m_currentPage);
-    if (page.result.pages.isEmpty())
-        return {};
-    const QString shown = pageText(m_currentPage);
-    if (m_rebuildCachePage == m_currentPage && m_rebuildCacheDocRevision == m_docRevision && m_rebuildCacheCropRevision == m_cropRevision && m_rebuildCacheText == shown)
-        return m_rebuildCache;
-
-    const auto parser = makeParser();
-    if (!parser)
-        return {};
-    IOutputParser::RebuiltPageText rebuild = parser->rebuildTextWithRanges(page.result.pages.first());
-
-    if (!rebuild.ranges.isEmpty() && rebuild.text != shown) {
-        QList<BlockTextRange> reanchored;
-        int searchFrom = 0;
-        for (const BlockTextRange &range : rebuild.ranges) {
-            const QString blockText = rebuild.text.mid(range.start, range.length);
-            if (blockText.isEmpty())
-                continue;
-            const int pos = shown.indexOf(blockText, searchFrom);
-            if (pos < 0)
-                continue;
-            reanchored.append({range.boxIndex, pos, range.length});
-            searchFrom = pos + range.length;
-        }
-        rebuild.text = shown;
-        rebuild.ranges = reanchored;
-    }
-
-    m_rebuildCachePage = m_currentPage;
-    m_rebuildCacheDocRevision = m_docRevision;
-    m_rebuildCacheCropRevision = m_cropRevision;
-    m_rebuildCacheText = shown;
-    m_rebuildCache = rebuild;
-    return rebuild;
-}
-
-bool AppController::blockTextMapped() const
-{
-    return !currentPageRebuild().ranges.isEmpty();
-}
-
-QList<int> AppController::blockTextRange(int boxIndex) const
-{
-    const auto rebuild = currentPageRebuild();
-    for (const BlockTextRange &range : rebuild.ranges) {
-        if (range.boxIndex == boxIndex)
-            return {range.start, range.length};
-    }
-    return {};
-}
-
-int AppController::boxIndexForTextPosition(int position) const
-{
-    const auto rebuild = currentPageRebuild();
-    if (rebuild.ranges.isEmpty())
-        return -1;
-    for (const BlockTextRange &range : rebuild.ranges) {
-        if (position >= range.start && position < range.start + range.length)
-            return range.boxIndex;
-    }
-    if (position == rebuild.text.size())
-        return rebuild.ranges.last().boxIndex;
-    return -1;
-}
-
-void AppController::attachBlockTextHighlighter(QObject *textDocument, const QColor &color)
-{
-    QTextDocument *document = nullptr;
-    if (auto *wrapper = qobject_cast<QQuickTextDocument *>(textDocument))
-        document = wrapper->textDocument();
-    else if (auto *plain = qobject_cast<QTextDocument *>(textDocument))
-        document = plain;
-    if (!document)
-        return;
-    if (!m_blockHighlighter) {
-        m_blockHighlighter = new BlockTextHighlighter(this);
-        connect(this, &AppController::blockTextRangeChanged, this, &AppController::updateBlockHighlight);
-    }
-    m_blockHighlighter->setColor(color);
-    m_blockHighlighter->setDocument(document);
-    updateBlockHighlight();
-}
-
-void AppController::invalidateRebuildCache()
-{
-    if (m_rebuildCachePage == -1)
-        return;  // nothing memoized — the mapping cannot have changed
-    m_rebuildCachePage = -1;
-    m_rebuildCacheDocRevision = -1;
-    m_rebuildCacheCropRevision = -1;
-    m_rebuildCacheText.clear();
-    m_rebuildCache = {};
-    // The ranges the QML property and the highlighter see come from the memo;
-    // without this announcement they would wait for the next edit.
-    emit blockTextRangeChanged();
-}
-
-void AppController::updateBlockHighlight()
-{
-    if (!m_blockHighlighter)
-        return;
-    if (m_selectedBox < 0) {
-        // No selected block — the highlight is off; do not pay a page rebuild
-        // for it on every keystroke.
-        m_blockHighlighter->setStart(-1);
-        m_blockHighlighter->setLength(0);
-        return;
-    }
-    const QList<int> range = blockTextRange(m_selectedBox);
-    m_blockHighlighter->setStart(range.isEmpty() ? -1 : range.at(0));
-    m_blockHighlighter->setLength(range.isEmpty() ? 0 : range.at(1));
-}
-
 void AppController::setPageText(int index, const QString &text)
 {
     if (!m_document.isValidIndex(index))
@@ -438,13 +351,6 @@ bool AppController::hasResult() const
             return true;
     }
     return false;
-}
-
-bool AppController::canRecognize() const
-{
-    if (m_document.isEmpty() || m_recognition.busy() || m_layout.busy() || m_importing || m_verify.checkBusy())
-        return false;
-    return m_runtime.canRecognize(true);
 }
 
 QString AppController::currentPageWarning() const
@@ -1036,10 +942,10 @@ bool AppController::removeBlock(int boxIndex)
         m_editStore.reset(m_currentPage, rebuilt);
     }
 
-    if (m_selectedBox == boxIndex)
+    if (m_inspector.selectedBoxIndex() == boxIndex)
         setSelectedBoxIndex(-1);
-    else if (m_selectedBox > boxIndex)
-        setSelectedBoxIndex(m_selectedBox - 1);
+    else if (m_inspector.selectedBoxIndex() > boxIndex)
+        setSelectedBoxIndex(m_inspector.selectedBoxIndex() - 1);
 
     emit resultChanged();
     emit editStateChanged();
@@ -1103,118 +1009,21 @@ bool AppController::addBlockAt(const QString &type, qreal x, qreal y, qreal widt
     return true;
 }
 
-const BoundingBox *AppController::selectedBox() const
-{
-    if (m_selectedBox < 0 || !m_document.isValidIndex(m_currentPage))
-        return nullptr;
-    const DocumentPage &page = m_document.page(m_currentPage);
-    if (!page.recognized || page.result.pages.isEmpty())
-        return nullptr;
-    const QList<BoundingBox> &boxes = page.result.pages[0].boxes;
-    if (m_selectedBox >= boxes.size())
-        return nullptr;
-    return &boxes.at(m_selectedBox);
-}
-
-QString AppController::selectedBlockText() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? box->text : QString();
-}
-
-QString AppController::selectedBlockLabel() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? box->label : QString();
-}
-
-int AppController::selectedBlockCheckStatus() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? static_cast<int>(box->checkStatus) : 0;
-}
-
-QString AppController::selectedBlockCorrected() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? box->correctedText : QString();
-}
-
-int AppController::selectedBlockCorrectedCheckStatus() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? static_cast<int>(box->correctedCheckStatus) : 0;
-}
-
-double AppController::selectedBlockConfidence() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? box->confidence : -1.0;
-}
-
-double AppController::selectedBlockCorrectedConfidence() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? box->correctedConfidence : -1.0;
-}
-
-int AppController::selectedBlockFixStatus() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? static_cast<int>(box->fixStatus) : 0;
-}
-
-int AppController::selectedBlockSyntaxProblem() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? static_cast<int>(box->syntaxProblem) : 0;
-}
-
-bool AppController::selectedBlockUsesCorrected() const
-{
-    const BoundingBox *box = selectedBox();
-    return box ? box->useCorrectedText : false;
-}
-
-QVariantList AppController::selectedBlockTextRange() const
-{
-    const QList<int> range = blockTextRange(m_selectedBox);
-    if (range.isEmpty())
-        return {};
-    return {range.at(0), range.at(1)};
-}
-
-void AppController::setSelectedBoxIndex(int index)
-{
-    int clamped = index;
-    if (!m_document.isValidIndex(m_currentPage) || !m_document.page(m_currentPage).recognized) {
-        clamped = -1;
-    } else if (index != -1) {
-        const int size = m_document.page(m_currentPage).result.pages.isEmpty() ? 0 : m_document.page(m_currentPage).result.pages[0].boxes.size();
-        if (index < 0 || index >= size)
-            clamped = -1;
-    }
-    if (m_selectedBox == clamped)
-        return;
-    m_selectedBox = clamped;
-    emit selectedBoxChanged();
-}
-
 void AppController::checkSelectedBlock()
 {
-    if (m_selectedBox < 0)
+    if (m_inspector.selectedBoxIndex() < 0)
         return;
-    m_verify.checkBlock(m_currentPage, m_selectedBox);
+    m_verify.checkBlock(m_currentPage, m_inspector.selectedBoxIndex());
 }
 
 void AppController::revertBlockCorrection()
 {
-    const BoundingBox *box = selectedBox();
+    const BoundingBox *box = m_inspector.selectedBox();
     if (!box || !BoxTransitions::hasCorrection(*box))
         return;
 
     const int pageIndex = m_currentPage;
-    const int boxIndex = m_selectedBox;
+    const int boxIndex = m_inspector.selectedBoxIndex();
     if (!applyBoxTransition(pageIndex, boxIndex, BoxTransitions::correctionReverted))
         return;
 
@@ -1231,7 +1040,7 @@ void AppController::revertBlockCorrection()
 void AppController::setSelectedBlockUsesCorrected(bool corrected)
 {
     const int pageIndex = m_currentPage;
-    const int boxIndex = m_selectedBox;
+    const int boxIndex = m_inspector.selectedBoxIndex();
     {
         QReadLocker locker(&m_documentLock);
         if (!m_document.isValidIndex(pageIndex) || m_document.page(pageIndex).result.pages.isEmpty())
@@ -1254,11 +1063,11 @@ void AppController::setSelectedBlockUsesCorrected(bool corrected)
 
 void AppController::approveSelectedBlock()
 {
-    if (m_selectedBox < 0)
+    if (m_inspector.selectedBoxIndex() < 0)
         return;
 
     const int pageIndex = m_currentPage;
-    const int boxIndex = m_selectedBox;
+    const int boxIndex = m_inspector.selectedBoxIndex();
     if (!applyBoxTransition(pageIndex, boxIndex, BoxTransitions::blockApproved))
         return;
 
@@ -1270,16 +1079,16 @@ void AppController::approveSelectedBlock()
 
 void AppController::revertBlockApproval()
 {
-    if (m_selectedBox < 0)
+    if (m_inspector.selectedBoxIndex() < 0)
         return;
 
     // Nothing to undo: the block in view carries no confirmation.
-    const BoundingBox *box = selectedBox();
+    const BoundingBox *box = m_inspector.selectedBox();
     if (!box || BoxTransitions::effectiveCheckStatus(*box) != BoxCheckStatus::Approved)
         return;
 
     const int pageIndex = m_currentPage;
-    const int boxIndex = m_selectedBox;
+    const int boxIndex = m_inspector.selectedBoxIndex();
     if (!applyBoxTransition(pageIndex, boxIndex, BoxTransitions::blockApprovalReverted))
         return;
 
@@ -1307,7 +1116,7 @@ void AppController::selectNextProblemBlock()
         const QList<BoundingBox> &boxes = m_document.page(pageIndex).result.pages.first().boxes;
         // The blocks the decision model left open, in reading order; the search
         // starts behind the current one so the operator moves forward.
-        for (int index = m_selectedBox + 1; index < boxes.size(); ++index) {
+        for (int index = m_inspector.selectedBoxIndex() + 1; index < boxes.size(); ++index) {
             const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(boxes.at(index));
             if (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review) {
                 next = index;
@@ -1322,11 +1131,11 @@ void AppController::selectNextProblemBlock()
 
 void AppController::setSelectedBlockText(const QString &text, bool correctedLayer)
 {
-    if (m_selectedBox < 0)
+    if (m_inspector.selectedBoxIndex() < 0)
         return;
 
     const int pageIndex = m_currentPage;
-    const int boxIndex = m_selectedBox;
+    const int boxIndex = m_inspector.selectedBoxIndex();
     if (!applyBoxTransition(pageIndex, boxIndex, [&text, correctedLayer](BoundingBox &box) { BoxTransitions::blockTextEdited(box, text, correctedLayer); }))
         return;
 
@@ -1336,68 +1145,6 @@ void AppController::setSelectedBlockText(const QString &text, bool correctedLaye
     updateAvailability();
     emit checkStateChanged();
     emit resultChanged();
-}
-
-// The diff of the selected block: the removed and the added ranges are two
-// views of one comparison, and the comparison itself is quadratic — so it is
-// computed once for the pair of texts and kept until the texts change
-// (ADR 208).
-const TextDiff &AppController::selectedBlockDiff() const
-{
-    const BoundingBox *box = selectedBox();
-    const QString before = box ? box->text : QString();
-    const QString after = box ? box->correctedText : QString();
-    if (before != m_diffBefore || after != m_diffAfter) {
-        m_diffBefore = before;
-        m_diffAfter = after;
-        m_diffCache = diffText(before, after);
-    }
-    return m_diffCache;
-}
-
-QVariantList AppController::selectedBlockRemovedRanges() const
-{
-    const BoundingBox *box = selectedBox();
-    // Without a correction there is nothing to compare: the diff of a block
-    // and an empty text would tint the whole block.
-    if (!box || box->correctedText.isEmpty())
-        return {};
-    const TextDiff &diff = selectedBlockDiff();
-    QVariantList ranges;
-    ranges.reserve(diff.removed.size());
-    for (const DiffRange &range : diff.removed)
-        ranges.append(QVariantMap{{QStringLiteral("start"), range.start}, {QStringLiteral("length"), range.length}});
-    return ranges;
-}
-
-QVariantList AppController::selectedBlockAddedRanges() const
-{
-    const BoundingBox *box = selectedBox();
-    if (!box || box->correctedText.isEmpty())
-        return {};
-    const TextDiff &diff = selectedBlockDiff();
-    QVariantList ranges;
-    ranges.reserve(diff.added.size());
-    for (const DiffRange &range : diff.added)
-        ranges.append(QVariantMap{{QStringLiteral("start"), range.start}, {QStringLiteral("length"), range.length}});
-    return ranges;
-}
-
-void AppController::setHighlightDifferences(bool enabled)
-{
-    if (m_highlightDifferences == enabled)
-        return;
-    m_highlightDifferences = enabled;
-    emit highlightDifferencesChanged();
-    emit blockDiffChanged();
-}
-
-void AppController::setPageTextEditorFocused(bool focused)
-{
-    if (m_pageTextEditorFocused == focused)
-        return;
-    m_pageTextEditorFocused = focused;
-    emit pageTextEditorFocusedChanged();
 }
 
 void AppController::checkEnabledBlocksOnPage()
@@ -1451,7 +1198,7 @@ void AppController::stopCheck()
 
 void AppController::recognizeSelectedBlock()
 {
-    m_verify.recheckBlock(m_currentPage, m_selectedBox);
+    m_verify.recheckBlock(m_currentPage, m_inspector.selectedBoxIndex());
 }
 
 void AppController::recognizeProblemBlocksOnPage()
@@ -1473,29 +1220,14 @@ void AppController::recognizeAllBlocksOnPage()
 
 void AppController::fixSelectedBlock()
 {
-    if (m_selectedBox < 0)
+    if (m_inspector.selectedBoxIndex() < 0)
         return;
-    m_verify.fixBlock(m_currentPage, m_selectedBox);
+    m_verify.fixBlock(m_currentPage, m_inspector.selectedBoxIndex());
 }
 
 void AppController::fixAllProblemBlocks()
 {
     m_verify.fixAllProblemBlocks();
-}
-
-const ModelProfiles::Role *AppController::layoutRole() const
-{
-    return ModelProfiles::roleFor(m_layoutRequestProfiles.activeProfileId(), QStringLiteral("layout"));
-}
-
-bool AppController::layoutAvailable() const
-{
-    return layoutRole() != nullptr;
-}
-
-bool AppController::pageBlocksRecognitionSupported() const
-{
-    return m_verify.pageBlocksRecognitionSupported(m_currentPage);
 }
 
 void AppController::layoutCurrentPage()
@@ -1529,7 +1261,7 @@ void AppController::startLayout(const QList<int> &pages)
 {
     if (pages.isEmpty() || m_layout.busy() || m_recognition.busy() || m_importing || checkBusy())
         return;
-    const ModelProfiles::Role *role = layoutRole();
+    const ModelProfiles::Role *role = m_layout.role();
     if (!role) {
         setStatus(StatusMessage::translate("AppController", "The layout model does not support page markup."));
         return;
@@ -1547,7 +1279,7 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
     if (!m_document.isValidIndex(pageIndex) || rawText.isEmpty())
         return;
 
-    const ModelProfiles::Role *role = layoutRole();
+    const ModelProfiles::Role *role = m_layout.role();
     if (!role || role->parser.isEmpty())
         return;
 
@@ -1617,185 +1349,20 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
     setStatus(StatusMessage::translate("AppController", "Page %1 marked up: %2 block(s).").arg(pageIndex + 1).arg(blockCount));
 }
 
-bool AppController::pageVerificationSupported() const
-{
-    return m_verify.pageVerificationSupported(m_currentPage);
-}
-
-bool AppController::allPageVerificationSupported() const
-{
-    return m_verify.allPageVerificationSupported();
-}
-
-int AppController::currentPageRecognitionMode() const
-{
-    return m_document.isValidIndex(m_currentPage) ? int(m_document.page(m_currentPage).recognitionMode) : int(PageRecognitionMode::None);
-}
-
-int AppController::currentPageVerification() const
-{
-    if (!m_document.isValidIndex(m_currentPage) || m_document.page(m_currentPage).result.pages.isEmpty())
-        return int(PageVerification::Incomplete);
-    return int(PageStatus::verificationAggregate(m_document.page(m_currentPage).result.pages.first(), [this](const QString &label) { return m_verification.isTypeEnabled(label); }));
-}
-
 void AppController::updateAvailability()
 {
-    // The inputs are cheap, the flags below are not: the guard comes first,
-    // so a queue that chatters does not rescan the document every time
-    // (ADR 208).
-    const AvailabilityInputs inputs{
-        m_docRevision,
-        m_cropRevision,
-        m_currentPage,
-        m_pageSelectionRevision,
-        m_verificationFilterRevision,
-        m_importing,
-        m_recognition.busy(),
-        m_layout.busy(),
-        checkBusy(),
-        m_runtime.canRecognize(true),
-        pageOcrModelAvailable(),
-        rawPageOcrModelAvailable(),
-        blockRecognitionModelAvailable(),
-        decisionModelAvailable(),
-        layoutModelAvailable(),
-        fixModelAvailable(),
-    };
-    if (inputs == m_availabilityInputs)
-        return;
-    m_availabilityInputs = inputs;
-
-    const AvailabilityFlags current{
-        pageVerificationSupported(),
-        allPageVerificationSupported(),
-        pageProblemRecognitionSupported(),
-        allProblemRecognitionSupported(),
-        pageBlocksRecognitionSupported(),
-        canRecognize(),
-        actionsIdle(),
-        inputs.pageOcrModel,
-        inputs.rawPageOcrModel,
-        inputs.blockRecognitionModel,
-        inputs.decisionModel,
-        inputs.layoutModel,
-        inputs.fixModel,
-        scopeVerificationSupported(),
-        scopeBlocksRecognitionSupported(),
-        currentPageRecognitionMode(),
-        currentPageVerification(),
-        selectedPageCount(),
-        scopedPendingFixCount(),
-        scopeHasResults(),
-    };
-    if (current == m_availability)
-        return;
-    m_availability = current;
-    emit availabilityChanged();
-}
-
-bool AppController::pageProblemRecognitionSupported() const
-{
-    return m_verify.pageRecheckSupported(m_currentPage);
-}
-
-bool AppController::pageOcrModelAvailable() const
-{
-    return m_runtime.taskModelAvailable(QStringLiteral("pageOcr"));
-}
-
-bool AppController::rawPageOcrModelAvailable() const
-{
-    return m_runtime.taskModelAvailable(QStringLiteral("rawPageOcr"));
-}
-
-bool AppController::blockRecognitionModelAvailable() const
-{
-    return m_runtime.taskModelAvailable(QStringLiteral("blockRecognition"));
-}
-
-bool AppController::decisionModelAvailable() const
-{
-    return m_runtime.taskModelAvailable(QStringLiteral("decision"));
-}
-
-bool AppController::layoutModelAvailable() const
-{
-    return m_runtime.taskModelAvailable(QStringLiteral("layout"));
-}
-
-bool AppController::fixModelAvailable() const
-{
-    return m_runtime.taskModelAvailable(QStringLiteral("fix"));
+    m_availability.refresh({m_docRevision, m_cropRevision, m_pageSelectionRevision, m_verificationFilterRevision});
 }
 
 QList<int> AppController::scopePages() const
 {
-    QList<int> pages;
-    const bool all = m_pageModel.selectedCount() == 0;
-    for (int i = 0; i < m_document.pageCount(); ++i) {
-        if (!all && !m_pageModel.data(m_pageModel.index(i), PageListModel::SelectedRole).toBool())
-            continue;
-        pages.append(i);
-    }
-    return pages;
+    return m_availability.scopePages();
 }
 
 void AppController::ensureDefaultSelection()
 {
     if (m_pageModel.selectedCount() == 0 && m_document.isValidIndex(m_currentPage))
         m_pageModel.selectSingle(m_currentPage);
-}
-
-int AppController::selectedPageCount() const
-{
-    return m_pageModel.selectedCount();
-}
-
-bool AppController::scopeHasResults() const
-{
-    for (const int pageIndex : scopePages()) {
-        if (m_document.isValidIndex(pageIndex) && m_document.page(pageIndex).recognized)
-            return true;
-    }
-    return false;
-}
-
-int AppController::scopedPendingFixCount() const
-{
-    int total = 0;
-    for (const int pageIndex : scopePages()) {
-        if (!m_document.isValidIndex(pageIndex))
-            continue;
-        const DocumentPage &page = m_document.page(pageIndex);
-        if (!page.recognized || page.result.pages.isEmpty())
-            continue;
-        total += PageStatus::pendingFixCount(page.result.pages.first());
-    }
-    return total;
-}
-
-bool AppController::scopeVerificationSupported() const
-{
-    for (const int pageIndex : scopePages()) {
-        if (m_verify.pageVerificationSupported(pageIndex))
-            return true;
-    }
-    return false;
-}
-
-bool AppController::scopeBlocksRecognitionSupported() const
-{
-    for (const int pageIndex : scopePages()) {
-        if (m_verify.pageBlocksRecognitionSupported(pageIndex))
-            return true;
-    }
-    return false;
-}
-
-bool AppController::allProblemRecognitionSupported() const
-{
-    return m_verify.allPageRecheckSupported();
 }
 
 bool AppController::applyBoxTransition(int pageIndex, int boxIndex, const std::function<void(BoundingBox &)> &transition)
@@ -1821,8 +1388,8 @@ bool AppController::applyBoxTransition(int pageIndex, int boxIndex, const std::f
 
     if (pageIndex == m_currentPage) {
         m_boxModel.updateBoxState(boxIndex, updated);
-        if (m_selectedBox == boxIndex)
-            emit selectedBoxChanged();
+        if (m_inspector.selectedBoxIndex() == boxIndex)
+            m_inspector.blockStateChanged();
     }
     refreshPageVerification(pageIndex);
     return true;
@@ -2007,6 +1574,36 @@ QStringList AppController::exportNameFilters() const
     return filters;
 }
 
+bool AppController::blockTextMapped() const
+{
+    return m_inspector.blockTextMapped();
+}
+
+QList<int> AppController::blockTextRange(int boxIndex) const
+{
+    return m_inspector.blockTextRange(boxIndex);
+}
+
+int AppController::boxIndexForTextPosition(int position) const
+{
+    return m_inspector.boxIndexForTextPosition(position);
+}
+
+void AppController::attachBlockTextHighlighter(QObject *textDocument, const QColor &color)
+{
+    m_inspector.attachBlockTextHighlighter(textDocument, color);
+}
+
+void AppController::setHighlightDifferences(bool enabled)
+{
+    m_inspector.setHighlightDifferences(enabled);
+}
+
+void AppController::setPageTextEditorFocused(bool focused)
+{
+    m_inspector.setPageTextEditorFocused(focused);
+}
+
 void AppController::setStatus(const StatusMessage &message)
 {
     if (m_statusMessage == message)
@@ -2106,335 +1703,6 @@ QString AppController::resolveImagesForPreview(const QString &markdown)
     m_previewCacheText = markdown;
     m_previewCacheResult = result;
     return result;
-}
-
-QString AppController::projectFileName() const
-{
-    return m_projectPath.isEmpty() ? QString() : QFileInfo(m_projectPath.toLocalFile()).fileName();
-}
-
-bool AppController::projectGuardsBusy() const
-{
-    return m_recognition.busy() || m_layout.busy() || m_importing || m_export.exporting() || m_projectBusy || m_verify.queueActive() || m_verify.checkBusy();
-}
-
-bool AppController::collectProjectData(ProjectData *data, QString *error)
-{
-    QWriteLocker locker(&m_documentLock);
-    data->currentPage = m_currentPage;
-
-    QHash<QString, int> sourceIds;
-    for (int i = 0; i < m_document.pageCount(); ++i) {
-        const DocumentPage &page = m_document.page(i);
-        const QString key = QDir::fromNativeSeparators(QFileInfo(page.sourcePath).absoluteFilePath());
-        int id = sourceIds.value(key, -1);
-        if (id < 0) {
-            ProjectSource source;
-            source.id = data->sources.size();
-            source.originalName = QFileInfo(key).fileName();
-            source.typeName = ProjectStore::sourceTypeKey(page.sourceType);
-            if (QFileInfo::exists(key)) {
-                source.sourcePath = key;
-            } else if (!page.image.isNull()) {
-                // The source file is gone (a temp-dir import, a removed file);
-                // embed the rendered copy the page still holds.
-                source.fallbackImage = page.image;
-            } else {
-                if (error)
-                    *error = QCoreApplication::translate("AppController", "The source file %1 is gone, and the page has no rendered copy to embed.").arg(source.originalName);
-                return false;
-            }
-            id = source.id;
-            sourceIds.insert(key, id);
-            data->sources.append(source);
-        }
-
-        ProjectPageData entry;
-        entry.sourceId = id;
-        entry.sourcePageIndex = page.sourcePageIndex;
-        entry.recognized = page.recognized;
-        entry.recognitionMode = page.recognitionMode;
-        entry.hasDuplicates = !page.result.pages.isEmpty() && page.result.pages.first().hasDuplicates;
-        entry.text = page.result.text;
-        entry.parseNote = page.parseNote;
-        entry.boxes = page.result.pages.isEmpty() ? QList<BoundingBox>() : page.result.pages.first().boxes;
-        if (page.recognized) {
-            entry.baseline = m_editStore.baseline(i);
-            entry.edited = m_editStore.isEdited(i);
-        }
-        data->pages.append(entry);
-    }
-    return true;
-}
-
-void AppController::applyProjectData(const ProjectData &data)
-{
-    {
-        QWriteLocker locker(&m_documentLock);
-        m_document.clear();
-    }
-    m_editStore.clear();
-    m_pageModel.clear();
-    m_boxModel.setBoxes({});
-    m_selectedBox = -1;
-    m_currentPage = 0;
-
-    struct Occurrence {
-        int first = 0;
-        int count = 0;
-        QSet<int> used;
-    };
-    QHash<int, QList<Occurrence>> occurrences;
-    QList<int> mapped(data.pages.size(), -1);
-
-    QHash<int, int> sourceIndexById;
-    for (int i = 0; i < data.sources.size(); ++i)
-        sourceIndexById.insert(data.sources.at(i).id, i);
-
-    QStringList skipped;
-    for (int p = 0; p < data.pages.size(); ++p) {
-        const ProjectPageData &entry = data.pages.at(p);
-        const int sourceIndex = sourceIndexById.value(entry.sourceId, -1);
-        if (sourceIndex < 0) {
-            skipped.append(QString::number(p + 1));
-            continue;
-        }
-        const ProjectSource &source = data.sources.at(sourceIndex);
-        if (!source.available) {
-            skipped.append(QString::number(p + 1));
-            continue;
-        }
-
-        int index = -1;
-        for (Occurrence &range : occurrences[sourceIndex]) {
-            const int slot = entry.sourcePageIndex >= 0 ? entry.sourcePageIndex : 0;
-            if (slot < range.count && !range.used.contains(slot)) {
-                range.used.insert(slot);
-                index = range.first + slot;
-                break;
-            }
-        }
-        if (index < 0) {
-            const int before = m_document.pageCount();
-            QString appendError;
-            {
-                QWriteLocker locker(&m_documentLock);
-                m_document.appendFile(source.extractedPath, &appendError);
-            }
-            const int added = m_document.pageCount() - before;
-            if (added <= 0) {
-                skipped.append(QString::number(p + 1));
-                reportProblem(StatusMessage::literal(appendError));
-                continue;
-            }
-            Occurrence range;
-            range.first = before;
-            range.count = added;
-            const int slot = entry.sourcePageIndex >= 0 ? entry.sourcePageIndex : 0;
-            if (slot < added) {
-                range.used.insert(slot);
-                index = before + slot;
-            }
-            occurrences[sourceIndex].append(range);
-        }
-        mapped[p] = index;
-    }
-
-    QList<int> kept;
-    QList<int> savedIndexForSlot;
-    for (int p = 0; p < mapped.size(); ++p) {
-        if (mapped.at(p) >= 0) {
-            kept.append(mapped.at(p));
-            savedIndexForSlot.append(p);
-        }
-    }
-    const QSet<int> keepSet(kept.cbegin(), kept.cend());
-    {
-        QWriteLocker locker(&m_documentLock);
-        for (int i = m_document.pageCount() - 1; i >= 0; --i) {
-            if (!keepSet.contains(i))
-                m_document.removePage(i);
-        }
-    }
-    QList<int> sortedKept = kept;
-    std::sort(sortedKept.begin(), sortedKept.end());
-    QHash<int, int> reindex;
-    for (int i = 0; i < sortedKept.size(); ++i)
-        reindex.insert(sortedKept.at(i), i);
-    for (int &k : kept)
-        k = reindex.value(k, -1);
-    {
-        QWriteLocker locker(&m_documentLock);
-        for (int slot = 0; slot < kept.size(); ++slot) {
-            const int from = kept.at(slot);
-            if (from == slot)
-                continue;
-            m_document.movePage(from, slot);
-            for (int q = 0; q < kept.size(); ++q) {
-                if (q != slot && kept.at(q) >= slot && kept.at(q) < from)
-                    ++kept[q];
-            }
-            kept[slot] = slot;
-        }
-    }
-
-    m_pageModel.appendPages(kept.size());
-    {
-        QWriteLocker locker(&m_documentLock);
-        for (int slot = 0; slot < kept.size(); ++slot) {
-            const ProjectPageData &entry = data.pages.at(savedIndexForSlot.at(slot));
-            DocumentPage &page = m_document.page(slot);
-            page.recognized = entry.recognized;
-            page.recognitionMode = entry.recognitionMode;
-            page.parseNote = entry.parseNote;
-            OcrResult result;
-            result.success = true;
-            OcrPage structured;
-            structured.text = entry.text;
-            structured.boxes = entry.boxes;
-            structured.hasDuplicates = entry.hasDuplicates;
-            result.text = entry.text;
-            result.pages.append(structured);
-            page.result = result;
-        }
-        // The syntax verdict of a formula is derived from its text: a project
-        // written before the rules changed carries the old one (ADR 194).
-        for (int slot = 0; slot < m_document.pageCount(); ++slot) {
-            DocumentPage &page = m_document.page(slot);
-            if (page.result.pages.isEmpty())
-                continue;
-            for (BoundingBox &box : page.result.pages.first().boxes)
-                BoxTransitions::syntaxVerdictRefreshed(box);
-        }
-    }
-
-    for (int slot = 0; slot < kept.size(); ++slot) {
-        const ProjectPageData &entry = data.pages.at(savedIndexForSlot.at(slot));
-        m_editStore.reset(slot, entry.baseline);
-        if (entry.edited)
-            m_editStore.setEdited(slot, true);
-        m_pageModel.setRecognized(slot, entry.recognized);
-        m_pageModel.setEdited(slot, entry.edited);
-        m_pageModel.setHasDuplicates(slot, entry.hasDuplicates);
-        m_pageModel.setRecognitionMode(slot, int(entry.recognitionMode));
-    }
-    refreshAllPageVerifications();
-
-    m_pageModel.setCurrent(0);
-    // The upper bound comes from the document, not from the manifest: a project
-    // whose embedded files are all missing leaves the document empty, and a
-    // clamp to -1 is undefined behaviour (ADR 199).
-    const int lastPage = std::max(0, m_document.pageCount() - 1);
-    m_currentPage = data.pages.isEmpty() ? 0 : std::clamp(data.currentPage, 0, lastPage);
-    m_pageModel.setCurrent(m_currentPage);
-    ensureDefaultSelection();
-    // Project labels come from whatever model created the file; the default
-    // vocabulary is the only safe overlay mapping here.
-    m_boxModel.setStyleModelId(QString());
-    updateBoxesForCurrent();
-
-    if (!skipped.isEmpty())
-        reportProblem(StatusMessage::translate("AppController", "Project pages %1 could not be restored — see the problem log.").arg(skipped.join(QStringLiteral(", "))));
-    if (data.pages.isEmpty() || m_document.isEmpty())
-        setStatus(StatusMessage::translate("AppController", "The project contains no pages."));
-    else if (skipped.isEmpty())
-        setStatus(StatusMessage::translate("AppController", "Project opened: %1 page(s).").arg(m_document.pageCount()));
-    else
-        setStatus(StatusMessage::translate("AppController", "Project opened: %1 page(s), %2 skipped.").arg(m_document.pageCount()).arg(skipped.size()));
-
-    notifyDocumentChanged();
-}
-
-void AppController::openProject(const QUrl &fileUrl)
-{
-    if (projectGuardsBusy())
-        return;
-    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
-    if (path.isEmpty()) {
-        setStatus(StatusMessage::translate("AppController", "No project selected."));
-        return;
-    }
-
-    auto sessionDir = std::make_shared<QTemporaryDir>();
-    if (!sessionDir->isValid()) {
-        setStatus(StatusMessage::translate("AppController", "Cannot create a temporary directory for the project."));
-        return;
-    }
-
-    m_projectBusy = true;
-    emit projectBusyChanged();
-    setStatus(StatusMessage::translate("AppController", "Opening project…"));
-
-    auto *watcher = new QFutureWatcher<ProjectStore::LoadResult>(this);
-    connect(watcher, &QFutureWatcher<ProjectStore::LoadResult>::finished, this, [this, watcher, path, sessionDir]() {
-        watcher->deleteLater();
-        ProjectStore::LoadResult result = watcher->result();
-        m_projectBusy = false;
-        emit projectBusyChanged();
-
-        for (const QString &warning : std::as_const(result.warnings))
-            reportProblem(StatusMessage::literal(warning));
-        if (!result.error.isEmpty()) {
-            setStatus(StatusMessage::translate("AppController", "Cannot open the project: %1").arg(result.error));
-            reportProblem(StatusMessage::literal(result.error), ProblemLog::Error);
-            return;
-        }
-
-        applyProjectData(result.data);
-        m_projectSessionDir = sessionDir;
-        m_projectPath = QUrl::fromLocalFile(path);
-        emit projectPathChanged();
-    });
-    const QString extractDir = sessionDir->path();
-    watcher->setFuture(QtConcurrent::run([path, extractDir]() { return ProjectStore::load(path, extractDir); }));
-}
-
-void AppController::saveProject(const QUrl &fileUrl)
-{
-    if (projectGuardsBusy())
-        return;
-    if (m_document.isEmpty()) {
-        setStatus(StatusMessage::translate("AppController", "Nothing to save — no pages are open."));
-        return;
-    }
-    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
-    if (path.isEmpty()) {
-        setStatus(StatusMessage::translate("AppController", "No project selected."));
-        return;
-    }
-
-    ProjectData data;
-    QString error;
-    if (!collectProjectData(&data, &error)) {
-        setStatus(StatusMessage::translate("AppController", "Cannot save the project: %1").arg(error));
-        reportProblem(StatusMessage::literal(error), ProblemLog::Error);
-        return;
-    }
-
-    m_projectBusy = true;
-    emit projectBusyChanged();
-    setStatus(StatusMessage::translate("AppController", "Saving project…"));
-
-    auto *watcher = new QFutureWatcher<std::pair<bool, QString>>(this);
-    connect(watcher, &QFutureWatcher<std::pair<bool, QString>>::finished, this, [this, watcher, path]() {
-        watcher->deleteLater();
-        const auto outcome = watcher->result();
-        m_projectBusy = false;
-        emit projectBusyChanged();
-        if (!outcome.first) {
-            setStatus(StatusMessage::translate("AppController", "Cannot save the project: %1").arg(outcome.second));
-            reportProblem(StatusMessage::literal(outcome.second), ProblemLog::Error);
-            return;
-        }
-        m_projectPath = QUrl::fromLocalFile(path);
-        emit projectPathChanged();
-        setStatus(StatusMessage::translate("AppController", "Project saved: %1").arg(QFileInfo(path).fileName()));
-    });
-    watcher->setFuture(QtConcurrent::run([path, data]() {
-        QString saveError;
-        const bool ok = ProjectStore::save(path, data, &saveError);
-        return std::make_pair(ok, saveError);
-    }));
 }
 
 }  // namespace llocr
