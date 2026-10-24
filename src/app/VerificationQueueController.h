@@ -122,11 +122,11 @@ private:
     void startVerifyQueue(const QList<VerifyTask> &tasks);
     void startRecheckQueue(const QList<VerifyTask> &tasks);
     void startFixQueue(const QList<VerifyTask> &tasks);
-    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered);
+    void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int rejected);
     void startNextVerify();
     void skipCurrentTask();
     void finishVerifyQueue();
-    void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const;
+    void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered, int &rejected) const;
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectFixBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;

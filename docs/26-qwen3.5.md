@@ -104,7 +104,7 @@ block, because the whole block travels in the reply (ADR 192). The budgets
 are the protocol's rule, so they live in the shared request profile
 (`fix-requests.json`) — one copy for all four fix models; the model profile
 keeps the parameters only. Formula candidates travel in
-canonical LaTeX (`FixDiffGate::normalizeLatexCandidate`), so the spaced
+canonical LaTeX (`core/LatexText::canonical`, ADR 194), so the spaced
 LaTeX of the OCR models does not read as churn.
 
 ### Reasoning mode

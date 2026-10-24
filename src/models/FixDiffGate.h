@@ -19,10 +19,6 @@ struct Outcome {
     StatusMessage downgradeReason;  // why a FIX reply became Ok or Review
 };
 
-// Equation/formula: LaTeX spacing on the wire is normalized and the math
-// comparisons run space-insensitively.
-bool isMathBlockType(const QString &blockType);
-
 // Reads the reply body as the complete corrected block: Fixed when it differs
 // from the candidate, Ok when it is equivalent to it, Review when the reply
 // carries nothing to apply.
@@ -32,10 +28,5 @@ Outcome fixBlock(const QString &candidate, const QString &body, const QString &b
 // except in code. Strictly-different pairs (е/ё, homoglyphs, …) are never
 // normalized.
 QString normalizeForEquivalence(const QString &text, bool isCode);
-
-// Canonical wire form of a LaTeX candidate ("Bi _ {1}" -> "Bi_{1}",
-// "\\frac {...}" -> "\\frac{...}"): the OCR models emit spaced LaTeX that
-// provokes the fixer into pure spacing churn (ADR 180). Rendering-preserving.
-QString normalizeLatexCandidate(const QString &text);
 
 }  // namespace llocr::FixDiffGate

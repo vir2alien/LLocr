@@ -146,12 +146,28 @@ OCR) и **коррекция** (`box.correctedText`, результат унив
 | проверено | на действующем слое вердикт Ok / Mismatch | зелёный / красный |
 | повреждён | вердикт Review | красный |
 | исправлено | есть `box.correctedText`, вердикта коррекции нет | серый |
+| неверный синтаксис | формула, чей LaTeX не проходит проверку синтаксиса (ADR 194) | красный |
 
 Точка всегда отражает **действующий слой**: если есть коррекция — статус
 коррекции, иначе статус текста. Янтарный цвет (бывший `ReRecognized`)
 убирается. Значение `ReRecognized = 2` из перечисления удаляется, числовая
 дырка 2 сохраняется ради чтения старых проектов (см. этап 2). Бейдж
 confidence (`check/showConfidence`) — на действующем слое.
+
+Формула с неверным синтаксисом (ADR 194) отклоняется сразу после
+распознавания: она **не идёт в проверку и не идёт в «Исправить»** — о ней
+не спрашивают модели; её ждёт новое распознавание («Распознать заново» на
+странице). В панели блока рядом со статусом называется, что именно сломано.
+
+Markdown-блок кода внутри формулы — **носитель, а не содержимое** (ADR 195):
+блок кода снимается, когда формула ложится в блок, а оставшийся обратный
+апостроф — дефект («блок кода внутри формулы»).
+
+Носители формулы читаются как носители (ADR 196): формула, разбитая моделью
+на несколько фрагментов «$$…$$», рендерится как несколько display-блоков — по
+одному на строку уравнения (номер уравнения отдельным фрагментом становится
+`\tag`); невидимый разделитель «\right.» / «\left.» парится с любой скобкой
+— так скобка переносится между строками формулы.
 
 ### 6. Статусы страницы
 
@@ -266,6 +282,7 @@ draftPath, requestProfileId, modelName}` с одноразовой миграц�
 | Профили запросов | `src/config/RequestProfileStore.{h,cpp}` (синглтоны в `src/main.cpp`) |
 | Установщик моделей, кванты | `src/runtime/ModelInstaller.{h,cpp}`, `src/runtime/ModelQuantModel.cpp`, `src/runtime/ModelInstallTransaction.cpp`, `src/runtime/ModelRegistry.{h,cpp}` |
 | Модель блока, статусы | `src/core/OcrResult.h` (`BoundingBox`, `BoxCheckStatus`), `src/core/CheckResult.h` |
+| Формула: каноническая форма и проверка синтаксиса | `src/core/LatexText.{h,cpp}` (`canonical`, `check`), `src/core/BoxTransitions.cpp` (`latexResultApplied`) |
 | Применение результатов к блоку | `src/app/AppController.cpp`: `applyCheckResultToBox`, `revertBlockCorrection`, `applyRawResult`, `applyLayout` |
 | Очередь проверки (decision → recheck) | `src/app/VerificationQueueController.{h,cpp}` |
 | Decision-клиент (clef-flash) | `src/app/DecisionController.{h,cpp}`, `src/models/DecisionModel.cpp` |

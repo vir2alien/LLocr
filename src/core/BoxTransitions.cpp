@@ -99,6 +99,34 @@ void ocrResultApplied(BoundingBox &box, const QString &text)
     box.fixStatus = BoxFixStatus::None;
     box.useCorrectedText = true;
     forgetApproval(box, false);
+    box.syntaxProblem = LatexText::Problem::None;
+    if (LatexText::isMathLabel(box.label))
+        latexResultApplied(box);
+}
+
+void latexResultApplied(BoundingBox &box)
+{
+    box.text = LatexText::canonical(box.text);
+    box.syntaxProblem = LatexText::check(box.text);
+    box.checkStatus = box.syntaxProblem == LatexText::Problem::None ? BoxCheckStatus::NotChecked : BoxCheckStatus::InvalidSyntax;
+    box.confidence = -1.0;
+}
+
+void syntaxVerdictRefreshed(BoundingBox &box)
+{
+    if (box.text.isEmpty() || !LatexText::isMathLabel(box.label))
+        return;
+    // The hand-written text is the operator's own, and so is its state.
+    if (box.checkStatus == BoxCheckStatus::Edited)
+        return;
+    const LatexText::Problem problem = LatexText::check(box.text);
+    box.syntaxProblem = problem;
+    if (problem == LatexText::Problem::None) {
+        if (box.checkStatus == BoxCheckStatus::InvalidSyntax)
+            box.checkStatus = BoxCheckStatus::NotChecked;
+        return;
+    }
+    box.checkStatus = BoxCheckStatus::InvalidSyntax;
 }
 
 void blockUnreadable(BoundingBox &box)
@@ -238,6 +266,10 @@ void blockTextEdited(BoundingBox &box, const QString &text, bool correctedLayer)
         box.text = text;
         box.checkStatus = BoxCheckStatus::Edited;
         box.confidence = -1.0;
+        // The hand-written formula is checked as it stands: the operator may
+        // have fixed the LaTeX the recognition broke.
+        if (LatexText::isMathLabel(box.label))
+            box.syntaxProblem = LatexText::check(box.text);
     }
     box.useCorrectedText = correctedLayer;
     // The hand-written text is a new candidate: the fixer's old answer is

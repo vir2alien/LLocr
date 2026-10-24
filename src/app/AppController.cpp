@@ -31,6 +31,7 @@
 
 #include "config/RequestProfileStore.h"
 #include "core/BoxTransitions.h"
+#include "core/LatexText.h"
 #include "core/ModelProfiles.h"
 #include "core/StatusMessage.h"
 #include "core/TextDiff.h"
@@ -244,6 +245,32 @@ QString mergePipelineChange(const QString &userText, const QString &previous, co
     if (pos < 0)
         return userText;
     return userText.left(pos) + newMiddle + userText.mid(pos + oldMiddle.size());
+}
+
+// The formula blocks of a fresh recognition result (ADR 194): the canonical
+// LaTeX form of the text and the syntax verdict on it. A formula whose LaTeX
+// is broken is rejected here — it never reaches a model.
+void applyFormulaVerdicts(OcrResult &result)
+{
+    for (OcrPage &page : result.pages) {
+        for (BoundingBox &box : page.boxes) {
+            if (box.text.isEmpty() || !LatexText::isMathLabel(box.label))
+                continue;
+            BoxTransitions::latexResultApplied(box);
+        }
+    }
+}
+
+// The page text follows the blocks: the formula blocks were brought to their
+// canonical form, so the text is built from them again — the model's spacing
+// and the markdown fence that carried the formula must not survive into the
+// document (ADR 194, ADR 195).
+void rebuildTextFromBlocks(OcrResult &result, const IOutputParser &parser)
+{
+    for (OcrPage &page : result.pages) {
+        page.text = parser.rebuildText(page);
+        result.text = page.text;
+    }
 }
 
 }  // namespace
@@ -856,8 +883,11 @@ void AppController::applyRawResult(int index, ConnectionRole task, const OcrResu
         options.pageAspect = qreal(pixelSize.height()) / pixelSize.width();
 
     OcrResult parsed = rawResult;
-    if (auto parser = ParserFactory::create(effectiveParserIdFor(options.modelId), options))
+    if (auto parser = ParserFactory::create(effectiveParserIdFor(options.modelId), options)) {
         parsed = parser->parse(rawResult.text);
+        applyFormulaVerdicts(parsed);
+        rebuildTextFromBlocks(parsed, *parser);
+    }
     m_boxModel.setStyleModelId(options.modelId);
 
     {
@@ -1121,6 +1151,12 @@ int AppController::selectedBlockFixStatus() const
 {
     const BoundingBox *box = selectedBox();
     return box ? static_cast<int>(box->fixStatus) : 0;
+}
+
+int AppController::selectedBlockSyntaxProblem() const
+{
+    const BoundingBox *box = selectedBox();
+    return box ? static_cast<int>(box->syntaxProblem) : 0;
 }
 
 bool AppController::selectedBlockUsesCorrected() const
@@ -1492,8 +1528,11 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
     options.keepPageNumbers = true;
     m_boxModel.setStyleModelId(options.modelId);
     OcrResult parsed;
-    if (auto parser = ParserFactory::create(role->parser, options))
+    if (auto parser = ParserFactory::create(role->parser, options)) {
         parsed = parser->parse(rawText);
+        applyFormulaVerdicts(parsed);
+        rebuildTextFromBlocks(parsed, *parser);
+    }
     if (!parsed.success || parsed.pages.isEmpty())
         return;
 
@@ -2204,6 +2243,15 @@ void AppController::applyProjectData(const ProjectData &data)
             result.text = entry.text;
             result.pages.append(structured);
             page.result = result;
+        }
+        // The syntax verdict of a formula is derived from its text: a project
+        // written before the rules changed carries the old one (ADR 194).
+        for (int slot = 0; slot < m_document.pageCount(); ++slot) {
+            DocumentPage &page = m_document.page(slot);
+            if (page.result.pages.isEmpty())
+                continue;
+            for (BoundingBox &box : page.result.pages.first().boxes)
+                BoxTransitions::syntaxVerdictRefreshed(box);
         }
     }
 

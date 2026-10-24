@@ -69,15 +69,41 @@ Rectangle {
             return qsTr("Damaged")
         if (status === 4)
             return qsTr("Mismatch")
+        if (status === 7)
+            return qsTr("Invalid syntax")
         return ""
     }
     function dotColor(status) {
         if (status === 1 || status === 5 || status === 6)
             return Theme.success
-        if (status === 3 || status === 4)
+        if (status === 3 || status === 4 || status === 7)
             return Theme.error
         return Theme.nothing
     }
+    // What is wrong with the formula's LaTeX (ADR 194): the kind the app
+    // found, named in the language of the interface.
+    function syntaxProblemWord(problem) {
+        if (problem === 1)
+            return qsTr("Unclosed brace")
+        if (problem === 2)
+            return qsTr("Stray closing brace")
+        if (problem === 3)
+            return qsTr("Unclosed environment")
+        if (problem === 4)
+            return qsTr("Mismatched environment")
+        if (problem === 5)
+            return qsTr("Unbalanced \\left and \\right")
+        if (problem === 6)
+            return qsTr("Unclosed math delimiter")
+        if (problem === 7)
+            return qsTr("Truncated command")
+        if (problem === 8)
+            return qsTr("Missing argument")
+        if (problem === 9)
+            return qsTr("Code block inside the formula")
+        return ""
+    }
+    readonly property string syntaxProblem: syntaxProblemWord(Controller.selectedBlockSyntaxProblem)
     function scoreText(confidence) {
         return confidence >= 0 ? Math.round(confidence * 100) + "%" : ""
     }
@@ -95,6 +121,7 @@ Rectangle {
                                           : effectiveStatus === 1 ? qsTr("Verified")
                                           : effectiveStatus === 3 ? qsTr("Damaged")
                                           : effectiveStatus === 4 ? qsTr("Mismatch")
+                                          : effectiveStatus === 7 ? qsTr("Invalid syntax")
                                           : correctionInView ? qsTr("Corrected")
                                           : root.markupOnly ? qsTr("Markup")
                                           : qsTr("Recognized")
@@ -185,6 +212,13 @@ Rectangle {
             LLOLabel {
                 text: root.overallStatus
                 color: Theme.textSecondary
+            }
+            LLOLabel {
+                // The reason the formula was rejected (ADR 194): the panel
+                // names what is broken, so the operator knows what to look at.
+                visible: root.effectiveStatus === 7 && root.syntaxProblem.length > 0
+                text: root.syntaxProblem
+                color: Theme.textMuted
             }
             LLOLabel {
                 visible: root.fixNotNeeded

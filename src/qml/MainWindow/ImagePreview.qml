@@ -435,7 +435,8 @@ Item {
                         // Outside the block, to the left: gray = recognized or
                         // corrected (no verdict on the layer in view), green =
                         // verified Ok, approved by hand or written by hand, red =
-                        // Mismatch or the damaged Review. With
+                        // Mismatch, the damaged Review or a formula rejected
+                        // on its LaTeX syntax (ADR 194). With
                         // the confidence option on, a decision verdict (green/red)
                         // renders as its probability in percent inside a circle of
                         // the verdict's color. A markup block without text shows
@@ -450,7 +451,7 @@ Item {
                         height: confidenceBadge ? 20 : 8
                         radius: width / 2
                         color: effectiveStatus === 1 || effectiveStatus === 5 || effectiveStatus === 6 ? Theme.success
-                             : effectiveStatus === 3 || effectiveStatus === 4 ? Theme.error
+                             : effectiveStatus === 3 || effectiveStatus === 4 || effectiveStatus === 7 ? Theme.error
                              : Theme.nothing
 
                         Text {

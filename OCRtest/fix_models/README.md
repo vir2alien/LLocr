@@ -270,7 +270,7 @@ python3 corpus/build_corpus.py --blocks p03b03,p03b05 --out corpus/corpus_small.
 `VerificationQueueController::startNextVerify` → `FixController::fixBlock` →
 `FixModel::buildRequestBody`:
 
-* кандидат = `FixDiffGate::normalizeLatexCandidate(текст блока)` — пробелы
+* кандидат = `core/LatexText::canonical(текст блока)` — пробелы
   перед скобками убраны (`\frac {p}` → `\frac{p}`);
 * сообщения: `system` (промпт профиля запросов, `{{LANGUAGE}}` → Russian) и
   `user` с тремя частями: typePrompt по типу блока → картинка кропа →

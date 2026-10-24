@@ -250,6 +250,56 @@
     </message>
     <message>
         <location line="+1"/>
+        <source>Invalid syntax</source>
+        <translation>Неверный синтаксис</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Unclosed brace</source>
+        <translation>Незакрытая скобка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Stray closing brace</source>
+        <translation>Лишняя закрывающая скобка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Unclosed environment</source>
+        <translation>Незакрытая среда</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Mismatched environment</source>
+        <translation>Несовпадающая среда</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Unbalanced \\left and \\right</source>
+        <translation>Непарные \\left и \\right</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Unclosed math delimiter</source>
+        <translation>Незакрытый математический разделитель</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Truncated command</source>
+        <translation>Оборванная команда</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Missing argument</source>
+        <translation>Не хватает аргумента</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Code block inside the formula</source>
+        <translation>Блок кода внутри формулы</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Corrected</source>
         <translation type="unfinished">Исправлено</translation>
     </message>
@@ -3713,6 +3763,11 @@
         <location line="+0"/>
         <source>%1 block(s) already verified</source>
         <translation>уже проверенных блоков: %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 formula(s) rejected: invalid LaTeX syntax</source>
+        <translation>отклонено формул с неверным LaTeX: %1</translation>
     </message>
 </context>
 <context>

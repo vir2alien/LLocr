@@ -23,7 +23,6 @@ private slots:
     void noChangesWordIsReviewed();
     void latexSpacingIsEquivalent();
     void codeWhitespaceIsACorrection();
-    void mathBlockTypesAreTheMathOnes();
 };
 
 void TestFixDiffGate::normalizationCoversTheEquivalencePolicy()
@@ -117,14 +116,6 @@ void TestFixDiffGate::codeWhitespaceIsACorrection()
     const Outcome outcome = fixBlock(QStringLiteral("if (a) {\n    b();\n}"), QStringLiteral("if (a) {\n  b();\n}"), QStringLiteral("code"));
     QCOMPARE(outcome.status, CheckStatus::Fixed);
     QCOMPARE(outcome.text, QStringLiteral("if (a) {\n  b();\n}"));
-}
-
-void TestFixDiffGate::mathBlockTypesAreTheMathOnes()
-{
-    QVERIFY(isMathBlockType(QStringLiteral("equation")));
-    QVERIFY(isMathBlockType(QStringLiteral("formula")));
-    QVERIFY(!isMathBlockType(QStringLiteral("text")));
-    QVERIFY(!isMathBlockType(QStringLiteral("table")));
 }
 
 QTEST_MAIN(TestFixDiffGate)

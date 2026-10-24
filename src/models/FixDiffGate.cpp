@@ -141,26 +141,9 @@ bool mathEquivalent(const QString &a, const QString &b)
 
 }  // namespace
 
-bool isMathBlockType(const QString &blockType)
-{
-    return blockType == QLatin1String("equation") || blockType == QLatin1String("formula");
-}
-
 QString normalizeForEquivalence(const QString &text, bool isCode)
 {
     return normalizeForMatch(text, isCode);
-}
-
-QString normalizeLatexCandidate(const QString &text)
-{
-    static const QRegularExpression spaceBeforeBrace(QStringLiteral("([\\w}\\)])\\s+([{}\\[()])"));
-    static const QRegularExpression spaceAfterOpen(QStringLiteral("([\\{\\[(])\\s+"));
-    QString out = text;
-    out.replace(spaceBeforeBrace, QStringLiteral("\\1\\2"));
-    out.replace(spaceAfterOpen, QStringLiteral("\\1"));
-    out.replace(QStringLiteral("\\tag {"), QStringLiteral("\\tag{"));
-    out = out.normalized(QString::NormalizationForm_C);
-    return out;
 }
 
 Outcome fixBlock(const QString &candidate, const QString &body, const QString &blockType)

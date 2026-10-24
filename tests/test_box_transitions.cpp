@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include "core/BoxTransitions.h"
+#include "core/LatexText.h"
 
 using namespace llocr;
 
@@ -324,7 +325,8 @@ private slots:
         QCOMPARE(boxCheckStatusFromInt(5), BoxCheckStatus::Approved);
         QCOMPARE(boxCheckStatusFromInt(-1), BoxCheckStatus::NotChecked);
         QCOMPARE(boxCheckStatusFromInt(6), BoxCheckStatus::Edited);
-        QCOMPARE(boxCheckStatusFromInt(7), BoxCheckStatus::NotChecked);
+        QCOMPARE(boxCheckStatusFromInt(7), BoxCheckStatus::InvalidSyntax);
+        QCOMPARE(boxCheckStatusFromInt(8), BoxCheckStatus::NotChecked);
     }
 
     // «Отозвать утверждение» (ADR 187): the approval is undone and the
@@ -389,6 +391,64 @@ private slots:
 
         BoxTransitions::blockApprovalReverted(box);
         QCOMPARE(box.checkStatus, BoxCheckStatus::NotChecked);
+    }
+
+    // A formula lands in its canonical LaTeX form, and a formula whose
+    // LaTeX is broken is rejected right away (ADR 194).
+    void aFormulaLandsCanonicalAndABrokenOneIsRejected()
+    {
+        BoundingBox box;
+        box.label = QStringLiteral("equation");
+
+        BoxTransitions::ocrResultApplied(box, QStringLiteral("Bi _ {1}"));
+        QCOMPARE(box.text, QStringLiteral("Bi _{1}"));
+        QCOMPARE(box.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(box.syntaxProblem, LatexText::Problem::None);
+
+        BoxTransitions::ocrResultApplied(box, QStringLiteral("\\frac{1}"));
+        QCOMPARE(box.checkStatus, BoxCheckStatus::InvalidSyntax);
+        QCOMPARE(box.syntaxProblem, LatexText::Problem::MissingArgument);
+        // A rejected block waits for a new recognition, not for a verdict.
+        QVERIFY(!BoxTransitions::needsFix(box));
+    }
+
+    // A text block is not a formula: its text is left as it was written.
+    void aTextBlockIsNotTouchedByTheFormulaRules()
+    {
+        BoundingBox box = recognizedBox();
+        BoxTransitions::ocrResultApplied(box, QStringLiteral("a { b"));
+        QCOMPARE(box.text, QStringLiteral("a { b"));
+        QCOMPARE(box.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(box.syntaxProblem, LatexText::Problem::None);
+    }
+
+    // The syntax verdict is derived from the text: a project written before
+    // the rules changed carries the old verdict, and it is recomputed when
+    // the project opens (ADR 194).
+    void theSyntaxVerdictIsRecomputedFromTheText()
+    {
+        BoundingBox box;
+        box.label = QStringLiteral("equation");
+        box.text = QStringLiteral("\\frac{1}{2}");
+
+        // A stale rejection of a formula that is sound: the rejection is void.
+        box.checkStatus = BoxCheckStatus::InvalidSyntax;
+        box.syntaxProblem = LatexText::Problem::MissingArgument;
+        BoxTransitions::syntaxVerdictRefreshed(box);
+        QCOMPARE(box.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(box.syntaxProblem, LatexText::Problem::None);
+
+        // A formula that is broken is rejected whatever the file says.
+        box.text = QStringLiteral("\\frac{1}");
+        box.checkStatus = BoxCheckStatus::Ok;
+        BoxTransitions::syntaxVerdictRefreshed(box);
+        QCOMPARE(box.checkStatus, BoxCheckStatus::InvalidSyntax);
+        QCOMPARE(box.syntaxProblem, LatexText::Problem::MissingArgument);
+
+        // The hand-written text is the operator's own, and so is its state.
+        box.checkStatus = BoxCheckStatus::Edited;
+        BoxTransitions::syntaxVerdictRefreshed(box);
+        QCOMPARE(box.checkStatus, BoxCheckStatus::Edited);
     }
 };
 

@@ -5,22 +5,26 @@
 #include <QString>
 #include <QStringList>
 
+#include "core/LatexText.h"
 #include "core/StatusMessage.h"
 
 namespace llocr {
 
 enum class BoxCheckStatus : int {
-    NotChecked = 0,  ///< No verdict yet. With text: recognized (gray dot);
-                     ///< without text: layout markup (no dot).
-    Ok = 1,          ///< The decision model confirmed the text matches the image.
-                     ///< 2 is reserved: pre-v2 projects stored ReRecognized there,
-                     ///< read back as NotChecked (ADR 164).
-    Review = 3,      ///< The block is unreadable — needs human eyes.
-    Mismatch = 4,    ///< The decision model rejected the text.
-    Approved = 5,    ///< The user confirmed the block by hand (ADR 185) — the
-                     ///< decision model's verdict was wrong.
-    Edited = 6,      ///< The user wrote the text by hand (ADR 187): the text
-                     ///< is theirs, not the model's and not a confirmation.
+    NotChecked = 0,     ///< No verdict yet. With text: recognized (gray dot);
+                        ///< without text: layout markup (no dot).
+    Ok = 1,             ///< The decision model confirmed the text matches the image.
+                        ///< 2 is reserved: pre-v2 projects stored ReRecognized there,
+                        ///< read back as NotChecked (ADR 164).
+    Review = 3,         ///< The block is unreadable — needs human eyes.
+    Mismatch = 4,       ///< The decision model rejected the text.
+    Approved = 5,       ///< The user confirmed the block by hand (ADR 185) — the
+                        ///< decision model's verdict was wrong.
+    Edited = 6,         ///< The user wrote the text by hand (ADR 187): the text
+                        ///< is theirs, not the model's and not a confirmation.
+    InvalidSyntax = 7,  ///< The formula's LaTeX is broken (ADR 194): the block
+                        ///< is rejected right after the recognition and no
+                        ///< model is asked about it.
 };
 
 // The outcome of the last fix run (ADR 185). The correction layer alone cannot
@@ -41,7 +45,7 @@ inline BoxCheckStatus boxCheckStatusFromInt(int value)
 {
     if (value == 2)  // the reserved ReRecognized slot of v1 projects
         return BoxCheckStatus::NotChecked;
-    return value >= int(BoxCheckStatus::NotChecked) && value <= int(BoxCheckStatus::Edited) ? BoxCheckStatus(value) : BoxCheckStatus::NotChecked;
+    return value >= int(BoxCheckStatus::NotChecked) && value <= int(BoxCheckStatus::InvalidSyntax) ? BoxCheckStatus(value) : BoxCheckStatus::NotChecked;
 }
 
 inline BoxFixStatus boxFixStatusFromInt(int value)
@@ -61,13 +65,17 @@ struct BoundingBox {
     QString label;                                                     ///< Block type reported by the model (title, text, table...).
     QRectF rect;                                                       ///< Normalized rectangle: x, y, width, height in [0, 1].
     bool positioned = true;
-    bool duplicateSuspect = false;      ///< A duplicate was merged into this block —
-                                        ///< included in verification regardless of the
-                                        ///< label filter.
-    double confidence = -1.0;           ///< P(match) of the text-layer verdict; -1 = none.
-                                        ///< Persisted in project.json (ADR 173) — the
-                                        ///< threshold calibration data of the eval stand.
-    double correctedConfidence = -1.0;  ///< P(match) of the correction-layer verdict; -1 = none.
+    bool duplicateSuspect = false;                                ///< A duplicate was merged into this block —
+                                                                  ///< included in verification regardless of the
+                                                                  ///< label filter.
+    double confidence = -1.0;                                     ///< P(match) of the text-layer verdict; -1 = none.
+                                                                  ///< Persisted in project.json (ADR 173) — the
+                                                                  ///< threshold calibration data of the eval stand.
+    double correctedConfidence = -1.0;                            ///< P(match) of the correction-layer verdict; -1 = none.
+    LatexText::Problem syntaxProblem = LatexText::Problem::None;  ///< What is wrong with a
+                                                                  ///< formula's LaTeX (ADR 194). The
+                                                                  ///< kind, not the message: the
+                                                                  ///< wording follows the UI language.
 
     // The verdict an approval replaced (ADR 187): «Отозвать утверждение»
     // puts it back. The comment is above the fields on purpose — a trailing

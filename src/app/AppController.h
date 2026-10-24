@@ -77,6 +77,9 @@ class AppController : public QObject
     // The outcome of the last fix run (ADR 185) and the layer the user reads:
     // the panel toggles between the corrected and the original text.
     Q_PROPERTY(int selectedBlockFixStatus READ selectedBlockFixStatus NOTIFY selectedBoxChanged)
+    // What is wrong with a formula's LaTeX (ADR 194): the kind, so the panel
+    // can name it in the UI language.
+    Q_PROPERTY(int selectedBlockSyntaxProblem READ selectedBlockSyntaxProblem NOTIFY selectedBoxChanged)
     Q_PROPERTY(bool selectedBlockUsesCorrected READ selectedBlockUsesCorrected WRITE setSelectedBlockUsesCorrected NOTIFY selectedBoxChanged)
     Q_PROPERTY(QVariantList selectedBlockTextRange READ selectedBlockTextRange NOTIFY blockTextRangeChanged)
     // What the correction changed (ADR 186): the ranges the panel tints — the
@@ -199,6 +202,7 @@ public:
     double selectedBlockConfidence() const;
     double selectedBlockCorrectedConfidence() const;
     int selectedBlockFixStatus() const;
+    int selectedBlockSyntaxProblem() const;
     bool selectedBlockUsesCorrected() const;
     void setSelectedBlockUsesCorrected(bool corrected);
     QVariantList selectedBlockTextRange() const;

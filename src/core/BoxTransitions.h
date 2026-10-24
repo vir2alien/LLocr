@@ -37,6 +37,17 @@ double effectiveConfidence(const BoundingBox &box);
 // text layer and erases the correction layer entirely.
 void ocrResultApplied(BoundingBox &box, const QString &text);
 
+// The recognition result of a formula block (ADR 194): the text arrives in
+// the canonical LaTeX form, and a formula whose syntax is broken is rejected
+// right away — the status says so, and no model is asked about it.
+void latexResultApplied(BoundingBox &box);
+
+// The syntax verdict of a formula is derived from its text (ADR 194): a
+// project written before the rules changed carries the old verdict, so it is
+// recomputed when the project opens. A formula that is sound again is no
+// longer rejected; one that is broken is rejected whatever the file says.
+void syntaxVerdictRefreshed(BoundingBox &box);
+
 // The transcription model answered "unreadable": the block keeps its text
 // but the text layer carries the Review verdict.
 void blockUnreadable(BoundingBox &box);

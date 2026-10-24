@@ -31,6 +31,8 @@ qt_add_library(llocr_core STATIC
     core/BoxTransitions.cpp
     core/TextDiff.h
     core/TextDiff.cpp
+    core/LatexText.h
+    core/LatexText.cpp
     core/CheckRequest.h
     core/CheckResult.h
     core/DecisionRequest.h

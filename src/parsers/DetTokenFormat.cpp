@@ -110,6 +110,33 @@ QString escapeTableCell(QString cell)
     return cell;
 }
 
+// The lines of a formula the model split into display-math fragments: the
+// "$$" between the lines of one equation. The fragments are the lines
+// themselves — one wrapper around the whole text would end the math at the
+// first inner "$$" and leave the rest of the formula as plain text.
+QStringList splitDisplayMath(const QString &text)
+{
+    QStringList fragments;
+    QString current;
+    int i = 0;
+    while (i < text.size()) {
+        if (text.at(i) == QLatin1Char('$') && i + 1 < text.size() && text.at(i + 1) == QLatin1Char('$')) {
+            const QString fragment = current.trimmed();
+            if (!fragment.isEmpty())
+                fragments.append(fragment);
+            current.clear();
+            i += 2;
+            continue;
+        }
+        current.append(text.at(i));
+        ++i;
+    }
+    const QString last = current.trimmed();
+    if (!last.isEmpty())
+        fragments.append(last);
+    return fragments;
+}
+
 QString formatEquation(const QString &text)
 {
     static const QRegularExpression wrapperRe(QStringLiteral(R"(^\s*\\\[\s*([\s\S]*?)\s*\\\]\s*$)"));
@@ -121,11 +148,35 @@ QString formatEquation(const QString &text)
     // inner dollars corrupt the $$…$$ display block, and the number becomes
     // \tag, matching the \[…\] … \tag{n} style.
     static const QRegularExpression dollarRe(QStringLiteral(R"(^\s*\$\$?\s*([\s\S]*?)\s*\$\$?\s*(?:\.\s*)?(?:\((\d+)\)\s*)?$)"));
+    // The equation number of a fragmented formula: a fragment of its own.
+    static const QRegularExpression numberOnlyRe(QStringLiteral(R"(^\((\d+[A-Za-zА-Яа-я]?)\)\.?$)"));
 
     QString body = text.trimmed();
     const QRegularExpressionMatch m = wrapperRe.match(body);
     if (m.hasMatch())
         body = m.captured(1).trimmed();
+
+    QStringList lines = splitDisplayMath(body);
+    if (lines.size() > 1) {
+        // The equation number stands on its own after the last line: it
+        // becomes the tag of the formula.
+        QString tag;
+        const QRegularExpressionMatch nm = numberOnlyRe.match(lines.last());
+        if (nm.hasMatch()) {
+            tag = QStringLiteral(" \\tag{%1}").arg(nm.captured(1));
+            lines.removeLast();
+        }
+        QStringList blocks;
+        for (int i = 0; i < lines.size(); ++i) {
+            QString line = lines.at(i);
+            line.remove(innerDelimRe);
+            if (i == lines.size() - 1)
+                line += tag;
+            blocks.append(QStringLiteral("$$\n%1\n$$").arg(line.trimmed()));
+        }
+        return blocks.join(QStringLiteral("\n\n"));
+    }
+
     const QRegularExpressionMatch dm = dollarRe.match(body);
     if (dm.hasMatch()) {
         body = dm.captured(1).trimmed();

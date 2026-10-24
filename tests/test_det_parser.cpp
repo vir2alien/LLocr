@@ -345,6 +345,38 @@ private slots:
         QVERIFY(!md.contains(QStringLiteral("$$\n$")));
     }
 
+    // A formula the model split into display-math fragments ("$$" between the
+    // lines of one equation): every fragment is a line of the formula and gets
+    // its own display block. One wrapper around the whole text would end the
+    // math at the first inner "$$" and leave the rest of the formula as plain
+    // text — the equation would not render at all.
+    void rendersFragmentedEquationsAsDisplayBlocks()
+    {
+        const QString raw = QStringLiteral("equation [112, 132, 884, 309]\\rho \\left( a \\right) =\n"
+                                           "$$\n"
+                                           "= k_r - \\frac{\\partial p}{\\partial r} +\n"
+                                           "$$\n"
+                                           "$$\n"
+                                           "+ \\frac{1}{r} \\frac{\\partial}{\\partial \\theta}\n"
+                                           "$$\n"
+                                           "$$\n"
+                                           "- \\frac{\\eta}{r}\n"
+                                           "$$\n"
+                                           "$$\n"
+                                           "(63a)\n");
+
+        Lfm25VlParser parser;
+        const OcrResult r = parser.parse(raw);
+        QVERIFY(r.success);
+
+        const QString md = r.pages.first().text;
+        QVERIFY(md.contains(QStringLiteral("$$\n\\rho \\left( a \\right) =\n$$")));
+        QVERIFY(md.contains(QStringLiteral("$$\n= k_r - \\frac{\\partial p}{\\partial r} +\n$$")));
+        QVERIFY(md.contains(QStringLiteral("$$\n+ \\frac{1}{r} \\frac{\\partial}{\\partial \\theta}\n$$")));
+        // The equation number becomes the tag of the formula.
+        QVERIFY(md.contains(QStringLiteral("$$\n- \\frac{\\eta}{r} \\tag{63a}\n$$")));
+    }
+
     // LFM2.5-VL serializes tables in OTSL (TableFormer vocabulary): <fcel>
     // opens a cell, <lcel>/<ucel>/<xcel> are cells covered by a span (rendered
     // empty — the value is written once, ADR 19), <nl> ends a row.

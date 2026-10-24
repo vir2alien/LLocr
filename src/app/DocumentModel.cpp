@@ -23,7 +23,7 @@ PageVerification PageStatus::verificationAggregate(const OcrPage &page, const st
         const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(box);
         if (status == BoxCheckStatus::NotChecked)
             return PageVerification::Incomplete;
-        sawError |= status == BoxCheckStatus::Review || status == BoxCheckStatus::Mismatch;
+        sawError |= status == BoxCheckStatus::Review || status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::InvalidSyntax;
     }
     return sawSubject ? (sawError ? PageVerification::HasErrors : PageVerification::Clean) : PageVerification::Incomplete;
 }

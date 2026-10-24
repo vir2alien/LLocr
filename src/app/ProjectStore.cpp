@@ -72,6 +72,11 @@ QJsonObject boxToJson(const BoundingBox &box)
         object.insert("confidence", box.confidence);
     if (box.correctedConfidence >= 0.0)
         object.insert("correctedConfidence", box.correctedConfidence);
+    // What is wrong with a formula's LaTeX (ADR 194): written only when there
+    // is something, so a project without rejected formulas stays as small as
+    // before.
+    if (box.syntaxProblem != LatexText::Problem::None)
+        object.insert("syntaxProblem", int(box.syntaxProblem));
     // The verdict an approval replaced (ADR 187): written only when there is
     // one, so a project without approvals stays as small as before.
     if (box.checkStatusBeforeApproval != BoxCheckStatus::NotChecked)
@@ -99,6 +104,9 @@ BoundingBox boxFromJson(const QJsonObject &object, int schemaVersion)
     box.duplicateSuspect = object.value("duplicateSuspect").toBool(false);
     box.confidence = object.value("confidence").toDouble(-1.0);
     box.correctedConfidence = object.value("correctedConfidence").toDouble(-1.0);
+    // What is wrong with a formula's LaTeX (ADR 194): a project written before
+    // it reads the default (nothing is wrong).
+    box.syntaxProblem = LatexText::problemFromInt(object.value("syntaxProblem").toInt(int(LatexText::Problem::None)));
     // Optional: a project written before the undo of an approval reads the
     // default (nothing to put back).
     box.checkStatusBeforeApproval = boxCheckStatusFromInt(object.value("checkStatusBeforeApproval").toInt(int(BoxCheckStatus::NotChecked)));

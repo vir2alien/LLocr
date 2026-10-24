@@ -1920,11 +1920,10 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(1), BoxListModel::ConfidenceRole).toDouble(), 0.1);
     }
 
-    // The decision request carries the canonical wire form of a formula: the
-    // OCR models emit spaced LaTeX ("Bi _ {1}"), which is noise to the
-    // checker, and the fix task already gets the normalized form (ADR 183).
-    // The block's own text keeps its bytes.
-    void decisionRequestCarriesTheNormalizedFormula()
+    // A formula lands in the canonical LaTeX form right after the
+    // recognition (ADR 194), and the wire carries the block's own text: the
+    // checker and the fixer see the same bytes the panel shows.
+    void theFormulaLandsCanonicalAndTheWireCarriesIt()
     {
         DetTokenChatServer server;
         server.systemoneProbability = 0.97;
@@ -1949,16 +1948,95 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(server.systemoneRequests(), 1);
 
-        // The wire carries the canonical form: the space before the brace is
-        // gone ("Bi _ {1}" -> "Bi _{1}"), the same form the fix task gets.
+        // The block carries the canonical form: the space before the brace is
+        // gone ("Bi _ {1}" -> "Bi _{1}").
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const QString formula = boxes->data(boxes->index(0), BoxListModel::TextRole).toString();
+        QVERIFY2(formula.contains(QStringLiteral("Bi _{1}")), qPrintable(formula));
+        QVERIFY2(!formula.contains(QStringLiteral("Bi _ {1}")), qPrintable(formula));
+
+        // The wire carries the block's own text.
         const QByteArray body = server.systemoneBodies().first();
         QVERIFY2(body.contains("Bi _{1}"), body.constData());
         QVERIFY2(!body.contains("Bi _ {1}"), body.constData());
+    }
 
-        // The block's own text keeps the bytes the OCR model wrote.
+    // A formula whose LaTeX is broken is rejected right after the recognition
+    // (ADR 194): the block is red, no model is asked about it, and the
+    // formula still stands in the document — the operator has to look at it.
+    void aBrokenFormulaIsRejectedAndNotChecked()
+    {
+        DetTokenChatServer server;
+        server.ocrContent = QStringLiteral("<|det|>equation [112, 132, 884, 309]<|/det|>$$\\frac{1}$$");
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("brokenformula-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
-        QVERIFY(boxes->data(boxes->index(0), BoxListModel::TextRole).toString().contains(QStringLiteral("Bi _ {1}")));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::InvalidSyntax));
+
+        // The verification queue skips the rejected formula: no model is
+        // asked about a text that cannot be rendered.
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(server.systemoneRequests(), 0);
+
+        // The formula itself still stands in the document.
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("\\frac{1}")));
+    }
+
+    // The model answers a formula in a markdown code fence — sometimes inside
+    // the math wrapper. The fence is carrier markup: it is unwrapped when the
+    // formula lands, and the formula itself is sound (ADR 195).
+    void aFormulaInAMarkdownFenceLandsWithoutTheFence()
+    {
+        DetTokenChatServer server;
+        server.ocrContent = QStringLiteral("<|det|>equation [112, 132, 884, 309]<|/det|>$$\n```latex\nK_{\\ell} = \\frac{1}{R^*}\n```\n$$");
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("fencedformula-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        const QString formula = boxes->data(boxes->index(0), BoxListModel::TextRole).toString();
+        QVERIFY2(!formula.contains(QStringLiteral("```")), qPrintable(formula));
+        QVERIFY2(formula.contains(QStringLiteral("K_{\\ell}")), qPrintable(formula));
+
+        // The page text follows the blocks: the fence does not reach the
+        // document either.
+        const QString pageText = m_controller->resultText();
+        QVERIFY2(!pageText.contains(QStringLiteral("```")), qPrintable(pageText));
+        QVERIFY2(pageText.contains(QStringLiteral("K_{\\ell}")), qPrintable(pageText));
+
+        // The formula is sound: it waits for the verification, it is not
+        // rejected.
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
     }
 
     // The first recognition of a text-less block (layout markup) writes the

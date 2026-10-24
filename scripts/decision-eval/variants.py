@@ -152,13 +152,13 @@ def html_table_rows(text):
     return rows or None
 
 
-# The canonical wire form of a LaTeX candidate — the same normalization the
-# app does before the request (FixDiffGate::normalizeLatexCandidate): the OCR
+# The canonical form of a LaTeX formula — the same normalization the app does
+# when the formula is recognized (core/LatexText::canonical, ADR 194): the OCR
 # models emit spaced LaTeX ("Bi _ {1}") that reads as noise to the model.
-# Rendering-preserving; the block's own text is untouched. The port must stay
-# in step with the C++ one: the app's test (test_app_import::
-# decisionRequestCarriesTheNormalizedFormula) pins the app's output, and
-# check_normalization_matches_the_app() below pins this one to the same values.
+# Rendering-preserving. The port must stay in step with the C++ one: the
+# app's test (test_app_import::theFormulaLandsCanonicalAndTheWireCarriesIt)
+# pins the app's output, and check_normalization_matches_the_app() below pins
+# this one to the same values.
 # The character classes mirror the app's regexps literally — Qt's \w is ASCII
 # ([A-Za-z0-9_]), so Python's Unicode \w would not.
 _LATEX_SPACE_BEFORE_BRACE = re.compile(r"([A-Za-z0-9_}\)])[ \t\r\n\f\v]+([{}\[()])")
@@ -177,8 +177,8 @@ def normalize_latex_candidate(text):
 def check_normalization_matches_the_app():
     """The port against the values the app produces (ADR 183).
 
-    The expectations are the app's own output (FixDiffGate::
-    normalizeLatexCandidate), verified against the C++ implementation.
+    The expectations are the app's own output (core/LatexText::canonical),
+    verified against the C++ implementation.
 
     Returns the mismatches; empty means the stand and the app agree.
     """
@@ -200,8 +200,8 @@ def check_normalization_matches_the_app():
 
 
 def is_math_block_type(label):
-    """The block types whose LaTeX candidate is normalized before the request."""
-    return label in ("equation", "formula")
+    """The block types whose text is LaTeX (core/LatexText::isMathLabel)."""
+    return label in ("equation", "formula", "equation_block")
 
 
 def app_candidate(block):

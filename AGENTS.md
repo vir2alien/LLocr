@@ -387,10 +387,24 @@
     the fix task, which answers REVIEW for an unreadable, clipped or empty
     crop); thresholds resolve per block type (`matchThresholdByBlock` in the
     profile → role `matchThreshold` → the setting). A formula reaches the
-    decision model in its **canonical wire form** (the same
-    `FixDiffGate::normalizeLatexCandidate` the fix task gets), so the OCR
-    models' spaced LaTeX does not read as noise and both tasks judge the
-    same text. d1-3B failed the task
+    decision model in its **canonical form** — the block itself carries it
+    from the moment it was recognized (`core/LatexText::canonical`, ADR 194),
+    so the OCR models' spaced LaTeX does not read as noise, both tasks judge
+    the same text and the wire carries the block's own bytes (the old
+    `FixDiffGate::normalizeLatexCandidate` is gone). A **markdown code fence**
+    inside a formula is carrier markup, not content: it is unwrapped when the
+    formula lands, and a leftover backtick is a defect of its own —
+    «блок кода внутри формулы» (ADR 195). A formula whose LaTeX
+    **cannot be parsed** is rejected right after the recognition: the status
+    is **«неверный синтаксис»** (red), the panel names what is broken, and
+    the block is **excluded from the verification and from the fix** — it
+    waits for a new recognition (ADR 194). The **carriers** of a formula are
+    read as carriers: one equation split into several «$$…$$» fragments
+    renders as several display blocks (one per line), and the invisible
+    delimiter «\right.» / «\left.» pairs with any bracket — it is how a
+    bracket is split across the lines of a formula (ADR 196). The syntax
+    verdict is **derived from the text**: a project written before the rules
+    changed is recomputed when it opens. d1-3B failed the task
     in every phrasing and was removed (ADR 161). Every block carries two text layers with independent verdicts
     (ADR 164): `box.text` (the OCR result) and `box.correctedText` (the fix
     model's correction); the dot and the confidence badge follow the

@@ -39,7 +39,7 @@ DEFAULT_GT = REPO / "OCRtest" / "ocr_models" / "materials" / "gt.json"
 # текста с формулами — ровно те, где у qwen3.5-4b не получаются индексы.
 DEFAULT_BLOCKS = ["p03b02", "p03b03", "p03b05", "p03b09", "p03b11", "p03b12", "p03b14"]
 
-# То же, что FixDiffGate::normalizeLatexCandidate (ADR 180): пробелы перед
+# То же, что core/LatexText::canonical (ADR 180, 194): пробелы перед
 # скобками и после открывающей скобки убираются, "\tag {" -> "\tag{".
 SPACE_BEFORE_BRACE = re.compile(r"([\w}\)])\s+([{}\[\]()])")
 SPACE_AFTER_OPEN = re.compile(r"([{\[(])\s+")

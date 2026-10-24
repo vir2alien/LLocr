@@ -612,6 +612,15 @@ target_link_libraries(test_text_diff PRIVATE
 )
 add_test(NAME test_text_diff COMMAND test_text_diff)
 
+# ---- The formula text: the canonical form and the syntax verdict (ADR 194) --
+qt_add_executable(test_latex_text test_latex_text.cpp)
+
+target_link_libraries(test_latex_text PRIVATE
+    Qt6::Test
+    llocr_core
+)
+add_test(NAME test_latex_text COMMAND test_latex_text)
+
 # ---- Log view sync: incremental QTextDocument mirroring (QML-I3) ------------
 qt_add_executable(test_log_document_sync test_log_document_sync.cpp)
 

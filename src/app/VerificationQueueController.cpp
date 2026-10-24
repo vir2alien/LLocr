@@ -7,7 +7,6 @@
 #include "config/SettingsStore.h"
 #include "core/BoxTransitions.h"
 #include "core/ModelProfiles.h"
-#include "models/FixDiffGate.h"
 #include "parsers/BlockStyle.h"
 
 namespace llocr {
@@ -108,13 +107,14 @@ void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
         return;
 
     int answered = 0;
+    int rejected = 0;
     QList<int> candidates;
-    collectEnabledBoxes(pageIndex, candidates, answered);
+    collectEnabledBoxes(pageIndex, candidates, answered, rejected);
 
     QList<VerifyTask> tasks;
     for (const int box : std::as_const(candidates))
         tasks.append({pageIndex, box});
-    startOrReportAnswered(tasks, answered);
+    startOrReportAnswered(tasks, answered, rejected);
 }
 
 void VerificationQueueController::checkAllEnabledBlocks()
@@ -124,15 +124,18 @@ void VerificationQueueController::checkAllEnabledBlocks()
 
     QList<VerifyTask> tasks;
     int answered = 0;
+    int rejected = 0;
     for (int p = 0; p < m_deps.document.pageCount(); ++p) {
         QList<int> candidates;
         int pageAnswered = 0;
-        collectEnabledBoxes(p, candidates, pageAnswered);
+        int pageRejected = 0;
+        collectEnabledBoxes(p, candidates, pageAnswered, pageRejected);
         answered += pageAnswered;
+        rejected += pageRejected;
         for (const int box : std::as_const(candidates))
             tasks.append({p, box});
     }
-    startOrReportAnswered(tasks, answered);
+    startOrReportAnswered(tasks, answered, rejected);
 }
 
 void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &pages)
@@ -142,18 +145,21 @@ void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &page
 
     QList<VerifyTask> tasks;
     int answered = 0;
+    int rejected = 0;
     for (const int p : pages) {
         QList<int> candidates;
         int pageAnswered = 0;
-        collectEnabledBoxes(p, candidates, pageAnswered);
+        int pageRejected = 0;
+        collectEnabledBoxes(p, candidates, pageAnswered, pageRejected);
         answered += pageAnswered;
+        rejected += pageRejected;
         for (const int box : std::as_const(candidates))
             tasks.append({p, box});
     }
-    startOrReportAnswered(tasks, answered);
+    startOrReportAnswered(tasks, answered, rejected);
 }
 
-void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered) const
+void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered, int &rejected) const
 {
     if (!m_deps.document.isValidIndex(pageIndex))
         return;
@@ -165,6 +171,13 @@ void VerificationQueueController::collectEnabledBoxes(int pageIndex, QList<int> 
         const BoundingBox &box = page.boxes.at(i);
         if (!m_deps.verification.isTypeEnabled(box.label) && !box.duplicateSuspect)
             continue;
+        // A formula the app rejected on its LaTeX syntax is not asked about
+        // (ADR 194): the answer would be about a text that cannot be
+        // rendered. It waits for a new recognition instead.
+        if (BoxTransitions::effectiveCheckStatus(box) == BoxCheckStatus::InvalidSyntax) {
+            ++rejected;
+            continue;
+        }
         // A block with a verdict on its effective layer has been answered;
         // a re-recognized block (fresh text, verdicts erased) is asked again.
         if (BoxTransitions::effectiveCheckStatus(box) != BoxCheckStatus::NotChecked) {
@@ -187,7 +200,9 @@ void VerificationQueueController::collectProblemBoxes(int pageIndex, QList<Verif
     const OcrPage &page = docPage.result.pages.first();
     for (int i = 0; i < page.boxes.size(); ++i) {
         const BoxCheckStatus status = BoxTransitions::effectiveCheckStatus(page.boxes.at(i));
-        if (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review)
+        // A formula the app rejected on its LaTeX syntax (ADR 194) needs a new
+        // recognition more than a re-check does: the text itself is broken.
+        if (status == BoxCheckStatus::Mismatch || status == BoxCheckStatus::Review || status == BoxCheckStatus::InvalidSyntax)
             out.append({pageIndex, i});
     }
 }
@@ -231,17 +246,23 @@ void VerificationQueueController::collectUnrecognizedBoxes(int pageIndex, QList<
     }
 }
 
-void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered)
+void VerificationQueueController::startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int rejected)
 {
     if (!tasks.isEmpty()) {
         startVerifyQueue(tasks);
         return;
     }
-    if (answered == 0)
+    if (answered == 0 && rejected == 0)
         return;
-    emit statusRequested(StatusMessage::join(
-        {StatusMessage::translate("VerificationQueueController", "Nothing to check:"), StatusMessage::translate("VerificationQueueController", "%1 block(s) already verified").arg(answered)},
-        QStringLiteral(" ")));
+    // A formula the app rejected on its LaTeX syntax is named apart from the
+    // blocks that were already verified: it was not asked about (ADR 194).
+    QList<StatusMessage> parts;
+    parts.append(StatusMessage::translate("VerificationQueueController", "Nothing to check:"));
+    if (answered > 0)
+        parts.append(StatusMessage::translate("VerificationQueueController", "%1 block(s) already verified").arg(answered));
+    if (rejected > 0)
+        parts.append(StatusMessage::translate("VerificationQueueController", "%1 formula(s) rejected: invalid LaTeX syntax").arg(rejected));
+    emit statusRequested(StatusMessage::join(parts, QStringLiteral(" ")));
 }
 
 void VerificationQueueController::stop()
@@ -502,13 +523,11 @@ void VerificationQueueController::startNextVerify()
         // description of the check (the axes every block is judged on plus
         // this block type's own rules); the request asks one question: is the
         // block recognized correctly?
-        // The OCR models emit spaced LaTeX ("Bi _ {1}"); the wire carries the
-        // canonical form, as it does for the fix task, so both tasks judge the
-        // same text and the checker does not spend its attention on spacing
-        // (ADR 183). The block's own bytes stay untouched.
-        const QString candidate = FixDiffGate::isMathBlockType(box.label) ? FixDiffGate::normalizeLatexCandidate(text) : text;
+        // The candidate is the block's own text: a formula was brought to its
+        // canonical LaTeX form when it was recognized (ADR 194), so the wire
+        // carries the same bytes the panel shows and the export writes.
         m_judgedType = box.label;
-        m_decision.judgeBlock(crop, box.label, candidate, decisionNotation(box.label), decisionQuestion(), decisionCriteriaTrue(), decisionCriteriaFalse());
+        m_decision.judgeBlock(crop, box.label, text, decisionNotation(box.label), decisionQuestion(), decisionCriteriaTrue(), decisionCriteriaFalse());
         return;
     }
 
@@ -525,11 +544,11 @@ void VerificationQueueController::startNextVerify()
         QString systemPrompt = ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("fix"));
         systemPrompt.replace(QStringLiteral("{{LANGUAGE}}"), kDocumentLanguage);
         const int maxOutput = ModelProfiles::maxOutputForBlock(profiles, modelId, QStringLiteral("fix"), box.label);
-        // The OCR models emit spaced LaTeX ("Bi _ {1}") that provokes the
-        // fixer into pure spacing churn; the wire carries the canonical form
-        // while the block text keeps its bytes (ADR 180).
-        const QString candidate = FixDiffGate::isMathBlockType(box.label) ? FixDiffGate::normalizeLatexCandidate(text) : text;
-        m_fix.fixBlock(crop, candidate, systemPrompt, userPrompt, box.label, maxOutput);
+        // The fix protocol judges the block's current text; the candidate is
+        // the block's own text — a formula was brought to its canonical LaTeX
+        // form when it was recognized (ADR 194), so the fixer sees the same
+        // bytes the checker saw.
+        m_fix.fixBlock(crop, text, systemPrompt, userPrompt, box.label, maxOutput);
         return;
     }
 
