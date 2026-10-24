@@ -37,7 +37,7 @@ private:
         auto settings = std::make_unique<SettingsStore>();
         settings->setRuntimeRootDir(m_dir.filePath(QStringLiteral("runtime")));
         settings->setRuntimeModelsDir(m_dir.filePath(QStringLiteral("models")));
-        return std::move(settings);
+        return settings;
     }
 
     std::unique_ptr<VerificationPromptStore> makeStore()
@@ -45,7 +45,7 @@ private:
         auto settings = makeSettings();
         auto store = std::make_unique<VerificationPromptStore>(*settings);
         m_settings = std::move(settings);
-        return std::move(store);
+        return store;
     }
 
     std::unique_ptr<SettingsStore> m_settings;

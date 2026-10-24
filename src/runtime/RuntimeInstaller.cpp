@@ -48,8 +48,8 @@ bool backendMatches(const QString &assetBackend, const QString &requested)
 }  // namespace
 
 RuntimeInstaller::RuntimeInstaller(SettingsStore &settings, InstalledState &state, QObject *parent)
-    : QObject(parent), m_settings(settings), m_installState(state), m_downloads(new DownloadManager(this)), m_group(new DownloadGroup(m_downloads, this)),
-      m_installedBuilds(new InstalledBuildsModel(settings, this)), m_installLock([this]() -> QLockFile & { return m_installState.installLock(); })
+    : QObject(parent), m_settings(settings), m_installState(state), m_installedBuilds(new InstalledBuildsModel(settings, this)), m_downloads(new DownloadManager(this)),
+      m_group(new DownloadGroup(m_downloads, this)), m_installLock([this]() -> QLockFile & { return m_installState.installLock(); })
 {
     const PlatformInfo info = ReleaseCatalog::detectPlatform();
     m_platformLabel = QStringLiteral("%1 %2").arg(osLabel(info), info.arch);
@@ -242,14 +242,24 @@ void RuntimeInstaller::onCatalogLoaded(const QList<ReleaseInfo> &releases, const
     }
 
     m_releases = releases;
-    m_lastCatalogAt = QDateTime::currentDateTimeUtc();
+    // The cache comes with the error that made the app fall back to it: the
+    // check did not succeed, so the catalog keeps the age it had and the
+    // status names the failure instead of claiming a fresh look (ADR 202).
+    const bool fromCache = !error.isEmpty();
+    if (!fromCache)
+        m_lastCatalogAt = QDateTime::currentDateTimeUtc();
     if (m_selectedRelease >= m_releases.size())
         setSelectedRelease(0);
 
     recomputeHasUpdate();
 
     QDate newest = QDate::fromString(m_releases.first().publishedAt.left(10), Qt::ISODate);
-    setStatusMessage(tr("Latest release: %1 (%2)").arg(m_releases.first().tagName, newest.isValid() ? newest.toString(Qt::ISODate) : QStringLiteral("—")));
+    const QString when = newest.isValid() ? newest.toString(Qt::ISODate) : QStringLiteral("—");
+    if (fromCache) {
+        setStatusMessage(tr("Showing the cached release list — the check failed: %1").arg(error));
+    } else {
+        setStatusMessage(tr("Latest release: %1 (%2)").arg(m_releases.first().tagName, when));
+    }
     setState(State::Ready);
     emit catalogChanged();
 }
@@ -334,13 +344,13 @@ void RuntimeInstaller::beginDownloads()
 
     m_group->begin();
 
-    m_group->enqueue(DownloadTask::Request{QUrl(m_pendingMain.downloadUrl), targetDir, m_pendingMain.fileName, m_pendingMain.sha256, QString()});
+    m_group->enqueue(DownloadTask::Request{QUrl(m_pendingMain.downloadUrl), targetDir, m_pendingMain.fileName, m_pendingMain.sha256, QString(), true});
 
     if (m_state != State::Downloading)
         return;
 
     if (m_pendingHasCudart) {
-        m_group->enqueue(DownloadTask::Request{QUrl(m_pendingCudart.downloadUrl), targetDir, m_pendingCudart.fileName, m_pendingCudart.sha256, QString()});
+        m_group->enqueue(DownloadTask::Request{QUrl(m_pendingCudart.downloadUrl), targetDir, m_pendingCudart.fileName, m_pendingCudart.sha256, QString(), true});
     }
 }
 

@@ -111,6 +111,8 @@ public:
     static QSize thumbnailSizeFor(const QSize &pixelSize);
 
 private:
+    static std::shared_ptr<PdfDocument> pdfForCurrentThread(const QString &path);
+    static std::shared_ptr<DjVuDocument> djvuForCurrentThread(const QString &path, QString *error);
     static QImage decodeSourceCopy(const DocumentPage &page, QString *error = nullptr);
     QImage renderFull(const DocumentPage &page, QString *error = nullptr);
     void ensureFullImage(int index, QString *error = nullptr);

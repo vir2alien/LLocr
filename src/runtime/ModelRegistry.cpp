@@ -253,7 +253,7 @@ bool ModelRegistry::save(const QString &modelsDir, const QList<ModelEntry> &entr
     return writeIndex(modelsDir, entries, error);
 }
 
-bool ModelRegistry::update(const QString &modelsDir, const std::function<QList<ModelEntry>(QList<ModelEntry> &)> &mutate, QString &error)
+bool ModelRegistry::update(const QString &modelsDir, const std::function<QList<ModelEntry>(QList<ModelEntry> &)> &mutate, QString &error, bool *rebuilt)
 {
     QDir().mkpath(modelsDir);
 
@@ -267,8 +267,20 @@ bool ModelRegistry::update(const QString &modelsDir, const std::function<QList<M
     // Read under the same lock that guards the write, so a second instance
     // installing a model cannot have its entry dropped by a first-writer-wins
     // save built from an unlocked snapshot.
-    QList<ModelEntry> entries = readIndex(modelsDir, error);
-    error.clear();
+    QList<ModelEntry> entries;
+    if (QFile::exists(indexPathFor(modelsDir))) {
+        entries = readIndex(modelsDir, error);
+        if (!error.isEmpty()) {
+            // A broken index must not be written back from an empty list: the
+            // mutation would be applied to nothing and every other model would
+            // silently leave the registry (ADR 198). The models on disk are the
+            // truth, so the index is rebuilt from them, as load() does.
+            entries = scanModelsDir(modelsDir);
+            error.clear();
+            if (rebuilt)
+                *rebuilt = true;
+        }
+    }
     return writeIndex(modelsDir, mutate(entries), error);
 }
 
@@ -284,6 +296,10 @@ QList<ModelEntry> ModelRegistry::readIndex(const QString &modelsDir, QString &er
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
     if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
         error = QObject::tr("Model index is corrupt");
+        return out;
+    }
+    if (doc.object().value(QStringLiteral("schemaVersion")).toInt(-1) != kSchemaVersion) {
+        error = QObject::tr("Model index version mismatch");
         return out;
     }
     return entriesFromIndex(doc.object());

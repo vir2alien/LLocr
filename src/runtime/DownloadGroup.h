@@ -2,6 +2,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QPointer>
 
 #include "runtime/DownloadTask.h"
 
@@ -27,11 +28,17 @@ signals:
     void allFinished(bool ok);
 
 private:
-    void onOneFinished(bool ok);
+    void onOneFinished(DownloadTask *task, bool ok);
 
 private:
     DownloadManager *m_manager = nullptr;
-    QList<DownloadTask *> m_tasks;
+    // The manager drops a finished task once ten of them pile up, so the
+    // group must not hold a raw pointer: QPointer goes null when the task is
+    // destroyed (ADR 210).
+    QList<QPointer<DownloadTask>> m_tasks;
+    // The bytes of the tasks that are done: the manager may delete them, and
+    // the progress of the group must not fall back when it does.
+    qint64 m_finishedBytes = 0;
     int m_count = 0;
     int m_done = 0;
     bool m_failed = false;

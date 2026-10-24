@@ -582,7 +582,7 @@ QVariantList ModelInstaller::applyTaskChoices(const QVariantList &choices)
         if (preset >= 0 && preset < presets.size()) {
             m_settings.selectModelProfile(presets.at(preset).repo, task);
             m_settings.setSelectedQuant(key, quantId);
-            const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), key);
+            const ModelProfiles::Profile *profile = ModelProfiles::findBuiltIn(key);
             if (profile) {
                 for (const ModelProfiles::Quant &q : profile->files.quants) {
                     if (q.id.compare(quantId, Qt::CaseInsensitive) != 0)

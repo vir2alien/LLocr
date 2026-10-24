@@ -353,7 +353,7 @@ QString RuntimeController::modelBuildError(ConnectionRole role) const
     const QString roleName = connectionRoleName(role);
     const QString modelId = m_settings.requestProfileIdForRole(roleName);
     const ModelProfiles::Role *modelRole = ModelProfiles::roleFor(modelId, roleName);
-    const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), modelId);
+    const ModelProfiles::Profile *profile = ModelProfiles::findBuiltIn(modelId);
     const QString minBuild = profile ? profile->minBuild : QString();
     if (minBuild.isEmpty())
         return QString();
@@ -927,7 +927,7 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, con
 
     // A model of the catalog carries the numbers measured against llama.cpp
     // (ADR 191); anything else is read from its own header.
-    const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), modelId);
+    const ModelProfiles::Profile *profile = ModelProfiles::findBuiltIn(modelId);
     ModelMemoryShape shape;
     bool valid = false;
     QString error;

@@ -174,6 +174,39 @@ private slots:
         QVERIFY(!QFile::exists(dir.filePath(QStringLiteral("b.llocr"))));
     }
 
+    void manifestFileOutsideTheProjectIsNotOpened()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString secret = writeFile(dir.filePath(QStringLiteral("secret.png")), pngBytes(4, 4, Qt::red));
+        QVERIFY(!secret.isEmpty());
+
+        const QString zipPath = dir.filePath(QStringLiteral("evil.llocr"));
+        {
+            ZipWriter zip(zipPath);
+            QVERIFY(zip.addEntry(QStringLiteral("sources/0_page.png"), pngBytes(4, 4, Qt::blue)));
+            const QByteArray manifest = QByteArrayLiteral("{\"format\":\"llocr-project\",\"version\":2,\"sources\":["
+                                                          "{\"id\":0,\"file\":\"../secret.png\",\"name\":\"page.png\",\"type\":\"image\"},"
+                                                          "{\"id\":1,\"file\":\"/etc/passwd\",\"name\":\"abs.png\",\"type\":\"image\"}"
+                                                          "],\"pages\":[]}");
+            QVERIFY(zip.addEntry(QStringLiteral("project.json"), manifest));
+            QVERIFY(zip.finish());
+        }
+
+        const QString extractDir = dir.filePath(QStringLiteral("out"));
+        QVERIFY(QDir().mkpath(extractDir));
+        const ProjectStore::LoadResult loaded = ProjectStore::load(zipPath, extractDir);
+        QVERIFY2(loaded.error.isEmpty(), qPrintable(loaded.error));
+        QCOMPARE(loaded.data.sources.size(), 2);
+        // Neither the relative traversal nor the absolute path may become a
+        // source the app opens (ADR 197).
+        QVERIFY(!loaded.data.sources.at(0).available);
+        QVERIFY(loaded.data.sources.at(0).extractedPath.isEmpty());
+        QVERIFY(!loaded.data.sources.at(1).available);
+        QVERIFY(loaded.data.sources.at(1).extractedPath.isEmpty());
+        QCOMPARE(loaded.warnings.size(), 2);
+    }
+
     void saveLoadRoundTrip()
     {
         QTemporaryDir dir;

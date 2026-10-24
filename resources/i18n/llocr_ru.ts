@@ -1342,40 +1342,6 @@
     </message>
 </context>
 <context>
-    <name>InstallModelDialog</name>
-    <message>
-        <location filename="../../src/qml/Common/InstallModelDialog.qml" line="+27"/>
-        <source>Install model</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+27"/>
-        <source>Preparing the download…</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+15"/>
-        <source>Downloading starts after confirmation. The model license applies — review it before installing.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+15"/>
-        <location line="+2"/>
-        <source>License: %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+21"/>
-        <source>Cancel</source>
-        <translation type="unfinished">Отмена</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Install</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
     <name>InstallerProgressRow</name>
     <message>
         <location filename="../../src/qml/Common/InstallerProgressRow.qml" line="+30"/>
@@ -1536,49 +1502,6 @@
         <location filename="../../src/qml/MainWindow/MarkdownPreview.qml" line="+74"/>
         <source>Failed to load the preview page (%1).</source>
         <translation>Не удалось загрузить страницу предпросмотра (%1).</translation>
-    </message>
-</context>
-<context>
-    <name>ModelDownloadList</name>
-    <message>
-        <location filename="../../src/qml/Common/ModelDownloadList.qml" line="+75"/>
-        <location line="+107"/>
-        <source>Download</source>
-        <translation>Скачать</translation>
-    </message>
-    <message>
-        <location line="+146"/>
-        <location line="+40"/>
-        <source>Open folder</source>
-        <translation>Открыть папку</translation>
-    </message>
-    <message>
-        <location line="-40"/>
-        <location line="+65"/>
-        <source>Delete quantization</source>
-        <translation>Удалить квант</translation>
-    </message>
-    <message>
-        <location line="-64"/>
-        <location line="+87"/>
-        <location line="+12"/>
-        <source>Delete model</source>
-        <translation>Удалить модель</translation>
-    </message>
-    <message>
-        <location line="+31"/>
-        <source>Cancel</source>
-        <translation>Отмена</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Delete</source>
-        <translation>Удалить</translation>
-    </message>
-    <message>
-        <location line="-24"/>
-        <source>%1 will be deleted from disk with every quantization of it.</source>
-        <translation>%1 будет удалена с диска вместе со всеми её квантами.</translation>
     </message>
 </context>
 <context>

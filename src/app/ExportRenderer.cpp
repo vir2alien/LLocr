@@ -209,7 +209,7 @@ void ExportRenderer::startPdfPrint()
 
 void ExportRenderer::runJs(const QString &script, const std::function<void(const QVariant &)> &onResult)
 {
-    m_page->runJavaScript(script, [this, onResult](const QVariant &result) { onResult(result); });
+    m_page->runJavaScript(script, [onResult](const QVariant &result) { onResult(result); });
 }
 
 QString ExportRenderer::jsonString(const QString &value)

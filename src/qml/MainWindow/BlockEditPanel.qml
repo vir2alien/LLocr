@@ -104,6 +104,9 @@ Rectangle {
         return ""
     }
     readonly property string syntaxProblem: syntaxProblemWord(Controller.selectedBlockSyntaxProblem)
+    // A card being edited holds the Ctrl+Return: the panel must not approve
+    // the block while a text is being typed in (ADR 201).
+    readonly property bool cardEditing: originalCard.editing || correctionCard.editing
     function scoreText(confidence) {
         return confidence >= 0 ? Math.round(confidence * 100) + "%" : ""
     }
@@ -169,10 +172,13 @@ Rectangle {
 
     // Approve and move on: the operator's rhythm. The page text editor keeps
     // the Return — a shortcut that fires while a text is being typed in would
-    // approve a block by accident.
+    // approve a block by accident. A card being edited owns the key while it
+    // lasts, so the two shortcuts never overlap.
     Shortcut {
         sequences: ["Ctrl+Return", "Meta+Return"]
-        enabled: Controller.selectedBoxIndex >= 0 && !Controller.pageTextEditorFocused
+        enabled: Controller.selectedBoxIndex >= 0
+                 && !Controller.pageTextEditorFocused
+                 && !root.cardEditing
         onActivated: Controller.approveSelectedBlockAndSelectNext()
     }
 
@@ -269,6 +275,7 @@ Rectangle {
 
         // The recognized text: the OCR result and the verdict it earned.
         BlockVersionCard {
+            id: originalCard
             Layout.fillWidth: true
             visible: root.isTextBlock && Controller.selectedBlockText.length > 0
             title: qsTr("Recognized text (OCR)")
@@ -291,6 +298,7 @@ Rectangle {
         // from the text. A block the fixer confirmed carries no correction to
         // show.
         BlockVersionCard {
+            id: correctionCard
             Layout.fillWidth: true
             visible: root.isTextBlock && root.correctionStored
             title: qsTr("Corrected text (AI)")

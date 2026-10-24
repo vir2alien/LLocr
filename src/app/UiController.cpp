@@ -5,7 +5,7 @@
 
 namespace llocr {
 
-UiController::UiController(SettingsStore &settings, QObject *parent) : m_settings(settings), QObject(parent)
+UiController::UiController(SettingsStore &settings, QObject *parent) : QObject(parent), m_settings(settings)
 {
     m_mode = static_cast<Mode>(m_settings.themeMode());
 

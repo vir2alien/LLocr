@@ -1224,9 +1224,9 @@ private slots:
         ModelProfiles::Profile selfTestProfile;
         selfTestProfile.id = QStringLiteral("unlimited-ocr");
         ModelProfiles::Role selfTestRole;
-        selfTestRole.request = {RequestParameter{QStringLiteral("temperature"), 1, RequestValueKind::Number, 0.0, QString()},
-                                RequestParameter{QStringLiteral("max_tokens"), 2, RequestValueKind::Number, 1024.0, QString()},
-                                RequestParameter{QStringLiteral("stream"), 3, RequestValueKind::Boolean, false, QString()}};
+        selfTestRole.request = {RequestParameter{QStringLiteral("temperature"), 1, RequestValueKind::Number, 0.0, QString(), {}},
+                                RequestParameter{QStringLiteral("max_tokens"), 2, RequestValueKind::Number, 1024.0, QString(), {}},
+                                RequestParameter{QStringLiteral("stream"), 3, RequestValueKind::Boolean, false, QString(), {}}};
         selfTestProfile.roles.insert(QStringLiteral("pageOcr"), selfTestRole);
         RequestProfileStore profiles(store);
         profiles.setModelProfiles({selfTestProfile});

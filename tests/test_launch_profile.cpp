@@ -24,11 +24,6 @@ using namespace llocr;
 
 namespace {
 
-QJsonObject objectFromJson(const QByteArray &json)
-{
-    return QJsonDocument::fromJson(json).object();
-}
-
 // Presets covering every backend the platform detection can recommend, so the
 // no-configured-backend resolution lands on one of them on any machine: metal
 // on macOS, cuda or vulkan on a GPU Windows machine, cpu everywhere else.

@@ -1,3 +1,4 @@
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -157,6 +158,15 @@ static QString archiveFor(const QString &dir, const QString &file, const QList<Z
 // --- tiny ustar + gzip writer (mirrors the real llama.cpp macOS archives) ---
 
 namespace {
+QString sha256Of(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return QString();
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    hash.addData(file.readAll());
+    return QString::fromLatin1(hash.result().toHex());
+}
 
 QByteArray tarGzPayload(const QList<ZipEntry> &entries)
 {
@@ -237,6 +247,7 @@ private slots:
     void badArchiveFails();
     void duplicateEntryFails();
     void probeFailureFails();
+    void aReleaseWithoutADigestIsNotInstalled();
     void cleanupUnused();
     void cleanupStaging();
 };
@@ -279,7 +290,7 @@ void TestInstallTransaction::installsSuccessfully()
     asset.arch = QStringLiteral("arm64");
     asset.build = QStringLiteral("b11600");
     asset.size = QFileInfo(zipPath).size();
-    asset.sha256 = QString();
+    asset.sha256 = sha256Of(zipPath);
 
     bool committed = false;
     QString committedTag;
@@ -340,7 +351,7 @@ void TestInstallTransaction::installsFromTarGz()
     asset.arch = QStringLiteral("arm64");
     asset.build = QStringLiteral("b10825");
     asset.size = QFileInfo(archivePath).size();
-    asset.sha256 = QString();
+    asset.sha256 = sha256Of(archivePath);
 
     bool committed = false;
     QString committedTag;
@@ -617,6 +628,44 @@ void TestInstallTransaction::probeFailureFails()
     const InstallOutput out = InstallTransaction::start(zipPath, asset, paths, commit);
 
     QVERIFY(!out.ok);
+    QVERIFY(!committed);
+    QVERIFY(noInstalledBuild(paths));
+    QVERIFY(stagingEmpty(paths));
+}
+
+void TestInstallTransaction::aReleaseWithoutADigestIsNotInstalled()
+{
+    QList<ZipEntry> entries;
+    ZipEntry server;
+    server.name = serverEntryName();
+    server.content = QByteArray("fake server binary\n");
+    server.modeAttr = 0755u << 16;
+    server.crc = crc32(server.content);
+    entries << server;
+
+    QTemporaryDir dir;
+    const QString zipPath = archiveFor(dir.path(), QStringLiteral("release.zip"), entries);
+    QVERIFY2(!zipPath.isEmpty(), "failed to write archive");
+
+    QTemporaryDir root;
+    const RuntimePaths paths(QDir(root.path()).filePath(QStringLiteral("app")), QDir(root.path()).filePath(QStringLiteral("models")));
+
+    ReleaseAsset asset;
+    asset.fileName = QStringLiteral("llama-b11600-bin-macos-arm64.zip");
+    asset.os = QStringLiteral("macos");
+    asset.backend = QStringLiteral("metal");
+    asset.arch = QStringLiteral("arm64");
+    asset.build = QStringLiteral("b11600");
+    asset.size = QFileInfo(zipPath).size();
+    asset.sha256 = QString();
+
+    bool committed = false;
+    const auto commit = [&](const InstallOutput &) { committed = true; };
+
+    const InstallOutput out = InstallTransaction::start(zipPath, asset, paths, commit);
+
+    QVERIFY(!out.ok);
+    QVERIFY(out.error.contains(QStringLiteral("sha256")));
     QVERIFY(!committed);
     QVERIFY(noInstalledBuild(paths));
     QVERIFY(stagingEmpty(paths));

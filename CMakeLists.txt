@@ -11,6 +11,15 @@ project(LLocr
 # --- Global settings ---------------------------------------------------------
 if (MSVC)
     add_compile_options(/utf-8)
+    # /W4 is MSVC's -Wall -Wextra. Three of its warnings fire on every Qt
+    # header (unreferenced parameters, constant conditions, the deprecated
+    # POSIX names), so they are silenced for the whole build.
+    add_compile_options(/W4 /wd4100 /wd4127 /wd4996)
+else()
+    # The project compiles with the warnings on: a missed switch case, a
+    # signed/unsigned mix-up or an unused variable must not pass silently
+    # (ADR 204).
+    add_compile_options(-Wall -Wextra)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)

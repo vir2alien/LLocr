@@ -154,6 +154,9 @@ public:
     static const QList<Profile> &instance();
 
     static const Profile *find(const QList<Profile> &profiles, const QString &id);
+
+    // The built-in profile with that id, from the index of the built-in list.
+    static const Profile *findBuiltIn(const QString &id);
     static const Role *roleFor(const Profile &profile, const QString &role);
     static const Role *roleFor(const QString &modelId, const QString &role);
 
@@ -173,7 +176,6 @@ public:
 
     static QList<LaunchParameter> launchFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
     static QList<RequestParameter> requestFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
-    static QList<Prompt> promptsFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type);
 

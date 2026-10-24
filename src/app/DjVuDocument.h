@@ -5,6 +5,8 @@
 #include <QMutex>
 #include <QString>
 
+class QThread;
+
 struct ddjvu_context_s;
 struct ddjvu_document_s;
 struct ddjvu_job_s;
@@ -21,6 +23,9 @@ public:
     Q_DISABLE_COPY_MOVE(DjVuDocument)
 
     bool open(const QString &path, QString *error = nullptr);
+    // The DjVuLibre context belongs to the thread that opened it: only that
+    // thread may render with it (ADR 209).
+    bool ownedByCurrentThread() const;
     int pageCount() const;
     QSize pageSize(int index, QString *error = nullptr);
     QImage render(int index, const QSize &size, QString *error = nullptr);
@@ -32,6 +37,7 @@ private:
     void reportError(QString *error, int index = -1) const;
 
     mutable QRecursiveMutex m_mutex;
+    QThread *m_owner = nullptr;
     ddjvu_context_s *m_context = nullptr;
     ddjvu_document_s *m_document = nullptr;
     QString m_path;

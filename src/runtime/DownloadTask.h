@@ -42,10 +42,11 @@ public:
 
     struct Request {
         QUrl url;
-        QString targetDir;      // directory the file lands in
-        QString fileName;       // desired name (sanitized internally)
-        QString sha256;         // lowercase hex digest; empty = skip verification
-        QString authorization;  // optional "Bearer …" for the origin host
+        QString targetDir;           // directory the file lands in
+        QString fileName;            // desired name (sanitized internally)
+        QString sha256;              // lowercase hex digest; empty = skip verification
+        QString authorization;       // optional "Bearer …" for the origin host
+        bool requireSha256 = false;  ///< refuse the file when no digest was published
     };
 
     DownloadTask(const Request &request, QNetworkAccessManager *nam, QObject *parent = nullptr);

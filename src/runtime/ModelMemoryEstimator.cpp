@@ -228,7 +228,7 @@ private:
             return false;
         }
         QByteArray raw(static_cast<int>(len), Qt::Uninitialized);
-        if (in.readRawData(raw.data(), static_cast<int>(len)) != len) {
+        if (in.readRawData(raw.data(), static_cast<int>(len)) != static_cast<qint64>(len)) {
             m_truncated = true;
             return false;
         }

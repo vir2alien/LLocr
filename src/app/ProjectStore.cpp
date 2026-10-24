@@ -34,6 +34,46 @@ QString sanitizeName(const QString &name)
     return result.trimmed();
 }
 
+// The manifest is an untrusted input: its "file" field must name a file inside
+// the extraction directory. QDir::filePath() does not normalize ".." and returns
+// an absolute argument as is, so the value is validated here instead of being
+// pasted into the path.
+QString containedPath(const QString &extractDir, const QString &file)
+{
+    if (file.isEmpty())
+        return {};
+    if (file.startsWith(QLatin1Char('/')) || file.startsWith(QLatin1Char('\\')))
+        return {};
+    if (file.size() >= 2 && file.at(1) == QLatin1Char(':'))
+        return {};
+
+    QStringList parts;
+    QString segment;
+    for (const QChar ch : file) {
+        if (ch == QLatin1Char('/') || ch == QLatin1Char('\\')) {
+            parts.append(segment);
+            segment.clear();
+            continue;
+        }
+        segment.append(ch);
+    }
+    parts.append(segment);
+    parts.removeAll(QString());
+
+    if (parts.isEmpty())
+        return {};
+    for (const QString &part : parts) {
+        if (part == QLatin1String(".") || part == QLatin1String(".."))
+            return {};
+    }
+
+    const QString root = QDir::cleanPath(extractDir);
+    const QString candidate = QDir::cleanPath(QDir(root).filePath(parts.join(QLatin1Char('/'))));
+    if (candidate != root && !candidate.startsWith(root + QLatin1Char('/')))
+        return {};
+    return candidate;
+}
+
 QString suffixOf(const QString &name)
 {
     const QString suffix = QFileInfo(name).suffix();
@@ -289,10 +329,17 @@ ProjectStore::LoadResult ProjectStore::load(const QString &path, const QString &
         source.originalName = object.value("name").toString();
         source.typeName = object.value("type").toString(QStringLiteral("image"));
         const QString file = object.value("file").toString();
-        source.extractedPath = QDir(extractDir).filePath(file);
-        source.available = !file.isEmpty() && QFileInfo::exists(source.extractedPath);
-        if (!source.available)
-            result.warnings.append(QCoreApplication::translate("ProjectStore", "Embedded file %1 is missing from the project.").arg(file));
+        source.extractedPath = containedPath(extractDir, file);
+        if (source.extractedPath.isEmpty()) {
+            source.available = false;
+            if (!file.isEmpty()) {
+                result.warnings.append(QCoreApplication::translate("ProjectStore", "The project points at a file outside its own folder (%1) — it was skipped.").arg(file));
+            }
+        } else {
+            source.available = QFileInfo::exists(source.extractedPath);
+            if (!source.available)
+                result.warnings.append(QCoreApplication::translate("ProjectStore", "Embedded file %1 is missing from the project.").arg(file));
+        }
         sourceIndexById.insert(source.id, result.data.sources.size());
         result.data.sources.append(source);
     }

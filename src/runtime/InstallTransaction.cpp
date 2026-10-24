@@ -82,20 +82,21 @@ InstallOutput InstallTransaction::start(const QString &archivePath, const Releas
         out.error = QObject::tr("Downloaded archive size mismatch (expected %1, got %2)").arg(asset.size).arg(zfi.size());
         return out;
     }
-    if (!asset.sha256.isEmpty()) {
-        bool hashRead = false;
-        const QString actual = QString::fromLatin1(sha256File(archivePath, &hashRead));
-        if (!hashRead) {
-            out.error = QObject::tr("Unable to read the downloaded archive: %1").arg(archivePath);
-            return out;
-        }
-        if (actual != asset.sha256) {
-            out.error = QObject::tr("sha256 mismatch for the downloaded archive");
-            return out;
-        }
-    } else {
-        out.warning = QObject::tr("This release did not publish a sha256 digest; "
-                                  "integrity was not verified");
+    if (asset.sha256.isEmpty()) {
+        // ADR 28: the runtime is verified against the digest the release
+        // publishes. A release without one cannot be installed (ADR 212).
+        out.error = QObject::tr("This release did not publish a sha256 digest — the runtime cannot be installed.");
+        return out;
+    }
+    bool hashRead = false;
+    const QString actual = QString::fromLatin1(sha256File(archivePath, &hashRead));
+    if (!hashRead) {
+        out.error = QObject::tr("Unable to read the downloaded archive: %1").arg(archivePath);
+        return out;
+    }
+    if (actual != asset.sha256) {
+        out.error = QObject::tr("sha256 mismatch for the downloaded archive");
+        return out;
     }
 
     const QString uuid = QUuid::createUuid().toString();

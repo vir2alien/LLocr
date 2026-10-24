@@ -52,8 +52,8 @@ Rectangle {
     }
 
     // The edit ends the way the operator ends it: the «Сохранить» button or
-    // the same hotkey the panel uses to approve a block — the panel's own
-    // shortcut must not approve the block while a text is being typed in.
+    // the same hotkey the panel uses to approve a block. While the edit lasts
+    // the card owns the key and the panel's shortcut yields (ADR 201).
     Shortcut {
         sequences: ["Ctrl+Return", "Meta+Return"]
         enabled: root.editing

@@ -503,7 +503,14 @@ void DownloadTask::verifySha256()
         return;
     }
 
-    finishVerification(expected.isEmpty() || QString::fromLatin1(m_hash.result().toHex()) == expected);
+    if (expected.isEmpty()) {
+        // The caller may insist on a digest: a file nobody published a
+        // checksum for is not accepted (ADR 212).
+        finishVerification(!m_request.requireSha256, QObject::tr("No sha256 digest was published for %1 — the download was refused.").arg(m_fileName));
+        return;
+    }
+
+    finishVerification(QString::fromLatin1(m_hash.result().toHex()) == expected);
 }
 
 void DownloadTask::finishVerification(bool ok, const QString &readError)

@@ -25,7 +25,25 @@ Item {
 
     readonly property var taskIds: ["pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout", "fix"]
 
-    property var draft: ({})
+    // The draft: one entry per task. Every entry is a real object with
+    // properties, so a change is a change of the entry and the row binds to
+    // the entry itself — not to a snapshot of a plain object (ADR 200).
+    property list<QtObject> draft: []
+
+    Component {
+        id: draftEntryComponent
+        QtObject {
+            property string task: ""
+            property string key: ""
+            property string quantId: ""
+            property string modelName: ""
+            // The user touched the field: a re-sync refreshes the untouched
+            // fields only, so an unsaved edit is not thrown away.
+            property bool keyEdited: false
+            property bool quantEdited: false
+            property bool nameEdited: false
+        }
+    }
 
     function fmtBytes(bytes) {
         if (bytes <= 0)
@@ -50,37 +68,97 @@ Item {
         return quants[idx] ? quants[idx].id : ""
     }
 
-    function syncDraft() {
-        var next = {}
-        for (const task of table.taskIds) {
-            const key = RoleProfiles.requestProfileId(task)
-            next[task] = {
-                key: key,
-                quantId: table.draftQuantId(task, key),
-                modelName: Settings.modelNameForRole(task)
-            }
+    function draftEntry(task) {
+        for (let i = 0; i < table.draft.length; ++i) {
+            if (table.draft[i].task === task)
+                return table.draft[i]
         }
-        table.draft = next
+        return null
+    }
+
+    function ensureDraft() {
+        let missing = false
+        for (const task of table.taskIds) {
+            if (!table.draftEntry(task))
+                missing = true
+        }
+        if (!missing)
+            return
+        const list = []
+        for (const task of table.taskIds) {
+            const existing = table.draftEntry(task)
+            const entry = existing ? existing : draftEntryComponent.createObject(table)
+            entry.task = task
+            list.push(entry)
+        }
+        table.draft = list
+    }
+
+    // Refreshes the draft from the settings without touching what the user
+    // has changed since: the window is shown again, the wizard step is
+    // entered again, and the picks of that moment must survive it.
+    function syncDraft() {
+        table.ensureDraft()
+        for (const task of table.taskIds) {
+            const entry = table.draftEntry(task)
+            if (!entry)
+                continue
+            if (!entry.keyEdited)
+                entry.key = RoleProfiles.requestProfileId(task)
+            if (!entry.quantEdited)
+                entry.quantId = table.draftQuantId(task, entry.key)
+            if (!entry.nameEdited)
+                entry.modelName = Settings.modelNameForRole(task)
+        }
+    }
+
+    // Throws the unsaved edits away and takes the saved values (the Cancel
+    // button of the models window).
+    function resetDraft() {
+        table.ensureDraft()
+        for (const task of table.taskIds) {
+            const entry = table.draftEntry(task)
+            if (!entry)
+                continue
+            entry.keyEdited = false
+            entry.quantEdited = false
+            entry.nameEdited = false
+            entry.key = RoleProfiles.requestProfileId(task)
+            entry.quantId = table.draftQuantId(task, entry.key)
+            entry.modelName = Settings.modelNameForRole(task)
+        }
+    }
+
+    // The picks are in the settings now: the next sync may refresh them from
+    // there.
+    function markDraftSaved() {
+        for (const task of table.taskIds) {
+            const entry = table.draftEntry(task)
+            if (!entry)
+                continue
+            entry.keyEdited = false
+            entry.quantEdited = false
+            entry.nameEdited = false
+        }
     }
 
     // The wizard's auto-selection lands here: entries for tasks whose choice
     // is being introduced for the first time.
     function prefillChoices(choices) {
         for (const choice of choices) {
-            if (!table.draft[choice.task])
+            const entry = table.draftEntry(choice.task)
+            if (!entry)
                 continue
-            table.draft[choice.task].key = choice.key
-            table.draft[choice.task].quantId = choice.quantId
+            entry.key = choice.key
+            entry.quantId = choice.quantId
         }
-        if (choices.length > 0)
-            table.draftChanged()
     }
 
     // The host's apply flow: choices feeds ModelInstaller.applyTaskChoices.
     function buildChoices() {
         var choices = []
         for (const task of table.taskIds) {
-            const entry = table.draft[task]
+            const entry = table.draftEntry(task)
             if (entry && entry.quantId.length > 0)
                 choices.push({task: task, key: entry.key, quantId: entry.quantId})
         }
@@ -90,10 +168,14 @@ Item {
     // The external mode persists the profile and model-name picks only.
     function applyExternalDraft() {
         for (const task of table.taskIds) {
-            RoleProfiles.setRequestProfileId(task, table.draft[task].key)
-            Settings.setModelNameForRole(task, table.draft[task].modelName)
+            const entry = table.draftEntry(task)
+            if (!entry)
+                continue
+            RoleProfiles.setRequestProfileId(task, entry.key)
+            Settings.setModelNameForRole(task, entry.modelName)
         }
         Settings.forceSave()
+        table.markDraftSaved()
     }
 
     function saveTabs() {
@@ -124,6 +206,9 @@ Item {
         return s
     }
 
+    // The entries exist before the rows are built: the rows are the entries.
+    Component.onCompleted: table.ensureDraft()
+
     ColumnLayout {
         id: rowsLayout
 
@@ -146,15 +231,16 @@ Item {
         }
 
         Repeater {
-            model: table.taskIds
+            model: table.draft
 
             delegate: RowLayout {
                 id: taskRow
 
-                required property string modelData
+                required property var modelData
 
-                readonly property var quantModel: RoleProfiles.quantModels(taskRow.modelData)
-                readonly property var entry: table.draft[taskRow.modelData] || {}
+                readonly property string task: taskRow.modelData.task
+                readonly property var quantModel: RoleProfiles.quantModels(taskRow.task)
+                readonly property var entry: taskRow.modelData
 
                 Layout.fillWidth: true
                 spacing: Theme.spacingSmall
@@ -168,7 +254,7 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                         leftPadding: Theme.spacingSmall
                         elide: Text.ElideRight
-                        text: RoleProfiles.title(taskRow.modelData)
+                        text: RoleProfiles.title(taskRow.task)
                         color: Theme.textSecondary
                     }
                 }
@@ -182,7 +268,7 @@ Item {
                     valueRole: "key"
 
                     function sync() {
-                        const entry = table.draft[taskRow.modelData]
+                        const entry = taskRow.entry
                         if (!entry)
                             return
                         const idx = taskRow.quantModel.rowIndexOf(entry.key)
@@ -194,15 +280,17 @@ Item {
 
                     Component.onCompleted: modelBox.sync()
                     onActivated: function (index) {
-                        table.draft[taskRow.modelData].key = modelBox.valueAt(index)
+                        taskRow.entry.key = modelBox.valueAt(index)
+                        taskRow.entry.keyEdited = true
                         // The saved quant choice belongs to the previous
                         // profile; the new row picks its own default.
-                        table.draft[taskRow.modelData].quantId = ""
+                        taskRow.entry.quantId = ""
+                        taskRow.entry.quantEdited = false
                         quantBox.sync()
                     }
                     Connections {
-                        target: table
-                        function onDraftChanged() { modelBox.sync() }
+                        target: taskRow.entry
+                        function onKeyChanged() { modelBox.sync() }
                     }
                     Connections {
                         target: ModelInstaller
@@ -247,8 +335,8 @@ Item {
                             spacing: 0
 
                             Repeater {
-                                model: quantBox.popup.visible && table.draft[taskRow.modelData]
-                                       ? (taskRow.quantModel.rowFor(table.draft[taskRow.modelData].key).quants || [])
+                                model: quantBox.popup.visible && taskRow.entry
+                                       ? (taskRow.quantModel.rowFor(taskRow.entry.key).quants || [])
                                        : []
 
                                 delegate: MenuItem {
@@ -280,12 +368,14 @@ Item {
                         // selection path, so currentIndex (the closed
                         // button's text follows it) is updated here.
                         currentIndex = index
-                        if (table.draft[taskRow.modelData] && model[index])
-                            table.draft[taskRow.modelData].quantId = model[index].id
+                        if (taskRow.entry && model[index]) {
+                            taskRow.entry.quantId = model[index].id
+                            taskRow.entry.quantEdited = true
+                        }
                     }
 
                     function sync() {
-                        const entry = table.draft[taskRow.modelData]
+                        const entry = taskRow.entry
                         if (!entry)
                             return
                         const row = taskRow.quantModel.rowFor(entry.key)
@@ -314,8 +404,8 @@ Item {
                     implicitHeight: Theme.controlHeight
                     text: taskRow.entry.modelName || ""
                     onTextEdited: {
-                        if (table.draft[taskRow.modelData])
-                            table.draft[taskRow.modelData].modelName = nameField.text
+                        taskRow.entry.modelName = nameField.text
+                        taskRow.entry.nameEdited = true
                     }
                 }
 
@@ -326,7 +416,7 @@ Item {
 
                     implicitWidth: leftPadding + rightPadding + contentItem.implicitWidth
                     implicitHeight: Math.max(Theme.controlHeight, topPadding + bottomPadding + contentItem.implicitHeight)
-                    onClicked: table.openTaskSettings(taskRow.modelData)
+                    onClicked: table.openTaskSettings(taskRow.task)
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Launch and request settings")
 

@@ -22,6 +22,7 @@ Item {
     function applyChoices() {
         taskTable.saveTabs()
         missingChoices = ModelInstaller.applyTaskChoices(taskTable.buildChoices())
+        taskTable.markDraftSaved()
         return missingChoices
     }
 

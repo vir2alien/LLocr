@@ -1,5 +1,7 @@
 #include "core/TextDiff.h"
 
+#include <QStringView>
+
 namespace llocr {
 namespace {
 
@@ -40,7 +42,11 @@ QVector<Token> tokenize(const QString &text)
 
 bool sameToken(const QString &before, const Token &a, const QString &after, const Token &b)
 {
-    return before.mid(a.start, a.length) == after.mid(b.start, b.length);
+    if (a.length != b.length)
+        return false;
+    // The token is compared where it lies: a view borrows the characters, so
+    // the table does not copy a fragment for every cell it asks about.
+    return QStringView(before).mid(a.start, a.length) == QStringView(after).mid(b.start, b.length);
 }
 
 // A range that follows another one with nothing but whitespace in between

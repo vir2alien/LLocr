@@ -41,6 +41,7 @@
 #include "config/RequestProfileStore.h"
 #include "core/StatusMessage.h"
 #include "runtime/LaunchProfileStore.h"
+#include "runtime/ZipWriter.h"
 #include "testsettings.h"
 
 using namespace llocr;
@@ -747,6 +748,28 @@ private slots:
         QVERIFY(!controller.exportPages(QUrl::fromLocalFile(output), 0));
         QVERIFY(!controller.exporting());
         QVERIFY(!QFile::exists(output));
+    }
+
+    // A project whose embedded files are all missing leaves the document
+    // empty; the page index must stay at 0 instead of being clamped to -1,
+    // which is undefined behaviour (ADR 199).
+    void projectWithoutEmbeddedFilesOpensToPageZero()
+    {
+        auto &controller = *m_controller;
+        const QString projectPath = m_dir.filePath(QStringLiteral("empty.llocr"));
+        {
+            ZipWriter zip(projectPath);
+            QVERIFY(zip.addEntry(QStringLiteral("project.json"),
+                                 QByteArrayLiteral("{\"format\":\"llocr-project\",\"version\":2,\"currentPage\":3,"
+                                                   "\"sources\":[{\"id\":0,\"file\":\"sources/0_missing.png\",\"name\":\"missing.png\",\"type\":\"image\"}],"
+                                                   "\"pages\":[{\"sourceId\":0,\"sourcePageIndex\":0}]}")));
+            QVERIFY(zip.finish());
+        }
+
+        controller.openProject(QUrl::fromLocalFile(projectPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+        QCOMPARE(controller.pageCount(), 0);
+        QCOMPARE(controller.currentPage(), 0);
     }
 
 #ifdef LLOCR_HAVE_DJVU

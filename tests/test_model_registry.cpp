@@ -48,6 +48,15 @@ QString writeFile(const QString &dir, const QString &name)
     return path;
 }
 
+int readIndexModels(const QString &modelsDir)
+{
+    QFile f(ModelRegistry::indexPathFor(modelsDir));
+    if (!f.open(QIODevice::ReadOnly))
+        return -1;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    return doc.object().value(QStringLiteral("models")).toArray().size();
+}
+
 }  // namespace
 
 class TestModelRegistry : public QObject
@@ -59,6 +68,8 @@ private slots:
     void scansAQuantNamedByTheProfile();
     void scansMultiQuantAsSeparateEntries();
     void rebuildsOnCorruptIndex();
+    void updateKeepsTheModelsOfABrokenIndex();
+    void updateKeepsTheModelsOfAVersionMismatch();
     void atomicWriteRoundtrip();
     void persistsRoles();
     void migratesLegacyCheckRole();
@@ -176,6 +187,60 @@ void TestModelRegistry::rebuildsOnCorruptIndex()
     QVERIFY(rebuilt);
     QVERIFY(!err.isEmpty());  // "corrupt; rescanning"
     QCOMPARE(entries.size(), 1);
+}
+
+// A broken index must not lose the models that are already installed: an
+// update writes the mutated list back, and mutating an empty list would drop
+// every other registration (ADR 198).
+void TestModelRegistry::updateKeepsTheModelsOfABrokenIndex()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    makeRepoDir(dir.path(), QStringLiteral("org__repo"));
+    corruptIndex(dir.path());
+
+    ModelEntry fresh;
+    fresh.id = QStringLiteral("org__third");
+    // Not on disk: the scan cannot see it, so the only way it reaches the
+    // index is through the mutation.
+    fresh.dir = QDir(dir.path()).filePath(QStringLiteral("org__third"));
+    fresh.modelPath = QDir(fresh.dir).filePath(QStringLiteral("model-Q4_K_M.gguf"));
+    fresh.origin = ModelOrigin::Managed;
+
+    QString err;
+    bool rebuilt = false;
+    QVERIFY2(ModelRegistry::update(
+                 dir.path(),
+                 [&fresh](QList<ModelEntry> &entries) {
+                     entries.append(fresh);
+                     return entries;
+                 },
+                 err,
+                 &rebuilt),
+             qPrintable(err));
+    QVERIFY(rebuilt);
+    QVERIFY(err.isEmpty());
+
+    QCOMPARE(readIndexModels(dir.path()), 2);
+}
+
+// The same holds for an index written by another version of the app.
+void TestModelRegistry::updateKeepsTheModelsOfAVersionMismatch()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    makeRepoDir(dir.path(), QStringLiteral("org__repo"));
+
+    QFile index(ModelRegistry::indexPathFor(dir.path()));
+    QVERIFY(index.open(QIODevice::WriteOnly));
+    index.write(QJsonDocument(QJsonObject{{QStringLiteral("schemaVersion"), 999}, {QStringLiteral("models"), QJsonArray()}}).toJson());
+    index.close();
+
+    QString err;
+    bool rebuilt = false;
+    QVERIFY2(ModelRegistry::update(dir.path(), [](QList<ModelEntry> &entries) { return entries; }, err, &rebuilt), qPrintable(err));
+    QVERIFY(rebuilt);
+    QCOMPARE(readIndexModels(dir.path()), 1);
 }
 
 // The task tags ("pageOcr" / "blockRecognition") recorded at install time survive a

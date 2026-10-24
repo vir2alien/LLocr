@@ -16,6 +16,7 @@ void DownloadGroup::begin()
     m_count = 0;
     m_done = 0;
     m_failed = false;
+    m_finishedBytes = 0;
     m_tasks.clear();
 }
 
@@ -24,17 +25,17 @@ void DownloadGroup::enqueue(const DownloadTask::Request &request)
     DownloadTask *task = m_manager->taskAt(m_manager->enqueue(request));
     ++m_count;
     m_tasks.append(task);
-    connect(task, &DownloadTask::downloadFinished, this, [this](bool ok) { onOneFinished(ok); });
+    connect(task, &DownloadTask::downloadFinished, this, [this, task](bool ok) { onOneFinished(task, ok); });
     const auto st = task->state();
     if (st == DownloadTask::State::Completed || st == DownloadTask::State::Failed || st == DownloadTask::State::Canceled)
-        onOneFinished(st == DownloadTask::State::Completed);
+        onOneFinished(task, st == DownloadTask::State::Completed);
 }
 
 double DownloadGroup::progress() const
 {
-    qint64 total = 0;
-    qint64 received = 0;
-    for (const DownloadTask *task : m_tasks) {
+    qint64 total = m_finishedBytes;
+    qint64 received = m_finishedBytes;
+    for (const QPointer<DownloadTask> &task : m_tasks) {
         if (!task)
             continue;
         const qint64 taskTotal = task->totalBytes();
@@ -48,8 +49,13 @@ double DownloadGroup::progress() const
     return double(received) / double(total);
 }
 
-void DownloadGroup::onOneFinished(bool ok)
+void DownloadGroup::onOneFinished(DownloadTask *task, bool ok)
 {
+    // A finished task leaves the live list: the manager may delete it, and
+    // the group keeps only the size it accounted for.
+    if (task)
+        m_finishedBytes += qMax<qint64>(0, task->totalBytes());
+    m_tasks.removeOne(task);
     ++m_done;
     if (!ok)
         m_failed = true;

@@ -96,6 +96,7 @@ bool DjVuDocument::open(const QString &path, QString *error)
         reportError(error);
         return false;
     }
+    m_owner = QThread::currentThread();
     m_context = ddjvu_context_create("LLocr");
     if (m_context) {
         ddjvu_cache_set_size(m_context, kDecodedCacheBytes);
@@ -108,6 +109,12 @@ bool DjVuDocument::open(const QString &path, QString *error)
         return false;
     }
     return true;
+}
+
+bool DjVuDocument::ownedByCurrentThread() const
+{
+    QMutexLocker locker(&m_mutex);
+    return m_owner == QThread::currentThread();
 }
 
 int DjVuDocument::pageCount() const

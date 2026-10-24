@@ -28,6 +28,10 @@ public:
 
     static bool isAllowedUrl(const QUrl &url, bool allowInsecure);
 
+    // Same scheme, host and port: a URL the server names may only point back
+    // at the host the request was meant for (ADR 211).
+    static bool isSameOrigin(const QUrl &a, const QUrl &b);
+
     struct Redirect {
         bool present = false;    ///< the reply asked for a redirect
         QUrl target;             ///< resolved against the current URL

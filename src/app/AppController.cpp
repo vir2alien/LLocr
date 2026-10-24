@@ -48,7 +48,7 @@ AppController::AppController(SettingsStore &settings,
                              RequestProfileStore &fixRequestProfiles,
                              VerificationPromptStore &verification,
                              QObject *parent)
-    : m_settings(settings), m_runtime(runtime), m_verification(verification), m_checkRequestProfiles(checkRequestProfiles), m_layoutRequestProfiles(layoutRequestProfiles),
+    : QObject(parent), m_settings(settings), m_runtime(runtime), m_verification(verification), m_checkRequestProfiles(checkRequestProfiles), m_layoutRequestProfiles(layoutRequestProfiles),
       m_fixRequestProfiles(fixRequestProfiles), m_recognition(
                                                     settings,
                                                     runtime,
@@ -77,7 +77,7 @@ AppController::AppController(SettingsStore &settings,
                 [this]() { return m_recognition.busy(); }},
                this),
       m_layout(layoutRequestProfiles, runtime, this),
-      m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this), QObject(parent)
+      m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this)
 {
     // The panel's diff view follows the block: a new selection, a new
     // correction or a new verdict changes what the panel tints.
@@ -95,6 +95,7 @@ AppController::AppController(SettingsStore &settings,
     // page's aggregate follow it live: the model signal covers edits in the
     // settings window, the store's modelChanged covers load/reset.
     const auto verificationFilterChanged = [this]() {
+        ++m_verificationFilterRevision;
         refreshAllPageVerifications();
         updateAvailability();
     };
@@ -117,7 +118,10 @@ AppController::AppController(SettingsStore &settings,
     connect(this, &AppController::resultChanged, this, &AppController::updateAvailability);
     connect(this, &AppController::configChanged, this, &AppController::updateAvailability);
     connect(this, &AppController::importingChanged, this, &AppController::updateAvailability);
-    connect(&m_pageModel, &PageListModel::selectionChanged, this, &AppController::updateAvailability);
+    connect(&m_pageModel, &PageListModel::selectionChanged, this, [this]() {
+        ++m_pageSelectionRevision;
+        updateAvailability();
+    });
 
     connect(&m_layout, &LayoutController::busyChanged, this, [this]() {
         emit layoutStateChanged();
@@ -182,7 +186,14 @@ QString AppController::effectiveParserIdFor(const QString &profileId) const
     const QString configured = m_settings.parserId();
     if (!configured.isEmpty() && configured != ParserFactory::kAutoId)
         return configured;
-    return OcrModel::create(profileId)->defaultParserId();
+    // The parser a profile declares never changes, so the id is remembered
+    // for the profile: the QML bindings ask for it on every change, and the
+    // profiles are read only once (ADR 207).
+    if (profileId != m_parserIdKey) {
+        m_parserIdKey = profileId;
+        m_parserIdCache = OcrModel::defaultParserIdFor(profileId);
+    }
+    return m_parserIdCache;
 }
 
 ParserOptions AppController::parserOptions() const
@@ -1327,6 +1338,23 @@ void AppController::setSelectedBlockText(const QString &text, bool correctedLaye
     emit resultChanged();
 }
 
+// The diff of the selected block: the removed and the added ranges are two
+// views of one comparison, and the comparison itself is quadratic — so it is
+// computed once for the pair of texts and kept until the texts change
+// (ADR 208).
+const TextDiff &AppController::selectedBlockDiff() const
+{
+    const BoundingBox *box = selectedBox();
+    const QString before = box ? box->text : QString();
+    const QString after = box ? box->correctedText : QString();
+    if (before != m_diffBefore || after != m_diffAfter) {
+        m_diffBefore = before;
+        m_diffAfter = after;
+        m_diffCache = diffText(before, after);
+    }
+    return m_diffCache;
+}
+
 QVariantList AppController::selectedBlockRemovedRanges() const
 {
     const BoundingBox *box = selectedBox();
@@ -1334,7 +1362,7 @@ QVariantList AppController::selectedBlockRemovedRanges() const
     // and an empty text would tint the whole block.
     if (!box || box->correctedText.isEmpty())
         return {};
-    const TextDiff diff = diffText(box->text, box->correctedText);
+    const TextDiff &diff = selectedBlockDiff();
     QVariantList ranges;
     ranges.reserve(diff.removed.size());
     for (const DiffRange &range : diff.removed)
@@ -1347,7 +1375,7 @@ QVariantList AppController::selectedBlockAddedRanges() const
     const BoundingBox *box = selectedBox();
     if (!box || box->correctedText.isEmpty())
         return {};
-    const TextDiff diff = diffText(box->text, box->correctedText);
+    const TextDiff &diff = selectedBlockDiff();
     QVariantList ranges;
     ranges.reserve(diff.added.size());
     for (const DiffRange &range : diff.added)
@@ -1613,6 +1641,31 @@ int AppController::currentPageVerification() const
 
 void AppController::updateAvailability()
 {
+    // The inputs are cheap, the flags below are not: the guard comes first,
+    // so a queue that chatters does not rescan the document every time
+    // (ADR 208).
+    const AvailabilityInputs inputs{
+        m_docRevision,
+        m_cropRevision,
+        m_currentPage,
+        m_pageSelectionRevision,
+        m_verificationFilterRevision,
+        m_importing,
+        m_recognition.busy(),
+        m_layout.busy(),
+        checkBusy(),
+        m_runtime.canRecognize(true),
+        pageOcrModelAvailable(),
+        rawPageOcrModelAvailable(),
+        blockRecognitionModelAvailable(),
+        decisionModelAvailable(),
+        layoutModelAvailable(),
+        fixModelAvailable(),
+    };
+    if (inputs == m_availabilityInputs)
+        return;
+    m_availabilityInputs = inputs;
+
     const AvailabilityFlags current{
         pageVerificationSupported(),
         allPageVerificationSupported(),
@@ -1621,12 +1674,12 @@ void AppController::updateAvailability()
         pageBlocksRecognitionSupported(),
         canRecognize(),
         actionsIdle(),
-        pageOcrModelAvailable(),
-        rawPageOcrModelAvailable(),
-        blockRecognitionModelAvailable(),
-        decisionModelAvailable(),
-        layoutModelAvailable(),
-        fixModelAvailable(),
+        inputs.pageOcrModel,
+        inputs.rawPageOcrModel,
+        inputs.blockRecognitionModel,
+        inputs.decisionModel,
+        inputs.layoutModel,
+        inputs.fixModel,
         scopeVerificationSupported(),
         scopeBlocksRecognitionSupported(),
         currentPageRecognitionMode(),
@@ -2268,7 +2321,11 @@ void AppController::applyProjectData(const ProjectData &data)
     refreshAllPageVerifications();
 
     m_pageModel.setCurrent(0);
-    m_currentPage = data.pages.isEmpty() ? 0 : std::clamp(data.currentPage, 0, m_document.pageCount() - 1);
+    // The upper bound comes from the document, not from the manifest: a project
+    // whose embedded files are all missing leaves the document empty, and a
+    // clamp to -1 is undefined behaviour (ADR 199).
+    const int lastPage = std::max(0, m_document.pageCount() - 1);
+    m_currentPage = data.pages.isEmpty() ? 0 : std::clamp(data.currentPage, 0, lastPage);
     m_pageModel.setCurrent(m_currentPage);
     ensureDefaultSelection();
     // Project labels come from whatever model created the file; the default

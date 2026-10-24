@@ -48,7 +48,7 @@ GetResult pullGet(QNetworkAccessManager *nam, const QUrl &url, const QByteArray 
     HttpClient::Options options;
     options.authorization = authorization;
     options.timeoutMs = timeoutMs;
-    const HttpClient::Response response = HttpClient::get(nam, url, options, ModelCatalog::kMaxRedirects);
+    const HttpClient::Response response = HttpClient::get(nam, url, options, ModelCatalog::kMaxRedirects, /*allowInsecure=*/true);
     GetResult result;
     result.status = response.status > 0 ? response.status : -1;
     result.body = response.body;
@@ -245,7 +245,13 @@ QList<HfFile> ModelCatalog::fetchTree(QNetworkAccessManager *nam, const QString 
         const QUrl next = nextPageUrl(res.linkHeader);
         if (!next.isValid())
             break;
-        pageUrl = next.toString();
+        const QUrl current(pageUrl);
+        const QUrl resolved = current.resolved(next);
+        if (!HttpClient::isSameOrigin(current, resolved)) {
+            error = QObject::tr("The Hugging Face pagination points at another host — the file list may be incomplete.");
+            break;
+        }
+        pageUrl = resolved.toString();
     }
     return all;
 }

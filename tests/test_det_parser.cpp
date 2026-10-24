@@ -80,7 +80,7 @@ private slots:
                                            R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3\n)"
                                            R"(<|det|>text [112, 132, 884, 309]<|/det|>Body paragraph\n)");
 
-        UnlimitedOcrParser parser(ParserOptions{false, false});
+        UnlimitedOcrParser parser(ParserOptions{.keepPageNumbers = false, .tablesAsHtml = false});
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -411,7 +411,7 @@ private slots:
                                            "<fcel>Мир<fcel>100<lcel><nl>"
                                            "<fcel>Россия<ucel><fcel>50<nl>");
 
-        UnlimitedOcrParser parser(ParserOptions{true, true});
+        UnlimitedOcrParser parser(ParserOptions{.keepPageNumbers = true, .tablesAsHtml = true});
         const OcrResult r = parser.parse(raw);
 
         QVERIFY(r.success);
@@ -955,7 +955,7 @@ private slots:
             R"(<|det|>table [0, 0, 100, 100]<|/det|><table><tr><td colspan="2">A</td><td>B</td></tr><tr><td>1</td><td>2</td><td>3</td></tr></table>
 )");
 
-        UnlimitedOcrParser parser(ParserOptions{true, true});
+        UnlimitedOcrParser parser(ParserOptions{.keepPageNumbers = true, .tablesAsHtml = true});
         const OcrResult r = parser.parse(raw);
         QVERIFY(r.success);
 
@@ -1518,7 +1518,7 @@ private slots:
                                            R"(<|det|>page_number [493, 924, 506, 935]<|/det|>3\n)"
                                            R"(<|det|>text [112, 132, 884, 309]<|/det|>Body paragraph\n)");
 
-        UnlimitedOcrParser parser(ParserOptions{false, false});
+        UnlimitedOcrParser parser(ParserOptions{.keepPageNumbers = false, .tablesAsHtml = false});
         const OcrPage page = parser.parse(raw).pages.first();
         QCOMPARE(page.boxes.size(), 2);
 

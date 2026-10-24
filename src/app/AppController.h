@@ -14,6 +14,8 @@
 #include <QUrl>
 #include <QVariant>
 
+#include "core/TextDiff.h"
+
 #include "app/BoxListModel.h"
 #include "app/DocumentModel.h"
 #include "app/ExportController.h"
@@ -392,6 +394,7 @@ private:
     const ModelProfiles::Role *layoutRole() const;
     QString effectiveParserId() const;
     QString effectiveParserIdFor(const QString &profileId) const;
+    const TextDiff &selectedBlockDiff() const;
     ParserOptions parserOptions() const;
     std::unique_ptr<IOutputParser> makeParser() const;
     void setPageText(int index, const QString &text);
@@ -464,6 +467,29 @@ private:
         bool scopeHasResults = false;
         bool operator==(const AvailabilityFlags &) const = default;
     };
+    // The cheap fingerprint of the inputs the flags are computed from. It is
+    // compared before any of the expensive getters runs: the flags cost a
+    // scan of the document, and the queue's chatter must not pay for it
+    // (ADR 208).
+    struct AvailabilityInputs {
+        int docRevision = -1;
+        int cropRevision = -1;
+        int currentPage = -1;
+        int pageSelectionRevision = -1;
+        int verificationFilterRevision = -1;
+        bool importing = false;
+        bool recognitionBusy = false;
+        bool layoutBusy = false;
+        bool checkBusy = false;
+        bool runtimeCanRecognize = false;
+        bool pageOcrModel = false;
+        bool rawPageOcrModel = false;
+        bool blockRecognitionModel = false;
+        bool decisionModel = false;
+        bool layoutModel = false;
+        bool fixModel = false;
+        bool operator==(const AvailabilityInputs &) const = default;
+    };
     void updateAvailability();
 
     bool collectProjectData(ProjectData *data, QString *error);
@@ -514,6 +540,14 @@ private:
     mutable int m_rebuildCachePage = -1;
     mutable int m_rebuildCacheDocRevision = -1;
     mutable int m_rebuildCacheCropRevision = -1;
+    mutable QString m_parserIdCache;
+    AvailabilityInputs m_availabilityInputs;
+    int m_pageSelectionRevision = 0;
+    int m_verificationFilterRevision = 0;
+    mutable TextDiff m_diffCache;
+    mutable QString m_diffBefore;
+    mutable QString m_diffAfter;
+    mutable QString m_parserIdKey;
     mutable QString m_rebuildCacheText;
 
     LruImageCache m_previewCache{kPreviewCacheBudgetBytes};

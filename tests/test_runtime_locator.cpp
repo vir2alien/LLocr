@@ -138,7 +138,7 @@ void TestRuntimeLocator::cacheHoldsSingleEntry()
     QVERIFY(dir.isValid());
     const QString mock = QFileInfo(mockPath()).absoluteFilePath();
 
-    auto makeBinary = [&dir, &mock](const QString &path) { QVERIFY2(QFile::copy(mock, path), "copy mock failed"); };
+    auto makeBinary = [&mock](const QString &path) { QVERIFY2(QFile::copy(mock, path), "copy mock failed"); };
     auto probeCount = [](const QString &log) -> int {
         QFile f(log);
         if (!f.open(QIODevice::ReadOnly))

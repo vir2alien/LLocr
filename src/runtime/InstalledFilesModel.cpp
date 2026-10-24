@@ -18,7 +18,7 @@ QString entryTitle(const ModelEntry &entry)
     // an unknown repo degrades to its HF form (org__repo → org/repo), a
     // hand-brought model to its file stem.
     const QString profileId = ModelProfiles::idForRepo(ModelProfiles::instance(), entry.repo);
-    if (const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), profileId))
+    if (const ModelProfiles::Profile *profile = ModelProfiles::findBuiltIn(profileId))
         return profile->title;
     if (!entry.repo.isEmpty())
         return QString(entry.repo).replace(QLatin1String("__"), QLatin1String("/"));

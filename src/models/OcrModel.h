@@ -33,6 +33,11 @@ public:
     QList<ModelProfiles::Prompt> promptVariants() const;
     QString defaultParserId() const;
 
+    // The parser the profile declares for the page task. It reads the profile
+    // only — no model, and no network manager with it, is built for it
+    // (ADR 207).
+    static QString defaultParserIdFor(const QString &modelId);
+
     QFuture<OcrResult> recognize(const OcrRequest &request, const ConnectionConfig &config);
     void abort();
 

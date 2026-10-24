@@ -59,7 +59,10 @@ public:
 
     static bool save(const QString &modelsDir, const QList<ModelEntry> &entries, QString &error);
 
-    static bool update(const QString &modelsDir, const std::function<QList<ModelEntry>(QList<ModelEntry> &)> &mutate, QString &error);
+    // `rebuilt` reports that the index on disk was unusable and was rebuilt
+    // from the models directory instead of being overwritten from an empty
+    // list (ADR 198).
+    static bool update(const QString &modelsDir, const std::function<QList<ModelEntry>(QList<ModelEntry> &)> &mutate, QString &error, bool *rebuilt = nullptr);
 
 private:
     static QList<ModelEntry> readIndex(const QString &modelsDir, QString &error);

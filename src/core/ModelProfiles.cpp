@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -471,21 +472,51 @@ QList<ModelProfiles::Profile> ModelProfiles::loadBuiltIn(QString &error)
     return loadFrom(QString::fromUtf8(kResourceDir), error);
 }
 
-const QList<ModelProfiles::Profile> &ModelProfiles::instance()
+namespace {
+
+// The built-in profiles and the index of them. A profile is looked up by id
+// for every block of every page, so the list is indexed once instead of
+// scanned (ADR 206). The index points into the list, and the list never
+// changes after it is loaded.
+struct BuiltInProfiles {
+    QList<ModelProfiles::Profile> profiles;
+    QHash<QString, const ModelProfiles::Profile *> byId;
+};
+
+const BuiltInProfiles &builtInProfiles()
 {
-    static const QList<Profile> loaded = [] {
-        QList<Profile> profiles;
+    static const BuiltInProfiles data = [] {
+        BuiltInProfiles built;
         QString error;
-        profiles = loadBuiltIn(error);
+        built.profiles = ModelProfiles::loadBuiltIn(error);
         if (!error.isEmpty())
             qWarning("ModelProfiles: %s", qUtf8Printable(error));
-        return profiles;
+        built.byId.reserve(built.profiles.size());
+        for (const ModelProfiles::Profile &profile : built.profiles)
+            built.byId.insert(profile.id, &profile);
+        return built;
     }();
-    return loaded;
+    return data;
+}
+
+}  // namespace
+
+const QList<ModelProfiles::Profile> &ModelProfiles::instance()
+{
+    return builtInProfiles().profiles;
+}
+
+const ModelProfiles::Profile *ModelProfiles::findBuiltIn(const QString &id)
+{
+    const BuiltInProfiles &built = builtInProfiles();
+    const auto it = built.byId.constFind(id);
+    return it == built.byId.constEnd() ? nullptr : it.value();
 }
 
 const ModelProfiles::Profile *ModelProfiles::find(const QList<Profile> &profiles, const QString &id)
 {
+    // The loader asks for profiles while it reads them, so this scan stays
+    // free of the index of the built-in list (it would call back into it).
     for (const Profile &p : profiles) {
         if (p.id == id)
             return &p;
@@ -501,7 +532,7 @@ const ModelProfiles::Role *ModelProfiles::roleFor(const Profile &profile, const 
 
 const ModelProfiles::Role *ModelProfiles::roleFor(const QString &modelId, const QString &role)
 {
-    const Profile *profile = find(instance(), modelId);
+    const Profile *profile = findBuiltIn(modelId);
     return profile ? roleFor(*profile, role) : nullptr;
 }
 
@@ -593,13 +624,6 @@ QList<RequestParameter> ModelProfiles::requestFor(const QList<Profile> &profiles
         return {};
     if (const Role *found = roleFor(*profile, role))
         return found->request;
-    return {};
-}
-
-QList<ModelProfiles::Prompt> ModelProfiles::promptsFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
-{
-    if (const Role *found = roleFor(modelId, role))
-        return found->prompts;
     return {};
 }
 

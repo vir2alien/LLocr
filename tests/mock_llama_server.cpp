@@ -95,7 +95,6 @@ int main(int argc, char *argv[])
     const int versionDelayMs = qEnvironmentVariableIntValue("LLOCR_MOCK_VERSION_DELAY_MS");
     if (versionDelayMs > 0)
         QThread::msleep(static_cast<unsigned long>(versionDelayMs));
-    bool ranVersionBreak = false;
     for (int i = 0; i < argc; ++i) {
         const QString a = QString::fromLocal8Bit(argv[i]);
         if (a == QStringLiteral("--version")) {

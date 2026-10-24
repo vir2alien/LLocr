@@ -506,13 +506,13 @@ private slots:
         request.typePrompt = QStringLiteral("Verify the text block.");
         request.modelId = QStringLiteral("ocr-verifier");
         request.parameters = {
-            {QStringLiteral("temperature"), 0, RequestValueKind::Number, 0.0, QString()},
-            {QStringLiteral("repeat_penalty"), 1, RequestValueKind::Number, 1.0, QString()},
-            {QStringLiteral("presence_penalty"), 2, RequestValueKind::Number, 0.0, QString()},
-            {QStringLiteral("frequency_penalty"), 3, RequestValueKind::Number, 0.0, QString()},
-            {QStringLiteral("max_tokens"), 4, RequestValueKind::Number, 512.0, QString()},
-            {QStringLiteral("stream"), 5, RequestValueKind::Boolean, false, QString()},
-            {QStringLiteral("cache_prompt"), 6, RequestValueKind::Boolean, true, QString()},
+            {QStringLiteral("temperature"), 0, RequestValueKind::Number, 0.0, QString(), {}},
+            {QStringLiteral("repeat_penalty"), 1, RequestValueKind::Number, 1.0, QString(), {}},
+            {QStringLiteral("presence_penalty"), 2, RequestValueKind::Number, 0.0, QString(), {}},
+            {QStringLiteral("frequency_penalty"), 3, RequestValueKind::Number, 0.0, QString(), {}},
+            {QStringLiteral("max_tokens"), 4, RequestValueKind::Number, 512.0, QString(), {}},
+            {QStringLiteral("stream"), 5, RequestValueKind::Boolean, false, QString(), {}},
+            {QStringLiteral("cache_prompt"), 6, RequestValueKind::Boolean, true, QString(), {}},
         };
 
         const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));

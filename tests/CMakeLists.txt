@@ -324,6 +324,29 @@ target_link_libraries(test_launch_tab_qml PRIVATE
 )
 add_test(NAME test_launch_tab_qml COMMAND test_launch_tab_qml)
 
+# The models table as QML: an unsaved edit must survive the sync that runs
+# when the window is shown again, and the Cancel path must throw it away
+# (ADR 200). The file is read from the source tree, so the test covers the
+# shipped QML rather than a copy.
+qt_add_executable(test_task_models_table_qml test_task_models_table_qml.cpp)
+
+target_link_libraries(test_task_models_table_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_config
+)
+# The table's icons come from the app's icon set; without them every Icon
+# would warn about a missing file.
+qt_add_resources(test_task_models_table_qml "task_models_table_ui_icons"
+    PREFIX "/icons/ui"
+    BASE "${CMAKE_SOURCE_DIR}/resources/icons/ui"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/icons/ui/x.svg"
+        "${CMAKE_SOURCE_DIR}/resources/icons/ui/settings.svg"
+)
+add_test(NAME test_task_models_table_qml COMMAND test_task_models_table_qml)
+
 qt_add_executable(test_runtime_lifetime test_runtime_lifetime.cpp)
 
 target_link_libraries(test_runtime_lifetime PRIVATE

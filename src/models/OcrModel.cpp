@@ -37,31 +37,6 @@ bool rawDebugEnabled()
     return enabled;
 }
 
-QDir rawDebugDir()
-{
-    const QDir dir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/raw-debug"));
-    dir.mkpath(QStringLiteral("."));
-    return dir;
-}
-
-void dumpRawRequest(const QByteArray &requestBody)
-{
-    if (!rawDebugEnabled())
-        return;
-
-    static std::atomic<int> sequence;
-    const int n = sequence.fetch_add(1, std::memory_order_relaxed) + 1;
-
-    const QString base = QStringLiteral("raw-%1-%2-request").arg(QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd-HHmmss"))).arg(n, 4, 10, QLatin1Char('0'));
-    QFile file(rawDebugDir().filePath(base + QStringLiteral(".json")));
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qWarning() << "[raw-debug] cannot write" << file.fileName();
-        return;
-    }
-    file.write(requestBody);
-    qInfo().noquote() << "[raw-debug] request saved:" << file.fileName();
-}
-
 void dumpRawResponse(const QByteArray &responseData, const QString &content, bool parsed)
 {
     if (!rawDebugEnabled())
@@ -90,7 +65,7 @@ OcrModel::OcrModel(QString modelId) : m_id(std::move(modelId)) {}
 
 std::unique_ptr<OcrModel> OcrModel::create(const QString &modelId)
 {
-    if (ModelProfiles::find(ModelProfiles::instance(), modelId))
+    if (ModelProfiles::findBuiltIn(modelId))
         return std::make_unique<OcrModel>(modelId);
 
     const QString fallback = defaultId();
@@ -110,7 +85,7 @@ QStringList OcrModel::registeredIds()
 
 QString OcrModel::displayName() const
 {
-    if (const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), m_id))
+    if (const ModelProfiles::Profile *profile = ModelProfiles::findBuiltIn(m_id))
         return profile->title;
     return m_id;
 }
@@ -135,7 +110,14 @@ QList<ModelProfiles::Prompt> OcrModel::promptVariants() const
 
 QString OcrModel::defaultParserId() const
 {
-    if (const ModelProfiles::Role *role = pageRoleFor(m_id))
+    return defaultParserIdFor(m_id);
+}
+
+QString OcrModel::defaultParserIdFor(const QString &modelId)
+{
+    // An unknown id falls back to the default model, exactly as create() does.
+    const QString resolved = ModelProfiles::findBuiltIn(modelId) ? modelId : defaultId();
+    if (const ModelProfiles::Role *role = pageRoleFor(resolved))
         return role->parser;
     return QStringLiteral("raw");
 }

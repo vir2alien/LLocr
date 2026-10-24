@@ -57,6 +57,18 @@ bool HttpClient::isAllowedUrl(const QUrl &url, bool allowInsecure)
     return host == QLatin1String("127.0.0.1") || host == QLatin1String("::1") || host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0;
 }
 
+bool HttpClient::isSameOrigin(const QUrl &a, const QUrl &b)
+{
+    if (!a.isValid() || !b.isValid())
+        return false;
+    if (a.scheme().compare(b.scheme(), Qt::CaseInsensitive) != 0)
+        return false;
+    if (a.host().compare(b.host(), Qt::CaseInsensitive) != 0)
+        return false;
+    const auto defaultPort = [](const QUrl &url) { return url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0 ? 443 : 80; };
+    return a.port(defaultPort(a)) == b.port(defaultPort(b));
+}
+
 HttpClient::Redirect HttpClient::redirectFor(const QNetworkReply *reply, const QUrl &current, int hopsUsed, int maxHops, bool allowInsecure)
 {
     Redirect redirect;
@@ -83,6 +95,13 @@ HttpClient::Response HttpClient::get(QNetworkAccessManager *nam, const QUrl &url
     QUrl current = url;
     QByteArray authorization = options.authorization;
     int hops = 0;
+
+    // The first URL is filtered by the same rule as a redirect: the policy
+    // lives in one place, and both callers inherit it (ADR 211).
+    if (!isAllowedUrl(current, allowInsecure)) {
+        response.error = QStringLiteral("refused to fetch a disallowed URL");
+        return response;
+    }
 
     while (true) {
         Options hop = options;

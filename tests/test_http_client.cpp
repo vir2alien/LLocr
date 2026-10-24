@@ -101,7 +101,7 @@ private slots:
         const QUrl start(QStringLiteral("http://127.0.0.1:%1/start").arg(server.serverPort()));
         QObject::connect(&server, &QTcpServer::newConnection, this, [&]() {
             while (QTcpSocket *socket = server.nextPendingConnection()) {
-                QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket, this, &server]() {
+                QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket, &server]() {
                     if (!socket->readAll().contains("\r\n\r\n"))
                         return;
                     const QByteArray location = "Location: http://127.0.0.1:" + QByteArray::number(server.serverPort()) + "/again\r\n";

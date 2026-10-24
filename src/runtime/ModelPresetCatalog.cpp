@@ -123,6 +123,8 @@ QList<ModelPreset> ModelPresetCatalog::load(const QList<ModelPreset> &builtIn, c
 {
     QString userErr;
     const QList<ModelPreset> user = readFile(userCatalogPath, QObject::tr("user preset catalog"), userErr, /*missingIsOk=*/true);
+    if (!userErr.isEmpty())
+        error = userErr;
 
     QList<ModelPreset> merged;
     QHash<QString, int> indexById;

@@ -11,11 +11,6 @@ namespace llocr {
 
 namespace {
 
-QString defaultPageOcrRequestProfileId()
-{
-    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("pageOcr"));
-}
-
 QString defaultBlockRecognitionRequestProfileId()
 {
     return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));

@@ -35,6 +35,9 @@ ScrollView {
         for (var ri = 0; ri < RuntimeInstaller.releaseCount; ri++)
             r.push(RuntimeInstaller.releaseLabel(ri))
         releaseOptions = r
+        // The same reset-to-zero applies to the release list, so the box is
+        // synced from the source of truth as well.
+        syncReleaseBox()
     }
 
     function syncBackendBox() {
@@ -44,6 +47,13 @@ ScrollView {
         backendBox.currentIndex = idx >= 0 ? idx : 0
     }
 
+    function syncReleaseBox() {
+        if (!releaseBox)
+            return
+        const idx = RuntimeInstaller.selectedRelease
+        releaseBox.currentIndex = idx >= 0 && idx < releaseOptions.length ? idx : 0
+    }
+
     Connections {
         target: RuntimeInstaller
         function onCatalogChanged() {
@@ -51,11 +61,13 @@ ScrollView {
             for (var ri = 0; ri < RuntimeInstaller.releaseCount; ri++)
                 r.push(RuntimeInstaller.releaseLabel(ri))
             releaseOptions = r
-            if (releaseBox)
-                releaseBox.currentIndex = RuntimeInstaller.selectedRelease
+            syncReleaseBox()
         }
         function onBackendChanged() {
             syncBackendBox()
+        }
+        function onSelectedReleaseChanged() {
+            syncReleaseBox()
         }
     }
 

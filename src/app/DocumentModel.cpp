@@ -361,27 +361,32 @@ QImage DocumentModel::renderDetached(const RenderRequest &request, QString *erro
     }
 #ifdef LLOCR_HAVE_DJVU
     if (page.sourceType == DocumentSource::DjVu) {
-        if (!request.djvu) {
-            if (error) {
+        // The DjVuLibre context belongs to the thread that opened it: a
+        // worker thread renders with its own handle (ADR 209).
+        std::shared_ptr<DjVuDocument> djvu = request.djvu;
+        if (!djvu || !djvu->ownedByCurrentThread())
+            djvu = djvuForCurrentThread(page.sourcePath, error);
+        if (!djvu) {
+            if (error && error->isEmpty()) {
                 *error = QCoreApplication::translate("DocumentModel", "DjVu document is not open: %1").arg(page.sourcePath);
             }
             return {};
         }
-        return request.djvu->render(page.sourcePageIndex, page.pixelSize, error);
+        return djvu->render(page.sourcePageIndex, page.pixelSize, error);
     }
 #endif
     if (page.sourceType == DocumentSource::Pdf) {
         // The request carries the already-parsed handle when the model has one
-        // resident; a hand-built request (or a file evicted by the LRU) falls
-        // back to a private parse, which is the behaviour this path had before.
+        // resident and the calling thread owns it. A worker thread opens its
+        // own handle: a QPdfDocument must not be touched by another thread
+        // than the one that created it (ADR 209).
         std::shared_ptr<PdfDocument> pdf = request.pdf;
+        if (!pdf || !pdf->ownedByCurrentThread())
+            pdf = pdfForCurrentThread(page.sourcePath);
         if (!pdf) {
-            pdf = std::make_shared<PdfDocument>();
-            if (!pdf->open(page.sourcePath)) {
-                if (error)
-                    *error = QStringLiteral("Failed to open %1 as a PDF document").arg(page.sourcePath);
-                return QImage();
-            }
+            if (error)
+                *error = QStringLiteral("Failed to open %1 as a PDF document").arg(page.sourcePath);
+            return QImage();
         }
         QImage image = pdf->render(page.sourcePageIndex, page.pixelSize);
         if (image.isNull()) {
@@ -392,6 +397,57 @@ QImage DocumentModel::renderDetached(const RenderRequest &request, QString *erro
     }
 
     return decodeSourceCopy(page, error);
+}
+
+namespace {
+
+// The handles a thread uses to render. A QPdfDocument belongs to the thread
+// that created it, and a DjVuLibre context is no better, so a worker thread
+// keeps its own handle for the document it renders. One document at a time
+// is enough: the app shows one document, and the model keeps its own handles
+// for the rest (ADR 209).
+struct ThreadDocuments {
+    QString path;
+    std::shared_ptr<PdfDocument> pdf;
+    std::shared_ptr<DjVuDocument> djvu;
+};
+
+thread_local ThreadDocuments t_threadDocuments;
+
+}  // namespace
+
+std::shared_ptr<PdfDocument> DocumentModel::pdfForCurrentThread(const QString &path)
+{
+    if (t_threadDocuments.path != path) {
+        t_threadDocuments.pdf.reset();
+        t_threadDocuments.djvu.reset();
+        t_threadDocuments.path = path;
+    }
+    if (t_threadDocuments.pdf)
+        return t_threadDocuments.pdf;
+
+    auto pdf = std::make_shared<PdfDocument>();
+    if (!pdf->open(path))
+        return {};
+    t_threadDocuments.pdf = pdf;
+    return pdf;
+}
+
+std::shared_ptr<DjVuDocument> DocumentModel::djvuForCurrentThread(const QString &path, QString *error)
+{
+    if (t_threadDocuments.path != path) {
+        t_threadDocuments.pdf.reset();
+        t_threadDocuments.djvu.reset();
+        t_threadDocuments.path = path;
+    }
+    if (t_threadDocuments.djvu)
+        return t_threadDocuments.djvu;
+
+    auto djvu = std::make_shared<DjVuDocument>();
+    if (!djvu->open(path, error))
+        return {};
+    t_threadDocuments.djvu = djvu;
+    return djvu;
 }
 
 QImage DocumentModel::decodeSourceCopy(const DocumentPage &page, QString *error)

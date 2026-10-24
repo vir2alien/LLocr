@@ -52,7 +52,7 @@ ApplicationWindow {
             text: qsTr("Cancel")
             enabled: !ModelInstaller.taskQueueActive
             onClicked: {
-                taskTable.syncDraft()
+                taskTable.resetDraft()
                 window.close()
             }
         }
@@ -73,6 +73,7 @@ ApplicationWindow {
         }
 
         const missing = ModelInstaller.applyTaskChoices(taskTable.buildChoices())
+        taskTable.markDraftSaved()
         if (missing.length === 0) {
             window.close()
             return
