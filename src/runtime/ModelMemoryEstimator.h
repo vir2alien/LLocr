@@ -29,6 +29,11 @@ struct ModelMemoryShape {
     qint64 visionBytesPerToken = 0;  // the encoder's working set per image token
     qint64 visionBufferBytes = 0;    // the encoder's whole working set (0 = follow the token count)
 
+    // A draft that is a model of its own runs in its own context: it holds a
+    // KV cache and a compute buffer of its own.
+    qint64 draftKvBytesPerToken = 0;  // that context's KV cache per context token
+    qint64 draftContextBytes = 0;     // what it holds besides that
+
     // The speculative decoding draft: a second model the server loads next
     // to the target.
     qint64 draftBytes = 0;
@@ -39,6 +44,7 @@ struct ModelMemoryShape {
     qint64 workingSetBytesPerToken = 0;  // 0 = derive it from the shape
     qint64 workingSetContextBytes = 0;   // per context token of the attention mask
     qint64 kvBytesPerToken = 0;          // 0 = derive it from the shape
+    qint64 kvBytesFixed = 0;             // the sliding layers' cells (0 = the cache follows the context)
 };
 
 // What the server is asked to do: the context window, the ubatch and the
@@ -54,6 +60,7 @@ struct ModelMemoryEstimate {
     qint64 modelBytes = 0;          // GGUF file size on disk
     qint64 mmprojBytes = 0;         // vision projector file size (0 when the model has none)
     qint64 draftBytes = 0;          // the speculative decoding draft (0 when there is none)
+    qint64 draftContextBytes = 0;   // the draft context's own KV cache and compute buffer
     qint64 kvCacheBytes = 0;        // KV-cache estimate (f16 unless cache-type f32)
     qint64 computeBufferBytes = 0;  // graph working set reserved for the ubatch
     qint64 visionBufferBytes = 0;   // the vision encoder's working set

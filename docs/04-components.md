@@ -426,17 +426,24 @@ table, the preset catalog and the HF search are part of the **Location** tab
 - Memory: the wizard's **Launch** step shows a **model + KV-cache RAM estimate**
   and warns when the total looks high vs system RAM (`ModelMemoryEstimator`, H.2). ✅
 - **The card a model needs** (ADR 191): the estimate is a *requirement* — the
-  weights, the projector, the speculative-decoding draft, the KV cache, the
-  working set, the vision encoder and the server's overhead. The model
-  profiles ship the architecture (`memory` block) and the curated sizes, so
-  a quantization that is not downloaded yet carries the number too; the task
-  window's quant dropdown shows it (`VRAM ≥ 11.4 GiB`) and Settings → Launch
-  shows the same breakdown against the card. The vision encoder is measured
-  from llama.cpp's own clip reservation: a rate per image token, or the whole
-  working set for the two projectors whose cost does not follow the token
-  count (the gemma-4-E4B, whose encoder runs without flash attention, and the
-  Unlimited-OCR, whose projector tiles the page). A model outside the catalog
+  weights, the projector, the speculative-decoding draft (its weights *and*
+  the context it runs in), the KV cache, the working set, the vision encoder
+  and the server's overhead. The model profiles ship the architecture
+  (`memory` block) and the curated sizes, so a quantization that is not
+  downloaded yet carries the number too; the task window's quant dropdown
+  shows it (`VRAM ≥ 11.4 GiB`) and Settings → Launch shows the same breakdown
+  against the card. Everything is measured against llama.cpp's own report:
+  the vision encoder from its clip reservation (a rate per image token, or the
+  whole working set for the two projectors whose cost does not follow the
+  token count — the gemma-4-E4B, whose encoder runs without flash attention,
+  and the Unlimited-OCR, whose projector tiles the page); a draft that is a
+  model of its own (the LFM2.5-VL's DSpark drafter, the gemma-4 MTP drafters)
+  from its own KV cache and compute buffer; a sliding-window hybrid's cache
+  from the fixed cells its sliding layers get. A model outside the catalog
   names no card — nothing is known about the encoder it would run. ✅
+  The method, the calibration of every shipped model and the checklist for a
+  new one: `docs/27-memory-estimate.md` (the measurement scripts:
+  `scripts/measure-memory.sh`, `scripts/memory-from-log.py`).
 
 ## 4.18 First-run wizard (Stage F)
 On a clean profile (`setupVersion == 0 && !setupDismissed`) `Main.qml` triggers

@@ -1376,13 +1376,13 @@
     </message>
     <message>
         <location line="-26"/>
-        <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6, vision %7, overhead %8.</source>
-        <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, KV-кэш %5, рабочий буфер %6, зрение %7, накладные %8.</translation>
+        <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, draft %5, KV cache %6, working set %7, vision %8, overhead %9.</source>
+        <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, черновик %5, KV-кэш %6, рабочий буфер %7, зрение %8, накладные %9.</translation>
     </message>
     <message>
         <location line="-8"/>
-        <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, KV cache %5, working set %6, overhead %7.</source>
-        <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, KV-кэш %5, рабочий буфер %6, накладные %7.</translation>
+        <source>Video memory for this model: %1 of %2 on this card — weights %3, projector %4, draft %5, KV cache %6, working set %7, overhead %8.</source>
+        <translation>Видеопамять для этой модели: %1 из %2 на этой карте — веса %3, проектор %4, черновик %5, KV-кэш %6, рабочий буфер %7, накладные %8.</translation>
     </message>
     <message>
         <location line="+26"/>

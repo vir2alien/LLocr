@@ -62,8 +62,10 @@
     "nEmbd": 2048,
     "nFf": 10752,
     "visionTokens": 256,
-    "visionBytesPerToken": 110600,
-    "draftBytes": 567205280
+    "visionBytesPerToken": 124150,
+    "draftBytes": 567205280,
+    "draftKvBytesPerToken": 8192,
+    "draftContextBytes": 533190410
   },
   "roles": {
     "pageOcr": {

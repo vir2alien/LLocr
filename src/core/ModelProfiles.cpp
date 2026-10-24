@@ -266,6 +266,10 @@ ModelProfiles::Memory readMemory(const QJsonObject &root)
     memory.workingSetBytesPerToken = static_cast<qint64>(object.value(QStringLiteral("workingSetBytesPerToken")).toDouble(0));
     memory.workingSetContextBytes = static_cast<qint64>(object.value(QStringLiteral("workingSetContextBytes")).toDouble(0));
     memory.kvBytesPerToken = static_cast<qint64>(object.value(QStringLiteral("kvBytesPerToken")).toDouble(0));
+    memory.kvBytesFixed = static_cast<qint64>(object.value(QStringLiteral("kvBytesFixed")).toDouble(0));
+    memory.draftBytes = static_cast<qint64>(object.value(QStringLiteral("draftBytes")).toDouble(0));
+    memory.draftKvBytesPerToken = static_cast<qint64>(object.value(QStringLiteral("draftKvBytesPerToken")).toDouble(0));
+    memory.draftContextBytes = static_cast<qint64>(object.value(QStringLiteral("draftContextBytes")).toDouble(0));
     memory.valid = memory.nEmbd > 0;
     return memory;
 }

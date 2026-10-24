@@ -504,6 +504,7 @@ ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMem
     e.draftBytes = shape.draftBytes;
     e.mmprojBytes = shape.projectorBytes;
     e.ctxSize = budget.ctxSize > 0 ? budget.ctxSize : kDefaultCtxSize;
+    e.draftContextBytes = shape.draftContextBytes + shape.draftKvBytesPerToken * e.ctxSize;
     e.bytesPerValue = budget.bytesPerValue;
     e.systemRamBytes = systemPhysicalRamBytes();
 
@@ -513,7 +514,7 @@ ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMem
     e.headDim = shape.headDim;
 
     const qint64 kvPerToken = shape.kvBytesPerToken > 0 ? shape.kvBytesPerToken : 2LL * e.nKvLayer * shape.nKvHead * shape.headDim * e.bytesPerValue;
-    e.kvCacheBytes = kvPerToken * e.ctxSize;
+    e.kvCacheBytes = kvPerToken * e.ctxSize + shape.kvBytesFixed;
 
     const qint64 perToken = shape.workingSetBytesPerToken > 0 ? shape.workingSetBytesPerToken : computeBytesPerToken(shape) * kWorkingSetPercent / 100;
     const qint64 contextBytes = shape.workingSetContextBytes > 0 ? shape.workingSetContextBytes : kMaskBytesPerContextToken;
@@ -522,7 +523,7 @@ ModelMemoryEstimate estimateMemory(const ModelMemoryShape &shape, const ModelMem
 
     e.visionBufferBytes = shape.visionBufferBytes > 0 ? shape.visionBufferBytes : qint64(budget.visionTokens) * shape.visionBytesPerToken;
 
-    e.totalBytes = e.modelBytes + e.draftBytes + e.mmprojBytes + e.kvCacheBytes + e.computeBufferBytes + e.visionBufferBytes;
+    e.totalBytes = e.modelBytes + e.draftBytes + e.draftContextBytes + e.mmprojBytes + e.kvCacheBytes + e.computeBufferBytes + e.visionBufferBytes;
     // The server's own allocations: the logits buffer, the samplers, the
     // graph metadata and the allocator's slack.
     e.overheadBytes = kServerOverheadBytes + e.totalBytes * kOverheadShare / 100;
@@ -544,6 +545,10 @@ ModelMemoryShape shapeFromProfile(const ModelProfiles::Memory &memory)
     shape.nExpertUsed = memory.nExpertUsed;
     shape.nExpertFf = memory.nExpertFf;
     shape.visionBytesPerToken = memory.visionBytesPerToken;
+    shape.kvBytesFixed = memory.kvBytesFixed;
+    shape.draftBytes = memory.draftBytes;
+    shape.draftKvBytesPerToken = memory.draftKvBytesPerToken;
+    shape.draftContextBytes = memory.draftContextBytes;
     shape.visionBufferBytes = memory.visionBufferBytes;
     shape.workingSetBytesPerToken = memory.workingSetBytesPerToken;
     shape.workingSetContextBytes = memory.workingSetContextBytes;

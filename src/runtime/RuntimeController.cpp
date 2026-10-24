@@ -947,6 +947,7 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, con
     out.insert(QStringLiteral("modelBytes"), e.modelBytes);
     out.insert(QStringLiteral("mmprojBytes"), e.mmprojBytes);
     out.insert(QStringLiteral("draftBytes"), e.draftBytes);
+    out.insert(QStringLiteral("draftContextBytes"), e.draftContextBytes);
     out.insert(QStringLiteral("kvCacheBytes"), e.kvCacheBytes);
     out.insert(QStringLiteral("computeBufferBytes"), e.computeBufferBytes);
     out.insert(QStringLiteral("visionBufferBytes"), e.visionBufferBytes);
@@ -968,6 +969,7 @@ QVariantMap RuntimeController::estimateModelMemory(const QString &modelPath, con
     out.insert(QStringLiteral("overVramBudget"), valid && hardware.primaryGpuMemoryBytes() > 0 && e.requiredVramBytes > hardware.primaryGpuMemoryBytes());
     out.insert(QStringLiteral("totalLabel"), formatBytes(e.totalBytes));
     out.insert(QStringLiteral("requiredLabel"), formatBytes(e.requiredVramBytes));
+    out.insert(QStringLiteral("draftLabel"), formatBytes(e.draftBytes + e.draftContextBytes));
     out.insert(QStringLiteral("modelLabel"), formatBytes(e.modelBytes));
     out.insert(QStringLiteral("mmprojLabel"), formatBytes(e.mmprojBytes));
     out.insert(QStringLiteral("kvLabel"), formatBytes(e.kvCacheBytes));

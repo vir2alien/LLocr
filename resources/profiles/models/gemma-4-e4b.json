@@ -36,7 +36,7 @@
   },
   "memory": {
     "nLayer": 42,
-    "nKvLayers": 20,
+    "nKvLayers": 4,
     "nHead": 8,
     "nKvHead": 2,
     "headDim": 512,
@@ -45,9 +45,11 @@
     "visionTokens": 1120,
     "visionBufferBytes": 3986933350,
     "draftBytes": 59678016,
+    "draftKvBytesPerToken": 4096,
+    "draftContextBytes": 188743680,
     "workingSetBytesPerToken": 176218,
     "workingSetContextBytes": 36,
-    "kvBytesPerToken": 20224
+    "kvBytesFixed": 62914560
   },
   "roles": {
     "fix": {

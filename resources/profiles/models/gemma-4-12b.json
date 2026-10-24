@@ -30,18 +30,20 @@
   },
   "memory": {
     "nLayer": 48,
-    "nKvLayers": 40,
+    "nKvLayers": 8,
     "nHead": 16,
     "nKvHead": 8,
-    "headDim": 256,
+    "headDim": 64,
     "nEmbd": 3840,
     "nFf": 15360,
     "visionTokens": 1120,
     "visionBytesPerToken": 55419,
     "draftBytes": 253708800,
-    "workingSetBytesPerToken": 190425,
-    "workingSetContextBytes": 68,
-    "kvBytesPerToken": 102400
+    "draftKvBytesPerToken": 2048,
+    "draftContextBytes": 387994092,
+    "workingSetBytesPerToken": 267320,
+    "workingSetContextBytes": 2,
+    "kvBytesFixed": 1006632960
   },
   "roles": {
     "fix": {

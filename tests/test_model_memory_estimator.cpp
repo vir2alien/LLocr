@@ -180,6 +180,8 @@ private slots:
     void countsTheProjectorAndTheWorkingSet();
     void countsTheVisionEncoderAndTheOverhead();
     void aFlatVisionCostDoesNotFollowTheTokenCount();
+    void aDraftOfItsOwnHoldsAContext();
+    void aSlidingWindowCacheHasAFixedPart();
     void everyProfileCarriesItsArchitecture();
     void theRequirementFollowsTheMeasuredNumbers();
     void aPageFillsTheImageBudgetAndACropDoesNot();
@@ -333,6 +335,57 @@ void TestModelMemoryEstimator::countsTheVisionEncoderAndTheOverhead()
     const ModelMemoryEstimate more = estimateMemory(shape, bigger);
     QVERIFY(more.kvCacheBytes > e.kvCacheBytes);
     QVERIFY(more.requiredVramBytes > e.requiredVramBytes);
+}
+
+// A draft that is a model of its own runs in its own context: its weights,
+// its KV cache and its compute buffer are all memory the card has to hold.
+void TestModelMemoryEstimator::aDraftOfItsOwnHoldsAContext()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const ModelProfiles::Profile *lfm = ModelProfiles::find(profiles, QStringLiteral("lfm25-vl-3b"));
+    QVERIFY(lfm);
+    QVERIFY(lfm->memory.draftBytes > 0);
+    QVERIFY(lfm->memory.draftKvBytesPerToken > 0);
+    QVERIFY(lfm->memory.draftContextBytes > 0);
+
+    const ModelMemoryShape shape = shapeFromProfile(lfm->memory);
+    QCOMPARE(shape.draftBytes, lfm->memory.draftBytes);
+
+    ModelMemoryBudget budget;
+    budget.ctxSize = 16384;
+    budget.ubatchTokens = 512;
+    const ModelMemoryEstimate e = estimateMemory(shape, budget);
+    // the draft context's KV cache follows the context, the rest does not
+    QCOMPARE(e.draftContextBytes, lfm->memory.draftContextBytes + lfm->memory.draftKvBytesPerToken * 16384);
+    QCOMPARE(e.totalBytes, e.modelBytes + e.draftBytes + e.draftContextBytes + e.mmprojBytes + e.kvCacheBytes + e.computeBufferBytes + e.visionBufferBytes);
+    QVERIFY(e.requiredVramBytes > e.totalBytes);
+
+    // a bigger context makes the draft's cache bigger
+    ModelMemoryBudget bigger = budget;
+    bigger.ctxSize = 32768;
+    QVERIFY(estimateMemory(shape, bigger).draftContextBytes > e.draftContextBytes);
+}
+
+// A sliding-window hybrid keeps a cache that does not follow the context:
+// the sliding layers get a fixed number of cells.
+void TestModelMemoryEstimator::aSlidingWindowCacheHasAFixedPart()
+{
+    const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
+    const ModelProfiles::Profile *gemma = ModelProfiles::find(profiles, QStringLiteral("gemma-4-12b"));
+    QVERIFY(gemma);
+    QVERIFY(gemma->memory.kvBytesFixed > 0);
+
+    const ModelMemoryShape shape = shapeFromProfile(gemma->memory);
+    ModelMemoryBudget budget;
+    budget.ctxSize = 16384;
+    const ModelMemoryEstimate e = estimateMemory(shape, budget);
+    // the full-attention layers follow the context, the sliding cells do not
+    QCOMPARE(e.kvCacheBytes, 2LL * gemma->memory.nKvLayers * gemma->memory.nKvHead * gemma->memory.headDim * 2 * 16384 + gemma->memory.kvBytesFixed);
+
+    ModelMemoryBudget smaller = budget;
+    smaller.ctxSize = 8192;
+    const ModelMemoryEstimate less = estimateMemory(shape, smaller);
+    QCOMPARE(less.kvCacheBytes, e.kvCacheBytes - 128LL * 1024 * 1024);
 }
 
 // Every shipped model ships the architecture the estimate needs: a

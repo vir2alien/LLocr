@@ -76,7 +76,7 @@ public:
     // ships the shape: the requirement must be known before the file exists.
     struct Memory {
         int nLayer = 0;     // decoder layers
-        int nKvLayers = 0;  // layers that keep a K/V cache (0 = all of them)
+        int nKvLayers = 0;  // layers whose cache follows the context (0 = all of them)
         int nHead = 0;
         int nKvHead = 0;
         int headDim = 0;
@@ -89,6 +89,10 @@ public:
         qint64 visionBytesPerToken = 0;  // the encoder's working set per image token
         qint64 visionBufferBytes = 0;    // the encoder's whole working set (0 = follow the token count)
         qint64 draftBytes = 0;           // the speculative decoding draft the server loads next to the target
+        // A draft that is a model of its own (a separate GGUF) runs in its own
+        // context: it holds a KV cache and a compute buffer of its own.
+        qint64 draftKvBytesPerToken = 0;  // that context's KV cache per context token
+        qint64 draftContextBytes = 0;     // what it holds besides that (the sliding-window cells, the compute buffer)
         // llama.cpp's own numbers, where its scheduler reserves more than the
         // shape predicts: the measured cost of one token of the graph's
         // working set (0 = derive it from the shape) and of one context token
@@ -96,6 +100,7 @@ public:
         qint64 workingSetBytesPerToken = 0;
         qint64 workingSetContextBytes = 0;
         qint64 kvBytesPerToken = 0;  // the KV cache per context token (0 = derive it)
+        qint64 kvBytesFixed = 0;     // the sliding layers' cells (they do not follow the context)
         bool valid = false;
     };
 

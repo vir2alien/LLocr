@@ -54,6 +54,7 @@
   | `docs/24-mineru.md`       | Model manual: MinerU2.5-Pro-2605-1.2B (two-step protocol, 1036² squash, `--special`, layout absorption); Russian mirror in `24-mineru.ru.md` |
   | `docs/25-paddleocr-vl.md` | Model manual: PaddleOCR-VL-1.6 (blockRecognition only — the layout model ships outside the GGUF, official single-quant repo); Russian mirror in `25-paddleocr-vl.ru.md` |
   | `docs/26-qwen3.5.md`      | Model manual: Qwen3.5-4B/9B, the fix default (OK/FIX/REVIEW, MTP drafting, framed candidate); Russian mirror in `26-qwen3.5.ru.md` |
+  | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all 14 models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
   
   ## Rules for the agent
   
@@ -319,9 +320,12 @@
       estimate lives on in Settings → Launch; **ADR 191** — the estimate became
       a *requirement*: the model profiles ship the architecture and the curated
       sizes, so every quantization of every model carries the minimum video
-      memory it needs (weights · projector · draft · KV cache · working set ·
-      vision encoder · overhead) and the quant dropdown shows it
-      (`VRAM ≥ 11.4 GiB`) instead of the parenthetical hint), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
+      memory it needs (weights · projector · draft (with its own context) ·
+      KV cache · working set · vision encoder · overhead) and the quant
+      dropdown shows it (`VRAM ≥ 11.4 GiB`) instead of the parenthetical hint;
+      the method, the calibration of every shipped model and the checklist for
+      a new one live in `docs/27-memory-estimate.md`, the measurement scripts
+      in `scripts/measure-memory.sh` + `scripts/memory-from-log.py`), H.7 ✅ (waitForStarted 10s→5s, health 500→250ms,
       probe bounds 2.5s/5s, `probeCached()` LRU — plus a **shared probe budget**
       (`--version` + `--help`, worst case = `timeoutMs`, ADR 51) and a
       **persistent capabilities cache** `capabilities-<sha1(path+mtime+size)>.json`
