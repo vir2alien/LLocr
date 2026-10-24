@@ -50,7 +50,10 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   `<= 0` = uncapped) so consumers bind heights instead of re-deriving row
   counts (ADR 82). The models list is one row per model with the quantizations
   chosen on the row (`ModelQuantModel` behind `Common/TaskModelsTable`,
-  ADR 122) — the installed/preset split it replaced is gone. The HF preset install pipeline lives in
+  ADR 122) — the installed/preset split it replaced is gone. The rows of the
+  task table are the app's six tasks, and their list comes from the C++
+  (`Settings.taskRoles` → `core/ConnectionRole.h`, ADR 215): the table keeps
+  no copy of it. The HF preset install pipeline lives in
   `ModelInstallTransaction` (prepare → download → finalize, ADR 85);
   `ModelInstaller` stays the QML façade over presets, the registry and
   role-filtered views.
@@ -118,6 +121,13 @@ per-window scoped resets use the same rows (ADR 75).
 > coordinate range is a parser option (`ParserOptions::bboxRange`, 1000 by
 > default, ADR 88), not a setting. The check-request parameters live in the
 > validate request profile (Settings → Check model → Request).
+
+The per-task model settings (`tasks/<task>/{modelPath, mmprojPath, draftPath,
+requestProfileId, modelName}`) are reached through the task-generic
+`…ForRole(role)` accessors of `SettingsStore`. One dispatch table maps a role
+to its accessors, so a new task is one row of the table and not ten switches
+(ADR 216); the list of the tasks comes from `core/ConnectionRole.h`
+(ADR 215).
 
 ## 4.3 Themes
 Three options handled by `UiController` (a QML singleton), selected in

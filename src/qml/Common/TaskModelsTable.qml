@@ -23,7 +23,9 @@ Item {
     property bool externalMode: false
     property bool showGear: true
 
-    readonly property var taskIds: ["pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout", "fix"]
+    // The tasks of the app: the list comes from the C++, where ConnectionRole
+    // is its single source (ADR 215) — the table keeps no copy of it.
+    readonly property var taskIds: Settings.taskRoles
 
     // The draft: one entry per task. Every entry is a real object with
     // properties, so a change is a change of the entry and the row binds to

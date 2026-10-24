@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QSettings>
 #include <QString>
+#include <QStringList>
 #include <QVariant>
 
 #include "runtime/ConnectionMode.h"
@@ -266,6 +267,11 @@ public:
     QString fixModelName() const;
     void setFixModelName(const QString &name);
 
+    // The ids of the app's tasks, in the order the task table shows them. The
+    // list comes from ConnectionRole, the single source of the roles
+    // (ADR 215) — the QML does not keep its own copy.
+    Q_PROPERTY(QStringList taskRoles READ taskRoles CONSTANT)
+
     // Task-generic views over the per-task model settings. role is a task id:
     // "pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout" or
     // "fix" (the legacy "ocr" maps to "pageOcr").
@@ -278,6 +284,7 @@ public:
     QString requestProfileIdForRole(const QString &role) const;
     Q_INVOKABLE QString modelNameForRole(const QString &role) const;
     Q_INVOKABLE void setModelNameForRole(const QString &role, const QString &name);
+    QStringList taskRoles() const;
 
     QString hfToken() const;
     void setHfToken(const QString &token);

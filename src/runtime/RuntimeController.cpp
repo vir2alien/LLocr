@@ -12,7 +12,6 @@
 #include <QUrl>
 #include <QVariantMap>
 
-#include <algorithm>
 #include <utility>
 
 #include "config/RuntimePaths.h"
@@ -395,12 +394,12 @@ bool RuntimeController::taskModelAvailable(ConnectionRole role) const
 
 void RuntimeController::recomputeTaskModels()
 {
-    bool fresh[6];
-    for (int i = 0; i < 6; ++i)
-        fresh[i] = taskModelAvailable(static_cast<ConnectionRole>(i));
-    if (std::equal(fresh, fresh + 6, m_taskModels))
+    std::array<bool, connectionRoleCount> fresh = {};
+    for (const ConnectionRole role : connectionRoles)
+        fresh[static_cast<std::size_t>(role)] = taskModelAvailable(role);
+    if (fresh == m_taskModels)
         return;
-    std::copy(fresh, fresh + 6, m_taskModels);
+    m_taskModels = fresh;
     emit taskModelsChanged();
 }
 

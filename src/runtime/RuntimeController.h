@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <QObject>
 #include <QPointer>
 #include <QString>
@@ -211,7 +212,9 @@ private:
     bool m_modelPathValid = false;
     bool m_launchConfigDirty = false;
     bool m_lockedOut = false;
-    bool m_taskModels[6] = {};
+    // The per-task availability, indexed by the role: the list of roles is
+    // the single source (ADR 215), so a new task needs no edit here.
+    std::array<bool, connectionRoleCount> m_taskModels = {};
     ServerOwnerRecord m_orphan;
     QString m_orphanJsonPath;
     quint64 m_startGeneration = 0;

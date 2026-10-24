@@ -10,6 +10,7 @@
 #include <QtTest>
 
 #include "config/SettingsStore.h"
+#include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
 #include "testsettings.h"
 
@@ -351,6 +352,51 @@ private slots:
     // The check role's request profile is the id of its model profile. A
     // profile written before the split has nothing stored, and the verifier
     // would resolve to no sampling parameters at all.
+    // The app's six tasks, in one list: the settings dispatch, the runtime's
+    // per-task state and the QML task table read it (ADR 215).
+    void theTaskListIsTheSingleSource()
+    {
+        QCOMPARE(
+            connectionRoleIds(),
+            QStringList({QStringLiteral("pageOcr"), QStringLiteral("rawPageOcr"), QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("layout"), QStringLiteral("fix")}));
+
+        SettingsStore store;
+        QCOMPARE(store.taskRoles(), connectionRoleIds());
+
+        // The legacy id still means the page task, and an unknown one falls
+        // back to it as well.
+        QCOMPARE(connectionRoleFromName(QStringLiteral("ocr")), ConnectionRole::PageOcr);
+        QCOMPARE(connectionRoleFromName(QStringLiteral("unknown")), ConnectionRole::PageOcr);
+        for (const QString &id : connectionRoleIds())
+            QCOMPARE(connectionRoleName(connectionRoleFromName(id)), id);
+    }
+
+    // Every task's settings are its own: the dispatch writes to the role's
+    // own key and reads it back (ADR 216).
+    void theRoleDispatchReachesEveryRole()
+    {
+        SettingsStore store;
+        for (const QString &id : connectionRoleIds()) {
+            store.setModelNameForRole(id, QStringLiteral("name-%1").arg(id));
+            store.setLaunchModelPathForRole(id, QStringLiteral("/models/%1.gguf").arg(id));
+            store.setLaunchMmprojPathForRole(id, QStringLiteral("/models/%1-mmproj.gguf").arg(id));
+            store.setLaunchDraftPathForRole(id, QStringLiteral("/models/%1-draft.gguf").arg(id));
+        }
+        for (const QString &id : connectionRoleIds()) {
+            QCOMPARE(store.modelNameForRole(id), QStringLiteral("name-%1").arg(id));
+            QCOMPARE(store.launchModelPathForRole(id), QStringLiteral("/models/%1.gguf").arg(id));
+            QCOMPARE(store.launchMmprojPathForRole(id), QStringLiteral("/models/%1-mmproj.gguf").arg(id));
+            QCOMPARE(store.launchDraftPathForRole(id), QStringLiteral("/models/%1-draft.gguf").arg(id));
+        }
+
+        // The request profile of one task is that task's own: the dispatch
+        // must not read another role's.
+        store.setCheckRequestProfileId(QStringLiteral("check-profile"));
+        QCOMPARE(store.requestProfileIdForRole(QStringLiteral("blockRecognition")), QStringLiteral("check-profile"));
+        QVERIFY(store.requestProfileIdForRole(QStringLiteral("decision")) != QStringLiteral("check-profile"));
+        QVERIFY(store.requestProfileIdForRole(QStringLiteral("fix")) != QStringLiteral("check-profile"));
+    }
+
     void checkRoleResolvesAModelProfileWithoutOneStored()
     {
         QSettings pre;

@@ -11,6 +11,75 @@ namespace llocr {
 
 namespace {
 
+// The per-role settings: one record per role, so a new role is one row here
+// instead of ten switches (ADR 216). The per-role getters and setters stay —
+// they own their settings keys and their change signals.
+struct RoleSettings {
+    struct Path {
+        QString (SettingsStore::*read)() const;
+        void (SettingsStore::*write)(const QString &);
+    };
+    Path modelPath;
+    Path mmprojPath;
+    Path draftPath;
+    QString (SettingsStore::*requestProfileId)() const;
+    void (SettingsStore::*setRequestProfileId)(const QString &);
+    QString (SettingsStore::*modelName)() const;
+    void (SettingsStore::*setModelName)(const QString &);
+};
+
+const RoleSettings &roleSettings(ConnectionRole role)
+{
+    static const RoleSettings table[] = {
+        // PageOcr: the page settings are the ones without a role prefix.
+        {{&SettingsStore::launchModelPath, &SettingsStore::setLaunchModelPath},
+         {&SettingsStore::launchMmprojPath, &SettingsStore::setLaunchMmprojPath},
+         {&SettingsStore::launchDraftPath, &SettingsStore::setLaunchDraftPath},
+         &SettingsStore::modelRecipeId,
+         &SettingsStore::setModelRecipeId,
+         &SettingsStore::modelName,
+         &SettingsStore::setModelName},
+        {{&SettingsStore::rawPageOcrLaunchModelPath, &SettingsStore::setRawPageOcrLaunchModelPath},
+         {&SettingsStore::rawPageOcrLaunchMmprojPath, &SettingsStore::setRawPageOcrLaunchMmprojPath},
+         {&SettingsStore::rawPageOcrLaunchDraftPath, &SettingsStore::setRawPageOcrLaunchDraftPath},
+         &SettingsStore::rawPageOcrRequestProfileId,
+         &SettingsStore::setRawPageOcrRequestProfileId,
+         &SettingsStore::rawPageOcrModelName,
+         &SettingsStore::setRawPageOcrModelName},
+        // BlockRecognition: the settings keep the legacy "check" prefix.
+        {{&SettingsStore::checkLaunchModelPath, &SettingsStore::setCheckLaunchModelPath},
+         {&SettingsStore::checkLaunchMmprojPath, &SettingsStore::setCheckLaunchMmprojPath},
+         {&SettingsStore::checkLaunchDraftPath, &SettingsStore::setCheckLaunchDraftPath},
+         &SettingsStore::checkRequestProfileId,
+         &SettingsStore::setCheckRequestProfileId,
+         &SettingsStore::checkModelName,
+         &SettingsStore::setCheckModelName},
+        {{&SettingsStore::decisionLaunchModelPath, &SettingsStore::setDecisionLaunchModelPath},
+         {&SettingsStore::decisionLaunchMmprojPath, &SettingsStore::setDecisionLaunchMmprojPath},
+         {&SettingsStore::decisionLaunchDraftPath, &SettingsStore::setDecisionLaunchDraftPath},
+         &SettingsStore::decisionRequestProfileId,
+         &SettingsStore::setDecisionRequestProfileId,
+         &SettingsStore::decisionModelName,
+         &SettingsStore::setDecisionModelName},
+        {{&SettingsStore::layoutLaunchModelPath, &SettingsStore::setLayoutLaunchModelPath},
+         {&SettingsStore::layoutLaunchMmprojPath, &SettingsStore::setLayoutLaunchMmprojPath},
+         {&SettingsStore::layoutLaunchDraftPath, &SettingsStore::setLayoutLaunchDraftPath},
+         &SettingsStore::layoutRequestProfileId,
+         &SettingsStore::setLayoutRequestProfileId,
+         &SettingsStore::layoutModelName,
+         &SettingsStore::setLayoutModelName},
+        {{&SettingsStore::fixLaunchModelPath, &SettingsStore::setFixLaunchModelPath},
+         {&SettingsStore::fixLaunchMmprojPath, &SettingsStore::setFixLaunchMmprojPath},
+         {&SettingsStore::fixLaunchDraftPath, &SettingsStore::setFixLaunchDraftPath},
+         &SettingsStore::fixRequestProfileId,
+         &SettingsStore::setFixRequestProfileId,
+         &SettingsStore::fixModelName,
+         &SettingsStore::setFixModelName},
+    };
+    static_assert(std::size(table) == connectionRoleCount, "the role table must cover every role");
+    return table[static_cast<std::size_t>(role)];
+}
+
 QString defaultBlockRecognitionRequestProfileId()
 {
     return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
@@ -359,26 +428,8 @@ void SettingsStore::selectModelProfile(const QString &repo, const QString &role)
     const QString profileId = ModelProfiles::idForRepo(ModelProfiles::instance(), repo);
     if (profileId.isEmpty() || !ModelProfiles::roleFor(profileId, role))
         return;
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        setCheckRequestProfileId(profileId);
-        break;
-    case ConnectionRole::Decision:
-        setDecisionRequestProfileId(profileId);
-        break;
-    case ConnectionRole::Layout:
-        setLayoutRequestProfileId(profileId);
-        break;
-    case ConnectionRole::RawPageOcr:
-        setRawPageOcrRequestProfileId(profileId);
-        break;
-    case ConnectionRole::Fix:
-        setFixRequestProfileId(profileId);
-        break;
-    case ConnectionRole::PageOcr:
-        setModelRecipeId(profileId);
-        break;
-    }
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    (this->*settings.setRequestProfileId)(profileId);
 }
 
 QString SettingsStore::parserId() const
@@ -1209,193 +1260,61 @@ void SettingsStore::setFixModelName(const QString &name)
 
 QString SettingsStore::launchModelPathForRole(const QString &role) const
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        return checkLaunchModelPath();
-    case ConnectionRole::Decision:
-        return decisionLaunchModelPath();
-    case ConnectionRole::Layout:
-        return layoutLaunchModelPath();
-    case ConnectionRole::RawPageOcr:
-        return rawPageOcrLaunchModelPath();
-    case ConnectionRole::Fix:
-        return fixLaunchModelPath();
-    case ConnectionRole::PageOcr:
-        break;
-    }
-    return launchModelPath();
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    return (this->*settings.modelPath.read)();
 }
 
 void SettingsStore::setLaunchModelPathForRole(const QString &role, const QString &path)
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        setCheckLaunchModelPath(path);
-        break;
-    case ConnectionRole::Decision:
-        setDecisionLaunchModelPath(path);
-        break;
-    case ConnectionRole::Layout:
-        setLayoutLaunchModelPath(path);
-        break;
-    case ConnectionRole::RawPageOcr:
-        setRawPageOcrLaunchModelPath(path);
-        break;
-    case ConnectionRole::Fix:
-        setFixLaunchModelPath(path);
-        break;
-    case ConnectionRole::PageOcr:
-        setLaunchModelPath(path);
-        break;
-    }
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    (this->*settings.modelPath.write)(path);
 }
 
 QString SettingsStore::launchMmprojPathForRole(const QString &role) const
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        return checkLaunchMmprojPath();
-    case ConnectionRole::Decision:
-        return decisionLaunchMmprojPath();
-    case ConnectionRole::Layout:
-        return layoutLaunchMmprojPath();
-    case ConnectionRole::RawPageOcr:
-        return rawPageOcrLaunchMmprojPath();
-    case ConnectionRole::Fix:
-        return fixLaunchMmprojPath();
-    case ConnectionRole::PageOcr:
-        break;
-    }
-    return launchMmprojPath();
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    return (this->*settings.mmprojPath.read)();
 }
 
 void SettingsStore::setLaunchMmprojPathForRole(const QString &role, const QString &path)
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        setCheckLaunchMmprojPath(path);
-        break;
-    case ConnectionRole::Decision:
-        setDecisionLaunchMmprojPath(path);
-        break;
-    case ConnectionRole::Layout:
-        setLayoutLaunchMmprojPath(path);
-        break;
-    case ConnectionRole::RawPageOcr:
-        setRawPageOcrLaunchMmprojPath(path);
-        break;
-    case ConnectionRole::Fix:
-        setFixLaunchMmprojPath(path);
-        break;
-    case ConnectionRole::PageOcr:
-        setLaunchMmprojPath(path);
-        break;
-    }
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    (this->*settings.mmprojPath.write)(path);
 }
 
 QString SettingsStore::launchDraftPathForRole(const QString &role) const
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        return checkLaunchDraftPath();
-    case ConnectionRole::Decision:
-        return decisionLaunchDraftPath();
-    case ConnectionRole::Layout:
-        return layoutLaunchDraftPath();
-    case ConnectionRole::RawPageOcr:
-        return rawPageOcrLaunchDraftPath();
-    case ConnectionRole::Fix:
-        return fixLaunchDraftPath();
-    case ConnectionRole::PageOcr:
-        break;
-    }
-    return launchDraftPath();
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    return (this->*settings.draftPath.read)();
 }
 
 void SettingsStore::setLaunchDraftPathForRole(const QString &role, const QString &path)
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        setCheckLaunchDraftPath(path);
-        break;
-    case ConnectionRole::Decision:
-        setDecisionLaunchDraftPath(path);
-        break;
-    case ConnectionRole::Layout:
-        setLayoutLaunchDraftPath(path);
-        break;
-    case ConnectionRole::RawPageOcr:
-        setRawPageOcrLaunchDraftPath(path);
-        break;
-    case ConnectionRole::Fix:
-        setFixLaunchDraftPath(path);
-        break;
-    case ConnectionRole::PageOcr:
-        setLaunchDraftPath(path);
-        break;
-    }
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    (this->*settings.draftPath.write)(path);
 }
 
 QString SettingsStore::requestProfileIdForRole(const QString &role) const
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        return checkRequestProfileId();
-    case ConnectionRole::Decision:
-        return decisionRequestProfileId();
-    case ConnectionRole::Layout:
-        return layoutRequestProfileId();
-    case ConnectionRole::RawPageOcr:
-        return rawPageOcrRequestProfileId();
-    case ConnectionRole::Fix:
-        return fixRequestProfileId();
-    case ConnectionRole::PageOcr:
-        break;
-    }
-    return modelRecipeId();
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    return (this->*settings.requestProfileId)();
 }
 
 QString SettingsStore::modelNameForRole(const QString &role) const
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        return checkModelName();
-    case ConnectionRole::Decision:
-        return decisionModelName();
-    case ConnectionRole::Layout:
-        return layoutModelName();
-    case ConnectionRole::RawPageOcr:
-        return rawPageOcrModelName();
-    case ConnectionRole::Fix:
-        return fixModelName();
-    case ConnectionRole::PageOcr:
-        break;
-    }
-    return modelName();
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    return (this->*settings.modelName)();
 }
 
 void SettingsStore::setModelNameForRole(const QString &role, const QString &name)
 {
-    switch (connectionRoleFromName(role)) {
-    case ConnectionRole::BlockRecognition:
-        setCheckModelName(name);
-        break;
-    case ConnectionRole::Decision:
-        setDecisionModelName(name);
-        break;
-    case ConnectionRole::Layout:
-        setLayoutModelName(name);
-        break;
-    case ConnectionRole::RawPageOcr:
-        setRawPageOcrModelName(name);
-        break;
-    case ConnectionRole::Fix:
-        setFixModelName(name);
-        break;
-    case ConnectionRole::PageOcr:
-        setModelName(name);
-        break;
-    }
+    const RoleSettings &settings = roleSettings(connectionRoleFromName(role));
+    (this->*settings.setModelName)(name);
+}
+
+QStringList SettingsStore::taskRoles() const
+{
+    return connectionRoleIds();
 }
 
 QString SettingsStore::launchProfileId() const

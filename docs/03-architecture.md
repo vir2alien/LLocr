@@ -81,6 +81,11 @@ struct ConnectionConfig {             // core/ConnectionConfig.h — transport o
 };
 ```
 
+The tasks are one vocabulary, declared once: `core/ConnectionRole.h` holds the
+`ConnectionRole` enum, the list of the six tasks (`connectionRoles`,
+`connectionRoleIds`) and the name↔role mapping. The settings dispatch, the
+runtime's per-task state and the QML task table read that list (ADR 215).
+
 Implementations:
 - `OcrModel` (base) implements `recognize()`/`abort()` as a template method over
   the transport: encodes the image to a base64 data URL, builds the request body

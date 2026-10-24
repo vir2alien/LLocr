@@ -631,10 +631,8 @@ QVariantList ModelInstaller::applyTaskChoices(const QVariantList &choices)
 QVariantList ModelInstaller::defaultTaskChoices(qint64 budgetBytes)
 {
     const qint64 budget = budgetBytes >= 0 ? budgetBytes : HardwareInfo::detect().memoryBudgetBytes();
-    static const QStringList kTasks = {
-        QStringLiteral("pageOcr"), QStringLiteral("rawPageOcr"), QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("layout"), QStringLiteral("fix")};
     QVariantList choices;
-    for (const QString &task : kTasks) {
+    for (const QString &task : connectionRoleIds()) {
         const QString key = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), task);
         ModelQuantModel *model = quantModel(task);
         if (key.isEmpty() || !model || model->rowIndexOf(key) < 0)
