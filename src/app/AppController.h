@@ -16,11 +16,13 @@
 #include "app/AvailabilityPresenter.h"
 #include "app/BlockInspector.h"
 #include "app/BoxListModel.h"
+#include "app/DecisionController.h"
 #include "app/DocumentModel.h"
 #include "app/ExportController.h"
 #include "app/Exporter.h"
 #include "app/LayoutController.h"
 #include "app/LruImageCache.h"
+#include "app/OrientationController.h"
 #include "app/PageEditStore.h"
 #include "app/PageListModel.h"
 #include "app/ProblemLog.h"
@@ -372,6 +374,10 @@ public slots:
     Q_INVOKABLE void layoutCurrentPage();
     Q_INVOKABLE void layoutAllPages();
     Q_INVOKABLE void stopLayout();
+    // Turns the current page by the given degrees (clockwise). The turn drops
+    // the page's recognition: the blocks were read from the old turn and say
+    // nothing about the new one.
+    Q_INVOKABLE void rotatePage(int degrees);
     Q_INVOKABLE void cancelImport();
     Q_INVOKABLE void copyCurrentPageText();
     Q_INVOKABLE void openProject(const QUrl &fileUrl) { m_project.open(fileUrl); }
@@ -386,6 +392,22 @@ private:
     bool reportProblem(const StatusMessage &message, ProblemLog::Severity severity = ProblemLog::Warning);
     void notifyDocumentChanged();
     void notifyPageChanged();
+    // The page's picture changed: the cached renders of that page are stale.
+    void invalidatePageImage(int index);
+    // The page is turned by the given degrees. The turn drops the page's
+    // recognition: the blocks were read from the old turn. A turn by the user
+    // also marks the page as turned on purpose: the orientation check leaves
+    // it alone.
+    bool turnPage(int index, int degrees, bool byUser);
+    // Runs the orientation check before the pages are recognized. Returns
+    // true when the run waits for the check.
+    bool runAfterOrientationCheck(const QList<int> &pages, const std::function<void()> &run);
+    // The model settles the pages the picture cannot read.
+    void askModelAboutOrientation(int index);
+    void askNextOrientationPage();
+    void onOrientationVerdict(const DecisionResult &result);
+    // The model is asked about a page: the check is running.
+    bool orientationCheckBusy() const { return m_orientationPage >= 0 || !m_orientationQueue.isEmpty(); }
     void applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult);
     void applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);
@@ -448,6 +470,12 @@ private:
     RecognitionController m_recognition;
     VerificationQueueController m_verify;
     LayoutController m_layout;
+    OrientationController m_orientation;
+    // The model that settles the pages the picture cannot read.
+    DecisionController m_orientationDecision;
+    QList<int> m_orientationQueue;       // The pages waiting for the model's answer.
+    int m_orientationPage = -1;          // The page the model is asked about.
+    std::function<void()> m_pendingRun;  // The run that waits for the orientation check.
     AvailabilityPresenter m_availability;
     bool m_importing = false;
     int m_importDone = 0;

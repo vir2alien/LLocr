@@ -38,6 +38,18 @@ ToolBar {
         Controller.currentPage = pageIndex
     }
 
+    // The turn drops the page's recognition: the blocks were read from the
+    // old turn and say nothing about the new one. A page that carries a
+    // result asks first.
+    function requestRotation(degrees) {
+        if (Controller.currentPageEditable) {
+            rotateConfirmDialog.degrees = degrees
+            rotateConfirmDialog.open()
+            return
+        }
+        Controller.rotatePage(degrees)
+    }
+
     leftPadding: Theme.spacing
     rightPadding: Theme.spacing
     topPadding: Theme.spacingSmall
@@ -126,8 +138,9 @@ ToolBar {
 
         Row {
             spacing: 0
-            StubIconButton { iconName: "rotate-ccw" }
-            StubIconButton { iconName: "rotate-cw" }
+
+            RotateButton { iconName: "rotate-ccw"; degrees: -90 }
+            RotateButton { iconName: "rotate-cw"; degrees: 90 }
         }
 
         Item { Layout.fillWidth: true }
@@ -190,6 +203,17 @@ ToolBar {
         }
     }
 
+    InterruptConfirmDialog {
+        id: rotateConfirmDialog
+
+        property int degrees: 90
+
+        title: qsTr("Turn the page?")
+        prompt: qsTr("Turning the page drops its recognition: the blocks were read from the "
+                     + "old turn. Continue?")
+        onConfirmed: Controller.rotatePage(rotateConfirmDialog.degrees)
+    }
+
     component BlockAddButton: ToolButton {
         id: addButton
 
@@ -235,25 +259,28 @@ ToolBar {
                                         : BlockNames.displayName(addButton.blockName)
     }
 
-    component StubIconButton: ToolButton {
-        id: stubButton
+    component RotateButton: ToolButton {
+        id: rotateButton
 
-        property string iconName: ""
+        required property string iconName
+        required property int degrees
 
         implicitWidth: 32
         implicitHeight: 28
         Layout.minimumWidth: implicitWidth
         padding: 0
-        enabled: false
+        enabled: Controller.actionsIdle && Controller.hasImage
 
         Icon {
             anchors.centerIn: parent
-            name: stubButton.iconName
+            name: rotateButton.iconName
             size: 18
-            color: Theme.textMuted
+            color: rotateButton.enabled ? Theme.textPrimary : Theme.textMuted
         }
 
-        ToolTip.visible: stubButton.hovered
-        ToolTip.text: qsTr("Not implemented yet")
+        onClicked: pageToolBarRoot.requestRotation(rotateButton.degrees)
+
+        ToolTip.visible: rotateButton.hovered
+        ToolTip.text: rotateButton.degrees < 0 ? qsTr("Turn left") : qsTr("Turn right")
     }
 }

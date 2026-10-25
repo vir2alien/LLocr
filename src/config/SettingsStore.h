@@ -23,6 +23,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
     Q_PROPERTY(QString modelRecipeId READ modelRecipeId WRITE setModelRecipeId NOTIFY modelRecipeIdChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
+    Q_PROPERTY(bool orientationCheckEnabled READ orientationCheckEnabled WRITE setOrientationCheckEnabled NOTIFY orientationCheckEnabledChanged)
     Q_PROPERTY(bool splitPages READ splitPages WRITE setSplitPages NOTIFY splitPagesChanged)
     Q_PROPERTY(bool keepPageNumbers READ keepPageNumbers WRITE setKeepPageNumbers NOTIFY keepPageNumbersChanged)
     Q_PROPERTY(bool tablesAsHtml READ tablesAsHtml WRITE setTablesAsHtml NOTIFY tablesAsHtmlChanged)
@@ -133,6 +134,11 @@ public:
 
     QString parserId() const;
     void setParserId(const QString &parserName);
+
+    // The orientation check that runs before a page is recognized: a page
+    // that lies the wrong way up is turned first.
+    bool orientationCheckEnabled() const;
+    void setOrientationCheckEnabled(bool on);
 
     bool splitPages() const;
     void setSplitPages(bool on);
@@ -300,6 +306,7 @@ signals:
     void modelNameChanged();
     void modelRecipeIdChanged();
     void parserIdChanged();
+    void orientationCheckEnabledChanged();
     void splitPagesChanged();
     void keepPageNumbersChanged();
     void tablesAsHtmlChanged();
@@ -407,6 +414,10 @@ private:
 
     static constexpr const char *kModelName = "model/name";
     static constexpr const char *kParserId = "parser/id";
+
+    // The orientation check before the recognition
+    static constexpr const char *kOrientationCheck = "recognition/orientationCheck";
+    static constexpr const char *kDefaultOrientationCheck = "true";
 
     // Output / export
     static constexpr const char *kSplitPages = "output/splitPages";

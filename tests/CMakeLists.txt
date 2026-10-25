@@ -216,6 +216,26 @@ target_link_libraries(test_document_model PRIVATE
 )
 add_test(NAME test_document_model COMMAND test_document_model)
 
+# The page's turn: the quarter turns, the rendered page and the sizes the
+# model's geometry is read against.
+qt_add_executable(test_page_rotation test_page_rotation.cpp)
+
+target_link_libraries(test_page_rotation PRIVATE
+    Qt6::Test
+    llocr_app
+)
+add_test(NAME test_page_rotation COMMAND test_page_rotation)
+
+# The orientation check: the axis of the text and the way up, read from the
+# picture alone.
+qt_add_executable(test_page_orientation test_page_orientation.cpp)
+
+target_link_libraries(test_page_orientation PRIVATE
+    Qt6::Test
+    llocr_app
+)
+add_test(NAME test_page_orientation COMMAND test_page_orientation)
+
 # The DjVu suite exercises the real decoder end-to-end; it is built only when
 # DjVuLibre was found (ADR 69).
 if(LLOCR_DJVU_AVAILABLE)

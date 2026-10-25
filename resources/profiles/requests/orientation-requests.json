@@ -1,0 +1,17 @@
+{
+  "id": "orientation-requests",
+  "title": "Orientation check requests",
+  "statePrompt": "You look at one page of a document and say how the page has to be turned so that its text stands upright and reads from left to right.\n\nThe page is the only source of truth. Judge the way the text lies, not the margins, not the paper and not the content: a page that lies on its side shows its lines running up and down, a page that is upside down shows its lines the right way up but its letters hanging below the line instead of above it.\n\nDo not judge the language, the content or the quality of the print — only the way the page lies. If the page carries no text at all, choose the class that leaves it as it is.",
+  "questions": {
+    "orientation": {
+      "type": "choice",
+      "instructions": "In which direction must the page be turned so that its text stands upright and reads from left to right?",
+      "criteria": {
+        "0": "the text already stands upright and reads from left to right; the page is not to be turned",
+        "90": "the page has to be turned a quarter turn clockwise for its text to stand upright",
+        "180": "the page is upside down: it has to be turned half a turn for its text to stand upright",
+        "270": "the page has to be turned a quarter turn counter-clockwise for its text to stand upright"
+      }
+    }
+  }
+}

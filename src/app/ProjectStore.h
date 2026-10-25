@@ -27,8 +27,10 @@ struct ProjectPageData {
     PageRecognitionMode recognitionMode = PageRecognitionMode::None;
     bool edited = false;
     bool hasDuplicates = false;
-    QString text;      // effective page text, manual edits included
-    QString baseline;  // recognized text, the "revert" target
+    int rotation = 0;           // The turn the page carries (0, 90, 180, 270).
+    bool userOriented = false;  // The user turned the page: the orientation check leaves it alone.
+    QString text;               // effective page text, manual edits included
+    QString baseline;           // recognized text, the "revert" target
     QString parseNote;
     QList<BoundingBox> boxes;
 };

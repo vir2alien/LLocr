@@ -284,6 +284,12 @@ qt_add_library(llocr_app STATIC
     app/PageEditStore.h
     app/PageEditStore.cpp
     app/PageIndex.h
+    app/PageOrientation.h
+    app/PageOrientation.cpp
+    app/OrientationController.h
+    app/OrientationController.cpp
+    app/PageRotation.h
+    app/PageRotation.cpp
     app/ProblemLog.h
     app/ProblemLog.cpp
     app/ProjectStore.h

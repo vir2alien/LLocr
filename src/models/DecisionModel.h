@@ -31,7 +31,7 @@ public:
 
 protected:
     static QByteArray buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl);
-    static DecisionResult parseResponse(const QByteArray &responseData);
+    static DecisionResult parseResponse(const QByteArray &responseData, const QString &answerKey = QStringLiteral("match"));
 
 private:
     // One client (and its QNAM) for the model's lifetime: the per-request

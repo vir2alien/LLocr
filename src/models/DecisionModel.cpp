@@ -34,7 +34,13 @@ QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const
         question.insert(QStringLiteral("criteria"), criteria);
     }
     QJsonObject questions;
-    questions.insert(QStringLiteral("match"), question);
+    if (!request.questions.isEmpty()) {
+        // A ready-made questions dict: the task asks its own question (the
+        // orientation check asks for a choice, not a yes/no).
+        questions = request.questions;
+    } else {
+        questions.insert(QStringLiteral("match"), question);
+    }
 
     QJsonObject root;
     root.insert(QStringLiteral("state"), state);
@@ -110,7 +116,7 @@ bool readChoice(const QJsonValue &answer, QHash<QString, double> &diagnosis)
 
 }  // namespace
 
-DecisionResult DecisionModel::parseResponse(const QByteArray &responseData)
+DecisionResult DecisionModel::parseResponse(const QByteArray &responseData, const QString &answerKey)
 {
     QJsonParseError parseError{};
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
@@ -122,13 +128,21 @@ DecisionResult DecisionModel::parseResponse(const QByteArray &responseData)
         return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "No answers in response"));
 
     const QJsonObject answers = root.value(QStringLiteral("answers")).toObject();
-    const QJsonValue match = answers.value(QStringLiteral("match"));
+    const QJsonValue match = answers.value(answerKey);
     if (match.isUndefined())
         return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "No match answer in response"));
 
     double probability = 0.0;
-    if (!readNoul(match, probability))
-        return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
+    if (!readNoul(match, probability)) {
+        // A choice question: the answer carries the probability of every class
+        // instead of a yes/no verdict.
+        DecisionResult result;
+        if (!readChoice(match, result.diagnosis))
+            return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
+        result.ok = true;
+        result.probability = result.topDiagnosis().isEmpty() ? 0.0 : result.diagnosis.value(result.topDiagnosis());
+        return result;
+    }
 
     // The v6 aux questions are optional: a v5 profile or an old server ships
     // match only. An answer that is present but unreadable is an error, never
@@ -148,10 +162,13 @@ DecisionResult DecisionModel::parseResponse(const QByteArray &responseData)
 
 QFuture<DecisionResult> DecisionModel::judge(const DecisionRequest &request, const ConnectionConfig &config)
 {
+    // The answer sits under the question's own name; the yes/no question of the
+    // verification keeps the name it always had.
+    const QString answerKey = request.questions.size() == 1 ? request.questions.constBegin().key() : QStringLiteral("match");
     return runChatExchange<DecisionResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
                                            config,
                                            m_activeClient,
-                                           [](const QByteArray &body) { return parseResponse(body); },
+                                           [answerKey](const QByteArray &body) { return parseResponse(body, answerKey); },
                                            QCoreApplication::translate("DecisionModel", "Failed to encode the block image"),
                                            QStringLiteral("/v1/systemone"));
 }

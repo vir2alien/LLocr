@@ -6,36 +6,93 @@ import LLocr
 
 // Task-keyed dispatch for the six model tasks ("pageOcr", "rawPageOcr",
 // "blockRecognition", "decision", "layout", "fix"): every task-conditional
-// binding goes through here, so a new task is one edit in one file. The reads
-// stay inside the functions, which is what keeps the callers' bindings
-// reactive.
+// binding goes through here, so a new task is one row of the table and not a
+// chain of conditions (ADR 217).
+//
+// The texts are values — they are translated when the table is built. The
+// columns that read a singleton are functions: the singleton is resolved when
+// the task is asked for, not when the table is built, and the binding that
+// calls them keeps tracking the settings they read.
 QtObject {
+    readonly property var tasks: ({
+        "pageOcr": {
+            title: qsTr("Recognition with markup"),
+            hint: qsTr("Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list."),
+            quantModels: function() { return ModelInstaller.quantModels; },
+            profiles: function() { return RequestProfilesPageOcr; },
+            requestProfileId: function() { return Settings.modelRecipeId; },
+            setRequestProfileId: function(id) { Settings.modelRecipeId = id; }
+        },
+        "rawPageOcr": {
+            title: qsTr("Recognition without markup"),
+            hint: qsTr("Sampling parameters sent with every plain-text page recognition request. The set comes from the model profile — edit the values, not the list."),
+            quantModels: function() { return ModelInstaller.rawPageOcrQuantModels; },
+            profiles: function() { return RequestProfilesRawPageOcr; },
+            requestProfileId: function() { return Settings.rawPageOcrRequestProfileId; },
+            setRequestProfileId: function(id) { Settings.rawPageOcrRequestProfileId = id; }
+        },
+        "blockRecognition": {
+            title: qsTr("Block recognition"),
+            hint: qsTr("Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list."),
+            quantModels: function() { return ModelInstaller.checkQuantModels; },
+            profiles: function() { return RequestProfilesBlock; },
+            requestProfileId: function() { return Settings.checkRequestProfileId; },
+            setRequestProfileId: function(id) { Settings.checkRequestProfileId = id; }
+        },
+        "decision": {
+            title: qsTr("Verification"),
+            hint: qsTr("Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list."),
+            quantModels: function() { return ModelInstaller.decisionQuantModels; },
+            profiles: function() { return RequestProfilesDecision; },
+            requestProfileId: function() { return Settings.decisionRequestProfileId; },
+            setRequestProfileId: function(id) { Settings.decisionRequestProfileId = id; }
+        },
+        "layout": {
+            title: qsTr("Markup"),
+            hint: qsTr("Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list."),
+            quantModels: function() { return ModelInstaller.layoutQuantModels; },
+            profiles: function() { return RequestProfilesLayout; },
+            requestProfileId: function() { return Settings.layoutRequestProfileId; },
+            setRequestProfileId: function(id) { Settings.layoutRequestProfileId = id; }
+        },
+        "fix": {
+            title: qsTr("Block fix"),
+            hint: qsTr("Sampling parameters sent with every block fix request. The set comes from the model profile — edit the values, not the list."),
+            quantModels: function() { return ModelInstaller.fixQuantModels; },
+            profiles: function() { return RequestProfilesFix; },
+            requestProfileId: function() { return Settings.fixRequestProfileId; },
+            setRequestProfileId: function(id) { Settings.fixRequestProfileId = id; }
+        }
+    })
+
+    // The row of a task. An unknown id falls back to the page task, the way
+    // every ForRole dispatcher treats an unrecognized role.
+    function entry(task) {
+        return tasks[task] ? tasks[task] : tasks["pageOcr"]
+    }
+
     function title(task) {
-        return task === "rawPageOcr" ? qsTr("Recognition without markup")
-             : task === "pageOcr" ? qsTr("Recognition with markup")
-             : task === "blockRecognition" ? qsTr("Block recognition")
-             : task === "decision" ? qsTr("Verification")
-             : task === "layout" ? qsTr("Markup")
-             : qsTr("Block fix")
+        return entry(task).title
     }
 
     function samplingHint(task) {
-        return task === "decision" ? qsTr("Request parameters for the decision endpoint. The set comes from the model profile — edit the values, not the list.")
-             : task === "blockRecognition" ? qsTr("Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list.")
-             : task === "layout" ? qsTr("Sampling parameters sent with every page markup request. The set comes from the model profile — edit the values, not the list.")
-             : task === "rawPageOcr" ? qsTr("Sampling parameters sent with every plain-text page recognition request. The set comes from the model profile — edit the values, not the list.")
-             : task === "fix" ? qsTr("Sampling parameters sent with every block fix request. The set comes from the model profile — edit the values, not the list.")
-             : qsTr("Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list.")
+        return entry(task).hint
     }
 
     function quantModels(task) {
-        return task === "all" ? ModelInstaller.allModels
-             : task === "blockRecognition" ? ModelInstaller.checkQuantModels
-             : task === "decision" ? ModelInstaller.decisionQuantModels
-             : task === "layout" ? ModelInstaller.layoutQuantModels
-             : task === "rawPageOcr" ? ModelInstaller.rawPageOcrQuantModels
-             : task === "fix" ? ModelInstaller.fixQuantModels
-             : ModelInstaller.quantModels
+        return entry(task).quantModels()
+    }
+
+    function profiles(task) {
+        return entry(task).profiles()
+    }
+
+    function requestProfileId(task) {
+        return entry(task).requestProfileId()
+    }
+
+    function setRequestProfileId(task, profileId) {
+        entry(task).setRequestProfileId(profileId)
     }
 
     // Titles of every task riding one missing-model row — applyTaskChoices
@@ -47,38 +104,5 @@ QtObject {
 
     function runtimeNote(task) {
         return LaunchProfiles.modelRuntimeNoteForRole(task)
-    }
-
-    function profiles(task) {
-        return task === "blockRecognition" ? RequestProfilesBlock
-             : task === "decision" ? RequestProfilesDecision
-             : task === "layout" ? RequestProfilesLayout
-             : task === "rawPageOcr" ? RequestProfilesRawPageOcr
-             : task === "fix" ? RequestProfilesFix
-             : RequestProfilesPageOcr
-    }
-
-    function requestProfileId(task) {
-        return task === "blockRecognition" ? Settings.checkRequestProfileId
-             : task === "decision" ? Settings.decisionRequestProfileId
-             : task === "layout" ? Settings.layoutRequestProfileId
-             : task === "rawPageOcr" ? Settings.rawPageOcrRequestProfileId
-             : task === "fix" ? Settings.fixRequestProfileId
-             : Settings.modelRecipeId
-    }
-
-    function setRequestProfileId(task, profileId) {
-        if (task === "blockRecognition")
-            Settings.checkRequestProfileId = profileId
-        else if (task === "decision")
-            Settings.decisionRequestProfileId = profileId
-        else if (task === "layout")
-            Settings.layoutRequestProfileId = profileId
-        else if (task === "rawPageOcr")
-            Settings.rawPageOcrRequestProfileId = profileId
-        else if (task === "fix")
-            Settings.fixRequestProfileId = profileId
-        else
-            Settings.modelRecipeId = profileId
     }
 }

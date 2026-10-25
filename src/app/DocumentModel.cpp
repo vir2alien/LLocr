@@ -222,6 +222,19 @@ bool DocumentModel::movePage(int from, int to)
     return true;
 }
 
+bool DocumentModel::setRotation(int index, int degrees)
+{
+    if (!isValidIndex(index))
+        return false;
+    const int turn = normalizeRotation(degrees);
+    if (m_pages[index].rotation == turn)
+        return true;
+    m_pages[index].rotation = turn;
+    m_pages[index].image = QImage();
+    m_fullCache.removeAll(index);
+    return true;
+}
+
 void DocumentModel::clear()
 {
     m_pages.clear();
@@ -277,6 +290,14 @@ bool DocumentModel::isValidIndex(int index) const
 }
 
 QImage DocumentModel::renderFull(const DocumentPage &page, QString *error)
+{
+    // The page is turned after the source is rendered: the source keeps its
+    // own resolution, and the turned image is what every consumer of the page
+    // sees (the preview, the model, the block crops).
+    return rotateImage(renderSource(page, error), page.rotation);
+}
+
+QImage DocumentModel::renderSource(const DocumentPage &page, QString *error)
 {
     if (!page.sourceError.isEmpty()) {
         QImage placeholder(page.pixelSize, QImage::Format_RGB32);
@@ -339,11 +360,16 @@ DocumentModel::RenderRequest DocumentModel::thumbnailRequestFor(int index) const
 {
     RenderRequest request = renderRequestFor(index);
     if (isValidIndex(index))
-        request.page.pixelSize = thumbnailSizeFor(m_pages[index].pixelSize);
+        request.page.pixelSize = thumbnailSizeFor(m_pages[index].pixelSize, m_pages[index].rotation);
     return request;
 }
 
 QImage DocumentModel::renderDetached(const RenderRequest &request, QString *error)
+{
+    return rotateImage(renderDetachedSource(request, error), request.page.rotation);
+}
+
+QImage DocumentModel::renderDetachedSource(const RenderRequest &request, QString *error)
 {
     const DocumentPage &page = request.page;
     if (error)
@@ -524,9 +550,13 @@ QImage DocumentModel::fullImage(int index, QString *error)
     return m_pages[index].image;
 }
 
-QSize DocumentModel::thumbnailSizeFor(const QSize &pixelSize)
+QSize DocumentModel::thumbnailSizeFor(const QSize &pixelSize, int rotation)
 {
-    return fitWithin(pixelSize, QSize(kThumbMaxWidth, kThumbMaxHeight));
+    // The bound belongs to the page as it is shown, so the source is fitted to
+    // the bound turned back: the source keeps its own aspect and the turned
+    // thumbnail still fits the box.
+    const QSize display = fitWithin(rotatedSize(pixelSize, rotation), QSize(kThumbMaxWidth, kThumbMaxHeight));
+    return rotatedSize(display, -rotation);
 }
 
 }  // namespace llocr

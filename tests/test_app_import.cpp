@@ -34,6 +34,7 @@
 #include "app/AppController.h"
 #include "app/BoxListModel.h"
 #include "app/PageListModel.h"
+#include "app/PageRotation.h"
 #include "app/ProblemLog.h"
 #include "app/RecognitionController.h"
 #include "app/UiController.h"
@@ -44,6 +45,7 @@
 #include "runtime/LaunchProfileStore.h"
 #include "runtime/ZipWriter.h"
 #include "testsettings.h"
+#include "textpage.h"
 
 using namespace llocr;
 
@@ -3044,6 +3046,127 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
         QCOMPARE(controller.pageCount(), 4);
         QCOMPARE(controller.projectPath().toLocalFile(), secondPath);
+    }
+
+    // The turn drops the page's recognition: the blocks were read from the
+    // old turn and say nothing about the new one.
+    void theTurnDropsTheRecognition()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QVERIFY(controller.hasResult());
+        auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+
+        const QSize upright = controller.pageImage(0).size();
+        controller.rotatePage(90);
+
+        // The page is turned…
+        QCOMPARE(controller.pageImage(0).size(), QSize(upright.height(), upright.width()));
+        // …and the blocks it carried are gone: they were read from the old
+        // turn, so they no longer sit where the text is.
+        QCOMPARE(boxes->rowCount(), 0);
+        QVERIFY(!controller.hasResult());
+        QVERIFY(!controller.currentPageEditable());
+
+        // A turn the other way is a turn like any other.
+        controller.rotatePage(-90);
+        QCOMPARE(controller.pageImage(0).size(), upright);
+    }
+
+    // The orientation check: a page that lies the wrong way up is turned before
+    // it is recognized, so the model reads the text the right way round.
+    void theOrientationCheckTurnsThePageBeforeTheRecognition()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        // A page of text, upside down.
+        const QImage source = rotateImage(syntheticTextPage(), 180);
+        const QString path = m_dir.filePath(QStringLiteral("turned.png"));
+        QVERIFY(source.save(path, "PNG"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(path)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        const QImage upright = syntheticTextPage();
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+
+        // The page was turned before the recognition: the model saw the text
+        // the right way up.
+        const QImage shown = controller.pageImage(0);
+        QCOMPARE(shown.size(), upright.size());
+        QCOMPARE(shown.pixelColor(10, 10), upright.pixelColor(10, 10));
+        QVERIFY(controller.hasResult());
+    }
+
+    // A page the user turned by hand keeps its turn: the check leaves it
+    // alone.
+    void theOrientationCheckLeavesTheTurnedPagesAlone()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+
+        const QImage source = rotateImage(syntheticTextPage(), 180);
+        const QString path = m_dir.filePath(QStringLiteral("turned-by-hand.png"));
+        QVERIFY(source.save(path, "PNG"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(path)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        // The user turns the page back by hand.
+        controller.rotatePage(180);
+        const QImage byHand = controller.pageImage(0);
+
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+
+        // The check did not turn it again.
+        QCOMPARE(controller.pageImage(0).size(), byHand.size());
+    }
+
+    // The turn of a page survives the save and the reopen: the sources are
+    // re-rendered from the embedded files, so the turn has to be restored
+    // with them.
+    void theProjectKeepsTheTurnOfThePage()
+    {
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(m_raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.rotatePage(90);
+        const QSize turned = controller.pageImage(0).size();
+        QVERIFY(turned.width() != turned.height());
+
+        const QString projectPath = m_dir.filePath(QStringLiteral("turned.llocr"));
+        controller.saveProject(QUrl::fromLocalFile(projectPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+
+        controller.openProject(QUrl::fromLocalFile(projectPath));
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.projectBusy(), kImportTimeoutMs);
+        QCOMPARE(controller.pageCount(), 1);
+        QCOMPARE(controller.pageImage(0).size(), turned);
     }
 
     void failedImportsClearStateAndAllowRetry_data()

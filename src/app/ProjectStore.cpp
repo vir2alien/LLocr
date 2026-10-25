@@ -13,6 +13,7 @@
 #include <QJsonValue>
 #include <QSet>
 
+#include "app/PageRotation.h"
 #include "runtime/ArchiveExtractor.h"
 #include "runtime/ZipWriter.h"
 
@@ -212,6 +213,8 @@ bool ProjectStore::save(const QString &path, const ProjectData &data, QString *e
             {"recognitionMode", int(page.recognitionMode)},
             {"edited", page.edited},
             {"hasDuplicates", page.hasDuplicates},
+            {"rotation", page.rotation},
+            {"userOriented", page.userOriented},
             {"text", page.text},
             {"baseline", page.baseline},
             {"parseNote", page.parseNote},
@@ -353,6 +356,10 @@ ProjectStore::LoadResult ProjectStore::load(const QString &path, const QString &
         page.recognized = object.value("recognized").toBool(false);
         page.edited = object.value("edited").toBool(false);
         page.hasDuplicates = object.value("hasDuplicates").toBool(false);
+        // The turn of a page written before the field: the page stands as its
+        // source does.
+        page.rotation = normalizeRotation(object.value("rotation").toInt(0));
+        page.userOriented = object.value("userOriented").toBool(false);
         page.text = object.value("text").toString();
         page.baseline = object.value("baseline").toString();
         page.parseNote = object.value("parseNote").toString();

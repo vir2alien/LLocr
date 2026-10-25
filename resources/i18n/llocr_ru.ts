@@ -29,6 +29,26 @@
         <translation>Текст блока изменён.</translation>
     </message>
     <message>
+        <location line="+1673"/>
+        <source>Page %1 turned %2° clockwise.</source>
+        <translation>Страница %1 повёрнута на %2° по часовой стрелке.</translation>
+    </message>
+    <message>
+        <location line="+1673"/>
+        <source>Page %1 turned %2° clockwise before the recognition.</source>
+        <translation>Страница %1 повёрнута на %2° по часовой стрелке перед распознаванием.</translation>
+    </message>
+    <message>
+        <location line="+1673"/>
+        <source>Page %1: the orientation is not clear, the page was left as it is.</source>
+        <translation>Страница %1: ориентация не определяется, страница оставлена как есть.</translation>
+    </message>
+    <message>
+        <location line="+1673"/>
+        <source>The orientation check is running.</source>
+        <translation>Проверка ориентации выполняется.</translation>
+    </message>
+    <message>
         <location line="-585"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
@@ -1581,6 +1601,16 @@
         <translation>Когда выключено, блоки page_number игнорируются при распознавании. Применяется к заново распознанным страницам.</translation>
     </message>
     <message>
+        <location line="+24"/>
+        <source>Check the page orientation</source>
+        <translation>Проверять ориентацию страницы</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Before a page is recognized, it is turned when it lies the wrong way up, so that the model reads the text the right way round. The pages you turn by hand are left as they are.</source>
+        <translation>Перед распознаванием страница поворачивается, если она лежит не той стороной вверх, чтобы модель читала текст правильно. Страницы, повёрнутые вручную, остаются как есть.</translation>
+    </message>
+    <message>
         <location line="+6"/>
         <source>Keep tables as HTML</source>
         <translation>Сохранять таблицы в HTML формате</translation>
@@ -1660,6 +1690,26 @@
         <location line="+23"/>
         <source>Not implemented yet</source>
         <translation>Функция пока не реализована</translation>
+    </message>
+    <message>
+        <location line="+196"/>
+        <source>Turn left</source>
+        <translation>Повернуть влево</translation>
+    </message>
+    <message>
+        <location line="+196"/>
+        <source>Turn right</source>
+        <translation>Повернуть вправо</translation>
+    </message>
+    <message>
+        <location line="+196"/>
+        <source>Turn the page?</source>
+        <translation>Повернуть страницу?</translation>
+    </message>
+    <message>
+        <location line="+196"/>
+        <source>Turning the page drops its recognition: the blocks were read from the old turn. Continue?</source>
+        <translation>Поворот страницы сбрасывает распознавание: блоки прочитаны при прежней ориентации. Продолжить?</translation>
     </message>
     <message>
         <location line="-92"/>

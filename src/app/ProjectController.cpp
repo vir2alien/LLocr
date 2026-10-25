@@ -63,6 +63,8 @@ bool ProjectController::collect(ProjectData *data, QString *error)
         entry.recognized = page.recognized;
         entry.recognitionMode = page.recognitionMode;
         entry.hasDuplicates = !page.result.pages.isEmpty() && page.result.pages.first().hasDuplicates;
+        entry.rotation = page.rotation;
+        entry.userOriented = page.userOriented;
         entry.text = page.result.text;
         entry.parseNote = page.parseNote;
         entry.boxes = page.result.pages.isEmpty() ? QList<BoundingBox>() : page.result.pages.first().boxes;
@@ -195,6 +197,11 @@ void ProjectController::apply(const ProjectData &data)
             page.recognized = entry.recognized;
             page.recognitionMode = entry.recognitionMode;
             page.parseNote = entry.parseNote;
+            // The turn of the page: the sources are re-rendered from the
+            // embedded files, so the turn has to be restored with them.
+            page.userOriented = entry.userOriented;
+            if (entry.rotation != page.rotation)
+                m_deps.document.setRotation(slot, entry.rotation);
             OcrResult result;
             result.success = true;
             OcrPage structured;

@@ -31,11 +31,16 @@ public:
                     const QString &criteriaTrue = QString(),
                     const QString &criteriaFalse = QString());
 
+    // A choice question: the model answers with the probability of every
+    // class instead of a yes/no verdict (the orientation check).
+    void askChoice(const QImage &image, const QString &blockType, const QString &notation, const QJsonObject &questions);
+
 signals:
     void judgeFinished(const llocr::DecisionResult &result);
 
 private:
     void abortRequest() override;
+    void ask(const DecisionRequest &request);
 
     std::unique_ptr<DecisionModel> m_model;
     QFutureWatcher<DecisionResult> m_watcher;

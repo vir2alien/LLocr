@@ -39,6 +39,7 @@ ColumnLayout {
         splitPagesCheck.checked = Settings.splitPages
         pageNumbersCheck.checked = Settings.keepPageNumbers
         tablesAsHtmlCheck.checked = Settings.tablesAsHtml
+        orientationCheckBox.checked = Settings.orientationCheckEnabled
         orientationBox.currentIndex = Settings.pdfLandscape ? 1 : 0
         marginSpin.value = Settings.pdfMarginMm
     }
@@ -48,6 +49,7 @@ ColumnLayout {
         Settings.splitPages = splitPagesCheck.checked
         Settings.keepPageNumbers = pageNumbersCheck.checked
         Settings.tablesAsHtml = tablesAsHtmlCheck.checked
+        Settings.orientationCheckEnabled = orientationCheckBox.checked
         Settings.pdfLandscape = orientationBox.currentIndex === 1
         Settings.pdfMarginMm = marginSpin.value
     }
@@ -60,6 +62,7 @@ ColumnLayout {
         function onSplitPagesChanged() { splitPagesCheck.checked = Settings.splitPages }
         function onKeepPageNumbersChanged() { pageNumbersCheck.checked = Settings.keepPageNumbers }
         function onTablesAsHtmlChanged() { tablesAsHtmlCheck.checked = Settings.tablesAsHtml }
+        function onOrientationCheckEnabledChanged() { orientationCheckBox.checked = Settings.orientationCheckEnabled }
         function onPdfLandscapeChanged() { orientationBox.currentIndex = Settings.pdfLandscape ? 1 : 0 }
         function onPdfMarginMmChanged() { marginSpin.value = Settings.pdfMarginMm }
     }
@@ -106,6 +109,14 @@ ColumnLayout {
         help: qsTr("When on, recognized tables are kept as the model's <table> "
                    + "HTML instead of being converted to a Markdown pipe table. "
                    + "Most Markdown editors render this.")
+    }
+
+    OptionCheck {
+        id: orientationCheckBox
+        label: qsTr("Check the page orientation")
+        help: qsTr("Before a page is recognized, it is turned when it lies the wrong "
+                   + "way up, so that the model reads the text the right way round. "
+                   + "The pages you turn by hand are left as they are.")
     }
 
     Item { implicitHeight: 6 }

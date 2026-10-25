@@ -44,6 +44,17 @@ public:
         m_bytes = 0;
     }
 
+    // Drops one entry: the page it belongs to was rendered again.
+    void remove(int key)
+    {
+        const auto it = m_images.constFind(key);
+        if (it == m_images.constEnd())
+            return;
+        m_bytes -= it.value().sizeInBytes();
+        m_images.erase(it);
+        m_order.removeAll(key);
+    }
+
     void evict()
     {
         while (m_order.size() > 1 && m_bytes > m_budgetBytes) {

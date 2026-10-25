@@ -122,6 +122,7 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName))},
         {kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
         {kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId))},
+        {kOrientationCheck, "orientationCheckEnabled", QVariant(QString::fromUtf8(kDefaultOrientationCheck))},
         {kSplitPages, "splitPages", QVariant(kDefaultSplitPages)},
         {kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers)},
         {kTablesAsHtml, "tablesAsHtml", QVariant(kDefaultTablesAsHtml)},
@@ -443,6 +444,19 @@ void SettingsStore::setParserId(const QString &parserName)
         return;
     m_settings.setValue(kParserId, parserName);
     emit parserIdChanged();
+}
+
+bool SettingsStore::orientationCheckEnabled() const
+{
+    return m_settings.value(kOrientationCheck, kDefaultOrientationCheck).toBool();
+}
+
+void SettingsStore::setOrientationCheckEnabled(bool on)
+{
+    if (orientationCheckEnabled() == on)
+        return;
+    m_settings.setValue(kOrientationCheck, on);
+    emit orientationCheckEnabledChanged();
 }
 
 bool SettingsStore::splitPages() const

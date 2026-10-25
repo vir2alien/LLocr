@@ -53,7 +53,9 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   ADR 122) — the installed/preset split it replaced is gone. The rows of the
   task table are the app's six tasks, and their list comes from the C++
   (`Settings.taskRoles` → `core/ConnectionRole.h`, ADR 215): the table keeps
-  no copy of it. The HF preset install pipeline lives in
+  no copy of it. The per-task dispatch (the title, the sampling hint, the
+  quant models, the request profiles) is one table in `RoleProfiles.qml` — a
+  row per task, a column per property (ADR 217). The HF preset install pipeline lives in
   `ModelInstallTransaction` (prepare → download → finalize, ADR 85);
   `ModelInstaller` stays the QML façade over presets, the registry and
   role-filtered views.
@@ -578,4 +580,29 @@ and the QML bindings are unchanged — the split is invisible to the UI.
 The document, the import, the parser choice and the status line stay in the
 facade — they are its own work. Every new class takes what it needs through
 a `Deps` struct (references and providers), the idiom of the layer.
+
+## 4.22 Page rotation & the orientation check (ADR 218)
+- **`DocumentPage::rotation`** (0/90/180/270) — the turn the page carries; it
+  is applied in the render (`DocumentModel::renderFull` / `renderDetached`), so
+  the preview, the thumbnails, the model's picture, the block crops and the
+  export all see the same turned page. `DocumentPage::displaySize()` is the
+  size the page is shown in, and the parser's `pageAspect` follows it.
+- **Manual turn** — the two buttons on the page toolbar turn the **current**
+  page and ask first when it carries a recognition (the turn drops it: the
+  blocks were read from the old turn). A page turned by hand is marked as
+  such and the orientation check leaves it alone.
+- **`app/PageOrientation`** — the check that reads the orientation from the
+  picture alone: the axis from the bands of the profile, the way up from the
+  ascenders and the descenders in the gaps between the lines. It answers
+  "upright", "upside down" or "on its side" with a confidence, or "I don't
+  know".
+- **`app/OrientationController`** — the check that runs before the pages are
+  recognized (and before the markup pass): the pages the picture cannot read
+  are handed to the **decision model** (a `choice` question through
+  `/v1/systemone`, the texts in `resources/profiles/requests/orientation-requests.json`),
+  and a page nobody can read is **left as it is** and reported in the status
+  line.
+- The check is a setting (**Settings → Output → «Check the page
+  orientation»**, on by default) and the turn of a page survives the save and
+  the reopen (`.llocr`, §4.20).
 

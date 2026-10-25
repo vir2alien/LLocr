@@ -7,6 +7,7 @@
 // edit survives a sync, and that the Cancel path throws it away.
 
 #include <QAbstractListModel>
+#include <QCoreApplication>
 #include <QDir>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -14,6 +15,7 @@
 #include <QQmlError>
 #include <QQmlExpression>
 #include <QQuickStyle>
+#include <QTranslator>
 #include <QtTest>
 
 #include "config/SettingsStore.h"
@@ -158,6 +160,18 @@ private:
 
 }  // namespace
 
+// A translator that marks every string it is asked for with the context it
+// was asked in: the QML texts must be translated under the context of the
+// file that owns them, or the Russian UI falls back to English.
+class ContextSpy : public QTranslator
+{
+public:
+    QString translate(const char *context, const char *sourceText, const char * = nullptr, int = -1) const override
+    {
+        return QString::fromUtf8(sourceText) + QStringLiteral(" [") + QString::fromUtf8(context) + QLatin1Char(']');
+    }
+};
+
 class TestTaskModelsTableQml : public QObject
 {
     Q_OBJECT
@@ -167,6 +181,7 @@ class TestTaskModelsTableQml : public QObject
 private slots:
     void initTestCase();
     void theTableLoadsWithoutWarnings();
+    void theTaskTextsKeepTheirTranslationContext();
     void anUnsavedModelNameSurvivesTheSync();
     void theCancelPathThrowsTheEditAway();
 
@@ -316,6 +331,14 @@ void TestTaskModelsTableQml::theTableLoadsWithoutWarnings()
 
     QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 
+    // The rows are the tasks the C++ lists (ADR 215): the table keeps no
+    // copy of the list.
+    const QVariantList rows = evaluate(table.get(), QStringLiteral("taskIds")).toList();
+    QStringList rowIds;
+    for (const QVariant &row : rows)
+        rowIds << row.toString();
+    QCOMPARE(rowIds, m_settings->taskRoles());
+
     // Every task has an entry, and the entry carries the three values the
     // draft is made of.
     const QStringList tasks = {
@@ -328,6 +351,23 @@ void TestTaskModelsTableQml::theTableLoadsWithoutWarnings()
         QVERIFY(entry->property("quantId").isValid());
         QVERIFY(entry->property("modelName").isValid());
     }
+}
+
+void TestTaskModelsTableQml::theTaskTextsKeepTheirTranslationContext()
+{
+    auto *roles = m_engine->singletonInstance<QObject *>(QStringLiteral("LLocr"), QStringLiteral("RoleProfiles"));
+    QVERIFY(roles);
+
+    ContextSpy spy;
+    QCoreApplication::installTranslator(&spy);
+    m_engine->retranslate();
+    const QVariant title = evaluate(roles, QStringLiteral("title('decision')"));
+    const QVariant hint = evaluate(roles, QStringLiteral("samplingHint('decision')"));
+    QCoreApplication::removeTranslator(&spy);
+    m_engine->retranslate();
+
+    QCOMPARE(title.toString(), QStringLiteral("Verification [RoleProfiles]"));
+    QCOMPARE(hint.toString().contains(QStringLiteral("[RoleProfiles]")), true);
 }
 
 void TestTaskModelsTableQml::anUnsavedModelNameSurvivesTheSync()

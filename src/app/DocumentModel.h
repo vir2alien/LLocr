@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/DjVuDocument.h"
+#include "app/PageRotation.h"
 #include "app/PdfDocument.h"
 #include "core/OcrResult.h"
 #include <functional>
@@ -54,7 +55,14 @@ struct DocumentPage {
     int sourcePageIndex = -1;
     QSize pixelSize;
     QString sourceError;
-    QString parseNote;  ///< Non-fatal parser diagnostic for the last recognition.
+    QString parseNote;          ///< Non-fatal parser diagnostic for the last recognition.
+    int rotation = 0;           ///< The clockwise turn the renderer applies to the source (0, 90, 180, 270).
+    bool userOriented = false;  ///< The user turned this page by hand: the orientation check leaves it alone.
+
+    // The size the page is shown in: the source size after the turn. The
+    // model's geometry is read against the rendered page, so this is the
+    // aspect the parsers need.
+    QSize displaySize() const { return rotatedSize(pixelSize, rotation); }
 };
 
 class DocumentModel
@@ -98,6 +106,10 @@ public:
     bool movePage(int from, int to);
     void clear();
 
+    // The page's turn changes: the rendered copy is dropped, so the next
+    // render draws the page turned.
+    bool setRotation(int index, int degrees);
+
     int pageCount() const { return m_pages.size(); }
     bool isEmpty() const { return m_pages.isEmpty(); }
 
@@ -108,12 +120,14 @@ public:
 
     QImage fullImage(int index, QString *error = nullptr);
 
-    static QSize thumbnailSizeFor(const QSize &pixelSize);
+    static QSize thumbnailSizeFor(const QSize &pixelSize, int rotation = 0);
 
 private:
     static std::shared_ptr<PdfDocument> pdfForCurrentThread(const QString &path);
     static std::shared_ptr<DjVuDocument> djvuForCurrentThread(const QString &path, QString *error);
     static QImage decodeSourceCopy(const DocumentPage &page, QString *error = nullptr);
+    QImage renderSource(const DocumentPage &page, QString *error);
+    static QImage renderDetachedSource(const RenderRequest &request, QString *error);
     QImage renderFull(const DocumentPage &page, QString *error = nullptr);
     void ensureFullImage(int index, QString *error = nullptr);
     void evictFullImages();
