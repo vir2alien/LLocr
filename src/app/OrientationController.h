@@ -13,9 +13,10 @@ namespace llocr {
 // wrong way up is turned first, so the model reads the text the right way
 // round.
 //
-// The picture answers by itself — the lines of the text tell the axis and
-// the way up. The pages it cannot read are handed to the model, which settles
-// them later; the run waits for those answers.
+// The picture reads the axis of the text and hands the model the turns the
+// page may need: a page whose text runs across lies straight, a page on its
+// side lies at a quarter turn. The model settles the way up and the pages it
+// is not sure about are left as they are; the run waits for its answers.
 class OrientationController : public QObject
 {
     Q_OBJECT
@@ -23,9 +24,8 @@ class OrientationController : public QObject
 public:
     // The picture of a page, as the recognition will see it.
     using ImageProvider = std::function<QImage(int index)>;
-    // The model settles the pages the picture cannot read. It answers later,
-    // through settle().
-    using Arbiter = std::function<void(int index)>;
+    // The model settles the page: it answers later, through settle().
+    using Arbiter = std::function<void(int index, const OrientationVerdict &verdict)>;
 
     explicit OrientationController(QObject *parent = nullptr);
 
@@ -38,6 +38,7 @@ public:
 signals:
     void turned(int index, int degrees);
     void unclear(int index);
+    void noText(int index);
     void finished();
 
 private:
@@ -46,6 +47,7 @@ private:
 
     QList<int> m_pending;  // The pages waiting for the model's answer.
     QList<int> m_unclear;  // The pages whose orientation stayed unknown.
+    QList<int> m_noText;   // The pages that carry no text at all.
 };
 
 }  // namespace llocr

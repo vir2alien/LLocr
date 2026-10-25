@@ -37,6 +37,12 @@ namespace {
 // The model's answer has to be this certain before a page is turned on it.
 constexpr double kOrientationConfidence = 0.6;
 
+// A page on its side needs much more: the model names the same direction for
+// both sides of the same page (measured on the corpus: "90" for every page
+// that lies on its side), so its confidence there says nothing about the
+// direction — only a very certain answer is worth a quarter turn.
+constexpr double kQuarterTurnConfidence = 0.75;
+
 }  // namespace
 
 AppController::AppController(SettingsStore &settings,
@@ -123,7 +129,14 @@ AppController::AppController(SettingsStore &settings,
         setStatus(StatusMessage::translate("AppController", "Page %1 turned %2° clockwise before the recognition.").arg(index + 1).arg(normalizeRotation(degrees)));
     });
     connect(&m_orientation, &OrientationController::unclear, this, [this](int index) {
+        if (m_orientationVerdicts.value(index).sideways) {
+            setStatus(StatusMessage::translate("AppController", "Page %1 lies on its side. The check cannot tell which way it has to be turned — turn it by hand.").arg(index + 1));
+            return;
+        }
         setStatus(StatusMessage::translate("AppController", "Page %1: the orientation is not clear, the page was left as it is.").arg(index + 1));
+    });
+    connect(&m_orientation, &OrientationController::noText, this, [this](int index) {
+        setStatus(StatusMessage::translate("AppController", "Page %1: there is no text on the page, it was left as it is.").arg(index + 1));
     });
     connect(&m_orientation, &OrientationController::finished, this, [this]() {
         if (!m_pendingRun)
@@ -790,7 +803,11 @@ void AppController::recognizeCurrentPage(const QString &task)
         return;
     }
 
-    m_recognition.startCurrent(m_currentPage, m_document.pageCount(), role);
+    // The page may lie the wrong way up: it is turned before the recognition.
+    const int index = m_currentPage;
+    if (runAfterOrientationCheck({index}, [this, role, index]() { m_recognition.startCurrent(index, m_document.pageCount(), role); }))
+        return;
+    m_recognition.startCurrent(index, m_document.pageCount(), role);
 }
 
 void AppController::recognizeAllPages(const QString &task)
@@ -803,7 +820,12 @@ void AppController::recognizeAllPages(const QString &task)
         return;
     }
 
-    m_recognition.startAll(m_document.pageCount(), role);
+    QList<int> pages;
+    for (int index = 0; index < m_document.pageCount(); ++index)
+        pages.append(index);
+    if (runAfterOrientationCheck(pages, [this, role, pages]() { m_recognition.startAll(pages.size(), role); }))
+        return;
+    m_recognition.startAll(pages.size(), role);
 }
 
 void AppController::recognizeCurrent()
@@ -1798,12 +1820,16 @@ bool AppController::runAfterOrientationCheck(const QList<int> &pages, const std:
         return false;
 
     m_pendingRun = run;
-    m_orientation.check(unchecked, [this](int index) { return pageImage(index); }, [this](int index) { askModelAboutOrientation(index); });
+    m_orientationVerdicts.clear();
+    m_orientation.check(unchecked, [this](int index) { return pageImage(index); }, [this](int index, const OrientationVerdict &verdict) { askModelAboutOrientation(index, verdict); });
     return true;
 }
 
-void AppController::askModelAboutOrientation(int index)
+void AppController::askModelAboutOrientation(int index, const OrientationVerdict &verdict)
 {
+    // The picture has read the axis of the text: it names the turns the page
+    // may need, and the model's answer is taken among them.
+    m_orientationVerdicts.insert(index, verdict);
     m_orientationQueue.append(index);
     askNextOrientationPage();
 }
@@ -1843,21 +1869,21 @@ void AppController::onOrientationVerdict(const DecisionResult &result)
 
     int degrees = -1;
     if (result.ok) {
-        // The model's answer names the class with the highest probability; the
-        // classes are the degrees the page has to be turned by.
+        // The picture has narrowed the turns the page may need; the model's
+        // answer names the one it is surest of among them.
+        const QList<int> candidates = orientationCandidates(m_orientationVerdicts.value(index));
         double best = -1.0;
-        for (auto it = result.diagnosis.constBegin(); it != result.diagnosis.constEnd(); ++it) {
-            bool numeric = false;
-            const int value = it.key().toInt(&numeric);
-            if (!numeric)
-                continue;
-            if (it.value() > best) {
-                best = it.value();
-                degrees = value;
+        for (const int candidate : candidates) {
+            const double probability = result.diagnosis.value(QString::number(candidate), 0.0);
+            if (probability > best) {
+                best = probability;
+                degrees = candidate;
             }
         }
-        // A page is not turned on an uncertain answer.
-        if (best < kOrientationConfidence)
+        // A page is not turned on an uncertain answer, and a quarter turn
+        // needs much more certainty than a half turn.
+        const double threshold = (degrees == 90 || degrees == 270) ? kQuarterTurnConfidence : kOrientationConfidence;
+        if (best < threshold)
             degrees = -1;
     }
     m_orientation.settle(index, degrees);

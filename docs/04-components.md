@@ -581,7 +581,7 @@ The document, the import, the parser choice and the status line stay in the
 facade — they are its own work. Every new class takes what it needs through
 a `Deps` struct (references and providers), the idiom of the layer.
 
-## 4.22 Page rotation & the orientation check (ADR 218)
+## 4.22 Page rotation & the orientation check (ADR 218, 221)
 - **`DocumentPage::rotation`** (0/90/180/270) — the turn the page carries; it
   is applied in the render (`DocumentModel::renderFull` / `renderDetached`), so
   the preview, the thumbnails, the model's picture, the block crops and the
@@ -591,17 +591,30 @@ a `Deps` struct (references and providers), the idiom of the layer.
   page and ask first when it carries a recognition (the turn drops it: the
   blocks were read from the old turn). A page turned by hand is marked as
   such and the orientation check leaves it alone.
-- **`app/PageOrientation`** — the check that reads the orientation from the
-  picture alone: the axis from the bands of the profile, the way up from the
-  ascenders and the descenders in the gaps between the lines. It answers
-  "upright", "upside down" or "on its side" with a confidence, or "I don't
-  know".
+- **`app/PageOrientation`** — the check that reads the **axis** of the text
+  from the picture alone: the profile of the rows alternates (a line, a gap, a
+  line), so it varies much more than the profile of the columns; a page turned
+  on its side has it the other way round. Measured on the corpus of the
+  project (ten pages, four turns each): the axis was read right in every case it
+  was read at all (read in 36 of the 40; the page of tables reads both ways and
+  stays undecided). The picture does **not** read which way is up — the
+  typographic sign of that carries the sign of the alphabet (Russian has more
+  descenders than ascenders), so reading it turned the pages that lie the
+  right way up (ADR 221). The picture alone never turns a page: it names the
+  axis, and the verdict names the turns the page may need: {0, 180} for a page
+  that lies straight, {90, 270} for a page on its side.
 - **`app/OrientationController`** — the check that runs before the pages are
-  recognized (and before the markup pass): the pages the picture cannot read
-  are handed to the **decision model** (a `choice` question through
-  `/v1/systemone`, the texts in `resources/profiles/requests/orientation-requests.json`),
-  and a page nobody can read is **left as it is** and reported in the status
-  line.
+  recognized (and before the markup pass): the picture hands the model the
+  turns the page may need, and the **decision model** (a `choice` question
+  through `/v1/systemone`, the texts in
+  `resources/profiles/requests/orientation-requests.json`) names the one it is
+  surest of among them. An answer outside the turns the picture allows is not
+  taken. A half turn needs a probability of 0.6, a quarter turn 0.75: the
+  model reads the way up of an upside-down page, but it names the same
+  direction for both sides of a page that lies on its side, so its confidence
+  there says nothing (measured: 0.29…0.59 for right and wrong alike). A page
+  nobody can read is **left as it is** and reported in the status line — a
+  page on its side is reported as such, to be turned by hand.
 - The check is a setting (**Settings → Output → «Check the page
   orientation»**, on by default) and the turn of a page survives the save and
   the reopen (`.llocr`, §4.20).

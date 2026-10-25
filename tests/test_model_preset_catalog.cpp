@@ -651,10 +651,11 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
 
-    // Two request profiles, one per task.
-    QCOMPARE(ModelProfiles::promptProfiles().size(), 2);
+    // One request profile per task, plus the orientation check's own.
+    QCOMPARE(ModelProfiles::promptProfiles().size(), 3);
     QVERIFY(ModelProfiles::promptProfile(QStringLiteral("fix-requests")));
     QVERIFY(ModelProfiles::promptProfile(QStringLiteral("decision-requests")));
+    QVERIFY(ModelProfiles::promptProfile(QStringLiteral("orientation-requests")));
     QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("no-such-profile")));
 
     // Every fix model names the shared fix request profile and inherits its

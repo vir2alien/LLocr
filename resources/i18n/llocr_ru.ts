@@ -45,6 +45,16 @@
     </message>
     <message>
         <location line="+1673"/>
+        <source>Page %1 lies on its side. The check cannot tell which way it has to be turned — turn it by hand.</source>
+        <translation>Страница %1 лежит боком. Проверка не может определить, в какую сторону её повернуть — поверните вручную.</translation>
+    </message>
+    <message>
+        <location line="+1673"/>
+        <source>Page %1: there is no text on the page, it was left as it is.</source>
+        <translation>Страница %1: на странице нет текста, она оставлена как есть.</translation>
+    </message>
+    <message>
+        <location line="+1673"/>
         <source>The orientation check is running.</source>
         <translation>Проверка ориентации выполняется.</translation>
     </message>

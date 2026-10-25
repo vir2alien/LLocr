@@ -41,6 +41,7 @@ set(LLOCR_MODEL_PROFILE_FILES
 set(LLOCR_REQUEST_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/requests/fix-requests.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/requests/decision-requests.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/requests/orientation-requests.json"
 )
 
 # The shipped profiles a test reads: the model profiles and the request
@@ -234,6 +235,11 @@ qt_add_executable(test_page_orientation test_page_orientation.cpp)
 target_link_libraries(test_page_orientation PRIVATE
     Qt6::Test
     llocr_app
+)
+# The renders of the corpus the check is measured against. The test skips when
+# the checkout carries no corpus.
+target_compile_definitions(test_page_orientation PRIVATE
+    LLOCR_CORPUS_RENDERS="${CMAKE_SOURCE_DIR}/OCRtest/ocr_models/materials/renders"
 )
 add_test(NAME test_page_orientation COMMAND test_page_orientation)
 

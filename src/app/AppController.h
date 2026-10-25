@@ -402,8 +402,8 @@ private:
     // Runs the orientation check before the pages are recognized. Returns
     // true when the run waits for the check.
     bool runAfterOrientationCheck(const QList<int> &pages, const std::function<void()> &run);
-    // The model settles the pages the picture cannot read.
-    void askModelAboutOrientation(int index);
+    // The model settles the way up of the page.
+    void askModelAboutOrientation(int index, const OrientationVerdict &verdict);
     void askNextOrientationPage();
     void onOrientationVerdict(const DecisionResult &result);
     // The model is asked about a page: the check is running.
@@ -471,10 +471,13 @@ private:
     VerificationQueueController m_verify;
     LayoutController m_layout;
     OrientationController m_orientation;
-    // The model that settles the pages the picture cannot read.
+    // The model that settles the way up of the page.
     DecisionController m_orientationDecision;
-    QList<int> m_orientationQueue;       // The pages waiting for the model's answer.
-    int m_orientationPage = -1;          // The page the model is asked about.
+    QList<int> m_orientationQueue;  // The pages waiting for the model's answer.
+    int m_orientationPage = -1;     // The page the model is asked about.
+    // What the picture read about each page: the axis of the text names the
+    // turns the page may need, and the model's answer is taken among them.
+    QHash<int, OrientationVerdict> m_orientationVerdicts;
     std::function<void()> m_pendingRun;  // The run that waits for the orientation check.
     AvailabilityPresenter m_availability;
     bool m_importing = false;
