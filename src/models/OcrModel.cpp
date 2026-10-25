@@ -61,16 +61,16 @@ void dumpRawResponse(const QByteArray &responseData, const QString &content, boo
 
 }  // namespace
 
-OcrModel::OcrModel(QString modelId) : m_id(std::move(modelId)) {}
+OcrModel::OcrModel(QString modelId, QString role) : m_id(std::move(modelId)), m_role(std::move(role)) {}
 
-std::unique_ptr<OcrModel> OcrModel::create(const QString &modelId)
+std::unique_ptr<OcrModel> OcrModel::create(const QString &modelId, const QString &role)
 {
     if (ModelProfiles::findBuiltIn(modelId))
-        return std::make_unique<OcrModel>(modelId);
+        return std::make_unique<OcrModel>(modelId, role);
 
     const QString fallback = defaultId();
     qWarning() << "OcrModel: unknown model id" << modelId << "— falling back to" << fallback;
-    return std::make_unique<OcrModel>(fallback);
+    return std::make_unique<OcrModel>(fallback, role);
 }
 
 QString OcrModel::defaultId()
@@ -99,10 +99,27 @@ const ModelProfiles::Role *pageRoleFor(const QString &modelId)
         return role;
     return ModelProfiles::roleFor(modelId, QStringLiteral("rawPageOcr"));
 }
+
+// The role the adapter serves: the task's own role when the model has one,
+// the page role otherwise. A model that serves the page task and the raw task
+// answers each of them with its own prompt — Chandra-OCR-2 has one prompt per
+// task — so the task reaches the profile.
+const ModelProfiles::Role *roleForTask(const QString &modelId, const QString &taskRole)
+{
+    if (!taskRole.isEmpty()) {
+        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, taskRole))
+            return role;
+    }
+    return pageRoleFor(modelId);
+}
 }  // namespace
 
 QList<ModelProfiles::Prompt> OcrModel::promptVariants() const
 {
+    if (const ModelProfiles::Role *role = roleForTask(m_id, m_role)) {
+        if (!role->prompts.isEmpty())
+            return role->prompts;
+    }
     if (const ModelProfiles::Role *role = pageRoleFor(m_id))
         return role->prompts;
     return {};
@@ -110,25 +127,25 @@ QList<ModelProfiles::Prompt> OcrModel::promptVariants() const
 
 QString OcrModel::defaultParserId() const
 {
-    return defaultParserIdFor(m_id);
+    return defaultParserIdFor(m_id, m_role);
 }
 
-QString OcrModel::defaultParserIdFor(const QString &modelId)
+QString OcrModel::defaultParserIdFor(const QString &modelId, const QString &role)
 {
     // An unknown id falls back to the default model, exactly as create() does.
     const QString resolved = ModelProfiles::findBuiltIn(modelId) ? modelId : defaultId();
-    if (const ModelProfiles::Role *role = pageRoleFor(resolved))
-        return role->parser;
+    if (const ModelProfiles::Role *found = roleForTask(resolved, role))
+        return found->parser;
     return QStringLiteral("raw");
 }
 
-QByteArray OcrModel::buildRequestBody(const OcrRequest &request, const QByteArray &imageDataUrl)
+QByteArray OcrModel::buildRequestBody(const OcrRequest &request, const QByteArray &imageDataUrl, const QString &taskRole)
 {
     QJsonObject textPart{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), request.prompt}};
     QJsonObject imageUrl{{QStringLiteral("url"), QString::fromUtf8(imageDataUrl)}};
     QJsonObject imagePart{{QStringLiteral("type"), QStringLiteral("image_url")}, {QStringLiteral("image_url"), imageUrl}};
 
-    const ModelProfiles::Role *role = pageRoleFor(request.modelId);
+    const ModelProfiles::Role *role = roleForTask(request.modelId, taskRole);
     // An empty prompt is the transcription request itself (LightOnOCR-3 trains
     // "the image only") — a text part with an empty string would be a
     // different input, so the part is dropped rather than sent empty.
@@ -193,12 +210,13 @@ QImage scaledToLongestEdge(const QImage &image, int longestEdge)
 
 QFuture<OcrResult> OcrModel::recognize(const OcrRequest &request, const ConnectionConfig &config)
 {
+    const QString taskRole = m_role;
     return runChatExchange<OcrResult>(
-        [request]() {
+        [request, taskRole]() {
             QImage image = request.image;
-            if (const ModelProfiles::Role *role = pageRoleFor(request.modelId))
+            if (const ModelProfiles::Role *role = roleForTask(request.modelId, taskRole))
                 image = scaledToLongestEdge(image, role->imageLongestEdge);
-            return buildRequestBody(request, encodeImageDataUrl(image));
+            return buildRequestBody(request, encodeImageDataUrl(image), taskRole);
         },
         config,
         m_activeClient,

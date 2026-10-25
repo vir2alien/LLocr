@@ -247,6 +247,44 @@ private slots:
         QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
     }
 
+    // Chandra-OCR-2 serves the two page tasks, each with its own trained
+    // prompt: the layout one for the page with boxes, the plain one for the
+    // page without them.
+    void chandraModelContract()
+    {
+        const OcrModel model(QStringLiteral("chandra-ocr-2"));
+
+        QCOMPARE(model.id(), QStringLiteral("chandra-ocr-2"));
+        QCOMPARE(model.displayName(), QStringLiteral("Chandra-OCR-2"));
+        QCOMPARE(model.defaultParserId(), QStringLiteral("chandra-ocr"));
+
+        const ModelProfiles::Role *pageRole = ModelProfiles::roleFor(QStringLiteral("chandra-ocr-2"), QStringLiteral("pageOcr"));
+        QVERIFY(pageRole);
+        QCOMPARE(pageRole->parser, QStringLiteral("chandra-ocr"));
+        QCOMPARE(pageRole->prompts.size(), 1);
+        QVERIFY(pageRole->prompts.first().text.contains(QStringLiteral("OCR this image to HTML")));
+        // The layout prompt is the one that asks for the boxes and the labels.
+        QVERIFY(pageRole->prompts.first().text.contains(QStringLiteral("arranged as layout blocks")));
+        QVERIFY(pageRole->prompts.first().text.contains(QStringLiteral("data-bbox")));
+        QVERIFY(pageRole->prompts.first().text.contains(QStringLiteral("data-label")));
+
+        const ModelProfiles::Role *rawRole = ModelProfiles::roleFor(QStringLiteral("chandra-ocr-2"), QStringLiteral("rawPageOcr"));
+        QVERIFY(rawRole);
+        QCOMPARE(rawRole->parser, QStringLiteral("chandra-ocr"));
+        QCOMPARE(rawRole->prompts.size(), 1);
+        QVERIFY(!rawRole->prompts.first().text.contains(QStringLiteral("arranged as layout blocks")));
+
+        // The raw task sends its own prompt: the task reaches the profile.
+        const OcrModel rawModel(QStringLiteral("chandra-ocr-2"), QStringLiteral("rawPageOcr"));
+        QCOMPARE(rawModel.promptVariants().size(), 1);
+        QVERIFY(!rawModel.promptVariants().first().text.contains(QStringLiteral("arranged as layout blocks")));
+
+        // The block task is not served: on a crop the model answers the page
+        // task — a layout div whose box is the whole crop — so the reply is
+        // not the block's text.
+        QVERIFY(!ModelProfiles::roleFor(QStringLiteral("chandra-ocr-2"), QStringLiteral("blockRecognition")));
+    }
+
     // LightOnOCR-3 serves two trained modes: "grounding" for the page with
     // labeled boxes (the lightonocr parser) and the empty prompt for raw
     // markdown transcription.

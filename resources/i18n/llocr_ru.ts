@@ -587,6 +587,14 @@
     </message>
 </context>
 <context>
+    <name>ChandraParser</name>
+    <message>
+        <location filename="../../src/parsers/ChandraParser.cpp" line="+125"/>
+        <source>No layout markup found in the model reply — the text was kept as one block. Check that the OCR model and the output parser match.</source>
+        <translation>В ответе модели не найдено разметки — текст сохранён одним блоком. Проверьте, что модель OCR и парсер вывода совпадают.</translation>
+    </message>
+</context>
+<context>
     <name>DecisionModel</name>
     <message>
         <location filename="../../src/models/DecisionModel.cpp" line="+118"/>

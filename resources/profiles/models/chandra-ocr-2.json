@@ -1,0 +1,292 @@
+{
+  "schemaVersion": 1,
+  "id": "chandra-ocr-2",
+  "title": "Chandra-OCR-2",
+  "license": "https://huggingface.co/datalab-to/chandra-ocr-2",
+  "minBuild": "b4000",
+  "files": {
+    "repo": "prithivMLmods/chandra-ocr-2-GGUF",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q8_0",
+        "file": "chandra-ocr-2.Q8_0.gguf",
+        "sha256": "",
+        "sizeBytes": 5157833312
+      },
+      {
+        "id": "q6_k",
+        "file": "chandra-ocr-2.Q6_K.gguf",
+        "sha256": "",
+        "sizeBytes": 3985527392
+      },
+      {
+        "id": "q5_k_m",
+        "file": "chandra-ocr-2.Q5_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 3512029792
+      },
+      {
+        "id": "q4_k_m",
+        "file": "chandra-ocr-2.Q4_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 3066384992
+      },
+      {
+        "id": "q3_k_m",
+        "file": "chandra-ocr-2.Q3_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 2535215712
+      },
+      {
+        "id": "q2_k",
+        "file": "chandra-ocr-2.Q2_K.gguf",
+        "sha256": "",
+        "sizeBytes": 2124059232
+      }
+    ],
+    "mmproj": {
+      "sizeBytes": 675568928,
+      "id": "bf16",
+      "file": "chandra-ocr-2.mmproj-bf16.gguf",
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
+    }
+  },
+  "memory": {
+    "nLayer": 32,
+    "nKvLayers": 8,
+    "nHead": 16,
+    "nKvHead": 4,
+    "headDim": 256,
+    "nEmbd": 2560,
+    "nFf": 9216,
+    "visionTokens": 6144,
+    "visionBytesPerToken": 110600
+  },
+  "roles": {
+    "pageOcr": {
+      "alias": "llocr-pageocr",
+      "parser": "chandra-ocr",
+      "maxOutput": 8192,
+      "prompts": [
+        {
+          "id": "ocr-layout",
+          "title": "OCR with layout",
+          "text": "OCR this image to HTML, arranged as layout blocks.  Each layout block should be a div with the data-bbox attribute representing the bounding box of the block in x0 y0 x1 y1 format.  Bboxes are normalized 0-1000. The data-label attribute is the label for the block.\n\nUse the following labels:\n- Caption\n- Footnote\n- Equation-Block\n- List-Group\n- Page-Header\n- Page-Footer\n- Image\n- Section-Header\n- Table\n- Text\n- Complex-Block\n- Code-Block\n- Form\n- Table-Of-Contents\n- Figure\n- Chemical-Block\n- Diagram\n- Bibliography\n- Blank-Page\n\nOnly use these tags ['math', 'br', 'i', 'b', 'u', 'del', 'sup', 'sub', 'table', 'tr', 'td', 'p', 'th', 'div', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'ul', 'ol', 'li', 'input', 'a', 'span', 'img', 'hr', 'tbody', 'small', 'caption', 'strong', 'thead', 'big', 'code', 'chem'], and these attributes ['class', 'colspan', 'rowspan', 'display', 'checked', 'type', 'border', 'value', 'style', 'href', 'alt', 'align', 'data-bbox', 'data-label'].\n\nGuidelines:\n* Inline math: Surround math with <math>...</math> tags. Math expressions should be rendered in KaTeX-compatible LaTeX. Use display for block math.\n* Tables: Use colspan and rowspan attributes to match table structure.\n* Formatting: Maintain consistent formatting with the image, including spacing, indentation, subscripts/superscripts, and special characters.\n* Images: Include a description of any images in the alt attribute of an <img> tag. Do not fill out the src property. Describe in detail inside the div tag. Also convert charts to high fidelity data, and convert diagrams to mermaid.\n* Forms: Mark checkboxes and radio buttons properly.\n* Text: join lines together properly into paragraphs using <p>...</p> tags.  Use <br> tags for line breaks within paragraphs, but only when absolutely necessary to maintain meaning.\n* Chemistry: Use <chem>...</chem> tags for chemical formulas with reactive SMILES.\n* Lists: Preserve indents and proper list markers.\n* Use the simplest possible HTML structure that accurately represents the content of the block.\n* Make sure the text is accurate and easy for a human to read and interpret.  Reading order should be correct and natural."
+        }
+      ],
+      "blocks": {
+        "styles": {
+          "text": "text",
+          "title": "heading",
+          "header": "italic",
+          "footer": "italic",
+          "list": "text",
+          "code": "text",
+          "key_value": "text",
+          "image": "image",
+          "image_caption": "italic",
+          "table_footnote": "italic",
+          "ref_text": "text",
+          "equation": "equation",
+          "table": "table"
+        }
+      },
+      "launch": [
+        {
+          "order": 1,
+          "name": "flash-attn",
+          "value": "on",
+          "description": "Flash attention kernels; required for the vision stack."
+        },
+        {
+          "order": 2,
+          "name": "jinja",
+          "description": "Use the chat template from the GGUF metadata; the model is trained with it."
+        },
+        {
+          "order": 3,
+          "name": "reasoning-budget",
+          "value": 0,
+          "description": "Server default for the thinking budget; the model transcribes, it does not reason."
+        },
+        {
+          "order": 4,
+          "name": "temp",
+          "value": 0,
+          "description": "Server-side default sampling temperature; greedy decoding for transcription."
+        },
+        {
+          "order": 5,
+          "name": "image-min-tokens",
+          "value": 456,
+          "description": "Vision budget floor; a block crop is scaled up to it."
+        },
+        {
+          "order": 6,
+          "name": "image-max-tokens",
+          "value": 6144,
+          "description": "Vision budget ceiling; the page fills it — the model's own limit is 6144 tokens for a 3072x2048 page."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 is the reference client's setting."
+        },
+        {
+          "order": 2,
+          "name": "top_p",
+          "value": 0.1,
+          "description": "Nucleus sampling cutoff; the reference client's setting."
+        },
+        {
+          "order": 3,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 6,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 7,
+          "name": "cache_prompt",
+          "value": false,
+          "description": "No-op for this model: hybrid recurrent memory cannot be rewound, so llama-server forces full prompt re-processing whatever this says. Kept off to make that explicit."
+        },
+        {
+          "order": 8,
+          "name": "stop",
+          "value": [
+            "<|im_end|>",
+            "<|endoftext|>"
+          ],
+          "description": "Stop sequences; the reply ends with the document."
+        }
+      ],
+      "imageLongestEdge": 2984
+    },
+    "rawPageOcr": {
+      "alias": "llocr-rawpageocr",
+      "parser": "chandra-ocr",
+      "maxOutput": 8192,
+      "prompts": [
+        {
+          "id": "ocr",
+          "title": "OCR without layout",
+          "text": "OCR this image to HTML.\n\nOnly use these tags ['math', 'br', 'i', 'b', 'u', 'del', 'sup', 'sub', 'table', 'tr', 'td', 'p', 'th', 'div', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'ul', 'ol', 'li', 'input', 'a', 'span', 'img', 'hr', 'tbody', 'small', 'caption', 'strong', 'thead', 'big', 'code', 'chem'], and these attributes ['class', 'colspan', 'rowspan', 'display', 'checked', 'type', 'border', 'value', 'style', 'href', 'alt', 'align', 'data-bbox', 'data-label'].\n\nGuidelines:\n* Inline math: Surround math with <math>...</math> tags. Math expressions should be rendered in KaTeX-compatible LaTeX. Use display for block math.\n* Tables: Use colspan and rowspan attributes to match table structure.\n* Formatting: Maintain consistent formatting with the image, including spacing, indentation, subscripts/superscripts, and special characters.\n* Images: Include a description of any images in the alt attribute of an <img> tag. Do not fill out the src property. Describe in detail inside the div tag. Also convert charts to high fidelity data, and convert diagrams to mermaid.\n* Forms: Mark checkboxes and radio buttons properly.\n* Text: join lines together properly into paragraphs using <p>...</p> tags.  Use <br> tags for line breaks within paragraphs, but only when absolutely necessary to maintain meaning.\n* Chemistry: Use <chem>...</chem> tags for chemical formulas with reactive SMILES.\n* Lists: Preserve indents and proper list markers.\n* Use the simplest possible HTML structure that accurately represents the content of the block.\n* Make sure the text is accurate and easy for a human to read and interpret.  Reading order should be correct and natural."
+        }
+      ],
+      "launch": [
+        {
+          "order": 1,
+          "name": "flash-attn",
+          "value": "on",
+          "description": "Flash attention kernels; required for the vision stack."
+        },
+        {
+          "order": 2,
+          "name": "jinja",
+          "description": "Use the chat template from the GGUF metadata; the model is trained with it."
+        },
+        {
+          "order": 3,
+          "name": "reasoning-budget",
+          "value": 0,
+          "description": "Server default for the thinking budget; the model transcribes, it does not reason."
+        },
+        {
+          "order": 4,
+          "name": "temp",
+          "value": 0,
+          "description": "Server-side default sampling temperature; greedy decoding for transcription."
+        },
+        {
+          "order": 5,
+          "name": "image-min-tokens",
+          "value": 456,
+          "description": "Vision budget floor; a block crop is scaled up to it."
+        },
+        {
+          "order": 6,
+          "name": "image-max-tokens",
+          "value": 6144,
+          "description": "Vision budget ceiling; the page fills it — the model's own limit is 6144 tokens for a 3072x2048 page."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 is the reference client's setting."
+        },
+        {
+          "order": 2,
+          "name": "top_p",
+          "value": 0.1,
+          "description": "Nucleus sampling cutoff; the reference client's setting."
+        },
+        {
+          "order": 3,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 6,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 7,
+          "name": "cache_prompt",
+          "value": false,
+          "description": "No-op for this model: hybrid recurrent memory cannot be rewound, so llama-server forces full prompt re-processing whatever this says. Kept off to make that explicit."
+        },
+        {
+          "order": 8,
+          "name": "stop",
+          "value": [
+            "<|im_end|>",
+            "<|endoftext|>"
+          ],
+          "description": "Stop sequences; the reply ends with the document."
+        }
+      ],
+      "imageLongestEdge": 2984
+    }
+  }
+}

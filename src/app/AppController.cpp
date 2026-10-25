@@ -236,20 +236,22 @@ QStringList AppController::parserLabels() const
 
 QString AppController::effectiveParserId() const
 {
-    return effectiveParserIdFor(m_settings.modelRecipeId());
+    return effectiveParserIdFor(m_settings.modelRecipeId(), QStringLiteral("pageOcr"));
 }
 
-QString AppController::effectiveParserIdFor(const QString &profileId) const
+QString AppController::effectiveParserIdFor(const QString &profileId, const QString &role) const
 {
     const QString configured = m_settings.parserId();
     if (!configured.isEmpty() && configured != ParserFactory::kAutoId)
         return configured;
     // The parser a profile declares never changes, so the id is remembered
     // for the profile: the QML bindings ask for it on every change, and the
-    // profiles are read only once (ADR 207).
-    if (profileId != m_parserIdKey) {
-        m_parserIdKey = profileId;
-        m_parserIdCache = OcrModel::defaultParserIdFor(profileId);
+    // profiles are read only once (ADR 207). The task is part of the key: a
+    // model can declare a different parser per task.
+    const QString key = profileId + QLatin1Char('|') + role;
+    if (key != m_parserIdKey) {
+        m_parserIdKey = key;
+        m_parserIdCache = OcrModel::defaultParserIdFor(profileId, role);
     }
     return m_parserIdCache;
 }
@@ -820,8 +822,12 @@ void AppController::applyRawResult(int index, ConnectionRole task, const OcrResu
         return;
 
     ParserOptions options = parserOptions();
-    if (task == ConnectionRole::RawPageOcr)
+    if (task == ConnectionRole::RawPageOcr) {
         options.modelId = m_settings.requestProfileIdForRole(connectionRoleName(task));
+        // The task asks for the text alone: a model that volunteers the
+        // layout anyway does not turn the page into a markup page.
+        options.ignoreLayoutMarkup = true;
+    }
     // The model's geometry is read against the page it was shown: the turned
     // page, so the aspect follows the rotation.
     const QSize pixelSize = m_document.page(index).displaySize();
@@ -829,7 +835,7 @@ void AppController::applyRawResult(int index, ConnectionRole task, const OcrResu
         options.pageAspect = qreal(pixelSize.height()) / pixelSize.width();
 
     OcrResult parsed = rawResult;
-    if (auto parser = ParserFactory::create(effectiveParserIdFor(options.modelId), options)) {
+    if (auto parser = ParserFactory::create(effectiveParserIdFor(options.modelId, connectionRoleName(task)), options)) {
         parsed = parser->parse(rawResult.text);
         applyFormulaVerdicts(parsed);
         rebuildTextFromBlocks(parsed, *parser);

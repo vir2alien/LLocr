@@ -55,6 +55,7 @@
   | `docs/25-paddleocr-vl.md` | Model manual: PaddleOCR-VL-1.6 (blockRecognition only — the layout model ships outside the GGUF, official single-quant repo); Russian mirror in `25-paddleocr-vl.ru.md` |
   | `docs/26-qwen3.5.md`      | Model manual: Qwen3.5-4B/9B, the fix default (OK/FIX/REVIEW, MTP drafting, framed candidate); Russian mirror in `26-qwen3.5.ru.md` |
   | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all 14 models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
+  | `docs/28-chandra-ocr-2.md` | Model manual: Chandra-OCR-2 (an HTML answer — the `chandra-ocr` parser, three OCR roles, the task reaches the profile); Russian mirror in `28-chandra-ocr-2.ru.md` |
   
   ## Rules for the agent
   

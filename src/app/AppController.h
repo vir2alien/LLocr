@@ -412,7 +412,7 @@ private:
     void applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);
     QString effectiveParserId() const;
-    QString effectiveParserIdFor(const QString &profileId) const;
+    QString effectiveParserIdFor(const QString &profileId, const QString &role = {}) const;
     ParserOptions parserOptions() const;
     std::unique_ptr<IOutputParser> makeParser() const;
     void setPageText(int index, const QString &text);

@@ -3,6 +3,7 @@
 #include "core/ModelProfiles.h"
 #include "core/OcrResult.h"
 #include "parsers/BlockStyle.h"
+#include "parsers/ChandraParser.h"
 #include "parsers/Lfm25VlParser.h"
 #include "parsers/LightonOcrParser.h"
 #include "parsers/MinerULayoutParser.h"
@@ -1840,6 +1841,196 @@ private slots:
         QCOMPARE(page.boxes.at(0).label, QStringLiteral("title"));
         QCOMPARE(page.boxes.at(1).label, QStringLiteral("list"));
         QCOMPARE(page.boxes.at(2).label, QStringLiteral("text"));
+    }
+
+    // The layout prompt wraps every block in a div that carries the box and
+    // the label; the parser turns them into the app's blocks.
+    void chandraLayoutBlocksCarryBoxAndLabel()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="100 200 900 260" data-label="Section-Header"><h2>1. Introduction</h2></div>)"
+                                           R"(<div data-bbox="100 300 900 500" data-label="Text"><p>Humans are remarkably adept at long-horizon tasks.</p></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.size(), 1);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+
+        const BoundingBox &title = page.boxes.at(0);
+        QCOMPARE(title.label, QStringLiteral("title"));
+        QCOMPARE(title.text, QStringLiteral("1. Introduction"));
+        QVERIFY(title.positioned);
+        QVERIFY(qFuzzyCompare(title.rect.x(), 0.1));
+        QVERIFY(qFuzzyCompare(title.rect.y(), 0.2));
+        QVERIFY(qFuzzyCompare(title.rect.width(), 0.8));
+        QVERIFY(qFuzzyCompare(title.rect.height(), 0.06));
+
+        const BoundingBox &text = page.boxes.at(1);
+        QCOMPARE(text.label, QStringLiteral("text"));
+        QCOMPARE(text.text, QStringLiteral("Humans are remarkably adept at long-horizon tasks."));
+
+        // The heading style writes the markers; the block carries the text.
+        QCOMPARE(page.text, QStringLiteral("## 1. Introduction\n\nHumans are remarkably adept at long-horizon tasks."));
+    }
+
+    // The plain prompt answers with the same HTML without the layout markup:
+    // the page is one text, without blocks.
+    void chandraPlainReplyKeepsThePageText()
+    {
+        const QString raw = QStringLiteral("<h1>Report</h1><p>The first paragraph.</p><p>The second paragraph.</p>");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QVERIFY(page.boxes.isEmpty());
+        QCOMPARE(page.text, QStringLiteral("Report\n\nThe first paragraph.\n\nThe second paragraph."));
+        QCOMPARE(r.notes.size(), 1);
+    }
+
+    // A table stays the HTML it came as — the table style renders it — and a
+    // block formula becomes the display math the app writes.
+    void chandraKeepsTableAndMath()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 1000 400" data-label="Table">)"
+                                           R"(<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table></div>)"
+                                           R"(<div data-bbox="0 450 1000 600" data-label="Equation-Block"><math display="block">E = mc^2</math></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("table"));
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>"));
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("equation"));
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("$$\nE = mc^2\n$$"));
+    }
+
+    // An image block carries the description the model wrote into the alt
+    // attribute; the image style turns it into the crop placeholder.
+    void chandraImageBlockCarriesTheAltText()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 500 500" data-label="Image">)"
+                                           R"(<img alt="A bar chart of quarterly revenue"></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("image"));
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("A bar chart of quarterly revenue"));
+        QCOMPARE(page.text, QStringLiteral("![A bar chart of quarterly revenue](image://ocr/crop/0)"));
+    }
+
+    // A page the model found blank carries no block.
+    void chandraBlankPageIsDropped()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 1000 1000" data-label="Blank-Page"></div>)"
+                                           R"(<div data-bbox="0 0 1000 1000" data-label="Text"><p>Content.</p></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 1);
+        QCOMPARE(r.pages.first().boxes.at(0).label, QStringLiteral("text"));
+    }
+
+    // The model wraps its answer in a code fence now and then; the fence is
+    // packaging, not content.
+    void chandraCodeFenceIsUnwrapped()
+    {
+        const QString raw = QStringLiteral("```html\n"
+                                           "<div data-bbox=\"0 0 1000 100\" data-label=\"Text\"><p>Fenced.</p></div>\n"
+                                           "```");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        QCOMPARE(r.pages.first().boxes.size(), 1);
+        QCOMPARE(r.pages.first().boxes.at(0).text, QStringLiteral("Fenced."));
+    }
+
+    // A list group keeps its items as a Markdown list.
+    void chandraListBecomesMarkdown()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 1000 300" data-label="List-Group">)"
+                                           R"(<ul><li>First item</li><li>Second item</li></ul></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("list"));
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("- First item\n- Second item"));
+    }
+
+    // A block whose box is broken stays in the page, without a position.
+    void chandraBrokenBoxKeepsTheBlockUnpositioned()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="100 200 900" data-label="Text"><p>No box.</p></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QVERIFY(!page.boxes.at(0).positioned);
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("No box."));
+    }
+
+    // A cell of a table that came as HTML keeps its text: the entity is
+    // resolved, not shown.
+    void chandraTableCellResolvesItsEntities()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 1000 400" data-label="Table">)"
+                                           R"(<table><tr><td>AT&amp;T</td><td>R&amp;D</td></tr></table></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("<table><tr><td>AT&amp;T</td><td>R&amp;D</td></tr></table>"));
+        // The table style renders it: the cells carry the text.
+        QCOMPARE(page.text, QStringLiteral("| AT&T | R&D |\n| --- | --- |"));
+    }
+
+    // The task that asks for the text alone: the layout markup the model
+    // volunteers is dropped, and the page stays a text.
+    void chandraRawTaskDropsTheLayoutMarkup()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 1000 400" data-label="Section-Header"><h2>1. Introduction</h2></div>)"
+                                           R"(<div data-bbox="0 450 1000 700" data-label="Text"><p>Body text.</p></div>)");
+
+        ParserOptions options;
+        options.ignoreLayoutMarkup = true;
+        ChandraParser parser(options);
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QVERIFY(page.boxes.isEmpty());
+        QCOMPARE(page.text, QStringLiteral("1. Introduction\n\nBody text."));
+    }
+
+    void chandraParserIsRegistered()
+    {
+        const auto parser = ParserFactory::create(QStringLiteral("chandra-ocr"));
+        QVERIFY(parser);
+        QCOMPARE(parser->id(), QStringLiteral("chandra-ocr"));
+        QVERIFY(ParserFactory::registeredIds().contains(QStringLiteral("chandra-ocr")));
     }
 };
 

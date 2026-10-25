@@ -85,6 +85,7 @@ private:
 
     std::unique_ptr<OcrModel> m_model;
     QString m_modelId;
+    QString m_modelRole;
     QFutureWatcher<OcrResult> m_watcher;
 
     int m_totalPages = 0;

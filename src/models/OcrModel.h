@@ -21,10 +21,10 @@ class OcrModel
     Q_DISABLE_COPY_MOVE(OcrModel)
 
 public:
-    explicit OcrModel(QString modelId);
+    explicit OcrModel(QString modelId, QString role = {});
     ~OcrModel() = default;
 
-    static std::unique_ptr<OcrModel> create(const QString &modelId);
+    static std::unique_ptr<OcrModel> create(const QString &modelId, const QString &role = {});
     static QString defaultId();
     static QStringList registeredIds();
 
@@ -36,17 +36,19 @@ public:
     // The parser the profile declares for the page task. It reads the profile
     // only — no model, and no network manager with it, is built for it
     // (ADR 207).
-    static QString defaultParserIdFor(const QString &modelId);
+    static QString defaultParserIdFor(const QString &modelId, const QString &role = {});
 
     QFuture<OcrResult> recognize(const OcrRequest &request, const ConnectionConfig &config);
     void abort();
 
 protected:
-    static QByteArray buildRequestBody(const OcrRequest &request, const QByteArray &imageDataUrl);
+    static QByteArray buildRequestBody(const OcrRequest &request, const QByteArray &imageDataUrl, const QString &role = {});
     static OcrResult parseResponse(const QByteArray &responseData);
 
 private:
     QString m_id;
+    // The task this adapter serves: the role of the profile that answers it.
+    QString m_role;
     // One client (and its QNAM) for the model's lifetime: the per-request
     // client dropped the HTTP keep-alive, so every page/block opened a fresh
     // TCP connection. Requests on one model are serial (busy-gated).

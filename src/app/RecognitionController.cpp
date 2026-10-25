@@ -74,11 +74,13 @@ void RecognitionController::resolveModel()
 {
     m_skippedUnreadable = 0;
     m_skippedRecognized = 0;
-    const QString recipeId = m_settings.requestProfileIdForRole(connectionRoleName(m_task));
-    if (m_model && m_modelId == recipeId)
+    const QString role = connectionRoleName(m_task);
+    const QString recipeId = m_settings.requestProfileIdForRole(role);
+    if (m_model && m_modelId == recipeId && m_modelRole == role)
         return;
-    m_model = OcrModel::create(recipeId);
+    m_model = OcrModel::create(recipeId, role);
     m_modelId = recipeId;
+    m_modelRole = role;
 }
 
 StatusMessage RecognitionController::skipReport() const
