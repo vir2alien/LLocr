@@ -1911,6 +1911,67 @@ private slots:
         QCOMPARE(page.boxes.at(1).text, QStringLiteral("$$\nE = mc^2\n$$"));
     }
 
+    // A formula in a table cell is the app's math markup, the same as
+    // everywhere else: a "<math>" tag is MathML to the browser, and the
+    // formula inside it would not be drawn — the cell would be empty.
+    void chandraTableCellsCarryTheMath()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 1000 400" data-label="Table">)"
+                                           R"(<table border="1"><tr><th>Символ</th><th>Определение</th></tr>)"
+                                           R"(<tr><td><math>\Phi</math></td><td><math>F = U - TS + pV</math></td></tr></table></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 1);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("table"));
+        QVERIFY(!page.boxes.at(0).text.contains(QStringLiteral("<math")));
+        QVERIFY(page.boxes.at(0).text.contains(QStringLiteral("$\\Phi$")));
+        QVERIFY(page.boxes.at(0).text.contains(QStringLiteral("$F = U - TS + pV$")));
+        QVERIFY(page.text.contains(QStringLiteral("$\\Phi$")));
+    }
+
+    // A tag that closes itself ("<br/>") is a line break, not an element that
+    // swallows what follows it: the blocks after it stay blocks of their own.
+    void chandraSelfClosingTagKeepsTheBlocksApart()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 500 500" data-label="Text">)"
+                                           R"(<p>Плотность <math>\rho</math><br/>Скорость звука</p></div>)"
+                                           R"(<div data-bbox="0 600 500 700" data-label="Text"><p>Следующий блок.</p></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+        QCOMPARE(page.boxes.at(0).text, QStringLiteral("Плотность $\\rho$\nСкорость звука"));
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("Следующий блок."));
+    }
+
+    // A block the model marked as a formula but that carries prose is text
+    // with formulas in it — a paragraph, not a formula. Wrapped into a
+    // display formula it would not render at all.
+    void chandraParagraphWithFormulasIsNotAFormula()
+    {
+        const QString raw = QStringLiteral(R"(<div data-bbox="0 0 500 500" data-label="Equation-Block">)"
+                                           R"(<p>Плотность <math>\rho</math><br/>Скорость звука <math>u</math></p></div>)"
+                                           R"(<div data-bbox="0 600 500 700" data-label="Equation-Block"><math display="block">E = mc^2</math></div>)");
+
+        ChandraParser parser;
+        const OcrResult r = parser.parse(raw);
+
+        QVERIFY(r.success);
+        const OcrPage &page = r.pages.first();
+        QCOMPARE(page.boxes.size(), 2);
+        QCOMPARE(page.boxes.at(0).label, QStringLiteral("text"));
+        QCOMPARE(page.boxes.at(1).label, QStringLiteral("equation"));
+        QCOMPARE(page.boxes.at(1).text, QStringLiteral("$$\nE = mc^2\n$$"));
+        QVERIFY(!page.text.contains(QStringLiteral("$$Плотность")));
+    }
+
     // An image block carries the description the model wrote into the alt
     // attribute; the image style turns it into the crop placeholder.
     void chandraImageBlockCarriesTheAltText()

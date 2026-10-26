@@ -136,6 +136,9 @@ The layout prompt answers with one `<div>` per block:
   `Equation-Block`, `List-Group`, `Image`, `Figure`, `Diagram`, `Table`,
   `Code-Block`, `Form`, `Table-Of-Contents`, `Chemical-Block`,
   `Complex-Block`, `Bibliography`, `Blank-Page`.
+- The line break is written as `<br/>` — the tag closes itself. The reader
+  knows such a tag (ADR 224); read as an ordinary element it would have
+  swallowed the rest of the reply.
 
 The parser (`src/parsers/ChandraParser.cpp`) turns the reply into the
 app's blocks:
@@ -148,6 +151,16 @@ app's blocks:
   kept as the HTML it came as (the table style renders it), `<math>` as
   `$…$` / `$$…$$`, an `<img>` as its `alt` description, a form's
   checkbox as `☐`/`☒`.
+
+A formula inside a table cell is the app's math markup as well — `$…$`,
+not a `<math>` tag: a `<math>` tag is MathML to the browser, and the
+formula in it would not be drawn (ADR 225).
+
+A block the model calls `Equation-Block` is not always a formula: it may be
+a paragraph with formulas in it. The parser looks at the content — text
+outside `<math>` makes the block text, not a formula (ADR 224). A formula
+that carries prose would be wrapped into `$$…$$` and would not render at
+all.
 
 A reply without the layout markup (the plain prompt, or a model that
 ignored it) becomes the page's text without blocks — the same fallback

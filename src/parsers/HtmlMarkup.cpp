@@ -105,6 +105,12 @@ QString serializeHtml(const HtmlNode &node)
     if (node.isText())
         return escapeHtml(node.text);
 
+    // A formula in a table is the app's math markup, the same as everywhere
+    // else: the renderer knows "$…$", while a "<math>" tag is MathML to the
+    // browser — the formula inside it would not be drawn at all.
+    if (node.tag == QLatin1String("math"))
+        return escapeHtml(mathText(node));
+
     QString out = QStringLiteral("<") + node.tag;
     for (auto it = node.attributes.constBegin(); it != node.attributes.constEnd(); ++it) {
         if (it.key() == QLatin1String("data-bbox") || it.key() == QLatin1String("data-label"))
@@ -278,6 +284,18 @@ HtmlNode HtmlReader::readStartTag(const QString &body)
     node.tag = body.left(i).toLower();
     if (node.tag.isEmpty())
         return node;
+    // A tag may close itself: "<br/>" is a line break, not an element that
+    // swallows everything that follows it.
+    if (node.tag.endsWith(QLatin1Char('/'))) {
+        node.tag.chop(1);
+        node.selfClosing = true;
+    }
+    const QString trimmed = body.trimmed();
+    if (!node.selfClosing && trimmed.endsWith(QLatin1Char('/'))) {
+        const QChar before = trimmed.at(trimmed.size() - 2);
+        if (before.isSpace() || before == QLatin1Char('"') || before == QLatin1Char('\''))
+            node.selfClosing = true;
+    }
 
     while (i < body.size()) {
         while (i < body.size() && (body.at(i).isSpace() || body.at(i) == QLatin1Char('/')))
@@ -368,7 +386,7 @@ QList<HtmlNode> HtmlReader::readNodes(const QString &parentTag)
 
         m_pos = end + 1;
         HtmlNode element = node;
-        if (!isVoidTag(element.tag))
+        if (!isVoidTag(element.tag) && !element.selfClosing)
             element.children = readNodes(element.tag);
         nodes.append(element);
     }

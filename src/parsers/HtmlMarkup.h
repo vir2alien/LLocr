@@ -13,6 +13,7 @@ struct HtmlNode {
     QHash<QString, QString> attributes;
     QString text;  // The text of a text node.
     QList<HtmlNode> children;
+    bool selfClosing = false;  // The tag closed itself: "<br/>".
 
     bool isText() const { return tag.isEmpty(); }
     bool hasAttribute(const QString &name) const { return attributes.contains(name); }

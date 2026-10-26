@@ -46,6 +46,25 @@ QString appLabel(const QString &label)
     return found != labelMap().constEnd() ? *found : QStringLiteral("text");
 }
 
+// The prose of a block: the text that is not a formula. A block the model
+// marked as a formula may still be a paragraph with formulas in it, and the
+// app's label vocabulary has a word for that: it is text, not a formula.
+bool carriesProse(const HtmlNode &node)
+{
+    for (const HtmlNode &child : node.children) {
+        if (child.isText()) {
+            if (!child.text.trimmed().isEmpty())
+                return true;
+            continue;
+        }
+        if (child.tag == QLatin1String("math"))
+            continue;
+        if (carriesProse(child))
+            return true;
+    }
+    return false;
+}
+
 // The reply the model wrapped in a code fence.
 QString stripCodeFence(const QString &text)
 {
@@ -146,6 +165,8 @@ OcrResult ChandraParser::parse(const QString &rawText) const
 
         BoundingBox box;
         box.label = appLabel(label);
+        if (label == QLatin1String("Equation-Block") && carriesProse(node))
+            box.label = QStringLiteral("text");
         box.text = htmlToMarkdown(node.children).trimmed();
         box.positioned = false;
 
