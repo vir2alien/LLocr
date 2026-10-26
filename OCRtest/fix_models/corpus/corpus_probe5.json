@@ -1,0 +1,93 @@
+{
+ "description": "Пробный корпус: 5 характерных формул. p03b03 — кириллические индексы н.впр/п в четырёхуровневой вложенности (экспонента с интегралом); p03b05 — кириллические подписи терм/исп.впр/н.впр плюс ловушка регистра M_т vs M_T; p03b12 — н.впр и кириллическая буква «б» в теге (2.69б), которую кандидат прочитал как «6»; p03b14 — н.впр и кириллическая «а» в теге (2.70а); p05b09 — пятиэтажная формула с 13 мелкими индексами и тегом (63а). Эталон каждого блока полностью покрыт своим кропом (p04b28 отброшен: его эталон включает строку, которой в кропе нет).",
+ "project": "/Users/gladskikh/Git/LLocr/OCRtest/decision_models/test 2/OCR_TEST_MinerU2.5-Pro.llocr",
+ "gt": "/Users/gladskikh/Git/LLocr/OCRtest/ocr_models/materials/gt.json",
+ "dpi": 300,
+ "blocks": [
+  {
+   "uid": "p03b03",
+   "page": 3,
+   "index": 3,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\left| \\frac {p}{p _ {\\mathrm{H.Bnp}}} = \\left(\\frac {V _ {\\mathrm{H.Bnp}}}{V}\\right) ^ {n _ {1}} \\frac {M}{M _ {\\mathrm{H.Bnp}}} e ^ {\\left[ - \\bar {B} \\int_ {0} ^ {\\tau} \\frac {d \\tau}{\\left(1 + \\frac {M _ {\\Pi}}{M _ {\\mathrm{H.Bnp}}}\\right)} \\right]} \\right. \\tag {2.68}\\]",
+   "candidate_wire": "\\[\\left| \\frac{p}{p _{\\mathrm{H.Bnp}}} = \\left(\\frac{V _{\\mathrm{H.Bnp}}}{V}\\right) ^ {n _{1}} \\frac{M}{M _{\\mathrm{H.Bnp}}} e ^ {\\left[- \\bar{B} \\int_{0} ^ {\\tau} \\frac{d \\tau}{\\left(1 + \\frac{M _{\\Pi}}{M _{\\mathrm{H.Bnp}}}\\right)} \\right]} \\right. \\tag{2.68}\\]",
+   "gt": "\\frac{p}{p_{н.впр}} = \\left(\\frac{V_{н.впр}}{V}\\right)^{n_1} \\frac{M}{M_{н.впр}} e^{\\left[−\\bar{B} \\int_0^{\\bar{\\tau}} \\frac{d\\tau}{1+\\frac{M_п}{M_{н.впр}}}\\right]}. \\quad (2.68)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b03_equation.png",
+   "crop_size": [
+    1742,
+    510
+   ]
+  },
+  {
+   "uid": "p03b05",
+   "page": 3,
+   "index": 5,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\overline {{\\mathrm{B}}} _ {1} = \\frac {\\left(\\mathrm{n} _ {1} - 1\\right) \\mathrm{Q} _ {\\text {терм}}}{\\mathrm{M} _ {\\mathrm{T}} \\mathrm{R} _ {\\mathrm{B}} \\mathrm{T} _ {\\mathrm{Нвпр}}}, \\quad \\overline {{\\mathrm{B}}} = \\frac {\\left(\\mathrm{n} _ {1} - 1\\right) \\mathrm{Q} _ {\\text {исп.впр}}}{\\mathrm{M} _ {\\mathrm{Н.впр}} \\mathrm{R} _ {\\mathrm{B}} \\mathrm{T} _ {\\mathrm{Н.впр}}};\\]",
+   "candidate_wire": "\\[\\overline{{\\mathrm{B}}} _{1} = \\frac{\\left(\\mathrm{n} _{1} - 1\\right) \\mathrm{Q} _{\\text{терм}}}{\\mathrm{M} _{\\mathrm{T}} \\mathrm{R} _{\\mathrm{B}} \\mathrm{T} _{\\mathrm{Нвпр}}}, \\quad \\overline{{\\mathrm{B}}} = \\frac{\\left(\\mathrm{n} _{1} - 1\\right) \\mathrm{Q} _{\\text{исп.впр}}}{\\mathrm{M} _{\\mathrm{Н.впр}} \\mathrm{R} _{\\mathrm{B}} \\mathrm{T} _{\\mathrm{Н.впр}}};\\]",
+   "gt": "\\bar{B}_1 = \\frac{(n_1−1)Q_{терм}}{M_т R_в T_{н.впр}}, \\bar{B} = \\frac{(n_1−1)Q_{исп.впр}}{M_{н.впр} R_в T_{н.впр}};",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b05_equation.png",
+   "crop_size": [
+    1285,
+    216
+   ]
+  },
+  {
+   "uid": "p03b12",
+   "page": 3,
+   "index": 12,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\frac {\\mathrm{T}}{\\mathrm{T} _ {\\mathrm{H.BPp}}} \\approx \\left(\\frac {\\mathrm{V} _ {\\mathrm{H.BPp}}}{\\mathrm{V}}\\right) ^ {n _ {1} - 1} \\left(1 + \\frac {\\overline {{\\mathrm{B}}}}{\\overline {{\\mathrm{B}}} _ {1}} \\bar {\\tau}\\right) ^ {- \\overline {{\\mathrm{B}}} _ {1}}. \\tag {2.696}\\]",
+   "candidate_wire": "\\[\\frac{\\mathrm{T}}{\\mathrm{T} _{\\mathrm{H.BPp}}} \\approx \\left(\\frac{\\mathrm{V} _{\\mathrm{H.BPp}}}{\\mathrm{V}}\\right) ^ {n _{1} - 1} \\left(1 + \\frac{\\overline{{\\mathrm{B}}}}{\\overline{{\\mathrm{B}}} _{1}} \\bar{\\tau}\\right) ^ {- \\overline{{\\mathrm{B}}} _{1}}. \\tag{2.696}\\]",
+   "gt": "\\frac{T}{T_{н.впр}} \\approx \\left(\\frac{V_{н.впр}}{V}\\right)^{n_1−1} \\left(1+\\frac{\\bar{B}}{\\bar{B}_1}\\bar{\\tau}\\right)^{−\\bar{B}_1}. \\quad (2.69б)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b12_equation.png",
+   "crop_size": [
+    1587,
+    250
+   ]
+  },
+  {
+   "uid": "p03b14",
+   "page": 3,
+   "index": 14,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\frac {\\mathrm{p}}{\\mathrm{p} _ {\\mathrm{H.Bnp}}} \\approx \\left(\\frac {\\mathrm{V} _ {\\mathrm{H.Bnp}}}{\\mathrm{V}}\\right) ^ {\\mathrm{n} _ {1}} \\left(1 + \\frac {\\mathrm{M} _ {\\mathrm{v}}}{\\mathrm{M} _ {\\mathrm{H.Bnp}}}\\right) \\mathrm{e} ^ {- \\overline {{\\mathrm{B}}} _ {1} \\overline {{\\tau}}}; \\tag {2.70a}\\]",
+   "candidate_wire": "\\[\\frac{\\mathrm{p}}{\\mathrm{p} _{\\mathrm{H.Bnp}}} \\approx \\left(\\frac{\\mathrm{V} _{\\mathrm{H.Bnp}}}{\\mathrm{V}}\\right) ^ {\\mathrm{n} _{1}} \\left(1 + \\frac{\\mathrm{M} _{\\mathrm{v}}}{\\mathrm{M} _{\\mathrm{H.Bnp}}}\\right) \\mathrm{e} ^ {- \\overline{{\\mathrm{B}}} _{1} \\overline{{\\tau}}}; \\tag{2.70a}\\]",
+   "gt": "\\frac{p}{p_{н.впр}} \\approx \\left(\\frac{V_{н.впр}}{V}\\right)^{n_1} \\left(1+\\frac{M_v}{M_{н.впр}}\\right) e^{−\\bar{B}_1\\bar{\\tau}}; \\quad (2.70а)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p03b14_equation.png",
+   "crop_size": [
+    1641,
+    243
+   ]
+  },
+  {
+   "uid": "p05b09",
+   "page": 5,
+   "index": 9,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\left| \\begin{array}{l} \\rho \\left(\\frac {\\partial v _ {r}}{\\partial t} + v _ {r} \\frac {\\partial V _ {r}}{\\partial r} + \\frac {v _ {\\theta}}{r} \\frac {\\partial v _ {r}}{\\partial \\theta} - \\frac {v _ {\\theta} ^ {2}}{r} + v _ {z} \\frac {\\partial v _ {r}}{\\partial z}\\right) = \\\\ = k _ {r} - \\frac {\\partial p}{\\partial r} + \\frac {1}{r} \\frac {\\partial}{\\partial r} \\left[ \\eta r \\left(2 \\frac {\\partial v _ {r}}{\\partial r} - \\frac {2}{3} \\nabla \\mathbf {w}\\right) \\right] + \\\\ + \\frac {1}{r} \\frac {\\partial}{\\partial \\theta} \\left[ \\eta \\left\\{r \\frac {\\partial}{\\partial r} \\left(\\frac {v _ {\\theta}}{r}\\right) + \\frac {1}{r} \\frac {\\partial v _ {r}}{\\partial \\theta} \\right\\} \\right] - \\\\ - \\frac {\\eta}{r} \\left[ 2 \\left(\\frac {1}{r} \\frac {\\partial v _ {\\theta}}{\\partial \\theta} + \\frac {v _ {r}}{r}\\right) - \\frac {2}{3} \\nabla \\mathbf {w} \\right] + \\frac {\\partial}{\\partial z} \\left[ \\eta \\left(\\frac {\\partial v _ {z}}{\\partial r} + \\frac {\\partial v _ {r}}{\\partial z}\\right) \\right]; \\end{array} \\right. \\tag {63a}\\]",
+   "candidate_wire": "\\[\\left| \\begin{array}{l} \\rho \\left(\\frac{\\partial v _{r}}{\\partial t} + v _{r} \\frac{\\partial V _{r}}{\\partial r} + \\frac{v _{\\theta}}{r} \\frac{\\partial v _{r}}{\\partial \\theta} - \\frac{v _{\\theta} ^ {2}}{r} + v _{z} \\frac{\\partial v _{r}}{\\partial z}\\right) = \\\\ = k _{r} - \\frac{\\partial p}{\\partial r} + \\frac{1}{r} \\frac{\\partial}{\\partial r} \\left[\\eta r \\left(2 \\frac{\\partial v _{r}}{\\partial r} - \\frac{2}{3} \\nabla \\mathbf{w}\\right) \\right] + \\\\ + \\frac{1}{r} \\frac{\\partial}{\\partial \\theta} \\left[\\eta \\left\\{r \\frac{\\partial}{\\partial r} \\left(\\frac{v _{\\theta}}{r}\\right) + \\frac{1}{r} \\frac{\\partial v _{r}}{\\partial \\theta} \\right\\} \\right] - \\\\ - \\frac{\\eta}{r} \\left[2 \\left(\\frac{1}{r} \\frac{\\partial v _{\\theta}}{\\partial \\theta} + \\frac{v _{r}}{r}\\right) - \\frac{2}{3} \\nabla \\mathbf{w} \\right] + \\frac{\\partial}{\\partial z} \\left[\\eta \\left(\\frac{\\partial v _{z}}{\\partial r} + \\frac{\\partial v _{r}}{\\partial z}\\right) \\right]; \\end{array} \\right. \\tag{63a}\\]",
+   "gt": "\\rho (\\frac{\\partial v_r}{\\partial t} + v_r \\frac{\\partial v_r}{\\partial r} + \\frac{v_\\theta}{r} \\frac{\\partial v_r}{\\partial \\theta} − \\frac{v_\\theta^2}{r} + v_z \\frac{\\partial v_r}{\\partial z}) = k_r − \\frac{\\partial p}{\\partial r} + \\frac{1}{r} \\frac{\\partial}{\\partial r} [\\eta r (2 \\frac{\\partial v_r}{\\partial r} − \\frac{2}{3} \\nabla w)] + \\frac{1}{r} \\frac{\\partial}{\\partial \\theta} [\\eta \\{ r \\frac{\\partial}{\\partial r} (\\frac{v_\\theta}{r}) + \\frac{1}{r} \\frac{\\partial v_r}{\\partial \\theta} \\}] − \\frac{\\eta}{r} [2(\\frac{1}{r} \\frac{\\partial v_\\theta}{\\partial \\theta} + \\frac{v_r}{r}) − \\frac{2}{3} \\nabla w] + \\frac{\\partial}{\\partial z} [\\eta (\\frac{\\partial v_z}{\\partial r} + \\frac{\\partial v_r}{\\partial z})]; (63а)",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p05b09_equation.png",
+   "crop_size": [
+    945,
+    422
+   ]
+  }
+ ]
+}

@@ -1,0 +1,72 @@
+{
+ "model": "gemma-4-e4b",
+ "rows": [
+  {
+   "arm": "fix",
+   "uid": "p04b28",
+   "verdict": "Ok",
+   "reason": "The corrected block is equivalent to the candidate; the block text is kept.",
+   "result": "\\[\\begin{array}{l} \\text{Теплопроводность} \\lambda \\\\ \\text{Число   Прандтля} \\quad \\mathrm{Pr=} \\\\ = \\eta c _{p} / \\lambda \\end{array}\\]",
+   "reply": "FIX\n\\[\\begin{array}{l} \\text{Теплопроводность} \\lambda \\\\ \\text{Число Прандтля} \\quad \\mathrm{Pr=} \\\\ = \\eta c _{p} / \\lambda \\end{array}\\]",
+   "latency_s": 75.971,
+   "completion_tokens": 56,
+   "truncated": false
+  },
+  {
+   "arm": "read",
+   "uid": "p04b28",
+   "verdict": "Read",
+   "reason": "",
+   "result": "Теплопроводность $\\lambda$\nЧисло Прандтля $\\text{Pr}=$\n$= \\eta c_p / \\lambda$",
+   "reply": "Теплопроводность $\\lambda$\nЧисло Прандтля $\\text{Pr}=$\n$= \\eta c_p / \\lambda$",
+   "latency_s": 76.854,
+   "completion_tokens": 31,
+   "truncated": false
+  }
+ ],
+ "scored": [
+  {
+   "uid": "p04b28",
+   "gt": "ν=η/ρ Теплопроводность λ Число Прандтля Pr = \\eta c_p / \\lambda",
+   "cer_cand": 0.19047619047619047,
+   "idx_cand": 1.0,
+   "fix": {
+    "verdict": "Ok",
+    "reply": "FIX\n\\[\\begin{array}{l} \\text{Теплопроводность} \\lambda \\\\ \\text{Число Прандтля} \\quad \\mathrm{Pr=} \\\\ = \\eta c _{p} / \\lambda \\end{array}\\]",
+    "result": "\\[\\begin{array}{l} \\text{Теплопроводность} \\lambda \\\\ \\text{Число   Прандтля} \\quad \\mathrm{Pr=} \\\\ = \\eta c _{p} / \\lambda \\end{array}\\]",
+    "cer": 0.19047619047619047,
+    "idx": 1.0,
+    "latency_s": 75.971,
+    "tokens": 56,
+    "truncated": false,
+    "changed": false
+   },
+   "read": {
+    "verdict": "Read",
+    "reply": "Теплопроводность $\\lambda$\nЧисло Прандтля $\\text{Pr}=$\n$= \\eta c_p / \\lambda$",
+    "result": "Теплопроводность $\\lambda$\nЧисло Прандтля $\\text{Pr}=$\n$= \\eta c_p / \\lambda$",
+    "cer": 0.15,
+    "idx": 1.0,
+    "latency_s": 76.854,
+    "tokens": 31,
+    "truncated": false,
+    "changed": true
+   }
+  }
+ ],
+ "agg": {
+  "cer_cand": 0.19047619047619047,
+  "cer_fix": 0.19047619047619047,
+  "cer_read": 0.15,
+  "idx_cand": 1.0,
+  "idx_fix": 1.0,
+  "idx_read": 1.0,
+  "n": 1,
+  "fix_ok": 1,
+  "fix_fixed": 0,
+  "fix_review": 0,
+  "read_review": 0,
+  "t_fix": 75.971,
+  "t_read": 76.854
+ }
+}

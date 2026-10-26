@@ -56,6 +56,7 @@ def normalized_for_match(text: str, is_code: bool) -> str:
             continue
         produced = ""
         if c == "\u00ad":
+            i += 1
             continue
         elif c == "\u2026":
             produced = "..."
@@ -72,6 +73,7 @@ def normalized_for_match(text: str, is_code: bool) -> str:
         elif not is_code and (c == "\u00a0" or " " <= c <= " " or c == " " or c == " "
                               or c == "　" or is_space):
             if pending_space or not out:
+                i += 1
                 continue
             pending_space = True
             produced = " "

@@ -1,0 +1,25 @@
+{
+ "description": "Пробный корпус: 5 характерных формул (кириллические индексы, многоэтажные вложения, мелкие символы). Сравнение «распознать с нуля» против «исправить ранее распознанное».",
+ "project": "/Users/gladskikh/Git/LLocr/OCRtest/decision_models/test 2/OCR_TEST_MinerU2.5-Pro.llocr",
+ "gt": "/Users/gladskikh/Git/LLocr/OCRtest/ocr_models/materials/gt.json",
+ "dpi": 300,
+ "blocks": [
+  {
+   "uid": "p04b28",
+   "page": 4,
+   "index": 28,
+   "label": "equation",
+   "group": "equation",
+   "candidate": "\\[\\begin{array}{l} \\text {Теплопроводность } \\lambda \\\\ \\text {Число   Прандтля } \\quad \\mathrm{Pr=} \\\\ = \\eta c _ {p} / \\lambda \\end{array}\\]",
+   "candidate_wire": "\\[\\begin{array}{l} \\text{Теплопроводность} \\lambda \\\\ \\text{Число   Прандтля} \\quad \\mathrm{Pr=} \\\\ = \\eta c _{p} / \\lambda \\end{array}\\]",
+   "gt": "ν=η/ρ Теплопроводность λ Число Прандтля Pr = \\eta c_p / \\lambda",
+   "gt_source": "gt.json",
+   "gt_note": "",
+   "crop": "corpus/crops/p04b28_equation.png",
+   "crop_size": [
+    431,
+    118
+   ]
+  }
+ ]
+}

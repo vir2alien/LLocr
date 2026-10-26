@@ -1,0 +1,13 @@
+{
+  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11799-metal-macos-arm64/llama-b11799/llama-server",
+  "model": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__gemma-4-E4B-it-qat-GGUF/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf",
+  "mmproj": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/unsloth__gemma-4-E4B-it-qat-GGUF/mmproj-F16.gguf",
+  "alias": "llocr-fix",
+  "host": "127.0.0.1",
+  "port": 8128,
+  "parallel": 1,
+  "cache_reuse": 0,
+  "n_gpu_layers": 0,
+  "flash_attn": "off",
+  "ctx_size": 16384
+}

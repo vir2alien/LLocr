@@ -1,0 +1,13 @@
+{
+  "server_bin": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/runtime/llama.cpp-b11799-metal-macos-arm64/llama-b11799/llama-server",
+  "model": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/openbmb__MiniCPM-o-4_5-gguf/MiniCPM-o-4_5-Q4_K_M.gguf",
+  "mmproj": "/Users/gladskikh/Library/Application Support/llocr/LLM OCR/models/openbmb__MiniCPM-o-4_5-gguf/MiniCPM-o-4_5-vision-F16.gguf",
+  "alias": "llocr-fix",
+  "host": "127.0.0.1",
+  "port": 8125,
+  "parallel": 1,
+  "cache_reuse": 0,
+  "n_gpu_layers": 0,
+  "flash_attn": "on",
+  "ctx_size": 16384
+}

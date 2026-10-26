@@ -39,6 +39,12 @@ DOCUMENT_LANGUAGE = "Russian"  # VerificationQueueController::kDocumentLanguage
 
 # ------------------------------------------------------------------ профили
 
+def model_profile_path(model_id):
+    """Профиль модели: каталог приложения, а для моделей вне поставки — стенд."""
+    in_app = REPO / "resources" / "profiles" / "models" / (model_id + ".json")
+    return in_app if in_app.exists() else HERE / "profiles" / (model_id + ".json")
+
+
 def load_model_profile(path):
     profile = json.loads(Path(path).read_text(encoding="utf-8"))
     role = profile["roles"]["fix"]
@@ -282,7 +288,7 @@ def run_variant(client, corpus, model, variant, prompts, cache_dir, timeout_s, r
             hint = hint.replace("{{LANGUAGE}}", DOCUMENT_LANGUAGE)
         system_prompt = (prompts["system"] + "\n\n" + hint) if hint else prompts["system"]
         # ModelProfiles::blockPromptFor идёт через алиас профиля запроса.
-        label = aliases.get(block["label"], block["label"])
+        label = model["block_aliases"].get(block["label"], block["label"])
         type_prompt = variant["type_prompt"] or prompts["type"][label]
         extra_parts = None
         candidate = None
@@ -387,8 +393,8 @@ def main():
     ap.add_argument("--all", action="store_true", help="все варианты из variants.py")
     ap.add_argument("--blocks", default="", help="uid через запятую (по умолчанию весь корпус)")
     ap.add_argument("--config", default=str(HERE / "configs" / "qwen3.5-4b.json"))
-    ap.add_argument("--model", default="qwen3.5-4b", help="id профиля модели (resources/profiles/models/<id>.json)")
-    ap.add_argument("--model-profile", default="", help="путь к профилю модели (по умолчанию resources/profiles/models/<--model>.json)")
+    ap.add_argument("--model", default="qwen3.5-4b", help="id профиля модели (resources/profiles/models/<id>.json, иначе profiles/<id>.json стенда)")
+    ap.add_argument("--model-profile", default="", help="путь к профилю модели (по умолчанию resources/profiles/models/<--model>.json, а для моделей вне поставки — profiles/<--model>.json)")
     ap.add_argument("--base-url", default="", help="использовать уже запущенный сервер")
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--refresh", action="store_true", help="не брать ответы из кеша")
@@ -414,7 +420,7 @@ def main():
         corpus["blocks"] = [b for b in corpus["blocks"] if b["uid"] in wanted]
 
     profile_path = Path(args.model_profile) if args.model_profile else \
-        REPO / "resources" / "profiles" / "models" / (args.model + ".json")
+        model_profile_path(args.model)
     model = load_model_profile(profile_path)
     requests = json.loads(FIX_REQUESTS.read_text(encoding="utf-8"))
     aliases = requests.get("blockAliases", {})

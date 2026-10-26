@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "id": "minicpm-o-4.5",
+  "title": "MiniCPM-o 4.5",
+  "license": "https://huggingface.co/openbmb/MiniCPM-o-4_5-gguf",
+  "minBuild": "b7896",
+  "files": {
+    "repo": "openbmb/MiniCPM-o-4_5-gguf",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q8_0",
+        "file": "MiniCPM-o-4_5-Q8_0.gguf",
+        "sha256": "ae6af22ad3b7f1a7bf667922af84b9eb3e2199cc86f402702eaf9b054054788d",
+        "sizeBytes": 8707877536
+      },
+      {
+        "id": "q6_k",
+        "file": "MiniCPM-o-4_5-Q6_K.gguf",
+        "sha256": "d6003486177440ddf4718d596f1a0410b641814a4d49685fe2e2f4b0e4f7e0f1",
+        "sizeBytes": 6724631456
+      },
+      {
+        "id": "q5_k_m",
+        "file": "MiniCPM-o-4_5-Q5_K_M.gguf",
+        "sha256": "5d32e7569f2ef9c61de81a4fba3890a225240a5cf753e0348f5889dbf44ea434",
+        "sizeBytes": 5849946912
+      },
+      {
+        "id": "q4_k_m",
+        "file": "MiniCPM-o-4_5-Q4_K_M.gguf",
+        "sha256": "1237a97ee081b8abebc47aa7dad565701e8f5f904cdc92f6723ac4281bbc0932",
+        "sizeBytes": 5026714400
+      },
+      {
+        "id": "q4_0",
+        "file": "MiniCPM-o-4_5-Q4_0.gguf",
+        "sha256": "0df3f51f5d6f2342d302f69f0e5426fe6fa3507368c6a847e3163d75d1440947",
+        "sizeBytes": 4773679904
+      }
+    ],
+    "mmproj": {
+      "sizeBytes": 1095113184,
+      "id": "f16",
+      "file": "MiniCPM-o-4_5-vision-F16.gguf",
+      "sha256": "1453678cc4e4fe18de241952962e234f265cb8dda780773526103ab8ba82f421",
+      "_note": "Mandatory: without the projector the model sees no image. The repository keeps it in vision/, so the file is named by its leaf."
+    }
+  },
+  "memory": {
+    "nLayer": 36,
+    "nKvLayers": 36,
+    "nHead": 32,
+    "nKvHead": 8,
+    "headDim": 128,
+    "nEmbd": 4096,
+    "nFf": 12288,
+    "visionTokens": 512,
+    "visionBytesPerToken": 64317,
+    "kvBytesPerToken": 147456
+  },
+  "roles": {
+    "fix": {
+      "alias": "llocr-fix",
+      "protocol": "full_block",
+      "promptProfile": "fix-requests",
+      "reasoning": true,
+      "maxOutput": 8192,
+      "launch": [
+        {
+          "order": 1,
+          "name": "temp",
+          "value": 0,
+          "description": "Server-side default sampling temperature; greedy decoding for transcription."
+        },
+        {
+          "order": 2,
+          "name": "parallel",
+          "value": 1,
+          "description": "A single decoding slot; the fix task sends one block at a time."
+        },
+        {
+          "order": 3,
+          "name": "no-warmup",
+          "description": "Skip the warmup run at model load (faster start, slower first request)."
+        },
+        {
+          "order": 4,
+          "name": "jinja",
+          "description": "Use the chat template from the GGUF metadata: ChatML with the thinking channel, so the request's thinking mode decides whether the model reasons first."
+        },
+        {
+          "order": 5,
+          "name": "reasoning-budget",
+          "value": 0,
+          "description": "Server default for the thinking budget; the fix request carries the reasoning mode and overrides it."
+        },
+        {
+          "order": 6,
+          "name": "flash-attn",
+          "value": "on",
+          "description": "Flash attention kernels; required for the vision stack."
+        },
+        {
+          "order": 7,
+          "name": "special",
+          "description": "Emit special tokens in the server output, so the stop sequences below can match."
+        }
+      ],
+      "request": [
+        {
+          "order": 1,
+          "name": "temperature",
+          "value": 0.0,
+          "description": "Sampling randomness; 0 = deterministic greedy decoding."
+        },
+        {
+          "order": 2,
+          "name": "repeat_penalty",
+          "value": 1.0,
+          "description": "Penalty for repeating tokens; 1.0 disables it."
+        },
+        {
+          "order": 3,
+          "name": "presence_penalty",
+          "value": 0.0,
+          "description": "Penalty for tokens already present in the prompt; 0 disables it."
+        },
+        {
+          "order": 4,
+          "name": "frequency_penalty",
+          "value": 0.0,
+          "description": "Penalty proportional to token frequency; 0 disables it."
+        },
+        {
+          "order": 5,
+          "name": "stream",
+          "value": false,
+          "description": "Stream tokens as they arrive; false gives the parser one complete response."
+        },
+        {
+          "order": 6,
+          "name": "cache_prompt",
+          "value": false,
+          "description": "Reuse the prompt cache; off keeps every block request independent."
+        },
+        {
+          "order": 7,
+          "name": "stop",
+          "value": [
+            "<|im_end|>",
+            "<|endoftext|>",
+            "</CANDIDATE>"
+          ],
+          "description": "Stop sequences; the reply ends with the verdict even when the model would keep generating."
+        }
+      ]
+    }
+  }
+}
