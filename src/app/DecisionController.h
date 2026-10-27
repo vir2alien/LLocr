@@ -31,6 +31,10 @@ public:
                     const QString &criteriaTrue = QString(),
                     const QString &criteriaFalse = QString());
 
+    // The visual-diff decision (docs/31): the crop and the candidate rendered
+    // back into an image travel together, the text rides as the bare state.
+    void judgeVisual(const QImage &crop, const QImage &renderImage, const QString &recognizedText);
+
     // A choice question: the model answers with the probability of every
     // class instead of a yes/no verdict (the orientation check).
     void askChoice(const QImage &image, const QString &blockType, const QString &notation, const QJsonObject &questions);

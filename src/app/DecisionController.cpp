@@ -35,6 +35,16 @@ void DecisionController::judgeBlock(
     ask(request);
 }
 
+void DecisionController::judgeVisual(const QImage &crop, const QImage &renderImage, const QString &recognizedText)
+{
+    DecisionRequest request;
+    request.visualDiff = true;
+    request.image = crop;
+    request.renderImage = renderImage;
+    request.recognizedText = recognizedText;
+    ask(request);
+}
+
 void DecisionController::askChoice(const QImage &image, const QString &blockType, const QString &notation, const QJsonObject &questions)
 {
     DecisionRequest request;

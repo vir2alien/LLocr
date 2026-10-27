@@ -295,6 +295,8 @@ qt_add_library(llocr_app STATIC
     app/Exporter.h
     app/Exporter.cpp
     app/LruImageCache.h
+    app/CandidateRenderer.h
+    app/CandidateRenderer.cpp
     app/ExportRenderer.h
     app/ExportRenderer.cpp
     app/I18n.h

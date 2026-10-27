@@ -19,6 +19,11 @@ class ExposedDecisionModel : public DecisionModel
 public:
     QByteArray build(const DecisionRequest &request, const QByteArray &imageDataUrl, const QString &modelId = QString()) { return buildRequestBody(request, imageDataUrl, modelId); }
 
+    QByteArray build(const DecisionRequest &request, const QByteArray &imageDataUrl, const QByteArray &renderImageDataUrl, const QString &modelId = QString())
+    {
+        return buildRequestBody(request, imageDataUrl, renderImageDataUrl, modelId);
+    }
+
     DecisionResult parse(const QByteArray &responseData) { return parseResponse(responseData); }
 };
 
@@ -136,6 +141,62 @@ private slots:
         // field rejects a request without it.
         QCOMPARE(root.value(QStringLiteral("model")).toString(), QStringLiteral("llocr-decision"));
         QVERIFY(!root.contains(QStringLiteral("messages")));
+    }
+
+    // The visual-diff decision (MiniCPM-OCR Jev, docs/31): the state is the
+    // bare OCR text, the render of the candidate rides next to the crop in
+    // that order, and the single noul question carries neither instructions
+    // nor criteria — the server rejects a request that sends either.
+    void visualDiffRequestBodyCarriesTwoImagesAndABareQuestion()
+    {
+        ExposedDecisionModel model;
+        DecisionRequest request = testRequest();
+        request.visualDiff = true;
+        request.renderImage = QImage(8, 8, QImage::Format_ARGB32);
+
+        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"), QByteArrayLiteral("data:image/png;base64,BBBB"), QStringLiteral("llocr-decision"));
+        const QJsonObject root = QJsonDocument::fromJson(body).object();
+
+        QCOMPARE(root.value(QStringLiteral("state")).toString(), QStringLiteral("1. Intr0duction"));
+        const QJsonArray images = root.value(QStringLiteral("images")).toArray();
+        QCOMPARE(images.size(), 2);
+        QCOMPARE(images.first().toString(), QStringLiteral("data:image/png;base64,AAAA"));
+        QCOMPARE(images.last().toString(), QStringLiteral("data:image/png;base64,BBBB"));
+        const QJsonObject match = root.value(QStringLiteral("questions")).toObject().value(QStringLiteral("match")).toObject();
+        QCOMPARE(match.value(QStringLiteral("type")).toString(), QStringLiteral("noul"));
+        QVERIFY(!match.contains(QStringLiteral("instructions")));
+        QVERIFY(!match.contains(QStringLiteral("criteria")));
+        QCOMPARE(root.value(QStringLiteral("model")).toString(), QStringLiteral("llocr-decision"));
+    }
+
+    void visualDiffRequestKeepsARemadeQuestionsDict()
+    {
+        // The orientation check asks its own question through the same wire;
+        // the visual-diff shape does not take that option away.
+        ExposedDecisionModel model;
+        DecisionRequest request = testRequest();
+        request.visualDiff = true;
+        request.renderImage = QImage(8, 8, QImage::Format_ARGB32);
+        QJsonObject choice{{QStringLiteral("type"), QStringLiteral("choice")}, {QStringLiteral("instructions"), QStringLiteral("Which way is the page turned?")}};
+        request.questions = QJsonObject{{QStringLiteral("orientation"), choice}};
+
+        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"), QByteArrayLiteral("data:image/png;base64,BBBB"));
+        const QJsonObject wire = QJsonDocument::fromJson(body).object().value(QStringLiteral("questions")).toObject();
+        QCOMPARE(wire.size(), 1);
+        QCOMPARE(wire.value(QStringLiteral("orientation")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("choice"));
+    }
+
+    void visualDiffAnswerReadsLikeAnyNoulAnswer()
+    {
+        ExposedDecisionModel model;
+        const DecisionResult result = model.parse("{\"answers\": {\"match\": {\"noul\": 0.99509}}, \"usage\": {\"input_tokens\": 42, \"output_tokens\": 0}}");
+        QVERIFY(result.ok);
+        QCOMPARE(result.probability, 0.99509);
+        // No aux answers arrive on the visual-diff wire; the routing falls
+        // back to the plain threshold split.
+        QVERIFY(result.hasText < 0);
+        QVERIFY(result.readable < 0);
+        QVERIFY(result.diagnosis.isEmpty());
     }
 
     void requestBodyWithoutAKnownModelCarriesNoModelField()

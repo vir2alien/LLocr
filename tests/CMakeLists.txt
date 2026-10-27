@@ -33,6 +33,8 @@ set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/mineru.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/paddleocr-vl.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/chandra-ocr-2.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/minicpm-ocr.json"
+    "${CMAKE_SOURCE_DIR}/resources/profiles/models/minicpm-jev.json"
 )
 
 # The request profiles: the shared request texts of the fix and decision tasks

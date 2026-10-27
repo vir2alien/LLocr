@@ -2,6 +2,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include "core/DecisionRequest.h"
 #include "core/ModelProfiles.h"
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelPreset.h"
@@ -106,6 +107,8 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"lightonocr", "pageOcr,rawPageOcr,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "flash-attn,jinja,reasoning-budget"},
         {"mineru", "layout,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "special"},
         {"paddleocr-vl", "blockRecognition", "b8200", "f16", ""},
+        {"minicpm-ocr", "blockRecognition,rawPageOcr", "b11822", "f16,q8_0,q6_k,q5_k_m,q4_k_m", "flash-attn,reasoning,spec-type,spec-draft-n-max,spec-draft-n-min"},
+        {"minicpm-jev", "decision", "b11928", "q8_0,q6_k,q5_k_m,q4_k_m,iq4_xs", "ctx-size,batch-size,ubatch-size,flash-attn"},
     };
 
     for (const Expected &e : expected) {
@@ -687,10 +690,20 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
     }
 
     // The same for the decision models: the request texts are shared, the
-    // routing calibration stays per model.
+    // routing calibration stays per model. The visual-diff decision is the
+    // exception (docs/31): the task wording is baked into the model's own
+    // prompt, the server rejects a request that sends texts, so the profile
+    // ships none.
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("decision"))) {
         const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("decision"));
         QVERIFY2(role, qPrintable(id));
+        if (role->protocol == visualDiffDecisionProtocol()) {
+            QVERIFY2(role->promptProfile.isEmpty(), qPrintable(id));
+            QVERIFY2(role->statePrompt.isEmpty(), qPrintable(id));
+            QVERIFY2(role->question.isEmpty(), qPrintable(id));
+            QVERIFY(role->matchThreshold > 0);
+            continue;
+        }
         QCOMPARE(role->promptProfile, QStringLiteral("decision-requests"));
         QCOMPARE(role->statePrompt, ModelProfiles::promptProfile(QStringLiteral("decision-requests"))->prompts.statePrompt);
         QVERIFY(!role->statePrompt.isEmpty());

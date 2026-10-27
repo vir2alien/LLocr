@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "id": "minicpm-jev",
+  "title": "MiniCPM-OCR Jev",
+  "license": "https://huggingface.co/openbmb/MiniCPM-OCR-Jev",
+  "minBuild": "b11928",
+  "files": {
+    "repo": "openbmb/MiniCPM-OCR-Jev-gguf",
+    "revision": "",
+    "quants": [
+      {
+        "id": "q8_0",
+        "file": "MiniCPM-OCR-Jev-Q8_0.gguf",
+        "sha256": "",
+        "sizeBytes": 2012021120
+      },
+      {
+        "id": "q6_k",
+        "file": "MiniCPM-OCR-Jev-Q6_K.gguf",
+        "sha256": "",
+        "sizeBytes": 1556399488
+      },
+      {
+        "id": "q5_k_m",
+        "file": "MiniCPM-OCR-Jev-Q5_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 1411129728
+      },
+      {
+        "id": "q4_k_m",
+        "file": "MiniCPM-OCR-Jev-Q4_K_M.gguf",
+        "sha256": "",
+        "sizeBytes": 1274405248
+      },
+      {
+        "id": "iq4_xs",
+        "file": "MiniCPM-OCR-Jev-IQ4_XS.gguf",
+        "sha256": "",
+        "sizeBytes": 1201869184
+      }
+    ],
+    "mmproj": {
+      "sizeBytes": 671372416,
+      "id": "f16",
+      "file": "mmproj-model-f16.gguf",
+      "sha256": "",
+      "_note": "Mandatory: without the projector the model sees no image."
+    }
+  },
+  "memory": {
+    "nLayer": 24,
+    "nKvLayers": 6,
+    "nHead": 8,
+    "nKvHead": 2,
+    "headDim": 256,
+    "nEmbd": 2048,
+    "nFf": 6144,
+    "visionTokens": 4096,
+    "visionBytesPerToken": 110600
+  },
+  "roles": {
+    "decision": {
+      "alias": "llocr-decision",
+      "protocol": "systemone_visual_diff_v1",
+      "matchThreshold": 0.5,
+      "blockAliases": {
+        "formula": "equation"
+      },
+      "matchThresholdByBlock": {
+        "text": 0.5,
+        "equation": 0.5,
+        "table": 0.5
+      },
+      "launch": [
+        {
+          "order": 1,
+          "name": "ctx-size",
+          "value": 32768,
+          "description": "Context window; the request carries two images (the crop and the candidate render), so it is much longer than a text-only decision request."
+        },
+        {
+          "order": 2,
+          "name": "batch-size",
+          "value": 8192,
+          "description": "Prompt processing batch; sized for the two-image prompt."
+        },
+        {
+          "order": 3,
+          "name": "ubatch-size",
+          "value": 8192,
+          "description": "Micro-batch; the prompt may be evaluated in batches like a normal causal model."
+        },
+        {
+          "order": 4,
+          "name": "flash-attn",
+          "value": "on",
+          "description": "Flash attention on; the default off path materializes the full attention buffer and inflates the memory requirement."
+        }
+      ],
+      "request": [],
+      "_note": "The visual-diff decision (docs/31): the app sends the crop, the candidate rendered back into an image, and the candidate text; the task wording is baked into the model's prompt, so the request profile stays empty and the profile ships no question texts. The noul head answers P(candidate is consistent) in one pass — Ok above the threshold, Mismatch below. The threshold 0.5 is the upstream service default; recalibrate per block type on a run with scripts/decision-calibrate.py before trusting the split."
+    }
+  }
+}

@@ -15,6 +15,33 @@ namespace llocr {
 
 QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl, const QString &modelId)
 {
+    return buildRequestBody(request, imageDataUrl, QByteArray(), modelId);
+}
+
+QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl, const QByteArray &renderImageDataUrl, const QString &modelId)
+{
+    if (!renderImageDataUrl.isEmpty()) {
+        // The visual-diff decision model (docs/31): the task wording is part
+        // of the model's own prompt, so the state is the bare OCR text and the
+        // question carries no instructions or criteria — the server rejects a
+        // request that sends either. The noul head answers P(the candidate is
+        // consistent with the crop) in one pass; the render rides next to the
+        // crop, in that order.
+        QJsonObject questions;
+        if (!request.questions.isEmpty()) {
+            questions = request.questions;
+        } else {
+            questions.insert(QStringLiteral("match"), QJsonObject{{QStringLiteral("type"), QStringLiteral("noul")}});
+        }
+        QJsonObject root;
+        if (!modelId.isEmpty())
+            root.insert(QStringLiteral("model"), modelId);
+        root.insert(QStringLiteral("state"), request.recognizedText);
+        root.insert(QStringLiteral("images"), QJsonArray{QString::fromUtf8(imageDataUrl), QString::fromUtf8(renderImageDataUrl)});
+        root.insert(QStringLiteral("questions"), questions);
+        return QJsonDocument(root).toJson(QJsonDocument::Compact);
+    }
+
     // The state is a JSON object: the candidate text sits in a named field, so
     // the model reads it as content to compare against the crop — a raw string
     // answers "is there text on the image" instead (docs/17, §4). The request
@@ -171,12 +198,19 @@ QFuture<DecisionResult> DecisionModel::judge(const DecisionRequest &request, con
     // verification keeps the name it always had.
     const QString answerKey = request.questions.size() == 1 ? request.questions.constBegin().key() : QStringLiteral("match");
     const QString modelId = config.modelId;
-    return runChatExchange<DecisionResult>([request, modelId]() { return buildRequestBody(request, encodeImageDataUrl(request.image), modelId); },
-                                           config,
-                                           m_activeClient,
-                                           [answerKey](const QByteArray &body) { return parseResponse(body, answerKey); },
-                                           QCoreApplication::translate("DecisionModel", "Failed to encode the block image"),
-                                           QStringLiteral("/v1/systemone"));
+    // The render of a visual-diff request is encoded on the worker thread next
+    // to the crop — both pictures travel on the wire.
+    return runChatExchange<DecisionResult>(
+        [request, modelId]() {
+            if (request.visualDiff)
+                return buildRequestBody(request, encodeImageDataUrl(request.image), encodeImageDataUrl(request.renderImage), modelId);
+            return buildRequestBody(request, encodeImageDataUrl(request.image), modelId);
+        },
+        config,
+        m_activeClient,
+        [answerKey](const QByteArray &body) { return parseResponse(body, answerKey); },
+        QCoreApplication::translate("DecisionModel", "Failed to encode the block image"),
+        QStringLiteral("/v1/systemone"));
 }
 
 void DecisionModel::abort()

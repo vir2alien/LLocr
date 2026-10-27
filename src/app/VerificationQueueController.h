@@ -43,6 +43,11 @@ public:
         RuntimeController &runtime;
         std::function<QImage(int pageIndex, int boxIndex)> cropProvider;
         std::function<bool()> recognitionBusy;
+        // The visual-diff decision (docs/31) needs the candidate rendered back
+        // into an image before the request goes out. Empty when no renderer is
+        // wired: a visual-diff run then lands its blocks on Review instead of
+        // judging them.
+        std::function<void(const QString &candidateText, const std::function<void(bool ok, const QImage &image, const QString &error)> &)> renderCandidate;
     };
 
     explicit VerificationQueueController(Deps deps, QObject *parent = nullptr);
@@ -124,6 +129,7 @@ private:
     void startFixQueue(const QList<VerifyTask> &tasks);
     void startOrReportAnswered(const QList<VerifyTask> &tasks, int answered, int rejected);
     void startNextVerify();
+    void deliverVerdict(const CheckResult &verdict);
     void skipCurrentTask();
     void finishVerifyQueue();
     void collectEnabledBoxes(int pageIndex, QList<int> &out, int &answered, int &rejected) const;
@@ -151,6 +157,7 @@ private:
     int m_verifyDone = 0;
     double m_matchThreshold = 0.5;
     const ModelProfiles::Role *m_decisionRole = nullptr;  // resolved per run: v6 thresholds live on the role
+    bool m_decisionVisualDiff = false;                    // the role's protocol asks for the two-image visual-diff request (docs/31)
     QString m_judgedType;                                 // the block type of the verdict in flight
     StatusMessage m_checkError;
 };

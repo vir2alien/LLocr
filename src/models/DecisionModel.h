@@ -31,6 +31,7 @@ public:
 
 protected:
     static QByteArray buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl, const QString &modelId);
+    static QByteArray buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl, const QByteArray &renderImageDataUrl, const QString &modelId);
     static DecisionResult parseResponse(const QByteArray &responseData, const QString &answerKey = QStringLiteral("match"));
 
 private:

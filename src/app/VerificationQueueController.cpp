@@ -52,12 +52,7 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
                                                  m_decisionRole && m_decisionRole->readableThreshold >= 0 ? m_decisionRole->readableThreshold : kDefaultReadableThreshold);
             verdict.confidence = result.probability;
         }
-        const int page = m_verifyPage;
-        const int box = m_verifyBoxIndex;
-        emit blockVerified(page, box, verdict);
-        ++m_verifyDone;
-        emit stateChanged();
-        QTimer::singleShot(0, this, [this]() { startNextVerify(); });
+        deliverVerdict(verdict);
     });
     connect(&m_decision, &DecisionController::busyChanged, this, &VerificationQueueController::stateChanged);
     connect(&m_decision, &DecisionController::statusRequested, this, &VerificationQueueController::statusRequested);
@@ -352,6 +347,7 @@ void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &task
     m_phase = Phase::Decision;
     m_matchThreshold = m_deps.settings.decisionMatchThreshold();
     m_decisionRole = ModelProfiles::roleFor(m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
+    m_decisionVisualDiff = m_decisionRole && m_decisionRole->protocol == visualDiffDecisionProtocol();
     m_verifyQueue = tasks;
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
@@ -519,14 +515,46 @@ void VerificationQueueController::startNextVerify()
         // request is in flight: a failed run leaves the block gray instead of
         // showing a stale verdict (ADR 164).
         emit verificationStarted(m_verifyPage, m_verifyBoxIndex);
-        // The state carries the block's type, the candidate text and the
-        // description of the check (the axes every block is judged on plus
-        // this block type's own rules); the request asks one question: is the
-        // block recognized correctly?
         // The candidate is the block's own text: a formula was brought to its
         // canonical LaTeX form when it was recognized (ADR 194), so the wire
         // carries the same bytes the panel shows and the export writes.
         m_judgedType = box.label;
+        if (m_decisionVisualDiff) {
+            // The visual-diff decision (docs/31) reads the candidate twice:
+            // as the state text and as the picture it paints. Without a
+            // renderer the run would be blind on the second leg, so the block
+            // goes to human eyes instead of being judged on half the input.
+            if (!m_deps.renderCandidate) {
+                deliverVerdict(CheckResult{
+                    CheckStatus::Review,
+                    {},
+                    StatusMessage::translate("VerificationQueueController", "No candidate renderer: the visual-diff decision model needs the candidate as an image."),
+                    {},
+                    -1.0});
+                return;
+            }
+            m_deps.renderCandidate(text, [this, crop, text](bool ok, const QImage &rendered, const QString &error) {
+                // The queue may have been stopped while the render was in
+                // flight; a late image belongs to no task anymore.
+                if (!m_verifyQueueActive)
+                    return;
+                if (!ok || rendered.isNull()) {
+                    deliverVerdict(CheckResult{
+                        CheckStatus::Review,
+                        {},
+                        StatusMessage::translate("VerificationQueueController", "The candidate render failed: %1").arg(error),
+                        {},
+                        -1.0});
+                    return;
+                }
+                m_decision.judgeVisual(crop, rendered, text);
+            });
+            return;
+        }
+        // The state carries the block's type, the candidate text and the
+        // description of the check (the axes every block is judged on plus
+        // this block type's own rules); the request asks one question: is the
+        // block recognized correctly?
         m_decision.judgeBlock(crop, box.label, text, decisionNotation(box.label), decisionQuestion(), decisionCriteriaTrue(), decisionCriteriaFalse());
         return;
     }
@@ -616,6 +644,19 @@ QString VerificationQueueController::decisionCriteriaTrue() const
 QString VerificationQueueController::decisionCriteriaFalse() const
 {
     return withDocumentLanguage(ModelProfiles::criteriaFalseFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision")));
+}
+
+// The shared tail of every decision result, requested or produced locally (a
+// failed render lands on Review without a model request): the verdict reaches
+// the document, the progress moves, the next task starts.
+void VerificationQueueController::deliverVerdict(const CheckResult &verdict)
+{
+    const int page = m_verifyPage;
+    const int box = m_verifyBoxIndex;
+    emit blockVerified(page, box, verdict);
+    ++m_verifyDone;
+    emit stateChanged();
+    QTimer::singleShot(0, this, [this]() { startNextVerify(); });
 }
 
 void VerificationQueueController::skipCurrentTask()

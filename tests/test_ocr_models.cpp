@@ -247,6 +247,38 @@ private slots:
         QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
     }
 
+    // MiniCPM-OCR 1.0 is the GLM-OCR shape: one trained prefix per region
+    // kind, the raw reply is the text. Seals have a prefix of their own, and
+    // both page and block transcription run on "Text Recognition:".
+    void minicpmOcrModelContract()
+    {
+        const OcrModel model(QStringLiteral("minicpm-ocr"));
+
+        QCOMPARE(model.id(), QStringLiteral("minicpm-ocr"));
+        QCOMPARE(model.displayName(), QStringLiteral("MiniCPM-OCR 1.0"));
+        QCOMPARE(model.defaultParserId(), QStringLiteral("raw"));
+
+        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
+        QCOMPARE(variants.size(), 1);
+        QCOMPARE(variants.first().text, QStringLiteral("Text Recognition:"));
+
+        const ModelProfiles::Role *checkRole = ModelProfiles::roleFor(QStringLiteral("minicpm-ocr"), QStringLiteral("blockRecognition"));
+        QVERIFY(checkRole);
+        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("text")), QStringLiteral("Text Recognition:"));
+        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("table")), QStringLiteral("Table Recognition:"));
+        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
+        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("seal")), QStringLiteral("Seal Recognition:"));
+
+        // The transcription lands in the thinking block unless the server runs
+        // with reasoning off (the MiniCPM-OCR llama.cpp guide).
+        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("minicpm-ocr"), QStringLiteral("rawPageOcr"));
+        QVERIFY(ocrRole);
+        bool reasoningOff = false;
+        for (const LaunchParameter &p : ocrRole->launch)
+            reasoningOff |= p.name == QLatin1String("reasoning") && p.value.toString() == QLatin1String("off");
+        QVERIFY2(reasoningOff, "the rawPageOcr role must ship the reasoning-off flag");
+    }
+
     // Chandra-OCR-2 serves the two page tasks, each with its own trained
     // prompt: the layout one for the page with boxes, the plain one for the
     // page without them.

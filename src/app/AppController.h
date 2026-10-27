@@ -16,6 +16,7 @@
 #include "app/AvailabilityPresenter.h"
 #include "app/BlockInspector.h"
 #include "app/BoxListModel.h"
+#include "app/CandidateRenderer.h"
 #include "app/DecisionController.h"
 #include "app/DocumentModel.h"
 #include "app/ExportController.h"
@@ -468,6 +469,9 @@ private:
     BoxListModel m_boxModel;
     BlockInspector m_inspector;
     RecognitionController m_recognition;
+    // Declared before the queue: a render in flight must die with its
+    // callbacks before the queue that would receive them.
+    CandidateRenderer m_candidateRenderer;
     VerificationQueueController m_verify;
     LayoutController m_layout;
     OrientationController m_orientation;
