@@ -1,5 +1,6 @@
 #include "config/SecretStore.h"
 
+#include <QCoreApplication>
 #include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -28,6 +29,13 @@ constexpr const char *kItemInterface = "org.freedesktop.Secret.Item";
 constexpr const char *kLabelProperty = "org.freedesktop.Secret.Item.Label";
 constexpr const char *kAttributesProperty = "org.freedesktop.Secret.Item.Attributes";
 constexpr const char *kAppService = "org.llocr.app";
+
+// The store's messages are the user's: they say what to do. They live in one
+// translation context, shared by the three backends.
+QString storeTr(const char *text)
+{
+    return QCoreApplication::translate("SecretStore", text);
+}
 
 // The secret struct of the protocol: (session, parameters, value, type).
 struct SecretPayload {
@@ -98,12 +106,12 @@ bool unlockItems(const QList<QDBusObjectPath> &items)
     message << QVariant::fromValue(items);
     const QDBusMessage reply = sessionBus().call(message);
     if (reply.type() != QDBusMessage::ReplyMessage) {
-        secretStoreSetError(QStringLiteral("Secret Service: the collection could not be unlocked"));
+        secretStoreSetError(storeTr("Secret Service: the collection could not be unlocked"));
         return false;
     }
     const QList<QVariant> args = reply.arguments();
     if (args.size() < 2 || !qdbus_cast<QDBusObjectPath>(args.at(1)).path().isEmpty()) {
-        secretStoreSetError(QStringLiteral("The keyring is locked — unlock it and try again"));
+        secretStoreSetError(storeTr("The keyring is locked — unlock it and try again"));
         return false;
     }
     return true;
@@ -122,16 +130,39 @@ QString secretStoreBackendName()
     return QStringLiteral("Secret Service");
 }
 
-bool secretStoreBackendRead(const QString &id, QString *value)
+SecretStore::Status secretStoreBackendExists(const QString &id)
+{
+    if (!secretStoreBackendAvailable())
+        return SecretStore::Status::Unavailable;
+
+    // The search answers with the paths of the items; the value stays sealed.
+    QDBusMessage search = QDBusMessage::createMethodCall(QLatin1String(kServiceName), QLatin1String(kObjectPath), QLatin1String(kServiceInterface), QStringLiteral("SearchItems"));
+    QHash<QString, QVariant> attributes;
+    attributes.insert(QStringLiteral("service"), QString::fromLatin1(kAppService));
+    attributes.insert(QStringLiteral("account"), id);
+    search << attributes;
+    const QDBusMessage searchReply = sessionBus().call(search);
+    if (searchReply.type() != QDBusMessage::ReplyMessage || searchReply.arguments().size() < 2) {
+        secretStoreSetError(storeTr("Secret Service: the search failed"));
+        return SecretStore::Status::Failed;
+    }
+    if (asPaths(searchReply.arguments().at(0)).isEmpty() && asPaths(searchReply.arguments().at(1)).isEmpty()) {
+        secretStoreSetError(storeTr("Secret Service: there is no such key"));
+        return SecretStore::Status::NotFound;
+    }
+    return SecretStore::Status::Ok;
+}
+
+SecretStore::Status secretStoreBackendRead(const QString &id, QString *value)
 {
     if (!secretStoreBackendAvailable()) {
-        secretStoreSetError(QStringLiteral("No secret service on the session bus"));
-        return false;
+        secretStoreSetError(storeTr("No secret service on the session bus"));
+        return SecretStore::Status::Unavailable;
     }
     const QDBusObjectPath session = openSession();
     if (session.path().isEmpty()) {
-        secretStoreSetError(QStringLiteral("Secret Service: the session could not be opened"));
-        return false;
+        secretStoreSetError(storeTr("Secret Service: the session could not be opened"));
+        return SecretStore::Status::Failed;
     }
 
     QDBusMessage search = QDBusMessage::createMethodCall(QLatin1String(kServiceName), QLatin1String(kObjectPath), QLatin1String(kServiceInterface), QStringLiteral("SearchItems"));
@@ -141,16 +172,21 @@ bool secretStoreBackendRead(const QString &id, QString *value)
     search << attributes;
     const QDBusMessage searchReply = sessionBus().call(search);
     if (searchReply.type() != QDBusMessage::ReplyMessage || searchReply.arguments().size() < 2) {
-        secretStoreSetError(QStringLiteral("Secret Service: the search failed"));
-        return false;
+        secretStoreSetError(storeTr("Secret Service: the search failed"));
+        return SecretStore::Status::Failed;
     }
 
     const QList<QDBusObjectPath> unlocked = asPaths(searchReply.arguments().at(0));
     const QList<QDBusObjectPath> locked = asPaths(searchReply.arguments().at(1));
-    if (unlocked.isEmpty() && locked.isEmpty())
-        return false;  // no such key
-    if (!unlockItems(locked))
-        return false;
+    if (unlocked.isEmpty() && locked.isEmpty()) {
+        secretStoreSetError(storeTr("Secret Service: there is no such key"));
+        return SecretStore::Status::NotFound;
+    }
+    if (!unlockItems(locked)) {
+        // A locked keyring is not a missing key: the key is there, and only
+        // the user can open it.
+        return SecretStore::Status::Refused;
+    }
 
     for (const QDBusObjectPath &path : unlocked) {
         QDBusMessage get = QDBusMessage::createMethodCall(QLatin1String(kServiceName), path.path(), QLatin1String(kItemInterface), QStringLiteral("GetSecret"));
@@ -161,23 +197,23 @@ bool secretStoreBackendRead(const QString &id, QString *value)
         const SecretPayload payload = reply.arguments().at(0).value<SecretPayload>();
         if (value)
             *value = QString::fromUtf8(payload.value);
-        return true;
+        return SecretStore::Status::Ok;
     }
 
-    secretStoreSetError(QStringLiteral("Secret Service: the key could not be read"));
-    return false;
+    secretStoreSetError(storeTr("Secret Service: the key could not be read"));
+    return SecretStore::Status::Failed;
 }
 
-bool secretStoreBackendWrite(const QString &id, const QString &value)
+SecretStore::Status secretStoreBackendWrite(const QString &id, const QString &value)
 {
     if (!secretStoreBackendAvailable()) {
-        secretStoreSetError(QStringLiteral("No secret service on the session bus"));
-        return false;
+        secretStoreSetError(storeTr("No secret service on the session bus"));
+        return SecretStore::Status::Unavailable;
     }
     const QDBusObjectPath session = openSession();
     if (session.path().isEmpty()) {
-        secretStoreSetError(QStringLiteral("Secret Service: the session could not be opened"));
-        return false;
+        secretStoreSetError(storeTr("Secret Service: the session could not be opened"));
+        return SecretStore::Status::Failed;
     }
 
     QVariantMap properties;
@@ -196,17 +232,17 @@ bool secretStoreBackendWrite(const QString &id, const QString &value)
     message << properties << QVariant::fromValue(payload) << true;
     const QDBusMessage reply = sessionBus().call(message);
     if (reply.type() != QDBusMessage::ReplyMessage) {
-        secretStoreSetError(QStringLiteral("Secret Service: the key could not be stored"));
-        return false;
+        secretStoreSetError(storeTr("Secret Service: the key could not be stored"));
+        return SecretStore::Status::Failed;
     }
-    return true;
+    return SecretStore::Status::Ok;
 }
 
-bool secretStoreBackendRemove(const QString &id)
+SecretStore::Status secretStoreBackendRemove(const QString &id)
 {
     if (!secretStoreBackendAvailable()) {
-        secretStoreSetError(QStringLiteral("No secret service on the session bus"));
-        return false;
+        secretStoreSetError(storeTr("No secret service on the session bus"));
+        return SecretStore::Status::Unavailable;
     }
 
     QDBusMessage search = QDBusMessage::createMethodCall(QLatin1String(kServiceName), QLatin1String(kObjectPath), QLatin1String(kServiceInterface), QStringLiteral("SearchItems"));
@@ -216,18 +252,18 @@ bool secretStoreBackendRemove(const QString &id)
     search << attributes;
     const QDBusMessage searchReply = sessionBus().call(search);
     if (searchReply.type() != QDBusMessage::ReplyMessage || searchReply.arguments().size() < 2)
-        return false;
+        return SecretStore::Status::Failed;
 
     const QList<QDBusObjectPath> items = asPaths(searchReply.arguments().at(0)) + asPaths(searchReply.arguments().at(1));
     for (const QDBusObjectPath &path : items) {
         QDBusMessage message = QDBusMessage::createMethodCall(QLatin1String(kServiceName), path.path(), QLatin1String(kItemInterface), QStringLiteral("Delete"));
         const QDBusMessage reply = sessionBus().call(message);
         if (reply.type() != QDBusMessage::ReplyMessage) {
-            secretStoreSetError(QStringLiteral("Secret Service: the key could not be deleted"));
-            return false;
+            secretStoreSetError(storeTr("Secret Service: the key could not be deleted"));
+            return SecretStore::Status::Failed;
         }
     }
-    return true;
+    return SecretStore::Status::Ok;
 }
 
 }  // namespace llocr

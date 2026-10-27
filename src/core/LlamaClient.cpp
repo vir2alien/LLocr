@@ -111,12 +111,16 @@ void LlamaClient::startPost(
             QString error;
             if (reply->error() == QNetworkReply::OperationCanceledError && reply->property("llocrTimedOut").toBool()) {
                 error = QCoreApplication::translate("LlamaClient", "Request timed out after %1 ms").arg(responseTimeoutMs);
+            } else if (status == 401) {
+                // The server wants a key. Saying so in the app's own words
+                // beats "server replied: Unauthorized" with nothing else.
+                error = QCoreApplication::translate("LlamaClient", "The server refused the request (HTTP 401): the API key was not sent, or it was not accepted.");
             } else {
                 error = reply->errorString();
-                const QString serverError = extractServerError(replyBody);
-                if (!serverError.isEmpty())
-                    error += QStringLiteral("\nServer: ") + serverError;
             }
+            const QString serverError = extractServerError(replyBody);
+            if (!serverError.isEmpty())
+                error += QStringLiteral("\nServer: ") + serverError;
             response.error = error;
             trace->error = error.section(QLatin1Char('\n'), 0, 0);
         } else {

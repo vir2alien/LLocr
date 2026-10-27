@@ -79,6 +79,11 @@ QHash<QString, int> externalContextSizes(const QString &baseUrl, const QString &
 struct ExternalRoleSecrets {
     QString apiKey;
     QHash<QString, int> contextSizes;  // model → window; empty when it was not fetched
+    // Why there was no key, when there was none. A store that refused — the
+    // item belongs to another build of the app — is not the same as a store
+    // that has no key at all, and the user has to be told which one it is.
+    QString keyError;
+    SecretStore::Status keyStatus = SecretStore::Status::Ok;
 };
 
 void connectEveryChangeSignal(QObject *source, QObject *receiver, const char *slot)
@@ -480,15 +485,23 @@ void RuntimeController::resolveExternalReady(QObject *context, ConnectionRole ro
         const ExternalRoleSecrets secrets = watcher->result();
         conn.apiKey = secrets.apiKey;
         conn.contextSize = secrets.contextSizes.value(conn.modelId, 0);
+        if (conn.apiKey.isEmpty() && secrets.keyStatus == SecretStore::Status::Refused) {
+            // The key is in the store, and the store would not give it. The
+            // request would go out without it and the server would answer
+            // "API key required" — so the reason is named here instead.
+            conn.error = tr("The API key is in the system secret store, but the store did not give it: %1").arg(secrets.keyError);
+        }
         self->m_externalContextSizes.insert(conn.baseUrl, secrets.contextSizes);
-        self->m_resolvedCache[role] = conn;
+        if (conn.error.isEmpty())
+            self->m_resolvedCache[role] = conn;
         if (context && guard.isNull())
             return;  // the caller is gone
         onResolved(conn);
     });
     watcher->setFuture(QtConcurrent::run([secretIds, conn, sizesKnown, knownSizes]() {
         ExternalRoleSecrets secrets;
-        SecretStore::readFirst(secretIds, &secrets.apiKey);
+        SecretStore::readFirst(secretIds, &secrets.apiKey, &secrets.keyError);
+        secrets.keyStatus = SecretStore::lastStatus();
         // The window of every model comes with one request per server: the
         // six tasks usually share the server, and the list is the same for all.
         secrets.contextSizes = sizesKnown ? knownSizes : externalContextSizes(conn.baseUrl, secrets.apiKey);

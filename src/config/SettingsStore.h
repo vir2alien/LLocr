@@ -142,6 +142,11 @@ public:
     Q_INVOKABLE void clearApiKey();
     bool apiKeySet() const;
 
+    // Asks the store for the key again and tells the UI what it answered.
+    // The read is what finds out that the item belongs to another build of
+    // the app, and the UI has to show that reason (ADR 233).
+    Q_INVOKABLE void refreshSecretState();
+
     // The external connection of one task (ADR 226): its own endpoint, its
     // own key, its own alias. An empty endpoint means the shared one.
     Q_INVOKABLE QString baseUrlForRole(const QString &role) const;

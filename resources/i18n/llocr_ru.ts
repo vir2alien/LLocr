@@ -1353,6 +1353,11 @@
         <source>Connection to %1 failed: %2</source>
         <translation>Не удалось подключиться к %1: %2</translation>
     </message>
+    <message>
+        <location line="+6"/>
+        <source>The server refused the request (HTTP 401): the API key was not sent, or it was not accepted.</source>
+        <translation>Сервер отказал в запросе (HTTP 401): ключ не отправлен или не принят.</translation>
+    </message>
 </context>
 <context>
     <name>Main</name>
@@ -4389,6 +4394,117 @@
         <location filename="../../src/runtime/SingleInstanceGuard.cpp" line="+18"/>
         <source>Another LLocr instance is already running; local server operations are disabled.</source>
         <translation>Другой экземпляр LLocr уже запущен; операции с локальным сервером отключены.</translation>
+    </message>
+</context>
+<context>
+    <name>RuntimeController</name>
+    <message>
+        <location filename="../../src/runtime/RuntimeController.cpp" line="+490"/>
+        <source>The API key is in the system secret store, but the store did not give it: %1</source>
+        <translation>Ключ API лежит в системном хранилище секретов, но хранилище его не отдало: %1</translation>
+    </message>
+</context>
+<context>
+    <name>SecretStore</name>
+    <message>
+        <location filename="../../src/config/SecretStore_mac.cpp" line="+45"/>
+        <source>The macOS Keychain is not available</source>
+        <translation>Связка ключей macOS недоступна</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The Keychain has no such key</source>
+        <translation>В связке ключей нет такого ключа</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The Keychain item is not a password</source>
+        <translation>Элемент связки ключей — не пароль</translation>
+    </message>
+    <message>
+        <location line="-12"/>
+        <source>Keychain: the access was denied — the item “%1” belongs to an earlier build of the app. Answer the Keychain prompt with “Always Allow”, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
+        <translation>Связка ключей: доступ запрещён — элемент «%1» принадлежит прежней сборке приложения. Ответьте на запрос связки «Всегда разрешать» или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Keychain: the access to the item “%1” needs the user's confirmation, and none was given. Allow it, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.</source>
+        <translation>Связка ключей: доступ к элементу «%1» требует подтверждения пользователя, и подтверждения не было. Разрешите доступ или удалите элемент в «Связке ключей» (служба «%2», учётная запись «%1») и введите ключ заново.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Keychain: the item “%1” is still there and cannot be replaced.</source>
+        <translation>Связка ключей: элемент «%1» всё ещё на месте, и заменить его не удалось.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Keychain: %1</source>
+        <translation>Связка ключей: %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/config/SecretStore.cpp" line="+20"/>
+        <source>The secret has no name</source>
+        <translation>У секрета нет имени</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>The secret store took the key but did not give it back</source>
+        <translation>Хранилище секретов взяло ключ, но не отдало его обратно</translation>
+    </message>
+    <message>
+        <location filename="../../src/config/SecretStore_win.cpp" line="+30"/>
+        <source>Credential Manager: error %1</source>
+        <translation>Диспетчер учётных данных: ошибка %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Credential Manager: there is no such key</source>
+        <translation>Диспетчер учётных данных: нет такого ключа</translation>
+    </message>
+    <message>
+        <location filename="../../src/config/SecretStore_linux.cpp" line="+40"/>
+        <source>No secret service on the session bus</source>
+        <translation>Служба секретов недоступна в шине сессии</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Secret Service: the session could not be opened</source>
+        <translation>Служба секретов: не удалось открыть сессию</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Secret Service: the search failed</source>
+        <translation>Служба секретов: поиск не удался</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Secret Service: there is no such key</source>
+        <translation>Служба секретов: нет такого ключа</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Secret Service: the collection could not be unlocked</source>
+        <translation>Служба секретов: не удалось разблокировать коллекцию</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>The keyring is locked — unlock it and try again</source>
+        <translation>Связка ключей заблокирована — разблокируйте её и повторите</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Secret Service: the key could not be read</source>
+        <translation>Служба секретов: не удалось прочитать ключ</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Secret Service: the key could not be stored</source>
+        <translation>Служба секретов: не удалось сохранить ключ</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Secret Service: the key could not be deleted</source>
+        <translation>Служба секретов: не удалось удалить ключ</translation>
     </message>
 </context>
 </TS>

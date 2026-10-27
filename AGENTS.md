@@ -93,6 +93,12 @@
      loses the key**. Sign the dev build once with `scripts/macos-dev-sign.sh
      --create` (ADR 232); a failed read or write must reach the user, not
      stay an empty field.
+     A store that **refuses** (the item belongs to another build) and a store
+     that simply has **no key** are different answers: the refusal travels
+     with the connection and the request does not go out, while a missing key
+     is not a refusal — a server without auth needs none (ADR 233). The
+     reason lives in `SecretStore::Status` and reaches the UI; it must not
+     stay in the thread that read it.
   
   ## Build & test (fastest path)
 

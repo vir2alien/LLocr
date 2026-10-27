@@ -25,6 +25,8 @@ private slots:
     void aStoredKeyComesBackFromTheStore();
     void aFailedReadExplainsItself();
     void aSuccessfulReadClearsTheError();
+    void aMissingKeyIsToldApartFromARefusal();
+    void theFirstIdWithAValueWins();
 
 private:
     QString m_id;
@@ -75,6 +77,44 @@ void TestSecretStore::aMissingKeyIsNotFound()
     QString value;
     QVERIFY(!SecretStore::read(m_id, &value));
     QVERIFY(!SecretStore::exists(m_id));
+}
+
+// A key that is not there and a store that would not give the key are
+// different answers, and the app has to tell them apart: the first one means
+// "enter the key", the second one means "the item belongs to another build
+// of the app" (ADR 233).
+void TestSecretStore::aMissingKeyIsToldApartFromARefusal()
+{
+    QString value;
+    QVERIFY(!SecretStore::read(m_id, &value));
+    QCOMPARE(SecretStore::lastStatus(), SecretStore::Status::NotFound);
+    QVERIFY(SecretStore::lastStatus() != SecretStore::Status::Refused);
+}
+
+// The rule of the request path: the task's own key, or the shared one. An id
+// that is not there is skipped in silence — the task key is optional.
+void TestSecretStore::theFirstIdWithAValueWins()
+{
+    const QString second = m_id + QStringLiteral("/second");
+    QVERIFY(SecretStore::write(second, QStringLiteral("shared-value")));
+
+    QString value;
+    QString error;
+    QVERIFY(SecretStore::readFirst({m_id, second}, &value, &error));
+    QCOMPARE(value, QStringLiteral("shared-value"));
+    QVERIFY(error.isEmpty());
+
+    // The first id that holds a value wins.
+    QVERIFY(SecretStore::write(m_id, QStringLiteral("own-value")));
+    QVERIFY(SecretStore::readFirst({m_id, second}, &value, &error));
+    QCOMPARE(value, QStringLiteral("own-value"));
+
+    // Nothing there: no value, and the kind of the failure is "not found".
+    const QString missing = m_id + QStringLiteral("/missing");
+    QVERIFY(!SecretStore::readFirst({missing}, &value, &error));
+    QCOMPARE(SecretStore::lastStatus(), SecretStore::Status::NotFound);
+
+    SecretStore::remove(second);
 }
 
 void TestSecretStore::theValueIsReadFromTheStore()

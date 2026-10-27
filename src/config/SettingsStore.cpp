@@ -477,16 +477,25 @@ void SettingsStore::setApiKey(const QString &key)
 
 void SettingsStore::clearApiKey()
 {
-    const bool had = apiKeySet();
     dropSecret(kApiKey);
     m_settings.remove(QString::fromLatin1(kApiKey));
-    if (had)
-        emit secretsChanged();
+    // The store may refuse the delete — the item belongs to another build of
+    // the app. The reason is in the store's error, and the UI has to hear it
+    // even when the key was not readable in the first place.
+    emit secretsChanged();
 }
 
 bool SettingsStore::apiKeySet() const
 {
-    return !apiKey().isEmpty();
+    return SecretStore::exists(secretId(kApiKey));
+}
+
+void SettingsStore::refreshSecretState()
+{
+    // The read is the probe: it tells whether the store still answers and
+    // whether the item is reachable. Its reason is what the UI shows.
+    apiKey();
+    emit secretsChanged();
 }
 
 QString SettingsStore::baseUrlForRole(const QString &role) const
@@ -513,7 +522,7 @@ QString SettingsStore::effectiveBaseUrlForRole(const QString &role) const
 
 bool SettingsStore::apiKeySetForRole(const QString &role) const
 {
-    return !readSecret(taskSecretId(role)).isEmpty();
+    return SecretStore::exists(secretId(taskSecretId(role)));
 }
 
 void SettingsStore::setApiKeyForRole(const QString &role, const QString &key)
@@ -528,10 +537,8 @@ void SettingsStore::setApiKeyForRole(const QString &role, const QString &key)
 
 void SettingsStore::clearApiKeyForRole(const QString &role)
 {
-    const bool had = apiKeySetForRole(role);
     dropSecret(taskSecretId(role));
-    if (had)
-        emit secretsChanged();
+    emit secretsChanged();
 }
 
 QString SettingsStore::apiKeyForRole(const QString &role) const

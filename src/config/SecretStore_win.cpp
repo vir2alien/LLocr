@@ -1,6 +1,7 @@
 #include "config/SecretStore.h"
 
 #include <QByteArray>
+#include <QCoreApplication>
 
 #include <wincred.h>
 #include <windows.h>
@@ -20,6 +21,13 @@ QString targetName(const QString &id)
 
 const wchar_t kUserName[] = L"LLocr";
 
+// The store's messages are the user's: they say what to do. They live in one
+// translation context, shared by the three backends.
+QString storeTr(const char *text)
+{
+    return QCoreApplication::translate("SecretStore", text);
+}
+
 }  // namespace
 
 bool secretStoreBackendAvailable()
@@ -32,22 +40,35 @@ QString secretStoreBackendName()
     return QStringLiteral("Windows Credential Manager");
 }
 
-bool secretStoreBackendRead(const QString &id, QString *value)
+SecretStore::Status secretStoreBackendExists(const QString &id)
+{
+    // The credential manager keeps no access control of its own for the
+    // current user: the read is the check.
+    QString value;
+    return secretStoreBackendRead(id, &value);
+}
+
+SecretStore::Status secretStoreBackendRead(const QString &id, QString *value)
 {
     const QString target = targetName(id);
     PCREDENTIALW credential = nullptr;
     if (!CredReadW(reinterpret_cast<LPCWSTR>(target.utf16()), CRED_TYPE_GENERIC, 0, &credential)) {
-        secretStoreSetError(QStringLiteral("Credential Manager: error %1").arg(GetLastError()));
-        return false;
+        const DWORD code = GetLastError();
+        if (code == ERROR_NOT_FOUND) {
+            secretStoreSetError(storeTr("Credential Manager: there is no such key"));
+            return SecretStore::Status::NotFound;
+        }
+        secretStoreSetError(storeTr("Credential Manager: error %1").arg(code));
+        return SecretStore::Status::Failed;
     }
     const QByteArray blob(reinterpret_cast<const char *>(credential->CredentialBlob), int(credential->CredentialBlobSize));
     CredFree(credential);
     if (value)
         *value = QString::fromUtf8(blob);
-    return true;
+    return SecretStore::Status::Ok;
 }
 
-bool secretStoreBackendWrite(const QString &id, const QString &value)
+SecretStore::Status secretStoreBackendWrite(const QString &id, const QString &value)
 {
     const QString target = targetName(id);
     QByteArray blob = value.toUtf8();
@@ -61,23 +82,23 @@ bool secretStoreBackendWrite(const QString &id, const QString &value)
     credential.UserName = const_cast<LPWSTR>(kUserName);
 
     if (!CredWriteW(&credential, 0)) {
-        secretStoreSetError(QStringLiteral("Credential Manager: error %1").arg(GetLastError()));
-        return false;
+        secretStoreSetError(storeTr("Credential Manager: error %1").arg(GetLastError()));
+        return SecretStore::Status::Failed;
     }
-    return true;
+    return SecretStore::Status::Ok;
 }
 
-bool secretStoreBackendRemove(const QString &id)
+SecretStore::Status secretStoreBackendRemove(const QString &id)
 {
     const QString target = targetName(id);
     if (!CredDeleteW(reinterpret_cast<LPCWSTR>(target.utf16()), CRED_TYPE_GENERIC, 0)) {
         const DWORD code = GetLastError();
         if (code != ERROR_NOT_FOUND) {
-            secretStoreSetError(QStringLiteral("Credential Manager: error %1").arg(code));
-            return false;
+            secretStoreSetError(storeTr("Credential Manager: error %1").arg(code));
+            return SecretStore::Status::Failed;
         }
     }
-    return true;
+    return SecretStore::Status::Ok;
 }
 
 }  // namespace llocr

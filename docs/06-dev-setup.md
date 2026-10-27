@@ -377,6 +377,12 @@ current build to the item — or it is deleted in Keychain Access (the item
 `org.llocr.app` / `provider/apiKey`) and entered again. From then on the
 stable identity keeps it.
 
+While the item is unreachable the app says so instead of failing silently: the
+settings tab names the reason, and the request does not go out at all — the
+server would answer `401 API key required` and that says nothing about the
+Keychain (ADR 233). Answer the Keychain prompt with "Always Allow", or delete
+the item in Keychain Access and enter the key again.
+
 The key is never written to the settings file, and there is no file fallback:
 if the Keychain refuses the key, the app says so and keeps it in the memory
 until it exits.

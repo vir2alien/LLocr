@@ -39,6 +39,7 @@ ColumnLayout {
         baseUrlField.text = Settings.baseUrl
         sharedKey.load()
         sharedKeyPresent = Settings.apiKeySet
+        Settings.refreshSecretState()
         reloadToken++
     }
 

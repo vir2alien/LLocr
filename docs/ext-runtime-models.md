@@ -1,10 +1,10 @@
-https://huggingface.co/mlx-community/MinerU2.5-2509-1.2B-bf16
+https://huggingface.co/usermma/MinerU2.5-Pro-2605-1.2B-mlx-fp16
 https://huggingface.co/mlx-community/GLM-OCR-bf16
 https://huggingface.co/djrsystemservices/gemma-4-12B-it-qat-oQ4e-mtp
 https://huggingface.co/Jundot/d3-mini-oQ8e
 
-hf download mlx-community/MinerU2.5-2509-1.2B-bf16 \
-    --local-dir ~/LLM/models/MinerU2.5-2509-1.2B-bf16
+hf download usermma/MinerU2.5-Pro-2605-1.2B-mlx-fp16 \
+    --local-dir ~/LLM/models/MinerU2.5-Pro-2605-1.2B-mlx-fp16
 
 hf download mlx-community/GLM-OCR-bf16 \
     --local-dir ~/LLM/models/GLM-OCR-bf16

@@ -1,6 +1,7 @@
 #include "config/SecretStore.h"
 
 #include <QByteArray>
+#include <QCoreApplication>
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <Security/Security.h>
@@ -23,6 +24,13 @@ constexpr const char *kServiceName = "org.llocr.app";
 
 // A name that is never stored: reading it proves the keychain answers.
 constexpr const char *kProbeId = "org.llocr.app/probe";
+
+// The store's messages are the user's: they say what to do. They live in one
+// translation context, shared by the three backends.
+QString storeTr(const char *text)
+{
+    return QCoreApplication::translate("SecretStore", text);
+}
 
 CFStringRef copyString(const QByteArray &utf8)
 {
@@ -55,17 +63,38 @@ QString describeStatus(OSStatus status)
 // ad-hoc signed build is its hash: a rebuild cannot touch the old item, and
 // the Keychain asks the user for permission. These are the answers the user
 // needs, not the bare status.
-QString describeWriteFailure(OSStatus status)
+QString describeRefusal(OSStatus status, const QString &id)
 {
     switch (status) {
     case errSecAuthFailed:
-        return QStringLiteral("Keychain: the access was denied — the item belongs to an earlier build of the app. Remove it in Keychain Access, or allow the access.");
+        return storeTr("Keychain: the access was denied — the item “%1” belongs to an earlier build of the app. "
+                       "Answer the Keychain prompt with “Always Allow”, or delete the item in Keychain Access "
+                       "(service “%2”, account “%1”) and enter the key again.")
+            .arg(id, QString::fromLatin1(kServiceName));
     case errSecInteractionNotAllowed:
-        return QStringLiteral("Keychain: the access needs the user's confirmation, and none was given.");
+        return storeTr("Keychain: the access to the item “%1” needs the user's confirmation, and none was given. "
+                       "Allow it, or delete the item in Keychain Access (service “%2”, account “%1”) and enter the key again.")
+            .arg(id, QString::fromLatin1(kServiceName));
     case errSecDuplicateItem:
-        return QStringLiteral("Keychain: the item is still there and cannot be replaced.");
+        return storeTr("Keychain: the item “%1” is still there and cannot be replaced.").arg(id);
     default:
-        return QStringLiteral("Keychain: %1").arg(describeStatus(status));
+        return storeTr("Keychain: %1").arg(describeStatus(status));
+    }
+}
+
+SecretStore::Status statusFor(OSStatus status)
+{
+    switch (status) {
+    case errSecSuccess:
+        return SecretStore::Status::Ok;
+    case errSecItemNotFound:
+        return SecretStore::Status::NotFound;
+    case errSecAuthFailed:
+    case errSecInteractionNotAllowed:
+    case errSecDuplicateItem:
+        return SecretStore::Status::Refused;
+    default:
+        return SecretStore::Status::Failed;
     }
 }
 
@@ -91,11 +120,32 @@ QString secretStoreBackendName()
     return QStringLiteral("macOS Keychain");
 }
 
-bool secretStoreBackendRead(const QString &id, QString *value)
+SecretStore::Status secretStoreBackendExists(const QString &id)
+{
+    if (!secretStoreBackendAvailable())
+        return SecretStore::Status::Unavailable;
+
+    // The attributes of an item can be read without the permission for its
+    // value: the item is there even when the app may not read it. That is
+    // what lets the user delete a key another build has left behind.
+    CFDictionaryRef query = queryFor(id);
+    const void *keys[] = {kSecReturnAttributes, kSecMatchLimit};
+    const void *values[] = {kCFBooleanTrue, kSecMatchLimitOne};
+    CFDictionaryRef match = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFRelease(query);
+    CFTypeRef result = nullptr;
+    const OSStatus status = SecItemCopyMatching(match, &result);
+    CFRelease(match);
+    if (result)
+        CFRelease(result);
+    return statusFor(status);
+}
+
+SecretStore::Status secretStoreBackendRead(const QString &id, QString *value)
 {
     if (!secretStoreBackendAvailable()) {
-        secretStoreSetError(QStringLiteral("The macOS Keychain is not available"));
-        return false;
+        secretStoreSetError(storeTr("The macOS Keychain is not available"));
+        return SecretStore::Status::Unavailable;
     }
 
     CFDictionaryRef query = queryFor(id);
@@ -104,18 +154,16 @@ bool secretStoreBackendRead(const QString &id, QString *value)
     CFRelease(query);
     if (status != errSecSuccess) {
         if (status == errSecItemNotFound)
-            secretStoreSetError(QStringLiteral("The Keychain has no such key"));
-        else if (status == errSecAuthFailed)
-            secretStoreSetError(describeWriteFailure(status));
+            secretStoreSetError(storeTr("The Keychain has no such key"));
         else
-            secretStoreSetError(QStringLiteral("Keychain: %1").arg(describeStatus(status)));
-        return false;
+            secretStoreSetError(describeRefusal(status, id));
+        return statusFor(status);
     }
     if (!result || CFGetTypeID(result) != CFDataGetTypeID()) {
         if (result)
             CFRelease(result);
-        secretStoreSetError(QStringLiteral("The Keychain item is not a password"));
-        return false;
+        secretStoreSetError(storeTr("The Keychain item is not a password"));
+        return SecretStore::Status::Failed;
     }
 
     const CFDataRef data = static_cast<CFDataRef>(result);
@@ -123,14 +171,14 @@ bool secretStoreBackendRead(const QString &id, QString *value)
     CFRelease(result);
     if (value)
         *value = QString::fromUtf8(blob);
-    return true;
+    return SecretStore::Status::Ok;
 }
 
-bool secretStoreBackendWrite(const QString &id, const QString &value)
+SecretStore::Status secretStoreBackendWrite(const QString &id, const QString &value)
 {
     if (!secretStoreBackendAvailable()) {
-        secretStoreSetError(QStringLiteral("The macOS Keychain is not available"));
-        return false;
+        secretStoreSetError(storeTr("The macOS Keychain is not available"));
+        return SecretStore::Status::Unavailable;
     }
 
     const QByteArray blob = value.toUtf8();
@@ -166,27 +214,27 @@ bool secretStoreBackendWrite(const QString &id, const QString &value)
     CFRelease(account);
 
     if (status != errSecSuccess) {
-        secretStoreSetError(describeWriteFailure(status));
-        return false;
+        secretStoreSetError(describeRefusal(status, id));
+        return statusFor(status);
     }
-    return true;
+    return SecretStore::Status::Ok;
 }
 
-bool secretStoreBackendRemove(const QString &id)
+SecretStore::Status secretStoreBackendRemove(const QString &id)
 {
     if (!secretStoreBackendAvailable()) {
-        secretStoreSetError(QStringLiteral("The macOS Keychain is not available"));
-        return false;
+        secretStoreSetError(storeTr("The macOS Keychain is not available"));
+        return SecretStore::Status::Unavailable;
     }
 
     CFDictionaryRef query = queryFor(id);
     const OSStatus status = SecItemDelete(query);
     CFRelease(query);
     if (status != errSecSuccess && status != errSecItemNotFound) {
-        secretStoreSetError(QStringLiteral("Keychain: %1").arg(describeStatus(status)));
-        return false;
+        secretStoreSetError(describeRefusal(status, id));
+        return statusFor(status);
     }
-    return true;
+    return SecretStore::Status::Ok;
 }
 
 }  // namespace llocr

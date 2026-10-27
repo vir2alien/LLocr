@@ -27,7 +27,7 @@ void ModelRequestController::beginRequest(ConnectionRole role,
             setBusy(false);
             return;
         }
-        if (conn.baseUrl.isEmpty()) {
+        if (!conn.error.isEmpty() || conn.baseUrl.isEmpty()) {
             const StatusMessage message = conn.error.isEmpty() ? StatusMessage::translate(m_trContext, "Connection is not configured.") : StatusMessage::literal(conn.error);
             emit statusRequested(message);
             fail(message);

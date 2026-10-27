@@ -196,6 +196,22 @@ private slots:
         QCOMPARE(store.apiKeyForRole(QStringLiteral("fix")), QStringLiteral("shared-key"));
     }
 
+    // The reason the store refused has to reach the UI, and the UI only
+    // learns about it when the store says so (ADR 233).
+    void theSecretStateIsToldToTheUi()
+    {
+        SettingsStore store;
+        QSignalSpy secretsSpy(&store, &SettingsStore::secretsChanged);
+
+        store.refreshSecretState();
+        QCOMPARE(secretsSpy.count(), 1);
+
+        // Deleting a key that is not there still tells the UI: the store may
+        // have refused to delete it.
+        store.clearApiKey();
+        QCOMPARE(secretsSpy.count(), 2);
+    }
+
     // The plaintext key of the old profiles moves into the secret store
     // (ADR 227) and leaves the settings file.
     void thePlaintextKeyMovesIntoTheSecretStore()

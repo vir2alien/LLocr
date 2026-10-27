@@ -29,6 +29,8 @@ class QueueServer : public QObject
 public:
     QList<QByteArray> replies;
     QList<QByteArray> requests;
+    // The status of each answer; 200 unless the test says otherwise.
+    QList<int> statuses;
 
     bool start()
     {
@@ -64,7 +66,10 @@ private:
             return;
         requests.append(raw.mid(headerEnd + 4, contentLength));
         const QByteArray body = replies.isEmpty() ? QByteArrayLiteral("{}") : replies.takeFirst();
-        socket->write("HTTP/1.1 200 OK\r\n"
+        const int status = statuses.isEmpty() ? 200 : statuses.takeFirst();
+        const QByteArray reason = status == 401 ? QByteArrayLiteral("Unauthorized") : QByteArrayLiteral("OK");
+        socket->write("HTTP/1.1 " + QByteArray::number(status) + " " + reason +
+                      "\r\n"
                       "Content-Type: application/json\r\n"
                       "Content-Length: " +
                       QByteArray::number(body.size()) +
@@ -136,6 +141,28 @@ private slots:
         QVERIFY(trace.contains(QStringLiteral("reply: OK")));
         // The key lives in the Authorization header and never in the trace.
         QVERIFY(!trace.contains(QStringLiteral("s3cret")));
+    }
+
+    // A server that wants a key answers 401. The app has to say that in its
+    // own words: "server replied: Unauthorized" leaves the user guessing what
+    // to do (ADR 233).
+    void aRefusedRequestIsExplainedByTheApp()
+    {
+        QueueServer server;
+        server.statuses << 401;
+        server.replies << QByteArrayLiteral("{\"error\":{\"message\":\"API key required\"}}");
+        QVERIFY(server.start());
+
+        LlamaClient client;
+        const QUrl url = LlamaClient::endpointUrl(QStringLiteral("http://127.0.0.1:%1").arg(server.port()));
+        const QFuture<HttpResponse> future = client.postJson(url, QByteArrayLiteral("{\"model\":\"m\"}"), QString(), QStringLiteral("m"), 5000, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(future.isFinished(), 10000);
+        const HttpResponse response = future.result();
+        QVERIFY(!response.success);
+        QVERIFY2(response.error.contains(QStringLiteral("401")), qPrintable(response.error));
+        QVERIFY2(response.error.contains(QStringLiteral("API key")), qPrintable(response.error));
+        // The server's own words stay in the message.
+        QVERIFY2(response.error.contains(QStringLiteral("API key required")), qPrintable(response.error));
     }
 
     // A server that ignores the reasoning budget spends the whole budget on
