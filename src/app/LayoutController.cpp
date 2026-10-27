@@ -34,6 +34,11 @@ LayoutController::LayoutController(RequestProfileStore &requestProfiles, Runtime
         } else {
             // An empty reply means the model produced no usable markup; the
             // caller reports it as a failed page instead of wiping the blocks.
+            // The reason is named: a page that stays unmarked and says
+            // nothing is a silent failure (ADR 212). The empty answer of a
+            // model that does not see the image looks exactly like this.
+            if (result.status != CheckStatus::Recognized || result.text.isEmpty())
+                emit statusRequested(StatusMessage::translate(trContext(), "The model returned no markup: the server's answer was empty."));
             emit layoutFinished(m_currentPage, result.status == CheckStatus::Recognized ? result.text : QString());
         }
         startNext();

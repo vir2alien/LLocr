@@ -1329,6 +1329,14 @@
     </message>
 </context>
 <context>
+    <name>LayoutController</name>
+    <message>
+        <location filename="../../src/app/LayoutController.cpp" line="+40"/>
+        <source>The model returned no markup: the server's answer was empty.</source>
+        <translation>Модель не вернула разметку: ответ сервера пуст.</translation>
+    </message>
+</context>
+<context>
     <name>LayoutModel</name>
     <message>
         <location filename="../../src/models/LayoutModel.cpp" line="+20"/>
