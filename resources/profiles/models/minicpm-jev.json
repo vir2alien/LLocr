@@ -11,7 +11,7 @@
       {
         "id": "q8_0",
         "file": "MiniCPM-OCR-Jev-Q8_0.gguf",
-        "sha256": "",
+        "sha256": "7e5227dd810ab20c56076750cb8eeb9bbe3ea52d1b84263975ba64566e30a746",
         "sizeBytes": 2012021120
       },
       {
@@ -43,7 +43,7 @@
       "sizeBytes": 671372416,
       "id": "f16",
       "file": "mmproj-model-f16.gguf",
-      "sha256": "",
+      "sha256": "cad9364b900f79a90c12e371aa07a7cb901966c9f673262379c31b051eeb313a",
       "_note": "Mandatory: without the projector the model sees no image."
     }
   },
@@ -56,7 +56,7 @@
     "nEmbd": 2048,
     "nFf": 6144,
     "visionTokens": 4096,
-    "visionBytesPerToken": 110600
+    "visionBytesPerToken": 110655
   },
   "roles": {
     "decision": {

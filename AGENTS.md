@@ -57,6 +57,8 @@
   | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all 14 models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
   | `docs/28-chandra-ocr-2.md` | Model manual: Chandra-OCR-2 (an HTML answer — the `chandra-ocr` parser, three OCR roles, the task reaches the profile); Russian mirror in `28-chandra-ocr-2.ru.md` |
   | `docs/29-external-runtime-tasks-and-secrets.md` | Plan + record: the external runtime gets the same six tasks as the managed one, each with its own endpoint, key and alias (ADR 226); the secrets live in the OS secret store (ADR 227) |
+  | `docs/30-minicpm-ocr.md`  | Model manual: MiniCPM-OCR 1.0 (GLM-OCR-shaped parse model, `--reasoning off` is a model requirement, DSpark drafter as the mtp module); Russian mirror in `30-minicpm-ocr.ru.md` |
+  | `docs/31-minicpm-jev.md`  | Model manual: MiniCPM-OCR Jev — the visual-diff decision (`systemone_visual_diff_v1`, two images, the CandidateRenderer render leg, thresholds pending calibration); Russian mirror in `31-minicpm-jev.ru.md` |
   
   ## Rules for the agent
   
@@ -644,9 +646,11 @@
     ADR 178) and one `RequestProfileStore` per task. Shipped model → task matrix:
     `unlimited-ocr` → pageOcr; `lfm25-vl-3b` → pageOcr + blockRecognition;
     `glm-ocr` → rawPageOcr + blockRecognition; `teleocr` → layout +
-    blockRecognition; `clef-flash`, `d3-flash`/`d3-mini` → decision
-    (`docs/21-d3.md`); `qwen3.5-4b/9b`,
-    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW, ADR 180/181). Task defaults (ADR 169,
+    blockRecognition; `clef-flash`, `d3-flash`/`d3-mini`,
+    `minicpm-jev` (visual diff, ADR 235) → decision
+    (`docs/21-d3.md`, `docs/31-minicpm-jev.md`); `qwen3.5-4b/9b`,
+    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW, ADR 180/181);
+    `minicpm-ocr` → rawPageOcr + blockRecognition (`docs/30-minicpm-ocr.md`). Task defaults (ADR 169,
     `roles.<task>.default: true` in the profile JSONs, exactly one per
     task, read by the upcoming auto-selection): pageOcr = `unlimited-ocr`,
     rawPageOcr = `glm-ocr`, blockRecognition = `glm-ocr`,

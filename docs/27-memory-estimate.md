@@ -231,6 +231,8 @@ The coefficients of every model of the catalog, as they are in the profiles
 | `d3-flash` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
 | `d3-mini` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
 | `lightonocr` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
+| `minicpm-ocr` | 6 | 2 × 256 | 133 612 B/token (256, the 448² warmup slice; the profile's page budget is 2560) | derived | 605 MB / 1 036 MB + 10 240 B/token | — |
+| `minicpm-jev` | 6 | 2 × 256 | 110 655 B/token (2116) | derived | — | — |
 | `lfm25-vl-3b` | 8 | 8 × 64 | 124 150 B/token (256) | derived | 567 205 280 / 533 190 410 | — |
 | `gemma-4-12b` | 8 | 8 × 64 | 55 419 B/token (1120) | 267 320 B/token + 2 B | 253 708 800 / 387 994 092 | 1 006 632 960 |
 | `gemma-4-e4b` | 4 | 2 × 512 | **3 986 933 350 flat** | 176 218 B/token + 36 B | 59 678 016 / 188 743 680 | 62 914 560 |

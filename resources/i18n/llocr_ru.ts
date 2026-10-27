@@ -3661,6 +3661,41 @@
     </message>
 </context>
 <context>
+    <name>CandidateRenderer</name>
+    <message>
+        <source>The candidate renderer is busy.</source>
+        <translation>Рендерер кандидата занят.</translation>
+    </message>
+    <message>
+        <source>The candidate render timed out.</source>
+        <translation>Истекло время отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <source>Cannot load the candidate render page.</source>
+        <translation>Не удалось загрузить страницу отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <source>The candidate renderer process terminated.</source>
+        <translation>Процесс отрисовки кандидата завершился аварийно.</translation>
+    </message>
+    <message>
+        <source>The candidate render produced an empty page.</source>
+        <translation>Отрисовка кандидата дала пустую страницу.</translation>
+    </message>
+    <message>
+        <source>The candidate render could not create a temporary file.</source>
+        <translation>Не удалось создать временный файл для отрисовки кандидата.</translation>
+    </message>
+    <message>
+        <source>PDF printing failed.</source>
+        <translation>Не удалось напечатать PDF.</translation>
+    </message>
+    <message>
+        <source>The candidate render could not be rasterized.</source>
+        <translation>Не удалось растрировать отрисовку кандидата.</translation>
+    </message>
+</context>
+<context>
     <name>VerificationQueueController</name>
     <message>
         <location filename="../../src/app/VerificationQueueController.cpp" line="+260"/>
@@ -3676,6 +3711,14 @@
         <location line="+2"/>
         <source>%1 formula(s) rejected: invalid LaTeX syntax</source>
         <translation>отклонено формул с неверным LaTeX: %1</translation>
+    </message>
+    <message>
+        <source>No candidate renderer: the visual-diff decision model needs the candidate as an image.</source>
+        <translation>Нет рендерера кандидата: модели визуальной сверки кандидат нужен картинкой.</translation>
+    </message>
+    <message>
+        <source>The candidate render failed: %1</source>
+        <translation>Не удалось отрисовать кандидата: %1</translation>
     </message>
 </context>
 <context>
