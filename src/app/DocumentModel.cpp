@@ -459,6 +459,7 @@ std::shared_ptr<PdfDocument> DocumentModel::pdfForCurrentThread(const QString &p
     return pdf;
 }
 
+#ifdef LLOCR_HAVE_DJVU
 std::shared_ptr<DjVuDocument> DocumentModel::djvuForCurrentThread(const QString &path, QString *error)
 {
     if (t_threadDocuments.path != path) {
@@ -475,6 +476,7 @@ std::shared_ptr<DjVuDocument> DocumentModel::djvuForCurrentThread(const QString 
     t_threadDocuments.djvu = djvu;
     return djvu;
 }
+#endif
 
 QImage DocumentModel::decodeSourceCopy(const DocumentPage &page, QString *error)
 {

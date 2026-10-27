@@ -3,8 +3,8 @@
 #include <QByteArray>
 #include <QCoreApplication>
 
-#include <wincred.h>
 #include <windows.h>
+#include <wincred.h>
 
 // The Windows Credential Manager: a generic credential per secret, named
 // "LLocr:<id>". CRED_PERSIST_LOCAL_MACHINE keeps it across restarts for the
