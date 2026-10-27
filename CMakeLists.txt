@@ -42,7 +42,7 @@ option(LLOCR_BUILD_TESTS "Build unit tests" ON)
 # --- Dependencies ------------------------------------------------------------
 
 # Qt6 modules used across the project.
-find_package(Qt6 6.10 REQUIRED COMPONENTS
+set(LLOCR_QT6_COMPONENTS
     Core
     Gui
     Network
@@ -56,6 +56,14 @@ find_package(Qt6 6.10 REQUIRED COMPONENTS
     WebEngineQuick
 )
 
+# The Linux secret-store backend (the Secret Service) speaks D-Bus. Qt ships
+# no DBus module on macOS, so the component is Linux-only.
+if(UNIX AND NOT APPLE)
+    list(APPEND LLOCR_QT6_COMPONENTS DBus)
+endif()
+
+find_package(Qt6 6.10 REQUIRED COMPONENTS ${LLOCR_QT6_COMPONENTS})
+
 # Guard: all resolved Qt6 modules must come from ONE Qt installation. Mixing
 # module dirs from different installs (e.g. some modules from Homebrew qtbase
 # and the rest from the Qt online installer) produces an app that crashes at
@@ -64,8 +72,7 @@ find_package(Qt6 6.10 REQUIRED COMPONENTS
 # configure time, instead of at runtime.
 if(Qt6_FOUND)
     set(_qt6_required_prefixes "")
-    foreach(_qt6_comp Core Gui Network Concurrent Qml Quick QuickControls2 Pdf
-                    Test LinguistTools WebEngineQuick)
+    foreach(_qt6_comp ${LLOCR_QT6_COMPONENTS})
         if(DEFINED Qt6${_qt6_comp}_DIR)
             # <Qt6Dir> is <prefix>/lib/cmake/Qt6<Comp>; the install prefix is 3
             # levels up. REALPATH defends against symlinked prefixes

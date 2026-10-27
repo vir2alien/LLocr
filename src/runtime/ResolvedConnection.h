@@ -13,6 +13,7 @@ struct ResolvedConnection {
     QString modelId;  // alias (Managed) or model/name / check/modelName / decision/modelName / layout/modelName (External, per ConnectionRole)
     int connectionTimeoutMs = 0;
     int responseTimeoutMs = 0;
+    int contextSize = 0;  // the server's context window; 0 = unknown
 
     QString error;
 
@@ -21,6 +22,7 @@ struct ResolvedConnection {
         ConnectionConfig config;
         config.apiKey = apiKey;
         config.baseUrl = baseUrl;
+        config.modelId = modelId;
         config.connectionTimeoutMs = connectionTimeoutMs;
         config.responseTimeoutMs = responseTimeoutMs;
         return config;

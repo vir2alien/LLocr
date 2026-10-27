@@ -83,11 +83,12 @@ model windows have per-tab resets instead (profile restore in Launch/Request).
 |             | 19); PDF export: orientation (`export/pdfLandscape`), margins in mm   |
 |             | (`export/pdfMarginMm`, 0–50, default 15); «Restore defaults»         |
 | Runtime     | connection mode (`External` / `Managed`, applies immediately);        |
-|             | External: endpoint base URL, **model name (OCR)** and **model name    |
-|             | (validator)** for multi-model servers (ADR 73), API key, request      |
-|             | timeout; Managed: `llama-server` path + probe, Start/Stop/Restart,    |
-|             | Show log, installer (release/backend, download+install, updates,      |
-|             | cleanup); «Launch setup wizard…»; «Restore defaults»                  |
+|             | External: the **shared server** (endpoint base URL + API key) and,   |
+|             | per task, its own endpoint, key and model alias (ADR 226) — an empty  |
+|             | task field takes the shared value; Managed: `llama-server` path +    |
+|             | probe, Start/Stop/Restart, Show log, installer (release/backend,     |
+|             | download+install, updates, cleanup); «Launch setup wizard…»;         |
+|             | «Restore defaults»                                                   |
 | OCR model   | tabs **Location** (model + mmproj paths, installed models, preset     |
 |             | catalog, HF search), **Launch** (launch-parameter profile, ADR 57),   |
 |             | **Request** (OCR model adapter `model/recipeId` + the request         |
@@ -105,10 +106,16 @@ only possible against external servers, which get per-role model names
 
 Persistence is handled by `SettingsStore` (`QSettings`, grouped keys
 `provider/*`, `model/*`, `parser/id`, `output/*`, `export/*`, `runtime/*`,
-`launch/*`, `check/*`, `hf/*`). UI state (theme, language, window geometry) is
-persisted under `ui/*`. The resettable keys are registered in the table-driven
-`kDefaults` array (ADR 50); `resetToDefaults()` resets the full table, the
-per-window scoped resets use the same rows (ADR 75).
+`launch/*`, `check/*`, `hf/*`, `tasks/<role>/*`). UI state (theme, language,
+window geometry) is persisted under `ui/*`. The resettable keys are registered
+in the table-driven `kDefaults` array (ADR 50); `resetToDefaults()` resets the
+full table, the per-window scoped resets use the same rows (ADR 75).
+
+The **secrets are not in `QSettings`**: the API key and the Hugging Face
+token live in the OS secret store — the macOS Keychain, the Windows
+Credential Manager, the Linux Secret Service (ADR 227). The settings file
+keeps only the endpoints and the aliases. A stored key is never shown back:
+the field carries a mask and takes a new one.
 
 > The recognition **mode** (`External` / `Managed`) is chosen by the first-run
 > wizard; existing profiles stay `External` (ADR 26/31). The **Launch** tab in
@@ -402,7 +409,11 @@ local **`llama-server`** process (stages A/B, D of `docs/09-local-runtime-plan.m
   `runSelfTest()`/`runSelfTestQml()`, `selftest*` state; a separate consumer of
   `ensureConnectionReady()` (review 3.4 extraction). ✅
 - **`RuntimeLog`** (QML singleton `RuntimeLog`) — live server-log view
-  (`serverLog` + copy/clear/open), fed by the facade on each (re)spawn. ✅
+  (`serverLog` + copy/clear/open), fed by the facade on each (re)spawn. In
+  **External** mode there is no server process to read, so the window shows the
+  client's own request journal instead (`core/RequestJournal`: the endpoint,
+  the model, the sizes, the status, the duration and the head of the reply —
+  in memory, without the API key, ADR 228). ✅
 - **Process**: `LlamaServerProcess` (QProcess, argv-only, ring buffer + rotating
   file log, health polling, crash-restart ≤3×/5 min, terminate→kill) with a
   `ProcessGuard` (Job Object on Windows, `PDEATHSIG` on Linux, best-effort

@@ -95,3 +95,12 @@ docs/20).
   reply must bypass the service-token sanitizer (the `<|...|>`-stripping
   regex eats the data).
 - The GGUF repository is a third-party packaging (`mradermacher`).
+- **The MLX conversion of MinerU2.5 loses Cyrillic.** Measured on
+  `mlx-community/MinerU2.5-2509-1.2B-bf16` served by omlx: the layout reply
+  arrives transliterated («Полное Термунесское солоТиБлене ИлЛинДрческОй» —
+  Latin look-alikes and letters spaced out), while the same page through
+  llama.cpp (this profile's GGUF) and through `GLM-OCR-bf16` (also
+  mlx-community) reads correctly. A text-only request to the MLX build
+  answers in the same transliteration, so the defect is in that
+  conversion's tokenizer, not in the app and not in the server: use a
+  llama.cpp build of MinerU, or another model, for Russian documents.

@@ -1,5 +1,6 @@
 #include "config/SettingsStore.h"
 
+#include "config/SecretStore.h"
 #include "core/ConnectionRole.h"
 #include "core/ModelProfiles.h"
 
@@ -10,6 +11,9 @@
 namespace llocr {
 
 namespace {
+
+// The namespace of the secret ids (ADR 227). The tests point it at their own.
+QString g_secretNamespace;
 
 // The per-role settings: one record per role, so a new role is one row here
 // instead of ten switches (ADR 216). The per-role getters and setters stay —
@@ -116,7 +120,6 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kLanguage, "language", QVariant(QString::fromUtf8(kDefaultLanguage))},
         {kThemeMode, "themeMode", QVariant(kDefaultThemeMode)},
         {kBaseUrl, "baseUrl", QVariant(QString::fromUtf8(kDefaultBaseUrl))},
-        {kApiKey, "apiKey", QVariant(QString::fromUtf8(kDefaultApiKey))},
         {kConnectionTimeoutKey, "connectionTimeoutMs", QVariant(kDefaultConnectionTimeoutMs)},
         {kResponseTimeoutKey, "responseTimeoutMs", QVariant(kDefaultResponseTimeoutMs)},
         {kModelName, "modelName", QVariant(QString::fromUtf8(kDefaultModelName))},
@@ -183,7 +186,67 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
 
 SettingsStore::SettingsStore(QObject *parent) : QObject(parent)
 {
+    m_lastKeyPersisted = SecretStore::isAvailable();
     applyStartupMigration();
+}
+
+void SettingsStore::setSecretNamespace(const QString &prefix)
+{
+    g_secretNamespace = prefix;
+}
+
+QString SettingsStore::secretNamespace()
+{
+    return g_secretNamespace;
+}
+
+QString SettingsStore::secretId(const QString &id) const
+{
+    return secretNamespace() + id;
+}
+
+QString SettingsStore::taskBaseUrlKey(const QString &role)
+{
+    return QStringLiteral("tasks/") + role + QStringLiteral("/baseUrl");
+}
+
+QString SettingsStore::taskSecretId(const QString &role)
+{
+    return QStringLiteral("provider/apiKey/") + role;
+}
+
+QString SettingsStore::readSecret(const QString &id) const
+{
+    QString stored;
+    SecretStore::read(secretId(id), &stored);
+    return stored;
+}
+
+bool SettingsStore::persistSecret(const QString &id, const QString &value)
+{
+    m_lastKeyPersisted = SecretStore::write(secretId(id), value);
+    return m_lastKeyPersisted;
+}
+
+void SettingsStore::dropSecret(const QString &id)
+{
+    SecretStore::remove(secretId(id));
+}
+
+void SettingsStore::migrateSecret(const char *settingsKey, const QString &id)
+{
+    if (!m_settings.contains(settingsKey))
+        return;
+    const QString legacy = m_settings.value(settingsKey).toString();
+    if (legacy.isEmpty()) {
+        m_settings.remove(QString::fromLatin1(settingsKey));
+        return;
+    }
+    // When the store takes the key, the plaintext copy goes away. When it
+    // refuses, the old value stays where it is: the user does not lose a key
+    // because the OS said no.
+    if (persistSecret(id, legacy))
+        m_settings.remove(QString::fromLatin1(settingsKey));
 }
 
 QSettings SettingsStore::makeSettings()
@@ -282,6 +345,11 @@ void SettingsStore::applyStartupMigration()
         }
         m_settings.setValue(kParserId, resolved);
     }
+
+    // The secrets move into the OS secret store (ADR 227). The plaintext copy
+    // is removed only when the store took the key.
+    migrateSecret(kApiKey, kApiKey);
+    migrateSecret(kHfToken, kHfToken);
 }
 
 void SettingsStore::resolveStoredModelId(const char *key, const QString &role)
@@ -303,6 +371,8 @@ void SettingsStore::forceSave()
 void SettingsStore::resetToDefaults()
 {
     resetGroup([](const QString &) { return true; });
+    clearSecrets();
+    clearTaskConnections();
 }
 
 void SettingsStore::resetGroup(const std::function<bool(const QString &)> &matches)
@@ -319,6 +389,34 @@ void SettingsStore::resetGroup(const std::function<bool(const QString &)> &match
     forceSave();
 }
 
+// The secrets are not settings: the reset clears them by hand.
+void SettingsStore::clearSecrets()
+{
+    dropSecret(kApiKey);
+    dropSecret(kHfToken);
+    m_settings.remove(QString::fromLatin1(kApiKey));
+    m_settings.remove(QString::fromLatin1(kHfToken));
+    emit secretsChanged();
+    emit hfTokenChanged();
+}
+
+// The per-task endpoints and keys go back to the shared ones.
+void SettingsStore::clearTaskConnections()
+{
+    bool endpointsChanged = false;
+    for (const ConnectionRole role : connectionRoles) {
+        const QString name = connectionRoleName(role);
+        if (m_settings.contains(taskBaseUrlKey(name))) {
+            m_settings.remove(taskBaseUrlKey(name));
+            endpointsChanged = true;
+        }
+        dropSecret(taskSecretId(name));
+    }
+    if (endpointsChanged)
+        emit baseUrlChanged();
+    emit secretsChanged();
+}
+
 void SettingsStore::resetOutputDefaults()
 {
     resetGroup([](const QString &key) { return key == QLatin1String("parser/id") || key.startsWith(QLatin1String("output/")) || key.startsWith(QLatin1String("export/")); });
@@ -327,11 +425,15 @@ void SettingsStore::resetOutputDefaults()
 void SettingsStore::resetRuntimeDefaults()
 {
     resetGroup([](const QString &key) {
-        return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/apiKey") || key == QLatin1String("provider/connectionTimeoutMs") ||
+        return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/connectionTimeoutMs") ||
                key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String("tasks/blockRecognition/modelName") ||
                key == QLatin1String("tasks/decision/modelName") || key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/rawPageOcr/modelName") ||
                key == QLatin1String("tasks/fix/modelName") || key == QLatin1String("runtime/serverPath");
     });
+    dropSecret(kApiKey);
+    m_settings.remove(QString::fromLatin1(kApiKey));
+    clearTaskConnections();
+    emit secretsChanged();
 }
 
 const SettingsStore::SettingDefault *SettingsStore::defaults()
@@ -359,15 +461,111 @@ void SettingsStore::setBaseUrl(const QString &url)
 
 QString SettingsStore::apiKey() const
 {
-    return m_settings.value(kApiKey, QString::fromUtf8(kDefaultApiKey)).toString();
+    return readSecret(kApiKey);
 }
 
 void SettingsStore::setApiKey(const QString &key)
 {
-    if (apiKey() == key)
+    if (key.isEmpty()) {
+        clearApiKey();
         return;
-    m_settings.setValue(kApiKey, key);
-    emit apiKeyChanged();
+    }
+    persistSecret(kApiKey, key);
+    m_settings.remove(QString::fromLatin1(kApiKey));
+    emit secretsChanged();
+}
+
+void SettingsStore::clearApiKey()
+{
+    const bool had = apiKeySet();
+    dropSecret(kApiKey);
+    m_settings.remove(QString::fromLatin1(kApiKey));
+    if (had)
+        emit secretsChanged();
+}
+
+bool SettingsStore::apiKeySet() const
+{
+    return !apiKey().isEmpty();
+}
+
+QString SettingsStore::baseUrlForRole(const QString &role) const
+{
+    return m_settings.value(taskBaseUrlKey(role)).toString();
+}
+
+void SettingsStore::setBaseUrlForRole(const QString &role, const QString &url)
+{
+    const QString key = taskBaseUrlKey(role);
+    if (m_settings.value(key).toString() == url)
+        return;
+    m_settings.setValue(key, url);
+    emit baseUrlChanged();
+}
+
+QString SettingsStore::effectiveBaseUrlForRole(const QString &role) const
+{
+    const QString own = baseUrlForRole(role).trimmed();
+    if (!own.isEmpty())
+        return own;
+    return baseUrl();
+}
+
+bool SettingsStore::apiKeySetForRole(const QString &role) const
+{
+    return !readSecret(taskSecretId(role)).isEmpty();
+}
+
+void SettingsStore::setApiKeyForRole(const QString &role, const QString &key)
+{
+    if (key.isEmpty()) {
+        clearApiKeyForRole(role);
+        return;
+    }
+    persistSecret(taskSecretId(role), key);
+    emit secretsChanged();
+}
+
+void SettingsStore::clearApiKeyForRole(const QString &role)
+{
+    const bool had = apiKeySetForRole(role);
+    dropSecret(taskSecretId(role));
+    if (had)
+        emit secretsChanged();
+}
+
+QString SettingsStore::apiKeyForRole(const QString &role) const
+{
+    QString value;
+    SecretStore::readFirst(secretIdsForRole(role), &value);
+    return value;
+}
+
+QStringList SettingsStore::secretIdsForRole(const QString &role) const
+{
+    // The task's own key first, the shared one after it. The ids are values,
+    // so the read can happen in a worker without touching the settings.
+    return {secretId(taskSecretId(role)), secretId(kApiKey)};
+}
+
+bool SettingsStore::secretStoreAvailable() const
+{
+    return SecretStore::isAvailable();
+}
+
+QString SettingsStore::secretStoreName() const
+{
+    return SecretStore::backendName();
+}
+
+QString SettingsStore::secretError() const
+{
+    return SecretStore::lastError();
+}
+
+bool SettingsStore::lastKeyPersisted() const
+{
+    return m_lastKeyPersisted;
 }
 
 int SettingsStore::connectionTimeoutMs() const
@@ -1338,14 +1536,19 @@ QString SettingsStore::launchProfileId() const
 
 QString SettingsStore::hfToken() const
 {
-    return m_settings.value(kHfToken).toString();
+    return readSecret(kHfToken);
 }
 
 void SettingsStore::setHfToken(const QString &token)
 {
-    if (hfToken() == token)
+    if (token.isEmpty()) {
+        dropSecret(kHfToken);
+        m_settings.remove(QString::fromLatin1(kHfToken));
+        emit hfTokenChanged();
         return;
-    m_settings.setValue(kHfToken, token);
+    }
+    persistSecret(kHfToken, token);
+    m_settings.remove(QString::fromLatin1(kHfToken));
     emit hfTokenChanged();
 }
 

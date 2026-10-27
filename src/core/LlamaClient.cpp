@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
@@ -21,22 +22,33 @@ QUrl LlamaClient::endpointUrl(const QString &baseUrl, const QString &endpointPat
     return QUrl(base + endpointPath);
 }
 
-QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, int connectionTimeoutMs, int responseTimeoutMs)
+QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, const QString &modelId, int connectionTimeoutMs, int responseTimeoutMs)
 {
     auto promise = std::make_shared<QPromise<HttpResponse>>();
     promise->start();
     QFuture<HttpResponse> future = promise->future();
+
+    // The trace of this request: the endpoint, the model it named, the sizes.
+    // The API key lives in the header and never reaches it.
+    auto trace = std::make_shared<RequestJournal::Record>();
+    trace->at = QDateTime::currentDateTime();
+    trace->endpoint = url.toString();
+    trace->model = modelId;
+    trace->requestBytes = body.size();
 
     auto *socket = new QTcpSocket(&m_network);
     m_connectSocket = socket;
     m_connectPromise = promise;
     // Per-request completion: the promise and socket travel with the lambdas,
     // so an overlapping second postJson cannot strand this future (C++-I4).
-    const auto finish = [this, socket, promise](HttpResponse response) {
+    const auto finish = [this, socket, promise, trace](HttpResponse response) {
         if (m_connectSocket == socket)
             m_connectPromise.reset();
         socket->disconnect();
         socket->deleteLater();
+        trace->durationMs = trace->at.msecsTo(QDateTime::currentDateTime());
+        trace->error = response.error;
+        RequestJournal::instance().record(*trace);
         promise->addResult(std::move(response));
         promise->finish();
     };
@@ -51,7 +63,7 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
     QObject::connect(socket, &QTcpSocket::errorOccurred, socket, [finish, socket, url](QAbstractSocket::SocketError) {
         finish(HttpResponse{false, {}, QCoreApplication::translate("LlamaClient", "Connection to %1 failed: %2").arg(url.toString(), socket->errorString())});
     });
-    QObject::connect(socket, &QTcpSocket::connected, socket, [this, socket, timer, promise, url, body, apiKey, responseTimeoutMs]() {
+    QObject::connect(socket, &QTcpSocket::connected, socket, [this, socket, timer, promise, url, body, apiKey, responseTimeoutMs, trace]() {
         timer->stop();
         socket->disconnect();  // the connect-phase handlers must not see abort()'s error
         if (m_connectSocket == socket) {
@@ -60,7 +72,7 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
         }
         socket->abort();
         socket->deleteLater();
-        startPost(promise, url, body, apiKey, responseTimeoutMs);
+        startPost(promise, url, body, apiKey, responseTimeoutMs, trace);
     });
 
     timer->start(connectionTimeoutMs);
@@ -68,7 +80,8 @@ QFuture<HttpResponse> LlamaClient::postJson(const QUrl &url, const QByteArray &b
     return future;
 }
 
-void LlamaClient::startPost(const std::shared_ptr<QPromise<HttpResponse>> &promise, const QUrl &url, const QByteArray &body, const QString &apiKey, int responseTimeoutMs)
+void LlamaClient::startPost(
+    const std::shared_ptr<QPromise<HttpResponse>> &promise, const QUrl &url, const QByteArray &body, const QString &apiKey, int responseTimeoutMs, const std::shared_ptr<RequestJournal::Record> &trace)
 {
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
@@ -87,23 +100,31 @@ void LlamaClient::startPost(const std::shared_ptr<QPromise<HttpResponse>> &promi
     if (responseTimeoutMs > 0)
         timer->start(responseTimeoutMs);
 
-    QObject::connect(reply, &QNetworkReply::finished, reply, [reply, promise, responseTimeoutMs]() mutable {
+    QObject::connect(reply, &QNetworkReply::finished, reply, [reply, promise, responseTimeoutMs, trace]() mutable {
         HttpResponse response;
+        const QByteArray replyBody = reply->readAll();
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        trace->status = status;
+        trace->responseBytes = replyBody.size();
+        trace->durationMs = trace->at.msecsTo(QDateTime::currentDateTime());
         if (reply->error() != QNetworkReply::NoError) {
             QString error;
             if (reply->error() == QNetworkReply::OperationCanceledError && reply->property("llocrTimedOut").toBool()) {
                 error = QCoreApplication::translate("LlamaClient", "Request timed out after %1 ms").arg(responseTimeoutMs);
             } else {
                 error = reply->errorString();
-                const QString serverError = extractServerError(reply->readAll());
+                const QString serverError = extractServerError(replyBody);
                 if (!serverError.isEmpty())
                     error += QStringLiteral("\nServer: ") + serverError;
             }
             response.error = error;
+            trace->error = error.section(QLatin1Char('\n'), 0, 0);
         } else {
             response.success = true;
-            response.body = reply->readAll();
+            response.body = replyBody;
         }
+        trace->excerpt = RequestJournal::excerptOf(replyBody);
+        RequestJournal::instance().record(*trace);
         promise->addResult(std::move(response));
         promise->finish();
         reply->deleteLater();

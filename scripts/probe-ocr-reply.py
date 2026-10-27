@@ -54,6 +54,8 @@ def main():
     ap.add_argument("--pdf", required=True, help="PDF to take the page from")
     ap.add_argument("--page", type=int, default=0, help="page index in the PDF (default: 0)")
     ap.add_argument("--server", default="http://127.0.0.1:8080", help="base URL of the server")
+    ap.add_argument("--key", default="", help="API key of the server (sent as a bearer token)")
+    ap.add_argument("--alias", default="", help="model name the server exposes (default: the role's alias)")
     ap.add_argument("--out", default="", help="file to write the reply to (default: stdout)")
     args = ap.parse_args()
 
@@ -85,7 +87,7 @@ def main():
     data_url = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
 
     body = {
-        "model": role.get("alias") or args.model,
+        "model": args.alias or role.get("alias") or args.model,
         "messages": [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": data_url}},
                                                   {"type": "text", "text": chosen["text"]}]}],
     }
@@ -95,9 +97,12 @@ def main():
         body[parameter["name"]] = parameter["value"]
     body["max_tokens"] = role.get("maxOutput", 8192)
 
+    headers = {"Content-Type": "application/json"}
+    if args.key:
+        headers["Authorization"] = "Bearer " + args.key
     request = urllib.request.Request(args.server.rstrip("/") + "/v1/chat/completions",
                                      data=json.dumps(body).encode(),
-                                     headers={"Content-Type": "application/json"})
+                                     headers=headers)
     started = time.time()
     with urllib.request.urlopen(request, timeout=3600) as response:
         payload = json.load(response)

@@ -55,6 +55,9 @@ Item {
         RuntimeTabExternal {
             id: rtExternal
             Layout.fillWidth: true
+            // The wizard's external step is the quick start: the shared
+            // server only. The tasks are configured in the settings.
+            compact: true
         }
 
         Item { Layout.fillHeight: true }

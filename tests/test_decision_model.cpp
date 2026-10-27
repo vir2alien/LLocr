@@ -17,7 +17,7 @@ namespace {
 class ExposedDecisionModel : public DecisionModel
 {
 public:
-    QByteArray build(const DecisionRequest &request, const QByteArray &imageDataUrl) { return buildRequestBody(request, imageDataUrl); }
+    QByteArray build(const DecisionRequest &request, const QByteArray &imageDataUrl, const QString &modelId = QString()) { return buildRequestBody(request, imageDataUrl, modelId); }
 
     DecisionResult parse(const QByteArray &responseData) { return parseResponse(responseData); }
 };
@@ -109,7 +109,7 @@ private slots:
     void requestBodyCarriesStateImageAndQuestion()
     {
         ExposedDecisionModel model;
-        const QByteArray body = model.build(testRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QByteArray body = model.build(testRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"), QStringLiteral("llocr-decision"));
         const QJsonDocument doc = QJsonDocument::fromJson(body);
         QVERIFY(doc.isObject());
 
@@ -118,7 +118,6 @@ private slots:
         // (block type, text, the profile's notation line), which is what makes
         // the model compare it against the crop. The images array carries one
         // data URL, and the single question is the profile's yes/no wording.
-        // No model field: a llama-server serves exactly one model.
         const QJsonObject state = root.value(QStringLiteral("state")).toObject();
         QCOMPARE(state.value(QStringLiteral("block_type")).toString(), QStringLiteral("title"));
         QCOMPARE(state.value(QStringLiteral("recognized_text")).toString(), QStringLiteral("1. Intr0duction"));
@@ -132,8 +131,20 @@ private slots:
         // No criteria in the request when the profile ships none: the
         // endpoint's default sides apply.
         QVERIFY(!match.contains(QStringLiteral("criteria")));
-        QVERIFY(!root.contains(QStringLiteral("model")));
+        // The System One protocol names the model that answers (llama.cpp:
+        // the loaded model's name or its alias); a server that routes by the
+        // field rejects a request without it.
+        QCOMPARE(root.value(QStringLiteral("model")).toString(), QStringLiteral("llocr-decision"));
         QVERIFY(!root.contains(QStringLiteral("messages")));
+    }
+
+    void requestBodyWithoutAKnownModelCarriesNoModelField()
+    {
+        ExposedDecisionModel model;
+        const QJsonObject root = QJsonDocument::fromJson(model.build(testRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+        // An empty name is not a name: the field stays out rather than travel
+        // as an empty string, which the server would reject.
+        QVERIFY(!root.contains(QStringLiteral("model")));
     }
 
     void requestBodyCarriesNoulCriteria()
@@ -319,6 +330,7 @@ private slots:
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
+        config.modelId = QStringLiteral("llocr-decision");
         config.responseTimeoutMs = 10000;
 
         DecisionModel model;
@@ -332,6 +344,9 @@ private slots:
 
         const QJsonObject body = QJsonDocument::fromJson(server.requestBody).object();
         QCOMPARE(body.value(QStringLiteral("state")).toObject().value(QStringLiteral("recognized_text")).toString(), QStringLiteral("1. Intr0duction"));
+        // The request names the model that answers: a server that routes by
+        // the field (omlx) answers 422 without it.
+        QCOMPARE(body.value(QStringLiteral("model")).toString(), QStringLiteral("llocr-decision"));
         QVERIFY(!server.requestBody.contains("\"messages\""));
 
         const DecisionResult result = future.result();

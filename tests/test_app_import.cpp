@@ -332,6 +332,16 @@ private:
                 m_buffers[socket] += socket->readAll();
                 if (!requestComplete(m_buffers[socket]))
                     return;
+                if (m_buffers[socket].contains("GET /v1/models")) {
+                    // The app asks the server for the models' context window
+                    // (ADR 231). The probe is infrastructure, not a task
+                    // request: it is neither counted nor listed.
+                    socket->write(modelsReply());
+                    socket->flush();
+                    socket->disconnectFromHost();
+                    m_buffers.remove(socket);
+                    return;
+                }
                 ++m_requests;
                 if (!m_buffers[socket].contains("POST /v1/systemone"))
                     m_chatRequests.append(m_buffers[socket]);
@@ -367,6 +377,16 @@ private:
         if (overridden != fixReplies.constEnd())
             return overridden.value();
         return QString(fixReply).replace(QStringLiteral("%1"), candidate);
+    }
+
+    // The server's model list: the context window of every model (ADR 231).
+    static QByteArray modelsReply()
+    {
+        const QByteArray body =
+            QJsonDocument(
+                QJsonObject{{"object", "list"}, {"data", QJsonArray{QJsonObject{{"id", "det-token-test"}, {"max_model_len", 16384}}, QJsonObject{{"id", "check-test"}, {"max_model_len", 16384}}}}})
+                .toJson(QJsonDocument::Compact);
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
     }
 
     QByteArray reply(const QByteArray &request) const

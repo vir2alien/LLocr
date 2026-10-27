@@ -61,12 +61,41 @@ bool VisionChatModel::replyContent(const QByteArray &responseData, QString *cont
 
     const QJsonArray choices = doc.object().value(QStringLiteral("choices")).toArray();
     if (choices.isEmpty()) {
-        *error = CheckResult::makeError(StatusMessage::translate("VisionChatModel", "No choices in response"));
+        *error = CheckResult::makeError(StatusMessage::translate("VisionChatModel", "No answer in the reply: %1").arg(missingAnswerReason(responseData)));
         return false;
     }
 
     *content = choices.first().toObject().value(QStringLiteral("message")).toObject().value(QStringLiteral("content")).toString();
     return true;
+}
+
+QString VisionChatModel::missingAnswerReason(const QByteArray &responseData)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    if (!doc.isObject())
+        return StatusMessage::translate("VisionChatModel", "the reply is not a JSON object").text();
+
+    const QJsonObject root = doc.object();
+    const QJsonValue error = root.value(QStringLiteral("error"));
+    if (error.isObject()) {
+        const QString message = error.toObject().value(QStringLiteral("message")).toString();
+        return StatusMessage::translate("VisionChatModel", "the server answered with an error: %1").arg(message).text();
+    }
+    if (error.isString())
+        return StatusMessage::translate("VisionChatModel", "the server answered with an error: %1").arg(error.toString()).text();
+
+    const QJsonArray choices = root.value(QStringLiteral("choices")).toArray();
+    if (choices.isEmpty()) {
+        QString body = QString::fromUtf8(responseData).simplified();
+        if (body.size() > 200)
+            body = body.left(200) + QStringLiteral("…");
+        return StatusMessage::translate("VisionChatModel", "the reply has no choices (%1)").arg(body).text();
+    }
+
+    const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
+    if (!message.value(QStringLiteral("reasoning_content")).toString().isEmpty())
+        return StatusMessage::translate("VisionChatModel", "the model spent the token budget on reasoning and returned no answer").text();
+    return StatusMessage::translate("VisionChatModel", "the reply carries an empty answer").text();
 }
 
 QString VisionChatModel::stripControlTokens(const QString &text)

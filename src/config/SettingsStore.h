@@ -17,7 +17,18 @@ class SettingsStore : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
-    Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
+    // The API key is a secret: it lives in the OS secret store and is never
+    // handed to the QML — the UI sees only whether a key is set (ADR 227).
+    Q_PROPERTY(bool apiKeySet READ apiKeySet NOTIFY secretsChanged)
+    Q_PROPERTY(bool secretStoreAvailable READ secretStoreAvailable CONSTANT)
+    Q_PROPERTY(QString secretStoreName READ secretStoreName CONSTANT)
+    // The reason the last read or write of a secret failed. Empty when the
+    // store answered. The UI shows it: a key that is not there must say why,
+    // and "the key is gone" is not a reason (ADR 227).
+    Q_PROPERTY(QString secretError READ secretError NOTIFY secretsChanged)
+    // False means the OS store refused the last key: it lives in the memory
+    // until the app exits, and the UI must say so.
+    Q_PROPERTY(bool lastKeyPersisted READ lastKeyPersisted NOTIFY secretsChanged)
     Q_PROPERTY(int connectionTimeoutMs READ connectionTimeoutMs WRITE setConnectionTimeoutMs NOTIFY connectionTimeoutMsChanged)
     Q_PROPERTY(int responseTimeoutMs READ responseTimeoutMs WRITE setResponseTimeoutMs NOTIFY responseTimeoutMsChanged)
     Q_PROPERTY(QString modelName READ modelName WRITE setModelName NOTIFY modelNameChanged)
@@ -99,6 +110,12 @@ class SettingsStore : public QObject
 public:
     explicit SettingsStore(QObject *parent = nullptr);
 
+    // The namespace of the secret ids. The tests point it at their own, so a
+    // test never writes into (or deletes from) the app's own keychain
+    // entries.
+    static void setSecretNamespace(const QString &prefix);
+    static QString secretNamespace();
+
     Q_INVOKABLE void forceSave();
     Q_INVOKABLE void resetToDefaults();
     Q_INVOKABLE void resetOutputDefaults();
@@ -117,8 +134,31 @@ public:
 
     QString baseUrl() const;
     void setBaseUrl(const QString &url);
+
+    // The shared API key of the external connection. The getter serves the
+    // request path; the QML writes the key and reads only its presence.
     QString apiKey() const;
-    void setApiKey(const QString &key);
+    Q_INVOKABLE void setApiKey(const QString &key);
+    Q_INVOKABLE void clearApiKey();
+    bool apiKeySet() const;
+
+    // The external connection of one task (ADR 226): its own endpoint, its
+    // own key, its own alias. An empty endpoint means the shared one.
+    Q_INVOKABLE QString baseUrlForRole(const QString &role) const;
+    Q_INVOKABLE void setBaseUrlForRole(const QString &role, const QString &url);
+    Q_INVOKABLE QString effectiveBaseUrlForRole(const QString &role) const;
+    Q_INVOKABLE bool apiKeySetForRole(const QString &role) const;
+    Q_INVOKABLE void setApiKeyForRole(const QString &role, const QString &key);
+    Q_INVOKABLE void clearApiKeyForRole(const QString &role);
+    QString apiKeyForRole(const QString &role) const;
+    // The ids of the secrets a task may use: its own key and the shared one.
+    QStringList secretIdsForRole(const QString &role) const;
+
+    bool secretStoreAvailable() const;
+    QString secretStoreName() const;
+    QString secretError() const;
+    bool lastKeyPersisted() const;
+
     int connectionTimeoutMs() const;
     void setConnectionTimeoutMs(int ms);
     int responseTimeoutMs() const;
@@ -300,7 +340,7 @@ public:
 
 signals:
     void baseUrlChanged();
-    void apiKeyChanged();
+    void secretsChanged();
     void connectionTimeoutMsChanged();
     void responseTimeoutMsChanged();
     void modelNameChanged();
@@ -374,7 +414,6 @@ public:
     static constexpr const char *kModeManaged = "managed";
     static constexpr int kCurrentSetupVersion = 1;
     static constexpr const char *kDefaultBaseUrl = "http://localhost:8080";
-    static constexpr const char *kDefaultApiKey = "";
     static constexpr int kDefaultConnectionTimeoutMs = 5000;
     static constexpr int kDefaultResponseTimeoutMs = 300000;
     static constexpr const char *kDefaultModelName = "Unlimited-OCR";
@@ -405,6 +444,20 @@ private:
 
     void resetGroup(const std::function<bool(const QString &)> &matches);
     void resolveStoredModelId(const char *key, const QString &role);
+
+    // The secrets live in the OS store (ADR 227); these helpers name them
+    // and move the values in and out of it.
+    QString secretId(const QString &id) const;
+    QString readSecret(const QString &id) const;
+    bool persistSecret(const QString &id, const QString &value);
+    void dropSecret(const QString &id);
+    void migrateSecret(const char *settingsKey, const QString &id);
+    void clearSecrets();
+    void clearTaskConnections();
+    static QString taskBaseUrlKey(const QString &role);
+    static QString taskSecretId(const QString &role);
+
+    bool m_lastKeyPersisted = true;
 
     static constexpr const char *kBaseUrl = "provider/baseUrl";
     static constexpr const char *kApiKey = "provider/apiKey";

@@ -7,6 +7,12 @@ namespace llocr {
 
 namespace {
 
+// The vision floor of the shipped models (their image-min-tokens runs from 70
+// to 1120). An external server's budget is unknown, and the estimate has to
+// err on the safe side: a request that does not fit the window is aborted by
+// the server, and the model is unloaded with it.
+constexpr int kUnknownImageTokens = 1024;
+
 int launchNumber(const QList<LaunchParameter> &parameters, const QString &name)
 {
     for (const LaunchParameter &parameter : parameters) {
@@ -97,11 +103,24 @@ void FixController::fixBlock(const QImage &image, const QString &recognizedText,
 
             // The generation budget inside the server's context window: the
             // answer's room and the thinking's room. The context is a hard
-            // limit, so the thinking yields before the answer (ADR 193).
+            // limit, so the thinking yields before the answer (ADR 193). The
+            // managed server's window comes from the launch config; an
+            // external server publishes its own in /v1/models.
             const ServerLaunchConfig &config = runtime().startedConfig();
             RequestBudget budget;
             budget.contextSize = launchNumber(config.parameters, QStringLiteral("ctx-size"));
-            budget.promptTokens = estimatePromptTokens(systemPrompt, typePrompt, recognizedText, launchNumber(config.parameters, QStringLiteral("image-min-tokens")));
+            if (budget.contextSize <= 0)
+                budget.contextSize = conn.contextSize;
+            int imageTokens = launchNumber(config.parameters, QStringLiteral("image-min-tokens"));
+            if (imageTokens <= 0) {
+                // An external server's model budget is unknown: the app counts
+                // the vision floor of the shipped models (70…1120 tokens), so
+                // the estimate errs on the safe side — a request that does not
+                // fit the window is aborted by the server, and the model is
+                // unloaded with it.
+                imageTokens = kUnknownImageTokens;
+            }
+            budget.promptTokens = estimatePromptTokens(systemPrompt, typePrompt, recognizedText, imageTokens);
             budget.answerTokens = parameterNumber(request.parameters, QStringLiteral("max_tokens"));
             budget.reasoningTokens = parameterNumber(request.parameters, QLatin1String(kReasoningBudgetParameter));
             setParameterNumber(request.parameters, QStringLiteral("max_tokens"), budget.maxTokens());

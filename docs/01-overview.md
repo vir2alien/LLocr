@@ -112,7 +112,10 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
 > mismatched parser behind; the bbox coordinate range is a parser option
 > (`ParserOptions::bboxRange`, default 1000), not a setting.
 >
-> **Secrets:** the API key and HF token are stored **in plaintext** in
-> `QSettings` (existing behavior) with an explicit UI warning; they are never
-> written to logs, error messages, or the command preview. Moving them into the
-> OS keychain is **deferred** (planned, not yet done — H.5 / ADR 48).
+> **Secrets:** the API key and the HF token live in the **OS secret store** —
+> the macOS Keychain, the Windows Credential Manager, the Linux Secret
+> Service (ADR 227). The settings file keeps only the endpoints and the
+> aliases; the old plaintext key is migrated at startup and removed from the
+> file. A stored key is never shown back: the field carries a mask and takes
+> a new one. The secrets are never written to logs, error messages, the
+> command preview, or the project file.

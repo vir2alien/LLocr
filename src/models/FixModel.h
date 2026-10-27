@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QHash>
+
 #include "models/VisionChatModel.h"
 
 namespace llocr {
@@ -22,6 +24,16 @@ public:
 protected:
     static QByteArray buildRequestBody(const CheckRequest &request, const QByteArray &imageDataUrl);
     static CheckResult parseResponse(const QByteArray &responseData, const QString &candidate, const QString &blockType);
+
+private:
+    // One exchange with the fix protocol; the raw reply is kept when the
+    // caller has to look at it (the thinking may have eaten the answer).
+    QFuture<CheckResult> exchange(const CheckRequest &request, const ConnectionConfig &config, const std::shared_ptr<QByteArray> &rawBody);
+
+    // The servers that spent the thinking budget on the thinking instead of
+    // answering, with the budget they ignored: the next requests to such a
+    // server go without the thinking.
+    QHash<QString, int> m_thinkingIgnoredBudget;
 };
 
 }  // namespace llocr

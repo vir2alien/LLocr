@@ -95,6 +95,27 @@ target_link_libraries(test_profile_storage PRIVATE
 )
 add_test(NAME test_profile_storage COMMAND test_profile_storage)
 
+# The OS secret store: a key is stored, read back and removed (ADR 227). The
+# test skips itself where the OS has no store.
+qt_add_executable(test_secret_store test_secret_store.cpp)
+
+target_link_libraries(test_secret_store PRIVATE
+    Qt6::Test
+    llocr_config
+)
+add_test(NAME test_secret_store COMMAND test_secret_store)
+
+# The external server tab: the six task rows and what they write (ADR 226).
+qt_add_executable(test_runtime_tab_external_qml test_runtime_tab_external_qml.cpp)
+
+target_link_libraries(test_runtime_tab_external_qml PRIVATE
+    Qt6::Test
+    Qt6::Quick
+    Qt6::QuickControls2
+    llocr_config
+)
+add_test(NAME test_runtime_tab_external_qml COMMAND test_runtime_tab_external_qml)
+
 qt_add_executable(test_verification_prompts test_verification_prompts.cpp)
 
 target_link_libraries(test_verification_prompts PRIVATE
@@ -173,6 +194,18 @@ target_link_libraries(test_fix_diff_gate PRIVATE
     llocr_models
 )
 add_test(NAME test_fix_diff_gate COMMAND test_fix_diff_gate)
+
+# The external runtime (ADR 226): the client's own trace of the requests (the
+# server writes no log the app could read) and the fix task's answer to a
+# server that ignores the reasoning budget.
+qt_add_executable(test_external_runtime test_external_runtime.cpp)
+
+target_link_libraries(test_external_runtime PRIVATE
+    Qt6::Test
+    llocr_models
+    llocr_runtime
+)
+add_test(NAME test_external_runtime COMMAND test_external_runtime)
 
 # The page statuses (the rework plan's §6): the verification aggregate over a
 # page's subject blocks, the markup-only completion, and the page list roles

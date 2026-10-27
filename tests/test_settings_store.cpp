@@ -96,6 +96,7 @@ private slots:
         QSettings settings;
         settings.clear();
         settings.sync();
+        m_settingsIsolation.clearSecrets();
     }
 
     void defaultValues()
@@ -155,6 +156,66 @@ private slots:
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
+    }
+
+    // The external connection of one task (ADR 226): an empty field means the
+    // shared value.
+    void taskEndpointFallsBackToTheSharedOne()
+    {
+        SettingsStore store;
+        store.setBaseUrl(QStringLiteral("http://shared:8080"));
+
+        QCOMPARE(store.baseUrlForRole(QStringLiteral("decision")), QString());
+        QCOMPARE(store.effectiveBaseUrlForRole(QStringLiteral("decision")), QStringLiteral("http://shared:8080"));
+
+        store.setBaseUrlForRole(QStringLiteral("decision"), QStringLiteral("http://own:9000"));
+        QCOMPARE(store.baseUrlForRole(QStringLiteral("decision")), QStringLiteral("http://own:9000"));
+        QCOMPARE(store.effectiveBaseUrlForRole(QStringLiteral("decision")), QStringLiteral("http://own:9000"));
+        // The other tasks keep the shared one.
+        QCOMPARE(store.effectiveBaseUrlForRole(QStringLiteral("fix")), QStringLiteral("http://shared:8080"));
+    }
+
+    void taskKeyFallsBackToTheSharedOne()
+    {
+        SettingsStore store;
+        QVERIFY(!store.apiKeySet());
+        QVERIFY(!store.apiKeySetForRole(QStringLiteral("fix")));
+
+        store.setApiKey(QStringLiteral("shared-key"));
+        QVERIFY(store.apiKeySet());
+        QCOMPARE(store.apiKeyForRole(QStringLiteral("fix")), QStringLiteral("shared-key"));
+
+        store.setApiKeyForRole(QStringLiteral("fix"), QStringLiteral("own-key"));
+        QVERIFY(store.apiKeySetForRole(QStringLiteral("fix")));
+        QCOMPARE(store.apiKeyForRole(QStringLiteral("fix")), QStringLiteral("own-key"));
+        // The task without its own key still uses the shared one.
+        QCOMPARE(store.apiKeyForRole(QStringLiteral("decision")), QStringLiteral("shared-key"));
+
+        store.clearApiKeyForRole(QStringLiteral("fix"));
+        QVERIFY(!store.apiKeySetForRole(QStringLiteral("fix")));
+        QCOMPARE(store.apiKeyForRole(QStringLiteral("fix")), QStringLiteral("shared-key"));
+    }
+
+    // The plaintext key of the old profiles moves into the secret store
+    // (ADR 227) and leaves the settings file.
+    void thePlaintextKeyMovesIntoTheSecretStore()
+    {
+        {
+            QSettings settings;
+            settings.setValue(QStringLiteral("provider/apiKey"), QStringLiteral("legacy-key"));
+            settings.sync();
+        }
+
+        SettingsStore store;
+        QCOMPARE(store.apiKey(), QStringLiteral("legacy-key"));
+
+        // The plaintext copy leaves the settings file only when the store
+        // took the key. When the store refused it, the old value stays: the
+        // user does not lose a key because the OS said no.
+        if (QSettings().contains(QStringLiteral("provider/apiKey")))
+            QCOMPARE(store.apiKey(), QStringLiteral("legacy-key"));
+        else
+            QVERIFY(SecretStore::exists(SettingsStore::secretNamespace() + QStringLiteral("provider/apiKey")));
     }
 
     // Scoped resets (ADR 75): only the window's own group returns to

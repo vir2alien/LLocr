@@ -316,7 +316,9 @@ Item {
 
                     ToolTip {
                         visible: runtimeBadge.containsMouse
-                        text: qsTr("Server log — click to open. %1").arg(root.stateText())
+                        text: (Settings.connectionMode === "external"
+                               ? qsTr("Request log — click to open. %1")
+                               : qsTr("Server log — click to open. %1")).arg(root.stateText())
                         delay: 600
                         font.pointSize: Theme.captionSize
                     }

@@ -167,14 +167,14 @@ Item {
         return choices
     }
 
-    // The external mode persists the profile and model-name picks only.
+    // The external mode persists the profile pick only: the model alias
+    // belongs to the connection and is edited in Settings → Runtime.
     function applyExternalDraft() {
         for (const task of table.taskIds) {
             const entry = table.draftEntry(task)
             if (!entry)
                 continue
             RoleProfiles.setRequestProfileId(task, entry.key)
-            Settings.setModelNameForRole(task, entry.modelName)
         }
         Settings.forceSave()
         table.markDraftSaved()
@@ -405,6 +405,11 @@ Item {
                     Layout.preferredWidth: 210
                     implicitHeight: Theme.controlHeight
                     text: taskRow.entry.modelName || ""
+                    // The alias belongs to the connection: it is edited in
+                    // Settings → Runtime, where the endpoint and the key live
+                    // (ADR 226). Here it is shown.
+                    readOnly: true
+                    selectByMouse: true
                     onTextEdited: {
                         taskRow.entry.modelName = nameField.text
                         taskRow.entry.nameEdited = true

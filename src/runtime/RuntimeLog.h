@@ -28,7 +28,7 @@ public:
     explicit RuntimeLog(SettingsStore &settings, QObject *parent = nullptr);
 
     QString serverLog() const;
-    int lineCount() const { return m_lines.size(); }
+    int lineCount() const;
 
     Q_INVOKABLE QString serverLogPath() const;
     Q_INVOKABLE QString serverLogDir() const;
@@ -45,6 +45,9 @@ signals:
 private:
     static constexpr int kMaxLines = 2000;
 
+    // The external runtime writes no log file of its own: the view shows the
+    // client's request journal instead of the server process's output.
+    bool externalMode() const;
     void flushToView();
 
     SettingsStore &m_settings;

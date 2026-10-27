@@ -1,11 +1,15 @@
 #include "models/FixModel.h"
 
 #include <QCoreApplication>
+#include <QFutureWatcher>
+#include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 
 #include <utility>
 
 #include "core/ModelProfiles.h"
+#include "core/RequestProfile.h"
 #include "models/ChatExchange.h"
 #include "models/FixDiffGate.h"
 #include "models/ImageDataUrl.h"
@@ -25,14 +29,133 @@ bool replyCutByBudget(const QByteArray &responseData)
     return choices.first().toObject().value(QStringLiteral("finish_reason")).toString() == QLatin1String("length");
 }
 
+// The thinking took the whole budget and the answer is missing: the reply
+// carries reasoning and no content. A server that ignores
+// reasoning_budget_tokens spends max_tokens on the reasoning (llama.cpp cuts
+// the thinking at the budget; omlx does not).
+bool thinkingAteTheAnswer(const QByteArray &responseData)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    if (!doc.isObject())
+        return false;
+    const QJsonArray choices = doc.object().value(QStringLiteral("choices")).toArray();
+    if (choices.isEmpty())
+        return false;
+    const QJsonObject message = choices.first().toObject().value(QStringLiteral("message")).toObject();
+    if (!message.value(QStringLiteral("content")).toString().isEmpty())
+        return false;
+    return !message.value(QStringLiteral("reasoning_content")).toString().isEmpty();
+}
+
+int parameterNumber(const QList<RequestParameter> &parameters, const QString &name)
+{
+    for (const RequestParameter &parameter : parameters)
+        if (parameter.name == name)
+            return parameter.value.toInt();
+    return 0;
+}
+
+bool hasParameter(const QList<RequestParameter> &parameters, const QString &name)
+{
+    for (const RequestParameter &parameter : parameters)
+        if (parameter.name == name)
+            return true;
+    return false;
+}
+
+void setParameterNumber(QList<RequestParameter> &parameters, const QString &name, int value)
+{
+    for (RequestParameter &parameter : parameters) {
+        if (parameter.name == name) {
+            parameter.value = QVariant(double(value));
+            return;
+        }
+    }
+}
+
+// The same request without the thinking: the budget of the thinking goes back
+// to the answer, which is what the answer had before the thinking was added.
+// A request without its own max_tokens keeps the server's default — inventing
+// one would cap the answer at a token.
+QList<RequestParameter> withoutThinking(const QList<RequestParameter> &parameters)
+{
+    QList<RequestParameter> out = parameters;
+    const int thinking = parameterNumber(out, QLatin1String(kReasoningBudgetParameter));
+    setParameterNumber(out, QLatin1String(kReasoningBudgetParameter), 0);
+    if (thinking > 0 && hasParameter(out, QStringLiteral("max_tokens"))) {
+        const int answer = qMax(1, parameterNumber(out, QStringLiteral("max_tokens")) - thinking);
+        setParameterNumber(out, QStringLiteral("max_tokens"), answer);
+    }
+    return out;
+}
+
 }  // namespace
 
 QFuture<CheckResult> FixModel::check(const CheckRequest &request, const ConnectionConfig &config)
 {
+    const int thinkingBudget = parameterNumber(request.parameters, QLatin1String(kReasoningBudgetParameter));
+    // The server has already shown that it ignores the reasoning budget: the
+    // thinking is left out from the start, and the user is told why.
+    const bool thinkingKnownToFail = thinkingBudget > 0 && m_thinkingIgnoredBudget.value(config.baseUrl) == thinkingBudget;
+
+    CheckRequest effective = request;
+    if (thinkingKnownToFail)
+        effective.parameters = withoutThinking(request.parameters);
+
+    auto promise = std::make_shared<QPromise<CheckResult>>();
+    promise->start();
+
+    auto body = std::make_shared<QByteArray>();
+    auto *watcher = new QFutureWatcher<CheckResult>();
+    QObject::connect(watcher, &QFutureWatcher<CheckResult>::finished, watcher, [this, request, effective, config, promise, watcher, body, thinkingBudget, thinkingKnownToFail]() mutable {
+        watcher->deleteLater();
+        CheckResult result = watcher->result();
+
+        if (thinkingKnownToFail) {
+            result.notes = StatusMessage::join({result.notes, StatusMessage::translate("FixModel", "The thinking was left out: the server ignores the reasoning budget (reasoning_budget_tokens).")},
+                                               QStringLiteral(" "));
+            promise->addResult(result);
+            promise->finish();
+            return;
+        }
+
+        if (thinkingBudget > 0 && thinkingAteTheAnswer(*body)) {
+            // The thinking spent the whole budget and the answer is missing:
+            // the answer is requested again, without the thinking.
+            m_thinkingIgnoredBudget.insert(config.baseUrl, thinkingBudget);
+            CheckRequest retry = request;
+            retry.parameters = withoutThinking(request.parameters);
+            auto *second = new QFutureWatcher<CheckResult>();
+            QObject::connect(second, &QFutureWatcher<CheckResult>::finished, second, [promise, second]() {
+                second->deleteLater();
+                CheckResult retryResult = second->result();
+                retryResult.notes = StatusMessage::join(
+                    {retryResult.notes, StatusMessage::translate("FixModel", "The server ignored the reasoning budget — the answer was requested again without the thinking.")}, QStringLiteral(" "));
+                promise->addResult(retryResult);
+                promise->finish();
+            });
+            second->setFuture(exchange(retry, config, nullptr));
+            return;
+        }
+
+        promise->addResult(result);
+        promise->finish();
+    });
+    watcher->setFuture(exchange(effective, config, body));
+
+    return promise->future();
+}
+
+QFuture<CheckResult> FixModel::exchange(const CheckRequest &request, const ConnectionConfig &config, const std::shared_ptr<QByteArray> &rawBody)
+{
     return runChatExchange<CheckResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
                                         config,
                                         m_activeClient,
-                                        [request](const QByteArray &body) { return parseResponse(body, request.recognizedText, request.blockType); },
+                                        [request, rawBody](const QByteArray &body) {
+                                            if (rawBody)
+                                                *rawBody = body;
+                                            return parseResponse(body, request.recognizedText, request.blockType);
+                                        },
                                         QCoreApplication::translate("FixModel", "Failed to encode the block image"));
 }
 
@@ -77,9 +200,7 @@ CheckResult FixModel::parseResponse(const QByteArray &responseData, const QStrin
         return error;
 
     if (content.isEmpty())
-        return CheckResult::makeError(StatusMessage::translate("FixModel",
-                                                               "The model returned no corrected text, only end-of-sentence markers. "
-                                                               "Check that the selected model can process images."));
+        return CheckResult::makeError(StatusMessage::translate("FixModel", "The model returned no corrected text: %1").arg(missingAnswerReason(responseData)));
 
     const QString cleaned = stripOuterCodeFence(stripControlTokens(content));
     const QString trimmed = cleaned.trimmed();

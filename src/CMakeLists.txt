@@ -41,6 +41,8 @@ qt_add_library(llocr_core STATIC
     core/ConnectionRole.h
     core/LlamaClient.h
     core/LlamaClient.cpp
+    core/RequestJournal.h
+    core/RequestJournal.cpp
     core/ServiceMarkers.h
     core/RequestProfile.h
     core/RequestProfile.cpp
@@ -72,6 +74,8 @@ qt_add_library(llocr_config STATIC
     config/ProfileStorage.h
     config/ProfileStorage.cpp
     config/ProfileStore.h
+    config/SecretStore.h
+    config/SecretStore.cpp
     config/SettingsStore.h
     config/SettingsStore.cpp
     config/RequestParametersModel.h
@@ -85,6 +89,22 @@ qt_add_library(llocr_config STATIC
 )
 target_include_directories(llocr_config PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(llocr_config PUBLIC llocr_core Qt6::Core Qt6::Gui)
+
+# One secret-store backend per platform (ADR 227): the macOS Keychain, the
+# Windows Credential Manager, the Linux Secret Service. The other two are
+# stubs, so the class always has a definition.
+if(WIN32)
+    target_sources(llocr_config PRIVATE ${CMAKE_SOURCE_DIR}/src/config/SecretStore_win.cpp)
+elseif(APPLE)
+    target_sources(llocr_config PRIVATE ${CMAKE_SOURCE_DIR}/src/config/SecretStore_mac.cpp)
+    find_library(SECURITY_FRAMEWORK Security REQUIRED)
+    target_link_libraries(llocr_config PRIVATE ${SECURITY_FRAMEWORK})
+else()
+    target_sources(llocr_config PRIVATE ${CMAKE_SOURCE_DIR}/src/config/SecretStore_linux.cpp)
+    # The Secret Service is spoken over the session bus: QtDBus is the only
+    # dependency it needs (Linux only — Qt ships no DBus module on macOS).
+    target_link_libraries(llocr_config PRIVATE Qt6::DBus)
+endif()
 
 # ---- llocr_models ------------------------------------------------------------
 qt_add_library(llocr_models STATIC
@@ -591,7 +611,11 @@ if(APPLE AND NOT LLOCR_MACOS_APP_BUNDLE)
         #    rewrote $<TARGET_FILE:llocr>, so this always captures the real file)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "$<TARGET_FILE:llocr>" "$<TARGET_FILE:llocr>.real"
-        # 2) replace the build output with the launcher script
+        # 2) give the binary a stable code identity, so the Keychain keeps the
+        #    API key across rebuilds (ADR 232). A no-op when the developer has
+        #    not created the identity (scripts/macos-dev-sign.sh --create).
+        COMMAND sh "${CMAKE_SOURCE_DIR}/scripts/macos-dev-sign.sh" --sign "$<TARGET_FILE:llocr>.real"
+        # 3) replace the build output with the launcher script
         COMMAND ${CMAKE_COMMAND} -E copy
             "${CMAKE_CURRENT_BINARY_DIR}/llocr-launcher.sh" "$<TARGET_FILE:llocr>"
         COMMAND chmod +x "$<TARGET_FILE:llocr>"

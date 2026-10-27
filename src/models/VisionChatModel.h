@@ -48,6 +48,11 @@ protected:
     // an empty content is a valid reply.
     static bool replyContent(const QByteArray &responseData, QString *content, CheckResult *error);
 
+    // What the server actually said when the reply carries no answer: its
+    // error payload, the thinking that spent the budget, or the raw body.
+    // "No choices" on its own tells the user nothing about what to fix.
+    static QString missingAnswerReason(const QByteArray &responseData);
+
     // Reply hygiene: a whole-reply Markdown fence is packaging, not content;
     // control tokens (<|...|> service markers, thinking blocks) are model
     // chatter around the text. The structural layout reply skips the control

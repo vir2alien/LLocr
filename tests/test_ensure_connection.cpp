@@ -1,12 +1,15 @@
 #include <QDateTime>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <QThread>
 #include <QtTest>
 
 #include "app/CheckController.h"
@@ -22,6 +25,7 @@
 #include "testsettings.h"
 
 #include <algorithm>
+#include <functional>
 
 using namespace llocr;
 
@@ -86,9 +90,24 @@ private slots:
         QCoreApplication::setApplicationName(QStringLiteral("test_ensure_connection"));
     }
 
-    void cleanup() { QSettings().clear(); }
+    void cleanup()
+    {
+        QSettings().clear();
+        m_settingsIsolation.clearSecrets();
+    }
 
-    void externalResolvesImmediately()
+    // The external resolve reads the key from the OS secret store, and the
+    // read happens in a worker: the answer comes back to the event loop.
+    static bool waitFor(const std::function<bool()> &ready, int timeoutMs = 5000)
+    {
+        QElapsedTimer timer;
+        timer.start();
+        while (!ready() && timer.elapsed() < timeoutMs)
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+        return ready();
+    }
+
+    void externalResolvesWithItsOwnEndpointKeyAndAlias()
     {
         QTemporaryDir dir;
         SettingsStore settings;
@@ -107,13 +126,105 @@ private slots:
             conn = c;
             called = true;
         });
-        QVERIFY(called);  // External resolves synchronously (ADR 26)
+        QVERIFY(waitFor([&] { return called; }));  // the key is read in a worker
         QCOMPARE(conn.baseUrl, QStringLiteral("http://custom.example:9000"));
         QCOMPARE(conn.apiKey, QStringLiteral("k"));
         QCOMPARE(conn.modelId, QStringLiteral("my-model"));
         QCOMPARE(conn.connectionTimeoutMs, 5000);
         QCOMPARE(conn.responseTimeoutMs, 15000);
         QVERIFY(conn.error.isEmpty());
+
+        // The next call is answered from the cache, without a worker.
+        ResolvedConnection again;
+        bool calledAgain = false;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            again = c;
+            calledAgain = true;
+        });
+        QVERIFY(calledAgain);
+        QCOMPARE(again.apiKey, QStringLiteral("k"));
+    }
+
+    // The external server publishes the window of its models (ADR 231): the
+    // app reads it, so the answer's budget can be clipped to the window
+    // instead of asking for more than the server can hold.
+    void externalResolveReadsTheServerContextWindow()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setConnectionMode(QStringLiteral("external"));
+        settings.setModelName(QStringLiteral("llocr-local"));
+
+        QProcess server;
+        server.setProcessChannelMode(QProcess::MergedChannels);
+        server.start(QLatin1String(LLOCR_MOCK_SERVER), {QStringLiteral("--port"), QStringLiteral("0")});
+        QVERIFY(server.waitForStarted(10000));
+
+        // The mock prints the port it bound to.
+        int port = 0;
+        QString output;
+        const QRegularExpression portPattern(QStringLiteral("127\\.0\\.0\\.1:(\\d+)"));
+        for (int waited = 0; waited < 100 && port == 0; ++waited) {
+            // The process reads its pipe in the event loop, so the wait has to
+            // pump it: a blocking sleep would leave the line in the pipe.
+            if (!server.waitForReadyRead(100))
+                continue;
+            output += QString::fromUtf8(server.readAllStandardOutput());
+            const QRegularExpressionMatch match = portPattern.match(output);
+            if (match.hasMatch())
+                port = match.captured(1).toInt();
+        }
+        QVERIFY2(port > 0, "the mock server did not report its port");
+        settings.setBaseUrl(QStringLiteral("http://127.0.0.1:%1").arg(port));
+
+        RuntimeController runtime(settings, launchProfiles);
+        ResolvedConnection conn;
+        bool called = false;
+        runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
+            conn = c;
+            called = true;
+        });
+        QVERIFY(waitFor([&] { return called; }, 15000));
+        QCOMPARE(conn.modelId, QStringLiteral("llocr-local"));
+        QCOMPARE(conn.contextSize, 16384);
+
+        server.kill();
+        server.waitForFinished(5000);
+    }
+
+    // Every task has its own connection: the endpoint, the key and the alias
+    // are the task's, the rest falls back to the shared ones (ADR 226).
+    void everyRoleHasItsOwnConnection()
+    {
+        QTemporaryDir dir;
+        SettingsStore settings;
+        LaunchProfileStore launchProfiles(settings, writeTestLaunchCatalog(dir));
+        settings.setConnectionMode(QStringLiteral("external"));
+        settings.setBaseUrl(QStringLiteral("http://shared:8080"));
+        settings.setApiKey(QStringLiteral("shared-key"));
+        settings.setBaseUrlForRole(QStringLiteral("decision"), QStringLiteral("http://decision:9000"));
+        settings.setApiKeyForRole(QStringLiteral("decision"), QStringLiteral("decision-key"));
+        settings.setModelNameForRole(QStringLiteral("decision"), QStringLiteral("decision-model"));
+
+        RuntimeController runtime(settings, launchProfiles);
+        ResolvedConnection page, decision;
+        bool pageCalled = false, decisionCalled = false;
+        runtime.ensureConnectionReady(ConnectionRole::PageOcr, [&](const ResolvedConnection &c) {
+            page = c;
+            pageCalled = true;
+        });
+        runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) {
+            decision = c;
+            decisionCalled = true;
+        });
+        QVERIFY(waitFor([&] { return pageCalled && decisionCalled; }));
+
+        QCOMPARE(page.baseUrl, QStringLiteral("http://shared:8080"));
+        QCOMPARE(page.apiKey, QStringLiteral("shared-key"));
+        QCOMPARE(decision.baseUrl, QStringLiteral("http://decision:9000"));
+        QCOMPARE(decision.apiKey, QStringLiteral("decision-key"));
+        QCOMPARE(decision.modelId, QStringLiteral("decision-model"));
     }
 
     void externalCheckRoleUsesCheckModelName()
@@ -129,9 +240,20 @@ private slots:
 
         RuntimeController runtime(settings, launchProfiles);
         ResolvedConnection ocr, check, decision;
-        runtime.ensureConnectionReady(ConnectionRole::PageOcr, [&](const ResolvedConnection &c) { ocr = c; });
-        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { check = c; });
-        runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) { decision = c; });
+        bool ocrCalled = false, checkCalled = false, decisionCalled = false;
+        runtime.ensureConnectionReady(ConnectionRole::PageOcr, [&](const ResolvedConnection &c) {
+            ocr = c;
+            ocrCalled = true;
+        });
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
+            check = c;
+            checkCalled = true;
+        });
+        runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) {
+            decision = c;
+            decisionCalled = true;
+        });
+        QVERIFY(waitFor([&] { return ocrCalled && checkCalled && decisionCalled; }));
         QCOMPARE(ocr.modelId, QStringLiteral("ocr-model"));
         QCOMPARE(check.modelId, QStringLiteral("check-model"));
         QCOMPARE(decision.modelId, QStringLiteral("decision-model"));
@@ -146,7 +268,12 @@ private slots:
         // which is surfaced verbatim (§7.5). No silent fallback to the OCR name.
         settings.setCheckModelName(QString());
         ResolvedConnection empty;
-        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) { empty = c; });
+        bool emptyCalled = false;
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
+            empty = c;
+            emptyCalled = true;
+        });
+        QVERIFY(waitFor([&] { return emptyCalled; }));
         QVERIFY(empty.modelId.isEmpty());
     }
 

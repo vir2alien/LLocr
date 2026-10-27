@@ -13,7 +13,7 @@
 
 namespace llocr {
 
-QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl)
+QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl, const QString &modelId)
 {
     // The state is a JSON object: the candidate text sits in a named field, so
     // the model reads it as content to compare against the crop — a raw string
@@ -43,6 +43,11 @@ QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const
     }
 
     QJsonObject root;
+    // The System One protocol names the model that answers (llama.cpp: the
+    // loaded model's name or its alias). A server that routes by the field —
+    // omlx among them — rejects a request without it.
+    if (!modelId.isEmpty())
+        root.insert(QStringLiteral("model"), modelId);
     root.insert(QStringLiteral("state"), state);
     root.insert(QStringLiteral("images"), QJsonArray{QString::fromUtf8(imageDataUrl)});
     root.insert(QStringLiteral("questions"), questions);
@@ -165,7 +170,8 @@ QFuture<DecisionResult> DecisionModel::judge(const DecisionRequest &request, con
     // The answer sits under the question's own name; the yes/no question of the
     // verification keeps the name it always had.
     const QString answerKey = request.questions.size() == 1 ? request.questions.constBegin().key() : QStringLiteral("match");
-    return runChatExchange<DecisionResult>([request]() { return buildRequestBody(request, encodeImageDataUrl(request.image)); },
+    const QString modelId = config.modelId;
+    return runChatExchange<DecisionResult>([request, modelId]() { return buildRequestBody(request, encodeImageDataUrl(request.image), modelId); },
                                            config,
                                            m_activeClient,
                                            [answerKey](const QByteArray &body) { return parseResponse(body, answerKey); },

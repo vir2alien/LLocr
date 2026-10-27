@@ -10,7 +10,7 @@ import "../Common"
 ApplicationWindow {
     id: window
     title: qsTr("Runtime settings")
-    width: 560
+    width: 860
     height: 680
     modality: Qt.NonModal
 

@@ -25,8 +25,8 @@ private slots:
     {
         LlamaClient client;
         const QUrl url(QStringLiteral("http://%1:%2/v1/chat/completions").arg(kBlackHoleHost).arg(kBlackHolePort));
-        QFuture<HttpResponse> first = client.postJson(url, "{}", {}, 4000, 4000);
-        QFuture<HttpResponse> second = client.postJson(url, "{}", {}, 4000, 4000);
+        QFuture<HttpResponse> first = client.postJson(url, "{}", {}, {}, 4000, 4000);
+        QFuture<HttpResponse> second = client.postJson(url, "{}", {}, {}, 4000, 4000);
 
         QTRY_VERIFY_WITH_TIMEOUT(first.isFinished(), 15000);
         QTRY_VERIFY_WITH_TIMEOUT(second.isFinished(), 15000);
@@ -40,7 +40,7 @@ private slots:
     {
         LlamaClient client;
         const QUrl url(QStringLiteral("http://%1:%2/v1/chat/completions").arg(kBlackHoleHost).arg(kBlackHolePort));
-        QFuture<HttpResponse> future = client.postJson(url, "{}", {}, 8000, 8000);
+        QFuture<HttpResponse> future = client.postJson(url, "{}", {}, {}, 8000, 8000);
         // Some environments answer the black-hole connect instantly (no hang
         // to abort); the premise of this test is a connect still in flight.
         if (future.isFinished())

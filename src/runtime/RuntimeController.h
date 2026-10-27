@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <QHash>
 #include <QObject>
 #include <QPointer>
 #include <QString>
@@ -146,6 +147,7 @@ private:
     void beginRoleSwitch();
 
     ResolvedConnection resolveExternal(ConnectionRole role = ConnectionRole::PageOcr) const;
+    void resolveExternalReady(QObject *context, ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved);
     ResolvedConnection buildManagedConnection() const;
 
     void beginManagedResolve();
@@ -196,6 +198,10 @@ private:
     // served without the /v1/models round-trip until a state transition or
     // any settings change clears them.
     std::map<ConnectionRole, ResolvedConnection> m_resolvedCache;
+    // The context window of the external server's models, keyed by the server:
+    // the app needs it to keep a request inside the window (ADR 193), and the
+    // server publishes it in /v1/models.
+    QHash<QString, QHash<QString, int>> m_externalContextSizes;
     bool m_switching = false;
     bool m_resolveInProgress = false;
     QNetworkAccessManager *m_modelsNet = nullptr;

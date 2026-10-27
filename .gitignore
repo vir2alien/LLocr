@@ -33,6 +33,11 @@ Makefile*
 *build-*
 /build/
 /.cache/
+# The scratch directory of the agent's measurements: probe scripts, raw
+# server replies. Nothing here belongs in a commit.
+/tmp/
+# A local conversion of a HF model (a virtualenv and the converted weights).
+/.hf-convert/
 *.qm
 *.prl
 

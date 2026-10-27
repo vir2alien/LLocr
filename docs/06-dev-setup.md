@@ -346,6 +346,41 @@ and `DjVuDocument` and link DjVuLibre), plus the runtime suite and the
 `mock_llama_server` helper binary. Use `ctest --test-dir build -N` for the
 current target list.
 
+## macOS: the API key and the dev build
+The API key lives in the login Keychain, and the Keychain binds an item to
+the code that created it. The dev build is signed ad-hoc, and the identity of
+an ad-hoc signed binary is the hash of its code — **every rebuild changes it**,
+so the item becomes unreachable: the app finds no key after a restart, and the
+Keychain asks for a permission that a background read cannot answer (ADR 232).
+
+Give the dev build a stable identity — once:
+
+```sh
+scripts/macos-dev-sign.sh --create   # self-signed "LLocr Dev" in its own keychain
+```
+
+The script builds a certificate with the code-signing extended key usage (a
+certificate without it is not a signing identity — the keychain stores it, and
+the code-signing policy rejects it), imports it with its key as one bundle,
+adds it to the user's trust settings, puts its keychain into the keychain
+search list (codesign looks for the signing identity there and ignores its
+own `--keychain` option), and checks that the identity is really there. If it
+is not, the script prints what the system says about the keychain. After that
+the build signs the binary by itself (the step is a no-op while the identity
+does not exist), and the Keychain keeps the key across rebuilds. The release
+build has to be signed with a Developer ID for the same reason: the
+distribution is signed anyway (§ Distribution).
+
+**A key that an earlier build wrote stays bound to that build.** It is read
+once more — the Keychain asks for the permission, and "Always Allow" adds the
+current build to the item — or it is deleted in Keychain Access (the item
+`org.llocr.app` / `provider/apiKey`) and entered again. From then on the
+stable identity keeps it.
+
+The key is never written to the settings file, and there is no file fallback:
+if the Keychain refuses the key, the app says so and keeps it in the memory
+until it exits.
+
 ## Data directories (managed runtime & models)
 The managed runtime, models, cache and logs live under the platform app-data
 root (default `<AppData>/LLocr/`, overridable via `runtime/rootDir` and

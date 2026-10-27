@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "config/RuntimePaths.h"
+#include "config/SecretStore.h"
 #include "config/SettingsStore.h"
 #include "core/ByteSize.h"
 #include "core/LaunchProfile.h"
@@ -37,10 +38,48 @@
 namespace llocr {
 
 namespace {
-constexpr int kModelsRequestTimeoutMs = 10000;  // /v1/models query
-constexpr int kProbeTimeoutMs = 120000;         // RuntimeLocator::probeCached (cold Metal cache)
-constexpr int kShutdownTimeoutMs = 5000;        // shutdownSync grace
+constexpr int kModelsRequestTimeoutMs = 10000;   // /v1/models query
+constexpr int kExternalContextTimeoutMs = 3000;  // the external server's model list
+constexpr int kProbeTimeoutMs = 120000;          // RuntimeLocator::probeCached (cold Metal cache)
+constexpr int kShutdownTimeoutMs = 5000;         // shutdownSync grace
 constexpr double kMemoryBudgetFactor = 0.9;
+
+// The external server's context window: it publishes the size of every model
+// in /v1/models. The app needs it to keep a request inside the window
+// (ADR 193): without it the thinking budget cannot yield before the answer,
+// and a request that does not fit is aborted by the server.
+QHash<QString, int> externalContextSizes(const QString &baseUrl, const QString &apiKey)
+{
+    if (baseUrl.isEmpty())
+        return {};
+    QString root = baseUrl;
+    while (root.endsWith('/'))
+        root.chop(1);
+    HttpClient::Options options;
+    options.timeoutMs = kExternalContextTimeoutMs;
+    if (!apiKey.isEmpty())
+        options.authorization = "Bearer " + apiKey.toUtf8();
+    const HttpClient::Response response = HttpClient::get(QUrl(root + QStringLiteral("/v1/models")), options, 5, /*allowInsecure=*/true);
+    if (!response.error.isEmpty() || response.status != 200)
+        return {};
+    const QJsonDocument doc = QJsonDocument::fromJson(response.body);
+    const QJsonArray models = doc.object().value(QStringLiteral("data")).toArray();
+    QHash<QString, int> sizes;
+    for (const QJsonValue &value : models) {
+        const QJsonObject object = value.toObject();
+        const int size = object.value(QStringLiteral("max_model_len")).toInt();
+        if (size > 0)
+            sizes.insert(object.value(QStringLiteral("id")).toString(), size);
+    }
+    return sizes;
+}
+
+// What the worker reads for an external role: the key from the OS secret
+// store and the server's context windows for its models.
+struct ExternalRoleSecrets {
+    QString apiKey;
+    QHash<QString, int> contextSizes;  // model → window; empty when it was not fetched
+};
 
 void connectEveryChangeSignal(QObject *source, QObject *receiver, const char *slot)
 {
@@ -241,6 +280,7 @@ void RuntimeController::recomputeLaunchConfigDirty()
 void RuntimeController::invalidateResolvedCache()
 {
     m_resolvedCache.clear();
+    m_externalContextSizes.clear();
 }
 
 ConnectionMode RuntimeController::modeFromSettings(const SettingsStore &settings)
@@ -406,12 +446,54 @@ void RuntimeController::recomputeTaskModels()
 ResolvedConnection RuntimeController::resolveExternal(ConnectionRole role) const
 {
     ResolvedConnection conn;
-    conn.baseUrl = m_settings.baseUrl();
-    conn.apiKey = m_settings.apiKey();
-    conn.modelId = m_settings.modelNameForRole(connectionRoleName(role));
+    const QString roleName = connectionRoleName(role);
+    conn.baseUrl = m_settings.effectiveBaseUrlForRole(roleName);
+    conn.modelId = m_settings.modelNameForRole(roleName);
     conn.connectionTimeoutMs = m_settings.connectionTimeoutMs();
     conn.responseTimeoutMs = m_settings.responseTimeoutMs();
     return conn;
+}
+
+void RuntimeController::resolveExternalReady(QObject *context, ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved)
+{
+    const auto cached = m_resolvedCache.find(role);
+    if (cached != m_resolvedCache.end()) {
+        onResolved(cached->second);
+        return;
+    }
+
+    // The key lives in the OS secret store, and reading it can block: a
+    // locked keychain asks the user. The read happens in a worker, the
+    // answer comes back to the GUI thread.
+    ResolvedConnection conn = resolveExternal(role);
+    const QStringList secretIds = m_settings.secretIdsForRole(connectionRoleName(role));
+    const bool sizesKnown = m_externalContextSizes.contains(conn.baseUrl);
+    const QHash<QString, int> knownSizes = m_externalContextSizes.value(conn.baseUrl);
+    QPointer<RuntimeController> self(this);
+    QPointer<QObject> guard(context);
+
+    auto *watcher = new QFutureWatcher<ExternalRoleSecrets>();
+    connect(watcher, &QFutureWatcher<ExternalRoleSecrets>::finished, watcher, [self, watcher, conn, onResolved, role, guard, context]() mutable {
+        watcher->deleteLater();
+        if (self.isNull())
+            return;
+        const ExternalRoleSecrets secrets = watcher->result();
+        conn.apiKey = secrets.apiKey;
+        conn.contextSize = secrets.contextSizes.value(conn.modelId, 0);
+        self->m_externalContextSizes.insert(conn.baseUrl, secrets.contextSizes);
+        self->m_resolvedCache[role] = conn;
+        if (context && guard.isNull())
+            return;  // the caller is gone
+        onResolved(conn);
+    });
+    watcher->setFuture(QtConcurrent::run([secretIds, conn, sizesKnown, knownSizes]() {
+        ExternalRoleSecrets secrets;
+        SecretStore::readFirst(secretIds, &secrets.apiKey);
+        // The window of every model comes with one request per server: the
+        // six tasks usually share the server, and the list is the same for all.
+        secrets.contextSizes = sizesKnown ? knownSizes : externalContextSizes(conn.baseUrl, secrets.apiKey);
+        return secrets;
+    }));
 }
 
 void RuntimeController::ensureConnectionReady(const std::function<void(const ResolvedConnection &)> &onResolved)
@@ -432,7 +514,7 @@ void RuntimeController::ensureConnectionReady(ConnectionRole role, const std::fu
 void RuntimeController::ensureConnectionReady(QObject *context, ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved)
 {
     if (modeFromSettings(m_settings) == ConnectionMode::External) {
-        onResolved(resolveExternal(role));
+        resolveExternalReady(context, role, onResolved);
         return;
     }
 

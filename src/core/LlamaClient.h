@@ -8,6 +8,8 @@
 #include <QString>
 #include <QUrl>
 
+#include "core/RequestJournal.h"
+
 class QNetworkReply;
 class QTcpSocket;
 
@@ -31,12 +33,21 @@ public:
     // connectionTimeoutMs caps the TCP connect (a dead/wrong URL fails fast);
     // responseTimeoutMs caps the whole request — llama.cpp sends nothing until
     // generation finishes, so it must cover a full slow decode.
-    QFuture<HttpResponse> postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, int connectionTimeoutMs, int responseTimeoutMs);
+    //
+    // Every call leaves a trace in the request journal: the endpoint, the
+    // model the request named, the sizes, the status and the reply's head.
+    // The key never reaches the trace.
+    QFuture<HttpResponse> postJson(const QUrl &url, const QByteArray &body, const QString &apiKey, const QString &modelId, int connectionTimeoutMs, int responseTimeoutMs);
 
     void abort();
 
 private:
-    void startPost(const std::shared_ptr<QPromise<HttpResponse>> &promise, const QUrl &url, const QByteArray &body, const QString &apiKey, int responseTimeoutMs);
+    void startPost(const std::shared_ptr<QPromise<HttpResponse>> &promise,
+                   const QUrl &url,
+                   const QByteArray &body,
+                   const QString &apiKey,
+                   int responseTimeoutMs,
+                   const std::shared_ptr<RequestJournal::Record> &trace);
 
     static QString extractServerError(const QByteArray &responseData);
 

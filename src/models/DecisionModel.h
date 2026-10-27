@@ -30,7 +30,7 @@ public:
     void abort();
 
 protected:
-    static QByteArray buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl);
+    static QByteArray buildRequestBody(const DecisionRequest &request, const QByteArray &imageDataUrl, const QString &modelId);
     static DecisionResult parseResponse(const QByteArray &responseData, const QString &answerKey = QStringLiteral("match"));
 
 private:

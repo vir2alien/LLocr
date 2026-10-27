@@ -9,7 +9,11 @@ import "Common"
 
 ApplicationWindow {
     id: root
-    title: qsTr("llama-server log")
+    // The managed runtime owns a server process whose output is the log; the
+    // external runtime writes nothing the app can read, so the window shows
+    // the client's own request journal.
+    readonly property bool externalMode: Settings.connectionMode !== "managed"
+    title: externalMode ? qsTr("Request log") : qsTr("llama-server log")
     width: 640
     height: 420
     modality: Qt.NonModal
@@ -62,6 +66,7 @@ ApplicationWindow {
                 onClicked: RuntimeLog.copyServerLog()
             }
             LLOButton {
+                visible: !root.externalMode
                 text: qsTr("Open directory")
                 onClicked: RuntimeLog.openServerLogFolder()
             }
@@ -142,7 +147,7 @@ ApplicationWindow {
     LLOLabel {
         anchors.centerIn: parent
         visible: RuntimeLog.lineCount === 0
-        text: qsTr("No log output yet.")
+        text: root.externalMode ? qsTr("No requests yet.") : qsTr("No log output yet.")
         color: Theme.textMuted
     }
 }

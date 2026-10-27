@@ -7,27 +7,67 @@ import QtQuick.Layouts
 import LLocr
 import "../Common"
 
+// The external server: one shared connection and, per task, its own
+// endpoint, key and model alias (ADR 226). An empty task field means the
+// shared value.
 ColumnLayout {
     id: extRoot
 
     spacing: 4
 
+    // The wizard's external step shows the shared server only: the tasks are
+    // configured in the settings.
+    property bool compact: false
+
     readonly property alias baseUrlText: baseUrlField.text
+    readonly property var taskIds: ["pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout", "fix"]
+
+    readonly property int titleWidth: 160
+    readonly property int endpointWidth: 190
+    readonly property int keyWidth: 190
+    readonly property int aliasWidth: 140
+
+    property bool sharedKeyPresent: false
+
+    // The rows reload and save themselves when the token moves: a Repeater's
+    // item is a plain item for the linter, so the tab cannot call the row's
+    // methods by name.
+    property int reloadToken: 0
+    property int commitToken: 0
 
     function loadValues() {
-        ocrModelNameField.text = Settings.modelName
-        decisionModelNameField.text = Settings.decisionModelName
-        checkModelNameField.text = Settings.checkModelName
         baseUrlField.text = Settings.baseUrl
-        apiKeyField.text  = Settings.apiKey
+        sharedKey.load()
+        sharedKeyPresent = Settings.apiKeySet
+        reloadToken++
     }
 
     function saveValues() {
-        Settings.modelName = ocrModelNameField.text;
-        Settings.decisionModelName = decisionModelNameField.text;
-        Settings.checkModelName = checkModelNameField.text;
-        Settings.baseUrl = baseUrlField.text;
-        Settings.apiKey = apiKeyField.text;
+        Settings.baseUrl = baseUrlField.text
+        sharedKey.save()
+        commitToken++
+    }
+
+    // Where the key lives, said plainly.
+    function storeNote() {
+        if (!Settings.secretStoreAvailable)
+            return qsTr("There is no system secret store on this machine: the key is kept in the memory until the app is closed.")
+        if (!Settings.lastKeyPersisted)
+            return qsTr("The system store refused the key: it is kept in the memory until the app is closed.")
+        return qsTr("The key is kept in %1 — not in the settings file.").arg(Settings.secretStoreName)
+    }
+
+    Connections {
+        target: Settings
+        function onSecretsChanged() {
+            extRoot.sharedKeyPresent = Settings.apiKeySet
+        }
+    }
+
+    LLOLabel {
+        text: qsTr("Shared server — the default for every task")
+        font.bold: true
+        color: Theme.textPrimary
     }
 
     LLOLabel {
@@ -42,73 +82,92 @@ ColumnLayout {
     }
 
     LLOLabel {
-        text: qsTr("Model name (OCR)")
+        text: qsTr("API key")
     }
-    TextField {
-        id: ocrModelNameField
+    SecretKeyField {
+        id: sharedKey
         Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        placeholderText: qsTr("e.g. Unlimited-OCR, or the id your server exposes")
+        keySet: extRoot.sharedKeyPresent
+        commit: function(text) { Settings.setApiKey(text) }
+        clear: function() { Settings.clearApiKey() }
     }
 
     LLOLabel {
-        text: qsTr("Model name (decision)")
-    }
-    TextField {
-        id: decisionModelNameField
         Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        placeholderText: qsTr("e.g. clef-flash, or the id your server exposes")
-    }
-
-    LLOLabel {
-        text: qsTr("Model name (block OCR)")
-    }
-    TextField {
-        id: checkModelNameField
-        Layout.fillWidth: true
-        implicitHeight: Theme.controlHeight
-        selectByMouse: true
-        placeholderText: qsTr("e.g. qwen3.5-4b, or the id your server exposes")
-    }
-    LLOLabel {
         font.pointSize: Theme.captionSize
         color: Theme.helpColor
-        text: qsTr("Optional model alias; can be left empty for a single-model server")
+        text: extRoot.storeNote()
     }
-
-    Item { implicitHeight: 4 }
 
     LLOLabel {
-        text: qsTr("API key (optional)")
+        Layout.fillWidth: true
+        font.pointSize: Theme.captionSize
+        color: Theme.helpColor
+        visible: Settings.secretError.length > 0
+        wrapMode: Text.WordWrap
+        text: qsTr("The system store did not answer: %1").arg(Settings.secretError)
     }
+
+    Item {
+        visible: !extRoot.compact
+        Layout.fillWidth: true
+        implicitHeight: visible ? Theme.spacingLarge : 0
+    }
+
+    LLOLabel {
+        visible: !extRoot.compact
+        text: qsTr("Tasks — an empty field takes the shared value")
+        font.bold: true
+        color: Theme.textPrimary
+    }
+
     RowLayout {
+        visible: !extRoot.compact
         Layout.fillWidth: true
-        spacing: 6
-        TextField {
-            id: apiKeyField
-            Layout.fillWidth: true
-            implicitHeight: Theme.controlHeight
-            selectByMouse: true
-            echoMode: revealKey.checked ? TextInput.Normal
-                                        : TextInput.Password
-        }
-        LLOCheckBox {
-            id: revealKey
-            text: qsTr("Show")
+        spacing: Theme.spacing
+
+        LLOLabel {
+            Layout.preferredWidth: extRoot.titleWidth
             font.pointSize: Theme.captionSize
+            color: Theme.helpColor
+            text: qsTr("Task")
+        }
+        LLOLabel {
+            Layout.preferredWidth: extRoot.endpointWidth
+            font.pointSize: Theme.captionSize
+            color: Theme.helpColor
+            text: qsTr("Endpoint")
+        }
+        LLOLabel {
+            Layout.preferredWidth: extRoot.keyWidth
+            font.pointSize: Theme.captionSize
+            color: Theme.helpColor
+            text: qsTr("API key")
+        }
+        LLOLabel {
+            Layout.preferredWidth: extRoot.aliasWidth
+            font.pointSize: Theme.captionSize
+            color: Theme.helpColor
+            text: qsTr("Model alias")
         }
     }
 
-    Item { implicitHeight: 6 }
+    Repeater {
+        id: taskRows
+        model: extRoot.compact ? [] : extRoot.taskIds
+        delegate: TaskConnectionRow {
+            required property var modelData
 
-    LLOLabel {
-        Layout.fillWidth: true
-        font.pointSize: Theme.captionSize
-        color: Theme.helpColor
-        text: qsTr("Note: the API key is stored locally in plaintext. "
-                   + "Avoid using production keys.")
+            task: modelData
+            Layout.fillWidth: true
+            titleWidth: extRoot.titleWidth
+            endpointWidth: extRoot.endpointWidth
+            keyWidth: extRoot.keyWidth
+            aliasWidth: extRoot.aliasWidth
+            reloadToken: extRoot.reloadToken
+            commitToken: extRoot.commitToken
+        }
     }
+
+    Item { Layout.fillHeight: true }
 }

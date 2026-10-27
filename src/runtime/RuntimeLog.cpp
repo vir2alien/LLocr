@@ -8,6 +8,7 @@
 
 #include "config/RuntimePaths.h"
 #include "config/SettingsStore.h"
+#include "core/RequestJournal.h"
 #include "runtime/LlamaServerProcess.h"
 #include "runtime/RuntimeLog.h"
 
@@ -18,6 +19,14 @@ RuntimeLog::RuntimeLog(SettingsStore &settings, QObject *parent) : QObject(paren
     m_flushTimer.setSingleShot(true);
     m_flushTimer.setInterval(200);
     connect(&m_flushTimer, &QTimer::timeout, this, [this]() { flushToView(); });
+    // The external runtime has no process to read a log from: its trace is
+    // the client's own journal, and it grows with every request.
+    connect(&RequestJournal::instance(), &RequestJournal::changed, this, [this]() { flushToView(); });
+}
+
+bool RuntimeLog::externalMode() const
+{
+    return m_settings.mode() == ConnectionMode::External;
 }
 
 void RuntimeLog::setServer(LlamaServerProcess *server)
@@ -56,11 +65,22 @@ void RuntimeLog::setServer(LlamaServerProcess *server)
 
 QString RuntimeLog::serverLog() const
 {
+    if (externalMode())
+        return RequestJournal::instance().lines().join(QLatin1Char('\n'));
     return m_lines.join(QLatin1Char('\n'));
+}
+
+int RuntimeLog::lineCount() const
+{
+    if (externalMode())
+        return RequestJournal::instance().count();
+    return m_lines.size();
 }
 
 QString RuntimeLog::serverLogPath() const
 {
+    if (externalMode())
+        return QString();  // the client's journal lives in memory, not in a file
     return m_server ? m_server->logFilePath() : QString();
 }
 
@@ -82,6 +102,10 @@ void RuntimeLog::copyServerLog()
 
 void RuntimeLog::clearServerLog()
 {
+    if (externalMode()) {
+        RequestJournal::instance().clear();
+        return;
+    }
     if (m_server) {
         // The empty-line marker from clearLog() resets the mirror synchronously.
         m_server->clearLog();
@@ -110,7 +134,10 @@ void RuntimeLog::attachLogView(QQuickTextDocument *view)
 
 void RuntimeLog::flushToView()
 {
-    m_sync.apply(m_lines, m_pendingDropped, QString());
+    if (externalMode())
+        m_sync.apply(RequestJournal::instance().lines(), 0, QString());
+    else
+        m_sync.apply(m_lines, m_pendingDropped, QString());
     m_pendingDropped = 0;
     emit serverLogChanged();
 }

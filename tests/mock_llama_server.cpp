@@ -175,7 +175,8 @@ int main(int argc, char *argv[])
                 s->flush();
                 return;
             }
-            const QByteArray body = QJsonDocument(QJsonObject{{"object", "list"}, {"data", QJsonArray{{QJsonObject{{"id", "llocr-local"}, {"object", "model"}}}}}}).toJson(QJsonDocument::Compact);
+            const QByteArray body = QJsonDocument(QJsonObject{{"object", "list"}, {"data", QJsonArray{{QJsonObject{{"id", "llocr-local"}, {"object", "model"}, {"max_model_len", 16384}}}}}})
+                                        .toJson(QJsonDocument::Compact);
             s->write("HTTP/1.1 200 OK\r\n"
                      "Content-Type: application/json\r\n"
                      "Content-Length: " +

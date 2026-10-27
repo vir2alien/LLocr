@@ -56,6 +56,7 @@
   | `docs/26-qwen3.5.md`      | Model manual: Qwen3.5-4B/9B, the fix default (OK/FIX/REVIEW, MTP drafting, framed candidate); Russian mirror in `26-qwen3.5.ru.md` |
   | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all 14 models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
   | `docs/28-chandra-ocr-2.md` | Model manual: Chandra-OCR-2 (an HTML answer — the `chandra-ocr` parser, three OCR roles, the task reaches the profile); Russian mirror in `28-chandra-ocr-2.ru.md` |
+  | `docs/29-external-runtime-tasks-and-secrets.md` | Plan + record: the external runtime gets the same six tasks as the managed one, each with its own endpoint, key and alias (ADR 226); the secrets live in the OS secret store (ADR 227) |
   
   ## Rules for the agent
   
@@ -79,6 +80,19 @@
      comment last. A comment that survives must answer *why* this way and not
      *what* happens (workarounds, invariants, ADR references, non-obvious
      platform behaviour).
+  8. **Secrets never go into `QSettings`.** The API key and the Hugging Face
+     token live in the OS secret store (`src/config/SecretStore.*`: the macOS
+     Keychain, the Windows Credential Manager, the Linux Secret Service,
+     ADR 227). Read them through `SecretStore`, write them through
+     `SettingsStore::setApiKey` / `setApiKeyForRole`; a stored key is never
+     shown back to the UI and never reaches a log, a command line or the
+     project file. When the OS store refuses the write, the key lives in the
+     memory until the app exits — say so, do not fall back to a file.
+     On macOS the store binds the key to the code that wrote it, and the
+     identity of an ad-hoc signed dev build is its code hash: **a rebuild
+     loses the key**. Sign the dev build once with `scripts/macos-dev-sign.sh
+     --create` (ADR 232); a failed read or write must reach the user, not
+     stay an empty field.
   
   ## Build & test (fastest path)
 
@@ -222,8 +236,8 @@
     PDF/formats); the **local-runtime plan** (`docs/09-local-runtime-plan.md`)
     — managed llama.cpp autostart + model management — has **stages A–E,
     G-core, F, G-UI complete**; **Stage H (polish & documentation) complete**:
-    H.1–H.3, H.6–H.8 done, **H.4 closed** (no watchdog), **H.5 deferred**
-    (keychain).
+    H.1–H.3, H.6–H.8 done, **H.4 closed** (no watchdog), **H.5 done** (the
+    secrets live in the OS secret store, ADR 227).
   - Also done: PDF input, batch/multi-page processing, HTML/DOCX/PDF export,
     editable text panel, page reordering, image-block editing, Markdown
     preview, i18n, **project save/open** (self-contained `.llocr` ZIP with the
@@ -347,7 +361,7 @@
         Ready — "Stop server and update"; auto-check on tab-open only when
         `runtime/checkUpdates` is enabled via a checkbox in Settings → Runtime)**.
         **H.4 closed** (watchdog-helper not shipped in MVP — see ADR 47);
-        **H.5 deferred** (keychain — see ADR 48).
+        **H.5 done** (the OS secret store — ADR 227).
   - Working end-to-end today: open image(s) **or PDF** → configure connection /
     model (incl. DRY sampling params) / output parser in **Settings** →
     recognize a page or **all** pages → browse pages (incl. **during**
@@ -369,7 +383,17 @@
     from Hugging Face (one window since ADR 168: quant dropdowns with curated
     sizes `models/quant/<id>` remembered per profile, ⚙ per row for
     Launch/Request, and a «files on disk» block with guarded delete; the
-    wizard's Model step keeps the `ModelDownloadList` list, ADR 122). A clean
+    wizard's Model step keeps the `ModelDownloadList` list, ADR 122). The
+    **external** runtime is configured in the same window: a shared server plus
+    a row per task with its own endpoint, API key and model alias (ADR 226),
+    and the keys live in the OS secret store, not in the settings file
+    (ADR 227). In external mode the log window shows the client's own
+    request journal — the endpoint, the model, the sizes, the status and the
+    head of the reply (ADR 228; in memory, the key never enters it), the
+    System One request names the model that answers (ADR 229), the external
+    server's context window comes from `/v1/models` (ADR 231), and a server
+    that ignores the reasoning budget gets the fix request once more without
+    the thinking — with a note in the footer (ADR 230). A clean
     profile goes through the **first-run wizard** (SetupWizard) from scratch.
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
@@ -592,7 +616,7 @@
   - Immediate goal: **Stage H.8 (documentation)** — done; **H.6** (separate
     install/registry/owner locks) done; **H.1** (UI polish) done; **H.3**
     (update-check opt-in) done; **H.4 closed** (watchdog-helper not shipped),
-    **H.5 deferred** (secrets keychain). Done after that: the **code-review
+    **H.5 done** (the OS secret store, ADR 227). Done after that: the **code-review
     fixes** and the **refactoring plan** (rounds 1–5, recorded in ADR 82–88)
     — all stages complete, incl. `ProfileStorage`,
     `BlockGroupFilterModel`, `ModelInstallTransaction` (ADR 84/85/82) and the
