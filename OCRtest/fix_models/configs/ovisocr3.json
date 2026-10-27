@@ -1,0 +1,13 @@
+{
+  "server_bin": "C:/Users/gladskih/AppData/Roaming/llocr/LLM OCR/runtime/llama.cpp-b11724-vulkan-win-x64/llama-server.exe",
+  "model": "C:/Users/gladskih/Documents/fix-eval-models/ovisocr3/OvisOCR3-Q8_0.gguf",
+  "mmproj": "C:/Users/gladskih/Documents/fix-eval-models/ovisocr3/mmproj-OvisOCR3-F16.gguf",
+  "alias": "llocr-fix",
+  "host": "127.0.0.1",
+  "port": 8123,
+  "parallel": 1,
+  "cache_reuse": 0,
+  "n_gpu_layers": 99,
+  "flash_attn": "on",
+  "ctx_size": 16384
+}

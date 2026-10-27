@@ -1,0 +1,93 @@
+{
+ "schemaVersion": 1,
+ "id": "hunyuanocr-1.5",
+ "title": "HunyuanOCR-1.5 (Q8_0)",
+ "license": "https://huggingface.co/prithivMLmods/HunyuanOCR-1.5-GGUF-Updated",
+ "minBuild": "b11724",
+ "files": {
+  "repo": "prithivMLmods/HunyuanOCR-1.5-GGUF-Updated",
+  "revision": "",
+  "quants": [
+   {
+    "id": "q",
+    "file": "HunyuanOCR.Q8_0.gguf",
+    "sha256": "",
+    "sizeBytes": 0
+   }
+  ],
+  "mmproj": {
+   "id": "f",
+   "file": "HunyuanOCR.mmproj-f16.gguf",
+   "sha256": "",
+   "sizeBytes": 0
+  }
+ },
+ "roles": {
+  "fix": {
+   "alias": "llocr-fix",
+   "default": false,
+   "protocol": "full_block",
+   "promptProfile": "fix-requests",
+   "maxOutput": 8192,
+   "launch": [
+    {
+     "order": 1,
+     "name": "temp",
+     "value": 0,
+     "description": "Server-side default sampling temperature; greedy decoding."
+    },
+    {
+     "order": 2,
+     "name": "jinja",
+     "description": "Use the chat template from the GGUF metadata."
+    }
+   ],
+   "request": [
+    {
+     "order": 1,
+     "name": "temperature",
+     "value": 0.0,
+     "description": "Greedy decoding."
+    },
+    {
+     "order": 2,
+     "name": "repeat_penalty",
+     "value": 1.0,
+     "description": "Disabled."
+    },
+    {
+     "order": 3,
+     "name": "presence_penalty",
+     "value": 0.0,
+     "description": "Disabled."
+    },
+    {
+     "order": 4,
+     "name": "frequency_penalty",
+     "value": 0.0,
+     "description": "Disabled."
+    },
+    {
+     "order": 5,
+     "name": "stream",
+     "value": false,
+     "description": "One complete response."
+    },
+    {
+     "order": 6,
+     "name": "cache_prompt",
+     "value": true,
+     "description": "Qwen3.5 hybrid memory cannot be rewound; other families cache fine."
+    },
+    {
+     "order": 7,
+     "name": "stop",
+     "value": [
+      "</CANDIDATE>"
+     ],
+     "description": "Stop sequences; the reply ends with the verdict."
+    }
+   ]
+  }
+ }
+}
