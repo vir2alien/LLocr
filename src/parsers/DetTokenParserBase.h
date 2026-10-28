@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QRect>
+#include <QPair>
 #include <QRegularExpression>
 
 #include "parsers/IOutputParser.h"
@@ -21,6 +22,38 @@ inline int orientationDegrees(const QString &word)
     if (word == QLatin1String("left"))
         return 270;
     return 0;
+}
+
+// The page-level turn the block rotation tokens vote for (ADR 245): the
+// clockwise turn that levels the page, when the vote is consistent — one
+// direction took at least nine tenths of the blocks that voted against up —
+// and the page's layout backs it: at least six tenths of all lines voted
+// against up at all. Stray up blocks (headers, page numbers the model reads
+// upright on a sideways page) do not sink the advice; a page whose blocks
+// disagree about half and half is no advice at all. First = the turn (90,
+// 180, 270; 0 = no winner), second = the share of all lines the winner took
+// (0..100).
+inline QPair<int, int> orientationVote(const QList<int> &orientations)
+{
+    if (orientations.isEmpty())
+        return {0, 0};
+    int counts[4] = {0, 0, 0, 0};
+    for (const int value : orientations) {
+        if (value % 90 != 0 || value < 0 || value > 270)
+            return {0, 0};
+        ++counts[value / 90];
+    }
+    const int total = orientations.size();
+    const int nonUp = total - counts[0];
+    int winner = 0;
+    for (int candidate = 1; candidate < 4; ++candidate) {
+        if (counts[candidate] > counts[winner])
+            winner = candidate;
+    }
+    const int share = counts[winner] * 100 / total;
+    if (winner == 0 || nonUp * 10 < total * 6 || counts[winner] * 10 < nonUp * 9)
+        return {0, share};
+    return {(360 - winner * 90) % 360, share};
 }
 
 class DetTokenParserBase : public IOutputParser

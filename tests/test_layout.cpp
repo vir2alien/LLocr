@@ -223,6 +223,37 @@ private slots:
         QCOMPARE(parsed.pages.first().boxes.at(1).orientation, 90);
         QCOMPARE(parsed.pages.first().boxes.at(2).orientation, 0);
         QCOMPARE(parsed.pages.first().boxes.at(3).orientation, 180);
+        // A four-way split is no advice at all.
+        QCOMPARE(parsed.pages.first().orientationVote, 0);
+    }
+
+    // The page-level vote: headers and footers the model reads as up must
+    // not sink the advice of the text blocks, but a page whose layout does
+    // not back the winner stays silent.
+    void theMineruVoteSurvivesStrayUpBlocks()
+    {
+        QString content;
+        for (int i = 0; i < 10; ++i)
+            content += QStringLiteral("<|box_start|>113 %1 885 %2<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n").arg(132 + i * 40).arg(160 + i * 40);
+        content += QStringLiteral("<|box_start|>531 21 849 35<|box_end|><|ref_start|>header<|ref_end|><|rotate_up|>\n");
+        content += QStringLiteral("<|box_start|>56 18 77 30<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|>");
+
+        const OcrResult parsed = MinerULayoutParser().parse(content);
+        QVERIFY(parsed.success);
+        QCOMPARE(parsed.pages.first().boxes.size(), 12);
+        // Ten of twelve lines voted left: the winner clears nine tenths of
+        // the non-up votes and half of all lines.
+        QCOMPARE(parsed.pages.first().orientationVote, 90);
+        QCOMPARE(parsed.pages.first().orientationVoteShare, 83);
+
+        // The same page with the layout against the winner: silence.
+        QString diluted;
+        for (int i = 0; i < 10; ++i)
+            diluted += QStringLiteral("<|box_start|>113 %1 885 %2<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n").arg(132 + i * 40).arg(160 + i * 40);
+        for (int i = 0; i < 8; ++i)
+            diluted += QStringLiteral("<|box_start|>113 %1 885 %2<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n").arg(532 + i * 40).arg(560 + i * 40);
+        const OcrResult dilutedParse = MinerULayoutParser().parse(diluted);
+        QCOMPARE(dilutedParse.pages.first().orientationVote, 0);
     }
 
     // TeleOCR carries the same word in the third tag of its line.
@@ -239,6 +270,23 @@ private slots:
         QCOMPARE(parsed.pages.first().boxes.at(0).orientation, 0);
         QCOMPARE(parsed.pages.first().boxes.at(1).orientation, 270);
         QCOMPARE(parsed.pages.first().boxes.at(2).orientation, 90);
+        // Two of three voted left, and the up block is a third of the page:
+        // the direction clears the non-up bar, the share misses half.
+        QCOMPARE(parsed.pages.first().orientationVote, 0);
+    }
+
+    void theTeleocrVoteFollowsTheBlocks()
+    {
+        const QByteArray reply = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\""
+                                                   "<box:34 133 789 200><label:text><left>\n"
+                                                   "<box:34 210 789 277><label:text><left>\n"
+                                                   "<box:34 287 789 354><label:text><left>\n"
+                                                   "<box:34 56 789 123><label:title><up>\"}}]}");
+
+        const OcrResult parsed = TeleOcrLayoutParser().parse(QString::fromUtf8(reply));
+        QVERIFY(parsed.success);
+        QCOMPARE(parsed.pages.first().orientationVote, 90);
+        QCOMPARE(parsed.pages.first().orientationVoteShare, 75);
     }
 };
 

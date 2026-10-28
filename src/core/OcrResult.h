@@ -95,6 +95,16 @@ struct OcrPage {
     QString text;                ///< Full text of this page (Markdown-friendly).
     QList<BoundingBox> boxes;    ///< Optional positioned fragments for this page.
     bool hasDuplicates = false;  ///< True when at least one duplicate bbox was detected & replaced.
+
+    // The turn the layout model's rotation tokens vote for (ADR 245): the
+    // clockwise turn that levels the page, when one direction took at least
+    // nine tenths of the blocks that voted against "up". Zero when the vote
+    // split or the model said nothing. `orientationVoteShare` is the share
+    // of all block lines the winning direction took (0..100) — the
+    // controller refuses a suggestion the page's layout does not back.
+    // Not persisted; consumed when the layout lands.
+    int orientationVote = 0;
+    int orientationVoteShare = 0;
 };
 
 struct BlockTextRange {

@@ -89,6 +89,15 @@ OcrResult TeleOcrLayoutParser::parse(const QString &rawText) const
             continue;
         lines.append({m.captured(2), orientationDegrees(m.captured(3))});
     }
+    // The vote reads the reply's lines directly — the page-level advice must
+    // not depend on the box zip lining up.
+    QList<int> orientations;
+    orientations.reserve(lines.size());
+    for (const LayoutLine &line : lines)
+        orientations.append(line.orientation);
+    const auto [voteTurn, voteShare] = orientationVote(orientations);
+    page.orientationVote = voteTurn;
+    page.orientationVoteShare = voteShare;
     const int kept = m_options.keepPageNumbers ? lines.size() : int(std::count_if(lines.cbegin(), lines.cend(), [](const LayoutLine &line) { return line.label != QLatin1String("page_number"); }));
     // The base prepends a preamble box when the reply opens with text: a
     // mismatch means the lists do not line up and nothing is zipped.

@@ -345,34 +345,18 @@ void rebuildTextFromBlocks(OcrResult &result, const IOutputParser &parser)
     }
 }
 
-// The turn the layout tokens vote for (ADR 245): the direction a
-// supermajority of the blocks agree on, as the turn that levels the page.
-// The token names the direction the block's text top points (measured on the
-// MinerU corpus: the page turned clockwise answers "right"), so the fix is
-// the opposite turn. A nine-tenths agreement is the bar: a page with a
-// rotated table inside votes mostly up, and a split vote is no advice at
-// all. The measured reliability of the direction itself is far from the bar
-// an automatic turn would need — the suggestion is one click, the user
-// turns (ADR 242).
-int suggestedTurnFromBoxes(const QList<BoundingBox> &boxes, bool sidewaysMarked)
+// The turn the layout tokens voted for (ADR 245), as the controller accepts
+// it: the parser already bars a split vote (nine tenths of the blocks that
+// voted against up), the controller adds the page-level gates — the pixel
+// check marked the page sideways, and the winning direction actually backs
+// the page's layout (half the blocks or more). The measured reliability of
+// the direction itself is far from the bar an automatic turn would need —
+// the suggestion is one click, the user turns (ADR 242).
+int suggestedTurnFromVote(const OcrPage &pageData, bool sidewaysMarked)
 {
-    if (!sidewaysMarked || boxes.isEmpty())
+    if (!sidewaysMarked || pageData.orientationVote == 0 || pageData.orientationVoteShare < 50)
         return 0;
-    int counts[4] = {0, 0, 0, 0};  // up, right, down, left
-    for (const BoundingBox &box : boxes) {
-        if (box.orientation % 90 != 0 || box.orientation < 0 || box.orientation > 270)
-            return 0;
-        ++counts[box.orientation / 90];
-    }
-    int winner = 0;
-    for (int candidate = 1; candidate < 4; ++candidate) {
-        if (counts[candidate] > counts[winner])
-            winner = candidate;
-    }
-    if (winner == 0 || counts[winner] * 10 < boxes.size() * 9)
-        return 0;
-    const int fix = (360 - winner * 90) % 360;
-    return fix == 270 ? -90 : fix;
+    return pageData.orientationVote;
 }
 
 }  // namespace
@@ -1482,7 +1466,7 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
         page.result = parsed;
         page.recognized = true;
         page.parseNote = parsed.notes.isEmpty() ? QString() : parsed.notes.join(QLatin1String(" "));
-        suggestedTurn = suggestedTurnFromBoxes(pageData.boxes, page.orientationProblem == PageOrientationProblem::Sideways);
+        suggestedTurn = suggestedTurnFromVote(pageData, page.orientationProblem == PageOrientationProblem::Sideways);
         page.suggestedTurn = suggestedTurn;
     }
 
