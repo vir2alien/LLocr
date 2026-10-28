@@ -34,6 +34,9 @@ signals:
     // The page lies on its side: the direction of the turn is not read, the
     // user turns it by hand.
     void sideways(int index);
+    // The check read the axis and measured a skew worth straightening: the
+    // correction is the angle the renderer applies to level the lines.
+    void skewed(int index, double degrees);
     // The picture cannot read the page at all.
     void unclear(int index);
     // The page carries no text: there is no way up to get wrong.
@@ -43,9 +46,10 @@ signals:
 private:
     void complete();
 
-    QList<int> m_sideways;  // The pages that lie on their side.
-    QList<int> m_unclear;   // The pages the picture could not read.
-    QList<int> m_noText;    // The pages that carry no text at all.
+    QList<int> m_sideways;               // The pages that lie on their side.
+    QList<int> m_unclear;                // The pages the picture could not read.
+    QList<int> m_noText;                 // The pages that carry no text at all.
+    QList<QPair<int, double>> m_skewed;  // The pages and the corrections the check measured.
 };
 
 }  // namespace llocr

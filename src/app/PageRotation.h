@@ -24,4 +24,17 @@ QSize rotatedSize(const QSize &size, int degrees);
 // stays exact.
 QImage rotateImage(const QImage &image, int degrees);
 
+// The rectangle the page fills after the straightening: the turned rectangle
+// grown to the bounding box of the turn. The size the deskewImage produces.
+QRect deskewedRect(const QSize &size, double degrees);
+
+// The size the page is shown in after the straightening.
+QSize deskewedSize(const QSize &size, double degrees);
+
+// The straightening itself: the page turned by a fraction of a degree — the
+// skew the orientation check measured — with a smooth resample over paper.
+// An angle below the fraction of a degree the check cannot resolve leaves
+// the image alone.
+QImage deskewImage(const QImage &image, double degrees);
+
 }  // namespace llocr

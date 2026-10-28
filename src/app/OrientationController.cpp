@@ -2,7 +2,17 @@
 
 #include "app/PageOrientation.h"
 
+#include <cmath>
+
 namespace llocr {
+
+namespace {
+
+// A straightening below this is invisible and not worth a resample of the
+// page; the check itself cannot resolve less.
+constexpr double kAutoDeskewDegrees = 0.5;
+
+}  // namespace
 
 OrientationController::OrientationController(QObject *parent) : QObject(parent) {}
 
@@ -11,6 +21,7 @@ void OrientationController::check(const QList<int> &pages, const ImageProvider &
     m_sideways.clear();
     m_unclear.clear();
     m_noText.clear();
+    m_skewed.clear();
 
     for (const int index : pages) {
         const QImage image = provider ? provider(index) : QImage();
@@ -19,6 +30,12 @@ void OrientationController::check(const QList<int> &pages, const ImageProvider &
             continue;
         }
         const OrientationVerdict verdict = detectPageOrientation(image);
+        if (verdict.axisKnown && std::abs(verdict.deskewDegrees) >= kAutoDeskewDegrees) {
+            // The page is skewed: the correction levels the lines before the
+            // text is read. A page on its side is straightened too — the
+            // quarter turn it still waits for is a different question.
+            m_skewed.append({index, verdict.deskewDegrees});
+        }
         if (!verdict.textLike) {
             // A page without text has no way up to get wrong: it stays as it
             // is and nothing is reported about it.
@@ -44,6 +61,8 @@ void OrientationController::check(const QList<int> &pages, const ImageProvider &
 
 void OrientationController::complete()
 {
+    for (const auto &[index, degrees] : m_skewed)
+        emit skewed(index, degrees);
     for (const int index : m_sideways)
         emit sideways(index);
     for (const int index : m_unclear)

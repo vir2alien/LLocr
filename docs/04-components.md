@@ -643,6 +643,16 @@ a `Deps` struct (references and providers), the idiom of the layer.
   «ориентация не определяется»). The mark lives with the page: it survives
   the save and the reopen (`.llocr`, §4.20) and goes away when the user turns
   the page by hand.
+  A measured skew of half a degree or more is **applied** before the text is
+  read (ADR 244): the check emits `skewed(index, degrees)`, the page carries
+  `DocumentPage::skewDegrees`, and the renderer straightens it after the
+  quarter turn (`PageRotation::deskewImage`, smooth resample over paper). The
+  correction composes with the straightening the page already carries and is
+  self-stabilizing: the next check of a straightened page measures less than
+  the threshold and says nothing. A recognition the page carried is dropped —
+  the blocks were read from the unstraightened pixels — and the skew travels
+  with the page in the `.llocr` project next to the turn. The quarter turn of
+  a sideways page still waits: the direction is not the picture's to tell.
 - The check is a setting (**Settings → Output → «Check the page
   orientation»**, on by default).
 

@@ -4,6 +4,7 @@
 #include "app/PageRotation.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include <QBuffer>
@@ -114,6 +115,7 @@ AppController::AppController(SettingsStore &settings,
     // The orientation check: the picture reads the axis of the text before the
     // page is recognized. A page it cannot settle is marked and left as it
     // is — the user turns it by hand.
+    connect(&m_orientation, &OrientationController::skewed, this, &AppController::applyPageDeskew);
     connect(&m_orientation, &OrientationController::sideways, this, [this](int index) {
         setPageOrientationProblem(index, PageOrientationProblem::Sideways);
         setStatus(StatusMessage::translate("AppController", "Page %1 lies on its side. The check cannot tell which way it has to be turned — turn it by hand.").arg(index + 1));
@@ -393,6 +395,14 @@ int AppController::currentPageOrientationProblem() const
     if (!m_document.isValidIndex(m_currentPage))
         return int(PageOrientationProblem::None);
     return int(m_document.page(m_currentPage).orientationProblem);
+}
+
+double AppController::currentPageSkewDegrees() const
+{
+    QReadLocker locker(&m_documentLock);
+    if (!m_document.isValidIndex(m_currentPage))
+        return 0.0;
+    return m_document.page(m_currentPage).skewDegrees;
 }
 
 QString AppController::parseWarning() const
@@ -1850,6 +1860,46 @@ void AppController::setPageOrientationProblem(int index, PageOrientationProblem 
     }
     m_pageModel.setOrientationProblem(index, int(problem));
     emit pageChanged();
+}
+
+void AppController::applyPageDeskew(int index, double degrees)
+{
+    if (!m_document.isValidIndex(index))
+        return;
+    bool hadResult = false;
+    bool changed = false;
+    {
+        QWriteLocker locker(&m_documentLock);
+        DocumentPage &page = m_document.page(index);
+        // The check measured the render as it stands, so the correction adds
+        // to the straightening the page already carries.
+        changed = m_document.setSkew(index, page.skewDegrees + degrees);
+        if (changed && page.recognized) {
+            // The blocks were read from the unstraightened page: they say
+            // nothing about the straightened one.
+            hadResult = true;
+            page.result = OcrResult();
+            page.recognized = false;
+            page.recognitionMode = PageRecognitionMode::None;
+            page.parseNote.clear();
+        }
+    }
+    if (!changed)
+        return;
+    if (hadResult) {
+        m_editStore.reset(index, QString());
+        m_pageModel.setRecognized(index, false);
+        m_pageModel.setEdited(index, false);
+        m_pageModel.setHasDuplicates(index, false);
+        m_pageModel.setRecognitionMode(index, int(PageRecognitionMode::None));
+        refreshPageVerification(index);
+    }
+    invalidatePageImage(index);
+    ++m_cropRevision;
+    if (index == m_currentPage)
+        updateBoxesForCurrent();
+    setStatus(StatusMessage::translate("AppController", "Page %1 straightened by %2°.", index + 1, QString::number(std::abs(degrees), 'f', 1)));
+    notifyPageChanged();
 }
 
 bool AppController::runAfterOrientationCheck(const QList<int> &pages, const std::function<void()> &run)

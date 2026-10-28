@@ -159,6 +159,67 @@ private slots:
         QCOMPARE(model.fullImage(0, &error).size(), QSize(64, 48));
     }
 
+    void theStraighteningLevelsASkewedPage()
+    {
+        // A page drawn with a 3° skew and a mark in the middle: the
+        // straightening turns the page by the angle, the bounding box grows to
+        // the turn, and the corners it bares are paper. The mark rides with
+        // the content.
+        QImage centered(300, 400, QImage::Format_ARGB32);
+        centered.fill(Qt::white);
+        QPainter painter(&centered);
+        painter.fillRect(QRect(130, 180, 40, 40), Qt::red);
+        painter.end();
+        QTransform transform;
+        transform.rotate(3.0);
+        const QImage skewed = centered.transformed(transform, Qt::SmoothTransformation);
+
+        const QSize grown = deskewedSize(skewed.size(), 3.0);
+        QVERIFY(grown.width() > skewed.size().width() || grown.height() > skewed.size().height());
+
+        const QImage straightened = deskewImage(skewed, 3.0);
+        QCOMPARE(straightened.size(), grown);
+        // The corner the turn bared is paper, not the transparent black the
+        // transformation leaves behind.
+        QCOMPARE(straightened.pixelColor(0, 0), QColor(Qt::white));
+        // The mark is still red around the middle: the content turned with
+        // the page.
+        bool markFound = false;
+        for (int y = grown.height() / 4; y < grown.height() * 3 / 4 && !markFound; ++y) {
+            for (int x = grown.width() / 4; x < grown.width() * 3 / 4; ++x) {
+                if (straightened.pixelColor(x, y) == QColor(Qt::red)) {
+                    markFound = true;
+                    break;
+                }
+            }
+        }
+        QVERIFY(markFound);
+
+        // An angle below what the check can resolve changes nothing at all:
+        // the image comes back as it is.
+        const QImage untouched = deskewImage(skewed, 0.01);
+        QCOMPARE(untouched.size(), skewed.size());
+        QCOMPARE(untouched.constBits(), skewed.constBits());
+
+        // The straightening composes with the turn in the render.
+        DocumentModel model;
+        QImage source(64, 48, QImage::Format_ARGB32);
+        source.fill(Qt::red);
+        QTemporaryDir dir;
+        const QString path = dir.filePath(QStringLiteral("page.png"));
+        QVERIFY(source.save(path, "PNG"));
+        QVERIFY(model.appendImage(path));
+        QVERIFY(model.setSkew(0, 2.0));
+        QString error;
+        const QImage rendered = model.fullImage(0, &error);
+        QVERIFY2(!rendered.isNull(), qPrintable(error));
+        QCOMPARE(rendered.size(), deskewedSize(QSize(64, 48), 2.0));
+        QCOMPARE(model.page(0).displaySize(), deskewedSize(QSize(64, 48), 2.0));
+        // The same straightening twice changes nothing the second time.
+        QVERIFY(model.setSkew(0, 2.0));
+        QCOMPARE(model.fullImage(0, &error).size(), rendered.size());
+    }
+
     void theThumbnailKeepsTheSourceAspect()
     {
         const QSize source(2480, 3508);

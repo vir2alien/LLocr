@@ -2,6 +2,7 @@
 
 #include "core/BoxTransitions.h"
 
+#include <cmath>
 #include <exception>
 #include <memory>
 #include <new>
@@ -235,6 +236,18 @@ bool DocumentModel::setRotation(int index, int degrees)
     return true;
 }
 
+bool DocumentModel::setSkew(int index, double degrees)
+{
+    if (!isValidIndex(index))
+        return false;
+    if (std::abs(m_pages[index].skewDegrees - degrees) < 0.01)
+        return true;
+    m_pages[index].skewDegrees = degrees;
+    m_pages[index].image = QImage();
+    m_fullCache.removeAll(index);
+    return true;
+}
+
 void DocumentModel::clear()
 {
     m_pages.clear();
@@ -291,10 +304,11 @@ bool DocumentModel::isValidIndex(int index) const
 
 QImage DocumentModel::renderFull(const DocumentPage &page, QString *error)
 {
-    // The page is turned after the source is rendered: the source keeps its
-    // own resolution, and the turned image is what every consumer of the page
-    // sees (the preview, the model, the block crops).
-    return rotateImage(renderSource(page, error), page.rotation);
+    // The page is turned after the source is rendered, and straightened after
+    // the turn: the source keeps its own resolution, and the turned image is
+    // what every consumer of the page sees (the preview, the model, the block
+    // crops).
+    return deskewImage(rotateImage(renderSource(page, error), page.rotation), page.skewDegrees);
 }
 
 QImage DocumentModel::renderSource(const DocumentPage &page, QString *error)
@@ -366,7 +380,7 @@ DocumentModel::RenderRequest DocumentModel::thumbnailRequestFor(int index) const
 
 QImage DocumentModel::renderDetached(const RenderRequest &request, QString *error)
 {
-    return rotateImage(renderDetachedSource(request, error), request.page.rotation);
+    return deskewImage(rotateImage(renderDetachedSource(request, error), request.page.rotation), request.page.skewDegrees);
 }
 
 QImage DocumentModel::renderDetachedSource(const RenderRequest &request, QString *error)

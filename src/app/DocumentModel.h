@@ -63,13 +63,14 @@ struct DocumentPage {
     QString sourceError;
     QString parseNote;                                                         ///< Non-fatal parser diagnostic for the last recognition.
     int rotation = 0;                                                          ///< The clockwise turn the renderer applies to the source (0, 90, 180, 270).
+    double skewDegrees = 0.0;                                                  ///< The straightening the renderer applies after the turn: the skew the orientation check measured.
     bool userOriented = false;                                                 ///< The user turned this page by hand: the orientation check leaves it alone.
     PageOrientationProblem orientationProblem = PageOrientationProblem::None;  ///< What the orientation check found: the page needs a turn by hand.
 
-    // The size the page is shown in: the source size after the turn. The
-    // model's geometry is read against the rendered page, so this is the
-    // aspect the parsers need.
-    QSize displaySize() const { return rotatedSize(pixelSize, rotation); }
+    // The size the page is shown in: the source size after the turn and the
+    // straightening. The model's geometry is read against the rendered page,
+    // so this is the aspect the parsers need.
+    QSize displaySize() const { return deskewedSize(rotatedSize(pixelSize, rotation), skewDegrees); }
 };
 
 class DocumentModel
@@ -116,6 +117,7 @@ public:
     // The page's turn changes: the rendered copy is dropped, so the next
     // render draws the page turned.
     bool setRotation(int index, int degrees);
+    bool setSkew(int index, double degrees);
 
     int pageCount() const { return m_pages.size(); }
     bool isEmpty() const { return m_pages.isEmpty(); }

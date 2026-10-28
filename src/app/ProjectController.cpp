@@ -64,6 +64,7 @@ bool ProjectController::collect(ProjectData *data, QString *error)
         entry.recognitionMode = page.recognitionMode;
         entry.hasDuplicates = !page.result.pages.isEmpty() && page.result.pages.first().hasDuplicates;
         entry.rotation = page.rotation;
+        entry.skewDegrees = page.skewDegrees;
         entry.userOriented = page.userOriented;
         entry.orientationProblem = page.orientationProblem;
         entry.text = page.result.text;
@@ -204,6 +205,7 @@ void ProjectController::apply(const ProjectData &data)
             page.orientationProblem = entry.orientationProblem;
             if (entry.rotation != page.rotation)
                 m_deps.document.setRotation(slot, entry.rotation);
+            m_deps.document.setSkew(slot, entry.skewDegrees);
             OcrResult result;
             result.success = true;
             OcrPage structured;

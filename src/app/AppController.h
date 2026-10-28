@@ -122,6 +122,9 @@ class AppController : public QObject
     // report, 1 = the page lies on its side, 2 = the picture could not read
     // the page.
     Q_PROPERTY(int currentPageOrientationProblem READ currentPageOrientationProblem NOTIFY pageChanged)
+    // The straightening the current page carries: the skew the orientation
+    // check measured and the renderer levels.
+    Q_PROPERTY(double currentPageSkewDegrees READ currentPageSkewDegrees NOTIFY pageChanged)
     // The toolbar's scope: the thumbnail selection, empty = every page. The
     // counts ride the availability broadcast so a verdict landing on a
     // non-current page re-announces them too.
@@ -243,6 +246,7 @@ public:
     int currentPageRecognitionMode() const { return m_availability.currentPageRecognitionMode(); }
     int currentPageVerification() const { return m_availability.currentPageVerification(); }
     int currentPageOrientationProblem() const;
+    double currentPageSkewDegrees() const;
     int selectedPageCount() const { return m_availability.selectedPageCount(); }
     int scopedPendingFixCount() const { return m_availability.scopedPendingFixCount(); }
     bool scopeHasResults() const { return m_availability.scopeHasResults(); }
@@ -414,6 +418,7 @@ private:
     // What the orientation check found about a page: the page is marked and
     // the user turns it by hand.
     void setPageOrientationProblem(int index, PageOrientationProblem problem);
+    void applyPageDeskew(int index, double degrees);
     void applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult);
     void applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);

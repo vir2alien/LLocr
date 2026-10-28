@@ -64,6 +64,8 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     imagePage.hasDuplicates = true;
     // The mark of the orientation check travels with the page (ADR 242).
     imagePage.orientationProblem = PageOrientationProblem::Sideways;
+    // The straightening the check measured travels with the page too.
+    imagePage.skewDegrees = 2.5;
     imagePage.text = QStringLiteral("edited text");
     imagePage.baseline = QStringLiteral("recognized text");
     imagePage.parseNote = QStringLiteral("no layout tokens");
@@ -245,6 +247,7 @@ private slots:
         QVERIFY(imagePage.edited);
         QVERIFY(imagePage.hasDuplicates);
         QCOMPARE(imagePage.orientationProblem, PageOrientationProblem::Sideways);
+        QCOMPARE(imagePage.skewDegrees, 2.5);
         QCOMPARE(imagePage.text, QStringLiteral("edited text"));
         QCOMPARE(imagePage.baseline, QStringLiteral("recognized text"));
         QCOMPARE(imagePage.parseNote, QStringLiteral("no layout tokens"));

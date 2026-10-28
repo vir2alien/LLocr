@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include <atomic>
+#include <cmath>
 #include <memory>
 #include <QAbstractItemModelTester>
 #include <QColor>
@@ -29,6 +30,7 @@
 #include <QThread>
 #include <QThreadPool>
 #include <QTimer>
+#include <QTransform>
 #include <set>
 
 #include "app/AppController.h"
@@ -3227,6 +3229,52 @@ private slots:
         QCOMPARE(qGray(shown.pixel(76, 40)), qGray(source.pixel(76, 40)));
         QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::None));
         QCOMPARE(server.systemoneRequests(), 0);
+    }
+
+    // A skewed page is straightened before the text is read: the check
+    // measures the skew, the renderer levels the lines, and the recognition
+    // sees the straightened page. The second run finds nothing left to
+    // straighten — the correction is stable.
+    void theOrientationCheckStraightensASkewedPage()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setOrientationCheckEnabled(true);
+        m_settings->setDecisionModelName(QStringLiteral("decision-model"));
+
+        QTransform transform;
+        transform.rotate(3.0);
+        const QImage source = syntheticTextPage().transformed(transform, Qt::SmoothTransformation);
+        const QString path = m_dir.filePath(QStringLiteral("skewed.png"));
+        QVERIFY(source.save(path, "PNG"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(path)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+
+        // The correction the check measured is on the page: the magnitude of
+        // the skew the source was drawn with.
+        QVERIFY2(std::abs(controller.currentPageSkewDegrees()) >= 1.5 && std::abs(controller.currentPageSkewDegrees()) <= 4.5,
+                 qPrintable(QStringLiteral("the correction came out %1°").arg(controller.currentPageSkewDegrees())));
+        // The straightened page grew: the bounding box of the turn.
+        const QImage shown = controller.pageImage(0);
+        QVERIFY(shown.width() > source.width() || shown.height() > source.height());
+        QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::None));
+
+        // The straightened page reads as straight: the second check has
+        // nothing to add.
+        const double straightened = controller.currentPageSkewDegrees();
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QCOMPARE(controller.currentPageSkewDegrees(), straightened);
     }
 
     // A page the user turned by hand keeps its turn: the check leaves it
