@@ -253,8 +253,8 @@
     <message>
         <location line="-55"/>
         <location line="+56"/>
-        <source>Edited by hand</source>
-        <translation type="unfinished">Изменён вручную</translation>
+        <source>Manually modified</source>
+        <translation type="unfinished">Ручная правка</translation>
     </message>
     <message>
         <location line="-28"/>
@@ -3621,8 +3621,8 @@
     </message>
     <message>
         <location line="+10"/>
-        <source>Instead of the status dot, verified blocks show the decision model&apos;s probability in percent inside a colored circle. A debugging aid for the decision model.</source>
-        <translation>Вместо точки состояния проверенные блоки показывают вероятность decision-модели в процентах в цветном кружке. Отладочный инструмент для decision-модели.</translation>
+        <source>Next to a verified block the decision model&apos;s probability in percent appears, in the color of the block&apos;s frame. A debugging aid for the decision model.</source>
+        <translation>Рядом с проверенным блоком появляется вероятность decision-модели в процентах, цветом рамки блока. Отладочный инструмент для decision-модели.</translation>
     </message>
     <message>
         <location line="+16"/>

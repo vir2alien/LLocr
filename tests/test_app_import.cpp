@@ -2390,12 +2390,12 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(server.requests(), 5);
         // OK confirms the candidate: nothing is stored, and the verdict the
-        // recognition earned survives (ADR 185) — the blocks stay flagged until
-        // the user approves them.
+        // recognition earned is dropped — the fixer is not a verifier
+        // (ADR 240), so the block goes back to the gray «recognized» state.
         QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QString());
         QCOMPARE(boxes->data(boxes->index(1), correctedRole).toString(), QString());
         QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
-        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
+        QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(boxes->data(boxes->index(0), fixStatusRole).toInt(), int(BoxFixStatus::NotNeeded));
 
         server.fixReply = QStringLiteral("REVIEW");
@@ -2427,6 +2427,53 @@ private slots:
         // The re-recognition is a different remedy: the decision model still
         // rejects the blocks, so the OCR model may read them again.
         QVERIFY(m_controller->allProblemRecognitionSupported());
+    }
+
+    // Moving a block empties it (ADR 241): the text was recognized for the
+    // region the block used to cover, so the block goes back to markup — no
+    // text, no verdict — and the page text follows.
+    void movingABlockDropsItsTextAndVerdict()
+    {
+        DetTokenChatServer server;
+        server.systemoneProbability = 0.1;  // the check run marks everything Mismatch
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setCheckModelName(QStringLiteral("check-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("move-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+        m_controller->recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
+
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("1. Introduction")));
+
+        // The decision model rejects the block: it is red before the move.
+        m_controller->checkEnabledBlocksOnPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Mismatch));
+
+        // The user moves it: the text belonged to the old region.
+        m_controller->onBoxRectChanged(0, 0.5, 0.5, 0.2, 0.1);
+
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), QString());
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QString());
+        // The page text followed the blocks.
+        QVERIFY(!m_controller->resultText().contains(QStringLiteral("1. Introduction")));
+        QVERIFY(m_controller->resultText().contains(QStringLiteral("Second block text")));
+        // The sibling is untouched.
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), QStringLiteral("Second block text"));
     }
 
     // The «Исправить (N)» badge counts the blocks that still wait for the fixer

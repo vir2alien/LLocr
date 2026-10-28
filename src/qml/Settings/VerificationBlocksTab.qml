@@ -128,7 +128,7 @@ Item {
             font.pointSize: Theme.footnoteSize
             color: Theme.helpColor
             wrapMode: Text.WordWrap
-            text: qsTr("Instead of the status dot, verified blocks show the decision model's probability in percent inside a colored circle. A debugging aid for the decision model.")
+            text: qsTr("Next to a verified block the decision model's probability in percent appears, in the color of the block's frame. A debugging aid for the decision model.")
         }
 
         Item {

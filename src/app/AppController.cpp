@@ -960,6 +960,8 @@ void AppController::revertCurrentPageEdits()
 
 void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width, qreal height)
 {
+    bool contentDropped = false;
+    BoundingBox updated;
     {
         QWriteLocker locker(&m_documentLock);
         if (!m_document.isValidIndex(m_currentPage))
@@ -970,13 +972,43 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width
         QList<BoundingBox> &boxes = page.result.pages[0].boxes;
         if (boxIndex < 0 || boxIndex >= boxes.size())
             return;
-        boxes[boxIndex].rect = QRectF(x, y, width, height);
+
+        BoundingBox &box = boxes[boxIndex];
+        box.rect = QRectF(x, y, width, height);
+        // The text was recognized for the region the block used to cover: it
+        // says nothing about this piece of the page any more (ADR 241).
+        contentDropped = BoxTransitions::blockRectChanged(box);
+        updated = box;
+        ++m_cropRevision;
     }
-    ++m_cropRevision;
 
     m_boxModel.updateBoxRect(boxIndex, x, y, width, height);
-
+    m_boxModel.updateBoxState(boxIndex, updated);
+    if (m_inspector.selectedBoxIndex() == boxIndex)
+        m_inspector.blockStateChanged();
     emit imageChanged();
+    if (!contentDropped)
+        return;
+
+    // The page text followed the blocks: the emptied block takes its text with
+    // it. The drag calls this on every mouse move, so the expensive part runs
+    // once — when the block still carried something.
+    refreshRecognitionModeAfterBlockText(m_currentPage);
+    refreshPageVerification(m_currentPage);
+    const QString rebuilt = rebuildPageText(m_document.page(m_currentPage).result.pages[0]);
+    if (m_editStore.isEdited(m_currentPage)) {
+        // The user's own text owns the page: the emptied block changes the
+        // blocks, not the text under the panel. The revert target moves
+        // forward, so the next Revert lands on the consistent text.
+        m_editStore.rebase(m_currentPage, rebuilt);
+    } else {
+        setPageText(m_currentPage, rebuilt);
+        // A structural change is not a manual edit (ADR 190): the text still
+        // follows the blocks, so a later recognition may write it again.
+        m_editStore.reset(m_currentPage, rebuilt);
+    }
+    emit resultChanged();
+    emit editStateChanged();
 }
 
 bool AppController::removeBlock(int boxIndex)

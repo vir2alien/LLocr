@@ -116,10 +116,11 @@ private slots:
         QCOMPARE(corrected.confidence, 0.2);
     }
 
-    // The fix outcomes (ADR 163, ADR 185): the correction layer is rewritten,
-    // the text layer's verdict survives everything, and the outcome itself is
-    // recorded — a confirmed text is not a stored correction.
-    void fixOutcomesTouchOnlyTheCorrectionLayer()
+    // The fix outcomes (ADR 163, ADR 240): the correction layer is rewritten,
+    // the outcome itself is recorded — a confirmed text is not a stored
+    // correction — and the fixer is no verifier: its OK leaves the block
+    // without a verdict.
+    void theFixOutcomesAndTheirVerdicts()
     {
         BoundingBox fixed = recognizedBox();
         fixed.checkStatus = BoxCheckStatus::Mismatch;
@@ -136,10 +137,11 @@ private slots:
         BoundingBox confirmed = recognizedBox();
         confirmed.checkStatus = BoxCheckStatus::Mismatch;
         BoxTransitions::fixConfirmedOriginal(confirmed);
-        // The fixer confirmed the text: nothing is stored, and the verdict the
-        // recognition earned survives.
+        // The fixer confirmed the text: nothing is stored, and the verdict it
+        // looked at is gone — the block is "recognized" again (ADR 240).
         QVERIFY(confirmed.correctedText.isEmpty());
-        QCOMPARE(confirmed.checkStatus, BoxCheckStatus::Mismatch);
+        QCOMPARE(confirmed.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(confirmed.confidence, -1.0);
         QCOMPARE(confirmed.fixStatus, BoxFixStatus::NotNeeded);
         QVERIFY(!BoxTransitions::hasCorrection(confirmed));
 
@@ -148,14 +150,14 @@ private slots:
         QVERIFY(damaged.correctedText.isEmpty());
         QCOMPARE(damaged.correctedCheckStatus, BoxCheckStatus::Review);
         QCOMPARE(damaged.fixStatus, BoxFixStatus::Damaged);
-        // ...and the damaged verdict is what the dot shows.
+        // ...and the damaged verdict is what the frame shows.
         QCOMPARE(BoxTransitions::effectiveCheckStatus(damaged), BoxCheckStatus::Review);
     }
 
-    // A fix that answers «no correction needed» must not throw the
-    // recognition's verdict away (ADR 185): the text layer keeps it, and the
-    // corrected layer is not created at all.
-    void fixConfirmationKeepsTheRecognitionVerdict()
+    // A fix that answers «no correction needed» drops the stale verdict: the
+    // fixer is not a verifier (ADR 240), so the block goes back to the gray
+    // «recognized» state and the corrected layer is not created at all.
+    void fixConfirmationDropsTheRecognitionVerdict()
     {
         BoundingBox box = recognizedBox();
         box.checkStatus = BoxCheckStatus::Mismatch;
@@ -163,11 +165,60 @@ private slots:
 
         BoxTransitions::fixConfirmedOriginal(box);
 
-        QCOMPARE(box.checkStatus, BoxCheckStatus::Mismatch);
-        QCOMPARE(box.confidence, 0.2);
-        QCOMPARE(BoxTransitions::effectiveCheckStatus(box), BoxCheckStatus::Mismatch);
+        // The fixer is not a verifier (ADR 240): its OK says «nothing to
+        // correct», not «verified». The stale verdict is dropped and the block
+        // goes back to the gray «recognized» state.
+        QCOMPARE(box.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(box.confidence, -1.0);
+        QCOMPARE(BoxTransitions::effectiveCheckStatus(box), BoxCheckStatus::NotChecked);
         QCOMPARE(BoxTransitions::effectiveText(box), QStringLiteral("recognized"));
         QCOMPARE(box.fixStatus, BoxFixStatus::NotNeeded);
+    }
+
+    // The same rule on a block the user reads the correction of: the fixer's
+    // OK confirms the correction as it is, but the block loses its verdict
+    // (ADR 240).
+    void fixConfirmationDropsTheVerdictOfTheCorrectionInView()
+    {
+        BoundingBox box = correctedBox();
+        box.correctedCheckStatus = BoxCheckStatus::Ok;
+        box.correctedConfidence = 0.9;
+
+        BoxTransitions::fixConfirmedOriginal(box);
+
+        QCOMPARE(box.correctedText, QStringLiteral("corrected"));
+        QCOMPARE(box.correctedCheckStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(box.correctedConfidence, -1.0);
+        QCOMPARE(BoxTransitions::effectiveCheckStatus(box), BoxCheckStatus::NotChecked);
+        QCOMPARE(box.fixStatus, BoxFixStatus::NotNeeded);
+    }
+
+    // The user moved or resized the block (ADR 241): the text was recognized
+    // for the region the block used to cover and says nothing about this piece
+    // of the page any more. The block goes back to markup — no text, no
+    // verdict, no correction.
+    void aMovedBlockGoesBackToMarkup()
+    {
+        BoundingBox box = correctedBox();
+        box.correctedCheckStatus = BoxCheckStatus::Mismatch;
+        box.correctedConfidence = 0.1;
+        box.fixStatus = BoxFixStatus::Fixed;
+
+        QVERIFY(BoxTransitions::blockRectChanged(box));
+
+        QVERIFY(box.text.isEmpty());
+        QVERIFY(box.correctedText.isEmpty());
+        QCOMPARE(box.checkStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(box.confidence, -1.0);
+        QCOMPARE(box.correctedCheckStatus, BoxCheckStatus::NotChecked);
+        QCOMPARE(box.correctedConfidence, -1.0);
+        QCOMPARE(box.fixStatus, BoxFixStatus::None);
+        QCOMPARE(box.syntaxProblem, LatexText::Problem::None);
+        QVERIFY(!BoxTransitions::hasCorrection(box));
+
+        // An empty block carries nothing: the caller learns that the page
+        // text does not have to follow a second time.
+        QVERIFY(!BoxTransitions::blockRectChanged(box));
     }
 
     // The panel's toggle (ADR 185): the user reads the other layer, and the

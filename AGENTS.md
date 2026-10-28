@@ -376,8 +376,12 @@
     recognition) via a thumbnail strip with recognized / edited / duplicate
     markers, **delete** and **drag-reorder** pages → **zoom and pan the page
     preview** (the wheel scrolls, Ctrl/⌘+wheel zooms, the page drags; the
-    selected block is scrolled clear of the block panel — ADR 175) → **stop** a
-    running job →
+    selected block is scrolled clear of the block panel — ADR 175); the
+    **block frame carries the state** (ADR 238): no frame = layout markup
+    only, gray = recognized, red = verified with an error, green = verified
+    without one (the error frame is 1 px heavier), and the model's confidence
+    (when the option is on) is a bare number in the frame's color, without a
+    badge → **stop** a running job →
     edit the recognized text per page (per-page edits via `PageEditStore`) and
     toggle a **Markdown preview** (Qt WebEngine + marked + KaTeX) → **edit
     image/chart blocks** (move / resize / delete) directly on the preview →
@@ -440,7 +444,7 @@
     changed is recomputed when it opens. d1-3B failed the task
     in every phrasing and was removed (ADR 161). Every block carries two text layers with independent verdicts
     (ADR 164): `box.text` (the OCR result) and `box.correctedText` (the fix
-    model's correction); the dot and the confidence badge follow the
+    model's correction); the frame and the confidence number follow the
     **effective** layer. The **fix** task (universal models,
     OK/FIX/REVIEW, the `full_block` protocol — ADR 192, which dropped the
     ADR 180 `span_hybrid` span contract because the small models could not
@@ -480,7 +484,7 @@
     страницу ▾» (problem blocks / all blocks of the page); the header
     «Исправить» runs the fix task over the problem blocks of the whole
     document. Planned blocks (filter-enabled type or duplicate suspect,
-    unanswered) show the gray dot (`boxVerificationPlanned`). Model manuals:
+    unanswered) show the gray frame (`boxVerificationPlanned`). Model manuals:
     `docs/18-clef-flash.md` (v5), `docs/21-d3.md` (v6).
   - **The block panel is a version inspector (ADR 185–187, Oct 2026)** — the
     panel shows the two versions of the selected block as two clickable
@@ -528,9 +532,16 @@
     the release creates the block (`Controller.addBlockAt(type, x, y, w, h)`,
     clamped into the page) and selects it. `Esc` or a second click on the same
     button cancels the mode. A block that carries no text and no verdict says
-    **«Разметка»** in the panel (and shows no dot) — the same word the page
+    **«Разметка»** in the panel (and the preview shows no frame) — the same word the page
     uses for itself, «Только разметка»; «Распознано» is only true for a block
     the OCR has read.
+  - **A moved block goes back to markup (ADR 241, Oct 2026)** — moving or
+    resizing a block (`onBoxRectChanged`) erases what belonged to the old
+    region: the text, the verdict, the correction and the fix outcome
+    (`BoxTransitions::blockRectChanged`). The block is markup again — the
+    preview shows no frame, the panel says «Разметка» — and the page text
+    follows the blocks. The drag calls it on every mouse move, so the page
+    text is rebuilt once — when the block still carried something.
   - **A structural change is not a manual edit (ADR 190, Oct 2026)** — the
     «Изменено» marker means one thing only: *the user typed the text by hand*
     (`setCurrentPageText`). A **removed** block — like a block landing
@@ -609,13 +620,15 @@
     `MainWindow/BlockVersionCard.qml` cards, the card in view is the version the
     document carries (accent border, stripe, radio, «Используется в документе»)
     and clicking a card switches the layer (the preview text follows it). The
-    header carries one status word (распознан / проверен / исправлен /
-    утверждён), the **Различия** toggle, «Сбросить исправление» and the
-    primary «Утвердить блок» / «Утвердить исправление» (ADR 185). Each card
-    header carries the verdict and the score of **its own** layer; the changed
-    fragments are **tinted in place** — soft red in the original, soft green in
-    the correction, computed word by word (`core/TextDiff.h`) — and a formula,
-    table or code block is read in a monospace face (`Theme.mono`). `Ctrl`/
+    header carries the **Различия** toggle, «Сбросить исправление» and the
+    primary «Утвердить блок» / «Утвердить исправление» (ADR 185); the status
+    word next to the block's name is gone — each card header carries the
+    verdict and the score of **its own** layer, and the header repeats the
+    word only when there is no card to carry it (a markup or an image block,
+    ADR 239).
+    The changed fragments are **tinted in place** — soft red in the original,
+    soft green in the correction, computed word by word (`core/TextDiff.h`) — and
+    a formula, table or code block is read in a monospace face (`Theme.mono`). `Ctrl`/
     `Cmd+Return` approves the block in view and jumps to the next problem
     block; «Изм.» turns the card into a field where the operator writes the
     text by hand (the version is approved and the page text follows).

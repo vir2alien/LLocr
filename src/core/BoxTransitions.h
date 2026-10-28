@@ -37,6 +37,13 @@ double effectiveConfidence(const BoundingBox &box);
 // text layer and erases the correction layer entirely.
 void ocrResultApplied(BoundingBox &box, const QString &text);
 
+// The user moved or resized the block (ADR 241): the text was recognized for
+// the region the block used to cover and says nothing about this piece of the
+// page any more. The block goes back to markup — no text, no verdict, no
+// correction. Returns true when the block carried anything, so the caller
+// knows whether the page text has to follow.
+bool blockRectChanged(BoundingBox &box);
+
 // The recognition result of a formula block (ADR 194): the text arrives in
 // the canonical LaTeX form, and a formula whose syntax is broken is rejected
 // right away — the status says so, and no model is asked about it.
@@ -61,9 +68,10 @@ void verdictApplied(BoundingBox &box, const CheckResult &result);
 
 // The fix protocol's outcomes (ADR 163): a correction replaces the layer's
 // text, an OK confirms the text as it is, a REVIEW marks the block damaged
-// without storing a correction. The text layer's verdict survives all three —
-// it is about the OCR text, not the correction (ADR 185: an OK keeps the
-// verdict the recognition earned).
+// without storing a correction. The fixer is not a verifier (ADR 240): an OK
+// drops the verdict of the layer in view — the block goes back to
+// "recognized" — and a FIX leaves the fresh correction without a verdict,
+// until the decision model has looked at it.
 void fixApplied(BoundingBox &box, const QString &text);
 void fixConfirmedOriginal(BoundingBox &box);
 void fixMarkedUnreadable(BoundingBox &box);

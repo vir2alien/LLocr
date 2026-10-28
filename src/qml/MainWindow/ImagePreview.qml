@@ -385,7 +385,7 @@ Item {
                     property bool isImage: Controller.boxModel.isImageBox(boxDelegate.index)
                     property bool isSelected: Controller.selectedBoxIndex === boxDelegate.index
 
-                    // The status dot follows the layer the user reads (ADR 185):
+                    // The frame follows the layer the user reads (ADR 185):
                     // the correction while the panel's toggle selects it, else
                     // the OCR text. A verdict-only correction (a fix REVIEW)
                     // speaks for the block — there is no corrected text to read.
@@ -394,12 +394,18 @@ Item {
                     readonly property real effectiveConfidence: boxUseCorrectedText && correctionActive ? boxCorrectedConfidence : boxConfidence
                     readonly property string effectiveText: boxUseCorrectedText && boxCorrectedText.length > 0 ? boxCorrectedText : boxText
 
-                    // One hue per block kind; selection overrides the frame.
-                    readonly property color kindOuter: boxKind == 1 ? Theme.overlayImageOuter
-                                                                     : boxKind == 2 ? Theme.overlayTableOuter
-                                                                     : boxKind == 3 ? Theme.overlayFormulaOuter
-                                                                     : boxKind == 4 ? Theme.overlayServiceOuter
-                                                                     : Theme.overlayTextOuter
+                    // The frame carries the state of the block (ADR 238): no
+                    // frame = layout markup only, gray = recognized, red =
+                    // verified with an error, green = verified without one.
+                    readonly property bool hasText: boxText.length > 0 || boxCorrectedText.length > 0
+                    readonly property bool failed: effectiveStatus === 3 || effectiveStatus === 4 || effectiveStatus === 7
+                    readonly property color stateColor: effectiveStatus === 1 || effectiveStatus === 5 || effectiveStatus === 6
+                                                     ? Theme.success
+                                                     : boxDelegate.failed ? Theme.error
+                                                     : Theme.nothing
+
+                    // One hue per block kind: the inner frame and the fill
+                    // keep the type of the block readable.
                     readonly property color kindInner: boxKind == 1 ? Theme.overlayImageInner
                                                                       : boxKind == 2 ? Theme.overlayTableInner
                                                                       : boxKind == 3 ? Theme.overlayFormulaInner
@@ -415,53 +421,41 @@ Item {
                     // Keep the selected frame and its mini toolbar on top of the
                     // neighboring blocks.
                     z: isSelected ? 2 : 0
-                    border.color: isSelected ? Theme.accent : kindOuter
-                    border.width: isSelected ? 2 : 1
+                    border.color: boxDelegate.hasText ? stateColor : "transparent"
+                    // A block with an error is framed heavier: the eye finds
+                    // the problem without reading the colors.
+                    border.width: isSelected || boxDelegate.failed ? 2 : 1
                     x: boxX * imageArea.width
                     y: boxY * imageArea.height
                     width: boxWidth * imageArea.width
                     height: boxHeight * imageArea.height
 
                     Rectangle {
+                        // The inner frame follows the outer one, so a heavier
+                        // frame does not swallow it.
                         anchors.fill: parent
-                        anchors.margins: 1
+                        anchors.margins: boxDelegate.border.width
                         color: "transparent"
                         border.color: isSelected ? Theme.accent : kindInner
                         border.width: 1
                     }
 
-                    Rectangle {
-                        id: statusDot
-                        // Outside the block, to the left: gray = recognized or
-                        // corrected (no verdict on the layer in view), green =
-                        // verified Ok, approved by hand or written by hand, red =
-                        // Mismatch, the damaged Review or a formula rejected
-                        // on its LaTeX syntax (ADR 194). With
-                        // the confidence option on, a decision verdict (green/red)
-                        // renders as its probability in percent inside a circle of
-                        // the verdict's color. A markup block without text shows
-                        // nothing.
-                        readonly property bool confidenceBadge: Settings.showConfidence
-                                                                && (effectiveStatus === 1 || effectiveStatus === 4)
-                                                                && effectiveConfidence >= 0
-                        visible: boxText.length > 0 || boxCorrectedText.length > 0
-                        x: boxDelegate.x < 14 ? 2 : (confidenceBadge ? -24 : -12)
+                    // The model's confidence (ADR 238): the decision model's
+                    // probability in percent, in the color of the block's frame
+                    // and without a background of its own. It stands next to the
+                    // block, where the status dot used to be.
+                    Text {
+                        id: confidenceLabel
+                        readonly property bool showNumber: Settings.showConfidence
+                                                           && (effectiveStatus === 1 || effectiveStatus === 4)
+                                                           && effectiveConfidence >= 0
+                        visible: showNumber && boxDelegate.hasText
+                        text: Math.round(effectiveConfidence * 100)
+                        font.pointSize: Theme.captionSize
+                        font.bold: true
+                        color: boxDelegate.stateColor
                         anchors.verticalCenter: parent.verticalCenter
-                        width: confidenceBadge ? 20 : 8
-                        height: confidenceBadge ? 20 : 8
-                        radius: width / 2
-                        color: effectiveStatus === 1 || effectiveStatus === 5 || effectiveStatus === 6 ? Theme.success
-                             : effectiveStatus === 3 || effectiveStatus === 4 || effectiveStatus === 7 ? Theme.error
-                             : Theme.nothing
-
-                        Text {
-                            anchors.centerIn: parent
-                            visible: parent.confidenceBadge
-                            text: Math.round(effectiveConfidence * 100)
-                            font.pointSize: Theme.captionSize
-                            font.bold: true
-                            color: "#ffffff"
-                        }
+                        x: boxDelegate.x >= implicitWidth + 8 ? -implicitWidth - 6 : 2
                     }
 
                     // A click on a block selects it; the block itself moves only

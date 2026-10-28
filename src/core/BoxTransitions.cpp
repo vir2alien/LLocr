@@ -48,6 +48,20 @@ void forgetApproval(BoundingBox &box, bool correctedLayer)
         box.checkStatusBeforeApproval = BoxCheckStatus::NotChecked;
 }
 
+// The block stands for a piece of the page and nothing else: its text, its
+// verdict and its correction all belong to the region the model read.
+void clearContent(BoundingBox &box)
+{
+    box.text.clear();
+    eraseCorrection(box);
+    box.checkStatus = BoxCheckStatus::NotChecked;
+    box.confidence = -1.0;
+    box.fixStatus = BoxFixStatus::None;
+    box.useCorrectedText = true;
+    forgetApproval(box, false);
+    box.syntaxProblem = LatexText::Problem::None;
+}
+
 }  // namespace
 
 bool hasCorrection(const BoundingBox &box)
@@ -92,16 +106,20 @@ double effectiveConfidence(const BoundingBox &box)
 
 void ocrResultApplied(BoundingBox &box, const QString &text)
 {
+    clearContent(box);
     box.text = text;
-    eraseCorrection(box);
-    box.checkStatus = BoxCheckStatus::NotChecked;
-    box.confidence = -1.0;
-    box.fixStatus = BoxFixStatus::None;
-    box.useCorrectedText = true;
-    forgetApproval(box, false);
-    box.syntaxProblem = LatexText::Problem::None;
     if (LatexText::isMathLabel(box.label))
         latexResultApplied(box);
+}
+
+bool blockRectChanged(BoundingBox &box)
+{
+    const bool carried = !box.text.isEmpty() || !box.correctedText.isEmpty()
+                         || box.checkStatus != BoxCheckStatus::NotChecked
+                         || box.correctedCheckStatus != BoxCheckStatus::NotChecked
+                         || box.fixStatus != BoxFixStatus::None;
+    clearContent(box);
+    return carried;
 }
 
 void latexResultApplied(BoundingBox &box)
@@ -180,16 +198,21 @@ void fixApplied(BoundingBox &box, const QString &text)
 void fixConfirmedOriginal(BoundingBox &box)
 {
     if (correctionSelected(box)) {
-        // The candidate was a stored correction: it is confirmed as it is.
-        box.correctedCheckStatus = BoxCheckStatus::Ok;
+        // The candidate is confirmed as it is. The fixer is not a verifier:
+        // the verdict on the layer in view is dropped, and the block goes
+        // back to "recognized" (ADR 240).
+        box.correctedCheckStatus = BoxCheckStatus::NotChecked;
         box.correctedConfidence = -1.0;
         forgetApproval(box, true);
     } else {
         eraseCorrection(box);
+        // The fixer looked at the block and found nothing to correct: the
+        // stale verdict about the text is dropped too (ADR 240).
+        box.checkStatus = BoxCheckStatus::NotChecked;
+        box.confidence = -1.0;
+        forgetApproval(box, false);
     }
     box.fixStatus = BoxFixStatus::NotNeeded;
-    // The text layer keeps its verdict (ADR 185): the fixer confirmed the
-    // text, the decision's verdict about it is still the verdict.
 }
 
 void fixMarkedUnreadable(BoundingBox &box)

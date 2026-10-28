@@ -12,9 +12,9 @@ import "../Common"
 // result and the correction), the verdict each of them earned and the actions
 // the operator has (ADR 185, ADR 186).
 //
-// The card in view is the version the document shows; the header carries the
-// state of the block and the actions. Every status has one place: the pipeline
-// state in the header, the per-layer verdicts in the card headers.
+// The card in view is the version the document shows. Every verdict has one
+// place: the card headers (ADR 239). The header names the block and carries
+// the actions — it repeats a verdict only when there is no card to carry it.
 Rectangle {
     id: root
 
@@ -64,7 +64,7 @@ Rectangle {
         if (status === 5)
             return qsTr("Approved")
         if (status === 6)
-            return qsTr("Edited by hand")
+            return qsTr("Manually modified")
         if (status === 3)
             return qsTr("Damaged")
         if (status === 4)
@@ -120,7 +120,7 @@ Rectangle {
 
     // The state of the block in the header: what the pipeline did with it.
     readonly property string overallStatus: effectiveStatus === 5 ? qsTr("Approved")
-                                          : effectiveStatus === 6 ? qsTr("Edited by hand")
+                                          : effectiveStatus === 6 ? qsTr("Manually modified")
                                           : effectiveStatus === 1 ? qsTr("Verified")
                                           : effectiveStatus === 3 ? qsTr("Damaged")
                                           : effectiveStatus === 4 ? qsTr("Mismatch")
@@ -205,17 +205,11 @@ Rectangle {
                 // button; the label gives way.
                 Layout.maximumWidth: Math.max(0, root.width - 380)
             }
-            Rectangle {
-                // A block without content carries no dot — the overlay shows
-                // none either (ADR 189).
-                visible: !root.markupOnly
-                Layout.preferredWidth: 8
-                Layout.preferredHeight: 8
-                Layout.alignment: Qt.AlignVCenter
-                radius: 4
-                color: root.dotColor(root.effectiveStatus)
-            }
             LLOLabel {
+                // The verdict of the layer in view is in the card header
+                // below (ADR 239); the header repeats it only when there is no
+                // card — a markup or an image block.
+                visible: !originalCard.visible && !correctionCard.visible
                 text: root.overallStatus
                 color: Theme.textSecondary
             }
