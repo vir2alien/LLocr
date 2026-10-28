@@ -77,6 +77,13 @@ struct BoundingBox {
                                                                   ///< kind, not the message: the
                                                                   ///< wording follows the UI language.
 
+    // The block's rotation the layout model reported (ADR 245): the direction
+    // the block's text top points — 0 = up, 90 = right, 180 = down,
+    // 270 = left. Zero when the model said nothing (every non-layout parser).
+    // Not persisted: the page-level vote consumes it as soon as the layout
+    // lands.
+    int orientation = 0;
+
     // The verdict an approval replaced (ADR 187): «Отозвать утверждение»
     // puts it back. The comment is above the fields on purpose — a trailing
     // one would drag the whole struct's comment column to the right.

@@ -56,6 +56,17 @@ Rectangle {
                 font.bold: Controller.currentPageEdited
             }
 
+            // The turn the layout tokens advise for a sideways page (ADR 245):
+            // one click applies it — the user turns, the app advises.
+            LLOButton {
+                readonly property int turn: Controller.currentPageSuggestedTurn
+                visible: Controller.currentPageOrientationProblem === 1 && turn !== 0
+                text: turn === 180 ? qsTr("Turn upside up")
+                                   : turn === -90 ? qsTr("Turn left")
+                                                  : qsTr("Turn right")
+                onClicked: Controller.rotatePage(turn)
+            }
+
             LLOButton {
                 text: qsTr("Revert")
                 visible: Controller.currentPageEditable && Controller.currentPageEdited

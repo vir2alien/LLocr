@@ -345,6 +345,36 @@ void rebuildTextFromBlocks(OcrResult &result, const IOutputParser &parser)
     }
 }
 
+// The turn the layout tokens vote for (ADR 245): the direction a
+// supermajority of the blocks agree on, as the turn that levels the page.
+// The token names the direction the block's text top points (measured on the
+// MinerU corpus: the page turned clockwise answers "right"), so the fix is
+// the opposite turn. A nine-tenths agreement is the bar: a page with a
+// rotated table inside votes mostly up, and a split vote is no advice at
+// all. The measured reliability of the direction itself is far from the bar
+// an automatic turn would need — the suggestion is one click, the user
+// turns (ADR 242).
+int suggestedTurnFromBoxes(const QList<BoundingBox> &boxes, bool sidewaysMarked)
+{
+    if (!sidewaysMarked || boxes.isEmpty())
+        return 0;
+    int counts[4] = {0, 0, 0, 0};  // up, right, down, left
+    for (const BoundingBox &box : boxes) {
+        if (box.orientation % 90 != 0 || box.orientation < 0 || box.orientation > 270)
+            return 0;
+        ++counts[box.orientation / 90];
+    }
+    int winner = 0;
+    for (int candidate = 1; candidate < 4; ++candidate) {
+        if (counts[candidate] > counts[winner])
+            winner = candidate;
+    }
+    if (winner == 0 || counts[winner] * 10 < boxes.size() * 9)
+        return 0;
+    const int fix = (360 - winner * 90) % 360;
+    return fix == 270 ? -90 : fix;
+}
+
 }  // namespace
 
 QString AppController::rebuildPageText(const OcrPage &page) const
@@ -403,6 +433,14 @@ double AppController::currentPageSkewDegrees() const
     if (!m_document.isValidIndex(m_currentPage))
         return 0.0;
     return m_document.page(m_currentPage).skewDegrees;
+}
+
+int AppController::currentPageSuggestedTurn() const
+{
+    QReadLocker locker(&m_documentLock);
+    if (!m_document.isValidIndex(m_currentPage))
+        return 0;
+    return m_document.page(m_currentPage).suggestedTurn;
 }
 
 QString AppController::parseWarning() const
@@ -1437,12 +1475,15 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
 
     const OcrPage &pageData = parsed.pages.first();
     const int blockCount = pageData.boxes.size();
+    int suggestedTurn = 0;
     {
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(pageIndex);
         page.result = parsed;
         page.recognized = true;
         page.parseNote = parsed.notes.isEmpty() ? QString() : parsed.notes.join(QLatin1String(" "));
+        suggestedTurn = suggestedTurnFromBoxes(pageData.boxes, page.orientationProblem == PageOrientationProblem::Sideways);
+        page.suggestedTurn = suggestedTurn;
     }
 
     m_pageModel.setRecognized(pageIndex, true);
@@ -1826,6 +1867,7 @@ bool AppController::turnPage(int index, int degrees, bool byUser)
         // The page was turned: what the check had to say about it is no
         // longer true.
         page.orientationProblem = PageOrientationProblem::None;
+        page.suggestedTurn = 0;
         // The blocks were read from the old turn and say nothing about the new
         // one: the page goes back to the state before the recognition.
         page.result = OcrResult();

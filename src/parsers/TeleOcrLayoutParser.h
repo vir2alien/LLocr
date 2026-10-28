@@ -19,6 +19,7 @@ public:
 
     QString id() const override;
     QString displayName() const override;
+    OcrResult parse(const QString &rawText) const override;
 
 protected:
     QString prepareText(const QString &rawText) const override;

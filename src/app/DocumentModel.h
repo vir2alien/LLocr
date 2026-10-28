@@ -64,6 +64,7 @@ struct DocumentPage {
     QString parseNote;                                                         ///< Non-fatal parser diagnostic for the last recognition.
     int rotation = 0;                                                          ///< The clockwise turn the renderer applies to the source (0, 90, 180, 270).
     double skewDegrees = 0.0;                                                  ///< The straightening the renderer applies after the turn: the skew the orientation check measured.
+    int suggestedTurn = 0;                                                     ///< The turn the layout tokens vote for on a sideways page (ADR 245): 90, 180, 270 or 0 = none.
     bool userOriented = false;                                                 ///< The user turned this page by hand: the orientation check leaves it alone.
     PageOrientationProblem orientationProblem = PageOrientationProblem::None;  ///< What the orientation check found: the page needs a turn by hand.
 

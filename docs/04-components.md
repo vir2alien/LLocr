@@ -652,7 +652,18 @@ a `Deps` struct (references and providers), the idiom of the layer.
   the threshold and says nothing. A recognition the page carried is dropped —
   the blocks were read from the unstraightened pixels — and the skew travels
   with the page in the `.llocr` project next to the turn. The quarter turn of
-  a sideways page still waits: the direction is not the picture's to tell.
+  a sideways page still waits for the picture: the direction is not the
+  picture's to tell. What the picture lacks, the **layout models supply**
+  (ADR 245): the markup pass keeps the rotation token every block carries
+  (MinerU's `<|rotate_…|>`, TeleOCR's third `<orientation>` tag) on the box,
+  and a page the check marked sideways takes a `suggestedTurn` when nine
+  tenths of its blocks vote for one direction — shown as a one-click
+  «Повернуть влево / вправо» button beside the red mark. The app advises,
+  the user turns: measured on the corpus, the tokens name the right
+  direction in 14 of 20 sideways pages — far from the bar an automatic turn
+  would need, and a wrong one is costlier than no answer (ADR 242). The
+  suggestion rides the `.llocr` project with the mark and dies with any
+  turn of the page.
 - The check is a setting (**Settings → Output → «Check the page
   orientation»**, on by default).
 

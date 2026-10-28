@@ -8,6 +8,21 @@
 
 namespace llocr {
 
+// The rotation word a layout model reports for a block (TeleOCR's
+// `<orientation>`, MinerU's `<|rotate_…|>`): the direction the block's text
+// top points. An unknown word reads as up — inert, the same answer a block
+// without the token gives.
+inline int orientationDegrees(const QString &word)
+{
+    if (word == QLatin1String("right"))
+        return 90;
+    if (word == QLatin1String("down"))
+        return 180;
+    if (word == QLatin1String("left"))
+        return 270;
+    return 0;
+}
+
 class DetTokenParserBase : public IOutputParser
 {
     Q_DISABLE_COPY_MOVE(DetTokenParserBase)

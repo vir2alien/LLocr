@@ -1,12 +1,15 @@
 #include "parsers/MinerULayoutParser.h"
 
+#include <algorithm>
+
 namespace llocr {
 
 namespace {
 
 const QRegularExpression &layoutLineRegex()
 {
-    static const QRegularExpression re(QStringLiteral(R"(<\|box_start\|>\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*<\|box_end\|>\s*<\|ref_start\|>(\w+?)<\|ref_end\|>)"));
+    static const QRegularExpression re(
+        QStringLiteral(R"(<\|box_start\|>\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*<\|box_end\|>\s*<\|ref_start\|>(\w+?)<\|ref_end\|>(?:\s*<\|rotate_(up|down|left|right)\|>)?)"));
     return re;
 }
 
@@ -88,6 +91,48 @@ OcrResult MinerULayoutParser::parse(const QString &rawText) const
         return result;
 
     OcrPage &page = result.pages.first();
+    // The rotation token the reply carries after every block (ADR 245): the
+    // extraction walks the same lines prepareText keeps, so the zipping onto
+    // the base's boxes only fires when the two lists line up — any surprise
+    // (a preamble, a filtered line) leaves the blocks unmarked and the
+    // page-level vote inert.
+    struct LayoutLine {
+        QString label;
+        int orientation = 0;
+    };
+    QList<LayoutLine> lines;
+    QRegularExpressionMatchIterator it = layoutLineRegex().globalMatch(rawText);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch m = it.next();
+        bool valid = true;
+        int coords[4];
+        for (int i = 0; i < 4; ++i) {
+            coords[i] = m.captured(i + 1).toInt(&valid);
+            if (!valid || coords[i] < 0 || coords[i] > 1000) {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid || coords[0] == coords[2] || coords[1] == coords[3])
+            continue;
+        const QString label = m.captured(5);
+        if (label == QLatin1String("inline_formula"))
+            continue;
+        lines.append({label, orientationDegrees(m.captured(6))});
+    }
+    const int kept = m_options.keepPageNumbers ? lines.size() : int(std::count_if(lines.cbegin(), lines.cend(), [](const LayoutLine &line) { return line.label != QLatin1String("page_number"); }));
+    // The base prepends a preamble box when the reply opens with text: a
+    // mismatch means the lists do not line up and nothing is zipped.
+    if (kept == page.boxes.size()) {
+        int boxIndex = 0;
+        for (const LayoutLine &line : lines) {
+            if (!m_options.keepPageNumbers && line.label == QLatin1String("page_number"))
+                continue;
+            page.boxes[boxIndex].orientation = line.orientation;
+            ++boxIndex;
+        }
+    }
+
     absorbCoveredBlocks(page.boxes);
     for (BoundingBox &box : page.boxes) {
         if (box.label == QLatin1String("equation_block"))

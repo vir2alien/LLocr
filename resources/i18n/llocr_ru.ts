@@ -49,6 +49,10 @@
         <translation>Страница %1: на странице нет текста, она оставлена как есть.</translation>
     </message>
     <message>
+        <source>Page %1 straightened by %2°.</source>
+        <translation>Страница %1 выровнена на %2°.</translation>
+    </message>
+    <message>
         <location line="-640"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
@@ -3807,6 +3811,18 @@
         <location line="+9"/>
         <source>Revert</source>
         <translation>Отменить изменения</translation>
+    </message>
+    <message>
+        <source>Turn left</source>
+        <translation>Повернуть влево</translation>
+    </message>
+    <message>
+        <source>Turn right</source>
+        <translation>Повернуть вправо</translation>
+    </message>
+    <message>
+        <source>Turn upside up</source>
+        <translation>Развернуть</translation>
     </message>
     <message>
         <location line="+19"/>

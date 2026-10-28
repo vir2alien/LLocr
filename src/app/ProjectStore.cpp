@@ -215,6 +215,7 @@ bool ProjectStore::save(const QString &path, const ProjectData &data, QString *e
             {"hasDuplicates", page.hasDuplicates},
             {"rotation", page.rotation},
             {"skewDegrees", page.skewDegrees},
+            {"suggestedTurn", page.suggestedTurn},
             {"userOriented", page.userOriented},
             {"orientationProblem", int(page.orientationProblem)},
             {"text", page.text},
@@ -363,6 +364,8 @@ ProjectStore::LoadResult ProjectStore::load(const QString &path, const QString &
         page.rotation = normalizeRotation(object.value("rotation").toInt(0));
         // A project written before the field: the page stands unstraightened.
         page.skewDegrees = object.value("skewDegrees").toDouble(0.0);
+        // A project written before the field: no turn is suggested.
+        page.suggestedTurn = object.value("suggestedTurn").toInt(0);
         page.userOriented = object.value("userOriented").toBool(false);
         // A project written before the flag: the check finds the page again.
         page.orientationProblem = PageOrientationProblem(object.value("orientationProblem").toInt(0));

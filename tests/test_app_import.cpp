@@ -305,6 +305,9 @@ public:
     // Overrides the det-token page reply when non-empty (e.g. a text-less
     // markup-shaped block for the first-recognition scenarios).
     QString ocrContent;
+    // Overrides the layout reply when non-empty (the "\nLayout Detection:"
+    // prompt): the markup-shaped block lines the layout parser reads.
+    QString layoutContent;
 
 private:
     // The body says which protocol the caller speaks, so the head alone cannot
@@ -415,8 +418,9 @@ private:
             // prompt (no system message), the fix protocol answer for a
             // candidate-carrying request, the block transcription otherwise;
             // the model streams newlines as the two characters `\n`.
-            const QString content = request.contains("<CANDIDATE>")           ? fixAnswer(request)
-                                    : request.contains("\"role\":\"system\"") ? transcription
+            const QString content = request.contains("<CANDIDATE>")                                     ? fixAnswer(request)
+                                    : request.contains("Layout Detection:") && !layoutContent.isEmpty() ? layoutContent
+                                    : request.contains("\"role\":\"system\"")                           ? transcription
                                                                               : (ocrContent.isEmpty() ? QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
                                                                                                                        "<|det|>text [112, 132, 884, 309]<|/det|>Second block text")
                                                                                                       : ocrContent);
@@ -3275,6 +3279,55 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
         QCOMPARE(controller.currentPageSkewDegrees(), straightened);
+    }
+
+    // The markup pass carries the layout model's rotation tokens (ADR 245):
+    // a sideways page whose blocks vote for a direction takes a one-click
+    // turn suggestion, and applying it clears the mark. The app advises, the
+    // user turns (ADR 242): the direction of the tokens alone is not the
+    // bar an automatic turn would need.
+    void theMarkupPassSuggestsTheTurnTheTokensVoteFor()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setOrientationCheckEnabled(true);
+        m_settings->setDecisionModelName(QStringLiteral("decision-model"));
+        m_settings->setLayoutRequestProfileId(QStringLiteral("mineru"));
+        server.layoutContent = QStringLiteral("<|box_start|>113 132 885 310<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n"
+                                              "<|box_start|>113 320 885 498<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n"
+                                              "<|box_start|>113 508 885 686<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>");
+
+        const QImage source = rotateImage(syntheticTextPage(), 90);
+        const QString path = m_dir.filePath(QStringLiteral("sideways-suggested.png"));
+        QVERIFY(source.save(path, "PNG"));
+
+        auto &controller = *m_controller;
+        controller.openFiles({QUrl::fromLocalFile(path)});
+        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
+
+        // The pixel check read the axis: the page is marked sideways before
+        // anything runs.
+        controller.recognizeCurrent();
+        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::Sideways));
+
+        // The markup pass runs on the sideways page: the tokens vote left
+        // (the text top points left), the turn that levels the page is to
+        // the right.
+        controller.layoutCurrentPage();
+        QTRY_VERIFY_WITH_TIMEOUT(!controller.layoutBusy(), kImportTimeoutMs);
+        QCOMPARE(controller.currentPageSuggestedTurn(), 90);
+
+        // One click applies the suggestion: the page is turned, the mark and
+        // the suggestion are gone, the markup was dropped with the old turn.
+        controller.rotatePage(controller.currentPageSuggestedTurn());
+        QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::None));
+        QCOMPARE(controller.currentPageSuggestedTurn(), 0);
+        QCOMPARE(controller.pageImage(0).size(), source.size().transposed());
     }
 
     // A page the user turned by hand keeps its turn: the check leaves it

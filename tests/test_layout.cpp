@@ -204,6 +204,42 @@ private slots:
         QVERIFY(parsed.pages.first().boxes.at(0).positioned);
         QCOMPARE(parsed.pages.first().boxes.at(1).label, QStringLiteral("text"));
     }
+
+    // The rotation token after every block (ADR 245): the direction the
+    // block's text top points, kept on the box for the page-level vote. A
+    // line without the token reads as up.
+    void theMineruReplyCarriesTheBlockRotation()
+    {
+        const QByteArray reply = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\""
+                                                   "<|box_start|>113 132 885 310<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n"
+                                                   "<|box_start|>113 320 885 498<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n"
+                                                   "<|box_start|>113 508 885 686<|box_end|><|ref_start|>text<|ref_end|>\n"
+                                                   "<|box_start|>113 696 885 874<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_down|>\"}}]}");
+
+        const OcrResult parsed = MinerULayoutParser().parse(QString::fromUtf8(reply));
+        QVERIFY(parsed.success);
+        QCOMPARE(parsed.pages.first().boxes.size(), 4);
+        QCOMPARE(parsed.pages.first().boxes.at(0).orientation, 270);
+        QCOMPARE(parsed.pages.first().boxes.at(1).orientation, 90);
+        QCOMPARE(parsed.pages.first().boxes.at(2).orientation, 0);
+        QCOMPARE(parsed.pages.first().boxes.at(3).orientation, 180);
+    }
+
+    // TeleOCR carries the same word in the third tag of its line.
+    void theTeleocrReplyCarriesTheBlockRotation()
+    {
+        const QByteArray reply = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\""
+                                                   "<box:34 56 789 123><label:title><up>\n"
+                                                   "<box:34 133 789 200><label:text><left>\n"
+                                                   "<box:34 210 789 277><label:text><right>\"}}]}");
+
+        const OcrResult parsed = TeleOcrLayoutParser().parse(QString::fromUtf8(reply));
+        QVERIFY(parsed.success);
+        QCOMPARE(parsed.pages.first().boxes.size(), 3);
+        QCOMPARE(parsed.pages.first().boxes.at(0).orientation, 0);
+        QCOMPARE(parsed.pages.first().boxes.at(1).orientation, 270);
+        QCOMPARE(parsed.pages.first().boxes.at(2).orientation, 90);
+    }
 };
 
 QTEST_MAIN(TestLayout)

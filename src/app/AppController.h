@@ -122,6 +122,10 @@ class AppController : public QObject
     // report, 1 = the page lies on its side, 2 = the picture could not read
     // the page.
     Q_PROPERTY(int currentPageOrientationProblem READ currentPageOrientationProblem NOTIFY pageChanged)
+    // The turn the layout tokens suggest for a sideways page of the current
+    // document (ADR 245): 90, 180, 270 or 0 = none. One click applies it —
+    // the user turns, the app advises.
+    Q_PROPERTY(int currentPageSuggestedTurn READ currentPageSuggestedTurn NOTIFY pageChanged)
     // The straightening the current page carries: the skew the orientation
     // check measured and the renderer levels.
     Q_PROPERTY(double currentPageSkewDegrees READ currentPageSkewDegrees NOTIFY pageChanged)
@@ -247,6 +251,7 @@ public:
     int currentPageVerification() const { return m_availability.currentPageVerification(); }
     int currentPageOrientationProblem() const;
     double currentPageSkewDegrees() const;
+    int currentPageSuggestedTurn() const;
     int selectedPageCount() const { return m_availability.selectedPageCount(); }
     int scopedPendingFixCount() const { return m_availability.scopedPendingFixCount(); }
     bool scopeHasResults() const { return m_availability.scopeHasResults(); }

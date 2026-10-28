@@ -124,8 +124,9 @@ the upstream pipeline code (`TeleOCR/vlm_utils/TeleOCR_client.py`,
 ```
 
 - one line per block; the orientation word (`up` / `right` / `down` / `left`)
-  in the third tag is the block's rotation, which LLocr ignores (the crop is
-  taken unrotated);
+  in the third tag is the block's rotation, which the parser keeps on the box
+  for the page-level turn vote (ADR 245) — the crop itself is taken
+  unrotated;
 - coordinates are integers on a **0–1000 scale**, divided by 1000 into the
   app's normalized 0–1 rects — the same range the det-token models use;
 - the label vocabulary is the upstream `BLOCK_TYPES` (text, title, table,
