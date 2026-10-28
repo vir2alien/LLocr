@@ -641,6 +641,8 @@ OrientationVerdict PageScanner::verdict()
     closeRuns(closedAlong, m_cw, m_ch, kCloseLength, false);
     const int across = countLineComponents(closedAcross, m_cw, m_ch);
     const int along = countLineComponents(closedAlong, m_cw, m_ch);
+    if (qEnvironmentVariableIsSet("LLOCR_ORIENTATION_DEBUG"))
+        fprintf(stderr, "ODEBUG gates: otsu=%.4f ccAcross=%d ccAlong=%d crop=%dx%d\n", m_otsuInkFraction, across, along, m_cw, m_ch);
     if (across + along < kMinLineComponents)
         return result;
     result.textLike = true;
@@ -653,13 +655,15 @@ OrientationVerdict PageScanner::verdict()
 
     // The axis is the profile that reads as the lines of the page: it dives
     // from the ink of a line to the paper of the gap and back, while the
-    // profile across the text never empties. When both read as lines — the
-    // rules of a table repeat both ways — the stronger repetition wins.
+    // profile across the text never empties. When both read as lines — a
+    // contents page repeats along its entries and along their indents — the
+    // deeper alternation is the lines: the line profile dives to paper, the
+    // cross profile of a text block stays loaded.
     const bool rowLines = rows.variation >= kLineProfileVariation;
     const bool colLines = cols.variation >= kLineProfileVariation;
     if (!rowLines && !colLines)
         return result;
-    const int axis = rowLines && colLines ? (rows.value >= cols.value ? 0 : 1) : (rowLines ? 0 : 1);
+    const int axis = rowLines && colLines ? (rows.variation >= cols.variation ? 0 : 1) : (rowLines ? 0 : 1);
     const double firmness = axis == 0 ? rows.value : cols.value;
     result.confidence = firmness;
     if (firmness < kMinPeriodicity)
@@ -668,6 +672,20 @@ OrientationVerdict PageScanner::verdict()
     result.axisKnown = true;
     result.sideways = axis == 1;
     result.deskewDegrees = skew.degrees;
+    if (qEnvironmentVariableIsSet("LLOCR_ORIENTATION_DEBUG"))
+        fprintf(stderr,
+                "ODEBUG %dx%d rows=%.3f@%d cv=%.2f cols=%.3f@%d cv=%.2f axis=%d conf=%.3f lines=%d\n",
+                m_cw,
+                m_ch,
+                rows.value,
+                rows.pitch,
+                rows.variation,
+                cols.value,
+                cols.pitch,
+                cols.variation,
+                axis,
+                result.confidence,
+                across + along);
     return result;
 }
 

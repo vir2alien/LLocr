@@ -126,6 +126,7 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
         {kModelRecipeId, "modelRecipeId", QVariant(QString::fromUtf8(kDefaultModelRecipeId))},
         {kParserId, "parserId", QVariant(QString::fromUtf8(kDefaultParserId))},
         {kOrientationCheck, "orientationCheckEnabled", QVariant(QString::fromUtf8(kDefaultOrientationCheck))},
+        {kOrientationAutoTurn, "orientationAutoTurnEnabled", QVariant(QString::fromUtf8(kDefaultOrientationAutoTurn))},
         {kSplitPages, "splitPages", QVariant(kDefaultSplitPages)},
         {kKeepPageNumbers, "keepPageNumbers", QVariant(kDefaultKeepPageNumbers)},
         {kTablesAsHtml, "tablesAsHtml", QVariant(kDefaultTablesAsHtml)},
@@ -654,6 +655,19 @@ void SettingsStore::setParserId(const QString &parserName)
 bool SettingsStore::orientationCheckEnabled() const
 {
     return m_settings.value(kOrientationCheck, kDefaultOrientationCheck).toBool();
+}
+
+bool SettingsStore::orientationAutoTurnEnabled() const
+{
+    return m_settings.value(kOrientationAutoTurn, kDefaultOrientationAutoTurn).toBool();
+}
+
+void SettingsStore::setOrientationAutoTurnEnabled(bool on)
+{
+    if (orientationAutoTurnEnabled() == on)
+        return;
+    m_settings.setValue(kOrientationAutoTurn, on ? QStringLiteral("true") : QStringLiteral("false"));
+    emit orientationAutoTurnEnabledChanged();
 }
 
 void SettingsStore::setOrientationCheckEnabled(bool on)

@@ -183,6 +183,8 @@ public:
     // The orientation check that runs before a page is recognized: a page
     // that lies the wrong way up is turned first.
     bool orientationCheckEnabled() const;
+    bool orientationAutoTurnEnabled() const;
+    void setOrientationAutoTurnEnabled(bool on);
     void setOrientationCheckEnabled(bool on);
 
     bool splitPages() const;
@@ -352,6 +354,7 @@ signals:
     void modelRecipeIdChanged();
     void parserIdChanged();
     void orientationCheckEnabledChanged();
+    void orientationAutoTurnEnabledChanged();
     void splitPagesChanged();
     void keepPageNumbersChanged();
     void tablesAsHtmlChanged();
@@ -476,6 +479,10 @@ private:
     // The orientation check before the recognition
     static constexpr const char *kOrientationCheck = "recognition/orientationCheck";
     static constexpr const char *kDefaultOrientationCheck = "true";
+    // The markup pass turns a sideways page itself when the model's rotation
+    // tokens vote one way (ADR 246); off leaves the one-click suggestion.
+    static constexpr const char *kOrientationAutoTurn = "recognition/orientationAutoTurn";
+    static constexpr const char *kDefaultOrientationAutoTurn = "true";
 
     // Output / export
     static constexpr const char *kSplitPages = "output/splitPages";

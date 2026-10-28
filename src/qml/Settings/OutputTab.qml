@@ -40,6 +40,7 @@ ColumnLayout {
         pageNumbersCheck.checked = Settings.keepPageNumbers
         tablesAsHtmlCheck.checked = Settings.tablesAsHtml
         orientationCheckBox.checked = Settings.orientationCheckEnabled
+        orientationAutoTurnCheck.checked = Settings.orientationAutoTurnEnabled
         orientationBox.currentIndex = Settings.pdfLandscape ? 1 : 0
         marginSpin.value = Settings.pdfMarginMm
     }
@@ -50,6 +51,7 @@ ColumnLayout {
         Settings.keepPageNumbers = pageNumbersCheck.checked
         Settings.tablesAsHtml = tablesAsHtmlCheck.checked
         Settings.orientationCheckEnabled = orientationCheckBox.checked
+        Settings.orientationAutoTurnEnabled = orientationAutoTurnCheck.checked
         Settings.pdfLandscape = orientationBox.currentIndex === 1
         Settings.pdfMarginMm = marginSpin.value
     }
@@ -63,6 +65,7 @@ ColumnLayout {
         function onKeepPageNumbersChanged() { pageNumbersCheck.checked = Settings.keepPageNumbers }
         function onTablesAsHtmlChanged() { tablesAsHtmlCheck.checked = Settings.tablesAsHtml }
         function onOrientationCheckEnabledChanged() { orientationCheckBox.checked = Settings.orientationCheckEnabled }
+        function onOrientationAutoTurnEnabledChanged() { orientationAutoTurnCheck.checked = Settings.orientationAutoTurnEnabled }
         function onPdfLandscapeChanged() { orientationBox.currentIndex = Settings.pdfLandscape ? 1 : 0 }
         function onPdfMarginMmChanged() { marginSpin.value = Settings.pdfMarginMm }
     }
@@ -118,6 +121,16 @@ ColumnLayout {
                    + "lies. A page that lies on its side, or one the picture cannot "
                    + "read, is marked in red and left as it is — turn it by hand. "
                    + "The pages you turn by hand are left alone.")
+    }
+
+    LLOCheckBox {
+        id: orientationAutoTurnCheck
+        visible: orientationCheckBox.checked
+        label: qsTr("Turn a sideways page after markup automatically")
+        help: qsTr("The markup model names the direction each block points. When "
+                   + "nearly all blocks of a marked page agree, the page is turned "
+                   + "and the markup runs again on the straightened page. The "
+                   + "direction is the model's guess — check the result.")
     }
 
     Item { implicitHeight: 6 }

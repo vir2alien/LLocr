@@ -129,6 +129,8 @@ class AppController : public QObject
     // The straightening the current page carries: the skew the orientation
     // check measured and the renderer levels.
     Q_PROPERTY(double currentPageSkewDegrees READ currentPageSkewDegrees NOTIFY pageChanged)
+    // The clockwise turn the current page carries (0, 90, 180, 270).
+    Q_PROPERTY(int currentPageRotation READ currentPageRotation NOTIFY pageChanged)
     // The toolbar's scope: the thumbnail selection, empty = every page. The
     // counts ride the availability broadcast so a verdict landing on a
     // non-current page re-announces them too.
@@ -252,6 +254,7 @@ public:
     int currentPageOrientationProblem() const;
     double currentPageSkewDegrees() const;
     int currentPageSuggestedTurn() const;
+    int currentPageRotation() const;
     int selectedPageCount() const { return m_availability.selectedPageCount(); }
     int scopedPendingFixCount() const { return m_availability.scopedPendingFixCount(); }
     bool scopeHasResults() const { return m_availability.scopeHasResults(); }
@@ -524,6 +527,12 @@ private:
     QMutex m_thumbnailMutex;
     LruImageCache m_thumbnailCache{kThumbnailCacheBudgetBytes};
     QSet<QString> m_reportedUnrenderablePages;
+    // The markup pass's auto-turn (ADR 246): the pages already turned by the
+    // vote (one turn per markup run — the second pass exists to read the
+    // boxes from the turned page, and must not turn in circles) and the
+    // pages waiting for that second pass.
+    QSet<int> m_autoTurnedPages;
+    QList<int> m_remarkupPages;
 
     void notifyPageListGrown();
     void markPageEdited(int index);

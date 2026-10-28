@@ -53,6 +53,10 @@
         <translation>Страница %1 выровнена на %2°.</translation>
     </message>
     <message>
+        <source>Page %1 lies on its side — turned by %2°, the markup runs again.</source>
+        <translation>Страница %1 лежала боком — повёрнута на %2°, разметка запускается снова.</translation>
+    </message>
+    <message>
         <location line="-640"/>
         <source>Import stopped: %1 of %2 file(s) opened, %3 page(s).</source>
         <translation type="unfinished"></translation>
@@ -1499,6 +1503,10 @@
         <location line="+14"/>
         <source>Check the page orientation</source>
         <translation>Проверять ориентацию страницы</translation>
+    </message>
+    <message>
+        <source>Turn a sideways page after markup automatically</source>
+        <translation>Поворачивать боковую страницу после разметки автоматически</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -3823,6 +3831,10 @@
     <message>
         <source>Turn upside up</source>
         <translation>Развернуть</translation>
+    </message>
+    <message>
+        <source>Turn a sideways page after markup automatically</source>
+        <translation>Поворачивать боковую страницу после разметки автоматически</translation>
     </message>
     <message>
         <location line="+19"/>

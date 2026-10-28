@@ -184,6 +184,15 @@ AppController::AppController(SettingsStore &settings,
 
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::layoutStateChanged);
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::updateAvailability);
+    // A page the markup auto-turned waits for its second pass: the boxes the
+    // sideways layout read say nothing about the turned page.
+    connect(&m_layout, &LayoutController::busyChanged, this, [this]() {
+        if (m_layout.busy() || m_remarkupPages.isEmpty())
+            return;
+        QList<int> pages = m_remarkupPages;
+        m_remarkupPages.clear();
+        startLayout(pages);
+    });
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_layout, &LayoutController::progressChanged, this, &AppController::layoutProgressChanged);
     connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
@@ -425,6 +434,14 @@ int AppController::currentPageSuggestedTurn() const
     if (!m_document.isValidIndex(m_currentPage))
         return 0;
     return m_document.page(m_currentPage).suggestedTurn;
+}
+
+int AppController::currentPageRotation() const
+{
+    QReadLocker locker(&m_documentLock);
+    if (!m_document.isValidIndex(m_currentPage))
+        return 0;
+    return m_document.page(m_currentPage).rotation;
 }
 
 QString AppController::parseWarning() const
@@ -1312,6 +1329,7 @@ void AppController::recognizeScopeBlocks()
 
 void AppController::layoutScopePages()
 {
+    m_autoTurnedPages.clear();
     startLayout(scopePages());
 }
 
@@ -1366,11 +1384,13 @@ void AppController::fixAllProblemBlocks()
 
 void AppController::layoutCurrentPage()
 {
+    m_autoTurnedPages.clear();
     startLayout({m_currentPage});
 }
 
 void AppController::layoutAllPages()
 {
+    m_autoTurnedPages.clear();
     QList<int> pages;
     for (int i = 0; i < m_document.pageCount(); ++i)
         pages.append(i);
@@ -1460,14 +1480,32 @@ void AppController::applyLayout(int pageIndex, const QString &rawText)
     const OcrPage &pageData = parsed.pages.first();
     const int blockCount = pageData.boxes.size();
     int suggestedTurn = 0;
+    int autoTurn = 0;
     {
         QWriteLocker locker(&m_documentLock);
         DocumentPage &page = m_document.page(pageIndex);
         page.result = parsed;
         page.recognized = true;
         page.parseNote = parsed.notes.isEmpty() ? QString() : parsed.notes.join(QLatin1String(" "));
-        suggestedTurn = suggestedTurnFromVote(pageData, page.orientationProblem == PageOrientationProblem::Sideways);
-        page.suggestedTurn = suggestedTurn;
+        const bool sidewaysMarked = page.orientationProblem == PageOrientationProblem::Sideways;
+        suggestedTurn = suggestedTurnFromVote(pageData, sidewaysMarked);
+        // The markup pass turns the page itself (ADR 246) when the model's
+        // rotation tokens vote one way (the parser bars a split vote) and the
+        // pixel check marked the page sideways: the direction is advised, the
+        // axis is measured. Once per page — the second pass runs to read the
+        // boxes from the turned page, and its vote is the model's word again,
+        // not a reason to turn in circles.
+        if (suggestedTurn != 0 && m_settings.orientationAutoTurnEnabled() && !m_autoTurnedPages.contains(pageIndex)) {
+            autoTurn = suggestedTurn;
+            m_autoTurnedPages.insert(pageIndex);
+            m_remarkupPages.append(pageIndex);
+        }
+        page.suggestedTurn = autoTurn != 0 ? 0 : suggestedTurn;
+    }
+    if (autoTurn != 0) {
+        setStatus(StatusMessage::translate("AppController", "Page %1 lies on its side — turned by %2°, the markup runs again.").arg(pageIndex + 1).arg(autoTurn));
+        turnPage(pageIndex, autoTurn, false);
+        return;
     }
 
     m_pageModel.setRecognized(pageIndex, true);
