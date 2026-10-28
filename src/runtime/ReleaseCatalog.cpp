@@ -37,6 +37,16 @@ QString normalizedLower(const QString &s)
     return s.toLower();
 }
 
+// Upstream stopped publishing the sha256 table in the release body, and ADR 212
+// refuses an unverifiable runtime; GitHub computes a digest per uploaded asset
+// and returns it in the asset's "digest" field of the same API answer.
+QString digestFromApiField(const QString &value)
+{
+    static const QRegularExpression kDigestRe(QStringLiteral("^sha256:([0-9a-fA-F]{64})$"));
+    const QRegularExpressionMatch m = kDigestRe.match(value.trimmed());
+    return m.hasMatch() ? m.captured(1).toLower() : QString();
+}
+
 }  // namespace
 
 int extractBuildNumberFromTag(const QString &tagName)
@@ -122,10 +132,10 @@ QList<ReleaseInfo> ReleaseCatalog::parseReleasesJson(const QJsonArray &items, QS
             if (!av.isObject())
                 continue;
             const QJsonObject ao = av.toObject();
-            const QString name = ao.value(QStringLiteral("name")).toString();
-            const QString url = ao.value(QStringLiteral("browser_download_url")).toString();
-            const qint64 sz = static_cast<qint64>(ao.value(QStringLiteral("size")).toDouble(-1));
-            r.assets.append(parseAssetName(name, url, sz));
+            ReleaseAsset asset = parseAssetName(
+                ao.value(QStringLiteral("name")).toString(), ao.value(QStringLiteral("browser_download_url")).toString(), static_cast<qint64>(ao.value(QStringLiteral("size")).toDouble(-1)));
+            asset.sha256 = digestFromApiField(ao.value(QStringLiteral("digest")).toString());
+            r.assets.append(asset);
         }
 
         const QString body = o.value(QStringLiteral("body")).toString();

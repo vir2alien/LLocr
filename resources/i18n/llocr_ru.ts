@@ -4305,7 +4305,7 @@
     <message>
         <location line="+20"/>
         <source>Showing the cached release list — the check failed: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Показан сохранённый список релизов — проверка не удалась: %1</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -4326,6 +4326,10 @@
         <location line="+41"/>
         <source>Download failed — check your connection and try again</source>
         <translation>Скачивание не удалось — проверьте соединение и попробуйте снова</translation>
+    </message>
+    <message>
+        <source>Download failed: %1</source>
+        <translation>Скачивание не удалось: %1</translation>
     </message>
     <message>
         <location line="+14"/>

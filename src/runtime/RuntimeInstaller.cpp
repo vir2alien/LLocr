@@ -360,7 +360,10 @@ void RuntimeInstaller::maybeFinishDownloads()
         return;
     if (m_group->failed()) {
         setBusy(false);
-        setStatusMessage(tr("Download failed — check your connection and try again"));
+        // The task's own error names the real cause (checksum, no digest, HTTP
+        // status); the generic connection hint only covers a missing one.
+        const QString detail = m_group->firstError();
+        setStatusMessage(detail.isEmpty() ? tr("Download failed — check your connection and try again") : tr("Download failed: %1").arg(detail));
         setState(State::Error);
         releaseInstallLock();
         return;

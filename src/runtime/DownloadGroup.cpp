@@ -16,6 +16,7 @@ void DownloadGroup::begin()
     m_count = 0;
     m_done = 0;
     m_failed = false;
+    m_firstError.clear();
     m_finishedBytes = 0;
     m_tasks.clear();
 }
@@ -57,8 +58,11 @@ void DownloadGroup::onOneFinished(DownloadTask *task, bool ok)
         m_finishedBytes += qMax<qint64>(0, task->totalBytes());
     m_tasks.removeOne(task);
     ++m_done;
-    if (!ok)
+    if (!ok) {
         m_failed = true;
+        if (task && m_firstError.isEmpty())
+            m_firstError = task->error();
+    }
     emit progressChanged();
     if (m_done >= m_count)
         emit allFinished(!m_failed);

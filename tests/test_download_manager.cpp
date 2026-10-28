@@ -37,6 +37,8 @@ public:
     bool honorRanges = false;
     bool corruptContentRange = false;
     bool streamPartialThenHold = false;
+    bool dropMidBody = false;
+    int forcedStatus = 0;  // non-zero: answer this status with an empty body
 
     QList<RecordedRequest> requests;
 
@@ -158,6 +160,28 @@ private:
             return;
         }
 
+        if (forcedStatus != 0) {
+            respond(socket, "HTTP/1.1 " + QByteArray::number(forcedStatus) + " Forced", QList<QByteArray>(), QByteArray(), 0, false);
+            return;
+        }
+
+        if (dropMidBody) {
+            // The 200 headers promise the full length, half the body arrives,
+            // then the connection closes — the transfer breaks mid-stream.
+            QList<QByteArray> headers = baseHeaders();
+            headers.append("Connection: close");
+            QByteArray raw;
+            raw += "HTTP/1.1 200 OK\r\n";
+            for (const QByteArray &header : headers)
+                raw += header + "\r\n";
+            raw += "Content-Length: " + QByteArray::number(content.size()) + "\r\n\r\n";
+            raw += content.left(content.size() / 2);
+            socket->write(raw);
+            socket->flush();
+            socket->disconnectFromHost();
+            return;
+        }
+
         if (streamPartialThenHold) {
             const int half = content.size() / 2;
             respond(socket, "HTTP/1.1 200 OK", baseHeaders(), content.left(half), content.size(), true);
@@ -244,6 +268,11 @@ private slots:
     void insufficientSpaceFails();
     void parallelLimitRespectsTwoSlots();
     void refusesInsecureUrlByDefault();
+    // A mid-stream connection drop is retried on its own: the retry resumes
+    // from the .part and completes without the user re-clicking.
+    void retryAfterDroppedConnectionResumesAndCompletes();
+    void retryGivesUpAndKeepsPartForManualResume();
+    void httpErrorIsNotRetried();
     // A group's progress must be its own, not the manager's aggregate: the
     // manager is shared and keeps terminal tasks, so a second install used to be
     // diluted by the first one's leftovers and the bar stalled below 100 %.
@@ -507,6 +536,73 @@ void TestDownloadManager::parallelLimitRespectsTwoSlots()
 
 // A second install must not be diluted by the first one's finished downloads:
 // the progress bar is the group's, so it reaches 100 % on its own.
+void TestDownloadManager::retryAfterDroppedConnectionResumesAndCompletes()
+{
+    QTemporaryDir dir;
+    TestServer server;
+    const QByteArray data = pattern(8192);
+    server.content = data;
+    server.etag = kEtagV1;
+    server.honorRanges = true;
+    server.dropMidBody = true;
+    QVERIFY(server.start());
+
+    DownloadManager mgr;
+    mgr.setAllowLoopbackHttp(true);
+    mgr.setRetryDelaysMs({0});
+    const int row = mgr.enqueue(makeReq(server.url("big.bin"), dir.path(), "big.bin", sha256Hex(data)));
+    DownloadTask *task = mgr.taskAt(row);
+    QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Completed), 10000);
+
+    QCOMPARE(server.requests.size(), 2);
+    QVERIFY(server.requests.at(0).range.isEmpty());
+    const int half = data.size() / 2;
+    QCOMPARE(server.requests.at(1).range, QStringLiteral("bytes=%1-").arg(half));
+    QCOMPARE(server.requests.at(1).ifRange, kEtagV1);
+    QCOMPARE(readFile(QDir(dir.path()).filePath("big.bin")), data);
+    QVERIFY(!QFile::exists(QDir(dir.path()).filePath("big.bin.part")));
+}
+
+void TestDownloadManager::retryGivesUpAndKeepsPartForManualResume()
+{
+    QTemporaryDir dir;
+    TestServer server;
+    server.content = pattern(8192);
+    server.etag = kEtagV1;
+    server.dropMidBody = true;
+    QVERIFY(server.start());
+
+    DownloadManager mgr;
+    mgr.setAllowLoopbackHttp(true);
+    mgr.setRetryDelaysMs({0, 0});  // two retries, every attempt drops
+    const int row = mgr.enqueue(makeReq(server.url("big.bin"), dir.path(), "big.bin"));
+    DownloadTask *task = mgr.taskAt(row);
+    QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 10000);
+
+    QCOMPARE(server.requests.size(), 3);
+    QVERIFY(!task->error().isEmpty());
+    // The .part survives a failed download: the next manual attempt resumes.
+    QVERIFY(QFile::exists(QDir(dir.path()).filePath("big.bin.part")));
+}
+
+void TestDownloadManager::httpErrorIsNotRetried()
+{
+    QTemporaryDir dir;
+    TestServer server;
+    server.forcedStatus = 404;
+    QVERIFY(server.start());
+
+    DownloadManager mgr;
+    mgr.setAllowLoopbackHttp(true);
+    mgr.setRetryDelaysMs({0, 0});
+    const int row = mgr.enqueue(makeReq(server.url("gone.bin"), dir.path(), "gone.bin"));
+    DownloadTask *task = mgr.taskAt(row);
+    QTRY_COMPARE_WITH_TIMEOUT(int(task->state()), int(DownloadTask::State::Failed), 5000);
+
+    QCOMPARE(server.requests.size(), 1);
+    QVERIFY(task->error().contains(QStringLiteral("404")));
+}
+
 void TestDownloadManager::groupProgressIsPerGroupNotTheManagerAggregate()
 {
     QTemporaryDir dir;

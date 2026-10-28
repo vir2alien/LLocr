@@ -13,7 +13,7 @@ struct ReleaseAsset {
     QString arch;         // "x64" | "arm64" | "" when unknown
     QString build;        // "b10594" — from the enclosing release; used for the install tag
     qint64 size = -1;     // -1 = size not reported
-    QString sha256;       // lowercase hex digest from the release body; empty = not published
+    QString sha256;       // lowercase hex digest (API "digest" field, else the release-body table); empty = not published
     bool cudart = false;  // true for the CUDA runtime zip (not the llama-server archive)
 };
 

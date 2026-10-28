@@ -99,6 +99,8 @@ class TestReleaseCatalog : public QObject
 private slots:
     void parsesKnownLayout();
     void extractsShaFromBody();
+    void takesDigestFromApiFieldWhenBodyHasNone();
+    void apiDigestWinsOverBodyTable();
     void genericAssetNamesItsPlatformBackend();
     void cudartAssetIsFlagged();
     void cacheMissingIsNotFresh();
@@ -162,6 +164,56 @@ void TestReleaseCatalog::extractsShaFromBody()
     QVERIFY(winCuda);
     QCOMPARE(winCuda->sha256, digestOf('a'));
     QVERIFY(releases.at(1).assets.at(0).sha256.isEmpty());
+}
+
+// Upstream stopped publishing the sha256 table in the release body; the digest
+// comes from the API's per-asset "digest" field instead (ADR 236). Malformed
+// values — a foreign algorithm, a truncated hex — are refused, not accepted.
+void TestReleaseCatalog::takesDigestFromApiFieldWhenBodyHasNone()
+{
+    QJsonObject release;
+    release.insert(QStringLiteral("tag_name"), QStringLiteral("b11946"));
+    release.insert(QStringLiteral("body"), QStringLiteral("## Overview\n\nNo checksum table in this body."));
+    QJsonArray assets;
+    QJsonObject good = makeAsset(QStringLiteral("llama-b11946-bin-win-cpu-x64.zip"), QStringLiteral("https://example.com/cpu.zip"), 100);
+    good.insert(QStringLiteral("digest"), QStringLiteral("sha256:") + digestOf('f'));
+    assets.append(good);
+    QJsonObject foreign = makeAsset(QStringLiteral("llama-b11946-bin-win-vulkan-x64.zip"), QStringLiteral("https://example.com/vk.zip"), 101);
+    foreign.insert(QStringLiteral("digest"), QStringLiteral("md5:") + digestOf('f'));
+    assets.append(foreign);
+    QJsonObject truncated = makeAsset(QStringLiteral("llama-b11946-bin-macos-arm64.tar.gz"), QStringLiteral("https://example.com/mac.gz"), 102);
+    truncated.insert(QStringLiteral("digest"), QStringLiteral("sha256:abcdef"));
+    assets.append(truncated);
+    release.insert(QStringLiteral("assets"), assets);
+    QJsonArray items;
+    items.append(release);
+
+    QString err;
+    const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(items, err);
+    QVERIFY(err.isEmpty());
+    QCOMPARE(releases.at(0).assets.at(0).sha256, digestOf('f'));
+    QVERIFY(releases.at(0).assets.at(1).sha256.isEmpty());
+    QVERIFY(releases.at(0).assets.at(2).sha256.isEmpty());
+}
+
+void TestReleaseCatalog::apiDigestWinsOverBodyTable()
+{
+    const QString assetName = QStringLiteral("llama-b11946-bin-win-cpu-x64.zip");
+    QJsonObject release;
+    release.insert(QStringLiteral("tag_name"), QStringLiteral("b11946"));
+    release.insert(QStringLiteral("body"), QStringLiteral("sha256: %1  %2").arg(digestOf('2'), assetName));
+    QJsonArray assets;
+    QJsonObject asset = makeAsset(assetName, QStringLiteral("https://example.com/cpu.zip"), 100);
+    asset.insert(QStringLiteral("digest"), QStringLiteral("sha256:") + digestOf('1'));
+    assets.append(asset);
+    release.insert(QStringLiteral("assets"), assets);
+    QJsonArray items;
+    items.append(release);
+
+    QString err;
+    const QList<ReleaseInfo> releases = ReleaseCatalog::parseReleasesJson(items, err);
+    QVERIFY(err.isEmpty());
+    QCOMPARE(releases.at(0).assets.at(0).sha256, digestOf('1'));
 }
 
 void TestReleaseCatalog::genericAssetNamesItsPlatformBackend()

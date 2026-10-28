@@ -30,6 +30,7 @@ int DownloadManager::enqueue(const DownloadTask::Request &request)
     auto *task = new DownloadTask(request, m_nam, this);
     task->setAllowLoopbackHttp(m_allowLoopbackHttp);
     task->setFreeBytesQuery(m_freeBytesQuery);
+    task->setRetryDelaysMs(m_retryDelaysMs);
 
     const int row = m_tasks.size();
     m_tasks.append(task);
@@ -56,6 +57,13 @@ void DownloadManager::setFreeBytesQuery(DownloadTask::FreeBytesQuery query)
         m_freeBytesQuery = std::move(query);
     for (DownloadTask *task : m_tasks)
         task->setFreeBytesQuery(m_freeBytesQuery);
+}
+
+void DownloadManager::setRetryDelaysMs(const QList<int> &delaysMs)
+{
+    m_retryDelaysMs = delaysMs;
+    for (DownloadTask *task : m_tasks)
+        task->setRetryDelaysMs(delaysMs);
 }
 
 void DownloadManager::cancelAll(bool deletePartial)

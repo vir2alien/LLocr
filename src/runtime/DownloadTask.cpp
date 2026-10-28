@@ -133,6 +133,8 @@ DownloadTask::DownloadTask(const Request &request, QNetworkAccessManager *nam, Q
       m_finalPath(QDir(m_targetDir).filePath(m_fileName)), m_partPath(partPathFor(m_finalPath)), m_metaPath(metaPathFor(m_partPath)),
       m_freeBytesQuery([](const QString &dirPath) { return QStorageInfo(dirPath).bytesAvailable(); })
 {
+    m_retryTimer.setSingleShot(true);
+    connect(&m_retryTimer, &QTimer::timeout, this, [this]() { beginAttempt(); });
 }
 
 DownloadTask::~DownloadTask()
@@ -161,6 +163,7 @@ void DownloadTask::setState(State next)
 void DownloadTask::fail(const QString &message)
 {
     closeFile();
+    m_finalFailure = true;
     m_error = message;
     setState(State::Failed);
 }
@@ -170,8 +173,16 @@ void DownloadTask::start()
     if (m_state == State::Running || m_state == State::Verifying)
         return;
 
+    m_retryAttempt = 0;
+    m_retryTimer.stop();
+    beginAttempt();
+}
+
+void DownloadTask::beginAttempt()
+{
     m_cancelRequested = false;
     m_abortRequested = false;
+    m_finalFailure = false;
     m_error.clear();
 
     if (!QDir().mkpath(m_targetDir)) {
@@ -427,10 +438,25 @@ void DownloadTask::onFinished(QNetworkReply *reply)
         return;
     }
 
-    if (m_abortRequested || reply->error() != QNetworkReply::NoError) {
+    // A final failure decided inside the task (HTTP status, disk space, write
+    // error) aborts the reply itself; its error string must not overwrite the
+    // specific message and must not be retried.
+    if (m_abortRequested || m_finalFailure) {
         closeFile();  // flush; keep .part/.meta for a later resume
         if (m_error.isEmpty())
             m_error = reply->errorString();
+        setState(State::Failed);
+        emit downloadFinished(false);
+        return;
+    }
+
+    if (reply->error() != QNetworkReply::NoError) {
+        closeFile();  // flush; keep .part/.meta for a later resume
+        m_error = reply->errorString();
+        if (isRetryableFailure(reply) && m_retryAttempt < m_retryDelaysMs.size()) {
+            scheduleRetry();
+            return;
+        }
         setState(State::Failed);
         emit downloadFinished(false);
         return;
@@ -471,6 +497,21 @@ void DownloadTask::handleRedirect(const QUrl &target)
 
     m_effectiveUrl = next;
     issueRequest();
+}
+
+// No HTTP answer at all (transport: timeout, reset, proxy) and a broken body
+// transfer (the 200 headers arrived but the connection died mid-stream) recover
+// on a retry; an HTTP-level rejection (4xx) will not change within seconds.
+bool DownloadTask::isRetryableFailure(QNetworkReply *reply) const
+{
+    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    return status == 0 || status == 200 || status >= 500;
+}
+
+void DownloadTask::scheduleRetry()
+{
+    ++m_retryAttempt;
+    m_retryTimer.start(m_retryDelaysMs.at(m_retryAttempt - 1));
 }
 
 bool DownloadTask::isAllowedUrl(const QUrl &url) const
@@ -599,6 +640,7 @@ void DownloadTask::cancel(bool deletePartial)
         return;
     m_cancelRequested = true;
     m_cancelDeletePartial = deletePartial;
+    m_retryTimer.stop();
     if (m_reply) {
         m_reply->abort();
     } else {
@@ -616,6 +658,7 @@ void DownloadTask::abortDownload()
     if (m_state != State::Running && m_state != State::Queued)
         return;
     m_abortRequested = true;
+    m_retryTimer.stop();
     if (m_reply) {
         m_reply->abort();
     } else {

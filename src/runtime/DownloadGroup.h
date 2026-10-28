@@ -21,6 +21,7 @@ public:
     void enqueue(const DownloadTask::Request &request);
 
     bool failed() const { return m_failed; }
+    QString firstError() const { return m_firstError; }
     double progress() const;
 
 signals:
@@ -42,6 +43,7 @@ private:
     int m_count = 0;
     int m_done = 0;
     bool m_failed = false;
+    QString m_firstError;
 };
 
 }  // namespace llocr

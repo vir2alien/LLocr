@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QUrl>
 
 #include <functional>
@@ -70,6 +71,8 @@ public:
     using FreeBytesQuery = std::function<qint64(const QString &dirPath)>;
     void setFreeBytesQuery(FreeBytesQuery query);
 
+    void setRetryDelaysMs(const QList<int> &delaysMs) { m_retryDelaysMs = delaysMs; }
+
 signals:
     void stateChanged();
     void progressChanged();
@@ -80,6 +83,9 @@ private:
     QString metaPathFor(const QString &part) const { return part + QStringLiteral(".meta"); }
 
     void issueRequest();
+    void beginAttempt();
+    void scheduleRetry();
+    bool isRetryableFailure(QNetworkReply *reply) const;
     void onMetadata(QNetworkReply *reply);
     void onData(QNetworkReply *reply);
     void onFinished(QNetworkReply *reply);
@@ -143,6 +149,11 @@ private:
     bool m_cancelRequested = false;
     bool m_cancelDeletePartial = false;
     bool m_abortRequested = false;
+    bool m_finalFailure = false;
+
+    QList<int> m_retryDelaysMs = {2000, 5000};
+    int m_retryAttempt = 0;
+    QTimer m_retryTimer;
 
     QElapsedTimer m_speedClock;
     qint64 m_speedSampleBytes = 0;

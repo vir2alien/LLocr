@@ -345,8 +345,8 @@ Local-runtime suite (stages A–H):
 | `test_capabilities`        | build profiles + `--help` parse, flag screening               |
 | `test_server_process`      | state machine, health, timeout, stop, restart, ring log       |
 | `test_ensure_connection`   | External/Managed resolve, dedup, cancel, timeout, self-test    |
-| `test_download_manager`    | `If-Range`/`Content-Range`, ETag change, resume+sha256, cancel |
-| `test_release_catalog`     | real-release fixtures, `sha256` from body, asset selection    |
+| `test_download_manager`    | `If-Range`/`Content-Range`, ETag change, resume+sha256, cancel, auto-retry on a dropped transfer (ADR 236) |
+| `test_release_catalog`     | real-release fixtures, `sha256` from the API `digest` field (body table as fallback, ADR 236), asset selection    |
 | `test_archive_extractor`   | zip-slip, UNC, symlink, bomb, duplicates, permissions         |
 | `test_install_transaction` | failure at every step leaves no garbage / settings intact     |
 | `test_model_catalog`       | pagination, revision pinning, mmproj, multi-part, path encoding |

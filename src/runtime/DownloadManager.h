@@ -26,6 +26,7 @@ public:
 
     void setAllowLoopbackHttp(bool allow);
     void setFreeBytesQuery(DownloadTask::FreeBytesQuery query);
+    void setRetryDelaysMs(const QList<int> &delaysMs);
 
 signals:
     void progressChanged();
@@ -42,6 +43,7 @@ private:
     QList<DownloadTask *> m_tasks;
     int m_maxParallel = 2;
     bool m_allowLoopbackHttp = false;
+    QList<int> m_retryDelaysMs = {2000, 5000};
     DownloadTask::FreeBytesQuery m_freeBytesQuery;
 };
 

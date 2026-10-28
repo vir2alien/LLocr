@@ -416,16 +416,21 @@ private slots:
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(
-            checkKeys,
-            QStringList({QStringLiteral("glm-ocr"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("lightonocr"), QStringLiteral("mineru"), QStringLiteral("paddleocr-vl"), QStringLiteral("teleocr")}));
+        QCOMPARE(checkKeys,
+                 QStringList({QStringLiteral("glm-ocr"),
+                              QStringLiteral("lfm25-vl-3b"),
+                              QStringLiteral("lightonocr"),
+                              QStringLiteral("mineru"),
+                              QStringLiteral("minicpm-ocr"),
+                              QStringLiteral("paddleocr-vl"),
+                              QStringLiteral("teleocr")}));
 
         // The decision list serves the decision task only; the default model
         // leads, the rest sort by title (ModelProfiles::forRole).
         QStringList decisionKeys;
         for (int i = 0; i < decision->rowCount(); ++i)
             decisionKeys.append(roleAt(decision, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(decisionKeys, QStringList({QStringLiteral("clef-flash"), QStringLiteral("d3-flash"), QStringLiteral("d3-mini")}));
+        QCOMPARE(decisionKeys, QStringList({QStringLiteral("clef-flash"), QStringLiteral("d3-flash"), QStringLiteral("d3-mini"), QStringLiteral("minicpm-jev")}));
         QVERIFY(pathOf(*s->installer, QStringLiteral("clef-flash"), QStringLiteral("decision")).isEmpty());
 
         // The layout list serves the layout task only (ADR 150): two shipped
@@ -443,7 +448,7 @@ private slots:
         QStringList rawPageKeys;
         for (int i = 0; i < rawPage->rowCount(); ++i)
             rawPageKeys.append(roleAt(rawPage, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(rawPageKeys, QStringList({QStringLiteral("glm-ocr"), QStringLiteral("chandra-ocr-2"), QStringLiteral("lightonocr")}));
+        QCOMPARE(rawPageKeys, QStringList({QStringLiteral("glm-ocr"), QStringLiteral("chandra-ocr-2"), QStringLiteral("lightonocr"), QStringLiteral("minicpm-ocr")}));
 
         QStringList fixKeys;
         for (int i = 0; i < fix->rowCount(); ++i)
@@ -823,8 +828,8 @@ private slots:
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 4);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), -1);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_verify")), -1);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 6);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 7);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 7);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 8);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_ocr")), ocrPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), QStringLiteral("blockRecognition")), textPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), QStringLiteral("blockRecognition")), verifierPath);
@@ -837,7 +842,7 @@ private slots:
         // active OCR model and must appear in the OCR list too.
         settings.setLaunchModelPath(textPath);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 5);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 6);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 7);
     }
 
     // A list model with named roles: a QML delegate that misspells a role name
