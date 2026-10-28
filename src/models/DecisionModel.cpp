@@ -28,11 +28,7 @@ QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const
         // consistent with the crop) in one pass; the render rides next to the
         // crop, in that order.
         QJsonObject questions;
-        if (!request.questions.isEmpty()) {
-            questions = request.questions;
-        } else {
-            questions.insert(QStringLiteral("match"), QJsonObject{{QStringLiteral("type"), QStringLiteral("noul")}});
-        }
+        questions.insert(QStringLiteral("match"), QJsonObject{{QStringLiteral("type"), QStringLiteral("noul")}});
         QJsonObject root;
         if (!modelId.isEmpty())
             root.insert(QStringLiteral("model"), modelId);
@@ -61,13 +57,7 @@ QByteArray DecisionModel::buildRequestBody(const DecisionRequest &request, const
         question.insert(QStringLiteral("criteria"), criteria);
     }
     QJsonObject questions;
-    if (!request.questions.isEmpty()) {
-        // A ready-made questions dict: the task asks its own question (the
-        // orientation check asks for a choice, not a yes/no).
-        questions = request.questions;
-    } else {
-        questions.insert(QStringLiteral("match"), question);
-    }
+    questions.insert(QStringLiteral("match"), question);
 
     QJsonObject root;
     // The System One protocol names the model that answers (llama.cpp: the
@@ -165,16 +155,8 @@ DecisionResult DecisionModel::parseResponse(const QByteArray &responseData, cons
         return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "No match answer in response"));
 
     double probability = 0.0;
-    if (!readNoul(match, probability)) {
-        // A choice question: the answer carries the probability of every class
-        // instead of a yes/no verdict.
-        DecisionResult result;
-        if (!readChoice(match, result.diagnosis))
-            return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
-        result.ok = true;
-        result.probability = result.topDiagnosis().isEmpty() ? 0.0 : result.diagnosis.value(result.topDiagnosis());
-        return result;
-    }
+    if (!readNoul(match, probability))
+        return DecisionResult::makeError(StatusMessage::translate("DecisionModel", "Unsupported decision answer format"));
 
     // The v6 aux questions are optional: a v5 profile or an old server ships
     // match only. An answer that is present but unreadable is an error, never
@@ -194,9 +176,9 @@ DecisionResult DecisionModel::parseResponse(const QByteArray &responseData, cons
 
 QFuture<DecisionResult> DecisionModel::judge(const DecisionRequest &request, const ConnectionConfig &config)
 {
-    // The answer sits under the question's own name; the yes/no question of the
-    // verification keeps the name it always had.
-    const QString answerKey = request.questions.size() == 1 ? request.questions.constBegin().key() : QStringLiteral("match");
+    // The answer sits under the question's own name: the verification asks one
+    // yes/no question and the answer keeps the name it always had.
+    const QString answerKey = QStringLiteral("match");
     const QString modelId = config.modelId;
     // The render of a visual-diff request is encoded on the worker thread next
     // to the crop — both pictures travel on the wire.

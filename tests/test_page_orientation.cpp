@@ -10,10 +10,10 @@
 
 using namespace llocr;
 
-// The orientation check: the picture reads the axis of the text and names the
-// turns the page may need. Which way is up is the model's business — the
-// typographic signs of it carry the sign of the alphabet, and a picture that
-// reads them turns the pages that lie the right way up.
+// The orientation check: the picture reads the axis of the text and says
+// whether the page lies straight or on its side. Which way is up it does not
+// read — the typographic signs of it carry the sign of the alphabet, and a
+// picture that reads them turns the pages that lie the right way up.
 class TestPageOrientation : public QObject
 {
     Q_OBJECT
@@ -25,7 +25,6 @@ private slots:
         QVERIFY(verdict.textLike);
         QVERIFY(verdict.axisKnown);
         QVERIFY(!verdict.sideways);
-        QCOMPARE(orientationCandidates(verdict), QList<int>({0, 180}));
     }
 
     void aPageOnItsSideRunsUpAndDown()
@@ -35,7 +34,6 @@ private slots:
         QVERIFY(verdict.textLike);
         QVERIFY(verdict.axisKnown);
         QVERIFY(verdict.sideways);
-        QCOMPARE(orientationCandidates(verdict), QList<int>({90, 270}));
     }
 
     void theOtherSideRunsUpAndDownToo()
@@ -45,7 +43,6 @@ private slots:
         QVERIFY(verdict.textLike);
         QVERIFY(verdict.axisKnown);
         QVERIFY(verdict.sideways);
-        QCOMPARE(orientationCandidates(verdict), QList<int>({90, 270}));
     }
 
     void theWayUpIsNotThePicturesBusiness()
@@ -55,19 +52,18 @@ private slots:
         // sign of the alphabet (Russian has more descenders than ascenders,
         // English the other way round), so reading them turns the pages that
         // lie the right way up. The picture therefore says the same about both
-        // — the model settles the way up.
+        // — the page is left to the user.
         const OrientationVerdict upright = detectPageOrientation(syntheticTextPage());
         const OrientationVerdict upsideDown = detectPageOrientation(rotateImage(syntheticTextPage(), 180));
         QCOMPARE(upsideDown.textLike, upright.textLike);
         QCOMPARE(upsideDown.axisKnown, upright.axisKnown);
         QCOMPARE(upsideDown.sideways, upright.sideways);
-        QCOMPARE(orientationCandidates(upsideDown), orientationCandidates(upright));
     }
 
-    void aPageThePictureCannotReadKeepsAllTheTurns()
+    void aPageThePictureCannotReadSaysNothing()
     {
         // A single line: the rows and the columns vary the same way, so the
-        // axis is not read and the model may answer any of the four.
+        // axis is not read and the page is left to the user.
         QImage page(900, 1200, QImage::Format_Grayscale8);
         page.fill(255);
         QPainter painter(&page);
@@ -78,7 +74,6 @@ private slots:
         const OrientationVerdict verdict = detectPageOrientation(page);
         QVERIFY(!verdict.textLike);
         QVERIFY(!verdict.axisKnown);
-        QCOMPARE(orientationCandidates(verdict), QList<int>({0, 90, 180, 270}));
     }
 
     void aBlankPageSaysNothing()
@@ -110,11 +105,11 @@ private slots:
         QVERIFY(!verdict.axisKnown);
     }
 
-    // The corpus of the project: ten real pages of a Russian book (equations,
-    // tables and prose) and four turns of each. The axis has to be read the
-    // right way round wherever the picture reads it at all, and the picture
-    // must never claim which way is up — that is where the pages that lie the
-    // right way up were being turned over.
+    // The corpus of the project: ten real pages (equations, tables and prose)
+    // and four turns of each. The axis has to be read the right way round
+    // wherever the picture reads it at all, and the picture must never claim
+    // which way is up — that is where the pages that lie the right way up were
+    // being turned over.
     void theCorpusPagesKeepTheirAxis()
     {
         const QString dir = QStringLiteral(LLOCR_CORPUS_RENDERS);

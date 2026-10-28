@@ -26,6 +26,12 @@ enum class PageRecognitionMode : int { None = 0, MarkupOnly = 1, RawOcr = 2, Mar
 // one subject block is unanswered, or there are none.
 enum class PageVerification : int { Incomplete = 0, HasErrors = 1, Clean = 2 };
 
+// What the orientation check found about the page. None = the picture read the
+// axis of the text and the page lies straight. Sideways = the page lies on its
+// side: the picture cannot tell which way it has to be turned, so the user
+// turns it by hand. Unclear = the picture cannot read the page at all.
+enum class PageOrientationProblem : int { None = 0, Sideways = 1, Unclear = 2 };
+
 // Pure derivations over a recognized page (the rework plan's §6).
 namespace PageStatus {
 
@@ -55,9 +61,10 @@ struct DocumentPage {
     int sourcePageIndex = -1;
     QSize pixelSize;
     QString sourceError;
-    QString parseNote;          ///< Non-fatal parser diagnostic for the last recognition.
-    int rotation = 0;           ///< The clockwise turn the renderer applies to the source (0, 90, 180, 270).
-    bool userOriented = false;  ///< The user turned this page by hand: the orientation check leaves it alone.
+    QString parseNote;                                                         ///< Non-fatal parser diagnostic for the last recognition.
+    int rotation = 0;                                                          ///< The clockwise turn the renderer applies to the source (0, 90, 180, 270).
+    bool userOriented = false;                                                 ///< The user turned this page by hand: the orientation check leaves it alone.
+    PageOrientationProblem orientationProblem = PageOrientationProblem::None;  ///< What the orientation check found: the page needs a turn by hand.
 
     // The size the page is shown in: the source size after the turn. The
     // model's geometry is read against the rendered page, so this is the

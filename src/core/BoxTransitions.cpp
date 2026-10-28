@@ -114,10 +114,8 @@ void ocrResultApplied(BoundingBox &box, const QString &text)
 
 bool blockRectChanged(BoundingBox &box)
 {
-    const bool carried = !box.text.isEmpty() || !box.correctedText.isEmpty()
-                         || box.checkStatus != BoxCheckStatus::NotChecked
-                         || box.correctedCheckStatus != BoxCheckStatus::NotChecked
-                         || box.fixStatus != BoxFixStatus::None;
+    const bool carried = !box.text.isEmpty() || !box.correctedText.isEmpty() || box.checkStatus != BoxCheckStatus::NotChecked || box.correctedCheckStatus != BoxCheckStatus::NotChecked ||
+                         box.fixStatus != BoxFixStatus::None;
     clearContent(box);
     return carried;
 }

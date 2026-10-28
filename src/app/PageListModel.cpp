@@ -38,6 +38,8 @@ QVariant PageListModel::data(const QModelIndex &index, int role) const
         return (row < m_recognitionMode.size()) ? m_recognitionMode.at(row) : 0;
     case VerificationRole:
         return (row < m_verification.size()) ? m_verification.at(row) : 0;
+    case OrientationProblemRole:
+        return (row < m_orientationProblem.size()) ? m_orientationProblem.at(row) : 0;
     case SelectedRole:
         return (row < m_selected.size()) ? m_selected.at(row) : false;
     }
@@ -54,6 +56,7 @@ QHash<int, QByteArray> PageListModel::roleNames() const
         {HasDuplicatesRole, "hasDuplicates"},
         {RecognitionModeRole, "pageRecognitionMode"},
         {VerificationRole, "pageVerification"},
+        {OrientationProblemRole, "orientationProblem"},
         {SelectedRole, "selected"},
     };
     return roles;
@@ -71,6 +74,7 @@ void PageListModel::appendPages(int count)
     m_hasDuplicates += QList<bool>(count, false);
     m_recognitionMode += QList<int>(count, 0);
     m_verification += QList<int>(count, 0);
+    m_orientationProblem += QList<int>(count, 0);
     m_selected += QList<bool>(count, false);
     endInsertRows();
 }
@@ -130,6 +134,17 @@ void PageListModel::setVerification(int index, int verification)
     emit dataChanged(mi, mi, {VerificationRole});
 }
 
+void PageListModel::setOrientationProblem(int index, int problem)
+{
+    if (index < 0 || index >= m_orientationProblem.size())
+        return;
+    if (m_orientationProblem.at(index) == problem)
+        return;
+    m_orientationProblem[index] = problem;
+    const QModelIndex mi = this->index(index);
+    emit dataChanged(mi, mi, {OrientationProblemRole});
+}
+
 void PageListModel::setCurrent(int index)
 {
     if (index < -1 || index >= m_recognized.size())
@@ -159,6 +174,7 @@ void PageListModel::removePage(int index)
     m_hasDuplicates.removeAt(index);
     m_recognitionMode.removeAt(index);
     m_verification.removeAt(index);
+    m_orientationProblem.removeAt(index);
     const bool wasSelected = (index < m_selected.size()) ? m_selected.takeAt(index) : false;
     if (m_current == index)
         m_current = -1;
@@ -190,6 +206,7 @@ void PageListModel::movePage(int from, int to)
     m_hasDuplicates.move(from, to);
     m_recognitionMode.move(from, to);
     m_verification.move(from, to);
+    m_orientationProblem.move(from, to);
     m_selected.move(from, to);
 
     m_current = remapIndexAfterMove(m_current, from, to);
@@ -208,6 +225,7 @@ void PageListModel::clear()
     m_hasDuplicates.clear();
     m_recognitionMode.clear();
     m_verification.clear();
+    m_orientationProblem.clear();
     m_selected.clear();
     m_current = -1;
     endResetModel();

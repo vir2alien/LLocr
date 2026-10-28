@@ -169,23 +169,6 @@ private slots:
         QCOMPARE(root.value(QStringLiteral("model")).toString(), QStringLiteral("llocr-decision"));
     }
 
-    void visualDiffRequestKeepsARemadeQuestionsDict()
-    {
-        // The orientation check asks its own question through the same wire;
-        // the visual-diff shape does not take that option away.
-        ExposedDecisionModel model;
-        DecisionRequest request = testRequest();
-        request.visualDiff = true;
-        request.renderImage = QImage(8, 8, QImage::Format_ARGB32);
-        QJsonObject choice{{QStringLiteral("type"), QStringLiteral("choice")}, {QStringLiteral("instructions"), QStringLiteral("Which way is the page turned?")}};
-        request.questions = QJsonObject{{QStringLiteral("orientation"), choice}};
-
-        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"), QByteArrayLiteral("data:image/png;base64,BBBB"));
-        const QJsonObject wire = QJsonDocument::fromJson(body).object().value(QStringLiteral("questions")).toObject();
-        QCOMPARE(wire.size(), 1);
-        QCOMPARE(wire.value(QStringLiteral("orientation")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("choice"));
-    }
-
     void visualDiffAnswerReadsLikeAnyNoulAnswer()
     {
         ExposedDecisionModel model;

@@ -33,19 +33,6 @@
 
 namespace llocr {
 
-namespace {
-
-// The model's answer has to be this certain before a page is turned on it.
-constexpr double kOrientationConfidence = 0.6;
-
-// A page on its side needs much more: the model names the same direction for
-// both sides of the same page (measured on the corpus: "90" for every page
-// that lies on its side), so its confidence there says nothing about the
-// direction — only a very certain answer is worth a quarter turn.
-constexpr double kQuarterTurnConfidence = 0.75;
-
-}  // namespace
-
 AppController::AppController(SettingsStore &settings,
                              RuntimeController &runtime,
                              RequestProfileStore &requestProfiles,
@@ -92,17 +79,17 @@ AppController::AppController(SettingsStore &settings,
                 [this](int pageIndex, int boxIndex) { return blockDisplayText(pageIndex, boxIndex); },
                 [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderer.render(candidateText, done); }},
                this),
-      m_layout(layoutRequestProfiles, runtime, this), m_orientationDecision(runtime, this), m_availability({m_document,
-                                                                                                            m_pageModel,
-                                                                                                            m_verify,
-                                                                                                            runtime,
-                                                                                                            verification,
-                                                                                                            [this] { return m_currentPage; },
-                                                                                                            [this] { return m_importing; },
-                                                                                                            [this] { return m_recognition.busy(); },
-                                                                                                            [this] { return m_layout.busy(); },
-                                                                                                            [this] { return checkBusy(); }},
-                                                                                                           this),
+      m_layout(layoutRequestProfiles, runtime, this), m_availability({m_document,
+                                                                      m_pageModel,
+                                                                      m_verify,
+                                                                      runtime,
+                                                                      verification,
+                                                                      [this] { return m_currentPage; },
+                                                                      [this] { return m_importing; },
+                                                                      [this] { return m_recognition.busy(); },
+                                                                      [this] { return m_layout.busy(); },
+                                                                      [this] { return checkBusy(); }},
+                                                                     this),
       m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this),
       m_project({m_document,
                  m_pageModel,
@@ -124,18 +111,15 @@ AppController::AppController(SettingsStore &settings,
                  [this] { notifyDocumentChanged(); }},
                 this)
 {
-    // The orientation check: a page that lies the wrong way up is turned before
-    // it is recognized, so the model reads the text the right way round.
-    connect(&m_orientation, &OrientationController::turned, this, [this](int index, int degrees) {
-        if (!turnPage(index, degrees, false))
-            return;
-        setStatus(StatusMessage::translate("AppController", "Page %1 turned %2° clockwise before the recognition.").arg(index + 1).arg(normalizeRotation(degrees)));
+    // The orientation check: the picture reads the axis of the text before the
+    // page is recognized. A page it cannot settle is marked and left as it
+    // is — the user turns it by hand.
+    connect(&m_orientation, &OrientationController::sideways, this, [this](int index) {
+        setPageOrientationProblem(index, PageOrientationProblem::Sideways);
+        setStatus(StatusMessage::translate("AppController", "Page %1 lies on its side. The check cannot tell which way it has to be turned — turn it by hand.").arg(index + 1));
     });
     connect(&m_orientation, &OrientationController::unclear, this, [this](int index) {
-        if (m_orientationVerdicts.value(index).sideways) {
-            setStatus(StatusMessage::translate("AppController", "Page %1 lies on its side. The check cannot tell which way it has to be turned — turn it by hand.").arg(index + 1));
-            return;
-        }
+        setPageOrientationProblem(index, PageOrientationProblem::Unclear);
         setStatus(StatusMessage::translate("AppController", "Page %1: the orientation is not clear, the page was left as it is.").arg(index + 1));
     });
     connect(&m_orientation, &OrientationController::noText, this, [this](int index) {
@@ -148,7 +132,6 @@ AppController::AppController(SettingsStore &settings,
         m_pendingRun = nullptr;
         run();
     });
-    connect(&m_orientationDecision, &DecisionController::judgeFinished, this, &AppController::onOrientationVerdict);
 
     // The inspector owns the selected block: its signals are the facade's.
     connect(&m_inspector, &BlockInspector::selectedBoxChanged, this, &AppController::selectedBoxChanged);
@@ -402,6 +385,14 @@ QString AppController::currentPageWarning() const
 {
     QReadLocker locker(&m_documentLock);
     return m_document.isValidIndex(m_currentPage) ? m_document.page(m_currentPage).sourceError : QString();
+}
+
+int AppController::currentPageOrientationProblem() const
+{
+    QReadLocker locker(&m_documentLock);
+    if (!m_document.isValidIndex(m_currentPage))
+        return int(PageOrientationProblem::None);
+    return int(m_document.page(m_currentPage).orientationProblem);
 }
 
 QString AppController::parseWarning() const
@@ -1270,10 +1261,6 @@ void AppController::recognizeScopePages(const QString &task)
     const ConnectionRole role = connectionRoleFromName(task);
     if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
         return;
-    if (orientationCheckBusy()) {
-        setStatus(StatusMessage::translate("AppController", "The orientation check is running."));
-        return;
-    }
     if (!canRecognize()) {
         setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
         return;
@@ -1376,10 +1363,6 @@ void AppController::startLayout(const QList<int> &pages)
 {
     if (pages.isEmpty() || m_layout.busy() || m_recognition.busy() || m_importing || checkBusy())
         return;
-    if (orientationCheckBusy()) {
-        setStatus(StatusMessage::translate("AppController", "The orientation check is running."));
-        return;
-    }
     const ModelProfiles::Role *role = m_layout.role();
     if (!role) {
         setStatus(StatusMessage::translate("AppController", "The layout model does not support page markup."));
@@ -1830,6 +1813,9 @@ bool AppController::turnPage(int index, int degrees, bool byUser)
         // leaves it alone from now on.
         if (byUser)
             page.userOriented = true;
+        // The page was turned: what the check had to say about it is no
+        // longer true.
+        page.orientationProblem = PageOrientationProblem::None;
         // The blocks were read from the old turn and say nothing about the new
         // one: the page goes back to the state before the recognition.
         page.result = OcrResult();
@@ -1843,6 +1829,7 @@ bool AppController::turnPage(int index, int degrees, bool byUser)
     m_pageModel.setEdited(index, false);
     m_pageModel.setHasDuplicates(index, false);
     m_pageModel.setRecognitionMode(index, int(PageRecognitionMode::None));
+    m_pageModel.setOrientationProblem(index, int(PageOrientationProblem::None));
     refreshPageVerification(index);
     if (index == m_currentPage)
         updateBoxesForCurrent();
@@ -1851,6 +1838,18 @@ bool AppController::turnPage(int index, int degrees, bool byUser)
     updateAvailability();
     notifyPageChanged();
     return true;
+}
+
+void AppController::setPageOrientationProblem(int index, PageOrientationProblem problem)
+{
+    {
+        QWriteLocker locker(&m_documentLock);
+        if (!m_document.isValidIndex(index))
+            return;
+        m_document.page(index).orientationProblem = problem;
+    }
+    m_pageModel.setOrientationProblem(index, int(problem));
+    emit pageChanged();
 }
 
 bool AppController::runAfterOrientationCheck(const QList<int> &pages, const std::function<void()> &run)
@@ -1871,74 +1870,8 @@ bool AppController::runAfterOrientationCheck(const QList<int> &pages, const std:
         return false;
 
     m_pendingRun = run;
-    m_orientationVerdicts.clear();
-    m_orientation.check(unchecked, [this](int index) { return pageImage(index); }, [this](int index, const OrientationVerdict &verdict) { askModelAboutOrientation(index, verdict); });
+    m_orientation.check(unchecked, [this](int index) { return pageImage(index); });
     return true;
-}
-
-void AppController::askModelAboutOrientation(int index, const OrientationVerdict &verdict)
-{
-    // The picture has read the axis of the text: it names the turns the page
-    // may need, and the model's answer is taken among them.
-    m_orientationVerdicts.insert(index, verdict);
-    m_orientationQueue.append(index);
-    askNextOrientationPage();
-}
-
-void AppController::askNextOrientationPage()
-{
-    if (m_orientationPage >= 0 || m_orientationQueue.isEmpty())
-        return;
-
-    const ModelProfiles::PromptProfile *profile = ModelProfiles::promptProfile(QStringLiteral("orientation-requests"));
-    if (!profile || profile->prompts.questions.isEmpty()) {
-        // Without the request texts the model cannot be asked; the pages stay
-        // as they are.
-        while (!m_orientationQueue.isEmpty())
-            m_orientation.settle(m_orientationQueue.takeFirst(), -1);
-        return;
-    }
-
-    const int index = m_orientationQueue.takeFirst();
-    const QImage image = pageImage(index);
-    if (image.isNull()) {
-        m_orientation.settle(index, -1);
-        askNextOrientationPage();
-        return;
-    }
-
-    m_orientationPage = index;
-    m_orientationDecision.askChoice(image, QStringLiteral("page"), profile->prompts.statePrompt, profile->prompts.questions);
-}
-
-void AppController::onOrientationVerdict(const DecisionResult &result)
-{
-    if (m_orientationPage < 0)
-        return;
-    const int index = m_orientationPage;
-    m_orientationPage = -1;
-
-    int degrees = -1;
-    if (result.ok) {
-        // The picture has narrowed the turns the page may need; the model's
-        // answer names the one it is surest of among them.
-        const QList<int> candidates = orientationCandidates(m_orientationVerdicts.value(index));
-        double best = -1.0;
-        for (const int candidate : candidates) {
-            const double probability = result.diagnosis.value(QString::number(candidate), 0.0);
-            if (probability > best) {
-                best = probability;
-                degrees = candidate;
-            }
-        }
-        // A page is not turned on an uncertain answer, and a quarter turn
-        // needs much more certainty than a half turn.
-        const double threshold = (degrees == 90 || degrees == 270) ? kQuarterTurnConfidence : kOrientationConfidence;
-        if (best < threshold)
-            degrees = -1;
-    }
-    m_orientation.settle(index, degrees);
-    askNextOrientationPage();
 }
 
 void AppController::notifyPageChanged()

@@ -14,7 +14,7 @@ constexpr double kMinInkFraction = 0.004;
 constexpr double kMaxInkFraction = 0.45;
 
 // The axis of the text has to be this much clearer than the other one: a
-// page that reads both ways (a table, a form) is left to the model.
+// page that reads both ways (a table, a form) is left undecided.
 constexpr double kAxisMargin = 1.5;
 
 // Fewer lines than this and the page carries no text to speak of: a rule, a
@@ -206,13 +206,6 @@ OrientationVerdict PageScanner::verdict()
 }
 
 }  // namespace
-
-QList<int> orientationCandidates(const OrientationVerdict &verdict)
-{
-    if (!verdict.axisKnown)
-        return {0, 90, 180, 270};
-    return verdict.sideways ? QList<int>{90, 270} : QList<int>{0, 180};
-}
 
 OrientationVerdict detectPageOrientation(const QImage &image)
 {

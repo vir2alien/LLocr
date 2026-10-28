@@ -525,12 +525,11 @@ void VerificationQueueController::startNextVerify()
             // renderer the run would be blind on the second leg, so the block
             // goes to human eyes instead of being judged on half the input.
             if (!m_deps.renderCandidate) {
-                deliverVerdict(CheckResult{
-                    CheckStatus::Review,
-                    {},
-                    StatusMessage::translate("VerificationQueueController", "No candidate renderer: the visual-diff decision model needs the candidate as an image."),
-                    {},
-                    -1.0});
+                deliverVerdict(CheckResult{CheckStatus::Review,
+                                           {},
+                                           StatusMessage::translate("VerificationQueueController", "No candidate renderer: the visual-diff decision model needs the candidate as an image."),
+                                           {},
+                                           -1.0});
                 return;
             }
             // The state carries the block's own text (the upstream contract:
@@ -547,12 +546,7 @@ void VerificationQueueController::startNextVerify()
                 if (!m_verifyQueueActive)
                     return;
                 if (!ok || rendered.isNull()) {
-                    deliverVerdict(CheckResult{
-                        CheckStatus::Review,
-                        {},
-                        StatusMessage::translate("VerificationQueueController", "The candidate render failed: %1").arg(error),
-                        {},
-                        -1.0});
+                    deliverVerdict(CheckResult{CheckStatus::Review, {}, StatusMessage::translate("VerificationQueueController", "The candidate render failed: %1").arg(error), {}, -1.0});
                     return;
                 }
                 m_decision.judgeVisual(crop, rendered, text);

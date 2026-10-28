@@ -114,9 +114,10 @@ ColumnLayout {
     OptionCheck {
         id: orientationCheckBox
         label: qsTr("Check the page orientation")
-        help: qsTr("Before a page is recognized, it is turned when it lies the wrong "
-                   + "way up, so that the model reads the text the right way round. "
-                   + "The pages you turn by hand are left as they are.")
+        help: qsTr("Before a page is recognized, the picture reads the way its text "
+                   + "lies. A page that lies on its side, or one the picture cannot "
+                   + "read, is marked in red and left as it is — turn it by hand. "
+                   + "The pages you turn by hand are left alone.")
     }
 
     Item { implicitHeight: 6 }

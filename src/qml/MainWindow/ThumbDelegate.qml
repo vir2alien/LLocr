@@ -20,10 +20,14 @@ Item {
     required property bool hasDuplicates
     required property int pageRecognitionMode
     required property int pageVerification
+    required property int orientationProblem
 
     // A complete aggregate outranks the recognition mode (the rework plan's §6).
     readonly property bool aggregateDone: pageVerification === 1 || pageVerification === 2
-    readonly property string statusText: PageStatus.statusText(pageRecognitionMode, pageVerification)
+    readonly property string statusText: PageStatus.statusText(pageRecognitionMode, pageVerification, orientationProblem)
+    // The orientation the check could not settle: the page needs a turn by
+    // hand, and the marker says so.
+    readonly property bool orientationProblemFound: orientationProblem !== 0
 
     property ListView listView
     property bool dragActive: dragHandler.active
@@ -78,19 +82,21 @@ Item {
                     Layout.preferredHeight: 9
                     radius: edited ? 2 : 5
                     color: hasDuplicates ? "#d32f2f"
+                           : (orientationProblemFound ? Theme.error
                            : (edited ? Theme.textPrimary
                            : (aggregateDone ? (pageVerification === 2 ? Theme.success : Theme.error)
                            : (recognized ? Theme.textSecondary
-                                         : "transparent")))
-                    border.width: recognized || edited || hasDuplicates || aggregateDone ? 0 : 1
+                                         : "transparent"))))
+                    border.width: recognized || edited || hasDuplicates || aggregateDone || orientationProblemFound ? 0 : 1
                     border.color: Theme.textMuted
 
                     Accessible.role: Accessible.StaticText
                     Accessible.name: hasDuplicates ? qsTr("Has duplicates")
+                                     : (orientationProblemFound ? statusText
                                      : (edited ? qsTr("Edited")
                                      : (statusText.length > 0 ? statusText
                                                               : (recognized ? qsTr("Recognized")
-                                                                            : qsTr("Not recognized"))))
+                                                                            : qsTr("Not recognized")))))
                 }
                 LLOLabel {
                     text: qsTr("Page %1").arg(pageIndex + 1)
@@ -109,7 +115,7 @@ Item {
                 visible: statusText.length > 0
                 text: statusText
                 font.pointSize: Theme.captionSize
-                color: aggregateDone && pageVerification === 1 ? Theme.error : Theme.textMuted
+                color: orientationProblemFound || (aggregateDone && pageVerification === 1) ? Theme.error : Theme.textMuted
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap
             }

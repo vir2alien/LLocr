@@ -155,9 +155,8 @@ there are no `emptyThreshold`/`readableThreshold` values to ship.
   visual-diff protocol.
 - Installation via Settings → Models (HF repository
   `openbmb/MiniCPM-OCR-Jev-gguf`).
-- The orientation check (`askChoice`) still sends its own choice question —
-  the server rejects it with 400 while Jev is the decision model; run the
-  orientation check on a System One decision model.
+- The orientation check does not use the decision model at all (ADR 242): it
+  reads the picture alone, so Jev is not involved.
 
 ## 8. Known limitations
 

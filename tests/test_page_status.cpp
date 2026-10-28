@@ -195,6 +195,13 @@ private slots:
         // Untouched rows keep the defaults.
         QCOMPARE(model.data(model.index(0), PageListModel::RecognitionModeRole).toInt(), 0);
         QCOMPARE(model.data(model.index(0), PageListModel::VerificationRole).toInt(), 0);
+        QCOMPARE(model.data(model.index(0), PageListModel::OrientationProblemRole).toInt(), 0);
+
+        // The orientation the check could not settle travels with its row.
+        model.setOrientationProblem(1, int(PageOrientationProblem::Sideways));
+        QCOMPARE(model.data(mi, PageListModel::OrientationProblemRole).toInt(), int(PageOrientationProblem::Sideways));
+        model.setOrientationProblem(1, int(PageOrientationProblem::Unclear));
+        QCOMPARE(model.data(mi, PageListModel::OrientationProblemRole).toInt(), int(PageOrientationProblem::Unclear));
 
         // A no-op write stays silent.
         const int writes = modeSpy.count();
@@ -205,6 +212,7 @@ private slots:
         model.movePage(1, 0);
         QCOMPARE(model.data(model.index(0), PageListModel::RecognitionModeRole).toInt(), int(PageRecognitionMode::MarkupOnly));
         QCOMPARE(model.data(model.index(0), PageListModel::VerificationRole).toInt(), int(PageVerification::HasErrors));
+        QCOMPARE(model.data(model.index(0), PageListModel::OrientationProblemRole).toInt(), int(PageOrientationProblem::Unclear));
     }
 };
 

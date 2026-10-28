@@ -35,10 +35,6 @@ public:
     // back into an image travel together, the text rides as the bare state.
     void judgeVisual(const QImage &crop, const QImage &renderImage, const QString &recognizedText);
 
-    // A choice question: the model answers with the probability of every
-    // class instead of a yes/no verdict (the orientation check).
-    void askChoice(const QImage &image, const QString &blockType, const QString &notation, const QJsonObject &questions);
-
 signals:
     void judgeFinished(const llocr::DecisionResult &result);
 

@@ -20,9 +20,8 @@ public:
     };
 
     struct DecisionBlock {
-        QString statePrompt;    // per-block equivalence rules, carried into state.notation
-        QString question;       // legacy single-question wording (scheme v5)
-        QJsonObject questions;  // ready-made questions dict handed to /v1/systemone (scheme v6)
+        QString statePrompt;  // per-block equivalence rules, carried into state.notation
+        QString question;     // legacy single-question wording (scheme v5)
     };
 
     struct Role {
@@ -43,7 +42,6 @@ public:
         QHash<QString, QString> blockStyles;
         QHash<QString, QString> blockPrompts;
         QHash<QString, DecisionBlock> decisionBlocks;  // blockPrompts entries shipped as objects (decision v6)
-        QJsonObject questions;                         // role-level questions dict fallback (decision v6)
         double matchThreshold = -1.0;                  // -1 = not shipped; the settings knob applies
         QHash<QString, double> blockMatchThresholds;   // matchThresholdByBlock, keyed like blockPrompts
         double emptyThreshold = -1.0;
@@ -126,7 +124,7 @@ public:
 
     // The request texts of a task, kept in their own profile and shared by
     // every model that serves the task (ADR 182): the system prompt, the
-    // per-block prompts and the decision questions. A model role names the
+    // per-block prompts and the alias map. A model role names the
     // profile it speaks ("promptProfile": "fix-requests"). The struct is a
     // "prompt profile" and not a "request profile" because the latter already
     // means the request parameters (RequestProfile, RequestProfileStore).

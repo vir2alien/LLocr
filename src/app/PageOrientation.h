@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QImage>
-#include <QList>
 
 namespace llocr {
 
@@ -19,17 +18,13 @@ namespace llocr {
 // against descenders — carry the sign of the alphabet: Russian has more
 // descenders than ascenders, so the same measurement points the other way
 // round than in English. A sign that turns with the alphabet turns the pages
-// that lie the right way up; the model settles the way up instead.
+// that lie the right way up: measured on the corpus, the reading decided in
+// 23 cases and was wrong in 16 of them. The page is left to the user instead.
 struct OrientationVerdict {
     bool textLike = false;   ///< The page carries text at all.
     bool axisKnown = false;  ///< The axis of the text was read.
     bool sideways = false;   ///< The text runs up and down: the page lies on its side.
 };
-
-// The turns a page may need, given what the picture said: a page whose text
-// runs across lies straight (0 or 180 degrees), a page on its side lies at a
-// quarter turn (90 or 270). A page the picture could not read keeps all four.
-QList<int> orientationCandidates(const OrientationVerdict &verdict);
 
 // The orientation of a page, read from the picture alone: no model, no
 // network, no waiting.

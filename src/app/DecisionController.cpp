@@ -45,16 +45,6 @@ void DecisionController::judgeVisual(const QImage &crop, const QImage &renderIma
     ask(request);
 }
 
-void DecisionController::askChoice(const QImage &image, const QString &blockType, const QString &notation, const QJsonObject &questions)
-{
-    DecisionRequest request;
-    request.image = image;
-    request.blockType = blockType;
-    request.notation = notation;
-    request.questions = questions;
-    ask(request);
-}
-
 void DecisionController::ask(const DecisionRequest &request)
 {
     if (busy() || request.image.isNull())

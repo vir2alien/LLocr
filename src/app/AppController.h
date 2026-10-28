@@ -17,7 +17,6 @@
 #include "app/BlockInspector.h"
 #include "app/BoxListModel.h"
 #include "app/CandidateRenderer.h"
-#include "app/DecisionController.h"
 #include "app/DocumentModel.h"
 #include "app/ExportController.h"
 #include "app/Exporter.h"
@@ -119,6 +118,10 @@ class AppController : public QObject
     Q_PROPERTY(bool fixModelAvailable READ fixModelAvailable NOTIFY availabilityChanged)
     Q_PROPERTY(int currentPageRecognitionMode READ currentPageRecognitionMode NOTIFY availabilityChanged)
     Q_PROPERTY(int currentPageVerification READ currentPageVerification NOTIFY availabilityChanged)
+    // What the orientation check found about the current page: 0 = nothing to
+    // report, 1 = the page lies on its side, 2 = the picture could not read
+    // the page.
+    Q_PROPERTY(int currentPageOrientationProblem READ currentPageOrientationProblem NOTIFY pageChanged)
     // The toolbar's scope: the thumbnail selection, empty = every page. The
     // counts ride the availability broadcast so a verdict landing on a
     // non-current page re-announces them too.
@@ -239,6 +242,7 @@ public:
     bool fixModelAvailable() const { return m_availability.fixModelAvailable(); }
     int currentPageRecognitionMode() const { return m_availability.currentPageRecognitionMode(); }
     int currentPageVerification() const { return m_availability.currentPageVerification(); }
+    int currentPageOrientationProblem() const;
     int selectedPageCount() const { return m_availability.selectedPageCount(); }
     int scopedPendingFixCount() const { return m_availability.scopedPendingFixCount(); }
     bool scopeHasResults() const { return m_availability.scopeHasResults(); }
@@ -407,12 +411,9 @@ private:
     // Runs the orientation check before the pages are recognized. Returns
     // true when the run waits for the check.
     bool runAfterOrientationCheck(const QList<int> &pages, const std::function<void()> &run);
-    // The model settles the way up of the page.
-    void askModelAboutOrientation(int index, const OrientationVerdict &verdict);
-    void askNextOrientationPage();
-    void onOrientationVerdict(const DecisionResult &result);
-    // The model is asked about a page: the check is running.
-    bool orientationCheckBusy() const { return m_orientationPage >= 0 || !m_orientationQueue.isEmpty(); }
+    // What the orientation check found about a page: the page is marked and
+    // the user turns it by hand.
+    void setPageOrientationProblem(int index, PageOrientationProblem problem);
     void applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult);
     void applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);
@@ -479,13 +480,6 @@ private:
     VerificationQueueController m_verify;
     LayoutController m_layout;
     OrientationController m_orientation;
-    // The model that settles the way up of the page.
-    DecisionController m_orientationDecision;
-    QList<int> m_orientationQueue;  // The pages waiting for the model's answer.
-    int m_orientationPage = -1;     // The page the model is asked about.
-    // What the picture read about each page: the axis of the text names the
-    // turns the page may need, and the model's answer is taken among them.
-    QHash<int, OrientationVerdict> m_orientationVerdicts;
     std::function<void()> m_pendingRun;  // The run that waits for the orientation check.
     AvailabilityPresenter m_availability;
     bool m_importing = false;

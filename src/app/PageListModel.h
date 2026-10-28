@@ -16,8 +16,9 @@ public:
         CurrentRole,
         EditedRole,
         HasDuplicatesRole,
-        RecognitionModeRole,  ///< int PageRecognitionMode — how the result came to be
-        VerificationRole,     ///< int PageVerification — the check aggregate
+        RecognitionModeRole,     ///< int PageRecognitionMode — how the result came to be
+        VerificationRole,        ///< int PageVerification — the check aggregate
+        OrientationProblemRole,  ///< int PageOrientationProblem — what the orientation check found
         SelectedRole,
     };
 
@@ -33,6 +34,7 @@ public:
     void setHasDuplicates(int index, bool hasDup);
     void setRecognitionMode(int index, int mode);
     void setVerification(int index, int verification);
+    void setOrientationProblem(int index, int problem);
     void setCurrent(int index);
     void removePage(int index);
     void movePage(int from, int to);
@@ -66,6 +68,7 @@ private:
     QList<bool> m_hasDuplicates;
     QList<int> m_recognitionMode;
     QList<int> m_verification;
+    QList<int> m_orientationProblem;
     QList<bool> m_selected;
     int m_current = -1;
 };

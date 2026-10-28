@@ -96,30 +96,28 @@ ModelProfiles::Files readFiles(const QJsonObject &root, const QString &profileId
 
 namespace {
 
-// The prompt half of a role: the system prompt, the per-block prompts, the
-// decision questions and the alias map. A model profile keeps them inline; a
-// request profile ships them in its own file (ADR 182).
+// The prompt half of a role: the system prompt, the per-block prompts and the
+// alias map. A model profile keeps them inline; a request profile ships them
+// in its own file (ADR 182).
 void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QString &error, const QString &id, bool requestProfile)
 {
     role.systemPrompt = object.value(QStringLiteral("systemPrompt")).toString();
     role.statePrompt = object.value(QStringLiteral("statePrompt")).toString();
     role.question = object.value(QStringLiteral("question")).toString();
-    role.questions = object.value(QStringLiteral("questions")).toObject();
     const QJsonObject criteria = object.value(QStringLiteral("criteria")).toObject();
     role.criteriaTrue = criteria.value(QStringLiteral("true")).toString();
     role.criteriaFalse = criteria.value(QStringLiteral("false")).toString();
 
     const QJsonObject blockPrompts = object.value(QStringLiteral("blockPrompts")).toObject();
     for (auto prompt = blockPrompts.constBegin(); prompt != blockPrompts.constEnd(); ++prompt) {
-        // A v6 decision entry ships as an object (statePrompt/question/
-        // questions); the string shape stays the fix/teleocr vocabulary.
+        // A v6 decision entry ships as an object (statePrompt/question); the
+        // string shape stays the fix/teleocr vocabulary.
         if (prompt.value().isObject()) {
             const QJsonObject spec = prompt.value().toObject();
             ModelProfiles::DecisionBlock block;
             block.statePrompt = spec.value(QStringLiteral("statePrompt")).toString();
             block.question = spec.value(QStringLiteral("question")).toString();
-            block.questions = spec.value(QStringLiteral("questions")).toObject();
-            const bool empty = prompt.key().isEmpty() || (block.statePrompt.isEmpty() && block.question.isEmpty() && block.questions.isEmpty());
+            const bool empty = prompt.key().isEmpty() || (block.statePrompt.isEmpty() && block.question.isEmpty());
             if (empty) {
                 error = requestProfile ? QObject::tr("Request profile %1 has a block prompt without a block type or text").arg(id)
                                        : QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(id);
@@ -159,7 +157,6 @@ void applyPromptProfile(ModelProfiles::Role &role, const ModelProfiles::Role &pr
     role.systemPrompt = prompts.systemPrompt;
     role.statePrompt = prompts.statePrompt;
     role.question = prompts.question;
-    role.questions = prompts.questions;
     role.criteriaTrue = prompts.criteriaTrue;
     role.criteriaFalse = prompts.criteriaFalse;
     role.blockPrompts = prompts.blockPrompts;

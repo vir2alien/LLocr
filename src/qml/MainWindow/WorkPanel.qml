@@ -48,9 +48,11 @@ Rectangle {
                 visible: Controller.currentPageEditable
                 text: Controller.currentPageEdited ? qsTr("Edited")
                                                    : PageStatus.statusText(Controller.currentPageRecognitionMode,
-                                                                           Controller.currentPageVerification)
+                                                                           Controller.currentPageVerification,
+                                                                           Controller.currentPageOrientationProblem)
                 color: Controller.currentPageEdited ? Theme.textPrimary
-                                                   : Theme.textMuted
+                           : Controller.currentPageOrientationProblem !== 0 ? Theme.error
+                           : Theme.textMuted
                 font.bold: Controller.currentPageEdited
             }
 

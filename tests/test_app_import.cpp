@@ -288,10 +288,6 @@ public:
 
     qreal systemoneProbability = 0.97;
     bool systemoneBroken = false;  // reply without an "answers" object → every judge fails
-    // The orientation check asks its own question: the turn the page needs and
-    // the probability of that answer.
-    QString orientationChoice = QStringLiteral("0");
-    qreal orientationProbability = 0.9;
     // When set, the systemone reply carries the full v6 answer set (match/
     // has_text/readable + a choice map topped by systemoneTopDiagnosis).
     bool systemoneMultiAnswer = false;
@@ -395,17 +391,7 @@ private:
         if (request.contains("POST /v1/systemone")) {
             // The decision answer: P(match) in the {"noul": x} spelling.
             ++const_cast<DetTokenChatServer *>(this)->m_systemoneRequests;
-            if (request.contains("\"orientation\"")) {
-                // The orientation check: the model names the turn the page
-                // needs and the probability of every class.
-                QJsonObject probabilities{{orientationChoice, orientationProbability}};
-                for (const QString &klass : {QStringLiteral("0"), QStringLiteral("90"), QStringLiteral("180"), QStringLiteral("270")}) {
-                    if (klass != orientationChoice)
-                        probabilities.insert(klass, (1.0 - orientationProbability) / 3.0);
-                }
-                const QJsonObject answers{{"orientation", QJsonObject{{"type", "choice"}, {"choice", orientationChoice}, {"probabilities", probabilities}}}};
-                body = QJsonDocument(QJsonObject{{"answers", answers}, {"usage", QJsonObject{{"input_tokens", 42}, {"output_tokens", 0}}}}).toJson(QJsonDocument::Compact);
-            } else if (systemoneMultiAnswer) {
+            if (systemoneMultiAnswer) {
                 QJsonObject choice{{systemoneTopDiagnosis, 0.9}};
                 for (const QString &klass : {QStringLiteral("exact_match"), QStringLiteral("fixable_ocr_error"), QStringLiteral("unreadable_or_clipped"), QStringLiteral("empty_crop")}) {
                     if (klass != systemoneTopDiagnosis)
@@ -483,9 +469,8 @@ private slots:
         m_settings->setRuntimeRootDir(m_dir.filePath(QStringLiteral("runtime")));
         m_settings->setRuntimeModelsDir(m_dir.filePath(QStringLiteral("models")));
         m_settings->setMode(ConnectionMode::External);
-        // The orientation check asks the model about every page before it is
-        // recognized; the tests that count the model's calls turn it off and
-        // the ones about the check itself turn it on.
+        // The orientation check reads the picture alone; the tests about the
+        // check itself turn it on.
         m_settings->setOrientationCheckEnabled(false);
         // A valid model makes the recognition guard meaningful; an unsupported
         // local URL prevents any network traffic even if that guard regresses.
@@ -3170,24 +3155,19 @@ private slots:
         QCOMPARE(controller.pageImage(0).size(), upright);
     }
 
-    // The orientation check: a page that lies the wrong way up is turned before
-    // it is recognized, so the model reads the text the right way round.
-    void theOrientationCheckTurnsThePageBeforeTheRecognition()
+    // The orientation check reads the picture alone: a page that lies on its
+    // side is marked and left as it is, and no model is asked about it.
+    void theOrientationCheckMarksASidewaysPageAndLeavesIt()
     {
         DetTokenChatServer server;
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setOrientationCheckEnabled(true);
-        // The check asks the decision model, which carries a model name of its own.
         m_settings->setDecisionModelName(QStringLiteral("decision-model"));
 
-        // The model says the page has to be turned half a turn.
-        server.orientationChoice = QStringLiteral("180");
-
-        // A page of text, upside down.
-        const QImage source = rotateImage(syntheticTextPage(), 180);
-        const QString path = m_dir.filePath(QStringLiteral("turned.png"));
+        const QImage source = rotateImage(syntheticTextPage(), 90);
+        const QString path = m_dir.filePath(QStringLiteral("sideways.png"));
         QVERIFY(source.save(path, "PNG"));
 
         auto &controller = *m_controller;
@@ -3195,39 +3175,39 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        const QImage upright = syntheticTextPage();
+        // The status of every step: the check's own line is there.
+        QStringList statuses;
+        connect(&controller, &AppController::statusChanged, this, [&]() { statuses.append(controller.statusMessage()); });
+
         controller.recognizeCurrent();
-        // The recognition starts only after the orientation check: its result
-        // is what says that the check is over.
         QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
 
-        // The page was turned before the recognition: the model saw the text
-        // the right way up. The spot is inside the first line of the text, so
-        // the turned page and the upright one differ there.
+        // The page was not turned: the picture cannot tell which way it has to
+        // be turned, so the user turns it by hand. The page is marked red.
         const QImage shown = controller.pageImage(0);
-        QCOMPARE(shown.size(), upright.size());
-        QVERIFY(controller.hasResult());
-        QVERIFY(server.systemoneRequests() > 0);
+        QCOMPARE(shown.size(), source.size());
+        QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::Sideways));
+        // No model was asked about the page.
+        QCOMPARE(server.systemoneRequests(), 0);
+        bool reported = false;
+        for (const QString &status : statuses) {
+            if (status.contains(QStringLiteral("side")))
+                reported = true;
+        }
+        QVERIFY2(reported, qPrintable(statuses.join(QStringLiteral(" | "))));
     }
 
-    // The picture reads the axis of the text and hands the model the turns the
-    // page may need. An answer outside them is not taken: a page that lies the
-    // right way up stays the way it is.
-    void theOrientationCheckRefusesTheTurnThePictureRulesOut()
+    // A page whose text runs across is left as it is and is not marked: the
+    // picture read it and found nothing to report.
+    void theOrientationCheckLeavesAnUprightPageUnmarked()
     {
         DetTokenChatServer server;
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setOrientationCheckEnabled(true);
-        // The check asks the decision model, which carries a model name of its own.
         m_settings->setDecisionModelName(QStringLiteral("decision-model"));
-
-        // The model claims the page lies on its side; the picture says its
-        // text runs across, so only half a turn is left.
-        server.orientationChoice = QStringLiteral("90");
-        server.orientationProbability = 0.95;
 
         const QImage source = syntheticTextPage();
         const QString path = m_dir.filePath(QStringLiteral("upright.png"));
@@ -3239,69 +3219,18 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
         controller.recognizeCurrent();
-        // The recognition starts only after the orientation check: its result
-        // is what says that the check is over.
         QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
 
-        // The page was not turned.
         const QImage shown = controller.pageImage(0);
         QCOMPARE(shown.size(), source.size());
         QCOMPARE(qGray(shown.pixel(76, 40)), qGray(source.pixel(76, 40)));
-    }
-
-    // A page on its side: the model names the same direction for both sides
-    // of the same page, so its confidence there says nothing about the
-    // direction. An unsure answer leaves the page alone and says so.
-    void theOrientationCheckLeavesASidewaysPageItCannotRead()
-    {
-        DetTokenChatServer server;
-        QVERIFY(server.start());
-        m_settings->setBaseUrl(server.baseUrl());
-        m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setOrientationCheckEnabled(true);
-        // The check asks the decision model, which carries a model name of its own.
-        m_settings->setDecisionModelName(QStringLiteral("decision-model"));
-
-        // The model names a quarter turn without being sure of the direction.
-        server.orientationChoice = QStringLiteral("90");
-        server.orientationProbability = 0.5;
-
-        const QImage source = rotateImage(syntheticTextPage(), 90);
-        const QString path = m_dir.filePath(QStringLiteral("sideways.png"));
-        QVERIFY(source.save(path, "PNG"));
-
-        auto &controller = *m_controller;
-        controller.openFiles({QUrl::fromLocalFile(path)});
-        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-
-        // The status of every step, the recognition included: the check's own
-        // line is gone by the time the recognition ends.
-        QStringList statuses;
-        connect(&controller, &AppController::statusChanged, this, [&]() { statuses.append(controller.statusMessage()); });
-
-        controller.recognizeCurrent();
-        // The recognition starts only after the orientation check: its result
-        // is what says that the check is over.
-        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
-
-        // The page was not turned and the status says why. The spot is inside
-        // the first line of the text, so a turned page differs there.
-        const QImage shown = controller.pageImage(0);
-        QCOMPARE(shown.size(), source.size());
-        QCOMPARE(qGray(shown.pixel(1159, 76)), qGray(source.pixel(1159, 76)));
-        bool reported = false;
-        for (const QString &status : statuses) {
-            if (status.contains(QStringLiteral("side")))
-                reported = true;
-        }
-        QVERIFY2(reported, qPrintable(statuses.join(QStringLiteral(" | "))));
+        QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::None));
+        QCOMPARE(server.systemoneRequests(), 0);
     }
 
     // A page the user turned by hand keeps its turn: the check leaves it
-    // alone.
+    // alone and does not mark it.
     void theOrientationCheckLeavesTheTurnedPagesAlone()
     {
         DetTokenChatServer server;
@@ -3309,10 +3238,9 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setOrientationCheckEnabled(true);
-        // The check asks the decision model, which carries a model name of its own.
         m_settings->setDecisionModelName(QStringLiteral("decision-model"));
 
-        const QImage source = rotateImage(syntheticTextPage(), 180);
+        const QImage source = rotateImage(syntheticTextPage(), 90);
         const QString path = m_dir.filePath(QStringLiteral("turned-by-hand.png"));
         QVERIFY(source.save(path, "PNG"));
 
@@ -3322,17 +3250,17 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
         // The user turns the page back by hand.
-        controller.rotatePage(180);
+        controller.rotatePage(270);
         const QImage byHand = controller.pageImage(0);
 
         controller.recognizeCurrent();
-        // The recognition starts only after the orientation check: its result
-        // is what says that the check is over.
         QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
 
-        // The check did not turn it again.
+        // The check did not turn it again and did not mark it.
         QCOMPARE(controller.pageImage(0).size(), byHand.size());
+        QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::None));
+        QCOMPARE(server.systemoneRequests(), 0);
     }
 
     // The turn of a page survives the save and the reopen: the sources are

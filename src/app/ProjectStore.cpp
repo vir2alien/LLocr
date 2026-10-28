@@ -215,6 +215,7 @@ bool ProjectStore::save(const QString &path, const ProjectData &data, QString *e
             {"hasDuplicates", page.hasDuplicates},
             {"rotation", page.rotation},
             {"userOriented", page.userOriented},
+            {"orientationProblem", int(page.orientationProblem)},
             {"text", page.text},
             {"baseline", page.baseline},
             {"parseNote", page.parseNote},
@@ -360,6 +361,8 @@ ProjectStore::LoadResult ProjectStore::load(const QString &path, const QString &
         // source does.
         page.rotation = normalizeRotation(object.value("rotation").toInt(0));
         page.userOriented = object.value("userOriented").toBool(false);
+        // A project written before the flag: the check finds the page again.
+        page.orientationProblem = PageOrientationProblem(object.value("orientationProblem").toInt(0));
         page.text = object.value("text").toString();
         page.baseline = object.value("baseline").toString();
         page.parseNote = object.value("parseNote").toString();

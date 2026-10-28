@@ -62,6 +62,8 @@ ProjectData sampleData(const QString &pngPath, const QString &pdfPath)
     imagePage.recognitionMode = PageRecognitionMode::MarkupOcr;
     imagePage.edited = true;
     imagePage.hasDuplicates = true;
+    // The mark of the orientation check travels with the page (ADR 242).
+    imagePage.orientationProblem = PageOrientationProblem::Sideways;
     imagePage.text = QStringLiteral("edited text");
     imagePage.baseline = QStringLiteral("recognized text");
     imagePage.parseNote = QStringLiteral("no layout tokens");
@@ -242,6 +244,7 @@ private slots:
         QCOMPARE(imagePage.recognitionMode, PageRecognitionMode::MarkupOcr);
         QVERIFY(imagePage.edited);
         QVERIFY(imagePage.hasDuplicates);
+        QCOMPARE(imagePage.orientationProblem, PageOrientationProblem::Sideways);
         QCOMPARE(imagePage.text, QStringLiteral("edited text"));
         QCOMPARE(imagePage.baseline, QStringLiteral("recognized text"));
         QCOMPARE(imagePage.parseNote, QStringLiteral("no layout tokens"));
@@ -285,6 +288,8 @@ private slots:
         QCOMPARE(pdfPage.sourceId, 1);
         QCOMPARE(pdfPage.sourcePageIndex, 3);
         QVERIFY(!pdfPage.recognized);
+        // A page the check never marked carries no mark.
+        QCOMPARE(pdfPage.orientationProblem, PageOrientationProblem::None);
     }
 
     void embeddedSourceBytesSurviveTheRoundTrip()

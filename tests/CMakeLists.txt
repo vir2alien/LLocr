@@ -43,7 +43,6 @@ set(LLOCR_MODEL_PROFILE_FILES
 set(LLOCR_REQUEST_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/requests/fix-requests.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/requests/decision-requests.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/requests/orientation-requests.json"
 )
 
 # The shipped profiles a test reads: the model profiles and the request

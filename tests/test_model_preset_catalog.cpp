@@ -615,7 +615,6 @@ void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
         // recognized correctly?". Every extra question is a separate forward
         // pass on d3. The criteria stay out: they measured worse than the bare
         // question (docs/17, §6), and the axes carry the detail instead.
-        QVERIFY2(role->questions.isEmpty(), qPrintable(id));
         QVERIFY2(!role->question.isEmpty(), qPrintable(id));
         QVERIFY2(role->criteriaTrue.isEmpty(), qPrintable(id));
         QVERIFY2(role->criteriaFalse.isEmpty(), qPrintable(id));
@@ -641,7 +640,6 @@ void TestModelPresetCatalog::decisionRoleShipsTheStructuredStateWording()
         QVERIFY2(formula.statePrompt.contains(QStringLiteral("LaTeX is the carrier")), qPrintable(id));
         const ModelProfiles::DecisionBlock unknown = ModelProfiles::decisionBlockFor(profiles, id, QStringLiteral("decision"), QStringLiteral("unknown-type"));
         QVERIFY2(unknown.statePrompt.isEmpty(), qPrintable(id));
-        QVERIFY2(unknown.questions.isEmpty(), qPrintable(id));
         QCOMPARE(ModelProfiles::blockPromptFor(profiles, id, QStringLiteral("decision"), QStringLiteral("formula")), QString());
     }
 }
@@ -654,11 +652,10 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
 
-    // One request profile per task, plus the orientation check's own.
-    QCOMPARE(ModelProfiles::promptProfiles().size(), 3);
+    // One request profile per task.
+    QCOMPARE(ModelProfiles::promptProfiles().size(), 2);
     QVERIFY(ModelProfiles::promptProfile(QStringLiteral("fix-requests")));
     QVERIFY(ModelProfiles::promptProfile(QStringLiteral("decision-requests")));
-    QVERIFY(ModelProfiles::promptProfile(QStringLiteral("orientation-requests")));
     QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("no-such-profile")));
 
     // Every fix model names the shared fix request profile and inherits its

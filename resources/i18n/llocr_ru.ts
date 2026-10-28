@@ -34,11 +34,6 @@
         <translation>Страница %1 повёрнута на %2° по часовой стрелке.</translation>
     </message>
     <message>
-        <location line="-1634"/>
-        <source>Page %1 turned %2° clockwise before the recognition.</source>
-        <translation>Страница %1 повёрнута на %2° по часовой стрелке перед распознаванием.</translation>
-    </message>
-    <message>
         <location line="+7"/>
         <source>Page %1: the orientation is not clear, the page was left as it is.</source>
         <translation>Страница %1: ориентация не определяется, страница оставлена как есть.</translation>
@@ -52,12 +47,6 @@
         <location line="+6"/>
         <source>Page %1: there is no text on the page, it was left as it is.</source>
         <translation>Страница %1: на странице нет текста, она оставлена как есть.</translation>
-    </message>
-    <message>
-        <location line="+1084"/>
-        <location line="+106"/>
-        <source>The orientation check is running.</source>
-        <translation>Проверка ориентации выполняется.</translation>
     </message>
     <message>
         <location line="-640"/>
@@ -1509,8 +1498,8 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Before a page is recognized, it is turned when it lies the wrong way up, so that the model reads the text the right way round. The pages you turn by hand are left as they are.</source>
-        <translation>Перед распознаванием страница поворачивается, если она лежит не той стороной вверх, чтобы модель читала текст правильно. Страницы, повёрнутые вручную, остаются как есть.</translation>
+        <source>Before a page is recognized, the picture reads the way its text lies. A page that lies on its side, or one the picture cannot read, is marked in red and left as it is — turn it by hand. The pages you turn by hand are left alone.</source>
+        <translation>Перед распознаванием картинка читает, как лежит текст страницы. Страница, лежащая боком, или та, которую картинка прочитать не смогла, помечается красным и остаётся как есть — поверните её вручную. Страницы, повёрнутые вручную, проверка не трогает.</translation>
     </message>
     <message>
         <location line="-9"/>
@@ -1552,6 +1541,16 @@
     <name>PageStatus</name>
     <message>
         <location filename="../../src/qml/PageStatus.qml" line="+11"/>
+        <source>On its side</source>
+        <translation>Лежит боком</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Orientation unclear</source>
+        <translation>Ориентация не определена</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>Verified (no errors)</source>
         <translation>Проверено (без ошибок)</translation>
     </message>

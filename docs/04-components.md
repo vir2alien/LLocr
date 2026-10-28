@@ -592,7 +592,7 @@ The document, the import, the parser choice and the status line stay in the
 facade — they are its own work. Every new class takes what it needs through
 a `Deps` struct (references and providers), the idiom of the layer.
 
-## 4.22 Page rotation & the orientation check (ADR 218, 221)
+## 4.22 Page rotation & the orientation check (ADR 218, 242)
 - **`DocumentPage::rotation`** (0/90/180/270) — the turn the page carries; it
   is applied in the render (`DocumentModel::renderFull` / `renderDetached`), so
   the preview, the thumbnails, the model's picture, the block crops and the
@@ -611,22 +611,22 @@ a `Deps` struct (references and providers), the idiom of the layer.
   stays undecided). The picture does **not** read which way is up — the
   typographic sign of that carries the sign of the alphabet (Russian has more
   descenders than ascenders), so reading it turned the pages that lie the
-  right way up (ADR 221). The picture alone never turns a page: it names the
-  axis, and the verdict names the turns the page may need: {0, 180} for a page
-  that lies straight, {90, 270} for a page on its side.
+  right way up — on корпусе проекта это чтение решило в 23 случаях и
+  **ошиблось в 16 из них** (ADR 221, 242). The picture alone never turns a
+  page: it names the axis, and that is all it says.
 - **`app/OrientationController`** — the check that runs before the pages are
-  recognized (and before the markup pass): the picture hands the model the
-  turns the page may need, and the **decision model** (a `choice` question
-  through `/v1/systemone`, the texts in
-  `resources/profiles/requests/orientation-requests.json`) names the one it is
-  surest of among them. An answer outside the turns the picture allows is not
-  taken. A half turn needs a probability of 0.6, a quarter turn 0.75: the
-  model reads the way up of an upside-down page, but it names the same
-  direction for both sides of a page that lies on its side, so its confidence
-  there says nothing (measured: 0.29…0.59 for right and wrong alike). A page
-  nobody can read is **left as it is** and reported in the status line — a
-  page on its side is reported as such, to be turned by hand.
+  recognized (and before the markup pass). It reads the picture alone: no
+  model, no network, no waiting (ADR 242). The verdict has three outcomes:
+  the page **lies on its side** (the axis says so; the direction is not read,
+  so the page is left to the user), the **picture could not read the page**
+  (a table, a form — nothing to say about it), or the page lies straight and
+  there is nothing to report. The first two mark the page:
+  `DocumentPage::orientationProblem` (`PageOrientationProblem::Sideways` /
+  `::Unclear`), the marker of the page in the list turns **red**, and the
+  status line names the reason («страница лежит боком… поверните вручную» /
+  «ориентация не определяется»). The mark lives with the page: it survives
+  the save and the reopen (`.llocr`, §4.20) and goes away when the user turns
+  the page by hand.
 - The check is a setting (**Settings → Output → «Check the page
-  orientation»**, on by default) and the turn of a page survives the save and
-  the reopen (`.llocr`, §4.20).
+  orientation»**, on by default).
 

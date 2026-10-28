@@ -2,8 +2,8 @@
 
 #include <QCoreApplication>
 #include <QImage>
-#include <QJsonDocument>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QMarginsF>
 #include <QPageLayout>
@@ -212,24 +212,22 @@ void CandidateRenderer::startPrint()
     }
     const QString path = m_temp->filePath(QStringLiteral("candidate.pdf"));
     const QSizeF sizePt(m_widthPx * 72.0 / 96.0, (m_heightPx + kPrintAllowancePx) * 72.0 / 96.0);
-    const QPageLayout layout(QPageSize(sizePt, QPageSize::Point, QStringLiteral("candidate"), QPageSize::ExactMatch),
-                             QPageLayout::Portrait,
-                             QMarginsF(0, 0, 0, 0),
-                             QPageLayout::Millimeter);
-    connect(m_page.get(),
-            &QWebEnginePage::pdfPrintingFinished,
-            this,
-            [this, path](const QString &, bool ok) {
-                if (!m_busy)
-                    return;
-                if (ok) {
-                    m_pdfPath = path;
-                    rasterize();
-                } else {
-                    fail(tr("PDF printing failed."));
-                }
-            },
-            Qt::SingleShotConnection);
+    const QPageLayout layout(QPageSize(sizePt, QPageSize::Point, QStringLiteral("candidate"), QPageSize::ExactMatch), QPageLayout::Portrait, QMarginsF(0, 0, 0, 0), QPageLayout::Millimeter);
+    connect(
+        m_page.get(),
+        &QWebEnginePage::pdfPrintingFinished,
+        this,
+        [this, path](const QString &, bool ok) {
+            if (!m_busy)
+                return;
+            if (ok) {
+                m_pdfPath = path;
+                rasterize();
+            } else {
+                fail(tr("PDF printing failed."));
+            }
+        },
+        Qt::SingleShotConnection);
     m_page->printToPdf(path, layout);
 }
 

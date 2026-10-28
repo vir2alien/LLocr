@@ -65,6 +65,7 @@ bool ProjectController::collect(ProjectData *data, QString *error)
         entry.hasDuplicates = !page.result.pages.isEmpty() && page.result.pages.first().hasDuplicates;
         entry.rotation = page.rotation;
         entry.userOriented = page.userOriented;
+        entry.orientationProblem = page.orientationProblem;
         entry.text = page.result.text;
         entry.parseNote = page.parseNote;
         entry.boxes = page.result.pages.isEmpty() ? QList<BoundingBox>() : page.result.pages.first().boxes;
@@ -200,6 +201,7 @@ void ProjectController::apply(const ProjectData &data)
             // The turn of the page: the sources are re-rendered from the
             // embedded files, so the turn has to be restored with them.
             page.userOriented = entry.userOriented;
+            page.orientationProblem = entry.orientationProblem;
             if (entry.rotation != page.rotation)
                 m_deps.document.setRotation(slot, entry.rotation);
             OcrResult result;
@@ -232,6 +234,7 @@ void ProjectController::apply(const ProjectData &data)
         m_deps.pageModel.setEdited(slot, entry.edited);
         m_deps.pageModel.setHasDuplicates(slot, entry.hasDuplicates);
         m_deps.pageModel.setRecognitionMode(slot, int(entry.recognitionMode));
+        m_deps.pageModel.setOrientationProblem(slot, int(entry.orientationProblem));
     }
     m_deps.verificationsRefreshed();
 
