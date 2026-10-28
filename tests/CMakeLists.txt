@@ -319,7 +319,9 @@ if(WIN32 AND LLOCR_DJVU_AVAILABLE)
     )
 endif()
 add_test(NAME test_app_import COMMAND test_app_import)
-set_tests_properties(test_app_import PROPERTIES TIMEOUT 90)
+# The suite spins up WebEngine per test: 226 s on the Windows dev box, so the
+# 90 s cap killed a passing run there. The directory-wide 300 s covers it.
+set_tests_properties(test_app_import PROPERTIES TIMEOUT 300)
 
 qt_add_executable(test_settings_store test_settings_store.cpp)
 
@@ -690,8 +692,7 @@ add_test(NAME test_install_lock COMMAND test_install_lock)
 #
 # A test without an explicit TIMEOUT gets 300 s and a headless platform, so a
 # hung waitForStarted() fails the run instead of blocking ctest forever. An
-# explicit entry wins: the loop only appends a platform that is not set yet,
-# and test_app_import's own 90 s above is kept.
+# explicit entry wins: the loop only appends a platform that is not set yet.
 # ---- Core transport: LlamaClient reentrancy (C++-I4) ------------------------
 qt_add_executable(test_llama_client test_llama_client.cpp)
 

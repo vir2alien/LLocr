@@ -108,13 +108,16 @@ void CandidateRendererTest::keepsEveryLineOfALongCandidate()
     QVERIFY2(ok, qPrintable(error));
     QVERIFY(!shorter.isNull());
 
-    const QImage longer = renderCandidate(longCandidate(13), &ok, &error);
+    const QImage longer = renderCandidate(longCandidate(40), &ok, &error);
     QVERIFY2(ok, qPrintable(error));
     QVERIFY(!longer.isNull());
 
-    // One more sentence must paint one more line. A render that drops the
-    // overflow onto a second page cuts both candidates at the same place, and
-    // the tail of the longer one never reaches the picture.
+    // A candidate with far more text must paint a taller picture. A render
+    // that drops the overflow onto a second page cuts both candidates at the
+    // same place, and the tail of the longer one never reaches the picture.
+    // The jump must clear a whole line: one extra sentence can still fit into
+    // the trailing slack of the last line, and the wrap point then depends on
+    // the platform's font metrics.
     QVERIFY2(longer.height() > shorter.height(), qPrintable(QStringLiteral("height %1 vs %2").arg(longer.height()).arg(shorter.height())));
     QVERIFY2(inkBands(longer).size() > inkBands(shorter).size(), qPrintable(QStringLiteral("lines %1 vs %2").arg(inkBands(longer).size()).arg(inkBands(shorter).size())));
 

@@ -11,10 +11,15 @@ namespace {
 
 // A NAM per thread: QNetworkAccessManager is not thread-safe, and the catalog
 // fetches run on workers while the runtime's own calls run on the GUI thread.
+// The NAM is leaked on purpose: a thread_local object's destructor runs at
+// thread exit — for a QtConcurrent worker that is inside ~QCoreApplication's
+// pool drain, where ~QNetworkAccessManager joining its internal thread
+// deadlocks the process on Windows (Qt 6.10). A handful of leaked NAMs per
+// run is reclaimed by the OS at exit.
 QNetworkAccessManager &networkAccessManager()
 {
-    static thread_local QNetworkAccessManager manager;
-    return manager;
+    static thread_local QNetworkAccessManager *manager = new QNetworkAccessManager;
+    return *manager;
 }
 
 }  // namespace
