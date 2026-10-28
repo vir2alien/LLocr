@@ -265,6 +265,10 @@ public:
     Q_INVOKABLE bool previewRendering(int index) const;
 
     QImage croppedImage(int pageIndex, int boxIndex);
+    // The text of a block as the page shows it: a formula as display math, a
+    // table as a grid. The visual-diff decision paints its candidate from it
+    // (ADR 237).
+    QString blockDisplayText(int pageIndex, int boxIndex);
 
 signals:
     void busyChanged();

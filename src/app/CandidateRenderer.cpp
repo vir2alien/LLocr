@@ -29,6 +29,43 @@ constexpr int kContentWidthPx = 780;
 // decision model reads the image.
 constexpr int kRasterScale = 2;
 constexpr int kMaxRasterSide = 4096;
+// Chromium's print layout keeps its own margins, so a page cut to the measured
+// content height is a hair shorter than the content: the last line falls onto
+// a second page, and only the first page is rasterized — the candidate would
+// lose its tail without a word (ADR 237). The page gets the room, and the
+// raster is cut back to the ink so the extra room stays invisible.
+constexpr int kPrintAllowancePx = 48;
+constexpr int kInkMarginPx = 2;
+
+// The bounding box of the ink on a white page: the candidate is cut to it, so
+// the print allowance and the page padding do not show as a white band around
+// the text the model has to read.
+QImage cutToInk(const QImage &image)
+{
+    const QImage gray = image.convertToFormat(QImage::Format_Grayscale8);
+    const int w = gray.width();
+    const int h = gray.height();
+    int minX = w;
+    int minY = h;
+    int maxX = -1;
+    int maxY = -1;
+    for (int y = 0; y < h; ++y) {
+        const uchar *row = gray.constScanLine(y);
+        for (int x = 0; x < w; ++x) {
+            if (row[x] >= 245)
+                continue;
+            minX = qMin(minX, x);
+            minY = qMin(minY, y);
+            maxX = qMax(maxX, x);
+            maxY = qMax(maxY, y);
+        }
+    }
+    if (maxX < 0)
+        return image;
+    const QRect ink(QPoint(minX, minY), QPoint(maxX, maxY));
+    const QRect padded = ink.adjusted(-kInkMarginPx, -kInkMarginPx, kInkMarginPx, kInkMarginPx);
+    return image.copy(padded.intersected(image.rect()));
+}
 
 }  // namespace
 
@@ -174,7 +211,7 @@ void CandidateRenderer::startPrint()
         }
     }
     const QString path = m_temp->filePath(QStringLiteral("candidate.pdf"));
-    const QSizeF sizePt(m_widthPx * 72.0 / 96.0, m_heightPx * 72.0 / 96.0);
+    const QSizeF sizePt(m_widthPx * 72.0 / 96.0, (m_heightPx + kPrintAllowancePx) * 72.0 / 96.0);
     const QPageLayout layout(QPageSize(sizePt, QPageSize::Point, QStringLiteral("candidate"), QPageSize::ExactMatch),
                              QPageLayout::Portrait,
                              QMarginsF(0, 0, 0, 0),
@@ -203,8 +240,15 @@ void CandidateRenderer::rasterize()
         fail(tr("The candidate render could not be rasterized."));
         return;
     }
-    const QSize size(qMin(m_widthPx * kRasterScale, kMaxRasterSide), qMin(m_heightPx * kRasterScale, kMaxRasterSide));
-    const QImage image = pdf.render(0, size);
+    // A second page means the content did not fit: the picture would carry
+    // only its head, and the model would judge a candidate that was never
+    // sent (ADR 237).
+    if (pdf.pageCount() > 1) {
+        fail(tr("The candidate render did not fit on one page."));
+        return;
+    }
+    const QSize size(qMin(m_widthPx * kRasterScale, kMaxRasterSide), qMin((m_heightPx + kPrintAllowancePx) * kRasterScale, kMaxRasterSide));
+    const QImage image = cutToInk(pdf.render(0, size));
     finish(!image.isNull(), image, image.isNull() ? tr("The candidate render could not be rasterized.") : QString());
 }
 

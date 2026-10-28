@@ -50,16 +50,39 @@ that emptiness.
 
 ## 3. The render leg
 
-The second image is the candidate text drawn as a picture.
+The second image is the candidate text drawn as a picture — and the render leg
+is what decides the verdict: the model compares the crop with the picture, so a
+picture that lost its tail, or that shows the raw markup, is another text.
+
 `app/CandidateRenderer` produces it with the app's own preview stack — the
 markdown page (`qrc:/preview/preview.html`: marked + KaTeX + DOMPurify)
-renders the block's effective text on a 780 px-wide white page, the page is
-printed to a one-page PDF sized to the content and rasterized at 2×.
-Formulas render as typeset math, tables as ruled grids — what the model
-expects, since the training renderer (the SDK's Playwright+KaTeX) drew the
-same shapes. The upstream docs note a self-installed renderer shifts the
-absolute scores a little while the ranking holds; thresholds are therefore
-calibrated on this app's own renders, not copied from the SDK.
+renders the text on a 780 px-wide white page, the page is printed to a PDF and
+rasterized at 2×. Three conditions make the picture comparable with the crop
+(ADR 237):
+
+- **the text is the block's display text** (`parsers/BlockRender.h` →
+  `renderBlockText`): a formula as display math (`$$…$$`), a table as a
+  markdown grid. The raw block text carries the model's own delimiters
+  (`\[…\]`, `<fcel>…<nl>`); marked eats the backslashes, KaTeX never fires,
+  and the table arrives as a run-on line of cells. The upstream training
+  renderer (the SDK's Playwright+KaTeX) drew the same shapes — a self-installed
+  renderer shifts the absolute scores a little, so the thresholds are
+  calibrated on this app's own renders, not copied from the SDK.
+- **the page holds the whole candidate**: Chromium's print layout keeps its own
+  margins, so a page cut to the measured content height is a hair shorter than
+  the content — the last line falls onto a second page, and only the first
+  page is rasterized. The page gets 48 px of room, and a second page is a
+  failure (the block lands on Review), never a picture.
+- **the picture is cut to the ink**: the crop the model sees is tight around
+  the text, and a candidate framed by white margins is another region.
+
+The state carries the block's own text (the upstream contract: the OCR text
+goes to the model as it is); the picture is painted from the display text.
+
+Measured on the OCR_TEST corpus (195 blocks, MiniCPM-OCR 1.0 recognition, this
+model deciding): with the broken render 155 of 195 blocks were rejected, and
+97 % of the OCR-correct ones were false rejections. After the fix the same
+blocks score 0.92–0.99 where the broken render gave 0.01–0.43.
 
 The render happens inside the verification queue, before the request: a
 block whose render fails (or an app built without the renderer) lands on

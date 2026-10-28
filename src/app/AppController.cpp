@@ -20,6 +20,7 @@
 #include <QTimer>
 #include <QVariant>
 
+#include "parsers/BlockRender.h"
 #include "parsers/BlockStyle.h"
 #include "parsers/ParserFactory.h"
 
@@ -88,6 +89,7 @@ AppController::AppController(SettingsStore &settings,
                 runtime,
                 [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
                 [this]() { return m_recognition.busy(); },
+                [this](int pageIndex, int boxIndex) { return blockDisplayText(pageIndex, boxIndex); },
                 [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderer.render(candidateText, done); }},
                this),
       m_layout(layoutRequestProfiles, runtime, this), m_orientationDecision(runtime, this), m_availability({m_document,
@@ -550,6 +552,22 @@ QImage AppController::croppedImage(int pageIndex, int boxIndex)
     if (px.width() < 1 || px.height() < 1)
         return {};
     return img.copy(px);
+}
+
+QString AppController::blockDisplayText(int pageIndex, int boxIndex)
+{
+    QReadLocker locker(&m_documentLock);
+    if (!m_document.isValidIndex(pageIndex))
+        return {};
+    const DocumentPage &page = m_document.page(pageIndex);
+    if (page.result.pages.isEmpty())
+        return {};
+    const QList<BoundingBox> &boxes = page.result.pages[0].boxes;
+    if (boxIndex < 0 || boxIndex >= boxes.size())
+        return {};
+    const BoundingBox &box = boxes.at(boxIndex);
+    const ParserOptions options = parserOptions();
+    return renderBlockText(BoxTransitions::effectiveText(box), blockStyleForLabel(box.label, options.modelId), options);
 }
 
 void AppController::setCurrentPage(int index)

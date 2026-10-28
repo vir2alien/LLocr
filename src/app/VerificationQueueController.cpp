@@ -533,7 +533,15 @@ void VerificationQueueController::startNextVerify()
                     -1.0});
                 return;
             }
-            m_deps.renderCandidate(text, [this, crop, text](bool ok, const QImage &rendered, const QString &error) {
+            // The state carries the block's own text (the upstream contract:
+            // the OCR text goes to the model as it is), but the picture is
+            // painted from the text the page shows — a formula as display
+            // math, a table as a grid. The raw block text would reach the
+            // renderer as literal LaTeX, which no model can read as a
+            // formula (ADR 237).
+            const QString displayText = m_deps.displayTextProvider ? m_deps.displayTextProvider(m_verifyPage, m_verifyBoxIndex) : QString();
+            const QString candidate = displayText.isEmpty() ? text : displayText;
+            m_deps.renderCandidate(candidate, [this, crop, text](bool ok, const QImage &rendered, const QString &error) {
                 // The queue may have been stopped while the render was in
                 // flight; a late image belongs to no task anymore.
                 if (!m_verifyQueueActive)

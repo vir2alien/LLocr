@@ -460,6 +460,29 @@ qt_add_resources(test_export_renderer "export_renderer_preview_res"
 )
 add_test(NAME test_export_renderer COMMAND test_export_renderer)
 
+# ---- Candidate renderer: the visual-diff decision's second leg --------------
+# The candidate is painted back into an image for the decision model (ADR 235).
+# A candidate that lost its tail or arrived framed by white margins was judged
+# as another text (ADR 237), so the render is checked rather than trusted.
+qt_add_executable(test_candidate_renderer test_candidate_renderer.cpp)
+
+target_link_libraries(test_candidate_renderer PRIVATE
+    Qt6::Test
+    Qt6::WebEngineQuick
+    llocr_app
+)
+
+file(GLOB_RECURSE TEST_CANDIDATE_PREVIEW_FILES
+    "${CMAKE_SOURCE_DIR}/resources/preview/*")
+list(FILTER TEST_CANDIDATE_PREVIEW_FILES EXCLUDE REGEX "\\.DS_Store$")
+
+qt_add_resources(test_candidate_renderer "candidate_renderer_preview_res"
+    PREFIX "/preview"
+    BASE "${CMAKE_SOURCE_DIR}/resources/preview"
+    FILES ${TEST_CANDIDATE_PREVIEW_FILES}
+)
+add_test(NAME test_candidate_renderer COMMAND test_candidate_renderer)
+
 # ---- Shared HTTP policy (ADR 108) -----------------------------------------
 qt_add_executable(test_http_client test_http_client.cpp)
 

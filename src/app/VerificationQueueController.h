@@ -43,6 +43,12 @@ public:
         RuntimeController &runtime;
         std::function<QImage(int pageIndex, int boxIndex)> cropProvider;
         std::function<bool()> recognitionBusy;
+        // The text of a block as the page shows it: a formula as display math,
+        // a table as a grid. The visual-diff decision paints its candidate
+        // from it, so the picture the model reads is the one the document
+        // carries — the raw block text would reach the renderer as literal
+        // LaTeX and the table markup as a run-on line (ADR 237).
+        std::function<QString(int pageIndex, int boxIndex)> displayTextProvider;
         // The visual-diff decision (docs/31) needs the candidate rendered back
         // into an image before the request goes out. Empty when no renderer is
         // wired: a visual-diff run then lands its blocks on Review instead of
