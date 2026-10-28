@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>056 018 077 030<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|>\n<|box_start|>531 021 849 035<|box_end|><|ref_start|>header<|ref_end|><|rotate_up|>\n<|box_start|>869 023 938 036<|box_end|><|ref_start|>header<|ref_end|><|rotate_up|>\n<|box_start|>053 055 488 127<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>053 127 487 248<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>054 267 463 286<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\n<|box_start|>053 293 486 354<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>052 355 486 498<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>051 498 485 653<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>051 654 485 702<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>051 702 485 809<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>050 809 485 905<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>082 905 482 920<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>503 058 938 226<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>503 226 938 298<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>502 298 937 441<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>502 441 936 501<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>502 501 936 621<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>501 621 935 728<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>501 728 935 800<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>500 800 935 923<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793201218,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 463,
+  "prompt_tokens": 1394,
+  "total_tokens": 1857,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-OcvYxascK0RkesYDYrSFMXSFqg3jliWi",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 42821.061,
+  "prompt_per_token_ms": 30.7181212338594,
+  "prompt_per_second": 32.55407426733308,
+  "predicted_n": 463,
+  "predicted_ms": 8337.103,
+  "predicted_per_token_ms": 18.045677489177486,
+  "predicted_per_second": 55.41493250113379
+ },
+ "_wall_seconds": 51.8
+}

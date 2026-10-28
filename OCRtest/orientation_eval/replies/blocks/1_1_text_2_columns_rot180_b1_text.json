@@ -1,0 +1,44 @@
+{
+ "box": {
+  "x1": 65,
+  "y1": 209,
+  "x2": 495,
+  "y2": 271,
+  "label": "text"
+ },
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "„Паршири с механической труй мене явоски, посмову их строительное штейвание; оценко утюнальните в хих верниторы для показки воизува мопробного зеня-гетонное когоизьство је геатроенерлин, но тажже опреде-г, неодохимоспств отсквияств поширичнуто явсясуть<|im_end|>"
+   }
+  }
+ ],
+ "created": 1793204569,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 124,
+  "prompt_tokens": 117,
+  "total_tokens": 241,
+  "prompt_tokens_details": {
+   "cached_tokens": 15
+  }
+ },
+ "id": "chatcmpl-XR1KCU3uiKN3X1X2dJIhMTjsymz5gl6r",
+ "timings": {
+  "cache_n": 15,
+  "prompt_n": 102,
+  "prompt_ms": 862.4,
+  "prompt_per_token_ms": 8.454901960784314,
+  "prompt_per_second": 118.27458256029686,
+  "predicted_n": 124,
+  "predicted_ms": 1996.3,
+  "predicted_per_token_ms": 16.23008130081301,
+  "predicted_per_second": 61.61398587386665
+ },
+ "_wall_seconds": 3.0
+}

@@ -3,12 +3,37 @@
 #include <QDir>
 #include <QImage>
 #include <QPainter>
+#include <QTransform>
+
+#include <cmath>
 
 #include "app/PageOrientation.h"
 #include "app/PageRotation.h"
 #include "textpage.h"
 
 using namespace llocr;
+
+namespace {
+
+// The page turned by an arbitrary angle — the way a scan with an automatic
+// document feeder or a phone photograph arrives, skewed by a degree or
+// three. The quarter turns of PageRotation cannot express that.
+QImage rotateBy(const QImage &page, double degrees)
+{
+    QTransform transform;
+    transform.rotate(degrees);
+    const QRect bounds = transform.mapRect(page.rect());
+    QImage turned(bounds.size(), QImage::Format_Grayscale8);
+    turned.fill(255);
+    QPainter painter(&turned);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    painter.setTransform(QTransform::fromTranslate(-bounds.x(), -bounds.y()) * transform);
+    painter.drawImage(0, 0, page);
+    painter.end();
+    return turned;
+}
+
+}  // namespace
 
 // The orientation check: the picture reads the axis of the text and says
 // whether the page lies straight or on its side. Which way is up it does not
@@ -43,6 +68,29 @@ private slots:
         QVERIFY(verdict.textLike);
         QVERIFY(verdict.axisKnown);
         QVERIFY(verdict.sideways);
+    }
+
+    void aSkewedUprightPageStillRunsAcross()
+    {
+        // A few degrees of skew smear the lines over the profile of an
+        // uncompensated read; the check deskews before it reads, so the axis
+        // survives, and reports the correction it applied.
+        const QImage page = rotateBy(syntheticTextPage(), 3.0);
+        const OrientationVerdict verdict = detectPageOrientation(page);
+        QVERIFY(verdict.textLike);
+        QVERIFY(verdict.axisKnown);
+        QVERIFY(!verdict.sideways);
+        QVERIFY2(std::abs(verdict.deskewDegrees) >= 1.5 && std::abs(verdict.deskewDegrees) <= 4.5, qPrintable(QStringLiteral("the correction came out %1°").arg(verdict.deskewDegrees)));
+    }
+
+    void aSkewedSidePageStillRunsUpAndDown()
+    {
+        const QImage page = rotateBy(rotateImage(syntheticTextPage(), 90), 3.0);
+        const OrientationVerdict verdict = detectPageOrientation(page);
+        QVERIFY(verdict.textLike);
+        QVERIFY(verdict.axisKnown);
+        QVERIFY(verdict.sideways);
+        QVERIFY2(std::abs(verdict.deskewDegrees) >= 1.5 && std::abs(verdict.deskewDegrees) <= 4.5, qPrintable(QStringLiteral("the correction came out %1°").arg(verdict.deskewDegrees)));
     }
 
     void theWayUpIsNotThePicturesBusiness()
@@ -120,6 +168,7 @@ private slots:
 
         int read = 0;
         int total = 0;
+        QList<QString> wrong;
         for (const QString &file : files) {
             const QImage page(dir + QLatin1Char('/') + file);
             QVERIFY2(!page.isNull(), qPrintable(file));
@@ -132,11 +181,14 @@ private slots:
                 // The text runs across the page when the page lies straight
                 // and up and down when it lies on its side.
                 const bool sideways = turn == 1 || turn == 3;
-                QVERIFY2(verdict.sideways == sideways, qPrintable(QStringLiteral("%1 turned %2°: the axis was read the wrong way round").arg(file).arg(turn * 90)));
+                if (verdict.sideways != sideways)
+                    wrong.append(QStringLiteral("%1 turned %2° (confidence %3)").arg(file).arg(turn * 90).arg(verdict.confidence));
             }
         }
         // A page of tables reads both ways and stays undecided; the rest of
-        // the corpus is read.
+        // the corpus is read. Every page that is read at all is read the
+        // right way round: a wrong turn is costlier than no answer.
+        QVERIFY2(wrong.isEmpty(), qPrintable(QStringLiteral("the axis was read the wrong way round: %1").arg(wrong.join(QStringLiteral("; ")))));
         QVERIFY2(read * 10 >= total * 8, qPrintable(QStringLiteral("the axis was read in %1 of %2 cases").arg(read).arg(total)));
     }
 };

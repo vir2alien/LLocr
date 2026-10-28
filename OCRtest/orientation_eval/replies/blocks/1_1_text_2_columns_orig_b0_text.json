@@ -1,0 +1,44 @@
+{
+ "box": {
+  "x1": 53,
+  "y1": 55,
+  "x2": 488,
+  "y2": 127,
+  "label": "text"
+ },
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "кондиционерах воздуха, устройства для производства порошкового молока и другие установки. Даже топки и камеры сгорания двигателей входят в эту категорию, поскольку топливо в этих устройствах часто вводят в виде распыленных капель, которые должны испариться до начала горения.<|im_end|>"
+   }
+  }
+ ],
+ "created": 1793204278,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 78,
+  "prompt_tokens": 140,
+  "total_tokens": 218,
+  "prompt_tokens_details": {
+   "cached_tokens": 15
+  }
+ },
+ "id": "chatcmpl-F2pwjGt9CAJvoHJHH7pZtQ61LrqGqfDN",
+ "timings": {
+  "cache_n": 15,
+  "prompt_n": 125,
+  "prompt_ms": 1365.126,
+  "prompt_per_token_ms": 10.921008,
+  "prompt_per_second": 91.5666392699282,
+  "predicted_n": 78,
+  "predicted_ms": 1354.802,
+  "predicted_per_token_ms": 17.594831168831167,
+  "predicted_per_second": 56.83487328775718
+ },
+ "_wall_seconds": 3.3
+}

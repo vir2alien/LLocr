@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>115 101 273 117<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\n<|box_start|>112 132 886 310<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>112 317 885 465<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>141 484 884 759<|box_end|><|ref_start|>list<|ref_end|><|rotate_up|>\n<|box_start|>141 484 883 580<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>141 580 884 678<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>141 678 885 759<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>113 780 885 862<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>493 923 506 935<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793201166,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 199,
+  "prompt_tokens": 1394,
+  "total_tokens": 1593,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-SlEyGWWDoxi3OixdzEt95YNmjX2Z9MPe",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 44196.064,
+  "prompt_per_token_ms": 31.704493543758964,
+  "prompt_per_second": 31.54127028144407,
+  "predicted_n": 199,
+  "predicted_ms": 3618.345,
+  "predicted_per_token_ms": 18.274469696969696,
+  "predicted_per_second": 54.72115013908292
+ },
+ "_wall_seconds": 47.9
+}

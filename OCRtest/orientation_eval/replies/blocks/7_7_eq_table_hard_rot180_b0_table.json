@@ -1,0 +1,44 @@
+{
+ "box": {
+  "x1": 50,
+  "y1": 242,
+  "x2": 971,
+  "y2": 810,
+  "label": "table"
+ },
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<fcel>Компонент<fcel>Число кицюмо-ячи в исключной сметич \\( N_{60} \\)<fcel>Моягандак о catalog в жил-коң фазе \\( x_{60} \\)<fcel>\\( K_{1730} \\)<fcel>\\( K_{i}/K_{1730} \\)<fcel>\\( K_{i} \\)<fcel>Моягандак о catalog в жил-коди \\( m_{i}, u_{i} \\)<fcel>\\( n_{i} = \\frac{\\Delta N_{i}}{N_{i}} \\)homогей наров \\( \\Delta N_{i} \\)<fcel>\\( n_{i} = \\frac{\\Delta N_{i}}{N_{i}} \\)homогей наров \\( \\Delta N_{i} \\)<fcel>\\( x_{i} = \\frac{n_{i}}{K_{i}} \\)<fcel>\\( p_{i} = p \\cdot n_{i} \\)pᵢ,gap<nl>\n<fcel>\\( H-Етман C_{7}H_{16} \\)<fcel>1,53<fcel>0,3<fcel>15<fcel>0,018<fcel>0,1515<fcel>0,776<fcel>3,59·\\( 10^{-3} \\)<fcel>0,2<fcel>0,0359<nl>\n<fcel>\\( H-Октян C_{8}H_{18} \\)<fcel>1,5<fcel>0,29<fcel>5,8<fcel>0,007<fcel>0,0852<fcel>0,436<fcel>2,02·\\( 10^{-3} \\)<fcel>0,29<fcel>0,0202<nl>\n<fcel>\\( H-Лекан C_{10}H_{22} \\)<fcel>2,09<fcel>0,41<fcel>1<fcel>0,0012<fcel>0,0255<fcel>0,1306<fcel>6,05·\\( 10^{-4} \\)<fcel>0,51<fcel>0,0061<nl>\n<fcel>\\( Borayx \\)<fcel>\\( N_{8}=214,53 \\)<fcel>-<ecel><fcel>-<fcel>-<fcel>-<fcel>0,994<fcel>-<fcel>10<nl>\n<fcel>\\( Томинвана сметс \\)<fcel>\\( N_{20}=5,12 \\)<fcel>1,0<ecel><fcel>-<fcel>0,262<fcel>\\( \\Delta N_{3}=1,343 \\)<fcel>-<fcel>1,0<fcel>-<nl>\n<fcel>\\( Томинвана сметс \\)<fcel>\\( N_{8}+N_{20}=219,65 \\)<fcel>-<ecel><fcel>-<fcel>-<fcel>\\( N_{8}+\\Delta N_{3}=215,87 \\)<fcel>1,0002<fcel>-<fcel>10,06<nl>\n<|im_end|>"
+   }
+  }
+ ],
+ "created": 1793204696,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 656,
+  "prompt_tokens": 2305,
+  "total_tokens": 2961,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-ytjKIOpadWENuzkAdL4WFNfJSNOzp29e",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 2305,
+  "prompt_ms": 115747.125,
+  "prompt_per_token_ms": 50.21567245119306,
+  "prompt_per_second": 19.914101538159155,
+  "predicted_n": 656,
+  "predicted_ms": 11722.468,
+  "predicted_per_token_ms": 17.896897709923664,
+  "predicted_per_second": 55.875605717157846
+ },
+ "_wall_seconds": 127.7
+}

@@ -1,0 +1,44 @@
+{
+ "box": {
+  "x1": 65,
+  "y1": 77,
+  "x2": 496,
+  "y2": 199,
+  "label": "text"
+ },
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "Если Deploymentssymbol vessels este image в царраниеме шисофей вярон, а политика не originating и исключаемые mission wheel forport controller, цена, то boostyx marker neededению контактироватыbold. В подважитано перения договор струхимеbold. В подважитано перенияbold, же садмого количества воздуха. Кроме тор, в ряжирных же садмого количества воздуха. Кроме тор, в ряжирных с отстекционной трюн из-за изкоон относительной моекью-цятрон массы волатого нара удениваемся резучили-рупошая молчевная crisis course. Тярмой контак Corp<|im_end|>"
+   }
+  }
+ ],
+ "created": 1793204565,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 190,
+  "prompt_tokens": 232,
+  "total_tokens": 422,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-UtSC4O3kFulze6zAsp6706tiB8ElXoAb",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 232,
+  "prompt_ms": 2308.493,
+  "prompt_per_token_ms": 9.950400862068966,
+  "prompt_per_second": 100.49846371637256,
+  "predicted_n": 190,
+  "predicted_ms": 3118.623,
+  "predicted_per_token_ms": 16.500650793650795,
+  "predicted_per_second": 60.60367027370734
+ },
+ "_wall_seconds": 6.6
+}

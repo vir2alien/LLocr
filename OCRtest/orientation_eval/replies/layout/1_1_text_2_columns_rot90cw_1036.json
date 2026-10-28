@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>967 057 980 078<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_right|>\n<|box_start|>963 532 977 937<|box_end|><|ref_start|>aside_text<|ref_end|><|rotate_right|>\n<|box_start|>750 054 944 488<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>713 056 731 462<|box_end|><|ref_start|>title<|ref_end|><|rotate_right|>\n<|box_start|>501 054 705 486<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>298 054 500 485<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>191 054 298 484<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>078 054 191 484<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>078 503 298 933<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>380 504 558 935<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>272 504 379 934<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>078 054 298 934<|box_end|><|ref_start|>list<|ref_end|><|rotate_right|>\n<|box_start|>272 504 379 934<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>078 503 272 933<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>967 869 975 937<|box_end|><|ref_start|>aside_text<|ref_end|><|rotate_right|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793202289,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 333,
+  "prompt_tokens": 1394,
+  "total_tokens": 1727,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-wi0MC3RClU56pmByLOi5Uj9ZiDFV4sfU",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41611.002,
+  "prompt_per_token_ms": 29.850073170731708,
+  "prompt_per_second": 33.50075540117972,
+  "predicted_n": 333,
+  "predicted_ms": 5612.592,
+  "predicted_per_token_ms": 16.905397590361446,
+  "predicted_per_second": 59.152705202872404
+ },
+ "_wall_seconds": 47.9
+}

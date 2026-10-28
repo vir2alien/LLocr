@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>950 010 991 020<|box_end|><|ref_start|>header<|ref_end|><|rotate_up|>\n<|box_start|>065 037 177 963<|box_end|><|ref_start|>table_caption<|ref_end|><|rotate_left|>\n<|box_start|>182 034 610 966<|box_end|><|ref_start|>table<|ref_end|><|rotate_left|>\n<|box_start|>612 708 631 960<|box_end|><|ref_start|>table_footnote<|ref_end|><|rotate_left|>\n<|box_start|>636 034 836 964<|box_end|><|ref_start|>table<|ref_end|><|rotate_left|>\n<|box_start|>839 268 855 728<|box_end|><|ref_start|>table_caption<|ref_end|><|rotate_left|>\n<|box_start|>858 832 876 960<|box_end|><|ref_start|>table_caption<|ref_end|><|rotate_left|>\n<|box_start|>876 034 967 961<|box_end|><|ref_start|>list<|ref_end|><|rotate_left|>\n<|box_start|>899 034 943 961<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>946 036 967 961<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>017 924 030 963<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_left|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793203145,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 248,
+  "prompt_tokens": 1394,
+  "total_tokens": 1642,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-tmPNgx6ntUNDNC0eBvcH94vnYzzrCzbi",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41593.81,
+  "prompt_per_token_ms": 29.83774031563845,
+  "prompt_per_second": 33.51460229298542,
+  "predicted_n": 248,
+  "predicted_ms": 4137.716,
+  "predicted_per_token_ms": 16.751886639676115,
+  "predicted_per_second": 59.694768804818885
+ },
+ "_wall_seconds": 46.4
+}

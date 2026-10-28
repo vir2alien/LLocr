@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>044 020 400 035<|box_end|><|ref_start|>header<|ref_end|><|rotate_up|>\n<|box_start|>908 021 930 034<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|>\n<|box_start|>044 065 248 080<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\n<|box_start|>044 084 136 097<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>044 097 255 111<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>046 112 152 144<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>044 144 257 159<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>046 159 239 187<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>044 186 265 200<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>045 200 161 230<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>042 234 474 268<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>042 271 338 285<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>042 287 474 303<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>041 307 474 356<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>041 356 474 440<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>070 440 285 453<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>042 456 473 471<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>040 477 473 527<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>040 526 473 611<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>042 614 472 643<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>040 651 472 723<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>039 723 472 833<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>040 836 472 852<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>040 854 473 891<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>041 895 472 912<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>040 915 408 929<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>283 066 435 080<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\n<|box_start|>275 084 474 122<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>277 121 472 161<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>491 066 928 176<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>491 175 928 201<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>492 205 598 219<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>494 220 927 247<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>494 249 927 280<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>494 282 927 326<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>494 325 927 418<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>491 421 927 446<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>490 446 928 601<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>525 601 737 615<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>491 618 927 649<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>490 651 927 689<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>523 688 862 702<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>491 705 927 735<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>489 738 927 789<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>492 792 927 819<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>489 822 926 847<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>491 851 927 868<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>491 871 797 884<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>494 886 927 912<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>491 915 878 931<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>042 938 059 950<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793201385,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 1144,
+  "prompt_tokens": 1394,
+  "total_tokens": 2538,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-UyEHcCOzmXcED1zRykZz5Pv2E1coqcGM",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 43151.759,
+  "prompt_per_token_ms": 30.955350789096126,
+  "prompt_per_second": 32.30459272818983,
+  "predicted_n": 1144,
+  "predicted_ms": 20908.698,
+  "predicted_per_token_ms": 18.292824146981626,
+  "predicted_per_second": 54.66624464134495
+ },
+ "_wall_seconds": 64.7
+}

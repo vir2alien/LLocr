@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>079 073 518 246<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>080 246 518 282<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>082 291 518 322<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>302 327 517 342<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>082 348 516 382<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>272 387 517 401<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>082 407 516 438<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>080 442 518 493<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>082 501 516 593<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>082 501 515 533<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>268 533 515 562<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>083 562 516 593<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>080 596 516 634<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>080 633 516 669<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>080 669 516 695<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>082 700 516 747<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>082 751 515 795<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>082 803 515 836<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>080 835 516 871<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>079 871 516 945<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>775 075 969 088<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>536 088 969 100<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>538 104 969 203<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>538 104 968 136<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>651 138 967 170<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>699 171 968 203<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>944 205 968 215<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>538 219 967 314<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>538 219 967 250<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>573 251 967 281<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>660 282 968 314<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>793 315 939 330<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>538 339 967 368<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>944 370 968 380<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>539 384 575 398<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>558 399 967 494<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>558 399 967 431<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>680 432 967 462<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>668 463 968 494<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>539 496 967 628<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>539 496 967 528<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>648 529 967 561<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>576 562 967 594<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>644 596 967 628<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>539 629 574 642<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>543 643 967 772<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>543 643 967 674<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>688 676 967 708<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>640 709 966 739<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>619 740 967 772<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>782 775 938 790<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>538 799 967 829<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>743 833 938 847<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>597 846 966 863<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>538 868 966 929<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>538 868 965 898<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>568 899 965 929<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>942 930 965 941<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>082 969 107 981<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|>\n<|box_start|>610 966 908 980<|box_end|><|ref_start|>footer<|ref_end|><|rotate_up|>\n<|box_start|>917 966 965 979<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793202887,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 1388,
+  "prompt_tokens": 1394,
+  "total_tokens": 2782,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-IIh2ZbFvXVhiMNebHq4myaLaV7CN7r2Z",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41629.034,
+  "prompt_per_token_ms": 29.863008608321376,
+  "prompt_per_second": 33.486244240017676,
+  "predicted_n": 1388,
+  "predicted_ms": 24006.502,
+  "predicted_per_token_ms": 17.308220620043258,
+  "predicted_per_second": 57.77601418149133
+ },
+ "_wall_seconds": 67.7
+}

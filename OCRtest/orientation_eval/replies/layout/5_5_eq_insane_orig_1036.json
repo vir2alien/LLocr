@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>033 018 388 033<|box_end|><|ref_start|>header<|ref_end|><|rotate_up|>\n<|box_start|>890 018 917 030<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|>\n<|box_start|>034 057 057 068<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>034 069 433 100<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>034 100 461 131<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>031 135 402 152<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>061 152 255 166<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>033 169 462 200<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>059 208 216 223<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>032 227 460 370<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>032 227 381 260<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>034 260 360 290<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>034 290 312 323<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>033 323 460 370<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>032 371 460 503<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>032 371 356 404<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>033 404 423 437<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>033 437 351 470<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>033 471 461 503<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>031 504 460 615<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>031 504 331 536<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>032 537 320 567<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>032 567 460 615<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>030 617 054 628<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>031 631 460 661<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>059 669 205 684<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>031 686 460 780<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>031 686 339 717<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>032 717 427 748<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>032 749 460 780<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>030 783 054 793<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>031 796 460 895<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>031 796 300 828<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>032 828 349 862<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>032 862 460 895<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>028 898 461 924<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>480 054 918 127<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>480 127 918 163<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>515 163 624 175<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>482 180 917 196<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>482 203 509 214<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>483 217 917 247<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>483 252 917 268<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>483 271 917 299<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>480 304 917 329<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>480 330 917 366<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>480 365 918 403<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>481 405 917 498<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>481 405 915 437<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>483 437 731 466<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>483 466 916 498<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>480 506 916 531<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>480 531 917 556<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>481 560 916 591<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>481 598 725 611<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>481 617 916 650<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>480 656 696 671<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>480 677 916 708<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>479 717 918 753<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>480 753 918 926<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793201454,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 1364,
+  "prompt_tokens": 1394,
+  "total_tokens": 2758,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-5AAE0EwrtEwnPe7sWAP4TYq04X2RNZly",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 42736.34,
+  "prompt_per_token_ms": 30.657345767575322,
+  "prompt_per_second": 32.61860982948002,
+  "predicted_n": 1364,
+  "predicted_ms": 25472.19,
+  "predicted_per_token_ms": 18.68832721936904,
+  "predicted_per_second": 53.5093370456172
+ },
+ "_wall_seconds": 69.1
+}

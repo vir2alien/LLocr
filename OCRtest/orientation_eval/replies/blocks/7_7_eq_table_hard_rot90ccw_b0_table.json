@@ -1,0 +1,44 @@
+{
+ "box": {
+  "x1": 189,
+  "y1": 52,
+  "x2": 755,
+  "y2": 970,
+  "label": "table"
+ },
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<fcel>Компонент<fcel>Число киломолей в исходной смеси \\( N_{10} \\)<fcel>Молярная доля в жидкой фазе \\( x_{10} \\)<fcel>\\( K_{173^{\\circ}} \\)<fcel>\\( K_{i}/K_{173^{\\circ}} \\)<fcel>\\( K_{3} \\)<fcel>Молярная доля пара (\\( \\Delta N_{i}/N\\Sigma 0 \\)), \\( i_{n,\\mu,i} \\)<fcel>\\( i_{n,\\mu,i}=0,262 \\)<lcel><lcel><lcel><nl>\n<ucel><ucel><ucel><ucel><ucel><ucel><ucel><fcel>Число киломолей паров \\( \\Delta N_{1} \\)<fcel>\\( n_{1}=\\frac{\\Delta N_{1}}{\\Delta N_{\\Sigma}+N_{\\bullet}} \\)<fcel>\\( x_{1}=\\frac{n_{1}}{K_{1}} \\)<fcel>\\( p_{1}=p\\cdot n_{1} \\)\\( P_{1},бар \\)<nl>\n<fcel>\\( H_{-Гептан} \\)\\( C_{7}H_{16} \\)<fcel>1,53<fcel>0,3<fcel>0,0012<fcel>15<fcel>0,018<fcel>0,1515<fcel>0,776<fcel>\\( 3,59\\cdot10^{-3} \\)<fcel>0,2<fcel>0,0359<nl>\n<fcel>\\( H_{-Октан} \\)\\( C_{8}H_{18} \\)<fcel>1,5<fcel>0,29<ucel><fcel>5,8<fcel>0,007<fcel>0,0852<fcel>0,436<fcel>\\( 2,02\\cdot10^{-3} \\)<fcel>0,29<fcel>0,0202<nl>\n<fcel>\\( H_{-Декан} \\)\\( C_{10}H_{22} \\)<fcel>2,09<fcel>0,41<ucel><fcel>1<fcel>0,0012<fcel>0,0255<fcel>0,1306<fcel>\\( 6,05\\cdot10^{-4} \\)<fcel>0,51<fcel>0,0061<nl>\n<fcel>\\( B_{оздух} \\)<fcel>\\( N_{v}=214,53 \\)<fcel>-<ecel><fcel>-<fcel>-<fcel>-<fcel>-<fcel>0,994<fcel>-<fcel>10<nl>\n<fcel>Топливная смесь<fcel>\\( N_{20}=5,12 \\)<fcel>1,0<ecel><fcel>-<fcel>-<fcel>0,262<fcel>\\( \\Delta N_{\\Sigma}=1,343 \\)<fcel>-<fcel>1,0<fcel>-<nl>\n<fcel>Топливо-воздушная смесь<fcel>\\( N_{v}+N_{20}=219,65 \\)<fcel>-<ecel><fcel>-<fcel>-<fcel>-<fcel>\\( N_{v}+\\Delta N_{\\Sigma}=215,87 \\)<fcel>1,0002<fcel>-<fcel>10,06<nl>\n<|im_end|>"
+   }
+  }
+ ],
+ "created": 1793204559,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 694,
+  "prompt_tokens": 2275,
+  "total_tokens": 2969,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-J5AtFjlOGwLQ0DagMXUjLyyNeqdMPhzq",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 2275,
+  "prompt_ms": 105568.845,
+  "prompt_per_token_ms": 46.40388791208791,
+  "prompt_per_second": 21.54991844421524,
+  "predicted_n": 694,
+  "predicted_ms": 12335.842,
+  "predicted_per_token_ms": 17.80063780663781,
+  "predicted_per_second": 56.17776232866795
+ },
+ "_wall_seconds": 118.2
+}

@@ -592,7 +592,7 @@ The document, the import, the parser choice and the status line stay in the
 facade — they are its own work. Every new class takes what it needs through
 a `Deps` struct (references and providers), the idiom of the layer.
 
-## 4.22 Page rotation & the orientation check (ADR 218, 242)
+## 4.22 Page rotation & the orientation check (ADR 218, 242, 243)
 - **`DocumentPage::rotation`** (0/90/180/270) — the turn the page carries; it
   is applied in the render (`DocumentModel::renderFull` / `renderDetached`), so
   the preview, the thumbnails, the model's picture, the block crops and the
@@ -603,17 +603,33 @@ a `Deps` struct (references and providers), the idiom of the layer.
   blocks were read from the old turn). A page turned by hand is marked as
   such and the orientation check leaves it alone.
 - **`app/PageOrientation`** — the check that reads the **axis** of the text
-  from the picture alone: the profile of the rows alternates (a line, a gap, a
-  line), so it varies much more than the profile of the columns; a page turned
-  on its side has it the other way round. Measured on the corpus of the
-  project (ten pages, four turns each): the axis was read right in every case it
-  was read at all (read in 36 of the 40; the page of tables reads both ways and
-  stays undecided). The picture does **not** read which way is up — the
-  typographic sign of that carries the sign of the alphabet (Russian has more
-  descenders than ascenders), so reading it turned the pages that lie the
-  right way up — on корпусе проекта это чтение решило в 23 случаях и
-  **ошиблось в 16 из них** (ADR 221, 242). The picture alone never turns a
-  page: it names the axis, and that is all it says.
+  from the picture alone, in two stages (ADR 243). The mask of the ink comes
+  from a local (Sauvola) threshold — a global Otsu cuts a page with an
+  illumination gradient in half —, the outer 2 % of the frame are ignored,
+  and the page is cropped to the bounding box of the ink: the scanner frame
+  and the shadow of the spine stay out of every profile. The skew is swept
+  away first (±15°, the rotation that sharpens the line profile most,
+  refined by a parabola), and the quadrant is decided by the **normalized
+  autocorrelation** of the profiles — the line profile of a page of text
+  repeats at the pitch of the leading while the cross profile stays smooth —
+  with an absolute floor, not a ratio, and only a profile that **alternates
+  deeply enough** (variation ≥ 0.65) may claim the axis: the line profile
+  dives from the ink of a line to the paper of the gap, the cross profile of
+  a text block never empties. The closing that bridges the words of a line
+  also counts the line-like components: fewer than ten and the page is a
+  photograph or a drawing, not text. Measured on the corpus of the project
+  (ten pages, four turns each): the axis was read right in every case it
+  was read at all (read in 36 of the 40; the page of tables reads both ways
+  and stays undecided), and a 3° skew no longer hides the axis. The verdict
+  carries the correction angle (`deskewDegrees`) and the periodicity of the
+  winning axis (`confidence`) — the handles the auto-turn will hold onto.
+  The picture does **not** read which way is up — the typographic sign of
+  that carries the sign of the alphabet (Russian has more descenders than
+  ascenders), so reading it turned the pages that lie the right way up —
+  on корпусе проекта это чтение решило в 23 случаях и
+  **ошиблось в 16 из них** (ADR 221, 242). 180° the projections cannot see
+  at all: the picture alone never turns a page — it names the axis, and that
+  is all it says.
 - **`app/OrientationController`** — the check that runs before the pages are
   recognized (and before the markup pass). It reads the picture alone: no
   model, no network, no waiting (ADR 242). The verdict has three outcomes:

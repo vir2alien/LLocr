@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>017 611 033 965<|box_end|><|ref_start|>header<|ref_end|><|rotate_left|>\n<|box_start|>054 079 165 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>166 375 177 484<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>179 080 197 110<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>200 464 211 516<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>222 080 239 110<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>252 080 267 110<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>273 080 291 110<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>303 080 318 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>329 080 344 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>355 080 371 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>373 080 388 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>390 080 404 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>406 080 439 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>441 080 466 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>468 080 499 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>501 080 516 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>518 080 533 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>535 080 550 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>552 080 567 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>569 080 584 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>595 080 611 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>622 080 639 110<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>642 273 657 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>660 304 673 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>676 080 694 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>717 080 755 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>756 080 790 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>791 080 816 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>817 080 842 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>843 080 868 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>870 080 903 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>904 130 926 516<|box_end|><|ref_start|>text<|ref_end|><|rotate_left|>\n<|box_start|>056 536 200 966<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>207 784 223 938<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>225 536 371 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>371 536 379 968<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>371 536 616 968<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_left|>\n<|box_start|>372 536 404 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>405 536 470 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>471 536 500 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>501 536 616 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>617 536 631 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>639 742 661 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>667 793 684 940<|box_end|><|ref_start|>title<|ref_end|><|rotate_left|>\n<|box_start|>685 536 783 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>784 536 863 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>864 536 924 968<|box_end|><|ref_start|>equation<|ref_end|><|rotate_left|>\n<|box_start|>017 081 030 108<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_left|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793202949,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 1092,
+  "prompt_tokens": 1394,
+  "total_tokens": 2486,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-9dFSXRYrkW92nBFeRc0qrHUHsvpuRgGl",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41971.577,
+  "prompt_per_token_ms": 30.108735294117647,
+  "prompt_per_second": 33.21295266079709,
+  "predicted_n": 1092,
+  "predicted_ms": 18981.439,
+  "predicted_per_token_ms": 17.398202566452795,
+  "predicted_per_second": 57.477201807513126
+ },
+ "_wall_seconds": 62.0
+}

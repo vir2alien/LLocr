@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>966 034 982 389<|box_end|><|ref_start|>aside_text<|ref_end|><|rotate_right|>\n<|box_start|>969 890 982 918<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_right|>\n<|box_start|>071 028 945 921<|box_end|><|ref_start|>table<|ref_end|><|rotate_right|>\n<|box_start|>382 028 495 464<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>338 028 380 258<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>382 028 432 464<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>434 028 495 332<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>496 028 528 206<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>528 028 596 424<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>596 028 676 462<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>676 028 790 462<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>799 028 831 313<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>832 028 932 462<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>933 030 944 058<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>071 028 331 464<|box_end|><|ref_start|>list<|ref_end|><|rotate_right|>\n<|box_start|>204 028 330 464<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>105 028 205 350<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>073 028 100 463<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>073 481 322 920<|box_end|><|ref_start|>list<|ref_end|><|rotate_right|>\n<|box_start|>244 481 283 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>244 481 283 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>326 481 344 697<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>348 481 385 727<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>358 887 377 918<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>386 481 403 727<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>416 887 433 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>442 481 491 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>491 481 596 919<|box_end|><|ref_start|>list<|ref_end|><|rotate_right|>\n<|box_start|>493 481 564 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>564 481 595 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>595 481 696 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>696 481 783 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>784 481 821 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>822 481 946 919<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793203004,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 750,
+  "prompt_tokens": 1394,
+  "total_tokens": 2144,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-lnEwY6JOt0uonC4wVzrUqbN6GC0qmpGQ",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41611.683,
+  "prompt_per_token_ms": 29.85056169296987,
+  "prompt_per_second": 33.50020714134538,
+  "predicted_n": 750,
+  "predicted_ms": 12658.217,
+  "predicted_per_token_ms": 16.900156208277703,
+  "predicted_per_second": 59.17105070959046
+ },
+ "_wall_seconds": 55.2
+}

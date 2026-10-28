@@ -1,0 +1,44 @@
+{
+ "box": {
+  "x1": 53,
+  "y1": 127,
+  "x2": 487,
+  "y2": 248,
+  "label": "text"
+ },
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "F. Поверхности с механическим удалением теплоносителя. Естественное течение пленок по поверхности теплообмена целесообразно лишь при использовании жидкостей низкой вязкости. В этом случае течение определяется только гравитационными силами и силами трения. Если же требуется организовать течение пленок высоковязкой жидкости, то для этого используются, например, устройства скребкового типа. Они включают в себя механические системы, приводимые в действие от постороннего источника энергии.<|im_end|>"
+   }
+  }
+ ],
+ "created": 1793204283,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 144,
+  "prompt_tokens": 232,
+  "total_tokens": 376,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-Mxkf6BvTGgOMA7VomMd40n3KfiAhY27N",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 232,
+  "prompt_ms": 2370.15,
+  "prompt_per_token_ms": 10.21616379310345,
+  "prompt_per_second": 97.88410016243697,
+  "predicted_n": 144,
+  "predicted_ms": 2355.758,
+  "predicted_per_token_ms": 16.473832167832168,
+  "predicted_per_second": 60.70233020539462
+ },
+ "_wall_seconds": 4.8
+}

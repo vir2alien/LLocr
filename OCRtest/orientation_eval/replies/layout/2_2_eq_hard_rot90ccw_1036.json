@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>936 083 957 120<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_right|>\n<|box_start|>888 079 924 432<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>839 556 892 860<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>781 452 826 940<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>738 458 768 875<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>690 118 880 396<|box_end|><|ref_start|>image<|ref_end|><|rotate_right|>\n<|box_start|>504 184 681 368<|box_end|><|ref_start|>image<|ref_end|><|rotate_right|>\n<|box_start|>373 221 461 818<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>391 084 415 157<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>268 318 321 723<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>191 205 240 941<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>136 188 186 941<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>039 084 137 941<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>008 123 025 911<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>039 084 061 900<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>476 454 501 900<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>508 663 527 941<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>541 804 593 936<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>607 583 690 936<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>704 922 719 940<|box_end|><|ref_start|>text<|ref_end|><|rotate_right|>\n<|box_start|>599 459 625 533<|box_end|><|ref_start|>equation<|ref_end|><|rotate_right|>\n<|box_start|>931 882 949 940<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_right|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793202391,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 496,
+  "prompt_tokens": 1394,
+  "total_tokens": 1890,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-hieZWYRAU9vQCFyHXo6rAyTyRRFh9RMt",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41589.638,
+  "prompt_per_token_ms": 29.834747489239597,
+  "prompt_per_second": 33.517964258308766,
+  "predicted_n": 496,
+  "predicted_ms": 8293.447,
+  "predicted_per_token_ms": 16.754438383838384,
+  "predicted_per_second": 59.68567713762444
+ },
+ "_wall_seconds": 50.6
+}

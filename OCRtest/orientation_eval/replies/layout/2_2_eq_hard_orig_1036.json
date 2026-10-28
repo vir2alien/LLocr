@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>083 005 879 025<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\n<|box_start|>054 040 917 136<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>054 138 812 186<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>055 191 796 239<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>094 243 902 266<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>271 267 682 320<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>055 325 915 371<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>176 373 914 460<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>055 476 547 527<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>059 539 538 690<|box_end|><|ref_start|>equation_block<|ref_end|><|rotate_up|>\n<|box_start|>060 540 195 592<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>060 601 538 689<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>058 704 077 719<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>120 738 538 768<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>056 781 545 825<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>135 839 443 890<|box_end|><|ref_start|>equation<|ref_end|><|rotate_up|>\n<|box_start|>599 505 882 880<|box_end|><|ref_start|>image_block<|ref_end|><|rotate_up|>\n<|box_start|>628 505 815 680<|box_end|><|ref_start|>image<|ref_end|><|rotate_up|>\n<|box_start|>599 687 882 880<|box_end|><|ref_start|>image<|ref_end|><|rotate_up|>\n<|box_start|>563 888 920 923<|box_end|><|ref_start|>image_caption<|ref_end|><|rotate_up|>\n<|box_start|>058 931 117 949<|box_end|><|ref_start|>footer<|ref_end|><|rotate_up|>\n<|box_start|>878 939 915 956<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793201270,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 495,
+  "prompt_tokens": 1394,
+  "total_tokens": 1889,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-NIQrjuAVh2FePNZ6M7xKdO0HXueP6Cep",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 42607.017,
+  "prompt_per_token_ms": 30.564574605451938,
+  "prompt_per_second": 32.71761550450716,
+  "predicted_n": 495,
+  "predicted_ms": 8920.989,
+  "predicted_per_token_ms": 18.058682186234815,
+  "predicted_per_second": 55.37502624428749
+ },
+ "_wall_seconds": 52.2
+}

@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>067 068 926 951<|box_end|><|ref_start|>table<|ref_end|><|rotate_left|>\n<|box_start|>945 696 959 950<|box_end|><|ref_start|>footer<|ref_end|><|rotate_left|>\n<|box_start|>947 069 959 081<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_left|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793203554,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 67,
+  "prompt_tokens": 1394,
+  "total_tokens": 1461,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-329p8XquS66IjcMQzxEIEMvUScrLsDOy",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41634.769,
+  "prompt_per_token_ms": 29.867122668579626,
+  "prompt_per_second": 33.48163166222923,
+  "predicted_n": 67,
+  "predicted_ms": 1120.014,
+  "predicted_per_token_ms": 16.969909090909088,
+  "predicted_per_second": 58.92783483063605
+ },
+ "_wall_seconds": 43.4
+}

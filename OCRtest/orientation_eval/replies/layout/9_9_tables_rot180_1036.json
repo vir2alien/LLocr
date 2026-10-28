@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>047 067 477 119<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n<|box_start|>047 165 480 903<|box_end|><|ref_start|>table<|ref_end|><|rotate_up|>\n<|box_start|>389 909 478 923<|box_end|><|ref_start|>table_footnote<|ref_end|><|rotate_up|>\n<|box_start|>498 068 929 289<|box_end|><|ref_start|>table<|ref_end|><|rotate_up|>\n<|box_start|>688 294 928 308<|box_end|><|ref_start|>table_footnote<|ref_end|><|rotate_up|>\n<|box_start|>498 333 929 555<|box_end|><|ref_start|>table<|ref_end|><|rotate_up|>\n<|box_start|>498 560 928 587<|box_end|><|ref_start|>table_footnote<|ref_end|><|rotate_up|>\n<|box_start|>498 628 929 651<|box_end|><|ref_start|>table_footnote<|ref_end|><|rotate_up|>\n<|box_start|>498 655 929 903<|box_end|><|ref_start|>table<|ref_end|><|rotate_up|>\n<|box_start|>613 909 928 924<|box_end|><|ref_start|>table_footnote<|ref_end|><|rotate_up|>\n<|box_start|>048 945 303 958<|box_end|><|ref_start|>footer<|ref_end|><|rotate_up|>\n<|box_start|>918 947 929 959<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_up|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793203464,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 275,
+  "prompt_tokens": 1394,
+  "total_tokens": 1669,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-JLH4XMEfXk8XovqT2OdJBGyqrSN5a3QY",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41720.831,
+  "prompt_per_token_ms": 29.928860114777617,
+  "prompt_per_second": 33.41256553590699,
+  "predicted_n": 275,
+  "predicted_ms": 4640.298,
+  "predicted_per_token_ms": 16.93539416058394,
+  "predicted_per_second": 59.0479318354123
+ },
+ "_wall_seconds": 47.0
+}

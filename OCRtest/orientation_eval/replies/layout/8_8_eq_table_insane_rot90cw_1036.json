@@ -1,0 +1,37 @@
+{
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|box_start|>056 026 301 913<|box_end|><|ref_start|>table<|ref_end|><|rotate_left|>\n<|box_start|>334 026 896 913<|box_end|><|ref_start|>table<|ref_end|><|rotate_left|>\n<|box_start|>901 028 928 796<|box_end|><|ref_start|>table_footnote<|ref_end|><|rotate_left|>\n<|box_start|>945 885 964 913<|box_end|><|ref_start|>page_number<|ref_end|><|rotate_left|>\n<|box_start|>950 030 966 384<|box_end|><|ref_start|>aside_text<|ref_end|><|rotate_left|><|im_end|>"
+   }
+  }
+ ],
+ "created": 1793203417,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 114,
+  "prompt_tokens": 1394,
+  "total_tokens": 1508,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-maCn6rPwN6NJ03I6llD4D4XtWYYz1LJB",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 1394,
+  "prompt_ms": 41648.31,
+  "prompt_per_token_ms": 29.87683644189383,
+  "prompt_per_second": 33.47074587180128,
+  "predicted_n": 114,
+  "predicted_ms": 1902.504,
+  "predicted_per_token_ms": 16.836318584070796,
+  "predicted_per_second": 59.395407315832195
+ },
+ "_wall_seconds": 44.2
+}

@@ -1,0 +1,44 @@
+{
+ "box": {
+  "x1": 244,
+  "y1": 29,
+  "x2": 809,
+  "y2": 945,
+  "label": "table"
+ },
+ "choices": [
+  {
+   "finish_reason": "stop",
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<fcel>Компонент<fcel>Число киломо-лей в исходной смеси \\( N_{6} \\)<fcel>Моллярная доля в жид-кой фазе \\( x_{0} \\)<fcel>\\( K_{173^{\\circ}} \\)<fcel>\\( K_{i}/K_{173^{\\circ}} \\)<fcel>\\( K_{i} \\)<fcel>Моллярная доля пара (\\( \\Delta N_{i}/N_{20} \\)),\\( i_{n,\\mu,i} \\)<fcel>\\( i_{n,\\mu}=0,262 \\)<lcel><lcel><nl>\n<ucel><ucel><ucel><ucel><ucel><ucel><ucel><fcel>Число ки-ломолей паров \\( \\Delta N_{i} \\)<fcel>\\( n_{i}=\\frac{\\Delta N_{i}}{\\Delta N_{\\Sigma}+N_{\\bullet}} \\)<fcel>\\( x_{i}=\\frac{n_{i}}{K_{i}} \\)<nl>\n<fcel>\\( H-Гепган C_{7}H_{16} \\)<fcel>1,53<fcel>0,3<fcel>0,0012<fcel>15<fcel>0,018<fcel>0,1515<fcel>0,776<fcel>\\( 3,59 \\cdot 10^{-3} \\)<fcel>0,2<nl>\n<fcel>\\( H-Октан C_{8}H_{18} \\)<fcel>1,5<fcel>0,29<ucel><fcel>5,8<fcel>0,007<fcel>0,0852<fcel>0,436<fcel>\\( 2,02 \\cdot 10^{-3} \\)<fcel>0,29<nl>\n<fcel>\\( H-Декан C_{10}H_{22} \\)<fcel>2,09<fcel>0,41<ucel><fcel>1<fcel>0,0012<fcel>0,0255<fcel>0,1306<fcel>\\( 6,05 \\cdot 10^{-4} \\)<fcel>0,51<nl>\n<fcel>\\( B_{2}O_{2}D_{2}X \\)<fcel>\\( N_{\\bullet}=214,53 \\)<fcel>-<ucel><fcel>-<fcel>-<fcel>-<fcel>-<fcel>0,994<fcel>-<nl>\n<fcel>Топливная смесь<fcel>\\( N_{20}=5,12 \\)<fcel>1,0<ucel><fcel>-<fcel>-<fcel>0,262<fcel>\\( \\Delta N_{\\Sigma}=1,343 \\)<fcel>-<fcel>1,0<nl>\n<fcel>Топливо-воздушная смесь<fcel>\\( N_{\\bullet}+N_{20}=219,65 \\)<fcel>-<ucel><fcel>-<fcel>-<fcel>-<fcel>\\( N_{\\bullet}+\\Delta N_{\\Sigma}=215,87 \\)<fcel>1,0002<fcel>-<nl>\n<|im_end|>"
+   }
+  }
+ ],
+ "created": 1793204423,
+ "model": "MinerU2.5-Pro-2605-1.2B.Q8_0.gguf",
+ "system_fingerprint": "b10997-fccf7166f",
+ "object": "chat.completion",
+ "usage": {
+  "completion_tokens": 638,
+  "prompt_tokens": 2275,
+  "total_tokens": 2913,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  }
+ },
+ "id": "chatcmpl-wUg36vFA7gJ4rnQIrBW7J9agfyBdFzKw",
+ "timings": {
+  "cache_n": 0,
+  "prompt_n": 2275,
+  "prompt_ms": 105628.257,
+  "prompt_per_token_ms": 46.43000307692308,
+  "prompt_per_second": 21.537797409645794,
+  "predicted_n": 638,
+  "predicted_ms": 11434.242,
+  "predicted_per_token_ms": 17.95014442700157,
+  "predicted_per_second": 55.709858161126895
+ },
+ "_wall_seconds": 117.4
+}
