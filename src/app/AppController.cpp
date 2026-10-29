@@ -365,7 +365,10 @@ int suggestedTurnFromVote(const OcrPage &pageData, bool sidewaysMarked)
 {
     if (!sidewaysMarked || pageData.orientationVote == 0 || pageData.orientationVoteShare < 50)
         return 0;
-    return pageData.orientationVote;
+    // A quarter turn counts clockwise; a page whose blocks point right is
+    // levelled by one turn to the left, and that is how the UI names it.
+    const int turn = pageData.orientationVote;
+    return turn == 270 ? -90 : turn;
 }
 
 }  // namespace
