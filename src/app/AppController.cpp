@@ -49,6 +49,7 @@ AppController::AppController(SettingsStore &settings,
                                                              [this](int index) { return pageText(index); },
                                                              [this] { return makeParser(); }},
                                                             this),
+      m_candidateRenderFn([this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderer.render(candidateText, done); }),
       m_verify({m_document,
                 verification,
                 checkRequestProfiles,
@@ -60,7 +61,7 @@ AppController::AppController(SettingsStore &settings,
                 // are mutually exclusive: neither may start while the other runs.
                 [this] { return m_layout.busy(); },
                 [this](int pageIndex, int boxIndex) { return blockDisplayText(pageIndex, boxIndex); },
-                [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderer.render(candidateText, done); }},
+                [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderFn(candidateText, done); }},
                this),
       m_layout(layoutRequestProfiles, runtime, this), m_availability({m_document,
                                                                       m_pageModel,
@@ -211,6 +212,11 @@ AppController::AppController(SettingsStore &settings,
 }
 
 AppController::~AppController() = default;
+
+void AppController::setCandidateRenderFunction(VerificationQueueController::RenderCandidateFn render)
+{
+    m_candidateRenderFn = std::move(render);
+}
 
 QStringList AppController::parserNames() const
 {

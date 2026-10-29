@@ -21,19 +21,23 @@ class RequestProfileStore;
 class SettingsStore;
 
 // The two-phase verification queue (ADR 145, ADR 163). Phase 1 sends every
-// queued block to the decision model, which answers probabilities instead of
-// generating text: the request asks ONE question (ADR 183) and the state
-// description names the axes the block is checked on, so the verdict is the
-// threshold on P(match) — Ok above it, Mismatch below. The threshold is per
-// block type when the profile ships the map. The fix is a separate action
-// (ADR 178): the user sends the mismatched blocks through the fix task's
-// OK / FIX / REVIEW protocol with the «Fix» button, so one check run costs
-// one server role switch.
+// queued block to the decision model — the visual diff (docs/31): the crop
+// and the candidate rendered back into an image go out together, and the
+// verdict is the threshold on P(match) — Ok above it, Mismatch below. The
+// threshold is per block type when the profile ships the map. The fix is a
+// separate action (ADR 178): the user sends the mismatched blocks through the
+// fix task's OK / FIX / REVIEW protocol with the «Fix» button, so one check
+// run costs one server role switch.
 class VerificationQueueController : public QObject
 {
     Q_OBJECT
 
 public:
+    // The visual-diff decision's render leg: the candidate text painted back
+    // into an image before the request goes out. The app supplies the
+    // CandidateRenderer; a headless test can install a stand-in painter.
+    using RenderCandidateFn = std::function<void(const QString &candidateText, const std::function<void(bool ok, const QImage &image, const QString &error)> &)>;
+
     struct Deps {
         DocumentModel &document;
         VerificationPromptStore &verification;
@@ -53,7 +57,7 @@ public:
         // into an image before the request goes out. Empty when no renderer is
         // wired: a visual-diff run then lands its blocks on Review instead of
         // judging them.
-        std::function<void(const QString &candidateText, const std::function<void(bool ok, const QImage &image, const QString &error)> &)> renderCandidate;
+        RenderCandidateFn renderCandidate;
     };
 
     explicit VerificationQueueController(Deps deps, QObject *parent = nullptr);
@@ -142,10 +146,6 @@ private:
     void collectProblemBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectFixBoxes(int pageIndex, QList<VerifyTask> &out) const;
     void collectUnrecognizedBoxes(int pageIndex, QList<VerifyTask> &out) const;
-    QString decisionQuestion() const;
-    QString decisionNotation(const QString &blockType) const;
-    QString decisionCriteriaTrue() const;
-    QString decisionCriteriaFalse() const;
     double matchThresholdFor(const QString &blockType) const;
 
     Deps m_deps;
@@ -162,8 +162,7 @@ private:
     int m_verifyTotal = 0;
     int m_verifyDone = 0;
     double m_matchThreshold = 0.5;
-    const ModelProfiles::Role *m_decisionRole = nullptr;  // resolved per run: v6 thresholds live on the role
-    bool m_decisionVisualDiff = false;                    // the role's protocol asks for the two-image visual-diff request (docs/31)
+    const ModelProfiles::Role *m_decisionRole = nullptr;  // resolved per run: the per-block thresholds live on the role
     QString m_judgedType;                                 // the block type of the verdict in flight
     StatusMessage m_checkError;
 };

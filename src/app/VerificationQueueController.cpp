@@ -1,6 +1,5 @@
 #include "app/VerificationQueueController.h"
 
-#include <QStringList>
 #include <QTimer>
 
 #include "config/RequestProfileStore.h"
@@ -12,23 +11,9 @@
 namespace llocr {
 
 namespace {
-// The generic yes/no question when the decision profile ships none (the
-// shipped clef-flash profile carries its own wording).
-constexpr const char *kFallbackQuestion = "The state is a text fragment recognized from the attached image by an OCR "
-                                          "model. Does the image show the same text?";
-// v6 routing cut-offs for profiles that ship no calibration (docs/21, §v6).
-constexpr double kDefaultEmptyThreshold = 0.25;
-constexpr double kDefaultReadableThreshold = 0.45;
 // The language the prompts name ({{LANGUAGE}}). The user's choice and
 // the auto-detection land in the next step.
 const QString kDocumentLanguage = QStringLiteral("Russian");
-
-// The prompts that name the document language ({{LANGUAGE}}) get the
-// language filled in before they reach the model.
-QString withDocumentLanguage(QString text)
-{
-    return text.replace(QStringLiteral("{{LANGUAGE}}"), kDocumentLanguage);
-}
 }  // namespace
 
 VerificationQueueController::VerificationQueueController(Deps deps, QObject *parent)
@@ -47,9 +32,7 @@ VerificationQueueController::VerificationQueueController(Deps deps, QObject *par
                 emit problemReported(result.errorMessage);
             }
         } else {
-            verdict.status = result.routedStatus(matchThresholdFor(m_judgedType),
-                                                 m_decisionRole && m_decisionRole->emptyThreshold >= 0 ? m_decisionRole->emptyThreshold : kDefaultEmptyThreshold,
-                                                 m_decisionRole && m_decisionRole->readableThreshold >= 0 ? m_decisionRole->readableThreshold : kDefaultReadableThreshold);
+            verdict.status = result.routedStatus(matchThresholdFor(m_judgedType));
             verdict.confidence = result.probability;
         }
         deliverVerdict(verdict);
@@ -347,7 +330,6 @@ void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &task
     m_phase = Phase::Decision;
     m_matchThreshold = m_deps.settings.decisionMatchThreshold();
     m_decisionRole = ModelProfiles::roleFor(m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision"));
-    m_decisionVisualDiff = m_decisionRole && m_decisionRole->protocol == visualDiffDecisionProtocol();
     m_verifyQueue = tasks;
     m_verifyPage = -1;
     m_verifyBoxIndex = -1;
@@ -519,45 +501,34 @@ void VerificationQueueController::startNextVerify()
         // canonical LaTeX form when it was recognized (ADR 194), so the wire
         // carries the same bytes the panel shows and the export writes.
         m_judgedType = box.label;
-        if (m_decisionVisualDiff) {
-            // The visual-diff decision (docs/31) reads the candidate twice:
-            // as the state text and as the picture it paints. Without a
-            // renderer the run would be blind on the second leg, so the block
-            // goes to human eyes instead of being judged on half the input.
-            if (!m_deps.renderCandidate) {
-                deliverVerdict(CheckResult{CheckStatus::Review,
-                                           {},
-                                           StatusMessage::translate("VerificationQueueController", "No candidate renderer: the visual-diff decision model needs the candidate as an image."),
-                                           {},
-                                           -1.0});
-                return;
-            }
-            // The state carries the block's own text (the upstream contract:
-            // the OCR text goes to the model as it is), but the picture is
-            // painted from the text the page shows — a formula as display
-            // math, a table as a grid. The raw block text would reach the
-            // renderer as literal LaTeX, which no model can read as a
-            // formula (ADR 237).
-            const QString displayText = m_deps.displayTextProvider ? m_deps.displayTextProvider(m_verifyPage, m_verifyBoxIndex) : QString();
-            const QString candidate = displayText.isEmpty() ? text : displayText;
-            m_deps.renderCandidate(candidate, [this, crop, text](bool ok, const QImage &rendered, const QString &error) {
-                // The queue may have been stopped while the render was in
-                // flight; a late image belongs to no task anymore.
-                if (!m_verifyQueueActive)
-                    return;
-                if (!ok || rendered.isNull()) {
-                    deliverVerdict(CheckResult{CheckStatus::Review, {}, StatusMessage::translate("VerificationQueueController", "The candidate render failed: %1").arg(error), {}, -1.0});
-                    return;
-                }
-                m_decision.judgeVisual(crop, rendered, text);
-            });
+        // The visual-diff decision (docs/31) reads the candidate twice:
+        // as the state text and as the picture it paints. Without a
+        // renderer the run would be blind on the second leg, so the block
+        // goes to human eyes instead of being judged on half the input.
+        if (!m_deps.renderCandidate) {
+            deliverVerdict(CheckResult{
+                CheckStatus::Review, {}, StatusMessage::translate("VerificationQueueController", "No candidate renderer: the visual-diff decision model needs the candidate as an image."), {}, -1.0});
             return;
         }
-        // The state carries the block's type, the candidate text and the
-        // description of the check (the axes every block is judged on plus
-        // this block type's own rules); the request asks one question: is the
-        // block recognized correctly?
-        m_decision.judgeBlock(crop, box.label, text, decisionNotation(box.label), decisionQuestion(), decisionCriteriaTrue(), decisionCriteriaFalse());
+        // The state carries the block's own text (the upstream contract:
+        // the OCR text goes to the model as it is), but the picture is
+        // painted from the text the page shows — a formula as display
+        // math, a table as a grid. The raw block text would reach the
+        // renderer as literal LaTeX, which no model can read as a
+        // formula (ADR 237).
+        const QString displayText = m_deps.displayTextProvider ? m_deps.displayTextProvider(m_verifyPage, m_verifyBoxIndex) : QString();
+        const QString candidate = displayText.isEmpty() ? text : displayText;
+        m_deps.renderCandidate(candidate, [this, crop, text](bool ok, const QImage &rendered, const QString &error) {
+            // The queue may have been stopped while the render was in
+            // flight; a late image belongs to no task anymore.
+            if (!m_verifyQueueActive)
+                return;
+            if (!ok || rendered.isNull()) {
+                deliverVerdict(CheckResult{CheckStatus::Review, {}, StatusMessage::translate("VerificationQueueController", "The candidate render failed: %1").arg(error), {}, -1.0});
+                return;
+            }
+            m_decision.judgeVisual(crop, rendered, text);
+        });
         return;
     }
 
@@ -592,39 +563,6 @@ void VerificationQueueController::startNextVerify()
     m_check.checkBlock(crop, systemPrompt, userPrompt);
 }
 
-QString VerificationQueueController::decisionQuestion() const
-{
-    const QString modelId = m_deps.settings.decisionRequestProfileId();
-    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
-    // The ask itself; profiles predating the field fall back to the generic
-    // question. The admission framing travels in the state (decisionNotation),
-    // not here — a long instruction over a raw-string state was measured to
-    // collapse the yes/no separation (docs/17).
-    QString question = ModelProfiles::questionFor(profiles, modelId, QStringLiteral("decision"));
-    if (question.isEmpty())
-        question = StatusMessage::translate("VerificationQueueController", kFallbackQuestion).text();
-    return withDocumentLanguage(question);
-}
-
-QString VerificationQueueController::decisionNotation(const QString &blockType) const
-{
-    const QString modelId = m_deps.settings.decisionRequestProfileId();
-    const QList<ModelProfiles::Profile> &profiles = ModelProfiles::instance();
-    // The state description: the general axes every block is checked on, then
-    // what is specific to this block type. The per-type rules only add to the
-    // general ones — they never replace them.
-    QStringList parts;
-    const QString general = ModelProfiles::statePromptFor(profiles, modelId, QStringLiteral("decision"));
-    if (!general.isEmpty())
-        parts.append(general);
-    const ModelProfiles::DecisionBlock block = ModelProfiles::decisionBlockFor(profiles, modelId, QStringLiteral("decision"), blockType);
-    if (!block.statePrompt.isEmpty())
-        parts.append(block.statePrompt);
-    if (parts.isEmpty())
-        parts.append(ModelProfiles::systemPromptFor(profiles, modelId, QStringLiteral("decision")));
-    return withDocumentLanguage(parts.join(QStringLiteral("\n\n")));
-}
-
 double VerificationQueueController::matchThresholdFor(const QString &blockType) const
 {
     if (!m_decisionRole)
@@ -636,16 +574,6 @@ double VerificationQueueController::matchThresholdFor(const QString &blockType) 
     if (m_decisionRole->matchThreshold >= 0)
         return m_decisionRole->matchThreshold;
     return m_matchThreshold;
-}
-
-QString VerificationQueueController::decisionCriteriaTrue() const
-{
-    return withDocumentLanguage(ModelProfiles::criteriaTrueFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision")));
-}
-
-QString VerificationQueueController::decisionCriteriaFalse() const
-{
-    return withDocumentLanguage(ModelProfiles::criteriaFalseFor(ModelProfiles::instance(), m_deps.settings.decisionRequestProfileId(), QStringLiteral("decision")));
 }
 
 // The shared tail of every decision result, requested or produced locally (a

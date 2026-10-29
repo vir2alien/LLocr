@@ -28,12 +28,11 @@ set(LLOCR_MODEL_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/minicpm-jev.json"
 )
 
-# The request profiles: the shared request texts of the fix and decision tasks
-# (ADR 182). A model profile names the prompt profile it takes its texts from,
-# so a test that reads a model contract needs these too.
+# The request profile: the shared request texts of the fix task (ADR 182). A
+# model profile names the prompt profile it takes its texts from, so a test
+# that reads a model contract needs this too.
 set(LLOCR_REQUEST_PROFILE_FILES
     "${CMAKE_SOURCE_DIR}/resources/profiles/requests/fix-requests.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/requests/decision-requests.json"
 )
 
 # The shipped profiles a test reads: the model profiles and the request
@@ -299,16 +298,6 @@ qt_add_resources(test_app_import "app_import_profiles"
     FILES
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
-)
-# The decision machinery under test speaks the text protocol; the only shipped
-# decision model is the visual-diff one, whose renderer needs WebEngine this
-# suite does not initialize. The fixture profile serves the decision role
-# without the visual-diff protocol.
-qt_add_resources(test_app_import "app_import_test_decision_profile"
-    PREFIX "/profiles/models"
-    BASE "${CMAKE_SOURCE_DIR}/tests/fixtures/profiles"
-    FILES
-        "${CMAKE_SOURCE_DIR}/tests/fixtures/profiles/text-decision-test.json"
 )
 llocr_add_profile_resources(test_app_import)
 if(WIN32 AND LLOCR_DJVU_AVAILABLE)

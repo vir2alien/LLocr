@@ -177,6 +177,14 @@ public:
     // requests); the raw m_verify.checkBusy() would drop in those gaps and
     // read as idle mid-run.
     bool busy() const { return m_layout.busy() || checkBusy(); }
+
+    // The visual-diff decision paints the candidate back into an image before
+    // the request goes out (docs/31). The headless suites cannot initialize
+    // Chromium, so a test installs a stand-in painter here; production keeps
+    // the real CandidateRenderer — the protocol, the profile and the routing
+    // stay the shipped ones either way.
+    void setCandidateRenderFunction(VerificationQueueController::RenderCandidateFn render);
+
     bool exporting() const { return m_export.exporting(); }
     bool projectBusy() const { return m_project.busy(); }
     QUrl projectPath() const { return m_project.path(); }
@@ -473,6 +481,9 @@ private:
     // Declared before the queue: a render in flight must die with its
     // callbacks before the queue that would receive them.
     CandidateRenderer m_candidateRenderer;
+    // The render function the queue calls; defaults to the real renderer and
+    // is replaced wholesale by setCandidateRenderFunction.
+    VerificationQueueController::RenderCandidateFn m_candidateRenderFn;
     VerificationQueueController m_verify;
     LayoutController m_layout;
     OrientationController m_orientation;

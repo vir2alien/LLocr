@@ -15,22 +15,16 @@ inline QString visualDiffDecisionProtocol()
 }
 
 // The /v1/systemone request (a llama.cpp extension): a named question asked
-// over a structured state plus images, answered in one pass with zero
-// generated tokens. The state is a JSON object — the candidate text sits in a
-// named field, which is what makes the model compare it against the crop (a
-// raw string reduces the answer to "is there text on the image",
-// docs/17-d1-verification-study.md). The served model is fixed per
-// llama-server, so there is no model field to send.
+// over a state plus images, answered in one pass with zero generated tokens.
+// The state is the bare candidate text; the images are the crop and the
+// candidate rendered back into an image, in that order (docs/31). The served
+// model is fixed per llama-server, so the `model` field names it — a server
+// that routes by the field rejects a request without it.
 struct DecisionRequest {
     QImage image;             ///< Crop of the block being judged.
-    QImage renderImage;       ///< The candidate text rendered back into an image; visualDiff requests carry it next to the crop.
-    QString blockType;        ///< The block's label, carried into state.block_type.
-    QString recognizedText;   ///< The OCR candidate text, carried into state.recognized_text (the bare state of a visualDiff request).
-    QString notation;         ///< Notation disclaimer carried into state.notation (the profile's statePrompt); empty omits the field.
-    QString question;         ///< The single yes/no question wording (the decision role's question).
-    QString criteriaTrue;     ///< Optional noul criteria: what counts as a match; empty omits the field.
-    QString criteriaFalse;    ///< Optional noul criteria: what counts as a difference; empty omits the field.
-    bool visualDiff = false;  ///< The visual-diff request shape: string state, two images, a bare noul question (no instructions — the server rejects them).
+    QImage renderImage;       ///< The candidate text rendered back into an image; travels next to the crop.
+    QString recognizedText;   ///< The OCR candidate text — the request's state.
+    bool visualDiff = false;  ///< The visual-diff request shape; the only wire shape the decision speaks.
 };
 
 }  // namespace llocr

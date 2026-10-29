@@ -282,9 +282,9 @@ void TestModelPresetCatalog::verifierSystemPromptFollowsTheModel()
     QVERIFY(blocks.contains(QStringLiteral("the block text and nothing else")));
 
     // The shipped decision is the visual diff (docs/31): the task wording is
-    // baked into the model's prompt, so no state or question texts travel.
-    QVERIFY(ModelProfiles::statePromptFor(profiles, QStringLiteral("minicpm-jev"), QStringLiteral("decision")).isEmpty());
-    QVERIFY(ModelProfiles::questionFor(profiles, QStringLiteral("minicpm-jev"), QStringLiteral("decision")).isEmpty());
+    // baked into the model's own prompt, so the role ships no system prompt —
+    // the request carries no texts to override.
+    QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("minicpm-jev"), QStringLiteral("decision")).isEmpty());
 
     // An unknown model resolves to nothing.
     QVERIFY(ModelProfiles::systemPromptFor(profiles, QStringLiteral("unknown"), QStringLiteral("blockRecognition")).isEmpty());
@@ -415,12 +415,6 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
 }
 
-// All three decision models ship the same scheme v7: ONE question per request
-// (a noul `match`), the axes the block is checked on in the state text
-// (state.notation), and the document language named in the state. d3 answers
-// each question of a request with its own forward pass (~1.4 s measured), so
-// the v6 second question (the diagnosis choice) doubled the price of a check
-// and is gone.
 // The reasoning mode is optional: the model profile says whether the model
 // can think at all, the request profile offers the modes every fix model
 // shares. A model without the flag gets no parameter and no thinking (ADR 193).
@@ -470,18 +464,18 @@ void TestModelPresetCatalog::fixRolesShipTheReasoningMode()
     QVERIFY(ModelProfiles::roleFor(QStringLiteral("gemma-4-12b"), QStringLiteral("fix"))->reasoningSupported);
 }
 
-// The fix and decision tasks send the same requests whatever model serves
-// them, so the request texts live in their own profiles and the model roles
-// only name them (ADR 182). The parameters — launch, request, thresholds —
-// stay in the model profile.
+// The fix task sends the same request whatever model serves it, so the request
+// texts live in their own profile and the model roles only name it (ADR 182).
+// The parameters — launch, request, thresholds — stay in the model profile.
 void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
 
-    // One request profile per task.
-    QCOMPARE(ModelProfiles::promptProfiles().size(), 2);
+    // One request profile, the fix task's; the decision speaks the visual
+    // diff (docs/31) and carries no texts at all.
+    QCOMPARE(ModelProfiles::promptProfiles().size(), 1);
     QVERIFY(ModelProfiles::promptProfile(QStringLiteral("fix-requests")));
-    QVERIFY(ModelProfiles::promptProfile(QStringLiteral("decision-requests")));
+    QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("decision-requests")));
     QVERIFY(!ModelProfiles::promptProfile(QStringLiteral("no-such-profile")));
 
     // Every fix model names the shared fix request profile and inherits its
@@ -512,26 +506,25 @@ void TestModelPresetCatalog::requestProfilesCarryTheSharedRequests()
         QCOMPARE(role->blockMaxOutput, fixRequests->prompts.blockMaxOutput);
     }
 
-    // The same for the decision models: the request texts are shared, the
-    // routing calibration stays per model. The visual-diff decision is the
-    // exception (docs/31): the task wording is baked into the model's own
-    // prompt, the server rejects a request that sends texts, so the profile
-    // ships none.
+    // The decision model speaks the visual diff (docs/31): the task wording
+    // is baked into the model's own prompt, the server rejects a request that
+    // sends texts, so no request profile exists and the role names none. The
+    // thresholds stay per model: minicpm-jev's split is the upstream default
+    // 0.5, carried per block type.
     for (const QString &id : ModelProfiles::idsForRole(profiles, QStringLiteral("decision"))) {
         const ModelProfiles::Role *role = ModelProfiles::roleFor(id, QStringLiteral("decision"));
         QVERIFY2(role, qPrintable(id));
-        if (role->protocol == visualDiffDecisionProtocol()) {
-            QVERIFY2(role->promptProfile.isEmpty(), qPrintable(id));
-            QVERIFY2(role->statePrompt.isEmpty(), qPrintable(id));
-            QVERIFY2(role->question.isEmpty(), qPrintable(id));
-            QVERIFY(role->matchThreshold > 0);
-            continue;
-        }
-        QCOMPARE(role->promptProfile, QStringLiteral("decision-requests"));
-        QCOMPARE(role->statePrompt, ModelProfiles::promptProfile(QStringLiteral("decision-requests"))->prompts.statePrompt);
-        QVERIFY(!role->statePrompt.isEmpty());
+        QCOMPARE(role->protocol, visualDiffDecisionProtocol());
+        QVERIFY2(role->promptProfile.isEmpty(), qPrintable(id));
         QVERIFY(role->matchThreshold > 0);
     }
+    const ModelProfiles::Role *jev = ModelProfiles::roleFor(QStringLiteral("minicpm-jev"), QStringLiteral("decision"));
+    QVERIFY(jev);
+    QCOMPARE(jev->matchThreshold, 0.5);
+    QCOMPARE(jev->blockMatchThresholds.size(), 3);
+    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("text")), 0.5);
+    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("equation")), 0.5);
+    QCOMPARE(jev->blockMatchThresholds.value(QStringLiteral("table")), 0.5);
 
     // The OCR models keep their own prompts inline — only the two shared tasks
     // moved.

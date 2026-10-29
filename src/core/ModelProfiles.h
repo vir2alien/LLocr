@@ -19,38 +19,26 @@ public:
         QString text;
     };
 
-    struct DecisionBlock {
-        QString statePrompt;  // per-block equivalence rules, carried into state.notation
-        QString question;     // legacy single-question wording (scheme v5)
-    };
-
     struct Role {
         QString alias;
         QString parser;
-        QString protocol;  // reply contract id ("full_block" fix, "systemone_multi_question_v6" decision)
+        QString protocol;  // reply contract id ("full_block" fix, "systemone_visual_diff_v1" decision)
         int maxOutput = 0;
         QHash<QString, int> blockMaxOutput;  // maxOutputByBlock, keyed like blockPrompts (fix task)
         bool isDefault = false;              // the role's recommended model, replacing the first-in-catalog fallback
         QString systemPrompt;                // check-role override of the shared verifier system prompt
-        QString statePrompt;                 // decision role: framing + comparison rules; read instead of systemPrompt
-        QString question;                    // decision role: the yes/no question itself when the profile ships one
-        QString criteriaTrue;                // decision role: the "true" side of the noul question (what counts as a match)
-        QString criteriaFalse;               // decision role: the "false" side (what counts as a difference)
         QList<Prompt> prompts;
         QList<LaunchParameter> launch;
         QList<RequestParameter> request;
         QHash<QString, QString> blockStyles;
         QHash<QString, QString> blockPrompts;
-        QHash<QString, DecisionBlock> decisionBlocks;  // blockPrompts entries shipped as objects (decision v6)
-        double matchThreshold = -1.0;                  // -1 = not shipped; the settings knob applies
-        QHash<QString, double> blockMatchThresholds;   // matchThresholdByBlock, keyed like blockPrompts
-        double emptyThreshold = -1.0;
-        double readableThreshold = -1.0;
-        QHash<QString, QString> blockAliases;  // alias -> canonical blockPrompts key
-        bool promptBeforeImage = false;        // wire order: prompt text first, then the image (LFM2.5 trains text-then-image)
-        int imageLongestEdge = 0;              // 0 = send the page as-is; >0 = downscale to fit (LightOnOCR-3 trains on 2048 px pages)
-        QString promptProfile;                 // id of the prompt profile this role takes its texts from
-        bool reasoningSupported = false;       // the model can think: the fix task may spend a reasoning budget
+        QHash<QString, double> blockMatchThresholds;  // matchThresholdByBlock, keyed like blockPrompts
+        double matchThreshold = -1.0;                 // -1 = not shipped; the settings knob applies
+        QHash<QString, QString> blockAliases;         // alias -> canonical blockPrompts key
+        bool promptBeforeImage = false;               // wire order: prompt text first, then the image (LFM2.5 trains text-then-image)
+        int imageLongestEdge = 0;                     // 0 = send the page as-is; >0 = downscale to fit (LightOnOCR-3 trains on 2048 px pages)
+        QString promptProfile;                        // id of the prompt profile this role takes its texts from
+        bool reasoningSupported = false;              // the model can think: the fix task may spend a reasoning budget
     };
 
     struct Quant {
@@ -177,16 +165,7 @@ public:
 
     static QString blockPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type);
 
-    static DecisionBlock decisionBlockFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type);
-
     static QString systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
-
-    static QString statePromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
-
-    static QString questionFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
-
-    static QString criteriaTrueFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
-    static QString criteriaFalseFor(const QList<Profile> &profiles, const QString &modelId, const QString &role);
 
     static QString runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId);
 

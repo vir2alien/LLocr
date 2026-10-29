@@ -86,3 +86,19 @@ single-pass page recognition. The remaining four are `layout`,
 
 The role list lives in `src/core/ConnectionRole.h`; the settings dispatch in
 `roleSettings()` in `src/config/SettingsStore.cpp`.
+
+## The text decision protocol
+
+The decision task used two protocols. The text one (`systemone_single_question_v7`)
+sent a state object, one `noul` question and a crop, and the model answered
+`match`, `has_text` and `readable`. It was spoken by clef-flash, d3-flash and
+d3-mini.
+
+The remaining model, MiniCPM-OCR Jev, speaks the visual diff
+(`systemone_visual_diff_v1`): the crop, the candidate rendered back into an
+image, and the candidate text. The state is bare, the question is the `match`
+noul, and the answer is a single probability.
+
+The prompt profile and the calibration harness that the text protocol needed
+are in `decision-text/`. `scripts/decision-calibrate.py` still measures
+thresholds — point it at the visual diff to recalibrate MiniCPM-Jev.

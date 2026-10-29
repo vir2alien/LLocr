@@ -102,30 +102,9 @@ namespace {
 void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QString &error, const QString &id, bool requestProfile)
 {
     role.systemPrompt = object.value(QStringLiteral("systemPrompt")).toString();
-    role.statePrompt = object.value(QStringLiteral("statePrompt")).toString();
-    role.question = object.value(QStringLiteral("question")).toString();
-    const QJsonObject criteria = object.value(QStringLiteral("criteria")).toObject();
-    role.criteriaTrue = criteria.value(QStringLiteral("true")).toString();
-    role.criteriaFalse = criteria.value(QStringLiteral("false")).toString();
 
     const QJsonObject blockPrompts = object.value(QStringLiteral("blockPrompts")).toObject();
     for (auto prompt = blockPrompts.constBegin(); prompt != blockPrompts.constEnd(); ++prompt) {
-        // A v6 decision entry ships as an object (statePrompt/question); the
-        // string shape stays the fix/teleocr vocabulary.
-        if (prompt.value().isObject()) {
-            const QJsonObject spec = prompt.value().toObject();
-            ModelProfiles::DecisionBlock block;
-            block.statePrompt = spec.value(QStringLiteral("statePrompt")).toString();
-            block.question = spec.value(QStringLiteral("question")).toString();
-            const bool empty = prompt.key().isEmpty() || (block.statePrompt.isEmpty() && block.question.isEmpty());
-            if (empty) {
-                error = requestProfile ? QObject::tr("Request profile %1 has a block prompt without a block type or text").arg(id)
-                                       : QObject::tr("Model profile %1 has a block prompt without a block type or text").arg(id);
-                return;
-            }
-            role.decisionBlocks.insert(prompt.key(), block);
-            continue;
-        }
         const QString text = prompt.value().toString();
         if (prompt.key().isEmpty() || text.isEmpty()) {
             error = requestProfile ? QObject::tr("Request profile %1 has a block prompt without a block type or text").arg(id)
@@ -155,12 +134,7 @@ void readPromptFields(const QJsonObject &object, ModelProfiles::Role &role, QStr
 void applyPromptProfile(ModelProfiles::Role &role, const ModelProfiles::Role &prompts)
 {
     role.systemPrompt = prompts.systemPrompt;
-    role.statePrompt = prompts.statePrompt;
-    role.question = prompts.question;
-    role.criteriaTrue = prompts.criteriaTrue;
-    role.criteriaFalse = prompts.criteriaFalse;
     role.blockPrompts = prompts.blockPrompts;
-    role.decisionBlocks = prompts.decisionBlocks;
     role.blockAliases = prompts.blockAliases;
     // The shared reply budgets fill the gaps: a model profile that ships its
     // own entry for a block type keeps it (ADR 192).
@@ -309,8 +283,6 @@ ModelProfiles::Profile readProfile(const QJsonObject &root, QString &error)
         const QJsonObject thresholds = roleObject.value(QStringLiteral("matchThresholdByBlock")).toObject();
         for (auto threshold = thresholds.constBegin(); threshold != thresholds.constEnd(); ++threshold)
             role.blockMatchThresholds.insert(threshold.key(), threshold.value().toDouble(-1.0));
-        role.emptyThreshold = roleObject.value(QStringLiteral("emptyThreshold")).toDouble(-1.0);
-        role.readableThreshold = roleObject.value(QStringLiteral("readableThreshold")).toDouble(-1.0);
         role.promptProfile = roleObject.value(QStringLiteral("promptProfile")).toString();
         role.reasoningSupported = roleObject.value(QStringLiteral("reasoning")).toBool(false);
         role.launch = LaunchProfile::parseParameters(roleObject.value(QStringLiteral("launch")).toArray(), error, QObject::tr("Model profile"));
@@ -636,54 +608,11 @@ QString ModelProfiles::blockPromptFor(const QList<Profile> &profiles, const QStr
     return found->blockPrompts.value(found->blockAliases.value(type));
 }
 
-ModelProfiles::DecisionBlock ModelProfiles::decisionBlockFor(const QList<Profile> &profiles, const QString &modelId, const QString &role, const QString &type)
-{
-    const Profile *profile = find(profiles, modelId);
-    const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    if (!found)
-        return {};
-    const auto direct = found->decisionBlocks.constFind(type);
-    if (direct != found->decisionBlocks.constEnd())
-        return direct.value();
-    const auto aliased = found->decisionBlocks.constFind(found->blockAliases.value(type));
-    if (aliased != found->decisionBlocks.constEnd())
-        return aliased.value();
-    return {};
-}
-
 QString ModelProfiles::systemPromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
 {
     const Profile *profile = find(profiles, modelId);
     const Role *found = profile ? roleFor(*profile, role) : nullptr;
     return found ? found->systemPrompt : QString();
-}
-
-QString ModelProfiles::statePromptFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
-{
-    const Profile *profile = find(profiles, modelId);
-    const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    return found ? found->statePrompt : QString();
-}
-
-QString ModelProfiles::questionFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
-{
-    const Profile *profile = find(profiles, modelId);
-    const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    return found ? found->question : QString();
-}
-
-QString ModelProfiles::criteriaTrueFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
-{
-    const Profile *profile = find(profiles, modelId);
-    const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    return found ? found->criteriaTrue : QString();
-}
-
-QString ModelProfiles::criteriaFalseFor(const QList<Profile> &profiles, const QString &modelId, const QString &role)
-{
-    const Profile *profile = find(profiles, modelId);
-    const Role *found = profile ? roleFor(*profile, role) : nullptr;
-    return found ? found->criteriaFalse : QString();
 }
 
 QString ModelProfiles::runtimeNoteFor(const QList<Profile> &profiles, const QString &modelId)

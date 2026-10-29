@@ -17,8 +17,6 @@ namespace {
 class ExposedDecisionModel : public DecisionModel
 {
 public:
-    QByteArray build(const DecisionRequest &request, const QByteArray &imageDataUrl, const QString &modelId = QString()) { return buildRequestBody(request, imageDataUrl, modelId); }
-
     QByteArray build(const DecisionRequest &request, const QByteArray &imageDataUrl, const QByteArray &renderImageDataUrl, const QString &modelId = QString())
     {
         return buildRequestBody(request, imageDataUrl, renderImageDataUrl, modelId);
@@ -95,12 +93,12 @@ private:
 DecisionRequest testRequest()
 {
     DecisionRequest request;
+    request.visualDiff = true;
     request.image = QImage(8, 8, QImage::Format_ARGB32);
     request.image.fill(Qt::gray);
-    request.blockType = QStringLiteral("title");
+    request.renderImage = QImage(8, 8, QImage::Format_ARGB32);
+    request.renderImage.fill(Qt::darkGray);
     request.recognizedText = QStringLiteral("1. Intr0duction");
-    request.notation = QStringLiteral("Markup is a carrier, not content.");
-    request.question = QStringLiteral("Does the image show exactly this text?");
     return request;
 }
 
@@ -111,30 +109,27 @@ class TestDecisionModel : public QObject
     Q_OBJECT
 
 private slots:
-    void requestBodyCarriesStateImageAndQuestion()
+    // The visual-diff decision (MiniCPM-OCR Jev, docs/31): the state is the
+    // bare OCR text, the render of the candidate rides next to the crop in
+    // that order, and the single noul question carries neither instructions
+    // nor criteria — the server rejects a request that sends either. The wire
+    // never carries any other question.
+    void visualDiffRequestBodyCarriesTwoImagesAndABareQuestion()
     {
         ExposedDecisionModel model;
-        const QByteArray body = model.build(testRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"), QStringLiteral("llocr-decision"));
-        const QJsonDocument doc = QJsonDocument::fromJson(body);
-        QVERIFY(doc.isObject());
+        const QByteArray body = model.build(testRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"), QByteArrayLiteral("data:image/png;base64,BBBB"), QStringLiteral("llocr-decision"));
+        const QJsonObject root = QJsonDocument::fromJson(body).object();
 
-        const QJsonObject root = doc.object();
-        // The state is a JSON object — the candidate text in a named field
-        // (block type, text, the profile's notation line), which is what makes
-        // the model compare it against the crop. The images array carries one
-        // data URL, and the single question is the profile's yes/no wording.
-        const QJsonObject state = root.value(QStringLiteral("state")).toObject();
-        QCOMPARE(state.value(QStringLiteral("block_type")).toString(), QStringLiteral("title"));
-        QCOMPARE(state.value(QStringLiteral("recognized_text")).toString(), QStringLiteral("1. Intr0duction"));
-        QCOMPARE(state.value(QStringLiteral("notation")).toString(), QStringLiteral("Markup is a carrier, not content."));
+        QCOMPARE(root.value(QStringLiteral("state")).toString(), QStringLiteral("1. Intr0duction"));
         const QJsonArray images = root.value(QStringLiteral("images")).toArray();
-        QCOMPARE(images.size(), 1);
+        QCOMPARE(images.size(), 2);
         QCOMPARE(images.first().toString(), QStringLiteral("data:image/png;base64,AAAA"));
-        const QJsonObject match = root.value(QStringLiteral("questions")).toObject().value(QStringLiteral("match")).toObject();
+        QCOMPARE(images.last().toString(), QStringLiteral("data:image/png;base64,BBBB"));
+        const QJsonObject questions = root.value(QStringLiteral("questions")).toObject();
+        QCOMPARE(questions.size(), 1);
+        const QJsonObject match = questions.value(QStringLiteral("match")).toObject();
         QCOMPARE(match.value(QStringLiteral("type")).toString(), QStringLiteral("noul"));
-        QCOMPARE(match.value(QStringLiteral("instructions")).toString(), QStringLiteral("Does the image show exactly this text?"));
-        // No criteria in the request when the profile ships none: the
-        // endpoint's default sides apply.
+        QVERIFY(!match.contains(QStringLiteral("instructions")));
         QVERIFY(!match.contains(QStringLiteral("criteria")));
         // The System One protocol names the model that answers (llama.cpp:
         // the loaded model's name or its alias); a server that routes by the
@@ -143,82 +138,21 @@ private slots:
         QVERIFY(!root.contains(QStringLiteral("messages")));
     }
 
-    // The visual-diff decision (MiniCPM-OCR Jev, docs/31): the state is the
-    // bare OCR text, the render of the candidate rides next to the crop in
-    // that order, and the single noul question carries neither instructions
-    // nor criteria — the server rejects a request that sends either.
-    void visualDiffRequestBodyCarriesTwoImagesAndABareQuestion()
-    {
-        ExposedDecisionModel model;
-        DecisionRequest request = testRequest();
-        request.visualDiff = true;
-        request.renderImage = QImage(8, 8, QImage::Format_ARGB32);
-
-        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"), QByteArrayLiteral("data:image/png;base64,BBBB"), QStringLiteral("llocr-decision"));
-        const QJsonObject root = QJsonDocument::fromJson(body).object();
-
-        QCOMPARE(root.value(QStringLiteral("state")).toString(), QStringLiteral("1. Intr0duction"));
-        const QJsonArray images = root.value(QStringLiteral("images")).toArray();
-        QCOMPARE(images.size(), 2);
-        QCOMPARE(images.first().toString(), QStringLiteral("data:image/png;base64,AAAA"));
-        QCOMPARE(images.last().toString(), QStringLiteral("data:image/png;base64,BBBB"));
-        const QJsonObject match = root.value(QStringLiteral("questions")).toObject().value(QStringLiteral("match")).toObject();
-        QCOMPARE(match.value(QStringLiteral("type")).toString(), QStringLiteral("noul"));
-        QVERIFY(!match.contains(QStringLiteral("instructions")));
-        QVERIFY(!match.contains(QStringLiteral("criteria")));
-        QCOMPARE(root.value(QStringLiteral("model")).toString(), QStringLiteral("llocr-decision"));
-    }
-
     void visualDiffAnswerReadsLikeAnyNoulAnswer()
     {
         ExposedDecisionModel model;
         const DecisionResult result = model.parse("{\"answers\": {\"match\": {\"noul\": 0.99509}}, \"usage\": {\"input_tokens\": 42, \"output_tokens\": 0}}");
         QVERIFY(result.ok);
         QCOMPARE(result.probability, 0.99509);
-        // No aux answers arrive on the visual-diff wire; the routing falls
-        // back to the plain threshold split.
-        QVERIFY(result.hasText < 0);
-        QVERIFY(result.readable < 0);
-        QVERIFY(result.diagnosis.isEmpty());
     }
 
     void requestBodyWithoutAKnownModelCarriesNoModelField()
     {
         ExposedDecisionModel model;
-        const QJsonObject root = QJsonDocument::fromJson(model.build(testRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
+        const QJsonObject root = QJsonDocument::fromJson(model.build(testRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"), QByteArrayLiteral("data:image/png;base64,BBBB"))).object();
         // An empty name is not a name: the field stays out rather than travel
         // as an empty string, which the server would reject.
         QVERIFY(!root.contains(QStringLiteral("model")));
-    }
-
-    void requestBodyCarriesNoulCriteria()
-    {
-        ExposedDecisionModel model;
-        DecisionRequest request = testRequest();
-        request.criteriaTrue = QStringLiteral("The image shows the same characters as the state.");
-        request.criteriaFalse = QStringLiteral("The image shows at least one different character.");
-        const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
-        const QJsonObject match = QJsonDocument::fromJson(body).object().value(QStringLiteral("questions")).toObject().value(QStringLiteral("match")).toObject();
-        // The card's noul criteria: both sides travel under their own key.
-        const QJsonObject criteria = match.value(QStringLiteral("criteria")).toObject();
-        QCOMPARE(criteria.value(QStringLiteral("true")).toString(), QStringLiteral("The image shows the same characters as the state."));
-        QCOMPARE(criteria.value(QStringLiteral("false")).toString(), QStringLiteral("The image shows at least one different character."));
-    }
-
-    void requestBodyCarriesExactlyOneQuestion()
-    {
-        // The decision scheme asks ONE question: a noul `match`. Every extra
-        // question is a separate forward pass on d3 (~1.4 s measured), so the
-        // request must carry nothing else.
-        ExposedDecisionModel model;
-        DecisionRequest request = testRequest();
-        request.question = QStringLiteral("Does the recognized text reproduce the crop?");
-
-        const QJsonObject root = QJsonDocument::fromJson(model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"))).object();
-        const QJsonObject wire = root.value(QStringLiteral("questions")).toObject();
-        QCOMPARE(wire.size(), 1);
-        QCOMPARE(wire.value(QStringLiteral("match")).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("noul"));
-        QCOMPARE(wire.value(QStringLiteral("match")).toObject().value(QStringLiteral("instructions")).toString(), QStringLiteral("Does the recognized text reproduce the crop?"));
     }
 
     void responseParsingAcceptsAllSpellings()
@@ -266,105 +200,24 @@ private slots:
         QVERIFY(!objectAnswer.ok);
     }
 
-    void responseParsingReadsTheMultiQuestionAnswers()
+    void routingIsTheThresholdSplit()
     {
-        ExposedDecisionModel model;
-
-        // The v6 shape: three noul answers plus a choice map under "choice",
-        // all from one forward pass (docs/21, §v6).
-        const DecisionResult full = model.parse("{\"answers\": {"
-                                                "\"match\": {\"type\": \"noul\", \"noul\": 0.18},"
-                                                "\"has_text\": {\"type\": \"noul\", \"noul\": 0.99},"
-                                                "\"readable\": {\"type\": \"noul\", \"noul\": 0.94},"
-                                                "\"diagnosis\": {\"type\": \"choice\", \"choice\": {"
-                                                "\"exact_match\": 0.12, \"fixable_ocr_error\": 0.83, \"unreadable_or_clipped\": 0.04, \"empty_crop\": 0.01}}}}");
-        QVERIFY(full.ok);
-        QCOMPARE(full.probability, 0.18);
-        QCOMPARE(full.hasText, 0.99);
-        QCOMPARE(full.readable, 0.94);
-        QCOMPARE(full.diagnosis.size(), 4);
-        QCOMPARE(full.topDiagnosis(), QStringLiteral("fixable_ocr_error"));
-
-        // The other spelling: the class map under "probabilities".
-        const DecisionResult probabilities = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"probabilities\": {\"exact_match\": 0.95, \"fixable_ocr_error\": 0.05}}}}");
-        QVERIFY(probabilities.ok);
-        QCOMPARE(probabilities.diagnosis.size(), 2);
-        QCOMPARE(probabilities.topDiagnosis(), QStringLiteral("exact_match"));
-
-        // The measured llama-server shape (decision-eval probe.json): a
-        // string label next to the probabilities map, plus a confidence that
-        // must not leak into the diagnosis.
-        const DecisionResult measured = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"type\": \"choice\", \"choice\": \"fixable_ocr_error\", \"probabilities\": "
-                                                    "{\"exact_match\": 0.12, \"fixable_ocr_error\": 0.83, \"unreadable_or_clipped\": 0.04, \"empty_crop\": 0.01}, \"confidence\": 0.85}}}");
-        QVERIFY(measured.ok);
-        QCOMPARE(measured.diagnosis.size(), 4);
-        QCOMPARE(measured.topDiagnosis(), QStringLiteral("fixable_ocr_error"));
-
-        // A label with no map at all is a certain verdict for that class.
-        const DecisionResult labelOnly = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"type\": \"choice\", \"choice\": \"exact_match\"}}}");
-        QVERIFY(labelOnly.ok);
-        QCOMPARE(labelOnly.diagnosis.size(), 1);
-        QCOMPARE(labelOnly.topDiagnosis(), QStringLiteral("exact_match"));
-
-        // v5 answers ship match only: the aux fields stay unset (negative).
-        const DecisionResult legacy = model.parse("{\"answers\": {\"match\": {\"noul\": 0.97}}}");
-        QVERIFY(legacy.ok);
-        QCOMPARE(legacy.probability, 0.97);
-        QVERIFY(legacy.hasText < 0);
-        QVERIFY(legacy.readable < 0);
-        QVERIFY(legacy.diagnosis.isEmpty());
-
-        // A present-but-unreadable answer is an error, never a silent verdict.
-        const DecisionResult brokenChoice = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"choice\": {\"exact_match\": \"high\"}}}}");
-        QVERIFY(!brokenChoice.ok);
-        const DecisionResult emptyChoice = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"diagnosis\": {\"type\": \"choice\"}}}");
-        QVERIFY(!emptyChoice.ok);
-        const DecisionResult brokenNoul = model.parse("{\"answers\": {\"match\": {\"noul\": 0.9}, \"has_text\": {\"noul\": \"yes\"}}}");
-        QVERIFY(!brokenNoul.ok);
-    }
-
-    void routingCoversTheFourOutcomes()
-    {
+        // The visual-diff protocol answers only `match`, so the verdict is
+        // the threshold alone: Ok at or above it, Mismatch below. A crop the
+        // old text protocol would have sent to Review (unreadable, empty)
+        // now lands on Mismatch and goes to the fixer, which answers REVIEW
+        // for a crop it cannot read (docs/31).
         DecisionResult result;
         result.ok = true;
-        result.probability = 0.9;
-        result.hasText = 0.99;
-        result.readable = 0.94;
-        result.diagnosis = {{QStringLiteral("exact_match"), 0.12}, {QStringLiteral("fixable_ocr_error"), 0.83}, {QStringLiteral("unreadable_or_clipped"), 0.04}, {QStringLiteral("empty_crop"), 0.01}};
-
-        // A readable crop with a fixable discrepancy goes to the fixer (Mismatch).
-        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Mismatch);
-
-        // An empty crop is a hallucination — human eyes, no fixer call.
-        result.hasText = 0.1;
-        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Review);
-        result.hasText = 0.99;
-        result.diagnosis = {{QStringLiteral("empty_crop"), 0.9}};
-        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Review);
-
-        // An unreadable/clipped crop goes to Review before the fixer burns GPU.
-        result.diagnosis = {{QStringLiteral("exact_match"), 0.1}, {QStringLiteral("unreadable_or_clipped"), 0.8}};
-        result.readable = 0.2;
-        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Review);
-        result.readable = 0.94;
-
-        // Both heads agree: Ok.
-        result.diagnosis = {{QStringLiteral("exact_match"), 0.95}};
-        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Ok);
-        // The per-block threshold applies: same answer below it is a Mismatch.
-        QCOMPARE(result.routedStatus(0.96, 0.25, 0.45), CheckStatus::Mismatch);
-        // The choice head vetoes a high noul: not exact_match, not Ok.
-        result.diagnosis = {{QStringLiteral("fixable_ocr_error"), 0.6}, {QStringLiteral("exact_match"), 0.4}};
-        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Mismatch);
-
-        // Back-compat: no aux answers (v5 profile, old server) — the
-        // threshold-only verdict, Ok above and Mismatch below.
-        result.hasText = -1.0;
-        result.readable = -1.0;
-        result.diagnosis.clear();
-        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Ok);
-        result.probability = 0.5;
-        QCOMPARE(result.routedStatus(0.7, 0.25, 0.45), CheckStatus::Mismatch);
+        result.probability = 0.7;
+        QCOMPARE(result.routedStatus(0.7), CheckStatus::Ok);
+        result.probability = 0.69;
+        QCOMPARE(result.routedStatus(0.7), CheckStatus::Mismatch);
+        // The per-block threshold applies: the same answer below it is a
+        // Mismatch.
+        result.probability = 0.96;
+        QCOMPARE(result.routedStatus(0.7), CheckStatus::Ok);
+        QCOMPARE(result.routedStatus(0.97), CheckStatus::Mismatch);
     }
 
     void judgeSendsRequestToSystemoneAndParsesTheAnswer()
@@ -387,7 +240,8 @@ private slots:
         QCOMPARE(server.requestPath, QStringLiteral("/v1/systemone"));
 
         const QJsonObject body = QJsonDocument::fromJson(server.requestBody).object();
-        QCOMPARE(body.value(QStringLiteral("state")).toObject().value(QStringLiteral("recognized_text")).toString(), QStringLiteral("1. Intr0duction"));
+        QCOMPARE(body.value(QStringLiteral("state")).toString(), QStringLiteral("1. Intr0duction"));
+        QCOMPARE(body.value(QStringLiteral("images")).toArray().size(), 2);
         // The request names the model that answers: a server that routes by
         // the field (omlx) answers 422 without it.
         QCOMPARE(body.value(QStringLiteral("model")).toString(), QStringLiteral("llocr-decision"));

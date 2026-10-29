@@ -21,20 +21,6 @@ void DecisionController::abortRequest()
         m_model->abort();
 }
 
-void DecisionController::judgeBlock(
-    const QImage &image, const QString &blockType, const QString &recognizedText, const QString &notation, const QString &question, const QString &criteriaTrue, const QString &criteriaFalse)
-{
-    DecisionRequest request;
-    request.image = image;
-    request.blockType = blockType;
-    request.recognizedText = recognizedText;
-    request.notation = notation;
-    request.question = question;
-    request.criteriaTrue = criteriaTrue;
-    request.criteriaFalse = criteriaFalse;
-    ask(request);
-}
-
 void DecisionController::judgeVisual(const QImage &crop, const QImage &renderImage, const QString &recognizedText)
 {
     DecisionRequest request;

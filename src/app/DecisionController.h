@@ -23,14 +23,6 @@ class DecisionController : public ModelRequestController
 public:
     explicit DecisionController(RuntimeController &runtime, QObject *parent = nullptr);
 
-    void judgeBlock(const QImage &image,
-                    const QString &blockType,
-                    const QString &recognizedText,
-                    const QString &notation,
-                    const QString &question,
-                    const QString &criteriaTrue = QString(),
-                    const QString &criteriaFalse = QString());
-
     // The visual-diff decision (docs/31): the crop and the candidate rendered
     // back into an image travel together, the text rides as the bare state.
     void judgeVisual(const QImage &crop, const QImage &renderImage, const QString &recognizedText);
