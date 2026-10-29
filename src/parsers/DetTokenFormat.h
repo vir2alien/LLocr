@@ -4,8 +4,8 @@
 
 namespace llocr {
 
-// Shared text helpers of the det-token parser family (DetTokensParser and
-// its model-specific modules: OtslTable, Lfm25VlDrift).
+// Shared text helpers of the det-token parser family (DetTokenParserBase
+// and its model-specific modules: OtslTable).
 
 // The wrapped response encodes real newlines as the two characters `\n`;
 // this decodes them (nothing else).

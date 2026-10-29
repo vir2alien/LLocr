@@ -406,7 +406,7 @@
     Jev via `/v1/systemone`, the visual diff `systemone_visual_diff_v1`
     (ADR 254; the text protocol and its answer set are cut together with the
     models that spoke them — their manuals are in `archive/models/docs/`),
-    the `decision` task in «Модели»)
+    the `decision` task in «Модели»
     judges every queued block. The request carries the crop, the candidate
     rendered back into an image and the candidate text; the noul head answers
     P(consistent) in one pass, and
