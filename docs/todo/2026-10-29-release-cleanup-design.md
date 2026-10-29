@@ -164,11 +164,19 @@ becomes 0.
 `connectionRoleName()` loses two cases; `connectionRoleFromName()` loses the
 `"ocr"` alias and its fallback.
 
-> **Trap.** `ModelInstaller::applyTaskChoices` and `queueTaskInstalls` rely on
-> that fallback to *filter out* unknown task ids. Re-pointed at a surviving
-> role, an unknown id would resolve to a real role and silently enter the
-> install queue. The filter must be changed to test membership in
-> `connectionRoleIds()` explicitly.
+> **The fallback and the install queue.** `ModelInstaller::queueTaskInstalls`
+> filters a task string with
+> `task != connectionRoleName(connectionRoleFromName(task))` — a task survives
+> only if it is *exactly* a canonical role name. An unknown id canonicalizes to
+> the fallback, which differs from the original string, so it is dropped. The
+> filter therefore keeps working when the fallback is re-pointed at
+> `BlockRecognition`, and the install queue does not open to unknown ids.
+>
+> What the alias removal does change: `"ocr"` used to canonicalize to
+> `pageOcr`, and after the change it canonicalizes to the fallback. In the
+> install queue it was already dropped (it was never a canonical name); in the
+> settings and the registry it must not silently become a real task — see
+> §6.5, the registry re-derives its roles from the profile.
 
 Every dispatch table keyed by the role follows automatically or is edited by
 hand:
@@ -314,10 +322,13 @@ and block-recognition roles use them.
 - `BoxListModel.cpp:185` — the picture labels `image|chart|figure|char` were
   Unlimited-OCR's and TeleOCR's vocabulary. Check that MinerU, GLM-OCR and
   PaddleOCR-VL do not need `figure` or `char`.
-- `ModelRegistry` — the `roles` tags are persisted in `index.json`. An
-  installed model tagged `pageOcr` or `rawPageOcr` matches no role any more and
-  vanishes from every per-task list. The roles must be re-derived from the
-  profile at scan time, not read back from the stored tag.
+- `ModelRegistry` — the `roles` tags are persisted in `index.json`. A model
+  tagged `pageOcr` or `rawPageOcr` matches no role any more. The tag mapping
+  keeps the legacy `"check"` → `blockRecognition`, drops the legacy `"ocr"`
+  (it could name any of the four removed page models, so it must not silently
+  become a surviving task) and drops every tag that is not a canonical role
+  name. An entry left without a role drops out of the per-task lists until the
+  user re-activates it from Settings → Models, which writes the correct tag.
 
 ### 6.6 The settings reset
 
