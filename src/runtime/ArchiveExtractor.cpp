@@ -508,7 +508,9 @@ ExtractResult ArchiveExtractor::extractTarGz(const QString &tarGzPath, const QSt
         const QString linkName = fieldString(h.sliced(157, 100));
         const quint8 typeflag = quint8(h.at(156));
         const qint64 fileSize = parseOctalField(h.sliced(124, 12));
+#ifdef Q_OS_UNIX
         const qint64 mode = parseOctalField(h.sliced(100, 8));
+#endif
         if (fileSize < 0) {
             result.error = QStringLiteral("corrupt tar header (bad size)");
             return result;

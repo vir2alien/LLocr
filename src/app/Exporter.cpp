@@ -367,7 +367,8 @@ Exporter::Result Exporter::exportToFile(const QList<Page> &pages, const QString 
         return writePdfFallback(pages, filePath, crop, defaultPdfLayout(), splitPages);
     }
 
-    case Format::Unknown: {
+    case Format::Unknown:
+    default: {
         const QString md = crop ? buildMarkdownResolved(pages, crop, mediaDir, mediaPrefix, splitPages ? markdownPageRule() : QString()) : buildMarkdown(pages, splitPages);
         return writeTextFile(filePath, md);
     }

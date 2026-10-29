@@ -11,10 +11,11 @@ project(LLocr
 # --- Global settings ---------------------------------------------------------
 if (MSVC)
     add_compile_options(/utf-8)
-    # /W4 is MSVC's -Wall -Wextra. Three of its warnings fire on every Qt
+    # /W4 is MSVC's -Wall -Wextra. Four of its warnings fire on every Qt
     # header (unreferenced parameters, constant conditions, the deprecated
-    # POSIX names), so they are silenced for the whole build.
-    add_compile_options(/W4 /wd4100 /wd4127 /wd4996)
+    # POSIX names, the unreachable code inside the Qt templates), so they
+    # are silenced for the whole build.
+    add_compile_options(/W4 /wd4100 /wd4127 /wd4702 /wd4996)
 else()
     # The project compiles with the warnings on: a missed switch case, a
     # signed/unsigned mix-up or an unused variable must not pass silently

@@ -35,6 +35,7 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString modelRecipeId READ modelRecipeId WRITE setModelRecipeId NOTIFY modelRecipeIdChanged)
     Q_PROPERTY(QString parserId READ parserId WRITE setParserId NOTIFY parserIdChanged)
     Q_PROPERTY(bool orientationCheckEnabled READ orientationCheckEnabled WRITE setOrientationCheckEnabled NOTIFY orientationCheckEnabledChanged)
+    Q_PROPERTY(bool orientationAutoTurnEnabled READ orientationAutoTurnEnabled WRITE setOrientationAutoTurnEnabled NOTIFY orientationAutoTurnEnabledChanged)
     Q_PROPERTY(bool splitPages READ splitPages WRITE setSplitPages NOTIFY splitPagesChanged)
     Q_PROPERTY(bool keepPageNumbers READ keepPageNumbers WRITE setKeepPageNumbers NOTIFY keepPageNumbersChanged)
     Q_PROPERTY(bool tablesAsHtml READ tablesAsHtml WRITE setTablesAsHtml NOTIFY tablesAsHtmlChanged)

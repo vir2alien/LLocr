@@ -41,6 +41,27 @@ noul head. Jev cannot do that:
   generated tokens — the same `answers.match` the app already parses, and
   the same Ok/Mismatch threshold routing.
 
+What the server enforces for this model
+(`tools/server/server-decision.cpp`, the `openbmb-minicpm-ocr-jev` branch).
+Every line below is a 400, not a silent fallback:
+
+| the request | the server's complaint |
+|---|---|
+| `state` is not a string | `"state" must be the OCR text` |
+| more than one question | `this model answers exactly one question` |
+| a question carrying `instructions` | `"instructions" is not used by this model, the task is part of its prompt` |
+| a noul question carrying `criteria` | `"criteria" is not supported for a noul question` |
+| any number of images other than two | `this model needs exactly 2 images (the original, then the rendered one), got N` |
+
+The app sends the text as it is and does nothing else to it. Note that the
+server's mechanism for breaking special tokens inside the state is enabled for
+the LFM and H2O decision models only — for Jev the OCR text reaches the
+template untouched, which is what the upstream contract asks for ("`ocr_text`
+goes to the model as it is, nothing is cleaned up"). A `choice` question is
+possible as well — it would have to carry `"criteria": {"0": null, "1": null}`
+— but the noul hands over the probability directly, which is what the
+threshold routing wants.
+
 So the model profile declares the **`decision`** role with the protocol
 **`systemone_visual_diff_v1`** (`visualDiffDecisionProtocol()` in
 `core/DecisionRequest.h`), and `DecisionModel::buildRequestBody` branches on
@@ -48,17 +69,27 @@ it. There is deliberately no request profile: the role ships no
 `statePrompt`/`question`/`criteria`, and `test_model_preset_catalog` pins
 that emptiness.
 
-## 3. The render leg
+## 3. The two images
 
-The second image is the candidate text drawn as a picture — and the render leg
-is what decides the verdict: the model compares the crop with the picture, so a
-picture that lost its tail, or that shows the raw markup, is another text.
+**The crop (the first image)** is the block's own region: the normalized rect
+of the box cut out of the **full-resolution** page image (`app/AppController` →
+`croppedImage`). The crop and the boxes share one coordinate system, because
+the turn and the deskew are applied to the image that every consumer of the
+page sees — the preview, the model and the block crops alike
+(`DocumentModel::renderFull`). A page straightened after the recognition
+therefore still hands the model the very region the text was read from.
+
+**The render (the second image)** is the candidate text drawn as a picture —
+and the render leg is what decides the verdict: the model compares the crop
+with the picture, so a picture that lost its tail, or that shows the raw
+markup, is another text.
 
 `app/CandidateRenderer` produces it with the app's own preview stack — the
 markdown page (`qrc:/preview/preview.html`: marked + KaTeX + DOMPurify)
 renders the text on a 780 px-wide white page, the page is printed to a PDF and
-rasterized at 2×. Three conditions make the picture comparable with the crop
-(ADR 237):
+rasterized at 2×. Four conditions make the picture comparable with the crop —
+the first three are ADR 237's and the test holds them, the fourth keeps the
+picture comparable with the crop in the dark theme too:
 
 - **the text is the block's display text** (`parsers/BlockRender.h` →
   `renderBlockText`): a formula as display math (`$$…$$`), a table as a
@@ -75,9 +106,27 @@ rasterized at 2×. Three conditions make the picture comparable with the crop
   failure (the block lands on Review), never a picture.
 - **the picture is cut to the ink**: the crop the model sees is tight around
   the text, and a candidate framed by white margins is another region.
+- **the palette is forced light**: the renderer calls the preview page with
+  `{dark: false}` — a white background and dark text — whatever the app theme
+  is. The preview page declares `color-scheme: light dark` and the app
+  switches the scheme app-wide, so without that flag the picture would come
+  out inverted (light text on a dark ground) in the dark theme, while the crop
+  stays dark-on-white.
 
 The state carries the block's own text (the upstream contract: the OCR text
 goes to the model as it is); the picture is painted from the display text.
+The text on the wire is the block's **effective** text — the OCR result, or
+the fix model's correction when it ran first (ADR 164) — and the picture is
+painted from that same text.
+
+The upstream's score service takes a `category` (`text` / `formula` / `table`)
+next to the candidate and renders the candidate itself; a category that does
+not match the real type of the block raises no error but skews the score. On
+the llama.cpp path there is no `category` field at all — the caller supplies
+the render, so the category becomes the renderer's choice. The app takes it
+from the block's label: `resources/profiles/labels.json` maps `formula` to the
+`equation` style and `table` to the `table` style, and the profile's
+`blockAliases` maps `formula` → `equation` for the thresholds as well.
 
 Measured on the OCR_TEST corpus (195 blocks, MiniCPM-OCR 1.0 recognition, this
 model deciding): with the broken render 155 of 195 blocks were rejected, and
@@ -98,11 +147,39 @@ A formula the app already rejected on LaTeX syntax never reaches the stage
 | `mmproj-model-f16.gguf` | 0.67 GB | vision projector, **mandatory** |
 
 - Repository: `openbmb/MiniCPM-OCR-Jev-gguf`
-  (profile `resources/profiles/models/minicpm-jev.json`).
+  (profile `resources/profiles/models/minicpm-jev.json`). The sizes and the
+  sha256 of the profile match the repository file by file: `q8_0` is
+  2 012 021 120 B (`7e5227dd…`), `q6_k` 1 556 399 488 B, `q5_k_m`
+  1 411 129 728 B, `q4_k_m` 1 274 405 248 B, `iq4_xs` 1 201 869 184 B, and
+  the projector 671 372 416 B (`cad9364b…`).
 - llama.cpp build **no older than b11928** (27 Oct 2026, PR #30980). The
   conversion writes the `systemone` template into the GGUF and maps the
   classification head; text generation answers 501 — the model has no LM
-  head.
+  head. b11928 is exactly the release whose merge commit is PR #30980, so it
+  is the first build that recognizes the model; upstream's own requirement is
+  llama.cpp ≥ v0.8.0, the release that carries the support.
+- The engine has to recognize the model at startup: the log must show
+  `decision model type: openbmb-minicpm-ocr-jev` and `listening on`, and
+  `GET /health` must answer `{"status":"ok"}`. Both lines are in the app's
+  server log window.
+- Hardware, as upstream states it: an NVIDIA card with ≥8 GB of VRAM (driver
+  ≥535, CUDA ≥12.0) or an Apple-silicon machine with ≥16 GB of unified
+  memory.
+
+The upstream recipe for the llama.cpp backend:
+
+```
+llama-server \
+  -m ./models/MiniCPM-OCR-Jev-F16.gguf \
+  --mmproj ./models/mmproj-model-f16.gguf \
+  -ngl 99 \
+  -c 32768 \
+  --port 18499
+```
+
+The app runs the same engine with the same values — `--mmproj` is what makes
+the images visible at all, `-ngl 99` puts every layer on the GPU, `-c 32768`
+is upstream's context — plus the app's own flags:
 
 ```
 llama-server \
@@ -117,6 +194,14 @@ llama-server \
 The profile ships `ctx-size/batch-size/ubatch-size/flash-attn` — the
 llama.cpp README for the model warns that a two-image prompt is much longer
 than a text-only one, so the context and batches are sized accordingly.
+The context is shared by the parallel slots, and `--parallel 1` keeps the one
+slot the model needs; `--cache-reuse 0` (no prefix reused between requests)
+and `--no-context-shift` (no silent shift of the context) are the app's
+policy layer.
+
+The projector sets the image budget: the mmproj keeps the checkpoint's own
+preprocessor budget (up to 16384 merged tokens per image), and a request
+always carries **two** images — the crop and the render.
 
 ## 5. Request contract (the wire, after the render)
 
@@ -134,6 +219,20 @@ than a text-only one, so the context and batches are sized accordingly.
   — the routing falls back to the plain threshold split.
 - Sampling: nothing (zero generated tokens). The profile's `request` list
   is empty.
+
+The answer's own scale: the GGUF carries two classifier labels, and the
+server's comment on them is exact — *"the classes are fixed: '0' is
+inconsistent, '1' is consistent"*. The noul answer is the probability of the
+option `true`, and the options of a noul question are `false` then `true`,
+so `answers.match.noul` is the probability of the class **1**, that is
+P(consistent). It is the same number the upstream score service calls
+`prob_1` — a score without a threshold and without a label.
+
+One difference in the wire format to keep in mind when reading the upstream
+docs: the upstream **service** takes bare base64 (no `data:` prefix) in
+`original_image` / `render_image`, while the **llama.cpp server** takes data
+URLs in `images`. The app talks to the server directly, so it sends data
+URLs.
 
 ## 6. Thresholds
 
@@ -167,6 +266,21 @@ there are no `emptyThreshold`/`readableThreshold` values to ship.
   or a seal is out of distribution.
 - The candidate text rides the wire verbatim (the training data kept
   whitespace); the app does not strip or normalize it.
-- The memory block of the profile is an estimate calibrated on the CPU
-  probe (docs/27 §4–5); rerun `scripts/measure-memory.sh` if the launch
-  flags change.
+- **The threshold is upstream's, not a measurement of this app.** 0.5 is the
+  upstream service's default, and upstream says about its own llama.cpp path
+  that the score scale can only be established by comparing the same inputs
+  against a known backend. The calibration run of §6 has not been made for
+  this app yet.
+- **The memory block of the profile is derived, not measured** (docs/27 §6
+  marks the row `minicpm-jev` as derived), and its vision term is a
+  **one-image** budget while a request always carries two images. Rerun
+  `scripts/measure-memory.sh` if the launch flags change.
+- **`--flash-attn on` overrides the platform layer** on the backends where
+  the platform turns it off (Vulkan, CPU) — the same as the other vision
+  models of the project (glm-ocr, lightonocr, qwen3.5, chandra-ocr-2,
+  minicpm-ocr). On Vulkan it contradicts the platform's own note that flash
+  attention there is experimental.
+- **No self-check against the upstream's reference cases.** Upstream ships
+  three of them (text, formula, table) with the reference score
+  `observed_prob_yes`; a run through them would check the whole leg (crop →
+  render → request → score) at once. The app has no such check today.

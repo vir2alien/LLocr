@@ -181,12 +181,12 @@ QList<RequestParameter> RequestProfile::parseParameters(const QJsonArray &array,
         parameter.description = obj.value(QLatin1String(kDescriptionKey)).toString();
 
         const QJsonArray choices = obj.value(QLatin1String(kChoicesKey)).toArray();
-        for (const QJsonValue &entry : choices) {
-            if (!entry.isObject()) {
+        for (const QJsonValue &choiceValue : choices) {
+            if (!choiceValue.isObject()) {
                 error = QObject::tr("%1 parameter %2 has a malformed choice").arg(what, parameter.name);
                 return {};
             }
-            const QJsonObject choiceObject = entry.toObject();
+            const QJsonObject choiceObject = choiceValue.toObject();
             RequestParameterChoice choice;
             choice.label = choiceObject.value(QLatin1String(kLabelKey)).toString();
             if (choice.label.isEmpty()) {
@@ -324,8 +324,7 @@ RequestProfile RequestProfile::merge(const RequestProfile &defaults, const Reque
 
     QList<RequestParameter> extra = userByName.values();
     std::stable_sort(extra.begin(), extra.end(), [](const RequestParameter &a, const RequestParameter &b) { return a.order < b.order; });
-    for (const RequestParameter &p : extra)
-        out.parameters.append(p);
+    out.parameters.append(extra);
 
     return out;
 }

@@ -123,7 +123,7 @@ ColumnLayout {
                    + "The pages you turn by hand are left alone.")
     }
 
-    LLOCheckBox {
+    OptionCheck {
         id: orientationAutoTurnCheck
         visible: orientationCheckBox.checked
         label: qsTr("Turn a sideways page after markup automatically")

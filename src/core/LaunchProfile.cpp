@@ -74,10 +74,10 @@ void LaunchProfile::sortByOrder()
     std::stable_sort(parameters.begin(), parameters.end(), [](const LaunchParameter &a, const LaunchParameter &b) { return a.order < b.order; });
 }
 
-const LaunchParameter *LaunchProfile::find(const QString &name) const
+const LaunchParameter *LaunchProfile::find(const QString &parameterName) const
 {
     for (const LaunchParameter &p : parameters)
-        if (p.name == name)
+        if (p.name == parameterName)
             return &p;
     return nullptr;
 }

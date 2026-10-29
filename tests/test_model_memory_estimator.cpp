@@ -37,7 +37,7 @@ struct GgufWriter {
         s(k);
         b.append(reinterpret_cast<const char *>(&type), 4);
     }
-    void i8(quint8 v) { b.append(reinterpret_cast<const char *>(&v), 1); }
+    void i8(qint8 v) { b.append(reinterpret_cast<const char *>(&v), 1); }
     void u16(quint16 v) { b.append(reinterpret_cast<const char *>(&v), 2); }
     void u32(quint32 v) { b.append(reinterpret_cast<const char *>(&v), 4); }
     void u64(quint64 v) { b.append(reinterpret_cast<const char *>(&v), 8); }

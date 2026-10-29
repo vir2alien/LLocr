@@ -396,8 +396,6 @@ SkewReading sweepSkew(const QVector<uchar> &mask, int w, int h)
     double bestColScore = -1.0;
     int bestRowStep = 0;
     int bestColStep = 0;
-    double bestRowRefined = 0.0;
-    double bestColRefined = 0.0;
     const double total = double(points.size());
 
     auto sharpness = [](const QVector<int> &bins, int from, int to) {
