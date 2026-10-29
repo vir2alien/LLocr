@@ -254,7 +254,7 @@ void ModelInstaller::refreshInstalled()
     bool rebuilt = false;
     ReconcileResult report;
     ReconcileSelections selections;
-    selections.modelPath = m_settings.launchModelPath();
+    selections.modelPath = m_settings.checkLaunchModelPath();
     selections.checkModelPath = m_settings.checkLaunchModelPath();
     selections.decisionModelPath = m_settings.decisionLaunchModelPath();
     selections.layoutModelPath = m_settings.layoutLaunchModelPath();
@@ -271,11 +271,11 @@ void ModelInstaller::refreshInstalled()
 
 void ModelInstaller::syncProfileToActiveModel()
 {
-    const QString active = m_settings.launchModelPath();
+    const QString active = m_settings.checkLaunchModelPath();
     for (const ModelEntry &e : m_installed) {
         if (e.modelPath.isEmpty() || e.modelPath != active || e.repo.isEmpty())
             continue;
-        m_settings.selectModelProfile(e.repo, QStringLiteral("pageOcr"));
+        m_settings.selectModelProfile(e.repo, QStringLiteral("blockRecognition"));
         break;
     }
 }

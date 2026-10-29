@@ -980,10 +980,11 @@ private slots:
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         // Both model selections are set explicitly: the tests share one
-        // QSettings process-wide, so an inherited check-model path would be
-        // reported as stale before the test even starts.
-        settings.setCheckLaunchModelPath(QString());
-        settings.setLaunchModelPath(modelPath);
+        // QSettings process-wide, so an inherited value would be reported as
+        // stale before the test even starts. The OCR model is the check task's
+        // selection now — that is the path the reconcile watches.
+        settings.setCheckLaunchModelPath(modelPath);
+        settings.setLaunchModelPath(QString());
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles);

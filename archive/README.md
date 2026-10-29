@@ -67,3 +67,13 @@ cut above, so the task had no model left and the button could not do anything.
 The controller is in `single-pass/`. The task names live in the enum
 `ConnectionRole` and in the settings keys `tasks/pageOcr/*` and
 `tasks/rawPageOcr/*`; the toolbar group was «Распознать».
+
+## The settings migration
+
+The removal deleted every piece of settings migration: the retired-key list,
+the task-key move table, the retired-model resolution, the retired-parser
+resolution and the plaintext-secret move.
+
+The settings are reset once instead — the key `settings/schemaVersion` decides
+whether the file predates the reset. `runtime/rootDir` and `runtime/modelsDir`
+survive it: they point at the user's disk, not at the schema.

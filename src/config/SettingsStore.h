@@ -131,8 +131,6 @@ public:
     static const SettingDefault *defaults();
     static int defaultsCount();
 
-    void applyStartupMigration();
-
     QString baseUrl() const;
     void setBaseUrl(const QString &url);
 
@@ -422,6 +420,11 @@ public:
     static constexpr const char *kModeExternal = "external";
     static constexpr const char *kModeManaged = "managed";
     static constexpr int kCurrentSetupVersion = 1;
+    // The settings file's schema. A file without the current version is wiped
+    // once on startup — the reset keeps the runtime paths and the code's
+    // defaults answer for everything else.
+    static constexpr const char *kSettingsSchemaVersion = "settings/schemaVersion";
+    static constexpr int kCurrentSettingsSchemaVersion = 1;
     static constexpr const char *kDefaultBaseUrl = "http://localhost:8080";
     static constexpr int kDefaultConnectionTimeoutMs = 5000;
     static constexpr int kDefaultResponseTimeoutMs = 300000;
@@ -452,17 +455,19 @@ private:
     static const QList<SettingDefault> &defaultTable();
 
     void resetGroup(const std::function<bool(const QString &)> &matches);
-    void resolveStoredModelId(const char *key, const QString &role);
 
-    // The secrets live in the OS store (ADR 227); these helpers name them
-    // and move the values in and out of it.
+    // The secrets live in the OS store (ADR 227); these helpers name them and
+    // move the values in and out of it.
     QString secretId(const QString &id) const;
     QString readSecret(const QString &id) const;
     bool persistSecret(const QString &id, const QString &value);
     void dropSecret(const QString &id);
-    void migrateSecret(const char *settingsKey, const QString &id);
     void clearSecrets();
     void clearTaskConnections();
+    // The group of the settings a task's connection row reads and writes. The
+    // block recognition task keeps the check name its accessors carry; the
+    // other tasks are their own group.
+    static QString taskKeyName(const QString &role);
     static QString taskBaseUrlKey(const QString &role);
     static QString taskSecretId(const QString &role);
 
@@ -472,9 +477,9 @@ private:
     static constexpr const char *kApiKey = "provider/apiKey";
     static constexpr const char *kConnectionTimeoutKey = "provider/connectionTimeoutMs";
     static constexpr const char *kResponseTimeoutKey = "provider/responseTimeoutMs";
-    static constexpr const char *kRetiredTimeoutMs = "provider/timeoutMs";
 
     static constexpr const char *kModelName = "model/name";
+    static constexpr const char *kModelRecipeId = "model/recipeId";
     static constexpr const char *kParserId = "parser/id";
 
     // The orientation check before the recognition
@@ -507,7 +512,6 @@ private:
     static constexpr const char *kSetupVersion = "runtime/setupVersion";
     static constexpr const char *kSetupDismissed = "runtime/setupDismissed";
     static constexpr const char *kServerPath = "runtime/serverPath";
-    static constexpr const char *kRetiredServerPathIsManaged = "runtime/serverPathIsManaged";
     static constexpr const char *kRuntimeRootDir = "runtime/rootDir";
     static constexpr const char *kRuntimeModelsDir = "runtime/modelsDir";
     static constexpr const char *kRuntimeBackend = "runtime/backend";
@@ -524,43 +528,22 @@ private:
     static constexpr const char *kLaunchProfileId = "launch/profileId";
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
-    static constexpr const char *kRetiredAlias = "launch/modelAlias";
-    static constexpr const char *kRetiredLaunchSourceDownload = "launch/sourceDownload";
-    static constexpr const char *kRetiredModelRequestProfileId = "model/requestProfileId";
 
-    // Models per task. The ex-role keys (launch/* model files, check/*,
-    // decision/*, layout/* model keys, model/recipeId) migrate into this
-    // namespace on startup.
-    static constexpr const char *kModelRecipeId = "tasks/pageOcr/requestProfileId";
+    // The page task's launch paths — the task is gone and its accessors go
+    // with it; the check ones own the OCR model's files now.
     static constexpr const char *kLaunchModelPath = "tasks/pageOcr/modelPath";
     static constexpr const char *kLaunchMmprojPath = "tasks/pageOcr/mmprojPath";
     static constexpr const char *kLaunchDraftPath = "tasks/pageOcr/draftPath";
-    static constexpr const char *kRetiredPageOcrModelPath = "launch/modelPath";
-    static constexpr const char *kRetiredPageOcrMmprojPath = "launch/mmprojPath";
-    static constexpr const char *kRetiredPageOcrDraftPath = "launch/draftPath";
-    static constexpr const char *kRetiredPageOcrRequestProfileId = "model/recipeId";
 
-    // Block recognition (ex check group) model keys
-    static constexpr const char *kCheckLaunchModelPath = "tasks/blockRecognition/modelPath";
-    static constexpr const char *kCheckLaunchMmprojPath = "tasks/blockRecognition/mmprojPath";
-    static constexpr const char *kCheckLaunchDraftPath = "tasks/blockRecognition/draftPath";
-    static constexpr const char *kCheckRequestProfileId = "tasks/blockRecognition/requestProfileId";
-    static constexpr const char *kCheckModelName = "tasks/blockRecognition/modelName";
-    static constexpr const char *kRetiredCheckModelPath = "check/modelPath";
-    static constexpr const char *kRetiredCheckMmprojPath = "check/mmprojPath";
-    static constexpr const char *kRetiredCheckDraftPath = "check/draftPath";
-    static constexpr const char *kRetiredCheckRequestProfileId = "check/requestProfileId";
-    static constexpr const char *kRetiredCheckModelName = "check/modelName";
-    static constexpr const char *kRetiredCheckSourceDownload = "check/sourceDownload";
+    // Block recognition: the OCR model's launch files and the block request's
+    // request profile, in the check namespace its accessors were born with.
+    static constexpr const char *kCheckLaunchModelPath = "tasks/check/modelPath";
+    static constexpr const char *kCheckLaunchMmprojPath = "tasks/check/mmprojPath";
+    static constexpr const char *kCheckLaunchDraftPath = "tasks/check/draftPath";
+    static constexpr const char *kCheckRequestProfileId = "tasks/check/requestProfileId";
+    static constexpr const char *kCheckModelName = "tasks/check/modelName";
 
-    // Verification behavior
     static constexpr const char *kShowConfidence = "check/showConfidence";
-
-    // The automatic check/fix switches: the check and the fix are separate
-    // actions now (ADR 178).
-    static constexpr const char *kRetiredAutoCheck = "check/autoCheck";
-    static constexpr const char *kRetiredAutoFix = "check/autoFix";
-    static constexpr const char *kRetiredAutoRecheck = "check/autoRecheck";
 
     // Decision model keys
     static constexpr const char *kDecisionLaunchModelPath = "tasks/decision/modelPath";
@@ -568,11 +551,6 @@ private:
     static constexpr const char *kDecisionLaunchDraftPath = "tasks/decision/draftPath";
     static constexpr const char *kDecisionRequestProfileId = "tasks/decision/requestProfileId";
     static constexpr const char *kDecisionModelName = "tasks/decision/modelName";
-    static constexpr const char *kRetiredDecisionModelPath = "decision/modelPath";
-    static constexpr const char *kRetiredDecisionMmprojPath = "decision/mmprojPath";
-    static constexpr const char *kRetiredDecisionDraftPath = "decision/draftPath";
-    static constexpr const char *kRetiredDecisionRequestProfileId = "decision/requestProfileId";
-    static constexpr const char *kRetiredDecisionModelName = "decision/modelName";
     static constexpr const char *kDecisionMatchThreshold = "decision/matchThreshold";
 
     // Layout (page markup) model keys
@@ -581,11 +559,6 @@ private:
     static constexpr const char *kLayoutLaunchDraftPath = "tasks/layout/draftPath";
     static constexpr const char *kLayoutRequestProfileId = "tasks/layout/requestProfileId";
     static constexpr const char *kLayoutModelName = "tasks/layout/modelName";
-    static constexpr const char *kRetiredLayoutModelPath = "layout/modelPath";
-    static constexpr const char *kRetiredLayoutMmprojPath = "layout/mmprojPath";
-    static constexpr const char *kRetiredLayoutDraftPath = "layout/draftPath";
-    static constexpr const char *kRetiredLayoutRequestProfileId = "layout/requestProfileId";
-    static constexpr const char *kRetiredLayoutModelName = "layout/modelName";
 
     // Raw page OCR (page recognition without markup)
     static constexpr const char *kRawPageOcrLaunchModelPath = "tasks/rawPageOcr/modelPath";

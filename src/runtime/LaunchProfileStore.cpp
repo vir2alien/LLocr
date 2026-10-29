@@ -211,7 +211,7 @@ void LaunchProfileStore::composeDraft()
 
 LaunchProfile LaunchProfileStore::activeProfile() const
 {
-    return activeProfile(m_settings.modelRecipeId(), QStringLiteral("pageOcr"));
+    return activeProfile(m_settings.modelRecipeId(), QStringLiteral("blockRecognition"));
 }
 
 LaunchProfile LaunchProfileStore::activeProfile(const QString &modelId, const QString &role) const

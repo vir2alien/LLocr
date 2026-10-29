@@ -134,19 +134,9 @@ private slots:
         store.setThemeMode(1);
         store.setLanguage(QStringLiteral("ru"));
 
-        QCOMPARE(store.baseUrl(), QStringLiteral("http://custom:1234"));
-        QCOMPARE(store.apiKey(), QStringLiteral("secret-token"));
-        QCOMPARE(store.connectionTimeoutMs(), 8000);
-        QCOMPARE(store.responseTimeoutMs(), 60000);
-        QCOMPARE(store.modelName(), QStringLiteral("custom-model"));
-        QCOMPARE(store.parserId(), QStringLiteral("raw"));
-        QCOMPARE(store.themeMode(), 1);
-        QCOMPARE(store.language(), QStringLiteral("ru"));
-
         store.resetToDefaults();
 
         QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
-        QCOMPARE(store.apiKey(), QStringLiteral(""));
         QCOMPARE(store.connectionTimeoutMs(), 5000);
         QCOMPARE(store.responseTimeoutMs(), 300000);
         QCOMPARE(store.modelName(), QStringLiteral("MinerU2.5-Pro-2605-1.2B"));
@@ -156,6 +146,9 @@ private slots:
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
+        // The secrets are not settings: they live in the OS store and survive
+        // the reset (ADR 227).
+        QCOMPARE(store.apiKey(), QStringLiteral("secret-token"));
     }
 
     // The external connection of one task (ADR 226): an empty field means the
@@ -212,28 +205,6 @@ private slots:
         QCOMPARE(secretsSpy.count(), 2);
     }
 
-    // The plaintext key of the old profiles moves into the secret store
-    // (ADR 227) and leaves the settings file.
-    void thePlaintextKeyMovesIntoTheSecretStore()
-    {
-        {
-            QSettings settings;
-            settings.setValue(QStringLiteral("provider/apiKey"), QStringLiteral("legacy-key"));
-            settings.sync();
-        }
-
-        SettingsStore store;
-        QCOMPARE(store.apiKey(), QStringLiteral("legacy-key"));
-
-        // The plaintext copy leaves the settings file only when the store
-        // took the key. When the store refused it, the old value stays: the
-        // user does not lose a key because the OS said no.
-        if (QSettings().contains(QStringLiteral("provider/apiKey")))
-            QCOMPARE(store.apiKey(), QStringLiteral("legacy-key"));
-        else
-            QVERIFY(SecretStore::exists(SettingsStore::secretNamespace() + QStringLiteral("provider/apiKey")));
-    }
-
     // Scoped resets (ADR 75): only the window's own group returns to
     // defaults; everything else stays as the user configured it.
     void resetOutputGroup()
@@ -286,55 +257,6 @@ private slots:
         // Outside the group — untouched.
         QCOMPARE(store.themeMode(), 1);
         QCOMPARE(store.language(), QStringLiteral("system"));
-    }
-
-    // `provider/timeoutMs` capped the whole request, so its stored value
-    // becomes the response timeout (ADR 148); the connection timeout is new.
-    void legacyTimeoutKeyMigratesToResponseTimeout()
-    {
-        {
-            QSettings settings;
-            settings.setValue("provider/timeoutMs", 90000);
-        }
-
-        SettingsStore store;
-        QCOMPARE(store.connectionTimeoutMs(), 5000);
-        QCOMPARE(store.responseTimeoutMs(), 90000);
-        QVERIFY(!QSettings().contains(QStringLiteral("provider/timeoutMs")));
-
-        // A second start is a no-op — the retired key is gone.
-        SettingsStore again;
-        QCOMPARE(again.responseTimeoutMs(), 90000);
-    }
-
-    void startupMigrationRestoresWipedExternalEndpoint()
-    {
-        // Simulate a profile wiped by the wizard-step initialization bug:
-        // external mode, empty endpoint, stashed last-external URL.
-        {
-            QSettings settings;
-            settings.setValue("provider/mode", QStringLiteral("external"));
-            settings.setValue("provider/baseUrl", QString());
-            settings.setValue("provider/lastExternalBaseUrl", QStringLiteral("http://127.0.0.1:8080"));
-            settings.setValue("runtime/setupVersion", 1);
-        }
-
-        SettingsStore store;
-        QCOMPARE(store.baseUrl(), QStringLiteral("http://127.0.0.1:8080"));
-    }
-
-    void startupMigrationLeavesNonEmptyEndpointAlone()
-    {
-        {
-            QSettings settings;
-            settings.setValue("provider/mode", QStringLiteral("external"));
-            settings.setValue("provider/baseUrl", QStringLiteral("http://mine:9000"));
-            settings.setValue("provider/lastExternalBaseUrl", QStringLiteral("http://127.0.0.1:8080"));
-            settings.setValue("runtime/setupVersion", 1);
-        }
-
-        SettingsStore store;
-        QCOMPARE(store.baseUrl(), QStringLiteral("http://mine:9000"));
     }
 
     void outputExportKeysRoundTrip()
@@ -477,14 +399,14 @@ private slots:
     void checkRoleResolvesAModelProfileWithoutOneStored()
     {
         QSettings pre;
-        pre.remove(QStringLiteral("tasks/blockRecognition/requestProfileId"));
+        pre.remove(QStringLiteral("tasks/check/requestProfileId"));
 
         const SettingsStore store;
         const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
         QVERIFY(!checkDefault.isEmpty());
         QCOMPARE(store.checkRequestProfileId(), checkDefault);
         // Nothing is written: the default is a fallback, not a stored choice.
-        QVERIFY(!store.contains(QStringLiteral("tasks/blockRecognition/requestProfileId")));
+        QVERIFY(!store.contains(QStringLiteral("tasks/check/requestProfileId")));
 
         // An explicit choice still wins.
         SettingsStore chosen;
@@ -499,7 +421,8 @@ private slots:
     void anEmptyStoredCheckProfileIsNotAChoice()
     {
         QSettings pre;
-        pre.setValue(QStringLiteral("tasks/blockRecognition/requestProfileId"), QString());
+        pre.setValue(QStringLiteral("tasks/check/requestProfileId"), QString());
+        pre.setValue(QStringLiteral("settings/schemaVersion"), SettingsStore::kCurrentSettingsSchemaVersion);
 
         const SettingsStore store;
         const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
@@ -566,176 +489,6 @@ private slots:
         QCOMPARE(reopened.decisionMatchThreshold(), 1.0);
     }
 
-    // The parser family split into one parser per model, so the id that named
-    // the shared parser is retired. No shipped model answers the page task any
-    // more, so the stored one resolves to "auto" — the model adapter declares
-    // the parser per task at use (ADR 88). An unknown model id stays stored.
-    void aStoredRetiredParserIdIsResolved()
-    {
-        {
-            QSettings pre;
-            pre.setValue(QStringLiteral("parser/id"), QStringLiteral("det_tokens"));
-            pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("lfm25-vl-3b"));
-
-            const SettingsStore store;
-            QCOMPARE(store.parserId(), QStringLiteral("auto"));
-            QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
-        }
-        {
-            QSettings pre;
-            pre.setValue(QStringLiteral("parser/id"), QStringLiteral("det_tokens"));
-            pre.remove(QStringLiteral("model/recipeId"));
-            pre.remove(QStringLiteral("tasks/pageOcr/requestProfileId"));
-
-            const SettingsStore store;
-            QCOMPARE(store.parserId(), QStringLiteral("auto"));
-        }
-        {
-            // A stored parser id nobody knows is left alone: only the retired
-            // one is rewritten, and an unknown id degrades to raw at use.
-            QSettings pre;
-            pre.setValue(QStringLiteral("parser/id"), QStringLiteral("no-such-parser"));
-
-            const SettingsStore store;
-            QCOMPARE(store.parserId(), QStringLiteral("no-such-parser"));
-        }
-    }
-
-    // The alias is the model's, per role: one stored alias could only ever name
-    // one of the two servers. The flags lost their reader when the path pickers
-    // went away, and the request-profile id lost its reader when the model id
-    // became the only selector; a stored value nobody reads is not harmless
-    // either — it is a leftover the next reader would trust.
-    void migrationDropsTheRetiredKeys()
-    {
-        const QStringList retired = {
-            QStringLiteral("launch/modelAlias"),
-            QStringLiteral("runtime/serverPathIsManaged"),
-            QStringLiteral("launch/sourceDownload"),
-            QStringLiteral("check/sourceDownload"),
-            QStringLiteral("model/requestProfileId"),
-            QStringLiteral("launch/modelPath"),
-            QStringLiteral("launch/mmprojPath"),
-            QStringLiteral("launch/draftPath"),
-            QStringLiteral("model/recipeId"),
-            QStringLiteral("check/modelPath"),
-            QStringLiteral("check/mmprojPath"),
-            QStringLiteral("check/draftPath"),
-            QStringLiteral("check/requestProfileId"),
-            QStringLiteral("check/modelName"),
-            QStringLiteral("check/autoRecheck"),
-            QStringLiteral("check/autoCheck"),
-            QStringLiteral("check/autoFix"),
-            QStringLiteral("decision/modelPath"),
-            QStringLiteral("decision/mmprojPath"),
-            QStringLiteral("decision/draftPath"),
-            QStringLiteral("decision/requestProfileId"),
-            QStringLiteral("decision/modelName"),
-            QStringLiteral("layout/modelPath"),
-            QStringLiteral("layout/mmprojPath"),
-            QStringLiteral("layout/draftPath"),
-            QStringLiteral("layout/requestProfileId"),
-            QStringLiteral("layout/modelName"),
-        };
-
-        QSettings pre;
-        for (const QString &key : retired)
-            pre.setValue(key, QStringLiteral("legacy"));
-        pre.setValue(QStringLiteral("runtime/serverPathIsManaged"), true);
-        pre.setValue(QStringLiteral("launch/sourceDownload"), true);
-        pre.setValue(QStringLiteral("check/sourceDownload"), true);
-        pre.setValue(QStringLiteral("check/autoRecheck"), true);
-
-        const SettingsStore store;
-        for (const QString &key : retired)
-            QVERIFY2(!store.contains(key), qPrintable(key));
-    }
-
-    // An id from the retired request-profile space ("ocr-verifier") is not a
-    // choice: the catalog has no such model, so the app put the check model on
-    // the generic launch fallback and showed a "not in the catalog" notice for a
-    // model that is in the catalog. The migration resolves it and writes the
-    // model profile back, so the next run reads a value it can act on.
-    void aModelIdFromTheRetiredIdSpaceIsResolved()
-    {
-        QSettings pre;
-        pre.setValue(QStringLiteral("check/requestProfileId"), QStringLiteral("ocr-verifier"));
-        pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("ocr-verifier"));
-
-        const SettingsStore store;
-        const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
-        QVERIFY(!checkDefault.isEmpty());
-        QCOMPARE(store.checkRequestProfileId(), checkDefault);
-        // The page task has no model since the release cleanup, so there is
-        // nothing to resolve the stale id to: it stays stored, and the role
-        // itself goes away with the task cleanup.
-        QCOMPARE(store.modelRecipeId(), QStringLiteral("ocr-verifier"));
-        // The legacy key is gone and the resolved id is written under the task
-        // namespace — not just answered differently on every read.
-        QVERIFY(!pre.contains(QStringLiteral("check/requestProfileId")));
-        QVERIFY(!pre.contains(QStringLiteral("model/recipeId")));
-        QCOMPARE(pre.value(QStringLiteral("tasks/blockRecognition/requestProfileId")).toString(), checkDefault);
-        QCOMPARE(pre.value(QStringLiteral("tasks/pageOcr/requestProfileId")).toString(), QStringLiteral("ocr-verifier"));
-
-        // A real choice survives: the check task does not include every model
-        // the pageOcr task has, so the two resolve to different ids and both are kept.
-        const QString ocrChoice = QStringLiteral("lfm25-vl-3b");
-        QString checkChoice;
-        for (const QString &id : ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"))) {
-            if (id != ocrChoice) {
-                checkChoice = id;
-                break;
-            }
-        }
-        QVERIFY2(!checkChoice.isEmpty(), "no check model outside the pageOcr fixture id");
-        QSettings other;
-        other.remove(QStringLiteral("tasks/blockRecognition/requestProfileId"));
-        other.remove(QStringLiteral("tasks/pageOcr/requestProfileId"));
-        other.setValue(QStringLiteral("check/requestProfileId"), checkChoice);
-        other.setValue(QStringLiteral("model/recipeId"), ocrChoice);
-        const SettingsStore kept;
-        QCOMPARE(kept.checkRequestProfileId(), checkChoice);
-        QCOMPARE(kept.modelRecipeId(), ocrChoice);
-    }
-
-    // The per-task model keys of the four ex-roles move into tasks/<task>/ on
-    // the first start of the reworked build: the values survive under the new
-    // keys and the legacy keys are removed.
-    void modelKeysMigrateIntoTheTaskNamespace()
-    {
-        QSettings pre;
-        pre.setValue(QStringLiteral("launch/modelPath"), QStringLiteral("/models/page.gguf"));
-        pre.setValue(QStringLiteral("launch/mmprojPath"), QStringLiteral("/models/page.mmproj"));
-        pre.setValue(QStringLiteral("launch/draftPath"), QStringLiteral("/models/page-draft.gguf"));
-        pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("lfm25-vl-3b"));
-        pre.setValue(QStringLiteral("check/modelPath"), QStringLiteral("/models/block.gguf"));
-        pre.setValue(QStringLiteral("check/modelName"), QStringLiteral("block-name"));
-        pre.setValue(QStringLiteral("decision/modelPath"), QStringLiteral("/models/decision.gguf"));
-        pre.setValue(QStringLiteral("layout/requestProfileId"), QStringLiteral("teleocr"));
-
-        const SettingsStore store;
-        QCOMPARE(store.launchModelPath(), QStringLiteral("/models/page.gguf"));
-        QCOMPARE(store.launchMmprojPath(), QStringLiteral("/models/page.mmproj"));
-        QCOMPARE(store.launchDraftPath(), QStringLiteral("/models/page-draft.gguf"));
-        // The page task has no model since the release cleanup, so the stale
-        // id has no default to resolve to and stays.
-        QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
-        QCOMPARE(store.checkLaunchModelPath(), QStringLiteral("/models/block.gguf"));
-        QCOMPARE(store.checkModelName(), QStringLiteral("block-name"));
-        QCOMPARE(store.decisionLaunchModelPath(), QStringLiteral("/models/decision.gguf"));
-        // A stale id normalizes to the role's shipped default.
-        QCOMPARE(store.layoutRequestProfileId(), QStringLiteral("mineru"));
-        // The generic view reaches every task through the same namespace,
-        // including the two tasks without a legacy key group.
-        QCOMPARE(store.launchModelPathForRole(QStringLiteral("pageOcr")), QStringLiteral("/models/page.gguf"));
-        QCOMPARE(store.launchModelPathForRole(QStringLiteral("blockRecognition")), QStringLiteral("/models/block.gguf"));
-        QCOMPARE(store.fixRequestProfileId(), ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("fix")));
-        QCOMPARE(store.rawPageOcrRequestProfileId(), ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("rawPageOcr")));
-        for (const char *legacy :
-             {"launch/modelPath", "launch/mmprojPath", "launch/draftPath", "model/recipeId", "check/modelPath", "check/modelName", "decision/modelPath", "layout/requestProfileId"})
-            QVERIFY2(!store.contains(QString::fromLatin1(legacy)), legacy);
-    }
-
     // Activating a model of a known family has to pick that family's profile:
     // the weights on disk would otherwise run with another model's launch
     // parameters. A repo the catalog does not know, or one that does not answer
@@ -745,15 +498,9 @@ private slots:
         SettingsStore store;
         store.setCheckRequestProfileId(QStringLiteral("mineru"));
         store.setFixRequestProfileId(QStringLiteral("gemma-4-e4b"));
-        store.setModelRecipeId(QStringLiteral("some-guf"));
 
-        // No shipped family answers the page task since the release cleanup,
-        // so the page selection stays where it was.
-        store.selectModelProfile(QStringLiteral("ggml-org/GLM-OCR-GGUF"), QStringLiteral("pageOcr"));
-        QCOMPARE(store.modelRecipeId(), QStringLiteral("some-guf"));
-
-        // GLM-OCR answers the block recognition task too — it ships both
-        // transcriptions — so activation for it follows its own profile.
+        // GLM-OCR answers the block recognition task — it ships the block
+        // transcription — so activation for it follows its own profile.
         store.selectModelProfile(QStringLiteral("ggml-org/GLM-OCR-GGUF"), QStringLiteral("blockRecognition"));
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("glm-ocr"));
 
@@ -769,10 +516,10 @@ private slots:
         QCOMPARE(store.checkRequestProfileId(), QStringLiteral("glm-ocr"));
 
         // A hand-picked GGUF joins to nothing.
-        store.setModelRecipeId(QStringLiteral("some-guf"));
-        store.selectModelProfile(QString(), QStringLiteral("pageOcr"));
-        store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("pageOcr"));
-        QCOMPARE(store.modelRecipeId(), QStringLiteral("some-guf"));
+        store.setCheckRequestProfileId(QStringLiteral("some-gguf"));
+        store.selectModelProfile(QString(), QStringLiteral("blockRecognition"));
+        store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("blockRecognition"));
+        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("some-gguf"));
     }
 
     // qmllint cannot resolve Settings (it is registered by hand in main.cpp, not
@@ -814,35 +561,10 @@ private slots:
         QVERIFY(handlers > 0);
     }
 
-    void migrationConfiguredProfileKeepsExternal()
+    // The reset runs once: the version it writes makes the next construction
+    // skip it, so the values set after the first run survive.
+    void theResetRunsOnce()
     {
-        // A pre-existing profile with a configured baseUrl must be treated as
-        // already set up: no first-run wizard, and the mode stays External.
-        QSettings pre;
-        pre.setValue(QStringLiteral("provider/baseUrl"), QStringLiteral("http://localhost:8080"));
-        pre.setValue(QStringLiteral("provider/apiKey"), QStringLiteral("k"));
-        pre.sync();
-
-        SettingsStore store;
-        QCOMPARE(store.setupVersion(), SettingsStore::kCurrentSetupVersion);
-        QCOMPARE(store.connectionMode(), QStringLiteral("external"));
-        QCOMPARE(store.baseUrl(), QStringLiteral("http://localhost:8080"));
-    }
-
-    void migrationCleanProfileGivesZero()
-    {
-        // A fresh profile (no provider/baseUrl) must yield setupVersion == 0
-        // so the first-run wizard shows up.
-        SettingsStore store;
-        QCOMPARE(store.setupVersion(), 0);
-        QCOMPARE(store.connectionMode(), QStringLiteral("external"));
-    }
-
-    void migrationRunsOnlyOnce()
-    {
-        // After the first construction setupVersion exists, so re-construction
-        // must not touch anything (e.g. must not flip an explicit Managed mode
-        // back to External).
         {
             SettingsStore store;
             store.setSetupVersion(1);
@@ -883,10 +605,17 @@ private slots:
 
         // Properties excluded from reset by design:
         //  - windowX/Y/Width/Height/State: UI state, intentionally not reset;
+        //  - runtimeRootDir / runtimeModelsDir: they point at the user's disk,
+        //    not at the product's schema — the reset carries them over;
+        //  - hfToken: the token lives in the OS secret store (ADR 227), which
+        //    the reset does not touch;
         //  - connectionMode / lastExternalBaseUrl: covered implicitly through
         //    setConnectionMode()'s restore path (baseUrl is reset, but its
         //    final value when coming from Managed is the restored endpoint).
-        auto excluded = [](const QByteArray &name) { return name.startsWith("window") || name == QByteArrayLiteral("connectionMode") || name == QByteArrayLiteral("lastExternalBaseUrl"); };
+        auto excluded = [](const QByteArray &name) {
+            return name.startsWith("window") || name == QByteArrayLiteral("connectionMode") || name == QByteArrayLiteral("lastExternalBaseUrl") || name == QByteArrayLiteral("runtimeRootDir") ||
+                   name == QByteArrayLiteral("runtimeModelsDir") || name == QByteArrayLiteral("hfToken");
+        };
 
         QHash<QByteArray, QVariant> sentinels;
         for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
@@ -925,33 +654,34 @@ private slots:
         }
     }
 
-    void resetEmitsChangedSignals()
+    // A settings file from before the reset carries no current schema version:
+    // it is wiped once, and the version the reset writes makes the next start
+    // skip it.
+    void aStaleSchemaVersionResetsTheSettings()
     {
-        // QML binds to the per-property NOTIFY signals; after a reset every
-        // changed setting must announce itself (review 3.5 keeps this via the
-        // setters, which emit on change).
-        SettingsStore store;
-        QSignalSpy languageSpy(&store, &SettingsStore::languageChanged);
-        QSignalSpy baseUrlSpy(&store, &SettingsStore::baseUrlChanged);
-        QSignalSpy autoStartSpy(&store, &SettingsStore::autoStartChanged);
-        QSignalSpy launchHostSpy(&store, &SettingsStore::launchHostChanged);
+        QSettings pre;
+        pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("glm-ocr"));
+        pre.setValue(QStringLiteral("settings/schemaVersion"), 0);
 
-        store.setLanguage(QStringLiteral("ru"));
-        store.setBaseUrl(QStringLiteral("http://custom:1"));
-        store.setAutoStart(true);
-        store.setLaunchHost(QStringLiteral("10.0.0.1"));
+        const SettingsStore fresh;
+        QVERIFY(!fresh.contains(QStringLiteral("model/recipeId")));
+        QCOMPARE(fresh.modelRecipeId(), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId));
+        QSettings after;
+        QCOMPARE(after.value(QStringLiteral("settings/schemaVersion")).toInt(), 1);
+    }
 
-        QCOMPARE(languageSpy.count(), 1);
-        QCOMPARE(baseUrlSpy.count(), 1);
-        QCOMPARE(autoStartSpy.count(), 1);
-        QCOMPARE(launchHostSpy.count(), 1);
+    // The runtime paths point at the user's disk, not at the product's schema:
+    // wiping them would make the app forget its installed runtime and models.
+    void theResetKeepsTheRuntimePaths()
+    {
+        QSettings pre;
+        pre.setValue(QStringLiteral("runtime/rootDir"), QStringLiteral("/tmp/llocr-runtime"));
+        pre.setValue(QStringLiteral("runtime/modelsDir"), QStringLiteral("/tmp/llocr-models"));
+        pre.setValue(QStringLiteral("settings/schemaVersion"), 0);
 
-        store.resetToDefaults();
-
-        QCOMPARE(languageSpy.count(), 2);  // set + reset
-        QCOMPARE(baseUrlSpy.count(), 2);
-        QCOMPARE(autoStartSpy.count(), 2);
-        QCOMPARE(launchHostSpy.count(), 2);
+        const SettingsStore fresh;
+        QCOMPARE(fresh.runtimeRootDir(), QStringLiteral("/tmp/llocr-runtime"));
+        QCOMPARE(fresh.runtimeModelsDir(), QStringLiteral("/tmp/llocr-models"));
     }
 };
 

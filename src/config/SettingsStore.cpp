@@ -188,7 +188,8 @@ const QList<SettingsStore::SettingDefault> &SettingsStore::defaultTable()
 SettingsStore::SettingsStore(QObject *parent) : QObject(parent)
 {
     m_lastKeyPersisted = SecretStore::isAvailable();
-    applyStartupMigration();
+    if (m_settings.value(kSettingsSchemaVersion).toInt() != kCurrentSettingsSchemaVersion)
+        resetToDefaults();
 }
 
 void SettingsStore::setSecretNamespace(const QString &prefix)
@@ -206,14 +207,19 @@ QString SettingsStore::secretId(const QString &id) const
     return secretNamespace() + id;
 }
 
+QString SettingsStore::taskKeyName(const QString &role)
+{
+    return role == QLatin1String("blockRecognition") ? QStringLiteral("check") : role;
+}
+
 QString SettingsStore::taskBaseUrlKey(const QString &role)
 {
-    return QStringLiteral("tasks/") + role + QStringLiteral("/baseUrl");
+    return QStringLiteral("tasks/") + taskKeyName(role) + QStringLiteral("/baseUrl");
 }
 
 QString SettingsStore::taskSecretId(const QString &role)
 {
-    return QStringLiteral("provider/apiKey/") + role;
+    return QStringLiteral("provider/apiKey/") + taskKeyName(role);
 }
 
 QString SettingsStore::readSecret(const QString &id) const
@@ -234,22 +240,6 @@ void SettingsStore::dropSecret(const QString &id)
     SecretStore::remove(secretId(id));
 }
 
-void SettingsStore::migrateSecret(const char *settingsKey, const QString &id)
-{
-    if (!m_settings.contains(settingsKey))
-        return;
-    const QString legacy = m_settings.value(settingsKey).toString();
-    if (legacy.isEmpty()) {
-        m_settings.remove(QString::fromLatin1(settingsKey));
-        return;
-    }
-    // When the store takes the key, the plaintext copy goes away. When it
-    // refuses, the old value stays where it is: the user does not lose a key
-    // because the OS said no.
-    if (persistSecret(id, legacy))
-        m_settings.remove(QString::fromLatin1(settingsKey));
-}
-
 QSettings SettingsStore::makeSettings()
 {
     if (QCoreApplication::organizationName().isEmpty()) {
@@ -264,106 +254,6 @@ bool SettingsStore::contains(const QString &key) const
     return m_settings.contains(key);
 }
 
-void SettingsStore::applyStartupMigration()
-{
-    if (!m_settings.contains(kSetupVersion)) {
-        const bool looksConfigured = m_settings.contains(kBaseUrl) && !m_settings.value(kBaseUrl).toString().isEmpty();
-        m_settings.setValue(kConnectionMode, QString::fromUtf8(kModeExternal));
-        m_settings.setValue(kSetupVersion, looksConfigured ? kCurrentSetupVersion : 0);
-    }
-
-    if (m_settings.value(kConnectionMode).toString() == QString::fromUtf8(kModeExternal) && m_settings.contains(kBaseUrl) && m_settings.value(kBaseUrl).toString().isEmpty()) {
-        const QString saved = m_settings.value(kLastExternalBaseUrl).toString();
-        if (!saved.isEmpty())
-            m_settings.setValue(kBaseUrl, saved);
-    }
-
-    for (const char *retired : {kRetiredAlias,
-                                kRetiredServerPathIsManaged,
-                                kRetiredLaunchSourceDownload,
-                                kRetiredCheckSourceDownload,
-                                kRetiredModelRequestProfileId,
-                                kRetiredAutoCheck,
-                                kRetiredAutoFix,
-                                kRetiredAutoRecheck})
-        m_settings.remove(QString::fromLatin1(retired));
-
-    // `provider/timeoutMs` capped the whole request, so its value lives on as
-    // the response timeout; the connection timeout starts from its own default.
-    if (!m_settings.contains(kResponseTimeoutKey) && m_settings.contains(kRetiredTimeoutMs)) {
-        const int legacy = m_settings.value(kRetiredTimeoutMs).toInt();
-        if (legacy > 0)
-            m_settings.setValue(kResponseTimeoutKey, legacy);
-    }
-    m_settings.remove(QString::fromUtf8(kRetiredTimeoutMs));
-
-    // The ex-role model keys move into the tasks/<task> namespace; the value
-    // survives under the new key and the legacy key is removed. The pageOcr
-    // launch profile id (launch/profileId) and host/port stay shared.
-    const QList<std::pair<const char *, const char *>> taskKeyMoves = {
-        {kRetiredPageOcrModelPath, kLaunchModelPath},
-        {kRetiredPageOcrMmprojPath, kLaunchMmprojPath},
-        {kRetiredPageOcrDraftPath, kLaunchDraftPath},
-        {kRetiredPageOcrRequestProfileId, kModelRecipeId},
-        {kRetiredCheckModelPath, kCheckLaunchModelPath},
-        {kRetiredCheckMmprojPath, kCheckLaunchMmprojPath},
-        {kRetiredCheckDraftPath, kCheckLaunchDraftPath},
-        {kRetiredCheckRequestProfileId, kCheckRequestProfileId},
-        {kRetiredCheckModelName, kCheckModelName},
-        {kRetiredDecisionModelPath, kDecisionLaunchModelPath},
-        {kRetiredDecisionMmprojPath, kDecisionLaunchMmprojPath},
-        {kRetiredDecisionDraftPath, kDecisionLaunchDraftPath},
-        {kRetiredDecisionRequestProfileId, kDecisionRequestProfileId},
-        {kRetiredDecisionModelName, kDecisionModelName},
-        {kRetiredLayoutModelPath, kLayoutLaunchModelPath},
-        {kRetiredLayoutMmprojPath, kLayoutLaunchMmprojPath},
-        {kRetiredLayoutDraftPath, kLayoutLaunchDraftPath},
-        {kRetiredLayoutRequestProfileId, kLayoutRequestProfileId},
-        {kRetiredLayoutModelName, kLayoutModelName},
-    };
-    for (const auto &move : taskKeyMoves) {
-        const QString from = QString::fromLatin1(move.first);
-        const QString to = QString::fromLatin1(move.second);
-        if (!m_settings.contains(from))
-            continue;
-        if (!m_settings.contains(to))
-            m_settings.setValue(to, m_settings.value(from));
-        m_settings.remove(from);
-    }
-
-    resolveStoredModelId(kModelRecipeId, QStringLiteral("pageOcr"));
-    resolveStoredModelId(kCheckRequestProfileId, QStringLiteral("blockRecognition"));
-    resolveStoredModelId(kDecisionRequestProfileId, QStringLiteral("decision"));
-    resolveStoredModelId(kLayoutRequestProfileId, QStringLiteral("layout"));
-    resolveStoredModelId(kRawPageOcrRequestProfileId, QStringLiteral("rawPageOcr"));
-    resolveStoredModelId(kFixRequestProfileId, QStringLiteral("fix"));
-
-    if (m_settings.value(kParserId).toString() == QLatin1String("det_tokens")) {
-        QString resolved = QString::fromUtf8(kDefaultParserId);
-        if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelRecipeId(), QStringLiteral("pageOcr"))) {
-            if (!role->parser.isEmpty())
-                resolved = role->parser;
-        }
-        m_settings.setValue(kParserId, resolved);
-    }
-
-    // The secrets move into the OS secret store (ADR 227). The plaintext copy
-    // is removed only when the store took the key.
-    migrateSecret(kApiKey, kApiKey);
-    migrateSecret(kHfToken, kHfToken);
-}
-
-void SettingsStore::resolveStoredModelId(const char *key, const QString &role)
-{
-    const QString stored = m_settings.value(key).toString();
-    if (stored.isEmpty() || ModelProfiles::roleFor(stored, role))
-        return;
-    const QString resolved = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), role);
-    if (resolved.isEmpty() || resolved == stored)
-        return;
-    m_settings.setValue(key, resolved);
-}
-
 void SettingsStore::forceSave()
 {
     m_settings.sync();
@@ -371,9 +261,14 @@ void SettingsStore::forceSave()
 
 void SettingsStore::resetToDefaults()
 {
-    resetGroup([](const QString &) { return true; });
-    clearSecrets();
-    clearTaskConnections();
+    const QString rootDir = m_settings.value(kRuntimeRootDir).toString();
+    const QString modelsDir = m_settings.value(kRuntimeModelsDir).toString();
+
+    m_settings.clear();
+    m_settings.setValue(kRuntimeRootDir, rootDir);
+    m_settings.setValue(kRuntimeModelsDir, modelsDir);
+    m_settings.setValue(kSettingsSchemaVersion, kCurrentSettingsSchemaVersion);
+    m_settings.sync();
 }
 
 void SettingsStore::resetGroup(const std::function<bool(const QString &)> &matches)
@@ -390,7 +285,8 @@ void SettingsStore::resetGroup(const std::function<bool(const QString &)> &match
     forceSave();
 }
 
-// The secrets are not settings: the reset clears them by hand.
+// Every secret the app holds goes back to nothing: the shared key and every
+// task's own key.
 void SettingsStore::clearSecrets()
 {
     dropSecret(kApiKey);
@@ -427,9 +323,9 @@ void SettingsStore::resetRuntimeDefaults()
 {
     resetGroup([](const QString &key) {
         return key == QLatin1String("provider/mode") || key == QLatin1String("provider/baseUrl") || key == QLatin1String("provider/connectionTimeoutMs") ||
-               key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String("tasks/blockRecognition/modelName") ||
-               key == QLatin1String("tasks/decision/modelName") || key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/rawPageOcr/modelName") ||
-               key == QLatin1String("tasks/fix/modelName") || key == QLatin1String("runtime/serverPath");
+               key == QLatin1String("provider/responseTimeoutMs") || key == QLatin1String("model/name") || key == QLatin1String(kCheckModelName) || key == QLatin1String("tasks/decision/modelName") ||
+               key == QLatin1String("tasks/layout/modelName") || key == QLatin1String("tasks/rawPageOcr/modelName") || key == QLatin1String("tasks/fix/modelName") ||
+               key == QLatin1String("runtime/serverPath");
     });
     dropSecret(kApiKey);
     m_settings.remove(QString::fromLatin1(kApiKey));
