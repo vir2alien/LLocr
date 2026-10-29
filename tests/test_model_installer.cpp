@@ -336,17 +336,17 @@ private slots:
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
-        const QString q8Path = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q8_0.gguf"));
-        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
+        const QString q8Path = writeGguf(sub, QStringLiteral("GLM-OCR-Q8_0.gguf"));
+        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-GLM-OCR-Q8_0.gguf"));
         QVERIFY(!q8Path.isEmpty() && !mmproj.isEmpty());
 
         ModelEntry q8;
-        q8.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q8_0");
-        q8.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
-        q8.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        q8.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_Q8_0");
+        q8.title = QStringLiteral("ggml-org__GLM-OCR-GGUF");
+        q8.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
         q8.dir = sub;
         q8.modelPath = q8Path;
         q8.mmprojPath = mmproj;
@@ -361,25 +361,25 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
         ModelInstaller &mi = *s->installer;
 
-        auto *models = ocrModels(mi);
-        const int row = rowOfKey(models, QStringLiteral("unlimited-ocr"));
+        auto *models = checkModels(mi);
+        const int row = rowOfKey(models, QStringLiteral("glm-ocr"));
         QVERIFY(row >= 0);
-        QCOMPARE(roleAt(models, row, ModelQuantModel::TitleRole).toString(), QStringLiteral("Unlimited-OCR"));
-        QCOMPARE(roleAt(models, row, ModelQuantModel::SubtitleRole).toString(), QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"));
+        QCOMPARE(roleAt(models, row, ModelQuantModel::TitleRole).toString(), QStringLiteral("GLM-OCR"));
+        QCOMPARE(roleAt(models, row, ModelQuantModel::SubtitleRole).toString(), QStringLiteral("ggml-org/GLM-OCR-GGUF"));
         QVERIFY(roleAt(models, row, ModelQuantModel::ProfileRole).toBool());
 
         // The quants come from the profile, in the order the profile lists them.
         const QVariantList quants = roleAt(models, row, ModelQuantModel::QuantsRole).toList();
-        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("unlimited-ocr"));
+        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("glm-ocr"));
         QVERIFY(profile && profile->files.quants.size() >= 2);
         QCOMPARE(quants.size(), profile->files.quants.size());
         QCOMPARE(quants.at(0).toMap().value(QStringLiteral("id")).toString(), QStringLiteral("Q8_0"));
         QVERIFY(quants.at(0).toMap().value(QStringLiteral("installed")).toBool());
         QVERIFY(quants.at(0).toMap().value(QStringLiteral("downloadable")).toBool());
-        const QVariantMap q4 = quantOf(models, row, QStringLiteral("Q4_K_M"));
-        QVERIFY(!q4.isEmpty());
-        QVERIFY(!q4.value(QStringLiteral("installed")).toBool());
-        QVERIFY(q4.value(QStringLiteral("downloadable")).toBool());
+        const QVariantMap f16 = quantOf(models, row, QStringLiteral("F16"));
+        QVERIFY(!f16.isEmpty());
+        QVERIFY(!f16.value(QStringLiteral("installed")).toBool());
+        QVERIFY(f16.value(QStringLiteral("downloadable")).toBool());
 
         // The action button reads the *selected* quantization, which defaults to
         // the one that is installed; its size is the one measured on disk.
@@ -387,9 +387,9 @@ private slots:
         QVERIFY(roleAt(models, row, ModelQuantModel::SelectedInstalledRole).toBool());
         QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedSizeRole).toLongLong(), QFileInfo(q8Path).size());
 
-        QVERIFY(mi.removeQuant(QStringLiteral("unlimited-ocr"), QStringLiteral("Q8_0")).isEmpty());
+        QVERIFY(mi.removeQuant(QStringLiteral("glm-ocr"), QStringLiteral("Q8_0"), QStringLiteral("blockRecognition")).isEmpty());
         QVERIFY(!quantOf(models, row, QStringLiteral("Q8_0")).value(QStringLiteral("installed")).toBool());
-        QVERIFY(!quantOf(models, row, QStringLiteral("Q4_K_M")).value(QStringLiteral("installed")).toBool());
+        QVERIFY(!quantOf(models, row, QStringLiteral("F16")).value(QStringLiteral("installed")).toBool());
     }
 
     // The recommendation the profile marks as default comes first, and every model
@@ -402,71 +402,63 @@ private slots:
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
+        // pageOcr lost its last model with the release cleanup: the list is
+        // empty, and the role itself goes away with the task cleanup.
         auto *ocr = ocrModels(*s->installer);
+        QCOMPARE(ocr->rowCount(), 0);
+
         auto *check = checkModels(*s->installer);
         auto *decision = qobject_cast<ModelQuantModel *>(s->installer->decisionQuantModels());
         auto *rawPage = qobject_cast<ModelQuantModel *>(s->installer->rawPageOcrQuantModels());
         auto *fix = qobject_cast<ModelQuantModel *>(s->installer->fixQuantModels());
 
-        QStringList ocrKeys;
-        for (int i = 0; i < ocr->rowCount(); ++i)
-            ocrKeys.append(roleAt(ocr, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(ocrKeys, QStringList({QStringLiteral("unlimited-ocr"), QStringLiteral("chandra-ocr-2"), QStringLiteral("lfm25-vl-3b"), QStringLiteral("lightonocr")}));
-
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(checkKeys,
-                 QStringList({QStringLiteral("glm-ocr"),
-                              QStringLiteral("lfm25-vl-3b"),
-                              QStringLiteral("lightonocr"),
-                              QStringLiteral("mineru"),
-                              QStringLiteral("minicpm-ocr"),
-                              QStringLiteral("paddleocr-vl"),
-                              QStringLiteral("teleocr")}));
+        QCOMPARE(checkKeys, QStringList({QStringLiteral("mineru"), QStringLiteral("glm-ocr"), QStringLiteral("paddleocr-vl")}));
 
         // The decision list serves the decision task only; the default model
         // leads, the rest sort by title (ModelProfiles::forRole).
         QStringList decisionKeys;
         for (int i = 0; i < decision->rowCount(); ++i)
             decisionKeys.append(roleAt(decision, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(decisionKeys, QStringList({QStringLiteral("clef-flash"), QStringLiteral("d3-flash"), QStringLiteral("d3-mini"), QStringLiteral("minicpm-jev")}));
-        QVERIFY(pathOf(*s->installer, QStringLiteral("clef-flash"), QStringLiteral("decision")).isEmpty());
+        QCOMPARE(decisionKeys, QStringList({QStringLiteral("minicpm-jev")}));
+        QVERIFY(pathOf(*s->installer, QStringLiteral("minicpm-jev"), QStringLiteral("decision")).isEmpty());
 
-        // The layout list serves the layout task only (ADR 150): two shipped
-        // profiles declare it.
+        // The layout list serves the layout task only (ADR 150): one shipped
+        // profile declares it.
         auto *layout = qobject_cast<ModelQuantModel *>(s->installer->layoutQuantModels());
         QVERIFY(layout);
         QStringList layoutKeys;
         for (int i = 0; i < layout->rowCount(); ++i)
             layoutKeys.append(roleAt(layout, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(layoutKeys, QStringList({QStringLiteral("teleocr"), QStringLiteral("mineru")}));
-        QVERIFY(pathOf(*s->installer, QStringLiteral("teleocr"), QStringLiteral("layout")).isEmpty());
+        QCOMPARE(layoutKeys, QStringList({QStringLiteral("mineru")}));
+        QVERIFY(pathOf(*s->installer, QStringLiteral("mineru"), QStringLiteral("layout")).isEmpty());
 
         // The two tasks without a settings window of their own (rawPageOcr,
         // fix) still expose their lists — the task window (stage 6) reads them.
         QStringList rawPageKeys;
         for (int i = 0; i < rawPage->rowCount(); ++i)
             rawPageKeys.append(roleAt(rawPage, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(rawPageKeys, QStringList({QStringLiteral("glm-ocr"), QStringLiteral("chandra-ocr-2"), QStringLiteral("lightonocr"), QStringLiteral("minicpm-ocr")}));
+        QCOMPARE(rawPageKeys, QStringList({QStringLiteral("glm-ocr")}));
 
         QStringList fixKeys;
         for (int i = 0; i < fix->rowCount(); ++i)
             fixKeys.append(roleAt(fix, i, ModelQuantModel::KeyRole).toString());
         QCOMPARE(fixKeys, QStringList({QStringLiteral("qwen3.5-4b"), QStringLiteral("gemma-4-12b"), QStringLiteral("gemma-4-e4b"), QStringLiteral("qwen3.5-9b")}));
 
-        // TeleOCR answers two tasks and offers the quantizations its profile
+        // MinerU answers two tasks and offers the quantizations its profile
         // declares — the shipped file is the source here, not a copy of it, so an
         // edit to the catalog is what this follows.
-        const int teleocr = rowOfKey(check, QStringLiteral("teleocr"));
-        QVERIFY(teleocr >= 0);
-        const ModelProfiles::Profile *teleocrProfile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("teleocr"));
-        QVERIFY(teleocrProfile);
-        const QVariantList quants = roleAt(check, teleocr, ModelQuantModel::QuantsRole).toList();
-        QCOMPARE(quants.size(), teleocrProfile->files.quants.size());
-        QCOMPARE(quants.first().toMap().value(QStringLiteral("id")).toString(), teleocrProfile->files.quants.first().id.toUpper());
-        QVERIFY(!roleAt(check, teleocr, ModelQuantModel::SelectedInstalledRole).toBool());
-        QVERIFY(roleAt(check, teleocr, ModelQuantModel::SelectedDownloadableRole).toBool());
+        const int mineru = rowOfKey(check, QStringLiteral("mineru"));
+        QVERIFY(mineru >= 0);
+        const ModelProfiles::Profile *mineruProfile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("mineru"));
+        QVERIFY(mineruProfile);
+        const QVariantList quants = roleAt(check, mineru, ModelQuantModel::QuantsRole).toList();
+        QCOMPARE(quants.size(), mineruProfile->files.quants.size());
+        QCOMPARE(quants.first().toMap().value(QStringLiteral("id")).toString(), mineruProfile->files.quants.first().id.toUpper());
+        QVERIFY(!roleAt(check, mineru, ModelQuantModel::SelectedInstalledRole).toBool());
+        QVERIFY(roleAt(check, mineru, ModelQuantModel::SelectedDownloadableRole).toBool());
     }
 
     // A quantization the profile does not list — hand-downloaded, or left behind
@@ -477,21 +469,21 @@ private slots:
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
-        const QString oddPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_0.gguf"));
+        const QString oddPath = writeGguf(sub, QStringLiteral("GLM-OCR-Q4_0.gguf"));
         QVERIFY(!oddPath.isEmpty());
 
         ModelEntry odd;
-        odd.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_0");
-        odd.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
-        odd.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        odd.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_Q4_0");
+        odd.title = QStringLiteral("ggml-org__GLM-OCR-GGUF");
+        odd.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
         odd.dir = sub;
         odd.modelPath = oddPath;
         odd.origin = ModelOrigin::Managed;
         odd.quantization = QStringLiteral("Q4_0");
-        odd.roles = {QStringLiteral("pageOcr")};
+        odd.roles = {QStringLiteral("blockRecognition")};
 
         QString err;
         QVERIFY2(ModelRegistry::save(modelsDir, {odd}, err), qPrintable(err));
@@ -499,8 +491,8 @@ private slots:
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
-        auto *models = ocrModels(*s->installer);
-        const int row = rowOfKey(models, QStringLiteral("unlimited-ocr"));
+        auto *models = checkModels(*s->installer);
+        const int row = rowOfKey(models, QStringLiteral("glm-ocr"));
         QVERIFY(row >= 0);
         const QVariantMap extra = quantOf(models, row, QStringLiteral("Q4_0"));
         QVERIFY(!extra.isEmpty());
@@ -519,7 +511,7 @@ private slots:
         external.modelPath = externalPath;
         external.dir = elsewhere;
         external.origin = ModelOrigin::External;
-        external.roles = {QStringLiteral("pageOcr")};
+        external.roles = {QStringLiteral("blockRecognition")};
         QVERIFY2(ModelRegistry::save(modelsDir, {odd, external}, err), qPrintable(err));
 
         s->installer->refreshInstalled();
@@ -528,7 +520,7 @@ private slots:
         QVERIFY(!roleAt(models, externalRow, ModelQuantModel::ProfileRole).toBool());
         QCOMPARE(roleAt(models, externalRow, ModelQuantModel::QuantsRole).toList().size(), 1);
         QCOMPARE(roleAt(models, externalRow, ModelQuantModel::SubtitleRole).toString(), external.dir);
-        QCOMPARE(pathOf(*s->installer, QStringLiteral("outside_model")), externalPath);
+        QCOMPARE(pathOf(*s->installer, QStringLiteral("outside_model"), QStringLiteral("blockRecognition")), externalPath);
     }
 
     // The row shows the task's active quantization; a remembered pick (one per
@@ -541,57 +533,57 @@ private slots:
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
         ModelInstaller &mi = *s->installer;
-        auto *models = ocrModels(mi);
-        const int row = rowOfKey(models, QStringLiteral("unlimited-ocr"));
+        auto *models = checkModels(mi);
+        const int row = rowOfKey(models, QStringLiteral("glm-ocr"));
         QVERIFY(row >= 0);
 
         // The settings are shared by every test in the run, so a pick left behind
         // by an earlier one must not decide what this row shows.
-        s->settings.setSelectedQuant(QStringLiteral("unlimited-ocr"), QString());
+        s->settings.setSelectedQuant(QStringLiteral("glm-ocr"), QString());
 
         // Nothing installed and nothing chosen: the profile's first quantization.
         QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q8_0"));
 
         ModelEntry entry;
-        entry.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_K_M");
-        entry.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
-        entry.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        entry.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_F16");
+        entry.title = QStringLiteral("ggml-org__GLM-OCR-GGUF");
+        entry.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
         entry.dir = sub;
-        entry.modelPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_K_M.gguf"));
+        entry.modelPath = writeGguf(sub, QStringLiteral("GLM-OCR-f16.gguf"));
         entry.origin = ModelOrigin::Managed;
-        entry.quantization = QStringLiteral("Q4_K_M");
-        entry.roles = {QStringLiteral("pageOcr")};
+        entry.quantization = QStringLiteral("F16");
+        entry.roles = {QStringLiteral("blockRecognition")};
 
         QString err;
         QVERIFY2(ModelRegistry::save(modelsDir, {entry}, err), qPrintable(err));
         mi.refreshInstalled();
 
         // With a quantization on disk and nothing chosen, that one is shown.
-        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q4_K_M"));
+        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("F16"));
 
-        mi.selectQuant(QStringLiteral("unlimited-ocr"), QStringLiteral("Q8_0"));
+        mi.selectQuant(QStringLiteral("glm-ocr"), QStringLiteral("Q8_0"));
         QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q8_0"));
-        QCOMPARE(s->settings.selectedQuant(QStringLiteral("unlimited-ocr")), QStringLiteral("Q8_0"));
+        QCOMPARE(s->settings.selectedQuant(QStringLiteral("glm-ocr")), QStringLiteral("Q8_0"));
 
         // The task's active quantization outranks the remembered pick: the row
         // must show what the task runs, not the last profile-level pick.
-        QVERIFY(mi.setActiveModel(quantModel(models)->entryIndexFor(QStringLiteral("unlimited-ocr"), QStringLiteral("Q4_K_M"))).isEmpty());
-        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q4_K_M"));
+        QVERIFY(mi.setActiveModel(quantModel(models)->entryIndexFor(QStringLiteral("glm-ocr"), QStringLiteral("F16")), QStringLiteral("blockRecognition")).isEmpty());
+        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("F16"));
         QVERIFY(roleAt(models, row, ModelQuantModel::SelectedActiveRole).toBool());
         QVERIFY(roleAt(models, row, ModelQuantModel::ActiveRole).toBool());
         QVERIFY(roleAt(models, row, ModelQuantModel::SelectedInstalledRole).toBool());
 
         // A pick that is not in the profile is refused rather than silently applied.
-        mi.selectQuant(QStringLiteral("unlimited-ocr"), QStringLiteral("Q2_K"));
-        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("Q4_K_M"));
+        mi.selectQuant(QStringLiteral("glm-ocr"), QStringLiteral("Q2_K"));
+        QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedLabelRole).toString(), QStringLiteral("F16"));
 
-        s->settings.setSelectedQuant(QStringLiteral("unlimited-ocr"), QString());
+        s->settings.setSelectedQuant(QStringLiteral("glm-ocr"), QString());
     }
 
     // Saving a choice that is already on disk activates it AND refreshes the
@@ -601,18 +593,18 @@ private slots:
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
         ModelEntry entry;
-        entry.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_K_M");
-        entry.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
-        entry.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        entry.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_Q8_0");
+        entry.title = QStringLiteral("ggml-org__GLM-OCR-GGUF");
+        entry.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
         entry.dir = sub;
-        entry.modelPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_K_M.gguf"));
-        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
+        entry.modelPath = writeGguf(sub, QStringLiteral("GLM-OCR-Q8_0.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-GLM-OCR-Q8_0.gguf"));
         entry.origin = ModelOrigin::Managed;
-        entry.quantization = QStringLiteral("Q4_K_M");
+        entry.quantization = QStringLiteral("Q8_0");
         QVERIFY(!entry.modelPath.isEmpty() && !entry.mmprojPath.isEmpty());
 
         QString err;
@@ -621,14 +613,14 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
         ModelInstaller &mi = *s->installer;
 
-        s->settings.setSelectedQuant(QStringLiteral("unlimited-ocr"), QStringLiteral("Q8_0"));
+        s->settings.setSelectedQuant(QStringLiteral("glm-ocr"), QStringLiteral("F16"));
 
         const QVariantList choices = {
-            QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("unlimited-ocr")}, {QStringLiteral("quantId"), QStringLiteral("Q4_K_M")}}};
+            QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("glm-ocr")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}}};
         const QVariantList missing = mi.applyTaskChoices(choices);
         QVERIFY(missing.isEmpty());
-        QCOMPARE(s->settings.selectedQuant(QStringLiteral("unlimited-ocr")), QStringLiteral("Q4_K_M"));
-        QCOMPARE(s->settings.launchModelPathForRole(QStringLiteral("pageOcr")), entry.modelPath);
+        QCOMPARE(s->settings.selectedQuant(QStringLiteral("glm-ocr")), QStringLiteral("Q8_0"));
+        QCOMPARE(s->settings.launchModelPathForRole(QStringLiteral("blockRecognition")), entry.modelPath);
     }
 
     // The wizard's auto-selection (ADR 169/170): every task gets its
@@ -641,13 +633,15 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
         const QVariantList choices = s->installer->defaultTaskChoices(16LL << 40);
-        QCOMPARE(choices.size(), 6);
+        // pageOcr has no model since the release cleanup: the choice is
+        // absent, and the role itself goes away with the task cleanup.
+        QCOMPARE(choices.size(), 5);
+        QVERIFY(choiceFor(choices, QStringLiteral("pageOcr")).isEmpty());
         const QHash<QString, QPair<QString, QString>> expected = {
-            {QStringLiteral("pageOcr"), {QStringLiteral("unlimited-ocr"), QStringLiteral("Q8_0")}},
             {QStringLiteral("rawPageOcr"), {QStringLiteral("glm-ocr"), QStringLiteral("Q8_0")}},
-            {QStringLiteral("blockRecognition"), {QStringLiteral("glm-ocr"), QStringLiteral("Q8_0")}},
-            {QStringLiteral("decision"), {QStringLiteral("clef-flash"), QStringLiteral("Q8_0")}},
-            {QStringLiteral("layout"), {QStringLiteral("teleocr"), QStringLiteral("Q8_0")}},
+            {QStringLiteral("blockRecognition"), {QStringLiteral("mineru"), QStringLiteral("Q8_0")}},
+            {QStringLiteral("decision"), {QStringLiteral("minicpm-jev"), QStringLiteral("Q8_0")}},
+            {QStringLiteral("layout"), {QStringLiteral("mineru"), QStringLiteral("Q8_0")}},
             {QStringLiteral("fix"), {QStringLiteral("qwen3.5-4b"), QStringLiteral("Q8_0")}},
         };
         for (auto it = expected.cbegin(); it != expected.cend(); ++it) {
@@ -667,12 +661,11 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
         const QVariantList choices = s->installer->defaultTaskChoices(2LL << 30);
-        QCOMPARE(choiceFor(choices, QStringLiteral("pageOcr")).value(QStringLiteral("quantId")).toString(),
-                 QStringLiteral("Q4_K_M"));  // q8_0/q6_k/q5_k_m all exceed 2 GiB
+        QVERIFY(choiceFor(choices, QStringLiteral("pageOcr")).isEmpty());
         QCOMPARE(choiceFor(choices, QStringLiteral("rawPageOcr")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
         QCOMPARE(choiceFor(choices, QStringLiteral("blockRecognition")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
         QCOMPARE(choiceFor(choices, QStringLiteral("decision")).value(QStringLiteral("quantId")).toString(),
-                 QStringLiteral("Q4_0"));  // nothing of clef-flash fits → the smallest
+                 QStringLiteral("Q8_0"));  // the q8_0 weights still fit a 2 GiB budget
         QCOMPARE(choiceFor(choices, QStringLiteral("layout")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
         QCOMPARE(choiceFor(choices, QStringLiteral("fix")).value(QStringLiteral("quantId")).toString(),
                  QStringLiteral("IQ4_XS"));  // nothing of qwen3.5-4b fits → the smallest
@@ -685,16 +678,16 @@ private slots:
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("mradermacher__MinerU2.5-Pro-2605-1.2B-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
         ModelEntry entry;
-        entry.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_K_M");
-        entry.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
-        entry.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        entry.id = QStringLiteral("mradermacher__MinerU2.5-Pro-2605-1.2B-GGUF_Q4_K_M");
+        entry.title = QStringLiteral("mradermacher__MinerU2.5-Pro-2605-1.2B-GGUF");
+        entry.repo = QStringLiteral("mradermacher/MinerU2.5-Pro-2605-1.2B-GGUF");
         entry.dir = sub;
-        entry.modelPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_K_M.gguf"));
-        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
+        entry.modelPath = writeGguf(sub, QStringLiteral("MinerU2.5-Pro-2605-1.2B.Q4_K_M.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("MinerU2.5-Pro-2605-1.2B.mmproj-Q8_0.gguf"));
         entry.origin = ModelOrigin::Managed;
         entry.quantization = QStringLiteral("Q4_K_M");
         QVERIFY(!entry.modelPath.isEmpty() && !entry.mmprojPath.isEmpty());
@@ -705,8 +698,10 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
         const QVariantList choices = s->installer->defaultTaskChoices(16LL << 40);
-        QCOMPARE(choiceFor(choices, QStringLiteral("pageOcr")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q4_K_M"));
-        QCOMPARE(choiceFor(choices, QStringLiteral("layout")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
+        QCOMPARE(choiceFor(choices, QStringLiteral("blockRecognition")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q4_K_M"));
+        // Layout rides the same default model, so the installed quant wins there too.
+        QCOMPARE(choiceFor(choices, QStringLiteral("layout")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q4_K_M"));
+        QCOMPARE(choiceFor(choices, QStringLiteral("rawPageOcr")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
     }
 
     // Deleting a model takes every quantization of it, but only after the whole
@@ -717,50 +712,50 @@ private slots:
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
-        const QString q8Path = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q8_0.gguf"));
-        const QString q4Path = writeGguf(sub, QStringLiteral("Unlimited-OCR-Q4_K_M.gguf"));
-        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-Unlimited-OCR-F16.gguf"));
-        QVERIFY(!q8Path.isEmpty() && !q4Path.isEmpty() && !mmproj.isEmpty());
+        const QString q8Path = writeGguf(sub, QStringLiteral("GLM-OCR-Q8_0.gguf"));
+        const QString f16Path = writeGguf(sub, QStringLiteral("GLM-OCR-f16.gguf"));
+        const QString mmproj = writeGguf(sub, QStringLiteral("mmproj-GLM-OCR-Q8_0.gguf"));
+        QVERIFY(!q8Path.isEmpty() && !f16Path.isEmpty() && !mmproj.isEmpty());
 
         ModelEntry q8;
-        q8.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q8_0");
-        q8.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
-        q8.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        q8.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_Q8_0");
+        q8.title = QStringLiteral("ggml-org__GLM-OCR-GGUF");
+        q8.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
         q8.dir = sub;
         q8.modelPath = q8Path;
         q8.mmprojPath = mmproj;
         q8.origin = ModelOrigin::Managed;
         q8.quantization = QStringLiteral("Q8_0");
-        q8.roles = {QStringLiteral("pageOcr")};
+        q8.roles = {QStringLiteral("blockRecognition")};
 
-        ModelEntry q4 = q8;
-        q4.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_Q4_K_M");
-        q4.modelPath = q4Path;
-        q4.quantization = QStringLiteral("Q4_K_M");
+        ModelEntry f16 = q8;
+        f16.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_F16");
+        f16.modelPath = f16Path;
+        f16.quantization = QStringLiteral("F16");
 
         QString err;
-        QVERIFY2(ModelRegistry::save(modelsDir, {q8, q4}, err), qPrintable(err));
+        QVERIFY2(ModelRegistry::save(modelsDir, {q8, f16}, err), qPrintable(err));
 
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
         ModelInstaller &mi = *s->installer;
-        auto *models = ocrModels(mi);
-        const int row = rowOfKey(models, QStringLiteral("unlimited-ocr"));
+        auto *models = checkModels(mi);
+        const int row = rowOfKey(models, QStringLiteral("glm-ocr"));
         QVERIFY(row >= 0);
-        QCOMPARE(quantModel(models)->entryIndexesFor(QStringLiteral("unlimited-ocr")).size(), 2);
+        QCOMPARE(quantModel(models)->entryIndexesFor(QStringLiteral("glm-ocr")).size(), 2);
 
-        QVERIFY(mi.removeModelRow(QStringLiteral("unlimited-ocr")).isEmpty());
+        QVERIFY(mi.removeModelRow(QStringLiteral("glm-ocr"), QStringLiteral("blockRecognition")).isEmpty());
         QVERIFY(!QFile::exists(q8Path));
-        QVERIFY(!QFile::exists(q4Path));
+        QVERIFY(!QFile::exists(f16Path));
         QVERIFY(!QFile::exists(mmproj));
         QCOMPARE(mi.installedCount(), 0);
 
         // The row stays, now offering both quantizations for download again.
         QCOMPARE(quantOf(models, row, QStringLiteral("Q8_0")).value(QStringLiteral("installed")).toBool(), false);
-        QVERIFY(mi.removeModelRow(QStringLiteral("unlimited-ocr")).isEmpty() == false);
+        QVERIFY(mi.removeModelRow(QStringLiteral("glm-ocr"), QStringLiteral("blockRecognition")).isEmpty() == false);
     }
 
     // The installed-model lists are role-filtered: a vision model goes to the
@@ -820,16 +815,18 @@ private slots:
         ModelInstaller &mi = *s->installer;
 
         // OCR list: only the mmproj model — the verifier (active as the check
-        // model) and the parser-carrying text model stay out of it.
+        // model) and the parser-carrying text model stay out of it. The pageOcr
+        // list carries no profile rows since the release cleanup, so the
+        // installed entry lands at the top.
         auto *ocrList = ocrModels(mi);
         auto *checkList = checkModels(mi);
         QVERIFY(ocrList);
         QVERIFY(checkList);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 4);
+        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 0);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), -1);
         QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_verify")), -1);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 7);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 8);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 4);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_ocr")), ocrPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), QStringLiteral("blockRecognition")), textPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), QStringLiteral("blockRecognition")), verifierPath);
@@ -841,8 +838,8 @@ private slots:
         // The role's active model is always listed: the text model becomes the
         // active OCR model and must appear in the OCR list too.
         settings.setLaunchModelPath(textPath);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 5);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 7);
+        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 1);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
     }
 
     // A list model with named roles: a QML delegate that misspells a role name
@@ -883,7 +880,9 @@ private slots:
         auto *models = ocrModels(installer);
         QVERIFY(models);
         // The models of the task, and the one the user brought themselves.
-        QCOMPARE(models->rowCount(), 5);
+        // The pageOcr list carries no profile rows since the release cleanup,
+        // so only the brought model is listed.
+        QCOMPARE(models->rowCount(), 1);
 
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(ModelQuantModel::KeyRole), QByteArray("key"));
@@ -908,7 +907,7 @@ private slots:
         QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
         installer.refreshInstalled();
         QCOMPARE(resetSpy.count(), 0);
-        QCOMPARE(models->rowCount(), 5);
+        QCOMPARE(models->rowCount(), 1);
 
         // Activating the model re-reads the highlight from the settings.
         QVERIFY(installer.setActiveModel(0).isEmpty());
@@ -1001,8 +1000,8 @@ private slots:
 
     // Activating a model has to move the profile with it: the check model runs
     // with the launch parameters of the family it belongs to, and picking an
-    // installed GGUF that no longer left the previous family's profile in place
-    // is what put Unlimited-OCR's flags on a Qwen server.
+    // installed GGUF without moving the profile left another family's flags on
+    // the server.
     void activatingAModelSelectsItsFamilyProfile()
     {
         QTemporaryDir root;
@@ -1019,24 +1018,24 @@ private slots:
         qwen.mmprojPath = writeGguf(qwenDir, QStringLiteral("mmproj-F16.gguf"));
         qwen.origin = ModelOrigin::Managed;
 
-        ModelEntry lfm = qwen;
-        const QString lfmDir = QDir(modelsDir).filePath(QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF"));
-        QVERIFY(QDir().mkpath(lfmDir));
-        lfm.id = QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF");
-        lfm.repo = QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF");
-        lfm.dir = lfmDir;
-        lfm.modelPath = writeGguf(lfmDir, QStringLiteral("LFM2.5-VL-3B-Q8_0.gguf"));
-        lfm.mmprojPath = writeGguf(lfmDir, QStringLiteral("mmproj-LFM2.5-VL-3B-F16.gguf"));
+        ModelEntry glm = qwen;
+        const QString glmDir = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
+        QVERIFY(QDir().mkpath(glmDir));
+        glm.id = QStringLiteral("ggml-org__GLM-OCR-GGUF");
+        glm.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
+        glm.dir = glmDir;
+        glm.modelPath = writeGguf(glmDir, QStringLiteral("GLM-OCR-Q8_0.gguf"));
+        glm.mmprojPath = writeGguf(glmDir, QStringLiteral("mmproj-GLM-OCR-Q8_0.gguf"));
 
-        QVERIFY(!qwen.modelPath.isEmpty() && !lfm.modelPath.isEmpty());
+        QVERIFY(!qwen.modelPath.isEmpty() && !glm.modelPath.isEmpty());
         QString err;
-        QVERIFY2(ModelRegistry::save(modelsDir, {qwen, lfm}, err), qPrintable(err));
+        QVERIFY2(ModelRegistry::save(modelsDir, {qwen, glm}, err), qPrintable(err));
 
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         settings.setFixRequestProfileId(QStringLiteral("gemma-4-e4b"));
-        settings.setCheckRequestProfileId(QStringLiteral("teleocr"));
-        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        settings.setCheckRequestProfileId(QStringLiteral("mineru"));
+        settings.setModelRecipeId(QStringLiteral("some-guf"));
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles);
@@ -1045,18 +1044,23 @@ private slots:
         QVERIFY(installer.setActiveModel(0, QStringLiteral("fix")).isEmpty());
         QCOMPARE(settings.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
-        // The same family answers the block recognition task too — LFM2.5-VL is
-        // a general-purpose VL model — so the block selection follows its file.
+        // The same family answers the block recognition task too — GLM-OCR ships
+        // both transcriptions — so the block selection follows its file.
         QVERIFY(installer.setActiveModel(1, QStringLiteral("blockRecognition")).isEmpty());
-        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("glm-ocr"));
 
-        // The qwen family does not answer the page OCR task, so the page
-        // selection stays where it was rather than following the file.
+        // The qwen family answers no page task (no shipped profile does since
+        // the release cleanup), so the page selection stays where it was
+        // rather than following the file.
         QVERIFY(installer.setActiveModel(0).isEmpty());
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("some-guf"));
 
-        QVERIFY(installer.setActiveModel(1).isEmpty());
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+        // The raw page task is the same rule, in both directions.
+        const QString rawPageBefore = settings.rawPageOcrRequestProfileId();
+        QVERIFY(installer.setActiveModel(0, QStringLiteral("rawPageOcr")).isEmpty());
+        QCOMPARE(settings.rawPageOcrRequestProfileId(), rawPageBefore);
+        QVERIFY(installer.setActiveModel(1, QStringLiteral("rawPageOcr")).isEmpty());
+        QCOMPARE(settings.rawPageOcrRequestProfileId(), QStringLiteral("glm-ocr"));
     }
 
     // A model whose repo was renamed in the catalog kept the profile of the
@@ -1067,16 +1071,16 @@ private slots:
         QTemporaryDir root;
         QVERIFY(root.isValid());
         const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
         ModelEntry entry;
-        entry.id = QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF_Q8_0");
-        entry.title = QStringLiteral("LFM2.5-VL-3B");
-        entry.repo = QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF");
+        entry.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_Q8_0");
+        entry.title = QStringLiteral("GLM-OCR");
+        entry.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
         entry.dir = sub;
-        entry.modelPath = writeGguf(sub, QStringLiteral("LFM2.5-VL-3B-Q8_0.gguf"));
-        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-LFM2.5-VL-3B-F16.gguf"));
+        entry.modelPath = writeGguf(sub, QStringLiteral("GLM-OCR-Q8_0.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-GLM-OCR-Q8_0.gguf"));
         entry.origin = ModelOrigin::Managed;
         entry.quantization = QStringLiteral("Q8_0");
         QVERIFY(!entry.modelPath.isEmpty());
@@ -1087,15 +1091,17 @@ private slots:
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         // The state a stale profile leaves behind: another model's id stored
-        // next to this model's file.
-        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        // next to this model's file. The refresh-time repair answers the page
+        // task, and no shipped family does since the release cleanup — the
+        // stale id survives until the task cleanup re-homes the roles.
+        settings.setModelRecipeId(QStringLiteral("some-guf"));
         settings.setLaunchModelPath(entry.modelPath);
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles, &installed);
 
         ModelInstaller installer(settings, runtime, installed);
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("some-guf"));
     }
 
     // A choice recorded while its quantization is still downloading (the task
@@ -1106,16 +1112,16 @@ private slots:
         QTemporaryDir root;
         QVERIFY(root.isValid());
         const QString modelsDir = QDir(root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
         ModelEntry entry;
-        entry.id = QStringLiteral("LiquidAI__LFM2.5-VL-3B-GGUF_Q8_0");
-        entry.title = QStringLiteral("LFM2.5-VL-3B");
-        entry.repo = QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF");
+        entry.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_Q8_0");
+        entry.title = QStringLiteral("GLM-OCR");
+        entry.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
         entry.dir = sub;
-        entry.modelPath = writeGguf(sub, QStringLiteral("LFM2.5-VL-3B-Q8_0.gguf"));
-        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-LFM2.5-VL-3B-F16.gguf"));
+        entry.modelPath = writeGguf(sub, QStringLiteral("GLM-OCR-Q8_0.gguf"));
+        entry.mmprojPath = writeGguf(sub, QStringLiteral("mmproj-GLM-OCR-Q8_0.gguf"));
         entry.origin = ModelOrigin::Managed;
         entry.quantization = QStringLiteral("Q8_0");
         QVERIFY(!entry.modelPath.isEmpty());
@@ -1125,27 +1131,33 @@ private slots:
 
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
+        // The settings are shared by every test in the run, so a recipe id left
+        // behind by an earlier one must not decide this outcome.
+        settings.setModelRecipeId(QStringLiteral("some-guf"));
         settings.setLaunchModelPath(entry.modelPath);
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles, &installed);
         ModelInstaller installer(settings, runtime, installed);
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+        // The launch-path repair answers the page task, and no shipped family
+        // serves it since the release cleanup: the recipe id stays where it
+        // was instead of following the file.
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("some-guf"));
 
-        // The task window's Save with a still-missing lightonocr quantization:
+        // The task window's Save with a still-missing PaddleOCR-VL quantization:
         // the pending final path takes over the launch setting at once.
         const QVariantList missing = installer.applyTaskChoices(
-            {QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("lightonocr")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}}});
+            {QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("paddleocr-vl")}, {QStringLiteral("quantId"), QStringLiteral("F16")}}});
         QCOMPARE(missing.size(), 1);
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lightonocr"));
-        const QString pendingPath = settings.launchModelPath();
+        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("paddleocr-vl"));
+        const QString pendingPath = settings.checkLaunchModelPath();
         QVERIFY(!pendingPath.isEmpty() && !QFileInfo::exists(pendingPath));
 
         // The refresh an reopened Models window runs must not read the old
         // model file as the user's choice.
         installer.refreshInstalled();
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("lightonocr"));
-        QCOMPARE(settings.launchModelPath(), pendingPath);
+        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("paddleocr-vl"));
+        QCOMPARE(settings.checkLaunchModelPath(), pendingPath);
     }
 
     // One model+quant picked by several tasks is one download: the missing
@@ -1160,18 +1172,18 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
         QVariantList choices;
-        choices.append(QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("lfm25-vl-3b")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
         choices.append(
-            QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("lfm25-vl-3b")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
+            QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("mineru")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
+        choices.append(QVariantMap{{QStringLiteral("task"), QStringLiteral("layout")}, {QStringLiteral("key"), QStringLiteral("mineru")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
 
         const QVariantList missing = s->installer->applyTaskChoices(choices);
         QCOMPARE(missing.size(), 1);
         const QVariantMap item = missing.first().toMap();
-        QCOMPARE(item.value(QStringLiteral("task")).toString(), QStringLiteral("pageOcr"));
+        QCOMPARE(item.value(QStringLiteral("task")).toString(), QStringLiteral("blockRecognition"));
         QCOMPARE(item.value(QStringLiteral("tasks")).toList().size(), 2);
         // The profile intent is recorded for both tasks.
-        QCOMPARE(s->settings.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
-        QCOMPARE(s->settings.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(s->settings.checkRequestProfileId(), QStringLiteral("mineru"));
+        QCOMPARE(s->settings.layoutRequestProfileId(), QStringLiteral("mineru"));
     }
 
     // The task window's Save (the rework plan's stage 6): an installed quant
@@ -1226,11 +1238,11 @@ private slots:
         // offers a downloadable quantization that is the missing one.
         auto *decision = qobject_cast<ModelQuantModel *>(s->installer->decisionQuantModels());
         QVERIFY(decision);
-        const int clefRow = rowOfKey(decision, QStringLiteral("clef-flash"));
-        QVERIFY(clefRow >= 0);
+        const int decisionRow = rowOfKey(decision, QStringLiteral("minicpm-jev"));
+        QVERIFY(decisionRow >= 0);
         QVariantMap missingPick;
-        const QVariantList clefQuants = roleAt(decision, clefRow, ModelQuantModel::QuantsRole).toList();
-        for (const QVariant &q : clefQuants) {
+        const QVariantList decisionQuants = roleAt(decision, decisionRow, ModelQuantModel::QuantsRole).toList();
+        for (const QVariant &q : decisionQuants) {
             const QVariantMap m = q.toMap();
             if (m.value(QStringLiteral("downloadable")).toBool() && !m.value(QStringLiteral("installed")).toBool()) {
                 missingPick = m;
@@ -1245,7 +1257,7 @@ private slots:
         choices.append(QVariantMap{
             {QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("org__blockrepo_Q8_0")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
         choices.append(QVariantMap{
-            {QStringLiteral("task"), QStringLiteral("decision")}, {QStringLiteral("key"), QStringLiteral("clef-flash")}, {QStringLiteral("quantId"), missingPick.value(QStringLiteral("id"))}});
+            {QStringLiteral("task"), QStringLiteral("decision")}, {QStringLiteral("key"), QStringLiteral("minicpm-jev")}, {QStringLiteral("quantId"), missingPick.value(QStringLiteral("id"))}});
 
         const QVariantList missing = s->installer->applyTaskChoices(choices);
         QCOMPARE(s->settings.launchModelPath(), q4.modelPath);
@@ -1253,10 +1265,10 @@ private slots:
         QCOMPARE(missing.size(), 1);
         const QVariantMap item = missing.first().toMap();
         QCOMPARE(item.value(QStringLiteral("task")).toString(), QStringLiteral("decision"));
-        QCOMPARE(item.value(QStringLiteral("key")).toString(), QStringLiteral("clef-flash"));
+        QCOMPARE(item.value(QStringLiteral("key")).toString(), QStringLiteral("minicpm-jev"));
         QCOMPARE(item.value(QStringLiteral("quantId")).toString(), missingPick.value(QStringLiteral("id")).toString());
         // The profile intent survives a canceled queue.
-        QCOMPARE(s->settings.selectedQuant(QStringLiteral("clef-flash")), missingPick.value(QStringLiteral("id")).toString());
+        QCOMPARE(s->settings.selectedQuant(QStringLiteral("minicpm-jev")), missingPick.value(QStringLiteral("id")).toString());
     }
 
     // A queue item no row knows about fails fast and stops the queue — no
@@ -1288,17 +1300,17 @@ private slots:
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("sahilchachra__Unlimited-OCR-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("ggml-org__GLM-OCR-GGUF"));
         QVERIFY(QDir().mkpath(sub));
 
-        // An untagged mmproj-less quant inside a pageOcr profile's repo: the
-        // pageOcr list drops it, the management list keeps it.
+        // An untagged mmproj-less quant inside a vision profile's repo: the
+        // task lists drop it, the management list keeps it.
         ModelEntry chat;
-        chat.id = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF_chat");
-        chat.title = QStringLiteral("sahilchachra__Unlimited-OCR-GGUF");
-        chat.repo = QStringLiteral("sahilchachra/Unlimited-OCR-GGUF");
+        chat.id = QStringLiteral("ggml-org__GLM-OCR-GGUF_chat");
+        chat.title = QStringLiteral("ggml-org__GLM-OCR-GGUF");
+        chat.repo = QStringLiteral("ggml-org/GLM-OCR-GGUF");
         chat.dir = sub;
-        chat.modelPath = writeGguf(sub, QStringLiteral("Unlimited-OCR-chat-Q8_0.gguf"));
+        chat.modelPath = writeGguf(sub, QStringLiteral("GLM-OCR-chat-Q8_0.gguf"));
         chat.origin = ModelOrigin::Managed;
         chat.quantization = QStringLiteral("chat");
 
@@ -1322,14 +1334,14 @@ private slots:
         QVERIFY(all);
 
         // The shipped profiles are all here — including one that only a single
-        // task list would show (clef-flash answers decision alone).
-        QVERIFY(rowOfKey(all, QStringLiteral("clef-flash")) >= 0);
+        // task list would show (minicpm-jev answers decision alone).
+        QVERIFY(rowOfKey(all, QStringLiteral("minicpm-jev")) >= 0);
 
-        const int row = rowOfKey(all, QStringLiteral("unlimited-ocr"));
+        const int row = rowOfKey(all, QStringLiteral("glm-ocr"));
         QVERIFY(row >= 0);
         QVERIFY(quantOf(all, row, QStringLiteral("CHAT")).value(QStringLiteral("installed")).toBool());
-        auto *ocr = ocrModels(*s->installer);
-        QCOMPARE(quantOf(ocr, rowOfKey(ocr, QStringLiteral("unlimited-ocr")), QStringLiteral("CHAT")).value(QStringLiteral("installed")).toBool(), false);
+        auto *rawPage = qobject_cast<ModelQuantModel *>(s->installer->rawPageOcrQuantModels());
+        QCOMPARE(quantOf(rawPage, rowOfKey(rawPage, QStringLiteral("glm-ocr")), QStringLiteral("CHAT")).value(QStringLiteral("installed")).toBool(), false);
 
         // A repo no profile claims gets a row of its own, and its quantization
         // resolves back to the installer's registry index for the actions.
@@ -1361,10 +1373,10 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
         auto *check = checkModels(*s->installer);
-        const int row = rowOfKey(check, QStringLiteral("teleocr"));
+        const int row = rowOfKey(check, QStringLiteral("mineru"));
         QVERIFY(row >= 0);
 
-        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("teleocr"));
+        const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("mineru"));
         QVERIFY(profile && profile->files.quants.size() >= 3);
         const qint64 curated = profile->files.quants.first().sizeBytes;
         QVERIFY(curated > 0);
@@ -1381,14 +1393,18 @@ private slots:
         QVERIFY(vram > curated);
         QCOMPARE(quant.value(QStringLiteral("vramLabel")).toString(), formatBytes(vram));
 
-        const QString sub = QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("konradjr007__NaviDC-OCR-GGUF"));
+        // A quantization on disk in the profile's own repo: the entry joins the
+        // profile row, and reconcile re-measures the size on disk — that
+        // measured size is what the dropdown must report for the installed
+        // quantization.
+        const QString sub = QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("mradermacher__MinerU2.5-Pro-2605-1.2B-GGUF"));
         QVERIFY(QDir().mkpath(sub));
         ModelEntry entry;
-        entry.id = QStringLiteral("konradjr007__NaviDC-OCR-GGUF_Q8_0");
-        entry.title = QStringLiteral("konradjr007__NaviDC-OCR-GGUF");
-        entry.repo = QStringLiteral("konradjr007/NaviDC-OCR-GGUF");
+        entry.id = QStringLiteral("mradermacher__MinerU2.5-Pro-2605-1.2B-GGUF_Q8_0");
+        entry.title = QStringLiteral("mradermacher__MinerU2.5-Pro-2605-1.2B-GGUF");
+        entry.repo = QStringLiteral("mradermacher/MinerU2.5-Pro-2605-1.2B-GGUF");
         entry.dir = sub;
-        entry.modelPath = writeGguf(sub, QStringLiteral("NaviDC-OCR-Q8_0.gguf"));
+        entry.modelPath = writeGguf(sub, QStringLiteral("MinerU2.5-Pro-2605-1.2B.Q8_0.gguf"));
         entry.origin = ModelOrigin::Managed;
         entry.quantization = QStringLiteral("Q8_0");
         entry.byteSize = 12345678;

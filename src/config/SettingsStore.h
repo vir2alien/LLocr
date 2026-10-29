@@ -425,8 +425,8 @@ public:
     static constexpr const char *kDefaultBaseUrl = "http://localhost:8080";
     static constexpr int kDefaultConnectionTimeoutMs = 5000;
     static constexpr int kDefaultResponseTimeoutMs = 300000;
-    static constexpr const char *kDefaultModelName = "Unlimited-OCR";
-    static constexpr const char *kDefaultModelRecipeId = "unlimited-ocr";
+    static constexpr const char *kDefaultModelName = "MinerU2.5-Pro-2605-1.2B";
+    static constexpr const char *kDefaultModelRecipeId = "mineru";
     static constexpr const char *kDefaultParserId = "auto";
     static constexpr bool kDefaultSplitPages = true;
     static constexpr bool kDefaultKeepPageNumbers = true;

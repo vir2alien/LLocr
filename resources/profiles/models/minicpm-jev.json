@@ -62,6 +62,7 @@
     "decision": {
       "alias": "llocr-decision",
       "protocol": "systemone_visual_diff_v1",
+      "default": true,
       "matchThreshold": 0.5,
       "blockAliases": {
         "formula": "equation"

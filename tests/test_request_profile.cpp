@@ -580,7 +580,7 @@ private slots:
         settings.setRuntimeRootDir(dir.path());
         settings.setRuntimeModelsDir(QDir(dir.path()).filePath("models"));
         // QSettings is process-wide here, so a previous test's choice would leak.
-        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        settings.setModelRecipeId(QStringLiteral("mineru"));
 
         QVERIFY(QDir().mkpath(QDir(dir.path()).filePath("profiles")));
         QFile userFile(QDir(dir.path()).filePath("profiles/request.json"));
@@ -594,9 +594,9 @@ private slots:
         userFile.close();
 
         RequestProfileStore store(settings);
-        store.setModelProfiles({makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters())});
+        store.setModelProfiles({makeProfile(QStringLiteral("mineru"), defaultParameters())});
         QAbstractItemModelTester tester(store.draftModel(), QAbstractItemModelTester::FailureReportingMode::Fatal);
-        QCOMPARE(store.draftProfileId(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(store.draftProfileId(), QStringLiteral("mineru"));
         const RequestProfile savedView = store.activeProfile();
         const RequestParameter *savedAlpha = findParameter(savedView, "alpha");
         QVERIFY(savedAlpha);

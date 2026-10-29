@@ -3,14 +3,9 @@
 #include <QCoreApplication>
 #include <QDebug>
 
-#include "parsers/ChandraParser.h"
-#include "parsers/Lfm25VlParser.h"
-#include "parsers/LightonOcrParser.h"
 #include "parsers/MinerULayoutParser.h"
 #include "parsers/ParserOptions.h"
 #include "parsers/RawParser.h"
-#include "parsers/TeleOcrLayoutParser.h"
-#include "parsers/UnlimitedOcrParser.h"
 
 namespace llocr {
 
@@ -18,13 +13,7 @@ const QString ParserFactory::kAutoId = QStringLiteral("auto");
 
 QStringList ParserFactory::registeredIds()
 {
-    return {QStringLiteral("raw"),
-            QStringLiteral("unlimited-ocr"),
-            QStringLiteral("lfm2.5-vl"),
-            QStringLiteral("teleocr-layout"),
-            QStringLiteral("mineru-layout"),
-            QStringLiteral("lightonocr"),
-            QStringLiteral("chandra-ocr")};
+    return {QStringLiteral("raw"), QStringLiteral("mineru-layout")};
 }
 
 QStringList ParserFactory::selectableIds()
@@ -45,18 +34,8 @@ QStringList ParserFactory::selectableDisplayNames()
 
 std::unique_ptr<IOutputParser> ParserFactory::create(const QString &parserId, const ParserOptions &options)
 {
-    if (parserId == QLatin1String("unlimited-ocr"))
-        return std::make_unique<UnlimitedOcrParser>(options);
-    if (parserId == QLatin1String("lfm2.5-vl"))
-        return std::make_unique<Lfm25VlParser>(options);
-    if (parserId == QLatin1String("teleocr-layout"))
-        return std::make_unique<TeleOcrLayoutParser>(options);
     if (parserId == QLatin1String("mineru-layout"))
         return std::make_unique<MinerULayoutParser>(options);
-    if (parserId == QLatin1String("lightonocr"))
-        return std::make_unique<LightonOcrParser>(options);
-    if (parserId == QLatin1String("chandra-ocr"))
-        return std::make_unique<ChandraParser>(options);
     if (parserId == QLatin1String("raw"))
         return std::make_unique<RawParser>(options);
 

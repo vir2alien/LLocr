@@ -43,3 +43,17 @@ The removal was one commit, and the tree before it is the tag
 
 Every file that the removal touched is reachable there in full — the removed
 hunks included.
+
+## The removed models
+
+| Model | Roles it served | Why it was cut |
+|-------|-----------------|----------------|
+| LightOnOCR-3-4B | pageOcr, blockRecognition, rawPageOcr | low quality, low speed, loops on complex documents |
+| Chandra-OCR-2 | pageOcr, rawPageOcr | licence, low speed |
+| LFM2.5-VL-3B | pageOcr, blockRecognition | low quality |
+| Unlimited-OCR | pageOcr | low quality, loops on complex documents |
+| MiniCPM-OCR 1.0 | blockRecognition, rawPageOcr | no Russian support |
+| TeleOCR (NaviDC-OCR) | blockRecognition, layout | no Russian support, markup weaker than MinerU's |
+| Cloudflare clef-flash | decision | markedly worse and slower than MiniCPM-OCR Jev |
+| d3-flash | decision | markedly worse and slower than MiniCPM-OCR Jev |
+| d3-mini | decision | markedly worse and slower than MiniCPM-OCR Jev |

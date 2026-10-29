@@ -342,21 +342,21 @@ void TestModelMemoryEstimator::countsTheVisionEncoderAndTheOverhead()
 void TestModelMemoryEstimator::aDraftOfItsOwnHoldsAContext()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    const ModelProfiles::Profile *lfm = ModelProfiles::find(profiles, QStringLiteral("lfm25-vl-3b"));
-    QVERIFY(lfm);
-    QVERIFY(lfm->memory.draftBytes > 0);
-    QVERIFY(lfm->memory.draftKvBytesPerToken > 0);
-    QVERIFY(lfm->memory.draftContextBytes > 0);
+    const ModelProfiles::Profile *gemma = ModelProfiles::find(profiles, QStringLiteral("gemma-4-e4b"));
+    QVERIFY(gemma);
+    QVERIFY(gemma->memory.draftBytes > 0);
+    QVERIFY(gemma->memory.draftKvBytesPerToken > 0);
+    QVERIFY(gemma->memory.draftContextBytes > 0);
 
-    const ModelMemoryShape shape = shapeFromProfile(lfm->memory);
-    QCOMPARE(shape.draftBytes, lfm->memory.draftBytes);
+    const ModelMemoryShape shape = shapeFromProfile(gemma->memory);
+    QCOMPARE(shape.draftBytes, gemma->memory.draftBytes);
 
     ModelMemoryBudget budget;
     budget.ctxSize = 16384;
     budget.ubatchTokens = 512;
     const ModelMemoryEstimate e = estimateMemory(shape, budget);
     // the draft context's KV cache follows the context, the rest does not
-    QCOMPARE(e.draftContextBytes, lfm->memory.draftContextBytes + lfm->memory.draftKvBytesPerToken * 16384);
+    QCOMPARE(e.draftContextBytes, gemma->memory.draftContextBytes + gemma->memory.draftKvBytesPerToken * 16384);
     QCOMPARE(e.totalBytes, e.modelBytes + e.draftBytes + e.draftContextBytes + e.mmprojBytes + e.kvCacheBytes + e.computeBufferBytes + e.visionBufferBytes);
     QVERIFY(e.requiredVramBytes > e.totalBytes);
 
@@ -424,39 +424,42 @@ void TestModelMemoryEstimator::everyProfileCarriesItsArchitecture()
         QVERIFY(profile.memory.visionBytesPerToken > 0 || profile.memory.visionBufferBytes > 0);
         QVERIFY(profile.files.mmproj.sizeBytes > 0);
     }
-    // the d3-mini keeps a cache in 8 of its 32 layers
-    const ModelProfiles::Profile *d3 = ModelProfiles::find(profiles, QStringLiteral("d3-mini"));
-    QVERIFY(d3);
-    QCOMPARE(d3->memory.nKvLayers, 8);
-    const ModelMemoryShape shape = shapeFromProfile(d3->memory);
-    QCOMPARE(shape.nKvLayers, 8);
-    QCOMPARE(shape.nEmbd, 2560);
+    // the minicpm-jev keeps a cache in 6 of its 24 layers
+    const ModelProfiles::Profile *jev = ModelProfiles::find(profiles, QStringLiteral("minicpm-jev"));
+    QVERIFY(jev);
+    QCOMPARE(jev->memory.nKvLayers, 6);
+    const ModelMemoryShape shape = shapeFromProfile(jev->memory);
+    QCOMPARE(shape.nKvLayers, 6);
+    QCOMPARE(shape.nEmbd, 2048);
 }
 
 // The requirement of the two models the numbers were measured on: the
-// d3-mini, whose profile was fitted on a 6 GB card, and the GLM-OCR, whose
-// page recognition reserves more in the vision encoder than in the cache.
+// minicpm-jev, whose two-image decision request runs on the launch profile
+// the decision role ships, and the GLM-OCR, whose page recognition reserves
+// more in the vision encoder than in the cache.
 void TestModelMemoryEstimator::theRequirementFollowsTheMeasuredNumbers()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
 
-    const ModelProfiles::Profile *d3 = ModelProfiles::find(profiles, QStringLiteral("d3-mini"));
-    QVERIFY(d3);
-    ModelMemoryShape d3Shape = shapeFromProfile(d3->memory);
-    d3Shape.weightsBytes = 3707523520;  // the curated Q4_K_M
-    d3Shape.projectorBytes = d3->files.mmproj.sizeBytes;
-    d3Shape.draftBytes = d3->memory.draftBytes;
-    ModelMemoryBudget d3Budget;
-    d3Budget.ctxSize = 8192;  // the launch profile the d3-mini ships
-    d3Budget.ubatchTokens = 6144;
-    d3Budget.visionTokens = ModelProfiles::visionTokensFor(*d3, QStringLiteral("decision"));
-    const ModelMemoryEstimate d3Estimate = estimateMemory(d3Shape, d3Budget);
-    // eight of the 32 layers keep a cache: 256 MiB at an 8192 context
-    QCOMPARE(d3Estimate.kvCacheBytes, 256LL * 1024 * 1024);
-    QVERIFY(d3Estimate.visionBufferBytes > 0);
-    // ADR 179 fitted the d3-mini on a 6 GB card — the requirement must fit it
-    QVERIFY(d3Estimate.requiredVramBytes < 6LL * 1024 * 1024 * 1024);
-    QVERIFY(d3Estimate.requiredVramBytes > d3Shape.weightsBytes);
+    const ModelProfiles::Profile *jev = ModelProfiles::find(profiles, QStringLiteral("minicpm-jev"));
+    QVERIFY(jev);
+    ModelMemoryShape jevShape = shapeFromProfile(jev->memory);
+    jevShape.weightsBytes = 2012021120;  // the curated Q8_0
+    jevShape.projectorBytes = jev->files.mmproj.sizeBytes;
+    jevShape.draftBytes = jev->memory.draftBytes;
+    ModelMemoryBudget jevBudget;
+    jevBudget.ctxSize = 16384;  // the launch profile the decision role ships
+    jevBudget.ubatchTokens = 512;
+    jevBudget.visionTokens = ModelProfiles::visionTokensFor(*jev, QStringLiteral("decision"));
+    QCOMPARE(jevBudget.visionTokens, 512);  // the decision task sends a crop: the floor, not the page budget
+    const ModelMemoryEstimate jevEstimate = estimateMemory(jevShape, jevBudget);
+    // six of the 24 layers keep a cache at the 16384 context
+    QCOMPARE(jevEstimate.kvCacheBytes, 2LL * jev->memory.nKvLayers * jev->memory.nKvHead * jev->memory.headDim * 2 * 16384);
+    QVERIFY(jevEstimate.visionBufferBytes > 0);
+    // the two-image request: the requirement holds the weights, the projector
+    // and the cache with room for the buffers
+    QVERIFY(jevEstimate.requiredVramBytes > jevShape.weightsBytes + jevShape.projectorBytes + jevEstimate.kvCacheBytes);
+    QVERIFY(jevEstimate.requiredVramBytes < 6LL * 1024 * 1024 * 1024);
 
     const ModelProfiles::Profile *glm = ModelProfiles::find(profiles, QStringLiteral("glm-ocr"));
     QVERIFY(glm);
@@ -487,10 +490,10 @@ void TestModelMemoryEstimator::aPageFillsTheImageBudgetAndACropDoesNot()
     QCOMPARE(ModelProfiles::visionTokensFor(*glm, QStringLiteral("blockRecognition")), 456);
 
     // a model that declares no budget: a page falls back to the model's own
-    const ModelProfiles::Profile *tele = ModelProfiles::find(profiles, QStringLiteral("teleocr"));
-    QVERIFY(tele);
-    QCOMPARE(ModelProfiles::visionTokensFor(*tele, QStringLiteral("layout")), tele->memory.visionTokens);
-    QVERIFY(ModelProfiles::visionTokensFor(*tele, QStringLiteral("blockRecognition")) < tele->memory.visionTokens);
+    const ModelProfiles::Profile *mineru = ModelProfiles::find(profiles, QStringLiteral("mineru"));
+    QVERIFY(mineru);
+    QCOMPARE(ModelProfiles::visionTokensFor(*mineru, QStringLiteral("layout")), mineru->memory.visionTokens);
+    QVERIFY(ModelProfiles::visionTokensFor(*mineru, QStringLiteral("blockRecognition")) < mineru->memory.visionTokens);
 }
 
 // The launch profile is what the server runs with: the context, the ubatch

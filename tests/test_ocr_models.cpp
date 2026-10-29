@@ -18,7 +18,6 @@
 #include "core/OcrRequest.h"
 #include "models/BlockRecognitionModel.h"
 #include "models/OcrModel.h"
-#include "parsers/BlockStyle.h"
 #include "parsers/ParserFactory.h"
 
 using namespace llocr;
@@ -111,17 +110,19 @@ class TestOcrModels : public QObject
 private slots:
     void factoryDefaultAndRegistry()
     {
-        QCOMPARE(OcrModel::defaultId(), QStringLiteral("unlimited-ocr"));
-        QVERIFY(OcrModel::registeredIds().contains(QStringLiteral("unlimited-ocr")));
-        QVERIFY(OcrModel::registeredIds().contains(QStringLiteral("lfm25-vl-3b")));
+        QCOMPARE(OcrModel::defaultId(), QStringLiteral("mineru"));
+        const QStringList ids = OcrModel::registeredIds();
+        QCOMPARE(ids, ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition")));
+        QVERIFY(ids.contains(QStringLiteral("mineru")));
+        QVERIFY(ids.contains(QStringLiteral("glm-ocr")));
 
         const auto model = OcrModel::create(OcrModel::defaultId());
         QVERIFY(model != nullptr);
-        QCOMPARE(model->id(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(model->id(), QStringLiteral("mineru"));
 
-        const auto lfm = OcrModel::create(QStringLiteral("lfm25-vl-3b"));
-        QVERIFY(lfm != nullptr);
-        QCOMPARE(lfm->id(), QStringLiteral("lfm25-vl-3b"));
+        const auto glm = OcrModel::create(QStringLiteral("glm-ocr"));
+        QVERIFY(glm != nullptr);
+        QCOMPARE(glm->id(), QStringLiteral("glm-ocr"));
     }
 
     // The raw-response dump (which includes the full base64 page image) is
@@ -175,46 +176,9 @@ private slots:
         }
     }
 
-    // The model contract now lives in resources/profiles/models/<id>.json: a
+    // The model contract lives in resources/profiles/models/<id>.json: a
     // model is added as data, so the tests read the shipped file rather than a
     // C++ subclass.
-    void unlimitedModelContract()
-    {
-        const OcrModel model(QStringLiteral("unlimited-ocr"));
-
-        QCOMPARE(model.id(), QStringLiteral("unlimited-ocr"));
-        QCOMPARE(model.displayName(), QStringLiteral("Unlimited-OCR"));
-        QCOMPARE(model.defaultParserId(), QStringLiteral("unlimited-ocr"));
-
-        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
-        QCOMPARE(variants.size(), 1);
-        QCOMPARE(variants.first().text, QStringLiteral("document parsing."));
-        QVERIFY(!variants.first().id.isEmpty());
-        QVERIFY(!variants.first().title.isEmpty());
-    }
-
-    void lfm25ModelContract()
-    {
-        const OcrModel model(QStringLiteral("lfm25-vl-3b"));
-
-        QCOMPARE(model.id(), QStringLiteral("lfm25-vl-3b"));
-        QCOMPARE(model.displayName(), QStringLiteral("LFM2.5-VL-3B"));
-        QCOMPARE(model.defaultParserId(), QStringLiteral("lfm2.5-vl"));
-
-        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
-        QCOMPARE(variants.size(), 1);
-        // The prompt must describe the layout-annotation contract the parser
-        // consumes: the image_index header and the [0, 1000] coordinate range.
-        QVERIFY(variants.first().text.contains(QStringLiteral("image_index=<n>")));
-        QVERIFY(variants.first().text.contains(QStringLiteral("[0, 1000]")));
-        QVERIFY(!variants.first().id.isEmpty());
-        QVERIFY(!variants.first().title.isEmpty());
-        // The wire shape follows the model card: text, then the image.
-        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("lfm25-vl-3b"), QStringLiteral("pageOcr"));
-        QVERIFY(ocrRole);
-        QCOMPARE(ocrRole->promptBeforeImage, true);
-    }
-
     // GLM-OCR ships one trained prompt per task kind; the profile maps the
     // app's block kinds onto the prefixes and leaves the page-level prompt at
     // the text one. The reply has no layout tokens, so the parser is raw.
@@ -247,166 +211,49 @@ private slots:
         QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
     }
 
-    // MiniCPM-OCR 1.0 is the GLM-OCR shape: one trained prefix per region
-    // kind, the raw reply is the text. Seals have a prefix of their own, and
-    // both page and block transcription run on "Text Recognition:".
-    void minicpmOcrModelContract()
-    {
-        const OcrModel model(QStringLiteral("minicpm-ocr"));
-
-        QCOMPARE(model.id(), QStringLiteral("minicpm-ocr"));
-        QCOMPARE(model.displayName(), QStringLiteral("MiniCPM-OCR 1.0"));
-        QCOMPARE(model.defaultParserId(), QStringLiteral("raw"));
-
-        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
-        QCOMPARE(variants.size(), 1);
-        QCOMPARE(variants.first().text, QStringLiteral("Text Recognition:"));
-
-        const ModelProfiles::Role *checkRole = ModelProfiles::roleFor(QStringLiteral("minicpm-ocr"), QStringLiteral("blockRecognition"));
-        QVERIFY(checkRole);
-        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("text")), QStringLiteral("Text Recognition:"));
-        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("table")), QStringLiteral("Table Recognition:"));
-        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
-        QCOMPARE(checkRole->blockPrompts.value(QStringLiteral("seal")), QStringLiteral("Seal Recognition:"));
-
-        // The transcription lands in the thinking block unless the server runs
-        // with reasoning off (the MiniCPM-OCR llama.cpp guide).
-        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("minicpm-ocr"), QStringLiteral("rawPageOcr"));
-        QVERIFY(ocrRole);
-        bool reasoningOff = false;
-        for (const LaunchParameter &p : ocrRole->launch)
-            reasoningOff |= p.name == QLatin1String("reasoning") && p.value.toString() == QLatin1String("off");
-        QVERIFY2(reasoningOff, "the rawPageOcr role must ship the reasoning-off flag");
-    }
-
-    // Chandra-OCR-2 serves the two page tasks, each with its own trained
-    // prompt: the layout one for the page with boxes, the plain one for the
-    // page without them.
-    void chandraModelContract()
-    {
-        const OcrModel model(QStringLiteral("chandra-ocr-2"));
-
-        QCOMPARE(model.id(), QStringLiteral("chandra-ocr-2"));
-        QCOMPARE(model.displayName(), QStringLiteral("Chandra-OCR-2"));
-        QCOMPARE(model.defaultParserId(), QStringLiteral("chandra-ocr"));
-
-        const ModelProfiles::Role *pageRole = ModelProfiles::roleFor(QStringLiteral("chandra-ocr-2"), QStringLiteral("pageOcr"));
-        QVERIFY(pageRole);
-        QCOMPARE(pageRole->parser, QStringLiteral("chandra-ocr"));
-        QCOMPARE(pageRole->prompts.size(), 1);
-        QVERIFY(pageRole->prompts.first().text.contains(QStringLiteral("OCR this image to HTML")));
-        // The layout prompt is the one that asks for the boxes and the labels.
-        QVERIFY(pageRole->prompts.first().text.contains(QStringLiteral("arranged as layout blocks")));
-        QVERIFY(pageRole->prompts.first().text.contains(QStringLiteral("data-bbox")));
-        QVERIFY(pageRole->prompts.first().text.contains(QStringLiteral("data-label")));
-
-        const ModelProfiles::Role *rawRole = ModelProfiles::roleFor(QStringLiteral("chandra-ocr-2"), QStringLiteral("rawPageOcr"));
-        QVERIFY(rawRole);
-        QCOMPARE(rawRole->parser, QStringLiteral("chandra-ocr"));
-        QCOMPARE(rawRole->prompts.size(), 1);
-        QVERIFY(!rawRole->prompts.first().text.contains(QStringLiteral("arranged as layout blocks")));
-
-        // The raw task sends its own prompt: the task reaches the profile.
-        const OcrModel rawModel(QStringLiteral("chandra-ocr-2"), QStringLiteral("rawPageOcr"));
-        QCOMPARE(rawModel.promptVariants().size(), 1);
-        QVERIFY(!rawModel.promptVariants().first().text.contains(QStringLiteral("arranged as layout blocks")));
-
-        // The block task is not served: on a crop the model answers the page
-        // task — a layout div whose box is the whole crop — so the reply is
-        // not the block's text.
-        QVERIFY(!ModelProfiles::roleFor(QStringLiteral("chandra-ocr-2"), QStringLiteral("blockRecognition")));
-    }
-
-    // LightOnOCR-3 serves two trained modes: "grounding" for the page with
-    // labeled boxes (the lightonocr parser) and the empty prompt for raw
-    // markdown transcription.
-    void lightonOcrModelContract()
-    {
-        const OcrModel model(QStringLiteral("lightonocr"));
-
-        QCOMPARE(model.id(), QStringLiteral("lightonocr"));
-        QCOMPARE(model.displayName(), QStringLiteral("LightOnOCR-3-4B"));
-        QCOMPARE(model.defaultParserId(), QStringLiteral("lightonocr"));
-
-        const QList<ModelProfiles::Prompt> variants = model.promptVariants();
-        QCOMPARE(variants.size(), 1);
-        QCOMPARE(variants.first().text, QStringLiteral("grounding"));
-        QVERIFY(!variants.first().id.isEmpty());
-        QVERIFY(!variants.first().title.isEmpty());
-    }
-
     // The transcription mode is the empty prompt — the card's request carries
-    // the image only, so the text part is dropped rather than sent empty.
-    // With the grounding prompt the message is image-first, the Qwen-family
-    // order.
+    // the image only, so the text part is dropped rather than sent empty. The
+    // rule is the adapter's, not one model's: with a prompt the message is
+    // image-first, the Qwen-family order the profiles default to.
     void ocrBodyOmitsTheTextPartWhenThePromptIsEmpty()
     {
         OcrRequest request;
         request.image = QImage(4, 4, QImage::Format_RGB32);
-        request.modelId = QStringLiteral("lightonocr");
+        request.modelId = QStringLiteral("glm-ocr");
 
-        const QByteArray emptyBody = ExposedOcrModel(QStringLiteral("lightonocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QByteArray emptyBody = ExposedOcrModel(QStringLiteral("glm-ocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
         const QJsonArray emptyContent = QJsonDocument::fromJson(emptyBody).object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
         QCOMPARE(emptyContent.size(), 1);
         QCOMPARE(emptyContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
 
-        request.prompt = QStringLiteral("grounding");
-        const QByteArray groundingBody = ExposedOcrModel(QStringLiteral("lightonocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
-        const QJsonArray groundingContent = QJsonDocument::fromJson(groundingBody).object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
-        QCOMPARE(groundingContent.size(), 2);
-        QCOMPARE(groundingContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
-        QCOMPARE(groundingContent.last().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
-        QCOMPARE(groundingContent.last().toObject().value(QStringLiteral("text")).toString(), QStringLiteral("grounding"));
+        request.prompt = QStringLiteral("Text Recognition:");
+        const QByteArray promptedBody = ExposedOcrModel(QStringLiteral("glm-ocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray promptedContent = QJsonDocument::fromJson(promptedBody).object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(promptedContent.size(), 2);
+        QCOMPARE(promptedContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(promptedContent.last().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+        QCOMPARE(promptedContent.last().toObject().value(QStringLiteral("text")).toString(), QStringLiteral("Text Recognition:"));
     }
 
-    // The message layout is the model's trained shape: the LFM2.5 card documents
-    // text-then-image, the Qwen-family models document image-then-text. The
-    // order travels in the profile, so one shipped entry can deviate without a
-    // wire-shape fork in C++.
+    // The message layout is the model's trained shape: the profiles default to
+    // the Qwen-family image-then-text order, and a profile can flip it with
+    // promptBeforeImage without a wire-shape fork in C++. One user message, no
+    // system message: the instruction travels as the user prompt.
     void ocrBodyFollowsTheTrainedPartOrder()
     {
         OcrRequest request;
-        request.prompt = QStringLiteral("Parse this document.");
+        request.prompt = QStringLiteral("Text Recognition:");
         request.image = QImage(4, 4, QImage::Format_RGB32);
 
-        request.modelId = QStringLiteral("lfm25-vl-3b");
-        const QByteArray lfmBody = ExposedOcrModel(QStringLiteral("lfm25-vl-3b")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
-        const QJsonDocument lfmDoc = QJsonDocument::fromJson(lfmBody);
-        const QJsonArray lfmContent = lfmDoc.object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
-        QCOMPARE(lfmContent.size(), 2);
-        QCOMPARE(lfmContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
-        QCOMPARE(lfmContent.last().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
-        // One user message, no system message: the card allows the instruction
-        // as a system or a user prompt, and the user prompt is what we use.
-        QCOMPARE(lfmDoc.object().value(QStringLiteral("messages")).toArray().size(), 1);
-        QCOMPARE(lfmDoc.object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("role")).toString(), QStringLiteral("user"));
-
-        request.modelId = QStringLiteral("unlimited-ocr");
-        const QByteArray unlimitedBody = ExposedOcrModel(QStringLiteral("unlimited-ocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
-        const QJsonArray unlimitedContent = QJsonDocument::fromJson(unlimitedBody).object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
-        QCOMPARE(unlimitedContent.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
-        QCOMPARE(unlimitedContent.last().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
-    }
-
-    // Every label the LFM prompt advertises must be resolvable, otherwise the
-    // parser styles a region as plain text the model meant as an image.
-    void lfmVocabularyIsStyled()
-    {
-        const OcrModel lfm(QStringLiteral("lfm25-vl-3b"));
-        const QString prompt = lfm.promptVariants().constFirst().text;
-        const int start = prompt.indexOf(QStringLiteral("<label> is one of these layout labels:"));
-        QVERIFY(start > 0);
-        const QString list = prompt.mid(start).section(QLatin1Char('\n'), 0, 0);
-        const QStringList labels = list.split(QStringLiteral(": "), Qt::SkipEmptyParts).last().split(QStringLiteral(", "));
-        QVERIFY(labels.size() > 20);
-        for (const QString &label : labels) {
-            QVERIFY2(BlockStyleMap::instance().knowsLabel(label, QStringLiteral("lfm25-vl-3b")), qPrintable(QStringLiteral("label %1 has no style").arg(label)));
-        }
-        // The labels LFM adds over the base vocabulary come from its profile.
-        QCOMPARE(blockStyleForLabel(QStringLiteral("image_block"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::ImagePlaceholder);
-        QCOMPARE(blockStyleForLabel(QStringLiteral("code"), QStringLiteral("lfm25-vl-3b")).style, BlockStyle::PlainText);
-        // …and Unlimited-OCR must not inherit them.
-        QCOMPARE(blockStyleForLabel(QStringLiteral("image_block"), QStringLiteral("unlimited-ocr")).style, BlockStyle::PlainText);
+        request.modelId = QStringLiteral("glm-ocr");
+        const QByteArray body = ExposedOcrModel(QStringLiteral("glm-ocr")).build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonDocument doc = QJsonDocument::fromJson(body);
+        const QJsonArray content = doc.object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(content.size(), 2);
+        QCOMPARE(content.first().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(content.last().toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
+        QCOMPARE(doc.object().value(QStringLiteral("messages")).toArray().size(), 1);
+        QCOMPARE(doc.object().value(QStringLiteral("messages")).toArray().first().toObject().value(QStringLiteral("role")).toString(), QStringLiteral("user"));
     }
 
     void recognizeSendsDecodableJpegDataUrl()
@@ -423,7 +270,7 @@ private slots:
         OcrRequest request;
         request.image = image;
         request.prompt = QStringLiteral("document parsing.");
-        request.modelId = QStringLiteral("unlimited-ocr");
+        request.modelId = OcrModel::defaultId();
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
@@ -473,7 +320,7 @@ private slots:
         OcrRequest request;
         request.image = image;
         request.prompt = QStringLiteral("document parsing.");
-        request.modelId = QStringLiteral("unlimited-ocr");
+        request.modelId = OcrModel::defaultId();
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:%1").arg(server.port());
@@ -549,7 +396,7 @@ private slots:
     {
         OcrRequest request;
         request.prompt = QStringLiteral("document parsing.");
-        request.modelId = QStringLiteral("unlimited-ocr");
+        request.modelId = OcrModel::defaultId();
 
         ConnectionConfig config;
         config.baseUrl = QStringLiteral("http://127.0.0.1:1");
@@ -626,9 +473,9 @@ private slots:
     }
 
     // The modality order is the model's trained shape: the Gemma 4 card puts
-    // the image before the text, LFM2.5 trains text-then-image — and the
-    // profile's promptBeforeImage flag is what the block-recognition body
-    // follows, same as the OCR body does.
+    // the image before the text, and the profile's promptBeforeImage flag is
+    // what the block-recognition body follows, same as the OCR body does. A
+    // model without the flag gets the default order.
     void checkBodyOrderFollowsTheModelProfile()
     {
         ExposedBlockRecognitionModel model;
@@ -643,22 +490,23 @@ private slots:
         QCOMPARE(gemmaContent.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
         QCOMPARE(gemmaContent.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
 
-        request.modelId = QStringLiteral("lfm25-vl-3b");
-        const QByteArray lfmBody = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
-        const QJsonArray lfmContent = QJsonDocument::fromJson(lfmBody).object().value(QStringLiteral("messages")).toArray().at(1).toObject().value(QStringLiteral("content")).toArray();
-        QCOMPARE(lfmContent.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
-        QCOMPARE(lfmContent.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        request.modelId = QStringLiteral("glm-ocr");
+        const QByteArray defaultOrderBody = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
+        const QJsonArray defaultOrderContent =
+            QJsonDocument::fromJson(defaultOrderBody).object().value(QStringLiteral("messages")).toArray().at(1).toObject().value(QStringLiteral("content")).toArray();
+        QCOMPARE(defaultOrderContent.at(0).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("image_url"));
+        QCOMPARE(defaultOrderContent.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
     }
 
-    // LightOnOCR-3 block recognition runs on the empty prompt over the block
-    // crop — no system message, no per-type prefix: the envelope is one user
-    // message carrying the image only, same rule as the page request.
+    // A block-recognition role without a system message and without a type
+    // prompt — PaddleOCR-VL ships no system prompt — sends one user message
+    // carrying the image only.
     void checkBodyOmitsEmptySystemAndTypePrompts()
     {
         ExposedBlockRecognitionModel model;
         CheckRequest request;
         request.image = QImage(4, 4, QImage::Format_RGB32);
-        request.modelId = QStringLiteral("lightonocr");
+        request.modelId = QStringLiteral("paddleocr-vl");
 
         const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
         const QJsonArray messages = QJsonDocument::fromJson(body).object().value(QStringLiteral("messages")).toArray();

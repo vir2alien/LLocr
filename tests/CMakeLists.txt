@@ -18,22 +18,13 @@
 # needs the shipped data. Declared once so adding a model does not mean editing
 # every test target (docs/11-profile-findings.md, finding 6).
 set(LLOCR_MODEL_PROFILE_FILES
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/unlimited-ocr.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/lfm25-vl-3b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-4b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/qwen3.5-9b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/gemma-4-e4b.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/gemma-4-12b.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/teleocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/glm-ocr.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/clef-flash.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/d3-flash.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/d3-mini.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/lightonocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/mineru.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/paddleocr-vl.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/chandra-ocr-2.json"
-    "${CMAKE_SOURCE_DIR}/resources/profiles/models/minicpm-ocr.json"
     "${CMAKE_SOURCE_DIR}/resources/profiles/models/minicpm-jev.json"
 )
 

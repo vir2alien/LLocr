@@ -61,6 +61,7 @@
   "roles": {
     "layout": {
       "alias": "llocr-layout",
+      "default": true,
       "parser": "mineru-layout",
       "maxOutput": 4096,
       "systemPrompt": "You are a helpful assistant.",
@@ -145,6 +146,7 @@
     },
     "blockRecognition": {
       "alias": "llocr-blockrecognition",
+      "default": true,
       "parser": "raw",
       "maxOutput": 8192,
       "systemPrompt": "You are a helpful assistant.",

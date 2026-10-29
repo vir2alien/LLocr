@@ -302,9 +302,11 @@ void TestInstallTransaction::installsSuccessfully()
     const InstallOutput out = InstallTransaction::start(zipPath, asset, paths, commit);
 
     QVERIFY2(out.ok, qPrintable(out.error));
-    QCOMPARE(out.build, QStringLiteral("b11600"));
+    // The probe reports the mock's own build (b11928), which wins over the
+    // asset-derived build number.
+    QCOMPARE(out.build, QStringLiteral("b11928"));
 
-    const QString expectedTag = QStringLiteral("llama.cpp-b11600-metal-macos-arm64");
+    const QString expectedTag = QStringLiteral("llama.cpp-b11928-metal-macos-arm64");
     QCOMPARE(out.tag, expectedTag);
     QVERIFY(QFile::exists(out.serverPath));
     QVERIFY(QDir(paths.installDir(out.tag)).exists());
@@ -363,14 +365,14 @@ void TestInstallTransaction::installsFromTarGz()
     const InstallOutput out = InstallTransaction::start(archivePath, asset, paths, commit);
 
     QVERIFY2(out.ok, qPrintable(out.error));
-    // The probe reports the mock's own build (b11600), which wins over the
+    // The probe reports the mock's own build (b11928), which wins over the
     // asset-derived build number.
-    QCOMPARE(out.build, QStringLiteral("b11600"));
+    QCOMPARE(out.build, QStringLiteral("b11928"));
     QVERIFY(QFile::exists(out.serverPath));
     QVERIFY(QDir(paths.installDir(out.tag)).exists());
     // The macOS tarball carries no backend token, and the tag has to name what
     // it is: the release has no CPU variant for Apple silicon.
-    QCOMPARE(out.tag, QStringLiteral("llama.cpp-b11600-metal-macos-arm64"));
+    QCOMPARE(out.tag, QStringLiteral("llama.cpp-b11928-metal-macos-arm64"));
     QVERIFY(committed);
     QVERIFY(stagingEmpty(paths));
 }

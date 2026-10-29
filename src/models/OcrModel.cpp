@@ -75,12 +75,12 @@ std::unique_ptr<OcrModel> OcrModel::create(const QString &modelId, const QString
 
 QString OcrModel::defaultId()
 {
-    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("pageOcr"));
+    return ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
 }
 
 QStringList OcrModel::registeredIds()
 {
-    return ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("pageOcr"));
+    return ModelProfiles::idsForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
 }
 
 QString OcrModel::displayName() const

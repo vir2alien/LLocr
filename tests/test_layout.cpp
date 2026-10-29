@@ -8,7 +8,6 @@
 #include "core/ConnectionConfig.h"
 #include "models/LayoutModel.h"
 #include "parsers/MinerULayoutParser.h"
-#include "parsers/TeleOcrLayoutParser.h"
 
 using namespace llocr;
 
@@ -115,8 +114,8 @@ class TestLayout : public QObject
 
 private slots:
     // The markup request shape: the system contract, then the user message
-    // with the page image first and the layout prompt last (the order TeleOCR
-    // is documented for), plus the layout profile parameters top-level.
+    // with the page image first and the layout prompt last, plus the layout
+    // profile parameters top-level.
     void requestBodyCarriesSystemPromptAndImage()
     {
         const QByteArray body = ExposedLayoutModel::build(layoutRequest(), QByteArrayLiteral("data:image/png;base64,AAAA"));
@@ -144,8 +143,8 @@ private slots:
     void markupRoundTripThroughALoopbackServer()
     {
         RecordingServer server;
-        server.replyBody = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\"<box:34 56 789 123><label:title><up>\\n"
-                                             "<box:100 200 900 800><label:text><down>\\n\"}}]}");
+        server.replyBody = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\"<|box_start|>34 56 789 123<|box_end|><|ref_start|>title<|ref_end|><|rotate_up|>\\n"
+                                             "<|box_start|>100 200 900 800<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\\n\"}}]}");
         QVERIFY(server.start());
 
         ConnectionConfig config;
@@ -160,9 +159,9 @@ private slots:
 
         const CheckResult result = future.result();
         QCOMPARE(result.status, CheckStatus::Recognized);
-        QVERIFY(result.text.contains(QStringLiteral("<label:title>")));
+        QVERIFY(result.text.contains(QStringLiteral("<|ref_start|>")));
 
-        const OcrResult parsed = TeleOcrLayoutParser().parse(result.text);
+        const OcrResult parsed = MinerULayoutParser().parse(result.text);
         QVERIFY(parsed.success);
         QCOMPARE(parsed.pages.first().boxes.size(), 2);
         QVERIFY(parsed.pages.first().boxes.at(0).positioned);
@@ -254,39 +253,6 @@ private slots:
             diluted += QStringLiteral("<|box_start|>113 %1 885 %2<|box_end|><|ref_start|>text<|ref_end|><|rotate_up|>\n").arg(532 + i * 40).arg(560 + i * 40);
         const OcrResult dilutedParse = MinerULayoutParser().parse(diluted);
         QCOMPARE(dilutedParse.pages.first().orientationVote, 0);
-    }
-
-    // TeleOCR carries the same word in the third tag of its line.
-    void theTeleocrReplyCarriesTheBlockRotation()
-    {
-        const QByteArray reply = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\""
-                                                   "<box:34 56 789 123><label:title><up>\n"
-                                                   "<box:34 133 789 200><label:text><left>\n"
-                                                   "<box:34 210 789 277><label:text><right>\"}}]}");
-
-        const OcrResult parsed = TeleOcrLayoutParser().parse(QString::fromUtf8(reply));
-        QVERIFY(parsed.success);
-        QCOMPARE(parsed.pages.first().boxes.size(), 3);
-        QCOMPARE(parsed.pages.first().boxes.at(0).orientation, 0);
-        QCOMPARE(parsed.pages.first().boxes.at(1).orientation, 270);
-        QCOMPARE(parsed.pages.first().boxes.at(2).orientation, 90);
-        // Two of three voted left, and the up block is a third of the page:
-        // the direction clears the non-up bar, the share misses half.
-        QCOMPARE(parsed.pages.first().orientationVote, 0);
-    }
-
-    void theTeleocrVoteFollowsTheBlocks()
-    {
-        const QByteArray reply = QByteArrayLiteral("{\"choices\":[{\"message\":{\"content\":\""
-                                                   "<box:34 133 789 200><label:text><left>\n"
-                                                   "<box:34 210 789 277><label:text><left>\n"
-                                                   "<box:34 287 789 354><label:text><left>\n"
-                                                   "<box:34 56 789 123><label:title><up>\"}}]}");
-
-        const OcrResult parsed = TeleOcrLayoutParser().parse(QString::fromUtf8(reply));
-        QVERIFY(parsed.success);
-        QCOMPARE(parsed.pages.first().orientationVote, 90);
-        QCOMPARE(parsed.pages.first().orientationVoteShare, 75);
     }
 };
 

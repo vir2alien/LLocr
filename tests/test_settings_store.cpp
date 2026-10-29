@@ -106,7 +106,7 @@ private slots:
         QCOMPARE(store.apiKey(), QStringLiteral(""));
         QCOMPARE(store.connectionTimeoutMs(), 5000);
         QCOMPARE(store.responseTimeoutMs(), 300000);
-        QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
+        QCOMPARE(store.modelName(), QStringLiteral("MinerU2.5-Pro-2605-1.2B"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.decisionModelName(), QString());
         // "auto" — the OCR model adapter declares its parser (ADR 88).
@@ -149,7 +149,7 @@ private slots:
         QCOMPARE(store.apiKey(), QStringLiteral(""));
         QCOMPARE(store.connectionTimeoutMs(), 5000);
         QCOMPARE(store.responseTimeoutMs(), 300000);
-        QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
+        QCOMPARE(store.modelName(), QStringLiteral("MinerU2.5-Pro-2605-1.2B"));
         QCOMPARE(store.checkModelName(), QString());
         // "auto" — the OCR model adapter declares its parser (ADR 88).
         QCOMPARE(store.parserId(), QStringLiteral("auto"));
@@ -280,7 +280,7 @@ private slots:
         QCOMPARE(store.apiKey(), QString());
         QCOMPARE(store.connectionTimeoutMs(), 5000);
         QCOMPARE(store.responseTimeoutMs(), 300000);
-        QCOMPARE(store.modelName(), QStringLiteral("Unlimited-OCR"));
+        QCOMPARE(store.modelName(), QStringLiteral("MinerU2.5-Pro-2605-1.2B"));
         QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.serverPath(), QString());
         // Outside the group — untouched.
@@ -538,10 +538,10 @@ private slots:
         QVERIFY(!store.contains(QStringLiteral("tasks/layout/requestProfileId")));
 
         SettingsStore chosen;
-        chosen.setCheckRequestProfileId(QStringLiteral("teleocr"));
-        chosen.selectModelProfile(QStringLiteral("konradjr007/NaviDC-OCR-GGUF"), QStringLiteral("layout"));
-        QCOMPARE(chosen.layoutRequestProfileId(), QStringLiteral("teleocr"));
-        QCOMPARE(chosen.checkRequestProfileId(), QStringLiteral("teleocr"));
+        chosen.setCheckRequestProfileId(QStringLiteral("glm-ocr"));
+        chosen.selectModelProfile(QStringLiteral("mradermacher/MinerU2.5-Pro-2605-1.2B-GGUF"), QStringLiteral("layout"));
+        QCOMPARE(chosen.layoutRequestProfileId(), QStringLiteral("mineru"));
+        QCOMPARE(chosen.checkRequestProfileId(), QStringLiteral("glm-ocr"));
     }
 
     // The threshold arrives from a 0–100 spin box and an INI that can be
@@ -567,9 +567,9 @@ private slots:
     }
 
     // The parser family split into one parser per model, so the id that named
-    // the shared parser is retired. A stored one is resolved to the parser the
-    // selected model declares — after the model id itself is normalized, so a
-    // model the catalog does not know follows the model it became.
+    // the shared parser is retired. No shipped model answers the page task any
+    // more, so the stored one resolves to "auto" — the model adapter declares
+    // the parser per task at use (ADR 88). An unknown model id stays stored.
     void aStoredRetiredParserIdIsResolved()
     {
         {
@@ -578,7 +578,8 @@ private slots:
             pre.setValue(QStringLiteral("model/recipeId"), QStringLiteral("lfm25-vl-3b"));
 
             const SettingsStore store;
-            QCOMPARE(store.parserId(), QStringLiteral("lfm2.5-vl"));
+            QCOMPARE(store.parserId(), QStringLiteral("auto"));
+            QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
         }
         {
             QSettings pre;
@@ -587,7 +588,7 @@ private slots:
             pre.remove(QStringLiteral("tasks/pageOcr/requestProfileId"));
 
             const SettingsStore store;
-            QCOMPARE(store.parserId(), QStringLiteral("unlimited-ocr"));
+            QCOMPARE(store.parserId(), QStringLiteral("auto"));
         }
         {
             // A stored parser id nobody knows is left alone: only the retired
@@ -663,17 +664,18 @@ private slots:
 
         const SettingsStore store;
         const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
-        const QString ocrModel = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("pageOcr"));
         QVERIFY(!checkDefault.isEmpty());
-        QVERIFY(!ocrModel.isEmpty());
         QCOMPARE(store.checkRequestProfileId(), checkDefault);
-        QCOMPARE(store.modelRecipeId(), ocrModel);
+        // The page task has no model since the release cleanup, so there is
+        // nothing to resolve the stale id to: it stays stored, and the role
+        // itself goes away with the task cleanup.
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("ocr-verifier"));
         // The legacy key is gone and the resolved id is written under the task
         // namespace — not just answered differently on every read.
         QVERIFY(!pre.contains(QStringLiteral("check/requestProfileId")));
         QVERIFY(!pre.contains(QStringLiteral("model/recipeId")));
         QCOMPARE(pre.value(QStringLiteral("tasks/blockRecognition/requestProfileId")).toString(), checkDefault);
-        QCOMPARE(pre.value(QStringLiteral("tasks/pageOcr/requestProfileId")).toString(), ocrModel);
+        QCOMPARE(pre.value(QStringLiteral("tasks/pageOcr/requestProfileId")).toString(), QStringLiteral("ocr-verifier"));
 
         // A real choice survives: the check task does not include every model
         // the pageOcr task has, so the two resolve to different ids and both are kept.
@@ -715,11 +717,14 @@ private slots:
         QCOMPARE(store.launchModelPath(), QStringLiteral("/models/page.gguf"));
         QCOMPARE(store.launchMmprojPath(), QStringLiteral("/models/page.mmproj"));
         QCOMPARE(store.launchDraftPath(), QStringLiteral("/models/page-draft.gguf"));
+        // The page task has no model since the release cleanup, so the stale
+        // id has no default to resolve to and stays.
         QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
         QCOMPARE(store.checkLaunchModelPath(), QStringLiteral("/models/block.gguf"));
         QCOMPARE(store.checkModelName(), QStringLiteral("block-name"));
         QCOMPARE(store.decisionLaunchModelPath(), QStringLiteral("/models/decision.gguf"));
-        QCOMPARE(store.layoutRequestProfileId(), QStringLiteral("teleocr"));
+        // A stale id normalizes to the role's shipped default.
+        QCOMPARE(store.layoutRequestProfileId(), QStringLiteral("mineru"));
         // The generic view reaches every task through the same namespace,
         // including the two tasks without a legacy key group.
         QCOMPARE(store.launchModelPathForRole(QStringLiteral("pageOcr")), QStringLiteral("/models/page.gguf"));
@@ -738,35 +743,36 @@ private slots:
     void activatingAModelSelectsItsFamilyProfile()
     {
         SettingsStore store;
-        store.setCheckRequestProfileId(QStringLiteral("teleocr"));
+        store.setCheckRequestProfileId(QStringLiteral("mineru"));
         store.setFixRequestProfileId(QStringLiteral("gemma-4-e4b"));
-        store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        store.setModelRecipeId(QStringLiteral("some-guf"));
 
-        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("pageOcr"));
-        QCOMPARE(store.modelRecipeId(), QStringLiteral("lfm25-vl-3b"));
+        // No shipped family answers the page task since the release cleanup,
+        // so the page selection stays where it was.
+        store.selectModelProfile(QStringLiteral("ggml-org/GLM-OCR-GGUF"), QStringLiteral("pageOcr"));
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("some-guf"));
 
-        // The same family also answers the block recognition task — LFM2.5-VL
-        // is a general-purpose VL model, so activation for it follows its own
-        // profile just the same.
-        store.selectModelProfile(QStringLiteral("LiquidAI/LFM2.5-VL-3B-GGUF"), QStringLiteral("blockRecognition"));
-        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
+        // GLM-OCR answers the block recognition task too — it ships both
+        // transcriptions — so activation for it follows its own profile.
+        store.selectModelProfile(QStringLiteral("ggml-org/GLM-OCR-GGUF"), QStringLiteral("blockRecognition"));
+        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("glm-ocr"));
 
         store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("fix"));
         QCOMPARE(store.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
         // A family that does not answer the task leaves the selection alone:
-        // the OCR-only family is no fix model, the fix-only families are no
+        // the layout family is no fix model, the fix-only families are no
         // block models.
-        store.selectModelProfile(QStringLiteral("sahilchachra/Unlimited-OCR-GGUF"), QStringLiteral("fix"));
+        store.selectModelProfile(QStringLiteral("mradermacher/MinerU2.5-Pro-2605-1.2B-GGUF"), QStringLiteral("fix"));
         QCOMPARE(store.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
         store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("blockRecognition"));
-        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("lfm25-vl-3b"));
+        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("glm-ocr"));
 
         // A hand-picked GGUF joins to nothing.
-        store.setModelRecipeId(QStringLiteral("unlimited-ocr"));
+        store.setModelRecipeId(QStringLiteral("some-guf"));
         store.selectModelProfile(QString(), QStringLiteral("pageOcr"));
         store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("pageOcr"));
-        QCOMPARE(store.modelRecipeId(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("some-guf"));
     }
 
     // qmllint cannot resolve Settings (it is registered by hand in main.cpp, not

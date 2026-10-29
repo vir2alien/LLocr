@@ -246,7 +246,7 @@ QStringList AppController::parserLabels() const
 
 QString AppController::effectiveParserId() const
 {
-    return effectiveParserIdFor(m_settings.modelRecipeId(), QStringLiteral("pageOcr"));
+    return effectiveParserIdFor(m_settings.modelRecipeId(), QStringLiteral("blockRecognition"));
 }
 
 QString AppController::effectiveParserIdFor(const QString &profileId, const QString &role) const
