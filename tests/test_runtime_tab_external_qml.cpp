@@ -44,7 +44,7 @@ class TestRuntimeTabExternalQml : public QObject
 private slots:
     void initTestCase();
     void theTabLoadsWithoutWarnings();
-    void theSixTasksHaveARow();
+    void theFourTasksHaveARow();
     void theCompactModeHidesTheTasks();
     void theTaskEndpointAndAliasAreSaved();
     void theSavedValuesComeBackIntoTheFields();
@@ -170,7 +170,7 @@ void TestRuntimeTabExternalQml::theTabLoadsWithoutWarnings()
     QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 }
 
-void TestRuntimeTabExternalQml::theSixTasksHaveARow()
+void TestRuntimeTabExternalQml::theFourTasksHaveARow()
 {
     const std::unique_ptr<QObject> tab = loadTab();
     QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
@@ -179,8 +179,8 @@ void TestRuntimeTabExternalQml::theSixTasksHaveARow()
     // The rows are the tasks the C++ lists (ADR 215): the tab keeps no copy
     // of the list.
     const QVariantList ids = evaluate(tab.get(), QStringLiteral("taskIds")).toList();
-    QCOMPARE(ids.size(), 6);
-    QCOMPARE(evaluate(tab.get(), QStringLiteral("taskRows.count")).toInt(), 6);
+    QCOMPARE(ids.size(), 4);
+    QCOMPARE(evaluate(tab.get(), QStringLiteral("taskRows.count")).toInt(), 4);
 
     for (int i = 0; i < ids.size(); ++i) {
         QObject *row = rowAt(tab.get(), i);
@@ -209,15 +209,15 @@ void TestRuntimeTabExternalQml::theTaskEndpointAndAliasAreSaved()
 
     QObject *row = rowAt(tab.get(), 0);
     QVERIFY(row);
-    QCOMPARE(row->property("task").toString(), QStringLiteral("pageOcr"));
+    QCOMPARE(row->property("task").toString(), QStringLiteral("blockRecognition"));
     row->setProperty("endpointText", QStringLiteral("http://own:9000"));
     row->setProperty("aliasText", QStringLiteral("own-model"));
 
     evaluate(tab.get(), QStringLiteral("saveValues()"));
     QCoreApplication::processEvents();
 
-    QCOMPARE(m_settings->baseUrlForRole(QStringLiteral("pageOcr")), QStringLiteral("http://own:9000"));
-    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("pageOcr")), QStringLiteral("own-model"));
+    QCOMPARE(m_settings->baseUrlForRole(QStringLiteral("blockRecognition")), QStringLiteral("http://own:9000"));
+    QCOMPARE(m_settings->modelNameForRole(QStringLiteral("blockRecognition")), QStringLiteral("own-model"));
 }
 
 void TestRuntimeTabExternalQml::theSavedValuesComeBackIntoTheFields()
@@ -232,7 +232,7 @@ void TestRuntimeTabExternalQml::theSavedValuesComeBackIntoTheFields()
     evaluate(tab.get(), QStringLiteral("loadValues()"));
     QCoreApplication::processEvents();
 
-    QObject *row = rowAt(tab.get(), 3);
+    QObject *row = rowAt(tab.get(), 1);
     QVERIFY(row);
     QCOMPARE(row->property("task").toString(), QStringLiteral("decision"));
     QCOMPARE(row->property("endpointText").toString(), QStringLiteral("http://decision:9000"));

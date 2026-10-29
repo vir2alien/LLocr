@@ -35,8 +35,7 @@ public:
 
     bool modelProfileMissing() const;
     QString modelRuntimeNote() const;
-    // task is a task id: "pageOcr", "rawPageOcr", "blockRecognition",
-    // "decision", "layout" or "fix".
+    // task is a task id: "blockRecognition", "decision", "layout" or "fix".
     Q_INVOKABLE bool modelProfileMissingForRole(const QString &task) const;
     Q_INVOKABLE QString modelRuntimeNoteForRole(const QString &task) const;
     void setModelProfiles(const QList<ModelProfiles::Profile> &profiles);

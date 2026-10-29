@@ -196,7 +196,7 @@ void TestLaunchConfig::fromSettingsCarriesTheModelLaunchLayer()
     const QStringList args = layout.toArguments(modernCaps());
     QVERIFY2(args.contains(QStringLiteral("--special")), qPrintable(args.join(QLatin1Char(' '))));
 
-    settings.setCheckRequestProfileId(QStringLiteral("mineru"));
+    settings.setModelRecipeId(QStringLiteral("mineru"));
     const ServerLaunchConfig blocks = ServerLaunchConfig::fromSettings(settings, launchProfiles, ConnectionRole::BlockRecognition);
     const QStringList blockArgs = blocks.toArguments(modernCaps());
     QVERIFY2(blockArgs.contains(QStringLiteral("--special")), qPrintable(blockArgs.join(QLatin1Char(' '))));

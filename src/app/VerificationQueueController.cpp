@@ -114,7 +114,7 @@ void VerificationQueueController::checkPageEnabledBlocks(int pageIndex)
 
 void VerificationQueueController::checkAllEnabledBlocks()
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
 
     QList<VerifyTask> tasks;
@@ -135,7 +135,7 @@ void VerificationQueueController::checkAllEnabledBlocks()
 
 void VerificationQueueController::checkPagesEnabledBlocks(const QList<int> &pages)
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
 
     QList<VerifyTask> tasks;
@@ -281,7 +281,7 @@ bool VerificationQueueController::pageVerificationSupported(int pageIndex) const
 {
     if (!m_deps.document.isValidIndex(pageIndex) || !m_deps.document.page(pageIndex).recognized || m_deps.document.page(pageIndex).result.pages.isEmpty())
         return false;
-    if (m_deps.recognitionBusy())
+    if (m_deps.layoutBusy())
         return false;
     const OcrPage &page = m_deps.document.page(pageIndex).result.pages.first();
     for (const BoundingBox &box : std::as_const(page.boxes)) {
@@ -293,7 +293,7 @@ bool VerificationQueueController::pageVerificationSupported(int pageIndex) const
 
 bool VerificationQueueController::allPageVerificationSupported() const
 {
-    if (m_deps.recognitionBusy())
+    if (m_deps.layoutBusy())
         return false;
     for (int p = 0; p < m_deps.document.pageCount(); ++p) {
         const DocumentPage &docPage = m_deps.document.page(p);
@@ -317,7 +317,7 @@ bool VerificationQueueController::pageRecheckSupported(int pageIndex) const
 
 bool VerificationQueueController::pageBlocksRecognitionSupported(int pageIndex) const
 {
-    if (m_deps.recognitionBusy())
+    if (m_deps.layoutBusy())
         return false;
     QList<VerifyTask> tasks;
     collectUnrecognizedBoxes(pageIndex, tasks);
@@ -337,7 +337,7 @@ bool VerificationQueueController::allPageRecheckSupported() const
 
 void VerificationQueueController::startVerifyQueue(const QList<VerifyTask> &tasks)
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
     if (tasks.isEmpty())
         return;
@@ -387,7 +387,7 @@ void VerificationQueueController::recheckPageBlocks(int pageIndex)
 
 void VerificationQueueController::recheckPagesBlocks(const QList<int> &pages)
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
     QList<VerifyTask> tasks;
     for (const int p : pages)
@@ -397,7 +397,7 @@ void VerificationQueueController::recheckPagesBlocks(const QList<int> &pages)
 
 void VerificationQueueController::recheckAllProblemBlocks()
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
     QList<VerifyTask> tasks;
     for (int p = 0; p < m_deps.document.pageCount(); ++p)
@@ -415,7 +415,7 @@ void VerificationQueueController::fixBlock(int pageIndex, int boxIndex)
 
 void VerificationQueueController::fixAllProblemBlocks()
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
     QList<VerifyTask> tasks;
     for (int p = 0; p < m_deps.document.pageCount(); ++p)
@@ -425,7 +425,7 @@ void VerificationQueueController::fixAllProblemBlocks()
 
 void VerificationQueueController::fixPagesProblemBlocks(const QList<int> &pages)
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
     QList<VerifyTask> tasks;
     for (const int p : pages)
@@ -435,7 +435,7 @@ void VerificationQueueController::fixPagesProblemBlocks(const QList<int> &pages)
 
 void VerificationQueueController::startRecheckQueue(const QList<VerifyTask> &tasks)
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
     if (tasks.isEmpty())
         return;
@@ -456,7 +456,7 @@ void VerificationQueueController::startRecheckQueue(const QList<VerifyTask> &tas
 
 void VerificationQueueController::startFixQueue(const QList<VerifyTask> &tasks)
 {
-    if (m_deps.recognitionBusy() || checkBusy() || m_verifyQueueActive)
+    if (m_deps.layoutBusy() || checkBusy() || m_verifyQueueActive)
         return;
     if (tasks.isEmpty())
         return;

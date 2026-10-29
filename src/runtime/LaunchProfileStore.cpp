@@ -70,10 +70,8 @@ LaunchProfileStore::LaunchProfileStore(SettingsStore &settings, const QString &b
 
     connect(&m_settings, &SettingsStore::runtimeBackendChanged, this, &LaunchProfileStore::ensureProfileResolved);
     connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { emit profileChanged(); });
-    connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     connect(&m_settings, &SettingsStore::decisionRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, [this] { emit profileChanged(); });
-    connect(&m_settings, &SettingsStore::rawPageOcrRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     connect(&m_settings, &SettingsStore::fixRequestProfileIdChanged, this, [this] { emit profileChanged(); });
     ensureProfileResolved();
     reloadDraft();
@@ -177,12 +175,12 @@ bool LaunchProfileStore::modelNotInCatalog(const QString &modelId) const
 
 bool LaunchProfileStore::modelProfileMissing() const
 {
-    return modelProfileMissingForRole(QStringLiteral("pageOcr"));
+    return modelNotInCatalog(m_settings.modelRecipeId());
 }
 
 QString LaunchProfileStore::modelRuntimeNote() const
 {
-    return modelRuntimeNoteForRole(QStringLiteral("pageOcr"));
+    return ModelProfiles::runtimeNoteFor(m_modelProfiles, m_settings.modelRecipeId());
 }
 
 bool LaunchProfileStore::modelProfileMissingForRole(const QString &task) const

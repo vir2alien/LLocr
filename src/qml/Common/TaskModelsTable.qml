@@ -448,7 +448,7 @@ Item {
     Popup {
         id: taskSettingsPopup
 
-        property string task: "pageOcr"
+        property string task: "blockRecognition"
 
         // The overlay, not the table: in the wizard the rows live inside a
         // dialog, and a centered popup fits either host.

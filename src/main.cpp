@@ -94,14 +94,6 @@ int main(int argc, char *argv[])
 
     const QList<llocr::ModelProfiles::Profile> modelProfiles = llocr::ModelProfiles::instance();
 
-    llocr::RequestProfileStore requestProfilesPageOcr(settingsStore, llocr::ConnectionRole::PageOcr);
-    requestProfilesPageOcr.setModelProfiles(modelProfiles);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesPageOcr", &requestProfilesPageOcr);
-
-    llocr::RequestProfileStore requestProfilesRawPageOcr(settingsStore, llocr::ConnectionRole::RawPageOcr);
-    requestProfilesRawPageOcr.setModelProfiles(modelProfiles);
-    qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesRawPageOcr", &requestProfilesRawPageOcr);
-
     llocr::RequestProfileStore requestProfilesBlock(settingsStore, llocr::ConnectionRole::BlockRecognition);
     requestProfilesBlock.setModelProfiles(modelProfiles);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "RequestProfilesBlock", &requestProfilesBlock);
@@ -136,7 +128,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("LLocr", 1, 0, "Runtime", &runtimeController);
     runtimeController.setLogTarget(&runtimeLog);
 
-    llocr::SelfTestController selfTestController(settingsStore, runtimeController, requestProfilesPageOcr);
+    llocr::SelfTestController selfTestController(settingsStore, runtimeController, requestProfilesBlock);
     qmlRegisterSingletonInstance("LLocr", 1, 0, "SelfTest", &selfTestController);
 
     llocr::RuntimeInstaller runtimeInstaller(settingsStore, installedState);

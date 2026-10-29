@@ -46,11 +46,9 @@ class ModelInstaller : public QObject
     // and every installed entry, nothing role-filtered, nothing active.
     Q_PROPERTY(QObject *allModels READ allModels CONSTANT)
 
-    Q_PROPERTY(QObject *quantModels READ quantModels CONSTANT)
     Q_PROPERTY(QObject *checkQuantModels READ checkQuantModels CONSTANT)
     Q_PROPERTY(QObject *decisionQuantModels READ decisionQuantModels CONSTANT)
     Q_PROPERTY(QObject *layoutQuantModels READ layoutQuantModels CONSTANT)
-    Q_PROPERTY(QObject *rawPageOcrQuantModels READ rawPageOcrQuantModels CONSTANT)
     Q_PROPERTY(QObject *fixQuantModels READ fixQuantModels CONSTANT)
 
 public:
@@ -76,22 +74,19 @@ public:
     QString statusMessage() const { return m_statusMessage; }
     int installedCount() const { return m_installed.size(); }
     QObject *allModels() const;
-    QObject *quantModels() const;
     QObject *checkQuantModels() const;
     QObject *decisionQuantModels() const;
     QObject *layoutQuantModels() const;
-    QObject *rawPageOcrQuantModels() const;
     QObject *fixQuantModels() const;
     QObject *installedFiles() const;
 
-    // task is a task id: "pageOcr", "rawPageOcr", "blockRecognition",
-    // "decision", "layout" or "fix".
+    // task is a task id: "blockRecognition", "decision", "layout" or "fix".
     const QList<ModelPreset> &presetsForRole(const QString &task) const;
     const QList<ModelEntry> &installedEntries() const { return m_installed; }
     RuntimeController &runtime() { return m_runtime; }
 
     Q_INVOKABLE void reloadPresets();
-    Q_INVOKABLE QString setActiveModel(int index, const QString &task = QStringLiteral("pageOcr"));
+    Q_INVOKABLE QString setActiveModel(int index, const QString &task = QStringLiteral("blockRecognition"));
     Q_INVOKABLE QString removeModel(int index);
     Q_INVOKABLE QString openModelFolder(int index);
 
@@ -99,13 +94,13 @@ public:
     Q_INVOKABLE void rescanRegistry();
 
     Q_INVOKABLE void selectQuant(const QString &key, const QString &quantId);
-    // task is a task id ("pageOcr", …) — the downloaded model is assigned to
-    // it on completion — or empty for a plain download with no assignment
-    // (the management window; assignment lives in the task window).
+    // task is a task id ("blockRecognition", …) — the downloaded model is
+    // assigned to it on completion — or empty for a plain download with no
+    // assignment (the management window; assignment lives in the task window).
     Q_INVOKABLE void downloadQuant(const QString &key, const QString &quantId, const QString &task = QString());
-    Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
-    Q_INVOKABLE QString removeModelRow(const QString &key, const QString &task = QStringLiteral("pageOcr"));
-    Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, const QString &task = QStringLiteral("pageOcr"));
+    Q_INVOKABLE QString removeQuant(const QString &key, const QString &quantId, const QString &task = QStringLiteral("blockRecognition"));
+    Q_INVOKABLE QString removeModelRow(const QString &key, const QString &task = QStringLiteral("blockRecognition"));
+    Q_INVOKABLE QString openQuantFolder(const QString &key, const QString &quantId, const QString &task = QStringLiteral("blockRecognition"));
 
     // Delete one installed file row of the Models window's disk block. Empty
     // return = removed; otherwise the guard or error message.
@@ -178,20 +173,16 @@ private:
     QString m_statusMessage;
 
     QList<ModelPreset> m_presetsAll;
-    QList<ModelPreset> m_presets;
     QList<ModelPreset> m_presetsValidate;
     QList<ModelPreset> m_presetsDecision;
     QList<ModelPreset> m_presetsLayout;
-    QList<ModelPreset> m_presetsRawPageOcr;
     QList<ModelPreset> m_presetsFix;
     QList<ModelEntry> m_installed;
     InstalledFilesModel *m_installedFiles = nullptr;
     ModelQuantModel *m_allModels = nullptr;
-    ModelQuantModel *m_pageOcrModels = nullptr;
     ModelQuantModel *m_checkModels = nullptr;
     ModelQuantModel *m_decisionModels = nullptr;
     ModelQuantModel *m_layoutModels = nullptr;
-    ModelQuantModel *m_rawPageOcrModels = nullptr;
     ModelQuantModel *m_fixModels = nullptr;
     QList<TaskInstall> m_taskQueue;
     std::optional<TaskInstall> m_runningInstall;

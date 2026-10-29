@@ -198,7 +198,7 @@ private slots:
 
         // The card's message layout is image-then-text (the Gemma/Qwen family
         // order), so no promptBeforeImage override.
-        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("glm-ocr"), QStringLiteral("rawPageOcr"));
+        const ModelProfiles::Role *ocrRole = ModelProfiles::roleFor(QStringLiteral("glm-ocr"), QStringLiteral("blockRecognition"));
         QVERIFY(ocrRole);
         QCOMPARE(ocrRole->promptBeforeImage, false);
 

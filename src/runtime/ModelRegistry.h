@@ -36,7 +36,7 @@ struct ModelEntry {
     bool ctxSizeSet = false;
     QString addedAt;  // ISO timestamp
     QString repoId;
-    QStringList roles;  // task ids ("pageOcr", "blockRecognition", …); empty = legacy entry (shown in both)
+    QStringList roles;  // task ids ("blockRecognition", …); empty = legacy entry (shown in both)
 
     bool operator==(const ModelEntry &other) const
     {

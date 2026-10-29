@@ -4,10 +4,10 @@ import QtQml
 
 import LLocr
 
-// Task-keyed dispatch for the six model tasks ("pageOcr", "rawPageOcr",
-// "blockRecognition", "decision", "layout", "fix"): every task-conditional
-// binding goes through here, so a new task is one row of the table and not a
-// chain of conditions (ADR 217).
+// Task-keyed dispatch for the four model tasks ("blockRecognition",
+// "decision", "layout", "fix"): every task-conditional binding goes through
+// here, so a new task is one row of the table and not a chain of conditions
+// (ADR 217).
 //
 // The texts are values — they are translated when the table is built. The
 // columns that read a singleton are functions: the singleton is resolved when
@@ -15,29 +15,13 @@ import LLocr
 // calls them keeps tracking the settings they read.
 QtObject {
     readonly property var tasks: ({
-        "pageOcr": {
-            title: qsTr("Recognition with markup"),
-            hint: qsTr("Sampling parameters sent with every recognition request. The set comes from the model profile — edit the values, not the list."),
-            quantModels: function() { return ModelInstaller.quantModels; },
-            profiles: function() { return RequestProfilesPageOcr; },
-            requestProfileId: function() { return Settings.modelRecipeId; },
-            setRequestProfileId: function(id) { Settings.modelRecipeId = id; }
-        },
-        "rawPageOcr": {
-            title: qsTr("Recognition without markup"),
-            hint: qsTr("Sampling parameters sent with every plain-text page recognition request. The set comes from the model profile — edit the values, not the list."),
-            quantModels: function() { return ModelInstaller.rawPageOcrQuantModels; },
-            profiles: function() { return RequestProfilesRawPageOcr; },
-            requestProfileId: function() { return Settings.rawPageOcrRequestProfileId; },
-            setRequestProfileId: function(id) { Settings.rawPageOcrRequestProfileId = id; }
-        },
         "blockRecognition": {
             title: qsTr("Block recognition"),
             hint: qsTr("Sampling parameters sent with every block OCR request. The set comes from the model profile — edit the values, not the list."),
             quantModels: function() { return ModelInstaller.checkQuantModels; },
             profiles: function() { return RequestProfilesBlock; },
-            requestProfileId: function() { return Settings.checkRequestProfileId; },
-            setRequestProfileId: function(id) { Settings.checkRequestProfileId = id; }
+            requestProfileId: function() { return Settings.modelRecipeId; },
+            setRequestProfileId: function(id) { Settings.modelRecipeId = id; }
         },
         "decision": {
             title: qsTr("Verification"),
@@ -65,10 +49,10 @@ QtObject {
         }
     })
 
-    // The row of a task. An unknown id falls back to the page task, the way
-    // every ForRole dispatcher treats an unrecognized role.
+    // The row of a task. An unknown id falls back to the block recognition
+    // task, the way every ForRole dispatcher treats an unrecognized role.
     function entry(task) {
-        return tasks[task] ? tasks[task] : tasks["pageOcr"]
+        return tasks[task] ? tasks[task] : tasks["blockRecognition"]
     }
 
     function title(task) {

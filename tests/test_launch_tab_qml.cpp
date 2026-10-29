@@ -34,7 +34,7 @@ class FakeRuntime : public QObject
     Q_OBJECT
 
 public:
-    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("pageOcr"))
+    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("blockRecognition"))
     {
         Q_UNUSED(modelPath)
         Q_UNUSED(role)

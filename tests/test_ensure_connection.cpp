@@ -208,26 +208,26 @@ private slots:
         settings.setModelNameForRole(QStringLiteral("decision"), QStringLiteral("decision-model"));
 
         RuntimeController runtime(settings, launchProfiles);
-        ResolvedConnection page, decision;
-        bool pageCalled = false, decisionCalled = false;
-        runtime.ensureConnectionReady(ConnectionRole::PageOcr, [&](const ResolvedConnection &c) {
-            page = c;
-            pageCalled = true;
+        ResolvedConnection block, decision;
+        bool blockCalled = false, decisionCalled = false;
+        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
+            block = c;
+            blockCalled = true;
         });
         runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) {
             decision = c;
             decisionCalled = true;
         });
-        QVERIFY(waitFor([&] { return pageCalled && decisionCalled; }));
+        QVERIFY(waitFor([&] { return blockCalled && decisionCalled; }));
 
-        QCOMPARE(page.baseUrl, QStringLiteral("http://shared:8080"));
-        QCOMPARE(page.apiKey, QStringLiteral("shared-key"));
+        QCOMPARE(block.baseUrl, QStringLiteral("http://shared:8080"));
+        QCOMPARE(block.apiKey, QStringLiteral("shared-key"));
         QCOMPARE(decision.baseUrl, QStringLiteral("http://decision:9000"));
         QCOMPARE(decision.apiKey, QStringLiteral("decision-key"));
         QCOMPARE(decision.modelId, QStringLiteral("decision-model"));
     }
 
-    void externalCheckRoleUsesCheckModelName()
+    void externalCheckRoleUsesTheSharedModelName()
     {
         QTemporaryDir dir;
         SettingsStore settings;
@@ -235,16 +235,11 @@ private slots:
         settings.setConnectionMode(QStringLiteral("external"));
         settings.setBaseUrl(QStringLiteral("http://custom.example:9000"));
         settings.setModelName(QStringLiteral("ocr-model"));
-        settings.setCheckModelName(QStringLiteral("check-model"));
         settings.setDecisionModelName(QStringLiteral("decision-model"));
 
         RuntimeController runtime(settings, launchProfiles);
-        ResolvedConnection ocr, check, decision;
-        bool ocrCalled = false, checkCalled = false, decisionCalled = false;
-        runtime.ensureConnectionReady(ConnectionRole::PageOcr, [&](const ResolvedConnection &c) {
-            ocr = c;
-            ocrCalled = true;
-        });
+        ResolvedConnection check, decision;
+        bool checkCalled = false, decisionCalled = false;
         runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
             check = c;
             checkCalled = true;
@@ -253,20 +248,19 @@ private slots:
             decision = c;
             decisionCalled = true;
         });
-        QVERIFY(waitFor([&] { return ocrCalled && checkCalled && decisionCalled; }));
-        QCOMPARE(ocr.modelId, QStringLiteral("ocr-model"));
-        QCOMPARE(check.modelId, QStringLiteral("check-model"));
+        QVERIFY(waitFor([&] { return checkCalled && decisionCalled; }));
+        QCOMPARE(check.modelId, QStringLiteral("ocr-model"));
         QCOMPARE(decision.modelId, QStringLiteral("decision-model"));
-        QCOMPARE(decision.baseUrl, ocr.baseUrl);
-        QCOMPARE(decision.apiKey, ocr.apiKey);
-        QCOMPARE(decision.connectionTimeoutMs, ocr.connectionTimeoutMs);
-        QCOMPARE(decision.responseTimeoutMs, ocr.responseTimeoutMs);
+        QCOMPARE(decision.baseUrl, check.baseUrl);
+        QCOMPARE(decision.apiKey, check.apiKey);
+        QCOMPARE(decision.connectionTimeoutMs, check.connectionTimeoutMs);
+        QCOMPARE(decision.responseTimeoutMs, check.responseTimeoutMs);
 
-        // An empty check/modelName is sent as-is: single-model servers (e.g.
+        // An empty model name is sent as-is: single-model servers (e.g.
         // llama-server) ignore the model field entirely, and a multi-model
         // OpenAI-compatible server returns its own "model not found" error,
-        // which is surfaced verbatim (§7.5). No silent fallback to the OCR name.
-        settings.setCheckModelName(QString());
+        // which is surfaced verbatim (§7.5).
+        settings.setModelName(QString());
         ResolvedConnection empty;
         bool emptyCalled = false;
         runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
@@ -289,25 +283,23 @@ private slots:
 
         RuntimeController runtime(settings, launchProfiles);
         QSignalSpy changedSpy(&runtime, &RuntimeController::taskModelsChanged);
-        QVERIFY(runtime.taskModelAvailable(QStringLiteral("pageOcr")));
-        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("rawPageOcr")));
+        QVERIFY(runtime.taskModelAvailable(QStringLiteral("blockRecognition")));
         QVERIFY(!runtime.taskModelAvailable(QStringLiteral("decision")));
 
         settings.setDecisionModelName(QStringLiteral("decision-model"));
         QVERIFY(runtime.taskModelAvailable(QStringLiteral("decision")));
-        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("rawPageOcr")));
         QVERIFY(!changedSpy.isEmpty());
 
         settings.setConnectionMode(QStringLiteral("managed"));
-        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("pageOcr")));
+        QVERIFY(!runtime.taskModelAvailable(QStringLiteral("blockRecognition")));
         QVERIFY(!runtime.taskModelAvailable(QStringLiteral("decision")));
         const QString model = dir.filePath(QStringLiteral("page-Q4_K_M.gguf"));
         QFile modelFile(model);
         QVERIFY(modelFile.open(QIODevice::WriteOnly));
         modelFile.write("gguf");
         modelFile.close();
-        settings.setLaunchModelPathForRole(QStringLiteral("pageOcr"), model);
-        QVERIFY(runtime.taskModelAvailable(QStringLiteral("pageOcr")));
+        settings.setLaunchModelPathForRole(QStringLiteral("blockRecognition"), model);
+        QVERIFY(runtime.taskModelAvailable(QStringLiteral("blockRecognition")));
         QVERIFY(!runtime.taskModelAvailable(QStringLiteral("decision")));
     }
 
@@ -330,7 +322,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
         store.setDecisionLaunchModelPath(dir.filePath(QStringLiteral("decision-Q8_0.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
@@ -378,7 +370,7 @@ private slots:
     // Model per task (ADR 74): when the live managed server carries another
     // role's model, the resolve stops it and restarts it with the requested
     // role's configuration.
-    void managedCheckRoleSwitchesServer()
+    void managedFixRoleSwitchesServer()
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
@@ -386,16 +378,16 @@ private slots:
         QVERIFY(ocrModel.open(QIODevice::WriteOnly));
         ocrModel.write("ocr");
         ocrModel.close();
-        QFile checkModel(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
-        QVERIFY(checkModel.open(QIODevice::WriteOnly));
-        checkModel.write("check");
-        checkModel.close();
+        QFile fixModel(dir.filePath(QStringLiteral("fix-Q4_K_M.gguf")));
+        QVERIFY(fixModel.open(QIODevice::WriteOnly));
+        fixModel.write("fix");
+        fixModel.close();
 
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
-        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        store.setFixLaunchModelPath(dir.filePath(QStringLiteral("fix-Q4_K_M.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -414,7 +406,7 @@ private slots:
 
         int done = 0;
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
+        runtime.ensureConnectionReady(ConnectionRole::Fix, [&](const ResolvedConnection &c) {
             resolved = c;
             ++done;
         });
@@ -439,20 +431,20 @@ private slots:
         runtime.stopServer();
     }
 
-    // One model profile serving both roles, with the launch layer the profile
+    // One model profile serving two roles, with the launch layer the profile
     // gives each role: the same one twice, or two different ones.
-    ModelProfiles::Profile twoRoleProfile(const QString &id, int ocrCtxSize, int checkCtxSize)
+    ModelProfiles::Profile twoRoleProfile(const QString &id, int blockCtxSize, int layoutCtxSize)
     {
         ModelProfiles::Profile profile;
         profile.id = id;
         profile.title = id;
-        for (const QString &roleName : {QStringLiteral("pageOcr"), QStringLiteral("blockRecognition")}) {
+        for (const QString &roleName : {QStringLiteral("blockRecognition"), QStringLiteral("layout")}) {
             ModelProfiles::Role role;
             role.alias = QStringLiteral("llocr-%1-%2").arg(id, roleName);
             LaunchParameter ctx;
             ctx.name = QStringLiteral("ctx-size");
             ctx.kind = LaunchValueKind::Number;
-            ctx.value = roleName == QLatin1String("pageOcr") ? ocrCtxSize : checkCtxSize;
+            ctx.value = roleName == QLatin1String("blockRecognition") ? blockCtxSize : layoutCtxSize;
             ctx.order = 1;
             role.launch.append(ctx);
             profile.roles.insert(roleName, role);
@@ -462,9 +454,9 @@ private slots:
 
     // The other half of the switch rule: one model for both roles does not mean
     // two loads. The same weights are already in memory and the request
-    // parameters travel in the body, so a check request on a running OCR server
+    // parameters travel in the body, so a markup request on a running OCR server
     // of the same model has to be answered by that server — not by a reload the
-    // user would watch as a multi-second stall between recognising and verifying.
+    // user would watch as a multi-second stall between recognising and marking up.
     void sameModelForBothRolesKeepsTheRunningServer()
     {
         QTemporaryDir dir;
@@ -477,10 +469,10 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
         store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
+        store.setLayoutLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
         store.setModelRecipeId(QStringLiteral("shared"));
-        store.setCheckRequestProfileId(QStringLiteral("shared"));
+        store.setLayoutRequestProfileId(QStringLiteral("shared"));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -488,7 +480,7 @@ private slots:
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
         // Same launch layer in both roles — the shape a model used for both
-        // tasks is expected to ship (teleocr).
+        // tasks is expected to ship (mineru).
         launchProfiles.setModelProfiles({twoRoleProfile(QStringLiteral("shared"), 16384, 16384)});
         RuntimeController runtime(store, launchProfiles);
 
@@ -502,7 +494,7 @@ private slots:
 
         int done = 0;
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
+        runtime.ensureConnectionReady(ConnectionRole::Layout, [&](const ResolvedConnection &c) {
             resolved = c;
             ++done;
         });
@@ -510,8 +502,8 @@ private slots:
         QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
         QVERIFY(!resolved.baseUrl.isEmpty());
         QCOMPARE(runtime.state(), RuntimeState::Ready);
-        QVERIFY2(!states.contains(int(RuntimeState::Stopped)), "the running server was stopped to serve a check request on the same model");
-        QVERIFY2(!states.contains(int(RuntimeState::Starting)), "the model was loaded again for the check role");
+        QVERIFY2(!states.contains(int(RuntimeState::Stopped)), "the running server was stopped to serve a markup request on the same model");
+        QVERIFY2(!states.contains(int(RuntimeState::Starting)), "the model was loaded again for the layout role");
 
         runtime.stopServer();
     }
@@ -532,10 +524,10 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
         store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
+        store.setLayoutLaunchModelPath(dir.filePath(QStringLiteral("shared-Q4_K_M.gguf")));
         store.setModelRecipeId(QStringLiteral("shared"));
-        store.setCheckRequestProfileId(QStringLiteral("shared"));
+        store.setLayoutRequestProfileId(QStringLiteral("shared"));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -556,14 +548,14 @@ private slots:
 
         int done = 0;
         ResolvedConnection resolved;
-        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
+        runtime.ensureConnectionReady(ConnectionRole::Layout, [&](const ResolvedConnection &c) {
             resolved = c;
             ++done;
         });
         QTRY_VERIFY_WITH_TIMEOUT(done == 1, 15000);
         QVERIFY2(resolved.error.isEmpty(), qPrintable(resolved.error));
         QCOMPARE(runtime.state(), RuntimeState::Ready);
-        QVERIFY2(states.contains(int(RuntimeState::Stopped)), "the check role kept the OCR role's launch flags instead of restarting the server");
+        QVERIFY2(states.contains(int(RuntimeState::Stopped)), "the layout role kept the OCR role's launch flags instead of restarting the server");
 
         runtime.stopServer();
     }
@@ -584,7 +576,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("a-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("a-Q4_K_M.gguf")));
         store.setModelRecipeId(QStringLiteral("a"));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
@@ -611,7 +603,7 @@ private slots:
         vision.value = 456;
         vision.order = 2;
         aRole.launch.append(vision);
-        a.roles.insert(QStringLiteral("pageOcr"), aRole);
+        a.roles.insert(QStringLiteral("blockRecognition"), aRole);
 
         ModelProfiles::Profile b;
         b.id = QStringLiteral("b");
@@ -619,12 +611,12 @@ private slots:
         ModelProfiles::Role bRole;
         bRole.alias = QStringLiteral("llocr-b");
         bRole.launch.append(ctx);
-        b.roles.insert(QStringLiteral("pageOcr"), bRole);
+        b.roles.insert(QStringLiteral("blockRecognition"), bRole);
 
         LaunchProfileStore launchProfiles(store, writeTestLaunchCatalog(dir));
         launchProfiles.setModelProfiles({a, b});
-        QVERIFY(launchProfiles.activeProfile(QStringLiteral("a"), QStringLiteral("pageOcr")).find(QStringLiteral("image-min-tokens")) != nullptr);
-        QVERIFY(launchProfiles.activeProfile(QStringLiteral("b"), QStringLiteral("pageOcr")).find(QStringLiteral("image-min-tokens")) == nullptr);
+        QVERIFY(launchProfiles.activeProfile(QStringLiteral("a"), QStringLiteral("blockRecognition")).find(QStringLiteral("image-min-tokens")) != nullptr);
+        QVERIFY(launchProfiles.activeProfile(QStringLiteral("b"), QStringLiteral("blockRecognition")).find(QStringLiteral("image-min-tokens")) == nullptr);
 
         RuntimeController runtime(store, launchProfiles);
         int finished = 0;
@@ -647,9 +639,9 @@ private slots:
     }
 
     // The banner's Restart brings the server back for the role it was serving:
-    // a restart that always rebuilt the pageOcr config moved a server started
-    // for another task onto the page model (the rework plan's stage 8 takes
-    // the old todo bug into the per-task world).
+    // a restart that always rebuilt the block-recognition config moved a
+    // server started for another task onto the OCR model (the rework plan's
+    // stage 8 takes the old todo bug into the per-task world).
     void restartBringsBackTheStartedRole()
     {
         QTemporaryDir dir;
@@ -662,8 +654,8 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        // pageOcr has no model at all: a PageOcr restart would be refused
-        // outright, which is how the test tells the roles apart.
+        // The decision task has no model at all: a Decision restart would be
+        // refused outright, which is how the test tells the roles apart.
         store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
@@ -695,16 +687,16 @@ private slots:
         QVERIFY(ocrModel.open(QIODevice::WriteOnly));
         ocrModel.write("ocr");
         ocrModel.close();
-        QFile checkModel(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
-        QVERIFY(checkModel.open(QIODevice::WriteOnly));
-        checkModel.write("check");
-        checkModel.close();
+        QFile decisionModel(dir.filePath(QStringLiteral("decision-Q8_0.gguf")));
+        QVERIFY(decisionModel.open(QIODevice::WriteOnly));
+        decisionModel.write("decision");
+        decisionModel.close();
 
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
-        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("check-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        store.setDecisionLaunchModelPath(dir.filePath(QStringLiteral("decision-Q8_0.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -720,29 +712,29 @@ private slots:
         });
 
         ResolvedConnection ocrConn;
-        ResolvedConnection checkConn;
+        ResolvedConnection decisionConn;
         runtime.ensureConnectionReady([&](const ResolvedConnection &c) {
             ocrConn = c;
             events.append(QStringLiteral("ocr"));
         });
         // Issued while the first resolve is still in flight.
-        runtime.ensureConnectionReady(ConnectionRole::BlockRecognition, [&](const ResolvedConnection &c) {
-            checkConn = c;
-            events.append(QStringLiteral("check"));
+        runtime.ensureConnectionReady(ConnectionRole::Decision, [&](const ResolvedConnection &c) {
+            decisionConn = c;
+            events.append(QStringLiteral("decision"));
         });
 
-        QTRY_VERIFY_WITH_TIMEOUT(events.contains(QStringLiteral("check")), 20000);
+        QTRY_VERIFY_WITH_TIMEOUT(events.contains(QStringLiteral("decision")), 20000);
         QCOMPARE(runtime.state(), RuntimeState::Ready);
         QVERIFY2(ocrConn.error.isEmpty(), qPrintable(ocrConn.error));
-        QVERIFY2(checkConn.error.isEmpty(), qPrintable(checkConn.error));
+        QVERIFY2(decisionConn.error.isEmpty(), qPrintable(decisionConn.error));
         QVERIFY(!ocrConn.baseUrl.isEmpty());
-        QVERIFY(!checkConn.baseUrl.isEmpty());
+        QVERIFY(!decisionConn.baseUrl.isEmpty());
 
         // The OCR request is answered first, and only then does the server switch
-        // for the check role.
+        // for the decision role.
         QCOMPARE(events.indexOf(QStringLiteral("ocr")), 0);
         QVERIFY2(events.indexOf(QStringLiteral("stopped")) > events.indexOf(QStringLiteral("ocr")), qPrintable(events.join(QLatin1Char(','))));
-        QVERIFY2(events.indexOf(QStringLiteral("check")) > events.indexOf(QStringLiteral("stopped")), qPrintable(events.join(QLatin1Char(','))));
+        QVERIFY2(events.indexOf(QStringLiteral("decision")) > events.indexOf(QStringLiteral("stopped")), qPrintable(events.join(QLatin1Char(','))));
 
         runtime.stopServer();
     }
@@ -753,15 +745,10 @@ private slots:
     void managedCheckRoleRefusedWithoutModel()
     {
         QTemporaryDir dir;
-        QFile ocrModel(dir.filePath(QStringLiteral("m.gguf")));
-        QVERIFY(ocrModel.open(QIODevice::WriteOnly));
-        ocrModel.write("x");
-        ocrModel.close();
 
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -813,7 +800,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("ocr-Q4_K_M.gguf")));
         store.setLayoutLaunchModelPath(dir.filePath(QStringLiteral("layout-Q4_K_M.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
@@ -860,7 +847,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
 
@@ -963,7 +950,7 @@ private slots:
 
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1044,7 +1031,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("model-Q4_K_M.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("model-Q4_K_M.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1085,7 +1072,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1129,7 +1116,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1166,7 +1153,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1208,7 +1195,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1255,7 +1242,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(model.fileName());
+        store.setCheckLaunchModelPath(model.fileName());
         store.setCheckLaunchModelPath(checkModel.fileName());
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
@@ -1299,7 +1286,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1337,7 +1324,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1354,7 +1341,7 @@ private slots:
         selfTestRole.request = {RequestParameter{QStringLiteral("temperature"), 1, RequestValueKind::Number, 0.0, QString(), {}},
                                 RequestParameter{QStringLiteral("max_tokens"), 2, RequestValueKind::Number, 1024.0, QString(), {}},
                                 RequestParameter{QStringLiteral("stream"), 3, RequestValueKind::Boolean, false, QString(), {}}};
-        selfTestProfile.roles.insert(QStringLiteral("pageOcr"), selfTestRole);
+        selfTestProfile.roles.insert(QStringLiteral("blockRecognition"), selfTestRole);
         RequestProfileStore profiles(store);
         profiles.setModelProfiles({selfTestProfile});
         SelfTestController selfTest(store, runtime, profiles);
@@ -1390,7 +1377,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1406,7 +1393,7 @@ private slots:
 
         // Simulate the settings reset: the model path (and with it configValid)
         // is gone while the server keeps running.
-        store.setLaunchModelPath(QString());
+        store.setCheckLaunchModelPath(QString());
         QVERIFY(!runtime.configValid());
         QCOMPARE(runtime.state(), RuntimeState::Ready);
 
@@ -1467,7 +1454,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("gone.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("gone.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);
@@ -1516,7 +1503,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(binary);
-        store.setLaunchModelPath(modelPath);
+        store.setCheckLaunchModelPath(modelPath);
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         // Neither switch: the resolve stops at «not set to start automatically»
@@ -1551,7 +1538,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(modelPath);
+        store.setCheckLaunchModelPath(modelPath);
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
 
@@ -1563,14 +1550,14 @@ private slots:
 
         // Set but missing: not a valid configuration, however non-empty the string.
         const QString absent = dir.filePath(QStringLiteral("not-here.gguf"));
-        store.setLaunchModelPath(absent);
-        QVERIFY(!store.launchModelPath().isEmpty());
+        store.setCheckLaunchModelPath(absent);
+        QVERIFY(!store.checkLaunchModelPath().isEmpty());
         QVERIFY(!runtime.modelPathValid());
         QVERIFY(!runtime.configValid());
         // The binary gate is independent — the model step asks about it alone.
         QVERIFY(runtime.serverPathValid());
 
-        store.setLaunchModelPath(modelPath);
+        store.setCheckLaunchModelPath(modelPath);
         QVERIFY(runtime.configValid());
         store.setServerPath(absent);
         QVERIFY(!runtime.serverPathValid());
@@ -1594,7 +1581,7 @@ private slots:
         SettingsStore store;
         store.setConnectionMode(QStringLiteral("managed"));
         store.setServerPath(QString::fromUtf8(LLOCR_MOCK_SERVER));
-        store.setLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
+        store.setCheckLaunchModelPath(dir.filePath(QStringLiteral("m.gguf")));
         store.setRuntimeRootDir(dir.filePath(QStringLiteral("runtime")));
         store.setRuntimeModelsDir(dir.filePath(QStringLiteral("models")));
         store.setStartOnDemand(true);

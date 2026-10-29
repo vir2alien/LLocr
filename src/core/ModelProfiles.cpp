@@ -733,7 +733,7 @@ int ModelProfiles::visionTokensFor(const Profile &profile, const QString &role)
     // The tasks that send the whole page: the page fills the model's budget.
     // The others send a block crop, which llama.cpp scales up to the floor
     // the model declares and which stays small otherwise.
-    const bool page = role == QLatin1String("pageOcr") || role == QLatin1String("rawPageOcr") || role == QLatin1String("layout") || role == QLatin1String("all");
+    const bool page = role == QLatin1String("layout") || role == QLatin1String("all");
     int minTokens = 0;
     int maxTokens = 0;
     if (const Role *modelRole = roleFor(profile, role)) {

@@ -56,9 +56,14 @@ public:
 private:
     static QStringList secretIds()
     {
-        QStringList ids = {QStringLiteral("provider/apiKey"), QStringLiteral("hf/token")};
-        for (const llocr::ConnectionRole role : llocr::connectionRoles)
-            ids.append(QStringLiteral("provider/apiKey/") + llocr::connectionRoleName(role));
+        // The block recognition task keeps the "check" name its settings
+        // group carries, so its secret id does not follow the role name.
+        QStringList ids = {QStringLiteral("provider/apiKey"), QStringLiteral("hf/token"), QStringLiteral("provider/apiKey/check")};
+        for (const llocr::ConnectionRole role : llocr::connectionRoles) {
+            const QString id = QStringLiteral("provider/apiKey/") + llocr::connectionRoleName(role);
+            if (!ids.contains(id))
+                ids.append(id);
+        }
         return ids;
     }
 

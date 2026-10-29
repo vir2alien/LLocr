@@ -8,22 +8,18 @@
 namespace llocr {
 
 enum class ConnectionRole {
-    PageOcr,
-    RawPageOcr,
     BlockRecognition,
     Decision,
     Layout,
     Fix,
 };
 
-// The app's six tasks, in the order the settings and the task table show
-// them (ADR 215). The list is the single source: the settings dispatch, the
-// runtime's per-task state and the QML task table read it. A new role is a
-// new enum value, a new row here and a new case in connectionRoleName — the
-// compiler says when the case is missing.
-inline constexpr std::array<ConnectionRole, 6> connectionRoles = {
-    ConnectionRole::PageOcr,
-    ConnectionRole::RawPageOcr,
+// The app's four tasks, in the order the settings and the task table show
+// them. The list is the single source: the settings dispatch, the runtime's
+// per-task state and the QML task table read it. A new role is a new enum
+// value, a new row here and a new case in connectionRoleName — the compiler
+// says when the case is missing.
+inline constexpr std::array<ConnectionRole, 4> connectionRoles = {
     ConnectionRole::BlockRecognition,
     ConnectionRole::Decision,
     ConnectionRole::Layout,
@@ -39,10 +35,6 @@ static_assert(static_cast<std::size_t>(connectionRoles.back()) + 1 == connection
 inline QString connectionRoleName(ConnectionRole role)
 {
     switch (role) {
-    case ConnectionRole::PageOcr:
-        return QStringLiteral("pageOcr");
-    case ConnectionRole::RawPageOcr:
-        return QStringLiteral("rawPageOcr");
     case ConnectionRole::BlockRecognition:
         return QStringLiteral("blockRecognition");
     case ConnectionRole::Decision:
@@ -52,7 +44,7 @@ inline QString connectionRoleName(ConnectionRole role)
     case ConnectionRole::Fix:
         return QStringLiteral("fix");
     }
-    return QStringLiteral("pageOcr");
+    return QStringLiteral("blockRecognition");
 }
 
 // The ids of the roles, in the list's order.
@@ -65,18 +57,18 @@ inline QStringList connectionRoleIds()
     return ids;
 }
 
-// Unknown ids resolve to PageOcr: every ForRole dispatcher treats an
-// unrecognized role as the page OCR settings. The legacy "ocr" string (old
-// settings, registry role tags, QML written before the task rework) maps to
-// PageOcr too.
+// Unknown ids resolve to BlockRecognition: every ForRole dispatcher treats an
+// unrecognized role as the OCR model's settings. The install queue's filter
+// (`task != connectionRoleName(connectionRoleFromName(task))`) does not follow
+// the fallback — a task survives it only when the id is exactly a canonical
+// role name, so an unknown id is dropped whatever the fallback is.
 inline ConnectionRole connectionRoleFromName(const QString &name)
 {
-    const QString wanted = name == QLatin1String("ocr") ? QStringLiteral("pageOcr") : name;
     for (const ConnectionRole role : connectionRoles) {
-        if (connectionRoleName(role) == wanted)
+        if (connectionRoleName(role) == name)
             return role;
     }
-    return ConnectionRole::PageOcr;
+    return ConnectionRole::BlockRecognition;
 }
 
 }  // namespace llocr

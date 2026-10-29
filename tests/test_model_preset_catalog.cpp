@@ -93,7 +93,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"qwen3.5-9b", "fix", "b4000", "q8_0,q6_k,q5_k_m,q4_k_xl,iq4_xs", "spec-type,spec-draft-n-max,special,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"gemma-4-e4b", "fix", "b9600", "q4_k_xl,q2_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,flash-attn,image-min-tokens"},
         {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,image-min-tokens,ubatch-size"},
-        {"glm-ocr", "rawPageOcr,blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
+        {"glm-ocr", "blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"mineru", "layout,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "special"},
         {"paddleocr-vl", "blockRecognition", "b8200", "f16", ""},
         {"minicpm-jev", "decision", "b11928", "q8_0,q6_k,q5_k_m,q4_k_m,iq4_xs", "ctx-size,batch-size,ubatch-size,flash-attn"},
@@ -138,8 +138,7 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
 
 // MinerU2.5-Pro trains one two-step document parse (the mineru-vl-utils
 // protocol): layout detection over the 1036²-squashed page, then per-block
-// transcription by type. No single-shot page mode exists in its prompt set,
-// so pageOcr and rawPageOcr must stay unclaimed.
+// transcription by type. No single-shot page mode exists in its prompt set.
 void TestModelPresetCatalog::mineruShipsTheTrainedTwoStepProtocol()
 {
     const ModelProfiles::Role *layout = ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("layout"));
@@ -170,8 +169,6 @@ void TestModelPresetCatalog::mineruShipsTheTrainedTwoStepProtocol()
         QVERIFY2(!blocks->blockPrompts.value(it.key()).isEmpty(), qPrintable(QStringLiteral("empty block prompt for %1").arg(it.key())));
     }
 
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("pageOcr")));
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("rawPageOcr")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("decision")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("fix")));
 }
@@ -191,8 +188,6 @@ void TestModelPresetCatalog::paddleOcrVlShipsElementRecognitionOnly()
     QCOMPARE(blocks->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
     QCOMPARE(blocks->blockPrompts.value(QStringLiteral("seal")), QStringLiteral("Seal Recognition:"));
 
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("pageOcr")));
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("rawPageOcr")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("layout")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("decision")));
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("fix")));
@@ -249,19 +244,16 @@ void TestModelPresetCatalog::draftModuleReachesThePresets()
 void TestModelPresetCatalog::roleDefaultsFollowTheShippedProfiles()
 {
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
-    // pageOcr lost its last model with the release cleanup: no default, and
-    // the role itself goes away with the task cleanup that follows.
-    QVERIFY(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("pageOcr")).isEmpty());
+    // The four tasks, each with its role-default model.
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("blockRecognition")), QStringLiteral("mineru"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("decision")), QStringLiteral("minicpm-jev"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("layout")), QStringLiteral("mineru"));
-    QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("rawPageOcr")), QStringLiteral("glm-ocr"));
     QCOMPARE(ModelProfiles::defaultIdForRole(profiles, QStringLiteral("fix")), QStringLiteral("qwen3.5-4b"));
 
-    // Exactly one default per task that still has models: the auto-pipeline
-    // picks "the default model for the role" and must never face a tie or a
-    // gap that would silently fall back to the first-in-list.
-    const QList<QPair<const char *, int>> tasks = {{"pageOcr", 0}, {"rawPageOcr", 1}, {"blockRecognition", 1}, {"decision", 1}, {"layout", 1}, {"fix", 1}};
+    // Exactly one default per task: the auto-pipeline picks "the default model
+    // for the role" and must never face a tie or a gap that would silently
+    // fall back to the first-in-list.
+    const QList<QPair<const char *, int>> tasks = {{"blockRecognition", 1}, {"decision", 1}, {"layout", 1}, {"fix", 1}};
     for (const auto &task : tasks) {
         const QString role = QString::fromUtf8(task.first);
         int flagged = 0;
@@ -421,8 +413,6 @@ void TestModelPresetCatalog::checkModelBlockPromptsOverridePerType()
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("glm-ocr"), QStringLiteral("blockRecognition"), QStringLiteral("unknown-type")).isEmpty());
     QVERIFY(!ModelProfiles::blockPromptFor(profiles, QStringLiteral("glm-ocr"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
     QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("some-guf"), QStringLiteral("blockRecognition"), QStringLiteral("formula")).isEmpty());
-    // The page OCR task of the same model has no block prompts at all.
-    QVERIFY(ModelProfiles::blockPromptFor(profiles, QStringLiteral("glm-ocr"), QStringLiteral("pageOcr"), QStringLiteral("formula")).isEmpty());
 }
 
 // All three decision models ship the same scheme v7: ONE question per request

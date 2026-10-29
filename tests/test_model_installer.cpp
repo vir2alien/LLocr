@@ -124,8 +124,6 @@ private:
 
     // The models list is one row per model, its quantizations inside the row
     // (ADR 122); the helpers read it the way the QML delegate does.
-    static QAbstractItemModel *ocrModels(ModelInstaller &installer) { return qobject_cast<QAbstractItemModel *>(installer.quantModels()); }
-
     static QAbstractItemModel *checkModels(ModelInstaller &installer) { return qobject_cast<QAbstractItemModel *>(installer.checkQuantModels()); }
 
     static ModelQuantModel *quantModel(QAbstractItemModel *model) { return qobject_cast<ModelQuantModel *>(model); }
@@ -154,14 +152,12 @@ private:
 
     // The file a row points at, read back through the installer's own list — the
     // row is a model, the registry index belongs to one of its quantizations.
-    static QString pathOf(ModelInstaller &installer, const QString &key, const QString &role = QStringLiteral("pageOcr"))
+    static QString pathOf(ModelInstaller &installer, const QString &key, const QString &role = QStringLiteral("blockRecognition"))
     {
-        auto *model = qobject_cast<ModelQuantModel *>(role == QLatin1String("blockRecognition") ? installer.checkQuantModels()
-                                                      : role == QLatin1String("decision")       ? installer.decisionQuantModels()
-                                                      : role == QLatin1String("layout")         ? installer.layoutQuantModels()
-                                                      : role == QLatin1String("rawPageOcr")     ? installer.rawPageOcrQuantModels()
-                                                      : role == QLatin1String("fix")            ? installer.fixQuantModels()
-                                                                                                : installer.quantModels());
+        auto *model = qobject_cast<ModelQuantModel *>(role == QLatin1String("decision") ? installer.decisionQuantModels()
+                                                      : role == QLatin1String("layout") ? installer.layoutQuantModels()
+                                                      : role == QLatin1String("fix")    ? installer.fixQuantModels()
+                                                                                        : installer.checkQuantModels());
         const QList<int> indexes = model->entryIndexesFor(key);
         return indexes.isEmpty() ? QString() : installer.installedEntries().at(indexes.first()).modelPath;
     }
@@ -402,14 +398,8 @@ private slots:
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
-        // pageOcr lost its last model with the release cleanup: the list is
-        // empty, and the role itself goes away with the task cleanup.
-        auto *ocr = ocrModels(*s->installer);
-        QCOMPARE(ocr->rowCount(), 0);
-
         auto *check = checkModels(*s->installer);
         auto *decision = qobject_cast<ModelQuantModel *>(s->installer->decisionQuantModels());
-        auto *rawPage = qobject_cast<ModelQuantModel *>(s->installer->rawPageOcrQuantModels());
         auto *fix = qobject_cast<ModelQuantModel *>(s->installer->fixQuantModels());
 
         QStringList checkKeys;
@@ -434,13 +424,6 @@ private slots:
             layoutKeys.append(roleAt(layout, i, ModelQuantModel::KeyRole).toString());
         QCOMPARE(layoutKeys, QStringList({QStringLiteral("mineru")}));
         QVERIFY(pathOf(*s->installer, QStringLiteral("mineru"), QStringLiteral("layout")).isEmpty());
-
-        // The two tasks without a settings window of their own (rawPageOcr,
-        // fix) still expose their lists — the task window (stage 6) reads them.
-        QStringList rawPageKeys;
-        for (int i = 0; i < rawPage->rowCount(); ++i)
-            rawPageKeys.append(roleAt(rawPage, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(rawPageKeys, QStringList({QStringLiteral("glm-ocr")}));
 
         QStringList fixKeys;
         for (int i = 0; i < fix->rowCount(); ++i)
@@ -633,12 +616,9 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
         const QVariantList choices = s->installer->defaultTaskChoices(16LL << 40);
-        // pageOcr has no model since the release cleanup: the choice is
-        // absent, and the role itself goes away with the task cleanup.
-        QCOMPARE(choices.size(), 5);
-        QVERIFY(choiceFor(choices, QStringLiteral("pageOcr")).isEmpty());
+        // The four tasks, each with its role-default model.
+        QCOMPARE(choices.size(), 4);
         const QHash<QString, QPair<QString, QString>> expected = {
-            {QStringLiteral("rawPageOcr"), {QStringLiteral("glm-ocr"), QStringLiteral("Q8_0")}},
             {QStringLiteral("blockRecognition"), {QStringLiteral("mineru"), QStringLiteral("Q8_0")}},
             {QStringLiteral("decision"), {QStringLiteral("minicpm-jev"), QStringLiteral("Q8_0")}},
             {QStringLiteral("layout"), {QStringLiteral("mineru"), QStringLiteral("Q8_0")}},
@@ -661,8 +641,6 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
         const QVariantList choices = s->installer->defaultTaskChoices(2LL << 30);
-        QVERIFY(choiceFor(choices, QStringLiteral("pageOcr")).isEmpty());
-        QCOMPARE(choiceFor(choices, QStringLiteral("rawPageOcr")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
         QCOMPARE(choiceFor(choices, QStringLiteral("blockRecognition")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
         QCOMPARE(choiceFor(choices, QStringLiteral("decision")).value(QStringLiteral("quantId")).toString(),
                  QStringLiteral("Q8_0"));  // the q8_0 weights still fit a 2 GiB budget
@@ -701,7 +679,6 @@ private slots:
         QCOMPARE(choiceFor(choices, QStringLiteral("blockRecognition")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q4_K_M"));
         // Layout rides the same default model, so the installed quant wins there too.
         QCOMPARE(choiceFor(choices, QStringLiteral("layout")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q4_K_M"));
-        QCOMPARE(choiceFor(choices, QStringLiteral("rawPageOcr")).value(QStringLiteral("quantId")).toString(), QStringLiteral("Q8_0"));
     }
 
     // Deleting a model takes every quantization of it, but only after the whole
@@ -814,32 +791,32 @@ private slots:
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
         ModelInstaller &mi = *s->installer;
 
-        // OCR list: only the mmproj model — the verifier (active as the check
-        // model) and the parser-carrying text model stay out of it. The pageOcr
-        // list carries no profile rows since the release cleanup, so the
-        // installed entry lands at the top.
-        auto *ocrList = ocrModels(mi);
+        // Check list: the parser-carrying text model and the verifier (active
+        // as the check model) are in it; the projector-bearing OCR model stays
+        // out — a legacy entry with an mmproj read as the page task's, and the
+        // page task is gone. It shows in the management list only.
         auto *checkList = checkModels(mi);
-        QVERIFY(ocrList);
+        auto *allList = qobject_cast<ModelQuantModel *>(mi.allModels());
         QVERIFY(checkList);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_ocr")), 0);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), -1);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_verify")), -1);
+        QVERIFY(allList);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_ocr")), -1);
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 4);
-        QCOMPARE(pathOf(mi, QStringLiteral("org__repo_ocr")), ocrPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), QStringLiteral("blockRecognition")), textPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), QStringLiteral("blockRecognition")), verifierPath);
+        QVERIFY(rowOfKey(allList, QStringLiteral("org__repo_ocr")) >= 0);
 
         // A quantization of a model the user brought resolves back to the
         // installer's own index, which is what activate / delete act on.
-        QCOMPARE(quantModel(ocrList)->entryIndexFor(QStringLiteral("org__repo_ocr"), QStringLiteral("Q4_K_M")), 0);
+        QCOMPARE(quantModel(allList)->entryIndexFor(QStringLiteral("org__repo_ocr"), QStringLiteral("Q4_K_M")), 0);
 
         // The role's active model is always listed: the text model becomes the
-        // active OCR model and must appear in the OCR list too.
-        settings.setLaunchModelPath(textPath);
-        QCOMPARE(rowOfKey(ocrList, QStringLiteral("org__repo_chat")), 1);
+        // active check model and must appear in the check list too — and the
+        // projector-bearing verifier, no longer the active model, drops back
+        // out of the list.
+        settings.setCheckLaunchModelPath(textPath);
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), -1);
     }
 
     // A list model with named roles: a QML delegate that misspells a role name
@@ -877,12 +854,13 @@ private slots:
         RuntimeController runtime(settings, launchProfiles);
         ModelInstaller installer(settings, runtime, installed);
 
-        auto *models = ocrModels(installer);
+        auto *models = qobject_cast<ModelQuantModel *>(installer.allModels());
         QVERIFY(models);
-        // The models of the task, and the one the user brought themselves.
-        // The pageOcr list carries no profile rows since the release cleanup,
-        // so only the brought model is listed.
-        QCOMPARE(models->rowCount(), 1);
+        // The management list: every shipped profile plus the one model the
+        // user brought themselves — a legacy entry with an mmproj stays out of
+        // the role lists (the page task it read as is gone), the management
+        // list is where it lives.
+        QCOMPARE(models->rowCount(), 9);
 
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(ModelQuantModel::KeyRole), QByteArray("key"));
@@ -901,17 +879,23 @@ private slots:
         QVERIFY(!roleAt(models, row, ModelQuantModel::SelectedActiveRole).toBool());
         QCOMPARE(roleAt(models, row, ModelQuantModel::SelectedSizeRole).toLongLong(), QFileInfo(modelPath).size());
         // A row outside the model has no data, rather than reading row 0.
-        QVERIFY(!roleAt(models, 7, ModelQuantModel::KeyRole).isValid());
+        QVERIFY(!roleAt(models, 99, ModelQuantModel::KeyRole).isValid());
 
         // A rescan that finds the same models must not reset the model.
         QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
         installer.refreshInstalled();
         QCOMPARE(resetSpy.count(), 0);
-        QCOMPARE(models->rowCount(), 1);
+        QCOMPARE(models->rowCount(), 9);
 
-        // Activating the model re-reads the highlight from the settings.
-        QVERIFY(installer.setActiveModel(0).isEmpty());
-        QVERIFY(roleAt(models, row, ModelQuantModel::ActiveRole).toBool());
+        // Activating the model re-reads the highlight from the settings: the
+        // management list marks nothing active — the role list is where the
+        // active flag lives.
+        QVERIFY(installer.setActiveModel(0, QStringLiteral("blockRecognition")).isEmpty());
+        auto *checkList = qobject_cast<ModelQuantModel *>(installer.checkQuantModels());
+        QVERIFY(checkList);
+        const int checkRow = rowOfKey(checkList, QStringLiteral("org__repo"));
+        QVERIFY(checkRow >= 0);
+        QVERIFY(roleAt(checkList, checkRow, ModelQuantModel::ActiveRole).toBool());
     }
 
     // The highlight is *derived* from the settings, so activating a model changes
@@ -925,10 +909,24 @@ private slots:
 
         // Both selections set explicitly: the tests share one QSettings
         // process-wide, so an inherited value would decide the initial highlight.
-        s->settings.setCheckLaunchModelPath(QString());
-        s->settings.setLaunchModelPath(QDir(QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("org__repo"))).filePath(QStringLiteral("model-Q4_K_M.gguf")));
+        // The first quantization starts as the check task's active model.
+        s->settings.setCheckLaunchModelPath(QDir(QDir(s->settings.runtimeModelsDir()).filePath(QStringLiteral("org__repo"))).filePath(QStringLiteral("model-Q4_K_M.gguf")));
 
-        auto *models = ocrModels(*s->installer);
+        // Tagged entries: both quants belong to the recognition task, so the
+        // list carries both and the active flag can move between them (the
+        // projector-bearing legacy heuristic keeps an untagged one out).
+        const QList<ModelEntry> &installed = s->installer->installedEntries();
+        QList<ModelEntry> tagged;
+        for (const ModelEntry &e : installed) {
+            ModelEntry copy = e;
+            copy.roles = {QStringLiteral("blockRecognition")};
+            tagged.append(copy);
+        }
+        QString tagErr;
+        QVERIFY2(ModelRegistry::save(s->settings.runtimeModelsDir(), tagged, tagErr), qPrintable(tagErr));
+        s->installer->refreshInstalled();
+
+        auto *models = checkModels(*s->installer);
         QVERIFY(models != nullptr);
         const int q4Row = rowOfKey(models, QStringLiteral("org__repo_Q4_K_M"));
         const int q8Row = rowOfKey(models, QStringLiteral("org__repo_Q8_0"));
@@ -939,7 +937,7 @@ private slots:
 
         QSignalSpy changed(models, &QAbstractItemModel::dataChanged);
 
-        QVERIFY(s->installer->setActiveModel(quantModel(models)->entryIndexFor(QStringLiteral("org__repo_Q8_0"), QStringLiteral("Q8_0"))).isEmpty());
+        QVERIFY(s->installer->setActiveModel(quantModel(models)->entryIndexFor(QStringLiteral("org__repo_Q8_0"), QStringLiteral("Q8_0")), QStringLiteral("blockRecognition")).isEmpty());
 
         QVERIFY(!roleAt(models, q4Row, ModelQuantModel::ActiveRole).toBool());
         QVERIFY(roleAt(models, q8Row, ModelQuantModel::ActiveRole).toBool());
@@ -984,7 +982,6 @@ private slots:
         // stale before the test even starts. The OCR model is the check task's
         // selection now — that is the path the reconcile watches.
         settings.setCheckLaunchModelPath(modelPath);
-        settings.setLaunchModelPath(QString());
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles);
@@ -1035,8 +1032,7 @@ private slots:
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         settings.setFixRequestProfileId(QStringLiteral("gemma-4-e4b"));
-        settings.setCheckRequestProfileId(QStringLiteral("mineru"));
-        settings.setModelRecipeId(QStringLiteral("some-guf"));
+        settings.setModelRecipeId(QStringLiteral("mineru"));
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles);
@@ -1046,22 +1042,16 @@ private slots:
         QCOMPARE(settings.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
 
         // The same family answers the block recognition task too — GLM-OCR ships
-        // both transcriptions — so the block selection follows its file.
+        // the block transcription — so the block selection follows its file.
         QVERIFY(installer.setActiveModel(1, QStringLiteral("blockRecognition")).isEmpty());
-        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("glm-ocr"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("glm-ocr"));
 
-        // The qwen family answers no page task (no shipped profile does since
-        // the release cleanup), so the page selection stays where it was
-        // rather than following the file.
-        QVERIFY(installer.setActiveModel(0).isEmpty());
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("some-guf"));
-
-        // The raw page task is the same rule, in both directions.
-        const QString rawPageBefore = settings.rawPageOcrRequestProfileId();
-        QVERIFY(installer.setActiveModel(0, QStringLiteral("rawPageOcr")).isEmpty());
-        QCOMPARE(settings.rawPageOcrRequestProfileId(), rawPageBefore);
-        QVERIFY(installer.setActiveModel(1, QStringLiteral("rawPageOcr")).isEmpty());
-        QCOMPARE(settings.rawPageOcrRequestProfileId(), QStringLiteral("glm-ocr"));
+        // A family that answers no block recognition task (the qwen fix models)
+        // leaves the selection alone rather than following the file.
+        QVERIFY(installer.setActiveModel(0, QStringLiteral("blockRecognition")).isEmpty());
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("glm-ocr"));
+        // The file itself moved: the launch path is the check task's.
+        QCOMPARE(settings.checkLaunchModelPath(), qwen.modelPath);
     }
 
     // A model whose repo was renamed in the catalog kept the profile of the
@@ -1092,17 +1082,17 @@ private slots:
         SettingsStore settings;
         pointAtTempDir(settings, root.path());
         // The state a stale profile leaves behind: another model's id stored
-        // next to this model's file. The refresh-time repair answers the page
-        // task, and no shipped family does since the release cleanup — the
-        // stale id survives until the task cleanup re-homes the roles.
+        // next to this model's file. The refresh-time repair answers the block
+        // recognition task: the recipe id follows the file the launch path
+        // points at.
         settings.setModelRecipeId(QStringLiteral("some-guf"));
-        settings.setLaunchModelPath(entry.modelPath);
+        settings.setCheckLaunchModelPath(entry.modelPath);
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles, &installed);
 
         ModelInstaller installer(settings, runtime, installed);
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("some-guf"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("glm-ocr"));
     }
 
     // A choice recorded while its quantization is still downloading (the task
@@ -1135,29 +1125,28 @@ private slots:
         // The settings are shared by every test in the run, so a recipe id left
         // behind by an earlier one must not decide this outcome.
         settings.setModelRecipeId(QStringLiteral("some-guf"));
-        settings.setLaunchModelPath(entry.modelPath);
+        settings.setCheckLaunchModelPath(entry.modelPath);
         LaunchProfileStore launchProfiles(settings);
         InstalledState installed(settings);
         RuntimeController runtime(settings, launchProfiles, &installed);
         ModelInstaller installer(settings, runtime, installed);
-        // The launch-path repair answers the page task, and no shipped family
-        // serves it since the release cleanup: the recipe id stays where it
-        // was instead of following the file.
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("some-guf"));
+        // The launch-path repair answers the block recognition task: the
+        // recipe id follows the file.
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("glm-ocr"));
 
         // The task window's Save with a still-missing PaddleOCR-VL quantization:
         // the pending final path takes over the launch setting at once.
         const QVariantList missing = installer.applyTaskChoices(
             {QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("paddleocr-vl")}, {QStringLiteral("quantId"), QStringLiteral("F16")}}});
         QCOMPARE(missing.size(), 1);
-        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("paddleocr-vl"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("paddleocr-vl"));
         const QString pendingPath = settings.checkLaunchModelPath();
         QVERIFY(!pendingPath.isEmpty() && !QFileInfo::exists(pendingPath));
 
         // The refresh an reopened Models window runs must not read the old
         // model file as the user's choice.
         installer.refreshInstalled();
-        QCOMPARE(settings.checkRequestProfileId(), QStringLiteral("paddleocr-vl"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("paddleocr-vl"));
         QCOMPARE(settings.checkLaunchModelPath(), pendingPath);
     }
 
@@ -1167,7 +1156,6 @@ private slots:
     {
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
-        s->settings.setLaunchModelPath(QString());
         s->settings.setCheckLaunchModelPath(QString());
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
@@ -1183,7 +1171,7 @@ private slots:
         QCOMPARE(item.value(QStringLiteral("task")).toString(), QStringLiteral("blockRecognition"));
         QCOMPARE(item.value(QStringLiteral("tasks")).toList().size(), 2);
         // The profile intent is recorded for both tasks.
-        QCOMPARE(s->settings.checkRequestProfileId(), QStringLiteral("mineru"));
+        QCOMPARE(s->settings.modelRecipeId(), QStringLiteral("mineru"));
         QCOMPARE(s->settings.layoutRequestProfileId(), QStringLiteral("mineru"));
     }
 
@@ -1194,12 +1182,12 @@ private slots:
     {
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
-        s->settings.setLaunchModelPath(QString());
         s->settings.setCheckLaunchModelPath(QString());
 
-        // Two legacy (untagged) registry entries: the pageOcr-shaped one
-        // carries a projector, the blockRecognition-shaped one does not —
-        // matchesRole() splits the legacy entries by that heuristic.
+        // Two legacy (untagged) registry entries: the projector-bearing one
+        // stays out of the recognition list (the page task it read as is gone),
+        // the text-only blockRecognition-shaped one is in it — matchesRole()
+        // splits the legacy entries by that heuristic.
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
         const QString ocrDir = QDir(modelsDir).filePath(QStringLiteral("org__repo"));
         QVERIFY(QDir().mkpath(ocrDir));
@@ -1231,9 +1219,13 @@ private slots:
         makeRuntime(*s);
         s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
 
-        auto *ocr = qobject_cast<ModelQuantModel *>(s->installer->quantModels());
-        QVERIFY(ocr);
-        QVERIFY(ocr->entryIndexFor(QStringLiteral("org__repo_Q4_K_M"), QStringLiteral("Q4_K_M")) >= 0);
+        // The projector-bearing entry lives in the management list only.
+        auto *all = qobject_cast<ModelQuantModel *>(s->installer->allModels());
+        QVERIFY(all);
+        QVERIFY(all->entryIndexFor(QStringLiteral("org__repo_Q4_K_M"), QStringLiteral("Q4_K_M")) >= 0);
+        auto *check = qobject_cast<ModelQuantModel *>(s->installer->checkQuantModels());
+        QVERIFY(check);
+        QVERIFY(check->entryIndexFor(QStringLiteral("org__repo_Q4_K_M"), QStringLiteral("Q4_K_M")) < 0);
 
         // The decision task has no installed entry here; its shipped profile
         // offers a downloadable quantization that is the missing one.
@@ -1253,15 +1245,12 @@ private slots:
         QVERIFY(!missingPick.isEmpty());
 
         QVariantList choices;
-        choices.append(
-            QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("org__repo_Q4_K_M")}, {QStringLiteral("quantId"), QStringLiteral("Q4_K_M")}});
         choices.append(QVariantMap{
             {QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("org__blockrepo_Q8_0")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}});
         choices.append(QVariantMap{
             {QStringLiteral("task"), QStringLiteral("decision")}, {QStringLiteral("key"), QStringLiteral("minicpm-jev")}, {QStringLiteral("quantId"), missingPick.value(QStringLiteral("id"))}});
 
         const QVariantList missing = s->installer->applyTaskChoices(choices);
-        QCOMPARE(s->settings.launchModelPath(), q4.modelPath);
         QCOMPARE(s->settings.checkLaunchModelPath(), q8.modelPath);
         QCOMPARE(missing.size(), 1);
         const QVariantMap item = missing.first().toMap();
@@ -1281,7 +1270,7 @@ private slots:
         QSignalSpy activeSpy(s->installer.data(), &ModelInstaller::taskQueueStateChanged);
 
         s->installer->queueTaskInstalls(
-            {QVariantMap{{QStringLiteral("task"), QStringLiteral("pageOcr")}, {QStringLiteral("key"), QStringLiteral("no-such-row")}, {QStringLiteral("quantId"), QStringLiteral("Q4_K_M")}}});
+            {QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("no-such-row")}, {QStringLiteral("quantId"), QStringLiteral("Q4_K_M")}}});
         QCOMPARE(s->installer->stateInt(), (int)ModelInstaller::State::Error);
         QVERIFY(!s->installer->taskQueueActive());
         QCOMPARE(s->installer->taskQueueRemaining(), 0);
@@ -1289,6 +1278,32 @@ private slots:
 
         // Cancel on an idle installer is a no-op that leaves no queue behind.
         s->installer->cancelTaskInstalls();
+        QVERIFY(!s->installer->taskQueueActive());
+    }
+
+    // The queue's filter passes a task only when the id is exactly a canonical
+    // role name: a task that is not one of the app's tasks must never enter
+    // the queue, let alone start an install for it.
+    void anUnknownTaskNeverEntersTheInstallQueue()
+    {
+        auto s = std::make_unique<Setup>();
+        QVERIFY(s != nullptr);
+        pointAtTempDir(s->settings, s->root.path());
+        makeRuntime(*s);
+        s->installer.reset(new ModelInstaller(s->settings, *s->runtime, *s->installed));
+
+        QVariantList choices;
+        QVariantMap choice;
+        choice.insert(QStringLiteral("task"), QStringLiteral("pageOcr"));
+        choice.insert(QStringLiteral("key"), QStringLiteral("mineru"));
+        choice.insert(QStringLiteral("quantId"), QStringLiteral("Q4_K_M"));
+        choices.append(choice);
+
+        s->installer->queueTaskInstalls(choices);
+        QCOMPARE(s->installer->taskQueueRemaining(), 0);
+        // A queue that accepted the task would start it and fail fast with
+        // State::Error; the drop leaves the installer idle.
+        QCOMPARE(s->installer->stateInt(), (int)ModelInstaller::State::Idle);
         QVERIFY(!s->installer->taskQueueActive());
     }
 
@@ -1341,8 +1356,6 @@ private slots:
         const int row = rowOfKey(all, QStringLiteral("glm-ocr"));
         QVERIFY(row >= 0);
         QVERIFY(quantOf(all, row, QStringLiteral("CHAT")).value(QStringLiteral("installed")).toBool());
-        auto *rawPage = qobject_cast<ModelQuantModel *>(s->installer->rawPageOcrQuantModels());
-        QCOMPARE(quantOf(rawPage, rowOfKey(rawPage, QStringLiteral("glm-ocr")), QStringLiteral("CHAT")).value(QStringLiteral("installed")).toBool(), false);
 
         // A repo no profile claims gets a row of its own, and its quantization
         // resolves back to the installer's registry index for the actions.
@@ -1466,7 +1479,7 @@ private slots:
 
         const int q8 = registryIndexOfQuant(mi, QStringLiteral("Q8_0"));
         QVERIFY(q8 >= 0);
-        QVERIFY(mi.setActiveModel(q8, QStringLiteral("pageOcr")).isEmpty());
+        QVERIFY(mi.setActiveModel(q8, QStringLiteral("blockRecognition")).isEmpty());
         QVERIFY(mi.setActiveModel(q8, QStringLiteral("fix")).isEmpty());
 
         row = rowOfEntry(QStringLiteral("org__repo_Q8_0"));

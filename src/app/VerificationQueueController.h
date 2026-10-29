@@ -42,7 +42,7 @@ public:
         SettingsStore &settings;
         RuntimeController &runtime;
         std::function<QImage(int pageIndex, int boxIndex)> cropProvider;
-        std::function<bool()> recognitionBusy;
+        std::function<bool()> layoutBusy;
         // The text of a block as the page shows it: a formula as display math,
         // a table as a grid. The visual-diff decision paints its candidate
         // from it, so the picture the model reads is the one the document

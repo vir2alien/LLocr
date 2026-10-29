@@ -107,11 +107,9 @@ private slots:
         QCOMPARE(store.connectionTimeoutMs(), 5000);
         QCOMPARE(store.responseTimeoutMs(), 300000);
         QCOMPARE(store.modelName(), QStringLiteral("MinerU2.5-Pro-2605-1.2B"));
-        QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.decisionModelName(), QString());
         // "auto" — the OCR model adapter declares its parser (ADR 88).
         QCOMPARE(store.parserId(), QStringLiteral("auto"));
-        QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.decisionMatchThreshold(), 0.5);
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
@@ -129,7 +127,6 @@ private slots:
         store.setConnectionTimeoutMs(8000);
         store.setResponseTimeoutMs(60000);
         store.setModelName(QStringLiteral("custom-model"));
-        store.setCheckModelName(QStringLiteral("check-model"));
         store.setParserId(QStringLiteral("raw"));
         store.setThemeMode(1);
         store.setLanguage(QStringLiteral("ru"));
@@ -140,10 +137,8 @@ private slots:
         QCOMPARE(store.connectionTimeoutMs(), 5000);
         QCOMPARE(store.responseTimeoutMs(), 300000);
         QCOMPARE(store.modelName(), QStringLiteral("MinerU2.5-Pro-2605-1.2B"));
-        QCOMPARE(store.checkModelName(), QString());
         // "auto" — the OCR model adapter declares its parser (ADR 88).
         QCOMPARE(store.parserId(), QStringLiteral("auto"));
-        QCOMPARE(store.checkModelName(), QString());
         QCOMPARE(store.themeMode(), 0);
         QCOMPARE(store.language(), QStringLiteral("system"));
         // The secrets are not settings: they live in the OS store and survive
@@ -240,7 +235,7 @@ private slots:
         store.setConnectionTimeoutMs(8000);
         store.setResponseTimeoutMs(60000);
         store.setModelName(QStringLiteral("ocr-model"));
-        store.setCheckModelName(QStringLiteral("check-model"));
+        store.setDecisionModelName(QStringLiteral("decision-model"));
         store.setServerPath(QStringLiteral("/opt/llama-server"));
         store.setThemeMode(1);
 
@@ -252,7 +247,7 @@ private slots:
         QCOMPARE(store.connectionTimeoutMs(), 5000);
         QCOMPARE(store.responseTimeoutMs(), 300000);
         QCOMPARE(store.modelName(), QStringLiteral("MinerU2.5-Pro-2605-1.2B"));
-        QCOMPARE(store.checkModelName(), QString());
+        QCOMPARE(store.decisionModelName(), QString());
         QCOMPARE(store.serverPath(), QString());
         // Outside the group — untouched.
         QCOMPARE(store.themeMode(), 1);
@@ -351,21 +346,22 @@ private slots:
     // The check role's request profile is the id of its model profile. A
     // profile written before the split has nothing stored, and the verifier
     // would resolve to no sampling parameters at all.
-    // The app's six tasks, in one list: the settings dispatch, the runtime's
+    // The app's four tasks, in one list: the settings dispatch, the runtime's
     // per-task state and the QML task table read it (ADR 215).
     void theTaskListIsTheSingleSource()
     {
-        QCOMPARE(
-            connectionRoleIds(),
-            QStringList({QStringLiteral("pageOcr"), QStringLiteral("rawPageOcr"), QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("layout"), QStringLiteral("fix")}));
+        QCOMPARE(connectionRoleIds(), QStringList({QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("layout"), QStringLiteral("fix")}));
+        static_assert(connectionRoleCount == 4);
 
         SettingsStore store;
         QCOMPARE(store.taskRoles(), connectionRoleIds());
 
-        // The legacy id still means the page task, and an unknown one falls
-        // back to it as well.
-        QCOMPARE(connectionRoleFromName(QStringLiteral("ocr")), ConnectionRole::PageOcr);
-        QCOMPARE(connectionRoleFromName(QStringLiteral("unknown")), ConnectionRole::PageOcr);
+        // No alias and no page tasks: anything that is not exactly a role id
+        // falls back to the block recognition task, and the round-trip drops
+        // it — that is what the install queue's filter relies on.
+        QCOMPARE(connectionRoleFromName(QStringLiteral("ocr")), ConnectionRole::BlockRecognition);
+        QCOMPARE(connectionRoleFromName(QStringLiteral("pageOcr")), ConnectionRole::BlockRecognition);
+        QCOMPARE(connectionRoleFromName(QStringLiteral("unknown")), ConnectionRole::BlockRecognition);
         for (const QString &id : connectionRoleIds())
             QCOMPARE(connectionRoleName(connectionRoleFromName(id)), id);
     }
@@ -389,47 +385,32 @@ private slots:
         }
 
         // The request profile of one task is that task's own: the dispatch
-        // must not read another role's.
-        store.setCheckRequestProfileId(QStringLiteral("check-profile"));
-        QCOMPARE(store.requestProfileIdForRole(QStringLiteral("blockRecognition")), QStringLiteral("check-profile"));
-        QVERIFY(store.requestProfileIdForRole(QStringLiteral("decision")) != QStringLiteral("check-profile"));
-        QVERIFY(store.requestProfileIdForRole(QStringLiteral("fix")) != QStringLiteral("check-profile"));
+        // must not read another role's. The block recognition task keeps its
+        // identity in the model recipe id.
+        store.setModelRecipeId(QStringLiteral("block-profile"));
+        QCOMPARE(store.requestProfileIdForRole(QStringLiteral("blockRecognition")), QStringLiteral("block-profile"));
+        QVERIFY(store.requestProfileIdForRole(QStringLiteral("decision")) != QStringLiteral("block-profile"));
+        QVERIFY(store.requestProfileIdForRole(QStringLiteral("fix")) != QStringLiteral("block-profile"));
     }
 
     void checkRoleResolvesAModelProfileWithoutOneStored()
     {
         QSettings pre;
-        pre.remove(QStringLiteral("tasks/check/requestProfileId"));
+        pre.remove(QStringLiteral("model/recipeId"));
 
         const SettingsStore store;
-        const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
-        QVERIFY(!checkDefault.isEmpty());
-        QCOMPARE(store.checkRequestProfileId(), checkDefault);
+        QCOMPARE(store.requestProfileIdForRole(QStringLiteral("blockRecognition")), QString::fromUtf8(SettingsStore::kDefaultModelRecipeId));
         // Nothing is written: the default is a fallback, not a stored choice.
-        QVERIFY(!store.contains(QStringLiteral("tasks/check/requestProfileId")));
+        QVERIFY(!store.contains(QStringLiteral("model/recipeId")));
 
         // An explicit choice still wins.
         SettingsStore chosen;
-        chosen.setCheckRequestProfileId(QStringLiteral("qwen3.5-4b"));
-        QCOMPARE(chosen.checkRequestProfileId(), QStringLiteral("qwen3.5-4b"));
+        chosen.setModelRecipeId(QStringLiteral("qwen3.5-4b"));
+        QCOMPARE(chosen.requestProfileIdForRole(QStringLiteral("blockRecognition")), QStringLiteral("qwen3.5-4b"));
     }
 
     // The key's default used to be the empty string, so every existing profile
     // holds one. QSettings::value() would return that empty string instead of
-    // the fallback, and the verifier would end up with no sampling parameters
-    // while the UI reported the model as unknown.
-    void anEmptyStoredCheckProfileIsNotAChoice()
-    {
-        QSettings pre;
-        pre.setValue(QStringLiteral("tasks/check/requestProfileId"), QString());
-        pre.setValue(QStringLiteral("settings/schemaVersion"), SettingsStore::kCurrentSettingsSchemaVersion);
-
-        const SettingsStore store;
-        const QString checkDefault = ModelProfiles::defaultIdForRole(ModelProfiles::instance(), QStringLiteral("blockRecognition"));
-        QVERIFY(!checkDefault.isEmpty());
-        QCOMPARE(store.checkRequestProfileId(), checkDefault);
-    }
-
     // Same fallback rule as the check role: the decision profile id is the id
     // of its model profile, and nothing is stored until the user picks one.
     void decisionRoleResolvesAModelProfileWithoutOneStored()
@@ -461,10 +442,10 @@ private slots:
         QVERIFY(!store.contains(QStringLiteral("tasks/layout/requestProfileId")));
 
         SettingsStore chosen;
-        chosen.setCheckRequestProfileId(QStringLiteral("glm-ocr"));
+        chosen.setModelRecipeId(QStringLiteral("glm-ocr"));
         chosen.selectModelProfile(QStringLiteral("mradermacher/MinerU2.5-Pro-2605-1.2B-GGUF"), QStringLiteral("layout"));
         QCOMPARE(chosen.layoutRequestProfileId(), QStringLiteral("mineru"));
-        QCOMPARE(chosen.checkRequestProfileId(), QStringLiteral("glm-ocr"));
+        QCOMPARE(chosen.modelRecipeId(), QStringLiteral("glm-ocr"));
     }
 
     // The threshold arrives from a 0–100 spin box and an INI that can be
@@ -496,13 +477,13 @@ private slots:
     void activatingAModelSelectsItsFamilyProfile()
     {
         SettingsStore store;
-        store.setCheckRequestProfileId(QStringLiteral("mineru"));
+        store.setModelRecipeId(QStringLiteral("mineru"));
         store.setFixRequestProfileId(QStringLiteral("gemma-4-e4b"));
 
         // GLM-OCR answers the block recognition task — it ships the block
         // transcription — so activation for it follows its own profile.
         store.selectModelProfile(QStringLiteral("ggml-org/GLM-OCR-GGUF"), QStringLiteral("blockRecognition"));
-        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("glm-ocr"));
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("glm-ocr"));
 
         store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("fix"));
         QCOMPARE(store.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
@@ -513,13 +494,13 @@ private slots:
         store.selectModelProfile(QStringLiteral("mradermacher/MinerU2.5-Pro-2605-1.2B-GGUF"), QStringLiteral("fix"));
         QCOMPARE(store.fixRequestProfileId(), QStringLiteral("qwen3.5-4b"));
         store.selectModelProfile(QStringLiteral("unsloth/Qwen3.5-4B-MTP-GGUF"), QStringLiteral("blockRecognition"));
-        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("glm-ocr"));
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("glm-ocr"));
 
         // A hand-picked GGUF joins to nothing.
-        store.setCheckRequestProfileId(QStringLiteral("some-gguf"));
+        store.setModelRecipeId(QStringLiteral("some-gguf"));
         store.selectModelProfile(QString(), QStringLiteral("blockRecognition"));
         store.selectModelProfile(QStringLiteral("someone/Their-Model-GGUF"), QStringLiteral("blockRecognition"));
-        QCOMPARE(store.checkRequestProfileId(), QStringLiteral("some-gguf"));
+        QCOMPARE(store.modelRecipeId(), QStringLiteral("some-gguf"));
     }
 
     // qmllint cannot resolve Settings (it is registered by hand in main.cpp, not

@@ -67,17 +67,12 @@ class SettingsStore : public QObject
     Q_PROPERTY(bool allowNonLoopback READ allowNonLoopback WRITE setAllowNonLoopback NOTIFY allowNonLoopbackChanged)
 
     Q_PROPERTY(QString launchProfileId READ launchProfileId WRITE setLaunchProfileId NOTIFY launchProfileIdChanged)
-    Q_PROPERTY(QString launchModelPath READ launchModelPath WRITE setLaunchModelPath NOTIFY launchModelPathChanged)
-    Q_PROPERTY(QString launchMmprojPath READ launchMmprojPath WRITE setLaunchMmprojPath NOTIFY launchMmprojPathChanged)
-    Q_PROPERTY(QString launchDraftPath READ launchDraftPath WRITE setLaunchDraftPath NOTIFY launchDraftPathChanged)
     Q_PROPERTY(QString launchHost READ launchHost WRITE setLaunchHost NOTIFY launchHostChanged)
     Q_PROPERTY(int launchPort READ launchPort WRITE setLaunchPort NOTIFY launchPortChanged)
 
     Q_PROPERTY(QString checkLaunchModelPath READ checkLaunchModelPath WRITE setCheckLaunchModelPath NOTIFY checkLaunchModelPathChanged)
     Q_PROPERTY(QString checkLaunchMmprojPath READ checkLaunchMmprojPath WRITE setCheckLaunchMmprojPath NOTIFY checkLaunchMmprojPathChanged)
     Q_PROPERTY(QString checkLaunchDraftPath READ checkLaunchDraftPath WRITE setCheckLaunchDraftPath NOTIFY checkLaunchDraftPathChanged)
-    Q_PROPERTY(QString checkRequestProfileId READ checkRequestProfileId WRITE setCheckRequestProfileId NOTIFY checkRequestProfileIdChanged)
-    Q_PROPERTY(QString checkModelName READ checkModelName WRITE setCheckModelName NOTIFY checkModelNameChanged)
     Q_PROPERTY(bool showConfidence READ showConfidence WRITE setShowConfidence NOTIFY showConfidenceChanged)
 
     Q_PROPERTY(QString decisionLaunchModelPath READ decisionLaunchModelPath WRITE setDecisionLaunchModelPath NOTIFY decisionLaunchModelPathChanged)
@@ -93,12 +88,6 @@ class SettingsStore : public QObject
     Q_PROPERTY(QString layoutLaunchDraftPath READ layoutLaunchDraftPath WRITE setLayoutLaunchDraftPath NOTIFY layoutLaunchDraftPathChanged)
     Q_PROPERTY(QString layoutRequestProfileId READ layoutRequestProfileId WRITE setLayoutRequestProfileId NOTIFY layoutRequestProfileIdChanged)
     Q_PROPERTY(QString layoutModelName READ layoutModelName WRITE setLayoutModelName NOTIFY layoutModelNameChanged)
-
-    Q_PROPERTY(QString rawPageOcrLaunchModelPath READ rawPageOcrLaunchModelPath WRITE setRawPageOcrLaunchModelPath NOTIFY rawPageOcrLaunchModelPathChanged)
-    Q_PROPERTY(QString rawPageOcrLaunchMmprojPath READ rawPageOcrLaunchMmprojPath WRITE setRawPageOcrLaunchMmprojPath NOTIFY rawPageOcrLaunchMmprojPathChanged)
-    Q_PROPERTY(QString rawPageOcrLaunchDraftPath READ rawPageOcrLaunchDraftPath WRITE setRawPageOcrLaunchDraftPath NOTIFY rawPageOcrLaunchDraftPathChanged)
-    Q_PROPERTY(QString rawPageOcrRequestProfileId READ rawPageOcrRequestProfileId WRITE setRawPageOcrRequestProfileId NOTIFY rawPageOcrRequestProfileIdChanged)
-    Q_PROPERTY(QString rawPageOcrModelName READ rawPageOcrModelName WRITE setRawPageOcrModelName NOTIFY rawPageOcrModelNameChanged)
 
     Q_PROPERTY(QString fixLaunchModelPath READ fixLaunchModelPath WRITE setFixLaunchModelPath NOTIFY fixLaunchModelPathChanged)
     Q_PROPERTY(QString fixLaunchMmprojPath READ fixLaunchMmprojPath WRITE setFixLaunchMmprojPath NOTIFY fixLaunchMmprojPathChanged)
@@ -246,12 +235,6 @@ public:
     bool allowNonLoopback() const;
     void setAllowNonLoopback(bool on);
 
-    QString launchModelPath() const;
-    void setLaunchModelPath(const QString &path);
-    QString launchMmprojPath() const;
-    void setLaunchMmprojPath(const QString &path);
-    QString launchDraftPath() const;
-    void setLaunchDraftPath(const QString &path);
     QString launchHost() const;
     void setLaunchHost(const QString &host);
     int launchPort() const;
@@ -265,10 +248,6 @@ public:
     void setCheckLaunchMmprojPath(const QString &path);
     QString checkLaunchDraftPath() const;
     void setCheckLaunchDraftPath(const QString &path);
-    QString checkRequestProfileId() const;
-    void setCheckRequestProfileId(const QString &id);
-    QString checkModelName() const;
-    void setCheckModelName(const QString &name);
     bool showConfidence() const;
     void setShowConfidence(bool on);
 
@@ -297,17 +276,6 @@ public:
     QString layoutModelName() const;
     void setLayoutModelName(const QString &name);
 
-    QString rawPageOcrLaunchModelPath() const;
-    void setRawPageOcrLaunchModelPath(const QString &path);
-    QString rawPageOcrLaunchMmprojPath() const;
-    void setRawPageOcrLaunchMmprojPath(const QString &path);
-    QString rawPageOcrLaunchDraftPath() const;
-    void setRawPageOcrLaunchDraftPath(const QString &path);
-    QString rawPageOcrRequestProfileId() const;
-    void setRawPageOcrRequestProfileId(const QString &id);
-    QString rawPageOcrModelName() const;
-    void setRawPageOcrModelName(const QString &name);
-
     QString fixLaunchModelPath() const;
     void setFixLaunchModelPath(const QString &path);
     QString fixLaunchMmprojPath() const;
@@ -325,8 +293,7 @@ public:
     Q_PROPERTY(QStringList taskRoles READ taskRoles CONSTANT)
 
     // Task-generic views over the per-task model settings. role is a task id:
-    // "pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout" or
-    // "fix" (the legacy "ocr" maps to "pageOcr").
+    // "blockRecognition", "decision", "layout" or "fix".
     Q_INVOKABLE QString launchModelPathForRole(const QString &role) const;
     void setLaunchModelPathForRole(const QString &role, const QString &path);
     QString launchMmprojPathForRole(const QString &role) const;
@@ -382,16 +349,11 @@ signals:
     void startupTimeoutMsChanged();
     void allowNonLoopbackChanged();
     void launchProfileIdChanged();
-    void launchModelPathChanged();
-    void launchMmprojPathChanged();
-    void launchDraftPathChanged();
     void launchHostChanged();
     void launchPortChanged();
     void checkLaunchModelPathChanged();
     void checkLaunchMmprojPathChanged();
     void checkLaunchDraftPathChanged();
-    void checkRequestProfileIdChanged();
-    void checkModelNameChanged();
     void showConfidenceChanged();
     void decisionLaunchModelPathChanged();
     void decisionLaunchMmprojPathChanged();
@@ -404,11 +366,6 @@ signals:
     void layoutLaunchDraftPathChanged();
     void layoutRequestProfileIdChanged();
     void layoutModelNameChanged();
-    void rawPageOcrLaunchModelPathChanged();
-    void rawPageOcrLaunchMmprojPathChanged();
-    void rawPageOcrLaunchDraftPathChanged();
-    void rawPageOcrRequestProfileIdChanged();
-    void rawPageOcrModelNameChanged();
     void fixLaunchModelPathChanged();
     void fixLaunchMmprojPathChanged();
     void fixLaunchDraftPathChanged();
@@ -529,19 +486,11 @@ private:
     static constexpr const char *kLaunchHost = "launch/host";
     static constexpr const char *kLaunchPort = "launch/port";
 
-    // The page task's launch paths — the task is gone and its accessors go
-    // with it; the check ones own the OCR model's files now.
-    static constexpr const char *kLaunchModelPath = "tasks/pageOcr/modelPath";
-    static constexpr const char *kLaunchMmprojPath = "tasks/pageOcr/mmprojPath";
-    static constexpr const char *kLaunchDraftPath = "tasks/pageOcr/draftPath";
-
-    // Block recognition: the OCR model's launch files and the block request's
-    // request profile, in the check namespace its accessors were born with.
+    // Block recognition: the OCR model's launch files, in the check namespace
+    // its accessors were born with.
     static constexpr const char *kCheckLaunchModelPath = "tasks/check/modelPath";
     static constexpr const char *kCheckLaunchMmprojPath = "tasks/check/mmprojPath";
     static constexpr const char *kCheckLaunchDraftPath = "tasks/check/draftPath";
-    static constexpr const char *kCheckRequestProfileId = "tasks/check/requestProfileId";
-    static constexpr const char *kCheckModelName = "tasks/check/modelName";
 
     static constexpr const char *kShowConfidence = "check/showConfidence";
 
@@ -559,13 +508,6 @@ private:
     static constexpr const char *kLayoutLaunchDraftPath = "tasks/layout/draftPath";
     static constexpr const char *kLayoutRequestProfileId = "tasks/layout/requestProfileId";
     static constexpr const char *kLayoutModelName = "tasks/layout/modelName";
-
-    // Raw page OCR (page recognition without markup)
-    static constexpr const char *kRawPageOcrLaunchModelPath = "tasks/rawPageOcr/modelPath";
-    static constexpr const char *kRawPageOcrLaunchMmprojPath = "tasks/rawPageOcr/mmprojPath";
-    static constexpr const char *kRawPageOcrLaunchDraftPath = "tasks/rawPageOcr/draftPath";
-    static constexpr const char *kRawPageOcrRequestProfileId = "tasks/rawPageOcr/requestProfileId";
-    static constexpr const char *kRawPageOcrModelName = "tasks/rawPageOcr/modelName";
 
     // Fix (block correction by a universal model)
     static constexpr const char *kFixLaunchModelPath = "tasks/fix/modelPath";

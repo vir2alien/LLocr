@@ -88,7 +88,7 @@ public:
     QString orphanInfo() const;
     Q_INVOKABLE QString terminateOrphan();
 
-    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("pageOcr"));
+    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("blockRecognition"));
     // The launch profile the machine runs with, composed with the model's own
     // rows: the estimate reads the context, the ubatch and the cache types
     // from it.
@@ -146,7 +146,7 @@ private:
     QString modelBuildError(ConnectionRole role) const;
     void beginRoleSwitch();
 
-    ResolvedConnection resolveExternal(ConnectionRole role = ConnectionRole::PageOcr) const;
+    ResolvedConnection resolveExternal(ConnectionRole role = ConnectionRole::BlockRecognition) const;
     void resolveExternalReady(QObject *context, ConnectionRole role, const std::function<void(const ResolvedConnection &)> &onResolved);
     ResolvedConnection buildManagedConnection() const;
 
@@ -188,12 +188,12 @@ private:
     struct PendingResolve {
         QPointer<QObject> context;
         bool guarded = false;
-        ConnectionRole role = ConnectionRole::PageOcr;
+        ConnectionRole role = ConnectionRole::BlockRecognition;
         std::function<void(const ResolvedConnection &)> onResolved;
     };
     std::vector<PendingResolve> m_resolveCallbacks;
     std::vector<PendingResolve> m_deferredResolves;
-    ConnectionRole m_resolveRole = ConnectionRole::PageOcr;
+    ConnectionRole m_resolveRole = ConnectionRole::BlockRecognition;
     // Per-role resolved connections of a Ready server that runs the role;
     // served without the /v1/models round-trip until a state transition or
     // any settings change clears them.
@@ -207,7 +207,7 @@ private:
     QNetworkAccessManager *m_modelsNet = nullptr;
     QString m_modelsBaseUrl;
     ServerLaunchConfig m_startedConfig;
-    ConnectionRole m_startedRole = ConnectionRole::PageOcr;
+    ConnectionRole m_startedRole = ConnectionRole::BlockRecognition;
     bool m_hasStartedConfig = false;
     RuntimeState m_state = RuntimeState::NotConfigured;
     AppBusyState m_busyState = AppBusyState::Idle;

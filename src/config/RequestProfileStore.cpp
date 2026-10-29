@@ -16,10 +16,6 @@ constexpr int kSchemaVersion = 2;
 QString userFileName(ConnectionRole role)
 {
     switch (role) {
-    case ConnectionRole::PageOcr:
-        return QStringLiteral("requestPage.json");
-    case ConnectionRole::RawPageOcr:
-        return QStringLiteral("requestRawPage.json");
     case ConnectionRole::BlockRecognition:
         return QStringLiteral("requestBlock.json");
     case ConnectionRole::Decision:
@@ -29,15 +25,13 @@ QString userFileName(ConnectionRole role)
     case ConnectionRole::Fix:
         return QStringLiteral("requestFix.json");
     }
-    return QStringLiteral("requestPage.json");
+    return QStringLiteral("requestBlock.json");
 }
 
 // User copies written before the task rework carry the old names.
 QString legacyFileName(ConnectionRole role)
 {
     switch (role) {
-    case ConnectionRole::PageOcr:
-        return QStringLiteral("request.json");
     case ConnectionRole::BlockRecognition:
         return QStringLiteral("requestValidate.json");
     default:
@@ -63,7 +57,7 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, ConnectionRole
 
     switch (m_role) {
     case ConnectionRole::BlockRecognition:
-        connect(&m_settings, &SettingsStore::checkRequestProfileIdChanged, this, [this] { followActiveProfile(); });
+        connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
         break;
     case ConnectionRole::Decision:
         connect(&m_settings, &SettingsStore::decisionRequestProfileIdChanged, this, [this] { followActiveProfile(); });
@@ -71,14 +65,8 @@ RequestProfileStore::RequestProfileStore(SettingsStore &settings, ConnectionRole
     case ConnectionRole::Layout:
         connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, [this] { followActiveProfile(); });
         break;
-    case ConnectionRole::RawPageOcr:
-        connect(&m_settings, &SettingsStore::rawPageOcrRequestProfileIdChanged, this, [this] { followActiveProfile(); });
-        break;
     case ConnectionRole::Fix:
         connect(&m_settings, &SettingsStore::fixRequestProfileIdChanged, this, [this] { followActiveProfile(); });
-        break;
-    case ConnectionRole::PageOcr:
-        connect(&m_settings, &SettingsStore::modelRecipeIdChanged, this, [this] { followActiveProfile(); });
         break;
     }
 }
@@ -113,7 +101,7 @@ QString RequestProfileStore::activeProfileId() const
     QString id;
     switch (m_role) {
     case ConnectionRole::BlockRecognition:
-        id = m_settings.checkRequestProfileId();
+        id = m_settings.modelRecipeId();
         break;
     case ConnectionRole::Decision:
         id = m_settings.decisionRequestProfileId();
@@ -121,14 +109,8 @@ QString RequestProfileStore::activeProfileId() const
     case ConnectionRole::Layout:
         id = m_settings.layoutRequestProfileId();
         break;
-    case ConnectionRole::RawPageOcr:
-        id = m_settings.rawPageOcrRequestProfileId();
-        break;
     case ConnectionRole::Fix:
         id = m_settings.fixRequestProfileId();
-        break;
-    case ConnectionRole::PageOcr:
-        id = m_settings.modelRecipeId();
         break;
     }
     if (m_profiles.isKnown(id))

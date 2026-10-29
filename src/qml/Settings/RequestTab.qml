@@ -10,8 +10,8 @@ import "../Common"
 Item {
     id: root
 
-    // Model task id: "pageOcr", "blockRecognition", "decision" or "layout".
-    property string role: "pageOcr"
+    // Model task id: "blockRecognition", "decision" or "layout".
+    property string role: "blockRecognition"
     readonly property bool decisionRole: role === "decision"
     readonly property bool hasParams: profiles.draftModel.count > 0
     readonly property real nameWidth: 0.28

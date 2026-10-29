@@ -469,7 +469,7 @@ void TestModelMemoryEstimator::theRequirementFollowsTheMeasuredNumbers()
     ModelMemoryBudget glmBudget;
     glmBudget.ctxSize = 16384;
     glmBudget.ubatchTokens = 512;
-    glmBudget.visionTokens = ModelProfiles::visionTokensFor(*glm, QStringLiteral("rawPageOcr"));
+    glmBudget.visionTokens = ModelProfiles::visionTokensFor(*glm, QStringLiteral("layout"));
     QCOMPARE(glmBudget.visionTokens, 6144);
     const ModelMemoryEstimate glmEstimate = estimateMemory(glmShape, glmBudget);
     // the page fills the image budget: the encoder reserves more than the cache
@@ -484,8 +484,9 @@ void TestModelMemoryEstimator::aPageFillsTheImageBudgetAndACropDoesNot()
     const QList<ModelProfiles::Profile> profiles = ModelProfiles::instance();
     const ModelProfiles::Profile *glm = ModelProfiles::find(profiles, QStringLiteral("glm-ocr"));
     QVERIFY(glm);
-    // the raw page role: the model shrinks the page to its image-max-tokens
-    QCOMPARE(ModelProfiles::visionTokensFor(*glm, QStringLiteral("rawPageOcr")), 6144);
+    // a page fills the model's image budget — glm-ocr ships no layout role, so
+    // the budget is the one the profile declares
+    QCOMPARE(ModelProfiles::visionTokensFor(*glm, QStringLiteral("layout")), 6144);
     // the block role: a crop is scaled up to the floor the model declares
     QCOMPARE(ModelProfiles::visionTokensFor(*glm, QStringLiteral("blockRecognition")), 456);
 

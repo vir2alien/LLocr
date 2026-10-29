@@ -10,6 +10,7 @@
 
 #include <algorithm>
 
+#include "core/ConnectionRole.h"
 #include "runtime/InstalledReconcile.h"
 #include "runtime/ModelCatalog.h"
 #include "runtime/ModelRegistry.h"
@@ -37,9 +38,9 @@ QString roleFromIndex(const QString &s)
     // Index files written before the role renames carry the old tags.
     if (s == QLatin1String("check"))
         return QStringLiteral("blockRecognition");
-    if (s == QLatin1String("ocr"))
-        return QStringLiteral("pageOcr");
-    return s;
+    if (connectionRoleIds().contains(s))
+        return s;
+    return QString();
 }
 
 bool isSubpathOf(const QString &path, const QString &dir)
@@ -94,8 +95,11 @@ ModelEntry entryFromJson(const QJsonObject &o)
     e.addedAt = o.value(QStringLiteral("addedAt")).toString();
     e.repoId = o.value(QStringLiteral("repoId")).toString();
     const QJsonArray roles = o.value(QStringLiteral("roles")).toArray();
-    for (const QJsonValue &v : roles)
-        e.roles << roleFromIndex(v.toString());
+    for (const QJsonValue &v : roles) {
+        const QString role = roleFromIndex(v.toString());
+        if (!role.isEmpty())
+            e.roles << role;
+    }
     const QJsonArray parts = o.value(QStringLiteral("parts")).toArray();
     for (const QJsonValue &v : parts)
         e.parts << v.toString();

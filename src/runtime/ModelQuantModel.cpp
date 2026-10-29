@@ -90,7 +90,7 @@ ModelQuantModel::Quant quantOf(const QList<ModelEntry> &installed,
 }
 
 // The management list is role-agnostic: a model is measured in the role that
-// asks the most of it — a page role if it has one (the page fills the image
+// asks the most of it — the layout task if it has one (a page fills the image
 // budget), its first role otherwise.
 QString effectiveRole(const ModelProfiles::Profile &profile, const QString &role)
 {
@@ -99,7 +99,7 @@ QString effectiveRole(const ModelProfiles::Profile &profile, const QString &role
     QStringList names = profile.roles.keys();
     std::sort(names.begin(), names.end());
     for (const QString &name : std::as_const(names)) {
-        if (name == QLatin1String("pageOcr") || name == QLatin1String("rawPageOcr") || name == QLatin1String("layout"))
+        if (name == QLatin1String("layout"))
             return name;
     }
     return names.isEmpty() ? role : names.first();
@@ -450,16 +450,14 @@ bool ModelQuantModel::matchesRole(const ModelEntry &entry, const SettingsStore &
         return true;
     if (!entry.roles.isEmpty())
         return entry.roles.contains(role);
-    // Legacy entries carry no task tags; they predate the task rework, so only
-    // the two recognition tasks get the vision-capability heuristic (a page
-    // OCR model needs an mmproj projector, a block model does not).
-    if (role != QLatin1String("pageOcr") && role != QLatin1String("blockRecognition"))
+    // Legacy entries carry no task tags; they predate the task rework, so the
+    // recognition task gets the vision-capability heuristic: a text-only file
+    // read as a block model, a projector-bearing one as the page task's — and
+    // the page task is gone, so the projector-bearing entry stays out of the
+    // role lists until the user re-activates it from Settings → Models.
+    if (role != QLatin1String("blockRecognition"))
         return false;
-    const bool blockActive = !entry.modelPath.isEmpty() && entry.modelPath == settings.checkLaunchModelPath();
-    if (blockActive)
-        return false;
-    const bool vision = !entry.mmprojPath.isEmpty();
-    return role == QLatin1String("blockRecognition") ? !vision : vision;
+    return entry.mmprojPath.isEmpty();
 }
 
 QString ModelQuantModel::stemName(const QString &pathOrFile)

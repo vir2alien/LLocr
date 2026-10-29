@@ -16,7 +16,7 @@ class ServerLaunchConfig
 {
 public:
     ServerLaunchConfig() = default;
-    static ServerLaunchConfig fromSettings(const SettingsStore &settings, const LaunchProfileStore &launchProfiles, ConnectionRole role = ConnectionRole::PageOcr);
+    static ServerLaunchConfig fromSettings(const SettingsStore &settings, const LaunchProfileStore &launchProfiles, ConnectionRole role = ConnectionRole::BlockRecognition);
     QStringList toArguments(const ServerCapabilities &caps) const;
     QString toDisplayCommand(const ServerCapabilities &caps) const;
 

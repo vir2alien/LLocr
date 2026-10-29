@@ -67,11 +67,9 @@ class FakeModelInstaller : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QObject *allModels READ allModels CONSTANT)
-    Q_PROPERTY(QObject *quantModels READ quantModels CONSTANT)
     Q_PROPERTY(QObject *checkQuantModels READ quantModels CONSTANT)
     Q_PROPERTY(QObject *decisionQuantModels READ quantModels CONSTANT)
     Q_PROPERTY(QObject *layoutQuantModels READ quantModels CONSTANT)
-    Q_PROPERTY(QObject *rawPageOcrQuantModels READ quantModels CONSTANT)
     Q_PROPERTY(QObject *fixQuantModels READ quantModels CONSTANT)
 
 public:
@@ -93,7 +91,7 @@ class FakeRuntime : public QObject
     Q_OBJECT
 
 public:
-    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("pageOcr"))
+    Q_INVOKABLE QVariantMap estimateModelMemory(const QString &modelPath, const QString &role = QStringLiteral("blockRecognition"))
     {
         Q_UNUSED(modelPath)
         Q_UNUSED(role)
@@ -221,7 +219,7 @@ void TestTaskModelsTableQml::initTestCase()
     // draft; the stores are not part of this test, so one empty stand-in
     // answers for all of them.
     m_profiles = std::make_unique<FakeProfilesStore>();
-    for (const char *name : {"LaunchProfiles", "RequestProfilesPageOcr", "RequestProfilesRawPageOcr", "RequestProfilesBlock", "RequestProfilesDecision", "RequestProfilesLayout", "RequestProfilesFix"})
+    for (const char *name : {"LaunchProfiles", "RequestProfilesBlock", "RequestProfilesDecision", "RequestProfilesLayout", "RequestProfilesFix"})
         qmlRegisterSingletonInstance("LLocr", 1, 0, name, m_profiles.get());
 
     // The module's own singletons, read from the source tree.
@@ -341,8 +339,7 @@ void TestTaskModelsTableQml::theTableLoadsWithoutWarnings()
 
     // Every task has an entry, and the entry carries the three values the
     // draft is made of.
-    const QStringList tasks = {
-        QStringLiteral("pageOcr"), QStringLiteral("rawPageOcr"), QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("layout"), QStringLiteral("fix")};
+    const QStringList tasks = {QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("layout"), QStringLiteral("fix")};
     for (const QString &task : tasks) {
         QObject *entry = draftEntry(table.get(), task);
         QVERIFY2(entry, qPrintable(task));
@@ -372,14 +369,14 @@ void TestTaskModelsTableQml::theTaskTextsKeepTheirTranslationContext()
 
 void TestTaskModelsTableQml::anUnsavedModelNameSurvivesTheSync()
 {
-    m_settings->setModelNameForRole(QStringLiteral("pageOcr"), QStringLiteral("saved-name"));
+    m_settings->setModelNameForRole(QStringLiteral("blockRecognition"), QStringLiteral("saved-name"));
 
     const std::unique_ptr<QObject> table = loadTable();
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
     QVERIFY2(m_warnings.isEmpty(), qPrintable(m_warnings.join(QStringLiteral("; "))));
 
-    QObject *entry = draftEntry(table.get(), QStringLiteral("pageOcr"));
+    QObject *entry = draftEntry(table.get(), QStringLiteral("blockRecognition"));
     QVERIFY(entry);
 
     // The user types a name: the field writes it into the draft entry.
@@ -395,13 +392,13 @@ void TestTaskModelsTableQml::anUnsavedModelNameSurvivesTheSync()
 
 void TestTaskModelsTableQml::theCancelPathThrowsTheEditAway()
 {
-    m_settings->setModelNameForRole(QStringLiteral("pageOcr"), QStringLiteral("saved-name"));
+    m_settings->setModelNameForRole(QStringLiteral("blockRecognition"), QStringLiteral("saved-name"));
 
     const std::unique_ptr<QObject> table = loadTable();
     QVERIFY2(table, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
 
-    QObject *entry = draftEntry(table.get(), QStringLiteral("pageOcr"));
+    QObject *entry = draftEntry(table.get(), QStringLiteral("blockRecognition"));
     QVERIFY(entry);
     entry->setProperty("modelName", QStringLiteral("typed-name"));
     entry->setProperty("nameEdited", true);

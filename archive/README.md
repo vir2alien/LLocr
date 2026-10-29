@@ -77,3 +77,12 @@ resolution and the plaintext-secret move.
 The settings are reset once instead — the key `settings/schemaVersion` decides
 whether the file predates the reset. `runtime/rootDir` and `runtime/modelsDir`
 survive it: they point at the user's disk, not at the schema.
+
+## The tasks that are gone
+
+The app had six tasks; it ships four. `pageOcr` and `rawPageOcr` are cut — the
+single-pass page recognition. The remaining four are `layout`,
+`blockRecognition`, `decision` and `fix`.
+
+The role list lives in `src/core/ConnectionRole.h`; the settings dispatch in
+`roleSettings()` in `src/config/SettingsStore.cpp`.

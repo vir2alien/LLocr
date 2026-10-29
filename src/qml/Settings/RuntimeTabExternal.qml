@@ -20,7 +20,7 @@ ColumnLayout {
     property bool compact: false
 
     readonly property alias baseUrlText: baseUrlField.text
-    readonly property var taskIds: ["pageOcr", "rawPageOcr", "blockRecognition", "decision", "layout", "fix"]
+    readonly property var taskIds: ["blockRecognition", "decision", "layout", "fix"]
 
     readonly property int titleWidth: 160
     readonly property int endpointWidth: 190

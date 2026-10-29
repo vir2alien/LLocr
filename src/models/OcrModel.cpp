@@ -91,36 +91,29 @@ QString OcrModel::displayName() const
 }
 
 namespace {
-// The adapter serves the page-recognition task the model declares: page OCR
-// with layout tokens, or — for models like GLM-OCR — the raw-text variant.
-const ModelProfiles::Role *pageRoleFor(const QString &modelId)
+// The adapter serves the transcription task the model declares (the
+// blockRecognition role's prompts and parser). A model that serves several
+// tasks answers each of them with its own prompt — Chandra-OCR-2 has one
+// prompt per task — so the task reaches the profile; a model without the
+// asked-for role falls back to the transcription one.
+const ModelProfiles::Role *transcriptionRoleFor(const QString &modelId)
 {
-    if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, QStringLiteral("pageOcr")))
-        return role;
-    return ModelProfiles::roleFor(modelId, QStringLiteral("rawPageOcr"));
+    return ModelProfiles::roleFor(modelId, QStringLiteral("blockRecognition"));
 }
 
-// The role the adapter serves: the task's own role when the model has one,
-// the page role otherwise. A model that serves the page task and the raw task
-// answers each of them with its own prompt — Chandra-OCR-2 has one prompt per
-// task — so the task reaches the profile.
 const ModelProfiles::Role *roleForTask(const QString &modelId, const QString &taskRole)
 {
     if (!taskRole.isEmpty()) {
         if (const ModelProfiles::Role *role = ModelProfiles::roleFor(modelId, taskRole))
             return role;
     }
-    return pageRoleFor(modelId);
+    return transcriptionRoleFor(modelId);
 }
 }  // namespace
 
 QList<ModelProfiles::Prompt> OcrModel::promptVariants() const
 {
-    if (const ModelProfiles::Role *role = roleForTask(m_id, m_role)) {
-        if (!role->prompts.isEmpty())
-            return role->prompts;
-    }
-    if (const ModelProfiles::Role *role = pageRoleFor(m_id))
+    if (const ModelProfiles::Role *role = roleForTask(m_id, m_role))
         return role->prompts;
     return {};
 }

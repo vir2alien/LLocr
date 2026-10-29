@@ -99,11 +99,12 @@ void BlockStyleMap::applyJson(const QJsonObject &root)
 namespace {
 
 // Block styles are the profile's label vocabulary, not a task behavior, so a
-// model may ship them under any task it serves (pageOcr for one-shot OCR,
-// layout for the markup pass). The first role that knows the label wins.
+// model may ship them under any task it serves (blockRecognition for the
+// transcription, layout for the markup pass). The first role that knows the
+// label wins.
 const ModelProfiles::Role *styledRoleFor(const QString &modelId)
 {
-    static const char *kStyledRoles[] = {"pageOcr", "layout", "blockRecognition"};
+    static const char *kStyledRoles[] = {"layout", "blockRecognition"};
     for (const char *role : kStyledRoles) {
         if (const ModelProfiles::Role *found = ModelProfiles::roleFor(modelId, QLatin1String(role)))
             return found;

@@ -1641,7 +1641,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         // A box needs at least a pixel in both directions to become a crop, and
         // the layout boxes are normalized: on the shared 39x27 fixture a short
@@ -1747,7 +1747,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
@@ -1839,7 +1839,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1880,7 +1880,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1921,7 +1921,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1958,7 +1958,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -1998,7 +1998,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2079,7 +2079,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
@@ -2147,7 +2147,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
         server.transcriptionSequence.clear();  // every block reads `transcription`
 
         QImage page(480, 360, QImage::Format_RGB32);
@@ -2218,7 +2218,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
@@ -2297,7 +2297,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2344,7 +2344,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
@@ -2511,7 +2511,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2551,7 +2551,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2621,7 +2621,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2657,7 +2657,7 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
-        m_settings->setCheckModelName(QStringLiteral("check-test"));
+        m_settings->setModelName(QStringLiteral("check-test"));
         m_settings->setFixModelName(QStringLiteral("fix-test"));
 
         QImage page(480, 360, QImage::Format_RGB32);

@@ -46,7 +46,7 @@ ModelProfiles::Profile makeProfile(const QString &id, const QList<RequestParamet
     profile.title = id;
     ModelProfiles::Role role;
     role.request = parameters;
-    profile.roles.insert(QStringLiteral("pageOcr"), role);
+    profile.roles.insert(QStringLiteral("blockRecognition"), role);
     return profile;
 }
 
@@ -62,7 +62,7 @@ QList<ModelProfiles::Profile> twoModels()
     second.title = second.id;
     ModelProfiles::Role secondRole;
     secondRole.request = {makeParameter(1, QStringLiteral("gamma"), 1)};
-    second.roles.insert(QStringLiteral("pageOcr"), secondRole);
+    second.roles.insert(QStringLiteral("blockRecognition"), secondRole);
     return {makeProfile(QStringLiteral("unlimited-ocr"), defaultParameters()), second};
 }
 
@@ -539,7 +539,7 @@ private slots:
         QCOMPARE(savedAlpha->value.toDouble(), 0.1);
 
         // The user file is a profiles array keyed by the profile id.
-        QFile userFile(QDir(dir.path()).filePath(QStringLiteral("profiles/requestPage.json")));
+        QFile userFile(QDir(dir.path()).filePath(QStringLiteral("profiles/requestBlock.json")));
         QVERIFY(userFile.open(QIODevice::ReadOnly));
         const QJsonObject root = QJsonDocument::fromJson(userFile.readAll()).object();
         userFile.close();
@@ -583,7 +583,7 @@ private slots:
         settings.setModelRecipeId(QStringLiteral("mineru"));
 
         QVERIFY(QDir().mkpath(QDir(dir.path()).filePath("profiles")));
-        QFile userFile(QDir(dir.path()).filePath("profiles/request.json"));
+        QFile userFile(QDir(dir.path()).filePath("profiles/requestValidate.json"));
         QVERIFY(userFile.open(QIODevice::WriteOnly));
         userFile.write(R"({
             "schemaVersion": 1,
@@ -658,11 +658,11 @@ private slots:
         QCOMPARE(alphabetical.activeProfileId(), QStringLiteral("deepseek-ocr"));
     }
 
-    // The check role has no model registry of its own, so the external-mode
-    // picker on the Model tab lists the model profiles that answer the role —
-    // the ids the store's profiles are keyed by, which is also what its
-    // setting holds. Without it, a check model served externally had no way to
-    // be given the right request profile.
+    // The recognition task's picker lists the model profiles that answer the
+    // role — the ids the store's profiles are keyed by, which is also what the
+    // model recipe id holds. Without it, a model served externally had no way
+    // to be given the right request profile. A task a model does not answer
+    // keeps it out of that task's picker.
     void profileModelListsTheModelsOfTheRole()
     {
         QTemporaryDir dir;
@@ -685,33 +685,29 @@ private slots:
         profiles[0].isDefault = true;
         profiles[1].title = QStringLiteral("Zeta OCR");
 
-        RequestProfileStore ocr(settings);
-        ocr.setModelProfiles(profiles);
-        auto *ocrList = ocr.profileModel();
-        QAbstractItemModelTester ocrTester(ocrList, QAbstractItemModelTester::FailureReportingMode::Fatal);
-        QCOMPARE(ocrList->rowCount(), 2);
-        QCOMPARE(ocrList->data(ocrList->index(0, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("unlimited-ocr"));
-        QCOMPARE(ocrList->data(ocrList->index(0, 0), RequestProfileListModel::DisplayRole).toString(), QStringLiteral("unlimited-ocr"));
-        QCOMPARE(ocrList->data(ocrList->index(1, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("deepseek-ocr"));
-        QCOMPARE(qobject_cast<RequestProfileListModel *>(ocrList)->rowOfId(QStringLiteral("verifier")), -1);
-        QCOMPARE(qobject_cast<RequestProfileListModel *>(ocrList)->rowOfId(QStringLiteral("no-such-model")), -1);
+        RequestProfileStore blockStore(settings);
+        blockStore.setModelProfiles(profiles);
+        auto *blockList = blockStore.profileModel();
+        QAbstractItemModelTester blockTester(blockList, QAbstractItemModelTester::FailureReportingMode::Fatal);
+        QCOMPARE(blockList->rowCount(), 3);
+        QCOMPARE(blockList->data(blockList->index(0, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(blockList->data(blockList->index(0, 0), RequestProfileListModel::DisplayRole).toString(), QStringLiteral("unlimited-ocr"));
+        QCOMPARE(blockList->data(blockList->index(1, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("verifier"));
+        QCOMPARE(blockList->data(blockList->index(2, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("deepseek-ocr"));
+        QCOMPARE(qobject_cast<RequestProfileListModel *>(blockList)->rowOfId(QStringLiteral("no-such-model")), -1);
 
-        RequestProfileStore checkStore(settings, ConnectionRole::BlockRecognition);
-        checkStore.setModelProfiles(profiles);
-        auto *checkList = checkStore.profileModel();
-        QAbstractItemModelTester checkTester(checkList, QAbstractItemModelTester::FailureReportingMode::Fatal);
-        QCOMPARE(checkList->rowCount(), 1);
-        QCOMPARE(checkList->data(checkList->index(0, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("verifier"));
-        QCOMPARE(checkList->data(checkList->index(0, 0), RequestProfileListModel::DisplayRole).toString(), QStringLiteral("Verifier"));
-        QCOMPARE(qobject_cast<RequestProfileListModel *>(checkList)->rowOfId(QStringLiteral("verifier")), 0);
+        // Picking a profile from the list is the same call the picker makes, and
+        // the store follows the model recipe id the role keeps.
+        settings.setModelRecipeId(QStringLiteral("verifier"));
+        blockStore.reloadDraft();
+        QCOMPARE(blockStore.draftProfileId(), QStringLiteral("verifier"));
+        QCOMPARE(blockStore.activeProfileId(), QStringLiteral("verifier"));
+        QCOMPARE(blockStore.activeProfile().parameters.size(), 1);
 
-        // Picking a profile from the list is the same call the picker makes, and the
-        // store still answers the setting the check role keeps.
-        settings.setCheckRequestProfileId(QStringLiteral("verifier"));
-        checkStore.reloadDraft();
-        QCOMPARE(checkStore.draftProfileId(), QStringLiteral("verifier"));
-        QCOMPARE(checkStore.activeProfileId(), QStringLiteral("verifier"));
-        QCOMPARE(checkStore.activeProfile().parameters.size(), 1);
+        // No profile answers the decision task here, so its picker is empty.
+        RequestProfileStore decisionStore(settings, ConnectionRole::Decision);
+        decisionStore.setModelProfiles(profiles);
+        QCOMPARE(decisionStore.profileModel()->rowCount(), 0);
     }
 
     // The layout store is the fourth role: its built-ins are the models
@@ -743,7 +739,7 @@ private slots:
         QCOMPARE(layoutList->rowCount(), 1);
         QCOMPARE(layoutList->data(layoutList->index(0, 0), RequestProfileListModel::IdRole).toString(), QStringLiteral("marker"));
 
-        settings.setCheckRequestProfileId(QStringLiteral("unlimited-ocr"));
+        settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
         settings.setLayoutRequestProfileId(QStringLiteral("marker"));
         layoutStore.reloadDraft();
         QCOMPARE(layoutStore.activeProfileId(), QStringLiteral("marker"));
@@ -814,7 +810,7 @@ private slots:
         // QSettings is process-wide here, so a previous test's choice would leak.
         settings.setModelRecipeId(QStringLiteral("unlimited-ocr"));
 
-        const QString userPath = QDir(dir.path()).filePath(QStringLiteral("profiles/request.json"));
+        const QString userPath = QDir(dir.path()).filePath(QStringLiteral("profiles/requestBlock.json"));
         QVERIFY(QDir().mkpath(QFileInfo(userPath).absolutePath()));
         QFile broken(userPath);
         QVERIFY(broken.open(QIODevice::WriteOnly));
