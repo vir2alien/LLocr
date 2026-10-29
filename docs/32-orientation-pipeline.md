@@ -172,14 +172,14 @@ page. The mark clears on any turn of the page.
 ## 5. Stage 3 — the markup pass
 
 The layout models carry the direction the pixel check cannot see: MinerU
-ends every block line with `<|rotate_up|/left|/right|/down|>`, TeleOCR
-carries the same word in the third `<orientation>` tag. The direction names
-where the block's text **top** points (0 = up, 90 = right, 180 = down,
-270 = left).
+ends every block line with `<|rotate_up|/left|/right|/down|>` (the archive's
+TeleOCR carried the same word in the third `<orientation>` tag). The
+direction names where the block's text **top** points (0 = up, 90 = right,
+180 = down, 270 = left).
 
 ### 5.1 Keeping the tokens
 
-`MinerULayoutParser` and `TeleOcrLayoutParser` keep the token on each box
+`MinerULayoutParser` keeps the token on each box
 (`BoundingBox::orientation`), zipping the reply's lines onto the parsed
 boxes in order and refusing the zip when the lists do not line up. The
 page-level vote is independent of that zip — it reads the reply's lines
@@ -320,7 +320,7 @@ closing 6–14 ms, sweep 40–150 ms depending on ink.
 | `src/app/AppController.cpp` | `applyPageDeskew`, `applyLayout` (vote, auto-turn, second pass), `runAfterOrientationCheck`, `turnPage` |
 | `src/app/DocumentModel.h/.cpp` | `rotation`, `skewDegrees`, `suggestedTurn`, `displaySize`, `setSkew`, the render |
 | `src/parsers/DetTokenParserBase.h` | `orientationDegrees`, `orientationVote` |
-| `src/parsers/MinerULayoutParser.cpp`, `TeleOcrLayoutParser.cpp` | token extraction and the zip |
+| `src/parsers/MinerULayoutParser.cpp` | token extraction and the zip (`archive/parsers/` keeps the retired TeleOcrLayoutParser) |
 | `src/core/OcrResult.h` | `BoundingBox::orientation`, `OcrPage::orientationVote(+Share)` |
 | `src/app/ProjectStore.*`, `ProjectController.cpp` | persistence |
 | `tests/test_page_orientation.cpp` | the detector: 13 slots incl. corpus + skew |

@@ -59,12 +59,12 @@ llama-server \
 ## 5. Verification notes
 
 No dedicated calibration; recognized blocks go through the usual
-decision/fix pipeline (docs/18, docs/20).
+decision/fix pipeline (docs/20; the decision task speaks the visual diff of minicpm-jev, ADR 254).
 
 ## 6. Settings in the app
 
-- Task — **blockRecognition** («Модели» window); the task's default stays
-  glm-ocr.
+- Task — **blockRecognition** («Модели» window); the task's default is
+  mineru (ADR 252).
 - Installation via Settings → Models (HF repository
   `PaddlePaddle/PaddleOCR-VL-1.6-GGUF`) or the wizard's hardware step.
 
@@ -72,7 +72,7 @@ decision/fix pipeline (docs/18, docs/20).
 
 - **No layout.** The layout model of the upstream pipeline is not part of
   the GGUF — the profile deliberately does not declare the layout task;
-  markup passes need teleocr or mineru.
+  markup passes need mineru (the archive's teleocr carried it before).
 - Single f16 quant: no smaller quants exist to step down to; the model is
   small enough that this rarely matters. The file name carries no quant
   token, so the quantization comes from the model profile.

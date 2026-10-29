@@ -9,8 +9,9 @@
 trained on the two-step mineru-vl-utils protocol: layout detection over the
 1036²-squashed page, then per-block transcription by type. No single-shot
 page mode exists in its prompt set. In LLocr it serves **layout** (the
-«Разметить страницу» pass) and **blockRecognition** (the second step);
-pageOcr/rawPageOcr stay unclaimed. Apache-2.0 licensed.
+«Разметить страницу» pass) and **blockRecognition** (the second step) — the
+default model for both, one model closing the whole markup → recognition
+pipeline (ADR 252). Apache-2.0 licensed.
 
 ## 2. Files
 
@@ -75,13 +76,13 @@ italic, `list`/`list_item` → text, and so on.
 
 Live-verified on the eq_hard corpus: layout returns positioned blocks,
 absorption merges covered children (22 → 18 boxes on the reference page).
-Recognized blocks go through the usual decision/fix pipeline (docs/18,
-docs/20).
+Recognized blocks go through the usual decision/fix pipeline (docs/20; the
+decision task speaks the visual diff of minicpm-jev, ADR 254).
 
 ## 6. Settings in the app
 
-- Tasks — **layout**, **blockRecognition** («Модели» window); layout's
-  default stays teleocr, blocks' default stays glm-ocr.
+- Tasks — **layout**, **blockRecognition** («Модели» window); mineru is
+  both tasks' default (ADR 252).
 - Installation via Settings → Models (HF repository
   `mradermacher/MinerU2.5-Pro-2605-1.2B-GGUF`) or the wizard's hardware
   step.

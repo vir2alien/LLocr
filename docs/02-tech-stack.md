@@ -34,7 +34,7 @@
   >
   > The model prompt is **not** free-typed in `SettingsStore` — it is owned by
   > the selected **OCR model adapter** (`OcrModel::promptVariants()`; for
-  > Unlimited-OCR a single fixed variant "document parsing.", ADR 58).
+  > MinerU the card's trained task prompts, ADR 58).
   > The bbox coordinate range is a parser option (`ParserOptions::bboxRange`,
   > 1000 by default).
 

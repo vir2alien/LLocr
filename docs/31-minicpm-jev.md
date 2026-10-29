@@ -2,7 +2,8 @@
 
 > Manual launch, request contract and app wiring. Russian version:
 > `docs/31-minicpm-jev.ru.md`. The OCR model it was trained alongside is
-> MiniCPM-OCR 1.0 — `docs/30-minicpm-ocr.md`.
+> MiniCPM-OCR 1.0 — `archive/models/docs/30-minicpm-ocr.md` (the model is
+> cut, ADR 251).
 
 ## 1. What it is
 
@@ -24,7 +25,8 @@ and Xiaomi-OCR parses).
 ## 2. Why a separate protocol, not a request profile
 
 The System One decision models the app shipped before (clef-flash,
-d3-flash/d3-mini) read a **structured state** (block type, candidate,
+d3-flash/d3-mini — in the archive, ADR 251) read a **structured state**
+(block type, candidate,
 notation axes) and answer a **client-worded question** through their trained
 noul head. Jev cannot do that:
 
@@ -55,7 +57,8 @@ Every line below is a 400, not a silent fallback:
 
 The app sends the text as it is and does nothing else to it. Note that the
 server's mechanism for breaking special tokens inside the state is enabled for
-the LFM and H2O decision models only — for Jev the OCR text reaches the
+the LFM (in the archive) and H2O decision models only — for Jev the OCR text
+reaches the
 template untouched, which is what the upstream contract asks for ("`ocr_text`
 goes to the model as it is, nothing is cleaned up"). A `choice` question is
 possible as well — it would have to carry `"criteria": {"0": null, "1": null}`
@@ -65,9 +68,9 @@ threshold routing wants.
 So the model profile declares the **`decision`** role with the protocol
 **`systemone_visual_diff_v1`** (`visualDiffDecisionProtocol()` in
 `core/DecisionRequest.h`), and `DecisionModel::buildRequestBody` branches on
-it. There is deliberately no request profile: the role ships no
-`statePrompt`/`question`/`criteria`, and `test_model_preset_catalog` pins
-that emptiness.
+it. There is deliberately no request profile: the role ships no texts at
+all — no system prompt and no prompt profile, the wording is the model's
+own — and `test_model_preset_catalog` pins that emptiness.
 
 ## 3. The two images
 
@@ -248,17 +251,18 @@ The profile ships the upstream service default **0.5** — one value, with
 three trained categories (text/equation/table). The upstream docs are
 explicit that scores are not bitwise reproducible and that the render
 environment shifts the absolute values, so **do not trust the split until a
-run through `scripts/decision-eval/score-project.py` +
-`scripts/decision-calibrate.py` recalibrates the per-block thresholds on
+run through `archive/decision-text/scripts/decision-eval/score-project.py` +
+`archive/decision-text/scripts/decision-calibrate.py` recalibrates the
+per-block thresholds on
 this app's own renders** (the ADR 184 rule: a threshold is measured against
 the request that ships). Empty/unreadable crops are not Jev's questions —
 there are no `emptyThreshold`/`readableThreshold` values to ship.
 
 ## 7. Settings in the app
 
-- Task — **decision** («Модели» window). The task's default stays
-  clef-flash; picking Jev switches the whole verification pass to the
-  visual-diff protocol.
+- Task — **decision** («Модели» window). Jev is the task's default and only
+  model (ADR 252/254): the whole verification pass runs the visual-diff
+  protocol.
 - Installation via Settings → Models (HF repository
   `openbmb/MiniCPM-OCR-Jev-gguf`).
 - The orientation check does not use the decision model at all (ADR 242): it
@@ -284,8 +288,8 @@ there are no `emptyThreshold`/`readableThreshold` values to ship.
   `scripts/measure-memory.sh` if the launch flags change.
 - **`--flash-attn on` overrides the platform layer** on the backends where
   the platform turns it off (Vulkan, CPU) — the same as the other vision
-  models of the project (glm-ocr, lightonocr, qwen3.5, chandra-ocr-2,
-  minicpm-ocr). On Vulkan it contradicts the platform's own note that flash
+  models of the project (glm-ocr, qwen3.5; lightonocr, chandra-ocr-2 and
+  minicpm-ocr are in the archive). On Vulkan it contradicts the platform's own note that flash
   attention there is experimental.
 - **No self-check against the upstream's reference cases.** Upstream ships
   three of them (text, formula, table) with the reference score

@@ -117,6 +117,11 @@ Two scripts do the work:
 - `scripts/memory-from-log.py` — reads a log (or several) and prints the
   numbers, including the fields of the `memory` block.
 
+The worked example below measures the LFM2.5-VL — a three-file model
+(weights, projector, draft) and therefore the fullest walkthrough; the model
+is in the archive (`archive/models/profiles/lfm25-vl-3b.json`, ADR 251), the
+flow is the same for any catalog model.
+
 ```sh
 scripts/measure-memory.sh \
   --model "LiquidAI__LFM2.5-VL-3B-GGUF/LFM2.5-VL-3B-Q8_0.gguf" \
@@ -154,11 +159,11 @@ they change the reservations:
 | --- | --- | --- |
 | `--parallel 1 --cache-reuse 0 --no-context-shift` | the launch policy (`resources/profiles/serverLaunch.json`) | one context, no reuse |
 | `--ctx-size` | the platform profile (16384 on macOS) | the KV cache and the mask scale with it |
-| `--ubatch-size` | the model profile (512 by default, 2048 for the gemma-4 12B, 6144–8192 for the clef-flash and d3 decision models, 512 for the minicpm-jev) | the working set scales with it |
+| `--ubatch-size` | the model profile (512 by default, 2048 for the gemma-4 12B, 512 for the minicpm-jev; the archive's decision profiles carried 6144–8192) | the working set scales with it |
 | `--flash-attn on\|off` | the platform profile, overridden by the model profile (the gemma-4 E4B turns it **off**) | with flash attention off the encoder keeps an attention matrix over the whole page |
 | `--image-min-tokens` / `--image-max-tokens` | the model profile | the page budget of the model |
 | `--spec-type` / `--model-draft` | the model profile | the draft gets a context of its own |
-| `--special` | the model profile (MinerU, LFM2.5-VL, Qwen3.5) | some models need it |
+| `--special` | the model profile (MinerU, Qwen3.5; the archive's LFM2.5-VL too) | some models need it |
 | `--device none --n-gpu-layers 0` | the measurement only | the buffer sizes are the same, and the numbers are readable without a card |
 
 ### The log lines
@@ -196,9 +201,10 @@ page task). A model whose projector does not follow the token count carries
 
 ## 5. The draft's own context
 
-A draft that is a **separate GGUF** (the LFM2.5-VL's DSpark drafter, the
-gemma-4 MTP drafters) runs in a context of its own: llama.cpp gives it its
-own KV cache and its own compute buffer. The profile carries all three parts:
+A draft that is a **separate GGUF** (the gemma-4 MTP drafters; the DSpark
+drafter of the LFM2.5-VL is in the archive) runs in a context of its own:
+llama.cpp gives it its own KV cache and its own compute buffer. The profile
+carries all three parts:
 
 ```
 draftBytes          the weights of the draft file
@@ -222,57 +228,44 @@ The coefficients of every model of the catalog, as they are in the profiles
 | Model | KV layers | KV heads × head dim | Vision | Working set | Draft (weights / context) | Sliding cells |
 | --- | --- | --- | --- | --- | --- | --- |
 | `glm-ocr` | 16 | 8 × 128 | 238 856 B/token (6144) | derived | — | — |
-| `teleocr` | 28 | 8 × 128 | 282 280 B/token (1369) | derived | — | — |
 | `mineru` | 24 | 2 × 64 | 132 324 B/token (1369) | derived | — | — |
 | `paddleocr-vl` | 18 | 2 × 128 | 142 872 B/token (1369) | derived | — | — |
 | `qwen3.5-4b` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
 | `qwen3.5-9b` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
-| `clef-flash` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
-| `d3-flash` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
-| `d3-mini` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
-| `lightonocr` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
-| `minicpm-ocr` | 6 | 2 × 256 | 133 612 B/token (256, the 448² warmup slice; the profile's page budget is 2560) | derived | 605 MB / 1 036 MB + 10 240 B/token | — |
 | `minicpm-jev` | 6 | 2 × 256 | 110 655 B/token (2116) | derived | — | — |
-| `lfm25-vl-3b` | 8 | 8 × 64 | 124 150 B/token (256) | derived | 567 205 280 / 533 190 410 | — |
 | `gemma-4-12b` | 8 | 8 × 64 | 55 419 B/token (1120) | 267 320 B/token + 2 B | 253 708 800 / 387 994 092 | 1 006 632 960 |
 | `gemma-4-e4b` | 4 | 2 × 512 | **3 986 933 350 flat** | 176 218 B/token + 36 B | 59 678 016 / 188 743 680 | 62 914 560 |
-| `unlimited-ocr` | 12 | 10 × 128 | **2 981 117 952 flat** | derived (MoE) | — | — |
 
 The requirement that follows from these coefficients, for the quantization each
 model's manual names as the main one (the sizes in GiB, the buffers in MiB):
 
 | Model | Quant | Weights | Proj | KV | Work | Vision | Draft | Draft ctx | Total | **Requirement** |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `clef-flash` | q8_0 | 9.01 | 876 | 256 | 2063 | 108 | 0 | 0 | 12.24 | **13.28 GiB** |
-| `d3-flash` | q8_0 | 8.87 | 595 | 256 | 2063 | 108 | 0 | 0 | 11.83 | **12.83 GiB** |
-| `d3-mini` | q4_k_m | 3.45 | 350 | 256 | 1144 | 108 | 0 | 0 | 5.27 | **5.75 GiB** |
 | `gemma-4-12b` | q4_k_xl | 6.26 | 167 | 1216 | 586 | 59 | 242 | 402 | 8.86 | **9.64 GiB** |
 | `gemma-4-e4b` | q4_k_xl | 3.93 | 944 | 316 | 374 | 3802 | 57 | 244 | 9.53 | **10.35 GiB** |
 | `glm-ocr` | q8_0 | 0.89 | 462 | 1024 | 65 | 1400 | 0 | 0 | 3.77 | **4.13 GiB** |
-| `lfm25-vl-3b` | q8_0 | 2.68 | 814 | 256 | 97 | 30 | 541 | 636 | 5.00 | **5.46 GiB** |
-| `lightonocr` | q8_0 | 4.17 | 644 | 512 | 103 | 432 | 0 | 0 | 5.83 | **6.36 GiB** |
 | `mineru` | q8_0 | 0.49 | 677 | 192 | 52 | 173 | 0 | 0 | 1.56 | **1.75 GiB** |
 | `paddleocr-vl` | f16 | 0.87 | 841 | 288 | 48 | 187 | 0 | 0 | 2.20 | **2.44 GiB** |
 | `qwen3.5-4b` | q8_0 | 4.29 | 641 | 512 | 103 | 108 | 0 | 0 | 5.63 | **6.14 GiB** |
 | `qwen3.5-9b` | q8_0 | 9.11 | 876 | 512 | 137 | 108 | 0 | 0 | 10.71 | **11.63 GiB** |
-| `teleocr` | q8_0 | 0.75 | 1266 | 1792 | 52 | 369 | 0 | 0 | 4.15 | **4.54 GiB** |
-| `unlimited-ocr` | q8_0 | 2.91 | 774 | 960 | 459 | 2843 | 0 | 0 | 7.83 | **8.52 GiB** |
 
 The profiles carry the rates rounded: the measurements were 110 653 B/token
-for the Qwen tower, 238 848 for the GLM-OCR tower, 282 313 for the TeleOCR one,
-132 351 for the MinerU one and 142 842 for the PaddleOCR-VL one.
+for the Qwen tower, 238 848 for the GLM-OCR tower, 132 351 for the MinerU one
+and 142 842 for the PaddleOCR-VL one.
 
-The draft's own KV rate (`draftKvBytesPerToken`): 8 192 B/token for the DSpark
-drafter, 2 048 for the gemma-4-12B's MTP drafter, 4 096 for the gemma-4-E4B's.
+The draft's own KV rate (`draftKvBytesPerToken`): 2 048 for the gemma-4-12B's
+MTP drafter, 4 096 for the gemma-4-E4B's.
 
-The decision models (`clef-flash`, `d3-flash`, `d3-mini`) look expensive
-because their launch profile asks for a large ubatch (8192 and 6144 tokens):
-the working set is the largest term. The minicpm-jev is the counter-example:
+The ubatch is the working set's lever, and the decision task rides it: the
+archive's decision profiles (`clef-flash`, `d3-flash`, `d3-mini`) asked for a
+large ubatch (8192 and 6144 tokens) and their working set was the largest term.
+The minicpm-jev is the counter-example:
 it carries the same two images but runs at ubatch 512, because at 8192
 llama.cpp moved 768 MiB of the compute graph onto the host and the card ran
 out of room for the weights. The page models look cheap because the
 vision encoder is small at their budget, and expensive when the projector
-tiles the page (`unlimited-ocr`).
+tiles the page (the Unlimited-OCR did — its flat 2 981 117 952-byte vision
+buffer is in the archive's profile).
 
 ## 7. The traps
 
@@ -302,7 +295,8 @@ Every item here cost a measurement to find.
    logs (the flash-on one and the flash-off one).
 
 3. **A projector that tiles the page does not scale with the token count.**
-   The Unlimited-OCR projector cuts the page into three windows plus a global
+   The Unlimited-OCR projector (the model is in the archive) cuts the page
+   into three windows plus a global
    view: the cost follows the pixels of the tiles (9600 patches), not the
    tokens. It carries `visionBufferBytes` (2 981 117 952) instead of a rate.
 
@@ -319,7 +313,7 @@ Every item here cost a measurement to find.
 
 6. **The layers with a KV cache are not the layers of the model.** In a
    recurrent hybrid the state lives in SSM tensors and those layers carry no K/V
-   at all (the LFM2.5-VL: 8 of its 30 layers have a cache); a sliding-window
+   at all (the LFM2.5-VL of the archive: 8 of its 30 layers have a cache); a sliding-window
    layer carries K/V, but in a cache of its own (the gemma-4 models). The
    speculative-decoding head (the `nextn` block) is a draft layer of its own:
    llama.cpp runs it as a separate graph and keeps **no** cache for it.
@@ -334,7 +328,7 @@ Every item here cost a measurement to find.
    compute it.
 
 9. **The speculative graph reserves more than the draft alone.** The LFM's
-   draft reserves 258 MiB for itself and 508.49 MiB for the graph that runs
+   draft (the model is in the archive) reserves 258 MiB for itself and 508.49 MiB for the graph that runs
    the target and the draft together. The number that applies is the larger
    one.
 

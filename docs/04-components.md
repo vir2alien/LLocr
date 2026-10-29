@@ -3,14 +3,18 @@
 Status legend: ✅ implemented · 🟡 partial · ⬜ not started
 
 ## 4.1 OCR models and transport (llama.cpp, OpenAI-compatible API)
-- **OcrModel / UnlimitedOcrModel** ✅ (`src/models/`): each OCR LLM is one
-  adapter class. The abstract base `OcrModel` encodes the image (base64 data
-  URL), builds the OpenAI-style chat-completions body (`buildRequestBody`,
-  virtual hook) and parses the response (`parseResponse`, virtual hook);
+- **OcrModel** ✅ (`src/models/`): the OCR LLM adapter. The base `OcrModel`
+  encodes the image (base64 data
+  URL), builds the OpenAI-style chat-completions body (`buildRequestBody`)
+  and parses the response (`parseResponse`);
   async (`QPromise`/`QFuture`), per-request timeout, and **`abort()`** for Stop.
-  `UnlimitedOcrModel` supplies its single prompt variant ("document parsing.")
-  and the default parser (`unlimited-ocr`); new LLMs are added as new subclasses
-  registered in `OcrModelFactory` (ADR 58).
+  The per-model behavior is **data** — the model profile carries the prompts,
+  the default parser and the request/launch parameters; `OcrModel::create(
+  modelId, role)` reads it, and the task subclasses (`BlockRecognitionModel`,
+  `DecisionModel`, `LayoutModel`, `FixModel`) carry the wire shapes (ADR 58).
+  New LLMs are added as new profile JSONs — a new parser class only for a new
+  reply shape. The removed models' adapters went to the archive with them
+  (ADR 251).
 - **LlamaClient** ✅ (`core/LlamaClient.h`): thin transport — pre-flights the
   TCP connect (connection timeout), POSTs JSON to `/v1/chat/completions` with
   an optional bearer token, caps the whole request with the response timeout
@@ -18,7 +22,7 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   Former provider layer reduced to exactly this.
 - Configuration ✅: base URL, API key (optional), connection and response
   timeouts — in `ConnectionConfig`;
-  the OCR model adapter (`model/recipeId`, default `unlimited-ocr`), model name
+  the OCR model adapter (`model/recipeId`, default `mineru`), model name
   and the request-body parameters — one **request profile per OCR model**
   (DRY params, temperature, max tokens; ADR 59). The recognition **prompt**
   comes from the selected model adapter's `promptVariants()` (ADR 58).
@@ -51,7 +55,7 @@ Status legend: ✅ implemented · 🟡 partial · ⬜ not started
   counts (ADR 82). The models list is one row per model with the quantizations
   chosen on the row (`ModelQuantModel` behind `Common/TaskModelsTable`,
   ADR 122) — the installed/preset split it replaced is gone. The rows of the
-  task table are the app's six tasks, and their list comes from the C++
+  task table are the app's four tasks, and their list comes from the C++
   (`Settings.taskRoles` → `core/ConnectionRole.h`, ADR 215): the table keeps
   no copy of it. The per-task dispatch (the title, the sampling hint, the
   quant models, the request profiles) is one table in `RoleProfiles.qml` — a
@@ -72,7 +76,7 @@ model windows have per-tab resets instead (profile restore in Launch/Request).
 | Window      | Fields                                                              |
 | ----------- | ------------------------------------------------------------------- |
 | Interface   | language (System / English / Русский), theme (System / Light / Dark); applies immediately, scoped «Restore defaults» |
-| Output      | output parser (`auto` / `raw` / one parser per model: `unlimited-ocr`, `lfm2.5-vl`; key `parser/id`, default `auto` — the
+| Output      | output parser (`auto` / `raw` / the layout markup parser `mineru-layout`; key `parser/id`, default `auto` — the
 |             | selected model's `defaultParserId()`, ADR 88, 112); **split   |
 |             | pages** (`output/splitPages`, default on — `---` rule in MD, dash     |
 |             | line in TXT, `<hr>` in HTML, page break in PDF/DOCX — no “Page N”     |
@@ -146,22 +150,27 @@ Three options handled by `UiController` (a QML singleton), selected in
 - `Dark`
 
 ## 4.4 Output parsers
-- **One parser per model** ✅ (`DetTokenParserBase` + `UnlimitedOcrParser` / `Lfm25VlParser`): each reads the reply
+- **One parser per model** ✅ (`DetTokenParserBase` + `MinerULayoutParser`): each reads the reply
   shape its own model writes — the `<|det|>label [x1,y1,x2,y2]<|/det|>` wrapped
-  stream with JSON-escaped content (`\n` → newline), and the bare
-  `label [x1,y1,x2,y2]` / `image_index=<n> <label>…</label>` layout annotation
-  with its XML drift repair. The engine (token scan → normalized boxes → Markdown
+  stream with JSON-escaped content (`\n` → newline), and MinerU's
+  `<|box_start|>…<|ref_start|>` layout markup with its absorption of covered
+  children. The engine (token scan → normalized boxes → Markdown
   via `rebuildText()`, OTSL and `<table>` sub-formats, service-token stripping)
   is shared; a model that answers in another shape is a new subclass, not a new
   branch in a parser every model shares (ADR 112). A reply with no layout header
   keeps its text and records a diagnostic. Coordinates are normalized to [0,1] by
   `ParserOptions::bboxRange` (1000 by default, the usual 0–1000 model space).
+  The parsers that existed only for the removed models (`UnlimitedOcrParser`,
+  `Lfm25VlParser`, `TeleOcrLayoutParser`, …) live in `archive/parsers/`
+  (ADR 251).
 - `raw` ✅ — text as-is (`RawParser`).
-- `teleocr-layout` ✅ — the manual markup pass (ADR 149): the TeleOCR layout
-  reply's `<box:…><label:…><orientation>` lines are rewritten into the
-  canonical tokens by `prepareText()` (polygons collapse to their bounding
-  box, everything else in the reply is dropped) and parsed into
-  **text-less** positioned boxes; page numbers are always kept — the layout
+- `mineru-layout` ✅ — the manual markup pass (ADR 149): the MinerU layout
+  reply's `<|box_start|>…<|ref_start|>` lines carry the box, the label and
+  the rotation token; the parser reads them
+  structurally into **text-less** positioned boxes (the archive's TeleOCR
+  reply needed `prepareText()` to rewrite its `<box:…><label:…>` form into
+  the canonical tokens first — its parser is in `archive/parsers/`);
+  page numbers are always kept — the layout
   pass describes the page, the output filter belongs to the text.
 - `auto` ✅ — **default** (`parser/id = auto`, ADR 88). Not a parser: it
   resolves to the selected model's `OcrModel::defaultParserId()` in
@@ -467,8 +476,9 @@ table, the preset catalog and the HF search are part of the **Location** tab
   the vision encoder from its clip reservation (a rate per image token, or the
   whole working set for the two projectors whose cost does not follow the
   token count — the gemma-4-E4B, whose encoder runs without flash attention,
-  and the Unlimited-OCR, whose projector tiles the page); a draft that is a
-  model of its own (the LFM2.5-VL's DSpark drafter, the gemma-4 MTP drafters)
+  and the archive's Unlimited-OCR, whose projector tiled the page); a draft that is a
+  model of its own (the gemma-4 MTP drafters; the LFM2.5-VL's DSpark drafter
+  is in the archive)
   from its own KV cache and compute buffer; a sliding-window hybrid's cache
   from the fixed cells its sliding layers get. A model outside the catalog
   names no card — nothing is known about the encoder it would run. ✅
@@ -655,7 +665,8 @@ a `Deps` struct (references and providers), the idiom of the layer.
   a sideways page still waits for the picture: the direction is not the
   picture's to tell. What the picture lacks, the **layout models supply**
   (ADR 245): the markup pass keeps the rotation token every block carries
-  (MinerU's `<|rotate_…|>`, TeleOCR's third `<orientation>` tag) on the box,
+  (MinerU's `<|rotate_…|>`; the archive's TeleOCR carried a third
+  `<orientation>` tag) on the box,
   and a page the check marked sideways takes a `suggestedTurn` when nine
   tenths of its blocks vote for one direction — shown as a one-click
   «Повернуть влево / вправо» button beside the red mark. The app advises,

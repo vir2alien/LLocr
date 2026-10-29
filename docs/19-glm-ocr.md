@@ -100,7 +100,7 @@ Layer by layer:
 
 - **Image before text** — the card's chat template puts the image content
   part first, so the profile sets no `promptBeforeImage` (the Gemma/Qwen
-  family order; the opposite of LFM2.5).
+  family order; the LFM2.5 of the archive puts text first).
 - The OCR request is one user message: the page image plus the whole prompt.
 - Block-recognition requests carry the profile's system prompt (the
   transcription contract) and one user message with the crop plus the block
@@ -121,13 +121,14 @@ maps the app's block kinds onto them:
 
 The page-level `prompts` list ships the one entry (`text-recognition`); the
 model has no other whole-page mode — the SDK's per-region pipeline is what
-the «Разметить» command replaces, and that stays with TeleOCR.
+the «Разметить» command replaces, and that stays with MinerU (the layout
+task's default; the archive's TeleOCR carried it first).
 
 ### Request parameters
 
 | Parameter | Value | Why |
 | --- | --- | --- |
-| `temperature` | 0.0 | Deterministic greedy decoding for transcription (the community guide's 0.02 has the same intent; the repo convention is greedy — same as teleocr/gemma). |
+| `temperature` | 0.0 | Deterministic greedy decoding for transcription (the community guide's 0.02 has the same intent; the repo convention is greedy — same as gemma, and as the archive's teleocr). |
 | `repeat_penalty` / `presence_penalty` / `frequency_penalty` | 1.0 / 0.0 / 0.0 | Neutral. |
 | `max_tokens` | 8192 | Dense pages and large HTML tables. |
 | `stream` | false | The parser consumes one complete response. |
@@ -135,36 +136,33 @@ the «Разметить» command replaces, and that stays with TeleOCR.
 
 ## 5. Output formats
 
-- **rawPageOcr task**: the reply is the page transcription — plain text or
-  Markdown (tables may come out as HTML or Markdown tables). No layout
+- **The trained whole-page mode** (no task since ADR 252 — the single-pass
+  page recognition is cut): the reply is the page transcription — plain text
+  or Markdown (tables may come out as HTML or Markdown tables). No layout
   tokens, no coordinates; the whole reply becomes one text page through the
   `raw` parser. The whole-page prompt ships the trained
   `Text Recognition:` prefix.
 - **blockRecognition task**: the reply is the block text (tables as a table,
-  formulas as LaTeX), read by `GeneralPurposeModel::parseResponse`, which
+  formulas as LaTeX), read by `BlockRecognitionModel::parseResponse`, which
   strips control tokens and a whole-reply Markdown fence.
 
 ## 6. Role in the verification pipeline
 
-- **rawPageOcr** — a fast whole-page pass (0.9B weights): the reply replaces
-  the page's text without block positions, so per-block editing and
-  «Разметить»
-  workflows start from TeleOCR or the det-token models instead.
-- **blockRecognition** — the second declared task: after the
+- **blockRecognition** — the one declared task: after the
   decision model marks a block as mismatched (or on the manual «Распознать»
   commands), the crop is re-transcribed with the trained prefix for its
   kind, and the reply becomes the block text.
 - **layout** — not declared: the model produces no boxes (§1).
-- **decision** — not applicable: clef-flash judges mismatches
-  (`docs/18-clef-flash.md`).
+- **decision** — not applicable: the decision task speaks the visual diff of
+  MiniCPM-OCR Jev (ADR 254).
 
 ## 7. Where things live in LLocr
 
 | Piece | Location |
 | --- | --- |
 | Model profile (files, prefixes, request layer) | `resources/profiles/models/glm-ocr.json` |
-| rawPageOcr request/response, modality order | `OcrModel::buildRequestBody` (`src/models/`) |
-| Block-recognition request/response | `GeneralPurposeModel` (`src/models/`) |
+| Request/response composition, modality order | `OcrModel::buildRequestBody` (`src/models/`) |
+| Block-recognition request/response | `BlockRecognitionModel` (`src/models/`) |
 | Raw parsing (no fragments) | `RawParser` (`src/parsers/`) |
 | Memory estimate (glm4 metadata keys) | `ModelMemoryEstimator` |
 | Installer UI rows | `ModelQuantModel` (one list per task — assignment in «Модели по задачам», management in «Модели») |

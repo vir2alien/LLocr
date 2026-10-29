@@ -6,6 +6,12 @@
 > агента. Изменения кода между этапами оставляют приложение собираемым и
 > рабочим (возможны временные упрощения UI).
 
+> Программа выполнена: этапы 0–9 закрыты. Релизная зачистка (октябрь 2026)
+> вырезала девять моделей и две из шести задач — план ниже переформулирован
+> на четыре задачи; вырезанное лежит в `archive/` (ADR 251), решения — в
+> ADR 251–254 (`docs/07-glossary.md`). Подробные описания этапов («Этап 0» …
+> «Этап 9») сохранены как история программы.
+
 ## Как работать с этим планом
 
 1. Прочитай `AGENTS.md` (правила, сборка, слои), затем этот файл целиком
@@ -53,7 +59,7 @@ B = 6 → 7 (настройки). Файлы веток почти не пере
 
 ## Целевая архитектура
 
-### 1. Шесть задач вместо четырёх ролей
+### 1. Четыре задачи
 
 Идентификаторы задач (строковые, единые в профилях моделей, `ConnectionRole`,
 настройках и QML):
@@ -61,34 +67,33 @@ B = 6 → 7 (настройки). Файлы веток почти не пере
 | id задачи | Название в UI | Что делает | Было |
 |-----------|---------------|------------|------|
 | `layout` | Разметка | Разметка страницы на блоки (без текста) | `layout` |
-| `pageOcr` | Распознавание с разметкой | Полностраничное OCR, ответ с layout-токенами → блоки с текстом | `ocr` |
-| `rawPageOcr` | Распознавание без разметки | Полностраничное OCR «сырым» текстом, без координат (парсер `raw`) | — (новая) |
 | `blockRecognition` | Распознавание блока | OCR кропа одного блока | `blockRecognition` |
-| `decision` | Проверка | Вердикт «текст соответствует изображению» (clef-flash, `/v1/systemone`) | `decision` |
+| `decision` | Проверка | Вердикт «текст соответствует изображению» — визуальный дифф (`systemone_visual_diff_v1`, ADR 254) | `decision` |
 | `fix` | Исправление блока | Универсальная модель: изображение + распознанный текст → OK / FIX+текст / REVIEW | — (новая) |
 
-`ConnectionRole` расширяется до шести значений: `PageOcr`, `RawPageOcr`,
-`BlockRecognition`, `Decision`, `Layout`, `Fix`. Механика одного сервера
+`ConnectionRole` несёт четыре значения: `BlockRecognition`, `Decision`,
+`Layout`, `Fix` (ADR 252 — из шести задач вырезаны `pageOcr` и `rawPageOcr`,
+однопроходное распознавание страницы). Механика одного сервера
 llama.cpp с переключением модели при смене задачи (`RuntimeController::
 serverRunsRole`) сохраняется без изменений.
 
 ### 2. Матрица «модель → задачи»
 
-Правка девяти профилей в `resources/profiles/models/`:
+Восемь профилей в `resources/profiles/models/`:
 
-| Профиль | Задачи | Изменения |
-|---------|--------|-----------|
-| `unlimited-ocr.json` | pageOcr | `roles.ocr` → `roles.pageOcr` |
-| `lfm25-vl-3b.json` | pageOcr, blockRecognition | `roles.ocr` → `roles.pageOcr` |
-| `glm-ocr.json` | rawPageOcr, blockRecognition | `roles.ocr` → `roles.rawPageOcr` |
-| `teleocr.json` | layout, blockRecognition | роль `ocr` удаляется |
-| `clef-flash.json` | decision | без изменений |
-| `qwen3.5-4b.json` | fix | `blockRecognition` → `fix`, промпты верификатора из истории |
-| `qwen3.5-9b.json` | fix | то же |
-| `gemma-4-e4b.json` | fix | то же |
-| `gemma-4-12b.json` | fix | то же |
+| Профиль | Задачи | Дефолт |
+|---------|--------|--------|
+| `mineru.json` | layout, blockRecognition | layout, blockRecognition |
+| `glm-ocr.json` | blockRecognition | — |
+| `paddleocr-vl.json` | blockRecognition | — |
+| `minicpm-jev.json` | decision | decision |
+| `qwen3.5-4b.json` | fix | fix |
+| `qwen3.5-9b.json` | fix | — |
+| `gemma-4-e4b.json` | fix | — |
+| `gemma-4-12b.json` | fix | — |
 
-Принцип: **OCR-модели — только OCR, decision — только проверка, универсальные
+Вырезанные профили — в `archive/models/profiles/` (ADR 251). Принцип:
+**OCR-модели — только OCR, decision — только проверка, универсальные
 — только исправление.** Профиль не может совмещать несовместимые задачи.
 
 ### 3. Протокол исправления (роль `fix`) — возврат удалённого функционала
@@ -194,8 +199,6 @@ Markdown-блок кода внутри формулы — **носитель, �
 
 **Шапка** (книжные действия):
 
-- «Распознать» — split-кнопка: основной клик = все страницы **с разметкой**
-  (pageOcr); в меню — «Все страницы без разметки» (rawPageOcr).
 - «Проверить» — проверка всех подлежащих блоков документа; при включённой
   `check/autoFix` Mismatch-блоки автоматически исправляются.
 - «Исправить» — все блоки документа со статусами Mismatch и Review идут в
@@ -204,9 +207,9 @@ Markdown-блок кода внутри формулы — **носитель, �
 
 **Панель страницы** (2×2 сетка):
 
-- «Распознать страницу» — split: основной клик = с разметкой; меню: «Без
-  разметки», разделитель, «Проблемные блоки» (перезапустить распознавание
-  Mismatch/Review блоков), «Все блоки» (все безтекстовые блоки разметки).
+- «Распознать страницу ▾» — меню: «Проблемные блоки» (перезапустить
+  распознавание Mismatch/Review блоков), «Все блоки» (все безтекстовые блоки
+  разметки).
 - «Проверить ▾» — основной клик = проверить и исправить (принудительно);
   меню — «Только проверить».
 - «Разметить страницу», «Сохранить страницу» — без изменений.
@@ -217,7 +220,7 @@ Markdown-блок кода внутри формулы — **носитель, �
 
 ### 8. Настройки
 
-**Новое окно «Модели по задачам»**: шесть строк `Задача — Модель
+**Новое окно «Модели по задачам»**: четыре строки `Задача — Модель
 (выпадающий список) — Квант (выпадающий список)`; под таблицей — вкладки
 Launch/Request выбранной задачи (переиспользовать существующие
 `LaunchTab`/`RequestTab`). При сохранении проверяется, что все выбранные
@@ -233,11 +236,11 @@ Launch/Request выбранной задачи (переиспользовать
 model / Layout model» и их пункты меню удаляются.
 
 **Ключи настроек**: единый неймспейс `tasks/<task>/{modelPath, mmprojPath,
-draftPath, requestProfileId, modelName}` с одноразовой миграцией из
-`launch/*`, `check/*` (модельные ключи), `decision/*`, `layout/*`. Группа
-`check/` остаётся для поведенческих настроек: `check/autoCheck`,
-`check/autoFix` (быв. `autoRecheck`), `check/showConfidence`;
-`decision/matchThreshold` остаётся.
+draftPath, requestProfileId, modelName}` (blockRecognition хранит
+launch-файлы под legacy-префиксом `check/`); механизма миграции нет —
+настройки сбрасываются один раз (ADR 253). Группа `check/` хранит
+поведенческую настройку `check/showConfidence`; `decision/matchThreshold`
+остаётся (ADR 178: автоэтапы после распознавания выключены).
 
 ---
 
@@ -262,8 +265,10 @@ draftPath, requestProfileId, modelName}` с одноразовой миграц�
    `RawParser`).
 8. Размеченная страница («только разметка») продолжает считаться
    `recognized = true` — пакетное распознавание пропускает её, как сейчас.
-9. `decision/matchThreshold`, v5-схема запроса clef-flash, критерии
-   верификации — без изменений (ADR 160/161).
+9. `decision/matchThreshold` — без изменений (ADR 160/161). Пороговость
+   v5-схемы запроса clef-flash отменена зачисткой: текстовый протокол
+   вырезан, задача проверки говорит визуальный дифф (ADR 254), профили
+   clef-flash — в архиве (ADR 251).
 10. Настройки визарда (первый запуск) переводятся на новые ключи механически;
     «автоматический подбор моделей в визарде» — вне скоупа этого реворка
     (отдельный пункт todo).
@@ -285,7 +290,7 @@ draftPath, requestProfileId, modelName}` с одноразовой миграц�
 | Формула: каноническая форма и проверка синтаксиса | `src/core/LatexText.{h,cpp}` (`canonical`, `check`), `src/core/BoxTransitions.cpp` (`latexResultApplied`) |
 | Применение результатов к блоку | `src/app/AppController.cpp`: `applyCheckResultToBox`, `revertBlockCorrection`, `applyRawResult`, `applyLayout` |
 | Очередь проверки (decision → recheck) | `src/app/VerificationQueueController.{h,cpp}` |
-| Decision-клиент (clef-flash) | `src/app/DecisionController.{h,cpp}`, `src/models/DecisionModel.cpp` |
+| Decision-клиент | `src/app/DecisionController.{h,cpp}`, `src/models/DecisionModel.cpp` |
 | Block-OCR клиент | `src/app/CheckController.{h,cpp}`, `src/models/GeneralPurposeModel.cpp` |
 | Layout | `src/app/LayoutController.{h,cpp}` |
 | Список блоков для QML | `src/app/BoxListModel.{h,cpp}` |

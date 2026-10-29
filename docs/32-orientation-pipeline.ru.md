@@ -173,14 +173,15 @@ R = 128. Локальный порог следует за освещением 
 ## 5. Стадия 3 — разметка
 
 Layout-модели несут направление, которого у пиксельной проверки нет: MinerU
-заканчивает каждую строку блока токеном `<|rotate_up|/left|/right|/down|>`,
-TeleOCR несёт то же слово третьим тегом `<orientation>`. Направление
+заканчивает каждую строку блока токеном `<|rotate_up|/left|/right|/down|>`
+(в архиве TeleOCR несла то же слово третьим тегом `<orientation>`).
+Направление
 называет, куда смотрит **верх** текста блока (0 = вверх, 90 = вправо,
 180 = вниз, 270 = влево).
 
 ### 5.1 Сохранение токенов
 
-`MinerULayoutParser` и `TeleOcrLayoutParser` кладут токен на бокс
+`MinerULayoutParser` кладет токен на бокс
 (`BoundingBox::orientation`), сшивая строки ответа с разобранными боксами
 по порядку и отказываясь от сшивки при несовпадении списков. Голос страницы
 от сшивки не зависит — он читает строки ответа напрямую в
@@ -320,7 +321,7 @@ closing 6–14 мс, свип 40–150 мс в зависимости от че�
 | `src/app/AppController.cpp` | `applyPageDeskew`, `applyLayout` (голос, автоповорот, вторая разметка), `runAfterOrientationCheck`, `turnPage` |
 | `src/app/DocumentModel.h/.cpp` | `rotation`, `skewDegrees`, `suggestedTurn`, `displaySize`, `setSkew`, рендер |
 | `src/parsers/DetTokenParserBase.h` | `orientationDegrees`, `orientationVote` |
-| `src/parsers/MinerULayoutParser.cpp`, `TeleOcrLayoutParser.cpp` | извлечение токенов и сшивка |
+| `src/parsers/MinerULayoutParser.cpp` | извлечение токенов и сшивка (отставленная TeleOcrLayoutParser лежит в `archive/parsers/`) |
 | `src/core/OcrResult.h` | `BoundingBox::orientation`, `OcrPage::orientationVote(+Share)` |
 | `src/app/ProjectStore.*`, `ProjectController.cpp` | хранение |
 | `tests/test_page_orientation.cpp` | детектор: 13 слотов, включая корпус и перекос |

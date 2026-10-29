@@ -99,7 +99,7 @@
         }
       ],
       "request": [],
-      "_note": "The visual-diff decision (docs/31): the app sends the crop, the candidate rendered back into an image, and the candidate text; the task wording is baked into the model's prompt, so the request profile stays empty and the profile ships no question texts. The noul head answers P(candidate is consistent) in one pass — Ok above the threshold, Mismatch below. The threshold 0.5 is the upstream service default; recalibrate per block type on a run with scripts/decision-calibrate.py before trusting the split."
+      "_note": "The visual-diff decision (docs/31): the app sends the crop, the candidate rendered back into an image, and the candidate text; the task wording is baked into the model's prompt, so the request profile stays empty and the profile ships no question texts. The noul head answers P(candidate is consistent) in one pass — Ok above the threshold, Mismatch below. The threshold 0.5 is the upstream service default; recalibrate per block type on a run with archive/decision-text/scripts/decision-calibrate.py before trusting the split."
     }
   }
 }

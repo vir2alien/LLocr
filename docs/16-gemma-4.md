@@ -29,8 +29,8 @@ A Russian mirror of this document lives in
 
 LLocr uses both models in the **fix** task only (ADR 162/163) — universal
 models that confirm / correct / refuse a recognized block candidate
-(OK/FIX/REVIEW). Page OCR stays with the det-token models (`unlimited-ocr`,
-`lfm25-vl-3b`), the decision task with clef-flash.
+(OK/FIX/REVIEW). Transcription stays with the det-token models, the decision
+task with the visual diff of minicpm-jev (ADR 252/254).
 
 ## 2. Files and repositories
 
@@ -130,10 +130,12 @@ Layer by layer:
 ### Message layout
 
 - The Gemma 4 card's best practice: **image content before the text**.
-  `GeneralPurposeModel` used to hard-code `[type prompt, image]`; it now
+  `BlockRecognitionModel`'s predecessor (`GeneralPurposeModel`) used to
+  hard-code `[type prompt, image]`; it now
   follows the profile's `promptBeforeImage` flag, the same flag the OCR body
   already honored. Gemma 4 (and every Qwen-family model) gets
-  `[image, type prompt]`; LFM2.5 keeps its trained `[type prompt, image]`.
+  `[image, type prompt]`; the archive's LFM2.5 kept its trained
+  `[type prompt, image]`.
 - Thinking follows the request's mode: `chat_template_kwargs:
   {"enable_thinking": …}` is true exactly when the request carries a reasoning
   budget above zero (ADR 193) — the off mode keeps the old behaviour, and the
@@ -208,10 +210,10 @@ correction layer: `OK` keeps the text, `FIX` stores the correction in
   candidate and the crop go to the fix task; `OK` keeps the text, `FIX`
   stores the correction, `REVIEW` flags the block. The OCR text itself stays
   untouched for diff/revert (ADR 164).
-- **pageOcr / blockRecognition** — not declared: transcription is the
+- **blockRecognition** — not declared: transcription is the
   det-token models' job.
-- **decision** — not applicable: clef-flash is the decision model
-  (`docs/18-clef-flash.md`).
+- **decision** — not applicable: the decision task speaks the visual diff of
+  MiniCPM-OCR Jev (ADR 254).
 
 ## 7. Where things live in LLocr
 

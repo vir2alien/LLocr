@@ -441,14 +441,15 @@ LLocr/
 │   ├── main.cpp
 │   ├── core/         # OcrResult, ConnectionConfig (transport), OcrRequest,
 │   │                 #   LlamaClient, RequestProfile, LaunchProfile
-│   ├── models/       # OcrModel (abstract adapter), UnlimitedOcrModel,
-│   │                 #   Lfm25VlModel, OcrModelFactory
+│   ├── models/       # OcrModel (profile-driven adapter), VisionChatModel,
+│   │                 #   BlockRecognitionModel, DecisionModel, LayoutModel,
+│   │                 #   FixModel, FixDiffGate
 │   ├── parsers/      # IOutputParser, ParserOptions, RawParser,
-│   │                 #   DetTokenParserBase (shared engine) + one parser
-│   │                 #   per model (UnlimitedOcrParser, Lfm25VlParser),
+│   │                 #   DetTokenParserBase (shared engine),
+│   │                 #   MinerULayoutParser (the markup pass),
 │   │                 #   DetTokenFormat (shared text
-│   │                 #   helpers), OtslTable (LFM2.5-VL tables), Lfm25VlDrift
-│   │                 #   (annotation drift), ParserFactory, BlockStyleMap
+│   │                 #   helpers), OtslTable (tables), ParserFactory,
+│   │                 #   BlockStyleMap
 │   │                 #   (label → style, from profiles/labels.json)
 │   ├── runtime/      # ConnectionMode, ResolvedConnection, RuntimeState,
 │   │                 #   RuntimeController, RuntimePaths, RuntimeLocator,
@@ -458,7 +459,8 @@ LLocr/
 │   │                 #   InstallTransaction, ModelCatalog, ModelPreset,
 │   │                 #   ModelPresetCatalog, ModelRegistry, ModelInstaller,
 │   │                 #   RuntimeInstaller, ModelMemoryEstimator, SingleInstanceGuard
-│   └── app/          # AppController, RecognitionController, DocumentModel, DjVuDocument,
+│   └── app/          # AppController, CheckController, DecisionController,
+│                     #   FixController, LayoutController, DocumentModel, DjVuDocument,
 │                     #   PageListModel, BoxListModel, PageEditStore,
 │                     #   OcrImageProvider, SettingsStore, UiController,
 │                     #   I18n, Exporter, PageIndex.h

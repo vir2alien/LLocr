@@ -14,7 +14,7 @@ LLocr provides a convenient interface to:
    and the output parser are all set by the user (see Settings), so different
    models and output formats are supported without recompilation. The
    recognition prompt and the default parser come from the selected **OCR
-   model adapter** (e.g. `unlimited-ocr`); new LLMs are added as adapter
+   model adapter** (e.g. `mineru`); new LLMs are added as adapter
    classes. For the managed local runtime the context is supplied by **model
    presets** (see Models below).
 3. **Result export** — Markdown, DOCX (+ TXT, PDF, HTML).
@@ -26,8 +26,8 @@ LLocr provides a convenient interface to:
 > connections** (no separate provider layer — see ADR 58). Every
 > model/connection/parser setting is edited in the **Settings dialog** and
 > persisted with `QSettings`. The recognition **prompt** is owned by the
-> selected **OCR model adapter** (`OcrModel::promptVariants()`; Unlimited-OCR
-> uses "document parsing.").
+> selected **OCR model adapter** (`OcrModel::promptVariants()`; MinerU uses
+> the card's trained task prompts).
 
 ## User scenario (MVP) — status
 1. The user starts a local LLM runner (Ollama / LM Studio / llama.cpp server),
@@ -95,8 +95,8 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
 - **Model** — model name, temperature, max tokens, and the **DRY sampling
   parameters** (multiplier, base, allowed length, penalty last-N). In
   `Managed` mode the model id / alias is computed by the runtime, not typed.
-- **Output** — OCR model adapter (`unlimited-ocr`; `model/recipeId`) and output
-  parser (`Automatic` / `raw` / one parser per model — `unlimited-ocr`, `lfm2.5-vl`; default `auto`, ADR 88 and 112).
+- **Output** — OCR model adapter (`model/recipeId`, default `mineru`) and output
+  parser (`Automatic` / `raw` / the layout markup parser `mineru-layout`; default `auto`, ADR 88 and 112).
 - **Runtime** — managed `llama-server` binary path + probe, Start/Stop/Restart,
   **Show log**, and the **stage-D installer** (release + backend pickers,
   «Download and install» with progress, «Installed: bXXXX (CUDA)», «Check for
@@ -105,8 +105,8 @@ Tabs: **UI** · **Connection** · **Model** · **Output** · **Runtime** · **Mo
   Hugging Face search + download, HF token, catalog import/export, GGUF check.
 
 > The recognition **prompt** is owned by the selected **OCR model adapter**
-> (`OcrModel::promptVariants()`; for Unlimited-OCR it is a single fixed variant
-> "document parsing.", ADR 58) and is not editable in the dialog. The output
+> (`OcrModel::promptVariants()`; for MinerU it is the card's trained task
+> prompts, ADR 58) and is not editable in the dialog. The output
 > **parser defaults to the one the model adapter declares**
 > (`OcrModel::defaultParserId()`), so switching models cannot leave a
 > mismatched parser behind; the bbox coordinate range is a parser option

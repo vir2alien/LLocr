@@ -40,24 +40,15 @@
   | `docs/architecture-plan/README.md` | Architectural review (Sep 2026) and the   |
   |                           | remediation plan (stages 0–7)              |
   | `docs/TODO.md`            | Short backlog of open items                 |
-  | `docs/UnlimitedOCR.md`    | Reference: the Unlimited-OCR model (baidu) |
-  | `docs/13-lfm25-vl-3b.md`  | Model manual: LFM2.5-VL-3B (launch, requests, 2:3 calibration, links); Russian mirror in `13-lfm25-vl-3b.ru.md` |
-  | `docs/15-teleocr.md`      | Model manual: TeleOCR/NaviDC-OCR (block-recognition prompts, GGUF quants, roles); Russian mirror in `15-teleocr.ru.md` |
+  | `archive/README.md`       | The release archive (ADR 251): the cut models' profiles (`archive/models/profiles/`), parsers, manuals (`archive/models/docs/` — UnlimitedOCR, 13-lfm25-vl-3b, 15-teleocr, 17-d1-verification-study, 18-clef-flash, 21-d3, 22-unlimited-ocr, 23-lightonocr, 28-chandra-ocr-2, 30-minicpm-ocr and their `.ru.md` mirrors), the single-pass controller and the text-decision harness; the tag `archive/pre-cleanup` reaches every file the cut touched |
   | `docs/16-gemma-4.md`      | Model manual: Gemma 4 E4B/12B QAT (MTP drafter in the model repo, image token budgets 70–1120, per-card flash-attn split); Russian mirror in `16-gemma-4.ru.md` |
-  | `docs/17-d1-verification-study.md` | Study: decision models as OCR verifiers (d1-3B vs clef-flash) — methodology, request schemes v0–v9, calibration, why clef-flash replaces d1-3B |
-  | `docs/18-clef-flash.md`   | Model manual: Cloudflare clef-flash decision model (launch, recommended v5 request scheme, thresholds); Russian mirror in `18-clef-flash.ru.md` |
   | `docs/19-glm-ocr.md`      | Model manual: GLM-OCR (trained task prefixes, no layout/coordinates, `raw` parser, glm4 metadata); Russian mirror in `19-glm-ocr.ru.md` |
-  | `docs/20-model-task-rework.md` | Rework plan: six tasks instead of four roles, two-layer verification, the fix pipeline (since ADR 192 the `full_block` protocol), page statuses, new settings windows (Oct 2026); stage table with statuses |
-  | `docs/21-d3.md`           | Model manual: d3-flash / d3-mini decision models (System One protocol, non-causal state reading, minBuild b11572); Russian mirror in `21-d3.ru.md` |
-  | `docs/22-unlimited-ocr.md` | Model manual: Unlimited-OCR (pageOcr default, DRY anti-loop sampling, vision budget, `unlimited-ocr` det parser); Russian mirror in `22-unlimited-ocr.ru.md` |
-  | `docs/23-lightonocr.md`   | Model manual: LightOnOCR-3-4B (two trained prompts — grounding + empty transcription, three roles, everything else out of distribution); Russian mirror in `23-lightonocr.ru.md` |
+  | `docs/20-model-task-rework.md` | Rework plan: the task vocabulary, two-layer verification, the fix pipeline (since ADR 192 the `full_block` protocol), page statuses, new settings windows (Oct 2026); re-stated to the four-task matrix (ADR 252), stage table with statuses |
   | `docs/24-mineru.md`       | Model manual: MinerU2.5-Pro-2605-1.2B (two-step protocol, 1036² squash, `--special`, layout absorption); Russian mirror in `24-mineru.ru.md` |
   | `docs/25-paddleocr-vl.md` | Model manual: PaddleOCR-VL-1.6 (blockRecognition only — the layout model ships outside the GGUF, official single-quant repo); Russian mirror in `25-paddleocr-vl.ru.md` |
   | `docs/26-qwen3.5.md`      | Model manual: Qwen3.5-4B/9B, the fix default (OK/FIX/REVIEW, MTP drafting, framed candidate); Russian mirror in `26-qwen3.5.ru.md` |
-  | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all 14 models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
-  | `docs/28-chandra-ocr-2.md` | Model manual: Chandra-OCR-2 (an HTML answer — the `chandra-ocr` parser, three OCR roles, the task reaches the profile); Russian mirror in `28-chandra-ocr-2.ru.md` |
-  | `docs/29-external-runtime-tasks-and-secrets.md` | Plan + record: the external runtime gets the same six tasks as the managed one, each with its own endpoint, key and alias (ADR 226); the secrets live in the OS secret store (ADR 227) |
-  | `docs/30-minicpm-ocr.md`  | Model manual: MiniCPM-OCR 1.0 (GLM-OCR-shaped parse model, `--reasoning off` is a model requirement, DSpark drafter as the mtp module); Russian mirror in `30-minicpm-ocr.ru.md` |
+  | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all eight models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
+  | `docs/29-external-runtime-tasks-and-secrets.md` | Plan + record: the external runtime gets the same four tasks as the managed one, each with its own endpoint, key and alias (ADR 226); the secrets live in the OS secret store (ADR 227) |
   | `docs/31-minicpm-jev.md`  | Model manual: MiniCPM-OCR Jev — the visual-diff decision (`systemone_visual_diff_v1`, two images, the CandidateRenderer render leg, thresholds pending calibration); Russian mirror in `31-minicpm-jev.ru.md` |
 | `docs/32-orientation-pipeline.md` | The page-orientation correction pipeline: the two-stage pixel check (Sauvola, the skew sweep, periodicity + variation), the auto-straightening, the markup pass's rotation-token vote and the auto-turn with the second pass; Russian mirror in `32-orientation-pipeline.ru.md` |
   
@@ -411,16 +402,15 @@
     The UI is localizable (System / English / Русский) and themed
     (System / Light / Dark).
   - **Verification and fix pipeline (ADR 145–147, 161–164, 172, 183; Oct 2026)** —
-    verification runs in two stages: a fast **decision model** (clef-flash or
-    d3-flash/d3-mini via `/v1/systemone`, the `decision` task in «Модели»)
-    judges every queued block. All three ship the **same scheme v7**
-    (`docs/21-d3.md` §4b): ONE question per request (a noul `match`) and the
-    **axes** the block is checked on — script, case, face, position,
-    delimiters, designations, units — in `state.notation`, with the
-    document language named there through a `{{LANGUAGE}}` placeholder.
-    d3 answers each question of a request with its own forward pass, so the
-    v6 second question (`diagnosis`) doubled the price of a check and is
-    gone; the verdict is routed two ways: `match ≥ threshold` → **Ok**,
+    verification runs in two stages: a fast **decision model** — MiniCPM-OCR
+    Jev via `/v1/systemone`, the visual diff `systemone_visual_diff_v1`
+    (ADR 254; the text protocol and its answer set are cut together with the
+    models that spoke them — their manuals are in `archive/models/docs/`),
+    the `decision` task in «Модели»)
+    judges every queued block. The request carries the crop, the candidate
+    rendered back into an image and the candidate text; the noul head answers
+    P(consistent) in one pass, and
+    the verdict is routed two ways: `match ≥ threshold` → **Ok**,
     else **Mismatch** (a crop the model cannot read lands on **Review** in
     the fix task, which answers REVIEW for an unreadable, clipped or empty
     crop); thresholds resolve per block type (`matchThresholdByBlock` in the
@@ -485,8 +475,9 @@
     страницу ▾» (problem blocks / all blocks of the page); the header
     «Исправить» runs the fix task over the problem blocks of the whole
     document. Planned blocks (filter-enabled type or duplicate suspect,
-    unanswered) show the gray frame (`boxVerificationPlanned`). Model manuals:
-    `docs/18-clef-flash.md` (v5), `docs/21-d3.md` (v6).
+    unanswered) show the gray frame (`boxVerificationPlanned`). Model manual:
+    `docs/31-minicpm-jev.md` (the visual diff); the cut text-protocol manuals
+    are in `archive/models/docs/`.
   - **The block panel is a version inspector (ADR 185–187, Oct 2026)** — the
     panel shows the two versions of the selected block as two clickable
     cards (`MainWindow/BlockVersionCard.qml`); the card in view is the version
@@ -558,10 +549,10 @@
     with the blocks.
   - **Manual page markup (ADR 149–150, Oct 2026)** — the page toolbar's
     «Разметить страницу» (+ ▾ «Разметить все страницы») runs the **layout
-    task** (`roles.layout` in a model profile — TeleOCR ships it): the page
+    task** (`roles.layout` in a model profile — MinerU is the default): the page
     goes to the layout model with the card's layout prompt, the reply's
-    `<box:…><label:…><orientation>` lines become **text-less** positioned
-    blocks (parser `teleocr-layout`), and the text is then filled in through
+    `<|box_start|>…<|ref_start|>` lines become **text-less** positioned
+    blocks (parser `mineru-layout`), and the text is then filled in through
     blockRecognition — per-block «Распознать» or the
     «Распознать все блоки страницы» menu item (queues every NotChecked
     text-less box). The markup pass replaces the page's blocks (confirmation
@@ -571,7 +562,8 @@
     `ConnectionRole::Layout`, request profile `requestLayout.json`;
     deliberately absent from the setup wizard). The 1036² page squash mirrors
     the upstream calibration. Manual only — not wired into the automatic
-    pipeline. Model manual: `docs/15-teleocr.md`.
+    pipeline. Model manual: `docs/24-mineru.md` (the archive's TeleOCR
+    carried the pass first — `archive/models/docs/15-teleocr.md`).
   - **Interface rework (ADR 151, Oct 2026; toolbar ADR 167 → ADR 171)** — the
     header is one row of labeled groups: «Файл / Импорт» (stacked; «Файл» is
     the project menu — open / save / save-as project, Ctrl+O moved to
@@ -650,31 +642,32 @@
     remaining roadmap items (see `docs/09-local-runtime-plan.md`).
   - **Model/task rework complete (Oct 2026)** — the staged program in
     `docs/20-model-task-rework.md` (stages 0–9, one stage = one commit) is
-    done; ADR 162–166 in `docs/07-glossary.md` are the decision record. Six
-    tasks replace the four roles — `pageOcr`/`rawPageOcr`/`blockRecognition`/
-    `decision`/`layout`/`fix` — one vocabulary across `ConnectionRole`, the
+    done; ADR 162–166 in `docs/07-glossary.md` are the decision record. Four
+    tasks — `blockRecognition`/`decision`/`layout`/`fix` (ADR 252: the
+    single-pass `pageOcr`/`rawPageOcr` are cut with every model that served
+    them) — one vocabulary across `ConnectionRole`, the
     model profiles (`roles.<task>`), the settings
     (`tasks/<task>/{modelPath, mmprojPath, draftPath, requestProfileId,
-    modelName}`, one-time migration from the old per-role keys; `check/`
+    modelName}`; blockRecognition keeps the legacy `check` prefix for its
+    launch files; `check/`
     keeps only `showConfidence` — the automatic check/fix switches are gone,
-    ADR 178) and one `RequestProfileStore` per task. Shipped model → task matrix:
-    `unlimited-ocr` → pageOcr; `lfm25-vl-3b` → pageOcr + blockRecognition;
-    `glm-ocr` → rawPageOcr + blockRecognition; `teleocr` → layout +
-    blockRecognition; `clef-flash`, `d3-flash`/`d3-mini`,
-    `minicpm-jev` (visual diff, ADR 235) → decision
-    (`docs/21-d3.md`, `docs/31-minicpm-jev.md`); `qwen3.5-4b/9b`,
-    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW, ADR 180/181);
-    `minicpm-ocr` → rawPageOcr + blockRecognition (`docs/30-minicpm-ocr.md`). Task defaults (ADR 169,
+    ADR 178) and one `RequestProfileStore` per task. Shipped model → task matrix
+    (eight models; the nine removed ones live in `archive/models/`, ADR 251):
+    `mineru` → layout + blockRecognition (the default for both — one model
+    closes the markup → recognition pipeline, ADR 252); `glm-ocr`,
+    `paddleocr-vl` → blockRecognition; `minicpm-jev` (visual diff,
+    ADR 235/254) → decision (`docs/31-minicpm-jev.md`); `qwen3.5-4b/9b`,
+    `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW, ADR 180/181).
+    Task defaults (ADR 169,
     `roles.<task>.default: true` in the profile JSONs, exactly one per
-    task, read by the upcoming auto-selection): pageOcr = `unlimited-ocr`,
-    rawPageOcr = `glm-ocr`, blockRecognition = `glm-ocr`,
-    decision = `clef-flash`, layout = `teleocr`, fix = `qwen3.5-4b`.
+    task, read by the auto-selection): blockRecognition = `mineru`,
+    decision = `minicpm-jev`, layout = `mineru`, fix = `qwen3.5-4b`.
     Block verification is two-layer
     (ADR 164: `box.text` + `box.correctedText`, independent verdicts; the
     amber re-recognized state is gone), pages carry a persisted recognition
     mode plus a computed verification aggregate (ADR 165), and the model
     settings live in **one window, «Модели»** (ADR 166 → superseded by
-    ADR 168): six task rows (`task | model ▾ | quant ▾ | ⚙`), the quant
+    ADR 168): four task rows (`task | model ▾ | quant ▾ | ⚙`), the quant
     dropdown listing every profile quantization with its curated size
     (`sizeBytes` in the profile JSONs, `scripts/fetch-quant-sizes.sh`
     refreshes them from HF) and a family hint, the per-task Launch/Request
@@ -688,13 +681,15 @@
     `ModelInstaller::defaultTaskChoices()` picks each task's role-default
     model and the best quantization the memory budget fits (0.9 × (VRAM ‖
     RAM), `runtime/HardwareInfo`), preferring already-installed quants.
-    Recognizing a page is a
-    split-button choice (pageOcr vs rawPageOcr), not a setting. A restart of
+    Recognizing a page is the block stage of the markup flow — the
+    single-pass page recognition is gone (ADR 252). A restart of
     the managed server brings back the role it was serving (stage-8
     regression `restartBringsBackTheStartedRole`).
   - **The request texts of a task live in their own profiles (ADR 182)** —
-    `resources/profiles/requests/{fix-requests,decision-requests}.json`. The
-    fix and decision tasks send the same requests whatever model serves them,
+    `resources/profiles/requests/fix-requests.json` (the decision's
+    `decision-requests.json` went to `archive/decision-text/` with the text
+    protocol, ADR 254). The
+    fix task sends the same requests whatever model serves it,
     so a model role only *names* the request profile
     (`"promptProfile": "fix-requests"`) and the model profiles keep the
     parameters (launch, request, `maxOutput`/`maxOutputByBlock`, the decision
@@ -705,16 +700,18 @@
   - **The decision thresholds are measured, per model, against the request that
     ships (ADR 184)** — a threshold describes one model's p(match) distribution
     under one request; rewrite the request and the measurement is void. The
-    calibration needs no GUI: `scripts/decision-calibrate.py` prints the
+    calibration needs no GUI: `archive/decision-text/scripts/decision-calibrate.py`
+    prints the
     FN/FP(t) curve from the stored P(match) (ADR 173) and scores a profile's
     thresholds on a run (`--policy`), and
-    `scripts/decision-eval/score-project.py` sends the app's own request over a
+    `archive/decision-text/scripts/decision-eval/score-project.py` sends the app's own request over a
     corpus and writes the verdicts into a `.llocr` project — it reproduces the
     app's numbers bit for bit, which needs the state's keys **sorted** (the app
     builds it in a `QJsonObject`) and the formula in its canonical wire form.
     The stand's port of that normalization is pinned to the app's output and the
     run aborts if the two drift apart. The thresholds themselves are picked by
-    `scripts/decision-eval/pick-thresholds.py` (the knee of each block type's
-    curve: one caught error costs at most one false alarm); the rule reproduces
-    d3-mini's shipped profile exactly on its own run, so it is a rule, not a
+    `archive/decision-text/scripts/decision-eval/pick-thresholds.py` (the knee of each block type's
+    curve: one caught error costs at most one false alarm); the rule reproduced
+    d3-mini's shipped profile exactly on its own run (the model and the harness
+    are in the archive, ADR 251), so it is a rule, not a
     tuning.

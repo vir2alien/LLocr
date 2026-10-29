@@ -48,19 +48,23 @@ Each supported OCR LLM gets its own adapter class; the shared mechanics live in
 the abstract base:
 
 ```cpp
-class OcrModel {                      // src/models/OcrModel.h — abstract base
+class OcrModel {                      // src/models/OcrModel.h — the adapter
 public:
-    virtual QString id() const = 0;               // "unlimited-ocr"
-    virtual QString displayName() const = 0;      // "Unlimited-OCR"
-    virtual QList<OcrPromptVariant> promptVariants() const = 0;
-    virtual QString defaultParserId() const = 0;  // "unlimited-ocr"
+    explicit OcrModel(QString modelId, QString role = {});
+    static std::unique_ptr<OcrModel> create(const QString &modelId, const QString &role = {});
+    static QString defaultId();                   // "mineru"
+
+    QString id() const;                           // the profile id, e.g. "mineru"
+    QString displayName() const;                  // from the profile
+    QList<ModelProfiles::Prompt> promptVariants() const;
+    QString defaultParserId() const;              // the profile's parser
 
     QFuture<OcrResult> recognize(const OcrRequest &request,
                                  const ConnectionConfig &config);
     void abort();
 protected:
-    virtual QByteArray buildRequestBody(const OcrRequest &, const QString &imageDataUrl) const;
-    virtual OcrResult parseResponse(const QByteArray &responseData) const;
+    static QByteArray buildRequestBody(const OcrRequest &, const QString &imageDataUrl, const QString &role = {});
+    static OcrResult parseResponse(const QByteArray &responseData);
 };
 ```
 
@@ -82,7 +86,7 @@ struct ConnectionConfig {             // core/ConnectionConfig.h — transport o
 ```
 
 The tasks are one vocabulary, declared once: `core/ConnectionRole.h` holds the
-`ConnectionRole` enum, the list of the six tasks (`connectionRoles`,
+`ConnectionRole` enum, the list of the four tasks (`connectionRoles`,
 `connectionRoleIds`) and the name↔role mapping. The settings dispatch, the
 runtime's per-task state and the QML task table read that list (ADR 215).
 
@@ -92,13 +96,13 @@ Implementations:
   (`buildRequestBody`, virtual), POSTs via `LlamaClient`, and parses the response
   (`parseResponse`, virtual). Async via `QPromise`; per-request timeout;
   **`abort()`** so the UI Stop button can cancel an in-flight request.
-- `UnlimitedOcrModel` — one prompt variant ("document parsing."), parser
-  `unlimited-ocr`.
-- `Lfm25VlModel` — id `lfm25-vl-3b` (LiquidAI/LFM2.5-VL-3B): the model card's
-  layout-annotation prompt, parser `lfm2.5-vl` (it additionally accepts the
-  model's optional `image_index=<n>` token prefix, repairs its XML drift and
-  converts its OTSL tables — ADR 87). Adding another LLM = one new subclass + one
-  line in `OcrModelFactory` + a same-id built-in request profile (ADR 59). The
+- The per-model behavior is **data**: `OcrModel::create(modelId, role)` reads
+  the model profile (`resources/profiles/models/<id>.json` — prompts, parser,
+  request/launch parameters) and the task-specific subclasses
+  (`BlockRecognitionModel`, `DecisionModel`, `LayoutModel`, `FixModel`) carry
+  the wire shapes. The adapters of the removed models went to the archive with
+  them (ADR 251). Adding another LLM = one new profile JSON (plus, only for a
+  new reply shape, one parser). The
   adapter's `defaultParserId()` is what Settings → Output uses in its
   «Automatic (model default)» mode (ADR 88).
 - `LlamaClient` (`core/LlamaClient.h`) — thin transport: joins the
@@ -151,11 +155,11 @@ store.
   `QSettings` (grouped keys: `provider/*`, `model/*`, `parser/*`, `ui/*`,
   `runtime/*`, `launch/*`, `hf/*`; the `provider/` prefix is legacy storage,
   kept for profile compatibility). `model/recipeId` selects the OCR model
-  adapter via `OcrModelFactory` (default `unlimited-ocr`). The recognition
+  adapter (`OcrModel::create`, default `mineru`). The recognition
   **prompt** comes from the selected adapter's `promptVariants()` — the
   authority moved from `AppController`/presets to the model adapter (ADR 58).
 - `parserId` selects the response-parsing strategy via `ParserFactory`
-  (`auto` | `raw` | one parser per model — `unlimited-ocr`, `lfm2.5-vl`; key
+  (`auto` | `raw` | the layout markup parser `mineru-layout`; key
   `parser/id`; default **`auto`**, which resolves to the
   selected model's `defaultParserId()` — ADR 88). The parser is configured
   through `ParserOptions` (`keepPageNumbers`, `tablesAsHtml`, `bboxRange`,
