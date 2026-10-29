@@ -3,8 +3,12 @@
 #include <QByteArray>
 #include <QCoreApplication>
 
+// wincred.h must stay after windows.h: it does not include windows.h itself,
+// and the include sort would flip the two.
+// clang-format off
 #include <windows.h>
 #include <wincred.h>
+// clang-format on
 
 // The Windows Credential Manager: a generic credential per secret, named
 // "LLocr:<id>". CRED_PERSIST_LOCAL_MACHINE keeps it across restarts for the

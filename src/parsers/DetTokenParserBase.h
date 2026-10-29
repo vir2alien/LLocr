@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QRect>
 #include <QPair>
+#include <QRect>
 #include <QRegularExpression>
 
 #include "parsers/IOutputParser.h"
