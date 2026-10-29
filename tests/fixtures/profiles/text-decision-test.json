@@ -1,0 +1,9 @@
+{
+  "id": "text-decision-test",
+  "title": "Text decision (test double)",
+  "roles": {
+    "decision": {
+      "alias": "text-decision-test"
+    }
+  }
+}

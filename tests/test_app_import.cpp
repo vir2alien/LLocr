@@ -38,7 +38,6 @@
 #include "app/PageListModel.h"
 #include "app/PageRotation.h"
 #include "app/ProblemLog.h"
-#include "app/RecognitionController.h"
 #include "app/UiController.h"
 #include "app/VerificationPromptStore.h"
 #include "app/VerificationQueueController.h"
@@ -258,14 +257,14 @@ public:
 }  // namespace
 
 // Minimal loopback chat endpoint: answers POST /v1/chat/completions with a
-// fixed det-token reply, so the real recognition pipeline produces real boxes.
+// fixed reply, so the real recognition pipeline produces real blocks.
 // Used to drive the AppController-level block-removal contract end to end.
-// It speaks all four protocols the app sends: the wrapped <|det|>…<|/det|>
-// stream the OCR models emit, the decision model's /v1/systemone (probability
-// is configurable — below the 0.5 default threshold every block mismatches),
-// the block-recognition transcription (identified by its system message), and
-// the fix protocol (a request carrying a <CANDIDATE> payload — the reply
-// is the configurable OK / FIX / REVIEW answer).
+// It speaks every protocol the app sends: the layout markup request (its
+// prompt carries "Layout Detection:"), the block-recognition transcription
+// (identified by its system message), the decision model's /v1/systemone
+// (probability is configurable — below the 0.5 default threshold every block
+// mismatches), and the fix protocol (a request carrying a <CANDIDATE>
+// payload — the reply is the configurable OK / FIX / REVIEW answer).
 // Request counting is what makes "this block was not asked again" observable.
 class DetTokenChatServer : public QObject
 {
@@ -297,17 +296,22 @@ public:
     qreal systemoneReadable = 0.94;
     QString systemoneTopDiagnosis = QStringLiteral("exact_match");
     QString transcription = QStringLiteral("Re-recognized block text");
+    // The transcription answers, taken in request order and repeated from the
+    // start when the list runs out; an empty list answers every block with
+    // `transcription`. The default pair reproduces the page the single-pass
+    // OCR used to produce: a title block and a text block.
+    QStringList transcriptionSequence = {QStringLiteral("1. Introduction"), QStringLiteral("Second block text")};
     // The fix protocol's reply for any request carrying a <CANDIDATE>. The
     // reply carries the complete corrected block and nothing else;
     // fixReplies overrides per candidate.
     QString fixReply = QStringLiteral("FIX\nFixed block text");
     QHash<QString, QString> fixReplies;
-    // Overrides the det-token page reply when non-empty (e.g. a text-less
-    // markup-shaped block for the first-recognition scenarios).
-    QString ocrContent;
-    // Overrides the layout reply when non-empty (the "\nLayout Detection:"
-    // prompt): the markup-shaped block lines the layout parser reads.
-    QString layoutContent;
+    // The layout reply (the "\nLayout Detection:" prompt): the markup-shaped
+    // block lines the layout parser reads. The default pair mirrors the
+    // transcription sequence: a title block over a text block, both large
+    // enough to crop on the smallest fixture.
+    QString layoutContent = QStringLiteral("<|box_start|>80 60 900 160<|box_end|><|ref_start|>title<|ref_end|>\n\n"
+                                           "<|box_start|>80 200 900 800<|box_end|><|ref_start|>text<|ref_end|>");
 
 private:
     // The body says which protocol the caller speaks, so the head alone cannot
@@ -380,6 +384,14 @@ private:
         return QString(fixReply).replace(QStringLiteral("%1"), candidate);
     }
 
+    QString nextTranscription() const
+    {
+        if (transcriptionSequence.isEmpty())
+            return transcription;
+        const QString text = transcriptionSequence.at(const_cast<DetTokenChatServer *>(this)->m_transcriptionPos++ % transcriptionSequence.size());
+        return text;
+    }
+
     // The server's model list: the context window of every model (ADR 231).
     static QByteArray modelsReply()
     {
@@ -414,16 +426,11 @@ private:
                                              .toJson(QJsonDocument::Compact);
             }
         } else {
-            // Chat completions: the wrapped <|det|>…<|/det|> stream for the OCR
-            // prompt (no system message), the fix protocol answer for a
-            // candidate-carrying request, the block transcription otherwise;
-            // the model streams newlines as the two characters `\n`.
-            const QString content = request.contains("<CANDIDATE>")                                     ? fixAnswer(request)
-                                    : request.contains("Layout Detection:") && !layoutContent.isEmpty() ? layoutContent
-                                    : request.contains("\"role\":\"system\"")                           ? transcription
-                                                                              : (ocrContent.isEmpty() ? QStringLiteral("<|det|>title [115, 101, 273, 117]<|/det|>1. Introduction\\n"
-                                                                                                                       "<|det|>text [112, 132, 884, 309]<|/det|>Second block text")
-                                                                                                      : ocrContent);
+            // Chat completions: the layout markup for the markup prompt, the
+            // fix protocol answer for a candidate-carrying request, the block
+            // transcription otherwise; the model streams newlines as the two
+            // characters `\n`.
+            const QString content = request.contains("<CANDIDATE>") ? fixAnswer(request) : request.contains("Layout Detection:") && !layoutContent.isEmpty() ? layoutContent : nextTranscription();
             body = QJsonDocument(QJsonObject{
                                      {"id", "cmpl-test"},
                                      {"object", "chat.completion"},
@@ -440,7 +447,21 @@ private:
     QList<QByteArray> m_systemoneBodies;
     int m_requests = 0;
     int m_systemoneRequests = 0;
+    int m_transcriptionPos = 0;
 };
+
+// The single-pass page OCR is gone: a page becomes recognized through the
+// layout pass (the markup the mock server answers with) and then the block
+// transcription of the text-less blocks — the two-step path the «Разметка»
+// toolbar group drives. The scope is the thumbnail selection, so an empty
+// selection recognizes every page.
+void recognizePage(AppController &controller)
+{
+    controller.layoutScopePages();
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.layoutBusy(), kImportTimeoutMs);
+    controller.recognizeScopeBlocks();
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+}
 
 class TestAppImport : public QObject
 {
@@ -451,8 +472,6 @@ private:
     QTemporaryDir m_dir;
     std::unique_ptr<SettingsStore> m_settings;
     std::unique_ptr<LaunchProfileStore> m_launchProfiles;
-    std::unique_ptr<RequestProfileStore> m_requestProfiles;
-    std::unique_ptr<RequestProfileStore> m_rawPageOcrRequestProfiles;
     std::unique_ptr<RequestProfileStore> m_checkRequestProfiles;
     std::unique_ptr<RequestProfileStore> m_layoutRequestProfiles;
     std::unique_ptr<RequestProfileStore> m_fixRequestProfiles;
@@ -475,6 +494,12 @@ private slots:
         m_settings->setRuntimeRootDir(m_dir.filePath(QStringLiteral("runtime")));
         m_settings->setRuntimeModelsDir(m_dir.filePath(QStringLiteral("models")));
         m_settings->setMode(ConnectionMode::External);
+        // The decision machinery under test speaks the text protocol; the only
+        // shipped decision model is the visual-diff one, whose candidate
+        // renderer needs WebEngine this suite does not initialize. The fixture
+        // profile (registered in tests/CMakeLists.txt) serves the decision
+        // role without the visual-diff protocol.
+        m_settings->setDecisionRequestProfileId(QStringLiteral("text-decision-test"));
         // The orientation check reads the picture alone; the tests about the
         // check itself turn it on.
         m_settings->setOrientationCheckEnabled(false);
@@ -483,16 +508,13 @@ private slots:
         m_settings->setModelName(QStringLiteral("import-guard-test"));
         m_settings->setBaseUrl(QUrl::fromLocalFile(m_dir.filePath(QStringLiteral("no-server"))).toString());
         m_launchProfiles = std::make_unique<LaunchProfileStore>(*m_settings);
-        m_requestProfiles = std::make_unique<RequestProfileStore>(*m_settings);
-        m_rawPageOcrRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::RawPageOcr);
         m_checkRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::BlockRecognition);
         m_layoutRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Layout);
         m_fixRequestProfiles = std::make_unique<RequestProfileStore>(*m_settings, ConnectionRole::Fix);
         m_verification = std::make_unique<VerificationPromptStore>(*m_settings);
         m_runtime = std::make_unique<RuntimeController>(*m_settings, *m_launchProfiles);
         m_problems = std::make_unique<ProblemLog>();
-        m_controller = std::make_unique<AppController>(
-            *m_settings, *m_runtime, *m_requestProfiles, *m_rawPageOcrRequestProfiles, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_fixRequestProfiles, *m_verification);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_fixRequestProfiles, *m_verification);
         m_controller->setProblemLog(m_problems.get());
 
         // Fixtures that exist in every build: a raster, a generated multi-page
@@ -528,152 +550,8 @@ private slots:
         QVERIFY2(QThreadPool::globalInstance()->waitForDone(kImportTimeoutMs), "Import worker did not finish after controller destruction");
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         m_runtime.reset();
-        m_requestProfiles.reset();
         m_launchProfiles.reset();
         m_settings.reset();
-    }
-
-    void recognitionSkipsPlaceholdersWithoutRequestingImages()
-    {
-        int providerCalls = 0;
-        QList<int> skippedPages;
-        RecognitionController recognition(
-            *m_settings,
-            *m_runtime,
-            *m_requestProfiles,
-            *m_rawPageOcrRequestProfiles,
-            [&providerCalls](int, QString &) {
-                ++providerCalls;
-                QImage image(800, 1000, QImage::Format_RGB32);
-                image.fill(Qt::white);
-                return image;
-            },
-            nullptr,
-            [&skippedPages](int index, bool) {
-                skippedPages.append(index);
-                return PageSkip::Unreadable;
-            });
-        QSignalSpy resultSpy(&recognition, &RecognitionController::rawResultReady);
-        QSignalSpy statusSpy(&recognition, &RecognitionController::statusRequested);
-        QSignalSpy busySpy(&recognition, &RecognitionController::busyChanged);
-        QVERIFY(resultSpy.isValid());
-        QVERIFY(statusSpy.isValid());
-        QVERIFY(busySpy.isValid());
-
-        // External resolution is immediate; the file URL in init() prevents
-        // HTTP even on regression. A skipped page must never reach the provider.
-        recognition.startCurrent(0, 1);
-        QTRY_VERIFY_WITH_TIMEOUT(!recognition.busy(), kImportTimeoutMs);
-        QCOMPARE(providerCalls, 0);
-        QCOMPARE(skippedPages, QList<int>({0}));
-        QCOMPARE(resultSpy.count(), 0);
-        QCOMPARE(busySpy.count(), 2);
-        QCOMPARE(statusSpy.count(), 1);
-        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Page 1 is a blank replacement for an unreadable page; recognition skipped."));
-
-        skippedPages.clear();
-        statusSpy.clear();
-        busySpy.clear();
-        recognition.startAll(3);
-        QTRY_VERIFY_WITH_TIMEOUT(!recognition.busy(), kImportTimeoutMs);
-        QCOMPARE(providerCalls, 0);
-        QCOMPARE(skippedPages, QList<int>({0, 1, 2}));
-        QCOMPARE(resultSpy.count(), 0);
-        // Nothing was left to recognize, so the run ends without ever becoming
-        // busy: resolving a connection here would start the managed server and
-        // load a model for no page.
-        QCOMPARE(busySpy.count(), 0);
-        QCOMPARE(statusSpy.count(), 1);
-        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Nothing to recognize: 3 unreadable page(s)"));
-    }
-
-    // A batch run must not redo pages that already have a result, and a run with
-    // nothing left to do must not even resolve a connection (that would start the
-    // managed server and load a model for no work). The single-page run keeps the
-    // opposite meaning: re-running the OCR for the page you are looking at.
-    void recognizeAllSkipsPagesThatAlreadyHaveAResult()
-    {
-        DetTokenChatServer server;
-        QVERIFY(server.start());
-        m_settings->setBaseUrl(server.baseUrl());
-        m_settings->setModelName(QStringLiteral("det-token-test"));
-
-        auto &controller = *m_controller;
-        controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
-        QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-
-        controller.recognizeAll();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
-        QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
-        const QString allFinished = controller.statusMessage();
-        QVERIFY(!allFinished.contains(QStringLiteral("already recognized")));
-
-        // All four pages now carry a result, so a second batch has no work.
-        QSignalSpy busySpy(&controller, &AppController::busyChanged);
-        QSignalSpy statusSpy(&controller, &AppController::statusChanged);
-        controller.recognizeAll();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
-        QCOMPARE(busySpy.count(), 0);  // never went busy: no connection was resolved
-        QVERIFY(controller.statusMessage().contains(QStringLiteral("Nothing to recognize")));
-        QVERIFY(controller.statusMessage().contains(QStringLiteral("4 page(s) already recognized")));
-        QVERIFY(statusSpy.count() > 0);
-
-        // Recognizing the current page explicitly re-runs it despite the result.
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
-        QCOMPARE(busySpy.count(), 2);
-        QVERIFY(controller.resultText().contains(QStringLiteral("1. Introduction")));
-    }
-
-    // The skip rule itself, isolated from the document: a batch run sends only the
-    // pages without a result, a single-page run sends its page whatever its
-    // state, and a batch with nothing left never reaches the model at all.
-    void theBatchSkipRuleOnlySkipsPagesWithAResult()
-    {
-        DetTokenChatServer server;
-        QVERIFY(server.start());
-        m_settings->setBaseUrl(server.baseUrl());
-        m_settings->setModelName(QStringLiteral("det-token-test"));
-
-        std::set<int> withResult{0, 2, 3};
-        QList<int> askedFor;
-        RecognitionController recognition(
-            *m_settings,
-            *m_runtime,
-            *m_requestProfiles,
-            *m_rawPageOcrRequestProfiles,
-            [&askedFor](int index, QString &) {
-                askedFor.append(index);
-                return QImage(20, 20, QImage::Format_RGB32);
-            },
-            nullptr,
-            [&withResult](int index, bool batch) { return batch && withResult.contains(index) ? PageSkip::AlreadyRecognized : PageSkip::None; });
-
-        // Pages 0, 2 and 3 already have a result, so only page 1 is sent.
-        recognition.startAll(4);
-        QTRY_VERIFY_WITH_TIMEOUT(!recognition.busy(), kImportTimeoutMs);
-        QCOMPARE(askedFor, QList<int>({1}));
-
-        // The single-page run ignores the rule: page 2 is recognized again.
-        askedFor.clear();
-        recognition.startCurrent(2, 4);
-        QTRY_VERIFY_WITH_TIMEOUT(!recognition.busy(), kImportTimeoutMs);
-        QCOMPARE(askedFor, QList<int>({2}));
-
-        // Nothing left to do: the run must end without asking for a single page
-        // (and without resolving a connection, which is what would start the
-        // managed server for work there is none).
-        withResult = {0, 1, 2, 3};
-        askedFor.clear();
-        QSignalSpy statusSpy(&recognition, &RecognitionController::statusRequested);
-        QSignalSpy busySpy(&recognition, &RecognitionController::busyChanged);
-        recognition.startAll(4);
-        QVERIFY(!recognition.busy());
-        QCOMPARE(askedFor, QList<int>());
-        QCOMPARE(busySpy.count(), 0);
-        QCOMPARE(statusSpy.count(), 1);
-        QCOMPARE(statusSpy.first().first().value<StatusMessage>().text(), QStringLiteral("Nothing to recognize: 4 page(s) already recognized"));
     }
 
     // Cancelling a batch: the files already committed stay, the rest are not
@@ -752,7 +630,6 @@ private slots:
         QCOMPARE(controller.currentPage(), 0);
         QVERIFY(controller.hasImage());
         QVERIFY(!controller.hasResult());
-        QVERIFY(controller.canRecognize());
         QCOMPARE(controller.statusMessage(), QStringLiteral("Added 3 file(s), 7 page(s); 1 file(s) skipped."));
         for (int row = 0; row < 7; ++row) {
             const QModelIndex index = model->index(row, 0);
@@ -851,7 +728,6 @@ private slots:
         QCOMPARE(controller.currentPage(), 0);
         QVERIFY(controller.hasImage());
         QVERIFY(!controller.hasResult());
-        QVERIFY(controller.canRecognize());
         QCOMPARE(controller.statusMessage(), QStringLiteral("Added 3 file(s), 7 page(s); 1 file(s) skipped."));
         for (int row = 0; row < 7; ++row) {
             const QModelIndex index = model->index(row, 0);
@@ -1049,7 +925,6 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
         QCOMPARE(controller.pageCount(), 2);
-        QVERIFY(controller.canRecognize());
         ImportSignals observations(controller);
         QSignalSpy busySpy(&controller, &AppController::busyChanged);
         QSignalSpy runtimeBusySpy(m_runtime.get(), &RuntimeController::busyStateChanged);
@@ -1059,12 +934,11 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_multipage)});
         QVERIFY(controller.importing());
         QVERIFY(!controller.busy());
-        QVERIFY(!controller.canRecognize());
         const QString status = controller.statusMessage();
         for (int attempt = 0; attempt < 3; ++attempt) {
             controller.openFiles({QUrl::fromLocalFile(m_raster)});
-            controller.recognizeCurrent();
-            controller.recognizeAll();
+            controller.layoutScopePages();
+            QVERIFY(!controller.addBlock(QStringLiteral("text")));
             QVERIFY(!controller.removePage(0));
             QVERIFY(!controller.movePage(0, 1));
             QCOMPARE(controller.pageCount(), 2);
@@ -1081,7 +955,6 @@ private slots:
         QCOMPARE(controller.pageCount(), 5);
         QCOMPARE(observations.importingStates, QList<bool>({true, false}));
         QVERIFY(!observations.wrongThread.load());
-        QVERIFY(controller.canRecognize());
         QVERIFY(controller.movePage(2, 0));
         compareQuadrants(controller.pageImage(0), colors(0));
         QVERIFY(controller.removePage(0));
@@ -1335,8 +1208,7 @@ private slots:
         // Recognition is refused while an import is still running.
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
 
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
@@ -1380,14 +1252,14 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
+        server.transcriptionSequence.clear();  // every block reads `transcription`
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY(controller.hasResult());
 
         auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
@@ -1433,8 +1305,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY(controller.hasResult());
 
         controller.setCurrentPageText(controller.resultText() + QStringLiteral("\ntyped by hand"));
@@ -1457,14 +1328,14 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
+        server.transcriptionSequence.clear();  // every block reads `transcription`
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY(controller.hasResult());
 
         // The operator edits the page text by hand…
@@ -1493,14 +1364,14 @@ private slots:
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
+        server.transcriptionSequence.clear();  // every block reads `transcription`
 
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY(controller.hasResult());
 
         auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
@@ -1607,8 +1478,7 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
 
         QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text"));
@@ -1661,8 +1531,7 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
         QVERIFY(controller.blockTextMapped());
 
@@ -1694,8 +1563,8 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        controller.recognizeAll();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        qobject_cast<PageListModel *>(controller.pageModel())->clearSelection();  // empty selection = every page
+        recognizePage(controller);
         QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
         QCOMPARE(controller.resultText(), QStringLiteral("## 1. Introduction\n\nSecond block text"));
 
@@ -1725,8 +1594,7 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
 
         QTextDocument document;
@@ -1776,9 +1644,9 @@ private slots:
         m_settings->setCheckModelName(QStringLiteral("check-test"));
 
         // A box needs at least a pixel in both directions to become a crop, and
-        // the det-token boxes are normalized: on the shared 39x27 fixture the
-        // title box is 0.4 px tall and the queue drops it before sending
-        // anything. A page-sized raster keeps both boxes verifiable.
+        // the layout boxes are normalized: on the shared 39x27 fixture a short
+        // box would be dropped by the queue before sending anything. A
+        // page-sized raster keeps both boxes verifiable.
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
         const QString raster = m_dir.filePath(QStringLiteral("verify-raster.png"));
@@ -1787,10 +1655,9 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
-        QCOMPARE(server.requests(), 1);
+        QCOMPARE(server.requests(), 3);  // 1 layout + 2 transcriptions
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -1801,7 +1668,7 @@ private slots:
         m_controller->checkEnabledBlocksOnPage();
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->checkProgressTotal(), 2, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 3);
+        QCOMPARE(server.requests(), 5);
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Ok));
         QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Ok));
 
@@ -1812,22 +1679,21 @@ private slots:
         QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("already verified")), qPrintable(m_controller->statusMessage()));
         m_controller->checkAllEnabledBlocks();
         QVERIFY(!m_controller->checkRunning());
-        QCOMPARE(server.requests(), 3);
+        QCOMPARE(server.requests(), 5);
 
         // The per-block «Verify» button is the one way back in.
         m_controller->setSelectedBoxIndex(0);
         m_controller->checkSelectedBlock();
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 4, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 6, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
 
         // A re-recognized block is asked again: the fresh OCR text has no answer.
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
         m_controller->checkAllEnabledBlocks();
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->checkProgressTotal(), 2, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 7);
+        QCOMPARE(server.requests(), 11);
     }
 
     // The queue holds (page, box) pairs captured at enqueue time, so a page or
@@ -1845,8 +1711,8 @@ private slots:
         controller.openFiles({QUrl::fromLocalFile(m_raster), QUrl::fromLocalFile(m_pdf)});
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        controller.recognizeAll();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        qobject_cast<PageListModel *>(controller.pageModel())->clearSelection();  // empty selection = every page
+        recognizePage(controller);
         QVERIFY2(controller.hasResult(), qPrintable(controller.statusMessage()));
 
         controller.checkAllEnabledBlocks();
@@ -1855,12 +1721,13 @@ private slots:
         QVERIFY(!controller.movePage(0, 1));
         QVERIFY(!controller.removeBlock(0));
         QCOMPARE(controller.pageCount(), 4);
-        // Recognition is mutually exclusive with the queue as well: the
-        // header/page-toolbar buttons and the C++ guards agree.
+        // Block recognition and the markup pass are mutually exclusive with the
+        // queue as well: the header/page-toolbar buttons and the C++ guards
+        // agree.
         QSignalSpy busySpy(&controller, &AppController::busyChanged);
-        controller.recognizeCurrent();
-        controller.recognizeAll();
-        QVERIFY(!controller.busy());
+        controller.recognizeScopeBlocks();
+        controller.layoutScopePages();
+        QVERIFY(controller.busy());  // the queue itself is the running job
         QCOMPARE(busySpy.count(), 0);
 
         QTRY_VERIFY_WITH_TIMEOUT(!controller.checkRunning(), kImportTimeoutMs);
@@ -1891,8 +1758,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
@@ -1904,8 +1770,8 @@ private slots:
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        // 1 recognition + 2 decision requests; the fix stage did not run.
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 3, kImportTimeoutMs);
+        // 1 layout + 2 transcriptions + 2 decision requests; the fix stage did not run.
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);
         QCOMPARE(server.systemoneRequests(), 2);
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
         QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
@@ -1913,7 +1779,7 @@ private slots:
         // The «Fix» action sends the problem blocks to the fix model.
         m_controller->fixAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 7, kImportTimeoutMs);
         // The fix lands on the correction layer: the fixed text with no
         // verdict yet (the gray dot), while the text layer keeps its Mismatch.
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
@@ -1925,13 +1791,16 @@ private slots:
         QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::NotChecked));
 
         // The fix request speaks the correction protocol (ADR 163): the
-        // block's effective text travels as the <CANDIDATE> payload.
-        QCOMPARE(server.chatRequests().size(), 3);
-        QVERIFY(!server.chatRequests().at(0).contains("\"role\":\"system\""));  // the page OCR call
-        QVERIFY(server.chatRequests().at(1).contains("<CANDIDATE>"));
-        QVERIFY(server.chatRequests().at(1).contains("1. Introduction"));
-        QVERIFY(server.chatRequests().at(2).contains("<CANDIDATE>"));
-        QVERIFY(server.chatRequests().at(2).contains("Second block text"));
+        // block's effective text travels as the <CANDIDATE> payload. The chat
+        // log opens with the layout call, then the two transcriptions.
+        QCOMPARE(server.chatRequests().size(), 5);
+        QVERIFY(server.chatRequests().at(0).contains("Layout Detection:"));  // the markup pass
+        QVERIFY(server.chatRequests().at(1).contains("\"role\":\"system\""));
+        QVERIFY(!server.chatRequests().at(1).contains("<CANDIDATE>"));
+        QVERIFY(server.chatRequests().at(3).contains("<CANDIDATE>"));
+        QVERIFY(server.chatRequests().at(3).contains("1. Introduction"));
+        QVERIFY(server.chatRequests().at(4).contains("<CANDIDATE>"));
+        QVERIFY(server.chatRequests().at(4).contains("Second block text"));
 
         // Fixing an answered block re-runs the correction on the effective
         // text — the stored correction — still as a structured candidate. The
@@ -1941,17 +1810,17 @@ private slots:
         m_controller->setSelectedBoxIndex(0);
         m_controller->fixSelectedBlock();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 6, kImportTimeoutMs);
-        QCOMPARE(server.chatRequests().size(), 4);
-        QVERIFY(server.chatRequests().at(3).contains("<CANDIDATE>"));
-        QVERIFY(server.chatRequests().at(3).contains("Fixed block text"));
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 8, kImportTimeoutMs);
+        QCOMPARE(server.chatRequests().size(), 6);
+        QVERIFY(server.chatRequests().at(5).contains("<CANDIDATE>"));
+        QVERIFY(server.chatRequests().at(5).contains("Fixed block text"));
         QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QStringLiteral("Fixed block text and more"));
 
         // The next verification run judges the corrected text (the decision
         // request's state). Still below the threshold, so both mismatch again.
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 8, kImportTimeoutMs);  // +2 decision
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 10, kImportTimeoutMs);  // +2 decision
         QCOMPARE(server.systemoneRequests(), 4);
         QVERIFY(server.systemoneBodies().at(2).contains("Fixed block text"));
         QVERIFY(!server.systemoneBodies().at(2).contains("1. Introduction"));
@@ -1980,8 +1849,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -1989,7 +1857,7 @@ private slots:
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 3);  // 1 recognition + 2 decision, no phase 2
+        QCOMPARE(server.requests(), 5);  // 1 layout + 2 transcriptions + 2 decision, no phase 2
         QCOMPARE(server.systemoneRequests(), 2);
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
         QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
@@ -2007,7 +1875,8 @@ private slots:
     {
         DetTokenChatServer server;
         server.systemoneProbability = 0.97;
-        server.ocrContent = QStringLiteral("<|det|>equation [112, 132, 884, 309]<|/det|>$$Bi _ {1}$$");
+        server.layoutContent = QStringLiteral("<|box_start|>112 132 884 309<|box_end|><|ref_start|>equation<|ref_end|>");
+        server.transcriptionSequence = {QStringLiteral("$$Bi _ {1}$$")};
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
@@ -2021,8 +1890,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
@@ -2048,7 +1916,8 @@ private slots:
     void aBrokenFormulaIsRejectedAndNotChecked()
     {
         DetTokenChatServer server;
-        server.ocrContent = QStringLiteral("<|det|>equation [112, 132, 884, 309]<|/det|>$$\\frac{1}$$");
+        server.layoutContent = QStringLiteral("<|box_start|>112 132 884 309<|box_end|><|ref_start|>equation<|ref_end|>");
+        server.transcriptionSequence = {QStringLiteral("$$\\frac{1}$$")};
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
@@ -2062,8 +1931,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -2085,7 +1953,8 @@ private slots:
     void aFormulaInAMarkdownFenceLandsWithoutTheFence()
     {
         DetTokenChatServer server;
-        server.ocrContent = QStringLiteral("<|det|>equation [112, 132, 884, 309]<|/det|>$$\n```latex\nK_{\\ell} = \\frac{1}{R^*}\n```\n$$");
+        server.layoutContent = QStringLiteral("<|box_start|>112 132 884 309<|box_end|><|ref_start|>equation<|ref_end|>");
+        server.transcriptionSequence = {QStringLiteral("$$\n```latex\nK_{\\ell} = \\frac{1}{R^*}\n```\n$$")};
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
@@ -2099,8 +1968,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -2120,12 +1988,13 @@ private slots:
     }
 
     // The first recognition of a text-less block (layout markup) writes the
-    // text where page OCR puts it — box.text — and leaves the block gray: no
-    // verdict has been made yet (ADR 153).
+    // text into box.text and leaves the block gray: no verdict has been made
+    // yet (ADR 153).
     void firstRecognitionFillsBlockTextWithoutVerdict()
     {
         DetTokenChatServer server;
-        server.ocrContent = QStringLiteral("<|det|>text [112, 132, 884, 309]<|/det|>");
+        server.layoutContent = QStringLiteral("<|box_start|>112 132 884 309<|box_end|><|ref_start|>text<|ref_end|>");
+        server.transcriptionSequence.clear();
         QVERIFY(server.start());
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
@@ -2139,8 +2008,9 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        // The markup pass alone: the block waits for its text-less recognition.
+        m_controller->layoutScopePages();
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->layoutBusy(), kImportTimeoutMs);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -2220,8 +2090,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -2230,19 +2099,19 @@ private slots:
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 3, kImportTimeoutMs);  // +2 decision
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);  // 1 layout + 2 transcriptions + 2 decision
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
 
         // The fix is a separate action (ADR 178): the «Fix» button corrects
         // the rejected blocks.
         m_controller->fixAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 5, kImportTimeoutMs);  // +2 fix
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 7, kImportTimeoutMs);  // +2 fix
 
         server.systemoneProbability = 0.97;  // the corrected text matches now
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 7, kImportTimeoutMs);
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 9, kImportTimeoutMs);
         QCOMPARE(server.systemoneRequests(), 4);
         // The judged candidate was the corrected text, not the OCR original.
         QVERIFY(server.systemoneBodies().at(2).contains("Fixed block text"));
@@ -2264,7 +2133,7 @@ private slots:
         // Answered: a third run asks nothing.
         m_controller->checkEnabledBlocksOnPage();
         QVERIFY(!m_controller->checkRunning());
-        QCOMPARE(server.requests(), 7);
+        QCOMPARE(server.requests(), 9);
     }
 
     // The block-recognition entry points: the selected block is re-run through
@@ -2279,6 +2148,7 @@ private slots:
         m_settings->setBaseUrl(server.baseUrl());
         m_settings->setModelName(QStringLiteral("det-token-test"));
         m_settings->setCheckModelName(QStringLiteral("check-test"));
+        server.transcriptionSequence.clear();  // every block reads `transcription`
 
         QImage page(480, 360, QImage::Format_RGB32);
         page.fill(Qt::yellow);
@@ -2288,8 +2158,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -2299,22 +2168,21 @@ private slots:
         m_controller->setSelectedBoxIndex(0);
         m_controller->recognizeSelectedBlock();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 2, kImportTimeoutMs);
-        QCOMPARE(server.systemoneRequests(), 0);  // straight to the transcription stage
+        QTRY_COMPARE_WITH_TIMEOUT(server.requests(), 4, kImportTimeoutMs);  // 1 layout + 3 transcriptions
+        QCOMPARE(server.systemoneRequests(), 0);                            // straight to the transcription stage
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), server.transcription);
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CorrectedRole).toString(), QString());
         // The re-recognition is a from-scratch transcription (ADR 163): the
         // previous OCR text stays out of the request.
         QVERIFY(!server.chatRequests().last().contains("Previously recognized text:"));
-        QVERIFY(!server.chatRequests().last().contains("1. Introduction"));
 
         // The check run re-judges the re-recognized block by its fresh text
         // alongside the still-unchecked one; below the threshold both mismatch
         // and stay marked (no automatic re-recognition).
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 4);  // 1 recognition + 1 re-recognition + 2 decision
+        QCOMPARE(server.requests(), 6);  // 3 transcriptions + 1 re-recognition + 2 decision
         QCOMPARE(server.systemoneRequests(), 2);
         QVERIFY(server.systemoneBodies().first().contains("Re-recognized block text"));
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::Mismatch));
@@ -2324,7 +2192,7 @@ private slots:
         QVERIFY(m_controller->pageProblemRecognitionSupported());
         m_controller->recognizeProblemBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 6);
+        QCOMPARE(server.requests(), 8);
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), server.transcription);
@@ -2336,7 +2204,7 @@ private slots:
         QVERIFY(!m_controller->allProblemRecognitionSupported());
         m_controller->recognizeAllProblemBlocks();
         QVERIFY(!m_controller->checkRunning());
-        QCOMPARE(server.requests(), 6);
+        QCOMPARE(server.requests(), 8);
     }
 
     // The book-level «Исправить» runs every Mismatch/Review block through the
@@ -2361,8 +2229,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -2373,13 +2240,13 @@ private slots:
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 3);  // 1 recognition + 2 decision, no auto-fix
+        QCOMPARE(server.requests(), 5);  // 1 layout + 2 transcriptions + 2 decision, no auto-fix
 
         server.fixReply = QStringLiteral("OK");
         QVERIFY(m_controller->allProblemRecognitionSupported());
         m_controller->fixAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 5);
+        QCOMPARE(server.requests(), 7);
         // OK confirms the candidate: nothing is stored, and the verdict the
         // recognition earned is dropped — the fixer is not a verifier
         // (ADR 240), so the block goes back to the gray «recognized» state.
@@ -2393,7 +2260,7 @@ private slots:
         m_controller->setSelectedBoxIndex(0);
         m_controller->fixSelectedBlock();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 6);
+        QCOMPARE(server.requests(), 8);
         // REVIEW marks the correction layer damaged: red, no correction text.
         QCOMPARE(boxes->data(boxes->index(0), correctedStatusRole).toInt(), int(BoxCheckStatus::Review));
         QCOMPARE(boxes->data(boxes->index(0), correctedRole).toString(), QString());
@@ -2413,7 +2280,7 @@ private slots:
         QCOMPARE(m_controller->scopedPendingFixCount(), 0);
         m_controller->fixAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 6);
+        QCOMPARE(server.requests(), 8);
 
         // The re-recognition is a different remedy: the decision model still
         // rejects the blocks, so the OCR model may read them again.
@@ -2440,8 +2307,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
@@ -2489,8 +2355,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(m_controller->scopedPendingFixCount(), 2);
@@ -2539,8 +2404,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
 
         m_controller->setSelectedBoxIndex(0);
@@ -2580,8 +2444,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
 
         // Without a correction there is nothing to compare: no range at all.
@@ -2623,8 +2486,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
 
         m_controller->setSelectedBoxIndex(0);
@@ -2659,8 +2521,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
 
@@ -2700,8 +2561,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(m_controller->scopedPendingFixCount(), 2);
@@ -2739,8 +2599,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY2(m_controller->hasResult(), qPrintable(m_controller->statusMessage()));
 
         m_controller->setSelectedBoxIndex(0);
@@ -2772,8 +2631,7 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
@@ -2781,7 +2639,7 @@ private slots:
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 3);  // both blocks were asked
+        QCOMPARE(server.requests(), 5);  // both blocks were asked
         QCOMPARE(server.systemoneRequests(), 2);
         QCOMPARE(boxes->data(boxes->index(0), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
         QCOMPARE(boxes->data(boxes->index(1), statusRole).toInt(), int(BoxCheckStatus::NotChecked));
@@ -2810,15 +2668,14 @@ private slots:
         m_controller->openFiles({QUrl::fromLocalFile(raster)});
         QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
 
         auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
         QVERIFY(boxes);
 
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 3);  // 1 recognition + 2 decision; the check run never fixes
+        QCOMPARE(server.requests(), 5);  // 1 layout + 2 transcriptions + 2 decision; the check run never fixes
         QCOMPARE(server.systemoneRequests(), 2);
         QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Review));
         QCOMPARE(boxes->data(boxes->index(1), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Review));
@@ -2832,7 +2689,7 @@ private slots:
         server.systemoneTopDiagnosis = QStringLiteral("exact_match");
         m_controller->recognizeAllProblemBlocks();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
-        QCOMPARE(server.requests(), 5);
+        QCOMPARE(server.requests(), 7);
         m_controller->checkEnabledBlocksOnPage();
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->checkRunning(), kImportTimeoutMs);
         QCOMPARE(server.systemoneRequests(), 4);
@@ -2853,8 +2710,7 @@ private slots:
 
         m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY(m_controller->hasResult());
 
         QVERIFY(m_controller->removeBlock(1));
@@ -2905,8 +2761,7 @@ private slots:
 
         m_controller->openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
-        m_controller->recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->busy(), kImportTimeoutMs);
+        recognizePage(*m_controller);
         QVERIFY(m_controller->hasResult());
 
         QVERIFY(m_controller->removeBlock(1));
@@ -2944,8 +2799,7 @@ private slots:
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY(controller.hasResult());
 
         QSignalSpy editSpy(&controller, &AppController::editStateChanged);
@@ -2979,8 +2833,7 @@ private slots:
         auto &controller = *m_controller;
         controller.openFiles({QUrl::fromLocalFile(m_raster)});
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY(controller.hasResult());
         const QString recognized = controller.resultText();
 
@@ -3061,8 +2914,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 4, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY(controller.hasResult());
         QVERIFY(controller.removeBlock(1));
         // A removal is a structural change, not a manual edit.
@@ -3138,8 +2990,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QVERIFY(controller.hasResult());
         auto *boxes = qobject_cast<BoxListModel *>(controller.boxModel());
         QVERIFY(boxes);
@@ -3185,9 +3036,7 @@ private slots:
         QStringList statuses;
         connect(&controller, &AppController::statusChanged, this, [&]() { statuses.append(controller.statusMessage()); });
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
 
         // The page was not turned: the picture cannot tell which way it has to
         // be turned, so the user turns it by hand. The page is marked red.
@@ -3224,9 +3073,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
 
         const QImage shown = controller.pageImage(0);
         QCOMPARE(shown.size(), source.size());
@@ -3259,9 +3106,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
 
         // The correction the check measured is on the page: the magnitude of
         // the skew the source was drawn with.
@@ -3275,9 +3120,7 @@ private slots:
         // The straightened page reads as straight: the second check has
         // nothing to add.
         const double straightened = controller.currentPageSkewDegrees();
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
+        recognizePage(controller);
         QCOMPARE(controller.currentPageSkewDegrees(), straightened);
     }
 
@@ -3308,16 +3151,10 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        // The pixel check read the axis: the page is marked sideways before
-        // anything runs.
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
-        QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::Sideways));
-
-        // The markup pass runs on the sideways page: the tokens vote left
-        // unanimously, the page turns to the right — the mark goes with the
-        // turn — and the markup runs again on the straightened page.
+        // The markup pass runs on the sideways page — the pixel check reads the
+        // axis first: the tokens vote left unanimously, the page turns to the
+        // right — the mark goes with the turn — and the markup runs again on
+        // the straightened page.
         controller.layoutCurrentPage();
         QTRY_VERIFY_WITH_TIMEOUT(controller.currentPageRotation() == 90, kImportTimeoutMs);
         QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::None));
@@ -3362,11 +3199,9 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.pageCount(), 1, kImportTimeoutMs);
         QTRY_VERIFY_WITH_TIMEOUT(!controller.importing(), kImportTimeoutMs);
 
-        controller.recognizeCurrent();
-        QTRY_VERIFY_WITH_TIMEOUT(controller.hasResult(), kImportTimeoutMs);
-        QTRY_VERIFY_WITH_TIMEOUT(!controller.busy(), kImportTimeoutMs);
-        QCOMPARE(controller.currentPageOrientationProblem(), int(PageOrientationProblem::Sideways));
-
+        // The markup pass runs on the sideways page — the pixel check reads the
+        // axis first; with the automatic turn off the vote degrades to the
+        // one-click suggestion: the mark and the advised direction stay.
         controller.layoutCurrentPage();
         QTRY_VERIFY_WITH_TIMEOUT(!controller.layoutBusy(), kImportTimeoutMs);
         QCOMPARE(controller.currentPageSuggestedTurn(), 90);
@@ -3483,8 +3318,7 @@ private slots:
         QCOMPARE(observations.importingStates, QList<bool>({true}));
         QVERIFY(observations.committedCounts.isEmpty());
         QVERIFY(!observations.wrongThread.load());
-        m_controller = std::make_unique<AppController>(
-            *m_settings, *m_runtime, *m_requestProfiles, *m_rawPageOcrRequestProfiles, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_fixRequestProfiles, *m_verification);
+        m_controller = std::make_unique<AppController>(*m_settings, *m_runtime, *m_checkRequestProfiles, *m_layoutRequestProfiles, *m_fixRequestProfiles, *m_verification);
         m_controller->openFiles({QUrl::fromLocalFile(m_multipage)});
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
         QCOMPARE(m_controller->pageCount(), 3);

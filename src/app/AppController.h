@@ -27,7 +27,6 @@
 #include "app/PageListModel.h"
 #include "app/ProblemLog.h"
 #include "app/ProjectController.h"
-#include "app/RecognitionController.h"
 #include "app/VerificationPromptStore.h"
 #include "app/VerificationQueueController.h"
 #include "config/SettingsStore.h"
@@ -110,8 +109,6 @@ class AppController : public QObject
     Q_PROPERTY(bool pageBlocksRecognitionSupported READ pageBlocksRecognitionSupported NOTIFY availabilityChanged)
     // Whether the task's model is picked at all (RuntimeController): the
     // actions that need a task gray out without it (the rework plan's §7).
-    Q_PROPERTY(bool pageOcrModelAvailable READ pageOcrModelAvailable NOTIFY availabilityChanged)
-    Q_PROPERTY(bool rawPageOcrModelAvailable READ rawPageOcrModelAvailable NOTIFY availabilityChanged)
     Q_PROPERTY(bool blockRecognitionModelAvailable READ blockRecognitionModelAvailable NOTIFY availabilityChanged)
     Q_PROPERTY(bool decisionModelAvailable READ decisionModelAvailable NOTIFY availabilityChanged)
     Q_PROPERTY(bool layoutModelAvailable READ layoutModelAvailable NOTIFY availabilityChanged)
@@ -155,9 +152,8 @@ class AppController : public QObject
     Q_PROPERTY(QObject *pageModel READ pageModel CONSTANT)
     Q_PROPERTY(QObject *boxModel READ boxModel CONSTANT)
 
-    Q_PROPERTY(bool canRecognize READ canRecognize NOTIFY availabilityChanged)
     // The one busy-gate every "act on the document" button folds in: the
-    // recognition, layout and verification stages are mutually exclusive, and
+    // layout pass and the verification stages are mutually exclusive, and
     // each toolbar spelling this set by hand is how the mini toolbar lost
     // layoutBusy.
     Q_PROPERTY(bool actionsIdle READ actionsIdle NOTIFY availabilityChanged)
@@ -170,8 +166,6 @@ class AppController : public QObject
 public:
     explicit AppController(SettingsStore &settings,
                            RuntimeController &runtime,
-                           RequestProfileStore &requestProfiles,
-                           RequestProfileStore &rawPageOcrRequestProfiles,
                            RequestProfileStore &checkRequestProfiles,
                            RequestProfileStore &layoutRequestProfiles,
                            RequestProfileStore &fixRequestProfiles,
@@ -179,7 +173,10 @@ public:
                            QObject *parent = nullptr);
     ~AppController() override;
 
-    bool busy() const { return m_recognition.busy(); }
+    // checkBusy() spans the whole queue run (queueActive holds between two
+    // requests); the raw m_verify.checkBusy() would drop in those gaps and
+    // read as idle mid-run.
+    bool busy() const { return m_layout.busy() || checkBusy(); }
     bool exporting() const { return m_export.exporting(); }
     bool projectBusy() const { return m_project.busy(); }
     QUrl projectPath() const { return m_project.path(); }
@@ -198,7 +195,6 @@ public:
     int imageRevision() const { return m_imageRevision; }
     int docRevision() const { return m_docRevision; }
 
-    bool canRecognize() const { return m_availability.canRecognize(); }
     bool actionsIdle() const { return m_availability.actionsIdle(); }
     QStringList parserNames() const;
     QStringList parserLabels() const;
@@ -243,8 +239,6 @@ public:
     bool pageProblemRecognitionSupported() const { return m_availability.pageProblemRecognitionSupported(); }
     bool allProblemRecognitionSupported() const { return m_availability.allProblemRecognitionSupported(); }
     bool pageBlocksRecognitionSupported() const { return m_availability.pageBlocksRecognitionSupported(); }
-    bool pageOcrModelAvailable() const { return m_availability.pageOcrModelAvailable(); }
-    bool rawPageOcrModelAvailable() const { return m_availability.rawPageOcrModelAvailable(); }
     bool blockRecognitionModelAvailable() const { return m_availability.blockRecognitionModelAvailable(); }
     bool decisionModelAvailable() const { return m_availability.decisionModelAvailable(); }
     bool layoutModelAvailable() const { return m_availability.layoutModelAvailable(); }
@@ -313,10 +307,10 @@ signals:
     void highlightDifferencesChanged();
     void pageTextEditorFocusedChanged();
     void checkStateChanged();
-    // The availability flags (canRecognize and the page/all "supported"
-    // properties) fold in the current page, the page content, the recognition
-    // activity and the runtime config, so they are re-announced on all of
-    // those — a single NOTIFY per property cannot cover them.
+    // The availability flags (actionsIdle and the page/all "supported"
+    // properties) fold in the current page, the page content, the running
+    // jobs and the runtime config, so they are re-announced on all of those —
+    // a single NOTIFY per property cannot cover them.
     void availabilityChanged();
 
     void editStateChanged();
@@ -328,14 +322,6 @@ signals:
 
 public slots:
     Q_INVOKABLE void openFiles(const QVariantList &fileUrls);
-    // task selects the recognition pipeline: "pageOcr" (markup-aware) or
-    // "rawPageOcr" (markup-free); the legacy no-task spellings keep the
-    // pageOcr meaning.
-    Q_INVOKABLE void recognizeCurrentPage(const QString &task);
-    Q_INVOKABLE void recognizeAllPages(const QString &task);
-    Q_INVOKABLE void recognizeCurrent();
-    Q_INVOKABLE void recognizeAll();
-    Q_INVOKABLE void stop();
     Q_INVOKABLE bool removePage(int index);
     Q_INVOKABLE bool movePage(int from, int to);
     Q_INVOKABLE bool exportPages(const QUrl &fileUrl, int scope, int fromPage = 1, int toPage = 1);
@@ -373,7 +359,6 @@ public slots:
     Q_INVOKABLE void checkAllEnabledBlocks();
     // The toolbar's scoped spellings: the same runs over the thumbnail
     // selection (empty selection = every page).
-    Q_INVOKABLE void recognizeScopePages(const QString &task);
     Q_INVOKABLE void recognizeScopeBlocks();
     Q_INVOKABLE void layoutScopePages();
     Q_INVOKABLE void checkScopeEnabledBlocks();
@@ -427,7 +412,6 @@ private:
     // the user turns it by hand.
     void setPageOrientationProblem(int index, PageOrientationProblem problem);
     void applyPageDeskew(int index, double degrees);
-    void applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult);
     void applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);
     QString effectiveParserId() const;
@@ -486,7 +470,6 @@ private:
     PageListModel m_pageModel;
     BoxListModel m_boxModel;
     BlockInspector m_inspector;
-    RecognitionController m_recognition;
     // Declared before the queue: a render in flight must die with its
     // callbacks before the queue that would receive them.
     CandidateRenderer m_candidateRenderer;

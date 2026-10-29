@@ -57,3 +57,13 @@ hunks included.
 | Cloudflare clef-flash | decision | markedly worse and slower than MiniCPM-OCR Jev |
 | d3-flash | decision | markedly worse and slower than MiniCPM-OCR Jev |
 | d3-mini | decision | markedly worse and slower than MiniCPM-OCR Jev |
+
+## The single-pass page recognition
+
+The app used to recognize a whole page in one request — with the layout markup
+(`pageOcr`) or without it (`rawPageOcr`). Every model that served `pageOcr` is
+cut above, so the task had no model left and the button could not do anything.
+
+The controller is in `single-pass/`. The task names live in the enum
+`ConnectionRole` and in the settings keys `tasks/pageOcr/*` and
+`tasks/rawPageOcr/*`; the toolbar group was «Распознать».

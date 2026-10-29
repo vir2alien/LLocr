@@ -36,8 +36,6 @@ namespace llocr {
 
 AppController::AppController(SettingsStore &settings,
                              RuntimeController &runtime,
-                             RequestProfileStore &requestProfiles,
-                             RequestProfileStore &rawPageOcrRequestProfiles,
                              RequestProfileStore &checkRequestProfiles,
                              RequestProfileStore &layoutRequestProfiles,
                              RequestProfileStore &fixRequestProfiles,
@@ -51,24 +49,6 @@ AppController::AppController(SettingsStore &settings,
                                                              [this](int index) { return pageText(index); },
                                                              [this] { return makeParser(); }},
                                                             this),
-      m_recognition(
-          settings,
-          runtime,
-          requestProfiles,
-          rawPageOcrRequestProfiles,
-          [this](int index, QString &error) { return pageImage(index, &error); },
-          nullptr,
-          [this](int index, bool batch) {
-              QReadLocker locker(&m_documentLock);
-              if (!m_document.isValidIndex(index))
-                  return PageSkip::Unreadable;
-              const DocumentPage &page = m_document.page(index);
-              if (!page.sourceError.isEmpty())
-                  return PageSkip::Unreadable;
-              if (batch && page.recognized)
-                  return PageSkip::AlreadyRecognized;
-              return PageSkip::None;
-          }),
       m_verify({m_document,
                 verification,
                 checkRequestProfiles,
@@ -76,7 +56,9 @@ AppController::AppController(SettingsStore &settings,
                 settings,
                 runtime,
                 [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); },
-                [this]() { return m_recognition.busy(); },
+                // The queue and the markup pass are the two jobs left, and they
+                // are mutually exclusive: neither may start while the other runs.
+                [this] { return m_layout.busy(); },
                 [this](int pageIndex, int boxIndex) { return blockDisplayText(pageIndex, boxIndex); },
                 [this](const QString &candidateText, const std::function<void(bool, const QImage &, const QString &)> &done) { m_candidateRenderer.render(candidateText, done); }},
                this),
@@ -87,7 +69,6 @@ AppController::AppController(SettingsStore &settings,
                                                                       verification,
                                                                       [this] { return m_currentPage; },
                                                                       [this] { return m_importing; },
-                                                                      [this] { return m_recognition.busy(); },
                                                                       [this] { return m_layout.busy(); },
                                                                       [this] { return checkBusy(); }},
                                                                      this),
@@ -102,7 +83,7 @@ AppController::AppController(SettingsStore &settings,
                      m_currentPage = index;
                      m_pageModel.setCurrent(index);
                  },
-                 [this] { return m_recognition.busy() || m_layout.busy() || m_importing || m_export.exporting() || m_verify.queueActive() || m_verify.checkBusy(); },
+                 [this] { return m_layout.busy() || m_importing || m_export.exporting() || m_verify.queueActive() || m_verify.checkBusy(); },
                  [this](const StatusMessage &message) { setStatus(message); },
                  [this](const StatusMessage &message, ProblemLog::Severity severity) { reportProblem(message, severity); },
                  [this] { m_inspector.resetSelection(); },
@@ -142,13 +123,6 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_inspector, &BlockInspector::highlightDifferencesChanged, this, &AppController::highlightDifferencesChanged);
     connect(&m_inspector, &BlockInspector::pageTextEditorFocusedChanged, this, &AppController::pageTextEditorFocusedChanged);
 
-    connect(&m_recognition, &RecognitionController::busyChanged, this, [this]() {
-        emit busyChanged();
-        updateAvailability();
-    });
-    connect(&m_recognition, &RecognitionController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
-    connect(&m_recognition, &RecognitionController::rawResultReady, this, &AppController::applyRawResult);
-
     // The verification filter changes which blocks «Проверить» would pick up
     // and which pages count as verified, so the availability flags and every
     // page's aggregate follow it live: the model signal covers edits in the
@@ -162,6 +136,9 @@ AppController::AppController(SettingsStore &settings,
     connect(&verification, &VerificationPromptStore::modelChanged, this, verificationFilterChanged);
 
     connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::checkStateChanged);
+    // busy() is the layout pass or the queue running: both state changes must
+    // re-announce it to the QML bindings.
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::busyChanged);
     connect(&m_verify, &VerificationQueueController::stateChanged, this, &AppController::updateAvailability);
     connect(&m_verify, &VerificationQueueController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_verify, &VerificationQueueController::verificationStarted, this, &AppController::applyVerificationStarted);
@@ -183,6 +160,7 @@ AppController::AppController(SettingsStore &settings,
     });
 
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::layoutStateChanged);
+    connect(&m_layout, &LayoutController::busyChanged, this, &AppController::busyChanged);
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::updateAvailability);
     // A page the markup auto-turned waits for its second pass: the boxes the
     // sideways layout read say nothing about the turned page.
@@ -246,7 +224,11 @@ QStringList AppController::parserLabels() const
 
 QString AppController::effectiveParserId() const
 {
-    return effectiveParserIdFor(m_settings.modelRecipeId(), QStringLiteral("blockRecognition"));
+    // The positioned blocks a page carries now come from the markup pass, and
+    // the markup parser is the one that renders them back to text with the
+    // per-label styles and the block↔text ranges (a raw transcription has no
+    // geometry to map).
+    return effectiveParserIdFor(m_settings.layoutRequestProfileId(), QStringLiteral("layout"));
 }
 
 QString AppController::effectiveParserIdFor(const QString &profileId, const QString &role) const
@@ -647,7 +629,7 @@ struct AppController::ImportState {
 
 void AppController::openFiles(const QVariantList &fileUrls)
 {
-    if (m_recognition.busy() || m_importing || m_export.exporting())
+    if (m_layout.busy() || m_importing || m_export.exporting())
         return;
 
     QStringList paths;
@@ -786,7 +768,7 @@ bool AppController::reportProblem(const StatusMessage &message, ProblemLog::Seve
 
 bool AppController::removePage(int index)
 {
-    if (m_recognition.busy() || m_importing || checkBusy())
+    if (m_layout.busy() || m_importing || checkBusy())
         return false;
     if (!m_document.isValidIndex(index))
         return false;
@@ -829,7 +811,7 @@ bool AppController::removePage(int index)
 
 bool AppController::movePage(int from, int to)
 {
-    if (m_recognition.busy() || m_importing || checkBusy())
+    if (m_layout.busy() || m_importing || checkBusy())
         return false;
     if (!m_document.isValidIndex(from) || !m_document.isValidIndex(to))
         return false;
@@ -853,112 +835,6 @@ bool AppController::movePage(int from, int to)
 
     notifyDocumentChanged();
     return true;
-}
-
-void AppController::recognizeCurrentPage(const QString &task)
-{
-    const ConnectionRole role = connectionRoleFromName(task);
-    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
-        return;
-    if (!canRecognize()) {
-        setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
-        return;
-    }
-
-    // The page may lie the wrong way up: it is turned before the recognition.
-    const int index = m_currentPage;
-    if (runAfterOrientationCheck({index}, [this, role, index]() { m_recognition.startCurrent(index, m_document.pageCount(), role); }))
-        return;
-    m_recognition.startCurrent(index, m_document.pageCount(), role);
-}
-
-void AppController::recognizeAllPages(const QString &task)
-{
-    const ConnectionRole role = connectionRoleFromName(task);
-    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
-        return;
-    if (!canRecognize()) {
-        setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
-        return;
-    }
-
-    QList<int> pages;
-    for (int index = 0; index < m_document.pageCount(); ++index)
-        pages.append(index);
-    if (runAfterOrientationCheck(pages, [this, role, pages]() { m_recognition.startAll(pages.size(), role); }))
-        return;
-    m_recognition.startAll(pages.size(), role);
-}
-
-void AppController::recognizeCurrent()
-{
-    recognizeCurrentPage(connectionRoleName(ConnectionRole::PageOcr));
-}
-
-void AppController::recognizeAll()
-{
-    recognizeAllPages(connectionRoleName(ConnectionRole::PageOcr));
-}
-
-void AppController::applyRawResult(int index, ConnectionRole task, const OcrResult &rawResult)
-{
-    if (!m_document.isValidIndex(index))
-        return;
-
-    ParserOptions options = parserOptions();
-    if (task == ConnectionRole::RawPageOcr) {
-        options.modelId = m_settings.requestProfileIdForRole(connectionRoleName(task));
-        // The task asks for the text alone: a model that volunteers the
-        // layout anyway does not turn the page into a markup page.
-        options.ignoreLayoutMarkup = true;
-    }
-    // The model's geometry is read against the page it was shown: the turned
-    // page, so the aspect follows the rotation.
-    const QSize pixelSize = m_document.page(index).displaySize();
-    if (pixelSize.isValid() && pixelSize.width() > 0)
-        options.pageAspect = qreal(pixelSize.height()) / pixelSize.width();
-
-    OcrResult parsed = rawResult;
-    if (auto parser = ParserFactory::create(effectiveParserIdFor(options.modelId, connectionRoleName(task)), options)) {
-        parsed = parser->parse(rawResult.text);
-        applyFormulaVerdicts(parsed);
-        rebuildTextFromBlocks(parsed, *parser);
-    }
-    m_boxModel.setStyleModelId(options.modelId);
-
-    {
-        QWriteLocker locker(&m_documentLock);
-        DocumentPage &page = m_document.page(index);
-        page.result = parsed;
-        page.recognized = true;
-        page.parseNote = parsed.success && !parsed.notes.isEmpty() ? parsed.notes.join(QLatin1String(" ")) : QString();
-    }
-
-    m_pageModel.setRecognized(index, true);
-    setRecognitionMode(index, task == ConnectionRole::RawPageOcr ? PageRecognitionMode::RawOcr : PageRecognitionMode::MarkupOcr);
-    refreshPageVerification(index);
-
-    const bool hadDups = !parsed.pages.isEmpty() && parsed.pages.first().hasDuplicates;
-    if (hadDups)
-        m_pageModel.setHasDuplicates(index, true);
-
-    const bool droppedEdit = m_editStore.reset(index, parsed.text);
-    if (droppedEdit)
-        m_pageModel.setEdited(index, false);
-
-    if (index == m_currentPage) {
-        updateBoxesForCurrent();
-        emit resultChanged();
-        if (droppedEdit)
-            emit editStateChanged();
-    } else {
-        emit resultChanged();
-    }
-}
-
-void AppController::stop()
-{
-    m_recognition.stop();
 }
 
 void AppController::setCurrentPageText(const QString &text)
@@ -1056,7 +932,7 @@ void AppController::onBoxRectChanged(int boxIndex, qreal x, qreal y, qreal width
 
 bool AppController::removeBlock(int boxIndex)
 {
-    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy())
+    if (m_layout.busy() || m_importing || checkBusy())
         return false;
     {
         QWriteLocker locker(&m_documentLock);
@@ -1110,7 +986,7 @@ bool AppController::addBlock(const QString &type)
 
 bool AppController::addBlockAt(const QString &type, qreal x, qreal y, qreal width, qreal height)
 {
-    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy())
+    if (m_layout.busy() || m_importing || checkBusy())
         return false;
     if (!m_document.isValidIndex(m_currentPage))
         return false;
@@ -1308,21 +1184,6 @@ void AppController::checkAllEnabledBlocks()
     m_verify.checkAllEnabledBlocks();
 }
 
-void AppController::recognizeScopePages(const QString &task)
-{
-    const ConnectionRole role = connectionRoleFromName(task);
-    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy() || m_document.isEmpty())
-        return;
-    if (!canRecognize()) {
-        setStatus(StatusMessage::translate("AppController", "Set a model name in Settings first."));
-        return;
-    }
-    const QList<int> pages = scopePages();
-    if (runAfterOrientationCheck(pages, [this, role, pages]() { m_recognition.startPages(pages, role); }))
-        return;
-    m_recognition.startPages(pages, role);
-}
-
 void AppController::recognizeScopeBlocks()
 {
     if (m_layout.busy())
@@ -1416,7 +1277,7 @@ void AppController::copyCurrentPageText()
 
 void AppController::startLayout(const QList<int> &pages)
 {
-    if (pages.isEmpty() || m_layout.busy() || m_recognition.busy() || m_importing || checkBusy())
+    if (pages.isEmpty() || m_layout.busy() || m_importing || checkBusy())
         return;
     const ModelProfiles::Role *role = m_layout.role();
     if (!role) {
@@ -1862,7 +1723,7 @@ void AppController::invalidatePageImage(int index)
 
 void AppController::rotatePage(int degrees)
 {
-    if (m_recognition.busy() || m_layout.busy() || m_importing || checkBusy())
+    if (m_layout.busy() || m_importing || checkBusy())
         return;
     if (!m_document.isValidIndex(m_currentPage))
         return;

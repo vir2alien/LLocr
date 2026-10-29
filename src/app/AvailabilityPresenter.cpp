@@ -9,12 +9,8 @@ void AvailabilityPresenter::refresh(const Revisions &revisions)
 {
     const int page = m_deps.currentPage();
     const bool importing = m_deps.importing();
-    const bool recognitionBusy = m_deps.recognitionBusy();
     const bool layoutBusy = m_deps.layoutBusy();
     const bool checkBusy = m_deps.checkBusy();
-    const bool runtimeCanRecognize = m_deps.runtime.canRecognize(true);
-    const bool pageOcrModel = pageOcrModelAvailable();
-    const bool rawPageOcrModel = rawPageOcrModelAvailable();
     const bool blockRecognitionModel = blockRecognitionModelAvailable();
     const bool decisionModel = decisionModelAvailable();
     const bool layoutModel = layoutModelAvailable();
@@ -29,12 +25,8 @@ void AvailabilityPresenter::refresh(const Revisions &revisions)
                                   revisions.pageSelectionRevision,
                                   revisions.verificationFilterRevision,
                                   importing,
-                                  recognitionBusy,
                                   layoutBusy,
                                   checkBusy,
-                                  runtimeCanRecognize,
-                                  pageOcrModel,
-                                  rawPageOcrModel,
                                   blockRecognitionModel,
                                   decisionModel,
                                   layoutModel,
@@ -49,10 +41,7 @@ void AvailabilityPresenter::refresh(const Revisions &revisions)
         pageProblemRecognitionSupported(),
         allProblemRecognitionSupported(),
         pageBlocksRecognitionSupported(),
-        canRecognize(),
         actionsIdle(),
-        pageOcrModel,
-        rawPageOcrModel,
         blockRecognitionModel,
         decisionModel,
         layoutModel,
@@ -97,26 +86,9 @@ bool AvailabilityPresenter::pageBlocksRecognitionSupported() const
     return m_deps.verify.pageBlocksRecognitionSupported(m_deps.currentPage());
 }
 
-bool AvailabilityPresenter::canRecognize() const
-{
-    if (m_deps.document.isEmpty() || m_deps.recognitionBusy() || m_deps.layoutBusy() || m_deps.importing() || m_deps.checkBusy())
-        return false;
-    return m_deps.runtime.canRecognize(true);
-}
-
 bool AvailabilityPresenter::actionsIdle() const
 {
-    return !m_deps.recognitionBusy() && !m_deps.layoutBusy() && !m_deps.checkBusy() && !m_deps.importing();
-}
-
-bool AvailabilityPresenter::pageOcrModelAvailable() const
-{
-    return m_deps.runtime.taskModelAvailable(QStringLiteral("pageOcr"));
-}
-
-bool AvailabilityPresenter::rawPageOcrModelAvailable() const
-{
-    return m_deps.runtime.taskModelAvailable(QStringLiteral("rawPageOcr"));
+    return !m_deps.layoutBusy() && !m_deps.checkBusy() && !m_deps.importing();
 }
 
 bool AvailabilityPresenter::blockRecognitionModelAvailable() const

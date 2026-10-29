@@ -300,6 +300,16 @@ qt_add_resources(test_app_import "app_import_profiles"
         "${CMAKE_SOURCE_DIR}/resources/profiles/serverLaunch.json"
         "${CMAKE_SOURCE_DIR}/resources/profiles/labels.json"
 )
+# The decision machinery under test speaks the text protocol; the only shipped
+# decision model is the visual-diff one, whose renderer needs WebEngine this
+# suite does not initialize. The fixture profile serves the decision role
+# without the visual-diff protocol.
+qt_add_resources(test_app_import "app_import_test_decision_profile"
+    PREFIX "/profiles/models"
+    BASE "${CMAKE_SOURCE_DIR}/tests/fixtures/profiles"
+    FILES
+        "${CMAKE_SOURCE_DIR}/tests/fixtures/profiles/text-decision-test.json"
+)
 llocr_add_profile_resources(test_app_import)
 if(WIN32 AND LLOCR_DJVU_AVAILABLE)
     add_custom_command(TARGET test_app_import POST_BUILD

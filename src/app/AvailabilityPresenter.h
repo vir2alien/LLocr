@@ -31,7 +31,6 @@ public:
         // The live inputs: the page the user reads and what runs right now.
         std::function<int()> currentPage;
         std::function<bool()> importing;
-        std::function<bool()> recognitionBusy;
         std::function<bool()> layoutBusy;
         std::function<bool()> checkBusy;
     };
@@ -55,10 +54,7 @@ public:
     bool pageProblemRecognitionSupported() const;
     bool allProblemRecognitionSupported() const;
     bool pageBlocksRecognitionSupported() const;
-    bool canRecognize() const;
     bool actionsIdle() const;
-    bool pageOcrModelAvailable() const;
-    bool rawPageOcrModelAvailable() const;
     bool blockRecognitionModelAvailable() const;
     bool decisionModelAvailable() const;
     bool layoutModelAvailable() const;
@@ -88,10 +84,7 @@ private:
         bool pageProblemRecognition = false;
         bool allProblemRecognition = false;
         bool pageBlocksRecognition = false;
-        bool canRecognize = false;
         bool actionsIdle = false;
-        bool pageOcrModel = false;
-        bool rawPageOcrModel = false;
         bool blockRecognitionModel = false;
         bool decisionModel = false;
         bool layoutModel = false;
@@ -117,12 +110,8 @@ private:
         int pageSelectionRevision = -1;
         int verificationFilterRevision = -1;
         bool importing = false;
-        bool recognitionBusy = false;
         bool layoutBusy = false;
         bool checkBusy = false;
-        bool runtimeCanRecognize = false;
-        bool pageOcrModel = false;
-        bool rawPageOcrModel = false;
         bool blockRecognitionModel = false;
         bool decisionModel = false;
         bool layoutModel = false;

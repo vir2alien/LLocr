@@ -45,11 +45,6 @@ ToolBar {
     // land the switch is live but its button stays disabled.
     property int autoMode: 0
 
-    // The page-recognition button that was used last: while a page-recognition
-    // run is active the stop affordance shows on it (the running queue does
-    // not expose which role it serves).
-    property string pageRecognitionTask: "pageOcr"
-
     // The pipeline buttons' idle gate: recognition machinery plus the model
     // download queue (the download queue has no toolbar affordance of its own
     // — it is cancelled where it starts, in the Models window or the wizard).
@@ -199,52 +194,6 @@ ToolBar {
                         return
                     }
                     Controller.recognizeScopeBlocks()
-                }
-            }
-        }
-
-        ToolDivider {}
-
-        ToolGroup {
-            title: qsTr("Recognize")
-
-            IconToolButton {
-                text: qsTr("With markup")
-                iconName: "zap"
-                Layout.fillWidth: true
-                stopMode: Controller.busy && headerRoot.pageRecognitionTask === "pageOcr"
-                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.canRecognize && Controller.pageOcrModelAvailable)
-                ToolTip.visible: hovered
-                ToolTip.text: stopMode ? qsTr("Stop the recognition")
-                                       : qsTr("Recognize the selected pages: blocks and their text in one pass")
-                onClicked: {
-                    if (stopMode) {
-                        Controller.stop()
-                        return
-                    }
-                    headerRoot.pageRecognitionTask = "pageOcr"
-                    Controller.recognizeScopePages("pageOcr")
-                }
-            }
-
-            IconToolButton {
-                text: qsTr("Without markup")
-                iconName: "type"
-                Layout.fillWidth: true
-                stopMode: Controller.busy && headerRoot.pageRecognitionTask === "rawPageOcr"
-                enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
-                         && Controller.canRecognize && Controller.rawPageOcrModelAvailable)
-                ToolTip.visible: hovered
-                ToolTip.text: stopMode ? qsTr("Stop the recognition")
-                                       : qsTr("Recognize the selected pages as raw text")
-                onClicked: {
-                    if (stopMode) {
-                        Controller.stop()
-                        return
-                    }
-                    headerRoot.pageRecognitionTask = "rawPageOcr"
-                    Controller.recognizeScopePages("rawPageOcr")
                 }
             }
         }
