@@ -147,11 +147,9 @@
           "order": 7,
           "name": "stop",
           "value": [
-            "<end_of_turn>",
-            "<eos>",
-            "</CANDIDATE>"
+"</CANDIDATE>"
           ],
-          "description": "Stop sequences; the reply ends with the verdict even when the model would keep generating."
+          "description": "Stop sequences; the reply ends with the verdict even when the model would keep generating. Only the protocol marker belongs here: an end-of-text token listed as a stop word is matched against the reply itself and cuts the answer to nothing."
         }
       ]
     }

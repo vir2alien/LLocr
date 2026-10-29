@@ -95,9 +95,12 @@ Sampling: `temperature 0`, neutral penalties, `stream false`,
 `cache_prompt false` — the flag is a no-op here: hybrid recurrent memory
 cannot be rewound, so llama-server force-disables prompt caching and
 re-processes the full prompt of every request regardless (§7).
-`stop`
-(`["<|im_end|>", "<|endoftext|>", "</CANDIDATE>"]`) ends the reply at the
-verdict. `maxOutputByBlock` budgets the reply per block type (a page
+`stop` (`["</CANDIDATE>"]`) ends the reply at the
+verdict. The list names only the protocol marker: llama-server already
+stops at the model's end-of-text token, and naming it in the stop list is
+harmful — the token is matched against the rendered reply, so the answer is
+cut down to nothing and an empty fix reply lands every block on Review.
+`maxOutputByBlock` budgets the reply per block type (a page
 number 64 tokens, a formula 2048, a table 8192) — the block-level value
 overrides the request profile's `max_tokens`, and it has to fit the whole
 block, because the whole block travels in the reply (ADR 192). The budgets

@@ -164,7 +164,7 @@ contract — the corrected table answers in the candidate's own format
 | `temperature` | 0.0 | Deterministic greedy decoding for the correction protocol. (The card's chat sampling — temp 1.0, top-p 0.95, top-k 64 — is for conversation, not for a verification pipeline.) |
 | `repeat_penalty` / `presence_penalty` / `frequency_penalty` | 1.0 / 0.0 / 0.0 | Neutral. |
 | `max_tokens` | 8192 | Generous for a table crop; matches the qwen profiles. `maxOutputByBlock` budgets the reply per block type (a page number 64, a table 8192) — the budgets live in the shared request profile `fix-requests.json`, so all four fix models answer with the same ones (ADR 192). |
-| `stop` | `["<end_of_turn>", "<eos>", "</CANDIDATE>"]` | Ends the reply at the verdict even when the model would keep generating. |
+| `stop` | `["</CANDIDATE>"]` | Ends the reply at the verdict even when the model would keep generating. The list names only the protocol marker: llama-server already stops at the model's end-of-text token, and naming it in the stop list is harmful — the token is matched against the rendered reply and the answer is cut down to nothing. |
 | `stream` | false | The parser consumes one complete response. |
 | `cache_prompt` | false | Every block request stays independent of the draft's shared KV cache. |
 

@@ -188,12 +188,19 @@ llama-server \
   --alias llocr-decision \
   --host 127.0.0.1 --port <auto> \
   --n-gpu-layers 99 --parallel 1 --cache-reuse 0 --no-context-shift \
-  --ctx-size 32768 --batch-size 8192 --ubatch-size 8192 --flash-attn on
+  --ctx-size 16384 --batch-size 2048 --ubatch-size 512 --flash-attn on
 ```
 
 The profile ships `ctx-size/batch-size/ubatch-size/flash-attn` — the
 llama.cpp README for the model warns that a two-image prompt is much longer
 than a text-only one, so the context and batches are sized accordingly.
+A measured two-image request is ~6.7k tokens, and 16384 covers it with room
+to spare. The batches are sized down from what the model could take: at
+`--ubatch-size 8192` the working set is 2.1 GiB, of which llama.cpp moves
+768 MiB onto the host — the graph is split across the card and the CPU.
+At 512 the whole working set (68 MiB) stays on the GPU. Measured on a 6 GiB
+card that is the difference between 4895 MiB and 3407 MiB of VRAM, and the
+auto-fit llama.cpp runs at load then passes instead of aborting.
 The context is shared by the parallel slots, and `--parallel 1` keeps the one
 slot the model needs; `--cache-reuse 0` (no prefix reused between requests)
 and `--no-context-shift` (no silent shift of the context) are the app's

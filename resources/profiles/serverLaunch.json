@@ -24,6 +24,12 @@
         "order": 4,
         "name": "no-warmup",
         "description": "Skip the warmup run at model load (faster start, slower first request)."
+      },
+      {
+        "order": 5,
+        "name": "verbosity",
+        "value": 4,
+        "description": "Server log level: 4 (trace) adds the memory breakdown, the GPU offload count and the buffer sizes to the log window — the lines that say where the model actually lives. 5 (debug) floods it with per-tensor lines."
       }
     ]
   },

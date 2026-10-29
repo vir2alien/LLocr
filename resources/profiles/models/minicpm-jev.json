@@ -75,20 +75,20 @@
         {
           "order": 1,
           "name": "ctx-size",
-          "value": 32768,
-          "description": "Context window; the request carries two images (the crop and the candidate render), so it is much longer than a text-only decision request."
+          "value": 16384,
+          "description": "Context window; the request carries two images (the crop and the candidate render), so it is much longer than a text-only decision request. 16384 holds both images' 4096 tokens and the candidate text; a wider window buys only KV cache."
         },
         {
           "order": 2,
           "name": "batch-size",
-          "value": 8192,
+          "value": 2048,
           "description": "Prompt processing batch; sized for the two-image prompt."
         },
         {
           "order": 3,
           "name": "ubatch-size",
-          "value": 8192,
-          "description": "Micro-batch; the prompt may be evaluated in batches like a normal causal model."
+          "value": 512,
+          "description": "Micro-batch; the prompt may be evaluated in batches like a normal causal model. 512 keeps the working set on the card instead of splitting the graph onto the host."
         },
         {
           "order": 4,

@@ -154,7 +154,7 @@ they change the reservations:
 | --- | --- | --- |
 | `--parallel 1 --cache-reuse 0 --no-context-shift` | the launch policy (`resources/profiles/serverLaunch.json`) | one context, no reuse |
 | `--ctx-size` | the platform profile (16384 on macOS) | the KV cache and the mask scale with it |
-| `--ubatch-size` | the model profile (512 by default, 2048 for the gemma-4 12B, 6144–8192 for the decision models) | the working set scales with it |
+| `--ubatch-size` | the model profile (512 by default, 2048 for the gemma-4 12B, 6144–8192 for the clef-flash and d3 decision models, 512 for the minicpm-jev) | the working set scales with it |
 | `--flash-attn on\|off` | the platform profile, overridden by the model profile (the gemma-4 E4B turns it **off**) | with flash attention off the encoder keeps an attention matrix over the whole page |
 | `--image-min-tokens` / `--image-max-tokens` | the model profile | the page budget of the model |
 | `--spec-type` / `--model-draft` | the model profile | the draft gets a context of its own |
@@ -267,7 +267,10 @@ drafter, 2 048 for the gemma-4-12B's MTP drafter, 4 096 for the gemma-4-E4B's.
 
 The decision models (`clef-flash`, `d3-flash`, `d3-mini`) look expensive
 because their launch profile asks for a large ubatch (8192 and 6144 tokens):
-the working set is the largest term. The page models look cheap because the
+the working set is the largest term. The minicpm-jev is the counter-example:
+it carries the same two images but runs at ubatch 512, because at 8192
+llama.cpp moved 768 MiB of the compute graph onto the host and the card ran
+out of room for the weights. The page models look cheap because the
 vision encoder is small at their budget, and expensive when the projector
 tiles the page (`unlimited-ocr`).
 
