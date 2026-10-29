@@ -102,3 +102,20 @@ noul, and the answer is a single probability.
 The prompt profile and the calibration harness that the text protocol needed
 are in `decision-text/`. `scripts/decision-calibrate.py` still measures
 thresholds — point it at the visual diff to recalibrate MiniCPM-Jev.
+
+## The index
+
+| Model | Profile | Parser | Manual |
+|-------|---------|--------|--------|
+| LightOnOCR-3-4B | `models/profiles/lightonocr.json` | `parsers/LightonOcrParser.*` | `models/docs/23-lightonocr.md` |
+| Chandra-OCR-2 | `models/profiles/chandra-ocr-2.json` | `parsers/ChandraParser.*` | `models/docs/28-chandra-ocr-2.md` |
+| LFM2.5-VL-3B | `models/profiles/lfm25-vl-3b.json` | `parsers/Lfm25VlParser.*`, `parsers/Lfm25VlDrift.*` | `models/docs/13-lfm25-vl-3b.md` |
+| Unlimited-OCR | `models/profiles/unlimited-ocr.json` | `parsers/UnlimitedOcrParser.*` | `models/docs/22-unlimited-ocr.md` |
+| MiniCPM-OCR 1.0 | `models/profiles/minicpm-ocr.json` | — | `models/docs/30-minicpm-ocr.md` |
+| TeleOCR (NaviDC-OCR) | `models/profiles/teleocr.json` | `parsers/TeleOcrLayoutParser.*` | `models/docs/15-teleocr.md` |
+| Cloudflare clef-flash | `models/profiles/clef-flash.json` | — | `models/docs/18-clef-flash.md` |
+| d3-flash | `models/profiles/d3-flash.json` | — | `models/docs/21-d3.md` |
+| d3-mini | `models/profiles/d3-mini.json` | — | `models/docs/21-d3.md` |
+
+The single-pass controller is in `single-pass/`; the text-decision prompt
+profile and the calibration harness are in `decision-text/`.

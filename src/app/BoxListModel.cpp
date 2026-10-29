@@ -173,16 +173,15 @@ void BoxListModel::removeBox(int index)
     endRemoveRows();
 }
 
-// The picture labels of the shipped vocabularies (Unlimited-OCR, TeleOCR
-// layout). Rendering itself stays data-driven through BlockStyleMap; this only
-// decides which blocks the UI treats as images (no text editing, canvas
-// handles).
+// The picture labels of the shipped vocabularies (the MinerU layout model).
+// Rendering itself stays data-driven through BlockStyleMap; this only decides
+// which blocks the UI treats as images (no text editing, canvas handles).
 bool BoxListModel::isImageBox(int index) const
 {
     if (index < 0 || index >= m_boxes.size())
         return false;
     const QString &label = m_boxes.at(index).label;
-    return label == QLatin1String("image") || label == QLatin1String("chart") || label == QLatin1String("figure") || label == QLatin1String("char");
+    return label == QLatin1String("image") || label == QLatin1String("chart");
 }
 
 }  // namespace llocr
