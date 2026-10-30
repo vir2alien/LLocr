@@ -213,12 +213,12 @@ void TestModelCatalog::extractsQuantization()
 
 void TestModelCatalog::resolvesQuantizationFromTheProfile()
 {
-    // PaddleOCR-VL ships a single file whose name carries no quant token at
-    // all, so the quantization comes from the model profile.
-    QCOMPARE(ModelCatalog::quantizationForFile(QStringLiteral("PaddlePaddle/PaddleOCR-VL-1.6-GGUF"), QStringLiteral("PaddleOCR-VL-1.6-GGUF.gguf")), QStringLiteral("F16"));
+    // The file name carries a truncated quant token ("…-UD-Q4_K_XL.gguf" reads
+    // as "Q4_K"), so the quantization comes from the model profile.
+    QCOMPARE(ModelCatalog::quantizationForFile(QStringLiteral("unsloth/gemma-4-12B-it-qat-GGUF"), QStringLiteral("gemma-4-12B-it-qat-UD-Q4_K_XL.gguf")), QStringLiteral("Q4_K_XL"));
     // The profile knows the file by name; the quant token in the name wins
     // only for a repo no profile describes.
-    QCOMPARE(ModelCatalog::quantizationForFile(QStringLiteral("PaddlePaddle/PaddleOCR-VL-1.6-GGUF"), QStringLiteral("other.gguf")), QString());
+    QCOMPARE(ModelCatalog::quantizationForFile(QStringLiteral("unsloth/gemma-4-12B-it-qat-GGUF"), QStringLiteral("other.gguf")), QString());
     QCOMPARE(ModelCatalog::quantizationForFile(QStringLiteral("org/unknown"), QStringLiteral("model-Q4_K_M.gguf")), QStringLiteral("Q4_K_M"));
 }
 

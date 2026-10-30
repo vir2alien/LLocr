@@ -190,17 +190,17 @@ private slots:
         QCoreApplication::setApplicationName(QStringLiteral("test_model_installer"));
     }
 
-    // A model whose file name carries no quant token (PaddleOCR-VL) must still
-    // show a quant name everywhere the UI names one: the models list and the
+    // A model whose file name carries a truncated quant token must still show the
+    // quant name everywhere the UI names one: the models list and the
     // "files on disk" list both read it off the entry.
-    void aModelWithoutAQuantTokenInItsNameIsStillNamed()
+    void aModelNamedByTheProfileShowsTheProfileQuant()
     {
         auto s = std::make_unique<Setup>();
         pointAtTempDir(s->settings, s->root.path());
         const QString modelsDir = QDir(s->root.path()).filePath(QStringLiteral("models"));
-        const QString sub = QDir(modelsDir).filePath(QStringLiteral("PaddlePaddle__PaddleOCR-VL-1.6-GGUF"));
+        const QString sub = QDir(modelsDir).filePath(QStringLiteral("unsloth__gemma-4-12B-it-qat-GGUF"));
         QVERIFY(QDir().mkpath(sub));
-        const QString model = writeGguf(sub, QStringLiteral("PaddleOCR-VL-1.6-GGUF.gguf"));
+        const QString model = writeGguf(sub, QStringLiteral("gemma-4-12B-it-qat-UD-Q4_K_XL.gguf"));
         QVERIFY(!model.isEmpty());
 
         makeRuntime(*s);
@@ -209,13 +209,13 @@ private slots:
         // The registry names the quantization from the model profile.
         const QList<ModelEntry> &entries = s->installer->installedEntries();
         QCOMPARE(entries.size(), 1);
-        QCOMPARE(entries.first().quantization, QStringLiteral("F16"));
+        QCOMPARE(entries.first().quantization, QStringLiteral("Q4_K_XL"));
 
         // The "files on disk" list shows the name, not a dash.
         auto *files = qobject_cast<QAbstractItemModel *>(s->installer->installedFiles());
         QVERIFY(files);
         QCOMPARE(files->rowCount(), 1);
-        QCOMPARE(files->data(files->index(0, 0), InstalledFilesModel::QuantRole).toString(), QStringLiteral("F16"));
+        QCOMPARE(files->data(files->index(0, 0), InstalledFilesModel::QuantRole).toString(), QStringLiteral("Q4_K_XL"));
     }
 
     // The user-facing contract: deleting one quant from a shared folder must
@@ -405,7 +405,7 @@ private slots:
         QStringList checkKeys;
         for (int i = 0; i < check->rowCount(); ++i)
             checkKeys.append(roleAt(check, i, ModelQuantModel::KeyRole).toString());
-        QCOMPARE(checkKeys, QStringList({QStringLiteral("mineru"), QStringLiteral("glm-ocr"), QStringLiteral("paddleocr-vl")}));
+        QCOMPARE(checkKeys, QStringList({QStringLiteral("mineru"), QStringLiteral("glm-ocr")}));
 
         // The decision list serves the decision task only; the default model
         // leads, the rest sort by title (ModelProfiles::forRole).
@@ -800,8 +800,8 @@ private slots:
         QVERIFY(checkList);
         QVERIFY(allList);
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_ocr")), -1);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 4);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 2);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), 3);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_chat"), QStringLiteral("blockRecognition")), textPath);
         QCOMPARE(pathOf(mi, QStringLiteral("org__repo_verify"), QStringLiteral("blockRecognition")), verifierPath);
         QVERIFY(rowOfKey(allList, QStringLiteral("org__repo_ocr")) >= 0);
@@ -815,7 +815,7 @@ private slots:
         // projector-bearing verifier, no longer the active model, drops back
         // out of the list.
         settings.setCheckLaunchModelPath(textPath);
-        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 3);
+        QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_chat")), 2);
         QCOMPARE(rowOfKey(checkList, QStringLiteral("org__repo_verify")), -1);
     }
 
@@ -860,7 +860,7 @@ private slots:
         // user brought themselves — a legacy entry with an mmproj stays out of
         // the role lists (the page task it read as is gone), the management
         // list is where it lives.
-        QCOMPARE(models->rowCount(), 9);
+        QCOMPARE(models->rowCount(), 8);
 
         const QHash<int, QByteArray> names = models->roleNames();
         QCOMPARE(names.value(ModelQuantModel::KeyRole), QByteArray("key"));
@@ -885,7 +885,7 @@ private slots:
         QSignalSpy resetSpy(models, &QAbstractItemModel::modelReset);
         installer.refreshInstalled();
         QCOMPARE(resetSpy.count(), 0);
-        QCOMPARE(models->rowCount(), 9);
+        QCOMPARE(models->rowCount(), 8);
 
         // Activating the model re-reads the highlight from the settings: the
         // management list marks nothing active — the role list is where the
@@ -1134,19 +1134,19 @@ private slots:
         // recipe id follows the file.
         QCOMPARE(settings.modelRecipeId(), QStringLiteral("glm-ocr"));
 
-        // The task window's Save with a still-missing PaddleOCR-VL quantization:
+        // The task window's Save with a still-missing MinerU quantization:
         // the pending final path takes over the launch setting at once.
         const QVariantList missing = installer.applyTaskChoices(
-            {QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("paddleocr-vl")}, {QStringLiteral("quantId"), QStringLiteral("F16")}}});
+            {QVariantMap{{QStringLiteral("task"), QStringLiteral("blockRecognition")}, {QStringLiteral("key"), QStringLiteral("mineru")}, {QStringLiteral("quantId"), QStringLiteral("Q8_0")}}});
         QCOMPARE(missing.size(), 1);
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("paddleocr-vl"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("mineru"));
         const QString pendingPath = settings.checkLaunchModelPath();
         QVERIFY(!pendingPath.isEmpty() && !QFileInfo::exists(pendingPath));
 
         // The refresh an reopened Models window runs must not read the old
         // model file as the user's choice.
         installer.refreshInstalled();
-        QCOMPARE(settings.modelRecipeId(), QStringLiteral("paddleocr-vl"));
+        QCOMPARE(settings.modelRecipeId(), QStringLiteral("mineru"));
         QCOMPARE(settings.checkLaunchModelPath(), pendingPath);
     }
 

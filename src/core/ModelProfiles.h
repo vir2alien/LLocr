@@ -149,9 +149,9 @@ public:
     static QString idForRepo(const QList<Profile> &profiles, const QString &repo);
 
     // The quantization a profile declares for one of its files. The file name
-    // often carries no quant token (PaddleOCR-VL ships "…-GGUF.gguf"), so the
-    // profile is the only place that knows the quant; empty when neither the
-    // repo nor the file is known.
+    // often carries a truncated quant token ("…-UD-Q4_K_XL.gguf" reads as
+    // "Q4_K"), so the profile is the authority; empty when neither the repo
+    // nor the file is known.
     static QString quantIdForFile(const QString &repo, const QString &fileName);
 
     static QString defaultIdForRole(const QList<Profile> &profiles, const QString &role);

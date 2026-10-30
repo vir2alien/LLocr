@@ -112,13 +112,14 @@ void TestModelRegistry::rescansWhenIndexMissing()
 
 void TestModelRegistry::scansAQuantNamedByTheProfile()
 {
-    // PaddleOCR-VL's file name carries no quant token, so the scan can only
-    // name the quantization from the model profile.
+    // The file name carries a truncated quant token ("…-UD-Q4_K_XL.gguf" reads
+    // as "Q4_K"), so the scan can only name the quantization from the model
+    // profile.
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
-    const QString sub = QDir(dir.path()).filePath(QStringLiteral("PaddlePaddle__PaddleOCR-VL-1.6-GGUF"));
+    const QString sub = QDir(dir.path()).filePath(QStringLiteral("unsloth__gemma-4-12B-it-qat-GGUF"));
     QVERIFY(QDir().mkpath(sub));
-    const QString model = QDir(sub).filePath(QStringLiteral("PaddleOCR-VL-1.6-GGUF.gguf"));
+    const QString model = QDir(sub).filePath(QStringLiteral("gemma-4-12B-it-qat-UD-Q4_K_XL.gguf"));
     QFile f(model);
     QVERIFY(f.open(QIODevice::WriteOnly));
     f.write("GGUF placeholder");
@@ -126,8 +127,8 @@ void TestModelRegistry::scansAQuantNamedByTheProfile()
 
     const QList<ModelEntry> entries = ModelRegistry::scanModelsDir(dir.path());
     QCOMPARE(entries.size(), 1);
-    QCOMPARE(entries.first().quantization, QStringLiteral("F16"));
-    QCOMPARE(entries.first().id, QStringLiteral("PaddlePaddle__PaddleOCR-VL-1.6-GGUF_F16"));
+    QCOMPARE(entries.first().quantization, QStringLiteral("Q4_K_XL"));
+    QCOMPARE(entries.first().id, QStringLiteral("unsloth__gemma-4-12B-it-qat-GGUF_Q4_K_XL"));
 }
 
 void TestModelRegistry::scansMultiQuantAsSeparateEntries()

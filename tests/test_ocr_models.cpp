@@ -498,15 +498,15 @@ private slots:
         QCOMPARE(defaultOrderContent.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("text"));
     }
 
-    // A block-recognition role without a system message and without a type
-    // prompt — PaddleOCR-VL ships no system prompt — sends one user message
-    // carrying the image only.
+    // The wording is the request's: an empty system message and an empty type
+    // prompt are dropped, so the body carries one user message with the image
+    // only.
     void checkBodyOmitsEmptySystemAndTypePrompts()
     {
         ExposedBlockRecognitionModel model;
         CheckRequest request;
         request.image = QImage(4, 4, QImage::Format_RGB32);
-        request.modelId = QStringLiteral("paddleocr-vl");
+        request.modelId = QStringLiteral("glm-ocr");
 
         const QByteArray body = model.build(request, QByteArrayLiteral("data:image/png;base64,AAAA"));
         const QJsonArray messages = QJsonDocument::fromJson(body).object().value(QStringLiteral("messages")).toArray();

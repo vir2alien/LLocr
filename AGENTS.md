@@ -40,14 +40,13 @@
   | `docs/architecture-plan/README.md` | Architectural review (Sep 2026) and the   |
   |                           | remediation plan (stages 0–7)              |
   | `docs/TODO.md`            | Short backlog of open items                 |
-  | `archive/README.md`       | The release archive (ADR 251): the cut models' profiles (`archive/models/profiles/`), parsers, manuals (`archive/models/docs/` — UnlimitedOCR, 13-lfm25-vl-3b, 15-teleocr, 17-d1-verification-study, 18-clef-flash, 21-d3, 22-unlimited-ocr, 23-lightonocr, 28-chandra-ocr-2, 30-minicpm-ocr and their `.ru.md` mirrors), the single-pass controller and the text-decision harness; the tag `archive/pre-cleanup` reaches every file the cut touched |
+  | `archive/README.md`       | The release archive (ADR 251): the cut models' profiles (`archive/models/profiles/`), parsers, manuals (`archive/models/docs/` — UnlimitedOCR, 13-lfm25-vl-3b, 15-teleocr, 17-d1-verification-study, 18-clef-flash, 21-d3, 22-unlimited-ocr, 23-lightonocr, 25-paddleocr-vl, 28-chandra-ocr-2, 30-minicpm-ocr and their `.ru.md` mirrors), the single-pass controller and the text-decision harness; the tag `archive/pre-cleanup` reaches every file the cut touched |
   | `docs/16-gemma-4.md`      | Model manual: Gemma 4 E4B/12B QAT (MTP drafter in the model repo, image token budgets 70–1120, per-card flash-attn split); Russian mirror in `16-gemma-4.ru.md` |
   | `docs/19-glm-ocr.md`      | Model manual: GLM-OCR (trained task prefixes, no layout/coordinates, `raw` parser, glm4 metadata); Russian mirror in `19-glm-ocr.ru.md` |
   | `docs/20-model-task-rework.md` | Rework plan: the task vocabulary, two-layer verification, the fix pipeline (since ADR 192 the `full_block` protocol), page statuses, new settings windows (Oct 2026); re-stated to the four-task matrix (ADR 252), stage table with statuses |
   | `docs/24-mineru.md`       | Model manual: MinerU2.5-Pro-2605-1.2B (two-step protocol, 1036² squash, `--special`, layout absorption); Russian mirror in `24-mineru.ru.md` |
-  | `docs/25-paddleocr-vl.md` | Model manual: PaddleOCR-VL-1.6 (blockRecognition only — the layout model ships outside the GGUF, official single-quant repo); Russian mirror in `25-paddleocr-vl.ru.md` |
   | `docs/26-qwen3.5.md`      | Model manual: Qwen3.5-4B/9B, the fix default (OK/FIX/REVIEW, MTP drafting, framed candidate); Russian mirror in `26-qwen3.5.ru.md` |
-  | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all eight models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
+  | `docs/27-memory-estimate.md` | The VRAM requirement (ADR 191): the formula, the profile's `memory` block, the calibration of all seven models, the measurement scripts (`scripts/measure-memory.sh`, `scripts/memory-from-log.py`), the traps and the checklist for a new model; Russian mirror in `27-memory-estimate.ru.md` |
   | `docs/29-external-runtime-tasks-and-secrets.md` | Plan + record: the external runtime gets the same four tasks as the managed one, each with its own endpoint, key and alias (ADR 226); the secrets live in the OS secret store (ADR 227) |
   | `docs/31-minicpm-jev.md`  | Model manual: MiniCPM-OCR Jev — the visual-diff decision (`systemone_visual_diff_v1`, two images, the CandidateRenderer render leg, thresholds pending calibration); Russian mirror in `31-minicpm-jev.ru.md` |
 | `docs/32-orientation-pipeline.md` | The page-orientation correction pipeline: the two-stage pixel check (Sauvola, the skew sweep, periodicity + variation), the auto-straightening, the markup pass's rotation-token vote and the auto-turn with the second pass; Russian mirror in `32-orientation-pipeline.ru.md` |
@@ -652,10 +651,10 @@
     launch files; `check/`
     keeps only `showConfidence` — the automatic check/fix switches are gone,
     ADR 178) and one `RequestProfileStore` per task. Shipped model → task matrix
-    (eight models; the nine removed ones live in `archive/models/`, ADR 251):
+    (seven models; the ten removed ones live in `archive/models/`, ADR 251):
     `mineru` → layout + blockRecognition (the default for both — one model
-    closes the markup → recognition pipeline, ADR 252); `glm-ocr`,
-    `paddleocr-vl` → blockRecognition; `minicpm-jev` (visual diff,
+    closes the markup → recognition pipeline, ADR 252); `glm-ocr` →
+    blockRecognition; `minicpm-jev` (visual diff,
     ADR 235/254) → decision (`docs/31-minicpm-jev.md`); `qwen3.5-4b/9b`,
     `gemma-4-e4b/12b` → fix (OK/FIX/REVIEW, ADR 180/181).
     Task defaults (ADR 169,

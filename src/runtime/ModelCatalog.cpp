@@ -177,8 +177,8 @@ QString ModelCatalog::quantizationFromName(const QString &name)
 QString ModelCatalog::quantizationForFile(const QString &repo, const QString &fileName)
 {
     // The model profile is the authority for the models it ships: its file may
-    // carry no quant token at all (PaddleOCR-VL) or a truncated one
-    // ("…-UD-Q4_K_XL.gguf" reads as "Q4_K"). The file name decides only for a
+    // carry a truncated quant token ("…-UD-Q4_K_XL.gguf" reads as "Q4_K") or
+    // a lowercase one ("GLM-OCR-f16.gguf"). The file name decides only for a
     // repo no profile describes.
     const QString declared = ModelProfiles::quantIdForFile(repo, fileName);
     if (!declared.isEmpty())

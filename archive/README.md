@@ -1,13 +1,16 @@
 # The archive
 
-Everything that was cut from LLocr before the release, kept whole.
+Everything that was cut from LLocr, kept whole.
 
 ## Why
 
-The release ships four tasks and eight models. Nine models and two of the six
+The release ships four tasks and seven models. Ten models and two of the six
 tasks did not earn their place: the decision models that worked markedly worse
 and slower than MiniCPM-OCR Jev, and the OCR models whose quality, speed,
 licence or language support did not hold up.
+
+PaddleOCR-VL was cut later (ADR 255): it serves block recognition only, and
+its page layout is a separate model that ships outside the GGUF.
 
 The material is kept here, not deleted, because the work is worth reusing: a
 model that was wrong for this release is not wrong forever.
@@ -57,6 +60,7 @@ hunks included.
 | Cloudflare clef-flash | decision | markedly worse and slower than MiniCPM-OCR Jev |
 | d3-flash | decision | markedly worse and slower than MiniCPM-OCR Jev |
 | d3-mini | decision | markedly worse and slower than MiniCPM-OCR Jev |
+| PaddleOCR-VL-1.6 | blockRecognition | the page layout is a separate model outside the GGUF — too many changes to reach MinerU's level |
 
 ## The single-pass page recognition
 
@@ -116,6 +120,7 @@ thresholds — point it at the visual diff to recalibrate MiniCPM-Jev.
 | Cloudflare clef-flash | `models/profiles/clef-flash.json` | — | `models/docs/18-clef-flash.md` |
 | d3-flash | `models/profiles/d3-flash.json` | — | `models/docs/21-d3.md` |
 | d3-mini | `models/profiles/d3-mini.json` | — | `models/docs/21-d3.md` |
+| PaddleOCR-VL-1.6 | `models/profiles/paddleocr-vl.json` | — | `models/docs/25-paddleocr-vl.md` |
 
 The single-pass controller is in `single-pass/`; the text-decision prompt
 profile and the calibration harness are in `decision-text/`.

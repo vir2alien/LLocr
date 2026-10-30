@@ -25,7 +25,6 @@ private slots:
     // against the values the model card and the launcher actually document.
     void shippedProfilesAreTheOnesTheDocsDescribe();
     void mineruShipsTheTrainedTwoStepProtocol();
-    void paddleOcrVlShipsElementRecognitionOnly();
     void everyShippedQuantResolvesToItsName();
     void draftModuleReachesThePresets();
     void roleDefaultsFollowTheShippedProfiles();
@@ -95,7 +94,6 @@ void TestModelPresetCatalog::shippedProfilesAreTheOnesTheDocsDescribe()
         {"gemma-4-12b", "fix", "b9600", "q4_k_xl", "spec-type,spec-draft-n-max,temp,parallel,no-warmup,jinja,reasoning-budget,image-min-tokens,ubatch-size"},
         {"glm-ocr", "blockRecognition", "b8096", "q8_0,f16", "flash-attn,image-min-tokens,image-max-tokens"},
         {"mineru", "layout,blockRecognition", "b4000", "q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m", "special"},
-        {"paddleocr-vl", "blockRecognition", "b8200", "f16", ""},
         {"minicpm-jev", "decision", "b11928", "q8_0,q6_k,q5_k_m,q4_k_m,iq4_xs", "ctx-size,batch-size,ubatch-size,flash-attn"},
     };
 
@@ -173,37 +171,10 @@ void TestModelPresetCatalog::mineruShipsTheTrainedTwoStepProtocol()
     QVERIFY(!ModelProfiles::roleFor(QStringLiteral("mineru"), QStringLiteral("fix")));
 }
 
-// PaddleOCR-VL-1.6's VLM answers six element prompts (OCR, table, formula,
-// chart, seal, spotting); the page layout is a separate RT-DETR model that
-// ships outside the GGUF, so only the block task is claimed. The card's
-// server invocation is --temp 0 with no system message.
-void TestModelPresetCatalog::paddleOcrVlShipsElementRecognitionOnly()
-{
-    const ModelProfiles::Role *blocks = ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("blockRecognition"));
-    QVERIFY(blocks);
-    QCOMPARE(blocks->parser, QStringLiteral("raw"));
-    QVERIFY(blocks->systemPrompt.isEmpty());
-    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("text")), QStringLiteral("OCR:"));
-    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("table")), QStringLiteral("Table Recognition:"));
-    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("equation")), QStringLiteral("Formula Recognition:"));
-    QCOMPARE(blocks->blockPrompts.value(QStringLiteral("seal")), QStringLiteral("Seal Recognition:"));
-
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("layout")));
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("decision")));
-    QVERIFY(!ModelProfiles::roleFor(QStringLiteral("paddleocr-vl"), QStringLiteral("fix")));
-
-    // The quant ladder lives with mradermacher, but the mmproj only ships in
-    // the official repo — and a preset downloads everything from one repo,
-    // so the profile pins the official one for both.
-    const ModelProfiles::Profile *profile = ModelProfiles::find(ModelProfiles::instance(), QStringLiteral("paddleocr-vl"));
-    QVERIFY(profile);
-    QCOMPARE(profile->files.repo, QStringLiteral("PaddlePaddle/PaddleOCR-VL-1.6-GGUF"));
-    QVERIFY(profile->files.mmproj.repo.isEmpty());
-}
-
 // Every shipped quantization must resolve to a name the UI can show. A file
-// whose name carries no quant token (PaddleOCR-VL) or a lowercase one
-// (GLM-OCR-f16) is the case that used to leave the quant unnamed.
+// whose name carries a truncated quant token ("…-UD-Q4_K_XL.gguf") or a
+// lowercase one (GLM-OCR-f16) is the case that used to leave the quant
+// unnamed.
 void TestModelPresetCatalog::everyShippedQuantResolvesToItsName()
 {
     for (const ModelProfiles::Profile &profile : ModelProfiles::instance()) {

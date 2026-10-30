@@ -229,7 +229,6 @@ The coefficients of every model of the catalog, as they are in the profiles
 | --- | --- | --- | --- | --- | --- | --- |
 | `glm-ocr` | 16 | 8 × 128 | 238 856 B/token (6144) | derived | — | — |
 | `mineru` | 24 | 2 × 64 | 132 324 B/token (1369) | derived | — | — |
-| `paddleocr-vl` | 18 | 2 × 128 | 142 872 B/token (1369) | derived | — | — |
 | `qwen3.5-4b` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
 | `qwen3.5-9b` | 8 | 4 × 256 | 110 600 B/token (1024) | derived | — | — |
 | `minicpm-jev` | 6 | 2 × 256 | 110 655 B/token (2116) | derived | — | — |
@@ -245,13 +244,12 @@ model's manual names as the main one (the sizes in GiB, the buffers in MiB):
 | `gemma-4-e4b` | q4_k_xl | 3.93 | 944 | 316 | 374 | 3802 | 57 | 244 | 9.53 | **10.35 GiB** |
 | `glm-ocr` | q8_0 | 0.89 | 462 | 1024 | 65 | 1400 | 0 | 0 | 3.77 | **4.13 GiB** |
 | `mineru` | q8_0 | 0.49 | 677 | 192 | 52 | 173 | 0 | 0 | 1.56 | **1.75 GiB** |
-| `paddleocr-vl` | f16 | 0.87 | 841 | 288 | 48 | 187 | 0 | 0 | 2.20 | **2.44 GiB** |
 | `qwen3.5-4b` | q8_0 | 4.29 | 641 | 512 | 103 | 108 | 0 | 0 | 5.63 | **6.14 GiB** |
 | `qwen3.5-9b` | q8_0 | 9.11 | 876 | 512 | 137 | 108 | 0 | 0 | 10.71 | **11.63 GiB** |
 
 The profiles carry the rates rounded: the measurements were 110 653 B/token
-for the Qwen tower, 238 848 for the GLM-OCR tower, 132 351 for the MinerU one
-and 142 842 for the PaddleOCR-VL one.
+for the Qwen tower, 238 848 for the GLM-OCR tower and 132 351 for the MinerU
+one.
 
 The draft's own KV rate (`draftKvBytesPerToken`): 2 048 for the gemma-4-12B's
 MTP drafter, 4 096 for the gemma-4-E4B's.
