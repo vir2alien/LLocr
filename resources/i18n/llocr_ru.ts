@@ -1112,7 +1112,7 @@
     <message>
         <location line="+8"/>
         <source>Pages</source>
-        <translation>Страницы</translation>
+        <translation type="vanished">Страницы</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -1132,17 +1132,17 @@
     <message>
         <location line="+3"/>
         <source>Fast</source>
-        <translation>Быстро</translation>
+        <translation type="vanished">Быстро</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>Balanced</source>
-        <translation>Баланс</translation>
+        <translation type="vanished">Баланс</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>Accurate</source>
-        <translation>Точно</translation>
+        <translation type="vanished">Точно</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -1151,8 +1151,8 @@
     </message>
     <message>
         <location line="+12"/>
-        <source>Markup</source>
-        <translation>Разметка</translation>
+        <source>Recognition</source>
+        <translation>Распознавание</translation>
     </message>
     <message>
         <location line="+10"/>

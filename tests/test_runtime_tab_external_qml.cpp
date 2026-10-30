@@ -54,6 +54,7 @@ private:
     std::unique_ptr<QObject> loadTab();
     QVariant evaluate(QObject *scope, const QString &expression);
     QObject *rowAt(QObject *tab, int index);
+    QObject *rowForTask(QObject *tab, const QString &task);
 
     std::unique_ptr<FakeUiController> m_uiController;
     std::unique_ptr<SettingsStore> m_settings;
@@ -162,6 +163,19 @@ QObject *TestRuntimeTabExternalQml::rowAt(QObject *tab, int index)
     return evaluate(tab, QStringLiteral("taskRows.itemAt(%1)").arg(index)).value<QObject *>();
 }
 
+// The rows follow the C++ task list, so a test looks a row up by its task
+// rather than by its position.
+QObject *TestRuntimeTabExternalQml::rowForTask(QObject *tab, const QString &task)
+{
+    const int count = evaluate(tab, QStringLiteral("taskRows.count")).toInt();
+    for (int i = 0; i < count; ++i) {
+        QObject *row = rowAt(tab, i);
+        if (row && row->property("task").toString() == task)
+            return row;
+    }
+    return nullptr;
+}
+
 void TestRuntimeTabExternalQml::theTabLoadsWithoutWarnings()
 {
     const std::unique_ptr<QObject> tab = loadTab();
@@ -207,7 +221,7 @@ void TestRuntimeTabExternalQml::theTaskEndpointAndAliasAreSaved()
     QVERIFY2(tab, qPrintable(m_warnings.join(QStringLiteral("; "))));
     QCoreApplication::processEvents();
 
-    QObject *row = rowAt(tab.get(), 0);
+    QObject *row = rowForTask(tab.get(), QStringLiteral("blockRecognition"));
     QVERIFY(row);
     QCOMPARE(row->property("task").toString(), QStringLiteral("blockRecognition"));
     row->setProperty("endpointText", QStringLiteral("http://own:9000"));
@@ -232,7 +246,7 @@ void TestRuntimeTabExternalQml::theSavedValuesComeBackIntoTheFields()
     evaluate(tab.get(), QStringLiteral("loadValues()"));
     QCoreApplication::processEvents();
 
-    QObject *row = rowAt(tab.get(), 1);
+    QObject *row = rowForTask(tab.get(), QStringLiteral("decision"));
     QVERIFY(row);
     QCOMPARE(row->property("task").toString(), QStringLiteral("decision"));
     QCOMPARE(row->property("endpointText").toString(), QStringLiteral("http://decision:9000"));

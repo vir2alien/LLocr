@@ -8,9 +8,9 @@
 namespace llocr {
 
 enum class ConnectionRole {
+    Layout,
     BlockRecognition,
     Decision,
-    Layout,
     Fix,
 };
 
@@ -18,11 +18,12 @@ enum class ConnectionRole {
 // them. The list is the single source: the settings dispatch, the runtime's
 // per-task state and the QML task table read it. A new role is a new enum
 // value, a new row here and a new case in connectionRoleName — the compiler
-// says when the case is missing.
+// says when the case is missing. The markup task comes first: the pipeline
+// starts with it.
 inline constexpr std::array<ConnectionRole, 4> connectionRoles = {
+    ConnectionRole::Layout,
     ConnectionRole::BlockRecognition,
     ConnectionRole::Decision,
-    ConnectionRole::Layout,
     ConnectionRole::Fix,
 };
 
@@ -35,12 +36,12 @@ static_assert(static_cast<std::size_t>(connectionRoles.back()) + 1 == connection
 inline QString connectionRoleName(ConnectionRole role)
 {
     switch (role) {
+    case ConnectionRole::Layout:
+        return QStringLiteral("layout");
     case ConnectionRole::BlockRecognition:
         return QStringLiteral("blockRecognition");
     case ConnectionRole::Decision:
         return QStringLiteral("decision");
-    case ConnectionRole::Layout:
-        return QStringLiteral("layout");
     case ConnectionRole::Fix:
         return QStringLiteral("fix");
     }

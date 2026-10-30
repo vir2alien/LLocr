@@ -350,7 +350,7 @@ private slots:
     // per-task state and the QML task table read it (ADR 215).
     void theTaskListIsTheSingleSource()
     {
-        QCOMPARE(connectionRoleIds(), QStringList({QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("layout"), QStringLiteral("fix")}));
+        QCOMPARE(connectionRoleIds(), QStringList({QStringLiteral("layout"), QStringLiteral("blockRecognition"), QStringLiteral("decision"), QStringLiteral("fix")}));
         static_assert(connectionRoleCount == 4);
 
         SettingsStore store;

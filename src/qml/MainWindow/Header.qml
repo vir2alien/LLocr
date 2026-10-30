@@ -36,14 +36,10 @@ ToolBar {
     }
 
     // The page count the pipeline acts on: an empty selection means the whole
-    // document; the «Страницы» field is the same selection written as a range.
+    // document; the «Авто» field is the same selection written as a range.
     readonly property int scopePageCount: Controller.selectedPageCount > 0
                                           ? Controller.selectedPageCount
                                           : Controller.pageCount
-
-    // The «Авто» quality tier is kept for the automatic pipelines; until they
-    // land the switch is live but its button stays disabled.
-    property int autoMode: 0
 
     // The pipeline buttons' idle gate: recognition machinery plus the model
     // download queue (the download queue has no toolbar affordance of its own
@@ -97,13 +93,21 @@ ToolBar {
         ToolDivider {}
 
         ToolGroup {
-            title: qsTr("Pages")
+            title: qsTr("Auto")
 
             TextField {
                 id: pagesField
 
                 implicitWidth: 110
-                implicitHeight: 28
+                implicitHeight: 26
+                // The Fusion field pads the text by 4 px above and below, and
+                // the system font's line is 21 px on macOS: 26 px of height
+                // needs 2 px of padding, or the text is cut.
+                topPadding: 2
+                bottomPadding: 2
+                // The text starts where the group's caption and the buttons'
+                // captions start.
+                leftPadding: 6
                 enabled: Controller.hasImage
                 placeholderText: qsTr("All")
                 ToolTip.visible: hovered && enabled
@@ -130,18 +134,6 @@ ToolBar {
                     }
                 }
             }
-        }
-
-        ToolDivider {}
-
-        ToolGroup {
-            title: qsTr("Auto")
-
-            SegmentedControl {
-                labels: [qsTr("Fast"), qsTr("Balanced"), qsTr("Accurate")]
-                currentIndex: headerRoot.autoMode
-                onActivated: (index) => headerRoot.autoMode = index
-            }
 
             IconToolButton {
                 text: qsTr("Recognize %1 pg.").arg(headerRoot.scopePageCount)
@@ -156,7 +148,7 @@ ToolBar {
         ToolDivider {}
 
         ToolGroup {
-            title: qsTr("Markup")
+            title: qsTr("Recognition")
 
             IconToolButton {
                 text: qsTr("Mark up")
@@ -487,7 +479,6 @@ ToolBar {
             text: qsTr("Runtime")
             onTriggered: headerRoot.openRuntimeSettingsRequested()
         }
-        MenuSeparator {}
         MenuItem {
             text: qsTr("Models")
             onTriggered: headerRoot.openTaskModelsSettingsRequested()

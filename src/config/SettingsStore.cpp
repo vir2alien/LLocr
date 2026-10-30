@@ -35,6 +35,13 @@ struct RoleSettings {
 const RoleSettings &roleSettings(ConnectionRole role)
 {
     static const RoleSettings table[] = {
+        {{&SettingsStore::layoutLaunchModelPath, &SettingsStore::setLayoutLaunchModelPath},
+         {&SettingsStore::layoutLaunchMmprojPath, &SettingsStore::setLayoutLaunchMmprojPath},
+         {&SettingsStore::layoutLaunchDraftPath, &SettingsStore::setLayoutLaunchDraftPath},
+         &SettingsStore::layoutRequestProfileId,
+         &SettingsStore::setLayoutRequestProfileId,
+         &SettingsStore::layoutModelName,
+         &SettingsStore::setLayoutModelName},
         // BlockRecognition: the OCR model — its identity and its launch path
         // are the ones the page task used to own. The launch files keep the
         // legacy "check" prefix.
@@ -52,13 +59,6 @@ const RoleSettings &roleSettings(ConnectionRole role)
          &SettingsStore::setDecisionRequestProfileId,
          &SettingsStore::decisionModelName,
          &SettingsStore::setDecisionModelName},
-        {{&SettingsStore::layoutLaunchModelPath, &SettingsStore::setLayoutLaunchModelPath},
-         {&SettingsStore::layoutLaunchMmprojPath, &SettingsStore::setLayoutLaunchMmprojPath},
-         {&SettingsStore::layoutLaunchDraftPath, &SettingsStore::setLayoutLaunchDraftPath},
-         &SettingsStore::layoutRequestProfileId,
-         &SettingsStore::setLayoutRequestProfileId,
-         &SettingsStore::layoutModelName,
-         &SettingsStore::setLayoutModelName},
         {{&SettingsStore::fixLaunchModelPath, &SettingsStore::setFixLaunchModelPath},
          {&SettingsStore::fixLaunchMmprojPath, &SettingsStore::setFixLaunchMmprojPath},
          {&SettingsStore::fixLaunchDraftPath, &SettingsStore::setFixLaunchDraftPath},

@@ -20,7 +20,9 @@ ColumnLayout {
     property bool compact: false
 
     readonly property alias baseUrlText: baseUrlField.text
-    readonly property var taskIds: ["blockRecognition", "decision", "layout", "fix"]
+    // The rows follow the C++ task list (ADR 215): the order is the order the
+    // task table shows, and the tab keeps no copy of it.
+    readonly property var taskIds: Settings.taskRoles
 
     readonly property int titleWidth: 160
     readonly property int endpointWidth: 190
