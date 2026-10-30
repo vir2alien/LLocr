@@ -528,21 +528,25 @@ ctest --test-dir build -R test_auto_pipeline --output-on-failure
 
 Ожидаемо: PASS (6 тестов).
 
-**Шаг 6: подключить к сборке**
+**Шаг 6: подключить к сборке — УЖЕ СДЕЛАНО**
 
-`src/CMakeLists.txt` — в список `qt_add_library(llocr_app STATIC ...)` добавить:
+Записи в `src/CMakeLists.txt` (цель `llocr_app`) и в `tests/CMakeLists.txt`
+добавлены контроллером до запуска задачи, чтобы два исполнителя не правили один
+файл. Проверь, что они на месте, и **не добавляй их повторно**:
 
-```
+```cmake
+# src/CMakeLists.txt, внутри qt_add_library(llocr_app STATIC ...)
     app/AutoPipelineStage.h
     app/AutoPipelineController.h
     app/AutoPipelineController.cpp
-```
 
-`tests/CMakeLists.txt` — рядом с другими тестами добавить (имя цели — по образцу соседних блоков):
+# tests/CMakeLists.txt
+qt_add_executable(test_auto_pipeline test_auto_pipeline.cpp)
 
-```cmake
-add_executable(test_auto_pipeline test_auto_pipeline.cpp)
-target_link_libraries(test_auto_pipeline PRIVATE llocr_app llocr_config llocr_core Qt${QT_VERSION_MAJOR}::Test)
+target_link_libraries(test_auto_pipeline PRIVATE
+    Qt6::Test
+    llocr_app
+)
 add_test(NAME test_auto_pipeline COMMAND test_auto_pipeline)
 ```
 
@@ -564,7 +568,17 @@ git commit -m "feat: the auto pipeline — a stage contract and an orchestrator"
 - Изменить: `src/app/VerificationQueueController.h`
 - Изменить: `src/app/VerificationQueueController.cpp`
 - Создать: `tests/test_verification_queue.cpp`
-- Изменить: `tests/CMakeLists.txt`
+- Изменить: `tests/CMakeLists.txt` — **запись уже добавлена контроллером** (проверь, не дублируй):
+
+```cmake
+qt_add_executable(test_verification_queue test_verification_queue.cpp)
+
+target_link_libraries(test_verification_queue PRIVATE
+    Qt6::Test
+    llocr_app
+)
+add_test(NAME test_verification_queue COMMAND test_verification_queue)
+```
 
 **Интерфейсы:**
 - Производит (для задачи 3):

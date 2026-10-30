@@ -114,6 +114,27 @@ target_link_libraries(test_verification_prompts PRIVATE
 )
 add_test(NAME test_verification_prompts COMMAND test_verification_prompts)
 
+# The auto pipeline (ADR 257): the stage contract, the orchestrator and the
+# order the stages run in.
+qt_add_executable(test_auto_pipeline test_auto_pipeline.cpp)
+
+target_link_libraries(test_auto_pipeline PRIVATE
+    Qt6::Test
+    llocr_app
+)
+add_test(NAME test_auto_pipeline COMMAND test_auto_pipeline)
+
+# The verification queue's work lists: the blocks the pipeline stages collect
+# (the blocks without text, the blocks of the enabled types, the blocks that
+# wait for the fixer).
+qt_add_executable(test_verification_queue test_verification_queue.cpp)
+
+target_link_libraries(test_verification_queue PRIVATE
+    Qt6::Test
+    llocr_app
+)
+add_test(NAME test_verification_queue COMMAND test_verification_queue)
+
 qt_add_executable(test_ocr_models test_ocr_models.cpp)
 
 target_link_libraries(test_ocr_models PRIVATE

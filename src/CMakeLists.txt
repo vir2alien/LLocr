@@ -270,6 +270,9 @@ qt_add_library(llocr_app STATIC
     app/AppController.cpp
     app/AvailabilityPresenter.h
     app/AvailabilityPresenter.cpp
+    app/AutoPipelineStage.h
+    app/AutoPipelineController.h
+    app/AutoPipelineController.cpp
     app/BlockInspector.h
     app/BlockInspector.cpp
     app/ProjectController.h
