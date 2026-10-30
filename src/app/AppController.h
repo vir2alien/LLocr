@@ -150,6 +150,7 @@ class AppController : public QObject
     // The auto pipeline (ADR 257): the run over the selected pages.
     Q_PROPERTY(bool autoPipelineRunning READ autoPipelineRunning NOTIFY autoStateChanged)
     Q_PROPERTY(bool autoPipelineAvailable READ autoPipelineAvailable NOTIFY autoStateChanged)
+    Q_PROPERTY(QString autoPipelineBlockedReason READ autoPipelineBlockedReason NOTIFY autoStateChanged)
     Q_PROPERTY(int autoPipelineStageIndex READ autoPipelineStageIndex NOTIFY autoStateChanged)
     Q_PROPERTY(int autoPipelineStageCount READ autoPipelineStageCount NOTIFY autoStateChanged)
     Q_PROPERTY(QString autoPipelineStageTitle READ autoPipelineStageTitle NOTIFY autoStateChanged)
@@ -284,6 +285,7 @@ public:
 
     bool autoPipelineRunning() const;
     bool autoPipelineAvailable() const;
+    QString autoPipelineBlockedReason() const;
     int autoPipelineStageIndex() const;
     int autoPipelineStageCount() const;
     QString autoPipelineStageTitle() const;

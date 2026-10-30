@@ -1231,11 +1231,6 @@
         <translation>Разметить, распознать, проверить и исправить выбранные страницы</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>The automatic pipeline needs a markup and a recognition model</source>
-        <translation>Автопайплайну нужны модель разметки и модель распознавания</translation>
-    </message>
-    <message>
         <location line="+389"/>
         <source>Automatic pipeline?</source>
         <translation>Автопайплайн?</translation>
@@ -4528,6 +4523,11 @@
         <location line="+31"/>
         <source>No pages to process</source>
         <translation>Нет страниц для обработки</translation>
+    </message>
+    <message>
+        <location filename="../../src/app/AppController.cpp" line="+1340"/>
+        <source>No model for the markup or the recognition task</source>
+        <translation>Нет модели для разметки или распознавания</translation>
     </message>
 </context>
 <context>

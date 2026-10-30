@@ -1331,6 +1331,16 @@ bool AppController::autoPipelineAvailable() const
     return m_layout.available() && m_availability.layoutModelAvailable() && m_availability.blockRecognitionModelAvailable();
 }
 
+QString AppController::autoPipelineBlockedReason() const
+{
+    // The gate the facade adds on top of the orchestrator's own: the run needs
+    // a model for the markup and one for the recognition. It comes first,
+    // because without the models the run would not work at all.
+    if (!m_availability.layoutModelAvailable() || !m_availability.blockRecognitionModelAvailable())
+        return StatusMessage::translate("AutoPipelineController", "No model for the markup or the recognition task").text();
+    return m_autoPipeline->blockedReason();
+}
+
 int AppController::autoPipelineStageIndex() const
 {
     return m_autoPipeline->stageIndex();

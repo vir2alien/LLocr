@@ -143,10 +143,15 @@ ToolBar {
                 enabled: stopMode || (headerRoot.pipelineIdle && Controller.hasImage
                          && Controller.autoPipelineAvailable)
                 ToolTip.visible: hovered || !enabled
-                ToolTip.text: stopMode ? qsTr("Stop the automatic pipeline")
-                                       : (Controller.autoPipelineAvailable
-                                          ? qsTr("Mark up, recognize, verify and fix the selected pages")
-                                          : qsTr("The automatic pipeline needs a markup and a recognition model"))
+                ToolTip.text: {
+                    // The C++ owns the reason and the wording; the button only
+                    // shows it. One read: the reason scans the scope.
+                    const reason = Controller.autoPipelineBlockedReason
+                    return stopMode ? qsTr("Stop the automatic pipeline")
+                                    : (reason.length > 0
+                                       ? reason
+                                       : qsTr("Mark up, recognize, verify and fix the selected pages"))
+                }
                 onClicked: {
                     if (stopMode) {
                         Controller.stopAutoPipeline()
