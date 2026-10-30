@@ -1,0 +1,76 @@
+#pragma once
+
+#include <functional>
+
+#include <QList>
+#include <QObject>
+#include <QString>
+#include <QStringList>
+
+#include "app/AutoPipelineStage.h"
+#include "core/StatusMessage.h"
+
+namespace llocr {
+
+// The auto pipeline (ADR 257): a list of stages, run in order over the pages
+// the user selected. The controller owns the order and the reporting; every
+// stage owns its own work. A stage that cannot run says why and the pipeline
+// skips it, so the run ends with the stages that did work rather than with
+// the first missing model.
+class AutoPipelineController : public QObject
+{
+    Q_OBJECT
+
+public:
+    struct Deps {
+        // The pages the run works on: the thumbnail selection, empty = all.
+        std::function<QList<int>()> scopePages;
+        // Whether the document can be worked on now (no other job runs).
+        std::function<bool()> idle;
+    };
+
+    explicit AutoPipelineController(Deps deps, QObject *parent = nullptr);
+
+    // The stages, in the order they run. The controller does not own them.
+    void setStages(QList<AutoPipelineStage *> stages);
+
+    bool isRunning() const { return m_running; }
+    bool canStart() const;
+    QString blockedReason() const;
+
+    int stageIndex() const { return m_stageIndex; }
+    int stageCount() const { return m_stages.size(); }
+    QString stageTitle() const;
+    int progressDone() const;
+    int progressTotal() const;
+
+public slots:
+    // Starts the run; returns false when it could not start.
+    bool start();
+    // Stops the running stage; the stages after it do not start.
+    void stop();
+
+signals:
+    void stateChanged();
+    void statusRequested(const llocr::StatusMessage &message);
+    void finished(bool ok);
+
+private:
+    void runStage(int index);
+    void onStageFinished();
+    void onStageFailed(const llocr::StatusMessage &message);
+    void finish(bool ok);
+    void reportSummary();
+
+    Deps m_deps;
+    QList<AutoPipelineStage *> m_stages;
+    AutoPipelineStage::Scope m_scope;
+    AutoPipelineStage *m_current = nullptr;
+    int m_stageIndex = -1;
+    bool m_running = false;
+    bool m_stopping = false;
+    QStringList m_skips;
+    QStringList m_failures;
+};
+
+}  // namespace llocr
