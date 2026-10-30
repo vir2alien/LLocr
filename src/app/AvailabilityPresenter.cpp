@@ -11,6 +11,7 @@ void AvailabilityPresenter::refresh(const Revisions &revisions)
     const bool importing = m_deps.importing();
     const bool layoutBusy = m_deps.layoutBusy();
     const bool checkBusy = m_deps.checkBusy();
+    const bool autoPipelineBusy = m_deps.autoPipelineBusy && m_deps.autoPipelineBusy();
     const bool blockRecognitionModel = blockRecognitionModelAvailable();
     const bool decisionModel = decisionModelAvailable();
     const bool layoutModel = layoutModelAvailable();
@@ -27,6 +28,7 @@ void AvailabilityPresenter::refresh(const Revisions &revisions)
                                   importing,
                                   layoutBusy,
                                   checkBusy,
+                                  autoPipelineBusy,
                                   blockRecognitionModel,
                                   decisionModel,
                                   layoutModel,
@@ -88,6 +90,8 @@ bool AvailabilityPresenter::pageBlocksRecognitionSupported() const
 
 bool AvailabilityPresenter::actionsIdle() const
 {
+    if (m_deps.autoPipelineBusy && m_deps.autoPipelineBusy())
+        return false;
     return !m_deps.layoutBusy() && !m_deps.checkBusy() && !m_deps.importing();
 }
 

@@ -40,6 +40,11 @@
 
 namespace llocr {
 
+class AutoFixStage;
+class AutoMarkupStage;
+class AutoPipelineController;
+class AutoRecognitionStage;
+class AutoVerificationStage;
 class RequestProfileStore;
 
 constexpr qint64 kPreviewCacheBudgetBytes = 64ll * 1024 * 1024;
@@ -141,6 +146,15 @@ class AppController : public QObject
     Q_PROPERTY(int layoutProgressDone READ layoutProgressDone NOTIFY layoutProgressChanged)
     Q_PROPERTY(int layoutProgressTotal READ layoutProgressTotal NOTIFY layoutProgressChanged)
     Q_PROPERTY(bool layoutAvailable READ layoutAvailable NOTIFY layoutAvailableChanged)
+
+    // The auto pipeline (ADR 257): the run over the selected pages.
+    Q_PROPERTY(bool autoPipelineRunning READ autoPipelineRunning NOTIFY autoStateChanged)
+    Q_PROPERTY(bool autoPipelineAvailable READ autoPipelineAvailable NOTIFY autoStateChanged)
+    Q_PROPERTY(int autoPipelineStageIndex READ autoPipelineStageIndex NOTIFY autoStateChanged)
+    Q_PROPERTY(int autoPipelineStageCount READ autoPipelineStageCount NOTIFY autoStateChanged)
+    Q_PROPERTY(QString autoPipelineStageTitle READ autoPipelineStageTitle NOTIFY autoStateChanged)
+    Q_PROPERTY(int autoPipelineProgressDone READ autoPipelineProgressDone NOTIFY autoStateChanged)
+    Q_PROPERTY(int autoPipelineProgressTotal READ autoPipelineProgressTotal NOTIFY autoStateChanged)
 
     Q_PROPERTY(QStringList exportNameFilters READ exportNameFilters NOTIFY retranslateRequested)
 
@@ -268,6 +282,14 @@ public:
     int layoutProgressTotal() const { return m_layout.progressTotal(); }
     bool layoutAvailable() const { return m_layout.available(); }
 
+    bool autoPipelineRunning() const;
+    bool autoPipelineAvailable() const;
+    int autoPipelineStageIndex() const;
+    int autoPipelineStageCount() const;
+    QString autoPipelineStageTitle() const;
+    int autoPipelineProgressDone() const;
+    int autoPipelineProgressTotal() const;
+
     QObject *pageModel() const { return const_cast<PageListModel *>(&m_pageModel); }
     QObject *boxModel() const { return const_cast<BoxListModel *>(&m_boxModel); }
 
@@ -306,6 +328,8 @@ signals:
     void layoutStateChanged();
     void layoutProgressChanged();
     void layoutAvailableChanged();
+    // The auto pipeline (ADR 257): the run started, moved on or ended.
+    void autoStateChanged();
 
     void selectedBoxChanged();
     void blockTextRangeChanged();
@@ -372,6 +396,9 @@ public slots:
     Q_INVOKABLE void checkScopeEnabledBlocks();
     Q_INVOKABLE void fixScopeProblemBlocks();
     Q_INVOKABLE void stopCheck();
+    // The auto pipeline (ADR 257): the run over the selected pages.
+    Q_INVOKABLE void startAutoPipeline();
+    Q_INVOKABLE void stopAutoPipeline();
     // Block (re-)recognition through the blockRecognition role: the selected
     // block regardless of status, or only the problem blocks (Mismatch/Review).
     Q_INVOKABLE void recognizeSelectedBlock();
@@ -422,6 +449,10 @@ private:
     void applyPageDeskew(int index, double degrees);
     void applyLayout(int pageIndex, const QString &rawText);
     void startLayout(const QList<int> &pages);
+    // The markup pass the auto pipeline asks for; done(ok) when the whole
+    // pass is over, the second pass of a turned page included.
+    void runMarkupPass(const QList<int> &pages, const std::function<void(bool)> &done);
+    void finishMarkupPass(bool ok);
     QString effectiveParserId() const;
     QString effectiveParserIdFor(const QString &profileId, const QString &role = {}) const;
     ParserOptions parserOptions() const;
@@ -527,6 +558,20 @@ private:
     // pages waiting for that second pass.
     QSet<int> m_autoTurnedPages;
     QList<int> m_remarkupPages;
+
+    // The auto pipeline (ADR 257): the orchestrator and its stages, all
+    // children of the controller.
+    AutoPipelineController *m_autoPipeline = nullptr;
+    AutoMarkupStage *m_autoMarkupStage = nullptr;
+    AutoRecognitionStage *m_autoRecognitionStage = nullptr;
+    AutoVerificationStage *m_autoVerificationStage = nullptr;
+    AutoFixStage *m_autoFixStage = nullptr;
+    AutoVerificationStage *m_autoRecheckStage = nullptr;
+    // The markup pass the pipeline waits for.
+    std::function<void(bool)> m_markupPassDone;
+    // Whether the pass ends well. A failure that meets a busy layout waits
+    // for the layout to be free, so the next stage's work is not refused.
+    bool m_markupPassOk = true;
 
     void notifyPageListGrown();
     void markPageEdited(int index);

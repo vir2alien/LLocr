@@ -3225,6 +3225,86 @@ private slots:
             compareQuadrants(controller.pageImage(row), colors(row));
     }
 
+    // The auto pipeline (ADR 257): the run takes the document for itself and
+    // its stages do their work. A stage whose list the queue refused would
+    // look like a stage that did its job — the blocks would stay empty and
+    // the run would report success — so the run may only start on a free
+    // document, and its stages must find the queue free.
+    void theAutoPipelineRunsTheStagesOverTheScope()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+        m_settings->setDecisionModelName(QStringLiteral("check-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        // The button is live: the document is there and the models are picked.
+        QVERIFY(m_controller->autoPipelineAvailable());
+        QCOMPARE(m_controller->autoPipelineStageCount(), 5);
+
+        m_controller->startAutoPipeline();
+        QVERIFY(m_controller->autoPipelineRunning());
+        // The run holds the document: the other actions are off.
+        QVERIFY(!m_controller->actionsIdle());
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->autoPipelineRunning(), kImportTimeoutMs);
+
+        // The markup and the recognition did their work: the blocks carry the
+        // transcribed text, and the decision answered them. A refused list
+        // would have left the blocks empty.
+        auto *boxes = qobject_cast<BoxListModel *>(m_controller->boxModel());
+        QVERIFY(boxes);
+        QCOMPARE(boxes->rowCount(), 2);
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::TextRole).toString(), QStringLiteral("1. Introduction"));
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::TextRole).toString(), QStringLiteral("Second block text"));
+        QCOMPARE(boxes->data(boxes->index(0), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Ok));
+        QCOMPARE(boxes->data(boxes->index(1), BoxListModel::CheckStatusRole).toInt(), int(BoxCheckStatus::Ok));
+        // 1 layout + 2 transcriptions + 2 decision requests.
+        QCOMPARE(server.requests(), 5);
+        QCOMPARE(server.systemoneRequests(), 2);
+    }
+
+    // The run must not start while another job holds the document: the queue
+    // refuses the list of a stage whose work arrives while the layout runs,
+    // and a refused list looks like a stage that did its job.
+    void theAutoPipelineRefusesToStartWhileTheDocumentIsBusy()
+    {
+        DetTokenChatServer server;
+        QVERIFY(server.start());
+        m_settings->setBaseUrl(server.baseUrl());
+        m_settings->setModelName(QStringLiteral("det-token-test"));
+        m_settings->setLayoutModelName(QStringLiteral("det-token-test"));
+
+        QImage page(480, 360, QImage::Format_RGB32);
+        page.fill(Qt::yellow);
+        const QString raster = m_dir.filePath(QStringLiteral("auto-busy-raster.png"));
+        QVERIFY(page.save(raster));
+
+        m_controller->openFiles({QUrl::fromLocalFile(raster)});
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->pageCount(), 1, kImportTimeoutMs);
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->importing(), kImportTimeoutMs);
+
+        // The markup pass takes the layout.
+        m_controller->layoutScopePages();
+        QVERIFY(m_controller->layoutBusy());
+
+        QVERIFY(!m_controller->autoPipelineAvailable());
+        m_controller->startAutoPipeline();
+        QVERIFY(!m_controller->autoPipelineRunning());
+        QVERIFY2(m_controller->statusMessage().contains(QStringLiteral("Another job is running")), qPrintable(m_controller->statusMessage()));
+
+        QTRY_VERIFY_WITH_TIMEOUT(!m_controller->layoutBusy(), kImportTimeoutMs);
+    }
+
 #ifdef LLOCR_HAVE_DJVU
     void destructionWithOutstandingImport_data()
     {

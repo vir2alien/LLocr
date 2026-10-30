@@ -1,4 +1,6 @@
 #include "app/AppController.h"
+#include "app/AutoPipelineController.h"
+#include "app/AutoPipelineStages.h"
 #include "app/LruImageCache.h"
 #include "app/PageIndex.h"
 #include "app/PageRotation.h"
@@ -71,7 +73,8 @@ AppController::AppController(SettingsStore &settings,
                                                                       [this] { return m_currentPage; },
                                                                       [this] { return m_importing; },
                                                                       [this] { return m_layout.busy(); },
-                                                                      [this] { return checkBusy(); }},
+                                                                      [this] { return checkBusy(); },
+                                                                      [this] { return m_autoPipeline && m_autoPipeline->isRunning(); }},
                                                                      this),
       m_export({m_document, m_settings, [this](int pageIndex, int boxIndex) { return croppedImage(pageIndex, boxIndex); }, [this]() { return m_importing; }}, this),
       m_project({m_document,
@@ -149,6 +152,9 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_verify, &VerificationQueueController::problemReported, this, [this](const StatusMessage &message) { reportProblem(message, ProblemLog::Error); });
 
     connect(&m_availability, &AvailabilityPresenter::changed, this, &AppController::availabilityChanged);
+    // The pipeline's availability is read off the matrix: the models, the
+    // idle state and the page selection are the availability's business.
+    connect(&m_availability, &AvailabilityPresenter::changed, this, &AppController::autoStateChanged);
 
     connect(this, &AppController::pageChanged, this, &AppController::updateAvailability);
     connect(this, &AppController::documentChanged, this, &AppController::updateAvailability);
@@ -164,18 +170,50 @@ AppController::AppController(SettingsStore &settings,
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::busyChanged);
     connect(&m_layout, &LayoutController::busyChanged, this, &AppController::updateAvailability);
     // A page the markup auto-turned waits for its second pass: the boxes the
-    // sideways layout read say nothing about the turned page.
+    // sideways layout read say nothing about the turned page. The pass is
+    // over when the layout is idle and no page waits for the second one.
     connect(&m_layout, &LayoutController::busyChanged, this, [this]() {
-        if (m_layout.busy() || m_remarkupPages.isEmpty())
+        if (m_layout.busy())
             return;
-        QList<int> pages = m_remarkupPages;
-        m_remarkupPages.clear();
-        startLayout(pages);
+        if (!m_remarkupPages.isEmpty()) {
+            QList<int> pages = m_remarkupPages;
+            m_remarkupPages.clear();
+            startLayout(pages);
+            return;
+        }
+        finishMarkupPass(m_markupPassOk);
     });
     connect(&m_layout, &LayoutController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
     connect(&m_layout, &LayoutController::progressChanged, this, &AppController::layoutProgressChanged);
     connect(&m_layout, &LayoutController::layoutFinished, this, &AppController::applyLayout);
     connect(&m_settings, &SettingsStore::layoutRequestProfileIdChanged, this, &AppController::layoutAvailableChanged);
+
+    // The auto pipeline (ADR 257): the stages in the order they run and the
+    // orchestrator that owns the run. The stage that needs a model says so
+    // and the run passes it over.
+    m_autoMarkupStage = new AutoMarkupStage(m_layout, [this](const AutoPipelineStage::Scope &pages, const std::function<void(bool)> &done) { runMarkupPass(pages, done); }, this);
+    m_autoRecognitionStage = new AutoRecognitionStage(m_verify, [this]() { return m_availability.blockRecognitionModelAvailable(); }, this);
+    m_autoVerificationStage = new AutoVerificationStage(m_verify, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification"), this);
+    m_autoFixStage = new AutoFixStage(m_verify, [this]() { return m_availability.fixModelAvailable(); }, this);
+    m_autoRecheckStage = new AutoVerificationStage(m_verify, [this]() { return m_availability.decisionModelAvailable(); }, QStringLiteral("Verification of the corrected blocks"), this);
+
+    AutoPipelineController::Deps deps;
+    deps.scopePages = [this]() { return scopePages(); };
+    deps.idle = [this]() { return m_availability.actionsIdle(); };
+    m_autoPipeline = new AutoPipelineController(deps, this);
+    m_autoPipeline->setStages({m_autoMarkupStage, m_autoRecognitionStage, m_autoVerificationStage, m_autoFixStage, m_autoRecheckStage});
+    connect(m_autoPipeline, &AutoPipelineController::stateChanged, this, &AppController::autoStateChanged);
+    connect(m_autoPipeline, &AutoPipelineController::stateChanged, this, &AppController::updateAvailability);
+    connect(m_autoPipeline, &AutoPipelineController::statusRequested, this, [this](const StatusMessage &message) { setStatus(message); });
+
+    // The stage's progress moves without the pipeline changing its state: the
+    // status line reads it live, so the notifier has to follow the progress.
+    const auto autoProgressChanged = [this]() {
+        if (m_autoPipeline->isRunning())
+            emit autoStateChanged();
+    };
+    connect(&m_layout, &LayoutController::progressChanged, this, autoProgressChanged);
+    connect(&m_verify, &VerificationQueueController::stateChanged, this, autoProgressChanged);
 
     connect(&m_export, &ExportController::exportingChanged, this, &AppController::exportingChanged);
 
@@ -1272,6 +1310,77 @@ void AppController::stopLayout()
     m_layout.stop();
 }
 
+bool AppController::autoPipelineRunning() const
+{
+    return m_autoPipeline && m_autoPipeline->isRunning();
+}
+
+bool AppController::autoPipelineAvailable() const
+{
+    if (!m_autoPipeline || !m_autoPipeline->canStart())
+        return false;
+    return m_availability.layoutModelAvailable() && m_availability.blockRecognitionModelAvailable();
+}
+
+int AppController::autoPipelineStageIndex() const
+{
+    return m_autoPipeline ? m_autoPipeline->stageIndex() : -1;
+}
+
+int AppController::autoPipelineStageCount() const
+{
+    return m_autoPipeline ? m_autoPipeline->stageCount() : 0;
+}
+
+QString AppController::autoPipelineStageTitle() const
+{
+    return m_autoPipeline ? m_autoPipeline->stageTitle() : QString();
+}
+
+int AppController::autoPipelineProgressDone() const
+{
+    return m_autoPipeline ? m_autoPipeline->progressDone() : 0;
+}
+
+int AppController::autoPipelineProgressTotal() const
+{
+    return m_autoPipeline ? m_autoPipeline->progressTotal() : 0;
+}
+
+void AppController::startAutoPipeline()
+{
+    m_autoPipeline->start();
+}
+
+void AppController::stopAutoPipeline()
+{
+    m_autoPipeline->stop();
+}
+
+void AppController::runMarkupPass(const QList<int> &pages, const std::function<void(bool)> &done)
+{
+    m_markupPassDone = done;
+    m_markupPassOk = true;
+    startLayout(pages);
+}
+
+void AppController::finishMarkupPass(bool ok)
+{
+    if (!m_markupPassDone)
+        return;
+    if (!ok && m_layout.busy()) {
+        // Another markup pass holds the layout: the stage may not end yet —
+        // the queue refuses the next stage's work while the layout runs, and
+        // a refused work list looks like a stage that did its job.
+        m_markupPassOk = false;
+        return;
+    }
+    const auto done = m_markupPassDone;
+    m_markupPassDone = nullptr;
+    m_markupPassOk = true;
+    done(ok);
+}
+
 void AppController::copyCurrentPageText()
 {
     const QString text = resultText();
@@ -1283,21 +1392,34 @@ void AppController::copyCurrentPageText()
 
 void AppController::startLayout(const QList<int> &pages)
 {
-    if (pages.isEmpty() || m_layout.busy() || m_importing || checkBusy())
+    if (pages.isEmpty() || m_layout.busy() || m_importing || checkBusy()) {
+        finishMarkupPass(false);
         return;
+    }
     const ModelProfiles::Role *role = m_layout.role();
     if (!role) {
         setStatus(StatusMessage::translate("AppController", "The layout model does not support page markup."));
+        finishMarkupPass(false);
         return;
     }
     const QString prompt = role->prompts.isEmpty() ? QString() : role->prompts.constFirst().text;
     if (prompt.isEmpty()) {
         setStatus(StatusMessage::translate("AppController", "The model profile has no markup prompt."));
+        finishMarkupPass(false);
         return;
     }
     // The markup model reads the page too: the page is turned first when it
     // lies the wrong way up.
-    const auto start = [this, pages, role, prompt]() { m_layout.layoutPages(pages, [this](int index) { return pageImage(index); }, role->systemPrompt, prompt); };
+    const auto start = [this, pages, role, prompt]() {
+        // The pass may have waited for the orientation check: another markup
+        // pass may have taken the layout in the meantime, and the layout
+        // refuses a second one in silence.
+        if (m_layout.busy()) {
+            finishMarkupPass(false);
+            return;
+        }
+        m_layout.layoutPages(pages, [this](int index) { return pageImage(index); }, role->systemPrompt, prompt);
+    };
     if (runAfterOrientationCheck(pages, start))
         return;
     start();
@@ -1666,6 +1788,9 @@ void AppController::retranslate()
 {
     emit statusChanged();
     emit retranslateRequested();
+    // The stage titles are translation keys, rendered on demand: the header
+    // has to read them again in the new language.
+    emit autoStateChanged();
 }
 
 void AppController::markPageEdited(int index)

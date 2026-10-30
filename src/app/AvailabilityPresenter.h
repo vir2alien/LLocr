@@ -33,6 +33,8 @@ public:
         std::function<bool()> importing;
         std::function<bool()> layoutBusy;
         std::function<bool()> checkBusy;
+        // The auto pipeline runs (ADR 257): the document is busy until it ends.
+        std::function<bool()> autoPipelineBusy;
     };
 
     // The counters the flags are keyed on: the document changed, the blocks
@@ -112,6 +114,7 @@ private:
         bool importing = false;
         bool layoutBusy = false;
         bool checkBusy = false;
+        bool autoPipelineBusy = false;
         bool blockRecognitionModel = false;
         bool decisionModel = false;
         bool layoutModel = false;
